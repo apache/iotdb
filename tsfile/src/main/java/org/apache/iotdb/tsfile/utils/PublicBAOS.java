@@ -23,10 +23,9 @@ import java.io.IOException;
 import java.io.OutputStream;
 
 /**
- * A subclass extending <code>ByteArrayOutputStream</code>. It's used to return
- * the byte array directly. Note that the size of byte array is large than
- * actual size of valid contents, thus it's used cooperating with
- * <code>size()</code> or <code>capacity = size</code>
+ * A subclass extending <code>ByteArrayOutputStream</code>. It's used to return the byte array
+ * directly. Note that the size of byte array is large than actual size of valid contents, thus it's
+ * used cooperating with <code>size()</code> or <code>capacity = size</code>
  */
 public class PublicBAOS extends ByteArrayOutputStream {
 
@@ -49,16 +48,15 @@ public class PublicBAOS extends ByteArrayOutputStream {
   }
 
   /**
-   * It's not a thread-safe method.
-   * Override the super class's implementation.
-   * Remove the synchronized key word, to save the synchronization overhead.
+   * It's not a thread-safe method. Override the super class's implementation. Remove the
+   * synchronized key word, to save the synchronization overhead.
    *
-   * Writes the complete contents of this byte array output stream to
-   * the specified output stream argument, as if by calling the output
-   * stream's write method using <code>out.write(buf, 0, count)</code>.
+   * <p>Writes the complete contents of this byte array output stream to the specified output stream
+   * argument, as if by calling the output stream's write method using <code>
+   * out.write(buf, 0, count)</code>.
    *
-   * @param      out   the output stream to which to write the data.
-   * @exception  IOException  if an I/O error occurs.
+   * @param out the output stream to which to write the data.
+   * @exception IOException if an I/O error occurs.
    */
   @Override
   @SuppressWarnings("squid:S3551")
@@ -67,14 +65,12 @@ public class PublicBAOS extends ByteArrayOutputStream {
   }
 
   /**
-   * It's not a thread-safe method.
-   * Override the super class's implementation.
-   * Remove the synchronized key word, to save the synchronization overhead.
+   * It's not a thread-safe method. Override the super class's implementation. Remove the
+   * synchronized key word, to save the synchronization overhead.
    *
-   * Resets the <code>count</code> field of this byte array output
-   * stream to zero, so that all currently accumulated output in the
-   * output stream is discarded. The output stream can be used again,
-   * reusing the already allocated buffer space.
+   * <p>Resets the <code>count</code> field of this byte array output stream to zero, so that all
+   * currently accumulated output in the output stream is discarded. The output stream can be used
+   * again, reusing the already allocated buffer space.
    */
   @Override
   @SuppressWarnings("squid:S3551")

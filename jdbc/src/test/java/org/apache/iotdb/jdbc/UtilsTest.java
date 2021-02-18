@@ -21,7 +21,7 @@ package org.apache.iotdb.jdbc;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -34,12 +34,10 @@ import static org.junit.Assert.fail;
 public class UtilsTest {
 
   @Before
-  public void setUp() throws Exception {
-  }
+  public void setUp() throws Exception {}
 
   @After
-  public void tearDown() throws Exception {
-  }
+  public void tearDown() throws Exception {}
 
   @Test
   public void testParseURL() throws IoTDBURLException {
@@ -50,15 +48,15 @@ public class UtilsTest {
     Properties properties = new Properties();
     properties.setProperty(Config.AUTH_USER, userName);
     properties.setProperty(Config.AUTH_PASSWORD, userPwd);
-    IoTDBConnectionParams params = Utils
-        .parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s/", host1, port),
-            properties);
+    IoTDBConnectionParams params =
+        Utils.parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s/", host1, port), properties);
     assertEquals(host1, params.getHost());
     assertEquals(port, params.getPort());
     assertEquals(userName, params.getUsername());
     assertEquals(userPwd, params.getPassword());
 
-    params = Utils.parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s", host1, port), properties);
+    params =
+        Utils.parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s", host1, port), properties);
     assertEquals(params.getHost(), host1);
     assertEquals(params.getPort(), port);
     assertEquals(params.getUsername(), userName);
@@ -95,9 +93,8 @@ public class UtilsTest {
     Properties properties = new Properties();
     properties.setProperty(Config.AUTH_USER, userName);
     properties.setProperty(Config.AUTH_PASSWORD, userPwd);
-    IoTDBConnectionParams params = Utils
-        .parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s/", host, port),
-            properties);
+    IoTDBConnectionParams params =
+        Utils.parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s/", host, port), properties);
   }
 
   @Test
@@ -116,5 +113,4 @@ public class UtilsTest {
     }
     fail();
   }
-
 }

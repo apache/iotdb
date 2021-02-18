@@ -18,17 +18,19 @@
  */
 package org.apache.iotdb.pulsar;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.sql.Statement;
 import org.apache.pulsar.client.api.Consumer;
 import org.apache.pulsar.client.api.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
+
 public class PulsarConsumerThread implements Runnable {
-  private static final String INSERT_TEMPLATE = "INSERT INTO root.vehicle.%s(timestamp,%s) VALUES (%s,'%s')";
+  private static final String INSERT_TEMPLATE =
+      "INSERT INTO root.vehicle.%s(timestamp,%s) VALUES (%s,'%s')";
 
   private static final Logger logger = LoggerFactory.getLogger(PulsarConsumerThread.class);
 
@@ -39,9 +41,7 @@ public class PulsarConsumerThread implements Runnable {
     Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
   }
 
-  /**
-   * Write data to IoTDB
-   */
+  /** Write data to IoTDB */
   private void writeData(Statement statement, String message) throws SQLException {
 
     String[] items = message.split(",");
@@ -53,10 +53,12 @@ public class PulsarConsumerThread implements Runnable {
   @SuppressWarnings("squid:S2068")
   @Override
   public void run() {
-    try (Connection connection = DriverManager
-        .getConnection(Constant.IOTDB_CONNECTION_URL, Constant.IOTDB_CONNECTION_USER,
-            Constant.IOTDB_CONNECTION_PASSWORD);
-         Statement statement = connection.createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Constant.IOTDB_CONNECTION_URL,
+                Constant.IOTDB_CONNECTION_USER,
+                Constant.IOTDB_CONNECTION_PASSWORD);
+        Statement statement = connection.createStatement()) {
       do {
         Message<?> msg = consumer.receive();
         writeData(statement, new String(msg.getData()));

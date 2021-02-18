@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
+import org.apache.iotdb.db.qp.logical.Operator;
+
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.qp.logical.Operator;
 
 public class AggregationPlan extends RawDataQueryPlan {
 

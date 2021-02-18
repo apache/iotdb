@@ -19,15 +19,14 @@
 
 package org.apache.iotdb.db.query.reader.chunk;
 
-import java.io.IOException;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 
-/**
- * To read one chunk from memory, and only used in iotdb server module
- */
+import java.io.IOException;
+
+/** To read one chunk from memory, and only used in iotdb server module */
 public class MemChunkLoader implements IChunkLoader {
 
   private final ReadOnlyMemChunk chunk;
@@ -36,7 +35,6 @@ public class MemChunkLoader implements IChunkLoader {
     this.chunk = chunk;
   }
 
-
   @Override
   public Chunk loadChunk(ChunkMetadata chunkMetaData) {
     throw new UnsupportedOperationException();
@@ -44,9 +42,8 @@ public class MemChunkLoader implements IChunkLoader {
 
   @Override
   public void close() throws IOException {
-    //no resources need to close
+    // no resources need to close
   }
-
 
   public ReadOnlyMemChunk getChunk() {
     return chunk;

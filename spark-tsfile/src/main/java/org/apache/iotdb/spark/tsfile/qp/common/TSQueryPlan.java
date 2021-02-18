@@ -21,10 +21,7 @@ package org.apache.iotdb.spark.tsfile.qp.common;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * One tsfile logical query plan that can be performed at one time
- *
- */
+/** One tsfile logical query plan that can be performed at one time */
 public class TSQueryPlan {
 
   private List<String> paths = new ArrayList<>();

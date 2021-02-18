@@ -18,11 +18,6 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
-import java.io.IOException;
-import java.util.concurrent.ExecutionException;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
@@ -30,16 +25,23 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.IOException;
+import java.util.concurrent.ExecutionException;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class MemTableFlushTaskTest {
 
   private RestorableTsFileIOWriter writer;
   private String storageGroup = "storage_group1";
-  private String filePath = TestConstant.OUTPUT_DATA_DIR
-      .concat("testUnsealedTsFileProcessor.tsfile");
+  private String filePath =
+      TestConstant.OUTPUT_DATA_DIR.concat("testUnsealedTsFileProcessor.tsfile");
   private IMemTable memTable;
   private long startTime = 1;
   private long endTime = 100;
@@ -61,21 +63,38 @@ public class MemTableFlushTaskTest {
 
   @Test
   public void testFlushMemTable() throws ExecutionException, InterruptedException, IOException {
-    MemTableTestUtils.produceData(memTable, startTime, endTime, MemTableTestUtils.deviceId0,
+    MemTableTestUtils.produceData(
+        memTable,
+        startTime,
+        endTime,
+        MemTableTestUtils.deviceId0,
         MemTableTestUtils.measurementId0,
         MemTableTestUtils.dataType0);
     MemTableFlushTask memTableFlushTask = new MemTableFlushTask(memTable, writer, storageGroup);
-    assertTrue(writer
-        .getVisibleMetadataList(MemTableTestUtils.deviceId0, MemTableTestUtils.measurementId0,
-            MemTableTestUtils.dataType0).isEmpty());
+    assertTrue(
+        writer
+            .getVisibleMetadataList(
+                MemTableTestUtils.deviceId0,
+                MemTableTestUtils.measurementId0,
+                MemTableTestUtils.dataType0)
+            .isEmpty());
     memTableFlushTask.syncFlushMemTable();
     writer.makeMetadataVisible();
-    assertEquals(1, writer
-        .getVisibleMetadataList(MemTableTestUtils.deviceId0, MemTableTestUtils.measurementId0,
-            MemTableTestUtils.dataType0).size());
-    ChunkMetadata chunkMetaData = writer
-        .getVisibleMetadataList(MemTableTestUtils.deviceId0, MemTableTestUtils.measurementId0,
-            MemTableTestUtils.dataType0).get(0);
+    assertEquals(
+        1,
+        writer
+            .getVisibleMetadataList(
+                MemTableTestUtils.deviceId0,
+                MemTableTestUtils.measurementId0,
+                MemTableTestUtils.dataType0)
+            .size());
+    ChunkMetadata chunkMetaData =
+        writer
+            .getVisibleMetadataList(
+                MemTableTestUtils.deviceId0,
+                MemTableTestUtils.measurementId0,
+                MemTableTestUtils.dataType0)
+            .get(0);
     assertEquals(MemTableTestUtils.measurementId0, chunkMetaData.getMeasurementUid());
     assertEquals(startTime, chunkMetaData.getStartTime());
     assertEquals(endTime, chunkMetaData.getEndTime());

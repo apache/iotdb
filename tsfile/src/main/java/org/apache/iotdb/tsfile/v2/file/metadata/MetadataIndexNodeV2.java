@@ -18,19 +18,18 @@
  */
 package org.apache.iotdb.tsfile.v2.file.metadata;
 
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
-
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+
 public class MetadataIndexNodeV2 {
 
-  private MetadataIndexNodeV2() {
-  }
+  private MetadataIndexNodeV2() {}
 
   public static MetadataIndexNode deserializeFrom(ByteBuffer buffer) {
     List<MetadataIndexEntry> children = new ArrayList<>();
@@ -39,9 +38,8 @@ public class MetadataIndexNodeV2 {
       children.add(MetadataIndexEntryV2.deserializeFrom(buffer));
     }
     long offset = ReadWriteIOUtils.readLong(buffer);
-    MetadataIndexNodeType nodeType = MetadataIndexNodeType
-        .deserialize(ReadWriteIOUtils.readByte(buffer));
+    MetadataIndexNodeType nodeType =
+        MetadataIndexNodeType.deserialize(ReadWriteIOUtils.readByte(buffer));
     return new MetadataIndexNode(children, offset, nodeType);
   }
-
 }

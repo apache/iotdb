@@ -24,27 +24,30 @@ import org.fusesource.mqtt.client.QoS;
 import java.util.Random;
 
 public class MQTTClient {
-    public static void main(String[] args) throws Exception {
-        MQTT mqtt = new MQTT();
-        mqtt.setHost("127.0.0.1", 1883);
-        mqtt.setUserName("root");
-        mqtt.setPassword("root");
+  public static void main(String[] args) throws Exception {
+    MQTT mqtt = new MQTT();
+    mqtt.setHost("127.0.0.1", 1883);
+    mqtt.setUserName("root");
+    mqtt.setPassword("root");
 
-        BlockingConnection connection = mqtt.blockingConnection();
-        connection.connect();
+    BlockingConnection connection = mqtt.blockingConnection();
+    connection.connect();
 
-        Random random = new Random();
-        for (int i = 0; i < 10; i++) {
-            String payload = String.format("{\n" +
-                    "\"device\":\"root.sg.d1\",\n" +
-                    "\"timestamp\":%d,\n" +
-                    "\"measurements\":[\"s1\"],\n" +
-                    "\"values\":[%f]\n" +
-                    "}", System.currentTimeMillis(), random.nextDouble());
+    Random random = new Random();
+    for (int i = 0; i < 10; i++) {
+      String payload =
+          String.format(
+              "{\n"
+                  + "\"device\":\"root.sg.d1\",\n"
+                  + "\"timestamp\":%d,\n"
+                  + "\"measurements\":[\"s1\"],\n"
+                  + "\"values\":[%f]\n"
+                  + "}",
+              System.currentTimeMillis(), random.nextDouble());
 
-            connection.publish("root.sg.d1.s1", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
-        }
-
-        connection.disconnect();
+      connection.publish("root.sg.d1.s1", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
     }
+
+    connection.disconnect();
+  }
 }

@@ -18,13 +18,14 @@
  */
 package org.apache.iotdb.db.qp.strategy.optimizer;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 
 public class MergeSingleFilterOptimizer implements IFilterOptimizer {
 
@@ -44,15 +45,15 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
   }
 
   /**
-   * merge and extract node with same Path recursively. <br> If a node has more than two children
-   * and some children has same paths, remove them from this node and merge them to a new single
-   * node, then add the new node to this children list.<br> if all recursive children of this node
-   * have same seriesPath, set this node to single node, and return the same seriesPath, otherwise,
-   * throw exception;
+   * merge and extract node with same Path recursively. <br>
+   * If a node has more than two children and some children has same paths, remove them from this
+   * node and merge them to a new single node, then add the new node to this children list.<br>
+   * if all recursive children of this node have same seriesPath, set this node to single node, and
+   * return the same seriesPath, otherwise, throw exception;
    *
    * @param filter - children is not empty.
    * @return - if all recursive children of this node have same seriesPath, set this node to single
-   * node, and return the same seriesPath, otherwise, throw exception;
+   *     node, and return the same seriesPath, otherwise, throw exception;
    */
   private PartialPath mergeSamePathFilter(FilterOperator filter) throws LogicalOptimizeException {
     if (filter.isLeaf()) {
@@ -110,7 +111,7 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
         // successive next single child with same seriesPath,merge it with previous children
         // if not duplicate
         FilterOperator child = children.get(firstNonSingleIndex);
-        if(!tempExtrNode.contains(child)){
+        if (!tempExtrNode.contains(child)) {
           tempExtrNode.add(child);
         }
       } else {
@@ -148,8 +149,8 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
     return firstNonSingleIndex;
   }
 
-  private PartialPath addLastNullChild(List<FilterOperator> ret,
-                                FilterOperator filter, int i, PartialPath childPath){
+  private PartialPath addLastNullChild(
+      List<FilterOperator> ret, FilterOperator filter, int i, PartialPath childPath) {
     List<FilterOperator> children = filter.getChildren();
     for (; i < children.size(); i++) {
       ret.add(children.get(i));

@@ -29,14 +29,13 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
-/**
- * Statistics for string type.
- */
+/** Statistics for string type. */
 public class BinaryStatistics extends Statistics<Binary> {
 
   private Binary firstValue = new Binary("");
   private Binary lastValue = new Binary("");
-  private static final String BINARY_STATS_UNSUPPORTED_MSG = "Binary statistics does not support: %s";
+  private static final String BINARY_STATS_UNSUPPORTED_MSG =
+      "Binary statistics does not support: %s";
   static final int BINARY_STATISTICS_FIXED_RAM_SIZE = 32;
 
   @Override
@@ -53,7 +52,7 @@ public class BinaryStatistics extends Statistics<Binary> {
    * initialize Statistics.
    *
    * @param first the first value
-   * @param last  the last value
+   * @param last the last value
    */
   public void initializeStats(Binary first, Binary last) {
     this.firstValue = first;
@@ -77,14 +76,13 @@ public class BinaryStatistics extends Statistics<Binary> {
   }
 
   @Override
-  public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes) {
-  }
+  public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes) {}
 
   @Override
   public Binary getMinValue() {
     throw new StatisticsClassException(String.format(BINARY_STATS_UNSUPPORTED_MSG, "min"));
   }
- 
+
   @Override
   public Binary getMaxValue() {
     throw new StatisticsClassException(String.format(BINARY_STATS_UNSUPPORTED_MSG, "max"));
@@ -117,7 +115,11 @@ public class BinaryStatistics extends Statistics<Binary> {
       initializeStats(stringStats.getFirstValue(), stringStats.getLastValue());
       isEmpty = false;
     } else {
-      updateStats(stringStats.getFirstValue(), stringStats.getLastValue(), stats.getStartTime(), stats.getEndTime());
+      updateStats(
+          stringStats.getFirstValue(),
+          stringStats.getLastValue(),
+          stats.getStartTime(),
+          stats.getEndTime());
     }
   }
 
@@ -217,5 +219,4 @@ public class BinaryStatistics extends Statistics<Binary> {
   public String toString() {
     return super.toString() + " [firstValue:" + firstValue + ",lastValue:" + lastValue + "]";
   }
-
 }

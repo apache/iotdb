@@ -19,15 +19,18 @@
 
 package org.apache.iotdb.tsfile.encoding.decoder;
 
-import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
+import java.nio.ByteBuffer;
+
 /**
- * <p> This class includes code modified from Michael Burman's gorilla-tsc project.
+ * This class includes code modified from Michael Burman's gorilla-tsc project.
  *
- * <p> Copyright: 2016-2018 Michael Burman and/or other contributors
- * <p> Project page: https://github.com/burmanm/gorilla-tsc
- * <p> License: http://www.apache.org/licenses/LICENSE-2.0
+ * <p>Copyright: 2016-2018 Michael Burman and/or other contributors
+ *
+ * <p>Project page: https://github.com/burmanm/gorilla-tsc
+ *
+ * <p>License: http://www.apache.org/licenses/LICENSE-2.0
  */
 public abstract class GorillaDecoderV2 extends Decoder {
 

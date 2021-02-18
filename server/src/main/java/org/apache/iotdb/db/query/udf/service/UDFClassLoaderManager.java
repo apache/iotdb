@@ -19,18 +19,20 @@
 
 package org.apache.iotdb.db.query.udf.service;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
+
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class UDFClassLoaderManager implements IService {
 
@@ -38,16 +40,13 @@ public class UDFClassLoaderManager implements IService {
 
   private final String libRoot;
 
-  /**
-   * The keys in the map are the query IDs of the UDF queries being executed.
-   */
+  /** The keys in the map are the query IDs of the UDF queries being executed. */
   private final Map<Long, UDFClassLoader> queryIdToUDFClassLoaderMap;
 
   /**
    * activeClassLoader is used to load all classes under libRoot. libRoot may be updated before the
    * user executes CREATE FUNCTION or after the user executes DROP FUNCTION. Therefore, we need to
-   * continuously maintain the activeClassLoader so that the classes it loads are always up to
-   * date.
+   * continuously maintain the activeClassLoader so that the classes it loads are always up to date.
    */
   @SuppressWarnings("squid:S3077")
   private volatile UDFClassLoader activeClassLoader;
@@ -69,8 +68,8 @@ public class UDFClassLoaderManager implements IService {
     try {
       classLoader.release();
     } catch (IOException e) {
-      logger
-          .warn("Failed to close UDFClassLoader (queryId: {}), because {}", queryId, e.toString());
+      logger.warn(
+          "Failed to close UDFClassLoader (queryId: {}), because {}", queryId, e.toString());
     }
   }
 
@@ -121,7 +120,6 @@ public class UDFClassLoaderManager implements IService {
 
     private static final UDFClassLoaderManager INSTANCE = new UDFClassLoaderManager();
 
-    private UDFClassLoaderManagerHelper() {
-    }
+    private UDFClassLoaderManagerHelper() {}
   }
 }

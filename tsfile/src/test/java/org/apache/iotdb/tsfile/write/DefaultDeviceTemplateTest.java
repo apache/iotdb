@@ -18,13 +18,6 @@
  */
 package org.apache.iotdb.tsfile.write;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -35,8 +28,17 @@ import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
 import org.junit.Assert;
 import org.junit.Test;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class DefaultDeviceTemplateTest {
 
@@ -96,15 +98,12 @@ public class DefaultDeviceTemplateTest {
       int count = 0;
       while (queryDataSet.hasNext()) {
         queryDataSet.next();
-        count ++;
+        count++;
       }
 
       Assert.assertEquals(10, count);
     }
 
-
     Files.deleteIfExists(file.toPath());
-
   }
-
 }

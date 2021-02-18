@@ -18,20 +18,8 @@
  */
 package org.apache.iotdb.tsfile.write;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-
-import java.util.Arrays;
-import java.util.List;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -49,7 +37,19 @@ import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.constant.TestConstant;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class TsFileReadWriteTest {
 
@@ -75,8 +75,12 @@ public class TsFileReadWriteTest {
 
   @Test
   public void intTest() throws IOException, WriteProcessException {
-    List<TSEncoding> encodings = Arrays
-        .asList(TSEncoding.PLAIN, TSEncoding.RLE, TSEncoding.TS_2DIFF, TSEncoding.REGULAR,
+    List<TSEncoding> encodings =
+        Arrays.asList(
+            TSEncoding.PLAIN,
+            TSEncoding.RLE,
+            TSEncoding.TS_2DIFF,
+            TSEncoding.REGULAR,
             TSEncoding.GORILLA);
     for (TSEncoding encoding : encodings) {
       intTest(encoding);
@@ -90,8 +94,12 @@ public class TsFileReadWriteTest {
 
   @Test
   public void longTest() throws IOException, WriteProcessException {
-    List<TSEncoding> encodings = Arrays
-        .asList(TSEncoding.PLAIN, TSEncoding.RLE, TSEncoding.TS_2DIFF, TSEncoding.REGULAR,
+    List<TSEncoding> encodings =
+        Arrays.asList(
+            TSEncoding.PLAIN,
+            TSEncoding.RLE,
+            TSEncoding.TS_2DIFF,
+            TSEncoding.REGULAR,
             TSEncoding.GORILLA);
     for (TSEncoding encoding : encodings) {
       longTest(encoding);
@@ -105,8 +113,12 @@ public class TsFileReadWriteTest {
 
   @Test
   public void floatTest() throws IOException, WriteProcessException {
-    List<TSEncoding> encodings = Arrays
-        .asList(TSEncoding.PLAIN, TSEncoding.RLE, TSEncoding.TS_2DIFF, TSEncoding.GORILLA_V1,
+    List<TSEncoding> encodings =
+        Arrays.asList(
+            TSEncoding.PLAIN,
+            TSEncoding.RLE,
+            TSEncoding.TS_2DIFF,
+            TSEncoding.GORILLA_V1,
             TSEncoding.GORILLA);
     for (TSEncoding encoding : encodings) {
       floatTest(encoding);
@@ -114,15 +126,19 @@ public class TsFileReadWriteTest {
   }
 
   public void floatTest(TSEncoding encoding) throws IOException, WriteProcessException {
-    writeDataByTSRecord(TSDataType.FLOAT, (i) -> new FloatDataPoint("sensor_1", (float) i),
-        encoding);
+    writeDataByTSRecord(
+        TSDataType.FLOAT, (i) -> new FloatDataPoint("sensor_1", (float) i), encoding);
     readData((i, field, delta) -> assertEquals(i, field.getFloatV(), delta));
   }
 
   @Test
   public void doubleTest() throws IOException, WriteProcessException {
-    List<TSEncoding> encodings = Arrays
-        .asList(TSEncoding.PLAIN, TSEncoding.RLE, TSEncoding.TS_2DIFF, TSEncoding.GORILLA_V1,
+    List<TSEncoding> encodings =
+        Arrays.asList(
+            TSEncoding.PLAIN,
+            TSEncoding.RLE,
+            TSEncoding.TS_2DIFF,
+            TSEncoding.GORILLA_V1,
             TSEncoding.GORILLA);
     for (TSEncoding encoding : encodings) {
       doubleTest(encoding);
@@ -130,8 +146,8 @@ public class TsFileReadWriteTest {
   }
 
   public void doubleTest(TSEncoding encoding) throws IOException, WriteProcessException {
-    writeDataByTSRecord(TSDataType.DOUBLE, (i) -> new DoubleDataPoint("sensor_1", (double) i),
-        encoding);
+    writeDataByTSRecord(
+        TSDataType.DOUBLE, (i) -> new DoubleDataPoint("sensor_1", (double) i), encoding);
     readData((i, field, delta) -> assertEquals(i, field.getDoubleV(), delta));
   }
 
@@ -142,9 +158,11 @@ public class TsFileReadWriteTest {
   public void readEmptyMeasurementTest() throws IOException, WriteProcessException {
     try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
       // add measurements into file schema
-      tsFileWriter.registerTimeseries(new Path("device_1", "sensor_1"),
+      tsFileWriter.registerTimeseries(
+          new Path("device_1", "sensor_1"),
           new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE));
-      tsFileWriter.registerTimeseries(new Path("device_1", "sensor_2"),
+      tsFileWriter.registerTimeseries(
+          new Path("device_1", "sensor_2"),
           new MeasurementSchema("sensor_2", TSDataType.INT32, TSEncoding.TS_2DIFF));
       // construct TSRecord
       TSRecord tsRecord = new TSRecord(1, "device_1");
@@ -174,19 +192,20 @@ public class TsFileReadWriteTest {
   @Test
   public void readMeasurementWithRegularEncodingTest() throws IOException, WriteProcessException {
     TSFileDescriptor.getInstance().getConfig().setTimeEncoder("REGULAR");
-    writeDataByTSRecord(TSDataType.INT64, (i) -> new LongDataPoint("sensor_1", i),
-        TSEncoding.REGULAR);
+    writeDataByTSRecord(
+        TSDataType.INT64, (i) -> new LongDataPoint("sensor_1", i), TSEncoding.REGULAR);
     readData((i, field, delta) -> assertEquals(i, field.getLongV()));
     TSFileDescriptor.getInstance().getConfig().setTimeEncoder("TS_2DIFF");
   }
 
-  private void writeDataByTSRecord(TSDataType dataType, DataPointProxy proxy,
-      TSEncoding encodingType)
+  private void writeDataByTSRecord(
+      TSDataType dataType, DataPointProxy proxy, TSEncoding encodingType)
       throws IOException, WriteProcessException {
     int floatCount = 1024 * 1024 * 13 + 1023;
     // add measurements into file schema
     try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
-      tsFileWriter.registerTimeseries(new Path("device_1", "sensor_1"),
+      tsFileWriter.registerTimeseries(
+          new Path("device_1", "sensor_1"),
           new MeasurementSchema("sensor_1", dataType, encodingType));
       for (long i = 1; i < floatCount; i++) {
         // construct TSRecord

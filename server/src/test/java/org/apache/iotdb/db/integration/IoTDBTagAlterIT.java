@@ -18,20 +18,22 @@
  */
 package org.apache.iotdb.db.integration;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.jdbc.Config;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.jdbc.Config;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class IoTDBTagAlterIT {
 
@@ -48,16 +50,22 @@ public class IoTDBTagAlterIT {
 
   @Test
   public void renameTest() throws ClassNotFoundException {
-    String[] ret1 = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
-        + "{\"tag1\":\"v1\",\"tag2\":\"v2\"},{\"attr2\":\"v2\",\"attr1\":\"v1\"}"};
-    String[] ret2 = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
-        + "{\"tag2\":\"v2\",\"tagNew1\":\"v1\"},{\"attr2\":\"v2\",\"attr1\":\"v1\"}"};
-    String sql = "create timeseries root.turbine.d1.s1(temperature) with datatype=FLOAT,"
-        + " encoding=RLE, compression=SNAPPY tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)";
+    String[] ret1 = {
+      "root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
+          + "{\"tag1\":\"v1\",\"tag2\":\"v2\"},{\"attr2\":\"v2\",\"attr1\":\"v1\"}"
+    };
+    String[] ret2 = {
+      "root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
+          + "{\"tag2\":\"v2\",\"tagNew1\":\"v1\"},{\"attr2\":\"v2\",\"attr1\":\"v1\"}"
+    };
+    String sql =
+        "create timeseries root.turbine.d1.s1(temperature) with datatype=FLOAT,"
+            + " encoding=RLE, compression=SNAPPY tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)";
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager
-            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute(sql);
       boolean hasResult = statement.execute("show timeseries");
       assertTrue(hasResult);
@@ -65,14 +73,22 @@ public class IoTDBTagAlterIT {
       int count = 0;
       try {
         while (resultSet.next()) {
-          String ans = resultSet.getString("timeseries")
-                  + "," + resultSet.getString("alias")
-                  + "," + resultSet.getString("storage group")
-                  + "," + resultSet.getString("dataType")
-                  + "," + resultSet.getString("encoding")
-                  + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("tags")
-                  + "," + resultSet.getString("attributes");
+          String ans =
+              resultSet.getString("timeseries")
+                  + ","
+                  + resultSet.getString("alias")
+                  + ","
+                  + resultSet.getString("storage group")
+                  + ","
+                  + resultSet.getString("dataType")
+                  + ","
+                  + resultSet.getString("encoding")
+                  + ","
+                  + resultSet.getString("compression")
+                  + ","
+                  + resultSet.getString("tags")
+                  + ","
+                  + resultSet.getString("attributes");
           assertEquals(ret1[count], ans);
           count++;
         }
@@ -84,15 +100,20 @@ public class IoTDBTagAlterIT {
       try {
         statement.execute("ALTER timeseries root.turbine.d1.s1 RENAME tag3 TO tagNew3");
         fail();
-      }  catch (Exception e) {
-        assertTrue(e.getMessage().contains("TimeSeries [root.turbine.d1.s1] does not have tag/attribute [tag3]."));
+      } catch (Exception e) {
+        assertTrue(
+            e.getMessage()
+                .contains("TimeSeries [root.turbine.d1.s1] does not have tag/attribute [tag3]."));
       }
 
       try {
         statement.execute("ALTER timeseries root.turbine.d1.s1 RENAME tag1 TO tag2");
         fail();
-      }  catch (Exception e) {
-        assertTrue(e.getMessage().contains("TimeSeries [root.turbine.d1.s1] already has a tag/attribute named [tag2]."));
+      } catch (Exception e) {
+        assertTrue(
+            e.getMessage()
+                .contains(
+                    "TimeSeries [root.turbine.d1.s1] already has a tag/attribute named [tag2]."));
       }
 
       statement.execute("ALTER timeseries root.turbine.d1.s1 RENAME tag1 TO tagNew1");
@@ -102,14 +123,22 @@ public class IoTDBTagAlterIT {
       count = 0;
       try {
         while (resultSet.next()) {
-          String ans = resultSet.getString("timeseries")
-                  + "," + resultSet.getString("alias")
-                  + "," + resultSet.getString("storage group")
-                  + "," + resultSet.getString("dataType")
-                  + "," + resultSet.getString("encoding")
-                  + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("tags")
-                  + "," + resultSet.getString("attributes");
+          String ans =
+              resultSet.getString("timeseries")
+                  + ","
+                  + resultSet.getString("alias")
+                  + ","
+                  + resultSet.getString("storage group")
+                  + ","
+                  + resultSet.getString("dataType")
+                  + ","
+                  + resultSet.getString("encoding")
+                  + ","
+                  + resultSet.getString("compression")
+                  + ","
+                  + resultSet.getString("tags")
+                  + ","
+                  + resultSet.getString("attributes");
           assertEquals(ret2[count], ans);
           count++;
         }
@@ -125,17 +154,23 @@ public class IoTDBTagAlterIT {
 
   @Test
   public void setTest() throws ClassNotFoundException {
-    String[] ret = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
-        + "{\"tag1\":\"v1\",\"tag2\":\"v2\"},{\"attr2\":\"v2\",\"attr1\":\"v1\"}"};
-    String[] ret2 = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
-        + "{\"tag1\":\"newV1\",\"tag2\":\"v2\"},{\"attr2\":\"newV2\",\"attr1\":\"v1\"}"};
+    String[] ret = {
+      "root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
+          + "{\"tag1\":\"v1\",\"tag2\":\"v2\"},{\"attr2\":\"v2\",\"attr1\":\"v1\"}"
+    };
+    String[] ret2 = {
+      "root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
+          + "{\"tag1\":\"newV1\",\"tag2\":\"v2\"},{\"attr2\":\"newV2\",\"attr1\":\"v1\"}"
+    };
 
-    String sql = "create timeseries root.turbine.d1.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY " +
-            "tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)";
+    String sql =
+        "create timeseries root.turbine.d1.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
+            + "tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)";
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager
-            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute(sql);
       boolean hasResult = statement.execute("show timeseries");
       assertTrue(hasResult);
@@ -143,14 +178,22 @@ public class IoTDBTagAlterIT {
       int count = 0;
       try {
         while (resultSet.next()) {
-          String ans = resultSet.getString("timeseries")
-                  + "," + resultSet.getString("alias")
-                  + "," + resultSet.getString("storage group")
-                  + "," + resultSet.getString("dataType")
-                  + "," + resultSet.getString("encoding")
-                  + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("tags")
-                  + "," + resultSet.getString("attributes");
+          String ans =
+              resultSet.getString("timeseries")
+                  + ","
+                  + resultSet.getString("alias")
+                  + ","
+                  + resultSet.getString("storage group")
+                  + ","
+                  + resultSet.getString("dataType")
+                  + ","
+                  + resultSet.getString("encoding")
+                  + ","
+                  + resultSet.getString("compression")
+                  + ","
+                  + resultSet.getString("tags")
+                  + ","
+                  + resultSet.getString("attributes");
           assertEquals(ret[count], ans);
           count++;
         }
@@ -162,8 +205,10 @@ public class IoTDBTagAlterIT {
       try {
         statement.execute("ALTER timeseries root.turbine.d1.s1 SET tag3=v3");
         fail();
-      }  catch (Exception e) {
-        assertTrue(e.getMessage().contains("TimeSeries [root.turbine.d1.s1] does not have tag/attribute [tag3]."));
+      } catch (Exception e) {
+        assertTrue(
+            e.getMessage()
+                .contains("TimeSeries [root.turbine.d1.s1] does not have tag/attribute [tag3]."));
       }
 
       statement.execute("ALTER timeseries root.turbine.d1.s1 SET tag1=newV1, attr2=newV2");
@@ -173,14 +218,22 @@ public class IoTDBTagAlterIT {
       count = 0;
       try {
         while (resultSet.next()) {
-          String ans = resultSet.getString("timeseries")
-                  + "," + resultSet.getString("alias")
-                  + "," + resultSet.getString("storage group")
-                  + "," + resultSet.getString("dataType")
-                  + "," + resultSet.getString("encoding")
-                  + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("tags")
-                  + "," + resultSet.getString("attributes");
+          String ans =
+              resultSet.getString("timeseries")
+                  + ","
+                  + resultSet.getString("alias")
+                  + ","
+                  + resultSet.getString("storage group")
+                  + ","
+                  + resultSet.getString("dataType")
+                  + ","
+                  + resultSet.getString("encoding")
+                  + ","
+                  + resultSet.getString("compression")
+                  + ","
+                  + resultSet.getString("tags")
+                  + ","
+                  + resultSet.getString("attributes");
           assertEquals(ret2[count], ans);
           count++;
         }
@@ -196,16 +249,22 @@ public class IoTDBTagAlterIT {
 
   @Test
   public void dropTest() throws ClassNotFoundException {
-    String[] ret = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
-        + "{\"tag1\":\"v1\",\"tag2\":\"v2\"},{\"attr2\":\"v2\",\"attr1\":\"v1\"}"};
-    String[] ret2 = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,{\"tag2\":\"v2\"},{\"attr2\":\"v2\"}"};
+    String[] ret = {
+      "root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
+          + "{\"tag1\":\"v1\",\"tag2\":\"v2\"},{\"attr2\":\"v2\",\"attr1\":\"v1\"}"
+    };
+    String[] ret2 = {
+      "root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,{\"tag2\":\"v2\"},{\"attr2\":\"v2\"}"
+    };
 
-    String sql = "create timeseries root.turbine.d1.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY " +
-            "tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)";
+    String sql =
+        "create timeseries root.turbine.d1.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
+            + "tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)";
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager
-            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute(sql);
       boolean hasResult = statement.execute("show timeseries");
       assertTrue(hasResult);
@@ -213,14 +272,22 @@ public class IoTDBTagAlterIT {
       int count = 0;
       try {
         while (resultSet.next()) {
-          String ans = resultSet.getString("timeseries")
-                  + "," + resultSet.getString("alias")
-                  + "," + resultSet.getString("storage group")
-                  + "," + resultSet.getString("dataType")
-                  + "," + resultSet.getString("encoding")
-                  + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("tags")
-                  + "," + resultSet.getString("attributes");
+          String ans =
+              resultSet.getString("timeseries")
+                  + ","
+                  + resultSet.getString("alias")
+                  + ","
+                  + resultSet.getString("storage group")
+                  + ","
+                  + resultSet.getString("dataType")
+                  + ","
+                  + resultSet.getString("encoding")
+                  + ","
+                  + resultSet.getString("compression")
+                  + ","
+                  + resultSet.getString("tags")
+                  + ","
+                  + resultSet.getString("attributes");
           assertEquals(ret[count], ans);
           count++;
         }
@@ -236,14 +303,22 @@ public class IoTDBTagAlterIT {
       count = 0;
       try {
         while (resultSet.next()) {
-          String ans = resultSet.getString("timeseries")
-                  + "," + resultSet.getString("alias")
-                  + "," + resultSet.getString("storage group")
-                  + "," + resultSet.getString("dataType")
-                  + "," + resultSet.getString("encoding")
-                  + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("tags")
-                  + "," + resultSet.getString("attributes");
+          String ans =
+              resultSet.getString("timeseries")
+                  + ","
+                  + resultSet.getString("alias")
+                  + ","
+                  + resultSet.getString("storage group")
+                  + ","
+                  + resultSet.getString("dataType")
+                  + ","
+                  + resultSet.getString("encoding")
+                  + ","
+                  + resultSet.getString("compression")
+                  + ","
+                  + resultSet.getString("tags")
+                  + ","
+                  + resultSet.getString("attributes");
           assertEquals(ret2[count], ans);
           count++;
         }
@@ -266,17 +341,23 @@ public class IoTDBTagAlterIT {
 
   @Test
   public void addTagTest() throws ClassNotFoundException {
-    String[] ret = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
-        + "{\"tag1\":\"v1\",\"tag2\":\"v2\"},{\"attr2\":\"v2\",\"attr1\":\"v1\"}"};
-    String[] ret2 = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
-        + "{\"tag1\":\"v1\",\"tag4\":\"v4\",\"tag2\":\"v2\",\"tag3\":\"v3\"},{\"attr2\":\"v2\",\"attr1\":\"v1\"}"};
+    String[] ret = {
+      "root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
+          + "{\"tag1\":\"v1\",\"tag2\":\"v2\"},{\"attr2\":\"v2\",\"attr1\":\"v1\"}"
+    };
+    String[] ret2 = {
+      "root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
+          + "{\"tag1\":\"v1\",\"tag4\":\"v4\",\"tag2\":\"v2\",\"tag3\":\"v3\"},{\"attr2\":\"v2\",\"attr1\":\"v1\"}"
+    };
 
-    String sql = "create timeseries root.turbine.d1.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY " +
-            "tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)";
+    String sql =
+        "create timeseries root.turbine.d1.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
+            + "tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)";
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager
-            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute(sql);
       boolean hasResult = statement.execute("show timeseries");
       assertTrue(hasResult);
@@ -284,14 +365,22 @@ public class IoTDBTagAlterIT {
       int count = 0;
       try {
         while (resultSet.next()) {
-          String ans = resultSet.getString("timeseries")
-                  + "," + resultSet.getString("alias")
-                  + "," + resultSet.getString("storage group")
-                  + "," + resultSet.getString("dataType")
-                  + "," + resultSet.getString("encoding")
-                  + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("tags")
-                  + "," + resultSet.getString("attributes");
+          String ans =
+              resultSet.getString("timeseries")
+                  + ","
+                  + resultSet.getString("alias")
+                  + ","
+                  + resultSet.getString("storage group")
+                  + ","
+                  + resultSet.getString("dataType")
+                  + ","
+                  + resultSet.getString("encoding")
+                  + ","
+                  + resultSet.getString("compression")
+                  + ","
+                  + resultSet.getString("tags")
+                  + ","
+                  + resultSet.getString("attributes");
           assertEquals(ret[count], ans);
           count++;
         }
@@ -307,14 +396,22 @@ public class IoTDBTagAlterIT {
       count = 0;
       try {
         while (resultSet.next()) {
-          String ans = resultSet.getString("timeseries")
-                  + "," + resultSet.getString("alias")
-                  + "," + resultSet.getString("storage group")
-                  + "," + resultSet.getString("dataType")
-                  + "," + resultSet.getString("encoding")
-                  + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("tags")
-                  + "," + resultSet.getString("attributes");
+          String ans =
+              resultSet.getString("timeseries")
+                  + ","
+                  + resultSet.getString("alias")
+                  + ","
+                  + resultSet.getString("storage group")
+                  + ","
+                  + resultSet.getString("dataType")
+                  + ","
+                  + resultSet.getString("encoding")
+                  + ","
+                  + resultSet.getString("compression")
+                  + ","
+                  + resultSet.getString("tags")
+                  + ","
+                  + resultSet.getString("attributes");
           assertEquals(ret2[count], ans);
           count++;
         }
@@ -330,17 +427,23 @@ public class IoTDBTagAlterIT {
 
   @Test
   public void addAttributeTest() throws ClassNotFoundException {
-    String[] ret = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
-        + "{\"tag1\":\"v1\",\"tag2\":\"v2\"},{\"attr2\":\"v2\",\"attr1\":\"v1\"}"};
-    String[] ret2 = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
-        + "{\"tag1\":\"v1\",\"tag2\":\"v2\"},{\"attr2\":\"v2\",\"attr1\":\"v1\",\"attr4\":\"v4\",\"attr3\":\"v3\"}"};
+    String[] ret = {
+      "root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
+          + "{\"tag1\":\"v1\",\"tag2\":\"v2\"},{\"attr2\":\"v2\",\"attr1\":\"v1\"}"
+    };
+    String[] ret2 = {
+      "root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
+          + "{\"tag1\":\"v1\",\"tag2\":\"v2\"},{\"attr2\":\"v2\",\"attr1\":\"v1\",\"attr4\":\"v4\",\"attr3\":\"v3\"}"
+    };
 
-    String sql = "create timeseries root.turbine.d1.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY " +
-            "tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)";
+    String sql =
+        "create timeseries root.turbine.d1.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
+            + "tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)";
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager
-            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute(sql);
       boolean hasResult = statement.execute("show timeseries");
       assertTrue(hasResult);
@@ -348,14 +451,22 @@ public class IoTDBTagAlterIT {
       int count = 0;
       try {
         while (resultSet.next()) {
-          String ans = resultSet.getString("timeseries")
-                  + "," + resultSet.getString("alias")
-                  + "," + resultSet.getString("storage group")
-                  + "," + resultSet.getString("dataType")
-                  + "," + resultSet.getString("encoding")
-                  + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("tags")
-                  + "," + resultSet.getString("attributes");
+          String ans =
+              resultSet.getString("timeseries")
+                  + ","
+                  + resultSet.getString("alias")
+                  + ","
+                  + resultSet.getString("storage group")
+                  + ","
+                  + resultSet.getString("dataType")
+                  + ","
+                  + resultSet.getString("encoding")
+                  + ","
+                  + resultSet.getString("compression")
+                  + ","
+                  + resultSet.getString("tags")
+                  + ","
+                  + resultSet.getString("attributes");
           assertEquals(ret[count], ans);
           count++;
         }
@@ -371,14 +482,22 @@ public class IoTDBTagAlterIT {
       count = 0;
       try {
         while (resultSet.next()) {
-          String ans = resultSet.getString("timeseries")
-                  + "," + resultSet.getString("alias")
-                  + "," + resultSet.getString("storage group")
-                  + "," + resultSet.getString("dataType")
-                  + "," + resultSet.getString("encoding")
-                  + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("tags")
-                  + "," + resultSet.getString("attributes");
+          String ans =
+              resultSet.getString("timeseries")
+                  + ","
+                  + resultSet.getString("alias")
+                  + ","
+                  + resultSet.getString("storage group")
+                  + ","
+                  + resultSet.getString("dataType")
+                  + ","
+                  + resultSet.getString("encoding")
+                  + ","
+                  + resultSet.getString("compression")
+                  + ","
+                  + resultSet.getString("tags")
+                  + ","
+                  + resultSet.getString("attributes");
           assertEquals(ret2[count], ans);
           count++;
         }
@@ -394,19 +513,26 @@ public class IoTDBTagAlterIT {
 
   @Test
   public void upsertTest() throws ClassNotFoundException {
-    String[] ret = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
-        + "{\"tag1\":\"v1\",\"tag2\":\"v2\"},{\"attr2\":\"v2\",\"attr1\":\"v1\"}"};
-    String[] ret2 = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,{\"tag1\":\"v1\",\"tag2\":\""
-        + "newV2\",\"tag3\":\"v3\"},{\"attr2\":\"v2\",\"attr1\":\"v1\"}"};
-    String[] ret3 = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,{\"tag1\":\"newV1\",\"tag2\":\""
-        + "newV2\",\"tag3\":\"newV3\"},{\"attr2\":\"v2\",\"attr1\":\"newA1\",\"attr3\":\"v3\"}"};
+    String[] ret = {
+      "root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
+          + "{\"tag1\":\"v1\",\"tag2\":\"v2\"},{\"attr2\":\"v2\",\"attr1\":\"v1\"}"
+    };
+    String[] ret2 = {
+      "root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,{\"tag1\":\"v1\",\"tag2\":\""
+          + "newV2\",\"tag3\":\"v3\"},{\"attr2\":\"v2\",\"attr1\":\"v1\"}"
+    };
+    String[] ret3 = {
+      "root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,{\"tag1\":\"newV1\",\"tag2\":\""
+          + "newV2\",\"tag3\":\"newV3\"},{\"attr2\":\"v2\",\"attr1\":\"newA1\",\"attr3\":\"v3\"}"
+    };
 
-
-    String sql = "create timeseries root.turbine.d1.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY " +
-        "tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)";
+    String sql =
+        "create timeseries root.turbine.d1.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
+            + "tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)";
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute(sql);
       boolean hasResult = statement.execute("show timeseries");
@@ -415,14 +541,22 @@ public class IoTDBTagAlterIT {
       int count = 0;
       try {
         while (resultSet.next()) {
-          String ans = resultSet.getString("timeseries")
-                  + "," + resultSet.getString("alias")
-                  + "," + resultSet.getString("storage group")
-                  + "," + resultSet.getString("dataType")
-                  + "," + resultSet.getString("encoding")
-                  + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("tags")
-                  + "," + resultSet.getString("attributes");
+          String ans =
+              resultSet.getString("timeseries")
+                  + ","
+                  + resultSet.getString("alias")
+                  + ","
+                  + resultSet.getString("storage group")
+                  + ","
+                  + resultSet.getString("dataType")
+                  + ","
+                  + resultSet.getString("encoding")
+                  + ","
+                  + resultSet.getString("compression")
+                  + ","
+                  + resultSet.getString("tags")
+                  + ","
+                  + resultSet.getString("attributes");
           assertEquals(ret[count], ans);
           count++;
         }
@@ -438,14 +572,22 @@ public class IoTDBTagAlterIT {
       count = 0;
       try {
         while (resultSet.next()) {
-          String ans = resultSet.getString("timeseries")
-                  + "," + resultSet.getString("alias")
-                  + "," + resultSet.getString("storage group")
-                  + "," + resultSet.getString("dataType")
-                  + "," + resultSet.getString("encoding")
-                  + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("tags")
-                  + "," + resultSet.getString("attributes");
+          String ans =
+              resultSet.getString("timeseries")
+                  + ","
+                  + resultSet.getString("alias")
+                  + ","
+                  + resultSet.getString("storage group")
+                  + ","
+                  + resultSet.getString("dataType")
+                  + ","
+                  + resultSet.getString("encoding")
+                  + ","
+                  + resultSet.getString("compression")
+                  + ","
+                  + resultSet.getString("tags")
+                  + ","
+                  + resultSet.getString("attributes");
           assertEquals(ret2[count], ans);
           count++;
         }
@@ -454,21 +596,30 @@ public class IoTDBTagAlterIT {
       }
       assertEquals(ret2.length, count);
 
-      statement.execute("ALTER timeseries root.turbine.d1.s1 UPSERT TAGS(tag1=newV1, tag3=newV3) ATTRIBUTES(attr1=newA1, attr3=v3)");
+      statement.execute(
+          "ALTER timeseries root.turbine.d1.s1 UPSERT TAGS(tag1=newV1, tag3=newV3) ATTRIBUTES(attr1=newA1, attr3=v3)");
       hasResult = statement.execute("show timeseries where tag3=newV3");
       assertTrue(hasResult);
       resultSet = statement.getResultSet();
       count = 0;
       try {
         while (resultSet.next()) {
-          String ans = resultSet.getString("timeseries")
-                  + "," + resultSet.getString("alias")
-                  + "," + resultSet.getString("storage group")
-                  + "," + resultSet.getString("dataType")
-                  + "," + resultSet.getString("encoding")
-                  + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("tags")
-                  + "," + resultSet.getString("attributes");
+          String ans =
+              resultSet.getString("timeseries")
+                  + ","
+                  + resultSet.getString("alias")
+                  + ","
+                  + resultSet.getString("storage group")
+                  + ","
+                  + resultSet.getString("dataType")
+                  + ","
+                  + resultSet.getString("encoding")
+                  + ","
+                  + resultSet.getString("compression")
+                  + ","
+                  + resultSet.getString("tags")
+                  + ","
+                  + resultSet.getString("attributes");
           assertEquals(ret3[count], ans);
           count++;
         }
