@@ -106,7 +106,7 @@ public class MemTableFlushTask {
         }
         flushCount++;
         // print log to show the order of measurements
-        logger.info(String.format("Flush %s.%s", deviceId, measurementId));
+        // logger.info(String.format("Flush %s.%s", deviceId, measurementId));
         long startTime = System.currentTimeMillis();
         IWritableMemChunk series = memTable.getMemTableMap().get(deviceId).get(measurementId);
         MeasurementSchema desc = series.getSchema();
@@ -191,7 +191,7 @@ public class MemTableFlushTask {
         Object task = null;
         try {
           task = encodingTaskQueue.take();
-        } catch (InterruptedException e1) {
+        } catch (Exception e1) {
           logger.error("Take task into ioTaskQueue Interrupted");
           Thread.currentThread().interrupt();
           break;
@@ -211,6 +211,7 @@ public class MemTableFlushTask {
           Pair<TVList, MeasurementSchema> encodingMessage = (Pair<TVList, MeasurementSchema>) task;
           IChunkWriter seriesWriter = new ChunkWriterImpl(encodingMessage.right);
           writeOneSeries(encodingMessage.left, seriesWriter, encodingMessage.right.getType());
+          logger.info("encoding " + encodingMessage.right.getMeasurementId());
           seriesWriter.sealCurrentPage();
           seriesWriter.clearPageWriter();
           try {
@@ -260,6 +261,8 @@ public class MemTableFlushTask {
         else if (ioMessage instanceof IChunkWriter) {
           ChunkWriterImpl chunkWriter = (ChunkWriterImpl) ioMessage;
           totalChunkSize += chunkWriter.getCurrentChunkSize();
+          MeasurementSchema schema = chunkWriter.getMeasurementSchema();
+          //logger.info("flush " + schema.getMeasurementId());
           chunkCount += 1;
           chunkWriter.writeToFileWriter(this.writer);
         } else {

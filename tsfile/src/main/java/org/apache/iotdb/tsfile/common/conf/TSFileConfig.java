@@ -81,7 +81,7 @@ public class TSFileConfig implements Serializable {
   /**
    * The memory size for each series writer to pack page, default value is 64KB.
    */
-  private int pageSizeInByte = 64 * 1024;
+  private int pageSizeInByte = 64 * 1024 * 1024;
   /**
    * The maximum number of data points in a page, default value is 1024 * 1024.
    */

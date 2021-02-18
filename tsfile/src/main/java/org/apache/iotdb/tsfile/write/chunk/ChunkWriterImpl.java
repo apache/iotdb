@@ -335,5 +335,9 @@ public class ChunkWriterImpl implements IChunkWriter {
         pageWriter.getStatistics().getSerializedSize());
   }
 
+  public MeasurementSchema getMeasurementSchema() {
+    return measurementSchema;
+  }
+
 
 }

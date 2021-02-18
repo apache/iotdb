@@ -17,8 +17,8 @@ import java.util.*;
 public class DivergentDesign {
   private List<Workload> workloads;
   private Replica[] replicas;
-  private int replicaNum = 3;
-  private int balanceFactor = 2;
+  private int replicaNum = 1;
+  private int balanceFactor = 1;
   private int maxIter = 50;
   private float breakPoint = 1e-2f;
   private List<QueryRecord> queryRecords;

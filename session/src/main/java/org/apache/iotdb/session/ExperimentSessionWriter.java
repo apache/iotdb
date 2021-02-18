@@ -25,13 +25,12 @@ public class ExperimentSessionWriter {
     session.deleteStorageGroup("root.test");
     session.setStorageGroup("root.test");
     createTimeseries();
-    MeasurementOrder order = session.optimizeBySA("root.test.device");
+    /*MeasurementOrderSet orderSet = session.runDivergentDesign("root.test.device");
+    showOrderSet(orderSet);*/
+    session.optimizeBySA("root.test.device");
     generateData();
     session.executeNonQueryStatement("flush");
     session.close();
-    for(String measurement : order.measurements) {
-      System.out.println(measurement);
-    }
   }
 
   static void createTimeseries() throws StatementExecutionException, IoTDBConnectionException {
@@ -68,6 +67,17 @@ public class ExperimentSessionWriter {
     }
     if (tablet.rowSize != 0) {
       session.insertTablet(tablet, true);
+    }
+  }
+
+  static void showOrderSet(MeasurementOrderSet orderSet) {
+    List<MeasurementOrder> orders = orderSet.getMeasurementsOrders();
+    for(MeasurementOrder order : orders) {
+      for(String measurement : order.measurements) {
+        System.out.print(measurement + " ");
+      }
+      System.out.println();
+      System.out.println();
     }
   }
 }
