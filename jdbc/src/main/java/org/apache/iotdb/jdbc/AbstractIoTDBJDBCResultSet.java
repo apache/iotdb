@@ -63,7 +63,7 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
                                     String sql, long queryId, long sessionId, long timeout, boolean isRpcFetchResult)
           throws SQLException {
     this.ioTDBRpcDataSet = new IoTDBRpcDataSet(sql, columnNameList, columnTypeList,
-            columnNameIndex, ignoreTimeStamp, queryId, client, sessionId, null,
+            columnNameIndex, ignoreTimeStamp, queryId,((IoTDBStatement) statement).getStmtId(), client, sessionId, null,
             statement.getFetchSize(), timeout);
     this.statement = statement;
     this.columnTypeList = columnTypeList;
