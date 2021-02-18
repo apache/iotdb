@@ -47,7 +47,11 @@ public class MetricsService implements MetricsServiceMBean, IService {
   private Server server;
   private ExecutorService executorService;
 
-  public static final MetricsService getInstance() {
+  private MetricsService(){
+
+  }
+
+  public static MetricsService getInstance() {
     return MetricsServiceHolder.INSTANCE;
   }
 

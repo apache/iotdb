@@ -41,7 +41,11 @@ import org.slf4j.LoggerFactory;
 public class MQTTService implements IService {
     private static final Logger LOG = LoggerFactory.getLogger(MQTTService.class);
     private Server server = new Server();
-    
+
+    private MQTTService(){
+
+    }
+
     @Override
     public void start() throws StartupException {
         startup();
@@ -91,7 +95,7 @@ public class MQTTService implements IService {
         return ServiceType.MQTT_SERVICE;
     }
 
-    public static final MQTTService getInstance() {
+    public static MQTTService getInstance() {
         return MQTTServiceHolder.INSTANCE;
     }
 

@@ -73,20 +73,24 @@ public class SyncClientTest {
 
   @Test
   public void makeFileSnapshot() throws IOException {
-    Map<String, Set<File>> allFileList = new HashMap<>();
+    Map<String, Map<Long, Map<Long, Set<File>>>> allFileList = new HashMap<>();
 
     Random r = new Random(0);
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 5; j++) {
         if (!allFileList.containsKey(String.valueOf(i))) {
-          allFileList.put(String.valueOf(i), new HashSet<>());
+          allFileList.computeIfAbsent(String.valueOf(i), k -> new HashMap<>())
+            .computeIfAbsent(0L, k -> new HashMap<>())
+            .computeIfAbsent(0L, k -> new HashSet<>());
         }
         String rand = String.valueOf(r.nextInt(10000));
         String fileName = FilePathUtils.regularizePath(dataDir) + IoTDBConstant.SEQUENCE_FLODER_NAME
-            + File.separator + i
-            + File.separator + rand;
+          + File.separator + i
+          + File.separator + "0"
+          + File.separator + "0"
+          + File.separator + rand;
         File file = new File(fileName);
-        allFileList.get(String.valueOf(i)).add(file);
+        allFileList.get(String.valueOf(i)).get(0L).get(0L).add(file);
         if (!file.getParentFile().exists()) {
           file.getParentFile().mkdirs();
         }
@@ -104,11 +108,15 @@ public class SyncClientTest {
     File sequenceFile = new File(dataDir, IoTDBConstant.SEQUENCE_FLODER_NAME);
     for (File sgFile : sequenceFile.listFiles()) {
       dataFileMap.putIfAbsent(sgFile.getName(), new HashSet<>());
-      for (File tsfile : sgFile.listFiles()) {
-        if (!tsfile.getName().endsWith(TsFileResource.RESOURCE_SUFFIX)) {
-          ((SyncClient)manager).makeFileSnapshot(tsfile);
+      for (File vgFile : sgFile.listFiles()) {
+        for (File trFile : vgFile.listFiles()) {
+          for (File tsfile : trFile.listFiles()) {
+            if (!tsfile.getName().endsWith(TsFileResource.RESOURCE_SUFFIX)) {
+              ((SyncClient) manager).makeFileSnapshot(tsfile);
+            }
+            dataFileMap.get(sgFile.getName()).add(tsfile.getName());
+          }
         }
-        dataFileMap.get(sgFile.getName()).add(tsfile.getName());
       }
     }
 
@@ -118,8 +126,12 @@ public class SyncClientTest {
     Map<String, Set<String>> snapFileMap = new HashMap<>();
     for (File sgFile : new File(config.getSnapshotPath()).listFiles()) {
       snapFileMap.putIfAbsent(sgFile.getName(), new HashSet<>());
-      for (File snapshotTsfile : sgFile.listFiles()) {
-        snapFileMap.get(sgFile.getName()).add(snapshotTsfile.getName());
+      for (File vgFile : sgFile.listFiles()) {
+        for (File trFile : vgFile.listFiles()) {
+          for (File snapshotTsfile : trFile.listFiles()) {
+            snapFileMap.get(sgFile.getName()).add(snapshotTsfile.getName());
+          }
+        }
       }
     }
 

@@ -38,7 +38,7 @@ public class JMXService implements IService {
   private JMXService() {
   }
 
-  public static final JMXService getInstance() {
+  public static JMXService getInstance() {
     return JMXServerHolder.INSTANCE;
   }
 

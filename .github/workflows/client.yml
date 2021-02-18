@@ -24,6 +24,8 @@ on:
       - 'compile-tools/**'
       - 'thrift/**'
       - 'service-rpc/**'
+  # allow manually run the action:
+  workflow_dispatch:
 
 jobs:
   build:

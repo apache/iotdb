@@ -111,7 +111,7 @@ public class CompactionChunkTest extends LevelCompactionTest {
           .entrySet()) {
         CompactionUtils
             .writeByAppendMerge(0, device, compactionWriteRateLimiter, entry, targetTsfileResource,
-                writer, new HashMap<>());
+                writer, new HashMap<>(), new ArrayList<>());
       }
       reader.close();
     }
@@ -183,7 +183,7 @@ public class CompactionChunkTest extends LevelCompactionTest {
         CompactionUtils
             .writeByDeserializeMerge(0, device, compactionWriteRateLimiter, entry,
                 targetTsfileResource,
-                writer, new HashMap<>());
+                writer, new HashMap<>(), new ArrayList<>());
       }
       reader.close();
     }
