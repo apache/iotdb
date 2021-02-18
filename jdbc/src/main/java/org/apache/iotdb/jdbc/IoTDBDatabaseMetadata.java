@@ -18,20 +18,11 @@
  */
 package org.apache.iotdb.jdbc;
 
-
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.sql.*;
-import java.util.*;
-
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
-
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -43,11 +34,17 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.sql.*;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.RowIdLifetime;
 import java.sql.SQLException;
+import java.util.*;
 
 public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
@@ -70,85 +67,222 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     this.client = client;
     this.sessionId = sessionId;
   }
-  static{
 
+  static {
     String[] allIotdbSQLKeywords = {
-            "ALTER","ADD","ALIAS","ALL","AVG","ALIGN","ATTRIBUTES","AS","ASC",
-            "BY","BOOLEAN","BITMAP",
-            "CREATE","CONFIGURATION","COMPRESSOR","CHILD","COUNT","COMPRESSION","CLEAR","CACHE","CONTAIN","CONCAT",
-            "DELETE","DEVICE","DESCRIBE","DATATYPE","DOUBLE","DIFF","DROP","DEVICES","DISABLE","DESC",
-            "ENCODING",
-            "FROM","FILL","FLOAT","FLUSH","FIRST_VALUE","FULL","FALSE","FOR","FUNCTION","FUNCTIONS",
-            "GRANT","GROUP","GORILLA","GLOBAL","GZIP",
-            "INSERT","INTO","INT32","INT64","INDEX","INFO",
-            "KILL",
-            "LIMIT","LINEAR","LABEL","LINK","LIST","LOAD","LEVEL","LAST_VALUE","LAST","LZO","LZ4","LATEST","LIKE",
-            "METADATA","MERGE","MOVE","MIN_TIME","MAX_TIME","MIN_VALUE","MAX_VALUE",
-            "NOW","NODES",
-            "ORDER","OFFSET","ON","OFF","OF",
-            "PROCESSLIST","PREVIOUS","PREVIOUSUNTILLAST","PROPERTY","PLAIN","PLAIN_DICTIONARY","PRIVILEGES","PASSWORD","PATHS","PAA","PLA","PARTITION",
-            "QUERY",
-            "ROOT","RLE","REGULAR","ROLE","REVOKE","REMOVE","RENAME",
-            "SELECT","SHOW","SET","SLIMIT","SOFFSET","STORAGE","SUM","SNAPPY","SNAPSHOT","SCHEMA",
-            "TO","TIMESERIES","TIMESTAMP","TEXT","TS_2DIFF","TRACING","TTL","TASK","TIME","TAGS","TRUE","TEMPORARY","TOP","TOLERANCE",
-            "UPDATE","UNLINK","UPSERT","USING","USER","UNSET","UNCOMPRESSED",
-            "VALUES","VERSION",
-            "WHERE","WITH","WATERMARK_EMBEDDING"
-             };
+      "ALTER",
+      "ADD",
+      "ALIAS",
+      "ALL",
+      "AVG",
+      "ALIGN",
+      "ATTRIBUTES",
+      "AS",
+      "ASC",
+      "BY",
+      "BOOLEAN",
+      "BITMAP",
+      "CREATE",
+      "CONFIGURATION",
+      "COMPRESSOR",
+      "CHILD",
+      "COUNT",
+      "COMPRESSION",
+      "CLEAR",
+      "CACHE",
+      "CONTAIN",
+      "CONCAT",
+      "DELETE",
+      "DEVICE",
+      "DESCRIBE",
+      "DATATYPE",
+      "DOUBLE",
+      "DIFF",
+      "DROP",
+      "DEVICES",
+      "DISABLE",
+      "DESC",
+      "ENCODING",
+      "FROM",
+      "FILL",
+      "FLOAT",
+      "FLUSH",
+      "FIRST_VALUE",
+      "FULL",
+      "FALSE",
+      "FOR",
+      "FUNCTION",
+      "FUNCTIONS",
+      "GRANT",
+      "GROUP",
+      "GORILLA",
+      "GLOBAL",
+      "GZIP",
+      "INSERT",
+      "INTO",
+      "INT32",
+      "INT64",
+      "INDEX",
+      "INFO",
+      "KILL",
+      "LIMIT",
+      "LINEAR",
+      "LABEL",
+      "LINK",
+      "LIST",
+      "LOAD",
+      "LEVEL",
+      "LAST_VALUE",
+      "LAST",
+      "LZO",
+      "LZ4",
+      "LATEST",
+      "LIKE",
+      "METADATA",
+      "MERGE",
+      "MOVE",
+      "MIN_TIME",
+      "MAX_TIME",
+      "MIN_VALUE",
+      "MAX_VALUE",
+      "NOW",
+      "NODES",
+      "ORDER",
+      "OFFSET",
+      "ON",
+      "OFF",
+      "OF",
+      "PROCESSLIST",
+      "PREVIOUS",
+      "PREVIOUSUNTILLAST",
+      "PROPERTY",
+      "PLAIN",
+      "PLAIN_DICTIONARY",
+      "PRIVILEGES",
+      "PASSWORD",
+      "PATHS",
+      "PAA",
+      "PLA",
+      "PARTITION",
+      "QUERY",
+      "ROOT",
+      "RLE",
+      "REGULAR",
+      "ROLE",
+      "REVOKE",
+      "REMOVE",
+      "RENAME",
+      "SELECT",
+      "SHOW",
+      "SET",
+      "SLIMIT",
+      "SOFFSET",
+      "STORAGE",
+      "SUM",
+      "SNAPPY",
+      "SNAPSHOT",
+      "SCHEMA",
+      "TO",
+      "TIMESERIES",
+      "TIMESTAMP",
+      "TEXT",
+      "TS_2DIFF",
+      "TRACING",
+      "TTL",
+      "TASK",
+      "TIME",
+      "TAGS",
+      "TRUE",
+      "TEMPORARY",
+      "TOP",
+      "TOLERANCE",
+      "UPDATE",
+      "UNLINK",
+      "UPSERT",
+      "USING",
+      "USER",
+      "UNSET",
+      "UNCOMPRESSED",
+      "VALUES",
+      "VERSION",
+      "WHERE",
+      "WITH",
+      "WATERMARK_EMBEDDING"
+    };
     String[] sql92Keywords = {
-            "ABSOLUTE", "EXEC", "OVERLAPS", "ACTION", "EXECUTE", "PAD", "ADA", "EXISTS", "PARTIAL", "ADD",
-            "EXTERNAL", "PASCAL", "ALL", "EXTRACT", "POSITION", "ALLOCATE", "FALSE", "PRECISION", "ALTER", "FETCH",
-            "PREPARE", "AND", "FIRST", "PRESERVE", "ANY", "FLOAT", "PRIMARY", "ARE", "FOR", "PRIOR",
-            "AS", "FOREIGN", "PRIVILEGES", "ASC", "FORTRAN", "PROCEDURE", "ASSERTION", "FOUND", "PUBLIC", "AT",
-            "FROM", "READ", "AUTHORIZATION", "FULL", "REAL", "AVG", "GET", "REFERENCES", "BEGIN", "GLOBAL",
-            "RELATIVE", "BETWEEN", "GO", "RESTRICT", "BIT", "GOTO", "REVOKE", "BIT_LENGTH", "GRANT", "RIGHT",
-            "BOTH", "GROUP", "ROLLBACK", "BY", "HAVING", "ROWS", "CASCADE", "HOUR", "SCHEMA", "CASCADED",
-            "IDENTITY", "SCROLL", "CASE", "IMMEDIATE", "SECOND", "CAST", "IN", "SECTION", "CATALOG", "INCLUDE",
-            "SELECT", "CHAR", "INDEX", "SESSION", "CHAR_LENGTH", "INDICATOR", "SESSION_USER", "CHARACTER", "INITIALLY", "SET",
-            "CHARACTER_LENGTH", "INNER", "SIZE", "CHECK", "INPUT", "SMALLINT", "CLOSE", "INSENSITIVE", "SOME", "COALESCE",
-            "INSERT", "SPACE", "COLLATE", "INT", "SQL", "COLLATION", "INTEGER", "SQLCA", "COLUMN", "INTERSECT",
-            "SQLCODE", "COMMIT", "INTERVAL", "SQLERROR", "CONNECT", "INTO", "SQLSTATE", "CONNECTION", "IS", "SQLWARNING",
-            "CONSTRAINT", "ISOLATION", "SUBSTRING", "CONSTRAINTS", "JOIN", "SUM", "CONTINUE", "KEY", "SYSTEM_USER", "CONVERT",
-            "LANGUAGE", "TABLE", "CORRESPONDING", "LAST", "TEMPORARY", "COUNT", "LEADING", "THEN", "CREATE", "LEFT",
-            "TIME", "CROSS", "LEVEL", "TIMESTAMP", "CURRENT", "LIKE", "TIMEZONE_HOUR", "CURRENT_DATE", "LOCAL", "TIMEZONE_MINUTE",
-            "CURRENT_TIME", "LOWER", "TO", "CURRENT_TIMESTAMP", "MATCH", "TRAILING", "CURRENT_USER", "MAX", "TRANSACTION", "CURSOR",
-            "MIN", "TRANSLATE", "DATE", "MINUTE", "TRANSLATION", "DAY", "MODULE", "TRIM", "DEALLOCATE", "MONTH",
-            "TRUE", "DEC", "NAMES", "UNION", "DECIMAL", "NATIONAL", "UNIQUE", "DECLARE", "NATURAL", "UNKNOWN",
-            "DEFAULT", "NCHAR", "UPDATE", "DEFERRABLE", "NEXT", "UPPER", "DEFERRED", "NO", "USAGE", "DELETE",
-            "NONE", "USER", "DESC", "NOT", "USING", "DESCRIBE", "NULL", "VALUE", "DESCRIPTOR", "NULLIF",
-            "VALUES", "DIAGNOSTICS", "NUMERIC", "VARCHAR", "DISCONNECT", "OCTET_LENGTH", "VARYING", "DISTINCT", "OF", "VIEW",
-            "DOMAIN", "ON", "WHEN", "DOUBLE", "ONLY", "WHENEVER", "DROP", "OPEN", "WHERE", "ELSE",
-            "OPTION", "WITH", "END", "OR", "WORK", "END-EXEC", "ORDER", "WRITE", "ESCAPE", "OUTER",
-            "YEAR", "EXCEPT", "OUTPUT", "ZONE", "EXCEPTION" };
+      "ABSOLUTE", "EXEC", "OVERLAPS", "ACTION", "EXECUTE", "PAD", "ADA", "EXISTS", "PARTIAL", "ADD",
+      "EXTERNAL", "PASCAL", "ALL", "EXTRACT", "POSITION", "ALLOCATE", "FALSE", "PRECISION", "ALTER",
+          "FETCH",
+      "PREPARE", "AND", "FIRST", "PRESERVE", "ANY", "FLOAT", "PRIMARY", "ARE", "FOR", "PRIOR",
+      "AS", "FOREIGN", "PRIVILEGES", "ASC", "FORTRAN", "PROCEDURE", "ASSERTION", "FOUND", "PUBLIC",
+          "AT",
+      "FROM", "READ", "AUTHORIZATION", "FULL", "REAL", "AVG", "GET", "REFERENCES", "BEGIN",
+          "GLOBAL",
+      "RELATIVE", "BETWEEN", "GO", "RESTRICT", "BIT", "GOTO", "REVOKE", "BIT_LENGTH", "GRANT",
+          "RIGHT",
+      "BOTH", "GROUP", "ROLLBACK", "BY", "HAVING", "ROWS", "CASCADE", "HOUR", "SCHEMA", "CASCADED",
+      "IDENTITY", "SCROLL", "CASE", "IMMEDIATE", "SECOND", "CAST", "IN", "SECTION", "CATALOG",
+          "INCLUDE",
+      "SELECT", "CHAR", "INDEX", "SESSION", "CHAR_LENGTH", "INDICATOR", "SESSION_USER", "CHARACTER",
+          "INITIALLY", "SET",
+      "CHARACTER_LENGTH", "INNER", "SIZE", "CHECK", "INPUT", "SMALLINT", "CLOSE", "INSENSITIVE",
+          "SOME", "COALESCE",
+      "INSERT", "SPACE", "COLLATE", "INT", "SQL", "COLLATION", "INTEGER", "SQLCA", "COLUMN",
+          "INTERSECT",
+      "SQLCODE", "COMMIT", "INTERVAL", "SQLERROR", "CONNECT", "INTO", "SQLSTATE", "CONNECTION",
+          "IS", "SQLWARNING",
+      "CONSTRAINT", "ISOLATION", "SUBSTRING", "CONSTRAINTS", "JOIN", "SUM", "CONTINUE", "KEY",
+          "SYSTEM_USER", "CONVERT",
+      "LANGUAGE", "TABLE", "CORRESPONDING", "LAST", "TEMPORARY", "COUNT", "LEADING", "THEN",
+          "CREATE", "LEFT",
+      "TIME", "CROSS", "LEVEL", "TIMESTAMP", "CURRENT", "LIKE", "TIMEZONE_HOUR", "CURRENT_DATE",
+          "LOCAL", "TIMEZONE_MINUTE",
+      "CURRENT_TIME", "LOWER", "TO", "CURRENT_TIMESTAMP", "MATCH", "TRAILING", "CURRENT_USER",
+          "MAX", "TRANSACTION", "CURSOR",
+      "MIN", "TRANSLATE", "DATE", "MINUTE", "TRANSLATION", "DAY", "MODULE", "TRIM", "DEALLOCATE",
+          "MONTH",
+      "TRUE", "DEC", "NAMES", "UNION", "DECIMAL", "NATIONAL", "UNIQUE", "DECLARE", "NATURAL",
+          "UNKNOWN",
+      "DEFAULT", "NCHAR", "UPDATE", "DEFERRABLE", "NEXT", "UPPER", "DEFERRED", "NO", "USAGE",
+          "DELETE",
+      "NONE", "USER", "DESC", "NOT", "USING", "DESCRIBE", "NULL", "VALUE", "DESCRIPTOR", "NULLIF",
+      "VALUES", "DIAGNOSTICS", "NUMERIC", "VARCHAR", "DISCONNECT", "OCTET_LENGTH", "VARYING",
+          "DISTINCT", "OF", "VIEW",
+      "DOMAIN", "ON", "WHEN", "DOUBLE", "ONLY", "WHENEVER", "DROP", "OPEN", "WHERE", "ELSE",
+      "OPTION", "WITH", "END", "OR", "WORK", "END-EXEC", "ORDER", "WRITE", "ESCAPE", "OUTER",
+      "YEAR", "EXCEPT", "OUTPUT", "ZONE", "EXCEPTION"
+    };
     TreeMap myKeywordMap = new TreeMap();
     for (int i = 0; i < allIotdbSQLKeywords.length; i++)
       myKeywordMap.put(allIotdbSQLKeywords[i], null);
     HashMap sql92KeywordMap = new HashMap(sql92Keywords.length);
-    for (int j = 0; j < sql92Keywords.length; j++)
-      sql92KeywordMap.put(sql92Keywords[j], null);
+    for (int j = 0; j < sql92Keywords.length; j++) sql92KeywordMap.put(sql92Keywords[j], null);
     Iterator it = sql92KeywordMap.keySet().iterator();
-    while (it.hasNext())
-      myKeywordMap.remove(it.next());
+    while (it.hasNext()) myKeywordMap.remove(it.next());
     StringBuffer keywordBuf = new StringBuffer();
     it = myKeywordMap.keySet().iterator();
-    if (it.hasNext())
-      keywordBuf.append(it.next().toString());
+    if (it.hasNext()) keywordBuf.append(it.next().toString());
     while (it.hasNext()) {
       keywordBuf.append(",");
       keywordBuf.append(it.next().toString());
     }
     sqlKeywordsThatArentSQL92 = keywordBuf.toString();
   }
-private WatermarkEncoder getWatermarkEncoder() {
-  try {
-    groupedLSBWatermarkEncoder=new GroupedLSBWatermarkEncoder(client.getProperties().getWatermarkSecretKey(),client.getProperties().getWatermarkBitString(),
-            client.getProperties().getWatermarkParamMarkRate(),client.getProperties().getWatermarkParamMaxRightBit());
-  } catch (TException e) {
-    e.printStackTrace();
-  }
-  return groupedLSBWatermarkEncoder;
 
-}
+  private WatermarkEncoder getWatermarkEncoder() {
+    try {
+      groupedLSBWatermarkEncoder =
+          new GroupedLSBWatermarkEncoder(
+              client.getProperties().getWatermarkSecretKey(),
+              client.getProperties().getWatermarkBitString(),
+              client.getProperties().getWatermarkParamMarkRate(),
+              client.getProperties().getWatermarkParamMaxRightBit());
+    } catch (TException e) {
+      e.printStackTrace();
+    }
+    return groupedLSBWatermarkEncoder;
+  }
+
   @Override
   public boolean isWrapperFor(Class<?> arg0) throws SQLException {
     throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
@@ -160,22 +294,22 @@ private WatermarkEncoder getWatermarkEncoder() {
   }
 
   @Override
-  public boolean allProceduresAreCallable(){
+  public boolean allProceduresAreCallable() {
     return false;
   }
 
   @Override
-  public boolean allTablesAreSelectable(){
+  public boolean allTablesAreSelectable() {
     return true;
   }
 
   @Override
-  public boolean autoCommitFailureClosesAllResultSets(){
+  public boolean autoCommitFailureClosesAllResultSets() {
     return false;
   }
 
   @Override
-  public boolean dataDefinitionCausesTransactionCommit(){
+  public boolean dataDefinitionCausesTransactionCommit() {
     return false;
   }
 
@@ -185,13 +319,13 @@ private WatermarkEncoder getWatermarkEncoder() {
   }
 
   @Override
-  public boolean deletesAreDetected(int arg0){
+  public boolean deletesAreDetected(int arg0) {
     return true;
   }
 
   @Override
-  public boolean doesMaxRowSizeIncludeBlobs(){
-    return false;//The return value is tentatively FALSE and may be adjusted later
+  public boolean doesMaxRowSizeIncludeBlobs() {
+    return false; // The return value is tentatively FALSE and may be adjusted later
   }
 
   @Override
@@ -211,10 +345,10 @@ private WatermarkEncoder getWatermarkEncoder() {
 
   @Override
   public ResultSet getAttributes(String arg0, String arg1, String arg2, String arg3)
-          throws SQLException {
-    List<String> columnNameList=new ArrayList<String>();
-    List<String> columnTypeList=new ArrayList<String>();
-    Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
+      throws SQLException {
+    List<String> columnNameList = new ArrayList<String>();
+    List<String> columnTypeList = new ArrayList<String>();
+    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
     Field[] fields = new Field[21];
     fields[0] = new Field("", "TYPE_CAT", "TEXT");
     fields[1] = new Field("", "TYPE_SCHEM", "TEXT");
@@ -223,7 +357,7 @@ private WatermarkEncoder getWatermarkEncoder() {
     fields[4] = new Field("", "DATA_TYPE", "INT32");
     fields[5] = new Field("", "ATTR_TYPE_NAME", "TEXT");
     fields[6] = new Field("", "ATTR_SIZE", "INT32");
-    fields[7] = new Field("", "DECIMAL_DIGITS","INT32");
+    fields[7] = new Field("", "DECIMAL_DIGITS", "INT32");
     fields[8] = new Field("", "NUM_PREC_RADIX", "INT32");
     fields[9] = new Field("", "NULLABLE ", "INT32");
     fields[10] = new Field("", "REMARKS", "TEXT");
@@ -240,17 +374,28 @@ private WatermarkEncoder getWatermarkEncoder() {
     for (int i = 0; i < fields.length; i++) {
       columnNameList.add(fields[i].getName());
       columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(),i);
+      columnNameIndex.put(fields[i].getName(), i);
     }
-    return new IoTDBJDBCResultSet(connection.createStatement(), columnNameList, columnTypeList, columnNameIndex, false, client, null, 0, sessionId, null, (long)60 * 1000);
+    return new IoTDBJDBCResultSet(
+        connection.createStatement(),
+        columnNameList,
+        columnTypeList,
+        columnNameIndex,
+        false,
+        client,
+        null,
+        0,
+        sessionId,
+        null,
+        (long) 60 * 1000);
   }
+
   @Override
-  public ResultSet getBestRowIdentifier(String arg0, String arg1, String arg2, int arg3,
-                                        boolean arg4)
-          throws SQLException {
-    List<String> columnNameList=new ArrayList<String>();
-    List<String> columnTypeList=new ArrayList<String>();
-    Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
+  public ResultSet getBestRowIdentifier(
+      String arg0, String arg1, String arg2, int arg3, boolean arg4) throws SQLException {
+    List<String> columnNameList = new ArrayList<String>();
+    List<String> columnTypeList = new ArrayList<String>();
+    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
     Field[] fields = new Field[8];
     fields[0] = new Field("", "SCOPE", "INT32");
     fields[1] = new Field("", "COLUMN_NAME", "TEXT");
@@ -259,14 +404,25 @@ private WatermarkEncoder getWatermarkEncoder() {
     fields[4] = new Field("", "COLUMN_SIZE", "INT32");
     fields[5] = new Field("", "BUFFER_LENGTH", "INT32");
     fields[6] = new Field("", "DECIMAL_DIGITS", "INT32");
-    fields[7] = new Field("", "PSEUDO_COLUMN","INT32");
+    fields[7] = new Field("", "PSEUDO_COLUMN", "INT32");
 
     for (int i = 0; i < fields.length; i++) {
       columnNameList.add(fields[i].getName());
       columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(),i);
+      columnNameIndex.put(fields[i].getName(), i);
     }
-    return new IoTDBJDBCResultSet(connection.createStatement(), columnNameList, columnTypeList, columnNameIndex, false, client, null, 0, sessionId, null, (long)60 * 1000);
+    return new IoTDBJDBCResultSet(
+        connection.createStatement(),
+        columnNameList,
+        columnTypeList,
+        columnNameIndex,
+        false,
+        client,
+        null,
+        0,
+        sessionId,
+        null,
+        (long) 60 * 1000);
   }
 
   @Override
@@ -281,43 +437,58 @@ private WatermarkEncoder getWatermarkEncoder() {
 
   @Override
   public ResultSet getCatalogs() throws SQLException {
-    Statement stmt=this.connection.createStatement();
-    ResultSet rs=stmt.executeQuery("SHOW STORAGE GROUP ");
+    Statement stmt = this.connection.createStatement();
+    ResultSet rs = stmt.executeQuery("SHOW STORAGE GROUP ");
     Field[] fields = new Field[1];
-    List<String> columnNameList=new ArrayList<String>();
-    List<String> columnTypeList=new ArrayList<String>();
-    Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
-    List<List<Map>> bigpaths=new ArrayList<List<Map>>();
-    ListDataSet dataSet=new ListDataSet();
-    while ( rs.next()){
-      List<Map> paths=new ArrayList<Map>();
-      Map<String,Object> m=new HashMap<>();
-      m.put("type",TSDataType.TEXT);
-      m.put("val",rs.getString(1));
+    List<String> columnNameList = new ArrayList<String>();
+    List<String> columnTypeList = new ArrayList<String>();
+    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
+    List<List<Map>> bigpaths = new ArrayList<List<Map>>();
+    ListDataSet dataSet = new ListDataSet();
+    while (rs.next()) {
+      List<Map> paths = new ArrayList<Map>();
+      Map<String, Object> m = new HashMap<>();
+      m.put("type", TSDataType.TEXT);
+      m.put("val", rs.getString(1));
       paths.add(m);
       bigpaths.add(paths);
     }
-    addToDataSet(bigpaths,dataSet);
+    addToDataSet(bigpaths, dataSet);
     columnNameList.add("TYPE_CAT");
     columnTypeList.add("TEXT");
-    columnNameIndex.put("TYPE_CAT",0);
-    TSQueryDataSet tsdataset=null;
+    columnNameIndex.put("TYPE_CAT", 0);
+    TSQueryDataSet tsdataset = null;
     try {
-      tsdataset=convertQueryDataSetByFetchSize(dataSet,stmt.getFetchSize(),getWatermarkEncoder());
+      tsdataset =
+          convertQueryDataSetByFetchSize(dataSet, stmt.getFetchSize(), getWatermarkEncoder());
     } catch (IOException e) {
       e.printStackTrace();
-    }finally {
-      colse(rs,stmt);
+    } finally {
+      colse(rs, stmt);
     }
-    return new IoTDBJDBCResultSet(stmt, columnNameList, columnTypeList, columnNameIndex, true, client,
-            null, 0, sessionId, tsdataset, (long)60 * 1000,false);
+    return new IoTDBJDBCResultSet(
+        stmt,
+        columnNameList,
+        columnTypeList,
+        columnNameIndex,
+        true,
+        client,
+        null,
+        0,
+        sessionId,
+        tsdataset,
+        (long) 60 * 1000,
+        false);
   }
-  public static TSQueryDataSet convertQueryDataSetByFetchSize(QueryDataSet queryDataSet,
-                                                              int fetchSize, WatermarkEncoder watermarkEncoder) throws IOException {
+
+  public static TSQueryDataSet convertQueryDataSetByFetchSize(
+      QueryDataSet queryDataSet, int fetchSize, WatermarkEncoder watermarkEncoder)
+      throws IOException {
     List<TSDataType> dataTypes = queryDataSet.getDataTypes();
     int columnNum = dataTypes.size();
     TSQueryDataSet tsQueryDataSet = new TSQueryDataSet();
-    // one time column and each value column has a actual value buffer and a bitmap value to indicate whether it is a null
+    // one time column and each value column has a actual value buffer and a bitmap value to
+    // indicate whether it is a null
     int columnNumWithTime = columnNum * 2 + 1;
     DataOutputStream[] dataOutputStreams = new DataOutputStream[columnNumWithTime];
     ByteArrayOutputStream[] byteArrayOutputStreams = new ByteArrayOutputStream[columnNumWithTime];
@@ -374,7 +545,7 @@ private WatermarkEncoder getWatermarkEncoder() {
                 break;
               default:
                 throw new UnSupportedDataTypeException(
-                        String.format("Data type %s is not supported.", type));
+                    String.format("Data type %s is not supported.", type));
             }
           }
         }
@@ -429,14 +600,15 @@ private WatermarkEncoder getWatermarkEncoder() {
   }
 
   private void addToDataSet(List<List<Map>> listbigPaths, ListDataSet dataSet) {
-    List<TSDataType> listType=new ArrayList<>();
-    int  i=0;
+    List<TSDataType> listType = new ArrayList<>();
+    int i = 0;
     for (List<Map> listPaths : listbigPaths) {
       RowRecord record = new RowRecord(0);
-      for (Map<String,Object> map : listPaths) {
-        TSDataType columnType=(TSDataType)map.get("type");
-        Object val=map.get("val");
-        org.apache.iotdb.tsfile.read.common.Field field = new org.apache.iotdb.tsfile.read.common.Field(columnType);
+      for (Map<String, Object> map : listPaths) {
+        TSDataType columnType = (TSDataType) map.get("type");
+        Object val = map.get("val");
+        org.apache.iotdb.tsfile.read.common.Field field =
+            new org.apache.iotdb.tsfile.read.common.Field(columnType);
         switch (columnType) {
           case TEXT:
             field.setBinaryV(new Binary(val.toString()));
@@ -458,7 +630,7 @@ private WatermarkEncoder getWatermarkEncoder() {
             break;
         }
         record.addField(field);
-        if (i==0){
+        if (i == 0) {
           listType.add(columnType);
         }
       }
@@ -467,66 +639,88 @@ private WatermarkEncoder getWatermarkEncoder() {
     }
     dataSet.setDataTypes(listType);
   }
+
   @Override
   public ResultSet getClientInfoProperties() throws SQLException {
-    Statement stmt=this.connection.createStatement();
-    ResultSet rs=stmt.executeQuery("SHOW STORAGE GROUP ");
+    Statement stmt = this.connection.createStatement();
+    ResultSet rs = stmt.executeQuery("SHOW STORAGE GROUP ");
     Field[] fields = new Field[4];
     fields[0] = new Field("", "NAME", "TEXT");
     fields[1] = new Field("", "MAX_LEN", "INT32");
     fields[2] = new Field("", "DEFAULT_VALUE", "INT32");
     fields[3] = new Field("", "DESCRIPTION", "TEXT");
-    List<TSDataType> listType=Arrays.asList(TSDataType.TEXT, TSDataType.INT32, TSDataType.INT32,TSDataType.TEXT);
-    List<Object> listVal=Arrays.asList("fetch_size", 10, 10,"");
-    List<String> columnNameList=new ArrayList<String>();
-    List<String> columnTypeList=new ArrayList<String>();
-    Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
-    List<List<Map>> bigproperties=new ArrayList<List<Map>>();
-    List<Map> properties=new ArrayList<Map>();
-    ListDataSet dataSet=new ListDataSet();
-    for (int i=0;i<fields.length;i++){
+    List<TSDataType> listType =
+        Arrays.asList(TSDataType.TEXT, TSDataType.INT32, TSDataType.INT32, TSDataType.TEXT);
+    List<Object> listVal = Arrays.asList("fetch_size", 10, 10, "");
+    List<String> columnNameList = new ArrayList<String>();
+    List<String> columnTypeList = new ArrayList<String>();
+    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
+    List<List<Map>> bigproperties = new ArrayList<List<Map>>();
+    List<Map> properties = new ArrayList<Map>();
+    ListDataSet dataSet = new ListDataSet();
+    for (int i = 0; i < fields.length; i++) {
       columnNameList.add(fields[i].getName());
       columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(),i);
-      Map<String,Object> m=new HashMap<>();
-      m.put("type",listType.get(i));
-      m.put("val",listVal.get(i));
+      columnNameIndex.put(fields[i].getName(), i);
+      Map<String, Object> m = new HashMap<>();
+      m.put("type", listType.get(i));
+      m.put("val", listVal.get(i));
       properties.add(m);
     }
     bigproperties.add(properties);
-    addToDataSet(bigproperties,dataSet);
-    TSQueryDataSet tsdataset=null;
+    addToDataSet(bigproperties, dataSet);
+    TSQueryDataSet tsdataset = null;
     try {
-      tsdataset=convertQueryDataSetByFetchSize(dataSet,stmt.getFetchSize(),getWatermarkEncoder());
+      tsdataset =
+          convertQueryDataSetByFetchSize(dataSet, stmt.getFetchSize(), getWatermarkEncoder());
     } catch (IOException e) {
       e.printStackTrace();
-    }finally {
-      colse(rs,stmt);
+    } finally {
+      colse(rs, stmt);
     }
-    return new IoTDBJDBCResultSet(stmt, columnNameList, columnTypeList, columnNameIndex, true, client,
-            null, 0, sessionId, tsdataset, (long)60 * 1000,false);
+    return new IoTDBJDBCResultSet(
+        stmt,
+        columnNameList,
+        columnTypeList,
+        columnNameIndex,
+        true,
+        client,
+        null,
+        0,
+        sessionId,
+        tsdataset,
+        (long) 60 * 1000,
+        false);
   }
 
   @Override
-  public ResultSet getColumnPrivileges(String catalog, String schemaPattern, String tableNamePattern,
-      String columnNamePattern) throws SQLException {
-    Statement stmt=this.connection.createStatement();
+  public ResultSet getColumnPrivileges(
+      String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern)
+      throws SQLException {
+    Statement stmt = this.connection.createStatement();
 
-    String sql="SHOW STORAGE GROUP";
-    if(catalog!=null&&catalog.length()>0){
-      sql=sql +" "+catalog;
-    }else if(schemaPattern!=null&&schemaPattern.length()>0){
-      sql=sql +" "+schemaPattern;
+    String sql = "SHOW STORAGE GROUP";
+    if (catalog != null && catalog.length() > 0) {
+      sql = sql + " " + catalog;
+    } else if (schemaPattern != null && schemaPattern.length() > 0) {
+      sql = sql + " " + schemaPattern;
     }
-    if(((catalog!=null&&catalog.length()>0)||schemaPattern!=null&&schemaPattern.length()>0)&&tableNamePattern!=null&&tableNamePattern.length()>0){
-      sql=sql +"."+tableNamePattern;
+    if (((catalog != null && catalog.length() > 0)
+            || schemaPattern != null && schemaPattern.length() > 0)
+        && tableNamePattern != null
+        && tableNamePattern.length() > 0) {
+      sql = sql + "." + tableNamePattern;
     }
 
-    if(((catalog!=null&&catalog.length()>0)||schemaPattern!=null&&schemaPattern.length()>0)
-        &&tableNamePattern!=null&&tableNamePattern.length()>0&&columnNamePattern!=null&&columnNamePattern.length()>0){
-      sql=sql +"."+columnNamePattern;
+    if (((catalog != null && catalog.length() > 0)
+            || schemaPattern != null && schemaPattern.length() > 0)
+        && tableNamePattern != null
+        && tableNamePattern.length() > 0
+        && columnNamePattern != null
+        && columnNamePattern.length() > 0) {
+      sql = sql + "." + columnNamePattern;
     }
-    ResultSet rs=stmt.executeQuery(sql);
+    ResultSet rs = stmt.executeQuery(sql);
     Field[] fields = new Field[8];
     fields[0] = new Field("", "TABLE_CAT", "TEXT");
     fields[1] = new Field("", "TABLE_SCHEM", "TEXT");
@@ -536,50 +730,70 @@ private WatermarkEncoder getWatermarkEncoder() {
     fields[5] = new Field("", "GRANTEE", "TEXT");
     fields[6] = new Field("", "PRIVILEGE", "TEXT");
     fields[7] = new Field("", "IS_GRANTABLE", "TEXT");
-    List<TSDataType> listType=Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT,
-        TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT);
-    List<String> columnNameList=new ArrayList<String>();
-    List<String> columnTypeList=new ArrayList<String>();
-    Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
-    List<List<Map>> bigproperties=new ArrayList<List<Map>>();
-    ListDataSet dataSet=new ListDataSet();
-    for (int i=0;i<fields.length;i++){
+    List<TSDataType> listType =
+        Arrays.asList(
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT);
+    List<String> columnNameList = new ArrayList<String>();
+    List<String> columnTypeList = new ArrayList<String>();
+    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
+    List<List<Map>> bigproperties = new ArrayList<List<Map>>();
+    ListDataSet dataSet = new ListDataSet();
+    for (int i = 0; i < fields.length; i++) {
       columnNameList.add(fields[i].getName());
       columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(),i);
+      columnNameIndex.put(fields[i].getName(), i);
     }
-    while (rs.next()){
-      List<Map> properties=new ArrayList<Map>();
+    while (rs.next()) {
+      List<Map> properties = new ArrayList<Map>();
       for (int i = 0; i < fields.length; i++) {
-        Map<String,Object> m=new HashMap<>();
-        m.put("type",listType.get(i));
-        if(i<4){
-          m.put("val",rs.getString(1));
-        }else if(i==5){
-          m.put("val",getUserName());
-        }else if(i==6){
-          m.put("val","");
-        }else if(i==7){
-          m.put("val","NO");
-        }else{
-          m.put("val","");
+        Map<String, Object> m = new HashMap<>();
+        m.put("type", listType.get(i));
+        if (i < 4) {
+          m.put("val", rs.getString(1));
+        } else if (i == 5) {
+          m.put("val", getUserName());
+        } else if (i == 6) {
+          m.put("val", "");
+        } else if (i == 7) {
+          m.put("val", "NO");
+        } else {
+          m.put("val", "");
         }
 
         properties.add(m);
       }
       bigproperties.add(properties);
     }
-    addToDataSet(bigproperties,dataSet);
-    TSQueryDataSet tsdataset=null;
+    addToDataSet(bigproperties, dataSet);
+    TSQueryDataSet tsdataset = null;
     try {
-      tsdataset=convertQueryDataSetByFetchSize(dataSet,stmt.getFetchSize(),getWatermarkEncoder());
+      tsdataset =
+          convertQueryDataSetByFetchSize(dataSet, stmt.getFetchSize(), getWatermarkEncoder());
     } catch (IOException e) {
       e.printStackTrace();
-    }finally {
-      colse(rs,stmt);
+    } finally {
+      colse(rs, stmt);
     }
-    return new IoTDBJDBCResultSet(stmt, columnNameList, columnTypeList, columnNameIndex, true, client,
-        null, 0, sessionId, tsdataset, (long)60 * 1000,false);
+    return new IoTDBJDBCResultSet(
+        stmt,
+        columnNameList,
+        columnTypeList,
+        columnNameIndex,
+        true,
+        client,
+        null,
+        0,
+        sessionId,
+        tsdataset,
+        (long) 60 * 1000,
+        false);
   }
 
   @Override
@@ -588,11 +802,12 @@ private WatermarkEncoder getWatermarkEncoder() {
   }
 
   @Override
-  public ResultSet getCrossReference(String arg0, String arg1, String arg2, String arg3, String arg4, String arg5)
-          throws SQLException {
-    List<String> columnNameList=new ArrayList<String>();
-    List<String> columnTypeList=new ArrayList<String>();
-    Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
+  public ResultSet getCrossReference(
+      String arg0, String arg1, String arg2, String arg3, String arg4, String arg5)
+      throws SQLException {
+    List<String> columnNameList = new ArrayList<String>();
+    List<String> columnTypeList = new ArrayList<String>();
+    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
     Field[] fields = new Field[14];
     fields[0] = new Field("", "PKTABLE_CAT", "TEXT");
     fields[1] = new Field("", "PKTABLE_SCHEM", "TEXT");
@@ -601,7 +816,7 @@ private WatermarkEncoder getWatermarkEncoder() {
     fields[4] = new Field("", "FKTABLE_CAT", "TEXT");
     fields[5] = new Field("", "FKTABLE_SCHEM", "TEXT");
     fields[6] = new Field("", "FKTABLE_NAME", "TEXT");
-    fields[7] = new Field("", "FKCOLUMN_NAME","TEXT");
+    fields[7] = new Field("", "FKCOLUMN_NAME", "TEXT");
     fields[8] = new Field("", "KEY_SEQ", "TEXT");
     fields[9] = new Field("", "UPDATE_RULE ", "TEXT");
     fields[10] = new Field("", "DELETE_RULE", "TEXT");
@@ -611,19 +826,30 @@ private WatermarkEncoder getWatermarkEncoder() {
     for (int i = 0; i < fields.length; i++) {
       columnNameList.add(fields[i].getName());
       columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(),i);
+      columnNameIndex.put(fields[i].getName(), i);
     }
-    return new IoTDBJDBCResultSet(connection.createStatement(), columnNameList, columnTypeList, columnNameIndex, false, client, null, 0, sessionId, null, (long)60 * 1000);
+    return new IoTDBJDBCResultSet(
+        connection.createStatement(),
+        columnNameList,
+        columnTypeList,
+        columnNameIndex,
+        false,
+        client,
+        null,
+        0,
+        sessionId,
+        null,
+        (long) 60 * 1000);
   }
 
   @Override
   public int getDatabaseMajorVersion() {
-    int major_version=0;
+    int major_version = 0;
     try {
-      String version=client.getProperties().getVersion();
-      String[] versions=version.split(".");
-      if(versions.length>=2){
-        major_version=Integer.valueOf(versions[0]);
+      String version = client.getProperties().getVersion();
+      String[] versions = version.split(".");
+      if (versions.length >= 2) {
+        major_version = Integer.valueOf(versions[0]);
       }
     } catch (TException e) {
       e.printStackTrace();
@@ -633,12 +859,12 @@ private WatermarkEncoder getWatermarkEncoder() {
 
   @Override
   public int getDatabaseMinorVersion() {
-    int minor_version=0;
+    int minor_version = 0;
     try {
-      String version=client.getProperties().getVersion();
-      String[] versions=version.split(".");
-      if(versions.length>=2){
-        minor_version=Integer.valueOf(versions[1]);
+      String version = client.getProperties().getVersion();
+      String[] versions = version.split(".");
+      if (versions.length >= 2) {
+        minor_version = Integer.valueOf(versions[1]);
       }
     } catch (TException e) {
       e.printStackTrace();
@@ -683,9 +909,9 @@ private WatermarkEncoder getWatermarkEncoder() {
 
   @Override
   public ResultSet getExportedKeys(String arg0, String arg1, String arg2) throws SQLException {
-    List<String> columnNameList=new ArrayList<String>();
-    List<String> columnTypeList=new ArrayList<String>();
-    Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
+    List<String> columnNameList = new ArrayList<String>();
+    List<String> columnTypeList = new ArrayList<String>();
+    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
     Field[] fields = new Field[14];
     fields[0] = new Field("", "PKTABLE_CAT", "TEXT");
     fields[1] = new Field("", "PKTABLE_SCHEM", "INT32");
@@ -704,10 +930,20 @@ private WatermarkEncoder getWatermarkEncoder() {
     for (int i = 0; i < fields.length; i++) {
       columnNameList.add(fields[i].getName());
       columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(),i);
+      columnNameIndex.put(fields[i].getName(), i);
     }
-    return new IoTDBJDBCResultSet(null, columnNameList, columnTypeList, columnNameIndex, false, client, null, 0, sessionId, null, (long)60 * 1000);
-
+    return new IoTDBJDBCResultSet(
+        null,
+        columnNameList,
+        columnTypeList,
+        columnNameIndex,
+        false,
+        client,
+        null,
+        0,
+        sessionId,
+        null,
+        (long) 60 * 1000);
   }
 
   @Override
@@ -716,11 +952,13 @@ private WatermarkEncoder getWatermarkEncoder() {
   }
 
   @Override
-  public ResultSet getFunctionColumns(String catalog,String schemaPattern,
-                                      java.lang.String functionNamePattern,
-                                      java.lang.String columnNamePattern)
-          throws SQLException {
-    Statement stmt =connection.createStatement();
+  public ResultSet getFunctionColumns(
+      String catalog,
+      String schemaPattern,
+      java.lang.String functionNamePattern,
+      java.lang.String columnNamePattern)
+      throws SQLException {
+    Statement stmt = connection.createStatement();
     ResultSet rs = stmt.executeQuery("show functions");
     Field[] fields = new Field[17];
     fields[0] = new Field("", "FUNCTION_CAT ", "TEXT");
@@ -740,53 +978,80 @@ private WatermarkEncoder getWatermarkEncoder() {
     fields[14] = new Field("", "ORDINAL_POSITION", "INT32");
     fields[15] = new Field("", "IS_NULLABLE", "TEXT");
     fields[16] = new Field("", "SPECIFIC_NAME", "TEXT");
-    List<TSDataType> listType=Arrays.asList(TSDataType.TEXT, TSDataType.TEXT,TSDataType.TEXT,
-            TSDataType.TEXT,TSDataType.INT32, TSDataType.INT32,TSDataType.TEXT,TSDataType.INT32,
-            TSDataType.INT32,TSDataType.INT32,TSDataType.INT32,TSDataType.INT32, TSDataType.TEXT,
-            TSDataType.INT32,TSDataType.INT32, TSDataType.TEXT,TSDataType.TEXT);
-    List<String> columnNameList=new ArrayList<String>();
-    List<String> columnTypeList=new ArrayList<String>();
-    Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
-    List<List<Map>> bigproperties=new ArrayList<List<Map>>();
-    ListDataSet dataSet=new ListDataSet();
-    for (int i=0;i<fields.length;i++){
+    List<TSDataType> listType =
+        Arrays.asList(
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.INT32,
+            TSDataType.INT32,
+            TSDataType.TEXT,
+            TSDataType.INT32,
+            TSDataType.INT32,
+            TSDataType.INT32,
+            TSDataType.INT32,
+            TSDataType.INT32,
+            TSDataType.TEXT,
+            TSDataType.INT32,
+            TSDataType.INT32,
+            TSDataType.TEXT,
+            TSDataType.TEXT);
+    List<String> columnNameList = new ArrayList<String>();
+    List<String> columnTypeList = new ArrayList<String>();
+    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
+    List<List<Map>> bigproperties = new ArrayList<List<Map>>();
+    ListDataSet dataSet = new ListDataSet();
+    for (int i = 0; i < fields.length; i++) {
       columnNameList.add(fields[i].getName());
       columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(),i);
+      columnNameIndex.put(fields[i].getName(), i);
     }
-    while (rs.next()){
-      List<Map> properties=new ArrayList<Map>();
+    while (rs.next()) {
+      List<Map> properties = new ArrayList<Map>();
       for (int i = 0; i < fields.length; i++) {
-        Map<String,Object> m=new HashMap<>();
-        m.put("type",listType.get(i));
-        if(i==2){
-          m.put("val",rs.getString(1));
-        }else if(fields[i].getSqlType().equals("INT32")){
-          m.put("val",0);
-        }else{
-          m.put("val","");
+        Map<String, Object> m = new HashMap<>();
+        m.put("type", listType.get(i));
+        if (i == 2) {
+          m.put("val", rs.getString(1));
+        } else if (fields[i].getSqlType().equals("INT32")) {
+          m.put("val", 0);
+        } else {
+          m.put("val", "");
         }
         properties.add(m);
       }
       bigproperties.add(properties);
     }
-    addToDataSet(bigproperties,dataSet);
-    TSQueryDataSet tsdataset=null;
+    addToDataSet(bigproperties, dataSet);
+    TSQueryDataSet tsdataset = null;
     try {
-      tsdataset=convertQueryDataSetByFetchSize(dataSet,stmt.getFetchSize(),getWatermarkEncoder());
+      tsdataset =
+          convertQueryDataSetByFetchSize(dataSet, stmt.getFetchSize(), getWatermarkEncoder());
     } catch (IOException e) {
       e.printStackTrace();
-    }finally {
-      colse(rs,stmt);
+    } finally {
+      colse(rs, stmt);
     }
-    return new IoTDBJDBCResultSet(stmt, columnNameList, columnTypeList, columnNameIndex, true, client,
-            null, 0, sessionId, tsdataset, (long)60 * 1000,false);
-
+    return new IoTDBJDBCResultSet(
+        stmt,
+        columnNameList,
+        columnTypeList,
+        columnNameIndex,
+        true,
+        client,
+        null,
+        0,
+        sessionId,
+        tsdataset,
+        (long) 60 * 1000,
+        false);
   }
 
   @Override
-  public ResultSet getFunctions(String catalog, String schemaPattern, String functionNamePattern) throws SQLException {
-    Statement stmt =connection.createStatement();
+  public ResultSet getFunctions(String catalog, String schemaPattern, String functionNamePattern)
+      throws SQLException {
+    Statement stmt = connection.createStatement();
     ResultSet rs = stmt.executeQuery("show functions");
     Field[] fields = new Field[6];
     fields[0] = new Field("", "FUNCTION_CAT ", "TEXT");
@@ -795,58 +1060,76 @@ private WatermarkEncoder getWatermarkEncoder() {
     fields[3] = new Field("", "REMARKS", "TEXT");
     fields[4] = new Field("", "FUNCTION_TYPE", "INT32");
     fields[5] = new Field("", "SPECIFIC_NAME", "TEXT");
-    List<TSDataType> listType=Arrays.asList(TSDataType.TEXT, TSDataType.TEXT,TSDataType.TEXT, TSDataType.TEXT,TSDataType.INT32, TSDataType.TEXT);
-    List<String> columnNameList=new ArrayList<String>();
-    List<String> columnTypeList=new ArrayList<String>();
-    Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
-    List<List<Map>> bigproperties=new ArrayList<List<Map>>();
-    ListDataSet dataSet=new ListDataSet();
-    for (int i=0;i<fields.length;i++){
+    List<TSDataType> listType =
+        Arrays.asList(
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.INT32,
+            TSDataType.TEXT);
+    List<String> columnNameList = new ArrayList<String>();
+    List<String> columnTypeList = new ArrayList<String>();
+    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
+    List<List<Map>> bigproperties = new ArrayList<List<Map>>();
+    ListDataSet dataSet = new ListDataSet();
+    for (int i = 0; i < fields.length; i++) {
       columnNameList.add(fields[i].getName());
       columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(),i);
+      columnNameIndex.put(fields[i].getName(), i);
     }
-    while (rs.next()){
-      List<Map> properties=new ArrayList<Map>();
+    while (rs.next()) {
+      List<Map> properties = new ArrayList<Map>();
       for (int i = 0; i < fields.length; i++) {
-        Map<String,Object> m=new HashMap<>();
-        m.put("type",listType.get(i));
-        if(i==2){
-          m.put("val",rs.getString(1));
-        }else if(i==4){
-          m.put("val",0);
-        }else{
-          m.put("val","");
+        Map<String, Object> m = new HashMap<>();
+        m.put("type", listType.get(i));
+        if (i == 2) {
+          m.put("val", rs.getString(1));
+        } else if (i == 4) {
+          m.put("val", 0);
+        } else {
+          m.put("val", "");
         }
 
         properties.add(m);
       }
       bigproperties.add(properties);
     }
-    addToDataSet(bigproperties,dataSet);
-    TSQueryDataSet tsdataset=null;
+    addToDataSet(bigproperties, dataSet);
+    TSQueryDataSet tsdataset = null;
     try {
-      tsdataset=convertQueryDataSetByFetchSize(dataSet,stmt.getFetchSize(),getWatermarkEncoder());
+      tsdataset =
+          convertQueryDataSetByFetchSize(dataSet, stmt.getFetchSize(), getWatermarkEncoder());
     } catch (IOException e) {
       e.printStackTrace();
-    }finally {
-      colse(rs,stmt);
+    } finally {
+      colse(rs, stmt);
     }
-    return new IoTDBJDBCResultSet(stmt, columnNameList, columnTypeList, columnNameIndex, true, client,
-            null, 0, sessionId, tsdataset, (long)60 * 1000,false);
+    return new IoTDBJDBCResultSet(
+        stmt,
+        columnNameList,
+        columnTypeList,
+        columnNameIndex,
+        true,
+        client,
+        null,
+        0,
+        sessionId,
+        tsdataset,
+        (long) 60 * 1000,
+        false);
   }
 
   @Override
   public String getIdentifierQuoteString() {
     return "\' or \"";
-
   }
 
   @Override
   public ResultSet getImportedKeys(String arg0, String arg1, String arg2) throws SQLException {
-    List<String> columnNameList=new ArrayList<String>();
-    List<String> columnTypeList=new ArrayList<String>();
-    Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
+    List<String> columnNameList = new ArrayList<String>();
+    List<String> columnTypeList = new ArrayList<String>();
+    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
     Field[] fields = new Field[14];
     fields[0] = new Field("", "PKTABLE_CAT", "TEXT");
     fields[1] = new Field("", "PKTABLE_SCHEM", "INT32");
@@ -865,17 +1148,28 @@ private WatermarkEncoder getWatermarkEncoder() {
     for (int i = 0; i < fields.length; i++) {
       columnNameList.add(fields[i].getName());
       columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(),i);
+      columnNameIndex.put(fields[i].getName(), i);
     }
-    return new IoTDBJDBCResultSet(null, columnNameList, columnTypeList, columnNameIndex, false, client, null, 0, sessionId, null, (long)60 * 1000);
+    return new IoTDBJDBCResultSet(
+        null,
+        columnNameList,
+        columnTypeList,
+        columnNameIndex,
+        false,
+        client,
+        null,
+        0,
+        sessionId,
+        null,
+        (long) 60 * 1000);
   }
 
   @Override
   public ResultSet getIndexInfo(String arg0, String arg1, String arg2, boolean arg3, boolean arg4)
-          throws SQLException {
-    List<String> columnNameList=new ArrayList<String>();
-    List<String> columnTypeList=new ArrayList<String>();
-    Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
+      throws SQLException {
+    List<String> columnNameList = new ArrayList<String>();
+    List<String> columnTypeList = new ArrayList<String>();
+    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
     Field[] fields = new Field[14];
     fields[0] = new Field("", "TABLE_CAT", "TEXT");
     fields[1] = new Field("", "TABLE_SCHEM", "TEXT");
@@ -894,9 +1188,20 @@ private WatermarkEncoder getWatermarkEncoder() {
     for (int i = 0; i < fields.length; i++) {
       columnNameList.add(fields[i].getName());
       columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(),i);
+      columnNameIndex.put(fields[i].getName(), i);
     }
-    return new IoTDBJDBCResultSet(null, columnNameList, columnTypeList, columnNameIndex, false, client, null, 0, sessionId, null, (long)60 * 1000);
+    return new IoTDBJDBCResultSet(
+        null,
+        columnNameList,
+        columnTypeList,
+        columnNameIndex,
+        false,
+        client,
+        null,
+        0,
+        sessionId,
+        null,
+        (long) 60 * 1000);
   }
 
   @Override
@@ -913,9 +1218,7 @@ private WatermarkEncoder getWatermarkEncoder() {
   public int getMaxBinaryLiteralLength() {
     return Integer.MAX_VALUE;
   }
-  /**
-   * Although there is no limit, it is not recommended
-   */
+  /** Although there is no limit, it is not recommended */
   @Override
   public int getMaxCatalogNameLength() {
     return 1024;
@@ -925,9 +1228,7 @@ private WatermarkEncoder getWatermarkEncoder() {
   public int getMaxCharLiteralLength() {
     return Integer.MAX_VALUE;
   }
-  /**
-   * Although there is no limit, it is not recommended
-   */
+  /** Although there is no limit, it is not recommended */
   @Override
   public int getMaxColumnNameLength() {
     return 1024;
@@ -960,9 +1261,9 @@ private WatermarkEncoder getWatermarkEncoder() {
 
   @Override
   public int getMaxConnections() {
-    int maxcount=0;
+    int maxcount = 0;
     try {
-      maxcount=client.getProperties().getMaxConcurrentClientNum();
+      maxcount = client.getProperties().getMaxConcurrentClientNum();
     } catch (TException e) {
       e.printStackTrace();
     }
@@ -983,16 +1284,12 @@ private WatermarkEncoder getWatermarkEncoder() {
   public int getMaxProcedureNameLength() {
     return 0;
   }
-  /**
-   * maxrowsize unlimited
-   */
+  /** maxrowsize unlimited */
   @Override
   public int getMaxRowSize() {
     return 2147483639;
   }
-  /**
-   *  Although there is no limit, it is not recommended
-   */
+  /** Although there is no limit, it is not recommended */
   @Override
   public int getMaxSchemaNameLength() {
     return 1024;
@@ -1012,23 +1309,17 @@ private WatermarkEncoder getWatermarkEncoder() {
   public int getMaxStatements() {
     return 0;
   }
-  /**
-   *  Although there is no limit, it is not recommended
-   */
+  /** Although there is no limit, it is not recommended */
   @Override
   public int getMaxTableNameLength() {
     return 1024;
   }
-  /**
-   *  Although there is no limit, it is not recommended
-   */
+  /** Although there is no limit, it is not recommended */
   @Override
   public int getMaxTablesInSelect() {
     return 1024;
   }
-  /**
-   *  Although there is no limit, it is not recommended
-   */
+  /** Although there is no limit, it is not recommended */
   @Override
   public int getMaxUserNameLength() {
     return 1024;
@@ -1036,44 +1327,51 @@ private WatermarkEncoder getWatermarkEncoder() {
 
   @Override
   public String getNumericFunctions() {
-    ResultSet resultSet=null;
-    Statement statement=null;
-    String result="";
+    ResultSet resultSet = null;
+    Statement statement = null;
+    String result = "";
     try {
-      statement =connection.createStatement();
-      StringBuilder str=new StringBuilder("");
+      statement = connection.createStatement();
+      StringBuilder str = new StringBuilder("");
       resultSet = statement.executeQuery("show functions");
-      List<String> listfunction= Arrays.asList("MAX_TIME","MIN_TIME","TIME_DIFFERENCE","NOW");
-      while (resultSet.next()){
-        if(listfunction.contains(resultSet.getString(1))){
+      List<String> listfunction = Arrays.asList("MAX_TIME", "MIN_TIME", "TIME_DIFFERENCE", "NOW");
+      while (resultSet.next()) {
+        if (listfunction.contains(resultSet.getString(1))) {
           continue;
         }
         str.append(resultSet.getString(1)).append(",");
       }
-       result=str.toString();
-      if(result.length()>0){
-        result=result.substring(0,result.length()-1);
+      result = str.toString();
+      if (result.length() > 0) {
+        result = result.substring(0, result.length() - 1);
       }
-    }catch (Exception e){
+    } catch (Exception e) {
       e.printStackTrace();
-    }finally {
-      colse(resultSet,statement);
+    } finally {
+      colse(resultSet, statement);
     }
     return result;
   }
 
   @Override
   public ResultSet getPrimaryKeys(String catalog, String schema, String table) throws SQLException {
-    Statement stmt=connection.createStatement();
-    List<String> columnNameList=new ArrayList<String>();
-    List<String> columnTypeList=new ArrayList<String>();
-    Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
-    List<TSDataType> listType=Arrays.asList(TSDataType.TEXT, TSDataType.TEXT,TSDataType.TEXT, TSDataType.TEXT, TSDataType.INT32,TSDataType.TEXT);
-    List<Object> listValSub_1=Arrays.asList(catalog,"", table,"time",1,"PRIMARY");
-    List<Object> listValSub_2=Arrays.asList(catalog,"", table,"deivce",2,"PRIMARY");
-    List<List<Object>> listVal=Arrays.asList(listValSub_1,listValSub_2);
-    List<List<Map>> bigproperties=new ArrayList<List<Map>>();
-    ListDataSet dataSet=new ListDataSet();
+    Statement stmt = connection.createStatement();
+    List<String> columnNameList = new ArrayList<String>();
+    List<String> columnTypeList = new ArrayList<String>();
+    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
+    List<TSDataType> listType =
+        Arrays.asList(
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.INT32,
+            TSDataType.TEXT);
+    List<Object> listValSub_1 = Arrays.asList(catalog, "", table, "time", 1, "PRIMARY");
+    List<Object> listValSub_2 = Arrays.asList(catalog, "", table, "deivce", 2, "PRIMARY");
+    List<List<Object>> listVal = Arrays.asList(listValSub_1, listValSub_2);
+    List<List<Map>> bigproperties = new ArrayList<List<Map>>();
+    ListDataSet dataSet = new ListDataSet();
     Field[] fields = new Field[6];
     fields[0] = new Field("", "TABLE_CAT", "TEXT");
     fields[1] = new Field("", "TABLE_SCHEM", "TEXT");
@@ -1084,37 +1382,49 @@ private WatermarkEncoder getWatermarkEncoder() {
     for (int i = 0; i < fields.length; i++) {
       columnNameList.add(fields[i].getName());
       columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(),i);
+      columnNameIndex.put(fields[i].getName(), i);
     }
-    for (List<Object> listob:listVal) {
-      List<Map> properties=new ArrayList<Map>();
+    for (List<Object> listob : listVal) {
+      List<Map> properties = new ArrayList<Map>();
       for (int i = 0; i < fields.length; i++) {
-        Map<String,Object> m=new HashMap<>();
-        m.put("type",listType.get(i));
-        m.put("val",listob.get(i));
+        Map<String, Object> m = new HashMap<>();
+        m.put("type", listType.get(i));
+        m.put("val", listob.get(i));
         properties.add(m);
       }
       bigproperties.add(properties);
     }
-    addToDataSet(bigproperties,dataSet);
-    TSQueryDataSet tsdataset=null;
+    addToDataSet(bigproperties, dataSet);
+    TSQueryDataSet tsdataset = null;
     try {
-      tsdataset=convertQueryDataSetByFetchSize(dataSet,stmt.getFetchSize(),getWatermarkEncoder());
+      tsdataset =
+          convertQueryDataSetByFetchSize(dataSet, stmt.getFetchSize(), getWatermarkEncoder());
     } catch (IOException e) {
       e.printStackTrace();
-    }finally {
-      colse(null,stmt);
+    } finally {
+      colse(null, stmt);
     }
-    return new IoTDBJDBCResultSet(stmt, columnNameList, columnTypeList, columnNameIndex, true, client,
-            null, 0, sessionId, tsdataset, (long)60 * 1000,false);
+    return new IoTDBJDBCResultSet(
+        stmt,
+        columnNameList,
+        columnTypeList,
+        columnNameIndex,
+        true,
+        client,
+        null,
+        0,
+        sessionId,
+        tsdataset,
+        (long) 60 * 1000,
+        false);
   }
 
   @Override
   public ResultSet getProcedureColumns(String arg0, String arg1, String arg2, String arg3)
-          throws SQLException {
-    List<String> columnNameList=new ArrayList<String>();
-    List<String> columnTypeList=new ArrayList<String>();
-    Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
+      throws SQLException {
+    List<String> columnNameList = new ArrayList<String>();
+    List<String> columnTypeList = new ArrayList<String>();
+    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
     Field[] fields = new Field[20];
     fields[0] = new Field("", "PROCEDURE_CAT", "TEXT");
     fields[1] = new Field("", "PROCEDURE_SCHEM", "TEXT");
@@ -1139,21 +1449,32 @@ private WatermarkEncoder getWatermarkEncoder() {
     for (int i = 0; i < fields.length; i++) {
       columnNameList.add(fields[i].getName());
       columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(),i);
+      columnNameIndex.put(fields[i].getName(), i);
     }
-    return new IoTDBJDBCResultSet(null, columnNameList, columnTypeList, columnNameIndex, false, client, null, 0, sessionId, null, (long)60 * 1000);
+    return new IoTDBJDBCResultSet(
+        null,
+        columnNameList,
+        columnTypeList,
+        columnNameIndex,
+        false,
+        client,
+        null,
+        0,
+        sessionId,
+        null,
+        (long) 60 * 1000);
   }
 
   @Override
-  public String getProcedureTerm(){
+  public String getProcedureTerm() {
     return "";
   }
 
   @Override
   public ResultSet getProcedures(String arg0, String arg1, String arg2) throws SQLException {
-    List<String> columnNameList=new ArrayList<String>();
-    List<String> columnTypeList=new ArrayList<String>();
-    Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
+    List<String> columnNameList = new ArrayList<String>();
+    List<String> columnTypeList = new ArrayList<String>();
+    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
     Field[] fields = new Field[6];
     fields[0] = new Field("", "PROCEDURE_CAT", "TEXT");
     fields[1] = new Field("", "PROCEDURE_SCHEM", "TEXT");
@@ -1164,15 +1485,27 @@ private WatermarkEncoder getWatermarkEncoder() {
     for (int i = 0; i < fields.length; i++) {
       columnNameList.add(fields[i].getName());
       columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(),i);
+      columnNameIndex.put(fields[i].getName(), i);
     }
-    return new IoTDBJDBCResultSet(null, columnNameList, columnTypeList, columnNameIndex, false, client, null, 0, sessionId, null, (long)60 * 1000);
+    return new IoTDBJDBCResultSet(
+        null,
+        columnNameList,
+        columnTypeList,
+        columnNameIndex,
+        false,
+        client,
+        null,
+        0,
+        sessionId,
+        null,
+        (long) 60 * 1000);
   }
 
   @Override
-  public ResultSet getPseudoColumns(String catalog, String schemaPattern, String tableNamePattern,
-                                    String columnNamePattern) throws SQLException {
-   Statement stmt= connection.createStatement();
+  public ResultSet getPseudoColumns(
+      String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern)
+      throws SQLException {
+    Statement stmt = connection.createStatement();
     Field[] fields = new Field[12];
     fields[0] = new Field("", "TABLE_CAT", "TEXT");
     fields[1] = new Field("", "TABLE_SCHEM", "TEXT");
@@ -1186,37 +1519,62 @@ private WatermarkEncoder getWatermarkEncoder() {
     fields[9] = new Field("", "REMARKS", "TEXT");
     fields[10] = new Field("", "CHAR_OCTET_LENGTH", "INT32");
     fields[11] = new Field("", "IS_NULLABLE", "TEXT");
-    List<TSDataType> listType=Arrays.asList(TSDataType.TEXT,TSDataType.TEXT,TSDataType.TEXT,TSDataType.TEXT,
-            TSDataType.INT32, TSDataType.INT32,TSDataType.INT32,TSDataType.INT32,TSDataType.TEXT,
-            TSDataType.TEXT,TSDataType.INT32,TSDataType.TEXT);
-    List<Object> listVal=Arrays.asList(catalog,catalog,tableNamePattern,"times",Types.BIGINT,1,0,2,"","",13,"NO");
-    List<String> columnNameList=new ArrayList<String>();
-    List<String> columnTypeList=new ArrayList<String>();
-    Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
-    List<List<Map>> bigproperties=new ArrayList<List<Map>>();
-    List<Map> properties=new ArrayList<Map>();
-    ListDataSet dataSet=new ListDataSet();
-    for (int i=0;i<fields.length;i++){
+    List<TSDataType> listType =
+        Arrays.asList(
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.INT32,
+            TSDataType.INT32,
+            TSDataType.INT32,
+            TSDataType.INT32,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.INT32,
+            TSDataType.TEXT);
+    List<Object> listVal =
+        Arrays.asList(
+            catalog, catalog, tableNamePattern, "times", Types.BIGINT, 1, 0, 2, "", "", 13, "NO");
+    List<String> columnNameList = new ArrayList<String>();
+    List<String> columnTypeList = new ArrayList<String>();
+    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
+    List<List<Map>> bigproperties = new ArrayList<List<Map>>();
+    List<Map> properties = new ArrayList<Map>();
+    ListDataSet dataSet = new ListDataSet();
+    for (int i = 0; i < fields.length; i++) {
       columnNameList.add(fields[i].getName());
       columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(),i);
-      Map<String,Object> m=new HashMap<>();
-      m.put("type",listType.get(i));
-      m.put("val",listVal.get(i));
+      columnNameIndex.put(fields[i].getName(), i);
+      Map<String, Object> m = new HashMap<>();
+      m.put("type", listType.get(i));
+      m.put("val", listVal.get(i));
       properties.add(m);
     }
     bigproperties.add(properties);
-    addToDataSet(bigproperties,dataSet);
-    TSQueryDataSet tsdataset=null;
+    addToDataSet(bigproperties, dataSet);
+    TSQueryDataSet tsdataset = null;
     try {
-      tsdataset=convertQueryDataSetByFetchSize(dataSet,stmt.getFetchSize(),getWatermarkEncoder());
+      tsdataset =
+          convertQueryDataSetByFetchSize(dataSet, stmt.getFetchSize(), getWatermarkEncoder());
     } catch (IOException e) {
       e.printStackTrace();
-    }finally {
-      colse(null,stmt);
+    } finally {
+      colse(null, stmt);
     }
-    return new IoTDBJDBCResultSet(stmt, columnNameList, columnTypeList, columnNameIndex, true, client,
-            null, 0, sessionId, tsdataset, (long)60 * 1000,false);
+    return new IoTDBJDBCResultSet(
+        stmt,
+        columnNameList,
+        columnTypeList,
+        columnNameIndex,
+        true,
+        client,
+        null,
+        0,
+        sessionId,
+        tsdataset,
+        (long) 60 * 1000,
+        false);
   }
 
   @Override
@@ -1225,12 +1583,12 @@ private WatermarkEncoder getWatermarkEncoder() {
   }
 
   @Override
-  public RowIdLifetime getRowIdLifetime(){
+  public RowIdLifetime getRowIdLifetime() {
     return RowIdLifetime.ROWID_UNSUPPORTED;
   }
 
   @Override
-  public String getSQLKeywords(){
+  public String getSQLKeywords() {
     return sqlKeywordsThatArentSQL92;
   }
 
@@ -1240,72 +1598,84 @@ private WatermarkEncoder getWatermarkEncoder() {
   }
 
   @Override
-  public String getSchemaTerm(){
+  public String getSchemaTerm() {
     return "stroge group";
   }
 
   @Override
   public ResultSet getSchemas() throws SQLException {
-    Statement stmt=this.connection.createStatement();
-    ResultSet rs=stmt.executeQuery("SHOW STORAGE GROUP ");
+    Statement stmt = this.connection.createStatement();
+    ResultSet rs = stmt.executeQuery("SHOW STORAGE GROUP ");
     Field[] fields = new Field[2];
     fields[0] = new Field("", "TABLE_SCHEM", "TEXT");
     fields[1] = new Field("", "TABLE_CATALOG", "TEXT");
-    List<TSDataType> listType=Arrays.asList(TSDataType.TEXT, TSDataType.TEXT);
-    List<String> columnNameList=new ArrayList<String>();
-    List<String> columnTypeList=new ArrayList<String>();
-    Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
-    List<List<Map>> bigproperties=new ArrayList<List<Map>>();
-    ListDataSet dataSet=new ListDataSet();
-    for (int i=0;i<fields.length;i++){
+    List<TSDataType> listType = Arrays.asList(TSDataType.TEXT, TSDataType.TEXT);
+    List<String> columnNameList = new ArrayList<String>();
+    List<String> columnTypeList = new ArrayList<String>();
+    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
+    List<List<Map>> bigproperties = new ArrayList<List<Map>>();
+    ListDataSet dataSet = new ListDataSet();
+    for (int i = 0; i < fields.length; i++) {
       columnNameList.add(fields[i].getName());
       columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(),i);
+      columnNameIndex.put(fields[i].getName(), i);
     }
-    while (rs.next()){
-      List<Map> properties=new ArrayList<Map>();
+    while (rs.next()) {
+      List<Map> properties = new ArrayList<Map>();
       for (int i = 0; i < fields.length; i++) {
-        Map<String,Object> m=new HashMap<>();
-        m.put("type",listType.get(i));
-        m.put("val",rs.getString(1));
+        Map<String, Object> m = new HashMap<>();
+        m.put("type", listType.get(i));
+        m.put("val", rs.getString(1));
         properties.add(m);
       }
       bigproperties.add(properties);
     }
-    addToDataSet(bigproperties,dataSet);
-    TSQueryDataSet tsdataset=null;
+    addToDataSet(bigproperties, dataSet);
+    TSQueryDataSet tsdataset = null;
     try {
-      tsdataset=convertQueryDataSetByFetchSize(dataSet,stmt.getFetchSize(),getWatermarkEncoder());
+      tsdataset =
+          convertQueryDataSetByFetchSize(dataSet, stmt.getFetchSize(), getWatermarkEncoder());
     } catch (IOException e) {
       e.printStackTrace();
-    }finally {
-      colse(rs,stmt);
+    } finally {
+      colse(rs, stmt);
     }
-    return new IoTDBJDBCResultSet(stmt, columnNameList, columnTypeList, columnNameIndex, true, client,
-            null, 0, sessionId, tsdataset, (long)60 * 1000,false);
+    return new IoTDBJDBCResultSet(
+        stmt,
+        columnNameList,
+        columnTypeList,
+        columnNameIndex,
+        true,
+        client,
+        null,
+        0,
+        sessionId,
+        tsdataset,
+        (long) 60 * 1000,
+        false);
   }
 
   @Override
   public ResultSet getSchemas(String catalog, String schemaPattern) throws SQLException {
-   return getSchemas();
+    return getSchemas();
   }
 
   @Override
-  public String getSearchStringEscape(){
+  public String getSearchStringEscape() {
     return "\\";
   }
 
   @Override
-  public String getStringFunctions(){
+  public String getStringFunctions() {
     return getSystemFunctions();
   }
 
   @Override
   public ResultSet getSuperTables(String catalog, String schemaPattern, String tableNamePattern)
-          throws SQLException {
-    List<String> columnNameList=new ArrayList<String>();
-    List<String> columnTypeList=new ArrayList<String>();
-    Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
+      throws SQLException {
+    List<String> columnNameList = new ArrayList<String>();
+    List<String> columnTypeList = new ArrayList<String>();
+    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
     Field[] fields = new Field[4];
     fields[0] = new Field("", "TABLE_CAT", "TEXT");
     fields[1] = new Field("", "TABLE_SCHEM", "TEXT");
@@ -1314,17 +1684,28 @@ private WatermarkEncoder getWatermarkEncoder() {
     for (int i = 0; i < fields.length; i++) {
       columnNameList.add(fields[i].getName());
       columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(),i);
+      columnNameIndex.put(fields[i].getName(), i);
     }
-    return new IoTDBJDBCResultSet(null, columnNameList, columnTypeList, columnNameIndex, false, client, null, 0, sessionId, null, (long)60 * 1000);
+    return new IoTDBJDBCResultSet(
+        null,
+        columnNameList,
+        columnTypeList,
+        columnNameIndex,
+        false,
+        client,
+        null,
+        0,
+        sessionId,
+        null,
+        (long) 60 * 1000);
   }
 
   @Override
   public ResultSet getSuperTypes(String catalog, String schemaPattern, String typeNamePattern)
-          throws SQLException {
-    List<String> columnNameList=new ArrayList<String>();
-    List<String> columnTypeList=new ArrayList<String>();
-    Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
+      throws SQLException {
+    List<String> columnNameList = new ArrayList<String>();
+    List<String> columnTypeList = new ArrayList<String>();
+    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
     Field[] fields = new Field[6];
     fields[0] = new Field("", "TABLE_CAT", "TEXT");
     fields[1] = new Field("", "TABLE_SCHEM", "TEXT");
@@ -1335,31 +1716,42 @@ private WatermarkEncoder getWatermarkEncoder() {
     for (int i = 0; i < fields.length; i++) {
       columnNameList.add(fields[i].getName());
       columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(),i);
+      columnNameIndex.put(fields[i].getName(), i);
     }
-    return new IoTDBJDBCResultSet(null, columnNameList, columnTypeList, columnNameIndex, false, client, null, 0, sessionId, null, (long)60 * 1000);
+    return new IoTDBJDBCResultSet(
+        null,
+        columnNameList,
+        columnTypeList,
+        columnNameIndex,
+        false,
+        client,
+        null,
+        0,
+        sessionId,
+        null,
+        (long) 60 * 1000);
   }
 
   @Override
   public String getSystemFunctions() {
-    String result="";
-    Statement statement=null;
-    ResultSet resultSet=null;
+    String result = "";
+    Statement statement = null;
+    ResultSet resultSet = null;
     try {
-      statement =connection.createStatement();
-      StringBuilder str=new StringBuilder("");
-       resultSet = statement.executeQuery("show functions");
-      while (resultSet.next()){
+      statement = connection.createStatement();
+      StringBuilder str = new StringBuilder("");
+      resultSet = statement.executeQuery("show functions");
+      while (resultSet.next()) {
         str.append(resultSet.getString(1)).append(",");
       }
-      result=str.toString();
-      if(result.length()>0){
-        result=result.substring(0,result.length()-1);
+      result = str.toString();
+      if (result.length() > 0) {
+        result = result.substring(0, result.length() - 1);
       }
-    }catch (Exception ex){
+    } catch (Exception ex) {
       ex.printStackTrace();
-    }finally {
-      colse(resultSet,statement);
+    } finally {
+      colse(resultSet, statement);
     }
     return result;
   }
@@ -1367,107 +1759,6 @@ private WatermarkEncoder getWatermarkEncoder() {
   @Override
   public ResultSet getTablePrivileges(String catalog, String schemaPattern, String tableNamePattern)
       throws SQLException {
-    Statement stmt=this.connection.createStatement();
-
-    String sql="SHOW STORAGE GROUP";
-    if(catalog!=null&&catalog.length()>0){
-      sql=sql +" "+catalog;
-    }else if(schemaPattern!=null&&schemaPattern.length()>0){
-      sql=sql +" "+schemaPattern;
-    }
-    if(((catalog!=null&&catalog.length()>0)||schemaPattern!=null&&schemaPattern.length()>0)&&tableNamePattern!=null&&tableNamePattern.length()>0){
-      sql=sql +"."+tableNamePattern;
-    }
-
-    ResultSet rs=stmt.executeQuery(sql);
-    Field[] fields = new Field[8];
-    fields[0] = new Field("", "TABLE_CAT", "TEXT");
-    fields[1] = new Field("", "TABLE_SCHEM", "TEXT");
-    fields[2] = new Field("", "TABLE_NAME", "TEXT");
-    fields[3] = new Field("", "COLUMN_NAME", "TEXT");
-    fields[4] = new Field("", "GRANTOR", "TEXT");
-    fields[5] = new Field("", "GRANTEE", "TEXT");
-    fields[6] = new Field("", "PRIVILEGE", "TEXT");
-    fields[7] = new Field("", "IS_GRANTABLE", "TEXT");
-    List<TSDataType> listType=Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT,
-        TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT);
-    List<String> columnNameList=new ArrayList<String>();
-    List<String> columnTypeList=new ArrayList<String>();
-    Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
-    List<List<Map>> bigproperties=new ArrayList<List<Map>>();
-    ListDataSet dataSet=new ListDataSet();
-    for (int i=0;i<fields.length;i++){
-      columnNameList.add(fields[i].getName());
-      columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(),i);
-    }
-    while (rs.next()){
-      List<Map> properties=new ArrayList<Map>();
-      for (int i = 0; i < fields.length; i++) {
-        Map<String,Object> m=new HashMap<>();
-        m.put("type",listType.get(i));
-        if(i<4){
-          m.put("val",rs.getString(1));
-        }else if(i==5){
-          m.put("val",getUserName());
-        }else if(i==6){
-          m.put("val","");
-        }else if(i==7){
-          m.put("val","NO");
-        }else{
-          m.put("val","");
-        }
-
-        properties.add(m);
-      }
-      bigproperties.add(properties);
-    }
-    addToDataSet(bigproperties,dataSet);
-    TSQueryDataSet tsdataset=null;
-    try {
-      tsdataset=convertQueryDataSetByFetchSize(dataSet,stmt.getFetchSize(),getWatermarkEncoder());
-    } catch (IOException e) {
-      e.printStackTrace();
-    }finally {
-      colse(rs,stmt);
-    }
-    return new IoTDBJDBCResultSet(stmt, columnNameList, columnTypeList, columnNameIndex, true, client,
-        null, 0, sessionId, tsdataset, (long)60 * 1000,false);
-  }
-
-  @Override
-  public ResultSet getTableTypes() throws SQLException {
-    Statement stmt=this.connection.createStatement();
-    List<String> columnNameList=new ArrayList<String>();
-    List<String> columnTypeList=new ArrayList<String>();
-    Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
-    List<List<Map>> bigpaths=new ArrayList<List<Map>>();
-    List<Map> paths=new ArrayList<Map>();
-    ListDataSet dataSet=new ListDataSet();
-    Map<String,Object> m=new HashMap<>();
-    m.put("type",TSDataType.TEXT);
-    m.put("val","table");
-    paths.add(m);
-    bigpaths.add(paths);
-    addToDataSet(bigpaths,dataSet);
-    columnNameList.add("TABLE_TYPE");
-    columnTypeList.add("TEXT");
-    columnNameIndex.put("TABLE_TYPE",0);
-    TSQueryDataSet tsdataset=null;
-    try {
-      tsdataset=convertQueryDataSetByFetchSize(dataSet,stmt.getFetchSize(),getWatermarkEncoder());
-    } catch (IOException e) {
-      e.printStackTrace();
-    } finally {
-      colse(null,stmt);
-    }
-    return new IoTDBJDBCResultSet(stmt, columnNameList, columnTypeList, columnNameIndex, true, client,
-            null, 0, sessionId, tsdataset, (long)60 * 1000,false);
-  }
-
-  @Override
-  public ResultSet getColumns(String catalog, String schemaPattern, String tableNamePattern,
-      String columnNamePattern) throws SQLException {
     Statement stmt = this.connection.createStatement();
 
     String sql = "SHOW STORAGE GROUP";
@@ -1477,14 +1768,154 @@ private WatermarkEncoder getWatermarkEncoder() {
       sql = sql + " " + schemaPattern;
     }
     if (((catalog != null && catalog.length() > 0)
-        || schemaPattern != null && schemaPattern.length() > 0) && tableNamePattern != null
+            || schemaPattern != null && schemaPattern.length() > 0)
+        && tableNamePattern != null
+        && tableNamePattern.length() > 0) {
+      sql = sql + "." + tableNamePattern;
+    }
+
+    ResultSet rs = stmt.executeQuery(sql);
+    Field[] fields = new Field[8];
+    fields[0] = new Field("", "TABLE_CAT", "TEXT");
+    fields[1] = new Field("", "TABLE_SCHEM", "TEXT");
+    fields[2] = new Field("", "TABLE_NAME", "TEXT");
+    fields[3] = new Field("", "COLUMN_NAME", "TEXT");
+    fields[4] = new Field("", "GRANTOR", "TEXT");
+    fields[5] = new Field("", "GRANTEE", "TEXT");
+    fields[6] = new Field("", "PRIVILEGE", "TEXT");
+    fields[7] = new Field("", "IS_GRANTABLE", "TEXT");
+    List<TSDataType> listType =
+        Arrays.asList(
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT);
+    List<String> columnNameList = new ArrayList<String>();
+    List<String> columnTypeList = new ArrayList<String>();
+    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
+    List<List<Map>> bigproperties = new ArrayList<List<Map>>();
+    ListDataSet dataSet = new ListDataSet();
+    for (int i = 0; i < fields.length; i++) {
+      columnNameList.add(fields[i].getName());
+      columnTypeList.add(fields[i].getSqlType());
+      columnNameIndex.put(fields[i].getName(), i);
+    }
+    while (rs.next()) {
+      List<Map> properties = new ArrayList<Map>();
+      for (int i = 0; i < fields.length; i++) {
+        Map<String, Object> m = new HashMap<>();
+        m.put("type", listType.get(i));
+        if (i < 4) {
+          m.put("val", rs.getString(1));
+        } else if (i == 5) {
+          m.put("val", getUserName());
+        } else if (i == 6) {
+          m.put("val", "");
+        } else if (i == 7) {
+          m.put("val", "NO");
+        } else {
+          m.put("val", "");
+        }
+
+        properties.add(m);
+      }
+      bigproperties.add(properties);
+    }
+    addToDataSet(bigproperties, dataSet);
+    TSQueryDataSet tsdataset = null;
+    try {
+      tsdataset =
+          convertQueryDataSetByFetchSize(dataSet, stmt.getFetchSize(), getWatermarkEncoder());
+    } catch (IOException e) {
+      e.printStackTrace();
+    } finally {
+      colse(rs, stmt);
+    }
+    return new IoTDBJDBCResultSet(
+        stmt,
+        columnNameList,
+        columnTypeList,
+        columnNameIndex,
+        true,
+        client,
+        null,
+        0,
+        sessionId,
+        tsdataset,
+        (long) 60 * 1000,
+        false);
+  }
+
+  @Override
+  public ResultSet getTableTypes() throws SQLException {
+    Statement stmt = this.connection.createStatement();
+    List<String> columnNameList = new ArrayList<String>();
+    List<String> columnTypeList = new ArrayList<String>();
+    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
+    List<List<Map>> bigpaths = new ArrayList<List<Map>>();
+    List<Map> paths = new ArrayList<Map>();
+    ListDataSet dataSet = new ListDataSet();
+    Map<String, Object> m = new HashMap<>();
+    m.put("type", TSDataType.TEXT);
+    m.put("val", "table");
+    paths.add(m);
+    bigpaths.add(paths);
+    addToDataSet(bigpaths, dataSet);
+    columnNameList.add("TABLE_TYPE");
+    columnTypeList.add("TEXT");
+    columnNameIndex.put("TABLE_TYPE", 0);
+    TSQueryDataSet tsdataset = null;
+    try {
+      tsdataset =
+          convertQueryDataSetByFetchSize(dataSet, stmt.getFetchSize(), getWatermarkEncoder());
+    } catch (IOException e) {
+      e.printStackTrace();
+    } finally {
+      colse(null, stmt);
+    }
+    return new IoTDBJDBCResultSet(
+        stmt,
+        columnNameList,
+        columnTypeList,
+        columnNameIndex,
+        true,
+        client,
+        null,
+        0,
+        sessionId,
+        tsdataset,
+        (long) 60 * 1000,
+        false);
+  }
+
+  @Override
+  public ResultSet getColumns(
+      String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern)
+      throws SQLException {
+    Statement stmt = this.connection.createStatement();
+
+    String sql = "SHOW STORAGE GROUP";
+    if (catalog != null && catalog.length() > 0) {
+      sql = sql + " " + catalog;
+    } else if (schemaPattern != null && schemaPattern.length() > 0) {
+      sql = sql + " " + schemaPattern;
+    }
+    if (((catalog != null && catalog.length() > 0)
+            || schemaPattern != null && schemaPattern.length() > 0)
+        && tableNamePattern != null
         && tableNamePattern.length() > 0) {
       sql = sql + "." + tableNamePattern;
     }
 
     if (((catalog != null && catalog.length() > 0)
-        || schemaPattern != null && schemaPattern.length() > 0)
-        && tableNamePattern != null && tableNamePattern.length() > 0 && columnNamePattern != null
+            || schemaPattern != null && schemaPattern.length() > 0)
+        && tableNamePattern != null
+        && tableNamePattern.length() > 0
+        && columnNamePattern != null
         && columnNamePattern.length() > 0) {
       sql = sql + "." + columnNamePattern;
     }
@@ -1515,13 +1946,32 @@ private WatermarkEncoder getWatermarkEncoder() {
     fields[22] = new Field("", "IS_AUTOINCREMENT", "TEXT");
     fields[23] = new Field("", "IS_GENERATEDCOLUMN", "TEXT");
 
-    List<TSDataType> listType = Arrays
-        .asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT,
-            TSDataType.INT32, TSDataType.TEXT, TSDataType.INT32, TSDataType.INT32,
-            TSDataType.INT32,TSDataType.INT32,TSDataType.INT32,TSDataType.TEXT, TSDataType.TEXT,
-            TSDataType.INT32, TSDataType.INT32, TSDataType.INT32, TSDataType.INT32,
-            TSDataType.TEXT, TSDataType.TEXT,TSDataType.TEXT, TSDataType.TEXT,
-            TSDataType.INT32,TSDataType.TEXT, TSDataType.TEXT);
+    List<TSDataType> listType =
+        Arrays.asList(
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.INT32,
+            TSDataType.TEXT,
+            TSDataType.INT32,
+            TSDataType.INT32,
+            TSDataType.INT32,
+            TSDataType.INT32,
+            TSDataType.INT32,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.INT32,
+            TSDataType.INT32,
+            TSDataType.INT32,
+            TSDataType.INT32,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.INT32,
+            TSDataType.TEXT,
+            TSDataType.TEXT);
     List<String> columnNameList = new ArrayList<String>();
     List<String> columnTypeList = new ArrayList<String>();
     Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
@@ -1541,43 +1991,43 @@ private WatermarkEncoder getWatermarkEncoder() {
           m.put("val", rs.getString(1));
         } else if (i == 4) {
           m.put("val", getSQLType(fields[i].getSqlType()));
-        }  else if (i == 6) {
+        } else if (i == 6) {
           m.put("val", getTypePrecision(fields[i].getSqlType()));
-        } else if(i==7){
+        } else if (i == 7) {
           m.put("val", 0);
-        }else if(i==8){
+        } else if (i == 8) {
           m.put("val", getTypeScale(fields[i].getSqlType()));
-        }else if(i==9){
+        } else if (i == 9) {
           m.put("val", 10);
-        }else if(i==10){
+        } else if (i == 10) {
           m.put("val", 0);
-        }else if(i==11){
+        } else if (i == 11) {
           m.put("val", "");
-        }else if(i==12){
+        } else if (i == 12) {
           m.put("val", "");
-        }else if(i==13){
+        } else if (i == 13) {
           m.put("val", 0);
-        }else if(i==14){
+        } else if (i == 14) {
           m.put("val", 0);
-        }else if(i==15){
+        } else if (i == 15) {
           m.put("val", getTypePrecision(fields[i].getSqlType()));
-        }else if(i==16){
+        } else if (i == 16) {
           m.put("val", 1);
-        }else if(i==17){
+        } else if (i == 17) {
           m.put("val", "NO");
-        }else if(i==18){
+        } else if (i == 18) {
           m.put("val", "");
-        }else if(i==19){
+        } else if (i == 19) {
           m.put("val", "");
-        }else if(i==20){
+        } else if (i == 20) {
           m.put("val", "");
-        }else if(i==21){
+        } else if (i == 21) {
           m.put("val", 0);
-        }else if(i==22){
+        } else if (i == 22) {
           m.put("val", "NO");
-        }else if(i==23){
+        } else if (i == 23) {
           m.put("val", "NO");
-        }else{
+        } else {
           m.put("val", "");
         }
 
@@ -1588,56 +2038,63 @@ private WatermarkEncoder getWatermarkEncoder() {
     addToDataSet(bigproperties, dataSet);
     TSQueryDataSet tsdataset = null;
     try {
-      tsdataset = convertQueryDataSetByFetchSize(dataSet, stmt.getFetchSize(),
-          getWatermarkEncoder());
+      tsdataset =
+          convertQueryDataSetByFetchSize(dataSet, stmt.getFetchSize(), getWatermarkEncoder());
     } catch (IOException e) {
       e.printStackTrace();
-    }finally {
-      colse(rs,stmt);
+    } finally {
+      colse(rs, stmt);
     }
-    return new IoTDBJDBCResultSet(stmt, columnNameList, columnTypeList, columnNameIndex, true,
+    return new IoTDBJDBCResultSet(
+        stmt,
+        columnNameList,
+        columnTypeList,
+        columnNameIndex,
+        true,
         client,
-        null, 0, sessionId, tsdataset, (long) 60 * 1000, false);
-
-
+        null,
+        0,
+        sessionId,
+        tsdataset,
+        (long) 60 * 1000,
+        false);
   }
-    private void colse(ResultSet rs ,Statement stmt){
+
+  private void colse(ResultSet rs, Statement stmt) {
     if (rs != null) {
       try {
         rs.close();
       } catch (Exception ex) {
         rs = null;
       }
-
     }
     try {
-      if(stmt!=null){
+      if (stmt != null) {
         stmt.close();
       }
-    }catch (Exception ex){
-      stmt=null;
+    } catch (Exception ex) {
+      stmt = null;
     }
-
   }
 
-    public int getTypeScale(String columnType){
-      switch (columnType.toUpperCase()) {
-        case "BOOLEAN":
-        case "INT32":
-        case "INT64":
-        case "TEXT":
-          return 0;
-        case "FLOAT":
-          return 6;
-        case "DOUBLE":
-          return 15;
-        default:
-          break;
-      }
-      return 0;
-
+  public int getTypeScale(String columnType) {
+    switch (columnType.toUpperCase()) {
+      case "BOOLEAN":
+      case "INT32":
+      case "INT64":
+      case "TEXT":
+        return 0;
+      case "FLOAT":
+        return 6;
+      case "DOUBLE":
+        return 15;
+      default:
+        break;
+    }
+    return 0;
   }
-  private int getSQLType(String columnType){
+
+  private int getSQLType(String columnType) {
     switch (columnType.toUpperCase()) {
       case "BOOLEAN":
         return Types.BOOLEAN;
@@ -1655,9 +2112,9 @@ private WatermarkEncoder getWatermarkEncoder() {
         break;
     }
     return 0;
-
   }
-  private int getTypePrecision(String columnType){
+
+  private int getTypePrecision(String columnType) {
     // BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT,
     switch (columnType.toUpperCase()) {
       case "BOOLEAN":
@@ -1682,19 +2139,22 @@ private WatermarkEncoder getWatermarkEncoder() {
   public ResultSet getTables(
       String catalog, String schemaPattern, String tableNamePattern, String[] types)
       throws SQLException {
-    Statement stmt=this.connection.createStatement();
+    Statement stmt = this.connection.createStatement();
 
-    String sql="SHOW STORAGE GROUP";
-    if(catalog!=null&&catalog.length()>0){
-      sql=sql +" "+catalog;
-    }else if(schemaPattern!=null&&schemaPattern.length()>0){
-      sql=sql +" "+schemaPattern;
+    String sql = "SHOW STORAGE GROUP";
+    if (catalog != null && catalog.length() > 0) {
+      sql = sql + " " + catalog;
+    } else if (schemaPattern != null && schemaPattern.length() > 0) {
+      sql = sql + " " + schemaPattern;
     }
-    if(((catalog!=null&&catalog.length()>0)||schemaPattern!=null&&schemaPattern.length()>0)&&tableNamePattern!=null&&tableNamePattern.length()>0){
-      sql=sql +"."+tableNamePattern;
+    if (((catalog != null && catalog.length() > 0)
+            || schemaPattern != null && schemaPattern.length() > 0)
+        && tableNamePattern != null
+        && tableNamePattern.length() > 0) {
+      sql = sql + "." + tableNamePattern;
     }
 
-    ResultSet rs=stmt.executeQuery(sql);
+    ResultSet rs = stmt.executeQuery(sql);
     Field[] fields = new Field[10];
     fields[0] = new Field("", "TABLE_CAT", "TEXT");
     fields[1] = new Field("", "TABLE_SCHEM", "TEXT");
@@ -1707,43 +2167,65 @@ private WatermarkEncoder getWatermarkEncoder() {
     fields[8] = new Field("", "SELF_REFERENCING_COL_NAME", "TEXT");
     fields[9] = new Field("", "REF_GENERATION", "TEXT");
 
-    List<TSDataType> listType=Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT,
-        TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT);
-    List<String> columnNameList=new ArrayList<String>();
-    List<String> columnTypeList=new ArrayList<String>();
-    Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
-    List<List<Map>> bigproperties=new ArrayList<List<Map>>();
-    ListDataSet dataSet=new ListDataSet();
-    for (int i=0;i<fields.length;i++){
+    List<TSDataType> listType =
+        Arrays.asList(
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT);
+    List<String> columnNameList = new ArrayList<String>();
+    List<String> columnTypeList = new ArrayList<String>();
+    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
+    List<List<Map>> bigproperties = new ArrayList<List<Map>>();
+    ListDataSet dataSet = new ListDataSet();
+    for (int i = 0; i < fields.length; i++) {
       columnNameList.add(fields[i].getName());
       columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(),i);
+      columnNameIndex.put(fields[i].getName(), i);
     }
-    while (rs.next()){
-      List<Map> properties=new ArrayList<Map>();
+    while (rs.next()) {
+      List<Map> properties = new ArrayList<Map>();
       for (int i = 0; i < fields.length; i++) {
-        Map<String,Object> m=new HashMap<>();
-        m.put("type",listType.get(i));
-        if(i<3){
-          m.put("val",rs.getString(1));
-        }else if(i==4){
-          m.put("val","TABLE");
-        }else{
-          m.put("val","");
+        Map<String, Object> m = new HashMap<>();
+        m.put("type", listType.get(i));
+        if (i < 3) {
+          m.put("val", rs.getString(1));
+        } else if (i == 4) {
+          m.put("val", "TABLE");
+        } else {
+          m.put("val", "");
         }
         properties.add(m);
       }
       bigproperties.add(properties);
     }
-    addToDataSet(bigproperties,dataSet);
-    TSQueryDataSet tsdataset=null;
+    addToDataSet(bigproperties, dataSet);
+    TSQueryDataSet tsdataset = null;
     try {
-      tsdataset=convertQueryDataSetByFetchSize(dataSet,stmt.getFetchSize(),getWatermarkEncoder());
+      tsdataset =
+          convertQueryDataSetByFetchSize(dataSet, stmt.getFetchSize(), getWatermarkEncoder());
     } catch (IOException e) {
       e.printStackTrace();
     }
-    return new IoTDBJDBCResultSet(stmt, columnNameList, columnTypeList, columnNameIndex, true, client,
-        null, 0, sessionId, tsdataset, (long)60 * 1000,false);
+    return new IoTDBJDBCResultSet(
+        stmt,
+        columnNameList,
+        columnTypeList,
+        columnNameIndex,
+        true,
+        client,
+        null,
+        0,
+        sessionId,
+        tsdataset,
+        (long) 60 * 1000,
+        false);
   }
 
   @Override
@@ -1753,7 +2235,7 @@ private WatermarkEncoder getWatermarkEncoder() {
 
   @Override
   public ResultSet getTypeInfo() throws SQLException {
-    Statement stmt=connection.createStatement();
+    Statement stmt = connection.createStatement();
     Field[] fields = new Field[18];
     fields[0] = new Field("", "TYPE_NAME", "TEXT");
     fields[1] = new Field("", "DATA_TYPE", "INT32");
@@ -1773,58 +2255,202 @@ private WatermarkEncoder getWatermarkEncoder() {
     fields[15] = new Field("", "SQL_DATA_TYPE", "INT32");
     fields[16] = new Field("", "SQL_DATETIME_SUB", "INT32");
     fields[17] = new Field("", "NUM_PREC_RADIX", "INT32");
-    List<TSDataType> listType=Arrays.asList(TSDataType.TEXT,TSDataType.INT32,TSDataType.INT32,TSDataType.TEXT,
-            TSDataType.TEXT, TSDataType.TEXT,TSDataType.INT32,TSDataType.BOOLEAN,
-            TSDataType.TEXT,TSDataType.BOOLEAN,TSDataType.BOOLEAN,TSDataType.BOOLEAN,TSDataType.TEXT,TSDataType.INT32,
-            TSDataType.INT32,TSDataType.INT32,TSDataType.INT32,TSDataType.INT32);
-    List<Object> listValSub_1=Arrays.asList("INT32",Types.INTEGER,10,"","","",1,true,"",false,true,false,"",0,10,0,0,10);
-    List<Object> listValSub_2=Arrays.asList("INT64",Types.BIGINT,19,"","","",1,true,"",false,true,false,"",0,10,0,0,10);
-    List<Object> listValSub_3=Arrays.asList("BOOLEAN",Types.BOOLEAN,1,"","","",1,true,"",false,true,false,"",0,10,0,0,10);
-    List<Object> listValSub_4=Arrays.asList("FLOAT",Types.FLOAT,38,"","","",1,true,"",false,true,false,"",0,10,0,0,10);
-    List<Object> listValSub_5=Arrays.asList("DOUBLE",Types.DOUBLE,308,"","","",1,true,"",false,true,false,"",0,10,0,0,10);
-    List<Object> listValSub_6=Arrays.asList("TEXT",Types.LONGVARCHAR,64,"","","",1,true,"",false,true,false,"",0,10,0,0,10);
-    List<List<Object>> listVal=Arrays.asList(listValSub_1,listValSub_2,listValSub_3,listValSub_4,listValSub_5,listValSub_6);
-    List<String> columnNameList=new ArrayList<String>();
-    List<String> columnTypeList=new ArrayList<String>();
-    Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
-    List<List<Map>> bigproperties=new ArrayList<List<Map>>();
-    ListDataSet dataSet=new ListDataSet();
-    for (int i=0;i<fields.length;i++){
+    List<TSDataType> listType =
+        Arrays.asList(
+            TSDataType.TEXT,
+            TSDataType.INT32,
+            TSDataType.INT32,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.INT32,
+            TSDataType.BOOLEAN,
+            TSDataType.TEXT,
+            TSDataType.BOOLEAN,
+            TSDataType.BOOLEAN,
+            TSDataType.BOOLEAN,
+            TSDataType.TEXT,
+            TSDataType.INT32,
+            TSDataType.INT32,
+            TSDataType.INT32,
+            TSDataType.INT32,
+            TSDataType.INT32);
+    List<Object> listValSub_1 =
+        Arrays.asList(
+            "INT32",
+            Types.INTEGER,
+            10,
+            "",
+            "",
+            "",
+            1,
+            true,
+            "",
+            false,
+            true,
+            false,
+            "",
+            0,
+            10,
+            0,
+            0,
+            10);
+    List<Object> listValSub_2 =
+        Arrays.asList(
+            "INT64",
+            Types.BIGINT,
+            19,
+            "",
+            "",
+            "",
+            1,
+            true,
+            "",
+            false,
+            true,
+            false,
+            "",
+            0,
+            10,
+            0,
+            0,
+            10);
+    List<Object> listValSub_3 =
+        Arrays.asList(
+            "BOOLEAN",
+            Types.BOOLEAN,
+            1,
+            "",
+            "",
+            "",
+            1,
+            true,
+            "",
+            false,
+            true,
+            false,
+            "",
+            0,
+            10,
+            0,
+            0,
+            10);
+    List<Object> listValSub_4 =
+        Arrays.asList(
+            "FLOAT",
+            Types.FLOAT,
+            38,
+            "",
+            "",
+            "",
+            1,
+            true,
+            "",
+            false,
+            true,
+            false,
+            "",
+            0,
+            10,
+            0,
+            0,
+            10);
+    List<Object> listValSub_5 =
+        Arrays.asList(
+            "DOUBLE",
+            Types.DOUBLE,
+            308,
+            "",
+            "",
+            "",
+            1,
+            true,
+            "",
+            false,
+            true,
+            false,
+            "",
+            0,
+            10,
+            0,
+            0,
+            10);
+    List<Object> listValSub_6 =
+        Arrays.asList(
+            "TEXT",
+            Types.LONGVARCHAR,
+            64,
+            "",
+            "",
+            "",
+            1,
+            true,
+            "",
+            false,
+            true,
+            false,
+            "",
+            0,
+            10,
+            0,
+            0,
+            10);
+    List<List<Object>> listVal =
+        Arrays.asList(
+            listValSub_1, listValSub_2, listValSub_3, listValSub_4, listValSub_5, listValSub_6);
+    List<String> columnNameList = new ArrayList<String>();
+    List<String> columnTypeList = new ArrayList<String>();
+    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
+    List<List<Map>> bigproperties = new ArrayList<List<Map>>();
+    ListDataSet dataSet = new ListDataSet();
+    for (int i = 0; i < fields.length; i++) {
       columnNameList.add(fields[i].getName());
       columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(),i);
-      Map<String,Object> m=new HashMap<>();
+      columnNameIndex.put(fields[i].getName(), i);
+      Map<String, Object> m = new HashMap<>();
     }
-    for (List<Object> listob:listVal) {
-      List<Map> properties=new ArrayList<Map>();
+    for (List<Object> listob : listVal) {
+      List<Map> properties = new ArrayList<Map>();
       for (int i = 0; i < fields.length; i++) {
-        Map<String,Object> m=new HashMap<>();
-        m.put("type",listType.get(i));
-        m.put("val",listob.get(i));
+        Map<String, Object> m = new HashMap<>();
+        m.put("type", listType.get(i));
+        m.put("val", listob.get(i));
         properties.add(m);
       }
       bigproperties.add(properties);
     }
-    addToDataSet(bigproperties,dataSet);
-    TSQueryDataSet tsdataset=null;
+    addToDataSet(bigproperties, dataSet);
+    TSQueryDataSet tsdataset = null;
     try {
-      tsdataset=convertQueryDataSetByFetchSize(dataSet,stmt.getFetchSize(),getWatermarkEncoder());
+      tsdataset =
+          convertQueryDataSetByFetchSize(dataSet, stmt.getFetchSize(), getWatermarkEncoder());
     } catch (IOException e) {
       e.printStackTrace();
-    }finally {
-      colse(null,stmt);
+    } finally {
+      colse(null, stmt);
     }
-    return new IoTDBJDBCResultSet(stmt, columnNameList, columnTypeList, columnNameIndex, true, client,
-            null, 0, sessionId, tsdataset, (long)60 * 1000,false);
+    return new IoTDBJDBCResultSet(
+        stmt,
+        columnNameList,
+        columnTypeList,
+        columnNameIndex,
+        true,
+        client,
+        null,
+        0,
+        sessionId,
+        tsdataset,
+        (long) 60 * 1000,
+        false);
   }
 
   @Override
-  public ResultSet getUDTs(String catalog, String schemaPattern, String typeNamePattern,
-                           int[] types)
-          throws SQLException {
-    List<String> columnNameList=new ArrayList<String>();
-    List<String> columnTypeList=new ArrayList<String>();
-    Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
+  public ResultSet getUDTs(
+      String catalog, String schemaPattern, String typeNamePattern, int[] types)
+      throws SQLException {
+    List<String> columnNameList = new ArrayList<String>();
+    List<String> columnTypeList = new ArrayList<String>();
+    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
     Field[] fields = new Field[7];
     fields[0] = new Field("", "TABLE_CAT", "TEXT");
     fields[1] = new Field("", "TABLE_SCHEM", "TEXT");
@@ -1836,16 +2462,26 @@ private WatermarkEncoder getWatermarkEncoder() {
     for (int i = 0; i < fields.length; i++) {
       columnNameList.add(fields[i].getName());
       columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(),i);
+      columnNameIndex.put(fields[i].getName(), i);
     }
-    return new IoTDBJDBCResultSet(null, columnNameList, columnTypeList, columnNameIndex, false, client, null, 0, sessionId, null, (long)60 * 1000);
+    return new IoTDBJDBCResultSet(
+        null,
+        columnNameList,
+        columnTypeList,
+        columnNameIndex,
+        false,
+        client,
+        null,
+        0,
+        sessionId,
+        null,
+        (long) 60 * 1000);
   }
 
   @Override
   public String getURL() {
     // TODO: Return the URL for this DBMS or null if it cannot be generated
     return this.connection.getUrl();
-
   }
 
   @Override
@@ -1855,10 +2491,10 @@ private WatermarkEncoder getWatermarkEncoder() {
 
   @Override
   public ResultSet getVersionColumns(String catalog, String schema, String table)
-          throws SQLException {
-    List<String> columnNameList=new ArrayList<String>();
-    List<String> columnTypeList=new ArrayList<String>();
-    Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
+      throws SQLException {
+    List<String> columnNameList = new ArrayList<String>();
+    List<String> columnTypeList = new ArrayList<String>();
+    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
     Field[] fields = new Field[8];
     fields[0] = new Field("", "SCOPE", "INT32");
     fields[1] = new Field("", "COLUMN_NAME", "TEXT");
@@ -1871,9 +2507,20 @@ private WatermarkEncoder getWatermarkEncoder() {
     for (int i = 0; i < fields.length; i++) {
       columnNameList.add(fields[i].getName());
       columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(),i);
+      columnNameIndex.put(fields[i].getName(), i);
     }
-    return new IoTDBJDBCResultSet(null, columnNameList, columnTypeList, columnNameIndex, false, client, null, 0, sessionId, null, (long)60 * 1000);
+    return new IoTDBJDBCResultSet(
+        null,
+        columnNameList,
+        columnTypeList,
+        columnNameIndex,
+        false,
+        client,
+        null,
+        0,
+        sessionId,
+        null,
+        (long) 60 * 1000);
   }
 
   @Override
@@ -2218,7 +2865,7 @@ private WatermarkEncoder getWatermarkEncoder() {
 
   @Override
   public boolean supportsResultSetHoldability(int holdability) {
-    if(ResultSet.HOLD_CURSORS_OVER_COMMIT==holdability){
+    if (ResultSet.HOLD_CURSORS_OVER_COMMIT == holdability) {
       return true;
     }
     return false;
@@ -2226,7 +2873,7 @@ private WatermarkEncoder getWatermarkEncoder() {
 
   @Override
   public boolean supportsResultSetType(int type) throws SQLException {
-    if(ResultSet.FETCH_FORWARD==type||ResultSet.TYPE_FORWARD_ONLY==type){
+    if (ResultSet.FETCH_FORWARD == type || ResultSet.TYPE_FORWARD_ONLY == type) {
       return true;
     }
     return false;

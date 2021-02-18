@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.jdbc;
 
-import java.sql.Connection;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Types;
@@ -174,7 +173,7 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
     }
     // BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT,
     String columnType;
-    if(!ignoreTimestamp) {
+    if (!ignoreTimestamp) {
       columnType = columnTypeList.get(column - 2);
     } else {
       columnType = columnTypeList.get(column - 1);
@@ -232,7 +231,7 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
     if (column == 1 && !ignoreTimestamp) {
       return "TIME";
     }
-    //Temporarily use column names as getSchemaName
+    // Temporarily use column names as getSchemaName
     String columName;
     if (!ignoreTimestamp) {
       columName = columnInfoList.get(column - 2);
@@ -248,7 +247,7 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
     if (column == 1 && !ignoreTimestamp) {
       return "TIME";
     }
-    //Temporarily use column names as table names
+    // Temporarily use column names as table names
     String columName;
     if (!ignoreTimestamp) {
       columName = columnInfoList.get(column - 2);

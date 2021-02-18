@@ -19,48 +19,53 @@
 package org.apache.iotdb.jdbc;
 
 public class Field {
-    private String name;
-    private String tableName;
-    private String sqlType;
-    private Object val;
-    public Field(String tableName, String name, String sqlType) {
-        this.name = name;
-        this.tableName = tableName;
-        this.sqlType = sqlType;
-    }
-    public Field(String tableName, String name, String sqlType, Object val) {
-        this.name = name;
-        this.sqlType = sqlType;
-        this.tableName = tableName;
-        this.val = val;
-    }
-    public Object getVal() {
-        return val;
-    }
-    public void setVal(Object val) {
-        this.val = val;
-    }
-    public String getName() {
-        return name;
-    }
+  private String name;
+  private String tableName;
+  private String sqlType;
+  private Object val;
 
-    public void setName(String name) {
-        this.name = name;
-    }
+  public Field(String tableName, String name, String sqlType) {
+    this.name = name;
+    this.tableName = tableName;
+    this.sqlType = sqlType;
+  }
 
-    public String getTableName() {
-        return tableName;
-    }
+  public Field(String tableName, String name, String sqlType, Object val) {
+    this.name = name;
+    this.sqlType = sqlType;
+    this.tableName = tableName;
+    this.val = val;
+  }
 
-    public void setTableName(String tableName) {
-        this.tableName = tableName;
-    }
+  public Object getVal() {
+    return val;
+  }
 
-    public String getSqlType() {
-        return sqlType;
-    }
+  public void setVal(Object val) {
+    this.val = val;
+  }
 
-    public void setSqlType(String sqlType) {
-        this.sqlType = sqlType;
-    }
+  public String getName() {
+    return name;
+  }
+
+  public void setName(String name) {
+    this.name = name;
+  }
+
+  public String getTableName() {
+    return tableName;
+  }
+
+  public void setTableName(String tableName) {
+    this.tableName = tableName;
+  }
+
+  public String getSqlType() {
+    return sqlType;
+  }
+
+  public void setSqlType(String sqlType) {
+    this.sqlType = sqlType;
+  }
 }

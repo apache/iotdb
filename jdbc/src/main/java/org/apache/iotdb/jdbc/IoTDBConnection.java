@@ -98,8 +98,8 @@ public class IoTDBConnection implements Connection {
       throw new IoTDBURLException("Input url cannot be null");
     }
     params = Utils.parseUrl(url, info);
-    this.url=url;
-    this.userName=info.get("user").toString();
+    this.url = url;
+    this.userName = info.get("user").toString();
     openTransport();
     if (Config.rpcThriftCompressionEnable) {
       setClient(new TSIService.Client(new TCompactProtocol(transport)));
@@ -112,9 +112,11 @@ public class IoTDBConnection implements Connection {
     setClient(RpcUtils.newSynchronizedClient(getClient()));
     autoCommit = false;
   }
+
   public String getUrl() {
     return url;
   }
+
   @Override
   public boolean isWrapperFor(Class<?> arg0) throws SQLException {
     throw new SQLException("Does not support isWrapperFor");
