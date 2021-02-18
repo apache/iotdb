@@ -106,7 +106,7 @@ public class RegularDataEncoderIntegerTest {
     byte[] page = out.toByteArray();
     buffer = ByteBuffer.wrap(page);
     int i = 0;
-    while(regularDataDecoder.hasNext(buffer)) {
+    while (regularDataDecoder.hasNext(buffer)) {
       assertEquals(originalData[i++], regularDataDecoder.readInt(buffer));
     }
   }

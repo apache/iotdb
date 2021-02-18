@@ -147,7 +147,7 @@ public class RegularDataEncoderLongTest {
     byte[] page = out.toByteArray();
     buffer = ByteBuffer.wrap(page);
     int i = 0;
-    while(regularDataDecoder.hasNext(buffer)) {
+    while (regularDataDecoder.hasNext(buffer)) {
       assertEquals(originalData[i++], regularDataDecoder.readLong(buffer));
     }
   }
