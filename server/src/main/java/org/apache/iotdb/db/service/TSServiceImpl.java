@@ -106,6 +106,7 @@ import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
+import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
@@ -207,6 +208,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private static final AtomicInteger queryCount = new AtomicInteger(0);
 
   private QueryTimeManager queryTimeManager = QueryTimeManager.getInstance();
+
+  Counter counter = IoTDB.serverMetricManager.counter("request_total", "user", "root");
 
   public TSServiceImpl() throws QueryProcessException {
     processor = new Planner();
@@ -1090,6 +1093,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           .debug("Session {} insertRecords, first device {}, first time {}", currSessionId.get(),
               req.deviceIds.get(0), req.getTimestamps().get(0));
     }
+    counter.inc();
 
     List<TSStatus> statusList = new ArrayList<>();
 

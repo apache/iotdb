@@ -16,11 +16,31 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.metrics.type;
 
-public interface Counter extends IMetric {
-  void inc();
-  void inc(long n);
+package org.apache.iotdb.metrics.micrometer.type;
 
-  long count();
+import org.apache.iotdb.metrics.type.Counter;
+
+public class MicrometerCounter implements Counter {
+
+  public MicrometerCounter(io.micrometer.core.instrument.Counter counter) {
+    this.counter = counter;
+  }
+
+  io.micrometer.core.instrument.Counter counter;
+
+  @Override
+  public void inc() {
+    counter.increment();
+  }
+
+  @Override
+  public void inc(long n) {
+    counter.increment(n);
+  }
+
+  @Override
+  public long count() {
+    return (long) counter.count();
+  }
 }
