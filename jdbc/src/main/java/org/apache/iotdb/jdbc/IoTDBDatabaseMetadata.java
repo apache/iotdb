@@ -152,42 +152,42 @@ private void initWatermarkEncoder() {
   }
 
   @Override
-  public boolean allProceduresAreCallable() throws SQLException {
+  public boolean allProceduresAreCallable(){
     return false;
   }
 
   @Override
-  public boolean allTablesAreSelectable() throws SQLException {
+  public boolean allTablesAreSelectable(){
     return true;
   }
 
   @Override
-  public boolean autoCommitFailureClosesAllResultSets() throws SQLException {
+  public boolean autoCommitFailureClosesAllResultSets(){
     return false;
   }
 
   @Override
-  public boolean dataDefinitionCausesTransactionCommit() throws SQLException {
+  public boolean dataDefinitionCausesTransactionCommit(){
     return false;
   }
 
   @Override
-  public boolean dataDefinitionIgnoredInTransactions() throws SQLException {
+  public boolean dataDefinitionIgnoredInTransactions() {
     return false;
   }
 
   @Override
-  public boolean deletesAreDetected(int arg0) throws SQLException {
+  public boolean deletesAreDetected(int arg0){
     return true;
   }
 
   @Override
-  public boolean doesMaxRowSizeIncludeBlobs() throws SQLException {
+  public boolean doesMaxRowSizeIncludeBlobs(){
     return false;//The return value is tentatively FALSE and may be adjusted later
   }
 
   @Override
-  public boolean generatedKeyAlwaysReturned() throws SQLException {
+  public boolean generatedKeyAlwaysReturned() {
     return true;
   }
 
@@ -262,12 +262,12 @@ private void initWatermarkEncoder() {
   }
 
   @Override
-  public String getCatalogSeparator() throws SQLException {
+  public String getCatalogSeparator() {
     return ".";
   }
 
   @Override
-  public String getCatalogTerm() throws SQLException {
+  public String getCatalogTerm() {
     return "storage group";
   }
 
@@ -640,7 +640,7 @@ private void initWatermarkEncoder() {
   }
 
   @Override
-  public String getDatabaseProductVersion() throws SQLException {
+  public String getDatabaseProductVersion() {
    return DATABASE_VERSION;
   }
 
@@ -660,12 +660,12 @@ private void initWatermarkEncoder() {
   }
 
   @Override
-  public String getDriverName() throws SQLException {
+  public String getDriverName(){
     return org.apache.iotdb.jdbc.IoTDBDriver.class.getName();
   }
 
   @Override
-  public String getDriverVersion() throws SQLException {
+  public String getDriverVersion(){
     return DATABASE_VERSION;
   }
 
@@ -699,7 +699,7 @@ private void initWatermarkEncoder() {
   }
 
   @Override
-  public String getExtraNameCharacters() throws SQLException {
+  public String getExtraNameCharacters() {
     return "";
   }
 
@@ -825,7 +825,7 @@ private void initWatermarkEncoder() {
   }
 
   @Override
-  public String getIdentifierQuoteString() throws SQLException {
+  public String getIdentifierQuoteString() {
     return "\' or \"";
 
   }
@@ -1023,7 +1023,7 @@ private void initWatermarkEncoder() {
   }
 
   @Override
-  public String getNumericFunctions() throws SQLException {
+  public String getNumericFunctions() {
     ResultSet resultSet=null;
     Statement statement=null;
     String result="";
@@ -1133,7 +1133,7 @@ private void initWatermarkEncoder() {
   }
 
   @Override
-  public String getProcedureTerm() throws SQLException {
+  public String getProcedureTerm(){
     return "";
   }
 
@@ -1215,12 +1215,12 @@ private void initWatermarkEncoder() {
   }
 
   @Override
-  public RowIdLifetime getRowIdLifetime() throws SQLException {
+  public RowIdLifetime getRowIdLifetime(){
     return RowIdLifetime.ROWID_UNSUPPORTED;
   }
 
   @Override
-  public String getSQLKeywords() throws SQLException {
+  public String getSQLKeywords(){
     return sqlKeywordsThatArentSQL92;
   }
 
@@ -1230,7 +1230,7 @@ private void initWatermarkEncoder() {
   }
 
   @Override
-  public String getSchemaTerm() throws SQLException {
+  public String getSchemaTerm(){
     return "stroge group";
   }
 
@@ -1281,12 +1281,12 @@ private void initWatermarkEncoder() {
   }
 
   @Override
-  public String getSearchStringEscape() throws SQLException {
+  public String getSearchStringEscape(){
     return "\\";
   }
 
   @Override
-  public String getStringFunctions() throws SQLException {
+  public String getStringFunctions(){
     return getSystemFunctions();
   }
 
@@ -1331,7 +1331,7 @@ private void initWatermarkEncoder() {
   }
 
   @Override
-  public String getSystemFunctions(){
+  public String getSystemFunctions() {
     String result="";
     Statement statement=null;
     ResultSet resultSet=null;
@@ -1457,7 +1457,7 @@ private void initWatermarkEncoder() {
 
   @Override
   public ResultSet getColumns(String catalog, String schemaPattern, String tableNamePattern,
-      String columnNamePattern) throws SQLException{
+      String columnNamePattern) throws SQLException {
     Statement stmt = this.connection.createStatement();
 
     String sql = "SHOW STORAGE GROUP";
@@ -1610,7 +1610,7 @@ private void initWatermarkEncoder() {
 
   }
 
-    public int getTypeScale(String columnType) throws SQLException {
+    public int getTypeScale(String columnType){
       switch (columnType.toUpperCase()) {
         case "BOOLEAN":
         case "INT32":
@@ -1647,7 +1647,7 @@ private void initWatermarkEncoder() {
     return 0;
 
   }
-  private int getTypePrecision(String columnType) throws SQLException {
+  private int getTypePrecision(String columnType){
     // BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT,
     switch (columnType.toUpperCase()) {
       case "BOOLEAN":
@@ -1737,7 +1737,7 @@ private void initWatermarkEncoder() {
   }
 
   @Override
-  public String getTimeDateFunctions() throws SQLException {
+  public String getTimeDateFunctions() {
     return "MAX_TIME,MIN_TIME,TIME_DIFFERENCE,NOW";
   }
 
@@ -1867,12 +1867,12 @@ private void initWatermarkEncoder() {
   }
 
   @Override
-  public boolean insertsAreDetected(int type) throws SQLException {
+  public boolean insertsAreDetected(int type) {
     return false;
   }
 
   @Override
-  public boolean isCatalogAtStart() throws SQLException {
+  public boolean isCatalogAtStart() {
     return false;
   }
 
@@ -1887,327 +1887,327 @@ private void initWatermarkEncoder() {
   }
 
   @Override
-  public boolean locatorsUpdateCopy() throws SQLException {
+  public boolean locatorsUpdateCopy() {
     return false;
   }
 
   @Override
-  public boolean nullPlusNonNullIsNull() throws SQLException {
+  public boolean nullPlusNonNullIsNull() {
     return false;
   }
 
   @Override
-  public boolean nullsAreSortedAtEnd() throws SQLException {
+  public boolean nullsAreSortedAtEnd() {
     return false;
   }
 
   @Override
-  public boolean nullsAreSortedAtStart() throws SQLException {
+  public boolean nullsAreSortedAtStart() {
     return false;
   }
 
   @Override
-  public boolean nullsAreSortedHigh() throws SQLException {
+  public boolean nullsAreSortedHigh() {
     return false;
   }
 
   @Override
-  public boolean nullsAreSortedLow() throws SQLException {
+  public boolean nullsAreSortedLow() {
     return false;
   }
 
   @Override
-  public boolean othersDeletesAreVisible(int type) throws SQLException {
+  public boolean othersDeletesAreVisible(int type) {
     return true;
   }
 
   @Override
-  public boolean othersInsertsAreVisible(int type) throws SQLException {
+  public boolean othersInsertsAreVisible(int type) {
     return true;
   }
 
   @Override
-  public boolean othersUpdatesAreVisible(int type) throws SQLException {
+  public boolean othersUpdatesAreVisible(int type) {
     return true;
   }
 
   @Override
-  public boolean ownDeletesAreVisible(int type) throws SQLException {
+  public boolean ownDeletesAreVisible(int type) {
     return true;
   }
 
   @Override
-  public boolean ownInsertsAreVisible(int type) throws SQLException {
+  public boolean ownInsertsAreVisible(int type) {
     return true;
   }
 
   @Override
-  public boolean ownUpdatesAreVisible(int type) throws SQLException {
+  public boolean ownUpdatesAreVisible(int type) {
     return true;
   }
 
   @Override
-  public boolean storesLowerCaseIdentifiers() throws SQLException {
+  public boolean storesLowerCaseIdentifiers() {
     return false;
   }
 
   @Override
-  public boolean storesLowerCaseQuotedIdentifiers() throws SQLException {
+  public boolean storesLowerCaseQuotedIdentifiers() {
     return false;
   }
 
   @Override
-  public boolean storesMixedCaseIdentifiers() throws SQLException {
+  public boolean storesMixedCaseIdentifiers() {
     return true;
   }
 
   @Override
-  public boolean storesMixedCaseQuotedIdentifiers() throws SQLException {
+  public boolean storesMixedCaseQuotedIdentifiers() {
     return true;
   }
 
   @Override
-  public boolean storesUpperCaseIdentifiers() throws SQLException {
+  public boolean storesUpperCaseIdentifiers() {
     return true;
   }
 
   @Override
-  public boolean storesUpperCaseQuotedIdentifiers() throws SQLException {
+  public boolean storesUpperCaseQuotedIdentifiers() {
     return true;
   }
 
   @Override
-  public boolean supportsANSI92EntryLevelSQL() throws SQLException {
+  public boolean supportsANSI92EntryLevelSQL() {
     return false;
   }
 
   @Override
-  public boolean supportsANSI92FullSQL() throws SQLException {
+  public boolean supportsANSI92FullSQL() {
     return false;
   }
 
   @Override
-  public boolean supportsANSI92IntermediateSQL() throws SQLException {
+  public boolean supportsANSI92IntermediateSQL() {
     return false;
   }
 
   @Override
-  public boolean supportsAlterTableWithAddColumn() throws SQLException {
+  public boolean supportsAlterTableWithAddColumn() {
     return true;
   }
 
   @Override
-  public boolean supportsAlterTableWithDropColumn() throws SQLException {
+  public boolean supportsAlterTableWithDropColumn() {
     return true;
   }
 
   @Override
-  public boolean supportsBatchUpdates() throws SQLException {
+  public boolean supportsBatchUpdates() {
     return true;
   }
 
   @Override
-  public boolean supportsCatalogsInDataManipulation() throws SQLException {
+  public boolean supportsCatalogsInDataManipulation() {
     return true;
   }
 
   @Override
-  public boolean supportsCatalogsInIndexDefinitions() throws SQLException {
+  public boolean supportsCatalogsInIndexDefinitions() {
     return true;
   }
 
   @Override
-  public boolean supportsCatalogsInPrivilegeDefinitions() throws SQLException {
+  public boolean supportsCatalogsInPrivilegeDefinitions() {
     return true;
   }
 
   @Override
-  public boolean supportsCatalogsInProcedureCalls() throws SQLException {
+  public boolean supportsCatalogsInProcedureCalls() {
     return true;
   }
 
   @Override
-  public boolean supportsCatalogsInTableDefinitions() throws SQLException {
+  public boolean supportsCatalogsInTableDefinitions() {
     return false;
   }
 
   @Override
-  public boolean supportsColumnAliasing() throws SQLException {
+  public boolean supportsColumnAliasing() {
     return true;
   }
 
   @Override
-  public boolean supportsConvert() throws SQLException {
+  public boolean supportsConvert() {
     return false;
   }
 
   @Override
-  public boolean supportsConvert(int fromType, int toType) throws SQLException {
+  public boolean supportsConvert(int fromType, int toType) {
     return false;
   }
 
   @Override
-  public boolean supportsCoreSQLGrammar() throws SQLException {
+  public boolean supportsCoreSQLGrammar() {
     return false;
   }
 
   @Override
-  public boolean supportsCorrelatedSubqueries() throws SQLException {
+  public boolean supportsCorrelatedSubqueries() {
     return false;
   }
 
   @Override
-  public boolean supportsDataDefinitionAndDataManipulationTransactions() throws SQLException {
+  public boolean supportsDataDefinitionAndDataManipulationTransactions() {
     return false;
   }
 
   @Override
-  public boolean supportsDataManipulationTransactionsOnly() throws SQLException {
+  public boolean supportsDataManipulationTransactionsOnly() {
     return true;
   }
 
   @Override
-  public boolean supportsDifferentTableCorrelationNames() throws SQLException {
+  public boolean supportsDifferentTableCorrelationNames() {
     return false;
   }
 
   @Override
-  public boolean supportsExpressionsInOrderBy() throws SQLException {
+  public boolean supportsExpressionsInOrderBy() {
     return true;
   }
 
   @Override
-  public boolean supportsExtendedSQLGrammar() throws SQLException {
+  public boolean supportsExtendedSQLGrammar() {
     return false;
   }
 
   @Override
-  public boolean supportsFullOuterJoins() throws SQLException {
+  public boolean supportsFullOuterJoins() {
     return true;
   }
 
   @Override
-  public boolean supportsGetGeneratedKeys() throws SQLException {
+  public boolean supportsGetGeneratedKeys() {
     return false;
   }
 
   @Override
-  public boolean supportsGroupBy() throws SQLException {
+  public boolean supportsGroupBy() {
     return true;
   }
 
   @Override
-  public boolean supportsGroupByBeyondSelect() throws SQLException {
+  public boolean supportsGroupByBeyondSelect() {
     return true;
   }
 
   @Override
-  public boolean supportsGroupByUnrelated() throws SQLException {
+  public boolean supportsGroupByUnrelated() {
     return true;
   }
 
   @Override
-  public boolean supportsIntegrityEnhancementFacility() throws SQLException {
+  public boolean supportsIntegrityEnhancementFacility() {
     return false;
   }
 
   @Override
-  public boolean supportsLikeEscapeClause() throws SQLException {
+  public boolean supportsLikeEscapeClause() {
     return false;
   }
 
   @Override
-  public boolean supportsLimitedOuterJoins() throws SQLException {
+  public boolean supportsLimitedOuterJoins() {
     return true;
   }
 
   @Override
-  public boolean supportsMinimumSQLGrammar() throws SQLException {
+  public boolean supportsMinimumSQLGrammar() {
     return false;
   }
 
   @Override
-  public boolean supportsMixedCaseIdentifiers() throws SQLException {
+  public boolean supportsMixedCaseIdentifiers() {
     return true;
   }
 
   @Override
-  public boolean supportsMixedCaseQuotedIdentifiers() throws SQLException {
+  public boolean supportsMixedCaseQuotedIdentifiers() {
     return true;
   }
 
   @Override
-  public boolean supportsMultipleOpenResults() throws SQLException {
+  public boolean supportsMultipleOpenResults() {
     return false;
   }
 
   @Override
-  public boolean supportsMultipleResultSets() throws SQLException {
+  public boolean supportsMultipleResultSets() {
     return false;
   }
 
   @Override
-  public boolean supportsMultipleTransactions() throws SQLException {
+  public boolean supportsMultipleTransactions() {
     return true;
   }
 
   @Override
-  public boolean supportsNamedParameters() throws SQLException {
+  public boolean supportsNamedParameters() {
     return false;
   }
 
   @Override
-  public boolean supportsNonNullableColumns() throws SQLException {
+  public boolean supportsNonNullableColumns() {
     return false;
   }
 
   @Override
-  public boolean supportsOpenCursorsAcrossCommit() throws SQLException {
+  public boolean supportsOpenCursorsAcrossCommit() {
     return false;
   }
 
   @Override
-  public boolean supportsOpenCursorsAcrossRollback() throws SQLException {
+  public boolean supportsOpenCursorsAcrossRollback() {
     return false;
   }
 
   @Override
-  public boolean supportsOpenStatementsAcrossCommit() throws SQLException {
+  public boolean supportsOpenStatementsAcrossCommit() {
     return false;
   }
 
   @Override
-  public boolean supportsOpenStatementsAcrossRollback() throws SQLException {
+  public boolean supportsOpenStatementsAcrossRollback() {
     return false;
   }
 
   @Override
-  public boolean supportsOrderByUnrelated() throws SQLException {
+  public boolean supportsOrderByUnrelated() {
     return true;
   }
 
   @Override
-  public boolean supportsOuterJoins() throws SQLException {
+  public boolean supportsOuterJoins() {
     return true;
   }
 
   @Override
-  public boolean supportsPositionedDelete() throws SQLException {
+  public boolean supportsPositionedDelete() {
     return false;
   }
 
   @Override
-  public boolean supportsPositionedUpdate() throws SQLException {
+  public boolean supportsPositionedUpdate() {
     return false;
   }
 
   @Override
-  public boolean supportsResultSetConcurrency(int type, int concurrency) throws SQLException {
+  public boolean supportsResultSetConcurrency(int type, int concurrency) {
     return false;
   }
 
   @Override
-  public boolean supportsResultSetHoldability(int holdability) throws SQLException {
+  public boolean supportsResultSetHoldability(int holdability) {
     if(ResultSet.HOLD_CURSORS_OVER_COMMIT==holdability){
       return true;
     }
@@ -2223,112 +2223,112 @@ private void initWatermarkEncoder() {
   }
 
   @Override
-  public boolean supportsSavepoints() throws SQLException {
+  public boolean supportsSavepoints() {
     return false;
   }
 
   @Override
-  public boolean supportsSchemasInDataManipulation() throws SQLException {
+  public boolean supportsSchemasInDataManipulation() {
     return false;
   }
 
   @Override
-  public boolean supportsSchemasInIndexDefinitions() throws SQLException {
+  public boolean supportsSchemasInIndexDefinitions() {
     return false;
   }
 
   @Override
-  public boolean supportsSchemasInPrivilegeDefinitions() throws SQLException {
+  public boolean supportsSchemasInPrivilegeDefinitions() {
     return false;
   }
 
   @Override
-  public boolean supportsSchemasInProcedureCalls() throws SQLException {
+  public boolean supportsSchemasInProcedureCalls() {
     return false;
   }
 
   @Override
-  public boolean supportsSchemasInTableDefinitions() throws SQLException {
+  public boolean supportsSchemasInTableDefinitions() {
     return false;
   }
 
   @Override
-  public boolean supportsSelectForUpdate() throws SQLException {
+  public boolean supportsSelectForUpdate() {
     return false;
   }
 
   @Override
-  public boolean supportsStatementPooling() throws SQLException {
+  public boolean supportsStatementPooling() {
     return false;
   }
 
   @Override
-  public boolean supportsStoredFunctionsUsingCallSyntax() throws SQLException {
+  public boolean supportsStoredFunctionsUsingCallSyntax() {
     return false;
   }
 
   @Override
-  public boolean supportsStoredProcedures() throws SQLException {
+  public boolean supportsStoredProcedures() {
     return false;
   }
 
   @Override
-  public boolean supportsSubqueriesInComparisons() throws SQLException {
+  public boolean supportsSubqueriesInComparisons() {
     return false;
   }
 
   @Override
-  public boolean supportsSubqueriesInExists() throws SQLException {
+  public boolean supportsSubqueriesInExists() {
     return false;
   }
 
   @Override
-  public boolean supportsSubqueriesInIns() throws SQLException {
+  public boolean supportsSubqueriesInIns() {
     return false;
   }
 
   @Override
-  public boolean supportsSubqueriesInQuantifieds() throws SQLException {
+  public boolean supportsSubqueriesInQuantifieds() {
     return false;
   }
 
   @Override
-  public boolean supportsTableCorrelationNames() throws SQLException {
+  public boolean supportsTableCorrelationNames() {
     return false;
   }
 
   @Override
-  public boolean supportsTransactionIsolationLevel(int level) throws SQLException {
+  public boolean supportsTransactionIsolationLevel(int level) {
     return false;
   }
 
   @Override
-  public boolean supportsTransactions() throws SQLException {
+  public boolean supportsTransactions() {
     return false;
   }
 
   @Override
-  public boolean supportsUnion() throws SQLException {
+  public boolean supportsUnion() {
     return false;
   }
 
   @Override
-  public boolean supportsUnionAll() throws SQLException {
+  public boolean supportsUnionAll() {
     return false;
   }
 
   @Override
-  public boolean updatesAreDetected(int type) throws SQLException {
+  public boolean updatesAreDetected(int type) {
     return false;
   }
 
   @Override
-  public boolean usesLocalFilePerTable() throws SQLException {
+  public boolean usesLocalFilePerTable() {
     return false;
   }
 
   @Override
-  public boolean usesLocalFiles() throws SQLException {
+  public boolean usesLocalFiles() {
     return false;
   }
 
