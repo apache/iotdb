@@ -19,17 +19,6 @@
 
 package org.apache.iotdb.db.engine.compaction;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
-import static org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.MERGING_MODIFICATION_FILE_NAME;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.util.Iterator;
-import java.util.List;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
@@ -46,8 +35,21 @@ import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.CloseCompactionMergeCallBack;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.Iterator;
+import java.util.List;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
+import static org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.MERGING_MODIFICATION_FILE_NAME;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 public abstract class TsFileManagement {
 
@@ -55,9 +57,7 @@ public abstract class TsFileManagement {
   protected String storageGroupName;
   protected String storageGroupDir;
 
-  /**
-   * Serialize queries, delete resource files, compaction cleanup files
-   */
+  /** Serialize queries, delete resource files, compaction cleanup files */
   private final ReadWriteLock compactionMergeLock = new ReentrantReadWriteLock();
 
   public volatile boolean isUnseqMerging = false;
@@ -75,69 +75,43 @@ public abstract class TsFileManagement {
     this.storageGroupDir = storageGroupDir;
   }
 
-  /**
-   * get the TsFile list in sequence
-   */
+  /** get the TsFile list in sequence */
   public abstract List<TsFileResource> getTsFileList(boolean sequence);
 
-  /**
-   * get the TsFile list iterator in sequence
-   */
+  /** get the TsFile list iterator in sequence */
   public abstract Iterator<TsFileResource> getIterator(boolean sequence);
 
-  /**
-   * remove one TsFile from list
-   */
+  /** remove one TsFile from list */
   public abstract void remove(TsFileResource tsFileResource, boolean sequence);
 
-  /**
-   * remove some TsFiles from list
-   */
+  /** remove some TsFiles from list */
   public abstract void removeAll(List<TsFileResource> tsFileResourceList, boolean sequence);
 
-  /**
-   * add one TsFile to list
-   */
+  /** add one TsFile to list */
   public abstract void add(TsFileResource tsFileResource, boolean sequence);
 
-  /**
-   * add one TsFile to list for recover
-   */
+  /** add one TsFile to list for recover */
   public abstract void addRecover(TsFileResource tsFileResource, boolean sequence);
 
-  /**
-   * add some TsFiles to list
-   */
+  /** add some TsFiles to list */
   public abstract void addAll(List<TsFileResource> tsFileResourceList, boolean sequence);
 
-  /**
-   * is one TsFile contained in list
-   */
+  /** is one TsFile contained in list */
   public abstract boolean contains(TsFileResource tsFileResource, boolean sequence);
 
-  /**
-   * clear list
-   */
+  /** clear list */
   public abstract void clear();
 
-  /**
-   * is the list empty
-   */
+  /** is the list empty */
   public abstract boolean isEmpty(boolean sequence);
 
-  /**
-   * return TsFile list size
-   */
+  /** return TsFile list size */
   public abstract int size(boolean sequence);
 
-  /**
-   * recover TsFile list
-   */
+  /** recover TsFile list */
   public abstract void recover();
 
-  /**
-   * fork current TsFile list (call this before merge)
-   */
+  /** fork current TsFile list (call this before merge) */
   public abstract void forkCurrentFileList(long timePartition) throws IOException;
 
   public void readLock() {
@@ -303,9 +277,7 @@ public abstract class TsFileManagement {
     }
   }
 
-  /**
-   * acquire the write locks of the resource , the merge lock and the compaction lock
-   */
+  /** acquire the write locks of the resource , the merge lock and the compaction lock */
   private void doubleWriteLock(TsFileResource seqFile) {
     boolean fileLockGot;
     boolean compactionLockGot;
@@ -327,9 +299,7 @@ public abstract class TsFileManagement {
     }
   }
 
-  /**
-   * release the write locks of the resource , the merge lock and the compaction lock
-   */
+  /** release the write locks of the resource , the merge lock and the compaction lock */
   private void doubleWriteUnlock(TsFileResource seqFile) {
     writeUnlock();
     seqFile.writeUnlock();

@@ -18,20 +18,21 @@
  */
 package org.apache.iotdb.tsfile;
 
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
-import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
-import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
-import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
-import org.apache.iotdb.tsfile.read.filter.TimeFilter;
-import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.read.reader.IChunkReader;
+import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * The class is to show how to read TsFile file named "test.tsfile". The TsFile file "test.tsfile"
@@ -39,7 +40,8 @@ import java.util.ArrayList;
  * TsFileWriteWithTSRecord or TsFileWriteWithTablet to generate the test.tsfile first
  */
 public class TsFileRead {
-  private static final String DEVICE1 = "device_1";
+
+  private static final String DEVICE1 = "root.mergeTest";
 
   private static void queryAndPrint(
       ArrayList<Path> paths, ReadOnlyTsFile readTsFile, IExpression statement) throws IOException {
@@ -54,42 +56,51 @@ public class TsFileRead {
   public static void main(String[] args) throws IOException {
 
     // file path
-    String path = "test.tsfile";
+    String path =
+        "/Users/surevil/Documents/private/incubator-iotdb/server/target/data/unsequence/root.mergeTest/0/0/1613657007431-22-0.tsfile";
 
     // create reader and get the readTsFile interface
     try (TsFileSequenceReader reader = new TsFileSequenceReader(path);
         ReadOnlyTsFile readTsFile = new ReadOnlyTsFile(reader)) {
 
+      List<ChunkMetadata> chunkMetadataList = reader.getChunkMetadataList(new Path(DEVICE1, "s1"));
+
+      for (ChunkMetadata chunkMetadata : chunkMetadataList) {
+        Chunk chunk = reader.readMemChunk(chunkMetadata);
+        IChunkReader chunkReader = new ChunkReader(chunk, null);
+        while (chunkReader.hasNextSatisfiedPage()) {
+          BatchData batchData = chunkReader.nextPageData();
+          for (int i = 0; i < batchData.length(); i++) {
+            System.out.println(batchData.getTimeByIndex(i));
+          }
+        }
+      }
       // use these paths(all measurements) for all the queries
-      ArrayList<Path> paths = new ArrayList<>();
-      paths.add(new Path(DEVICE1, "sensor_1"));
-      paths.add(new Path(DEVICE1, "sensor_2"));
-      paths.add(new Path(DEVICE1, "sensor_3"));
+      //      ArrayList<Path> paths = new ArrayList<>();
+      //      paths.add(new Path(DEVICE1, "s_88"));
+      //
+      //      // no filter, should select 1 2 3 4 6 7 8
+      //      queryAndPrint(paths, readTsFile, null);
+      //
+      //      // time filter : 4 <= time <= 10, should select 4 6 7 8
+      //      IExpression timeFilter = BinaryExpression
+      //          .and(new GlobalTimeExpression(TimeFilter.gtEq(1537485081854L)),
+      //              new GlobalTimeExpression(TimeFilter.ltEq(1537485141854L)));
+      //      queryAndPrint(paths, readTsFile, timeFilter);
 
-      // no filter, should select 1 2 3 4 6 7 8
-      queryAndPrint(paths, readTsFile, null);
-
-      // time filter : 4 <= time <= 10, should select 4 6 7 8
-      IExpression timeFilter =
-          BinaryExpression.and(
-              new GlobalTimeExpression(TimeFilter.gtEq(4L)),
-              new GlobalTimeExpression(TimeFilter.ltEq(10L)));
-      queryAndPrint(paths, readTsFile, timeFilter);
-
-      // value filter : device_1.sensor_2 <= 20, should select 1 2 4 6 7
-      IExpression valueFilter =
-          new SingleSeriesExpression(new Path(DEVICE1, "sensor_2"), ValueFilter.ltEq(20L));
-      queryAndPrint(paths, readTsFile, valueFilter);
-
-      // time filter : 4 <= time <= 10, value filter : device_1.sensor_3 >= 20, should select 4 7 8
-      timeFilter =
-          BinaryExpression.and(
-              new GlobalTimeExpression(TimeFilter.gtEq(4L)),
-              new GlobalTimeExpression(TimeFilter.ltEq(10L)));
-      valueFilter =
-          new SingleSeriesExpression(new Path(DEVICE1, "sensor_3"), ValueFilter.gtEq(20L));
-      IExpression finalFilter = BinaryExpression.and(timeFilter, valueFilter);
-      queryAndPrint(paths, readTsFile, finalFilter);
+      //      // value filter : device_1.sensor_2 <= 20, should select 1 2 4 6 7
+      //      IExpression valueFilter = new SingleSeriesExpression(new Path(DEVICE1, "sensor_2"),
+      //              ValueFilter.ltEq(20L));
+      //      queryAndPrint(paths, readTsFile, valueFilter);
+      //
+      //      // time filter : 4 <= time <= 10, value filter : device_1.sensor_3 >= 20, should
+      // select 4 7 8
+      //      timeFilter = BinaryExpression.and(new GlobalTimeExpression(TimeFilter.gtEq(4L)),
+      //              new GlobalTimeExpression(TimeFilter.ltEq(10L)));
+      //      valueFilter = new SingleSeriesExpression(new Path(DEVICE1, "sensor_3"),
+      // ValueFilter.gtEq(20L));
+      //      IExpression finalFilter = BinaryExpression.and(timeFilter, valueFilter);
+      //      queryAndPrint(paths, readTsFile, finalFilter);
     }
   }
 }
