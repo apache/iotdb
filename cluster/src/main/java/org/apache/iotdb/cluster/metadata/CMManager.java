@@ -41,6 +41,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -48,6 +49,7 @@ import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
@@ -108,6 +110,7 @@ import static org.apache.iotdb.cluster.query.ClusterPlanExecutor.LOG_FAIL_CONNEC
 import static org.apache.iotdb.cluster.query.ClusterPlanExecutor.THREAD_POOL_SIZE;
 import static org.apache.iotdb.cluster.query.ClusterPlanExecutor.waitForThreadPool;
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 @SuppressWarnings("java:S1135") // ignore todos
 public class CMManager extends MManager {
@@ -1353,17 +1356,25 @@ public class CMManager extends MManager {
   }
 
   @Override
-  protected MeasurementMNode getMeasurementMNode(
-      MNode deviceMNode, String measurement, TSDataType dataType) throws MetadataException {
+  public MeasurementMNode getOrCreateMeasurementMNode(
+      MNode deviceMNode, String measurement, TSDataType dataType, PartialPath deviceId)
+      throws MetadataException {
     MNode child = deviceMNode.getChild(measurement);
     if (child == null) {
       child = mRemoteMetaCache.get(deviceMNode.getPartialPath().concatNode(measurement));
     }
 
     if (child == null) {
-      return null;
+      autoCreateSchemaOrNot(measurement, dataType, deviceId);
+    } else if (child instanceof StorageGroupMNode) {
+      throw new PathAlreadyExistException(deviceId + PATH_SEPARATOR + measurement);
+    } else if (child instanceof MeasurementMNode) {
+      return (MeasurementMNode) child;
+    } else {
+      autoCreateSchemaOrNot(measurement, dataType, deviceId);
     }
-    return changeMNodeToMeasurementMNode(child, dataType);
+
+    return (MeasurementMNode) deviceMNode.getChild(measurement);
   }
 
   public List<ShowTimeSeriesResult> showLocalTimeseries(

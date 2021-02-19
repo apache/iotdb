@@ -1960,8 +1960,8 @@ public class MManager {
     return (MeasurementMNode) deviceMNode.getChild(measurement);
   }
 
-  private void autoCreateSchemaOrNot(String measurement, TSDataType dataType, PartialPath deviceId)
-      throws MetadataException {
+  protected void autoCreateSchemaOrNot(
+      String measurement, TSDataType dataType, PartialPath deviceId) throws MetadataException {
     // could not create it
     if (!config.isAutoCreateSchemaEnabled()) {
       throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurement);
