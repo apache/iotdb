@@ -19,21 +19,6 @@
 
 package org.apache.iotdb.cluster.log.snapshot;
 
-import java.io.BufferedOutputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
-import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Objects;
 import org.apache.iotdb.cluster.RemoteTsFileResource;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
@@ -62,23 +47,40 @@ import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedOutputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Objects;
+
 /**
  * FileSnapshot records the data files in a slot and their md5 (or other verification). When the
  * snapshot is used to perform a catch-up, the receiver should:
- * <p>
- * 1. create a remote snapshot indicating that the slot is being pulled from the remote
- * <p>
- * 2. traverse the file list, for each file:
- * <p>
- * 2.1 if the file exists locally and the md5 is correct, skip it.
- * <p>
- * 2.2 otherwise pull the file from the remote.
- * <p>
- * 3. replace the remote snapshot with a FileSnapshot indicating that the slot of this node is
+ *
+ * <p>1. create a remote snapshot indicating that the slot is being pulled from the remote
+ *
+ * <p>2. traverse the file list, for each file:
+ *
+ * <p>2.1 if the file exists locally and the md5 is correct, skip it.
+ *
+ * <p>2.2 otherwise pull the file from the remote.
+ *
+ * <p>3. replace the remote snapshot with a FileSnapshot indicating that the slot of this node is
  * synchronized with the remote one.
  */
 @SuppressWarnings("java:S1135") // ignore todos
@@ -155,8 +157,7 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
   }
 
   @Override
-  public void setTimeseriesSchemas(
-      Collection<TimeseriesSchema> timeseriesSchemas) {
+  public void setTimeseriesSchemas(Collection<TimeseriesSchema> timeseriesSchemas) {
     this.timeseriesSchemas = timeseriesSchemas;
   }
 
@@ -167,8 +168,9 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
 
   @Override
   public String toString() {
-    return String.format("FileSnapshot{%d files, %d series, index-term: %d-%d}", dataFiles.size()
-        , timeseriesSchemas.size(), lastLogIndex, lastLogTerm);
+    return String.format(
+        "FileSnapshot{%d files, %d series, index-term: %d-%d}",
+        dataFiles.size(), timeseriesSchemas.size(), lastLogIndex, lastLogTerm);
   }
 
   public static class Installer implements SnapshotInstaller<FileSnapshot> {
@@ -266,10 +268,11 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
       List<RemoteTsFileResource> remoteTsFileResources = snapshot.getDataFiles();
       // pull file
       for (int i = 0, remoteTsFileResourcesSize = remoteTsFileResources.size();
-          i < remoteTsFileResourcesSize; i++) {
+          i < remoteTsFileResourcesSize;
+          i++) {
         RemoteTsFileResource resource = remoteTsFileResources.get(i);
-        logger.info("Pulling {}/{} files, current: {}", i + 1, remoteTsFileResources.size(),
-            resource);
+        logger.info(
+            "Pulling {}/{} files, current: {}", i + 1, remoteTsFileResources.size(), resource);
         try {
           if (!isFileAlreadyPulled(resource)) {
             loadRemoteFile(resource);
@@ -296,10 +299,12 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
      * @return
      */
     private boolean isFileAlreadyPulled(RemoteTsFileResource resource) throws IllegalPathException {
-      Pair<String, Long> sgNameAndTimePartitionIdPair = FilePathUtils
-          .getLogicalSgNameAndTimePartitionIdPair(resource);
+      Pair<String, Long> sgNameAndTimePartitionIdPair =
+          FilePathUtils.getLogicalSgNameAndTimePartitionIdPair(resource);
       return StorageEngine.getInstance()
-          .isFileAlreadyExist(resource, new PartialPath(sgNameAndTimePartitionIdPair.left),
+          .isFileAlreadyExist(
+              resource,
+              new PartialPath(sgNameAndTimePartitionIdPair.left),
               sgNameAndTimePartitionIdPair.right);
     }
 
@@ -309,28 +314,32 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
         AsyncDataClient client = (AsyncDataClient) dataGroupMember.getAsyncClient(sourceNode);
         if (client != null) {
           try {
-            client.removeHardLink(resource.getTsFile().getAbsolutePath(),
-                new GenericHandler<>(sourceNode, null));
+            client.removeHardLink(
+                resource.getTsFile().getAbsolutePath(), new GenericHandler<>(sourceNode, null));
           } catch (TException e) {
-            logger
-                .error("Cannot remove hardlink {} from {}", resource.getTsFile().getAbsolutePath(),
-                    sourceNode);
+            logger.error(
+                "Cannot remove hardlink {} from {}",
+                resource.getTsFile().getAbsolutePath(),
+                sourceNode);
           }
         }
       } else {
         SyncDataClient client = (SyncDataClient) dataGroupMember.getSyncClient(sourceNode);
         if (client == null) {
-          logger.error("Cannot remove hardlink {} from {}, due to can not get client",
-              resource.getTsFile().getAbsolutePath(), sourceNode);
+          logger.error(
+              "Cannot remove hardlink {} from {}, due to can not get client",
+              resource.getTsFile().getAbsolutePath(),
+              sourceNode);
           return;
         }
         try {
           client.removeHardLink(resource.getTsFile().getAbsolutePath());
         } catch (TException te) {
           client.getInputProtocol().getTransport().close();
-          logger
-              .error("Cannot remove hardlink {} from {}", resource.getTsFile().getAbsolutePath(),
-                  sourceNode);
+          logger.error(
+              "Cannot remove hardlink {} from {}",
+              resource.getTsFile().getAbsolutePath(),
+              sourceNode);
         } finally {
           ClientUtils.putBackSyncClient(client);
         }
@@ -379,10 +388,11 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
      * @param resource
      */
     private void loadRemoteResource(RemoteTsFileResource resource) throws IllegalPathException {
-      // the new file is stored at: remote/<nodeIdentifier>/<FilePathUtils.getTsFilePrefixPath(resource)>/<tsfile>
+      // the new file is stored at:
+      // remote/<nodeIdentifier>/<FilePathUtils.getTsFilePrefixPath(resource)>/<tsfile>
       // you can see FilePathUtils.splitTsFilePath() method for details.
-      PartialPath storageGroupName = new PartialPath(
-          FilePathUtils.getLogicalStorageGroupName(resource));
+      PartialPath storageGroupName =
+          new PartialPath(FilePathUtils.getLogicalStorageGroupName(resource));
       File remoteModFile =
           new File(resource.getTsFile().getAbsoluteFile() + ModificationFile.FILE_SUFFIX);
       try {
@@ -390,7 +400,8 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
         if (resource.isPlanRangeUnique()) {
           // only when a file has a unique range can we remove other files that over lap with it,
           // otherwise we may remove data that is not contained in the file
-          StorageEngine.getInstance().getProcessor(storageGroupName)
+          StorageEngine.getInstance()
+              .getProcessor(storageGroupName)
               .removeFullyOverlapFiles(resource);
         }
       } catch (StorageEngineException | LoadFileException e) {
@@ -421,27 +432,35 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
      * resource has modification file, also download it.
      *
      * @param resource the TsFile to be downloaded
-     * @param node     where to download the file
+     * @param node where to download the file
      * @return the downloaded file or null if the file cannot be downloaded or its MD5 is not right
      * @throws IOException
      */
     private File pullRemoteFile(RemoteTsFileResource resource, Node node) throws IOException {
-      logger.info("{}: pulling remote file {} from {}, plan index [{}, {}]", name, resource, node
-          , resource.getMinPlanIndex(), resource.getMaxPlanIndex());
+      logger.info(
+          "{}: pulling remote file {} from {}, plan index [{}, {}]",
+          name,
+          resource,
+          node,
+          resource.getMinPlanIndex(),
+          resource.getMaxPlanIndex());
       // the new file is stored at:
       // remote/<nodeIdentifier>/<FilePathUtils.getTsFilePrefixPath(resource)>/<newTsFile>
       // you can see FilePathUtils.splitTsFilePath() method for details.
       String tempFileName = FilePathUtils.getTsFileNameWithoutHardLink(resource);
       String tempFilePath =
-          node.getNodeIdentifier() + File.separator + FilePathUtils.getTsFilePrefixPath(resource)
-              + File.separator + tempFileName;
+          node.getNodeIdentifier()
+              + File.separator
+              + FilePathUtils.getTsFilePrefixPath(resource)
+              + File.separator
+              + tempFileName;
       File tempFile = new File(REMOTE_FILE_TEMP_DIR, tempFilePath);
       tempFile.getParentFile().mkdirs();
       if (pullRemoteFile(resource.getTsFile().getAbsolutePath(), node, tempFile)) {
         // TODO-Cluster#353: implement file examination, may be replaced with other algorithm
         if (resource.isWithModification()) {
-          File tempModFile = new File(REMOTE_FILE_TEMP_DIR,
-              tempFilePath + ModificationFile.FILE_SUFFIX);
+          File tempModFile =
+              new File(REMOTE_FILE_TEMP_DIR, tempFilePath + ModificationFile.FILE_SUFFIX);
           pullRemoteFile(resource.getModFile().getFilePath(), node, tempModFile);
         }
         return tempFile;
@@ -454,8 +473,8 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
      * the network is bad, this method will retry upto 5 times before returning a failure.
      *
      * @param remotePath the file to be downloaded
-     * @param node       where to download the file
-     * @param dest       where to store the file
+     * @param node where to download the file
+     * @param dest where to store the file
      * @return true if the file is successfully downloaded, false otherwise
      * @throws IOException
      */
@@ -471,13 +490,17 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
           }
 
           if (logger.isInfoEnabled()) {
-            logger.info("{}: remote file {} is pulled at {}, length: {}", name, remotePath, dest,
+            logger.info(
+                "{}: remote file {} is pulled at {}, length: {}",
+                name,
+                remotePath,
+                dest,
                 dest.length());
           }
           return true;
         } catch (TException e) {
-          logger.warn("{}: Cannot pull file {} from {}, wait 5s to retry", name, remotePath, node,
-              e);
+          logger.warn(
+              "{}: Cannot pull file {} from {}, wait 5s to retry", name, remotePath, node, e);
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           logger.warn("{}: Pulling file {} from {} interrupted", name, remotePath, node, e);
@@ -528,7 +551,9 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
       // notice: the buffer returned by thrift is a slice of a larger buffer which contains
       // the whole response, so buffer.position() is not 0 initially and buffer.limit() is
       // not the size of the downloaded chunk
-      dest.write(buffer.array(), buffer.position() + buffer.arrayOffset(),
+      dest.write(
+          buffer.array(),
+          buffer.position() + buffer.arrayOffset(),
           buffer.limit() - buffer.position());
       return buffer.limit() - buffer.position();
     }
@@ -571,20 +596,21 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
       return false;
     }
     FileSnapshot snapshot = (FileSnapshot) o;
-    return Objects.equals(timeseriesSchemas, snapshot.timeseriesSchemas) &&
-        Objects.equals(dataFiles, snapshot.dataFiles);
+    return Objects.equals(timeseriesSchemas, snapshot.timeseriesSchemas)
+        && Objects.equals(dataFiles, snapshot.dataFiles);
   }
 
   @Override
   public void truncateBefore(long minIndex) {
-    dataFiles.removeIf(res -> {
-      boolean toBeTruncated = res.getMaxPlanIndex() <= minIndex;
-      if (toBeTruncated) {
-        // also remove the hardlink
-        res.remove();
-      }
-      return toBeTruncated;
-    });
+    dataFiles.removeIf(
+        res -> {
+          boolean toBeTruncated = res.getMaxPlanIndex() <= minIndex;
+          if (toBeTruncated) {
+            // also remove the hardlink
+            res.remove();
+          }
+          return toBeTruncated;
+        });
   }
 
   @Override
@@ -607,8 +633,8 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
       fileSnapshot.setLastLogIndex(origin.lastLogIndex);
       fileSnapshot.setLastLogTerm(origin.lastLogTerm);
       fileSnapshot.dataFiles = origin.dataFiles == null ? null : new ArrayList<>(origin.dataFiles);
-      fileSnapshot.timeseriesSchemas = origin.timeseriesSchemas == null ? null :
-          new ArrayList<>(origin.timeseriesSchemas);
+      fileSnapshot.timeseriesSchemas =
+          origin.timeseriesSchemas == null ? null : new ArrayList<>(origin.timeseriesSchemas);
       return fileSnapshot;
     }
   }

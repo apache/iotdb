@@ -30,7 +30,6 @@ public interface CacheHitRatioMonitorMXBean {
 
   long getChunkCacheAverageSize();
 
-
   double getTimeSeriesMetadataHitRatio();
 
   long getTimeSeriesMetadataCacheUsedMemory();
@@ -40,5 +39,4 @@ public interface CacheHitRatioMonitorMXBean {
   double getTimeSeriesCacheUsedMemoryProportion();
 
   long getTimeSeriesMetaDataCacheAverageSize();
-
 }

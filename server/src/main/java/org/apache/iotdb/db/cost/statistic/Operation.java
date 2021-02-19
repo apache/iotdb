@@ -33,5 +33,4 @@ public enum Operation {
   Operation(String name) {
     this.name = name;
   }
-
 }

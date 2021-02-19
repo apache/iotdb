@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.db.engine.compaction.utils;
 
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 
 public class CompactionLogger {
 
@@ -38,9 +39,12 @@ public class CompactionLogger {
   private BufferedWriter logStream;
 
   public CompactionLogger(String storageGroupDir, String storageGroupName) throws IOException {
-    logStream = new BufferedWriter(
-        new FileWriter(SystemFileFactory.INSTANCE.getFile(storageGroupDir,
-            storageGroupName + COMPACTION_LOG_NAME), true));
+    logStream =
+        new BufferedWriter(
+            new FileWriter(
+                SystemFileFactory.INSTANCE.getFile(
+                    storageGroupDir, storageGroupName + COMPACTION_LOG_NAME),
+                true));
   }
 
   public void close() throws IOException {

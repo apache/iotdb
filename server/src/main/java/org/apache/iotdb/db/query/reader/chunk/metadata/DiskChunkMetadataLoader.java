@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.query.reader.chunk.metadata;
 
-import java.util.List;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -30,6 +29,8 @@ import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
+import java.util.List;
+
 public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
 
   private final TsFileResource resource;
@@ -38,8 +39,8 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
   // time filter or value filter, only used to check time range
   private final Filter filter;
 
-  public DiskChunkMetadataLoader(TsFileResource resource, PartialPath seriesPath,
-      QueryContext context, Filter filter) {
+  public DiskChunkMetadataLoader(
+      TsFileResource resource, PartialPath seriesPath, QueryContext context, Filter filter) {
     this.resource = resource;
     this.seriesPath = seriesPath;
     this.context = context;
@@ -55,9 +56,12 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
     /*
      * remove not satisfied ChunkMetaData
      */
-    chunkMetadataList.removeIf(chunkMetaData -> (filter != null && !filter
-        .satisfyStartEndTime(chunkMetaData.getStartTime(), chunkMetaData.getEndTime()))
-        || chunkMetaData.getStartTime() > chunkMetaData.getEndTime());
+    chunkMetadataList.removeIf(
+        chunkMetaData ->
+            (filter != null
+                    && !filter.satisfyStartEndTime(
+                        chunkMetaData.getStartTime(), chunkMetaData.getEndTime()))
+                || chunkMetaData.getStartTime() > chunkMetaData.getEndTime());
 
     // For chunkMetadata from old TsFile, do not set version
     for (ChunkMetadata metadata : chunkMetadataList) {
@@ -68,22 +72,26 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
     return chunkMetadataList;
   }
 
-  public static void setDiskChunkLoader(List<ChunkMetadata> chunkMetadataList,
-      TsFileResource resource, PartialPath seriesPath, QueryContext context) {
+  public static void setDiskChunkLoader(
+      List<ChunkMetadata> chunkMetadataList,
+      TsFileResource resource,
+      PartialPath seriesPath,
+      QueryContext context) {
     List<Modification> pathModifications =
         context.getPathModifications(resource.getModFile(), seriesPath);
 
     if (!pathModifications.isEmpty()) {
       QueryUtils.modifyChunkMetaData(chunkMetadataList, pathModifications);
     }
-    // it is ok, even if it is not thread safe, because the cost of creating a DiskChunkLoader is very cheap.
-    chunkMetadataList.forEach(chunkMetadata -> {
-      if (chunkMetadata.getChunkLoader() == null) {
-        chunkMetadata.setFilePath(resource.getTsFilePath());
-        chunkMetadata.setClosed(resource.isClosed());
-        chunkMetadata.setChunkLoader(new DiskChunkLoader());
-      }
-    });
+    // it is ok, even if it is not thread safe, because the cost of creating a DiskChunkLoader is
+    // very cheap.
+    chunkMetadataList.forEach(
+        chunkMetadata -> {
+          if (chunkMetadata.getChunkLoader() == null) {
+            chunkMetadata.setFilePath(resource.getTsFilePath());
+            chunkMetadata.setClosed(resource.isClosed());
+            chunkMetadata.setChunkLoader(new DiskChunkLoader());
+          }
+        });
   }
-
 }

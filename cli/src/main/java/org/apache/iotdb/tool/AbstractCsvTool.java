@@ -18,16 +18,18 @@
  */
 package org.apache.iotdb.tool;
 
-import java.io.IOException;
-import java.time.ZoneId;
-import jline.console.ConsoleReader;
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.Option;
-import org.apache.commons.cli.Options;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
+
+import jline.console.ConsoleReader;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+
+import java.io.IOException;
+import java.time.ZoneId;
 
 public abstract class AbstractCsvTool {
 
@@ -51,18 +53,37 @@ public abstract class AbstractCsvTool {
   protected static final String TIME_ZONE_ARGS = "tz";
   protected static final String TIME_ZONE_NAME = "timeZone";
   protected static final int MAX_HELP_CONSOLE_WIDTH = 92;
-  protected static final String[] SUPPORT_TIME_FORMAT = new String[]{"default",
-      "long",
-      "number", "timestamp", "yyyy-MM-dd HH:mm:ss", "yyyy/MM/dd HH:mm:ss", "yyyy.MM.dd HH:mm:ss",
-      "yyyy-MM-dd'T'HH:mm:ss", "yyyy/MM/dd'T'HH:mm:ss", "yyyy.MM.dd'T'HH:mm:ss",
-      "yyyy-MM-dd HH:mm:ssZZ",
-      "yyyy/MM/dd HH:mm:ssZZ", "yyyy.MM.dd HH:mm:ssZZ", "yyyy-MM-dd'T'HH:mm:ssZZ",
-      "yyyy/MM/dd'T'HH:mm:ssZZ",
-      "yyyy.MM.dd'T'HH:mm:ssZZ", "yyyy/MM/dd HH:mm:ss.SSS", "yyyy-MM-dd HH:mm:ss.SSS",
-      "yyyy.MM.dd HH:mm:ss.SSS",
-      "yyyy/MM/dd'T'HH:mm:ss.SSS", "yyyy-MM-dd'T'HH:mm:ss.SSS", "yyyy-MM-dd'T'HH:mm:ss.SSS",
-      "yyyy.MM.dd'T'HH:mm:ss.SSS", "yyyy-MM-dd HH:mm:ss.SSSZZ", "yyyy/MM/dd HH:mm:ss.SSSZZ",
-      "yyyy.MM.dd HH:mm:ss.SSSZZ", "yyyy-MM-dd'T'HH:mm:ss.SSSZZ", "yyyy/MM/dd'T'HH:mm:ss.SSSZZ",};
+  protected static final String[] SUPPORT_TIME_FORMAT =
+      new String[] {
+        "default",
+        "long",
+        "number",
+        "timestamp",
+        "yyyy-MM-dd HH:mm:ss",
+        "yyyy/MM/dd HH:mm:ss",
+        "yyyy.MM.dd HH:mm:ss",
+        "yyyy-MM-dd'T'HH:mm:ss",
+        "yyyy/MM/dd'T'HH:mm:ss",
+        "yyyy.MM.dd'T'HH:mm:ss",
+        "yyyy-MM-dd HH:mm:ssZZ",
+        "yyyy/MM/dd HH:mm:ssZZ",
+        "yyyy.MM.dd HH:mm:ssZZ",
+        "yyyy-MM-dd'T'HH:mm:ssZZ",
+        "yyyy/MM/dd'T'HH:mm:ssZZ",
+        "yyyy.MM.dd'T'HH:mm:ssZZ",
+        "yyyy/MM/dd HH:mm:ss.SSS",
+        "yyyy-MM-dd HH:mm:ss.SSS",
+        "yyyy.MM.dd HH:mm:ss.SSS",
+        "yyyy/MM/dd'T'HH:mm:ss.SSS",
+        "yyyy-MM-dd'T'HH:mm:ss.SSS",
+        "yyyy-MM-dd'T'HH:mm:ss.SSS",
+        "yyyy.MM.dd'T'HH:mm:ss.SSS",
+        "yyyy-MM-dd HH:mm:ss.SSSZZ",
+        "yyyy/MM/dd HH:mm:ss.SSSZZ",
+        "yyyy.MM.dd HH:mm:ss.SSSZZ",
+        "yyyy-MM-dd'T'HH:mm:ss.SSSZZ",
+        "yyyy/MM/dd'T'HH:mm:ss.SSSZZ",
+      };
   protected static String host;
   protected static String port;
   protected static String username;
@@ -74,7 +95,7 @@ public abstract class AbstractCsvTool {
   protected static Session session;
 
   AbstractCsvTool() {}
-  
+
   protected static String checkRequiredArg(String arg, String name, CommandLine commandLine)
       throws ArgsErrorException {
     String str = commandLine.getOptionValue(arg);
@@ -112,31 +133,54 @@ public abstract class AbstractCsvTool {
         return true;
       }
     }
-    System.out.printf("Input time format %s is not supported, "
-        + "please input like yyyy-MM-dd\\ HH:mm:ss.SSS or yyyy-MM-dd'T'HH:mm:ss.SSS%n", timeFormat);
+    System.out.printf(
+        "Input time format %s is not supported, "
+            + "please input like yyyy-MM-dd\\ HH:mm:ss.SSS or yyyy-MM-dd'T'HH:mm:ss.SSS%n",
+        timeFormat);
     return false;
   }
 
   protected static Options createNewOptions() {
     Options options = new Options();
 
-    Option opHost = Option.builder(HOST_ARGS).longOpt(HOST_NAME).required().argName(HOST_NAME)
-        .hasArg()
-        .desc("Host Name (required)").build();
+    Option opHost =
+        Option.builder(HOST_ARGS)
+            .longOpt(HOST_NAME)
+            .required()
+            .argName(HOST_NAME)
+            .hasArg()
+            .desc("Host Name (required)")
+            .build();
     options.addOption(opHost);
 
-    Option opPort = Option.builder(PORT_ARGS).longOpt(PORT_NAME).required().argName(PORT_NAME)
-        .hasArg()
-        .desc("Port (required)").build();
+    Option opPort =
+        Option.builder(PORT_ARGS)
+            .longOpt(PORT_NAME)
+            .required()
+            .argName(PORT_NAME)
+            .hasArg()
+            .desc("Port (required)")
+            .build();
     options.addOption(opPort);
 
-    Option opUsername = Option.builder(USERNAME_ARGS).longOpt(USERNAME_NAME).required()
-        .argName(USERNAME_NAME)
-        .hasArg().desc("Username (required)").build();
+    Option opUsername =
+        Option.builder(USERNAME_ARGS)
+            .longOpt(USERNAME_NAME)
+            .required()
+            .argName(USERNAME_NAME)
+            .hasArg()
+            .desc("Username (required)")
+            .build();
     options.addOption(opUsername);
 
-    Option opPassword = Option.builder(PASSWORD_ARGS).longOpt(PASSWORD_NAME).optionalArg(true)
-        .argName(PASSWORD_NAME).hasArg().desc("Password (optional)").build();
+    Option opPassword =
+        Option.builder(PASSWORD_ARGS)
+            .longOpt(PASSWORD_NAME)
+            .optionalArg(true)
+            .argName(PASSWORD_NAME)
+            .hasArg()
+            .desc("Password (optional)")
+            .build();
     options.addOption(opPassword);
     return options;
   }

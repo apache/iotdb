@@ -19,16 +19,14 @@
 
 package org.apache.iotdb.cluster.exception;
 
-import java.util.List;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 
-/**
- * Raised when a DataClusterServer receives a request but the node is not in the target group.
- */
+import java.util.List;
+
+/** Raised when a DataClusterServer receives a request but the node is not in the target group. */
 public class NotInSameGroupException extends Exception {
 
   public NotInSameGroupException(List<Node> group, Node thisNode) {
-    super(String.format("This node %s is not in the data group %s", thisNode,
-        group));
+    super(String.format("This node %s is not in the data group %s", thisNode, group));
   }
 }

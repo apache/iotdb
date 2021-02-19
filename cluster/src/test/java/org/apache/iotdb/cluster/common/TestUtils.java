@@ -19,11 +19,6 @@
 
 package org.apache.iotdb.cluster.common;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.Log;
@@ -61,6 +56,12 @@ import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 public class TestUtils {
 
   public static long TEST_TIME_OUT_MS = 200;
@@ -92,13 +93,12 @@ public class TestUtils {
 
   public static StartUpStatus getStartUpStatus() {
     StartUpStatus startUpStatus = new StartUpStatus();
-    startUpStatus
-        .setPartitionInterval(IoTDBDescriptor.getInstance().getConfig().getPartitionInterval());
+    startUpStatus.setPartitionInterval(
+        IoTDBDescriptor.getInstance().getConfig().getPartitionInterval());
     startUpStatus.setHashSalt(ClusterConstant.HASH_SALT);
-    startUpStatus
-        .setReplicationNumber(ClusterDescriptor.getInstance().getConfig().getReplicationNum());
-    startUpStatus
-        .setClusterName(ClusterDescriptor.getInstance().getConfig().getClusterName());
+    startUpStatus.setReplicationNumber(
+        ClusterDescriptor.getInstance().getConfig().getReplicationNum());
+    startUpStatus.setClusterName(ClusterDescriptor.getInstance().getConfig().getClusterName());
     List<Node> seedNodeList = new ArrayList<>();
     for (int i = 0; i < 100; i += 10) {
       seedNodeList.add(getNode(i));
@@ -129,8 +129,8 @@ public class TestUtils {
     return logList;
   }
 
-  public static List<TimeValuePair> getTestTimeValuePairs(int offset, int size, int step,
-      TSDataType dataType) {
+  public static List<TimeValuePair> getTestTimeValuePairs(
+      int offset, int size, int step, TSDataType dataType) {
     List<TimeValuePair> ret = new ArrayList<>(size);
     long currTime = offset;
     for (int i = 0; i < size; i++) {
@@ -142,8 +142,8 @@ public class TestUtils {
     return ret;
   }
 
-  public static List<BatchData> getTestBatches(int offset, int size, int batchSize, int step,
-      TSDataType dataType) {
+  public static List<BatchData> getTestBatches(
+      int offset, int size, int batchSize, int step, TSDataType dataType) {
     List<BatchData> ret = new ArrayList<>(size);
     long currTime = offset;
     BatchData currBatch = null;
@@ -187,7 +187,10 @@ public class TestUtils {
   public static MeasurementSchema getTestMeasurementSchema(int seriesNum) {
     TSDataType dataType = TSDataType.DOUBLE;
     TSEncoding encoding = IoTDBDescriptor.getInstance().getConfig().getDefaultDoubleEncoding();
-    return new MeasurementSchema(TestUtils.getTestMeasurement(seriesNum), dataType, encoding,
+    return new MeasurementSchema(
+        TestUtils.getTestMeasurement(seriesNum),
+        dataType,
+        encoding,
         CompressionType.UNCOMPRESSED,
         Collections.emptyMap());
   }
@@ -195,18 +198,24 @@ public class TestUtils {
   public static MeasurementMNode getTestMeasurementMNode(int seriesNum) {
     TSDataType dataType = TSDataType.DOUBLE;
     TSEncoding encoding = IoTDBDescriptor.getInstance().getConfig().getDefaultDoubleEncoding();
-    MeasurementSchema measurementSchema = new MeasurementSchema(
-        TestUtils.getTestMeasurement(seriesNum), dataType, encoding,
-        CompressionType.UNCOMPRESSED,
-        Collections.emptyMap());
-    return new MeasurementMNode(null, measurementSchema.getMeasurementId(), measurementSchema,
-        null);
+    MeasurementSchema measurementSchema =
+        new MeasurementSchema(
+            TestUtils.getTestMeasurement(seriesNum),
+            dataType,
+            encoding,
+            CompressionType.UNCOMPRESSED,
+            Collections.emptyMap());
+    return new MeasurementMNode(
+        null, measurementSchema.getMeasurementId(), measurementSchema, null);
   }
 
   public static TimeseriesSchema getTestTimeSeriesSchema(int sgNum, int seriesNum) {
     TSDataType dataType = TSDataType.DOUBLE;
     TSEncoding encoding = IoTDBDescriptor.getInstance().getConfig().getDefaultDoubleEncoding();
-    return new TimeseriesSchema(TestUtils.getTestSeries(sgNum, seriesNum), dataType, encoding,
+    return new TimeseriesSchema(
+        TestUtils.getTestSeries(sgNum, seriesNum),
+        dataType,
+        encoding,
         CompressionType.UNCOMPRESSED,
         Collections.emptyMap());
   }
@@ -269,7 +278,8 @@ public class TestUtils {
   }
 
   public static void prepareData()
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException, IllegalPathException {
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException,
+          IllegalPathException {
     InsertRowPlan insertPlan = new InsertRowPlan();
     // data for raw data query and aggregation
     // 10 devices (storage groups)
@@ -328,14 +338,14 @@ public class TestUtils {
 
     // data for fill
     insertPlan.setDeviceId(new PartialPath(getTestSg(0)));
-    String[] measurements = new String[]{getTestMeasurement(10)};
-    MeasurementMNode[] schemas = new MeasurementMNode[]{TestUtils.getTestMeasurementMNode(10)};
+    String[] measurements = new String[] {getTestMeasurement(10)};
+    MeasurementMNode[] schemas = new MeasurementMNode[] {TestUtils.getTestMeasurementMNode(10)};
     insertPlan.setMeasurements(measurements);
     insertPlan.setNeedInferType(true);
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
-    for (int i : new int[]{0, 10}) {
+    for (int i : new int[] {0, 10}) {
       insertPlan.setTime(i);
-      Object[] values = new Object[]{String.valueOf(i)};
+      Object[] values = new Object[] {String.valueOf(i)};
       insertPlan.setValues(values);
       insertPlan.setMeasurementMNodes(schemas);
       PlanExecutor planExecutor = new PlanExecutor();
@@ -343,17 +353,30 @@ public class TestUtils {
     }
   }
 
-
   /**
-   * The TsFileResource's path should be consist with the {@link org.apache.iotdb.db.utils.FilePathUtils#splitTsFilePath(TsFileResource)}
+   * The TsFileResource's path should be consist with the {@link
+   * org.apache.iotdb.db.utils.FilePathUtils#splitTsFilePath(TsFileResource)}
    */
-  public static List<TsFileResource> prepareTsFileResources(int sgNum, int fileNum, int seriesNum,
-      int ptNum, boolean asHardLink) throws IOException, WriteProcessException {
+  public static List<TsFileResource> prepareTsFileResources(
+      int sgNum, int fileNum, int seriesNum, int ptNum, boolean asHardLink)
+      throws IOException, WriteProcessException {
     List<TsFileResource> ret = new ArrayList<>();
     for (int i = 0; i < fileNum; i++) {
-      String fileName = "target" + File.separator + "data" + File.separator + String
-          .format(TestUtils.getTestSg(sgNum) + File.separator + 0 + File.separator + 0 +
-              File.separator + "0-%d-0" + TsFileConstant.TSFILE_SUFFIX, i);
+      String fileName =
+          "target"
+              + File.separator
+              + "data"
+              + File.separator
+              + String.format(
+                  TestUtils.getTestSg(sgNum)
+                      + File.separator
+                      + 0
+                      + File.separator
+                      + 0
+                      + File.separator
+                      + "0-%d-0"
+                      + TsFileConstant.TSFILE_SUFFIX,
+                  i);
       if (asHardLink) {
         fileName = fileName + ".0_0";
       }
@@ -370,8 +393,9 @@ public class TestUtils {
           TSRecord record = new TSRecord(timestamp, getTestSg(sgNum));
           for (int k = 0; k < seriesNum; k++) {
             MeasurementSchema schema = getTestMeasurementSchema(k);
-            DataPoint dataPoint = DataPoint.getDataPoint(schema.getType(),
-                schema.getMeasurementId(), String.valueOf(k));
+            DataPoint dataPoint =
+                DataPoint.getDataPoint(
+                    schema.getType(), schema.getMeasurementId(), String.valueOf(k));
             record.addTuple(dataPoint);
           }
           writer.write(record);

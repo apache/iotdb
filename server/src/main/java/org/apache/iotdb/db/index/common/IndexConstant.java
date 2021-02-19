@@ -29,9 +29,8 @@ public class IndexConstant {
   // RTree PAA parameters
   public static final String PAA_DIM = "PAA_DIM";
 
-  //ELB: calc param
+  // ELB: calc param
   public static final String BLOCK_SIZE = "BLOCK_SIZE";
 
-  private IndexConstant() {
-  }
+  private IndexConstant() {}
 }

@@ -28,10 +28,12 @@ public class SyncDeviceOwnerConflictException extends IoTDBException {
     super(message, TSStatusCode.SYNC_DEVICE_OWNER_CONFLICT_ERROR.getStatusCode());
   }
 
-  public SyncDeviceOwnerConflictException(String device, String correctOwner,
-      String conflictOwner) {
-    super(String
-        .format("Device: [%s], correct owner: [%s], conflict owner: [%s]", device, correctOwner,
-            conflictOwner), TSStatusCode.SYNC_DEVICE_OWNER_CONFLICT_ERROR.getStatusCode());
+  public SyncDeviceOwnerConflictException(
+      String device, String correctOwner, String conflictOwner) {
+    super(
+        String.format(
+            "Device: [%s], correct owner: [%s], conflict owner: [%s]",
+            device, correctOwner, conflictOwner),
+        TSStatusCode.SYNC_DEVICE_OWNER_CONFLICT_ERROR.getStatusCode());
   }
 }

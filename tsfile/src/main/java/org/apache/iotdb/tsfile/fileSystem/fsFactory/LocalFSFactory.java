@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.tsfile.fileSystem.fsFactory;
 
+import org.apache.commons.io.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
@@ -30,10 +34,6 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URI;
-
-import org.apache.commons.io.FileUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class LocalFSFactory implements FSFactory {
 
@@ -114,8 +114,11 @@ public class LocalFSFactory implements FSFactory {
     try {
       FileUtils.moveFile(srcFile, destFile);
     } catch (IOException e) {
-      logger.error("Failed to move file from {} to {}. ", srcFile.getAbsolutePath(),
-          destFile.getAbsolutePath(), e);
+      logger.error(
+          "Failed to move file from {} to {}. ",
+          srcFile.getAbsolutePath(),
+          destFile.getAbsolutePath(),
+          e);
     }
   }
 

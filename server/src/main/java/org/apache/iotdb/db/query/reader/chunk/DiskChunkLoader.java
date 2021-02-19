@@ -19,15 +19,14 @@
 
 package org.apache.iotdb.db.query.reader.chunk;
 
-import java.io.IOException;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 
-/**
- * To read one chunk from disk, and only used in iotdb server module
- */
+import java.io.IOException;
+
+/** To read one chunk from disk, and only used in iotdb server module */
 public class DiskChunkLoader implements IChunkLoader {
 
   public DiskChunkLoader() {

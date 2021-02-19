@@ -20,7 +20,7 @@ package org.apache.iotdb.tsfile.read.filter;
 
 import org.apache.iotdb.tsfile.file.metadata.statistics.LongStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
+
 import org.junit.Before;
 import org.junit.Test;
 
@@ -33,8 +33,7 @@ public class GroupByFilterTest {
 
   @Before
   public void setUp() throws Exception {
-    groupByFilter = new GroupByFilter(3, 24,
-            8, 8 + 30 * 24 + 3 + 6);
+    groupByFilter = new GroupByFilter(3, 24, 8, 8 + 30 * 24 + 3 + 6);
   }
 
   @Test
@@ -102,9 +101,7 @@ public class GroupByFilterTest {
     assertTrue(groupByFilter.satisfy(9, null));
 
     assertFalse(groupByFilter.satisfy(11, null));
-
   }
-
 
   @Test
   public void TestContainStartEndTime() {
@@ -119,8 +116,7 @@ public class GroupByFilterTest {
 
     assertFalse(groupByFilter.containStartEndTime(7, 8 + 30 * 24 + 3 + 6 + 1));
 
-    assertFalse(groupByFilter.containStartEndTime(8 + 30 * 24 + 3 + 6 + 1, 8 + 30 * 24 + 3 + 6 + 2));
-
+    assertFalse(
+        groupByFilter.containStartEndTime(8 + 30 * 24 + 3 + 6 + 1, 8 + 30 * 24 + 3 + 6 + 2));
   }
-
 }

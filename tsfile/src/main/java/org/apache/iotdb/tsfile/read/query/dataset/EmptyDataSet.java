@@ -18,8 +18,9 @@
  */
 package org.apache.iotdb.tsfile.read.query.dataset;
 
-import java.util.Collections;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+
+import java.util.Collections;
 
 public class EmptyDataSet extends QueryDataSet {
 

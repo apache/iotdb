@@ -18,38 +18,39 @@
  */
 package org.apache.iotdb.tsfile.read.query.timegenerator;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.util.Scanner;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.constant.TestConstant;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.FileUtils;
+import org.apache.iotdb.tsfile.utils.FileUtils.Unit;
+import org.apache.iotdb.tsfile.utils.RecordUtils;
+import org.apache.iotdb.tsfile.write.TsFileWriter;
+import org.apache.iotdb.tsfile.write.record.TSRecord;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.write.TsFileWriter;
-import org.apache.iotdb.tsfile.write.record.TSRecord;
-import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.constant.TestConstant;
-import org.apache.iotdb.tsfile.utils.FileUtils;
-import org.apache.iotdb.tsfile.utils.FileUtils.Unit;
-import org.apache.iotdb.tsfile.utils.RecordUtils;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.Scanner;
 
 @Ignore
 public class TsFileGeneratorForSeriesReaderByTimestamp {
 
   public static final long START_TIMESTAMP = 1480562618000L;
-  private static final Logger LOG = LoggerFactory.getLogger(TsFileGeneratorForSeriesReaderByTimestamp.class);
+  private static final Logger LOG =
+      LoggerFactory.getLogger(TsFileGeneratorForSeriesReaderByTimestamp.class);
   public static TsFileWriter innerWriter;
   public static String inputDataFile;
   public static String outputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("testTsFile.tsfile");
@@ -94,7 +95,7 @@ public class TsFileGeneratorForSeriesReaderByTimestamp {
     }
   }
 
-  static private void generateSampleInputDataFile() throws IOException {
+  private static void generateSampleInputDataFile() throws IOException {
     File file = new File(inputDataFile);
     if (file.exists()) {
       Assert.assertTrue(file.delete());
@@ -138,14 +139,20 @@ public class TsFileGeneratorForSeriesReaderByTimestamp {
       fw.write(d2 + "\r\n");
     }
     // write error
-    String d = "d2,3," + (startTime + rowCount) + ",s2," + (rowCount * 10 + 2) + ",s3," + (rowCount * 10 + 3);
+    String d =
+        "d2,3,"
+            + (startTime + rowCount)
+            + ",s2,"
+            + (rowCount * 10 + 2)
+            + ",s3,"
+            + (rowCount * 10 + 3);
     fw.write(d + "\r\n");
     d = "d2," + (startTime + rowCount + 1) + ",2,s-1," + (rowCount * 10 + 2);
     fw.write(d + "\r\n");
     fw.close();
   }
 
-  static public void write() throws IOException, InterruptedException, WriteProcessException {
+  public static void write() throws IOException, InterruptedException, WriteProcessException {
     File file = new File(outputDataFile);
     File errorFile = new File(errorOutputDataFile);
     if (file.exists()) {
@@ -174,26 +181,54 @@ public class TsFileGeneratorForSeriesReaderByTimestamp {
   private static void generateTestData() {
     TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
     schema = new Schema();
-    schema.registerTimeseries(new Path("d1", "s1"),
+    schema.registerTimeseries(
+        new Path("d1", "s1"),
         new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.valueOf(conf.getValueEncoder())));
-    schema.registerTimeseries(new Path("d1", "s2"), new MeasurementSchema("s2", TSDataType.INT64,
-        TSEncoding.valueOf(conf.getValueEncoder()), CompressionType.UNCOMPRESSED));
-    schema.registerTimeseries(new Path("d1", "s3"), new MeasurementSchema("s3", TSDataType.INT64,
-        TSEncoding.valueOf(conf.getValueEncoder()), CompressionType.SNAPPY));
-    schema.registerTimeseries(new Path("d1", "s4"), new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
-    schema.registerTimeseries(new Path("d1", "s5"), new MeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.PLAIN));
-    schema.registerTimeseries(new Path("d1", "s6"), new MeasurementSchema("s6", TSDataType.FLOAT, TSEncoding.RLE));
-    schema.registerTimeseries(new Path("d1", "s7"), new MeasurementSchema("s7", TSDataType.DOUBLE, TSEncoding.RLE));
-    schema.registerTimeseries(new Path("d2", "s1"),
+    schema.registerTimeseries(
+        new Path("d1", "s2"),
+        new MeasurementSchema(
+            "s2",
+            TSDataType.INT64,
+            TSEncoding.valueOf(conf.getValueEncoder()),
+            CompressionType.UNCOMPRESSED));
+    schema.registerTimeseries(
+        new Path("d1", "s3"),
+        new MeasurementSchema(
+            "s3",
+            TSDataType.INT64,
+            TSEncoding.valueOf(conf.getValueEncoder()),
+            CompressionType.SNAPPY));
+    schema.registerTimeseries(
+        new Path("d1", "s4"), new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
+    schema.registerTimeseries(
+        new Path("d1", "s5"), new MeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.PLAIN));
+    schema.registerTimeseries(
+        new Path("d1", "s6"), new MeasurementSchema("s6", TSDataType.FLOAT, TSEncoding.RLE));
+    schema.registerTimeseries(
+        new Path("d1", "s7"), new MeasurementSchema("s7", TSDataType.DOUBLE, TSEncoding.RLE));
+    schema.registerTimeseries(
+        new Path("d2", "s1"),
         new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.valueOf(conf.getValueEncoder())));
-    schema.registerTimeseries(new Path("d2", "s2"), new MeasurementSchema("s2", TSDataType.INT64,
-        TSEncoding.valueOf(conf.getValueEncoder()), CompressionType.UNCOMPRESSED));
-    schema.registerTimeseries(new Path("d2", "s3"), new MeasurementSchema("s3", TSDataType.INT64,
-        TSEncoding.valueOf(conf.getValueEncoder()), CompressionType.SNAPPY));
-    schema.registerTimeseries(new Path("d2", "s4"), new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
+    schema.registerTimeseries(
+        new Path("d2", "s2"),
+        new MeasurementSchema(
+            "s2",
+            TSDataType.INT64,
+            TSEncoding.valueOf(conf.getValueEncoder()),
+            CompressionType.UNCOMPRESSED));
+    schema.registerTimeseries(
+        new Path("d2", "s3"),
+        new MeasurementSchema(
+            "s3",
+            TSDataType.INT64,
+            TSEncoding.valueOf(conf.getValueEncoder()),
+            CompressionType.SNAPPY));
+    schema.registerTimeseries(
+        new Path("d2", "s4"), new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
   }
 
-  static public void writeToFile(Schema schema) throws InterruptedException, IOException, WriteProcessException {
+  public static void writeToFile(Schema schema)
+      throws InterruptedException, IOException, WriteProcessException {
     Scanner in = getDataFile(inputDataFile);
     long lineCount = 0;
     long startTime = System.currentTimeMillis();
@@ -221,7 +256,7 @@ public class TsFileGeneratorForSeriesReaderByTimestamp {
     LOG.info("src file size:{}MB", FileUtils.getLocalFileByte(outputDataFile, Unit.MB));
   }
 
-  static private Scanner getDataFile(String path) {
+  private static Scanner getDataFile(String path) {
     File file = new File(path);
     try {
       Scanner in = new Scanner(file);

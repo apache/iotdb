@@ -18,10 +18,11 @@
  */
 package org.apache.iotdb.db.utils;
 
-import java.util.Iterator;
-import java.util.List;
 import org.junit.Assert;
 import org.junit.Test;
+
+import java.util.Iterator;
+import java.util.List;
 
 public class CopyOnReadLinkedListTest {
 
@@ -63,5 +64,4 @@ public class CopyOnReadLinkedListTest {
     Assert.assertEquals("bbb", clist.get(1));
     Assert.assertFalse(clist.isEmpty());
   }
-
 }

@@ -28,8 +28,7 @@ public class ShowDevicesPlan extends ShowPlan {
     super(ShowContentType.DEVICES, path);
   }
 
-  public ShowDevicesPlan(PartialPath path, int limit, int offset,
-      int fetchSize, boolean hasSgCol) {
+  public ShowDevicesPlan(PartialPath path, int limit, int offset, int fetchSize, boolean hasSgCol) {
     super(ShowContentType.DEVICES, path, limit, offset, fetchSize);
     this.hasSgCol = hasSgCol;
   }
@@ -38,4 +37,3 @@ public class ShowDevicesPlan extends ShowPlan {
     return hasSgCol;
   }
 }
-

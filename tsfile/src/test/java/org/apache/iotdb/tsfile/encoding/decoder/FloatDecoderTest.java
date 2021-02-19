@@ -18,12 +18,10 @@
  */
 package org.apache.iotdb.tsfile.encoding.decoder;
 
-import static org.junit.Assert.assertEquals;
-
-import java.io.ByteArrayOutputStream;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
+import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
+import org.apache.iotdb.tsfile.encoding.encoder.FloatEncoder;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.junit.After;
 import org.junit.Before;
@@ -31,11 +29,12 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.iotdb.tsfile.encoding.decoder.FloatDecoder;
-import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
-import org.apache.iotdb.tsfile.encoding.encoder.FloatEncoder;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import java.io.ByteArrayOutputStream;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.Assert.assertEquals;
 
 public class FloatDecoderTest {
 
@@ -83,8 +82,7 @@ public class FloatDecoderTest {
   }
 
   @After
-  public void tearDown() throws Exception {
-  }
+  public void tearDown() throws Exception {}
 
   @Test
   public void testRLEFloat() throws Exception {
@@ -145,9 +143,13 @@ public class FloatDecoderTest {
     logger.debug("{} // {}", value + 2, value2_);
   }
 
-  private void testFloatLength(TSEncoding encoding, List<Float> valueList, int maxPointValue,
+  private void testFloatLength(
+      TSEncoding encoding,
+      List<Float> valueList,
+      int maxPointValue,
       boolean isDebug,
-      int repeatCount) throws Exception {
+      int repeatCount)
+      throws Exception {
     Encoder encoder = new FloatEncoder(encoding, TSDataType.FLOAT, maxPointValue);
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     for (int i = 0; i < repeatCount; i++) {
@@ -171,9 +173,13 @@ public class FloatDecoderTest {
     }
   }
 
-  private void testDoubleLength(TSEncoding encoding, List<Double> valueList, int maxPointValue,
+  private void testDoubleLength(
+      TSEncoding encoding,
+      List<Double> valueList,
+      int maxPointValue,
       boolean isDebug,
-      int repeatCount) throws Exception {
+      int repeatCount)
+      throws Exception {
     Encoder encoder = new FloatEncoder(encoding, TSDataType.DOUBLE, maxPointValue);
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     for (int i = 0; i < repeatCount; i++) {

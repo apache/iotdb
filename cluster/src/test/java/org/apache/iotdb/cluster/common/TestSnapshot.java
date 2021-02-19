@@ -19,13 +19,14 @@
 
 package org.apache.iotdb.cluster.common;
 
-import java.nio.ByteBuffer;
-import java.util.Map;
-import java.util.Objects;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.snapshot.SnapshotFactory;
 import org.apache.iotdb.cluster.log.snapshot.SnapshotInstaller;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+
+import java.nio.ByteBuffer;
+import java.util.Map;
+import java.util.Objects;
 
 public class TestSnapshot extends Snapshot {
 
@@ -33,12 +34,12 @@ public class TestSnapshot extends Snapshot {
   private ByteBuffer data;
 
   public TestSnapshot() {
-    data = ByteBuffer.wrap(new byte[8192*2048]);
+    data = ByteBuffer.wrap(new byte[8192 * 2048]);
   }
 
   public TestSnapshot(int id) {
     this.id = id;
-    data = ByteBuffer.wrap(new byte[8192*2048]);
+    data = ByteBuffer.wrap(new byte[8192 * 2048]);
   }
 
   @Override
@@ -106,5 +107,4 @@ public class TestSnapshot extends Snapshot {
       return testSnapshot;
     }
   }
-
 }

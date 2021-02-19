@@ -18,13 +18,6 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
-import static org.junit.Assert.assertEquals;
-
-import java.util.List;
-
-import org.junit.Before;
-import org.junit.Test;
-
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -33,8 +26,15 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
+
+import org.junit.Before;
+import org.junit.Test;
+
+import java.util.List;
+
+import static org.junit.Assert.assertEquals;
 
 public class RecordUtilsTest {
 
@@ -43,16 +43,22 @@ public class RecordUtilsTest {
   private static Schema generateTestData() {
     Schema schema = new Schema();
     TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
-    schema.registerTimeseries(new Path("d1", "s1"),
+    schema.registerTimeseries(
+        new Path("d1", "s1"),
         new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.valueOf(conf.getValueEncoder())));
-    schema.registerTimeseries(new Path("d1", "s2"),
+    schema.registerTimeseries(
+        new Path("d1", "s2"),
         new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
-    schema.registerTimeseries(new Path("d1", "s3"),
+    schema.registerTimeseries(
+        new Path("d1", "s3"),
         new MeasurementSchema("s3", TSDataType.FLOAT, TSEncoding.valueOf(conf.getValueEncoder())));
-    schema.registerTimeseries(new Path("d1", "s4"),
+    schema.registerTimeseries(
+        new Path("d1", "s4"),
         new MeasurementSchema("s4", TSDataType.DOUBLE, TSEncoding.valueOf(conf.getValueEncoder())));
-    schema.registerTimeseries(new Path("d1", "s5"), new MeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.PLAIN));
-    schema.registerTimeseries(new Path("d1", "s6"), new MeasurementSchema("s6", TSDataType.TEXT, TSEncoding.PLAIN));
+    schema.registerTimeseries(
+        new Path("d1", "s5"), new MeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.PLAIN));
+    schema.registerTimeseries(
+        new Path("d1", "s6"), new MeasurementSchema("s6", TSDataType.TEXT, TSEncoding.PLAIN));
     return schema;
   }
 
@@ -96,7 +102,6 @@ public class RecordUtilsTest {
     assertEquals("s1", tuple.getMeasurementId());
     assertEquals(TSDataType.INT32, tuple.getType());
     assertEquals(1, tuple.getValue());
-
   }
 
   @Test
@@ -119,7 +124,7 @@ public class RecordUtilsTest {
     assertEquals(1471522347000l, record.time);
     assertEquals("d1", record.deviceId);
     List<DataPoint> tuples = record.dataPointList;
-    assertEquals(5, tuples.size());// enum type is omitted.
+    assertEquals(5, tuples.size()); // enum type is omitted.
     DataPoint tuple = tuples.get(0);
     assertEquals("s1", tuple.getMeasurementId());
     assertEquals(TSDataType.INT32, tuple.getType());
@@ -178,7 +183,5 @@ public class RecordUtilsTest {
     assertEquals(1471522347000l, record.time);
     tuples = record.dataPointList;
     assertEquals(0, tuples.size());
-
   }
-
 }
