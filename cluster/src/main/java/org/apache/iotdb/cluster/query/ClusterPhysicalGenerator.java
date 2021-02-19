@@ -19,14 +19,6 @@
 
 package org.apache.iotdb.cluster.query;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URL;
-import java.util.List;
-import java.util.Properties;
-import java.util.Set;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -41,8 +33,18 @@ import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
+import java.util.List;
+import java.util.Properties;
+import java.util.Set;
 
 public class ClusterPhysicalGenerator extends PhysicalGenerator {
 
@@ -53,8 +55,8 @@ public class ClusterPhysicalGenerator extends PhysicalGenerator {
   }
 
   @Override
-  protected Pair<List<TSDataType>, List<TSDataType>> getSeriesTypes(List<PartialPath> paths,
-      String aggregation) throws MetadataException {
+  protected Pair<List<TSDataType>, List<TSDataType>> getSeriesTypes(
+      List<PartialPath> paths, String aggregation) throws MetadataException {
     return getCMManager().getSeriesTypesByPaths(paths, aggregation);
   }
 

@@ -18,14 +18,6 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.TreeMap;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -34,6 +26,15 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.TreeMap;
 
 public class CreateTimeSeriesPlan extends PhysicalPlan {
 
@@ -52,9 +53,15 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
     canBeSplit = false;
   }
 
-  public CreateTimeSeriesPlan(PartialPath path, TSDataType dataType, TSEncoding encoding,
-      CompressionType compressor, Map<String, String> props, Map<String, String> tags,
-      Map<String, String> attributes, String alias) {
+  public CreateTimeSeriesPlan(
+      PartialPath path,
+      TSDataType dataType,
+      TSEncoding encoding,
+      CompressionType compressor,
+      Map<String, String> props,
+      Map<String, String> tags,
+      Map<String, String> attributes,
+      String alias) {
     super(false, Operator.OperatorType.CREATE_TIMESERIES);
     this.path = path;
     this.dataType = dataType;
@@ -144,10 +151,9 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
 
   @Override
   public String toString() {
-    return String
-        .format("seriesPath: %s, resultDataType: %s, encoding: %s, compression: %s, tagOffset: %s",
-            path,
-            dataType, encoding, compressor, tagOffset);
+    return String.format(
+        "seriesPath: %s, resultDataType: %s, encoding: %s, compression: %s, tagOffset: %s",
+        path, dataType, encoding, compressor, tagOffset);
   }
 
   @Override
@@ -291,8 +297,11 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
     }
     CreateTimeSeriesPlan that = (CreateTimeSeriesPlan) o;
 
-    return Objects.equals(path, that.path) && dataType == that.dataType && encoding == that.encoding
-        && compressor == that.compressor && tagOffset == that.tagOffset;
+    return Objects.equals(path, that.path)
+        && dataType == that.dataType
+        && encoding == that.encoding
+        && compressor == that.compressor
+        && tagOffset == that.tagOffset;
   }
 
   @Override

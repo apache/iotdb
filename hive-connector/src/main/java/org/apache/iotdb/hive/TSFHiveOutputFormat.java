@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.hive;
 
+import org.apache.iotdb.hadoop.tsfile.TSFOutputFormat;
+import org.apache.iotdb.hadoop.tsfile.record.HDFSTSRecord;
+
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.ql.exec.FileSinkOperator;
@@ -28,40 +31,45 @@ import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordWriter;
 import org.apache.hadoop.mapred.Reporter;
 import org.apache.hadoop.util.Progressable;
-import org.apache.iotdb.hadoop.tsfile.TSFOutputFormat;
-import org.apache.iotdb.hadoop.tsfile.record.HDFSTSRecord;
 
 import java.io.IOException;
 import java.util.Properties;
 
 /**
- * The function implement is same as {@link org.apache.iotdb.hadoop.tsfile.TSFOutputFormat}
- * and is customized for Hive
+ * The function implement is same as {@link org.apache.iotdb.hadoop.tsfile.TSFOutputFormat} and is
+ * customized for Hive
  */
-public class TSFHiveOutputFormat extends TSFOutputFormat implements HiveOutputFormat<NullWritable, HDFSTSRecord> {
+public class TSFHiveOutputFormat extends TSFOutputFormat
+    implements HiveOutputFormat<NullWritable, HDFSTSRecord> {
 
   @Override
-  public FileSinkOperator.RecordWriter getHiveRecordWriter(JobConf jobConf, Path path, Class<? extends Writable> aClass, boolean b, Properties properties, Progressable progressable) throws IOException {
+  public FileSinkOperator.RecordWriter getHiveRecordWriter(
+      JobConf jobConf,
+      Path path,
+      Class<? extends Writable> aClass,
+      boolean b,
+      Properties properties,
+      Progressable progressable)
+      throws IOException {
     return new TSFHiveRecordWriter(jobConf, path, null);
   }
 
-  //no records will be emitted from Hive
+  // no records will be emitted from Hive
   @Override
-  public RecordWriter<NullWritable, HDFSTSRecord> getRecordWriter(FileSystem ignored, JobConf job, String name, Progressable progress) {
+  public RecordWriter<NullWritable, HDFSTSRecord> getRecordWriter(
+      FileSystem ignored, JobConf job, String name, Progressable progress) {
     return new RecordWriter<NullWritable, HDFSTSRecord>() {
       @Override
       public void write(NullWritable key, HDFSTSRecord value) {
         throw new RuntimeException("Should not be called");
       }
+
       @Override
-      public void close(Reporter reporter) {
-      }
+      public void close(Reporter reporter) {}
     };
   }
 
   // Not doing any check
   @Override
-  public void checkOutputSpecs(FileSystem ignored, JobConf job) throws IOException {
-
-  }
+  public void checkOutputSpecs(FileSystem ignored, JobConf job) throws IOException {}
 }

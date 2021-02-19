@@ -18,10 +18,11 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
-import java.util.Map;
-import java.util.Objects;
 import org.apache.iotdb.db.index.common.IndexType;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+
+import java.util.Map;
+import java.util.Objects;
 
 public class QueryIndexPlan extends RawDataQueryPlan {
 

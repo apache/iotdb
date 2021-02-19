@@ -18,33 +18,35 @@
 
 package org.apache.iotdb.flink;
 
-import static org.junit.Assert.assertEquals;
-
 import com.google.common.collect.Lists;
+import org.junit.Test;
+
 import java.util.HashMap;
 import java.util.Map;
-import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
 
 public class DefaultIoTSerializationSchemaTest {
 
-    @Test
-    public void serialize() {
-        IoTDBOptions options = new IoTDBOptions();
-        options.setTimeseriesOptionList(Lists.newArrayList(new IoTDBOptions.TimeseriesOption("root.sg.D01.temperature")));
-        DefaultIoTSerializationSchema serializationSchema = new DefaultIoTSerializationSchema();
+  @Test
+  public void serialize() {
+    IoTDBOptions options = new IoTDBOptions();
+    options.setTimeseriesOptionList(
+        Lists.newArrayList(new IoTDBOptions.TimeseriesOption("root.sg.D01.temperature")));
+    DefaultIoTSerializationSchema serializationSchema = new DefaultIoTSerializationSchema();
 
-        Map<String,String> tuple = new HashMap();
-        tuple.put("device", "root.sg.D01");
-        tuple.put("timestamp", "1581861293000");
-        tuple.put("measurements", "temperature");
-        tuple.put("types", "DOUBLE");
-        tuple.put("values", "36.5");
+    Map<String, String> tuple = new HashMap();
+    tuple.put("device", "root.sg.D01");
+    tuple.put("timestamp", "1581861293000");
+    tuple.put("measurements", "temperature");
+    tuple.put("types", "DOUBLE");
+    tuple.put("values", "36.5");
 
-        Event event = serializationSchema.serialize(tuple);
-        assertEquals(tuple.get("device"), event.getDevice());
-        assertEquals(tuple.get("timestamp"), String.valueOf(event.getTimestamp()));
-        assertEquals(tuple.get("measurements"), event.getMeasurements().get(0));
-        assertEquals(tuple.get("types"), event.getTypes().get(0).toString());
-        assertEquals(tuple.get("values"), String.valueOf(event.getValues().get(0)));
-    }
+    Event event = serializationSchema.serialize(tuple);
+    assertEquals(tuple.get("device"), event.getDevice());
+    assertEquals(tuple.get("timestamp"), String.valueOf(event.getTimestamp()));
+    assertEquals(tuple.get("measurements"), event.getMeasurements().get(0));
+    assertEquals(tuple.get("types"), event.getTypes().get(0).toString());
+    assertEquals(tuple.get("values"), String.valueOf(event.getValues().get(0)));
+  }
 }

@@ -19,11 +19,6 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
@@ -31,15 +26,19 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+
 public class MetadataIndexNode {
 
   private static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
   private final List<MetadataIndexEntry> children;
   private long endOffset;
 
-  /**
-   * type of the child node at offset
-   */
+  /** type of the child node at offset */
   private final MetadataIndexNodeType nodeType;
 
   public MetadataIndexNode(MetadataIndexNodeType nodeType) {
@@ -48,8 +47,8 @@ public class MetadataIndexNode {
     this.nodeType = nodeType;
   }
 
-  public MetadataIndexNode(List<MetadataIndexEntry> children, long endOffset,
-      MetadataIndexNodeType nodeType) {
+  public MetadataIndexNode(
+      List<MetadataIndexEntry> children, long endOffset, MetadataIndexNodeType nodeType) {
     this.children = children;
     this.endOffset = endOffset;
     this.nodeType = nodeType;
@@ -104,8 +103,8 @@ public class MetadataIndexNode {
       children.add(MetadataIndexEntry.deserializeFrom(buffer));
     }
     long offset = ReadWriteIOUtils.readLong(buffer);
-    MetadataIndexNodeType nodeType = MetadataIndexNodeType
-        .deserialize(ReadWriteIOUtils.readByte(buffer));
+    MetadataIndexNodeType nodeType =
+        MetadataIndexNodeType.deserialize(ReadWriteIOUtils.readByte(buffer));
     return new MetadataIndexNode(children, offset, nodeType);
   }
 

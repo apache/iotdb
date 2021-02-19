@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.query.udf.builtin;
 
-import java.io.IOException;
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
@@ -27,6 +26,8 @@ import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameterValida
 import org.apache.iotdb.db.query.udf.api.exception.UDFException;
 import org.apache.iotdb.db.query.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import java.io.IOException;
 
 public abstract class UDTFValueTrend implements UDTF {
 
@@ -43,8 +44,8 @@ public abstract class UDTFValueTrend implements UDTF {
   public void validate(UDFParameterValidator validator) throws UDFException {
     validator
         .validateInputSeriesNumber(1)
-        .validateInputSeriesDataType(0, TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT,
-            TSDataType.DOUBLE);
+        .validateInputSeriesDataType(
+            0, TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE);
   }
 
   protected void updatePreviousValue(Row row) throws UDFInputSeriesDataTypeNotValidException {
@@ -63,8 +64,8 @@ public abstract class UDTFValueTrend implements UDTF {
         break;
       default:
         // This will not happen.
-        throw new UDFInputSeriesDataTypeNotValidException(0, dataType, TSDataType.INT32,
-            TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE);
+        throw new UDFInputSeriesDataTypeNotValidException(
+            0, dataType, TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE);
     }
   }
 

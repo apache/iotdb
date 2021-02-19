@@ -19,13 +19,6 @@
 
 package org.apache.iotdb.db.qp.physical.sys;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -34,8 +27,17 @@ import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator.AlterType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 public class AlterTimeSeriesPlan extends PhysicalPlan {
 
@@ -52,22 +54,24 @@ public class AlterTimeSeriesPlan extends PhysicalPlan {
    */
   private Map<String, String> alterMap;
 
-  /**
-   * used when the alterType is UPSERT
-   */
+  /** used when the alterType is UPSERT */
   private String alias;
+
   private Map<String, String> tagsMap;
   private Map<String, String> attributesMap;
 
-  /**
-   * used only for deserialize
-   */
+  /** used only for deserialize */
   public AlterTimeSeriesPlan() {
     super(false, OperatorType.ALTER_TIMESERIES);
   }
 
-  public AlterTimeSeriesPlan(PartialPath path, AlterType alterType, Map<String, String> alterMap,
-      String alias, Map<String, String> tagsMap, Map<String, String> attributesMap) {
+  public AlterTimeSeriesPlan(
+      PartialPath path,
+      AlterType alterType,
+      Map<String, String> alterMap,
+      String alias,
+      Map<String, String> tagsMap,
+      Map<String, String> attributesMap) {
     super(false, Operator.OperatorType.ALTER_TIMESERIES);
     this.path = path;
     this.alterType = alterType;
@@ -193,12 +197,12 @@ public class AlterTimeSeriesPlan extends PhysicalPlan {
 
     AlterTimeSeriesPlan that = (AlterTimeSeriesPlan) o;
 
-    return Objects.equals(path, that.path) &&
-        alterType == that.alterType &&
-        Objects.equals(alterMap, that.alterMap) &&
-        Objects.equals(alias, that.alias) &&
-        Objects.equals(tagsMap, that.tagsMap) &&
-        Objects.equals(attributesMap, that.attributesMap);
+    return Objects.equals(path, that.path)
+        && alterType == that.alterType
+        && Objects.equals(alterMap, that.alterMap)
+        && Objects.equals(alias, that.alias)
+        && Objects.equals(tagsMap, that.tagsMap)
+        && Objects.equals(attributesMap, that.attributesMap);
   }
 
   @Override

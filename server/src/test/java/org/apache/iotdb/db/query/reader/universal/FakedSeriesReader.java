@@ -18,23 +18,23 @@
  */
 package org.apache.iotdb.db.query.reader.universal;
 
-import java.io.IOException;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+
+import java.io.IOException;
 
 public class FakedSeriesReader implements IPointReader {
 
   private int index;
   private int size;
   private boolean initWithTimeList;
-  private final static TSDataType DATA_TYPE = TSDataType.INT64;
+  private static final TSDataType DATA_TYPE = TSDataType.INT64;
 
   // init with time list and value
   private long[] timestamps;
   private long value;
-
 
   // init with startTime, size, interval and modValue
   private long startTime;
@@ -71,8 +71,7 @@ public class FakedSeriesReader implements IPointReader {
       long time = startTime;
       startTime += interval;
       index++;
-      return new TimeValuePair(time,
-          TsPrimitiveType.getByType(TSDataType.INT64, time % modValue));
+      return new TimeValuePair(time, TsPrimitiveType.getByType(TSDataType.INT64, time % modValue));
     }
   }
 
@@ -82,7 +81,5 @@ public class FakedSeriesReader implements IPointReader {
   }
 
   @Override
-  public void close() {
-  }
-
+  public void close() {}
 }

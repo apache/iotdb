@@ -19,15 +19,16 @@
 
 package org.apache.iotdb.cluster.server.handlers.caller;
 
-import static junit.framework.TestCase.assertFalse;
-import static junit.framework.TestCase.assertTrue;
-
-import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.iotdb.cluster.common.TestException;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.server.handlers.caller.SnapshotCatchUpHandler;
+
 import org.junit.Test;
+
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import static junit.framework.TestCase.assertFalse;
+import static junit.framework.TestCase.assertTrue;
 
 public class SnapshotCatchUpHandlerTest {
 

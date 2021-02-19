@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.query.reader.universal;
 
-import java.io.IOException;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+
 import org.junit.Assert;
 import org.junit.Test;
+
+import java.io.IOException;
 
 public class PriorityMergeReaderTest2 {
 

@@ -18,11 +18,6 @@
  */
 package org.apache.iotdb.spark.tsfile.qp;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.spark.tsfile.qp.common.FilterOperator;
 import org.apache.iotdb.spark.tsfile.qp.common.SQLConstant;
 import org.apache.iotdb.spark.tsfile.qp.common.SingleQuery;
@@ -35,6 +30,11 @@ import org.apache.iotdb.spark.tsfile.qp.optimizer.PhysicalOptimizer;
 import org.apache.iotdb.spark.tsfile.qp.optimizer.RemoveNotOptimizer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * This class is used to convert information given by sparkSQL to construct TSFile's query plans.
@@ -43,11 +43,16 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
  */
 public class QueryProcessor {
 
-  //construct logical query plans first, then convert them to physical ones
+  // construct logical query plans first, then convert them to physical ones
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public List<TSQueryPlan> generatePlans(FilterOperator filter, List<String> paths,
-      List<String> columnNames, TsFileSequenceReader in, Long start, Long end) throws
-      QueryProcessorException, IOException {
+  public List<TSQueryPlan> generatePlans(
+      FilterOperator filter,
+      List<String> paths,
+      List<String> columnNames,
+      TsFileSequenceReader in,
+      Long start,
+      Long end)
+      throws QueryProcessorException, IOException {
 
     List<TSQueryPlan> queryPlans = new ArrayList<>();
 
@@ -69,13 +74,12 @@ public class QueryProcessor {
       for (FilterOperator filterOperator : filterOperators) {
         SingleQuery singleQuery = constructSelectPlan(filterOperator, columnNames);
         if (singleQuery != null) {
-          queryPlans.addAll(new PhysicalOptimizer(columnNames).optimize(singleQuery,
-              paths, in, start, end));
+          queryPlans.addAll(
+              new PhysicalOptimizer(columnNames).optimize(singleQuery, paths, in, start, end));
         }
       }
     } else {
-      queryPlans.addAll(new PhysicalOptimizer(columnNames).optimize(null,
-          paths, in, start, end));
+      queryPlans.addAll(new PhysicalOptimizer(columnNames).optimize(null, paths, in, start, end));
     }
     // merge query plan
     Map<List<String>, List<TSQueryPlan>> pathMap = new HashMap<>();
@@ -168,8 +172,7 @@ public class QueryProcessor {
           switch (child.getSinglePath()) {
             case SQLConstant.RESERVED_TIME:
               if (timeFilter != null) {
-                throw new QueryOperatorException(
-                    "time filter has been specified more than once");
+                throw new QueryOperatorException("time filter has been specified more than once");
               }
               timeFilter = child;
               break;
@@ -191,5 +194,4 @@ public class QueryProcessor {
 
     return new SingleQuery(columnFilterOperators, timeFilter, valueFilter);
   }
-
 }

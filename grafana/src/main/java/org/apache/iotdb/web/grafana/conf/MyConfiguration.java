@@ -24,15 +24,11 @@ import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
 
-/**
- * Created by dell on 2017/7/18.
- */
+/** Created by dell on 2017/7/18. */
 @Configuration
 public class MyConfiguration {
 
-  /**
-   * return WebMvcConfigurer.
-   */
+  /** return WebMvcConfigurer. */
   @Bean
   public WebMvcConfigurer corsConfigurer() {
     return new WebMvcConfigurerAdapter() {

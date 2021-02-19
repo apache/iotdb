@@ -18,18 +18,20 @@
 
 package org.apache.iotdb.flink;
 
+import org.apache.iotdb.session.pool.SessionPool;
+
+import com.google.common.collect.Lists;
+import org.junit.Before;
+import org.junit.Test;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyZeroInteractions;
-
-import com.google.common.collect.Lists;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import org.apache.iotdb.session.pool.SessionPool;
-import org.junit.Before;
-import org.junit.Test;
 
 public class IoTDBSinkBatchInsertTest {
 
@@ -78,8 +80,9 @@ public class IoTDBSinkBatchInsertTest {
     tuple.put("values", "37.1");
     ioTDBSink.invoke(tuple, null);
 
-    verify(pool).insertRecords(any(List.class), any(List.class), any(List.class), any(List.class),
-        any(List.class));
+    verify(pool)
+        .insertRecords(
+            any(List.class), any(List.class), any(List.class), any(List.class), any(List.class));
 
     tuple = new HashMap();
     tuple.put("device", "root.sg.D01");
@@ -104,8 +107,9 @@ public class IoTDBSinkBatchInsertTest {
     verifyZeroInteractions(pool);
 
     ioTDBSink.close();
-    verify(pool).insertRecords(any(List.class), any(List.class), any(List.class), any(List.class),
-        any(List.class));
+    verify(pool)
+        .insertRecords(
+            any(List.class), any(List.class), any(List.class), any(List.class), any(List.class));
     verify(pool).close();
   }
 }

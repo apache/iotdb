@@ -19,12 +19,6 @@
 
 package org.apache.iotdb.db.engine.compaction.utils;
 
-import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.FULL_MERGE;
-import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.SEQUENCE_NAME;
-import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.SOURCE_NAME;
-import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.TARGET_NAME;
-import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.UNSEQUENCE_NAME;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -33,6 +27,12 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.FULL_MERGE;
+import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.SEQUENCE_NAME;
+import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.SOURCE_NAME;
+import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.TARGET_NAME;
+import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.UNSEQUENCE_NAME;
 
 public class CompactionLogAnalyzer {
 
@@ -52,7 +52,7 @@ public class CompactionLogAnalyzer {
 
   /**
    * @return analyze (written device set, last offset, source file list, target file , is contains
-   * merge finished)
+   *     merge finished)
    */
   public void analyze() throws IOException {
     String currLine;

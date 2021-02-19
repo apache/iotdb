@@ -19,18 +19,20 @@
 
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.directories.DirectoryManager;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 // Notice : statistics in this class may not be accurate because of limited user authority.
 public class OpenFileNumUtil {
@@ -44,7 +46,7 @@ public class OpenFileNumUtil {
   private static final String MAC_OS_NAME = "mac";
   private static final String SEARCH_PID_LINUX = "ps -aux | grep -i %s | grep -v grep";
   private static final String SEARCH_PID_MAC = "ps aux | grep -i %s | grep -v grep";
-  //command 'lsof -p' is available on most Linux distro except CentOS.
+  // command 'lsof -p' is available on most Linux distro except CentOS.
   private static final String SEARCH_OPEN_DATA_FILE_BY_PID = "lsof -p %d";
 
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -53,9 +55,7 @@ public class OpenFileNumUtil {
   private static boolean isOutputValid = false;
   private int pid;
 
-  /**
-   * constructor, process key word is defined by IOTDB_PROCESS_KEY_WORD.
-   */
+  /** constructor, process key word is defined by IOTDB_PROCESS_KEY_WORD. */
   private OpenFileNumUtil() {
     pid = getIotdbPid();
   }
@@ -144,9 +144,9 @@ public class OpenFileNumUtil {
 
   /**
    * return statistic Map, whose key belongs to enum OpenFileNumStatistics: TOTAL_OPEN_FILE_NUM is
-   * the current total open file number of IoTDB service process; SEQUENCE_FILE_OPEN_NUM is the current
-   * open file number under data directory; DELTA_OPEN_FILE_NUM is the current open file number of
-   * TsFile; UNSEQUENCE_FILE_OPEN_NUM is the current open file number of unsequence file;
+   * the current total open file number of IoTDB service process; SEQUENCE_FILE_OPEN_NUM is the
+   * current open file number under data directory; DELTA_OPEN_FILE_NUM is the current open file
+   * number of TsFile; UNSEQUENCE_FILE_OPEN_NUM is the current open file number of unsequence file;
    * WAL_OPEN_FILE_NUM is the current open file number of WAL file; METADATA_OPEN_FILE_NUM is the
    * current open file number of metadata; DIGEST_OPEN_FILE_NUM is the current open file number of
    * fileNodeDir; SOCKET_OPEN_FILE_NUM is the current open socket connection of IoTDB service
@@ -191,7 +191,8 @@ public class OpenFileNumUtil {
     return resultMap;
   }
 
-  private static void countOneFile(String line, int pid, EnumMap<OpenFileNumStatistics, Integer> resultMap) {
+  private static void countOneFile(
+      String line, int pid, EnumMap<OpenFileNumStatistics, Integer> resultMap) {
     String[] temp = line.split("\\s+");
     if (!line.contains(Integer.toString(pid)) || temp.length <= 8) {
       return;
@@ -282,10 +283,8 @@ public class OpenFileNumUtil {
 
   private static class OpenFileNumUtilHolder {
 
-    private OpenFileNumUtilHolder() {
-    }
+    private OpenFileNumUtilHolder() {}
 
     private static final OpenFileNumUtil INSTANCE = new OpenFileNumUtil();
   }
-
 }

@@ -31,6 +31,7 @@ import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.StringDataPoint;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,17 +40,13 @@ public class MemUtils {
 
   private static Logger logger = LoggerFactory.getLogger(MemUtils.class);
 
-  private MemUtils(){
-
-  }
+  private MemUtils() {}
 
   /**
-   * function for getting the value size.
-   * If mem control enabled, do not add text data size here, the size will be added to memtable
-   * before inserting.
+   * function for getting the value size. If mem control enabled, do not add text data size here,
+   * the size will be added to memtable before inserting.
    */
-  public static long getRecordSize(TSDataType dataType, Object value,
-      boolean addingTextDataSize) {
+  public static long getRecordSize(TSDataType dataType, Object value, boolean addingTextDataSize) {
     switch (dataType) {
       case INT32:
         return 8L + 4L;
@@ -69,13 +66,12 @@ public class MemUtils {
   }
 
   public static long getBinarySize(Binary value) {
-    return RamUsageEstimator.NUM_BYTES_OBJECT_HEADER + RamUsageEstimator
-        .sizeOf(value.getValues());
+    return RamUsageEstimator.NUM_BYTES_OBJECT_HEADER + RamUsageEstimator.sizeOf(value.getValues());
   }
 
   public static long getBinaryColumnSize(Binary[] column, int start, int end) {
     long memSize = 0;
-    memSize += (end-start) * RamUsageEstimator.NUM_BYTES_OBJECT_HEADER;
+    memSize += (end - start) * RamUsageEstimator.NUM_BYTES_OBJECT_HEADER;
     for (int i = start; i < end; i++) {
       memSize += RamUsageEstimator.sizeOf(column[i].getValues());
     }
@@ -86,8 +82,8 @@ public class MemUtils {
    * If mem control enabled, do not add text data size here, the size will be added to memtable
    * before inserting.
    */
-  public static long getRecordSize(InsertTabletPlan insertTabletPlan, int start, int end,
-      boolean addingTextDataSize) {
+  public static long getRecordSize(
+      InsertTabletPlan insertTabletPlan, int start, int end, boolean addingTextDataSize) {
     if (start >= end) {
       return 0L;
     }
@@ -98,15 +94,20 @@ public class MemUtils {
       }
       switch (insertTabletPlan.getDataTypes()[i]) {
         case INT32:
-          memSize += (end - start) * (8L + 4L); break;
+          memSize += (end - start) * (8L + 4L);
+          break;
         case INT64:
-          memSize += (end - start) * (8L + 8L); break;
+          memSize += (end - start) * (8L + 8L);
+          break;
         case FLOAT:
-          memSize += (end - start) * (8L + 4L); break;
+          memSize += (end - start) * (8L + 4L);
+          break;
         case DOUBLE:
-          memSize += (end - start) * (8L + 8L); break;
+          memSize += (end - start) * (8L + 8L);
+          break;
         case BOOLEAN:
-          memSize += (end - start) * (8L + 1L); break;
+          memSize += (end - start) * (8L + 1L);
+          break;
         case TEXT:
           memSize += (end - start) * 8L;
           if (addingTextDataSize) {
@@ -122,9 +123,7 @@ public class MemUtils {
     return memSize;
   }
 
-  /**
-   * Calculate how much memory will be used if the given record is written to sequence file.
-   */
+  /** Calculate how much memory will be used if the given record is written to sequence file. */
   public static long getTsRecordMem(TSRecord record) {
     long memUsed = 8; // time
     memUsed += 8; // deviceId reference
@@ -136,17 +135,13 @@ public class MemUtils {
     return memUsed;
   }
 
-  /**
-   * function for getting the memory size of the given string.
-   */
+  /** function for getting the memory size of the given string. */
   public static long getStringMem(String str) {
     // wide char (2 bytes each) and 64B String overhead
     return str.length() * 2 + 64L;
   }
 
-  /**
-   * function for getting the memory size of the given data point.
-   */
+  /** function for getting the memory size of the given data point. */
   public static long getDataPointMem(DataPoint dataPoint) {
     // type reference
     long memUsed = 8;
@@ -178,9 +173,7 @@ public class MemUtils {
     return memUsed;
   }
 
-  /**
-   * function for converting the byte count result to readable string.
-   */
+  /** function for converting the byte count result to readable string. */
   public static String bytesCntToStr(long inputCnt) {
     long cnt = inputCnt;
     long gbs = cnt / IoTDBConstant.GB;
