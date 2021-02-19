@@ -996,58 +996,6 @@ public class MManager {
     return res;
   }
 
-  protected MeasurementMNode getMeasurementMNode(
-      MNode deviceMNode, String measurement, TSDataType dataType) throws MetadataException {
-    MNode child = deviceMNode.getChild(measurement);
-    if (child == null) {
-      return null;
-    }
-
-    return changeMNodeToMeasurementMNode(child, dataType);
-  }
-
-  protected MeasurementMNode changeMNodeToMeasurementMNode(MNode node, TSDataType dataType)
-      throws MetadataException {
-    if (node instanceof MeasurementMNode) {
-      return (MeasurementMNode) node;
-    }
-
-    if (node instanceof StorageGroupMNode) {
-      throw new PathAlreadyExistException(node.getPartialPath().getFullPath());
-    }
-
-    MNode parent = node.getParent();
-    MeasurementMNode measurementMNode =
-        new MeasurementMNode(
-            parent,
-            node.getName(),
-            null,
-            dataType,
-            getDefaultEncoding(dataType),
-            TSFileDescriptor.getInstance().getConfig().getCompressor(),
-            null);
-    parent.replaceChild(node.getName(), measurementMNode);
-
-    // persist to meta log
-    try {
-      CreateTimeSeriesPlan plan =
-          new CreateTimeSeriesPlan(
-              measurementMNode.getPartialPath(),
-              dataType,
-              getDefaultEncoding(dataType),
-              TSFileDescriptor.getInstance().getConfig().getCompressor(),
-              null,
-              null,
-              null,
-              null);
-      logWriter.createTimeseries(plan);
-    } catch (IOException e) {
-      throw new MetadataException(
-          String.format("alter the basic info of %s failed", measurementMNode.getFullPath()));
-    }
-    return measurementMNode;
-  }
-
   public MeasurementSchema getSeriesSchema(PartialPath device, String measurement)
       throws MetadataException {
     MNode node = mtree.getNodeByPath(device);
