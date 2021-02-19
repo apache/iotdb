@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.cluster.client;
 
+import java.io.IOException;
+
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.iotdb.cluster.client.async.AsyncClientPool;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient.FactoryAsync;
@@ -32,7 +35,6 @@ import org.apache.thrift.protocol.TProtocolFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 
 public class DataClientProvider {
 
@@ -53,11 +55,13 @@ public class DataClientProvider {
     }
   }
 
-  private AsyncClientPool getDataAsyncClientPool() {
+  @VisibleForTesting
+  public AsyncClientPool getDataAsyncClientPool() {
     return dataAsyncClientPool;
   }
 
-  private SyncClientPool getDataSyncClientPool() {
+  @VisibleForTesting
+  public SyncClientPool getDataSyncClientPool() {
     return dataSyncClientPool;
   }
 
@@ -68,7 +72,7 @@ public class DataClientProvider {
    * @param timeout timeout threshold of connection
    */
   public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
-    AsyncDataClient client = (AsyncDataClient) getDataAsyncClientPool().getClient(node);
+    AsyncDataClient client = (AsyncDataClient) dataAsyncClientPool.getClient(node);
     if (client == null) {
       throw new IOException("can not get client for node=" + node);
     }
@@ -83,7 +87,7 @@ public class DataClientProvider {
    * @param timeout timeout threshold of connection
    */
   public SyncDataClient getSyncDataClient(Node node, int timeout) throws TException {
-    SyncDataClient client = (SyncDataClient) getDataSyncClientPool().getClient(node);
+    SyncDataClient client = (SyncDataClient) dataSyncClientPool.getClient(node);
     if (client == null) {
       throw new TException("can not get client for node=" + node);
     }

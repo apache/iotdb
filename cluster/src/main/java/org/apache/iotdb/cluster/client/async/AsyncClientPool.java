@@ -19,6 +19,13 @@
 
 package org.apache.iotdb.cluster.client.async;
 
+import java.io.IOException;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.Map;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentHashMap;
+
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
@@ -28,12 +35,6 @@ import org.apache.iotdb.cluster.utils.ClusterNode;
 import org.apache.thrift.async.TAsyncMethodCall;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class AsyncClientPool {
 
@@ -80,20 +81,20 @@ public class AsyncClientPool {
     }
 
     AsyncClient client;
-    // As clientCaches is ConcurrentHashMap, computeIfAbsent is thread safety.
-    Deque<AsyncClient> clientStack =
-        clientCaches.computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
+    //As clientCaches is ConcurrentHashMap, computeIfAbsent is thread safety.
+    Deque<AsyncClient> clientDeque = clientCaches.computeIfAbsent(clusterNode,
+        n -> new ArrayDeque<>());
     synchronized (this) {
-      if (clientStack.isEmpty()) {
+      if (clientDeque.isEmpty()) {
         int nodeClientNum = nodeClientNumMap.getOrDefault(clusterNode, 0);
         if (nodeClientNum >= maxConnectionForEachNode) {
-          client = waitForClient(clientStack, clusterNode, nodeClientNum);
+          client = waitForClient(clientDeque, clusterNode);
         } else {
           nodeClientNumMap.put(clusterNode, nodeClientNum + 1);
           client = asyncClientFactory.getAsyncClient(clusterNode, this);
         }
       } else {
-        client = clientStack.pop();
+        client = clientDeque.getFirst();
       }
     }
     return client;
@@ -104,37 +105,37 @@ public class AsyncClientPool {
    * is returned beyond the timeout, a new client will be returned. WARNING: the caller must
    * synchronize on the pool.
    *
-   * @param clientStack
+   * @param clientQueue
    * @param node
-   * @param nodeClientNum
    * @return
    * @throws IOException
    */
   @SuppressWarnings({"squid:S2273"}) // synchronized outside
-  private AsyncClient waitForClient(
-      Deque<AsyncClient> clientStack, ClusterNode node, int nodeClientNum) throws IOException {
-    // wait for an available client
-    long waitStart = System.currentTimeMillis();
-    while (clientStack.isEmpty()) {
-      try {
-        this.wait(WAIT_CLIENT_TIMEOUT_MS);
-        if (clientStack.isEmpty()
-            && System.currentTimeMillis() - waitStart >= WAIT_CLIENT_TIMEOUT_MS) {
-          logger.warn(
-              "Cannot get an available client after {}ms, create a new one, factory {} now is {}",
-              WAIT_CLIENT_TIMEOUT_MS,
-              asyncClientFactory,
-              nodeClientNum);
-          nodeClientNumMap.put(node, nodeClientNum + 1);
-          return asyncClientFactory.getAsyncClient(node, this);
-        }
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        logger.warn("Interrupted when waiting for an available client of {}", node);
-        return null;
-      }
+  private AsyncClient waitForClient(Queue<AsyncClient> clientQueue, ClusterNode node) throws IOException {
+    AsyncClient client;
+    try {
+      this.wait(WAIT_CLIENT_TIMEOUT_MS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      logger.warn("Interrupted when waiting for an available client of {}", node);
+      return null;
     }
-    return clientStack.pop();
+
+    synchronized (this) {
+      if (!clientQueue.isEmpty()) {
+        return clientQueue.poll();
+      }
+
+
+      int nodeClientNum = nodeClientNumMap.get(node);
+      logger.warn("Cannot get an available client after {}ms, create a new one, factory {} now is {}",
+          WAIT_CLIENT_TIMEOUT_MS, asyncClientFactory, nodeClientNum);
+
+      client = asyncClientFactory.getAsyncClient(node, this);
+      nodeClientNumMap.put(node, nodeClientNum + 1);
+    }
+
+    return client;
   }
 
   /**
@@ -154,12 +155,13 @@ public class AsyncClientPool {
     if (call != null) {
       logger.warn("A using client {} is put back while running {}", client.hashCode(), call);
     }
+
     synchronized (this) {
-      // As clientCaches is ConcurrentHashMap, computeIfAbsent is thread safety.
-      Deque<AsyncClient> clientStack =
-          clientCaches.computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
-      clientStack.push(client);
-      this.notifyAll();
+      //As clientCaches is ConcurrentHashMap, computeIfAbsent is thread safety.
+      Deque<AsyncClient> clientStack = clientCaches
+          .computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
+      clientStack.addLast(client);
+      this.notify();
     }
   }
 
@@ -167,10 +169,10 @@ public class AsyncClientPool {
     ClusterNode clusterNode = new ClusterNode(node);
     // clean all cached clients when network fails
     synchronized (this) {
-      Deque<AsyncClient> clientStack =
-          clientCaches.computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
-      while (!clientStack.isEmpty()) {
-        AsyncClient client = clientStack.pop();
+      Deque<AsyncClient> clientQueue = clientCaches
+          .computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
+      while (!clientQueue.isEmpty()) {
+        AsyncClient client = clientQueue.pop();
         if (client instanceof AsyncDataClient) {
           ((AsyncDataClient) client).close();
         } else if (client instanceof AsyncMetaClient) {
@@ -195,12 +197,12 @@ public class AsyncClientPool {
           clientCaches.computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
       try {
         AsyncClient asyncClient = asyncClientFactory.getAsyncClient(node, this);
-        clientStack.push(asyncClient);
+        clientStack.addLast(asyncClient);
       } catch (IOException e) {
         logger.error("Cannot create a new client for {}", node, e);
         nodeClientNumMap.computeIfPresent(clusterNode, (n, cnt) -> cnt - 1);
       }
-      this.notifyAll();
+      this.notify();
     }
   }
 }

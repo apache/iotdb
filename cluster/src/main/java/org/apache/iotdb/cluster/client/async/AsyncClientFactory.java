@@ -39,15 +39,15 @@ public abstract class AsyncClientFactory {
 
   static {
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      managers =
-          new TAsyncClientManager
-              [ClusterDescriptor.getInstance().getConfig().getSelectorNumOfClientPool()];
-      for (int i = 0; i < managers.length; i++) {
-        try {
+      managers = new TAsyncClientManager[ClusterDescriptor.getInstance().getConfig()
+          .getSelectorNumOfClientPool()];
+
+      try {
+        for (int i = 0; i < managers.length; i++) {
           managers[i] = new TAsyncClientManager();
-        } catch (IOException e) {
-          logger.error("Cannot create data heartbeat client manager for factory", e);
         }
+      } catch (IOException e) {
+          logger.error("Cannot create data heartbeat client manager for factory", e);
       }
     }
   }

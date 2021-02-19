@@ -48,10 +48,12 @@ public class ClusterNode extends Node {
   }
 
   public boolean equals(ClusterNode that) {
-    return Objects.equals(this.ip, that.ip)
-        && this.dataPort == that.dataPort
-        && this.metaPort == that.metaPort
-        && this.clientPort == that.clientPort;
+    if (that == null) {
+      return false;
+    }
+
+    return Objects.equals(this.ip, that.ip) && this.dataPort == that.dataPort
+        && this.metaPort == that.metaPort && this.clientPort == that.clientPort;
   }
 
   @Override
