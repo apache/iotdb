@@ -18,20 +18,18 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
+import org.junit.Test;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import org.junit.Test;
-
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
 public class ReadWriteToBytesUtilsTest {
 
   @Test
   public void testShort() throws IOException {
-    for (short i : new short[] { 1, 2, 3, 4, 5 }) {
+    for (short i : new short[] {1, 2, 3, 4, 5}) {
       ByteArrayOutputStream outputstream = new ByteArrayOutputStream();
       ReadWriteIOUtils.write(i, outputstream);
       int size = outputstream.size();
@@ -44,7 +42,7 @@ public class ReadWriteToBytesUtilsTest {
 
   @Test
   public void testShort2() throws IOException {
-    for (short i : new short[] { 1, 2, 3, 4, 5 }) {
+    for (short i : new short[] {1, 2, 3, 4, 5}) {
       ByteBuffer output = ByteBuffer.allocate(2);
       ReadWriteIOUtils.write(i, output);
       output.flip();
@@ -55,7 +53,7 @@ public class ReadWriteToBytesUtilsTest {
 
   @Test
   public void testShort3() throws IOException {
-    for (short i : new short[] { 1, 2, 3, 4, 5 }) {
+    for (short i : new short[] {1, 2, 3, 4, 5}) {
       ByteArrayOutputStream outputstream = new ByteArrayOutputStream();
       ReadWriteIOUtils.write(i, outputstream);
       int size = outputstream.size();
@@ -65,5 +63,4 @@ public class ReadWriteToBytesUtilsTest {
       assert i == k;
     }
   }
-
 }

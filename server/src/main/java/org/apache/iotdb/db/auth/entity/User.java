@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.auth.entity;
 
+import org.apache.iotdb.db.utils.AuthUtils;
+import org.apache.iotdb.db.utils.SerializeUtils;
+
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -26,12 +29,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import org.apache.iotdb.db.utils.AuthUtils;
-import org.apache.iotdb.db.utils.SerializeUtils;
 
-/**
- * This class contains all information of a User.
- */
+/** This class contains all information of a User. */
 public class User {
 
   private String name;
@@ -54,7 +53,7 @@ public class User {
   /**
    * construct function for User.
    *
-   * @param name     -user name
+   * @param name -user name
    * @param password -user password
    */
   public User(String name, String password) {
@@ -119,7 +118,7 @@ public class User {
   /**
    * set the privilege.
    *
-   * @param path       -path
+   * @param path -path
    * @param privileges -set of integer to determine privilege
    */
   public void setPrivileges(String path, Set<Integer> privileges) {
@@ -212,13 +211,21 @@ public class User {
 
   @Override
   public String toString() {
-    return "User{" +
-        "name='" + name + '\'' +
-        ", password='" + password + '\'' +
-        ", privilegeList=" + privilegeList +
-        ", roleList=" + roleList +
-        ", useWaterMark=" + useWaterMark +
-        ", lastActiveTime=" + lastActiveTime +
-        '}';
+    return "User{"
+        + "name='"
+        + name
+        + '\''
+        + ", password='"
+        + password
+        + '\''
+        + ", privilegeList="
+        + privilegeList
+        + ", roleList="
+        + roleList
+        + ", useWaterMark="
+        + useWaterMark
+        + ", lastActiveTime="
+        + lastActiveTime
+        + '}';
   }
 }

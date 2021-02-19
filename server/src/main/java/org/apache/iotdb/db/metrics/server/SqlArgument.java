@@ -31,7 +31,10 @@ public class SqlArgument {
 
   public SqlArgument(
       org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp tSExecuteStatementResp,
-      PhysicalPlan plan, String statement, long startTime, long endTime) {
+      PhysicalPlan plan,
+      String statement,
+      long startTime,
+      long endTime) {
     this.TSExecuteStatementResp = tSExecuteStatementResp;
     this.statement = statement;
     this.startTime = startTime;
@@ -78,5 +81,4 @@ public class SqlArgument {
   public void setStatement(String statement) {
     this.statement = statement;
   }
-
 }

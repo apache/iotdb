@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -19,19 +19,21 @@
 
 package org.apache.iotdb.db.utils;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.util.Arrays;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class FileUtils {
   private static Logger logger = LoggerFactory.getLogger(FileUtils.class);
 
-  private FileUtils() { }
+  private FileUtils() {}
+
   public static void deleteDirectory(File folder) throws IOException {
     if (folder.isDirectory()) {
       for (File file : folder.listFiles()) {

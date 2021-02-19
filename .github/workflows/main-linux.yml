@@ -1,0 +1,71 @@
+# This workflow will build a Java project with Maven
+# For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
+
+name: Main Linux
+# Main Unix is quite different with Mac and Win Github Action.
+# It consists of not only the UT/IT, but also code coverage and sonar report.
+
+on:
+  push:
+    branches:
+      - master
+      - 'rel/*'
+    paths-ignore:
+      - 'docs/**'
+  pull_request:
+    branches:
+      - master
+      - 'rel/*'
+      - cluster_new
+    paths-ignore:
+      - 'docs/**'
+  # allow manually run the action:
+  workflow_dispatch:
+
+jobs:
+  ubuntu:
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        java: [8, 11, 15]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v1
+        with:
+          java-version: ${{ matrix.java }}
+      - name: Cache Maven packages
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
+      - name: Check Apache Rat
+        run: mvn -B apache-rat:check -P client-cpp -P site -P code-coverage
+      - name: IT/UT Test
+        run:  mvn -B clean post-integration-test -Dtest.port.closed=true -Pcode-coverage
+      - name: Code Coverage (Coveralls)
+        if: ${{ success() && matrix.java == '11' && github.repository == 'apache/iotdb'}}
+        run: |
+          mvn -B post-integration-test -Pcode-coverage -pl code-coverage
+          mvn -B coveralls:report \
+          -DserviceName=travis_ci \
+          -Dbranch=$BRANCH_NAME \
+          -DpullRequest=$PR_NUMBER \
+          -DrepoToken=${{ secrets.COVERALL_TOKEN }} \
+          -Pcode-coverage
+      - name: SonarCloud Report
+        if: ${{ success() &&  matrix.java == '11' && github.repository == 'apache/iotdb'}}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONARCLOUD_TOKEN }}
+        run: |
+          mvn -B verify sonar:sonar \
+          -Dsonar.organization=apache \
+          -Dsonar.projectKey=apache_incubator-iotdb \
+          -Dsonar.host.url=https://sonarcloud.io \
+          -Dsonar.login=${{ secrets.SONARCLOUD_TOKEN }} \
+          -DskipTests -pl '!distribution' -am

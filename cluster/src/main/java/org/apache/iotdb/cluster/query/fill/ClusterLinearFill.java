@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.cluster.query.fill;
 
-import java.util.Arrays;
-import java.util.List;
 import org.apache.iotdb.cluster.query.aggregate.ClusterAggregator;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -29,16 +27,19 @@ import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.executor.fill.LinearFill;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 
+import java.util.Arrays;
+import java.util.List;
+
 /**
- * ClusterLinearFill overrides the dataReader in LinearFill so that it can read data from the
- * whole cluster instead of only the local node.
+ * ClusterLinearFill overrides the dataReader in LinearFill so that it can read data from the whole
+ * cluster instead of only the local node.
  */
 public class ClusterLinearFill extends LinearFill {
 
   private MetaGroupMember metaGroupMember;
   private ClusterAggregator aggregator;
-  private static final List<String> AGGREGATION_NAMES = Arrays.asList(SQLConstant.MIN_TIME,
-      SQLConstant.FIRST_VALUE);
+  private static final List<String> AGGREGATION_NAMES =
+      Arrays.asList(SQLConstant.MIN_TIME, SQLConstant.FIRST_VALUE);
 
   ClusterLinearFill(LinearFill fill, MetaGroupMember metaGroupMember) {
     super(fill.getDataType(), fill.getQueryTime(), fill.getBeforeRange(), fill.getAfterRange());
@@ -49,19 +50,24 @@ public class ClusterLinearFill extends LinearFill {
   @Override
   protected TimeValuePair calculatePrecedingPoint() {
     // calculate the preceding point can be viewed as a previous fill
-    ClusterPreviousFill clusterPreviousFill = new ClusterPreviousFill(dataType, queryTime,
-        beforeRange, metaGroupMember);
+    ClusterPreviousFill clusterPreviousFill =
+        new ClusterPreviousFill(dataType, queryTime, beforeRange, metaGroupMember);
     clusterPreviousFill.configureFill(seriesPath, dataType, queryTime, deviceMeasurements, context);
     return clusterPreviousFill.getFillResult();
   }
 
   @Override
-  protected TimeValuePair calculateSucceedingPoint()
-      throws StorageEngineException {
+  protected TimeValuePair calculateSucceedingPoint() throws StorageEngineException {
 
-    List<AggregateResult> aggregateResult = aggregator
-        .getAggregateResult(seriesPath, deviceMeasurements, AGGREGATION_NAMES,
-            dataType, afterFilter, context, true);
+    List<AggregateResult> aggregateResult =
+        aggregator.getAggregateResult(
+            seriesPath,
+            deviceMeasurements,
+            AGGREGATION_NAMES,
+            dataType,
+            afterFilter,
+            context,
+            true);
     AggregateResult minTimeResult = aggregateResult.get(0);
     AggregateResult firstValueResult = aggregateResult.get(1);
 

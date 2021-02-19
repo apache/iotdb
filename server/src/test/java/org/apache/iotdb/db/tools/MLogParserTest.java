@@ -30,6 +30,7 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -58,11 +59,9 @@ public class MLogParserTest {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    File file = new File("target" + File.separator
-      + "tmp"  + File.separator + "text.mlog");
+    File file = new File("target" + File.separator + "tmp" + File.separator + "text.mlog");
     file.deleteOnExit();
-    file = new File("target" + File.separator
-      + "tmp"  + File.separator + "text.snapshot");
+    file = new File("target" + File.separator + "tmp" + File.separator + "text.snapshot");
     file.deleteOnExit();
   }
 
@@ -108,15 +107,18 @@ public class MLogParserTest {
     IoTDB.metaManager.flushAllMlogForTest();
 
     try {
-      MLogParser.parseFromFile(IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
-        + File.separator + MetadataConstant.METADATA_LOG,
-        "target" + File.separator + "tmp"  + File.separator + "text.mlog");
+      MLogParser.parseFromFile(
+          IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
+              + File.separator
+              + MetadataConstant.METADATA_LOG,
+          "target" + File.separator + "tmp" + File.separator + "text.mlog");
     } catch (IOException e) {
       e.printStackTrace();
     }
 
-    try (BufferedReader reader = new BufferedReader(new FileReader("target" + File.separator
-      + "tmp"  + File.separator + "text.mlog"))) {
+    try (BufferedReader reader =
+        new BufferedReader(
+            new FileReader("target" + File.separator + "tmp" + File.separator + "text.mlog"))) {
       int lineNum = 0;
       List<String> lines = new ArrayList<>();
       String line;
@@ -125,11 +127,13 @@ public class MLogParserTest {
         lines.add(line);
       }
       if (lineNum != 108) {
-        // We prepare 2 storage groups, each one has 5 devices, and every device has 10 measurements.
+        // We prepare 2 storage groups, each one has 5 devices, and every device has 10
+        // measurements.
         // So, mlog records 2 * 5 * 10 = 100 CreateTimeSeriesPlan, and 2 SetStorageGroupPlan.
         // Next, we do 6 operations which will be written into mlog, include set 2 sgs, set ttl,
         // delete timeseries, delete sg, add tags.
-        // The final operation changeAlias only change the mtree in memory, so it will not write record to mlog.
+        // The final operation changeAlias only change the mtree in memory, so it will not write
+        // record to mlog.
         // Finally, the mlog should have 100 + 2  + 6 = 108 records
         for (String content : lines) {
           logger.info(content);
@@ -147,15 +151,18 @@ public class MLogParserTest {
     IoTDB.metaManager.createMTreeSnapshot();
 
     try {
-      MLogParser.parseFromFile(IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
-          + File.separator + MetadataConstant.MTREE_SNAPSHOT,
-        "target" + File.separator + "tmp"  + File.separator + "text.snapshot");
+      MLogParser.parseFromFile(
+          IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
+              + File.separator
+              + MetadataConstant.MTREE_SNAPSHOT,
+          "target" + File.separator + "tmp" + File.separator + "text.snapshot");
     } catch (IOException e) {
       e.printStackTrace();
     }
 
-    try (BufferedReader reader = new BufferedReader(new FileReader("target" + File.separator
-      + "tmp"  + File.separator + "text.snapshot"))) {
+    try (BufferedReader reader =
+        new BufferedReader(
+            new FileReader("target" + File.separator + "tmp" + File.separator + "text.snapshot"))) {
       int lineNum = 0;
       List<String> lines = new ArrayList<>();
       String line;
@@ -164,10 +171,13 @@ public class MLogParserTest {
         lines.add(line);
       }
       if (lineNum != 113) {
-        // We prepare 2 storage groups, each one has 5 devices, and every device has 10 measurements.
+        // We prepare 2 storage groups, each one has 5 devices, and every device has 10
+        // measurements.
         // So, mtree records 2 * 5 * 10 = 100 TimeSeries, and 2 SetStorageGroup, 2 * 5 devices.
-        // Next, we do 4 operations which will be record in mtree, include set 2 sgs, delete timeseries, delete sg.
-        // The snapshot should have 100 + 2 + 5 * 2 + 2 - 1 - 1 = 112 records, and we have root record,
+        // Next, we do 4 operations which will be record in mtree, include set 2 sgs, delete
+        // timeseries, delete sg.
+        // The snapshot should have 100 + 2 + 5 * 2 + 2 - 1 - 1 = 112 records, and we have root
+        // record,
         // so we have 112 + 1 = 113 records finally.
         for (String content : lines) {
           logger.info(content);

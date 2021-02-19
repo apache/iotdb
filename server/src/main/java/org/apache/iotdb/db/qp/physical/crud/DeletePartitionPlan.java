@@ -19,12 +19,13 @@
 
 package org.apache.iotdb.db.qp.physical.crud;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
 
 public class DeletePartitionPlan extends PhysicalPlan {
 

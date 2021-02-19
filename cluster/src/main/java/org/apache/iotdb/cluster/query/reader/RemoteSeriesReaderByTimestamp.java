@@ -19,18 +19,20 @@
 
 package org.apache.iotdb.cluster.query.reader;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.utils.SerializeUtils;
+
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
 
@@ -66,12 +68,13 @@ public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
     synchronized (fetchResult) {
       fetchResult.set(null);
       try {
-        sourceInfo.getCurAsyncClient(RaftServer.getReadOperationTimeoutMS())
-            .fetchSingleSeriesByTimestamp(sourceInfo.getHeader(),
-                sourceInfo.getReaderId(), timestamp, handler);
+        sourceInfo
+            .getCurAsyncClient(RaftServer.getReadOperationTimeoutMS())
+            .fetchSingleSeriesByTimestamp(
+                sourceInfo.getHeader(), sourceInfo.getReaderId(), timestamp, handler);
         fetchResult.wait(RaftServer.getReadOperationTimeoutMS());
       } catch (TException e) {
-        //try other node
+        // try other node
         if (!sourceInfo.switchNode(true, timestamp)) {
           return null;
         }
@@ -87,15 +90,15 @@ public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
 
   private ByteBuffer fetchResultSync(long timestamp) throws IOException {
     try {
-      SyncDataClient curSyncClient = sourceInfo
-          .getCurSyncClient(RaftServer.getReadOperationTimeoutMS());
-      ByteBuffer buffer = curSyncClient
-          .fetchSingleSeriesByTimestamp(sourceInfo.getHeader(),
-              sourceInfo.getReaderId(), timestamp);
+      SyncDataClient curSyncClient =
+          sourceInfo.getCurSyncClient(RaftServer.getReadOperationTimeoutMS());
+      ByteBuffer buffer =
+          curSyncClient.fetchSingleSeriesByTimestamp(
+              sourceInfo.getHeader(), sourceInfo.getReaderId(), timestamp);
       curSyncClient.putBack();
       return buffer;
     } catch (TException e) {
-      //try other node
+      // try other node
       if (!sourceInfo.switchNode(true, timestamp)) {
         return null;
       }

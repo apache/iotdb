@@ -18,20 +18,13 @@
  */
 package org.apache.iotdb.tsfile.read.query.executor;
 
-import java.io.IOException;
-
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.controller.CachedChunkLoaderImpl;
+import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
@@ -43,10 +36,15 @@ import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.read.query.executor.QueryExecutor;
-import org.apache.iotdb.tsfile.read.query.executor.TsFileExecutor;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
+
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+
+import java.io.IOException;
 
 public class QueryExecutorTest {
 
@@ -78,12 +76,18 @@ public class QueryExecutorTest {
     Filter filter = TimeFilter.lt(1480562618100L);
     Filter filter2 = ValueFilter.gt(new Binary("dog"));
 
-    IExpression IExpression = BinaryExpression.and(new SingleSeriesExpression(new Path("d1", "s1"), filter),
-        new SingleSeriesExpression(new Path("d1", "s4"), filter2));
+    IExpression IExpression =
+        BinaryExpression.and(
+            new SingleSeriesExpression(new Path("d1", "s1"), filter),
+            new SingleSeriesExpression(new Path("d1", "s4"), filter2));
 
-    QueryExpression queryExpression = QueryExpression.create().addSelectedPath(new Path("d1", "s1"))
-        .addSelectedPath(new Path("d1", "s2")).addSelectedPath(new Path("d1", "s4")).addSelectedPath(new Path("d1", "s5"))
-        .setExpression(IExpression);
+    QueryExpression queryExpression =
+        QueryExpression.create()
+            .addSelectedPath(new Path("d1", "s1"))
+            .addSelectedPath(new Path("d1", "s2"))
+            .addSelectedPath(new Path("d1", "s4"))
+            .addSelectedPath(new Path("d1", "s5"))
+            .setExpression(IExpression);
     long startTimestamp = System.currentTimeMillis();
     QueryDataSet queryDataSet = queryExecutorWithQueryFilter.execute(queryExpression);
     long aimedTimestamp = 1480562618000L;
@@ -93,16 +97,19 @@ public class QueryExecutorTest {
       aimedTimestamp += 8;
     }
     long endTimestamp = System.currentTimeMillis();
-    System.out.println("[Query]:" + queryExpression + "\n[Time]: " + (endTimestamp - startTimestamp) + "ms");
   }
 
   @Test
   public void queryWithoutFilter() throws IOException {
     QueryExecutor queryExecutor = new TsFileExecutor(metadataQuerierByFile, chunkLoader);
 
-    QueryExpression queryExpression = QueryExpression.create().addSelectedPath(new Path("d1", "s1"))
-        .addSelectedPath(new Path("d1", "s2")).addSelectedPath(new Path("d1", "s3")).addSelectedPath(new Path("d1", "s4"))
-        .addSelectedPath(new Path("d1", "s5"));
+    QueryExpression queryExpression =
+        QueryExpression.create()
+            .addSelectedPath(new Path("d1", "s1"))
+            .addSelectedPath(new Path("d1", "s2"))
+            .addSelectedPath(new Path("d1", "s3"))
+            .addSelectedPath(new Path("d1", "s4"))
+            .addSelectedPath(new Path("d1", "s5"));
 
     long aimedTimestamp = 1480562618000L;
     int count = 0;
@@ -116,18 +123,23 @@ public class QueryExecutorTest {
     }
     Assert.assertEquals(rowCount, count);
     long endTimestamp = System.currentTimeMillis();
-    System.out.println("[Query]:" + queryExpression + "\n[Time]: " + (endTimestamp - startTimestamp) + "ms");
   }
 
   @Test
   public void queryWithGlobalTimeFilter() throws IOException {
     QueryExecutor queryExecutor = new TsFileExecutor(metadataQuerierByFile, chunkLoader);
 
-    IExpression IExpression = new GlobalTimeExpression(
-        FilterFactory.and(TimeFilter.gtEq(1480562618100L), TimeFilter.lt(1480562618200L)));
-    QueryExpression queryExpression = QueryExpression.create().addSelectedPath(new Path("d1", "s1"))
-        .addSelectedPath(new Path("d1", "s2")).addSelectedPath(new Path("d1", "s3")).addSelectedPath(new Path("d1", "s4"))
-        .addSelectedPath(new Path("d1", "s5")).setExpression(IExpression);
+    IExpression IExpression =
+        new GlobalTimeExpression(
+            FilterFactory.and(TimeFilter.gtEq(1480562618100L), TimeFilter.lt(1480562618200L)));
+    QueryExpression queryExpression =
+        QueryExpression.create()
+            .addSelectedPath(new Path("d1", "s1"))
+            .addSelectedPath(new Path("d1", "s2"))
+            .addSelectedPath(new Path("d1", "s3"))
+            .addSelectedPath(new Path("d1", "s4"))
+            .addSelectedPath(new Path("d1", "s5"))
+            .setExpression(IExpression);
 
     long aimedTimestamp = 1480562618100L;
     int count = 0;
@@ -141,6 +153,5 @@ public class QueryExecutorTest {
     }
     Assert.assertEquals(100, count);
     long endTimestamp = System.currentTimeMillis();
-    System.out.println("[Query]:" + queryExpression + "\n[Time]: " + (endTimestamp - startTimestamp) + "ms");
   }
 }

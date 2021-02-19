@@ -18,7 +18,11 @@
  */
 package org.apache.iotdb.tsfile.encoding.decoder.regular;
 
-import static org.junit.Assert.assertEquals;
+import org.apache.iotdb.tsfile.encoding.decoder.RegularDataDecoder;
+import org.apache.iotdb.tsfile.encoding.encoder.RegularDataEncoder;
+
+import org.junit.Before;
+import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -35,11 +39,7 @@ import java.util.List;
 import java.util.TimeZone;
 import java.util.stream.Stream;
 
-import org.junit.Before;
-import org.junit.Test;
-
-import org.apache.iotdb.tsfile.encoding.decoder.RegularDataDecoder;
-import org.apache.iotdb.tsfile.encoding.encoder.RegularDataEncoder;
+import static org.junit.Assert.assertEquals;
 
 public class RegularDataEncoderLongTest {
 
@@ -78,49 +78,63 @@ public class RegularDataEncoderLongTest {
 
   @Test
   public void testRegularWithOnePercentMissingPoints1() throws IOException {
-    long[] data = getMissingPointData(getBetweenDateWithOneSecond("1980-01-01T01:00:00", "1980-01-28T01:00:00"), 80);
+    long[] data =
+        getMissingPointData(
+            getBetweenDateWithOneSecond("1980-01-01T01:00:00", "1980-01-28T01:00:00"), 80);
 
     shouldReadAndWrite(data, ROW_NUM);
   }
 
   @Test
   public void testRegularWithOnePercentMissingPoints2() throws IOException {
-    long[] data = getMissingPointData(getBetweenDateWithTwoSecond("1980-01-01T01:00:00", "1980-01-28T01:00:00"), 80);
+    long[] data =
+        getMissingPointData(
+            getBetweenDateWithTwoSecond("1980-01-01T01:00:00", "1980-01-28T01:00:00"), 80);
 
     shouldReadAndWrite(data, ROW_NUM);
   }
 
   @Test
   public void testRegularWithFivePercentMissingPoints() throws IOException {
-    long[] data = getMissingPointData(getBetweenDateWithOneSecond("1980-01-01T01:00:00", "1980-01-28T01:00:00"), 20);
+    long[] data =
+        getMissingPointData(
+            getBetweenDateWithOneSecond("1980-01-01T01:00:00", "1980-01-28T01:00:00"), 20);
 
     shouldReadAndWrite(data, ROW_NUM);
   }
 
   @Test
   public void testRegularWithTenPercentMissingPoints() throws IOException {
-    long[] data = getMissingPointData(getBetweenDateWithOneSecond("1980-01-01T01:00:00", "1980-01-28T01:00:00"), 10);
+    long[] data =
+        getMissingPointData(
+            getBetweenDateWithOneSecond("1980-01-01T01:00:00", "1980-01-28T01:00:00"), 10);
 
     shouldReadAndWrite(data, ROW_NUM);
   }
 
   @Test
   public void testRegularWithTwentyPercentMissingPoints() throws IOException {
-    long[] data = getMissingPointData(getBetweenDateWithOneSecond("1980-01-01T01:00:00", "1980-01-28T01:00:00"), 5);
+    long[] data =
+        getMissingPointData(
+            getBetweenDateWithOneSecond("1980-01-01T01:00:00", "1980-01-28T01:00:00"), 5);
 
     shouldReadAndWrite(data, ROW_NUM);
   }
 
   @Test
   public void testRegularWithLowMissingPoints1() throws IOException {
-    long[] data = getMissingPointData(getBetweenDateWithOneSecond("1980-01-01T01:00:00", "1980-01-28T01:00:00"), 1700);
+    long[] data =
+        getMissingPointData(
+            getBetweenDateWithOneSecond("1980-01-01T01:00:00", "1980-01-28T01:00:00"), 1700);
 
     shouldReadAndWrite(data, ROW_NUM);
   }
 
   @Test
   public void testRegularWithLowMissingPoints2() throws IOException {
-    long[] data = getMissingPointData(getBetweenDateWithOneSecond("1980-01-01T01:00:00", "1980-01-28T01:00:00"), 40000);
+    long[] data =
+        getMissingPointData(
+            getBetweenDateWithOneSecond("1980-01-01T01:00:00", "1980-01-28T01:00:00"), 40000);
 
     shouldReadAndWrite(data, ROW_NUM);
   }
@@ -168,11 +182,16 @@ public class RegularDataEncoderLongTest {
     if (distance < 1) {
       return list;
     }
-    Stream.iterate(startDate, d -> {
-      return d.plusSeconds(1);
-    }).limit(distance + 1).forEach(f -> {
-      list.add(f.format(formatter));
-    });
+    Stream.iterate(
+            startDate,
+            d -> {
+              return d.plusSeconds(1);
+            })
+        .limit(distance + 1)
+        .forEach(
+            f -> {
+              list.add(f.format(formatter));
+            });
     return list;
   }
 
@@ -187,11 +206,16 @@ public class RegularDataEncoderLongTest {
     if (distance < 1) {
       return list;
     }
-    Stream.iterate(startDate, d -> {
-      return d.plusSeconds(2);
-    }).limit((distance / 2) + 1).forEach(f -> {
-      list.add(f.format(formatter));
-    });
+    Stream.iterate(
+            startDate,
+            d -> {
+              return d.plusSeconds(2);
+            })
+        .limit((distance / 2) + 1)
+        .forEach(
+            f -> {
+              list.add(f.format(formatter));
+            });
     return list;
   }
 
@@ -203,11 +227,9 @@ public class RegularDataEncoderLongTest {
   }
 
   private void shouldReadAndWrite(long[] data, int length) throws IOException {
-    System.out.println("source data size:" + 8 * length + " byte");
     out = new ByteArrayOutputStream();
     writeData(data, length);
     byte[] page = out.toByteArray();
-    System.out.println("encoding data size:" + page.length + " byte");
     buffer = ByteBuffer.wrap(page);
     int i = 0;
     while (regularDataDecoder.hasNext(buffer)) {

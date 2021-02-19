@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.db.query.udf.builtin;
 
-import java.io.IOException;
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
 import org.apache.iotdb.db.query.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import java.io.IOException;
 
 public class UDTFNonNegativeValueDifference extends UDTFValueDifference {
 
@@ -54,8 +55,8 @@ public class UDTFNonNegativeValueDifference extends UDTFValueDifference {
         break;
       default:
         // This will not happen.
-        throw new UDFInputSeriesDataTypeNotValidException(0, dataType, TSDataType.INT32,
-            TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE);
+        throw new UDFInputSeriesDataTypeNotValidException(
+            0, dataType, TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE);
     }
   }
 }

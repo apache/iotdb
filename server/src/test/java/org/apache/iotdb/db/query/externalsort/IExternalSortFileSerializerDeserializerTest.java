@@ -18,28 +18,29 @@
  */
 package org.apache.iotdb.db.query.externalsort;
 
-import java.io.File;
-import java.io.IOException;
-import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileDeserializer;
 import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileSerializer;
 import org.apache.iotdb.db.query.externalsort.serialize.impl.FixLengthIExternalSortFileDeserializer;
 import org.apache.iotdb.db.query.externalsort.serialize.impl.FixLengthTimeValuePairSerializer;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+
+import org.apache.commons.io.FileUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
-/**
- * Created by zhangjinrui on 2018/1/20.
- */
+import java.io.File;
+import java.io.IOException;
+
+/** Created by zhangjinrui on 2018/1/20. */
 public class IExternalSortFileSerializerDeserializerTest {
 
   private enum Type {
-    SIMPLE, FIX_LENGTH
+    SIMPLE,
+    FIX_LENGTH
   }
 
   @Test
@@ -47,22 +48,23 @@ public class IExternalSortFileSerializerDeserializerTest {
     String rootPath = TestConstant.BASE_OUTPUT_PATH.concat("tmpFile2");
     String filePath = rootPath;
     int count = 10000;
-    testReadWrite(genTimeValuePairs(count, TSDataType.BOOLEAN), count, rootPath, filePath,
-        Type.FIX_LENGTH);
-    testReadWrite(genTimeValuePairs(count, TSDataType.INT32), count, rootPath, filePath,
-        Type.FIX_LENGTH);
-    testReadWrite(genTimeValuePairs(count, TSDataType.INT64), count, rootPath, filePath,
-        Type.FIX_LENGTH);
-    testReadWrite(genTimeValuePairs(count, TSDataType.FLOAT), count, rootPath, filePath,
-        Type.FIX_LENGTH);
-    testReadWrite(genTimeValuePairs(count, TSDataType.DOUBLE), count, rootPath, filePath,
-        Type.FIX_LENGTH);
-    testReadWrite(genTimeValuePairs(count, TSDataType.TEXT), count, rootPath, filePath,
-        Type.FIX_LENGTH);
+    testReadWrite(
+        genTimeValuePairs(count, TSDataType.BOOLEAN), count, rootPath, filePath, Type.FIX_LENGTH);
+    testReadWrite(
+        genTimeValuePairs(count, TSDataType.INT32), count, rootPath, filePath, Type.FIX_LENGTH);
+    testReadWrite(
+        genTimeValuePairs(count, TSDataType.INT64), count, rootPath, filePath, Type.FIX_LENGTH);
+    testReadWrite(
+        genTimeValuePairs(count, TSDataType.FLOAT), count, rootPath, filePath, Type.FIX_LENGTH);
+    testReadWrite(
+        genTimeValuePairs(count, TSDataType.DOUBLE), count, rootPath, filePath, Type.FIX_LENGTH);
+    testReadWrite(
+        genTimeValuePairs(count, TSDataType.TEXT), count, rootPath, filePath, Type.FIX_LENGTH);
   }
 
-  private void testReadWrite(TimeValuePair[] timeValuePairs, int count, String rootPath,
-      String filePath, Type type) throws IOException {
+  private void testReadWrite(
+      TimeValuePair[] timeValuePairs, int count, String rootPath, String filePath, Type type)
+      throws IOException {
     IExternalSortFileSerializer serializer;
     if (type == Type.FIX_LENGTH) {
       serializer = new FixLengthTimeValuePairSerializer(filePath);
@@ -103,8 +105,8 @@ public class IExternalSortFileSerializerDeserializerTest {
     for (int i = 0; i < count; i++) {
       switch (dataType) {
         case BOOLEAN:
-          timeValuePairs[i] = new TimeValuePair(i,
-              new TsPrimitiveType.TsBoolean(i % 2 == 0 ? true : false));
+          timeValuePairs[i] =
+              new TimeValuePair(i, new TsPrimitiveType.TsBoolean(i % 2 == 0 ? true : false));
           break;
         case INT32:
           timeValuePairs[i] = new TimeValuePair(i, new TsPrimitiveType.TsInt(i));
@@ -119,12 +121,11 @@ public class IExternalSortFileSerializerDeserializerTest {
           timeValuePairs[i] = new TimeValuePair(i, new TsPrimitiveType.TsDouble(i + 0.12));
           break;
         case TEXT:
-          timeValuePairs[i] = new TimeValuePair(i,
-              new TsPrimitiveType.TsBinary(new Binary(String.valueOf(i))));
+          timeValuePairs[i] =
+              new TimeValuePair(i, new TsPrimitiveType.TsBinary(new Binary(String.valueOf(i))));
           break;
       }
     }
     return timeValuePairs;
   }
-
 }

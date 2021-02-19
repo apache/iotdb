@@ -19,8 +19,13 @@
 
 package org.apache.iotdb.cluster.server.handlers.caller;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import org.apache.iotdb.cluster.common.TestException;
+import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
+import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -29,12 +34,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
-import org.apache.iotdb.cluster.common.TestException;
-import org.apache.iotdb.cluster.common.TestUtils;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 public class PullMeasurementSchemaHandlerTest {
 
@@ -48,25 +50,26 @@ public class PullMeasurementSchemaHandlerTest {
       measurementSchemas.add(TestUtils.getTestMeasurementSchema(i));
     }
 
-    PullMeasurementSchemaHandler handler = new PullMeasurementSchemaHandler(owner,
-        Collections.singletonList(prefixPath),
-        result);
+    PullMeasurementSchemaHandler handler =
+        new PullMeasurementSchemaHandler(owner, Collections.singletonList(prefixPath), result);
     synchronized (result) {
-      new Thread(() -> {
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        DataOutputStream dataOutputStream = new DataOutputStream(outputStream);
-        try {
-          dataOutputStream.writeInt(measurementSchemas.size());
-          for (MeasurementSchema measurementSchema : measurementSchemas) {
-            measurementSchema.serializeTo(dataOutputStream);
-          }
-        } catch (IOException e) {
-          // ignore
-        }
-        PullSchemaResp resp = new PullSchemaResp();
-        resp.setSchemaBytes(outputStream.toByteArray());
-        handler.onComplete(resp);
-      }).start();
+      new Thread(
+              () -> {
+                ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+                DataOutputStream dataOutputStream = new DataOutputStream(outputStream);
+                try {
+                  dataOutputStream.writeInt(measurementSchemas.size());
+                  for (MeasurementSchema measurementSchema : measurementSchemas) {
+                    measurementSchema.serializeTo(dataOutputStream);
+                  }
+                } catch (IOException e) {
+                  // ignore
+                }
+                PullSchemaResp resp = new PullSchemaResp();
+                resp.setSchemaBytes(outputStream.toByteArray());
+                handler.onComplete(resp);
+              })
+          .start();
       result.wait();
     }
     assertEquals(measurementSchemas, result.get());
@@ -78,8 +81,8 @@ public class PullMeasurementSchemaHandlerTest {
     String prefixPath = "root";
     AtomicReference<List<MeasurementSchema>> result = new AtomicReference<>();
 
-    PullMeasurementSchemaHandler handler = new PullMeasurementSchemaHandler(owner,
-        Collections.singletonList(prefixPath), result);
+    PullMeasurementSchemaHandler handler =
+        new PullMeasurementSchemaHandler(owner, Collections.singletonList(prefixPath), result);
     synchronized (result) {
       new Thread(() -> handler.onError(new TestException())).start();
       result.wait();

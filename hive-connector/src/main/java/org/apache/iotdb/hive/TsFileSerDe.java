@@ -18,15 +18,8 @@
  */
 package org.apache.iotdb.hive;
 
-import static org.apache.iotdb.hadoop.tsfile.TSFInputFormat.READ_DELTAOBJECTS;
-import static org.apache.iotdb.hadoop.tsfile.TSFInputFormat.READ_MEASUREMENTID;
+import org.apache.iotdb.hadoop.tsfile.record.HDFSTSRecord;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Properties;
-import javax.annotation.Nullable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.common.StringInternUtils;
 import org.apache.hadoop.hive.serde.serdeConstants;
@@ -41,14 +34,23 @@ import org.apache.hadoop.hive.serde2.typeinfo.PrimitiveTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoUtils;
 import org.apache.hadoop.io.Writable;
-import org.apache.iotdb.hadoop.tsfile.record.HDFSTSRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nullable;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Properties;
+
+import static org.apache.iotdb.hadoop.tsfile.TSFInputFormat.READ_DELTAOBJECTS;
+import static org.apache.iotdb.hadoop.tsfile.TSFInputFormat.READ_MEASUREMENTID;
 
 public class TsFileSerDe extends AbstractSerDe {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileSerDe.class);
-
 
   public static final String DEVICE_ID = "device_id";
 
@@ -63,19 +65,22 @@ public class TsFileSerDe extends AbstractSerDe {
 
     final String columnNameProperty = tbl.getProperty(serdeConstants.LIST_COLUMNS);
     final String columnTypeProperty = tbl.getProperty(serdeConstants.LIST_COLUMN_TYPES);
-    final String columnNameDelimiter = tbl.containsKey(serdeConstants.COLUMN_NAME_DELIMITER) ? tbl
-            .getProperty(serdeConstants.COLUMN_NAME_DELIMITER) : String.valueOf(SerDeUtils.COMMA);
-
+    final String columnNameDelimiter =
+        tbl.containsKey(serdeConstants.COLUMN_NAME_DELIMITER)
+            ? tbl.getProperty(serdeConstants.COLUMN_NAME_DELIMITER)
+            : String.valueOf(SerDeUtils.COMMA);
 
     deviceId = tbl.getProperty(DEVICE_ID);
 
-    if (columnNameProperty == null || columnNameProperty.isEmpty()
-    || columnTypeProperty == null || columnTypeProperty.isEmpty()) {
+    if (columnNameProperty == null
+        || columnNameProperty.isEmpty()
+        || columnTypeProperty == null
+        || columnTypeProperty.isEmpty()) {
       columnNames = Collections.emptyList();
       columnTypes = Collections.emptyList();
-    }
-    else {
-      columnNames = StringInternUtils.internStringsInList(
+    } else {
+      columnNames =
+          StringInternUtils.internStringsInList(
               Arrays.asList(columnNameProperty.split(columnNameDelimiter)));
       columnTypes = TypeInfoUtils.getTypeInfosFromTypeString(columnTypeProperty);
     }
@@ -125,23 +130,23 @@ public class TsFileSerDe extends AbstractSerDe {
     List<ObjectInspector> columnOIs = new ArrayList<>(columnNames.size());
 
     // At this point we've verified the types are correct.
-    for(int i = 0; i < columnNames.size(); i++) {
+    for (int i = 0; i < columnNames.size(); i++) {
       columnOIs.add(i, createObjectInspectorWorker(columnTypes.get(i)));
     }
     return ObjectInspectorFactory.getStandardStructObjectInspector(columnNames, columnOIs);
   }
 
   private ObjectInspector createObjectInspectorWorker(TypeInfo ti) throws TsFileSerDeException {
-    if(!supportedCategories(ti)) {
+    if (!supportedCategories(ti)) {
       throw new TsFileSerDeException("Don't yet support this type: " + ti);
     }
     ObjectInspector result;
-    switch(ti.getCategory()) {
+    switch (ti.getCategory()) {
       case PRIMITIVE:
         PrimitiveTypeInfo pti = (PrimitiveTypeInfo) ti;
         result = PrimitiveObjectInspectorFactory.getPrimitiveJavaObjectInspector(pti);
         break;
-      // these types is not supported in TsFile
+        // these types is not supported in TsFile
       case LIST:
       case MAP:
       case STRUCT:
@@ -159,7 +164,7 @@ public class TsFileSerDe extends AbstractSerDe {
   }
 
   private TsFileDeserializer getDeserializer() {
-    if(tsFileDeserializer == null) {
+    if (tsFileDeserializer == null) {
       tsFileDeserializer = new TsFileDeserializer();
     }
 

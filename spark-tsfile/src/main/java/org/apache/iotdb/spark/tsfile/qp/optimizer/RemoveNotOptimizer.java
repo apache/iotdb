@@ -18,20 +18,20 @@
  */
 package org.apache.iotdb.spark.tsfile.qp.optimizer;
 
-
-import static org.apache.iotdb.spark.tsfile.qp.common.SQLConstant.KW_AND;
-import static org.apache.iotdb.spark.tsfile.qp.common.SQLConstant.KW_NOT;
-import static org.apache.iotdb.spark.tsfile.qp.common.SQLConstant.KW_OR;
-
-import java.util.List;
 import org.apache.iotdb.spark.tsfile.qp.common.BasicOperator;
 import org.apache.iotdb.spark.tsfile.qp.common.FilterOperator;
 import org.apache.iotdb.spark.tsfile.qp.common.SQLConstant;
 import org.apache.iotdb.spark.tsfile.qp.exception.BasicOperatorException;
 import org.apache.iotdb.spark.tsfile.qp.exception.RemoveNotException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
+
+import static org.apache.iotdb.spark.tsfile.qp.common.SQLConstant.KW_AND;
+import static org.apache.iotdb.spark.tsfile.qp.common.SQLConstant.KW_NOT;
+import static org.apache.iotdb.spark.tsfile.qp.common.SQLConstant.KW_OR;
 
 public class RemoveNotOptimizer implements IFilterOptimizer {
 
@@ -70,11 +70,10 @@ public class RemoveNotOptimizer implements IFilterOptimizer {
           LOG.error("reverse Filter failed.");
         }
       default:
-        throw new RemoveNotException("Unknown token in removeNot: " + tokenInt + ","
-            + SQLConstant.tokenNames.get(tokenInt));
+        throw new RemoveNotException(
+            "Unknown token in removeNot: " + tokenInt + "," + SQLConstant.tokenNames.get(tokenInt));
     }
   }
-
 
   private FilterOperator reverseFilter(FilterOperator filter)
       throws RemoveNotException, BasicOperatorException {
@@ -84,8 +83,10 @@ public class RemoveNotOptimizer implements IFilterOptimizer {
         ((BasicOperator) filter).setReversedTokenIntType();
       } catch (BasicOperatorException e) {
         throw new RemoveNotException(
-            "convert BasicFuntion to reserved meet failed: previous token:" + tokenInt
-                + "tokenSymbol:" + SQLConstant.tokenNames.get(tokenInt));
+            "convert BasicFuntion to reserved meet failed: previous token:"
+                + tokenInt
+                + "tokenSymbol:"
+                + SQLConstant.tokenNames.get(tokenInt));
       }
       return filter;
     }
@@ -100,9 +101,11 @@ public class RemoveNotOptimizer implements IFilterOptimizer {
       case KW_NOT:
         return removeNot(filter.getChildren().get(0));
       default:
-        throw new RemoveNotException("Unknown token in reverseFilter: " + tokenInt + ","
-            + SQLConstant.tokenNames.get(tokenInt));
+        throw new RemoveNotException(
+            "Unknown token in reverseFilter: "
+                + tokenInt
+                + ","
+                + SQLConstant.tokenNames.get(tokenInt));
     }
   }
-
 }

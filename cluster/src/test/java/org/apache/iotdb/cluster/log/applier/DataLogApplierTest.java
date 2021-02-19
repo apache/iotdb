@@ -19,18 +19,6 @@
 
 package org.apache.iotdb.cluster.log.applier;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import junit.framework.TestCase;
 import org.apache.iotdb.cluster.client.DataClientProvider;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.common.IoTDBTest;
@@ -76,48 +64,65 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+
+import junit.framework.TestCase;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
 public class DataLogApplierTest extends IoTDBTest {
 
   private boolean partialWriteEnabled;
 
-  private TestMetaGroupMember testMetaGroupMember = new TestMetaGroupMember() {
-    @Override
-    public boolean syncLeader() {
-      return true;
-    }
+  private TestMetaGroupMember testMetaGroupMember =
+      new TestMetaGroupMember() {
+        @Override
+        public boolean syncLeader() {
+          return true;
+        }
 
-    @Override
-    public DataGroupMember getLocalDataMember(Node header, Object request) {
-      return testDataGroupMember;
-    }
+        @Override
+        public DataGroupMember getLocalDataMember(Node header, Object request) {
+          return testDataGroupMember;
+        }
 
-    @Override
-    public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
-      return getAsyncClient(node);
-    }
+        @Override
+        public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
+          return getAsyncClient(node);
+        }
 
-    @Override
-    public AsyncClient getAsyncClient(Node node) {
-      try {
-        return new TestAsyncMetaClient(null, null, node, null) {
-          @Override
-          public void queryNodeStatus(AsyncMethodCallback<TNodeStatus> resultHandler) {
-            new Thread(
-                () -> new MetaAsyncService(testMetaGroupMember).queryNodeStatus(resultHandler))
-                .start();
+        @Override
+        public AsyncClient getAsyncClient(Node node) {
+          try {
+            return new TestAsyncMetaClient(null, null, node, null) {
+              @Override
+              public void queryNodeStatus(AsyncMethodCallback<TNodeStatus> resultHandler) {
+                new Thread(
+                        () ->
+                            new MetaAsyncService(testMetaGroupMember)
+                                .queryNodeStatus(resultHandler))
+                    .start();
+              }
+            };
+          } catch (IOException e) {
+            return null;
           }
-        };
-      } catch (IOException e) {
-        return null;
-      }
-    }
-  };
+        }
+      };
 
   private TestDataGroupMember testDataGroupMember = new TestDataGroupMember();
 
@@ -126,7 +131,8 @@ public class DataLogApplierTest extends IoTDBTest {
   @Override
   @Before
   public void setUp()
-      throws org.apache.iotdb.db.exception.StartupException, QueryProcessException, IllegalPathException {
+      throws org.apache.iotdb.db.exception.StartupException, QueryProcessException,
+          IllegalPathException {
     IoTDB.setMetaManager(CMManager.getInstance());
     testMetaGroupMember.setCoordinator(new Coordinator());
     MetaPuller.getInstance().init(testMetaGroupMember);
@@ -148,60 +154,71 @@ public class DataLogApplierTest extends IoTDBTest {
     NodeStatusManager.getINSTANCE().setMetaGroupMember(testMetaGroupMember);
     partialWriteEnabled = IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert();
     IoTDBDescriptor.getInstance().getConfig().setEnablePartialInsert(false);
-    testMetaGroupMember.setClientProvider(new DataClientProvider(new Factory()) {
-      @Override
-      public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
-        return new AsyncDataClient(null, null, node, null) {
+    testMetaGroupMember.setClientProvider(
+        new DataClientProvider(new Factory()) {
           @Override
-          public void getAllPaths(Node header, List<String> path, boolean withAlias,
-              AsyncMethodCallback<GetAllPathsResult> resultHandler) {
-            new Thread(() -> new DataAsyncService(testDataGroupMember).getAllPaths(header, path,
-                withAlias, resultHandler)).start();
-          }
-
-          @Override
-          public void pullTimeSeriesSchema(PullSchemaRequest request,
-              AsyncMethodCallback<PullSchemaResp> resultHandler) {
-            new Thread(() -> {
-              List<TimeseriesSchema> timeseriesSchemas = new ArrayList<>();
-              for (String path : request.prefixPaths) {
-                if (path.startsWith(TestUtils.getTestSg(4))) {
-                  for (int i = 0; i < 10; i++) {
-                    timeseriesSchemas.add(TestUtils.getTestTimeSeriesSchema(4,
-                        i));
-                  }
-                } else if (!path.startsWith(TestUtils.getTestSg(5))) {
-                  resultHandler.onError(new StorageGroupNotSetException(path));
-                  return;
-                }
+          public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
+            return new AsyncDataClient(null, null, node, null) {
+              @Override
+              public void getAllPaths(
+                  Node header,
+                  List<String> path,
+                  boolean withAlias,
+                  AsyncMethodCallback<GetAllPathsResult> resultHandler) {
+                new Thread(
+                        () ->
+                            new DataAsyncService(testDataGroupMember)
+                                .getAllPaths(header, path, withAlias, resultHandler))
+                    .start();
               }
-              PullSchemaResp resp = new PullSchemaResp();
-              // serialize the schemas
-              ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-              DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-              try {
-                dataOutputStream.writeInt(timeseriesSchemas.size());
-                for (TimeseriesSchema timeseriesSchema : timeseriesSchemas) {
-                  timeseriesSchema.serializeTo(dataOutputStream);
-                }
-              } catch (IOException ignored) {
-                // unreachable for we are using a ByteArrayOutputStream
-              }
-              resp.setSchemaBytes(byteArrayOutputStream.toByteArray());
-              resultHandler.onComplete(resp);
-            }).start();
-          }
 
-          @Override
-          public void pullMeasurementSchema(PullSchemaRequest request,
-              AsyncMethodCallback<PullSchemaResp> resultHandler) {
-            new Thread(
-                () -> new DataAsyncService(testDataGroupMember).pullMeasurementSchema(request,
-                    resultHandler)).start();
+              @Override
+              public void pullTimeSeriesSchema(
+                  PullSchemaRequest request, AsyncMethodCallback<PullSchemaResp> resultHandler) {
+                new Thread(
+                        () -> {
+                          List<TimeseriesSchema> timeseriesSchemas = new ArrayList<>();
+                          for (String path : request.prefixPaths) {
+                            if (path.startsWith(TestUtils.getTestSg(4))) {
+                              for (int i = 0; i < 10; i++) {
+                                timeseriesSchemas.add(TestUtils.getTestTimeSeriesSchema(4, i));
+                              }
+                            } else if (!path.startsWith(TestUtils.getTestSg(5))) {
+                              resultHandler.onError(new StorageGroupNotSetException(path));
+                              return;
+                            }
+                          }
+                          PullSchemaResp resp = new PullSchemaResp();
+                          // serialize the schemas
+                          ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+                          DataOutputStream dataOutputStream =
+                              new DataOutputStream(byteArrayOutputStream);
+                          try {
+                            dataOutputStream.writeInt(timeseriesSchemas.size());
+                            for (TimeseriesSchema timeseriesSchema : timeseriesSchemas) {
+                              timeseriesSchema.serializeTo(dataOutputStream);
+                            }
+                          } catch (IOException ignored) {
+                            // unreachable for we are using a ByteArrayOutputStream
+                          }
+                          resp.setSchemaBytes(byteArrayOutputStream.toByteArray());
+                          resultHandler.onComplete(resp);
+                        })
+                    .start();
+              }
+
+              @Override
+              public void pullMeasurementSchema(
+                  PullSchemaRequest request, AsyncMethodCallback<PullSchemaResp> resultHandler) {
+                new Thread(
+                        () ->
+                            new DataAsyncService(testDataGroupMember)
+                                .pullMeasurementSchema(request, resultHandler))
+                    .start();
+              }
+            };
           }
-        };
-      }
-    });
+        });
     ((CMManager) IoTDB.metaManager).setMetaGroupMember(testMetaGroupMember);
   }
 
@@ -219,7 +236,8 @@ public class DataLogApplierTest extends IoTDBTest {
 
   @Test
   public void testApplyInsert()
-      throws QueryProcessException, IOException, QueryFilterOptimizationException, StorageEngineException, MetadataException, InterruptedException {
+      throws QueryProcessException, IOException, QueryFilterOptimizationException,
+          StorageEngineException, MetadataException, InterruptedException {
     InsertRowPlan insertPlan = new InsertRowPlan();
     PhysicalPlanLog log = new PhysicalPlanLog();
     log.setPlan(insertPlan);
@@ -228,12 +246,11 @@ public class DataLogApplierTest extends IoTDBTest {
     insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(1)));
     insertPlan.setTime(1);
     insertPlan.setNeedInferType(true);
-    insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
+    insertPlan.setMeasurements(new String[] {TestUtils.getTestMeasurement(0)});
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
-    insertPlan.setValues(new Object[]{"1.0"});
+    insertPlan.setValues(new Object[] {"1.0"});
     insertPlan.setNeedInferType(true);
-    insertPlan
-        .setMeasurementMNodes(new MeasurementMNode[]{TestUtils.getTestMeasurementMNode(0)});
+    insertPlan.setMeasurementMNodes(new MeasurementMNode[] {TestUtils.getTestMeasurementMNode(0)});
 
     applier.apply(log);
     QueryDataSet dataSet = query(Collections.singletonList(TestUtils.getTestSeries(1, 0)), null);
@@ -272,7 +289,8 @@ public class DataLogApplierTest extends IoTDBTest {
 
   @Test
   public void testApplyDeletion()
-      throws QueryProcessException, MetadataException, QueryFilterOptimizationException, StorageEngineException, IOException, InterruptedException {
+      throws QueryProcessException, MetadataException, QueryFilterOptimizationException,
+          StorageEngineException, IOException, InterruptedException {
     DeletePlan deletePlan = new DeletePlan();
     deletePlan.setPaths(Collections.singletonList(new PartialPath(TestUtils.getTestSeries(0, 0))));
     deletePlan.setDeleteEndTime(50);
@@ -289,8 +307,7 @@ public class DataLogApplierTest extends IoTDBTest {
   }
 
   @Test
-  public void testApplyCloseFile()
-      throws org.apache.iotdb.db.exception.IoTDBException {
+  public void testApplyCloseFile() throws org.apache.iotdb.db.exception.IoTDBException {
     StorageGroupProcessor storageGroupProcessor =
         StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
     TestCase.assertFalse(storageGroupProcessor.getWorkSequenceTsFileProcessors().isEmpty());
@@ -301,23 +318,23 @@ public class DataLogApplierTest extends IoTDBTest {
   }
 
   @Test
-  public void testApplyFlush()
-      throws IllegalPathException {
+  public void testApplyFlush() throws IllegalPathException {
     // existing sg
-    FlushPlan flushPlan = new FlushPlan(null,
-        Collections.singletonList(new PartialPath(TestUtils.getTestSg(0))));
+    FlushPlan flushPlan =
+        new FlushPlan(null, Collections.singletonList(new PartialPath(TestUtils.getTestSg(0))));
     PhysicalPlanLog log = new PhysicalPlanLog(flushPlan);
 
     applier.apply(log);
     assertNull(log.getException());
 
     // non-existing sg
-    flushPlan = new FlushPlan(null,
-        Collections.singletonList(new PartialPath(TestUtils.getTestSg(20))));
+    flushPlan =
+        new FlushPlan(null, Collections.singletonList(new PartialPath(TestUtils.getTestSg(20))));
     log = new PhysicalPlanLog(flushPlan);
 
     applier.apply(log);
-    assertEquals("Storage group is not set for current seriesPath: [root.test20]",
+    assertEquals(
+        "Storage group is not set for current seriesPath: [root.test20]",
         log.getException().getMessage());
   }
 }

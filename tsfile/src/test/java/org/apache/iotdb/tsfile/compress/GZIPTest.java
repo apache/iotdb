@@ -19,6 +19,7 @@
 package org.apache.iotdb.tsfile.compress;
 
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -34,7 +35,7 @@ import java.util.concurrent.ThreadLocalRandom;
  * @mail yuqi4733@gmail.com
  * @description your description
  * @time 13/12/20 下午10:08
- **/
+ */
 public class GZIPTest {
   private String randomString(int length) {
     StringBuilder builder = new StringBuilder(length);
@@ -45,51 +46,40 @@ public class GZIPTest {
   }
 
   @Before
-  public void setUp() {
-  }
+  public void setUp() {}
 
   @After
-  public void tearDown() {
-  }
+  public void tearDown() {}
 
   @Test
   public void testBytes() throws IOException {
     int n = 500000;
     String input = randomString(n);
     byte[] uncom = input.getBytes(StandardCharsets.UTF_8);
-    long time = System.nanoTime();
     byte[] compressed = ICompressor.GZIPCompress.compress(uncom);
-    System.out.println("compression time cost:" + ((System.nanoTime() - time)) / 1000 / 1000);
-    System.out.println("ratio: " + (double) compressed.length / uncom.length);
-    time = System.nanoTime();
     byte[] uncompressed = ICompressor.GZIPCompress.uncompress(compressed);
-    System.out.println("decompression time cost:" + ((System.nanoTime() - time)) / 1000 / 1000);
 
     Assert.assertArrayEquals(uncom, uncompressed);
   }
 
   @Test
   public void testByteBuffer() throws IOException {
-    for (int i = 1; i < 500000; i+= 1000) {
+    for (int i = 1; i < 500000; i += 1000) {
       String input = randomString(i);
-      //String input = "this is test";
       ByteBuffer source = ByteBuffer.allocateDirect(input.getBytes().length);
       source.put(input.getBytes());
       source.flip();
 
       ICompressor.GZIPCompressor compressor = new ICompressor.GZIPCompressor();
-      long time = System.currentTimeMillis();
-      ByteBuffer compressed = ByteBuffer.allocateDirect(Math.max(source.remaining() * 3 + 1, 28 + source.remaining()));
-      int compressSize = compressor.compress(source, compressed);
-      System.out.println("compression time cost:" + (System.currentTimeMillis() - time));
-      System.out.println("ratio: " + (double) compressSize / i);
+      ByteBuffer compressed =
+          ByteBuffer.allocateDirect(Math.max(source.remaining() * 3 + 1, 28 + source.remaining()));
+      compressor.compress(source, compressed);
 
       IUnCompressor.GZIPUnCompressor unCompressor = new IUnCompressor.GZIPUnCompressor();
-      time = System.currentTimeMillis();
-      ByteBuffer uncompressedByteBuffer = ByteBuffer.allocateDirect(compressed.remaining() + 28 * 2);
+      ByteBuffer uncompressedByteBuffer =
+          ByteBuffer.allocateDirect(compressed.remaining() + 28 * 2);
       compressed.flip();
       unCompressor.uncompress(compressed, uncompressedByteBuffer);
-      System.out.println("decompression time cost:" + (System.currentTimeMillis() - time));
 
       uncompressedByteBuffer.flip();
       String afterDecode = ReadWriteIOUtils.readStringFromDirectByteBuffer(uncompressedByteBuffer);

@@ -21,9 +21,7 @@ package org.apache.iotdb.cluster.exception;
 
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 
-/**
- * Raised when a node receives requests before the its partition table is set up.
- */
+/** Raised when a node receives requests before the its partition table is set up. */
 public class PartitionTableUnavailableException extends Exception {
 
   public PartitionTableUnavailableException(Node node) {

@@ -18,22 +18,24 @@
  */
 package org.apache.iotdb.db.integration;
 
-import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.jdbc.IoTDBSQLException;
+
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.jdbc.Config;
-import org.apache.iotdb.jdbc.IoTDBSQLException;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+
+import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class IoTDBQuotedPathIT {
 
@@ -51,16 +53,14 @@ public class IoTDBQuotedPathIT {
 
   @Test
   public void test() throws SQLException {
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
-            "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      String[] exp = new String[]{
-          "1509465600000,true",
-          "1509465600001,true",
-          "1509465600002,false",
-          "1509465600003,false"
-      };
+      String[] exp =
+          new String[] {
+            "1509465600000,true", "1509465600001,true", "1509465600002,false", "1509465600003,false"
+          };
       statement.execute("SET STORAGE GROUP TO root.ln");
       statement.execute(
           "CREATE TIMESERIES root.ln.\"wf.01\".wt01.\"status.2.3\" WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
@@ -89,13 +89,10 @@ public class IoTDBQuotedPathIT {
           assertEquals(exp[cnt++], result);
         }
 
-        hasResultSet = statement
-            .execute("SELECT * FROM root.ln.\"wf.01\".wt01 WHERE \"status.2.3\" = false");
+        hasResultSet =
+            statement.execute("SELECT * FROM root.ln.\"wf.01\".wt01 WHERE \"status.2.3\" = false");
         assertTrue(hasResultSet);
-        exp = new String[]{
-            "1509465600002,false",
-            "1509465600003,false"
-        };
+        exp = new String[] {"1509465600002,false", "1509465600003,false"};
         cnt = 0;
         resultSet = statement.getResultSet();
         while (resultSet.next()) {
@@ -103,16 +100,17 @@ public class IoTDBQuotedPathIT {
           assertEquals(exp[cnt++], result);
         }
 
-        hasResultSet = statement
-            .execute(
+        hasResultSet =
+            statement.execute(
                 "select \"status.2.3\", 'status.2.3' from root.ln.\"wf.01\".wt01 align by device");
         assertTrue(hasResultSet);
-        exp = new String[]{
-            "1509465600000,root.ln.\"wf.01\".wt01,true,'status.2.3',",
-            "1509465600001,root.ln.\"wf.01\".wt01,true,'status.2.3',",
-            "1509465600002,root.ln.\"wf.01\".wt01,false,'status.2.3',",
-            "1509465600003,root.ln.\"wf.01\".wt01,false,'status.2.3',"
-        };
+        exp =
+            new String[] {
+              "1509465600000,root.ln.\"wf.01\".wt01,true,'status.2.3',",
+              "1509465600001,root.ln.\"wf.01\".wt01,true,'status.2.3',",
+              "1509465600002,root.ln.\"wf.01\".wt01,false,'status.2.3',",
+              "1509465600003,root.ln.\"wf.01\".wt01,false,'status.2.3',"
+            };
         cnt = 0;
         resultSet = statement.getResultSet();
         while (resultSet.next()) {
@@ -137,9 +135,9 @@ public class IoTDBQuotedPathIT {
 
   @Test
   public void testIllegalStorageGroup() throws SQLException {
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
-            "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.\"ln\"");
     } catch (IoTDBSQLException e) {

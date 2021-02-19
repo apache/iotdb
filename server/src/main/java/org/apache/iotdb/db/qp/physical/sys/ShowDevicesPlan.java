@@ -22,13 +22,18 @@ import org.apache.iotdb.db.metadata.PartialPath;
 
 public class ShowDevicesPlan extends ShowPlan {
 
+  private boolean hasSgCol;
+
   public ShowDevicesPlan(PartialPath path) {
     super(ShowContentType.DEVICES, path);
   }
 
-  public ShowDevicesPlan(PartialPath path, int limit, int offset,
-      int fetchSize) {
+  public ShowDevicesPlan(PartialPath path, int limit, int offset, int fetchSize, boolean hasSgCol) {
     super(ShowContentType.DEVICES, path, limit, offset, fetchSize);
+    this.hasSgCol = hasSgCol;
+  }
+
+  public boolean hasSgCol() {
+    return hasSgCol;
   }
 }
-

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -35,7 +36,7 @@ import java.sql.Statement;
  * @mail yuqi4733@gmail.com
  * @description your description
  * @time 14/12/20 上午11:05
- **/
+ */
 public class IoTDBCompressTypeIT {
   @Before
   public void setUp() throws Exception {
@@ -51,14 +52,17 @@ public class IoTDBCompressTypeIT {
   @Test
   public void testGZIPCompression() throws Exception {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
 
       statement.execute("CREATE TIMESERIES root.ln.wf01.wt01.name WITH DATATYPE=TEXT");
-      statement.execute("CREATE TIMESERIES root.ln.wf01.wt01.age WITH DATATYPE=INT32, ENCODING=RLE, COMPRESSOR = GZIP");
+      statement.execute(
+          "CREATE TIMESERIES root.ln.wf01.wt01.age WITH DATATYPE=INT32, ENCODING=RLE, COMPRESSOR = GZIP");
 
-      statement.execute("insert into root.ln.wf01.wt01(timestamp,name,age) values(1000,'zhang',10)");
+      statement.execute(
+          "insert into root.ln.wf01.wt01(timestamp,name,age) values(1000,'zhang',10)");
       statement.execute("flush");
 
       ResultSet r1 = statement.executeQuery("select * from root.ln.wf01.wt01");
@@ -85,15 +89,19 @@ public class IoTDBCompressTypeIT {
 
       Assert.assertTrue(60.0 == d);
 
-      //now we try to insert more values
+      // now we try to insert more values
       for (int i = 1; i <= 1000; i++) {
         String time = String.valueOf(i * 100);
         String values = String.valueOf(i * 10);
-        statement.execute(String.format("insert into root.ln.wf01.wt01(timestamp,name,age) values(%s,'wang', %s)", time, values));
+        statement.execute(
+            String.format(
+                "insert into root.ln.wf01.wt01(timestamp,name,age) values(%s,'wang', %s)",
+                time, values));
       }
 
       statement.execute("flush");
-      ResultSet r5 = statement.executeQuery("select * from root.ln.wf01.wt01 where timestamp = 100000");
+      ResultSet r5 =
+          statement.executeQuery("select * from root.ln.wf01.wt01 where timestamp = 100000");
       r5.next();
       Assert.assertEquals(10000, r5.getInt(3));
     }

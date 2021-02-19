@@ -19,31 +19,42 @@
 
 package org.apache.iotdb.db.query.udf.datastructure;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-
-import java.io.IOException;
-import java.util.Random;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.datastructure.row.ElasticSerializableRowRecordList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.IOException;
+import java.util.Random;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
 public class ElasticSerializableRowRecordListTest extends SerializableListTest {
 
-  private static final TSDataType[] DATA_TYPES = {TSDataType.INT32, TSDataType.INT64,
-      TSDataType.FLOAT, TSDataType.DOUBLE, TSDataType.BOOLEAN, TSDataType.TEXT, TSDataType.TEXT};
+  private static final TSDataType[] DATA_TYPES = {
+    TSDataType.INT32,
+    TSDataType.INT64,
+    TSDataType.FLOAT,
+    TSDataType.DOUBLE,
+    TSDataType.BOOLEAN,
+    TSDataType.TEXT,
+    TSDataType.TEXT
+  };
 
   private ElasticSerializableRowRecordList rowRecordList;
 
+  @Override
   @Before
   public void setUp() throws Exception {
     super.setUp();
   }
 
+  @Override
   @After
   public void tearDown() {
     super.tearDown();
@@ -60,8 +71,9 @@ public class ElasticSerializableRowRecordListTest extends SerializableListTest {
 
   private void initESRowRecordList() {
     try {
-      rowRecordList = new ElasticSerializableRowRecordList(DATA_TYPES, QUERY_ID,
-          MEMORY_USAGE_LIMIT_IN_MB, CACHE_SIZE);
+      rowRecordList =
+          new ElasticSerializableRowRecordList(
+              DATA_TYPES, QUERY_ID, MEMORY_USAGE_LIMIT_IN_MB, CACHE_SIZE);
     } catch (QueryProcessException e) {
       fail(e.toString());
     }

@@ -18,16 +18,6 @@
  */
 package org.apache.iotdb.db.writelog;
 
-import static junit.framework.TestCase.assertEquals;
-import static junit.framework.TestCase.assertFalse;
-import static junit.framework.TestCase.assertTrue;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.MappedByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -42,9 +32,21 @@ import org.apache.iotdb.db.writelog.node.ExclusiveWriteLogNode;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.MappedByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+
+import static junit.framework.TestCase.assertEquals;
+import static junit.framework.TestCase.assertFalse;
+import static junit.framework.TestCase.assertTrue;
 
 public class WriteLogNodeTest {
 
@@ -72,20 +74,25 @@ public class WriteLogNodeTest {
     String identifier = "root.logTestDevice";
 
     ByteBuffer[] byteBuffers = new ByteBuffer[2];
-    byteBuffers[0] = ByteBuffer
-        .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
-    byteBuffers[1] = ByteBuffer
-        .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+    byteBuffers[0] =
+        ByteBuffer.allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+    byteBuffers[1] =
+        ByteBuffer.allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
     WriteLogNode logNode = new ExclusiveWriteLogNode(identifier);
     logNode.initBuffer(byteBuffers);
 
-    InsertRowPlan bwInsertPlan = new InsertRowPlan(new PartialPath(identifier), 100,
-        new String[]{"s1", "s2", "s3", "s4"},
-        new TSDataType[]{TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN},
-        new String[]{"1.0", "15", "str", "false"});
+    InsertRowPlan bwInsertPlan =
+        new InsertRowPlan(
+            new PartialPath(identifier),
+            100,
+            new String[] {"s1", "s2", "s3", "s4"},
+            new TSDataType[] {
+              TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN
+            },
+            new String[] {"1.0", "15", "str", "false"});
     DeletePlan deletePlan = new DeletePlan(Long.MIN_VALUE, 50, new PartialPath(identifier + ".s1"));
 
-    long[] times = new long[]{110L, 111L, 112L, 113L};
+    long[] times = new long[] {110L, 111L, 112L, 113L};
     List<Integer> dataTypes = new ArrayList<>();
     dataTypes.add(TSDataType.DOUBLE.ordinal());
     dataTypes.add(TSDataType.INT64.ordinal());
@@ -104,8 +111,9 @@ public class WriteLogNodeTest {
       ((boolean[]) columns[3])[r] = false;
     }
 
-    InsertTabletPlan tabletPlan = new InsertTabletPlan(new PartialPath(identifier),
-        new String[]{"s1", "s2", "s3", "s4"}, dataTypes);
+    InsertTabletPlan tabletPlan =
+        new InsertTabletPlan(
+            new PartialPath(identifier), new String[] {"s1", "s2", "s3", "s4"}, dataTypes);
     tabletPlan.setTimes(times);
     tabletPlan.setColumns(columns);
     tabletPlan.setRowCount(times.length);
@@ -120,8 +128,8 @@ public class WriteLogNodeTest {
 
     logNode.close();
 
-    File walFile = new File(
-        config.getWalDir() + File.separator + identifier + File.separator + "wal1");
+    File walFile =
+        new File(config.getWalDir() + File.separator + identifier + File.separator + "wal1");
     assertTrue(walFile.exists());
 
     ILogReader reader = logNode.getLogReader();
@@ -144,17 +152,22 @@ public class WriteLogNodeTest {
     String identifier = "root.logTestDevice";
 
     ByteBuffer[] byteBuffers = new ByteBuffer[2];
-    byteBuffers[0] = ByteBuffer
-        .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
-    byteBuffers[1] = ByteBuffer
-        .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+    byteBuffers[0] =
+        ByteBuffer.allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+    byteBuffers[1] =
+        ByteBuffer.allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
     WriteLogNode logNode = new ExclusiveWriteLogNode(identifier);
     logNode.initBuffer(byteBuffers);
 
-    InsertRowPlan bwInsertPlan = new InsertRowPlan(new PartialPath(identifier), 100,
-        new String[]{"s1", "s2", "s3", "s4"},
-        new TSDataType[]{TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN},
-        new String[]{"1.0", "15", "str", "false"});
+    InsertRowPlan bwInsertPlan =
+        new InsertRowPlan(
+            new PartialPath(identifier),
+            100,
+            new String[] {"s1", "s2", "s3", "s4"},
+            new TSDataType[] {
+              TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN
+            },
+            new String[] {"1.0", "15", "str", "false"});
     DeletePlan deletePlan = new DeletePlan(Long.MIN_VALUE, 50, new PartialPath(identifier + ".s1"));
 
     logNode.write(bwInsertPlan);
@@ -190,31 +203,36 @@ public class WriteLogNodeTest {
     config.setFlushWalThreshold(2);
 
     ByteBuffer[] byteBuffers = new ByteBuffer[2];
-    byteBuffers[0] = ByteBuffer
-        .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
-    byteBuffers[1] = ByteBuffer
-        .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+    byteBuffers[0] =
+        ByteBuffer.allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+    byteBuffers[1] =
+        ByteBuffer.allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
     WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice");
     logNode.initBuffer(byteBuffers);
 
-    InsertRowPlan bwInsertPlan = new InsertRowPlan(new PartialPath("root.logTestDevice"), 100,
-        new String[]{"s1", "s2", "s3", "s4"},
-        new TSDataType[]{TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN},
-        new String[]{"1.0", "15", "str", "false"});
-    DeletePlan deletePlan = new DeletePlan(Long.MIN_VALUE, 50,
-        new PartialPath("root.logTestDevice.s1"));
+    InsertRowPlan bwInsertPlan =
+        new InsertRowPlan(
+            new PartialPath("root.logTestDevice"),
+            100,
+            new String[] {"s1", "s2", "s3", "s4"},
+            new TSDataType[] {
+              TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN
+            },
+            new String[] {"1.0", "15", "str", "false"});
+    DeletePlan deletePlan =
+        new DeletePlan(Long.MIN_VALUE, 50, new PartialPath("root.logTestDevice.s1"));
 
     logNode.write(bwInsertPlan);
 
-    File walFile = new File(
-        config.getWalDir() + File.separator + "root.logTestDevice" + File.separator + "wal1");
+    File walFile =
+        new File(
+            config.getWalDir() + File.separator + "root.logTestDevice" + File.separator + "wal1");
     assertFalse(walFile.exists());
 
     logNode.write(deletePlan);
     System.out.println("Waiting for wal file to be created");
-    while (!walFile.exists()) {
+    while (!walFile.exists()) {}
 
-    }
     assertTrue(walFile.exists());
 
     ByteBuffer[] array = logNode.delete();
@@ -230,31 +248,35 @@ public class WriteLogNodeTest {
     // then deletes the node
 
     ByteBuffer[] byteBuffers = new ByteBuffer[2];
-    byteBuffers[0] = ByteBuffer
-        .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
-    byteBuffers[1] = ByteBuffer
-        .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+    byteBuffers[0] =
+        ByteBuffer.allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+    byteBuffers[1] =
+        ByteBuffer.allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
     WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice");
     logNode.initBuffer(byteBuffers);
 
-    InsertRowPlan bwInsertPlan = new InsertRowPlan(new PartialPath("logTestDevice"), 100,
-        new String[]{"s1", "s2", "s3", "s4"},
-        new TSDataType[]{TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN},
-        new String[]{"1.0", "15", "str", "false"});
-    DeletePlan deletePlan = new DeletePlan(Long.MIN_VALUE, 50,
-        new PartialPath("root.logTestDevice.s1"));
+    InsertRowPlan bwInsertPlan =
+        new InsertRowPlan(
+            new PartialPath("logTestDevice"),
+            100,
+            new String[] {"s1", "s2", "s3", "s4"},
+            new TSDataType[] {
+              TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN
+            },
+            new String[] {"1.0", "15", "str", "false"});
+    DeletePlan deletePlan =
+        new DeletePlan(Long.MIN_VALUE, 50, new PartialPath("root.logTestDevice.s1"));
 
     logNode.write(bwInsertPlan);
     logNode.write(deletePlan);
 
     logNode.forceSync();
 
-    File walFile = new File(
-        config.getWalDir() + File.separator + "root.logTestDevice" + File.separator + "wal1");
+    File walFile =
+        new File(
+            config.getWalDir() + File.separator + "root.logTestDevice" + File.separator + "wal1");
     System.out.println("Waiting for wal to be created");
-    while (!walFile.exists()) {
-
-    }
+    while (!walFile.exists()) {}
 
     assertTrue(new File(logNode.getLogDirectory()).exists());
     ByteBuffer[] array = logNode.delete();
@@ -266,20 +288,25 @@ public class WriteLogNodeTest {
 
   @Test
   public void testOverSizedWAL() throws IOException, IllegalPathException {
-    // this test uses a dummy insert log node to insert an over-sized log and assert exception caught
+    // this test uses a dummy insert log node to insert an over-sized log and assert exception
+    // caught
     ByteBuffer[] byteBuffers = new ByteBuffer[2];
-    byteBuffers[0] = ByteBuffer
-        .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
-    byteBuffers[1] = ByteBuffer
-        .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+    byteBuffers[0] =
+        ByteBuffer.allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+    byteBuffers[1] =
+        ByteBuffer.allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
     WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice.oversize");
     logNode.initBuffer(byteBuffers);
 
-    InsertRowPlan bwInsertPlan = new InsertRowPlan(new PartialPath("root.logTestDevice.oversize"),
-        100,
-        new String[]{"s1", "s2", "s3", "s4"},
-        new TSDataType[]{TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN},
-        new String[]{"1.0", "15", new String(new char[65 * 1024 * 1024]), "false"});
+    InsertRowPlan bwInsertPlan =
+        new InsertRowPlan(
+            new PartialPath("root.logTestDevice.oversize"),
+            100,
+            new String[] {"s1", "s2", "s3", "s4"},
+            new TSDataType[] {
+              TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN
+            },
+            new String[] {"1.0", "15", new String(new char[65 * 1024 * 1024]), "false"});
 
     boolean caught = false;
     try {
