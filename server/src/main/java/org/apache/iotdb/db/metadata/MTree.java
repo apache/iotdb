@@ -887,13 +887,6 @@ public class MTree implements Serializable {
         }
         getAllTimeseriesCountHelper(child, nodes, idx + 1, countHolder, wildcard);
       }
-    } else if (idx == nodes.length) {
-      if (node instanceof MeasurementMNode) {
-        countHolder.setValue(countHolder.getValue() + 1);
-      }
-      for (MNode child : node.getChildren().values()) {
-        getAllTimeseriesCountHelper(child, nodes, idx + 1, countHolder, wildcard);
-      }
     } else {
       if (node instanceof MeasurementMNode) {
         countHolder.setValue(countHolder.getValue() + 1);
