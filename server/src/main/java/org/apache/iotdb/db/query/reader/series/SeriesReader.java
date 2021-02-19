@@ -428,7 +428,8 @@ public class SeriesReader {
       return true;
     }
 
-    // make sure firstPageReader won't be null while the cachedPageReaders has more cached page readers
+    // make sure firstPageReader won't be null while the cachedPageReaders has more cached page
+    // readers
     while (firstPageReader == null && (!seqPageReaders.isEmpty() || !unSeqPageReaders.isEmpty())) {
 
       unpackFirstPageReader();
