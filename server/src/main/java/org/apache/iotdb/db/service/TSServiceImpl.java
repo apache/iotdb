@@ -56,6 +56,7 @@ import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
@@ -1147,9 +1148,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           req.getTimestamps().get(0));
     }
 
-    List<TSStatus> statusList = new ArrayList<>();
-
-    boolean isAllSuccessful = true;
+    InsertRowsPlan insertRowsPlan = new InsertRowsPlan();
     for (int i = 0; i < req.deviceIds.size(); i++) {
       try {
         InsertRowPlan plan =
@@ -1159,23 +1158,20 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
                 req.getMeasurementsList().get(i).toArray(new String[0]),
                 req.valuesList.get(i));
         TSStatus status = checkAuthority(plan, req.getSessionId());
-        if (status == null) {
-          status = executeNonQueryPlan(plan);
-          isAllSuccessful =
-              ((status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode())
-                  && isAllSuccessful);
+        if (status != null) {
+          insertRowsPlan.getResults().put(i, status);
         }
-        statusList.add(status);
+        insertRowsPlan.addOneInsertRowPlan(plan, i);
       } catch (Exception e) {
-        isAllSuccessful = false;
-        statusList.add(
-            onNPEOrUnexpectedException(e, "inserting records", TSStatusCode.INTERNAL_SERVER_ERROR));
+        insertRowsPlan
+            .getResults()
+            .put(
+                i,
+                onNPEOrUnexpectedException(
+                    e, "inserting records", TSStatusCode.INTERNAL_SERVER_ERROR));
       }
     }
-
-    return isAllSuccessful
-        ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
-        : RpcUtils.getStatus(statusList);
+    return executeNonQueryPlan(insertRowsPlan);
   }
 
   @Override
@@ -1234,9 +1230,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           req.getTimestamps().get(0));
     }
 
-    List<TSStatus> statusList = new ArrayList<>();
     InsertRowPlan plan = new InsertRowPlan();
-    boolean isAllSuccessful = true;
+    InsertRowsPlan insertRowsPlan = new InsertRowsPlan();
     for (int i = 0; i < req.deviceIds.size(); i++) {
       try {
         plan.setDeviceId(new PartialPath(req.getDeviceIds().get(i)));
@@ -1246,24 +1241,20 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         plan.setValues(req.getValuesList().get(i).toArray(new Object[0]));
         plan.setNeedInferType(true);
         TSStatus status = checkAuthority(plan, req.getSessionId());
-        if (status == null) {
-          status = executeNonQueryPlan(plan);
-          isAllSuccessful =
-              ((status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode())
-                  && isAllSuccessful);
+        if (status != null) {
+          insertRowsPlan.getResults().put(i, status);
         }
-        statusList.add(status);
+        insertRowsPlan.addOneInsertRowPlan(plan, i);
       } catch (Exception e) {
-        isAllSuccessful = false;
-        statusList.add(
-            onNPEOrUnexpectedException(
-                e, "inserting string records", TSStatusCode.INTERNAL_SERVER_ERROR));
+        insertRowsPlan
+            .getResults()
+            .put(
+                i,
+                onNPEOrUnexpectedException(
+                    e, "inserting string records", TSStatusCode.INTERNAL_SERVER_ERROR));
       }
     }
-
-    return isAllSuccessful
-        ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
-        : RpcUtils.getStatus(statusList);
+    return executeNonQueryPlan(insertRowsPlan);
   }
 
   @Override

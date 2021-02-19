@@ -67,6 +67,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryIndexPlan;
@@ -222,6 +223,9 @@ public class PlanExecutor implements IPlanExecutor {
         return true;
       case BATCH_INSERT_ONE_DEVICE:
         insert((InsertRowsOfOneDevicePlan) plan);
+        return true;
+      case BATCH_INSERT_ROWS:
+        insert((InsertRowsPlan) plan);
         return true;
       case BATCHINSERT:
         insertTablet((InsertTabletPlan) plan);
@@ -1094,6 +1098,16 @@ public class PlanExecutor implements IPlanExecutor {
 
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
+    }
+  }
+
+  @Override
+  public void insert(InsertRowsPlan plan) throws QueryProcessException {
+    for (int i = 0; i < plan.getInsertRowPlanList().size(); i++) {
+      if (plan.getResults().containsKey(i)) {
+        continue;
+      }
+      insert(plan.getInsertRowPlanList().get(i));
     }
   }
 
