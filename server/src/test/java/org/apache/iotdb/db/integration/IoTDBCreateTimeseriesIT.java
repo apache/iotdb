@@ -31,6 +31,7 @@ import org.junit.Test;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -75,9 +76,17 @@ public class IoTDBCreateTimeseriesIT {
               timeSeries));
     }
 
+    // ensure that current timeseries in cache is right.
+    createTimeSeries1Tool(timeSeriesArray);
+
     EnvironmentUtils.stopDaemon();
     setUp();
 
+    // ensure timeseries in cache is right after recovering.
+    createTimeSeries1Tool(timeSeriesArray);
+  }
+
+  private void createTimeSeries1Tool(String[] timeSeriesArray) throws SQLException {
     boolean hasResult = statement.execute("show timeseries");
     Assert.assertTrue(hasResult);
 
@@ -114,9 +123,17 @@ public class IoTDBCreateTimeseriesIT {
     } catch (IoTDBSQLException ignored) {
     }
 
+    // ensure that current storage group in cache is right.
+    createTimeSeries2Tool(storageGroup);
+
     EnvironmentUtils.stopDaemon();
     setUp();
 
+    // ensure storage group in cache is right after recovering.
+    createTimeSeries2Tool(storageGroup);
+  }
+
+  private void createTimeSeries2Tool(String storageGroup) throws SQLException {
     statement.execute("show timeseries");
     Set<String> resultList = new HashSet<>();
     try (ResultSet resultSet = statement.getResultSet()) {

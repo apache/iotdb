@@ -34,6 +34,7 @@ import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -167,9 +168,17 @@ public class IoTDBAutoCreateSchemaIT {
           String.format("INSERT INTO %s(timestamp, a) values(123, \"aabb\")", timeSeries));
     }
 
+    // ensure that insert data in cache is right.
+    insertAutoCreate1Tool();
+
     EnvironmentUtils.stopDaemon();
     setUp();
 
+    // ensure that insert data in cache is right after recovering.
+    insertAutoCreate1Tool();
+  }
+
+  private void insertAutoCreate1Tool() throws SQLException {
     boolean hasResult = statement.execute("select * from root.sg1");
     Assert.assertTrue(hasResult);
 
@@ -207,9 +216,18 @@ public class IoTDBAutoCreateSchemaIT {
     } catch (IoTDBSQLException ignored) {
     }
 
+    // ensure that current storage group in cache is right.
+    InsertAutoCreate2Tool(storageGroup, timeSeriesPrefix);
+
     EnvironmentUtils.stopDaemon();
     setUp();
 
+    // ensure that storage group in cache is right after recovering.
+    InsertAutoCreate2Tool(storageGroup, timeSeriesPrefix);
+  }
+
+  private void InsertAutoCreate2Tool(String storageGroup, String timeSeriesPrefix)
+      throws SQLException {
     statement.execute("show timeseries");
     Set<String> resultList = new HashSet<>();
     try (ResultSet resultSet = statement.getResultSet()) {
