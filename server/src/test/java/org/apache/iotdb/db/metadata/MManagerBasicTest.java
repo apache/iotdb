@@ -631,30 +631,35 @@ public class MManagerBasicTest {
     }
   }
 
-  /**
-   * test 4 conditions inside getOrCreateMeasurementMNode method
-   */
+  /** test 4 conditions inside getOrCreateMeasurementMNode method */
   @Test
   public void testGetOrCreateMeasurementMNode() throws MetadataException {
     MManager manager = IoTDB.metaManager;
 
-    manager.createTimeseries(new PartialPath("root.laptop1.a.b.c"), TSDataType.INT32, TSEncoding.PLAIN, CompressionType.GZIP, null);
+    manager.createTimeseries(
+        new PartialPath("root.laptop1.a.b.c"),
+        TSDataType.INT32,
+        TSEncoding.PLAIN,
+        CompressionType.GZIP,
+        null);
 
-    //1.
+    // 1.
     PartialPath devicePath = new PartialPath("root.laptop1");
     MNode deviceNode = manager.getNodeByPath(devicePath);
-    MeasurementMNode measurementMNode = manager.getOrCreateMeasurementMNode(deviceNode, "a", TSDataType.FLOAT, devicePath);
+    MeasurementMNode measurementMNode =
+        manager.getOrCreateMeasurementMNode(deviceNode, "a", TSDataType.FLOAT, devicePath);
     Assert.assertEquals("a", measurementMNode.getName());
     Assert.assertTrue(measurementMNode.getParent() instanceof StorageGroupMNode);
 
-    //2.
+    // 2.
     devicePath = new PartialPath("root.laptop1.a.b.c");
     deviceNode = manager.getNodeByPath(devicePath);
-    measurementMNode = manager.getOrCreateMeasurementMNode(deviceNode, "d", TSDataType.FLOAT, devicePath);
+    measurementMNode =
+        manager.getOrCreateMeasurementMNode(deviceNode, "d", TSDataType.FLOAT, devicePath);
     measurementMNode.setAlias("dd");
     Assert.assertEquals("d", measurementMNode.getName());
 
-    //3.
+    // 3.
     manager.setStorageGroup(new PartialPath("root.sg1.a.b"));
     devicePath = new PartialPath("root.sg1.a");
     deviceNode = manager.getNodeByPath(devicePath);
@@ -664,12 +669,12 @@ public class MManagerBasicTest {
       Assert.assertEquals("Path [root.sg1.a.b] already exist", e.getMessage());
     }
 
-    //4.
+    // 4.
     devicePath = new PartialPath("root.laptop1.a.b.c");
     deviceNode = manager.getNodeByPath(devicePath);
-    measurementMNode = manager.getOrCreateMeasurementMNode(deviceNode, "d", TSDataType.FLOAT, devicePath);
+    measurementMNode =
+        manager.getOrCreateMeasurementMNode(deviceNode, "d", TSDataType.FLOAT, devicePath);
     Assert.assertEquals("d", measurementMNode.getName());
     Assert.assertEquals("dd", measurementMNode.getAlias());
-
   }
 }

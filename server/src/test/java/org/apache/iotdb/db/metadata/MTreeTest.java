@@ -775,11 +775,21 @@ public class MTreeTest {
     String sgPath = "root.sg1";
     root.setStorageGroup(new PartialPath(sgPath));
 
-    root.createTimeseries(new PartialPath("root.sg1.a.b.c"), TSDataType.INT32, TSEncoding.RLE,
-        TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap(), null);
+    root.createTimeseries(
+        new PartialPath("root.sg1.a.b.c"),
+        TSDataType.INT32,
+        TSEncoding.RLE,
+        TSFileDescriptor.getInstance().getConfig().getCompressor(),
+        Collections.emptyMap(),
+        null);
 
-    root.createTimeseries(new PartialPath("root.sg1.a.b"), TSDataType.INT32, TSEncoding.RLE,
-        TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap(), null);
+    root.createTimeseries(
+        new PartialPath("root.sg1.a.b"),
+        TSDataType.INT32,
+        TSEncoding.RLE,
+        TSFileDescriptor.getInstance().getConfig().getCompressor(),
+        Collections.emptyMap(),
+        null);
 
     MNode node = root.getNodeByPath(new PartialPath("root.sg1.a.b"));
     Assert.assertTrue(node instanceof MeasurementMNode);

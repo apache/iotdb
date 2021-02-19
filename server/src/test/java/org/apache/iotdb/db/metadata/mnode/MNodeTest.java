@@ -18,24 +18,27 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import static org.junit.Assert.assertEquals;
+import org.apache.iotdb.db.metadata.MetaUtils;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import java.util.ArrayList;
+import org.junit.Before;
+import org.junit.Test;
+
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import org.apache.iotdb.db.metadata.MetaUtils;
-import org.junit.Before;
-import org.junit.Test;
 
-public class MNodeTest{
+import static org.junit.Assert.assertEquals;
+
+public class MNodeTest {
   private static ExecutorService service;
 
   @Before
   public void setUp() throws Exception {
-    service = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors(),
+    service =
+        Executors.newFixedThreadPool(
+            Runtime.getRuntime().availableProcessors(),
             new ThreadFactoryBuilder().setDaemon(false).setNameFormat("replaceChild-%d").build());
   }
 
@@ -51,7 +54,8 @@ public class MNodeTest{
     aNode.addChild(bNode.getName(), bNode);
 
     for (int i = 0; i < 500; i++) {
-      service.submit(new Thread(() -> rootNode.replaceChild(aNode.getName(), new MNode(null, "c"))));
+      service.submit(
+          new Thread(() -> rootNode.replaceChild(aNode.getName(), new MNode(null, "c"))));
     }
 
     if (!service.isShutdown()) {
@@ -62,5 +66,4 @@ public class MNodeTest{
     List<String> multiFullPaths = MetaUtils.getMultiFullPaths(rootNode);
     assertEquals("root.c.b", multiFullPaths.get(0));
   }
-
 }

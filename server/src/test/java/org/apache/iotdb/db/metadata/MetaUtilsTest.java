@@ -18,37 +18,46 @@
  */
 package org.apache.iotdb.db.metadata;
 
-import static org.junit.Assert.assertArrayEquals;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.mnode.MNode;
+
+import org.junit.Assert;
+import org.junit.Test;
 
 import java.util.Arrays;
 import java.util.List;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.mnode.MNode;
-import org.junit.Assert;
-import org.junit.Test;
+
+import static org.junit.Assert.assertArrayEquals;
 
 public class MetaUtilsTest {
 
   @Test
   public void testSplitPathToNodes() throws IllegalPathException {
-    assertArrayEquals(Arrays.asList("root", "sg", "d1", "s1").toArray(),
+    assertArrayEquals(
+        Arrays.asList("root", "sg", "d1", "s1").toArray(),
         MetaUtils.splitPathToDetachedPath("root.sg.d1.s1"));
 
-    assertArrayEquals(Arrays.asList("root", "sg", "d1", "\"s.1\"").toArray(),
+    assertArrayEquals(
+        Arrays.asList("root", "sg", "d1", "\"s.1\"").toArray(),
         MetaUtils.splitPathToDetachedPath("root.sg.d1.\"s.1\""));
 
-    assertArrayEquals(Arrays.asList("root", "sg", "d1", "\"s\\\".1\"").toArray(),
+    assertArrayEquals(
+        Arrays.asList("root", "sg", "d1", "\"s\\\".1\"").toArray(),
         MetaUtils.splitPathToDetachedPath("root.sg.d1.\"s\\\".1\""));
 
-    assertArrayEquals(Arrays.asList("root", "\"s g\"", "d1", "\"s.1\"").toArray(),
+    assertArrayEquals(
+        Arrays.asList("root", "\"s g\"", "d1", "\"s.1\"").toArray(),
         MetaUtils.splitPathToDetachedPath("root.\"s g\".d1.\"s.1\""));
 
-    assertArrayEquals(Arrays.asList("root", "\"s g\"", "\"d_.1\"", "\"s.1.1\"").toArray(),
+    assertArrayEquals(
+        Arrays.asList("root", "\"s g\"", "\"d_.1\"", "\"s.1.1\"").toArray(),
         MetaUtils.splitPathToDetachedPath("root.\"s g\".\"d_.1\".\"s.1.1\""));
 
-    assertArrayEquals(Arrays.asList("root", "1").toArray(), MetaUtils.splitPathToDetachedPath("root.1"));
+    assertArrayEquals(
+        Arrays.asList("root", "1").toArray(), MetaUtils.splitPathToDetachedPath("root.1"));
 
-    assertArrayEquals(Arrays.asList("root", "sg", "d1", "s", "1").toArray(),
+    assertArrayEquals(
+        Arrays.asList("root", "sg", "d1", "s", "1").toArray(),
         MetaUtils.splitPathToDetachedPath("root.sg.d1.s.1"));
 
     try {
@@ -93,12 +102,13 @@ public class MetaUtilsTest {
     List<String> multiFullPaths = MetaUtils.getMultiFullPaths(rootNode);
     Assert.assertSame(2, multiFullPaths.size());
 
-    multiFullPaths.forEach(fullPath -> {
-      if (fullPath.contains("aa")) {
-        Assert.assertEquals("root.aa.bb.cc", fullPath);
-      } else {
-        Assert.assertEquals("root.a.b", fullPath);
-      }
-    });
+    multiFullPaths.forEach(
+        fullPath -> {
+          if (fullPath.contains("aa")) {
+            Assert.assertEquals("root.aa.bb.cc", fullPath);
+          } else {
+            Assert.assertEquals("root.a.b", fullPath);
+          }
+        });
   }
 }

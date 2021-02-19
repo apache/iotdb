@@ -19,6 +19,15 @@
 
 package org.apache.iotdb.db.integration;
 
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.jdbc.IoTDBSQLException;
+
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -29,13 +38,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.jdbc.Config;
-import org.apache.iotdb.jdbc.IoTDBSQLException;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
 
 /**
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
@@ -50,8 +52,7 @@ public class IoTDBCreateTimeseriesIT {
     EnvironmentUtils.envSetUp();
 
     Class.forName(Config.JDBC_DRIVER_NAME);
-    connection = DriverManager.
-        getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
     statement = connection.createStatement();
   }
 
@@ -62,16 +63,16 @@ public class IoTDBCreateTimeseriesIT {
     EnvironmentUtils.cleanEnv();
   }
 
-  /**
-   * Test creating a time series that is a prefix path of an existing time series
-   */
+  /** Test creating a time series that is a prefix path of an existing time series */
   @Test
   public void testCreateTimeseries1() throws Exception {
     String[] timeSeriesArray = {"root.sg1.aa.bb", "root.sg1.aa.bb.cc", "root.sg1.aa"};
 
     for (String timeSeries : timeSeriesArray) {
       statement.execute(
-          String.format("create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY", timeSeries));
+          String.format(
+              "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
+              timeSeries));
     }
 
     EnvironmentUtils.stopDaemon();
@@ -89,18 +90,17 @@ public class IoTDBCreateTimeseriesIT {
     }
     Assert.assertEquals(3, resultList.size());
 
-    List<String> collect = resultList.stream()
-        .sorted(Comparator.comparingInt(e -> e.split("\\.").length))
-        .collect(Collectors.toList());
+    List<String> collect =
+        resultList.stream()
+            .sorted(Comparator.comparingInt(e -> e.split("\\.").length))
+            .collect(Collectors.toList());
 
     Assert.assertEquals(timeSeriesArray[2], collect.get(0));
     Assert.assertEquals(timeSeriesArray[0], collect.get(1));
     Assert.assertEquals(timeSeriesArray[1], collect.get(2));
   }
 
-  /**
-   * Test if creating a time series will cause the storage group with same name to disappear
-   */
+  /** Test if creating a time series will cause the storage group with same name to disappear */
   @Test
   public void testCreateTimeseries2() throws Exception {
     String storageGroup = "root.sg1.a.b.c";
@@ -108,7 +108,9 @@ public class IoTDBCreateTimeseriesIT {
     statement.execute(String.format("SET storage group TO %s", storageGroup));
     try {
       statement.execute(
-          String.format("create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY", storageGroup));
+          String.format(
+              "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
+              storageGroup));
     } catch (IoTDBSQLException ignored) {
     }
 
@@ -134,7 +136,5 @@ public class IoTDBCreateTimeseriesIT {
       }
     }
     Assert.assertTrue(resultList.contains(storageGroup));
-
   }
-
 }
