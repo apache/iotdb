@@ -226,26 +226,50 @@ public class MManagerBasicTest {
     }
     assertFalse(manager.isPathExist(new PartialPath("root.1")));
   }
-  
+
   @Test
   public void testGetAllTimeseriesCount() {
     MManager manager = IoTDB.metaManager;
 
     try {
       manager.setStorageGroup(new PartialPath("root.laptop"));
-      manager.createTimeseries(new PartialPath("root.laptop.d1"), TSDataType.INT32, TSEncoding.PLAIN,
-              CompressionType.GZIP, null);
-      manager.createTimeseries(new PartialPath("root.laptop.d1.s1"), TSDataType.INT32, TSEncoding.PLAIN,
-              CompressionType.GZIP, null);
-      manager.createTimeseries(new PartialPath("root.laptop.d1.s1.t1"), TSDataType.INT32, TSEncoding.PLAIN,
-              CompressionType.GZIP, null);
-      manager.createTimeseries(new PartialPath("root.laptop.d1.s2"), TSDataType.INT32, TSEncoding.PLAIN,
-              CompressionType.GZIP, null);
-      manager.createTimeseries(new PartialPath("root.laptop.d2.s1"), TSDataType.INT32, TSEncoding.PLAIN,
-              CompressionType.GZIP, null);
-      manager.createTimeseries(new PartialPath("root.laptop.d2.s2"), TSDataType.INT32, TSEncoding.PLAIN,
-              CompressionType.GZIP, null);
-      
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d1"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d1.s1"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d1.s1.t1"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d1.s2"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d2.s1"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d2.s2"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+
       assertEquals(manager.getAllTimeseriesCount(new PartialPath("root")), 6);
       assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop")), 6);
       assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.*")), 6);
