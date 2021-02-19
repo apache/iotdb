@@ -34,7 +34,7 @@ import java.io.IOException;
 public class IntDataPoint extends DataPoint {
 
   private static final Logger LOG = LoggerFactory.getLogger(IntDataPoint.class);
-  /** actual value. * */
+  /** actual value. */
   private int value;
 
   /** constructor of IntDataPoint, the value type will be set automatically. */

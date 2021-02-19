@@ -28,7 +28,7 @@ public enum TSDataType {
   /** BOOLEAN */
   BOOLEAN((byte) 0),
 
-  /** */
+  /** INT32 */
   INT32((byte) 1),
 
   /** INT64 */

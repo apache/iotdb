@@ -29,6 +29,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.IOException;
 
+<<<<<<< HEAD
 /**
  * SET STORAGE GROUP TO root.sg1; CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT32,
  * ENCODING=PLAIN; CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=INT32, ENCODING=PLAIN; INSERT INTO
@@ -40,6 +41,22 @@ import java.io.IOException;
  */
 public class UDTFExample implements UDTF {
 
+=======
+/** This is an internal example of the UDTF implementation. */
+public class UDTFExample implements UDTF {
+  /*
+   * SET STORAGE GROUP TO root.sg1;
+   * CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN;
+   * CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=INT32, ENCODING=PLAIN;
+   * INSERT INTO root.sg1.d1(timestamp, s1, s2) VALUES (0, -1, 1);
+   * INSERT INTO root.sg1.d1(timestamp, s1, s2) VALUES (1, -2, 2);
+   * INSERT INTO root.sg1.d1(timestamp, s1, s2) VALUES (2, -3, 3);
+   *
+   * CREATE FUNCTION example AS "org.apache.iotdb.udf.UDTFExample";
+   * SHOW FUNCTIONS;
+   * SELECT s1, example(s1), s2, example(s2) FROM root.sg1.d1;
+   */
+>>>>>>> 97405745987219d0d4ef71a5603e932d0499c554
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
     configurations

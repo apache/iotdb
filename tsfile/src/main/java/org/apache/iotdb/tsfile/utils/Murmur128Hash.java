@@ -52,10 +52,7 @@ public class Murmur128Hash {
             seed);
   }
 
-  /**
-   * ************************************ Methods to perform murmur 128 hash.
-   * ************************************
-   */
+  /** Methods to perform murmur 128 hash. */
   private static long getBlock(byte[] key, int offset, int index) {
     int i8 = index << 3;
     int blockOffset = offset + i8;
