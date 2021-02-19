@@ -315,8 +315,9 @@ public class ClientServer extends TSServiceImpl {
             } else {
               SyncDataClient syncDataClient = null;
               try {
-                syncDataClient = coordinator.getSyncDataClient(queriedNode,
-                    RaftServer.getReadOperationTimeoutMS());
+                syncDataClient =
+                    coordinator.getSyncDataClient(
+                        queriedNode, RaftServer.getReadOperationTimeoutMS());
                 syncDataClient.endQuery(header, coordinator.getThisNode(), queryId);
               } finally {
                 ClientUtils.putBackSyncClient(syncDataClient);

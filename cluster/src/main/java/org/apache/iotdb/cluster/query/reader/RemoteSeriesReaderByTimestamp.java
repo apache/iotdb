@@ -92,11 +92,9 @@ public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
   private ByteBuffer fetchResultSync(long timestamp) throws IOException {
     SyncDataClient curSyncClient = null;
     try {
-      curSyncClient = sourceInfo
-          .getCurSyncClient(RaftServer.getReadOperationTimeoutMS());
-      return curSyncClient
-          .fetchSingleSeriesByTimestamp(sourceInfo.getHeader(),
-              sourceInfo.getReaderId(), timestamp);
+      curSyncClient = sourceInfo.getCurSyncClient(RaftServer.getReadOperationTimeoutMS());
+      return curSyncClient.fetchSingleSeriesByTimestamp(
+          sourceInfo.getHeader(), sourceInfo.getReaderId(), timestamp);
     } catch (TException e) {
       // try other node
       if (!sourceInfo.switchNode(true, timestamp)) {

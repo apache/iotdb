@@ -146,11 +146,8 @@ public class RemoteSimpleSeriesReader implements IPointReader {
   private ByteBuffer fetchResultSync() throws IOException {
     SyncDataClient curSyncClient = null;
     try {
-      curSyncClient = sourceInfo
-          .getCurSyncClient(RaftServer.getReadOperationTimeoutMS());
-      return curSyncClient
-          .fetchSingleSeries(sourceInfo.getHeader(),
-              sourceInfo.getReaderId());
+      curSyncClient = sourceInfo.getCurSyncClient(RaftServer.getReadOperationTimeoutMS());
+      return curSyncClient.fetchSingleSeries(sourceInfo.getHeader(), sourceInfo.getReaderId());
     } catch (TException e) {
       // try other node
       if (!sourceInfo.switchNode(false, lastTimestamp)) {

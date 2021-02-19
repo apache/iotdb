@@ -223,8 +223,10 @@ public class MetaPuller {
     } else {
       SyncDataClient syncDataClient = null;
       try {
-        syncDataClient = metaGroupMember
-            .getClientProvider().getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+        syncDataClient =
+            metaGroupMember
+                .getClientProvider()
+                .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
         PullSchemaResp pullSchemaResp = syncDataClient.pullTimeSeriesSchema(request);
         ByteBuffer buffer = pullSchemaResp.schemaBytes;
         int size = buffer.getInt();

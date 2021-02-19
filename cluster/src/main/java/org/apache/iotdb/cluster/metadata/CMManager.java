@@ -673,10 +673,12 @@ public class CMManager extends MManager {
         } else {
           SyncDataClient syncDataClient = null;
           try {
-            syncDataClient = metaGroupMember.getClientProvider().getSyncDataClient(node,
-                RaftServer.getReadOperationTimeoutMS());
-            result = syncDataClient
-                .getUnregisteredTimeseries(partitionGroup.getHeader(), seriesList);
+            syncDataClient =
+                metaGroupMember
+                    .getClientProvider()
+                    .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+            result =
+                syncDataClient.getUnregisteredTimeseries(partitionGroup.getHeader(), seriesList);
           } finally {
             ClientUtils.putBackSyncClient(syncDataClient);
           }
@@ -855,8 +857,10 @@ public class CMManager extends MManager {
     } else {
       SyncDataClient syncDataClient = null;
       try {
-        syncDataClient = metaGroupMember.getClientProvider().getSyncDataClient(node,
-            RaftServer.getReadOperationTimeoutMS());
+        syncDataClient =
+            metaGroupMember
+                .getClientProvider()
+                .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
         PullSchemaResp pullSchemaResp = syncDataClient.pullTimeSeriesSchema(request);
         ByteBuffer buffer = pullSchemaResp.schemaBytes;
         int size = buffer.getInt();
@@ -867,7 +871,6 @@ public class CMManager extends MManager {
       } finally {
         ClientUtils.putBackSyncClient(syncDataClient);
       }
-
     }
 
     return schemas;
@@ -1093,8 +1096,10 @@ public class CMManager extends MManager {
     } else {
       SyncDataClient syncDataClient = null;
       try {
-        syncDataClient = metaGroupMember.getClientProvider().getSyncDataClient(node,
-            RaftServer.getReadOperationTimeoutMS());
+        syncDataClient =
+            metaGroupMember
+                .getClientProvider()
+                .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
         result = syncDataClient.getAllPaths(header, pathsToQuery, withAlias);
       } finally {
         ClientUtils.putBackSyncClient(syncDataClient);
@@ -1215,8 +1220,10 @@ public class CMManager extends MManager {
     } else {
       SyncDataClient syncDataClient = null;
       try {
-        syncDataClient = metaGroupMember.getClientProvider().getSyncDataClient(node,
-            RaftServer.getReadOperationTimeoutMS());
+        syncDataClient =
+            metaGroupMember
+                .getClientProvider()
+                .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
         paths = syncDataClient.getAllDevices(header, pathsToQuery);
       } finally {
         ClientUtils.putBackSyncClient(syncDataClient);
@@ -1539,11 +1546,14 @@ public class CMManager extends MManager {
       SyncDataClient syncDataClient = null;
       try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
           DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
-        syncDataClient = metaGroupMember
-            .getClientProvider().getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+        syncDataClient =
+            metaGroupMember
+                .getClientProvider()
+                .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
         plan.serialize(dataOutputStream);
-        resultBinary = syncDataClient.getAllMeasurementSchema(group.getHeader(),
-            ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+        resultBinary =
+            syncDataClient.getAllMeasurementSchema(
+                group.getHeader(), ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
       } finally {
         ClientUtils.putBackSyncClient(syncDataClient);
       }

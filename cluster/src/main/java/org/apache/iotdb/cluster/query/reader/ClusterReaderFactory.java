@@ -659,8 +659,10 @@ public class ClusterReaderFactory {
     } else {
       SyncDataClient syncDataClient = null;
       try {
-        syncDataClient = metaGroupMember.getClientProvider().getSyncDataClient(node,
-            RaftServer.getReadOperationTimeoutMS());
+        syncDataClient =
+            metaGroupMember
+                .getClientProvider()
+                .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
         executorId = syncDataClient.getGroupByExecutor(request);
       } finally {
         ClientUtils.putBackSyncClient(syncDataClient);
