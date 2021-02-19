@@ -470,7 +470,7 @@ public class IoTDBMultiSeriesIT {
       fail("not throw exception when unknown time series in where clause");
     } catch (SQLException e) {
       assertEquals(
-          "411: Error occurred in query process: Filter has some time series don't correspond to any known time series",
+          "411: Error occurred in query process: Path [root.vehicle.d0.s10] does not exist",
           e.getMessage());
     }
   }
