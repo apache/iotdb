@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.jdbc.Config;
 
 import org.junit.AfterClass;
@@ -111,7 +110,7 @@ public class IoTDBInsertNaNIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute("select * from root");
+      boolean hasResultSet = statement.execute("select * from root.vehicle.*");
       Assert.assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -120,22 +119,53 @@ public class IoTDBInsertNaNIT {
           assertEquals(TIMESTAMP + "", resultSet.getString(TIMESTAMP_STR));
           for (int i = 0; i < 10; i++) {
             Assert.assertEquals(
-                MathUtils.roundWithGivenPrecision(Float.parseFloat(VALUE), i),
+                Float.parseFloat(VALUE),
                 resultSet.getFloat(String.format("root.vehicle.%s.%s", "f0", "s" + i + "rle")),
                 DELTA_FLOAT);
             Assert.assertEquals(
-                MathUtils.roundWithGivenPrecision(Float.parseFloat(VALUE), i),
+                Float.parseFloat(VALUE),
                 resultSet.getFloat(String.format("root.vehicle.%s.%s", "f0", "s" + i + "2f")),
                 DELTA_FLOAT);
             Assert.assertEquals(
-                MathUtils.roundWithGivenPrecision(Double.parseDouble(VALUE), i),
+                Double.parseDouble(VALUE),
                 resultSet.getDouble(String.format("root.vehicle.%s.%s", "d0", "s" + i + "rle")),
                 DELTA_DOUBLE);
             Assert.assertEquals(
-                MathUtils.roundWithGivenPrecision(Double.parseDouble(VALUE), i),
+                Double.parseDouble(VALUE),
                 resultSet.getDouble(String.format("root.vehicle.%s.%s", "d0", "s" + i + "2f")),
                 DELTA_DOUBLE);
           }
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void selectTest() throws ClassNotFoundException {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "CREATE TIMESERIES root.happy.device1.sensor1.temperature WITH DATATYPE=DOUBLE, ENCODING=RLE");
+      statement.execute(
+          "INSERT INTO root.happy.device1.sensor1(timestamp,temperature) values(7925, NaN)");
+      boolean hasResultSet = statement.execute("select * from root.happy.device1.sensor1");
+      Assert.assertTrue(hasResultSet);
+      int cnt;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          assertEquals(7925 + "", resultSet.getString(TIMESTAMP_STR));
+          assertEquals(
+              Double.parseDouble(VALUE),
+              resultSet.getDouble("root.happy.device1.sensor1.temperature"),
+              DELTA_DOUBLE);
           cnt++;
         }
         Assert.assertEquals(1, cnt);
