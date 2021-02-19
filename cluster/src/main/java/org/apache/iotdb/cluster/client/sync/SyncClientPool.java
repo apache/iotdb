@@ -19,13 +19,6 @@
 
 package org.apache.iotdb.cluster.client.sync;
 
-import java.net.ConnectException;
-import java.net.SocketTimeoutException;
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
@@ -35,6 +28,13 @@ import org.apache.iotdb.cluster.utils.ClusterNode;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.net.ConnectException;
+import java.net.SocketTimeoutException;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class SyncClientPool {
 
@@ -82,7 +82,7 @@ public class SyncClientPool {
       return null;
     }
 
-    //As clientCaches is ConcurrentHashMap, computeIfAbsent is thread safety.
+    // As clientCaches is ConcurrentHashMap, computeIfAbsent is thread safety.
     Deque<Client> clientDeque = clientCaches.computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
     synchronized (this) {
       if (clientDeque.isEmpty()) {
@@ -118,8 +118,8 @@ public class SyncClientPool {
         return clientDeque.pop();
       }
 
-      logger.warn("Cannot get an available client after {}ms, create a new one",
-          WAIT_CLIENT_TIMEOUT_MS);
+      logger.warn(
+          "Cannot get an available client after {}ms, create a new one", WAIT_CLIENT_TIMEOUT_MS);
 
       Client client;
       int nodeClientNum = nodeClientNumMap.get(node);
@@ -129,7 +129,6 @@ public class SyncClientPool {
       }
       return client;
     }
-
   }
 
   /**
@@ -140,7 +139,7 @@ public class SyncClientPool {
    */
   public void putClient(Node node, Client client) {
     ClusterNode clusterNode = new ClusterNode(node);
-    //As clientCaches is ConcurrentHashMap, computeIfAbsent is thread safety.
+    // As clientCaches is ConcurrentHashMap, computeIfAbsent is thread safety.
     Deque<Client> clientDeque = clientCaches.computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
     synchronized (this) {
       if (client.getInputProtocol() != null && client.getInputProtocol().getTransport().isOpen()) {
