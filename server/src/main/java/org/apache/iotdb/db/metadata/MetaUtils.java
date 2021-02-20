@@ -18,19 +18,18 @@
  */
 package org.apache.iotdb.db.metadata;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
-
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
+
 public class MetaUtils {
 
-  private MetaUtils() {
-
-  }
+  private MetaUtils() {}
 
   static String getNodeRegByIdx(int idx, String[] nodes) {
     return idx >= nodes.length ? PATH_WILDCARD : nodes[idx];
@@ -47,7 +46,7 @@ public class MetaUtils {
     for (int i = 0; i < path.length(); i++) {
       if (path.charAt(i) == IoTDBConstant.PATH_SEPARATOR) {
         String node = path.substring(startIndex, i);
-        if(node.isEmpty()) {
+        if (node.isEmpty()) {
           throw new IllegalPathException(path);
         }
         nodes.add(node);
@@ -60,7 +59,7 @@ public class MetaUtils {
         }
         if (endIndex != -1 && (endIndex == path.length() - 1 || path.charAt(endIndex + 1) == '.')) {
           String node = path.substring(startIndex, endIndex + 1);
-          if(node.isEmpty()) {
+          if (node.isEmpty()) {
             throw new IllegalPathException(path);
           }
           nodes.add(node);
@@ -75,7 +74,7 @@ public class MetaUtils {
     }
     if (startIndex <= path.length() - 1) {
       String node = path.substring(startIndex);
-      if(node.isEmpty()) {
+      if (node.isEmpty()) {
         throw new IllegalPathException(path);
       }
       nodes.add(node);
@@ -86,12 +85,13 @@ public class MetaUtils {
   /**
    * Get storage group path when creating schema automatically is enable
    *
-   * e.g., path = root.a.b.c and level = 1, return root.a
+   * <p>e.g., path = root.a.b.c and level = 1, return root.a
    *
    * @param path path
    * @param level level
    */
-  public static PartialPath getStorageGroupPathByLevel(PartialPath path, int level) throws MetadataException {
+  public static PartialPath getStorageGroupPathByLevel(PartialPath path, int level)
+      throws MetadataException {
     String[] nodeNames = path.getNodes();
     if (nodeNames.length <= level || !nodeNames[0].equals(IoTDBConstant.PATH_ROOT)) {
       throw new IllegalPathException(path.getFullPath());

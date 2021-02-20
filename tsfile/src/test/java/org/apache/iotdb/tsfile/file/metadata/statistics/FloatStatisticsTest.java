@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
+import org.junit.Test;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-
-import org.junit.Test;
 
 public class FloatStatisticsTest {
 
@@ -90,7 +90,5 @@ public class FloatStatisticsTest {
     floatStats3.mergeStatistics(floatStats5);
     assertEquals(122.34f, floatStats3.getFirstValue(), maxError);
     assertEquals(125.34f, floatStats3.getLastValue(), maxError);
-
   }
-
 }

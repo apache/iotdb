@@ -36,7 +36,6 @@ public class BooleanStatistics extends Statistics<Boolean> {
 
   static final int BOOLEAN_STATISTICS_FIXED_RAM_SIZE = 56;
 
-
   @Override
   public TSDataType getType() {
     return TSDataType.BOOLEAN;
@@ -51,7 +50,7 @@ public class BooleanStatistics extends Statistics<Boolean> {
    * initialize boolean Statistics.
    *
    * @param firstValue first boolean value
-   * @param lastValue  last boolean value
+   * @param lastValue last boolean value
    */
   public void initializeStats(boolean firstValue, boolean lastValue, long sum) {
     this.firstValue = firstValue;
@@ -64,7 +63,8 @@ public class BooleanStatistics extends Statistics<Boolean> {
     this.sumValue += sum;
   }
 
-  private void updateStats(boolean firstValue, boolean lastValue, long startTime, long endTime, long sum) {
+  private void updateStats(
+      boolean firstValue, boolean lastValue, long startTime, long endTime, long sum) {
     // only if endTime greater or equals to the current endTime need we update the last value
     // only if startTime less or equals to the current startTime need we update the first value
     // otherwise, just ignore
@@ -100,8 +100,7 @@ public class BooleanStatistics extends Statistics<Boolean> {
   }
 
   @Override
-  public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes) {
-  }
+  public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes) {}
 
   @Override
   public Boolean getMinValue() {
@@ -165,8 +164,12 @@ public class BooleanStatistics extends Statistics<Boolean> {
       initializeStats(boolStats.getFirstValue(), boolStats.getLastValue(), boolStats.sumValue);
       isEmpty = false;
     } else {
-      updateStats(boolStats.getFirstValue(), boolStats.getLastValue(), stats.getStartTime(),
-          stats.getEndTime(), boolStats.sumValue);
+      updateStats(
+          boolStats.getFirstValue(),
+          boolStats.getLastValue(),
+          stats.getStartTime(),
+          stats.getEndTime(),
+          boolStats.sumValue);
     }
   }
 
@@ -220,9 +223,13 @@ public class BooleanStatistics extends Statistics<Boolean> {
 
   @Override
   public String toString() {
-    return super.toString() + " [firstValue=" + firstValue +
-        ", lastValue=" + lastValue +
-        ", sumValue=" + sumValue +
-        ']';
+    return super.toString()
+        + " [firstValue="
+        + firstValue
+        + ", lastValue="
+        + lastValue
+        + ", sumValue="
+        + sumValue
+        + ']';
   }
 }

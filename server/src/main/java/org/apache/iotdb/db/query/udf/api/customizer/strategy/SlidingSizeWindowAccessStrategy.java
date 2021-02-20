@@ -58,27 +58,28 @@ public class SlidingSizeWindowAccessStrategy implements AccessStrategy {
   /**
    * Constructor. You need to specify the number of rows in each sliding size window (except for the
    * last window) and the sliding step to the next window.
-   * <p>
-   * Example
-   * <p>
-   * Original data points (time, s1, s2):
-   * <ul>
-   *   <li>(1, 100, null   )</li>
-   *   <li>(2, 100, null   )</li>
-   *   <li>(3, 100, null   )</li>
-   *   <li>(4, 100, 'error')</li>
-   *   <li>(5, 100, null   )</li>
-   *   <li>(6, 101, 'error')</li>
-   *   <li>(7, 102, 'error')</li>
-   * </ul>
-   * Set windowSize to 2 and set slidingStep to 3, windows will be generated as below:
-   * Window 0: [(1, 100, null   ), (2, 100, null)]
-   * Window 1: [(4, 100, 'error'), (5, 100, null)]
-   * Window 2: [(7, 102, 'error')]
    *
-   * @param windowSize  the number of rows in each sliding size window (0 < windowSize)
+   * <p>Example
+   *
+   * <p>Original data points (time, s1, s2):
+   *
+   * <ul>
+   *   <li>(1, 100, null )
+   *   <li>(2, 100, null )
+   *   <li>(3, 100, null )
+   *   <li>(4, 100, 'error')
+   *   <li>(5, 100, null )
+   *   <li>(6, 101, 'error')
+   *   <li>(7, 102, 'error')
+   * </ul>
+   *
+   * Set windowSize to 2 and set slidingStep to 3, windows will be generated as below: Window 0:
+   * [(1, 100, null ), (2, 100, null)] Window 1: [(4, 100, 'error'), (5, 100, null)] Window 2: [(7,
+   * 102, 'error')]
+   *
+   * @param windowSize the number of rows in each sliding size window (0 < windowSize)
    * @param slidingStep the number of rows between the first point of the next window and the first
-   *                    point of the current window (0 < slidingStep)
+   *     point of the current window (0 < slidingStep)
    */
   public SlidingSizeWindowAccessStrategy(int windowSize, int slidingStep) {
     this.windowSize = windowSize;

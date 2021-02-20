@@ -18,45 +18,45 @@
  */
 package org.apache.iotdb.db.integration.aggregation;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.Statement;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.Statement;
+
 public class IoTDBAggregationByLevelIT {
 
   private Planner planner = new Planner();
-  private static final String[] dataSet = new String[]{
-      "SET STORAGE GROUP TO root.sg1",
-      "SET STORAGE GROUP TO root.sg2",
-      "CREATE TIMESERIES root.sg1.d1.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
-      "CREATE TIMESERIES root.sg1.d1.temperature WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
-      "CREATE TIMESERIES root.sg1.d2.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
-      "CREATE TIMESERIES root.sg1.d2.temperature WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
-
-      "CREATE TIMESERIES root.sg2.d1.status WITH DATATYPE=INT32, ENCODING=PLAIN",
-      "CREATE TIMESERIES root.sg2.d1.temperature WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
-      "CREATE TIMESERIES root.sg2.d2.temperature WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
-
-      "INSERT INTO root.sg1.d1(timestamp,status) values(150,true)",
-      "INSERT INTO root.sg1.d1(timestamp,status,temperature) values(200,false,20.71)",
-      "INSERT INTO root.sg1.d1(timestamp,status,temperature) values(600,false,71.12)",
-      "INSERT INTO root.sg1.d2(timestamp,status,temperature) values(200,false,42.66)",
-      "INSERT INTO root.sg1.d2(timestamp,status,temperature) values(300,false,46.77)",
-      "INSERT INTO root.sg1.d2(timestamp,status,temperature) values(700,true,62.15)",
-
-      "INSERT INTO root.sg2.d1(timestamp,status,temperature) values(100,3,88.24)",
-      "INSERT INTO root.sg2.d1(timestamp,status,temperature) values(500,5,125.5)",
-      "INSERT INTO root.sg2.d2(timestamp,temperature) values(200,105.5)",
-      "INSERT INTO root.sg2.d2(timestamp,temperature) values(800,61.22)",
-  };
+  private static final String[] dataSet =
+      new String[] {
+        "SET STORAGE GROUP TO root.sg1",
+        "SET STORAGE GROUP TO root.sg2",
+        "CREATE TIMESERIES root.sg1.d1.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.sg1.d1.temperature WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.sg1.d2.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.sg1.d2.temperature WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.sg2.d1.status WITH DATATYPE=INT32, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.sg2.d1.temperature WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.sg2.d2.temperature WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
+        "INSERT INTO root.sg1.d1(timestamp,status) values(150,true)",
+        "INSERT INTO root.sg1.d1(timestamp,status,temperature) values(200,false,20.71)",
+        "INSERT INTO root.sg1.d1(timestamp,status,temperature) values(600,false,71.12)",
+        "INSERT INTO root.sg1.d2(timestamp,status,temperature) values(200,false,42.66)",
+        "INSERT INTO root.sg1.d2(timestamp,status,temperature) values(300,false,46.77)",
+        "INSERT INTO root.sg1.d2(timestamp,status,temperature) values(700,true,62.15)",
+        "INSERT INTO root.sg2.d1(timestamp,status,temperature) values(100,3,88.24)",
+        "INSERT INTO root.sg2.d1(timestamp,status,temperature) values(500,5,125.5)",
+        "INSERT INTO root.sg2.d2(timestamp,temperature) values(200,105.5)",
+        "INSERT INTO root.sg2.d2(timestamp,temperature) values(800,61.22)",
+      };
 
   private static final double DOUBLE_PRECISION = 0.001d;
 
@@ -75,14 +75,13 @@ public class IoTDBAggregationByLevelIT {
 
   @Test
   public void sumFuncGroupByLevelTest() throws Exception {
-    double[] retArray = new double[]{
-        243.410d,
-        380.460d,
-        623.870d,
-    };
-    try (Connection connection = DriverManager.
-        getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+    double[] retArray =
+        new double[] {
+          243.410d, 380.460d, 623.870d,
+        };
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("select sum(temperature) from root.sg1.* GROUP BY level=1");
 
       int cnt = 0;
@@ -113,19 +112,17 @@ public class IoTDBAggregationByLevelIT {
       }
       Assert.assertEquals(retArray.length, cnt);
     }
-
   }
 
   @Test
   public void avgFuncGroupByLevelTest() throws Exception {
-    double[] retArray = new double[]{
-        48.682d,
-        95.115d,
-        69.319d,
-    };
-    try (Connection connection = DriverManager.
-        getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+    double[] retArray =
+        new double[] {
+          48.682d, 95.115d, 69.319d,
+        };
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("select avg(temperature) from root.sg1.* GROUP BY level=1");
 
       int cnt = 0;
@@ -156,18 +153,17 @@ public class IoTDBAggregationByLevelIT {
       }
       Assert.assertEquals(retArray.length, cnt);
     }
-
   }
 
   @Test
   public void timeFuncGroupByLevelTest() throws Exception {
-    String[] retArray = new String[]{
-        "100",
-        "600,700",
-    };
-    try (Connection connection = DriverManager.
-        getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+    String[] retArray =
+        new String[] {
+          "100", "600,700",
+        };
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("select min_time(temperature) from root.*.* GROUP BY level=0");
 
       int cnt = 0;
@@ -182,26 +178,24 @@ public class IoTDBAggregationByLevelIT {
       statement.execute("select max_time(status) from root.sg1.* GROUP BY level=2");
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
-          String ans = resultSet.getString(1) + "," +
-              resultSet.getString(2);
+          String ans = resultSet.getString(1) + "," + resultSet.getString(2);
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
       }
       Assert.assertEquals(retArray.length, cnt);
     }
-
   }
 
   @Test
   public void valueFuncGroupByLevelTest() throws Exception {
-    String[] retArray = new String[]{
-        "61.22",
-        "71.12,62.15",
-    };
-    try (Connection connection = DriverManager.
-        getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+    String[] retArray =
+        new String[] {
+          "61.22", "71.12,62.15",
+        };
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("select last_value(temperature) from root.*.* GROUP BY level=0");
 
       int cnt = 0;
@@ -216,72 +210,62 @@ public class IoTDBAggregationByLevelIT {
       statement.execute("select max_value(temperature) from root.sg1.* GROUP BY level=2");
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
-          String ans = resultSet.getString(1) + "," +
-              resultSet.getString(2);
+          String ans = resultSet.getString(1) + "," + resultSet.getString(2);
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
       }
       Assert.assertEquals(retArray.length, cnt);
     }
-
   }
 
   @Test
   public void groupByLevelWithTimeIntervalTest() throws Exception {
-    String[] retArray1 = new String[]{
-        "0.0",
-        "88.24",
-        "105.5",
-        "0.0",
-        "0.0",
-        "125.5",
-    };
-    String[] retArray2 = new String[]{
-        "null,null",
-        "null,100",
-        "200,200",
-        "300,null",
-        "null,null",
-        "null,500",
-    };
-    try (Connection connection = DriverManager.
-        getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+    String[] retArray1 =
+        new String[] {
+          "0.0", "88.24", "105.5", "0.0", "0.0", "125.5",
+        };
+    String[] retArray2 =
+        new String[] {
+          "null,null", "null,100", "200,200", "300,null", "null,null", "null,500",
+        };
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
 
-      statement.execute("select sum(temperature) from root.sg2.* GROUP BY ([0, 600), 100ms), level=1");
+      statement.execute(
+          "select sum(temperature) from root.sg2.* GROUP BY ([0, 600), 100ms), level=1");
       int cnt = 0;
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
-          String ans = resultSet.getString(2) ;
+          String ans = resultSet.getString(2);
           Assert.assertEquals(retArray1[cnt], ans);
           cnt++;
         }
       }
 
       cnt = 0;
-      statement.execute("select max_time(temperature) from root.*.* GROUP BY ([0, 600), 100ms), level=1");
+      statement.execute(
+          "select max_time(temperature) from root.*.* GROUP BY ([0, 600), 100ms), level=1");
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
-          String ans = resultSet.getString(2) + "," +
-              resultSet.getString(3);
+          String ans = resultSet.getString(2) + "," + resultSet.getString(3);
           Assert.assertEquals(retArray2[cnt], ans);
           cnt++;
         }
       }
     }
-
   }
 
   @Test
   public void mismatchedFuncGroupByLevelTest() throws Exception {
-    String[] retArray = new String[]{
-        "true",
-        "3",
-    };
-    try (Connection connection = DriverManager.
-        getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+    String[] retArray =
+        new String[] {
+          "true", "3",
+        };
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("select last_value(status) from root.*.* GROUP BY level=0");
 
       int cnt = 0;
@@ -300,19 +284,21 @@ public class IoTDBAggregationByLevelIT {
       }
 
       try {
-        planner.parseSQLToPhysicalPlan("select avg(status), sum(temperature) from root.sg2.* GROUP BY level=1");
+        planner.parseSQLToPhysicalPlan(
+            "select avg(status), sum(temperature) from root.sg2.* GROUP BY level=1");
       } catch (Exception e) {
-        Assert.assertEquals("Aggregation function is restricted to one if group by level clause exists", e.getMessage());
+        Assert.assertEquals(
+            "Aggregation function is restricted to one if group by level clause exists",
+            e.getMessage());
       }
     }
-
   }
 
   private void prepareData() {
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
-            "root");
-         Statement statement = connection.createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
 
       for (String sql : dataSet) {
         statement.execute(sql);

@@ -17,6 +17,8 @@ on:
       - cluster_new
     paths-ignore:
       - 'docs/**'
+  # allow manually run the action:
+  workflow_dispatch:
 
 jobs:
   unix:

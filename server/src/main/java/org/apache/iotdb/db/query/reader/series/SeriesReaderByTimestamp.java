@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.query.reader.series;
 
-import java.io.IOException;
-import java.util.Set;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -30,19 +28,36 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
 
+import java.io.IOException;
+import java.util.Set;
+
 public class SeriesReaderByTimestamp implements IReaderByTimestamp {
 
   private SeriesReader seriesReader;
   private BatchData batchData;
   private boolean ascending;
 
-  public SeriesReaderByTimestamp(PartialPath seriesPath, Set<String> allSensors,
-      TSDataType dataType, QueryContext context, QueryDataSource dataSource,
-      TsFileFilter fileFilter, boolean ascending) {
+  public SeriesReaderByTimestamp(
+      PartialPath seriesPath,
+      Set<String> allSensors,
+      TSDataType dataType,
+      QueryContext context,
+      QueryDataSource dataSource,
+      TsFileFilter fileFilter,
+      boolean ascending) {
     UnaryFilter timeFilter =
         ascending ? TimeFilter.gtEq(Long.MIN_VALUE) : TimeFilter.ltEq(Long.MAX_VALUE);
-    seriesReader = new SeriesReader(seriesPath, allSensors, dataType, context,
-        dataSource, timeFilter, null, fileFilter, ascending);
+    seriesReader =
+        new SeriesReader(
+            seriesPath,
+            allSensors,
+            dataType,
+            context,
+            dataSource,
+            timeFilter,
+            null,
+            fileFilter,
+            ascending);
     this.ascending = ascending;
   }
 

@@ -19,21 +19,23 @@
 
 package org.apache.iotdb.tsfile.encoding.decoder;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import org.apache.iotdb.tsfile.encoding.encoder.DoublePrecisionEncoderV2;
+import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
+import org.apache.iotdb.tsfile.encoding.encoder.IntGorillaEncoder;
+import org.apache.iotdb.tsfile.encoding.encoder.LongGorillaEncoder;
+import org.apache.iotdb.tsfile.encoding.encoder.SinglePrecisionEncoderV2;
+
+import org.junit.BeforeClass;
+import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.tsfile.encoding.encoder.DoublePrecisionEncoderV2;
-import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
-import org.apache.iotdb.tsfile.encoding.encoder.IntGorillaEncoder;
-import org.apache.iotdb.tsfile.encoding.encoder.LongGorillaEncoder;
-import org.apache.iotdb.tsfile.encoding.encoder.SinglePrecisionEncoderV2;
-import org.junit.BeforeClass;
-import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class GorillaDecoderV2Test {
 

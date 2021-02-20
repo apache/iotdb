@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.db.query.udf.datastructure.tv;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
@@ -31,10 +28,15 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.utils.Binary;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
 public class ElasticSerializableTVList implements PointCollector {
 
-  public static ElasticSerializableTVList newElasticSerializableTVList(TSDataType dataType,
-      long queryId, float memoryLimitInMB, int cacheSize) throws QueryProcessException {
+  public static ElasticSerializableTVList newElasticSerializableTVList(
+      TSDataType dataType, long queryId, float memoryLimitInMB, int cacheSize)
+      throws QueryProcessException {
     if (dataType.equals(TSDataType.TEXT)) {
       return new ElasticSerializableBinaryTVList(queryId, memoryLimitInMB, cacheSize);
     }
@@ -52,8 +54,9 @@ public class ElasticSerializableTVList implements PointCollector {
   protected int size;
   protected int evictionUpperBound;
 
-  protected ElasticSerializableTVList(TSDataType dataType, long queryId, float memoryLimitInMB,
-      int cacheSize) throws QueryProcessException {
+  protected ElasticSerializableTVList(
+      TSDataType dataType, long queryId, float memoryLimitInMB, int cacheSize)
+      throws QueryProcessException {
     this.dataType = dataType;
     this.queryId = queryId;
     this.memoryLimitInMB = memoryLimitInMB;
@@ -71,8 +74,12 @@ public class ElasticSerializableTVList implements PointCollector {
     evictionUpperBound = 0;
   }
 
-  protected ElasticSerializableTVList(TSDataType dataType, long queryId, float memoryLimitInMB,
-      int internalTVListCapacity, int cacheSize) {
+  protected ElasticSerializableTVList(
+      TSDataType dataType,
+      long queryId,
+      float memoryLimitInMB,
+      int internalTVListCapacity,
+      int cacheSize) {
     this.dataType = dataType;
     this.queryId = queryId;
     this.memoryLimitInMB = memoryLimitInMB;
@@ -94,43 +101,46 @@ public class ElasticSerializableTVList implements PointCollector {
   }
 
   public long getTime(int index) throws IOException {
-    return cache.get(index / internalTVListCapacity)
-        .getTimeByIndex(index % internalTVListCapacity);
+    return cache.get(index / internalTVListCapacity).getTimeByIndex(index % internalTVListCapacity);
   }
 
   public int getInt(int index) throws IOException {
-    return cache.get(index / internalTVListCapacity)
-        .getIntByIndex(index % internalTVListCapacity);
+    return cache.get(index / internalTVListCapacity).getIntByIndex(index % internalTVListCapacity);
   }
 
   public long getLong(int index) throws IOException {
-    return cache.get(index / internalTVListCapacity)
-        .getLongByIndex(index % internalTVListCapacity);
+    return cache.get(index / internalTVListCapacity).getLongByIndex(index % internalTVListCapacity);
   }
 
   public float getFloat(int index) throws IOException {
-    return cache.get(index / internalTVListCapacity)
+    return cache
+        .get(index / internalTVListCapacity)
         .getFloatByIndex(index % internalTVListCapacity);
   }
 
   public double getDouble(int index) throws IOException {
-    return cache.get(index / internalTVListCapacity)
+    return cache
+        .get(index / internalTVListCapacity)
         .getDoubleByIndex(index % internalTVListCapacity);
   }
 
   public boolean getBoolean(int index) throws IOException {
-    return cache.get(index / internalTVListCapacity)
+    return cache
+        .get(index / internalTVListCapacity)
         .getBooleanByIndex(index % internalTVListCapacity);
   }
 
   public Binary getBinary(int index) throws IOException {
-    return cache.get(index / internalTVListCapacity)
+    return cache
+        .get(index / internalTVListCapacity)
         .getBinaryByIndex(index % internalTVListCapacity);
   }
 
   public String getString(int index) throws IOException {
-    return cache.get(index / internalTVListCapacity)
-        .getBinaryByIndex(index % internalTVListCapacity).getStringValue();
+    return cache
+        .get(index / internalTVListCapacity)
+        .getBinaryByIndex(index % internalTVListCapacity)
+        .getStringValue();
   }
 
   public void put(long timestamp, Object value) throws IOException, QueryProcessException {
@@ -278,8 +288,7 @@ public class ElasticSerializableTVList implements PointCollector {
 
   /**
    * @param evictionUpperBound the index of the first element that cannot be evicted. in other
-   *                           words, elements whose index are <b>less than</b> the
-   *                           evictionUpperBound can be evicted.
+   *     words, elements whose index are <b>less than</b> the evictionUpperBound can be evicted.
    */
   private void setEvictionUpperBound(int evictionUpperBound) {
     this.evictionUpperBound = evictionUpperBound;

@@ -18,27 +18,29 @@
  */
 package org.apache.iotdb.db.integration;
 
-import static org.junit.Assert.fail;
-
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+
+import static org.junit.Assert.fail;
+
 /**
- * Notice that, all test begins with "IoTDB" is integration test. All test which will start the IoTDB server should be
- * defined as integration test.
+ * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
+ * IoTDB server should be defined as integration test.
  */
 public class IoTDBCloseIT {
 
@@ -79,12 +81,12 @@ public class IoTDBCloseIT {
     EnvironmentUtils.cleanEnv();
   }
 
-  private static void insertData()
-          throws ClassNotFoundException, SQLException {
+  private static void insertData() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager
-            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
 
       for (String sql : TestConstant.create_sql) {
         statement.execute(sql);
@@ -96,11 +98,10 @@ public class IoTDBCloseIT {
 
       for (int time = 1; time < 10; time++) {
 
-        String sql = String
-                .format("insert into root.fans.d0(timestamp,s0) values(%s,%s)", time, time % 10);
+        String sql =
+            String.format("insert into root.fans.d0(timestamp,s0) values(%s,%s)", time, time % 10);
         statement.execute(sql);
-        sql = String
-                .format("insert into root.fans.d0(timestamp,s1) values(%s,%s)", time, time % 5);
+        sql = String.format("insert into root.fans.d0(timestamp,s1) values(%s,%s)", time, time % 5);
         statement.execute(sql);
       }
 
@@ -113,25 +114,19 @@ public class IoTDBCloseIT {
   // one statement close shouldn't affect other statements in that connection
   @Test
   public void statementCloseTest() throws ClassNotFoundException {
-    String[] retArray = new String[]{
-            "1,1,1",
-            "2,2,2",
-            "3,3,3",
-            "4,4,4",
-            "5,5,0",
-            "6,6,1",
-            "7,7,2",
-            "8,8,3",
-            "9,9,4"
-    };
+    String[] retArray =
+        new String[] {
+          "1,1,1", "2,2,2", "3,3,3", "4,4,4", "5,5,0", "6,6,1", "7,7,2", "8,8,3", "9,9,4"
+        };
 
     String selectSql = "select * from root";
 
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager
-            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement1 = connection.createStatement();
-         Statement statement2 = connection.createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement1 = connection.createStatement();
+        Statement statement2 = connection.createStatement()) {
 
       statement1.setFetchSize(10);
       boolean hasResultSet1 = statement1.execute(selectSql);
@@ -140,11 +135,12 @@ public class IoTDBCloseIT {
         int cnt1 = 0;
         while (resultSet1.next() && cnt1 < 5) {
           StringBuilder builder = new StringBuilder();
-          builder.append(resultSet1.getString(TestConstant.TIMESTAMP_STR))
-                  .append(",")
-                  .append(resultSet1.getString("root.fans.d0.s0"))
-                  .append(",")
-                  .append(resultSet1.getString("root.fans.d0.s1"));
+          builder
+              .append(resultSet1.getString(TestConstant.TIMESTAMP_STR))
+              .append(",")
+              .append(resultSet1.getString("root.fans.d0.s0"))
+              .append(",")
+              .append(resultSet1.getString("root.fans.d0.s1"));
           Assert.assertEquals(retArray[cnt1], builder.toString());
           cnt1++;
         }
@@ -156,11 +152,12 @@ public class IoTDBCloseIT {
           int cnt2 = 0;
           while (resultSet2.next()) {
             StringBuilder builder = new StringBuilder();
-            builder.append(resultSet2.getString(TestConstant.TIMESTAMP_STR))
-                    .append(",")
-                    .append(resultSet2.getString("root.fans.d0.s0"))
-                    .append(",")
-                    .append(resultSet2.getString("root.fans.d0.s1"));
+            builder
+                .append(resultSet2.getString(TestConstant.TIMESTAMP_STR))
+                .append(",")
+                .append(resultSet2.getString("root.fans.d0.s0"))
+                .append(",")
+                .append(resultSet2.getString("root.fans.d0.s1"));
             Assert.assertEquals(retArray[cnt2], builder.toString());
             cnt2++;
           }
@@ -172,16 +169,17 @@ public class IoTDBCloseIT {
         Assert.assertTrue(statement2.isClosed());
         Assert.assertFalse(statement1.isClosed());
 
-
-        // use do-while instead of while because in the previous while loop, we have executed the next function,
+        // use do-while instead of while because in the previous while loop, we have executed the
+        // next function,
         // and the cursor has been moved to the next position, so we should fetch that value first.
         do {
           StringBuilder builder = new StringBuilder();
-          builder.append(resultSet1.getString(TestConstant.TIMESTAMP_STR))
-                  .append(",")
-                  .append(resultSet1.getString("root.fans.d0.s0"))
-                  .append(",")
-                  .append(resultSet1.getString("root.fans.d0.s1"));
+          builder
+              .append(resultSet1.getString(TestConstant.TIMESTAMP_STR))
+              .append(",")
+              .append(resultSet1.getString("root.fans.d0.s0"))
+              .append(",")
+              .append(resultSet1.getString("root.fans.d0.s1"));
           Assert.assertEquals(retArray[cnt1], builder.toString());
           cnt1++;
         } while (resultSet1.next());
@@ -196,6 +194,5 @@ public class IoTDBCloseIT {
       e.printStackTrace();
       fail(e.getMessage());
     }
-
   }
 }

@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.auth.entity;
 
+import org.apache.iotdb.db.utils.SerializeUtils;
+
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.nio.ByteBuffer;
@@ -26,7 +28,6 @@ import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.iotdb.db.utils.SerializeUtils;
 
 /**
  * This class represents a privilege on a specific seriesPath. If the privilege is seriesPath-free,
@@ -46,15 +47,11 @@ public class PathPrivilege {
    */
   private AtomicInteger referenceCnt = new AtomicInteger(0);
 
-  /**
-   * Sort PathPrivilege by referenceCnt in descent order.
-   */
-  public static final Comparator<PathPrivilege> REFERENCE_DESCENT_SORTER = (o1, o2) -> -Integer.
-      compare(o1.referenceCnt.get(), o2.referenceCnt.get());
+  /** Sort PathPrivilege by referenceCnt in descent order. */
+  public static final Comparator<PathPrivilege> REFERENCE_DESCENT_SORTER =
+      (o1, o2) -> -Integer.compare(o1.referenceCnt.get(), o2.referenceCnt.get());
 
-  public PathPrivilege() {
-
-  }
+  public PathPrivilege() {}
 
   public PathPrivilege(String path) {
     this.path = path;

@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,11 +18,13 @@
  */
 package org.apache.iotdb.cluster.utils.nodetool;
 
-import java.util.List;
-import java.util.Map;
-import org.apache.commons.collections4.map.MultiKeyMap;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+
+import org.apache.commons.collections4.map.MultiKeyMap;
+
+import java.util.List;
+import java.util.Map;
 
 public interface ClusterMonitorMBean {
 
@@ -50,7 +52,8 @@ public interface ClusterMonitorMBean {
   PartitionGroup getMetaPartition(String path);
 
   /**
-   * Get data partition groups that input node belongs to and the slot number in each partition group.
+   * Get data partition groups that input node belongs to and the slot number in each partition
+   * group.
    *
    * @return key: the partition group, value: the slot number
    */
@@ -71,14 +74,11 @@ public interface ClusterMonitorMBean {
   Map<Node, Boolean> getAllNodeStatus();
 
   /**
-   *
-   * @return A multi-line string with each line representing the total time consumption,
-   * invocation number, and average time consumption.
+   * @return A multi-line string with each line representing the total time consumption, invocation
+   *     number, and average time consumption.
    */
   String getInstrumentingInfo();
 
-  /**
-   * Reset all instrumenting statistics in Timer.
-   */
+  /** Reset all instrumenting statistics in Timer. */
   void resetInstrumenting();
 }

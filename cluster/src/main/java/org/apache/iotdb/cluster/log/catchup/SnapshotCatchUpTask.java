@@ -19,10 +19,6 @@
 
 package org.apache.iotdb.cluster.log.catchup;
 
-import java.nio.ByteBuffer;
-import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.log.Log;
@@ -35,9 +31,15 @@ import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.handlers.caller.SnapshotCatchUpHandler;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.utils.ClientUtils;
+
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.nio.ByteBuffer;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * SnapshotCatchUpTask first sends the snapshot to the stale node then sends the logs to the node.
@@ -47,8 +49,8 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Bool
   private static final Logger logger = LoggerFactory.getLogger(SnapshotCatchUpTask.class);
 
   // sending a snapshot may take longer than normal communications
-  private static final long SEND_SNAPSHOT_WAIT_MS = ClusterDescriptor.getInstance().getConfig()
-      .getCatchUpTimeoutMS();
+  private static final long SEND_SNAPSHOT_WAIT_MS =
+      ClusterDescriptor.getInstance().getConfig().getCatchUpTimeoutMS();
   private Snapshot snapshot;
 
   SnapshotCatchUpTask(List<Log> logs, Snapshot snapshot, Node node, RaftMember raftMember) {
@@ -56,8 +58,7 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Bool
     this.snapshot = snapshot;
   }
 
-  private void doSnapshotCatchUp()
-      throws TException, InterruptedException, LeaderUnknownException {
+  private void doSnapshotCatchUp() throws TException, InterruptedException, LeaderUnknownException {
     SendSnapshotRequest request = new SendSnapshotRequest();
     if (raftMember.getHeader() != null) {
       request.setHeader(raftMember.getHeader());
@@ -95,7 +96,9 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Bool
       return false;
     }
 
-    logger.info("{}: the snapshot request size={}", raftMember.getName(),
+    logger.info(
+        "{}: the snapshot request size={}",
+        raftMember.getName(),
         request.getSnapshotBytes().length);
     synchronized (succeed) {
       client.sendSnapshot(request, handler);
@@ -109,8 +112,11 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Bool
   }
 
   private boolean sendSnapshotSync(SendSnapshotRequest request) throws TException {
-    logger.info("{}: sending a snapshot request size={} to {}", raftMember.getName(),
-        request.getSnapshotBytes().length, node);
+    logger.info(
+        "{}: sending a snapshot request size={} to {}",
+        raftMember.getName(),
+        request.getSnapshotBytes().length,
+        node);
     Client client = raftMember.getSyncClient(node);
     if (client == null) {
       return false;
@@ -137,9 +143,8 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Bool
       raftMember.getLastCatchUpResponseTime().remove(node);
       return false;
     }
-    logger
-        .info("{}: Snapshot catch up {} finished, begin to catch up log", raftMember.getName(),
-            node);
+    logger.info(
+        "{}: Snapshot catch up {} finished, begin to catch up log", raftMember.getName(), node);
     doLogCatchUp();
     if (!abort) {
       logger.info("{}: Catch up {} finished", raftMember.getName(), node);

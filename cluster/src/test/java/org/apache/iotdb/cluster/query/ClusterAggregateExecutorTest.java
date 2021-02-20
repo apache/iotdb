@@ -19,13 +19,6 @@
 
 package org.apache.iotdb.cluster.query;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.query.aggregate.ClusterAggregateExecutor;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -44,7 +37,16 @@ import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+
 import org.junit.Test;
+
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class ClusterAggregateExecutorTest extends BaseQueryTest {
 
@@ -54,16 +56,27 @@ public class ClusterAggregateExecutorTest extends BaseQueryTest {
   public void testNoFilter()
       throws QueryProcessException, StorageEngineException, IOException, IllegalPathException {
     AggregationPlan plan = new AggregationPlan();
-    List<PartialPath> paths = Arrays.asList(
-        new PartialPath(TestUtils.getTestSeries(0, 0)),
-        new PartialPath(TestUtils.getTestSeries(0, 1)),
-        new PartialPath(TestUtils.getTestSeries(0, 2)),
-        new PartialPath(TestUtils.getTestSeries(0, 3)),
-        new PartialPath(TestUtils.getTestSeries(0, 4)));
-    List<TSDataType> dataTypes = Arrays.asList(TSDataType.DOUBLE, TSDataType.DOUBLE,
-        TSDataType.DOUBLE, TSDataType.DOUBLE, TSDataType.DOUBLE);
-    List<String> aggregations = Arrays.asList(SQLConstant.MIN_TIME, SQLConstant.MAX_VALUE,
-        SQLConstant.AVG, SQLConstant.COUNT, SQLConstant.SUM);
+    List<PartialPath> paths =
+        Arrays.asList(
+            new PartialPath(TestUtils.getTestSeries(0, 0)),
+            new PartialPath(TestUtils.getTestSeries(0, 1)),
+            new PartialPath(TestUtils.getTestSeries(0, 2)),
+            new PartialPath(TestUtils.getTestSeries(0, 3)),
+            new PartialPath(TestUtils.getTestSeries(0, 4)));
+    List<TSDataType> dataTypes =
+        Arrays.asList(
+            TSDataType.DOUBLE,
+            TSDataType.DOUBLE,
+            TSDataType.DOUBLE,
+            TSDataType.DOUBLE,
+            TSDataType.DOUBLE);
+    List<String> aggregations =
+        Arrays.asList(
+            SQLConstant.MIN_TIME,
+            SQLConstant.MAX_VALUE,
+            SQLConstant.AVG,
+            SQLConstant.COUNT,
+            SQLConstant.SUM);
     plan.setPaths(paths);
     plan.setDeduplicatedPaths(paths);
     plan.setDataTypes(dataTypes);
@@ -82,7 +95,7 @@ public class ClusterAggregateExecutorTest extends BaseQueryTest {
       assertEquals(5, fields.size());
       Object[] answers = new Object[] {0.0, 19.0, 9.5, 20.0, 190.0};
       for (int i = 0; i < 5; i++) {
-        assertEquals((double)answers[i], Double.parseDouble(fields.get(i).toString()), 0.00001);
+        assertEquals((double) answers[i], Double.parseDouble(fields.get(i).toString()), 0.00001);
       }
       assertFalse(queryDataSet.hasNext());
     } finally {
@@ -94,27 +107,39 @@ public class ClusterAggregateExecutorTest extends BaseQueryTest {
   public void testFilter()
       throws StorageEngineException, IOException, QueryProcessException, IllegalPathException {
     AggregationPlan plan = new AggregationPlan();
-    List<PartialPath> paths = Arrays.asList(
-        new PartialPath(TestUtils.getTestSeries(0, 0)),
-        new PartialPath(TestUtils.getTestSeries(0, 1)),
-        new PartialPath(TestUtils.getTestSeries(0, 2)),
-        new PartialPath(TestUtils.getTestSeries(0, 3)),
-        new PartialPath(TestUtils.getTestSeries(0, 4)));
-    List<TSDataType> dataTypes = Arrays.asList(TSDataType.DOUBLE, TSDataType.DOUBLE,
-        TSDataType.DOUBLE, TSDataType.DOUBLE, TSDataType.DOUBLE);
-    List<String> aggregations = Arrays.asList(SQLConstant.MIN_TIME, SQLConstant.MAX_VALUE,
-        SQLConstant.AVG, SQLConstant.COUNT, SQLConstant.SUM);
+    List<PartialPath> paths =
+        Arrays.asList(
+            new PartialPath(TestUtils.getTestSeries(0, 0)),
+            new PartialPath(TestUtils.getTestSeries(0, 1)),
+            new PartialPath(TestUtils.getTestSeries(0, 2)),
+            new PartialPath(TestUtils.getTestSeries(0, 3)),
+            new PartialPath(TestUtils.getTestSeries(0, 4)));
+    List<TSDataType> dataTypes =
+        Arrays.asList(
+            TSDataType.DOUBLE,
+            TSDataType.DOUBLE,
+            TSDataType.DOUBLE,
+            TSDataType.DOUBLE,
+            TSDataType.DOUBLE);
+    List<String> aggregations =
+        Arrays.asList(
+            SQLConstant.MIN_TIME,
+            SQLConstant.MAX_VALUE,
+            SQLConstant.AVG,
+            SQLConstant.COUNT,
+            SQLConstant.SUM);
     plan.setPaths(paths);
     plan.setDeduplicatedPaths(paths);
     plan.setDataTypes(dataTypes);
     plan.setDeduplicatedDataTypes(dataTypes);
     plan.setAggregations(aggregations);
     plan.setDeduplicatedAggregations(aggregations);
-    plan.setExpression(BinaryExpression.and(
-        new SingleSeriesExpression(new PartialPath(TestUtils.getTestSeries(0, 0)),
-        ValueFilter.ltEq(8.0)),
-        new SingleSeriesExpression(new PartialPath(TestUtils.getTestSeries(0, 0)),
-            TimeFilter.gtEq(3))));
+    plan.setExpression(
+        BinaryExpression.and(
+            new SingleSeriesExpression(
+                new PartialPath(TestUtils.getTestSeries(0, 0)), ValueFilter.ltEq(8.0)),
+            new SingleSeriesExpression(
+                new PartialPath(TestUtils.getTestSeries(0, 0)), TimeFilter.gtEq(3))));
 
     QueryContext context =
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
@@ -127,7 +152,7 @@ public class ClusterAggregateExecutorTest extends BaseQueryTest {
       assertEquals(5, fields.size());
       Object[] answers = new Object[] {3.0, 8.0, 5.5, 6.0, 33.0};
       for (int i = 0; i < 5; i++) {
-        assertEquals((double)answers[i], Double.parseDouble(fields.get(i).toString()), 0.00001);
+        assertEquals((double) answers[i], Double.parseDouble(fields.get(i).toString()), 0.00001);
       }
       assertFalse(queryDataSet.hasNext());
     } finally {

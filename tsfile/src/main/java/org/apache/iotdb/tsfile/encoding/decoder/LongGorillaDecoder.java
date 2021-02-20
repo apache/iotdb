@@ -19,19 +19,21 @@
 
 package org.apache.iotdb.tsfile.encoding.decoder;
 
+import java.nio.ByteBuffer;
+
 import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.GORILLA_ENCODING_ENDING_LONG;
 import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.LEADING_ZERO_BITS_LENGTH_64BIT;
 import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.MEANINGFUL_XOR_BITS_LENGTH_64BIT;
 import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.VALUE_BITS_LENGTH_64BIT;
 
-import java.nio.ByteBuffer;
-
 /**
- * <p> This class includes code modified from Michael Burman's gorilla-tsc project.
+ * This class includes code modified from Michael Burman's gorilla-tsc project.
  *
- * <p> Copyright: 2016-2018 Michael Burman and/or other contributors
- * <p> Project page: https://github.com/burmanm/gorilla-tsc
- * <p> License: http://www.apache.org/licenses/LICENSE-2.0
+ * <p>Copyright: 2016-2018 Michael Burman and/or other contributors
+ *
+ * <p>Project page: https://github.com/burmanm/gorilla-tsc
+ *
+ * <p>License: http://www.apache.org/licenses/LICENSE-2.0
  */
 public class LongGorillaDecoder extends GorillaDecoderV2 {
 

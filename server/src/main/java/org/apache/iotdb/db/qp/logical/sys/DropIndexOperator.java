@@ -21,9 +21,7 @@ package org.apache.iotdb.db.qp.logical.sys;
 import org.apache.iotdb.db.index.common.IndexType;
 import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
 
-/**
- * this operator is to drop a certain index on some time series.
- */
+/** this operator is to drop a certain index on some time series. */
 public class DropIndexOperator extends SFWOperator {
 
   private IndexType indexType;
@@ -40,5 +38,4 @@ public class DropIndexOperator extends SFWOperator {
   public void setIndexType(IndexType indexType) {
     this.indexType = indexType;
   }
-
 }

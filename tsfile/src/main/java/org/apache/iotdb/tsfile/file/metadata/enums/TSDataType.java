@@ -18,40 +18,29 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.enums;
 
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 
 public enum TSDataType {
-  /**
-   * BOOLEAN
-   */
+  /** BOOLEAN */
   BOOLEAN((byte) 0),
 
-  /**
-   *
-   */
+  /** INT32 */
   INT32((byte) 1),
 
-  /**
-   * INT64
-   */
+  /** INT64 */
   INT64((byte) 2),
 
-  /**
-   * FLOAT
-   */
+  /** FLOAT */
   FLOAT((byte) 3),
 
-  /**
-   * DOUBLE
-   */
+  /** DOUBLE */
   DOUBLE((byte) 4),
 
-  /**
-   * TEXT
-   */
+  /** TEXT */
   TEXT((byte) 5);
 
   private final byte type;
@@ -69,7 +58,6 @@ public enum TSDataType {
   public static TSDataType deserialize(byte type) {
     return getTsDataType(type);
   }
-
 
   private static TSDataType getTsDataType(byte type) {
     for (TSDataType tsDataType : TSDataType.values()) {
@@ -114,9 +102,7 @@ public enum TSDataType {
     }
   }
 
-  /**
-   * @return byte number
-   */
+  /** @return byte number */
   public byte serialize() {
     return type;
   }

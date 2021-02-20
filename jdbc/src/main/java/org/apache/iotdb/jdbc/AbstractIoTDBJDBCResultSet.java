@@ -33,10 +33,6 @@ import java.sql.*;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.rpc.IoTDBRpcDataSet;
-import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
-import org.apache.thrift.TException;
 
 public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
 
@@ -46,14 +42,32 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
   protected IoTDBRpcDataSet ioTDBRpcDataSet;
   private boolean isRpcFetchResult=true;
 
-  public AbstractIoTDBJDBCResultSet(Statement statement, List<String> columnNameList,
-      List<String> columnTypeList, Map<String, Integer> columnNameIndex, boolean ignoreTimeStamp,
+  public AbstractIoTDBJDBCResultSet(
+      Statement statement,
+      List<String> columnNameList,
+      List<String> columnTypeList,
+      Map<String, Integer> columnNameIndex,
+      boolean ignoreTimeStamp,
       TSIService.Iface client,
-      String sql, long queryId, long sessionId, long timeout)
+      String sql,
+      long queryId,
+      long sessionId,
+      long timeout)
       throws SQLException {
-    this.ioTDBRpcDataSet = new IoTDBRpcDataSet(sql, columnNameList, columnTypeList, columnNameIndex,
-        ignoreTimeStamp, queryId, ((IoTDBStatement) statement).getStmtId(), client, sessionId, null,
-        statement.getFetchSize(), timeout);
+    this.ioTDBRpcDataSet =
+        new IoTDBRpcDataSet(
+            sql,
+            columnNameList,
+            columnTypeList,
+            columnNameIndex,
+            ignoreTimeStamp,
+            queryId,
+            ((IoTDBStatement) statement).getStmtId(),
+            client,
+            sessionId,
+            null,
+            statement.getFetchSize(),
+            timeout);
     this.statement = statement;
     this.columnTypeList = columnTypeList;
   }
@@ -115,7 +129,6 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
       throw new SQLException("Error occurs when connecting to server for close operation ", e);
     }
   }
-
 
   @Override
   public void deleteRow() throws SQLException {
@@ -383,8 +396,8 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
 
   @Override
   public ResultSetMetaData getMetaData() {
-    return new IoTDBResultMetadata(ioTDBRpcDataSet.columnNameList, columnTypeList,
-        ioTDBRpcDataSet.ignoreTimeStamp);
+    return new IoTDBResultMetadata(
+        ioTDBRpcDataSet.columnNameList, columnTypeList, ioTDBRpcDataSet.ignoreTimeStamp);
   }
 
   @Override
@@ -646,10 +659,7 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
     return false;
   }
 
-
-  /**
-   * @return true means has results
-   */
+  /** @return true means has results */
   abstract boolean fetchResults() throws SQLException;
 
   abstract boolean hasCachedResults();
@@ -879,7 +889,6 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
   @Override
   public void updateClob(int arg0, Reader arg1, long arg2) throws SQLException {
     throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
-
   }
 
   @Override
@@ -1110,5 +1119,4 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
   abstract void checkRecord() throws SQLException;
 
   abstract String getValueByName(String columnName) throws SQLException;
-
 }

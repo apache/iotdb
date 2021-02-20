@@ -18,10 +18,6 @@
  */
 package org.apache.iotdb.tsfile.v2.file.header;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.ByteBuffer;
-
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -31,10 +27,13 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.ByteBuffer;
+
 public class ChunkHeaderV2 {
 
-  private ChunkHeaderV2() {
-  }
+  private ChunkHeaderV2() {}
 
   /**
    * deserialize from inputStream.
@@ -54,7 +53,8 @@ public class ChunkHeaderV2 {
     int dataSize = ReadWriteIOUtils.readInt(inputStream);
     TSDataType dataType = TSDataType.deserialize((byte) ReadWriteIOUtils.readShort(inputStream));
     int numOfPages = ReadWriteIOUtils.readInt(inputStream);
-    CompressionType type = CompressionType.deserialize((byte) ReadWriteIOUtils.readShort(inputStream));
+    CompressionType type =
+        CompressionType.deserialize((byte) ReadWriteIOUtils.readShort(inputStream));
     TSEncoding encoding = TSEncoding.deserialize((byte) ReadWriteIOUtils.readShort(inputStream));
     return new ChunkHeader(measurementID, dataSize, dataType, type, encoding, numOfPages);
   }
@@ -69,9 +69,8 @@ public class ChunkHeaderV2 {
    * @return CHUNK_HEADER object
    * @throws IOException IOException
    */
-  public static ChunkHeader deserializeFrom(TsFileInput input, long offset, int chunkHeaderSize,
-      boolean markerRead)
-      throws IOException {
+  public static ChunkHeader deserializeFrom(
+      TsFileInput input, long offset, int chunkHeaderSize, boolean markerRead) throws IOException {
     long offsetVar = offset;
     if (!markerRead) {
       offsetVar++;
@@ -87,12 +86,18 @@ public class ChunkHeaderV2 {
     String measurementID = ReadWriteIOUtils.readStringWithLength(buffer, size);
     int dataSize = ReadWriteIOUtils.readInt(buffer);
     TSDataType dataType = TSDataType.deserialize((byte) ReadWriteIOUtils.readShort(buffer));
-    // numOfPages 
+    // numOfPages
     ReadWriteIOUtils.readInt(buffer);
     CompressionType type = CompressionType.deserialize((byte) ReadWriteIOUtils.readShort(buffer));
     TSEncoding encoding = TSEncoding.deserialize((byte) ReadWriteIOUtils.readShort(buffer));
-    return new ChunkHeader(MetaMarker.CHUNK_HEADER, measurementID, dataSize, chunkHeaderSize, 
-        dataType, type, encoding);
+    return new ChunkHeader(
+        MetaMarker.CHUNK_HEADER,
+        measurementID,
+        dataSize,
+        chunkHeaderSize,
+        dataType,
+        type,
+        encoding);
   }
 
   public static int getSerializedSize(String measurementID) {

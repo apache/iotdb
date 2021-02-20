@@ -18,38 +18,49 @@
  */
 package org.apache.iotdb.jdbc;
 
+
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.sql.*;
 import java.util.*;
+
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
+
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
+
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
+import java.sql.RowIdLifetime;
+import java.sql.SQLException;
 
 public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   private IoTDBConnection connection;
   private TSIService.Iface client;
-  private static final Logger logger = LoggerFactory
-          .getLogger(IoTDBDatabaseMetadata.class);
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBDatabaseMetadata.class);
   private static final String METHOD_NOT_SUPPORTED_STRING = "Method not supported";
-  //when running the program in IDE, we can not get the version info using getImplementationVersion()
+  // when running the program in IDE, we can not get the version info using
+  // getImplementationVersion()
   private static final String DATABASE_VERSION =
       IoTDBDatabaseMetadata.class.getPackage().getImplementationVersion() != null
-          ? IoTDBDatabaseMetadata.class.getPackage().getImplementationVersion() : "UNKNOWN";
+          ? IoTDBDatabaseMetadata.class.getPackage().getImplementationVersion()
+          : "UNKNOWN";
   private long sessionId;
   private WatermarkEncoder groupedLSBWatermarkEncoder;
   private static String sqlKeywordsThatArentSQL92;
@@ -1206,8 +1217,6 @@ private WatermarkEncoder getWatermarkEncoder() {
     }
     return new IoTDBJDBCResultSet(stmt, columnNameList, columnTypeList, columnNameIndex, true, client,
             null, 0, sessionId, tsdataset, (long)60 * 1000,false);
-
-
   }
 
   @Override
@@ -1670,8 +1679,8 @@ private WatermarkEncoder getWatermarkEncoder() {
   }
 
   @Override
-  public ResultSet getTables(String catalog, String schemaPattern, String tableNamePattern,
-      String[] types)
+  public ResultSet getTables(
+      String catalog, String schemaPattern, String tableNamePattern, String[] types)
       throws SQLException {
     Statement stmt=this.connection.createStatement();
 
@@ -2333,10 +2342,7 @@ private WatermarkEncoder getWatermarkEncoder() {
     return false;
   }
 
-  /**
-   * @deprecated
-   * recommend using getMetadataInJson() instead of toString()
-   */
+  /** @deprecated recommend using getMetadataInJson() instead of toString() */
   @Deprecated
   @Override
   public String toString() {
@@ -2351,13 +2357,17 @@ private WatermarkEncoder getWatermarkEncoder() {
         try {
           return getMetadataInJsonFunc();
         } catch (TException e2) {
-          logger.error("Fail to get all timeseries " + "info after reconnecting."
-                  + " please check server status", e2);
+          logger.error(
+              "Fail to get all timeseries "
+                  + "info after reconnecting."
+                  + " please check server status",
+              e2);
         } catch (IoTDBSQLException e1) {
           // ignored
         }
       } else {
-        logger.error("Fail to reconnect to server "
+        logger.error(
+            "Fail to reconnect to server "
                 + "when getting all timeseries info. please check server status");
       }
     }
@@ -2377,12 +2387,14 @@ private WatermarkEncoder getWatermarkEncoder() {
         try {
           return getMetadataInJsonFunc();
         } catch (TException e2) {
-          throw new SQLException("Failed to fetch all metadata in json "
-              + "after reconnecting. Please check the server status.");
+          throw new SQLException(
+              "Failed to fetch all metadata in json "
+                  + "after reconnecting. Please check the server status.");
         }
       } else {
-        throw new SQLException("Failed to reconnect to the server "
-            + "when fetching all metadata in json. Please check the server status.");
+        throw new SQLException(
+            "Failed to reconnect to the server "
+                + "when fetching all metadata in json. Please check the server status.");
       }
     }
   }

@@ -18,7 +18,12 @@
  */
 package org.apache.iotdb.db.utils.datastructure;
 
-import static org.junit.Assert.assertEquals;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.jdbc.Config;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.io.IOException;
 import java.sql.Connection;
@@ -26,11 +31,8 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.jdbc.Config;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
 
 public class PrecisionTest {
 
@@ -47,19 +49,20 @@ public class PrecisionTest {
   @Test
   public void testDoublePrecision1() throws IOException, ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try(Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
-            "root", "root");
-        Statement statement = connection.createStatement()){
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.turbine1");
-      statement.execute("create timeseries root.turbine1.d1.s1 with datatype=DOUBLE, encoding=PLAIN, compression=SNAPPY");
+      statement.execute(
+          "create timeseries root.turbine1.d1.s1 with datatype=DOUBLE, encoding=PLAIN, compression=SNAPPY");
 
       statement.execute("insert into root.turbine1.d1(timestamp,s1) values(1,1.2345678)");
 
       ResultSet resultSet = statement.executeQuery("select * from root.turbine1");
 
       String str = "1.2345678";
-      while(resultSet.next()) {
+      while (resultSet.next()) {
         assertEquals(str, resultSet.getString("root.turbine1.d1.s1"));
       }
     } catch (SQLException e) {
@@ -70,19 +73,20 @@ public class PrecisionTest {
   @Test
   public void testDoublePrecision2() throws IOException, ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try(Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
-            "root", "root");
-        Statement statement = connection.createStatement()){
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.turbine1");
-      statement.execute("create timeseries root.turbine1.d1.s1 with datatype=DOUBLE, encoding=RLE, compression=SNAPPY");
+      statement.execute(
+          "create timeseries root.turbine1.d1.s1 with datatype=DOUBLE, encoding=RLE, compression=SNAPPY");
 
       statement.execute("insert into root.turbine1.d1(timestamp,s1) values(1,1.2345678)");
 
       ResultSet resultSet = statement.executeQuery("select * from root.turbine1");
 
       String str = "1.23";
-      while(resultSet.next()) {
+      while (resultSet.next()) {
         assertEquals(str, resultSet.getString("root.turbine1.d1.s1"));
       }
     } catch (SQLException e) {
@@ -93,19 +97,20 @@ public class PrecisionTest {
   @Test
   public void testFloatPrecision1() throws IOException, ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try(Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
-            "root", "root");
-        Statement statement = connection.createStatement()){
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.turbine1");
-      statement.execute("create timeseries root.turbine1.d1.s1 with datatype=FLOAT, encoding=PLAIN, compression=SNAPPY");
+      statement.execute(
+          "create timeseries root.turbine1.d1.s1 with datatype=FLOAT, encoding=PLAIN, compression=SNAPPY");
 
       statement.execute("insert into root.turbine1.d1(timestamp,s1) values(1,1.2345678)");
 
       ResultSet resultSet = statement.executeQuery("select * from root.turbine1");
 
       String str = "1.2345678";
-      while(resultSet.next()) {
+      while (resultSet.next()) {
         assertEquals(str, resultSet.getString("root.turbine1.d1.s1"));
       }
     } catch (SQLException e) {
@@ -116,24 +121,24 @@ public class PrecisionTest {
   @Test
   public void testFloatPrecision2() throws IOException, ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try(Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
-            "root", "root");
-        Statement statement = connection.createStatement()){
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.turbine1");
-      statement.execute("create timeseries root.turbine1.d1.s1 with datatype=FLOAT, encoding=RLE, compression=SNAPPY");
+      statement.execute(
+          "create timeseries root.turbine1.d1.s1 with datatype=FLOAT, encoding=RLE, compression=SNAPPY");
 
       statement.execute("insert into root.turbine1.d1(timestamp,s1) values(1,1.2345678)");
 
       ResultSet resultSet = statement.executeQuery("select * from root.turbine1");
 
       String str = "1.23";
-      while(resultSet.next()) {
+      while (resultSet.next()) {
         assertEquals(str, resultSet.getString("root.turbine1.d1.s1"));
       }
     } catch (SQLException e) {
       e.printStackTrace();
     }
   }
-  
 }

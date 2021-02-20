@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.cluster.query.reader;
 
-import java.io.IOException;
-import java.util.List;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
@@ -31,15 +29,20 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
+
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.List;
 
 /**
  * provide client which could connect to all nodes of the partitionGroup. Notice: methods like
@@ -61,9 +64,13 @@ public class DataSourceInfo {
   private boolean isNoData = false;
   private boolean isNoClient = false;
 
-  public DataSourceInfo(PartitionGroup group, TSDataType dataType,
-      SingleSeriesQueryRequest request, RemoteQueryContext context,
-      MetaGroupMember metaGroupMember, List<Node> nodes) {
+  public DataSourceInfo(
+      PartitionGroup group,
+      TSDataType dataType,
+      SingleSeriesQueryRequest request,
+      RemoteQueryContext context,
+      MetaGroupMember metaGroupMember,
+      List<Node> nodes) {
     this.readerId = -1;
     this.partitionGroup = group;
     this.dataType = dataType;
@@ -133,8 +140,10 @@ public class DataSourceInfo {
 
   private Long applyForReaderIdAsync(Node node, boolean byTimestamp, long timestamp)
       throws TException, InterruptedException, IOException {
-    AsyncDataClient client = this.metaGroupMember
-        .getClientProvider().getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+    AsyncDataClient client =
+        this.metaGroupMember
+            .getClientProvider()
+            .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
     Long newReaderId;
     if (byTimestamp) {
       newReaderId = SyncClientAdaptor.querySingleSeriesByTimestamp(client, request);
@@ -146,8 +155,10 @@ public class DataSourceInfo {
 
   private Long applyForReaderIdSync(Node node, boolean byTimestamp, long timestamp)
       throws TException {
-    SyncDataClient client = this.metaGroupMember
-        .getClientProvider().getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+    SyncDataClient client =
+        this.metaGroupMember
+            .getClientProvider()
+            .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
     Long newReaderId;
     try {
       if (byTimestamp) {
@@ -166,7 +177,7 @@ public class DataSourceInfo {
       }
       return newReaderId;
     } finally {
-      client.putBack();
+      ClientUtils.putBackSyncClient(client);
     }
   }
 
@@ -187,13 +198,15 @@ public class DataSourceInfo {
   }
 
   AsyncDataClient getCurAsyncClient(int timeout) throws IOException {
-    return isNoClient ? null
+    return isNoClient
+        ? null
         : metaGroupMember.getClientProvider().getAsyncDataClient(this.curSource, timeout);
   }
 
   SyncDataClient getCurSyncClient(int timeout) throws TException {
-    return isNoClient ? null :
-        metaGroupMember.getClientProvider().getSyncDataClient(this.curSource, timeout);
+    return isNoClient
+        ? null
+        : metaGroupMember.getClientProvider().getSyncDataClient(this.curSource, timeout);
   }
 
   public boolean isNoData() {
@@ -206,12 +219,16 @@ public class DataSourceInfo {
 
   @Override
   public String toString() {
-    return "DataSourceInfo{" +
-        "readerId=" + readerId +
-        ", curSource=" + curSource +
-        ", partitionGroup=" + partitionGroup +
-        ", request=" + request +
-        '}';
+    return "DataSourceInfo{"
+        + "readerId="
+        + readerId
+        + ", curSource="
+        + curSource
+        + ", partitionGroup="
+        + partitionGroup
+        + ", request="
+        + request
+        + '}';
   }
 
   /**
