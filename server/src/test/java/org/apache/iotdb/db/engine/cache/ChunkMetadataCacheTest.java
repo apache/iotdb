@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.cache;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
@@ -51,6 +52,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.stream.Collectors;
 
 public class ChunkMetadataCacheTest {
 
@@ -175,20 +178,33 @@ public class ChunkMetadataCacheTest {
     Map<String, List<TimeseriesMetadata>> stringListMap = tsFileReader.getAllTimeseriesMetadata();
     List<TimeseriesMetadata> timeseriesMetadataList = stringListMap.get(storageGroup);
 
-    ChunkMetadataCache.getInstance().clear();
-    double hitRatio = ChunkMetadataCache.getInstance().calculateChunkMetaDataHitRatio();
+    ChunkMetadataCache chunkMetadataCache = ChunkMetadataCache.getInstance();
+    chunkMetadataCache.clear();
+    double hitRatio = chunkMetadataCache.calculateChunkMetaDataHitRatio();
     for (TimeseriesMetadata tsMd : timeseriesMetadataList) {
-      ChunkMetadataCache.getInstance()
-          .get(seqTsFilePath, new Path(storageGroup, tsMd.getMeasurementId()), tsMd);
+      chunkMetadataCache.get(seqTsFilePath, new Path(storageGroup, tsMd.getMeasurementId()), tsMd);
     }
-    double decreaseHitRatio = ChunkMetadataCache.getInstance().calculateChunkMetaDataHitRatio();
-    Assert.assertTrue("The hit rate should not increase", decreaseHitRatio <= hitRatio);
+    double decreasedHitRatio = chunkMetadataCache.calculateChunkMetaDataHitRatio();
+    Assert.assertTrue("The hit rate should not increase", decreasedHitRatio <= hitRatio);
 
-    for (TimeseriesMetadata tsMd : timeseriesMetadataList) {
-      ChunkMetadataCache.getInstance()
-          .get(seqTsFilePath, new Path(storageGroup, tsMd.getMeasurementId()), tsMd);
-    }
-    double increaseHitRatio = ChunkMetadataCache.getInstance().calculateChunkMetaDataHitRatio();
-    Assert.assertTrue("The hit rate should increase", decreaseHitRatio < increaseHitRatio);
+    // After an element is accessed, the newest element is put at the tail, so the head is the
+    // eldest one
+    TimeseriesMetadata tsMd2 = timeseriesMetadataList.get(2);
+    chunkMetadataCache.get(seqTsFilePath, new Path(storageGroup, tsMd2.getMeasurementId()), tsMd2);
+
+    String keyPrefix =
+        seqTsFilePath + IoTDBConstant.PATH_SEPARATOR + storageGroup + IoTDBConstant.PATH_SEPARATOR;
+    AccountableString key0 =
+        new AccountableString(keyPrefix + timeseriesMetadataList.get(0).getMeasurementId());
+    AccountableString key2 =
+        new AccountableString(keyPrefix + timeseriesMetadataList.get(2).getMeasurementId());
+
+    List<AccountableString> keyList =
+        chunkMetadataCache.entrySet().stream().map(Entry::getKey).collect(Collectors.toList());
+    Assert.assertEquals("Now, the eldest(head) key should be key0", keyList.get(0), key0);
+    Assert.assertEquals("Now, the newest(tail) key should be key2", keyList.get(4), key2);
+
+    double increasedHitRatio = ChunkMetadataCache.getInstance().calculateChunkMetaDataHitRatio();
+    Assert.assertTrue("The hit rate should increase", decreasedHitRatio < increasedHitRatio);
   }
 }

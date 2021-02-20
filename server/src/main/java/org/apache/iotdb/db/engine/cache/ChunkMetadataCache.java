@@ -37,6 +37,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -217,6 +219,11 @@ public class ChunkMetadataCache {
   @TestOnly
   public boolean isEmpty() {
     return lruCache.isEmpty();
+  }
+
+  @TestOnly
+  public Set<Entry<AccountableString, List<ChunkMetadata>>> entrySet() {
+    return lruCache.entrySet();
   }
 
   /** singleton pattern. */
