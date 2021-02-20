@@ -315,7 +315,7 @@ The write delay (ms) is:
 
 * client num:
 
-client num is distributed from 1 to 50.
+The client num is distributed from 1 to 50.
 IoTDB uses batch insertion API and the batch size is 100 (write 100 data points per write API call).
 
 The write throughput (points/second) is:
@@ -346,7 +346,6 @@ We provide a benchmarking tool, called IoTDB-benchamrk (https://github.com/thula
 it supports IoTDB, InfluxDB, KairosDB, TimescaleDB, OpenTSDB. We have an [article](https://arxiv.org/abs/1901.08304) for comparing these systems using the benchmark tool.
 When we publish the article, IoTDB just entered Apache incubator, so we deleted the performance of IoTDB in that article. But after comparison, some results are presented here.
 
-All TSDB run on the same server one by one. 
 
 - For InfluxDB, we set the cache-max-memory-size and the max-series-perbase as unlimited (otherwise it will be timeout quickly).
 
