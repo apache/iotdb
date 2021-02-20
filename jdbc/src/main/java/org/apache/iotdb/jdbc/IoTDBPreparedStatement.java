@@ -412,7 +412,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
                                   setBoolean(parameterIndex, false);
                               } else if (((String) parameterObj).matches("-?\\d+\\.?\\d*")) {
                                   setBoolean(parameterIndex, !((String) parameterObj).matches("-?[0]+[.]*[0]*"));
-                              } else {                  	  
+                              } else {
                                   throw new SQLException("No conversion from " + parameterObj + " to Types.BOOLEAN possible.");
                               }
                               break;
@@ -475,7 +475,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
                               parameterAsDate = sdf.parse((String)parameterObj, pp);
                             } else {
                               parameterAsDate = (Date)parameterObj;
-                            } 
+                            }
 
                           switch (targetSqlType) {
                               case Types.DATE:
@@ -511,8 +511,8 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
                               setTime(parameterIndex, new Time(xT.getTime()));
                             } else {
                               setTime(parameterIndex, (Time)parameterObj);
-                            } 
-                           
+                            }
+
                           break;
 
                       case Types.OTHER:
@@ -527,11 +527,11 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
                   throw new SQLException(Constant.PARAMETER_SUPPORTED);//
 
-                 
+
               }
           }
-  
-  
+
+
   }
   private final String getDateTimePattern(String dt, boolean toTime) throws Exception {
       //
@@ -822,7 +822,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
   @Override
   public void setShort(int parameterIndex, short x) throws SQLException {
 	  throw new SQLException(Constant.PARAMETER_SUPPORTED);
-    
+
   }
 
   @Override
@@ -835,8 +835,8 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 	  try {
 		long time=x.getTime();
 		String timeprecision=client.getProperties().getTimestampPrecision();
-		switch (timeprecision.toLowerCase()) {		
-		case "ms":			
+		switch (timeprecision.toLowerCase()) {
+		case "ms":
 			break;
 		case "us":
 			time=time*1000;
@@ -851,7 +851,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 	} catch (TException e) {
 		e.printStackTrace();
 	}
-	 
+
   }
 
   @Override
@@ -860,8 +860,8 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 			 ZonedDateTime zonedDateTime=null;
 			long time=x.getTime();
 			String timeprecision=client.getProperties().getTimestampPrecision();
-			switch (timeprecision.toLowerCase()) {		
-			case "ms":			
+			switch (timeprecision.toLowerCase()) {
+			case "ms":
 				break;
 			case "us":
 				time=time*1000;
@@ -879,12 +879,12 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 				zonedDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(time),
 							 super.zoneId);
 				}
-			this.parameters.put(parameterIndex, zonedDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)); 
+			this.parameters.put(parameterIndex, zonedDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
 		} catch (TException e) {
 			e.printStackTrace();
 		}
-	  
-	 
+
+
   }
 
   @Override
@@ -905,7 +905,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 		  zonedDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(x.getTime()),
 				 super.zoneId);
 	}
-	this.parameters.put(parameterIndex, zonedDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)); 
+	this.parameters.put(parameterIndex, zonedDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
   }
 
   @Override
