@@ -657,12 +657,16 @@ public class ClusterReaderFactory {
               .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       executorId = SyncClientAdaptor.getGroupByExecutor(client, request);
     } else {
-      SyncDataClient syncDataClient =
-          metaGroupMember
-              .getClientProvider()
-              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-      executorId = syncDataClient.getGroupByExecutor(request);
-      ClientUtils.putBackSyncClient(syncDataClient);
+      SyncDataClient syncDataClient = null;
+      try {
+        syncDataClient =
+            metaGroupMember
+                .getClientProvider()
+                .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+        executorId = syncDataClient.getGroupByExecutor(request);
+      } finally {
+        ClientUtils.putBackSyncClient(syncDataClient);
+      }
     }
     return executorId;
   }
