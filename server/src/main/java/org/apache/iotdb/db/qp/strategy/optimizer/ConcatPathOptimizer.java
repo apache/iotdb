@@ -330,6 +330,10 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     try {
       for (PartialPath path : paths) {
         List<PartialPath> all = removeWildcard(path, 0, 0).left;
+        if (all.size() == 0) {
+          throw new LogicalOptimizeException(
+              String.format("Unknown time series %s in `where clause`", path));
+        }
         for (PartialPath subPath : all) {
           if (!pathSet.contains(subPath)) {
             pathSet.add(subPath);

@@ -23,6 +23,7 @@ import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
+import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -143,19 +144,20 @@ public class RemoteSimpleSeriesReader implements IPointReader {
   }
 
   private ByteBuffer fetchResultSync() throws IOException {
+    SyncDataClient curSyncClient = null;
     try {
-      SyncDataClient curSyncClient =
-          sourceInfo.getCurSyncClient(RaftServer.getReadOperationTimeoutMS());
-      ByteBuffer buffer =
-          curSyncClient.fetchSingleSeries(sourceInfo.getHeader(), sourceInfo.getReaderId());
-      curSyncClient.putBack();
-      return buffer;
+      curSyncClient = sourceInfo.getCurSyncClient(RaftServer.getReadOperationTimeoutMS());
+      return curSyncClient.fetchSingleSeries(sourceInfo.getHeader(), sourceInfo.getReaderId());
     } catch (TException e) {
       // try other node
       if (!sourceInfo.switchNode(false, lastTimestamp)) {
         return null;
       }
       return fetchResultSync();
+    } finally {
+      if (curSyncClient != null) {
+        ClientUtils.putBackSyncClient(curSyncClient);
+      }
     }
   }
 

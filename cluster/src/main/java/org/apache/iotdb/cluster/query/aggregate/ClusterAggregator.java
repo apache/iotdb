@@ -271,12 +271,16 @@ public class ClusterAggregator {
       // each buffer is an AggregationResult
       resultBuffers = SyncClientAdaptor.getAggrResult(client, request);
     } else {
-      SyncDataClient syncDataClient =
-          metaGroupMember
-              .getClientProvider()
-              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-      resultBuffers = syncDataClient.getAggrResult(request);
-      ClientUtils.putBackSyncClient(syncDataClient);
+      SyncDataClient syncDataClient = null;
+      try {
+        syncDataClient =
+            metaGroupMember
+                .getClientProvider()
+                .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+        resultBuffers = syncDataClient.getAggrResult(request);
+      } finally {
+        ClientUtils.putBackSyncClient(syncDataClient);
+      }
     }
     return resultBuffers;
   }

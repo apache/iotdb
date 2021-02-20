@@ -421,15 +421,37 @@ public class SeriesReader {
       /*
        * first chunk metadata is already unpacked, consume cached pages
        */
-      initFirstPageReader();
-      if (firstPageReader != null) {
-        long endpointTime = orderUtils.getOverlapCheckTime(firstPageReader.getStatistics());
-        unpackAllOverlappedTsFilesToTimeSeriesMetadata(endpointTime);
-        unpackAllOverlappedTimeSeriesMetadataToCachedChunkMetadata(endpointTime, false);
-        unpackAllOverlappedChunkMetadataToCachedPageReaders(endpointTime, false);
-      }
+      unpackFirstPageReader();
     }
 
+    if (isExistOverlappedPage()) {
+      return true;
+    }
+
+    // make sure firstPageReader won't be null while the cachedPageReaders has more cached page
+    // readers
+    while (firstPageReader == null && (!seqPageReaders.isEmpty() || !unSeqPageReaders.isEmpty())) {
+
+      unpackFirstPageReader();
+
+      if (isExistOverlappedPage()) {
+        return true;
+      }
+    }
+    return firstPageReader != null;
+  }
+
+  private void unpackFirstPageReader() throws IOException {
+    initFirstPageReader();
+    if (firstPageReader != null) {
+      long endpointTime = orderUtils.getOverlapCheckTime(firstPageReader.getStatistics());
+      unpackAllOverlappedTsFilesToTimeSeriesMetadata(endpointTime);
+      unpackAllOverlappedTimeSeriesMetadataToCachedChunkMetadata(endpointTime, false);
+      unpackAllOverlappedChunkMetadataToCachedPageReaders(endpointTime, false);
+    }
+  }
+
+  private boolean isExistOverlappedPage() throws IOException {
     if (firstPageOverlapped()) {
       /*
        * next page is overlapped, read overlapped data and cache it
@@ -442,32 +464,7 @@ public class SeriesReader {
         }
       }
     }
-
-    // make sure firstPageReader won't be null while cachedPageReaders has more cached page readers
-    while (firstPageReader == null && (!seqPageReaders.isEmpty() || !unSeqPageReaders.isEmpty())) {
-
-      initFirstPageReader();
-      if (firstPageReader != null) {
-        long endpointTime = orderUtils.getOverlapCheckTime(firstPageReader.getStatistics());
-        unpackAllOverlappedTsFilesToTimeSeriesMetadata(endpointTime);
-        unpackAllOverlappedTimeSeriesMetadataToCachedChunkMetadata(endpointTime, false);
-        unpackAllOverlappedChunkMetadataToCachedPageReaders(endpointTime, false);
-      }
-
-      if (firstPageOverlapped()) {
-        /*
-         * next page is overlapped, read overlapped data and cache it
-         */
-        if (hasNextOverlappedPage()) {
-          cachedBatchData = nextOverlappedPage();
-          if (cachedBatchData != null && cachedBatchData.hasCurrent()) {
-            hasCachedNextOverlappedPage = true;
-            return true;
-          }
-        }
-      }
-    }
-    return firstPageReader != null;
+    return false;
   }
 
   private boolean firstPageOverlapped() throws IOException {
@@ -629,11 +626,13 @@ public class SeriesReader {
 
     while (true) {
 
+      // may has overlapped data
       if (mergeReader.hasNextTimeValuePair()) {
 
         cachedBatchData =
             BatchDataFactory.createBatchData(dataType, orderUtils.getAscending(), true);
         long currentPageEndPointTime = mergeReader.getCurrentReadStopTime();
+        // get data as small as possible
         if (firstPageReader != null) {
           currentPageEndPointTime =
               orderUtils.getCurrentEndPoint(
@@ -647,26 +646,40 @@ public class SeriesReader {
         while (mergeReader.hasNextTimeValuePair()) {
 
           /*
-           * get current first point in mergeReader, this maybe overlapped latter
+           * get current first point in mergeReader, this maybe overlapped later
            */
           TimeValuePair timeValuePair = mergeReader.currentTimeValuePair();
 
           if (orderUtils.isExcessEndpoint(timeValuePair.getTimestamp(), currentPageEndPointTime)) {
+            /*
+             * when the merged point excesses the currentPageEndPointTime, we have read all overlapped data before currentPageEndPointTime
+             * 1. has cached batch data, we don't need to read more data, just use the cached data later
+             * 2. has first page reader, which means first page reader last endTime < currentTimeValuePair.getTimestamp(),
+             * we could just use the first page reader later
+             * 3. sequence page reader is not empty, which means first page reader last endTime < currentTimeValuePair.getTimestamp(),
+             * we could use the first sequence page reader later
+             */
             if (cachedBatchData.hasCurrent()
                 || firstPageReader != null
                 || !seqPageReaders.isEmpty()) {
               break;
             }
+            // so, we don't have other data except mergeReader
             currentPageEndPointTime = mergeReader.getCurrentReadStopTime();
           }
 
+          // unpack all overlapped data for the first timeValuePair
           unpackAllOverlappedTsFilesToTimeSeriesMetadata(timeValuePair.getTimestamp());
           unpackAllOverlappedTimeSeriesMetadataToCachedChunkMetadata(
               timeValuePair.getTimestamp(), false);
           unpackAllOverlappedChunkMetadataToCachedPageReaders(timeValuePair.getTimestamp(), false);
           unpackAllOverlappedUnseqPageReadersToMergeReader(timeValuePair.getTimestamp());
 
+          // from now, the unsequence reader is all unpacked, so we don't need to consider it
+          // we has first page reader now
           if (firstPageReader != null) {
+            // if current timeValuePair excesses the first page reader's end time, we just use the
+            // cached data
             if ((orderUtils.getAscending()
                     && timeValuePair.getTimestamp() > firstPageReader.getStatistics().getEndTime())
                 || (!orderUtils.getAscending()
@@ -675,6 +688,8 @@ public class SeriesReader {
               hasCachedNextOverlappedPage = cachedBatchData.hasCurrent();
               return hasCachedNextOverlappedPage;
             } else {
+              // current timeValuePair is overlapped with firstPageReader, add it to merged reader
+              // and update endTime to the max end time
               mergeReader.addReader(
                   firstPageReader
                       .getAllSatisfiedPageData(orderUtils.getAscending())
@@ -687,6 +702,7 @@ public class SeriesReader {
             }
           }
 
+          // the seq page readers is not empty, just like first page reader
           if (!seqPageReaders.isEmpty()) {
             if ((orderUtils.getAscending()
                     && timeValuePair.getTimestamp()
@@ -727,8 +743,8 @@ public class SeriesReader {
          */
         if (hasCachedNextOverlappedPage) {
           return true;
-          // condition: seqPage.endTime < mergeReader.currentTime
         } else if (mergeReader.hasNextTimeValuePair()) {
+          // condition: seqPage.endTime < mergeReader.currentTime
           return false;
         }
       } else {
