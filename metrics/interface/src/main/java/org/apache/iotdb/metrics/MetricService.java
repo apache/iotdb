@@ -18,19 +18,17 @@
  */
 package org.apache.iotdb.metrics;
 
+import org.apache.iotdb.metrics.impl.DoNothingFactory;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
 
-import org.apache.iotdb.metrics.impl.DoNothingFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-/**
- * MetricService is the entr
- */
-
+/** MetricService is the entr */
 public class MetricService {
 
   private static final Logger logger = LoggerFactory.getLogger(MetricService.class);
@@ -55,9 +53,9 @@ public class MetricService {
         continue;
       }
       size++;
-//      if (size > 1) {
-//        throw new RuntimeException("More than one Metric Implementation is detected.");
-//      }
+      //      if (size > 1) {
+      //        throw new RuntimeException("More than one Metric Implementation is detected.");
+      //      }
       factory = mf;
       break;
     }

@@ -18,5 +18,4 @@
  */
 package org.apache.iotdb.metrics.type;
 
-public interface IMetric {
-}
+public interface IMetric {}

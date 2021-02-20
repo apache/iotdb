@@ -22,17 +22,17 @@ import java.util.Map;
 
 public interface MetricFactory {
 
-   /**
-    *
-    * repeated calling the method will return the same Object instance.
-    *
-    * @param namespace
-    * @return
-    */
-   MetricManager getMetric(String namespace);
+  /**
+   * repeated calling the method will return the same Object instance.
+   *
+   * @param namespace
+   * @return
+   */
+  MetricManager getMetric(String namespace);
 
-   void enableKnownMetric(KnownMetric metric);
-   Map<String, MetricManager> getAllMetrics();
-   boolean isEnable();
+  void enableKnownMetric(KnownMetric metric);
 
+  Map<String, MetricManager> getAllMetrics();
+
+  boolean isEnable();
 }

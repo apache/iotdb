@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.metrics.micrometer;
 
-import com.sun.net.httpserver.HttpServer;
-import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.apache.iotdb.metrics.MetricFactory;
 import org.apache.iotdb.metrics.MetricReporter;
+
+import com.sun.net.httpserver.HttpServer;
+import io.micrometer.prometheus.PrometheusMeterRegistry;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -36,15 +37,19 @@ public class MicrometerMetricReporter implements MetricReporter {
   public boolean start() {
     try {
       HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
-      server.createContext("/prometheus", httpExchange -> {
-        String response = ((PrometheusMeterRegistry)
-          ((MicrometerMetricManager) micrometerMetricFactory.getMetric("iotdb"))
-            .getMeterRegistry()).scrape();
-        httpExchange.sendResponseHeaders(200, response.getBytes().length);
-        try (OutputStream os = httpExchange.getResponseBody()) {
-          os.write(response.getBytes());
-        }
-      });
+      server.createContext(
+          "/prometheus",
+          httpExchange -> {
+            String response =
+                ((PrometheusMeterRegistry)
+                        ((MicrometerMetricManager) micrometerMetricFactory.getMetric("iotdb"))
+                            .getMeterRegistry())
+                    .scrape();
+            httpExchange.sendResponseHeaders(200, response.getBytes().length);
+            try (OutputStream os = httpExchange.getResponseBody()) {
+              os.write(response.getBytes());
+            }
+          });
 
       runThread = new Thread(server::start);
       runThread.start();

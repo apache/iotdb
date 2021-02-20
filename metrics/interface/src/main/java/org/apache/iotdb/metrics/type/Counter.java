@@ -20,6 +20,7 @@ package org.apache.iotdb.metrics.type;
 
 public interface Counter extends IMetric {
   void inc();
+
   void inc(long n);
 
   long count();

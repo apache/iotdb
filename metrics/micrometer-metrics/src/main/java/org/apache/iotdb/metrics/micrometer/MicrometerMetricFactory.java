@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.metrics.micrometer;
 
+import org.apache.iotdb.metrics.KnownMetric;
+import org.apache.iotdb.metrics.MetricFactory;
+import org.apache.iotdb.metrics.MetricManager;
+
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.binder.jvm.ClassLoaderMetrics;
 import io.micrometer.core.instrument.binder.jvm.JvmCompilationMetrics;
@@ -26,9 +30,6 @@ import io.micrometer.core.instrument.binder.jvm.JvmGcMetrics;
 import io.micrometer.core.instrument.binder.jvm.JvmHeapPressureMetrics;
 import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics;
 import io.micrometer.core.instrument.binder.jvm.JvmThreadMetrics;
-import org.apache.iotdb.metrics.KnownMetric;
-import org.apache.iotdb.metrics.MetricFactory;
-import org.apache.iotdb.metrics.MetricManager;
 
 import java.util.Collections;
 import java.util.Map;
@@ -72,7 +73,7 @@ public class MicrometerMetricFactory implements MetricFactory {
     JvmCompilationMetrics jvmCompilationMetrics = new JvmCompilationMetrics();
     jvmCompilationMetrics.bindTo(meterRegistry);
     try (JvmGcMetrics jvmGcMetrics = new JvmGcMetrics();
-         JvmHeapPressureMetrics jvmHeapPressureMetrics = new JvmHeapPressureMetrics()) {
+        JvmHeapPressureMetrics jvmHeapPressureMetrics = new JvmHeapPressureMetrics()) {
       jvmGcMetrics.bindTo(meterRegistry);
       jvmHeapPressureMetrics.bindTo(meterRegistry);
     }
