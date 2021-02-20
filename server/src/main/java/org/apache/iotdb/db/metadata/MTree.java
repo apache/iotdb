@@ -254,20 +254,21 @@ public class MTree implements Serializable {
         }
       }
 
-      MeasurementMNode leaf =
+      // this measurementMNode could be a leaf or not.
+      MeasurementMNode measurementMNode =
           new MeasurementMNode(cur, leafName, alias, dataType, encoding, compressor, props);
       if (child != null) {
-        cur.replaceChild(leaf.getName(), leaf);
+        cur.replaceChild(measurementMNode.getName(), measurementMNode);
       } else {
-        cur.addChild(leafName, leaf);
+        cur.addChild(leafName, measurementMNode);
       }
 
       // link alias to LeafMNode
       if (alias != null) {
-        cur.addAlias(alias, leaf);
+        cur.addAlias(alias, measurementMNode);
       }
 
-      return leaf;
+      return measurementMNode;
     }
   }
 
