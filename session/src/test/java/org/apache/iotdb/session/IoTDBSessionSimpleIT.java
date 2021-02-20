@@ -45,12 +45,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.Arrays;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -426,8 +426,8 @@ public class IoTDBSessionSimpleIT {
       throws StatementExecutionException, IoTDBConnectionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
-    session.insertRecord("root.sg1.d1", 0, Arrays.asList("t1", "t2", "t3"), Arrays.asList("123",
-        "333", "444"));
+    session.insertRecord(
+        "root.sg1.d1", 0, Arrays.asList("t1", "t2", "t3"), Arrays.asList("123", "333", "444"));
     try {
       session.deleteTimeseries(Arrays.asList("root.sg1.d1.t6", "root.sg1.d1.t2", "root.sg1.d1.t3"));
     } catch (BatchExecutionException e) {
