@@ -1945,7 +1945,7 @@ public class StorageGroupProcessor {
         IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
   }
 
-  private void executeCompaction(long timePartition, boolean fullMerge){
+  private void executeCompaction(long timePartition, boolean fullMerge) {
     if (!compactionMergeWorking && !CompactionMergeTaskPoolManager.getInstance().isTerminated()) {
       compactionMergeWorking = true;
       logger.info(
@@ -1958,8 +1958,7 @@ public class StorageGroupProcessor {
         CompactionMergeTaskPoolManager.getInstance()
             .submitTask(
                 tsFileManagement
-                .new CompactionMergeTask(
-                    this::closeCompactionMergeCallBack, timePartition));
+                .new CompactionMergeTask(this::closeCompactionMergeCallBack,·timePartition));
       } catch (IOException | RejectedExecutionException e) {
         this.closeCompactionMergeCallBack();
         logger.error(
