@@ -19,8 +19,9 @@
 package org.apache.iotdb.db.engine.upgrade;
 
 public enum UpgradeCheckStatus {
-
-  BEGIN_UPGRADE_FILE(1), AFTER_UPGRADE_FILE(2), UPGRADE_SUCCESS(3);
+  BEGIN_UPGRADE_FILE(1),
+  AFTER_UPGRADE_FILE(2),
+  UPGRADE_SUCCESS(3);
 
   private final int checkStatusCode;
 

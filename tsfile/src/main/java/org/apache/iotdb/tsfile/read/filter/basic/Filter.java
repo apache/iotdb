@@ -18,42 +18,35 @@
  */
 package org.apache.iotdb.tsfile.read.filter.basic;
 
-import java.io.DataOutputStream;
-import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
 
-/**
- * Filter is a top level filter abstraction.
- *
- */
+import java.io.DataOutputStream;
+import java.nio.ByteBuffer;
+
+/** Filter is a top level filter abstraction. */
 public interface Filter {
 
   /**
    * To examine whether the statistics is satisfied with the filter.
    *
-   * @param statistics
-   *            statistics with min time, max time, min value, max value.
+   * @param statistics statistics with min time, max time, min value, max value.
    */
   boolean satisfy(Statistics statistics);
 
   /**
    * To examine whether the single point(with time and value) is satisfied with the filter.
    *
-   * @param time
-   *            single point time
-   * @param value
-   *            single point value
+   * @param time single point time
+   * @param value single point value
    */
   boolean satisfy(long time, Object value);
 
   /**
    * To examine whether the min time and max time are satisfied with the filter.
    *
-   * @param startTime
-   *            start time of a page, series or device
-   * @param endTime
-   *            end time of a page, series or device
+   * @param startTime start time of a page, series or device
+   * @param endTime end time of a page, series or device
    */
   boolean satisfyStartEndTime(long startTime, long endTime);
 

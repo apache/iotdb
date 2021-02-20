@@ -20,46 +20,33 @@ package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
-/**
- * The TsFileProcessorInfo records the memory cost of this TsFileProcessor.
- */
+/** The TsFileProcessorInfo records the memory cost of this TsFileProcessor. */
 public class TsFileProcessorInfo {
 
-  /**
-   * Once tspInfo updated, report to storageGroupInfo that this TSP belongs to.
-   */
+  /** Once tspInfo updated, report to storageGroupInfo that this TSP belongs to. */
   private StorageGroupInfo storageGroupInfo;
 
-  /**
-   * memory occupation of unsealed TsFileResource, ChunkMetadata, WAL
-   */
+  /** memory occupation of unsealed TsFileResource, ChunkMetadata, WAL */
   private long memCost;
-
 
   public TsFileProcessorInfo(StorageGroupInfo storageGroupInfo) {
     this.storageGroupInfo = storageGroupInfo;
     this.memCost = IoTDBDescriptor.getInstance().getConfig().getWalBufferSize();
   }
 
-  /**
-   * called in each insert
-   */
+  /** called in each insert */
   public void addTSPMemCost(long cost) {
     memCost += cost;
     storageGroupInfo.addStorageGroupMemCost(cost);
   }
 
-  /**
-   * called when meet exception
-   */
+  /** called when meet exception */
   public void releaseTSPMemCost(long cost) {
     storageGroupInfo.releaseStorageGroupMemCost(cost);
     memCost -= cost;
   }
 
-  /**
-   * called when closing TSP
-   */
+  /** called when closing TSP */
   public void clear() {
     storageGroupInfo.releaseStorageGroupMemCost(memCost);
     memCost = 0;

@@ -18,11 +18,12 @@
 
 package org.apache.iotdb.flink;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 /**
  * @inheritDoc The default implementation of IoTSerializationSchema. Gets info from a map struct.

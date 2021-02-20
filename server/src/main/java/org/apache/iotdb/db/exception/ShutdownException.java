@@ -22,7 +22,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 public class ShutdownException extends IoTDBException {
 
-
   public ShutdownException(String message, int errorCode) {
     super(message, errorCode);
   }

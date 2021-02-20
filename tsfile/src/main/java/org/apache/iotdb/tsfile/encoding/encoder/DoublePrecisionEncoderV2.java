@@ -19,16 +19,18 @@
 
 package org.apache.iotdb.tsfile.encoding.encoder;
 
-import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.GORILLA_ENCODING_ENDING_DOUBLE;
-
 import java.io.ByteArrayOutputStream;
 
+import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.GORILLA_ENCODING_ENDING_DOUBLE;
+
 /**
- * <p> This class includes code modified from Michael Burman's gorilla-tsc project.
+ * This class includes code modified from Michael Burman's gorilla-tsc project.
  *
- * <p> Copyright: 2016-2018 Michael Burman and/or other contributors
- * <p> Project page: https://github.com/burmanm/gorilla-tsc
- * <p> License: http://www.apache.org/licenses/LICENSE-2.0
+ * <p>Copyright: 2016-2018 Michael Burman and/or other contributors
+ *
+ * <p>Project page: https://github.com/burmanm/gorilla-tsc
+ *
+ * <p>License: http://www.apache.org/licenses/LICENSE-2.0
  */
 public class DoublePrecisionEncoderV2 extends LongGorillaEncoder {
 

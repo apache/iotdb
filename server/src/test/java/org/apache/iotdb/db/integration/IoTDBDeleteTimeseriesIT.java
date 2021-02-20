@@ -19,19 +19,21 @@
 
 package org.apache.iotdb.db.integration;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.jdbc.Config;
+
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.Statement;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.jdbc.Config;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
 
 public class IoTDBDeleteTimeseriesIT {
 
@@ -44,31 +46,27 @@ public class IoTDBDeleteTimeseriesIT {
     EnvironmentUtils.envSetUp();
     memtableSizeThreshold = IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold();
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(16);
-    tsFileManagementStrategy = IoTDBDescriptor.getInstance().getConfig()
-        .getCompactionStrategy();
-    IoTDBDescriptor.getInstance().getConfig()
+    tsFileManagementStrategy = IoTDBDescriptor.getInstance().getConfig().getCompactionStrategy();
+    IoTDBDescriptor.getInstance()
+        .getConfig()
         .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
   }
 
   @After
   public void tearDown() throws Exception {
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(memtableSizeThreshold);
-    IoTDBDescriptor.getInstance().getConfig()
-        .setCompactionStrategy(tsFileManagementStrategy);
+    IoTDBDescriptor.getInstance().getConfig().setCompactionStrategy(tsFileManagementStrategy);
     EnvironmentUtils.cleanEnv();
   }
 
   @Test
   public void deleteTimeseriesAndCreateDifferentTypeTest() throws Exception {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    String[] retArray = new String[]{
-        "1,1,",
-        "2,1.1,"
-    };
+    String[] retArray = new String[] {"1,1,", "2,1.1,"};
     int cnt = 0;
 
-    try (Connection connection = DriverManager.
-        getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute(
           "create timeseries root.turbine1.d1.s1 with datatype=INT64, encoding=PLAIN, compression=SNAPPY");
@@ -111,9 +109,9 @@ public class IoTDBDeleteTimeseriesIT {
 
     EnvironmentUtils.restartDaemon();
 
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
-            "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResult = statement.execute("SELECT * FROM root");
       Assert.assertTrue(hasResult);
@@ -123,14 +121,11 @@ public class IoTDBDeleteTimeseriesIT {
   @Test
   public void deleteTimeseriesAndCreateSameTypeTest() throws Exception {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    String[] retArray = new String[]{
-        "1,1,",
-        "2,5,"
-    };
+    String[] retArray = new String[] {"1,1,", "2,5,"};
     int cnt = 0;
 
-    try (Connection connection = DriverManager.
-        getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute(
           "create timeseries root.turbine1.d1.s1 with datatype=INT64, encoding=PLAIN, compression=SNAPPY");
@@ -173,10 +168,10 @@ public class IoTDBDeleteTimeseriesIT {
 
     EnvironmentUtils.restartDaemon();
 
-    try(Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
-            "root");
-        Statement statement = connection.createStatement()){
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       boolean hasResult = statement.execute("SELECT * FROM root");
       Assert.assertTrue(hasResult);
     }

@@ -18,7 +18,13 @@
  */
 package org.apache.iotdb.tsfile.encoding.decoder;
 
-import static org.junit.Assert.assertEquals;
+import org.apache.iotdb.tsfile.encoding.encoder.LongRleEncoder;
+import org.apache.iotdb.tsfile.encoding.encoder.RleEncoder;
+import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -26,12 +32,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.tsfile.encoding.encoder.LongRleEncoder;
-import org.apache.iotdb.tsfile.encoding.encoder.RleEncoder;
-import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
 
 public class LongRleDecoderTest {
 
@@ -101,8 +103,7 @@ public class LongRleDecoderTest {
   }
 
   @After
-  public void tearDown() throws Exception {
-  }
+  public void tearDown() throws Exception {}
 
   @Test
   public void testRleReadBigLong() throws IOException {
@@ -195,8 +196,7 @@ public class LongRleDecoderTest {
     }
   }
 
-  public void testLength(List<Long> list, boolean isDebug, int repeatCount)
-      throws IOException {
+  public void testLength(List<Long> list, boolean isDebug, int repeatCount) throws IOException {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     RleEncoder<Long> encoder = new LongRleEncoder();
     for (int i = 0; i < repeatCount; i++) {

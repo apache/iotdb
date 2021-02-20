@@ -18,12 +18,6 @@
  */
 package org.apache.iotdb.session.pool;
 
-import java.time.ZoneId;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.concurrent.ConcurrentMap;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Config;
@@ -33,28 +27,37 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.Tablet;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.time.ZoneId;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.ConcurrentMap;
 
 /**
  * SessionPool is a wrapper of a Session Set. Using SessionPool, the user do not need to consider
  * how to reuse a session connection. Even if the session is disconnected, the session pool can
  * recognize it and remove the broken session connection and create a new one.
- * <p>
- * If there is no available connections and the pool reaches its max size, the all methods will hang
- * until there is a available connection.
- * <p>
- * If a user has waited for a session for more than 60 seconds, a warn log will be printed.
- * <p>
- * The only thing you have to remember is that:
- * <p>
- * For a query, if you have get all data, i.e., SessionDataSetWrapper.hasNext() == false, it is ok.
- * Otherwise, i.e., you want to stop the query before you get all data
- * (SessionDataSetWrapper.hasNext() == true), then you have to call closeResultSet(SessionDataSetWrapper
- * wrapper) manually. Otherwise the connection is occupied by the query.
- * <p>
- * Another case that you have to manually call closeResultSet() is that when there is exception when
- * you call SessionDataSetWrapper.hasNext() or next()
+ *
+ * <p>If there is no available connections and the pool reaches its max size, the all methods will
+ * hang until there is a available connection.
+ *
+ * <p>If a user has waited for a session for more than 60 seconds, a warn log will be printed.
+ *
+ * <p>The only thing you have to remember is that:
+ *
+ * <p>For a query, if you have get all data, i.e., SessionDataSetWrapper.hasNext() == false, it is
+ * ok. Otherwise, i.e., you want to stop the query before you get all data
+ * (SessionDataSetWrapper.hasNext() == true), then you have to call
+ * closeResultSet(SessionDataSetWrapper wrapper) manually. Otherwise the connection is occupied by
+ * the query.
+ *
+ * <p>Another case that you have to manually call closeResultSet() is that when there is exception
+ * when you call SessionDataSetWrapper.hasNext() or next()
  */
 public class SessionPool {
 
@@ -63,7 +66,7 @@ public class SessionPool {
   public static final String CLOSE_THE_SESSION_FAILED = "close the session failed.";
   private static int RETRY = 3;
   private ConcurrentLinkedDeque<Session> queue = new ConcurrentLinkedDeque<>();
-  //for session whose resultSet is not released.
+  // for session whose resultSet is not released.
   private ConcurrentMap<Session, Session> occupied = new ConcurrentHashMap<>();
   private int size = 0;
   private int maxSize = 0;
@@ -72,40 +75,91 @@ public class SessionPool {
   private String user;
   private String password;
   private int fetchSize;
-  private long timeout; //ms
+  private long timeout; // ms
   private static int FINAL_RETRY = RETRY - 1;
   private boolean enableCompression;
   private boolean enableCacheLeader;
   private ZoneId zoneId;
 
-  private boolean closed;//whether the queue is closed.
+  private boolean closed; // whether the queue is closed.
 
   public SessionPool(String ip, int port, String user, String password, int maxSize) {
-    this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, false, null,
+    this(
+        ip,
+        port,
+        user,
+        password,
+        maxSize,
+        Config.DEFAULT_FETCH_SIZE,
+        60_000,
+        false,
+        null,
         Config.DEFAULT_CACHE_LEADER_MODE);
   }
 
-  public SessionPool(String ip, int port, String user, String password, int maxSize,
-      boolean enableCompression) {
-    this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, enableCompression,
-        null, Config.DEFAULT_CACHE_LEADER_MODE);
+  public SessionPool(
+      String ip, int port, String user, String password, int maxSize, boolean enableCompression) {
+    this(
+        ip,
+        port,
+        user,
+        password,
+        maxSize,
+        Config.DEFAULT_FETCH_SIZE,
+        60_000,
+        enableCompression,
+        null,
+        Config.DEFAULT_CACHE_LEADER_MODE);
   }
 
-  public SessionPool(String ip, int port, String user, String password, int maxSize,
-      boolean enableCompression, boolean enableCacheLeader) {
-    this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, enableCompression,
-        null, enableCacheLeader);
+  public SessionPool(
+      String ip,
+      int port,
+      String user,
+      String password,
+      int maxSize,
+      boolean enableCompression,
+      boolean enableCacheLeader) {
+    this(
+        ip,
+        port,
+        user,
+        password,
+        maxSize,
+        Config.DEFAULT_FETCH_SIZE,
+        60_000,
+        enableCompression,
+        null,
+        enableCacheLeader);
   }
 
-  public SessionPool(String ip, int port, String user, String password, int maxSize,
-      ZoneId zoneId) {
-    this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, false, zoneId,
+  public SessionPool(
+      String ip, int port, String user, String password, int maxSize, ZoneId zoneId) {
+    this(
+        ip,
+        port,
+        user,
+        password,
+        maxSize,
+        Config.DEFAULT_FETCH_SIZE,
+        60_000,
+        false,
+        zoneId,
         Config.DEFAULT_CACHE_LEADER_MODE);
   }
 
   @SuppressWarnings("squid:S107")
-  public SessionPool(String ip, int port, String user, String password, int maxSize, int fetchSize,
-      long timeout, boolean enableCompression, ZoneId zoneId, boolean enableCacheLeader) {
+  public SessionPool(
+      String ip,
+      int port,
+      String user,
+      String password,
+      int maxSize,
+      int fetchSize,
+      long timeout,
+      boolean enableCompression,
+      ZoneId zoneId,
+      boolean enableCacheLeader) {
     this.maxSize = maxSize;
     this.ip = ip;
     this.port = port;
@@ -118,7 +172,8 @@ public class SessionPool {
     this.enableCacheLeader = enableCacheLeader;
   }
 
-  //if this method throws an exception, either the server is broken, or the ip/port/user/password is incorrect.
+  // if this method throws an exception, either the server is broken, or the ip/port/user/password
+  // is incorrect.
 
   @SuppressWarnings({"squid:S3776", "squid:S2446"}) // Suppress high Cognitive Complexity warning
   private Session getSession() throws IoTDBConnectionException {
@@ -133,24 +188,25 @@ public class SessionPool {
       boolean canCreate = false;
       synchronized (this) {
         if (size < maxSize) {
-          //we can create more session
+          // we can create more session
           size++;
           canCreate = true;
-          //but we do it after skip synchronized block because connection a session is time consuming.
+          // but we do it after skip synchronized block because connection a session is time
+          // consuming.
         }
       }
       if (canCreate) {
-        //create a new one.
+        // create a new one.
         if (logger.isDebugEnabled()) {
           logger.debug("Create a new Session {}, {}, {}, {}", ip, port, user, password);
         }
         session = new Session(ip, port, user, password, fetchSize, zoneId, enableCacheLeader);
         try {
           session.open(enableCompression);
-          //avoid someone has called close() the session pool
+          // avoid someone has called close() the session pool
           synchronized (this) {
             if (closed) {
-              //have to release the connection...
+              // have to release the connection...
               session.close();
               throw new IoTDBConnectionException(SESSION_POOL_IS_CLOSED);
             } else {
@@ -158,11 +214,11 @@ public class SessionPool {
             }
           }
         } catch (IoTDBConnectionException e) {
-          //if exception, we will throw the exception.
-          //Meanwhile, we have to set size--
+          // if exception, we will throw the exception.
+          // Meanwhile, we have to set size--
           synchronized (this) {
             size--;
-            //we do not need to notifyAll as any waited thread can continue to work after waked up.
+            // we do not need to notifyAll as any waited thread can continue to work after waked up.
             this.notify();
             if (logger.isDebugEnabled()) {
               logger.debug("open session failed, reduce the count and notify others...");
@@ -176,20 +232,27 @@ public class SessionPool {
             if (closed) {
               throw new IoTDBConnectionException(SESSION_POOL_IS_CLOSED);
             }
-            //we have to wait for someone returns a session.
+            // we have to wait for someone returns a session.
             try {
               if (logger.isDebugEnabled()) {
-                logger
-                    .debug("no more sessions can be created, wait... queue.size={}", queue.size());
+                logger.debug(
+                    "no more sessions can be created, wait... queue.size={}", queue.size());
               }
               this.wait(1000);
               long time = timeout < 60_000 ? timeout : 60_000;
               if (System.currentTimeMillis() - start > time) {
                 logger.warn(
                     "the SessionPool has wait for {} seconds to get a new connection: {}:{} with {}, {}",
-                    (System.currentTimeMillis() - start) / 1000, ip, port, user, password);
-                logger.warn("current occupied size {}, queue size {}, considered size {} ",
-                    occupied.size(), queue.size(), size);
+                    (System.currentTimeMillis() - start) / 1000,
+                    ip,
+                    port,
+                    user,
+                    password);
+                logger.warn(
+                    "current occupied size {}, queue size {}, considered size {} ",
+                    occupied.size(),
+                    queue.size(),
+                    size);
                 if (System.currentTimeMillis() - start > timeout) {
                   throw new IoTDBConnectionException(
                       String.format("timeout to get a connection from %s:%s", ip, port));
@@ -219,12 +282,13 @@ public class SessionPool {
   private void putBack(Session session) {
     queue.push(session);
     synchronized (this) {
-      //we do not need to notifyAll as any waited thread can continue to work after waked up.
+      // we do not need to notifyAll as any waited thread can continue to work after waked up.
       this.notify();
-      //comment the following codes as putBack is too frequently called.
-//      if (logger.isTraceEnabled()) {
-//        logger.trace("put a session back and notify others..., queue.size = {}", queue.size());
-//      }
+      // comment the following codes as putBack is too frequently called.
+      //      if (logger.isTraceEnabled()) {
+      //        logger.trace("put a session back and notify others..., queue.size = {}",
+      // queue.size());
+      //      }
     }
   }
 
@@ -232,15 +296,13 @@ public class SessionPool {
     occupied.put(session, session);
   }
 
-  /**
-   * close all connections in the pool
-   */
+  /** close all connections in the pool */
   public synchronized void close() {
     for (Session session : queue) {
       try {
         session.close();
       } catch (IoTDBConnectionException e) {
-        //do nothing
+        // do nothing
         logger.warn(CLOSE_THE_SESSION_FAILED, e);
       }
     }
@@ -248,7 +310,7 @@ public class SessionPool {
       try {
         session.close();
       } catch (IoTDBConnectionException e) {
-        //do nothing
+        // do nothing
         logger.warn(CLOSE_THE_SESSION_FAILED, e);
       }
     }
@@ -277,7 +339,7 @@ public class SessionPool {
   private synchronized void removeSession() {
     logger.warn("Remove a broken Session {}, {}, {}", ip, port, user);
     size--;
-    //we do not need to notifyAll as any waited thread can continue to work after waked up.
+    // we do not need to notifyAll as any waited thread can continue to work after waked up.
     this.notify();
     if (logger.isDebugEnabled()) {
       logger.debug("remove a broken session and notify others..., queue.size = {}", queue.size());
@@ -289,61 +351,64 @@ public class SessionPool {
       try {
         session.close();
       } catch (Exception e2) {
-        //do nothing. We just want to guarantee the session is closed.
+        // do nothing. We just want to guarantee the session is closed.
         logger.warn(CLOSE_THE_SESSION_FAILED, e2);
       }
     }
   }
 
-  private void cleanSessionAndMayThrowConnectionException(Session session, int times,
-      IoTDBConnectionException e) throws IoTDBConnectionException {
+  private void cleanSessionAndMayThrowConnectionException(
+      Session session, int times, IoTDBConnectionException e) throws IoTDBConnectionException {
     closeSession(session);
     removeSession();
     if (times == FINAL_RETRY) {
       throw new IoTDBConnectionException(
-          String.format("retry to execute statement on %s:%s failed %d times: %s", ip, port,
-              RETRY, e.getMessage()), e);
+          String.format(
+              "retry to execute statement on %s:%s failed %d times: %s",
+              ip, port, RETRY, e.getMessage()),
+          e);
     }
   }
 
   /**
    * insert the data of a device. For each timestamp, the number of measurements is the same.
    *
-   *  a Tablet example:
-   *
-   *        device1
-   *     time s1, s2, s3
-   *     1,   1,  1,  1
-   *     2,   2,  2,  2
-   *     3,   3,  3,  3
-   *
-   * times in Tablet may be not in ascending order
-   *
    * @param tablet data batch
    */
   public void insertTablet(Tablet tablet)
       throws IoTDBConnectionException, StatementExecutionException {
+    /*
+     *  A Tablet example:
+     *        device1
+     *     time s1, s2, s3
+     *     1,   1,  1,  1
+     *     2,   2,  2,  2
+     *     3,   3,  3,  3
+     *
+     * times in Tablet may be not in ascending orde
+     */
     insertTablet(tablet, false);
   }
 
   /**
    * insert the data of a device. For each timestamp, the number of measurements is the same.
-   * <p>
-   * a Tablet example:
    *
-   *      device1
-   * time s1, s2, s3
-   * 1,   1,  1,  1
-   * 2,   2,  2,  2
-   * 3,   3,  3,  3
-   *
-   * Users need to control the count of Tablet and write a batch when it reaches the maxBatchSize
+   * <p>Users need to control the count of Tablet and write a batch when it reaches the maxBatchSize
    *
    * @param tablet a tablet data of one device
    * @param sorted whether times in Tablet are in ascending order
    */
   public void insertTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
+    /*
+     *  A Tablet example:
+     *        device1
+     *     time s1, s2, s3
+     *     1,   1,  1,  1
+     *     2,   2,  2,  2
+     *     3,   3,  3,  3
+     */
+
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
@@ -360,7 +425,6 @@ public class SessionPool {
       }
     }
   }
-
 
   /**
    * use batch interface to insert data
@@ -403,9 +467,13 @@ public class SessionPool {
    *
    * @see Session#insertTablet(Tablet)
    */
-  public void insertRecords(List<String> deviceIds, List<Long> times,
-      List<List<String>> measurementsList, List<List<TSDataType>> typesList,
-      List<List<Object>> valuesList) throws IoTDBConnectionException, StatementExecutionException {
+  public void insertRecords(
+      List<String> deviceIds,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList)
+      throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
@@ -430,14 +498,18 @@ public class SessionPool {
    *
    * @see Session#insertTablet(Tablet)
    */
-  public void insertOneDeviceRecords(String deviceId, List<Long> times,
-      List<List<String>> measurementsList, List<List<TSDataType>> typesList,
-      List<List<Object>> valuesList) throws IoTDBConnectionException, StatementExecutionException {
+  public void insertOneDeviceRecords(
+      String deviceId,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList)
+      throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
-        session.insertRecordsOfOneDevice(deviceId, times, measurementsList, typesList, valuesList,
-            false);
+        session.insertRecordsOfOneDevice(
+            deviceId, times, measurementsList, typesList, valuesList, false);
         putBack(session);
         return;
       } catch (IoTDBConnectionException e) {
@@ -459,15 +531,19 @@ public class SessionPool {
    * @param haveSorted whether the times list has been ordered.
    * @see Session#insertTablet(Tablet)
    */
-  public void insertOneDeviceRecords(String deviceId, List<Long> times,
-      List<List<String>> measurementsList, List<List<TSDataType>> typesList,
-      List<List<Object>> valuesList, boolean haveSorted)
+  public void insertOneDeviceRecords(
+      String deviceId,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList,
+      boolean haveSorted)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
-        session.insertRecordsOfOneDevice(deviceId, times, measurementsList, typesList, valuesList,
-            haveSorted);
+        session.insertRecordsOfOneDevice(
+            deviceId, times, measurementsList, typesList, valuesList, haveSorted);
         putBack(session);
         return;
       } catch (IoTDBConnectionException e) {
@@ -488,8 +564,11 @@ public class SessionPool {
    *
    * @see Session#insertTablet(Tablet)
    */
-  public void insertRecords(List<String> deviceIds, List<Long> times,
-      List<List<String>> measurementsList, List<List<String>> valuesList)
+  public void insertRecords(
+      List<String> deviceIds,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<String>> valuesList)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
@@ -515,8 +594,12 @@ public class SessionPool {
    * @see Session#insertRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
    */
-  public void insertRecord(String deviceId, long time, List<String> measurements,
-      List<TSDataType> types, List<Object> values)
+  public void insertRecord(
+      String deviceId,
+      long time,
+      List<String> measurements,
+      List<TSDataType> types,
+      List<Object> values)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
@@ -542,8 +625,8 @@ public class SessionPool {
    * @see Session#insertRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
    */
-  public void insertRecord(String deviceId, long time, List<String> measurements,
-      List<String> values)
+  public void insertRecord(
+      String deviceId, long time, List<String> measurements, List<String> values)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
@@ -612,8 +695,11 @@ public class SessionPool {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
-  public void testInsertRecords(List<String> deviceIds, List<Long> times,
-      List<List<String>> measurementsList, List<List<String>> valuesList)
+  public void testInsertRecords(
+      List<String> deviceIds,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<String>> valuesList)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
@@ -636,8 +722,11 @@ public class SessionPool {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
-  public void testInsertRecords(List<String> deviceIds, List<Long> times,
-      List<List<String>> measurementsList, List<List<TSDataType>> typesList,
+  public void testInsertRecords(
+      List<String> deviceIds,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<TSDataType>> typesList,
       List<List<Object>> valuesList)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
@@ -661,8 +750,9 @@ public class SessionPool {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
-  public void testInsertRecord(String deviceId, long time, List<String> measurements,
-      List<String> values) throws IoTDBConnectionException, StatementExecutionException {
+  public void testInsertRecord(
+      String deviceId, long time, List<String> measurements, List<String> values)
+      throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
@@ -684,8 +774,12 @@ public class SessionPool {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
-  public void testInsertRecord(String deviceId, long time, List<String> measurements,
-      List<TSDataType> types, List<Object> values)
+  public void testInsertRecord(
+      String deviceId,
+      long time,
+      List<String> measurements,
+      List<TSDataType> types,
+      List<Object> values)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
@@ -781,7 +875,7 @@ public class SessionPool {
    * delete data <= time in multiple timeseries
    *
    * @param paths data in which time series to delete
-   * @param time  data with time stamp less than or equal to time will be deleted
+   * @param time data with time stamp less than or equal to time will be deleted
    */
   public void deleteData(List<String> paths, long time)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -805,9 +899,9 @@ public class SessionPool {
   /**
    * delete data >= startTime and data <= endTime in multiple timeseries
    *
-   * @param paths     data in which time series to delete
+   * @param paths data in which time series to delete
    * @param startTime delete range start time
-   * @param endTime   delete range end time
+   * @param endTime delete range end time
    */
   public void deleteData(List<String> paths, long startTime, long endTime)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -885,8 +979,9 @@ public class SessionPool {
     }
   }
 
-  public void createTimeseries(String path, TSDataType dataType, TSEncoding encoding,
-      CompressionType compressor) throws IoTDBConnectionException, StatementExecutionException {
+  public void createTimeseries(
+      String path, TSDataType dataType, TSEncoding encoding, CompressionType compressor)
+      throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
@@ -904,15 +999,21 @@ public class SessionPool {
     }
   }
 
-  public void createTimeseries(String path, TSDataType dataType, TSEncoding encoding,
-      CompressionType compressor, Map<String, String> props, Map<String, String> tags,
-      Map<String, String> attributes, String measurementAlias)
+  public void createTimeseries(
+      String path,
+      TSDataType dataType,
+      TSEncoding encoding,
+      CompressionType compressor,
+      Map<String, String> props,
+      Map<String, String> tags,
+      Map<String, String> attributes,
+      String measurementAlias)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
-        session.createTimeseries(path, dataType, encoding, compressor, props, tags, attributes,
-            measurementAlias);
+        session.createTimeseries(
+            path, dataType, encoding, compressor, props, tags, attributes, measurementAlias);
         putBack(session);
         return;
       } catch (IoTDBConnectionException e) {
@@ -926,16 +1027,28 @@ public class SessionPool {
     }
   }
 
-  public void createMultiTimeseries(List<String> paths, List<TSDataType> dataTypes,
-      List<TSEncoding> encodings, List<CompressionType> compressors,
-      List<Map<String, String>> propsList, List<Map<String, String>> tagsList,
-      List<Map<String, String>> attributesList, List<String> measurementAliasList)
+  public void createMultiTimeseries(
+      List<String> paths,
+      List<TSDataType> dataTypes,
+      List<TSEncoding> encodings,
+      List<CompressionType> compressors,
+      List<Map<String, String>> propsList,
+      List<Map<String, String>> tagsList,
+      List<Map<String, String>> attributesList,
+      List<String> measurementAliasList)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
-        session.createMultiTimeseries(paths, dataTypes, encodings, compressors, propsList, tagsList,
-            attributesList, measurementAliasList);
+        session.createMultiTimeseries(
+            paths,
+            dataTypes,
+            encodings,
+            compressors,
+            propsList,
+            tagsList,
+            attributesList,
+            measurementAliasList);
         putBack(session);
         return;
       } catch (IoTDBConnectionException e) {
@@ -966,7 +1079,7 @@ public class SessionPool {
         throw e;
       }
     }
-    //never go here.
+    // never go here.
     return false;
   }
 
@@ -977,7 +1090,7 @@ public class SessionPool {
    *
    * @param sql query statement
    * @return result set Notice that you must get the result instance. Otherwise a data leakage will
-   * happen
+   *     happen
    */
   @SuppressWarnings("squid:S2095") // Suppress wrapper not closed warning
   public SessionDataSetWrapper executeQueryStatement(String sql)

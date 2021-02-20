@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.cluster.config;
 
+import org.apache.iotdb.cluster.utils.ClusterConsistent;
+
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-
-import org.apache.iotdb.cluster.utils.ClusterConsistent;
 
 public class ClusterConfig {
 
@@ -33,25 +33,19 @@ public class ClusterConfig {
   private int internalDataPort = 40010;
   private int clusterRpcPort = 55560;
 
-  /**
-   * each one is a "<IP | domain name>:<meta port>:<data port>:<client port></>" string tuple
-   */
-  private List<String> seedNodeUrls = Arrays
-      .asList("127.0.0.1:9003:40010:55560", "127.0.0.1:9005:40012:55561",
-          "127.0.0.1:9007:40014:55562");
+  /** each one is a "<IP | domain name>:<meta port>:<data port>:<client port></>" string tuple */
+  private List<String> seedNodeUrls =
+      Arrays.asList(
+          "127.0.0.1:9003:40010:55560", "127.0.0.1:9005:40012:55561", "127.0.0.1:9007:40014:55562");
 
-  @ClusterConsistent
-  private boolean isRpcThriftCompressionEnabled = false;
+  @ClusterConsistent private boolean isRpcThriftCompressionEnabled = false;
   private int maxConcurrentClientNum = 10000;
 
-  @ClusterConsistent
-  private int replicationNum = 2;
+  @ClusterConsistent private int replicationNum = 2;
 
-  @ClusterConsistent
-  private String clusterName = "default";
+  @ClusterConsistent private String clusterName = "default";
 
-  @ClusterConsistent
-  private boolean useAsyncServer = true;
+  @ClusterConsistent private boolean useAsyncServer = true;
 
   private boolean useAsyncApplier = true;
 
@@ -65,32 +59,26 @@ public class ClusterConfig {
 
   private boolean useBatchInLogCatchUp = true;
 
-  /**
-   * max number of committed logs to be saved
-   */
+  /** max number of committed logs to be saved */
   private int minNumOfLogsInMem = 100;
 
-  /**
-   * max number of committed logs in memory
-   */
+  /** max number of committed logs in memory */
   private int maxNumOfLogsInMem = 1000;
 
-  /**
-   * deletion check period of the submitted log
-   */
+  /** deletion check period of the submitted log */
   private int logDeleteCheckIntervalSecond = -1;
 
-  /**
-   * max number of clients in a ClientPool of a member for one node.
-   */
+  /** max number of clients in a ClientPool of a member for one node. */
   private int maxClientPerNodePerMember = 1000;
 
   /**
    * ClientPool will have so many selector threads (TAsyncClientManager) to distribute to its
    * clients.
    */
-  private int selectorNumOfClientPool = Runtime.getRuntime().availableProcessors() / 3 > 0 ?
-      Runtime.getRuntime().availableProcessors() / 3 : 1;
+  private int selectorNumOfClientPool =
+      Runtime.getRuntime().availableProcessors() / 3 > 0
+          ? Runtime.getRuntime().availableProcessors() / 3
+          : 1;
 
   /**
    * Whether creating schema automatically is enabled, this will replace the one in
@@ -99,7 +87,6 @@ public class ClusterConfig {
   private boolean enableAutoCreateSchema = true;
 
   private boolean enableRaftLogPersistence = true;
-
 
   private int flushRaftLogThreshold = 10000;
 
@@ -142,11 +129,8 @@ public class ClusterConfig {
    */
   private int maxNumberOfPersistRaftLogFiles = 5;
 
-  /**
-   * The maximum number of logs saved on the disk
-   */
+  /** The maximum number of logs saved on the disk */
   private int maxPersistRaftLogNumberOnDisk = 1_000_000;
-
 
   private boolean enableUsePersistLogOnDiskToCatchUp = false;
 
@@ -158,9 +142,8 @@ public class ClusterConfig {
   private int maxNumberOfLogsPerFetchOnDisk = 1000;
 
   /**
-   * When set to true, if the log queue of a follower fills up, LogDispatcher will wait for a
-   * while until the queue becomes available, otherwise LogDispatcher will just ignore that slow
-   * node.
+   * When set to true, if the log queue of a follower fills up, LogDispatcher will wait for a while
+   * until the queue becomes available, otherwise LogDispatcher will just ignore that slow node.
    */
   private boolean waitForSlowNode = true;
 

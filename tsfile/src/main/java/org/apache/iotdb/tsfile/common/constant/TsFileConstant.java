@@ -29,6 +29,6 @@ public class TsFileConstant {
   public static final char PATH_SEPARATOR_CHAR = '.';
   public static final String PATH_SEPARATER_NO_REGEX = "\\.";
   public static final char DOUBLE_QUOTE = '"';
-  private TsFileConstant() {
-  }
+
+  private TsFileConstant() {}
 }

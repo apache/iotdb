@@ -18,14 +18,16 @@
  */
 package org.apache.iotdb.db.metadata;
 
-import java.util.Arrays;
-import java.util.List;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.util.Arrays;
+import java.util.List;
 
 public class PartialPathTest {
   @Before
@@ -70,7 +72,7 @@ public class PartialPathTest {
     arr1[0] = "root";
     arr1[1] = "sg1";
     PartialPath a = new PartialPath(arr1);
-    PartialPath b =  a.concatNode("d1");
+    PartialPath b = a.concatNode("d1");
     Assert.assertEquals("[root, sg1, d1]", Arrays.toString(b.getNodes()));
     Assert.assertEquals("root.sg1.d1", b.getFullPath());
     Assert.assertTrue(b.startsWith(arr1));
@@ -99,7 +101,8 @@ public class PartialPathTest {
 
   @Test
   public void testPartialPathAndStringList() {
-    List<PartialPath> paths = PartialPath.fromStringList(Arrays.asList("root.sg1.d1.s1", "root.sg1.d1.s2"));
+    List<PartialPath> paths =
+        PartialPath.fromStringList(Arrays.asList("root.sg1.d1.s1", "root.sg1.d1.s2"));
     Assert.assertEquals("root.sg1.d1.s1", paths.get(0).getFullPath());
     Assert.assertEquals("root.sg1.d1.s2", paths.get(1).getFullPath());
 
@@ -107,7 +110,4 @@ public class PartialPathTest {
     Assert.assertEquals("root.sg1.d1.s1", stringPaths.get(0));
     Assert.assertEquals("root.sg1.d1.s2", stringPaths.get(1));
   }
-
-
-
 }

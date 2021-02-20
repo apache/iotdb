@@ -19,13 +19,6 @@
 
 package org.apache.iotdb.db.qp.physical;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Properties;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -49,8 +42,17 @@ import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+
 import org.junit.Assert;
 import org.junit.Test;
+
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Properties;
 
 public class PhysicalPlanSerializeTest {
 
@@ -82,8 +84,8 @@ public class PhysicalPlanSerializeTest {
 
   @Test
   public void showTimeSeriesPlanSerializeTest() throws IllegalPathException, IOException {
-    ShowTimeSeriesPlan timeSeriesPlan = new ShowTimeSeriesPlan(new PartialPath("root.sg.d1.s1"),
-        true, "unit", "10", 0, 0, false);
+    ShowTimeSeriesPlan timeSeriesPlan =
+        new ShowTimeSeriesPlan(new PartialPath("root.sg.d1.s1"), true, "unit", "10", 0, 0, false);
     ByteBuffer byteBuffer = serializePlan(timeSeriesPlan);
     PhysicalPlan result = Factory.create(byteBuffer);
     Assert.assertEquals("root.sg.d1.s1", ((ShowTimeSeriesPlan) result).getPath().getFullPath());
@@ -119,8 +121,8 @@ public class PhysicalPlanSerializeTest {
 
   @Test
   public void deleteTimeSeriesPlanSerializeTest() throws IllegalPathException, IOException {
-    DeleteTimeSeriesPlan deleteTimeSeriesPlan = new DeleteTimeSeriesPlan(
-        Collections.singletonList(new PartialPath("root.sg.d1.s1")));
+    DeleteTimeSeriesPlan deleteTimeSeriesPlan =
+        new DeleteTimeSeriesPlan(Collections.singletonList(new PartialPath("root.sg.d1.s1")));
 
     PhysicalPlan result = testTwoSerializeMethodAndDeserialize(deleteTimeSeriesPlan);
 
@@ -130,8 +132,8 @@ public class PhysicalPlanSerializeTest {
 
   @Test
   public void deleteStorageGroupPlanSerializeTest() throws IllegalPathException, IOException {
-    DeleteStorageGroupPlan deleteStorageGroupPlan = new DeleteStorageGroupPlan(
-        Collections.singletonList(new PartialPath("root.sg")));
+    DeleteStorageGroupPlan deleteStorageGroupPlan =
+        new DeleteStorageGroupPlan(Collections.singletonList(new PartialPath("root.sg")));
 
     PhysicalPlan result = testTwoSerializeMethodAndDeserialize(deleteStorageGroupPlan);
 
@@ -141,8 +143,8 @@ public class PhysicalPlanSerializeTest {
 
   @Test
   public void dataAuthPlanSerializeTest() throws IOException, IllegalPathException {
-    DataAuthPlan dataAuthPlan = new DataAuthPlan(
-        OperatorType.GRANT_WATERMARK_EMBEDDING, Arrays.asList("user1", "user2"));
+    DataAuthPlan dataAuthPlan =
+        new DataAuthPlan(OperatorType.GRANT_WATERMARK_EMBEDDING, Arrays.asList("user1", "user2"));
 
     PhysicalPlan result = testTwoSerializeMethodAndDeserialize(dataAuthPlan);
 
@@ -151,11 +153,16 @@ public class PhysicalPlanSerializeTest {
 
   @Test
   public void createTimeSeriesPlanSerializeTest1() throws IOException, IllegalPathException {
-    CreateTimeSeriesPlan createTimeSeriesPlan = new CreateTimeSeriesPlan(
-        new PartialPath("root.sg.d1.s1"), TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY,
-        Collections.singletonMap("prop1", "propValue1"),
-        Collections.singletonMap("tag1", "tagValue1"),
-        Collections.singletonMap("attr1", "attrValue1"), "temperature");
+    CreateTimeSeriesPlan createTimeSeriesPlan =
+        new CreateTimeSeriesPlan(
+            new PartialPath("root.sg.d1.s1"),
+            TSDataType.DOUBLE,
+            TSEncoding.RLE,
+            CompressionType.SNAPPY,
+            Collections.singletonMap("prop1", "propValue1"),
+            Collections.singletonMap("tag1", "tagValue1"),
+            Collections.singletonMap("attr1", "attrValue1"),
+            "temperature");
 
     PhysicalPlan result = testTwoSerializeMethodAndDeserialize(createTimeSeriesPlan);
 
@@ -165,9 +172,16 @@ public class PhysicalPlanSerializeTest {
 
   @Test
   public void createTimeSeriesPlanSerializeTest2() throws IOException, IllegalPathException {
-    CreateTimeSeriesPlan createTimeSeriesPlan = new CreateTimeSeriesPlan(
-        new PartialPath("root.sg.d1.s1"), TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY,
-        null, null, null, null);
+    CreateTimeSeriesPlan createTimeSeriesPlan =
+        new CreateTimeSeriesPlan(
+            new PartialPath("root.sg.d1.s1"),
+            TSDataType.DOUBLE,
+            TSEncoding.RLE,
+            CompressionType.SNAPPY,
+            null,
+            null,
+            null,
+            null);
 
     PhysicalPlan result = testTwoSerializeMethodAndDeserialize(createTimeSeriesPlan);
 
@@ -183,12 +197,18 @@ public class PhysicalPlanSerializeTest {
     plan.setDataTypes(Arrays.asList(TSDataType.DOUBLE, TSDataType.INT64));
     plan.setEncodings(Arrays.asList(TSEncoding.GORILLA, TSEncoding.GORILLA));
     plan.setCompressors(Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY));
-    plan.setProps(Arrays.asList(Collections.singletonMap("prop1", "propValue1"),
-        Collections.singletonMap("prop2", "propValue2")));
-    plan.setTags(Arrays.asList(Collections.singletonMap("tag1", "tagValue1"),
-        Collections.singletonMap("tag2", "tagValue2")));
-    plan.setAttributes(Arrays.asList(Collections.singletonMap("attr1", "attrValue1"),
-        Collections.singletonMap("attr2", "attrValue2")));
+    plan.setProps(
+        Arrays.asList(
+            Collections.singletonMap("prop1", "propValue1"),
+            Collections.singletonMap("prop2", "propValue2")));
+    plan.setTags(
+        Arrays.asList(
+            Collections.singletonMap("tag1", "tagValue1"),
+            Collections.singletonMap("tag2", "tagValue2")));
+    plan.setAttributes(
+        Arrays.asList(
+            Collections.singletonMap("attr1", "attrValue1"),
+            Collections.singletonMap("attr2", "attrValue2")));
     plan.setAlias(Arrays.asList("temperature", "speed"));
 
     PhysicalPlan result = testTwoSerializeMethodAndDeserialize(plan);
@@ -218,9 +238,14 @@ public class PhysicalPlanSerializeTest {
 
   @Test
   public void AlterTimeSeriesPlanSerializeTest() throws IOException, IllegalPathException {
-    AlterTimeSeriesPlan alterTimeSeriesPlan = new AlterTimeSeriesPlan(
-        new PartialPath("root.sg.d1.s1"), AlterType.RENAME,
-        Collections.singletonMap("root.sg.d1.s1", "root.sg.device1.temperature"), null, null, null);
+    AlterTimeSeriesPlan alterTimeSeriesPlan =
+        new AlterTimeSeriesPlan(
+            new PartialPath("root.sg.d1.s1"),
+            AlterType.RENAME,
+            Collections.singletonMap("root.sg.d1.s1", "root.sg.device1.temperature"),
+            null,
+            null,
+            null);
 
     ByteBuffer byteBuffer = serializePlan(alterTimeSeriesPlan);
     PhysicalPlan result = Factory.create(byteBuffer);
@@ -240,7 +265,8 @@ public class PhysicalPlanSerializeTest {
     ByteBuffer byteBuffer = serializePlan(loadConfigurationPlan);
     PhysicalPlan result = Factory.create(byteBuffer);
     Assert.assertEquals(OperatorType.LOAD_CONFIGURATION, result.getOperatorType());
-    Assert.assertEquals(LoadConfigurationPlanType.GLOBAL,
+    Assert.assertEquals(
+        LoadConfigurationPlanType.GLOBAL,
         ((LoadConfigurationPlan) result).getLoadConfigurationPlanType());
     Assert.assertEquals(properties[0], ((LoadConfigurationPlan) result).getIoTDBProperties());
     Assert.assertEquals(properties[1], ((LoadConfigurationPlan) result).getClusterProperties());
@@ -248,8 +274,8 @@ public class PhysicalPlanSerializeTest {
 
   @Test
   public void authorPlanSerializeTest() throws IOException, AuthException, IllegalPathException {
-    AuthorPlan authorPlan = new AuthorPlan(AuthorType.CREATE_ROLE, "root", "root", "root", "", null,
-        null);
+    AuthorPlan authorPlan =
+        new AuthorPlan(AuthorType.CREATE_ROLE, "root", "root", "root", "", null, null);
 
     PhysicalPlan result = testTwoSerializeMethodAndDeserialize(authorPlan);
 
