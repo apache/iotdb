@@ -286,21 +286,21 @@ It is somehow right. But, if you consider the performance, you may change your m
 
 * Write:
 
-We test write performance from two aspects: *batch size* and *client num*, The number of storage group is 10. There are 1000 devices and each device has 100 measurements(i.e.,, 100K time series totally).
+We test the performance of writing from two aspects: *batch size* and *client num*. The number of storage group is 10. There are 1000 devices and each device has 100 measurements(i.e.,, 100K time series total).
 
 * Read:
 
-10 clients read data concurrently. The number of storage group is 10. There are 10 devices and each device has 10 measurements(i.e.,, 100 time series totally).
+10 clients read data concurrently. The number of storage group is 10. There are 10 devices and each device has 10 measurements (i.e.,, 100 time series total).
 The data type is *double*, encoding type is *GORILLA*
 
-IoTDB is v0.11.1.
+The IoTDB version is v0.11.1.
 
 **Write performance**:
 
 * batch size:
 
 10 clients write data concurrently.
-IoTDB uses batch insertion API and the batch size is distributed from 1(1ms) to 6000(1min) (write N data points per write API call).
+IoTDB uses batch insertion API and the batch size is distributed from 1ms to 1min (write N data points per write API call).
 
 The write throughput (points/second) is:
 
@@ -343,12 +343,12 @@ We can see that IoTDB outperforms others.
 #### More details
 
 We provide a benchmarking tool, called IoTDB-benchamrk (https://github.com/thulab/iotdb-benchmark, you may have to use the dev branch to compile it),
-it supports IoTDB, InfluxDB, KairosDB, TimescaleDB, OpenTSDB. We have a [article](https://arxiv.org/abs/1901.08304) for comparing these systems using the benchmark tool.
+it supports IoTDB, InfluxDB, KairosDB, TimescaleDB, OpenTSDB. We have an [article](https://arxiv.org/abs/1901.08304) for comparing these systems using the benchmark tool.
 When we publish the article, IoTDB just entered Apache incubator, so we deleted the performance of IoTDB in that article. But after comparison, some results are presented here.
 
 All TSDB run on the same server one by one. 
 
-- For InfluxDB, we set the cache-max-memory-size  and max-series-perbase as unlimited (otherwise it will be timeout quickly)
+- For InfluxDB, we set the cache-max-memory-size and the max-series-perbase as unlimited (otherwise it will be timeout quickly).
 
 - For KairosDB, we set Cassandra's read_repair_chance as 0.1 (However it has no effect because we just have one node).
 
