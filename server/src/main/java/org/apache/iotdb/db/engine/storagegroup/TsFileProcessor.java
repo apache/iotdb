@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.iotdb.db.common.RetryCounter;
+import org.apache.iotdb.db.common.RetryCounterFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -34,12 +36,14 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.CloseFailedCallBack;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpdateEndTimeCallBack;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.runtime.FlushRunTimeException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
@@ -63,7 +67,6 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -128,6 +131,14 @@ public class TsFileProcessor {
   private List<CloseFileListener> closeFileListeners = new ArrayList<>();
   private List<FlushListener> flushListeners = new ArrayList<>();
 
+  // flush fail retry
+  private static final int FLUSH_DEFAULT_RETRY_ATTEMPTS = 3;
+
+  private static final int FLUSH_DEFAULT_RETRY_SLEEP_INTERVAL = 1000;
+
+  private RetryCounterFactory retryCounterFactory;
+  private CloseFailedCallBack closeFailedCallBack;
+
   @SuppressWarnings("squid:S107")
   TsFileProcessor(
       String storageGroupName,
@@ -147,6 +158,12 @@ public class TsFileProcessor {
     logger.info("create a new tsfile processor {}", tsfile.getAbsolutePath());
     flushListeners.add(new WALFlushListener(this));
     closeFileListeners.add(closeTsFileCallback);
+
+    this.retryCounterFactory =
+        new RetryCounterFactory(
+            new RetryCounter.RetryConfig()
+                .setMaxAttempts(FLUSH_DEFAULT_RETRY_ATTEMPTS)
+                .setSleepInterval(FLUSH_DEFAULT_RETRY_SLEEP_INTERVAL));
   }
 
   @SuppressWarnings("java:S107") // ignore number of arguments
@@ -167,6 +184,12 @@ public class TsFileProcessor {
     logger.info("reopen a tsfile processor {}", tsFileResource.getTsFile());
     flushListeners.add(new WALFlushListener(this));
     closeFileListeners.add(closeUnsealedTsFileProcessor);
+
+    this.retryCounterFactory =
+        new RetryCounterFactory(
+            new RetryCounter.RetryConfig()
+                .setMaxAttempts(FLUSH_DEFAULT_RETRY_ATTEMPTS)
+                .setSleepInterval(FLUSH_DEFAULT_RETRY_SLEEP_INTERVAL));
   }
 
   /**
@@ -490,7 +513,7 @@ public class TsFileProcessor {
     }
     synchronized (flushingMemTables) {
       try {
-        asyncClose();
+        asyncClose(null);
         logger.info("Start to wait until file {} is closed", tsFileResource);
         long startTime = System.currentTimeMillis();
         while (!flushingMemTables.isEmpty()) {
@@ -517,7 +540,8 @@ public class TsFileProcessor {
     logger.info("File {} is closed synchronously", tsFileResource.getTsFile().getAbsolutePath());
   }
 
-  void asyncClose() {
+  void asyncClose(CloseFailedCallBack closeFailedCallBack) {
+    this.closeFailedCallBack = closeFailedCallBack;
     flushQueryLock.writeLock().lock();
     if (logger.isDebugEnabled()) {
       logger.debug(
@@ -772,42 +796,22 @@ public class TsFileProcessor {
 
     // signal memtable only may appear when calling asyncClose()
     if (!memTableToFlush.isSignalMemTable()) {
-      try {
-        writer.mark();
-        MemTableFlushTask flushTask =
-            new MemTableFlushTask(memTableToFlush, writer, storageGroupName);
-        flushTask.syncFlushMemTable();
-      } catch (Exception e) {
-        if (writer == null) {
-          logger.info(
-              "{}: {} is closed during flush, abandon flush task",
-              storageGroupName,
-              tsFileResource.getTsFile().getName());
-          synchronized (flushingMemTables) {
-            flushingMemTables.notifyAll();
-          }
-        } else {
+      RetryCounter retryCounter = retryCounterFactory.create();
+      while (true) {
+        try {
+          writer.mark();
+          MemTableFlushTask flushTask =
+              new MemTableFlushTask(memTableToFlush, writer, storageGroupName);
+          flushTask.syncFlushMemTable();
+          break;
+        } catch (Exception e) {
+
           logger.error(
               "{}: {} meet error when flushing a memtable, change system mode to read-only",
               storageGroupName,
               tsFileResource.getTsFile().getName(),
               e);
-          IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
-          try {
-            logger.error(
-                "{}: {} IOTask meets error, truncate the corrupted data",
-                storageGroupName,
-                tsFileResource.getTsFile().getName(),
-                e);
-            writer.reset();
-          } catch (IOException e1) {
-            logger.error(
-                "{}: {} Truncate corrupted data meets error",
-                storageGroupName,
-                tsFileResource.getTsFile().getName(),
-                e1);
-          }
-          Thread.currentThread().interrupt();
+          retryOrThrow(retryCounter, e);
         }
       }
     }
@@ -879,13 +883,9 @@ public class TsFileProcessor {
         try {
           writer.reset();
         } catch (IOException e1) {
-          logger.error(
-              "{}: {} truncate corrupted data meets error",
-              storageGroupName,
-              tsFileResource.getTsFile().getName(),
-              e1);
+          // ignore
         }
-        logger.error(
+        logger.warn(
             "{}: {} marking or ending file meet error",
             storageGroupName,
             tsFileResource.getTsFile().getName(),
@@ -902,6 +902,36 @@ public class TsFileProcessor {
         flushingMemTables.notifyAll();
       }
     }
+  }
+
+  private void retryOrThrow(RetryCounter retryCounter, Exception e) {
+    try {
+      if (writer != null) {
+        writer.reset();
+      }
+    } catch (IOException ex) {
+      logger.warn("Failed to reset writer", e);
+    }
+
+    if (retryCounter.shouldRetry()) {
+      try {
+        logger.warn("Failed to flush, retry again");
+        retryCounter.sleepToNextRetry();
+      } catch (InterruptedException ex) {
+        logger.warn("Sleep inteerupted: ", ex);
+      }
+      return;
+    }
+    IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
+    setManagedByFlushManager(false);
+    if (this.closeFailedCallBack != null) {
+      this.closeFailedCallBack.call();
+    }
+    shouldClose = false;
+    synchronized (flushingMemTables) {
+      flushingMemTables.notifyAll();
+    }
+    throw new FlushRunTimeException(e);
   }
 
   private void updateCompressionRatio(IMemTable memTableToFlush) {

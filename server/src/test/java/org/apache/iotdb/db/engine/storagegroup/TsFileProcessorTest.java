@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -29,9 +30,11 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.writelog.manager.ReadOnlyRecoverManager;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -41,6 +44,7 @@ import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,6 +57,10 @@ import java.util.Map;
 import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 public class TsFileProcessorTest {
 
@@ -337,6 +345,164 @@ public class TsFileProcessorTest {
     }
 
     assertTrue(processor.getTsFileResource().isClosed());
+  }
+
+  @Test
+  public void testWriteAndCloseFailedAndRetry()
+      throws IOException, WriteProcessException, MetadataException {
+    logger.info("testWriteAndRestoreMetadata begin..");
+
+    RestorableTsFileIOWriter restorableTsFileIOWriterMock =
+        Mockito.spy(
+            new RestorableTsFileIOWriter(FSFactoryProducer.getFSFactory().getFile(filePath)));
+    doThrow(new RuntimeException("Insufficient device space"))
+        .when(restorableTsFileIOWriterMock)
+        .writePlanIndices();
+
+    processor =
+        new TsFileProcessor(
+            storageGroup,
+            sgInfo,
+            new TsFileResource(SystemFileFactory.INSTANCE.getFile(filePath)),
+            this::closeTsFileProcessor,
+            (tsFileProcessor) -> true,
+            true,
+            restorableTsFileIOWriterMock);
+
+    TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
+    processor.setTsFileProcessorInfo(tsFileProcessorInfo);
+    this.sgInfo.initTsFileProcessorInfo(processor);
+    tsFileProcessorInfo.addTSPMemCost(processor.getTsFileResource().calculateRamSize());
+    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo);
+    List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
+
+    processor.query(
+        deviceId, measurementId, dataType, encoding, props, context, tsfileResourcesForQuery);
+    assertTrue(tsfileResourcesForQuery.isEmpty());
+
+    for (int i = 1; i <= 100; i++) {
+      TSRecord record = new TSRecord(i, deviceId);
+      record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
+      processor.insert(new InsertRowPlan(record));
+    }
+
+    // query data in memory
+    tsfileResourcesForQuery.clear();
+    processor.query(
+        deviceId, measurementId, dataType, encoding, props, context, tsfileResourcesForQuery);
+    assertFalse(tsfileResourcesForQuery.isEmpty());
+    assertFalse(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk().isEmpty());
+    List<ReadOnlyMemChunk> memChunks = tsfileResourcesForQuery.get(0).getReadOnlyMemChunk();
+    for (ReadOnlyMemChunk chunk : memChunks) {
+      IPointReader iterator = chunk.getPointReader();
+      for (int num = 1; num <= 100; num++) {
+        iterator.hasNextTimeValuePair();
+        TimeValuePair timeValuePair = iterator.nextTimeValuePair();
+        assertEquals(num, timeValuePair.getTimestamp());
+        assertEquals(num, timeValuePair.getValue().getInt());
+      }
+    }
+
+    // close synchronously
+    processor.asyncClose(
+        new StorageGroupProcessor.CloseFailedCallBack() {
+
+          @Override
+          public void call() {
+            ReadOnlyRecoverManager.getInstance().setClosingFailed(true);
+          }
+        });
+    try {
+      Thread.sleep(5000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+
+    verify(restorableTsFileIOWriterMock, times(3)).writePlanIndices();
+    restorableTsFileIOWriterMock.close();
+  }
+
+  @Test
+  public void testWriteAndCloseFailedAndRetryAndSuccess()
+      throws IOException, WriteProcessException, MetadataException {
+    logger.info("testWriteAndRestoreMetadata begin..");
+
+    RestorableTsFileIOWriter restorableTsFileIOWriterMock =
+        Mockito.spy(
+            new RestorableTsFileIOWriter(FSFactoryProducer.getFSFactory().getFile(filePath)));
+    final int[] retryCount = {0};
+    doAnswer(
+            invocation -> {
+              if (retryCount[0] < 2) {
+                retryCount[0]++;
+                return new RuntimeException("Insufficient momory space");
+              }
+              return null;
+            })
+        .when(restorableTsFileIOWriterMock)
+        .writePlanIndices();
+
+    processor =
+        new TsFileProcessor(
+            storageGroup,
+            sgInfo,
+            new TsFileResource(SystemFileFactory.INSTANCE.getFile(filePath)),
+            this::closeTsFileProcessor,
+            (tsFileProcessor) -> true,
+            true,
+            restorableTsFileIOWriterMock);
+
+    TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
+    processor.setTsFileProcessorInfo(tsFileProcessorInfo);
+    this.sgInfo.initTsFileProcessorInfo(processor);
+    tsFileProcessorInfo.addTSPMemCost(processor.getTsFileResource().calculateRamSize());
+    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo);
+    List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
+
+    processor.query(
+        deviceId, measurementId, dataType, encoding, props, context, tsfileResourcesForQuery);
+    assertTrue(tsfileResourcesForQuery.isEmpty());
+
+    for (int i = 1; i <= 100; i++) {
+      TSRecord record = new TSRecord(i, deviceId);
+      record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
+      processor.insert(new InsertRowPlan(record));
+    }
+
+    // query data in memory
+    tsfileResourcesForQuery.clear();
+    processor.query(
+        deviceId, measurementId, dataType, encoding, props, context, tsfileResourcesForQuery);
+    assertFalse(tsfileResourcesForQuery.isEmpty());
+    assertFalse(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk().isEmpty());
+    List<ReadOnlyMemChunk> memChunks = tsfileResourcesForQuery.get(0).getReadOnlyMemChunk();
+    for (ReadOnlyMemChunk chunk : memChunks) {
+      IPointReader iterator = chunk.getPointReader();
+      for (int num = 1; num <= 100; num++) {
+        iterator.hasNextTimeValuePair();
+        TimeValuePair timeValuePair = iterator.nextTimeValuePair();
+        assertEquals(num, timeValuePair.getTimestamp());
+        assertEquals(num, timeValuePair.getValue().getInt());
+      }
+    }
+
+    // close synchronously
+    processor.asyncClose(
+        new StorageGroupProcessor.CloseFailedCallBack() {
+
+          @Override
+          public void call() {
+            ReadOnlyRecoverManager.getInstance().setClosingFailed(true);
+          }
+        });
+    try {
+      Thread.sleep(1000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+
+    assertEquals(false, IoTDBDescriptor.getInstance().getConfig().isReadOnly());
+    restorableTsFileIOWriterMock.close();
   }
 
   private void closeTsFileProcessor(TsFileProcessor unsealedTsFileProcessor)

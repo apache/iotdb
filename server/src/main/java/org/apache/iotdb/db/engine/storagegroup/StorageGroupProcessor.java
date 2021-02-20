@@ -65,6 +65,7 @@ import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.utils.MmapUtil;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.UpgradeUtils;
+import org.apache.iotdb.db.writelog.manager.ReadOnlyRecoverManager;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -1280,7 +1281,19 @@ public class StorageGroupProcessor {
     if (sequence) {
       closingSequenceTsFileProcessor.add(tsFileProcessor);
       updateEndTimeMap(tsFileProcessor);
-      tsFileProcessor.asyncClose();
+      tsFileProcessor.asyncClose(
+          new CloseFailedCallBack() {
+
+            @Override
+            public void call() {
+              closingSequenceTsFileProcessor.remove(tsFileProcessor);
+              workSequenceTsFileProcessors.put(tsFileProcessor.getTimeRangeId(), tsFileProcessor);
+              ReadOnlyRecoverManager.getInstance().setClosingFailed(true);
+              synchronized (closeStorageGroupCondition) {
+                closeStorageGroupCondition.notifyAll();
+              }
+            }
+          });
 
       workSequenceTsFileProcessors.remove(tsFileProcessor.getTimeRangeId());
       // if unsequence files don't contain this time range id, we should remove it's version
@@ -1293,7 +1306,19 @@ public class StorageGroupProcessor {
           logicalStorageGroupName + "-" + virtualStorageGroupId);
     } else {
       closingUnSequenceTsFileProcessor.add(tsFileProcessor);
-      tsFileProcessor.asyncClose();
+      tsFileProcessor.asyncClose(
+          new CloseFailedCallBack() {
+
+            @Override
+            public void call() {
+              closingUnSequenceTsFileProcessor.remove(tsFileProcessor);
+              workUnsequenceTsFileProcessors.put(tsFileProcessor.getTimeRangeId(), tsFileProcessor);
+              ReadOnlyRecoverManager.getInstance().setClosingFailed(true);
+              synchronized (closeStorageGroupCondition) {
+                closeStorageGroupCondition.notifyAll();
+              }
+            }
+          });
 
       workUnsequenceTsFileProcessors.remove(tsFileProcessor.getTimeRangeId());
       // if sequence files don't contain this time range id, we should remove it's version
@@ -1316,7 +1341,7 @@ public class StorageGroupProcessor {
       File storageGroupFolder =
           SystemFileFactory.INSTANCE.getFile(systemDir, virtualStorageGroupId);
       if (storageGroupFolder.exists()) {
-        org.apache.iotdb.db.utils.FileUtils.deleteDirectory(storageGroupFolder);
+        FileUtils.deleteDirectory(storageGroupFolder);
       }
     } catch (IOException e) {
       logger.error(
@@ -1396,7 +1421,7 @@ public class StorageGroupProcessor {
               tsfilePath, logicalStorageGroupName + File.separator + virtualStorageGroupId);
       if (storageGroupFolder.exists()) {
         try {
-          org.apache.iotdb.db.utils.FileUtils.deleteDirectory(storageGroupFolder);
+          FileUtils.deleteDirectory(storageGroupFolder);
         } catch (IOException e) {
           logger.error("Delete TsFiles failed", e);
         }
@@ -2947,5 +2972,9 @@ public class StorageGroupProcessor {
   public interface TimePartitionFilter {
 
     boolean satisfy(String storageGroupName, long timePartitionId);
+  }
+
+  public interface CloseFailedCallBack {
+    void call();
   }
 }
