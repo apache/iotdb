@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.log;
 
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;
+
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,14 +38,10 @@ public class CommitLogTask implements Runnable {
     this.term = term;
   }
 
-  /**
-   * listener field
-   */
+  /** listener field */
   private AsyncMethodCallback<Void> callback;
 
-  /**
-   * @param callback the event listener
-   */
+  /** @param callback the event listener */
   public void registerCallback(AsyncMethodCallback<Void> callback) {
     this.callback = callback;
   }

@@ -19,12 +19,13 @@
 package org.apache.iotdb.tsfile.utils;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 
 /**
- * A subclass extending <code>ByteArrayOutputStream</code>. It's used to return
- * the byte array directly. Note that the size of byte array is large than
- * actual size of valid contents, thus it's used cooperating with
- * <code>size()</code> or <code>capacity = size</code>
+ * A subclass extending <code>ByteArrayOutputStream</code>. It's used to return the byte array
+ * directly. Note that the size of byte array is large than actual size of valid contents, thus it's
+ * used cooperating with <code>size()</code> or <code>capacity = size</code>
  */
 public class PublicBAOS extends ByteArrayOutputStream {
 
@@ -46,4 +47,43 @@ public class PublicBAOS extends ByteArrayOutputStream {
     return this.buf;
   }
 
+  /**
+   * It's not a thread-safe method. Override the super class's implementation. Remove the
+   * synchronized key word, to save the synchronization overhead.
+   *
+   * <p>Writes the complete contents of this byte array output stream to the specified output stream
+   * argument, as if by calling the output stream's write method using <code>
+   * out.write(buf, 0, count)</code>.
+   *
+   * @param out the output stream to which to write the data.
+   * @exception IOException if an I/O error occurs.
+   */
+  @Override
+  @SuppressWarnings("squid:S3551")
+  public void writeTo(OutputStream out) throws IOException {
+    out.write(buf, 0, count);
+  }
+
+  /**
+   * It's not a thread-safe method. Override the super class's implementation. Remove the
+   * synchronized key word, to save the synchronization overhead.
+   *
+   * <p>Resets the <code>count</code> field of this byte array output stream to zero, so that all
+   * currently accumulated output in the output stream is discarded. The output stream can be used
+   * again, reusing the already allocated buffer space.
+   */
+  @Override
+  @SuppressWarnings("squid:S3551")
+  public void reset() {
+    count = 0;
+  }
+
+  /**
+   * The synchronized keyword in this function is intentionally removed. For details, see
+   * https://cwiki.apache.org/confluence/pages/viewpage.action?pageId=173085039
+   */
+  @Override
+  public int size() {
+    return count;
+  }
 }

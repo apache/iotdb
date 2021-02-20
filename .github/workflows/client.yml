@@ -1,0 +1,100 @@
+# This workflow will build a Java project with Maven
+# For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
+
+# CPP compiling is too slow, so let's do it in parallel with testing other modules.
+# As there is no Java client, we just use one JDK.
+name:  Clients_except_Java CI with Maven
+
+on:
+  push:
+    branches:
+      - master
+      - 'rel/*'
+    paths:
+      - 'client-*/**'
+      - 'compile-tools/**'
+      - 'thrift/**'
+      - 'service-rpc/**'
+  pull_request:
+    branches:
+      - master
+      - 'rel/*'
+    paths:
+      - 'client-*/**'
+      - 'compile-tools/**'
+      - 'thrift/**'
+      - 'service-rpc/**'
+  # allow manually run the action:
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os}}
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v1
+        with:
+          java-version: 11
+      - name: Install CPP Dependencies (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: sudo apt-get install libboost-all-dev
+      - name: Install CPP Dependencies (Mac)
+        if: matrix.os == 'macos-latest'
+        shell: bash
+        run: |
+          brew install boost
+          brew install bison
+          echo 'export PATH=/usr/local/opt/bison/bin:$PATH' >> ~/.bash_profile
+          source ~/.bash_profile && export LDFLAGS="-L/usr/local/opt/bison/lib"
+      - name: Cache Maven packages
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2
+          key: client-${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
+      - name: Test with Maven
+        run:  mvn -B clean integration-test -Pclient-cpp -Dtsfile.test.skip=true -Djdbc.test.skip=true -Diotdb.test.skip=true -Dtest.port.closed=true -pl server,client-cpp,example/client-cpp-example -am
+
+  build-win:
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        os: [windows-latest]
+    runs-on: ${{ matrix.os}}
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v1
+        with:
+          java-version: 11
+      - name: Cache Maven packages
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2
+          key: client-${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
+      - name: Install Boost and Win_Flex_Bison
+        run: mkdir D:\a\cpp ; `
+          Invoke-WebRequest https://github.com/lexxmark/winflexbison/releases/download/v2.5.24/win_flex_bison-2.5.24.zip -OutFile D:\a\cpp\win_flex_bison.zip ; `
+          [Environment]::SetEnvironmentVariable("Path", $env:Path + ";D:\a\cpp", "User") ; `
+          Invoke-WebRequest https://dl.bintray.com/boostorg/release/1.72.0/source/boost_1_72_0.zip -OutFile D:\a\cpp\boost_1_72_0.zip ; `
+          Expand-Archive D:\a\cpp\boost_1_72_0.zip -DestinationPath D:\a\cpp ; `
+          cd D:\a\cpp\boost_1_72_0 ; `
+          .\bootstrap.bat ; `
+          .\b2.exe
+      - name: Add Flex and Bison Path
+        shell: bash
+        run: cd /d/a/cpp && unzip win_flex_bison.zip && mv win_flex.exe flex.exe && mv win_bison.exe bison.exe && echo 'export PATH=/d/a/cpp:$PATH' >> ~/.bash_profile && source ~/.bash_profile
+      - name: Test with Maven
+        shell: bash
+        run:  source ~/.bash_profile && mvn -B clean integration-test -Pclient-cpp -Dboost.include.dir=/d/a/cpp/boost_1_72_0 -Dboost.library.dir=/d/a/cpp/boost_1_72_0/stage/lib -Dtsfile.test.skip=true -Djdbc.test.skip=true -Diotdb.test.skip=true -Dtest.port.closed=true -Denforcer.skip=true -pl server,client-cpp,example/client-cpp-example -am

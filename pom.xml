@@ -135,15 +135,23 @@
         <jetty.version>9.4.24.v20191120</jetty.version>
         <metrics.version>3.2.6</metrics.version>
         <javax.xml.bind.version>2.4.0-b180725.0427</javax.xml.bind.version>
-        <felix.version>4.2.1</felix.version>
+        <felix.version>5.1.1</felix.version>
         <!-- URL of the ASF SonarQube server -->
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
         <sonar.organization>apache</sonar.organization>
         <!-- Exclude all generated code -->
         <sonar.exclusions>**/generated-sources</sonar.exclusions>
+        <sonar.java.checkstyle.reportPaths>target/checkstyle-report.xml</sonar.java.checkstyle.reportPaths>
+        <sonar.coverage.jacoco.xmlReportPaths>target/jacoco-merged-reports/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+        <sonar.junit.reportPaths>target/surefire-reports,target/failsafe-reports</sonar.junit.reportPaths>
         <!-- By default, the argLine is empty-->
         <gson.version>2.8.6</gson.version>
         <argLine/>
+        <!-- whether enable compiling the cpp client-->
+        <client-cpp>false</client-cpp>
+        <!-- disable enforcer by default-->
+        <enforcer.skip>true</enforcer.skip>
+        <spotless.version>2.4.2</spotless.version>
     </properties>
     <!--
         if we claim dependencies in dependencyManagement, then we do not claim
@@ -361,7 +369,7 @@
             <dependency>
                 <groupId>org.glassfish.jaxb</groupId>
                 <artifactId>jaxb-runtime</artifactId>
-                <version>2.4.0-b180725.0644</version>
+                <version>3.0.0</version>
                 <exclusions>
                     <exclusion>
                         <groupId>jakarta.activation</groupId>
@@ -551,6 +559,7 @@
                             <exclude>**/.git/**</exclude>
                             <exclude>**/.mvn/**</exclude>
                             <exclude>**/.gitignore</exclude>
+                            <exclude>**/.git-blame-ignore-revs</exclude>
                             <!-- Maven related files -->
                             <exclude>**/target/**</exclude>
                             <!-- Eclipse related files -->
@@ -592,13 +601,70 @@
                     </configuration>
                 </plugin>
                 <plugin>
-                    <groupId>org.eluder.coveralls</groupId>
-                    <artifactId>coveralls-maven-plugin</artifactId>
-                    <version>4.3.0</version>
+                    <groupId>com.diffplug.spotless</groupId>
+                    <artifactId>spotless-maven-plugin</artifactId>
+                    <version>${spotless.version}</version>
+                    <configuration>
+                        <java>
+                            <googleJavaFormat>
+                                <version>1.7</version>
+                                <style>GOOGLE</style>
+                            </googleJavaFormat>
+                            <importOrder>
+                                <order>org.apache.iotdb,,javax,java,\#</order>
+                            </importOrder>
+                            <removeUnusedImports/>
+                        </java>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>spotless-check</id>
+                            <phase>validate</phase>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                        </execution>
+                    </executions>
                 </plugin>
             </plugins>
         </pluginManagement>
         <plugins>
+            <plugin>
+                <groupId>org.eluder.coveralls</groupId>
+                <artifactId>coveralls-maven-plugin</artifactId>
+                <version>4.3.0</version>
+                <configuration>
+                    <jacocoReports>
+                        <jacocoReport>code-coverage/target/jacoco-merged-reports/jacoco.xml</jacocoReport>
+                    </jacocoReports>
+                    <sourceEncoding>UTF-8</sourceEncoding>
+                    <sourceDirectories>
+                        <!-- put all source folders not in src/main/java here-->
+                        <sourceDirectory>antlr/target/generated-sources/antlr4</sourceDirectory>
+                        <sourceDirectory>thrift/target/generated-sources/thrift</sourceDirectory>
+                        <sourceDirectory>spark-iotdb-connector/src/main/scala</sourceDirectory>
+                        <sourceDirectory>spark-tsfile/src/main/scala</sourceDirectory>
+                    </sourceDirectories>
+                </configuration>
+                <!-- JDK11 removes the following libs. We have to add them-->
+                <dependencies>
+                    <dependency>
+                        <groupId>javax.xml.bind</groupId>
+                        <artifactId>jaxb-api</artifactId>
+                        <version>2.3.0</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>com.sun.xml.bind</groupId>
+                        <artifactId>jaxb-core</artifactId>
+                        <version>2.3.0</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>com.sun.xml.bind</groupId>
+                        <artifactId>jaxb-impl</artifactId>
+                        <version>2.3.0</version>
+                    </dependency>
+                </dependencies>
+            </plugin>
             <!--
                       Strange things usually happen if you run with a too low Java version.
                       This plugin not only checks the minimum java version of 1.8, but also
@@ -729,6 +795,7 @@
                             <goal>check</goal>
                         </goals>
                         <configuration>
+                            <outputFile>target/checkstyle-report.xml</outputFile>
                             <configLocation>checkstyle.xml</configLocation>
                         </configuration>
                     </execution>
@@ -847,6 +914,10 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
             </plugin>
         </plugins>
     </build>
@@ -1113,9 +1184,31 @@
                 </plugins>
             </build>
         </profile>
+        <!-- enable site-->
+        <!-- use `mvn package -P site -pl site` to compile the site module only -->
+        <profile>
+            <id>site</id>
+            <modules>
+                <module>site</module>
+            </modules>
+        </profile>
+        <profile>
+            <id>client-cpp</id>
+            <!-- we set client-cpp as true to enable the client-cpp-example-->
+            <properties>
+                <client-cpp>true</client-cpp>
+            </properties>
+            <modules>
+                <module>compile-tools</module>
+                <module>client-cpp</module>
+            </modules>
+        </profile>
         <!-- code coverage for ut and it, and then merge them together.-->
         <profile>
             <id>code-coverage</id>
+            <modules>
+                <module>code-coverage</module>
+            </modules>
             <build>
                 <plugins>
                     <!-- Jacoco is a code coverage analysis plugin when tests run.
@@ -1161,7 +1254,7 @@
                                     <goal>prepare-agent</goal>
                                 </goals>
                                 <configuration>
-                                    <destFile>${project.build.directory}/jacoco-unit-tests.exec</destFile>
+                                    <destFile>${project.build.directory}/${project.build.finalName}-jacoco-unit-tests.exec</destFile>
                                     <propertyName>surefire.jacoco.args</propertyName>
                                 </configuration>
                             </execution>
@@ -1174,7 +1267,7 @@
                                     <goal>check</goal>
                                 </goals>
                                 <configuration>
-                                    <dataFile>${project.build.directory}/jacoco-unit-tests.exec</dataFile>
+                                    <dataFile>${project.build.directory}/${project.build.finalName}-jacoco-unit-tests.exec</dataFile>
                                     <outputDirectory>${project.build.directory}/jacoco-unit-reports</outputDirectory>
                                 </configuration>
                             </execution>
@@ -1186,7 +1279,7 @@
                                     <goal>prepare-agent</goal>
                                 </goals>
                                 <configuration>
-                                    <destFile>${project.build.directory}/jacoco-integration-tests.exec</destFile>
+                                    <destFile>${project.build.directory}/${project.build.finalName}-jacoco-integration-tests.exec</destFile>
                                     <propertyName>failsafe.jacoco.args</propertyName>
                                 </configuration>
                             </execution>
@@ -1198,7 +1291,7 @@
                                     <goal>check</goal>
                                 </goals>
                                 <configuration>
-                                    <dataFile>${project.build.directory}/jacoco-integration-tests.exec</dataFile>
+                                    <dataFile>${project.build.directory}/${project.build.finalName}-jacoco-integration-tests.exec</dataFile>
                                     <outputDirectory>${project.build.directory}/jacoco-integration-reports</outputDirectory>
                                 </configuration>
                             </execution>
@@ -1217,7 +1310,7 @@
                                             </includes>
                                         </fileSet>
                                     </fileSets>
-                                    <destFile>${project.build.directory}/merged.exec</destFile>
+                                    <destFile>${project.build.directory}/${project.build.finalName}-merged.exec</destFile>
                                 </configuration>
                             </execution>
                             <execution>
@@ -1228,7 +1321,8 @@
                                     <goal>check</goal>
                                 </goals>
                                 <configuration>
-                                    <dataFile>${project.build.directory}/merged.exec</dataFile>
+                                    <dataFile>${project.build.directory}/${project.build.finalName}-merged.exec</dataFile>
+                                    <outputDirectory>${project.build.directory}/jacoco-merged-reports</outputDirectory>
                                 </configuration>
                             </execution>
                         </executions>
@@ -1262,23 +1356,11 @@
         <!-- upload code coverage report to coveralls.io-->
         <!-- to enable coveralls locally, you need to get the repoToken from https://coveralls.io/github/apache/iotdb.
              use `mvn post-integration-test -Pcode-coverage -DrepoToken=TOKEN`-->
-        <!-- enable site-->
-        <!-- use `mvn package -P site -pl site` to compile the site module only -->
         <profile>
-            <id>site</id>
-            <modules>
-                <module>site</module>
-            </modules>
-        </profile>
-        <profile>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
-            <id>client-cpp</id>
-            <modules>
-                <module>compile-tools</module>
-                <module>client-cpp</module>
-            </modules>
+            <id>enforce</id>
+            <properties>
+                <enforcer.skip>false</enforcer.skip>
+            </properties>
         </profile>
     </profiles>
 </project>

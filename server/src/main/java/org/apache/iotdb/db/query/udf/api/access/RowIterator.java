@@ -32,8 +32,8 @@ public interface RowIterator {
 
   /**
    * Returns the next row in the iteration.
-   * <p>
-   * Note that the Row instance returned by this method each time is the same instance. In other
+   *
+   * <p>Note that the Row instance returned by this method each time is the same instance. In other
    * words, calling {@code next()} will only change the member variables inside the Row instance,
    * but will not generate a new Row instance.
    *
@@ -42,8 +42,6 @@ public interface RowIterator {
    */
   Row next() throws IOException;
 
-  /**
-   * Resets the iteration.
-   */
+  /** Resets the iteration. */
   void reset();
 }

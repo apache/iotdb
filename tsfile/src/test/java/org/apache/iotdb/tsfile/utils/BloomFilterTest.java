@@ -18,11 +18,9 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
-import static org.junit.Assert.assertTrue;
-
 import org.junit.Test;
 
-import org.apache.iotdb.tsfile.utils.BloomFilter;
+import static org.junit.Assert.assertTrue;
 
 public class BloomFilterTest {
 
@@ -58,8 +56,9 @@ public class BloomFilterTest {
     filter.add(value2);
     filter.add(value3);
 
-    BloomFilter filter1 = BloomFilter.buildBloomFilter(filter.serialize(), filter.getSize(),
-        filter.getHashFunctionSize());
+    BloomFilter filter1 =
+        BloomFilter.buildBloomFilter(
+            filter.serialize(), filter.getSize(), filter.getHashFunctionSize());
     assertTrue(filter1.contains(value1));
     assertTrue(filter1.contains(value2));
     assertTrue(filter1.contains(value3));

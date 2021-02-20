@@ -49,6 +49,7 @@
                     <plugin>
                         <groupId>org.codehaus.mojo</groupId>
                         <artifactId>exec-maven-plugin</artifactId>
+                        <version>1.6.0</version>
                         <executions>
                             <execution>
                                 <id>make-cmake-executable</id>
@@ -84,6 +85,7 @@
                     <plugin>
                         <groupId>org.codehaus.mojo</groupId>
                         <artifactId>exec-maven-plugin</artifactId>
+                        <version>1.6.0</version>
                         <executions>
                             <execution>
                                 <id>make-cmake-executable</id>
@@ -225,36 +227,10 @@
                             <goal>wget</goal>
                         </goals>
                         <configuration>
-                            <url>http://www.apache.org/dyn/closer.lua?action=download&amp;filename=/thrift/${thrift.version}/thrift-${thrift.version}.tar.gz</url>
+                            <url>https://archive.apache.org/dist/thrift/${thrift.version}/thrift-${thrift.version}.zip</url>
                             <unpack>true</unpack>
                             <outputDirectory>${project.build.directory}</outputDirectory>
-                            <overwrite>true</overwrite>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-dependency-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>unpack-boost</id>
-                        <phase>generate-sources</phase>
-                        <goals>
-                            <goal>unpack</goal>
-                        </goals>
-                        <configuration>
-                            <artifactItems>
-                                <artifactItem>
-                                    <groupId>org.apache.iotdb</groupId>
-                                    <artifactId>client-cpp-tools-boost</artifactId>
-                                    <version>${project.version}</version>
-                                    <type>zip</type>
-                                    <classifier>lib-${os.classifier}</classifier>
-                                    <overWrite>true</overWrite>
-                                </artifactItem>
-                            </artifactItems>
-                            <outputDirectory>${project.build.directory}/boost</outputDirectory>
+                            <overwrite>false</overwrite>
                         </configuration>
                     </execution>
                 </executions>
@@ -325,13 +301,16 @@
                                 <option>-DBUILD_JAVA=OFF</option>
                                 <option>-DBUILD_PYTHON=${thrift.with.python}</option>
                                 <option>-DBUILD_HASKELL=OFF</option>
-                                <!-- Tell CMake where our boost includes and libs are located -->
-                                <option>-DBOOST_INCLUDEDIR=${project.build.directory}/boost/include</option>
-                                <option>-DBOOST_LIBRARYDIR=${project.build.directory}/boost/lib</option>
                                 <option>-DWITH_SHARED_LIB=OFF</option>
+                                <!-- Generate libthrift.a to compile IoTDB Session -->
                                 <option>-DWITH_STATIC_LIB=ON</option>
                                 <option>-DCMAKE_POSITION_INDEPENDENT_CODE=ON</option>
+                                <!-- Specify openssl include path for Mac OS -->
                                 <option>${openssl.include.dir}</option>
+                                <!-- Specify new version Bison path for Mac OS -->
+                                <option>${bison.executable.dir}</option>
+                                <option>-DBOOST_INCLUDEDIR=${boost.include.dir}</option>
+                                <option>-DBOOST_LIBRARYDIR=${boost.library.dir}</option>
                             </options>
                         </configuration>
                     </execution>
@@ -382,6 +361,7 @@
                     </execution>
                 </executions>
             </plugin>
+            <!-- Copy the config.h file into thrift include directory -->
             <plugin>
                 <groupId>com.coderplus.maven.plugins</groupId>
                 <artifactId>copy-rename-maven-plugin</artifactId>
@@ -406,15 +386,4 @@
             </plugin>
         </plugins>
     </build>
-    <dependencies>
-        <!-- Make sure Boost is built first -->
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>client-cpp-tools-boost</artifactId>
-            <version>${project.version}</version>
-            <type>zip</type>
-            <classifier>lib-${os.classifier}</classifier>
-            <scope>provided</scope>
-        </dependency>
-    </dependencies>
 </project>

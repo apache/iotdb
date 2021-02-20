@@ -17,14 +17,8 @@
  * under the License.
  */
 
-
 package org.apache.iotdb.cluster.query.reader;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
@@ -70,9 +64,16 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
+
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
 
 @SuppressWarnings("java:S107")
 public class ClusterReaderFactory {
@@ -88,8 +89,12 @@ public class ClusterReaderFactory {
    * Create an IReaderByTimestamp that can read the data of "path" by timestamp in the whole
    * cluster. This will query every group and merge the result from them.
    */
-  public IReaderByTimestamp getReaderByTimestamp(PartialPath path,
-      Set<String> deviceMeasurements, TSDataType dataType, QueryContext context, boolean ascending)
+  public IReaderByTimestamp getReaderByTimestamp(
+      PartialPath path,
+      Set<String> deviceMeasurements,
+      TSDataType dataType,
+      QueryContext context,
+      boolean ascending)
       throws StorageEngineException, QueryProcessException {
     // make sure the partition table is new
     try {
@@ -105,13 +110,17 @@ public class ClusterReaderFactory {
       logger.info(e.getMessage());
       partitionGroups = Collections.emptyList();
     }
-    logger.debug("{}: Sending query of {} to {} groups", metaGroupMember.getName(), path,
+    logger.debug(
+        "{}: Sending query of {} to {} groups",
+        metaGroupMember.getName(),
+        path,
         partitionGroups.size());
     List<IReaderByTimestamp> readers = new ArrayList<>(partitionGroups.size());
     for (PartitionGroup partitionGroup : partitionGroups) {
       // query each group to get a reader in that group
-      readers.add(getSeriesReaderByTime(partitionGroup, path, deviceMeasurements, context,
-          dataType, ascending));
+      readers.add(
+          getSeriesReaderByTime(
+              partitionGroup, path, deviceMeasurements, context, dataType, ascending));
     }
     // merge the readers
     return new MergedReaderByTime(readers);
@@ -122,23 +131,30 @@ public class ClusterReaderFactory {
    * local node is a member of that group, query locally. Otherwise create a remote reader pointing
    * to one node in that group.
    */
-  private IReaderByTimestamp getSeriesReaderByTime(PartitionGroup partitionGroup, PartialPath path,
-      Set<String> deviceMeasurements, QueryContext context, TSDataType dataType, boolean ascending)
+  private IReaderByTimestamp getSeriesReaderByTime(
+      PartitionGroup partitionGroup,
+      PartialPath path,
+      Set<String> deviceMeasurements,
+      QueryContext context,
+      TSDataType dataType,
+      boolean ascending)
       throws StorageEngineException, QueryProcessException {
     if (partitionGroup.contains(metaGroupMember.getThisNode())) {
       // the target storage group contains this node, perform a local query
       DataGroupMember dataGroupMember =
           metaGroupMember.getLocalDataMember(partitionGroup.getHeader());
       if (logger.isDebugEnabled()) {
-        logger.debug("{}: creating a local reader for {}#{}", metaGroupMember.getName(),
+        logger.debug(
+            "{}: creating a local reader for {}#{}",
+            metaGroupMember.getName(),
             path.getFullPath(),
             context.getQueryId());
       }
-      return getReaderByTimestamp(path, deviceMeasurements, dataType, context, dataGroupMember,
-          ascending);
+      return getReaderByTimestamp(
+          path, deviceMeasurements, dataType, context, dataGroupMember, ascending);
     } else {
-      return getRemoteReaderByTimestamp(path, deviceMeasurements, dataType, partitionGroup,
-          context, ascending);
+      return getRemoteReaderByTimestamp(
+          path, deviceMeasurements, dataType, partitionGroup, context, ascending);
     }
   }
 
@@ -148,16 +164,27 @@ public class ClusterReaderFactory {
    * that reader's id to build a remote reader.
    */
   private IReaderByTimestamp getRemoteReaderByTimestamp(
-      Path path, Set<String> deviceMeasurements, TSDataType dataType,
+      Path path,
+      Set<String> deviceMeasurements,
+      TSDataType dataType,
       PartitionGroup partitionGroup,
-      QueryContext context, boolean ascending) throws StorageEngineException {
-    SingleSeriesQueryRequest request = constructSingleQueryRequest(null,
-        null, dataType, path, deviceMeasurements, partitionGroup, context, ascending);
+      QueryContext context,
+      boolean ascending)
+      throws StorageEngineException {
+    SingleSeriesQueryRequest request =
+        constructSingleQueryRequest(
+            null, null, dataType, path, deviceMeasurements, partitionGroup, context, ascending);
 
     // reorder the nodes by their communication delays
     List<Node> reorderedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
-    DataSourceInfo dataSourceInfo = new DataSourceInfo(partitionGroup, dataType, request,
-        (RemoteQueryContext) context, metaGroupMember, reorderedNodes);
+    DataSourceInfo dataSourceInfo =
+        new DataSourceInfo(
+            partitionGroup,
+            dataType,
+            request,
+            (RemoteQueryContext) context,
+            metaGroupMember,
+            reorderedNodes);
 
     // try building a reader from one of the nodes
     boolean hasClient = dataSourceInfo.hasNextDataClient(true, Long.MIN_VALUE);
@@ -177,12 +204,17 @@ public class ClusterReaderFactory {
    * each group a series reader will be created, and finally all such readers will be merged into
    * one.
    *
-   * @param timeFilter  nullable, when null, all data groups will be queried
+   * @param timeFilter nullable, when null, all data groups will be queried
    * @param valueFilter nullable
    */
-  public ManagedSeriesReader getSeriesReader(PartialPath path,
-      Set<String> deviceMeasurements, TSDataType dataType,
-      Filter timeFilter, Filter valueFilter, QueryContext context, boolean ascending)
+  public ManagedSeriesReader getSeriesReader(
+      PartialPath path,
+      Set<String> deviceMeasurements,
+      TSDataType dataType,
+      Filter timeFilter,
+      Filter valueFilter,
+      QueryContext context,
+      boolean ascending)
       throws StorageEngineException, EmptyIntervalException {
     // make sure the partition table is new
     try {
@@ -192,14 +224,25 @@ public class ClusterReaderFactory {
     }
     // find the groups that should be queried using the timeFilter
     List<PartitionGroup> partitionGroups = metaGroupMember.routeFilter(timeFilter, path);
-    logger.debug("{}: Sending data query of {} to {} groups", metaGroupMember.getName(), path,
+    logger.debug(
+        "{}: Sending data query of {} to {} groups",
+        metaGroupMember.getName(),
+        path,
         partitionGroups.size());
     ManagedMergeReader mergeReader = new ManagedMergeReader(dataType);
     try {
       // build a reader for each group and merge them
       for (PartitionGroup partitionGroup : partitionGroups) {
-        IPointReader seriesReader = getSeriesReader(partitionGroup, path,
-            deviceMeasurements, timeFilter, valueFilter, context, dataType, ascending);
+        IPointReader seriesReader =
+            getSeriesReader(
+                partitionGroup,
+                path,
+                deviceMeasurements,
+                timeFilter,
+                valueFilter,
+                context,
+                dataType,
+                ascending);
         mergeReader.addReader(seriesReader, 0);
       }
     } catch (IOException | QueryProcessException e) {
@@ -213,34 +256,57 @@ public class ClusterReaderFactory {
    * "partitionGroup" contains the local node, a local reader will be returned. Otherwise a remote
    * reader will be returned.
    *
-   * @param timeFilter  nullable
+   * @param timeFilter nullable
    * @param valueFilter nullable
    */
-  private IPointReader getSeriesReader(PartitionGroup partitionGroup, PartialPath path,
-      Set<String> deviceMeasurements, Filter timeFilter, Filter valueFilter,
-      QueryContext context, TSDataType dataType, boolean ascending)
-      throws IOException,
-      StorageEngineException, QueryProcessException {
+  private IPointReader getSeriesReader(
+      PartitionGroup partitionGroup,
+      PartialPath path,
+      Set<String> deviceMeasurements,
+      Filter timeFilter,
+      Filter valueFilter,
+      QueryContext context,
+      TSDataType dataType,
+      boolean ascending)
+      throws IOException, StorageEngineException, QueryProcessException {
     if (partitionGroup.contains(metaGroupMember.getThisNode())) {
       // the target storage group contains this node, perform a local query
       DataGroupMember dataGroupMember =
-          metaGroupMember.getLocalDataMember(partitionGroup.getHeader(),
-              String.format("Query: %s, time filter: %s, queryId: %d", path, timeFilter,
-                  context.getQueryId()));
-      IPointReader seriesPointReader = getSeriesPointReader(path, deviceMeasurements, dataType,
-          timeFilter, valueFilter,
-          context, dataGroupMember, ascending);
+          metaGroupMember.getLocalDataMember(
+              partitionGroup.getHeader(),
+              String.format(
+                  "Query: %s, time filter: %s, queryId: %d",
+                  path, timeFilter, context.getQueryId()));
+      IPointReader seriesPointReader =
+          getSeriesPointReader(
+              path,
+              deviceMeasurements,
+              dataType,
+              timeFilter,
+              valueFilter,
+              context,
+              dataGroupMember,
+              ascending);
       if (logger.isDebugEnabled()) {
-        logger.debug("{}: creating a local reader for {}#{} of {}, empty: {}",
+        logger.debug(
+            "{}: creating a local reader for {}#{} of {}, empty: {}",
             metaGroupMember.getName(),
             path.getFullPath(),
-            context.getQueryId(), partitionGroup.getHeader(),
+            context.getQueryId(),
+            partitionGroup.getHeader(),
             !seriesPointReader.hasNextTimeValuePair());
       }
       return seriesPointReader;
     } else {
-      return getRemoteSeriesPointReader(timeFilter, valueFilter, dataType, path,
-          deviceMeasurements, partitionGroup, context, ascending);
+      return getRemoteSeriesPointReader(
+          timeFilter,
+          valueFilter,
+          dataType,
+          path,
+          deviceMeasurements,
+          partitionGroup,
+          context,
+          ascending);
     }
   }
 
@@ -250,15 +316,21 @@ public class ClusterReaderFactory {
    *
    * @param path
    * @param dataType
-   * @param timeFilter  nullable
+   * @param timeFilter nullable
    * @param valueFilter nullable
    * @param context
    * @return
    * @throws StorageEngineException
    */
-  public IPointReader getSeriesPointReader(PartialPath path, Set<String> allSensors,
-      TSDataType dataType, Filter timeFilter, Filter valueFilter, QueryContext context,
-      DataGroupMember dataGroupMember, boolean ascending)
+  public IPointReader getSeriesPointReader(
+      PartialPath path,
+      Set<String> allSensors,
+      TSDataType dataType,
+      Filter timeFilter,
+      Filter valueFilter,
+      QueryContext context,
+      DataGroupMember dataGroupMember,
+      boolean ascending)
       throws StorageEngineException, QueryProcessException {
     // pull the newest data
     try {
@@ -267,9 +339,15 @@ public class ClusterReaderFactory {
       throw new StorageEngineException(e);
     }
     return new SeriesRawDataPointReader(
-        getSeriesReader(path, allSensors, dataType, timeFilter,
-            valueFilter, context, dataGroupMember.getHeader(), ascending));
-
+        getSeriesReader(
+            path,
+            allSensors,
+            dataType,
+            timeFilter,
+            valueFilter,
+            context,
+            dataGroupMember.getHeader(),
+            ascending));
   }
 
   /**
@@ -278,24 +356,37 @@ public class ClusterReaderFactory {
    *
    * @param path
    * @param dataType
-   * @param timeFilter  nullable
+   * @param timeFilter nullable
    * @param valueFilter nullable
    * @param context
    * @return
    * @throws StorageEngineException
    */
-  private SeriesReader getSeriesReader(PartialPath path, Set<String> allSensors, TSDataType
-      dataType,
+  private SeriesReader getSeriesReader(
+      PartialPath path,
+      Set<String> allSensors,
+      TSDataType dataType,
       Filter timeFilter,
-      Filter valueFilter, QueryContext context, Node header, boolean ascending)
+      Filter valueFilter,
+      QueryContext context,
+      Node header,
+      boolean ascending)
       throws StorageEngineException, QueryProcessException {
     ClusterQueryUtils.checkPathExistence(path);
     List<Integer> nodeSlots =
         ((SlotPartitionTable) metaGroupMember.getPartitionTable()).getNodeSlots(header);
     QueryDataSource queryDataSource =
         QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter);
-    return new SeriesReader(path, allSensors, dataType, context, queryDataSource,
-        timeFilter, valueFilter, new SlotTsFileFilter(nodeSlots), ascending);
+    return new SeriesReader(
+        path,
+        allSensors,
+        dataType,
+        context,
+        queryDataSource,
+        timeFilter,
+        valueFilter,
+        new SlotTsFileFilter(nodeSlots),
+        ascending);
   }
 
   /**
@@ -304,23 +395,42 @@ public class ClusterReaderFactory {
    * the id of the reader will be returned so that we can fetch data from that node using the reader
    * id.
    *
-   * @param timeFilter  nullable
+   * @param timeFilter nullable
    * @param valueFilter nullable
    */
-  private IPointReader getRemoteSeriesPointReader(Filter timeFilter,
-      Filter valueFilter, TSDataType dataType, Path path,
-      Set<String> deviceMeasurements, PartitionGroup partitionGroup,
-      QueryContext context, boolean ascending)
+  private IPointReader getRemoteSeriesPointReader(
+      Filter timeFilter,
+      Filter valueFilter,
+      TSDataType dataType,
+      Path path,
+      Set<String> deviceMeasurements,
+      PartitionGroup partitionGroup,
+      QueryContext context,
+      boolean ascending)
       throws StorageEngineException {
-    SingleSeriesQueryRequest request = constructSingleQueryRequest(timeFilter, valueFilter,
-        dataType, path, deviceMeasurements, partitionGroup, context, ascending);
+    SingleSeriesQueryRequest request =
+        constructSingleQueryRequest(
+            timeFilter,
+            valueFilter,
+            dataType,
+            path,
+            deviceMeasurements,
+            partitionGroup,
+            context,
+            ascending);
 
     // reorder the nodes such that the nodes that suit the query best (have lowest latenct or
     // highest throughput) will be put to the front
     List<Node> orderedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
 
-    DataSourceInfo dataSourceInfo = new DataSourceInfo(partitionGroup, dataType, request,
-        (RemoteQueryContext) context, metaGroupMember, orderedNodes);
+    DataSourceInfo dataSourceInfo =
+        new DataSourceInfo(
+            partitionGroup,
+            dataType,
+            request,
+            (RemoteQueryContext) context,
+            metaGroupMember,
+            orderedNodes);
 
     boolean hasClient = dataSourceInfo.hasNextDataClient(false, Long.MIN_VALUE);
     if (hasClient) {
@@ -334,10 +444,15 @@ public class ClusterReaderFactory {
         new RequestTimeOutException("Query " + path + " in " + partitionGroup));
   }
 
-  private SingleSeriesQueryRequest constructSingleQueryRequest(Filter timeFilter,
-      Filter valueFilter, TSDataType dataType, Path path,
-      Set<String> deviceMeasurements, PartitionGroup partitionGroup,
-      QueryContext context, boolean ascending) {
+  private SingleSeriesQueryRequest constructSingleQueryRequest(
+      Filter timeFilter,
+      Filter valueFilter,
+      TSDataType dataType,
+      Path path,
+      Set<String> deviceMeasurements,
+      PartitionGroup partitionGroup,
+      QueryContext context,
+      boolean ascending) {
     SingleSeriesQueryRequest request = new SingleSeriesQueryRequest();
     if (timeFilter != null) {
       request.setTimeFilterBytes(SerializeUtils.serializeFilter(timeFilter));
@@ -362,9 +477,14 @@ public class ClusterReaderFactory {
    *
    * @param timeFilter nullable
    */
-  public List<GroupByExecutor> getGroupByExecutors(PartialPath path,
-      Set<String> deviceMeasurements, TSDataType dataType,
-      QueryContext context, Filter timeFilter, List<Integer> aggregationTypes, boolean ascending)
+  public List<GroupByExecutor> getGroupByExecutors(
+      PartialPath path,
+      Set<String> deviceMeasurements,
+      TSDataType dataType,
+      QueryContext context,
+      Filter timeFilter,
+      List<Integer> aggregationTypes,
+      boolean ascending)
       throws StorageEngineException, QueryProcessException {
     // make sure the partition table is new
     try {
@@ -381,14 +501,25 @@ public class ClusterReaderFactory {
       partitionGroups = Collections.emptyList();
     }
     if (logger.isDebugEnabled()) {
-      logger.debug("{}: Sending group by query of {} to {} groups", metaGroupMember.getName(), path,
+      logger.debug(
+          "{}: Sending group by query of {} to {} groups",
+          metaGroupMember.getName(),
+          path,
           partitionGroups.size());
     }
     // create an executor for each group
     List<GroupByExecutor> executors = new ArrayList<>();
     for (PartitionGroup partitionGroup : partitionGroups) {
-      GroupByExecutor groupByExecutor = getGroupByExecutor(path, deviceMeasurements, partitionGroup,
-          timeFilter, context, dataType, aggregationTypes, ascending);
+      GroupByExecutor groupByExecutor =
+          getGroupByExecutor(
+              path,
+              deviceMeasurements,
+              partitionGroup,
+              timeFilter,
+              context,
+              dataType,
+              aggregationTypes,
+              ascending);
       executors.add(groupByExecutor);
     }
     return executors;
@@ -401,24 +532,38 @@ public class ClusterReaderFactory {
    *
    * @param timeFilter nullable
    */
-  private GroupByExecutor getGroupByExecutor(PartialPath path,
-      Set<String> deviceMeasurements, PartitionGroup partitionGroup,
-      Filter timeFilter, QueryContext context, TSDataType dataType,
-      List<Integer> aggregationTypes, boolean ascending) throws StorageEngineException,
-      QueryProcessException {
+  private GroupByExecutor getGroupByExecutor(
+      PartialPath path,
+      Set<String> deviceMeasurements,
+      PartitionGroup partitionGroup,
+      Filter timeFilter,
+      QueryContext context,
+      TSDataType dataType,
+      List<Integer> aggregationTypes,
+      boolean ascending)
+      throws StorageEngineException, QueryProcessException {
     if (partitionGroup.contains(metaGroupMember.getThisNode())) {
       // the target storage group contains this node, perform a local query
-      DataGroupMember dataGroupMember = metaGroupMember
-          .getLocalDataMember(partitionGroup.getHeader());
+      DataGroupMember dataGroupMember =
+          metaGroupMember.getLocalDataMember(partitionGroup.getHeader());
       LocalQueryExecutor localQueryExecutor = new LocalQueryExecutor(dataGroupMember);
-      logger.debug("{}: creating a local group by executor for {}#{}", metaGroupMember.getName(),
-          path.getFullPath(), context.getQueryId());
-      return localQueryExecutor
-          .getGroupByExecutor(path, deviceMeasurements, dataType, timeFilter, aggregationTypes,
-              context, ascending);
+      logger.debug(
+          "{}: creating a local group by executor for {}#{}",
+          metaGroupMember.getName(),
+          path.getFullPath(),
+          context.getQueryId());
+      return localQueryExecutor.getGroupByExecutor(
+          path, deviceMeasurements, dataType, timeFilter, aggregationTypes, context, ascending);
     } else {
-      return getRemoteGroupByExecutor(timeFilter, aggregationTypes, dataType, path,
-          deviceMeasurements, partitionGroup, context, ascending);
+      return getRemoteGroupByExecutor(
+          timeFilter,
+          aggregationTypes,
+          dataType,
+          path,
+          deviceMeasurements,
+          partitionGroup,
+          context,
+          ascending);
     }
   }
 
@@ -429,10 +574,16 @@ public class ClusterReaderFactory {
    *
    * @param timeFilter nullable
    */
-  private GroupByExecutor getRemoteGroupByExecutor(Filter timeFilter,
-      List<Integer> aggregationTypes, TSDataType dataType, Path path,
-      Set<String> deviceMeasurements, PartitionGroup partitionGroup,
-      QueryContext context, boolean ascending) throws StorageEngineException {
+  private GroupByExecutor getRemoteGroupByExecutor(
+      Filter timeFilter,
+      List<Integer> aggregationTypes,
+      TSDataType dataType,
+      Path path,
+      Set<String> deviceMeasurements,
+      PartitionGroup partitionGroup,
+      QueryContext context,
+      boolean ascending)
+      throws StorageEngineException {
     GroupByRequest request = new GroupByRequest();
     if (timeFilter != null) {
       request.setTimeFilterBytes(SerializeUtils.serializeFilter(timeFilter));
@@ -462,15 +613,21 @@ public class ClusterReaderFactory {
         if (executorId != -1) {
           // record the queried node to release resources later
           ((RemoteQueryContext) context).registerRemoteNode(node, partitionGroup.getHeader());
-          logger.debug("{}: get an executorId {} for {}@{} from {}", metaGroupMember.getName(),
+          logger.debug(
+              "{}: get an executorId {} for {}@{} from {}",
+              metaGroupMember.getName(),
               executorId,
-              aggregationTypes, path, node);
+              aggregationTypes,
+              path,
+              node);
           // create a remote executor with the return id
-          RemoteGroupByExecutor remoteGroupByExecutor = new RemoteGroupByExecutor(executorId,
-              metaGroupMember, node, partitionGroup.getHeader());
+          RemoteGroupByExecutor remoteGroupByExecutor =
+              new RemoteGroupByExecutor(
+                  executorId, metaGroupMember, node, partitionGroup.getHeader());
           for (Integer aggregationType : aggregationTypes) {
-            remoteGroupByExecutor.addAggregateResult(AggregateResultFactory.getAggrResultByType(
-                AggregationType.values()[aggregationType], dataType, ascending));
+            remoteGroupByExecutor.addAggregateResult(
+                AggregateResultFactory.getAggrResultByType(
+                    AggregationType.values()[aggregationType], dataType, ascending));
           }
           return remoteGroupByExecutor;
         } else {
@@ -494,14 +651,22 @@ public class ClusterReaderFactory {
       throws IOException, TException, InterruptedException {
     Long executorId;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      AsyncDataClient client = metaGroupMember.getClientProvider()
-          .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+      AsyncDataClient client =
+          metaGroupMember
+              .getClientProvider()
+              .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       executorId = SyncClientAdaptor.getGroupByExecutor(client, request);
     } else {
-      SyncDataClient syncDataClient = metaGroupMember.getClientProvider().getSyncDataClient(node,
-          RaftServer.getReadOperationTimeoutMS());
-      executorId = syncDataClient.getGroupByExecutor(request);
-      ClientUtils.putBackSyncClient(syncDataClient);
+      SyncDataClient syncDataClient = null;
+      try {
+        syncDataClient =
+            metaGroupMember
+                .getClientProvider()
+                .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+        executorId = syncDataClient.getGroupByExecutor(request);
+      } finally {
+        ClientUtils.putBackSyncClient(syncDataClient);
+      }
     }
     return executorId;
   }
@@ -512,15 +677,21 @@ public class ClusterReaderFactory {
    *
    * @param path
    * @param dataType
-   * @param timeFilter  nullable
+   * @param timeFilter nullable
    * @param valueFilter nullable
    * @param context
    * @return an IBatchReader or null if there is no satisfying data
    * @throws StorageEngineException
    */
-  public IBatchReader getSeriesBatchReader(PartialPath path, Set<String> allSensors,
-      TSDataType dataType, Filter timeFilter,
-      Filter valueFilter, QueryContext context, DataGroupMember dataGroupMember, boolean ascending)
+  public IBatchReader getSeriesBatchReader(
+      PartialPath path,
+      Set<String> allSensors,
+      TSDataType dataType,
+      Filter timeFilter,
+      Filter valueFilter,
+      QueryContext context,
+      DataGroupMember dataGroupMember,
+      boolean ascending)
       throws StorageEngineException, QueryProcessException, IOException {
     // pull the newest data
     try {
@@ -529,8 +700,16 @@ public class ClusterReaderFactory {
       throw new StorageEngineException(e);
     }
 
-    SeriesReader seriesReader = getSeriesReader(path, allSensors, dataType, timeFilter,
-        valueFilter, context, dataGroupMember.getHeader(), ascending);
+    SeriesReader seriesReader =
+        getSeriesReader(
+            path,
+            allSensors,
+            dataType,
+            timeFilter,
+            valueFilter,
+            context,
+            dataGroupMember.getHeader(),
+            ascending);
     if (seriesReader.isEmpty()) {
       return null;
     }
@@ -547,17 +726,29 @@ public class ClusterReaderFactory {
    * @return an IReaderByTimestamp or null if there is no satisfying data
    * @throws StorageEngineException
    */
-  public IReaderByTimestamp getReaderByTimestamp(PartialPath path, Set<String> allSensors,
-      TSDataType dataType, QueryContext context, DataGroupMember dataGroupMember, boolean ascending)
+  public IReaderByTimestamp getReaderByTimestamp(
+      PartialPath path,
+      Set<String> allSensors,
+      TSDataType dataType,
+      QueryContext context,
+      DataGroupMember dataGroupMember,
+      boolean ascending)
       throws StorageEngineException, QueryProcessException {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
     } catch (CheckConsistencyException e) {
       throw new StorageEngineException(e);
     }
-    SeriesReader seriesReader = getSeriesReader(path, allSensors, dataType,
-        TimeFilter.gtEq(Long.MIN_VALUE),
-        null, context, dataGroupMember.getHeader(), ascending);
+    SeriesReader seriesReader =
+        getSeriesReader(
+            path,
+            allSensors,
+            dataType,
+            TimeFilter.gtEq(Long.MIN_VALUE),
+            null,
+            context,
+            dataGroupMember.getHeader(),
+            ascending);
     try {
       if (seriesReader.isEmpty()) {
         return null;
@@ -566,6 +757,5 @@ public class ClusterReaderFactory {
       throw new QueryProcessException(e, TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
     return new SeriesReaderByTimestamp(seriesReader, ascending);
-
   }
 }

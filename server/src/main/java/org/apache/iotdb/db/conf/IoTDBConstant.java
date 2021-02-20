@@ -20,16 +20,17 @@ package org.apache.iotdb.db.conf;
 
 public class IoTDBConstant {
 
-  private IoTDBConstant() {
-  }
+  private IoTDBConstant() {}
 
   public static final String ENV_FILE_NAME = "iotdb-env";
   public static final String IOTDB_CONF = "IOTDB_CONF";
   public static final String GLOBAL_DB_NAME = "IoTDB";
-  //when running the program in IDE, we can not get the version info using getImplementationVersion()
+  // when running the program in IDE, we can not get the version info using
+  // getImplementationVersion()
   public static final String VERSION =
-      IoTDBConstant.class.getPackage().getImplementationVersion() != null ? IoTDBConstant.class
-          .getPackage().getImplementationVersion() : "UNKNOWN";
+      IoTDBConstant.class.getPackage().getImplementationVersion() != null
+          ? IoTDBConstant.class.getPackage().getImplementationVersion()
+          : "UNKNOWN";
 
   public static final String AUDIT_LOGGER_NAME = "IoTDB_AUDIT_LOGGER";
 
@@ -102,6 +103,13 @@ public class IoTDBConstant {
   public static final String PATH_WILDCARD = "*";
   public static final String TIME = "time";
 
+  // sdt parameters
+  public static final String LOSS = "loss";
+  public static final String SDT = "sdt";
+  public static final String SDT_COMP_DEV = "compdev";
+  public static final String SDT_COMP_MIN_TIME = "compmintime";
+  public static final String SDT_COMP_MAX_TIME = "compmaxtime";
+
   // data folder name
   public static final String SEQUENCE_FLODER_NAME = "sequence";
   public static final String UNSEQUENCE_FLODER_NAME = "unsequence";
@@ -118,7 +126,7 @@ public class IoTDBConstant {
   public static final String EXT_FOLDER_NAME = "ext";
   public static final String UDF_FOLDER_NAME = "udf";
 
-  // mqtt  
+  // mqtt
   public static final String ENABLE_MQTT = "enable_mqtt_service";
   public static final String MQTT_HOST_NAME = "mqtt_host";
   public static final String MQTT_PORT_NAME = "mqtt_port";

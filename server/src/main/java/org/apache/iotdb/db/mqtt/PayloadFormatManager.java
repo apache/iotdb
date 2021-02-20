@@ -18,29 +18,28 @@
 package org.apache.iotdb.db.mqtt;
 
 import com.google.common.base.Preconditions;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.ServiceLoader;
 
-/**
- * PayloadFormatManager loads payload formatter from SPI services.
- */
+/** PayloadFormatManager loads payload formatter from SPI services. */
 public class PayloadFormatManager {
-    private static Map<String, PayloadFormatter> map = new HashMap<>();
+  private static Map<String, PayloadFormatter> map = new HashMap<>();
 
-    static {
-        init();
-    }
+  static {
+    init();
+  }
 
-    private static void init() {
-        ServiceLoader<PayloadFormatter> formats = ServiceLoader.load(PayloadFormatter.class);
-        for (PayloadFormatter format : formats) {
-            map.put(format.getName(), format);
-        }
+  private static void init() {
+    ServiceLoader<PayloadFormatter> formats = ServiceLoader.load(PayloadFormatter.class);
+    for (PayloadFormatter format : formats) {
+      map.put(format.getName(), format);
     }
+  }
 
-    public static PayloadFormatter getPayloadFormat(String name) {
-        Preconditions.checkArgument(map.containsKey(name), "Unknown payload format named: " + name);
-        return map.get(name);
-    }
+  public static PayloadFormatter getPayloadFormat(String name) {
+    Preconditions.checkArgument(map.containsKey(name), "Unknown payload format named: " + name);
+    return map.get(name);
+  }
 }

@@ -19,16 +19,18 @@
 
 package org.apache.iotdb.cluster.server.handlers.caller;
 
-import static org.apache.iotdb.cluster.server.Response.RESPONSE_AGREE;
-
-import java.net.ConnectException;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.server.monitor.Peer;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.apache.iotdb.cluster.server.monitor.Peer;
+
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.net.ConnectException;
+
+import static org.apache.iotdb.cluster.server.Response.RESPONSE_AGREE;
 
 /**
  * HeartbeatHandler checks the response of a heartbeat and decides whether to start a catch-up or
@@ -60,8 +62,11 @@ public class HeartbeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
       synchronized (localMember.getTerm()) {
         long currTerm = localMember.getTerm().get();
         if (currTerm < followerTerm) {
-          logger.info("{}: Losing leadership because current term {} is smaller than {}",
-              memberName, currTerm, followerTerm);
+          logger.info(
+              "{}: Losing leadership because current term {} is smaller than {}",
+              memberName,
+              currTerm,
+              followerTerm);
           localMember.stepDown(followerTerm, false);
         }
       }
@@ -78,15 +83,22 @@ public class HeartbeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
     long lastLogTerm = resp.getLastLogTerm();
     long localLastLogIdx = localMember.getLogManager().getLastLogIndex();
     long localLastLogTerm = localMember.getLogManager().getLastLogTerm();
-    logger.trace("{}: Node {} is still alive, log index: {}/{}, log term: {}/{}",
-        memberName, follower, lastLogIdx
-        , localLastLogIdx, lastLogTerm, localLastLogTerm);
+    logger.trace(
+        "{}: Node {} is still alive, log index: {}/{}, log term: {}/{}",
+        memberName,
+        follower,
+        lastLogIdx,
+        localLastLogIdx,
+        lastLogTerm,
+        localLastLogTerm);
 
-    Peer peer = localMember.getPeerMap()
-        .computeIfAbsent(follower, k -> new Peer(localMember.getLogManager().getLastLogIndex()));
-    if (!localMember.getLogManager()
-        .isLogUpToDate(lastLogTerm, lastLogIdx) || !localMember.getLogManager()
-        .matchTerm(lastLogTerm, lastLogIdx)) {
+    Peer peer =
+        localMember
+            .getPeerMap()
+            .computeIfAbsent(
+                follower, k -> new Peer(localMember.getLogManager().getLastLogIndex()));
+    if (!localMember.getLogManager().isLogUpToDate(lastLogTerm, lastLogIdx)
+        || !localMember.getLogManager().matchTerm(lastLogTerm, lastLogIdx)) {
       // the follower is not up-to-date
       if (lastLogIdx == -1) {
         // maybe the follower has restarted, so we need to find its match index again, because
@@ -100,10 +112,14 @@ public class HeartbeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
         // the follower's lastLogIndex is unchanged, increase inconsistent counter
         int inconsistentNum = peer.incInconsistentHeartbeatNum();
         if (inconsistentNum >= 5) {
-          logger.info("{}: catching up node {}, index-term: {}-{}/{}-{}, peer match index {}",
-              memberName, follower,
-              lastLogIdx, lastLogTerm,
-              localLastLogIdx, localLastLogTerm,
+          logger.info(
+              "{}: catching up node {}, index-term: {}-{}/{}-{}, peer match index {}",
+              memberName,
+              follower,
+              lastLogIdx,
+              lastLogTerm,
+              localLastLogIdx,
+              localLastLogTerm,
               peer.getMatchIndex());
           localMember.catchUp(follower, lastLogIdx);
         }
@@ -125,8 +141,8 @@ public class HeartbeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
     if (exception instanceof ConnectException) {
       logger.warn("{}: Cannot connect to {}: {}", memberName, receiver, exception.getMessage());
     } else {
-      logger.error("{}: Heart beat error, receiver {}, {}", memberName, receiver,
-          exception.getMessage());
+      logger.error(
+          "{}: Heart beat error, receiver {}, {}", memberName, receiver, exception.getMessage());
     }
   }
 }

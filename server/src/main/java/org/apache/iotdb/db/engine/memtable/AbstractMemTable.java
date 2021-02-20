@@ -18,12 +18,6 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -41,6 +35,13 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+
 public abstract class AbstractMemTable implements IMemTable {
 
   private final Map<String, Map<String, IWritableMemChunk>> memTableMap;
@@ -48,17 +49,17 @@ public abstract class AbstractMemTable implements IMemTable {
    * The initial value is true because we want calculate the text data size when recover memTable!!
    */
   protected boolean disableMemControl = true;
-  private int avgSeriesPointNumThreshold = IoTDBDescriptor.getInstance().getConfig()
-      .getAvgSeriesPointNumberThreshold();
-  /**
-   * memory size of data points, including TEXT values
-   */
+
+  private int avgSeriesPointNumThreshold =
+      IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
+  /** memory size of data points, including TEXT values */
   private long memSize = 0;
   /**
    * memory usage of all TVLists memory usage regardless of whether these TVLists are full,
    * including TEXT values
    */
   private long tvListRamCost = 0;
+
   private int seriesNumber = 0;
 
   private long totalPointsNum = 0;
@@ -91,16 +92,18 @@ public abstract class AbstractMemTable implements IMemTable {
     return memTableMap.containsKey(deviceId) && memTableMap.get(deviceId).containsKey(measurement);
   }
 
-  private IWritableMemChunk createIfNotExistAndGet(String deviceId, String measurement,
-      MeasurementSchema schema) {
-    Map<String, IWritableMemChunk> memSeries = memTableMap
-        .computeIfAbsent(deviceId, k -> new HashMap<>());
+  private IWritableMemChunk createIfNotExistAndGet(
+      String deviceId, String measurement, MeasurementSchema schema) {
+    Map<String, IWritableMemChunk> memSeries =
+        memTableMap.computeIfAbsent(deviceId, k -> new HashMap<>());
 
-    return memSeries.computeIfAbsent(measurement, k -> {
-      seriesNumber++;
-      totalPointsNumThreshold += avgSeriesPointNumThreshold;
-      return genMemSeries(schema);
-    });
+    return memSeries.computeIfAbsent(
+        measurement,
+        k -> {
+          seriesNumber++;
+          totalPointsNumThreshold += avgSeriesPointNumThreshold;
+          return genMemSeries(schema);
+        });
   }
 
   protected abstract IWritableMemChunk genMemSeries(MeasurementSchema schema);
@@ -118,11 +121,16 @@ public abstract class AbstractMemTable implements IMemTable {
         continue;
       }
 
-      memSize += MemUtils.getRecordSize(measurementMNodes[i].getSchema().getType(), value,
-              disableMemControl);
+      memSize +=
+          MemUtils.getRecordSize(
+              measurementMNodes[i].getSchema().getType(), value, disableMemControl);
 
-      write(insertRowPlan.getDeviceId().getFullPath(),
-          measurements[i], measurementMNodes[i].getSchema(), insertRowPlan.getTime(), value);
+      write(
+          insertRowPlan.getDeviceId().getFullPath(),
+          measurements[i],
+          measurementMNodes[i].getSchema(),
+          insertRowPlan.getTime(),
+          value);
     }
 
     totalPointsNum +=
@@ -136,17 +144,21 @@ public abstract class AbstractMemTable implements IMemTable {
     try {
       write(insertTabletPlan, start, end);
       memSize += MemUtils.getRecordSize(insertTabletPlan, start, end, disableMemControl);
-      totalPointsNum += (insertTabletPlan.getMeasurements().length - insertTabletPlan
-          .getFailedMeasurementNumber())
-          * (end - start);
+      totalPointsNum +=
+          (insertTabletPlan.getMeasurements().length
+                  - insertTabletPlan.getFailedMeasurementNumber())
+              * (end - start);
     } catch (RuntimeException e) {
       throw new WriteProcessException(e);
     }
   }
 
-
   @Override
-  public void write(String deviceId, String measurement, MeasurementSchema schema, long insertTime,
+  public void write(
+      String deviceId,
+      String measurement,
+      MeasurementSchema schema,
+      long insertTime,
       Object objectValue) {
     IWritableMemChunk memSeries = createIfNotExistAndGet(deviceId, measurement, schema);
     memSeries.write(insertTime, objectValue);
@@ -159,12 +171,17 @@ public abstract class AbstractMemTable implements IMemTable {
       if (insertTabletPlan.getColumns()[i] == null) {
         continue;
       }
-      IWritableMemChunk memSeries = createIfNotExistAndGet(
-          insertTabletPlan.getDeviceId().getFullPath(),
-          insertTabletPlan.getMeasurements()[i],
-          insertTabletPlan.getMeasurementMNodes()[i].getSchema());
-      memSeries.write(insertTabletPlan.getTimes(), insertTabletPlan.getColumns()[i],
-          insertTabletPlan.getDataTypes()[i], start, end);
+      IWritableMemChunk memSeries =
+          createIfNotExistAndGet(
+              insertTabletPlan.getDeviceId().getFullPath(),
+              insertTabletPlan.getMeasurements()[i],
+              insertTabletPlan.getMeasurementMNodes()[i].getSchema());
+      memSeries.write(
+          insertTabletPlan.getTimes(),
+          insertTabletPlan.getColumns()[i],
+          insertTabletPlan.getDataTypes()[i],
+          start,
+          end);
     }
   }
 
@@ -185,10 +202,12 @@ public abstract class AbstractMemTable implements IMemTable {
     return memChunk.getTVList().size();
   }
 
+  @Override
   public int getSeriesNumber() {
     return seriesNumber;
   }
 
+  @Override
   public long getTotalPointsNum() {
     return totalPointsNum;
   }
@@ -234,8 +253,14 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
-  public ReadOnlyMemChunk query(String deviceId, String measurement, TSDataType dataType,
-      TSEncoding encoding, Map<String, String> props, long timeLowerBound, List<TimeRange> deletionList)
+  public ReadOnlyMemChunk query(
+      String deviceId,
+      String measurement,
+      TSDataType dataType,
+      TSEncoding encoding,
+      Map<String, String> props,
+      long timeLowerBound,
+      List<TimeRange> deletionList)
       throws IOException, QueryProcessException, MetadataException {
     if (!checkPath(deviceId, measurement)) {
       return null;
@@ -245,13 +270,13 @@ public abstract class AbstractMemTable implements IMemTable {
     TVList chunkCopy = memChunk.getSortedTVListForQuery();
     int curSize = chunkCopy.size();
 
-    return new ReadOnlyMemChunk(measurement, dataType, encoding, chunkCopy, props,
-            curSize, deletionList);
+    return new ReadOnlyMemChunk(
+        measurement, dataType, encoding, chunkCopy, props, curSize, deletionList);
   }
 
   @Override
-  public void delete(PartialPath originalPath, PartialPath devicePath, long startTimestamp,
-      long endTimestamp) {
+  public void delete(
+      PartialPath originalPath, PartialPath devicePath, long startTimestamp, long endTimestamp) {
     Map<String, IWritableMemChunk> deviceMap = memTableMap.get(devicePath.getFullPath());
     if (deviceMap == null) {
       return;

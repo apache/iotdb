@@ -19,20 +19,11 @@
 
 package org.apache.iotdb.cluster.server.heartbeat;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.ConcurrentSkipListSet;
-import org.apache.iotdb.cluster.config.ClusterConstant;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.cluster.common.TestAsyncClient;
 import org.apache.iotdb.cluster.common.TestLogManager;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;
@@ -48,10 +39,21 @@ import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentSkipListSet;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 @SuppressWarnings("java:S2699")
 public class HeartbeatThreadTest {
@@ -74,8 +76,7 @@ public class HeartbeatThreadTest {
       }
 
       @Override
-      public void updateHardState(long currentTerm, Node leader) {
-      }
+      public void updateHardState(long currentTerm, Node leader) {}
 
       @Override
       public AsyncClient getAsyncClient(Node node) {
@@ -97,43 +98,46 @@ public class HeartbeatThreadTest {
   AsyncClient getClient(Node node) {
     return new TestAsyncClient(node.nodeIdentifier) {
       @Override
-      public void sendHeartbeat(HeartBeatRequest request,
-          AsyncMethodCallback<HeartBeatResponse> resultHandler) {
-        new Thread(() -> {
-          if (testHeartbeat) {
-            assertEquals(TestUtils.getNode(0), request.getLeader());
-            assertEquals(6, request.getCommitLogIndex());
-            assertEquals(10, request.getTerm());
-            assertNull(request.getHeader());
-            synchronized (receivedNodes) {
-              receivedNodes.add(getSerialNum());
-              for (int i = 1; i < 10; i++) {
-                if (!receivedNodes.contains(i)) {
-                  return;
-                }
-              }
-              testThread.interrupt();
-            }
-          } else if (respondToElection) {
-            synchronized (testThread) {
-              testThread.notifyAll();
-            }
-          }
-        }).start();
+      public void sendHeartbeat(
+          HeartBeatRequest request, AsyncMethodCallback<HeartBeatResponse> resultHandler) {
+        new Thread(
+                () -> {
+                  if (testHeartbeat) {
+                    assertEquals(TestUtils.getNode(0), request.getLeader());
+                    assertEquals(6, request.getCommitLogIndex());
+                    assertEquals(10, request.getTerm());
+                    assertNull(request.getHeader());
+                    synchronized (receivedNodes) {
+                      receivedNodes.add(getSerialNum());
+                      for (int i = 1; i < 10; i++) {
+                        if (!receivedNodes.contains(i)) {
+                          return;
+                        }
+                      }
+                      testThread.interrupt();
+                    }
+                  } else if (respondToElection) {
+                    synchronized (testThread) {
+                      testThread.notifyAll();
+                    }
+                  }
+                })
+            .start();
       }
 
       @Override
-      public void startElection(ElectionRequest request,
-          AsyncMethodCallback<Long> resultHandler) {
-        new Thread(() -> {
-          assertEquals(TestUtils.getNode(0), request.getElector());
-          assertEquals(11, request.getTerm());
-          assertEquals(6, request.getLastLogIndex());
-          assertEquals(6, request.getLastLogTerm());
-          if (respondToElection) {
-            resultHandler.onComplete(Response.RESPONSE_AGREE);
-          }
-        }).start();
+      public void startElection(ElectionRequest request, AsyncMethodCallback<Long> resultHandler) {
+        new Thread(
+                () -> {
+                  assertEquals(TestUtils.getNode(0), request.getElector());
+                  assertEquals(11, request.getTerm());
+                  assertEquals(6, request.getLastLogIndex());
+                  assertEquals(6, request.getLastLogTerm());
+                  if (respondToElection) {
+                    resultHandler.onComplete(Response.RESPONSE_AGREE);
+                  }
+                })
+            .start();
       }
     };
   }
@@ -217,9 +221,8 @@ public class HeartbeatThreadTest {
     respondToElection = false;
     try {
       testThread.start();
-      while (!NodeCharacter.ELECTOR.equals(member.getCharacter())) {
+      while (!NodeCharacter.ELECTOR.equals(member.getCharacter())) {}
 
-      }
       testThread.interrupt();
       testThread.join();
     } finally {
@@ -232,9 +235,8 @@ public class HeartbeatThreadTest {
     member.setCharacter(NodeCharacter.ELECTOR);
     respondToElection = true;
     testThread.start();
-    while (!NodeCharacter.LEADER.equals(member.getCharacter())) {
+    while (!NodeCharacter.LEADER.equals(member.getCharacter())) {}
 
-    }
     testThread.interrupt();
     testThread.join();
   }
@@ -245,9 +247,8 @@ public class HeartbeatThreadTest {
     member.getAllNodes().add(TestUtils.getNode(0));
     member.setCharacter(NodeCharacter.ELECTOR);
     testThread.start();
-    while (!NodeCharacter.LEADER.equals(member.getCharacter())) {
+    while (!NodeCharacter.LEADER.equals(member.getCharacter())) {}
 
-    }
     testThread.interrupt();
     testThread.join();
   }

@@ -18,12 +18,13 @@
  */
 package org.apache.iotdb.db.concurrent;
 
-import static org.junit.Assert.assertEquals;
-
-import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.junit.Assert.assertEquals;
 
 public class IoTDBDefaultThreadExceptionHandlerTest {
 
@@ -56,6 +57,7 @@ public class IoTDBDefaultThreadExceptionHandlerTest {
 
   class TestThread extends Thread {
 
+    @Override
     public void run() {
       throw new RuntimeException(message);
     }

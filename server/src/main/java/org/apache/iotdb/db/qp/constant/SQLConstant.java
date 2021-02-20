@@ -18,17 +18,16 @@
  */
 package org.apache.iotdb.db.qp.constant;
 
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.sql.SqlBaseLexer;
+
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.sql.SqlBaseLexer;
 
-/**
- * this class contains several constants used in SQL.
- */
+/** this class contains several constants used in SQL. */
 @SuppressWarnings("unused") // some fields are for future features
 public class SQLConstant {
 
@@ -73,8 +72,10 @@ public class SQLConstant {
 
   public static final String ALL = "all";
 
-  private static final Set<String> NATIVE_FUNCTION_NAMES = new HashSet<>(Arrays.asList(
-      MIN_TIME, MAX_TIME, MIN_VALUE, MAX_VALUE, FIRST_VALUE, LAST_VALUE, COUNT, SUM, AVG));
+  private static final Set<String> NATIVE_FUNCTION_NAMES =
+      new HashSet<>(
+          Arrays.asList(
+              MIN_TIME, MAX_TIME, MIN_VALUE, MAX_VALUE, FIRST_VALUE, LAST_VALUE, COUNT, SUM, AVG));
 
   public static final int KW_AND = 1;
   public static final int KW_OR = 2;
@@ -120,7 +121,6 @@ public class SQLConstant {
   public static final int TOK_PROPERTY_LINK = 57;
   public static final int TOK_PROPERTY_UNLINK = 58;
   public static final int TOK_LIST = 59;
-
 
   public static final int TOK_DURATION = 60;
   public static final int TOK_DATE_EXPR = 61;

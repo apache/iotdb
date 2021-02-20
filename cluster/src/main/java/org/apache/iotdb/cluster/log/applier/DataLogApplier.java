@@ -39,12 +39,12 @@ import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.service.IoTDB;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * DataLogApplier applies logs like data insertion/deletion/update and timeseries creation to
- * IoTDB.
+ * DataLogApplier applies logs like data insertion/deletion/update and timeseries creation to IoTDB.
  */
 public class DataLogApplier extends BaseApplier {
 
@@ -75,9 +75,11 @@ public class DataLogApplier extends BaseApplier {
       } else if (log instanceof CloseFileLog) {
         CloseFileLog closeFileLog = ((CloseFileLog) log);
         StorageEngine.getInstance()
-            .closeStorageGroupProcessor(new PartialPath(closeFileLog.getStorageGroupName()),
+            .closeStorageGroupProcessor(
+                new PartialPath(closeFileLog.getStorageGroupName()),
                 closeFileLog.getPartitionId(),
-                closeFileLog.isSeq(), false);
+                closeFileLog.isSeq(),
+                false);
       } else {
         logger.error("Unsupported log: {}", log);
       }
@@ -116,8 +118,9 @@ public class DataLogApplier extends BaseApplier {
       }
       sg = IoTDB.metaManager.getStorageGroupPath(plan.getDeviceId());
     }
-    int slotId = SlotPartitionTable.getSlotStrategy().calculateSlotByTime(sg.getFullPath(), time,
-        ClusterConstant.SLOT_NUM);
+    int slotId =
+        SlotPartitionTable.getSlotStrategy()
+            .calculateSlotByTime(sg.getFullPath(), time, ClusterConstant.SLOT_NUM);
     // the slot may not be writable because it is pulling file versions, wait until it is done
     dataGroupMember.getSlotManager().waitSlotForWrite(slotId);
     applyPhysicalPlan(plan, dataGroupMember);

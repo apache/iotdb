@@ -19,12 +19,6 @@
 
 package org.apache.iotdb.cluster.log.manage;
 
-import static org.junit.Assert.assertEquals;
-
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.cluster.common.IoTDBTest;
 import org.apache.iotdb.cluster.common.TestDataGroupMember;
 import org.apache.iotdb.cluster.common.TestLogApplier;
@@ -42,23 +36,36 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.tsfile.utils.Pair;
+
 import org.junit.After;
 import org.junit.Test;
 
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import static org.junit.Assert.assertEquals;
+
 public class FilePartitionedSnapshotLogManagerTest extends IoTDBTest {
 
+  @Override
   @After
   public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();
   }
 
   @Test
-  public void testSnapshot()
-      throws Exception {
+  public void testSnapshot() throws Exception {
     PartitionTable partitionTable = TestUtils.getPartitionTable(3);
     LogApplier applier = new TestLogApplier();
-    FilePartitionedSnapshotLogManager manager = new FilePartitionedSnapshotLogManager(applier,
-        partitionTable, TestUtils.getNode(0), TestUtils.getNode(0), new TestDataGroupMember());
+    FilePartitionedSnapshotLogManager manager =
+        new FilePartitionedSnapshotLogManager(
+            applier,
+            partitionTable,
+            TestUtils.getNode(0),
+            TestUtils.getNode(0),
+            new TestDataGroupMember());
 
     try {
       List<Log> logs = TestUtils.prepareTestLogs(10);
@@ -88,9 +95,10 @@ public class FilePartitionedSnapshotLogManagerTest extends IoTDBTest {
       PartitionedSnapshot snapshot = (PartitionedSnapshot) manager.getSnapshot();
       for (int i = 1; i < 4; i++) {
         FileSnapshot fileSnapshot =
-            (FileSnapshot) snapshot
-                .getSnapshot(SlotPartitionTable.getSlotStrategy().calculateSlotByTime(
-                    TestUtils.getTestSg(i), 0, ClusterConstant.SLOT_NUM));
+            (FileSnapshot)
+                snapshot.getSnapshot(
+                    SlotPartitionTable.getSlotStrategy()
+                        .calculateSlotByTime(TestUtils.getTestSg(i), 0, ClusterConstant.SLOT_NUM));
         assertEquals(10, fileSnapshot.getTimeseriesSchemas().size());
         assertEquals(5, fileSnapshot.getDataFiles().size());
       }

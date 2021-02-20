@@ -18,12 +18,6 @@
  */
 package org.apache.iotdb.db.integration;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.List;
-import java.util.Objects;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -33,12 +27,20 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.utils.Pair;
+
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.List;
+import java.util.Objects;
 
 public class IoTDBFilePathUtilsIT {
 
@@ -53,8 +55,8 @@ public class IoTDBFilePathUtilsIT {
 
   private void insertData() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    connection =
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
     Statement statement = connection.createStatement();
 
     statement.execute("insert into root.sg1.wf01.wt01(timestamp, status) values (1000, true)");
@@ -63,7 +65,6 @@ public class IoTDBFilePathUtilsIT {
     statement.execute("flush");
     statement.close();
   }
-
 
   @Test
   public void splitTsFilePathTest()
@@ -77,16 +78,16 @@ public class IoTDBFilePathUtilsIT {
       Assert.fail(e.getMessage());
     }
     Assert.assertNotNull(sgPath);
-    List<TsFileResource> tsFileResources = StorageEngine.getInstance().getProcessor(sgPath)
-        .getSequenceFileTreeSet();
+    List<TsFileResource> tsFileResources =
+        StorageEngine.getInstance().getProcessor(sgPath).getSequenceFileTreeSet();
     Assert.assertNotNull(tsFileResources);
 
     for (TsFileResource tsFileResource : tsFileResources) {
       String sgName = FilePathUtils.getLogicalStorageGroupName(tsFileResource);
       Assert.assertEquals(storageGroupName, sgName);
 
-      Pair<String, Long> logicalSgNameAndTimePartitionIdPair = FilePathUtils
-          .getLogicalSgNameAndTimePartitionIdPair(tsFileResource);
+      Pair<String, Long> logicalSgNameAndTimePartitionIdPair =
+          FilePathUtils.getLogicalSgNameAndTimePartitionIdPair(tsFileResource);
       Assert.assertEquals(storageGroupName, logicalSgNameAndTimePartitionIdPair.left);
     }
   }

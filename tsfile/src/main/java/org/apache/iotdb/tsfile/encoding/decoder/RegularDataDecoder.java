@@ -19,32 +19,28 @@
 
 package org.apache.iotdb.tsfile.encoding.decoder;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.BitSet;
-
 import org.apache.iotdb.tsfile.encoding.encoder.RegularDataEncoder;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.BitSet;
+
 /**
- * This class is a decoder for decoding the byte array that encoded by {@code
- * RegularDataEncoder}. RegularDataDecoder only supports integer and long
- * values.<br>
+ * This class is a decoder for decoding the byte array that encoded by {@code RegularDataEncoder}.
+ * RegularDataDecoder only supports integer and long values.<br>
  * .
  *
  * @see RegularDataEncoder
  */
 public abstract class RegularDataDecoder extends Decoder {
 
-  /**
-   * the first value in one pack.
-   */
+  /** the first value in one pack. */
   protected int readIntTotalCount = 0;
+
   protected int nextReadIndex = 0;
-  /**
-   * data number in this pack.
-   */
+  /** data number in this pack. */
   protected int packNum;
 
   public RegularDataDecoder() {
@@ -70,9 +66,7 @@ public abstract class RegularDataDecoder extends Decoder {
     private boolean isMissingPoint;
     private BitSet bitmap;
     private int bitmapIndex;
-    /**
-     * minimum value for all difference.
-     */
+    /** minimum value for all difference. */
     private int minDeltaBase;
 
     public IntRegularDecoder() {
@@ -109,8 +103,7 @@ public abstract class RegularDataDecoder extends Decoder {
     }
 
     /**
-     * load the data with bitmap (when bitmap denote the element with false, load
-     * next element)
+     * load the data with bitmap (when bitmap denote the element with false, load next element)
      *
      * @param buffer
      * @return long value
@@ -184,9 +177,7 @@ public abstract class RegularDataDecoder extends Decoder {
     private boolean isMissingPoint;
     private BitSet bitmap;
     private int bitmapIndex;
-    /**
-     * minimum value for all difference.
-     */
+    /** minimum value for all difference. */
     private long minDeltaBase;
 
     public LongRegularDecoder() {
@@ -223,8 +214,7 @@ public abstract class RegularDataDecoder extends Decoder {
     }
 
     /**
-     * load the data with bitmap (when bitmap denote the element with false, load
-     * next element)
+     * load the data with bitmap (when bitmap denote the element with false, load next element)
      *
      * @param buffer
      * @return long value

@@ -18,13 +18,15 @@
  */
 package org.apache.iotdb.db.metrics.server;
 
-import com.codahale.metrics.MetricRegistry;
-import java.util.ArrayList;
 import org.apache.iotdb.db.metrics.sink.MetricsServletSink;
 import org.apache.iotdb.db.metrics.sink.Sink;
 import org.apache.iotdb.db.metrics.source.MetricsSource;
 import org.apache.iotdb.db.metrics.source.Source;
+
+import com.codahale.metrics.MetricRegistry;
 import org.eclipse.jetty.servlet.ServletContextHandler;
+
+import java.util.ArrayList;
 
 public class MetricsSystem {
 
@@ -77,5 +79,4 @@ public class MetricsSystem {
   }
 
   public void registerSinks() {}
-
 }

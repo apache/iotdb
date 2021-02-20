@@ -19,15 +19,17 @@
 
 package org.apache.iotdb.cluster.partition;
 
-import java.nio.ByteBuffer;
-import java.util.List;
-import org.apache.commons.collections4.map.MultiKeyMap;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
+
+import org.apache.commons.collections4.map.MultiKeyMap;
+
+import java.nio.ByteBuffer;
+import java.util.List;
 
 /**
  * PartitionTable manages the map whose key is the StorageGroupName with a time interval and the
@@ -72,7 +74,7 @@ public interface PartitionTable {
 
   /**
    * @return All data groups where all VNodes of this node is the header. The first index indicates
-   * the VNode and the second index indicates the data group of one VNode.
+   *     the VNode and the second index indicates the data group of one VNode.
    */
   List<PartitionGroup> getLocalGroups();
 
@@ -91,8 +93,8 @@ public interface PartitionTable {
   List<PartitionGroup> getGlobalGroups();
 
   /**
-   * @param path      can be an incomplete path (but should contain a storage group name) e.g., if
-   *                  "root.sg" is a storage group, then path can not be "root".
+   * @param path can be an incomplete path (but should contain a storage group name) e.g., if
+   *     "root.sg" is a storage group, then path can not be "root".
    * @param timestamp
    * @return
    * @throws StorageGroupNotSetException
@@ -106,11 +108,10 @@ public interface PartitionTable {
   /**
    * Get partition info by path and range time
    *
-   * @return (startTime, endTime) - partitionGroup pair
-   * @UsedBy NodeTool
+   * @return (startTime, endTime) - partitionGroup pair @UsedBy NodeTool
    */
-  default MultiKeyMap<Long, PartitionGroup> partitionByPathRangeTime(PartialPath path,
-      long startTime, long endTime) throws MetadataException {
+  default MultiKeyMap<Long, PartitionGroup> partitionByPathRangeTime(
+      PartialPath path, long startTime, long endTime) throws MetadataException {
     long partitionInterval = StorageEngine.getTimePartitionInterval();
 
     MultiKeyMap<Long, PartitionGroup> timeRangeMapRaftGroup = new MultiKeyMap<>();
@@ -118,9 +119,10 @@ public interface PartitionTable {
     startTime = StorageEngine.convertMilliWithPrecision(startTime);
     endTime = StorageEngine.convertMilliWithPrecision(endTime);
     while (startTime <= endTime) {
-      long nextTime = (startTime / partitionInterval + 1)
-          * partitionInterval;
-      timeRangeMapRaftGroup.put(startTime, Math.min(nextTime - 1, endTime),
+      long nextTime = (startTime / partitionInterval + 1) * partitionInterval;
+      timeRangeMapRaftGroup.put(
+          startTime,
+          Math.min(nextTime - 1, endTime),
           this.route(storageGroup.getFullPath(), startTime));
       startTime = nextTime;
     }

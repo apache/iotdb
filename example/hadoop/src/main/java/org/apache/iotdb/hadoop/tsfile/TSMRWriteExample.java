@@ -18,8 +18,15 @@
  */
 package org.apache.iotdb.hadoop.tsfile;
 
-import java.io.IOException;
-import java.net.URISyntaxException;
+import org.apache.iotdb.hadoop.tsfile.record.HDFSTSRecord;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
+import org.apache.iotdb.tsfile.write.record.datapoint.DoubleDataPoint;
+import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -31,19 +38,11 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
-import org.apache.iotdb.hadoop.tsfile.record.HDFSTSRecord;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.record.datapoint.DoubleDataPoint;
-import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.Schema;
 
+import java.io.IOException;
+import java.net.URISyntaxException;
 
-/**
- * One example for writing TsFile with MapReduce.
- */
+/** One example for writing TsFile with MapReduce. */
 public class TSMRWriteExample {
 
   public static void main(String[] args)
@@ -61,18 +60,18 @@ public class TSMRWriteExample {
     // add measurements into file schema (all with INT64 data type)
     for (int i = 0; i < 2; i++) {
       schema.registerTimeseries(
-          new org.apache.iotdb.tsfile.read.common.Path(Constant.DEVICE_1,
-              Constant.SENSOR_PREFIX + (i + 1)),
-          new MeasurementSchema(Constant.SENSOR_PREFIX + (i + 1), TSDataType.INT64,
-              TSEncoding.TS_2DIFF));
+          new org.apache.iotdb.tsfile.read.common.Path(
+              Constant.DEVICE_1, Constant.SENSOR_PREFIX + (i + 1)),
+          new MeasurementSchema(
+              Constant.SENSOR_PREFIX + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF));
     }
 
     for (int i = 2; i < sensorNum; i++) {
       schema.registerTimeseries(
-          new org.apache.iotdb.tsfile.read.common.Path(Constant.DEVICE_1,
-              Constant.SENSOR_PREFIX + (i + 1)),
-          new MeasurementSchema(Constant.SENSOR_PREFIX + (i + 1), TSDataType.DOUBLE,
-              TSEncoding.TS_2DIFF));
+          new org.apache.iotdb.tsfile.read.common.Path(
+              Constant.DEVICE_1, Constant.SENSOR_PREFIX + (i + 1)),
+          new MeasurementSchema(
+              Constant.SENSOR_PREFIX + (i + 1), TSDataType.DOUBLE, TSEncoding.TS_2DIFF));
     }
     TSFOutputFormat.setSchema(schema);
 
@@ -81,7 +80,7 @@ public class TSMRWriteExample {
 
     Configuration configuration = new Configuration();
     // set file system configuration
-    //configuration.set("fs.defaultFS", HDFSURL);
+    // configuration.set("fs.defaultFS", HDFSURL);
     Job job = Job.getInstance(configuration);
 
     FileSystem fs = FileSystem.get(configuration);
@@ -111,15 +110,14 @@ public class TSMRWriteExample {
     // set output file path
     TSFOutputFormat.setOutputPath(job, outputPath);
 
-    /**
-     * special configuration for reading tsfile with TSFInputFormat
-     */
+    /** special configuration for reading tsfile with TSFInputFormat */
     TSFInputFormat.setReadTime(job, true); // configure reading time enable
     TSFInputFormat.setReadDeviceId(job, true); // configure reading deltaObjectId enable
-    String[] deviceIds = {Constant.DEVICE_1};// configure reading which deviceIds
+    String[] deviceIds = {Constant.DEVICE_1}; // configure reading which deviceIds
     TSFInputFormat.setReadDeviceIds(job, deviceIds);
-    String[] measurementIds = {Constant.SENSOR_1, Constant.SENSOR_2,
-        Constant.SENSOR_3};// configure reading which measurementIds
+    String[] measurementIds = {
+      Constant.SENSOR_1, Constant.SENSOR_2, Constant.SENSOR_3
+    }; // configure reading which measurementIds
     TSFInputFormat.setReadMeasurementIds(job, measurementIds);
     boolean isSuccess = false;
     try {
@@ -138,7 +136,9 @@ public class TSMRWriteExample {
   public static class TSMapper extends Mapper<NullWritable, MapWritable, Text, MapWritable> {
 
     @Override
-    protected void map(NullWritable key, MapWritable value,
+    protected void map(
+        NullWritable key,
+        MapWritable value,
         Mapper<NullWritable, MapWritable, Text, MapWritable>.Context context)
         throws IOException, InterruptedException {
 
@@ -150,13 +150,13 @@ public class TSMRWriteExample {
     }
   }
 
-  /**
-   * This reducer calculate the average value.
-   */
+  /** This reducer calculate the average value. */
   public static class TSReducer extends Reducer<Text, MapWritable, NullWritable, HDFSTSRecord> {
 
     @Override
-    protected void reduce(Text key, Iterable<MapWritable> values,
+    protected void reduce(
+        Text key,
+        Iterable<MapWritable> values,
         Reducer<Text, MapWritable, NullWritable, HDFSTSRecord>.Context context)
         throws IOException, InterruptedException {
       long sensor1_value_sum = 0;
@@ -181,5 +181,4 @@ public class TSMRWriteExample {
       context.write(NullWritable.get(), tsRecord);
     }
   }
-
 }

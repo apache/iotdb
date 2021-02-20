@@ -18,15 +18,6 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import static junit.framework.TestCase.assertTrue;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -46,19 +37,30 @@ import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+
+import static junit.framework.TestCase.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+
 public class TsFileProcessorTest {
 
   private TsFileProcessor processor;
   private String storageGroup = "storage_group1";
   private StorageGroupInfo sgInfo = new StorageGroupInfo(null);
-  private String filePath = TestConstant.OUTPUT_DATA_DIR
-      .concat("testUnsealedTsFileProcessor.tsfile");
+  private String filePath =
+      TestConstant.OUTPUT_DATA_DIR.concat("testUnsealedTsFileProcessor.tsfile");
   private String deviceId = "root.vehicle.d0";
   private String measurementId = "s0";
   private TSDataType dataType = TSDataType.INT32;
@@ -85,19 +87,24 @@ public class TsFileProcessorTest {
   @Test
   public void testWriteAndFlush() throws IOException, WriteProcessException, MetadataException {
     logger.info("testWriteAndFlush begin..");
-    processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath), sgInfo,
-        this::closeTsFileProcessor,
-        (tsFileProcessor) -> true, true, INIT_ARRAY_SIZE);
+    processor =
+        new TsFileProcessor(
+            storageGroup,
+            SystemFileFactory.INSTANCE.getFile(filePath),
+            sgInfo,
+            this::closeTsFileProcessor,
+            (tsFileProcessor) -> true,
+            true,
+            INIT_ARRAY_SIZE);
 
     TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
     processor.setTsFileProcessorInfo(tsFileProcessorInfo);
     this.sgInfo.initTsFileProcessorInfo(processor);
-    tsFileProcessorInfo.addTSPMemCost(processor
-        .getTsFileResource().calculateRamSize());
+    tsFileProcessorInfo.addTSPMemCost(processor.getTsFileResource().calculateRamSize());
     SystemInfo.getInstance().reportStorageGroupStatus(sgInfo);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
-    processor.query(deviceId, measurementId, dataType, encoding, props, context,
-        tsfileResourcesForQuery);
+    processor.query(
+        deviceId, measurementId, dataType, encoding, props, context, tsfileResourcesForQuery);
     assertTrue(tsfileResourcesForQuery.isEmpty());
 
     for (int i = 1; i <= 100; i++) {
@@ -108,8 +115,8 @@ public class TsFileProcessorTest {
 
     // query data in memory
     tsfileResourcesForQuery.clear();
-    processor.query(deviceId, measurementId, dataType, encoding, props, context,
-        tsfileResourcesForQuery);
+    processor.query(
+        deviceId, measurementId, dataType, encoding, props, context, tsfileResourcesForQuery);
     assertFalse(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk().isEmpty());
     List<ReadOnlyMemChunk> memChunks = tsfileResourcesForQuery.get(0).getReadOnlyMemChunk();
     for (ReadOnlyMemChunk chunk : memChunks) {
@@ -126,14 +133,15 @@ public class TsFileProcessorTest {
     processor.syncFlush();
 
     tsfileResourcesForQuery.clear();
-    processor.query(deviceId, measurementId, dataType, encoding, props, context,
-        tsfileResourcesForQuery);
+    processor.query(
+        deviceId, measurementId, dataType, encoding, props, context, tsfileResourcesForQuery);
     assertTrue(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk().isEmpty());
     assertEquals(1, tsfileResourcesForQuery.get(0).getChunkMetadataList().size());
-    assertEquals(measurementId,
+    assertEquals(
+        measurementId,
         tsfileResourcesForQuery.get(0).getChunkMetadataList().get(0).getMeasurementUid());
-    assertEquals(dataType,
-        tsfileResourcesForQuery.get(0).getChunkMetadataList().get(0).getDataType());
+    assertEquals(
+        dataType, tsfileResourcesForQuery.get(0).getChunkMetadataList().get(0).getDataType());
     processor.syncClose();
   }
 
@@ -141,19 +149,24 @@ public class TsFileProcessorTest {
   public void testWriteAndRestoreMetadata()
       throws IOException, WriteProcessException, MetadataException {
     logger.info("testWriteAndRestoreMetadata begin..");
-    processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath), sgInfo,
-        this::closeTsFileProcessor,
-        (tsFileProcessor) -> true, true, INIT_ARRAY_SIZE);
+    processor =
+        new TsFileProcessor(
+            storageGroup,
+            SystemFileFactory.INSTANCE.getFile(filePath),
+            sgInfo,
+            this::closeTsFileProcessor,
+            (tsFileProcessor) -> true,
+            true,
+            INIT_ARRAY_SIZE);
 
     TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
     processor.setTsFileProcessorInfo(tsFileProcessorInfo);
     this.sgInfo.initTsFileProcessorInfo(processor);
-    tsFileProcessorInfo.addTSPMemCost(processor
-        .getTsFileResource().calculateRamSize());
+    tsFileProcessorInfo.addTSPMemCost(processor.getTsFileResource().calculateRamSize());
     SystemInfo.getInstance().reportStorageGroupStatus(sgInfo);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
-    processor.query(deviceId, measurementId, dataType, encoding, props, context,
-        tsfileResourcesForQuery);
+    processor.query(
+        deviceId, measurementId, dataType, encoding, props, context, tsfileResourcesForQuery);
     assertTrue(tsfileResourcesForQuery.isEmpty());
 
     for (int i = 1; i <= 100; i++) {
@@ -164,8 +177,8 @@ public class TsFileProcessorTest {
 
     // query data in memory
     tsfileResourcesForQuery.clear();
-    processor.query(deviceId, measurementId, dataType, encoding, props, context,
-        tsfileResourcesForQuery);
+    processor.query(
+        deviceId, measurementId, dataType, encoding, props, context, tsfileResourcesForQuery);
     assertFalse(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk().isEmpty());
     int num = 1;
     List<ReadOnlyMemChunk> memChunks = tsfileResourcesForQuery.get(0).getReadOnlyMemChunk();
@@ -183,28 +196,29 @@ public class TsFileProcessorTest {
     processor.syncFlush();
 
     tsfileResourcesForQuery.clear();
-    processor.query(deviceId, measurementId, dataType, encoding, props, context,
-        tsfileResourcesForQuery);
+    processor.query(
+        deviceId, measurementId, dataType, encoding, props, context, tsfileResourcesForQuery);
     assertTrue(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk().isEmpty());
     assertEquals(1, tsfileResourcesForQuery.get(0).getChunkMetadataList().size());
-    assertEquals(measurementId,
+    assertEquals(
+        measurementId,
         tsfileResourcesForQuery.get(0).getChunkMetadataList().get(0).getMeasurementUid());
-    assertEquals(dataType,
-        tsfileResourcesForQuery.get(0).getChunkMetadataList().get(0).getDataType());
+    assertEquals(
+        dataType, tsfileResourcesForQuery.get(0).getChunkMetadataList().get(0).getDataType());
 
     RestorableTsFileIOWriter tsFileIOWriter = processor.getWriter();
     Map<String, List<ChunkMetadata>> chunkMetaDataListInChunkGroups =
         tsFileIOWriter.getDeviceChunkMetadataMap();
-    RestorableTsFileIOWriter restorableTsFileIOWriter = new RestorableTsFileIOWriter(
-        SystemFileFactory.INSTANCE.getFile(filePath));
-    Map<String, List<ChunkMetadata>> restoredChunkMetaDataListInChunkGroups = restorableTsFileIOWriter
-        .getDeviceChunkMetadataMap();
-    assertEquals(chunkMetaDataListInChunkGroups.size(),
-        restoredChunkMetaDataListInChunkGroups.size());
-    for (Map.Entry<String, List<ChunkMetadata>> entry1 : chunkMetaDataListInChunkGroups
-        .entrySet()) {
-      for (Map.Entry<String, List<ChunkMetadata>> entry2
-          : restoredChunkMetaDataListInChunkGroups.entrySet()) {
+    RestorableTsFileIOWriter restorableTsFileIOWriter =
+        new RestorableTsFileIOWriter(SystemFileFactory.INSTANCE.getFile(filePath));
+    Map<String, List<ChunkMetadata>> restoredChunkMetaDataListInChunkGroups =
+        restorableTsFileIOWriter.getDeviceChunkMetadataMap();
+    assertEquals(
+        chunkMetaDataListInChunkGroups.size(), restoredChunkMetaDataListInChunkGroups.size());
+    for (Map.Entry<String, List<ChunkMetadata>> entry1 :
+        chunkMetaDataListInChunkGroups.entrySet()) {
+      for (Map.Entry<String, List<ChunkMetadata>> entry2 :
+          restoredChunkMetaDataListInChunkGroups.entrySet()) {
         assertEquals(entry1.getKey(), entry2.getKey());
         assertEquals(entry1.getValue().size(), entry2.getValue().size());
         for (int i = 0; i < entry1.getValue().size(); i++) {
@@ -217,26 +231,30 @@ public class TsFileProcessorTest {
     restorableTsFileIOWriter.close();
     logger.info("syncClose..");
     processor.syncClose();
-    //we need to close the tsfile writer first and then reopen it.
+    // we need to close the tsfile writer first and then reopen it.
   }
-
 
   @Test
   public void testMultiFlush() throws IOException, WriteProcessException, MetadataException {
     logger.info("testWriteAndRestoreMetadata begin..");
-    processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath), sgInfo,
-        this::closeTsFileProcessor,
-        (tsFileProcessor) -> true, true, INIT_ARRAY_SIZE);
+    processor =
+        new TsFileProcessor(
+            storageGroup,
+            SystemFileFactory.INSTANCE.getFile(filePath),
+            sgInfo,
+            this::closeTsFileProcessor,
+            (tsFileProcessor) -> true,
+            true,
+            INIT_ARRAY_SIZE);
 
     TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
     processor.setTsFileProcessorInfo(tsFileProcessorInfo);
     this.sgInfo.initTsFileProcessorInfo(processor);
-    tsFileProcessorInfo.addTSPMemCost(processor
-        .getTsFileResource().calculateRamSize());
+    tsFileProcessorInfo.addTSPMemCost(processor.getTsFileResource().calculateRamSize());
     SystemInfo.getInstance().reportStorageGroupStatus(sgInfo);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
-    processor.query(deviceId, measurementId, dataType, encoding, props, context,
-        tsfileResourcesForQuery);
+    processor.query(
+        deviceId, measurementId, dataType, encoding, props, context, tsfileResourcesForQuery);
     assertTrue(tsfileResourcesForQuery.isEmpty());
 
     for (int flushId = 0; flushId < 10; flushId++) {
@@ -250,35 +268,41 @@ public class TsFileProcessorTest {
     processor.syncFlush();
 
     tsfileResourcesForQuery.clear();
-    processor.query(deviceId, measurementId, dataType, encoding, props, context,
-        tsfileResourcesForQuery);
+    processor.query(
+        deviceId, measurementId, dataType, encoding, props, context, tsfileResourcesForQuery);
     assertFalse(tsfileResourcesForQuery.isEmpty());
     assertTrue(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk().isEmpty());
     assertEquals(10, tsfileResourcesForQuery.get(0).getChunkMetadataList().size());
-    assertEquals(measurementId,
+    assertEquals(
+        measurementId,
         tsfileResourcesForQuery.get(0).getChunkMetadataList().get(0).getMeasurementUid());
-    assertEquals(dataType,
-        tsfileResourcesForQuery.get(0).getChunkMetadataList().get(0).getDataType());
+    assertEquals(
+        dataType, tsfileResourcesForQuery.get(0).getChunkMetadataList().get(0).getDataType());
     processor.syncClose();
   }
 
   @Test
   public void testWriteAndClose() throws IOException, WriteProcessException, MetadataException {
     logger.info("testWriteAndRestoreMetadata begin..");
-    processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath), sgInfo,
-        this::closeTsFileProcessor,
-        (tsFileProcessor) -> true, true, INIT_ARRAY_SIZE);
+    processor =
+        new TsFileProcessor(
+            storageGroup,
+            SystemFileFactory.INSTANCE.getFile(filePath),
+            sgInfo,
+            this::closeTsFileProcessor,
+            (tsFileProcessor) -> true,
+            true,
+            INIT_ARRAY_SIZE);
 
     TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
     processor.setTsFileProcessorInfo(tsFileProcessorInfo);
     this.sgInfo.initTsFileProcessorInfo(processor);
-    tsFileProcessorInfo.addTSPMemCost(processor
-        .getTsFileResource().calculateRamSize());
+    tsFileProcessorInfo.addTSPMemCost(processor.getTsFileResource().calculateRamSize());
     SystemInfo.getInstance().reportStorageGroupStatus(sgInfo);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
 
-    processor.query(deviceId, measurementId, dataType, encoding, props, context,
-        tsfileResourcesForQuery);
+    processor.query(
+        deviceId, measurementId, dataType, encoding, props, context, tsfileResourcesForQuery);
     assertTrue(tsfileResourcesForQuery.isEmpty());
 
     for (int i = 1; i <= 100; i++) {
@@ -289,8 +313,8 @@ public class TsFileProcessorTest {
 
     // query data in memory
     tsfileResourcesForQuery.clear();
-    processor.query(deviceId, measurementId, dataType, encoding, props, context,
-        tsfileResourcesForQuery);
+    processor.query(
+        deviceId, measurementId, dataType, encoding, props, context, tsfileResourcesForQuery);
     assertFalse(tsfileResourcesForQuery.isEmpty());
     assertFalse(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk().isEmpty());
     List<ReadOnlyMemChunk> memChunks = tsfileResourcesForQuery.get(0).getReadOnlyMemChunk();
@@ -313,7 +337,6 @@ public class TsFileProcessorTest {
     }
 
     assertTrue(processor.getTsFileResource().isClosed());
-
   }
 
   private void closeTsFileProcessor(TsFileProcessor unsealedTsFileProcessor)

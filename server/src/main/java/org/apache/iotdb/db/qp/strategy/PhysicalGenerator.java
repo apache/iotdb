@@ -18,14 +18,6 @@
  */
 package org.apache.iotdb.db.qp.strategy;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
@@ -127,9 +119,16 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-/**
- * Used to convert logical operator to physical plan
- */
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+/** Used to convert logical operator to physical plan */
 public class PhysicalGenerator {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -140,8 +139,13 @@ public class PhysicalGenerator {
       case AUTHOR:
         AuthorOperator author = (AuthorOperator) operator;
         try {
-          return new AuthorPlan(author.getAuthorType(), author.getUserName(), author.getRoleName(),
-              author.getPassWord(), author.getNewPassword(), author.getPrivilegeList(),
+          return new AuthorPlan(
+              author.getAuthorType(),
+              author.getUserName(),
+              author.getRoleName(),
+              author.getPassWord(),
+              author.getNewPassword(),
+              author.getPrivilegeList(),
               author.getNodeName());
         } catch (AuthException e) {
           throw new QueryProcessException(e.getMessage());
@@ -162,9 +166,10 @@ public class PhysicalGenerator {
         return new DeleteStorageGroupPlan(deleteStorageGroup.getDeletePathList());
       case CREATE_TIMESERIES:
         CreateTimeSeriesOperator createOperator = (CreateTimeSeriesOperator) operator;
-        if (createOperator.getTags() != null && !createOperator.getTags().isEmpty()
-            && createOperator.getAttributes() != null && !createOperator.getAttributes()
-            .isEmpty()) {
+        if (createOperator.getTags() != null
+            && !createOperator.getTags().isEmpty()
+            && createOperator.getAttributes() != null
+            && !createOperator.getAttributes().isEmpty()) {
           for (String tagKey : createOperator.getTags().keySet()) {
             if (createOperator.getAttributes().containsKey(tagKey)) {
               throw new QueryProcessException(
@@ -173,24 +178,36 @@ public class PhysicalGenerator {
             }
           }
         }
-        return new CreateTimeSeriesPlan(createOperator.getPath(), createOperator.getDataType(),
-            createOperator.getEncoding(), createOperator.getCompressor(), createOperator.getProps(),
-            createOperator.getTags(), createOperator.getAttributes(), createOperator.getAlias());
+        return new CreateTimeSeriesPlan(
+            createOperator.getPath(),
+            createOperator.getDataType(),
+            createOperator.getEncoding(),
+            createOperator.getCompressor(),
+            createOperator.getProps(),
+            createOperator.getTags(),
+            createOperator.getAttributes(),
+            createOperator.getAlias());
       case DELETE_TIMESERIES:
         DeleteTimeSeriesOperator deletePath = (DeleteTimeSeriesOperator) operator;
         return new DeleteTimeSeriesPlan(deletePath.getDeletePathList());
       case CREATE_INDEX:
         CreateIndexOperator createIndexOp = (CreateIndexOperator) operator;
-        return new CreateIndexPlan(createIndexOp.getSelectedPaths(), createIndexOp.getProps(),
-            createIndexOp.getTime(), createIndexOp.getIndexType());
+        return new CreateIndexPlan(
+            createIndexOp.getSelectedPaths(),
+            createIndexOp.getProps(),
+            createIndexOp.getTime(),
+            createIndexOp.getIndexType());
       case DROP_INDEX:
         DropIndexOperator dropIndexOp = (DropIndexOperator) operator;
         return new DropIndexPlan(dropIndexOp.getSelectedPaths(), dropIndexOp.getIndexType());
       case ALTER_TIMESERIES:
         AlterTimeSeriesOperator alterTimeSeriesOperator = (AlterTimeSeriesOperator) operator;
-        return new AlterTimeSeriesPlan(alterTimeSeriesOperator.getPath(),
-            alterTimeSeriesOperator.getAlterType(), alterTimeSeriesOperator.getAlterMap(),
-            alterTimeSeriesOperator.getAlias(), alterTimeSeriesOperator.getTagsMap(),
+        return new AlterTimeSeriesPlan(
+            alterTimeSeriesOperator.getPath(),
+            alterTimeSeriesOperator.getAlterType(),
+            alterTimeSeriesOperator.getAlterMap(),
+            alterTimeSeriesOperator.getAlias(),
+            alterTimeSeriesOperator.getTagsMap(),
             alterTimeSeriesOperator.getAttributesMap());
       case DELETE:
         DeleteDataOperator delete = (DeleteDataOperator) operator;
@@ -206,8 +223,8 @@ public class PhysicalGenerator {
                   insert.getMeasurementList().length, insert.getValueList().length));
         }
 
-        return new InsertRowPlan(paths.get(0), insert.getTime(),
-            insert.getMeasurementList(), insert.getValueList());
+        return new InsertRowPlan(
+            paths.get(0), insert.getTime(), insert.getMeasurementList(), insert.getValueList());
       case MERGE:
         if (operator.getTokenIntType() == SQLConstant.TOK_FULL_MERGE) {
           return new MergePlan(OperatorType.FULL_MERGE);
@@ -235,12 +252,13 @@ public class PhysicalGenerator {
             ShowTTLOperator showTTLOperator = (ShowTTLOperator) operator;
             return new ShowTTLPlan(showTTLOperator.getStorageGroups());
           default:
-            throw new LogicalOperatorException(String
-                .format("not supported operator type %s in ttl operation.", operator.getType()));
+            throw new LogicalOperatorException(
+                String.format(
+                    "not supported operator type %s in ttl operation.", operator.getType()));
         }
       case LOAD_CONFIGURATION:
-        LoadConfigurationOperatorType type = ((LoadConfigurationOperator) operator)
-            .getLoadConfigurationOperatorType();
+        LoadConfigurationOperatorType type =
+            ((LoadConfigurationOperator) operator).getLoadConfigurationOperatorType();
         return generateLoadConfigurationPlan(type);
       case SHOW:
         switch (operator.getTokenIntType()) {
@@ -250,8 +268,12 @@ public class PhysicalGenerator {
             return new ShowPlan(ShowContentType.VERSION);
           case SQLConstant.TOK_TIMESERIES:
             ShowTimeSeriesOperator showTimeSeriesOperator = (ShowTimeSeriesOperator) operator;
-            ShowTimeSeriesPlan showTimeSeriesPlan = new ShowTimeSeriesPlan(showTimeSeriesOperator.getPath(),
-                showTimeSeriesOperator.getLimit(), showTimeSeriesOperator.getOffset(), fetchSize);
+            ShowTimeSeriesPlan showTimeSeriesPlan =
+                new ShowTimeSeriesPlan(
+                    showTimeSeriesOperator.getPath(),
+                    showTimeSeriesOperator.getLimit(),
+                    showTimeSeriesOperator.getOffset(),
+                    fetchSize);
             showTimeSeriesPlan.setIsContains(showTimeSeriesOperator.isContains());
             showTimeSeriesPlan.setKey(showTimeSeriesOperator.getKey());
             showTimeSeriesPlan.setValue(showTimeSeriesOperator.getValue());
@@ -262,8 +284,12 @@ public class PhysicalGenerator {
                 ShowContentType.STORAGE_GROUP, ((ShowStorageGroupOperator) operator).getPath());
           case SQLConstant.TOK_DEVICES:
             ShowDevicesOperator showDevicesOperator = (ShowDevicesOperator) operator;
-            return new ShowDevicesPlan(showDevicesOperator.getPath(), showDevicesOperator.getLimit(),
-                  showDevicesOperator.getOffset(), fetchSize);
+            return new ShowDevicesPlan(
+                showDevicesOperator.getPath(),
+                showDevicesOperator.getLimit(),
+                showDevicesOperator.getOffset(),
+                fetchSize,
+                showDevicesOperator.hasSgCol());
           case SQLConstant.TOK_COUNT_DEVICES:
             return new CountPlan(
                 ShowContentType.COUNT_DEVICES, ((CountOperator) operator).getPath());
@@ -271,10 +297,14 @@ public class PhysicalGenerator {
             return new CountPlan(
                 ShowContentType.COUNT_STORAGE_GROUP, ((CountOperator) operator).getPath());
           case SQLConstant.TOK_COUNT_NODE_TIMESERIES:
-            return new CountPlan(ShowContentType.COUNT_NODE_TIMESERIES,
-                ((CountOperator) operator).getPath(), ((CountOperator) operator).getLevel());
+            return new CountPlan(
+                ShowContentType.COUNT_NODE_TIMESERIES,
+                ((CountOperator) operator).getPath(),
+                ((CountOperator) operator).getLevel());
           case SQLConstant.TOK_COUNT_NODES:
-            return new CountPlan(ShowContentType.COUNT_NODES, ((CountOperator) operator).getPath(),
+            return new CountPlan(
+                ShowContentType.COUNT_NODES,
+                ((CountOperator) operator).getPath(),
                 ((CountOperator) operator).getLevel());
           case SQLConstant.TOK_COUNT_TIMESERIES:
             return new CountPlan(
@@ -292,15 +322,19 @@ public class PhysicalGenerator {
                     "not supported operator type %s in show operation.", operator.getType()));
         }
       case LOAD_FILES:
-        return new OperateFilePlan(((LoadFilesOperator) operator).getFile(),
-            OperatorType.LOAD_FILES, ((LoadFilesOperator) operator).isAutoCreateSchema(),
+        return new OperateFilePlan(
+            ((LoadFilesOperator) operator).getFile(),
+            OperatorType.LOAD_FILES,
+            ((LoadFilesOperator) operator).isAutoCreateSchema(),
             ((LoadFilesOperator) operator).getSgLevel());
       case REMOVE_FILE:
-        return new OperateFilePlan(((RemoveFileOperator) operator).getFile(),
-            OperatorType.REMOVE_FILE);
+        return new OperateFilePlan(
+            ((RemoveFileOperator) operator).getFile(), OperatorType.REMOVE_FILE);
       case MOVE_FILE:
-        return new OperateFilePlan(((MoveFileOperator) operator).getFile(),
-            ((MoveFileOperator) operator).getTargetDir(), OperatorType.MOVE_FILE);
+        return new OperateFilePlan(
+            ((MoveFileOperator) operator).getFile(),
+            ((MoveFileOperator) operator).getTargetDir(),
+            OperatorType.MOVE_FILE);
       case CLEAR_CACHE:
         return new ClearCachePlan();
       case SHOW_MERGE_STATUS:
@@ -314,8 +348,10 @@ public class PhysicalGenerator {
         return new KillQueryPlan(((KillQueryOperator) operator).getQueryId());
       case CREATE_FUNCTION:
         CreateFunctionOperator createFunctionOperator = (CreateFunctionOperator) operator;
-        return new CreateFunctionPlan(createFunctionOperator.isTemporary(),
-            createFunctionOperator.getUdfName(), createFunctionOperator.getClassName());
+        return new CreateFunctionPlan(
+            createFunctionOperator.isTemporary(),
+            createFunctionOperator.getUdfName(),
+            createFunctionOperator.getClassName());
       case DROP_FUNCTION:
         DropFunctionOperator dropFunctionOperator = (DropFunctionOperator) operator;
         return new DropFunctionPlan(dropFunctionOperator.getUdfName());
@@ -335,17 +371,16 @@ public class PhysicalGenerator {
         throw new QueryProcessException(
             String.format("Unrecognized load configuration operator type, %s", type.name()));
     }
-
   }
 
   /**
    * get types for path list
    *
    * @return pair.left is the type of column in result set, pair.right is the real type of the
-   * measurement
+   *     measurement
    */
-  protected Pair<List<TSDataType>, List<TSDataType>> getSeriesTypes(List<PartialPath> paths,
-      String aggregation) throws MetadataException {
+  protected Pair<List<TSDataType>, List<TSDataType>> getSeriesTypes(
+      List<PartialPath> paths, String aggregation) throws MetadataException {
     List<TSDataType> measurementDataTypes = SchemaUtils.getSeriesTypesByPaths(paths, (String) null);
     // if the aggregation function is null, the type of column in result set
     // is equal to the real type of the measurement
@@ -362,7 +397,6 @@ public class PhysicalGenerator {
   protected List<TSDataType> getSeriesTypes(List<PartialPath> paths) throws MetadataException {
     return SchemaUtils.getSeriesTypesByPaths(paths);
   }
-
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private PhysicalPlan transformQuery(QueryOperator queryOperator, int fetchSize)
@@ -493,26 +527,27 @@ public class PhysicalGenerator {
               if (actualPaths.size() == 1) {
                 String columnName = actualPaths.get(0).getMeasurement();
                 if (originAggregations != null && !originAggregations.isEmpty()) {
-                  measurementAliasMap.put(originAggregations.get(i) + "(" + columnName + ")",
-                      suffixPath.getTsAlias());
+                  measurementAliasMap.put(
+                      originAggregations.get(i) + "(" + columnName + ")", suffixPath.getTsAlias());
                 } else {
                   measurementAliasMap.put(columnName, suffixPath.getTsAlias());
                 }
               } else if (actualPaths.size() >= 2) {
                 throw new QueryProcessException(
-                    "alias '" + suffixPath.getTsAlias()
+                    "alias '"
+                        + suffixPath.getTsAlias()
                         + "' can only be matched with one time series");
               }
             }
 
             // for actual non exist path
-            if (originAggregations != null && actualPaths.isEmpty() && originAggregations
-                .isEmpty()) {
+            if (originAggregations != null
+                && actualPaths.isEmpty()
+                && originAggregations.isEmpty()) {
               String nonExistMeasurement = fullPath.getMeasurement();
               if (measurementSetOfGivenSuffix.add(nonExistMeasurement)
                   && measurementTypeMap.get(nonExistMeasurement) != MeasurementType.Exist) {
-                measurementTypeMap
-                    .put(fullPath.getMeasurement(), MeasurementType.NonExist);
+                measurementTypeMap.put(fullPath.getMeasurement(), MeasurementType.NonExist);
               }
             }
 
@@ -523,17 +558,19 @@ public class PhysicalGenerator {
             //  the actual query in the AlignByDeviceDataSet
             String aggregation =
                 originAggregations != null && !originAggregations.isEmpty()
-                    ? originAggregations.get(i) : null;
+                    ? originAggregations.get(i)
+                    : null;
 
-            Pair<List<TSDataType>, List<TSDataType>> pair = getSeriesTypes(actualPaths,
-                aggregation);
+            Pair<List<TSDataType>, List<TSDataType>> pair =
+                getSeriesTypes(actualPaths, aggregation);
             List<TSDataType> columnDataTypes = pair.left;
             List<TSDataType> measurementDataTypes = pair.right;
             for (int pathIdx = 0; pathIdx < actualPaths.size(); pathIdx++) {
               PartialPath path = new PartialPath(actualPaths.get(pathIdx).getNodes());
 
               // check datatype consistency
-              // a example of inconsistency: select s0 from root.sg1.d1, root.sg1.d2 align by device,
+              // a example of inconsistency: select s0 from root.sg1.d1, root.sg1.d2 align by
+              // device,
               // while root.sg1.d1.s0 is INT32 and root.sg1.d2.s0 is FLOAT.
               String measurementChecked;
               if (originAggregations != null && !originAggregations.isEmpty()) {
@@ -569,7 +606,7 @@ public class PhysicalGenerator {
           } catch (MetadataException e) {
             throw new LogicalOptimizeException(
                 String.format(
-                    "Error when getting all paths of a full path: %s", fullPath.getFullPath())
+                        "Error when getting all paths of a full path: %s", fullPath.getFullPath())
                     + e.getMessage());
           }
         }
@@ -591,8 +628,8 @@ public class PhysicalGenerator {
         measurements = slimitTrimColumn(measurements, seriesSlimit, seriesOffset);
       }
 
-      int maxDeduplicatedPathNum = QueryResourceManager.getInstance()
-          .getMaxDeduplicatedPathNum(fetchSize);
+      int maxDeduplicatedPathNum =
+          QueryResourceManager.getInstance().getMaxDeduplicatedPathNum(fetchSize);
 
       if (measurements.size() > maxDeduplicatedPathNum) {
         throw new PathNumOverLimitException(maxDeduplicatedPathNum, measurements.size());
@@ -680,8 +717,8 @@ public class PhysicalGenerator {
         for (int i = 0; i < filterPathList.size(); i++) {
           pathTSDataTypeHashMap.put(filterPathList.get(i), seriesTypes.get(i));
         }
-        deviceToFilterMap
-            .put(device.getFullPath(), newOperator.transformToExpression(pathTSDataTypeHashMap));
+        deviceToFilterMap.put(
+            device.getFullPath(), newOperator.transformToExpression(pathTSDataTypeHashMap));
         filterPaths.clear();
       } catch (MetadataException e) {
         throw new QueryProcessException(e);
@@ -707,8 +744,8 @@ public class PhysicalGenerator {
     return retDevices;
   }
 
-  private void concatFilterPath(PartialPath prefix, FilterOperator operator,
-      Set<PartialPath> filterPaths) {
+  private void concatFilterPath(
+      PartialPath prefix, FilterOperator operator, Set<PartialPath> filterPaths) {
     if (!operator.isLeaf()) {
       for (FilterOperator child : operator.getChildren()) {
         concatFilterPath(prefix, child, filterPaths);
@@ -719,8 +756,8 @@ public class PhysicalGenerator {
     PartialPath filterPath = basicOperator.getSinglePath();
 
     // do nothing in the cases of "where time > 5" or "where root.d1.s1 > 5"
-    if (SQLConstant.isReservedPath(filterPath) || filterPath.getFirstNode()
-        .startsWith(SQLConstant.ROOT)) {
+    if (SQLConstant.isReservedPath(filterPath)
+        || filterPath.getFirstNode().startsWith(SQLConstant.ROOT)) {
       filterPaths.add(filterPath);
       return;
     }
@@ -745,7 +782,8 @@ public class PhysicalGenerator {
 
     if (queryPlan instanceof GroupByTimePlan) {
       GroupByTimePlan plan = (GroupByTimePlan) queryPlan;
-      // the actual row number of group by query should be calculated from startTime, endTime and interval.
+      // the actual row number of group by query should be calculated from startTime, endTime and
+      // interval.
       long interval = (plan.getEndTime() - plan.getStartTime()) / plan.getInterval();
       if (interval > 0) {
         fetchSize = Math.min((int) (interval), fetchSize);
@@ -784,8 +822,8 @@ public class PhysicalGenerator {
       if (path != null) { // non-udf
         indexedPaths.add(new Pair<>(paths.get(i), i));
       } else { // udf
-        UDFContext context = ((UDTFPlan) queryPlan).getExecutorByOriginalOutputColumnIndex(i)
-            .getContext();
+        UDFContext context =
+            ((UDTFPlan) queryPlan).getExecutorByOriginalOutputColumnIndex(i).getContext();
         for (PartialPath udfPath : context.getPaths()) {
           indexedPaths.add(new Pair<>(udfPath, i));
         }
@@ -793,8 +831,8 @@ public class PhysicalGenerator {
     }
     indexedPaths.sort(Comparator.comparing(pair -> pair.left));
 
-    int maxDeduplicatedPathNum = QueryResourceManager.getInstance()
-        .getMaxDeduplicatedPathNum(fetchSize);
+    int maxDeduplicatedPathNum =
+        QueryResourceManager.getInstance().getMaxDeduplicatedPathNum(fetchSize);
     Map<String, Integer> pathNameToReaderIndex = new HashMap<>();
     Set<String> columnForDisplaySet = new HashSet<>();
 
@@ -804,8 +842,10 @@ public class PhysicalGenerator {
 
       String columnForReader = originalPath.isTsAliasExists() ? originalPath.getTsAlias() : null;
       if (columnForReader == null) {
-        columnForReader = originalPath.isMeasurementAliasExists() ?
-            originalPath.getFullPathWithAlias() : originalPath.toString();
+        columnForReader =
+            originalPath.isMeasurementAliasExists()
+                ? originalPath.getFullPathWithAlias()
+                : originalPath.toString();
         if (queryPlan instanceof AggregationPlan) {
           columnForReader =
               queryPlan.getAggregations().get(originalIndex) + "(" + columnForReader + ")";
@@ -816,8 +856,8 @@ public class PhysicalGenerator {
 
       if (!columnForReaderSet.contains(columnForReader)) {
         rawDataQueryPlan.addDeduplicatedPaths(originalPath);
-        rawDataQueryPlan.addDeduplicatedDataTypes(isUdf
-            ? IoTDB.metaManager.getSeriesType(originalPath) : dataTypes.get(originalIndex));
+        rawDataQueryPlan.addDeduplicatedDataTypes(
+            isUdf ? IoTDB.metaManager.getSeriesType(originalPath) : dataTypes.get(originalIndex));
         pathNameToReaderIndex.put(columnForReader, pathNameToReaderIndex.size());
         if (queryPlan instanceof AggregationPlan) {
           ((AggregationPlan) queryPlan)
@@ -829,10 +869,13 @@ public class PhysicalGenerator {
         }
       }
 
-      String columnForDisplay = isUdf
-          ? ((UDTFPlan) queryPlan).getExecutorByOriginalOutputColumnIndex(originalIndex)
-          .getContext().getColumnName()
-          : columnForReader;
+      String columnForDisplay =
+          isUdf
+              ? ((UDTFPlan) queryPlan)
+                  .getExecutorByOriginalOutputColumnIndex(originalIndex)
+                  .getContext()
+                  .getColumnName()
+              : columnForReader;
       if (!columnForDisplaySet.contains(columnForDisplay)) {
         queryPlan.addPathToIndex(columnForDisplay, queryPlan.getPathToIndex().size());
         if (queryPlan instanceof UDTFPlan) {
@@ -851,15 +894,16 @@ public class PhysicalGenerator {
     }
   }
 
-  private List<String> slimitTrimColumn(List<String> columnList, int seriesLimit,
-      int seriesOffset) throws QueryProcessException {
+  private List<String> slimitTrimColumn(List<String> columnList, int seriesLimit, int seriesOffset)
+      throws QueryProcessException {
     int size = columnList.size();
 
     // check parameter range
     if (seriesOffset >= size) {
-      throw new QueryProcessException(String.format(
-          "The value of SOFFSET (%d) is equal to or exceeds the number of sequences (%d) that can actually be returned.",
-          seriesOffset, size));
+      throw new QueryProcessException(
+          String.format(
+              "The value of SOFFSET (%d) is equal to or exceeds the number of sequences (%d) that can actually be returned.",
+              seriesOffset, size));
     }
     int endPosition = seriesOffset + seriesLimit;
     if (endPosition > size) {

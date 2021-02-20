@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.tsfile.read.query.timegenerator;
 
-import java.io.File;
-import java.io.IOException;
 import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -45,10 +43,14 @@ import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.File;
+import java.io.IOException;
 
 public class TimeGeneratorReadEmptyTest {
 
@@ -73,14 +75,18 @@ public class TimeGeneratorReadEmptyTest {
     Filter timeFilter = FilterFactory.and(TimeFilter.gtEq(2L), TimeFilter.ltEq(2L));
     IExpression timeExpression = new GlobalTimeExpression(timeFilter);
 
-    IExpression valueExpression = BinaryExpression
-        .or(new SingleSeriesExpression(new Path("d1", "s1"), ValueFilter.gt(1.0f)),
+    IExpression valueExpression =
+        BinaryExpression.or(
+            new SingleSeriesExpression(new Path("d1", "s1"), ValueFilter.gt(1.0f)),
             new SingleSeriesExpression(new Path("d1", "s2"), ValueFilter.lt(22)));
 
     IExpression finalExpression = BinaryExpression.and(valueExpression, timeExpression);
 
-    QueryExpression queryExpression = QueryExpression.create().addSelectedPath(new Path("d1", "s1"))
-        .addSelectedPath(new Path("d1", "s2")).setExpression(finalExpression);
+    QueryExpression queryExpression =
+        QueryExpression.create()
+            .addSelectedPath(new Path("d1", "s1"))
+            .addSelectedPath(new Path("d1", "s2"))
+            .setExpression(finalExpression);
 
     try (TsFileSequenceReader fileReader = new TsFileSequenceReader(tsfilePath)) {
       ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(fileReader);
@@ -94,11 +100,7 @@ public class TimeGeneratorReadEmptyTest {
     }
   }
 
-
-  /**
-   * s1 -> 1, 3
-   * s2 ->     5, 6
-   */
+  /** s1 -> 1, 3 s2 -> 5, 6 */
   private void writeTsFile(String tsfilePath) throws IOException, WriteProcessException {
 
     File f = new File(tsfilePath);
@@ -107,8 +109,10 @@ public class TimeGeneratorReadEmptyTest {
     }
 
     Schema schema = new Schema();
-    schema.extendTemplate(TEMPLATE_NAME, new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
-    schema.extendTemplate(TEMPLATE_NAME, new MeasurementSchema("s2", TSDataType.INT32, TSEncoding.TS_2DIFF));
+    schema.extendTemplate(
+        TEMPLATE_NAME, new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
+    schema.extendTemplate(
+        TEMPLATE_NAME, new MeasurementSchema("s2", TSDataType.INT32, TSEncoding.TS_2DIFF));
 
     TsFileWriter tsFileWriter = new TsFileWriter(new File(tsfilePath), schema);
 
@@ -124,7 +128,6 @@ public class TimeGeneratorReadEmptyTest {
     tsFileWriter.write(tsRecord);
 
     tsFileWriter.flushAllChunkGroups();
-
 
     // s2 -> 5, 6
     tsRecord = new TSRecord(5, "d1");

@@ -22,8 +22,8 @@ package org.apache.iotdb.cluster.exception;
 import java.util.List;
 
 /**
- * Raised when a data group leader receives a PullSnapshotRequest but finds it does not manage
- * the requested slot.
+ * Raised when a data group leader receives a PullSnapshotRequest but finds it does not manage the
+ * requested slot.
  */
 public class NotManagedSlotException extends Exception {
 

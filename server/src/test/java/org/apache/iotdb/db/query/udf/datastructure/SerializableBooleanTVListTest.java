@@ -19,31 +19,36 @@
 
 package org.apache.iotdb.db.query.udf.datastructure;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import org.apache.iotdb.db.query.udf.datastructure.tv.SerializableBooleanTVList;
+import org.apache.iotdb.db.query.udf.datastructure.tv.SerializableTVList;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import org.junit.After;
+import org.junit.Before;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.query.udf.datastructure.tv.SerializableBooleanTVList;
-import org.apache.iotdb.db.query.udf.datastructure.tv.SerializableTVList;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.junit.After;
-import org.junit.Before;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class SerializableBooleanTVListTest extends SerializableTVListTest {
 
   private List<Boolean> originalList;
   private SerializableBooleanTVList testList;
 
+  @Override
   @Before
   public void setUp() throws Exception {
     super.setUp();
     originalList = new ArrayList<>();
-    testList = (SerializableBooleanTVList) SerializableTVList
-        .newSerializableTVList(TSDataType.BOOLEAN, QUERY_ID);
+    testList =
+        (SerializableBooleanTVList)
+            SerializableTVList.newSerializableTVList(TSDataType.BOOLEAN, QUERY_ID);
   }
 
+  @Override
   @After
   public void tearDown() {
     super.tearDown();
