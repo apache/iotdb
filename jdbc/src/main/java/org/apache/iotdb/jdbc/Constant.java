@@ -20,7 +20,7 @@ package org.apache.iotdb.jdbc;
 
 public class Constant {
 
-  private Constant(){}
+  private Constant() {}
 
   public static final String GLOBAL_DB_NAME = "IoTDB";
 

@@ -100,18 +100,18 @@ public class BatchTest {
         "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
     statement.addBatch(
         "CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE");
-    statement
-        .addBatch("insert into root.ln.wf01.wt01(time,status) values(1509465600000,true)");
-    statement
-        .addBatch("insert into root.ln.wf01.wt01(time,status) values(1509465660000,true)");
-    statement
-        .addBatch("insert into root.ln.wf01.wt01(time,status) vvvvvv(1509465720000,false)");
     statement.addBatch(
-        "insert into root.ln.wf01.wt01(time,temperature) values(1509465600000,25.957603)");
+        "insert into root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)");
     statement.addBatch(
-        "insert into root.ln.wf01.wt01(time,temperature) values(1509465660000,24.359503)");
+        "insert into root.ln.wf01.wt01(timestamp,status) values(1509465660000,true)");
     statement.addBatch(
-        "insert into root.ln.wf01.wt01(time,temperature) vvvvvv(1509465720000,20.092794)");
+        "insert into root.ln.wf01.wt01(timestamp,status) vvvvvv(1509465720000,false)");
+    statement.addBatch(
+        "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465600000,25.957603)");
+    statement.addBatch(
+        "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465660000,24.359503)");
+    statement.addBatch(
+        "insert into root.ln.wf01.wt01(timestamp,temperature) vvvvvv(1509465720000,20.092794)");
     result = statement.executeBatch();
     assertEquals(resp.getSubStatus().size(), result.length);
     for (int i = 0; i < resp.getSubStatus().size(); i++) {
