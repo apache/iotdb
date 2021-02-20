@@ -20,6 +20,7 @@
 package org.apache.iotdb.rpc;
 
 import org.apache.iotdb.rpc.TimeoutChangeableTFastFramedTransport.Factory;
+
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportFactory;
 
@@ -34,9 +35,10 @@ public class RpcTransportFactory extends TTransportFactory {
   private static int maxLength = RpcUtils.DEFAULT_MAX_LENGTH;
 
   static {
-    INSTANCE = USE_SNAPPY ?
-        new RpcTransportFactory(new TimeoutChangeableTSnappyFramedTransport.Factory()) :
-        new RpcTransportFactory(new Factory(initialBufferCapacity, maxLength));
+    INSTANCE =
+        USE_SNAPPY
+            ? new RpcTransportFactory(new TimeoutChangeableTSnappyFramedTransport.Factory())
+            : new RpcTransportFactory(new Factory(initialBufferCapacity, maxLength));
   }
 
   private TTransportFactory inner;

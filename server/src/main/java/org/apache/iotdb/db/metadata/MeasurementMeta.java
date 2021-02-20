@@ -26,7 +26,8 @@ public class MeasurementMeta {
   private String alias = null; // TODO get schema by alias
   private TimeValuePair timeValuePair = null;
 
-  public MeasurementMeta(MeasurementSchema measurementSchema, String alias, TimeValuePair timeValuePair) {
+  public MeasurementMeta(
+      MeasurementSchema measurementSchema, String alias, TimeValuePair timeValuePair) {
     this.measurementSchema = measurementSchema;
     this.alias = alias;
     this.timeValuePair = timeValuePair;
@@ -62,20 +63,21 @@ public class MeasurementMeta {
   }
 
   public synchronized void updateCachedLast(
-    TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime) {
+      TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime) {
     if (timeValuePair == null || timeValuePair.getValue() == null) {
       return;
     }
 
     if (this.timeValuePair == null) {
-      // If no cached last, (1) a last query (2) an unseq insertion or (3) a seq insertion will update cache.
+      // If no cached last, (1) a last query (2) an unseq insertion or (3) a seq insertion will
+      // update cache.
       if (!highPriorityUpdate || latestFlushedTime <= timeValuePair.getTimestamp()) {
         this.timeValuePair =
-          new TimeValuePair(timeValuePair.getTimestamp(), timeValuePair.getValue());
+            new TimeValuePair(timeValuePair.getTimestamp(), timeValuePair.getValue());
       }
     } else if (timeValuePair.getTimestamp() > this.timeValuePair.getTimestamp()
-      || (timeValuePair.getTimestamp() == this.timeValuePair.getTimestamp()
-      && highPriorityUpdate)) {
+        || (timeValuePair.getTimestamp() == this.timeValuePair.getTimestamp()
+            && highPriorityUpdate)) {
       this.timeValuePair.setTimestamp(timeValuePair.getTimestamp());
       this.timeValuePair.setValue(timeValuePair.getValue());
     }

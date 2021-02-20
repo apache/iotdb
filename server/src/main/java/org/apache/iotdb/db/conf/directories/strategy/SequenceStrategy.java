@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.db.conf.directories.strategy;
 
-import java.util.List;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.utils.CommonUtils;
+
+import java.util.List;
 
 public class SequenceStrategy extends DirectoryStrategy {
 

@@ -4,6 +4,14 @@
 
 package org.apache.iotdb.cluster.partition.slot;
 
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.utils.SerializeUtils;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.DataOutputStream;
@@ -15,16 +23,10 @@ import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
-import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.utils.SerializeUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
- * SlotManager manages the status of the slots involved during a data transfer (data slot
- * ownership changes caused by node removals or additions) of a data group member.
+ * SlotManager manages the status of the slots involved during a data transfer (data slot ownership
+ * changes caused by node removals or additions) of a data group member.
  */
 public class SlotManager {
 
@@ -34,9 +36,7 @@ public class SlotManager {
 
   private String slotFilePath;
 
-  /**
-   * the serial number of a slot -> the status and source of a slot
-   */
+  /** the serial number of a slot -> the status and source of a slot */
   private Map<Integer, SlotDescriptor> idSlotMap;
 
   public SlotManager(long totalSlotNumber, String memberDir) {
@@ -57,6 +57,7 @@ public class SlotManager {
 
   /**
    * Wait until the status of the slot becomes NULL
+   *
    * @param slotId
    */
   public void waitSlot(int slotId) {
@@ -80,6 +81,7 @@ public class SlotManager {
 
   /**
    * Wait until the status of the slot becomes NULL or PULLING_WRITABLE
+   *
    * @param slotId
    */
   public void waitSlotForWrite(int slotId) throws StorageEngineException {
@@ -88,11 +90,11 @@ public class SlotManager {
       synchronized (slotDescriptor) {
         if (slotDescriptor.slotStatus == SlotStatus.SENDING
             || slotDescriptor.slotStatus == SlotStatus.SENT) {
-          throw new StorageEngineException(String.format("Slot %d no longer belongs to the node",
-              slotId));
+          throw new StorageEngineException(
+              String.format("Slot %d no longer belongs to the node", slotId));
         }
-        if (slotDescriptor.slotStatus != SlotStatus.NULL &&
-            slotDescriptor.slotStatus != SlotStatus.PULLING_WRITABLE) {
+        if (slotDescriptor.slotStatus != SlotStatus.NULL
+            && slotDescriptor.slotStatus != SlotStatus.PULLING_WRITABLE) {
           try {
             slotDescriptor.wait(SLOT_WAIT_INTERVAL_MS);
           } catch (InterruptedException e) {
@@ -107,7 +109,6 @@ public class SlotManager {
   }
 
   /**
-   *
    * @param slotId
    * @return the SlotStatus of a slot
    */
@@ -116,7 +117,6 @@ public class SlotManager {
   }
 
   /**
-   *
    * @param slotId
    * @return the source of a slot if it is being pulled, or null if it is not being pulled
    */
@@ -126,6 +126,7 @@ public class SlotManager {
 
   /**
    * Set the status of slot "slotId" to PULLING and its source to "source".
+   *
    * @param slotId
    * @param source
    */
@@ -139,6 +140,7 @@ public class SlotManager {
 
   /**
    * Set the status of slot "slotId" to PULLING_WRITABLE.
+   *
    * @param slotId
    */
   public void setToPullingWritable(int slotId) {
@@ -152,6 +154,7 @@ public class SlotManager {
 
   /**
    * Set the status of slot "slotId" to NULL.
+   *
    * @param slotId
    */
   public void setToNull(int slotId) {
@@ -186,9 +189,10 @@ public class SlotManager {
   /**
    * If a slot is in LOSING status and one member of the remote group has pulled snapshot, the
    * method should be called so eventually we can clear data of the slot.
+   *
    * @param slotId
    * @return how many members in the remote group has received the snapshot (including this
-   * invocation).
+   *     invocation).
    */
   public int sentOneReplication(int slotId) {
     SlotDescriptor slotDescriptor = idSlotMap.get(slotId);
@@ -216,8 +220,10 @@ public class SlotManager {
       byte[] bytes = new byte[(int) slotFile.length()];
       int read = bufferedInputStream.read(bytes);
       if (read != slotFile.length() && logger.isWarnEnabled()) {
-        logger.warn("SlotManager in {} read size does not equal to file size: {}/{}",
-            slotFilePath, read,
+        logger.warn(
+            "SlotManager in {} read size does not equal to file size: {}/{}",
+            slotFilePath,
+            read,
             slotFile.length());
       }
       deserialize(ByteBuffer.wrap(bytes));
@@ -263,7 +269,6 @@ public class SlotManager {
     }
   }
 
-
   public enum SlotStatus {
     // the slot has pulled data or does not belong to this member
     NULL,
@@ -284,8 +289,7 @@ public class SlotManager {
     // in LOSING status, how many members in the new owner have pulled data
     private volatile int snapshotReceivedCount;
 
-    SlotDescriptor() {
-    }
+    SlotDescriptor() {}
 
     SlotDescriptor(SlotStatus slotStatus) {
       this.slotStatus = slotStatus;
@@ -303,7 +307,8 @@ public class SlotManager {
     private static SlotDescriptor deserialize(ByteBuffer buffer) {
       SlotDescriptor descriptor = new SlotDescriptor();
       descriptor.slotStatus = SlotStatus.values()[buffer.getInt()];
-      if (descriptor.slotStatus == SlotStatus.PULLING || descriptor.slotStatus == SlotStatus.PULLING_WRITABLE) {
+      if (descriptor.slotStatus == SlotStatus.PULLING
+          || descriptor.slotStatus == SlotStatus.PULLING_WRITABLE) {
         descriptor.source = new Node();
         SerializeUtils.deserialize(descriptor.source, buffer);
       } else if (descriptor.slotStatus == SlotStatus.SENDING) {

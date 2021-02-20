@@ -395,11 +395,11 @@ IoTDB> delete timeseries root.ln.wf02.*
 
 ## Show Devices
 
-* SHOW DEVICES prefixPath? limitClause?
+* SHOW DEVICES prefixPath? (WITH STORAGE GROUP)? limitClause? #showDevices
 
 Similar to `Show Timeseries`, IoTDB also supports two ways of viewing devices:
 
-* `SHOW DEVICES` statement presents all devices information, which is equal to `SHOW DEVICES root`.
+* `SHOW DEVICES` statement presents all devices' information, which is equal to `SHOW DEVICES root`.
 * `SHOW DEVICES <PrefixPath>` statement specifies the `PrefixPath` and returns the devices information under the given level.
 
 SQL statement is as follows:
@@ -429,6 +429,43 @@ It costs 0.002s
 |root.ln.wf01.wt01|
 |root.ln.wf02.wt02|
 +-----------------+
+Total line number = 2
+It costs 0.001s
+```
+
+To view devices' information with storage group, we can use `SHOW DEVICES WITH STORAGE GROUP` statement.
+
+* `SHOW DEVICES WITH STORAGE GROUP` statement presents all devices' information with their storage group.
+* `SHOW DEVICES <PrefixPath> WITH STORAGE GROUP` statement specifies the `PrefixPath` and returns the 
+devices' information under the given level with their storage group information.
+
+SQL statement is as follows:
+
+```
+IoTDB> show devices with storage group
+IoTDB> show devices root.ln with storage group
+```
+
+You can get results below:
+
+```
++-------------------+-------------+
+|            devices|storage group|
++-------------------+-------------+
+|  root.ln.wf01.wt01|      root.ln|
+|  root.ln.wf02.wt02|      root.ln|
+|root.sgcc.wf03.wt01|    root.sgcc|
+|    root.turbine.d1| root.turbine|
++-------------------+-------------+
+Total line number = 4
+It costs 0.003s
+
++-----------------+-------------+
+|          devices|storage group|
++-----------------+-------------+
+|root.ln.wf01.wt01|      root.ln|
+|root.ln.wf02.wt02|      root.ln|
++-----------------+-------------+
 Total line number = 2
 It costs 0.001s
 ```

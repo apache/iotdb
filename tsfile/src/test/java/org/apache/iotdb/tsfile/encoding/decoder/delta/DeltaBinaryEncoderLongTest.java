@@ -20,6 +20,7 @@ package org.apache.iotdb.tsfile.encoding.decoder.delta;
 
 import org.apache.iotdb.tsfile.encoding.decoder.DeltaBinaryDecoder;
 import org.apache.iotdb.tsfile.encoding.encoder.DeltaBinaryEncoder;
+
 import org.junit.Before;
 import org.junit.Test;
 
@@ -38,9 +39,6 @@ import java.util.Random;
 import java.util.stream.Stream;
 
 import static org.junit.Assert.assertEquals;
-
-import org.apache.iotdb.tsfile.encoding.decoder.DeltaBinaryDecoder;
-import org.apache.iotdb.tsfile.encoding.encoder.DeltaBinaryEncoder;
 
 public class DeltaBinaryEncoderLongTest {
 
@@ -170,11 +168,16 @@ public class DeltaBinaryEncoderLongTest {
     if (distance < 1) {
       return list;
     }
-    Stream.iterate(startDate, d -> {
-      return d.plusDays(1);
-    }).limit(distance + 1).forEach(f -> {
-      list.add(f.toString());
-    });
+    Stream.iterate(
+            startDate,
+            d -> {
+              return d.plusDays(1);
+            })
+        .limit(distance + 1)
+        .forEach(
+            f -> {
+              list.add(f.toString());
+            });
     return list;
   }
 
@@ -195,5 +198,4 @@ public class DeltaBinaryEncoderLongTest {
       assertEquals(data[i++], reader.readLong(buffer));
     }
   }
-
 }

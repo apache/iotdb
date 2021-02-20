@@ -18,20 +18,6 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Random;
-import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -54,8 +40,24 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Random;
+import java.util.Set;
 
 @SuppressWarnings("java:S1135") // ignore todos
 public class TsFileResource {
@@ -72,9 +74,7 @@ public class TsFileResource {
   public static final String RESOURCE_SUFFIX = ".resource";
   static final String TEMP_SUFFIX = ".temp";
 
-  /**
-   * version number
-   */
+  /** version number */
   public static final byte VERSION_NUMBER = 1;
 
   public TsFileProcessor getProcessor() {
@@ -85,9 +85,7 @@ public class TsFileResource {
 
   protected ITimeIndex timeIndex;
 
-  /**
-   * time index type, fileTimeIndex = 0, deviceTimeIndex = 1
-   */
+  /** time index type, fileTimeIndex = 0, deviceTimeIndex = 1 */
   private byte timeIndexType;
 
   private ModificationFile modFile;
@@ -106,21 +104,15 @@ public class TsFileResource {
    */
   private List<ChunkMetadata> chunkMetadataList;
 
-  /**
-   * Mem chunk data. Only be set in a temporal TsFileResource in a query process.
-   */
+  /** Mem chunk data. Only be set in a temporal TsFileResource in a query process. */
   private List<ReadOnlyMemChunk> readOnlyMemChunk;
 
-  /**
-   * used for unsealed file to get TimeseriesMetadata
-   */
+  /** used for unsealed file to get TimeseriesMetadata */
   private TimeseriesMetadata timeSeriesMetadata;
 
   private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
-  /**
-   * generated upgraded TsFile ResourceList used for upgrading v0.11.x/v2 -> 0.12/v3
-   */
+  /** generated upgraded TsFile ResourceList used for upgrading v0.11.x/v2 -> 0.12/v3 */
   private List<TsFileResource> upgradedResources;
 
   /**
@@ -142,20 +134,15 @@ public class TsFileResource {
    */
   private TsFileResource originTsFileResource;
 
-  /**
-   * Maximum index of plans executed within this TsFile.
-   */
+  /** Maximum index of plans executed within this TsFile. */
   protected long maxPlanIndex = Long.MIN_VALUE;
 
-  /**
-   * Minimum index of plans executed within this TsFile.
-   */
+  /** Minimum index of plans executed within this TsFile. */
   protected long minPlanIndex = Long.MAX_VALUE;
 
   private long version = 0;
 
-  public TsFileResource() {
-  }
+  public TsFileResource() {}
 
   public TsFileResource(TsFileResource other) throws IOException {
     this.file = other.file;
@@ -176,9 +163,7 @@ public class TsFileResource {
     this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
   }
 
-  /**
-   * for sealed TsFile, call setClosed to close TsFileResource
-   */
+  /** for sealed TsFile, call setClosed to close TsFileResource */
   public TsFileResource(File file) {
     this.file = file;
     this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
@@ -186,9 +171,7 @@ public class TsFileResource {
     this.timeIndexType = (byte) config.getTimeIndexLevel().ordinal();
   }
 
-  /**
-   * unsealed TsFile
-   */
+  /** unsealed TsFile */
   public TsFileResource(File file, TsFileProcessor processor, int deviceNumInLastClosedTsFile) {
     this.file = file;
     this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
@@ -197,11 +180,11 @@ public class TsFileResource {
     this.processor = processor;
   }
 
-  /**
-   * unsealed TsFile
-   */
-  public TsFileResource(List<ReadOnlyMemChunk> readOnlyMemChunk,
-      List<ChunkMetadata> chunkMetadataList, TsFileResource originTsFileResource)
+  /** unsealed TsFile */
+  public TsFileResource(
+      List<ReadOnlyMemChunk> readOnlyMemChunk,
+      List<ChunkMetadata> chunkMetadataList,
+      TsFileResource originTsFileResource)
       throws IOException {
     this.file = originTsFileResource.file;
     this.timeIndex = originTsFileResource.timeIndex;
@@ -214,8 +197,8 @@ public class TsFileResource {
   }
 
   @TestOnly
-  public TsFileResource(File file, Map<String, Integer> deviceToIndex, long[] startTimes,
-      long[] endTimes) {
+  public TsFileResource(
+      File file, Map<String, Integer> deviceToIndex, long[] startTimes, long[] endTimes) {
     this.file = file;
     this.timeIndex = new DeviceTimeIndex(deviceToIndex, startTimes, endTimes);
     this.timeIndexType = 1;
@@ -255,8 +238,8 @@ public class TsFileResource {
   }
 
   public synchronized void serialize() throws IOException {
-    try (OutputStream outputStream = fsFactory.getBufferedOutputStream(
-        file + RESOURCE_SUFFIX + TEMP_SUFFIX)) {
+    try (OutputStream outputStream =
+        fsFactory.getBufferedOutputStream(file + RESOURCE_SUFFIX + TEMP_SUFFIX)) {
       ReadWriteIOUtils.write(VERSION_NUMBER, outputStream);
       ReadWriteIOUtils.write(timeIndexType, outputStream);
       timeIndex.serialize(outputStream);
@@ -276,8 +259,7 @@ public class TsFileResource {
   }
 
   public void deserialize() throws IOException {
-    try (InputStream inputStream = fsFactory.getBufferedInputStream(
-        file + RESOURCE_SUFFIX)) {
+    try (InputStream inputStream = fsFactory.getBufferedInputStream(file + RESOURCE_SUFFIX)) {
       readVersionNumber(inputStream);
       timeIndexType = ReadWriteIOUtils.readBytes(inputStream, 1)[0];
       timeIndex = TimeIndexLevel.valueOf(timeIndexType).getTimeIndex().deserialize(inputStream);
@@ -294,8 +276,7 @@ public class TsFileResource {
   }
 
   public void deserializeFromOldFile() throws IOException {
-    try (InputStream inputStream = fsFactory.getBufferedInputStream(
-        file + RESOURCE_SUFFIX)) {
+    try (InputStream inputStream = fsFactory.getBufferedInputStream(file + RESOURCE_SUFFIX)) {
       // deserialize old TsfileResource
       int size = ReadWriteIOUtils.readInt(inputStream);
       Map<String, Integer> deviceMap = new HashMap<>();
@@ -332,9 +313,7 @@ public class TsFileResource {
     }
   }
 
-  /**
-   * read version number, used for checking compatibility of TsFileResource in the future
-   */
+  /** read version number, used for checking compatibility of TsFileResource in the future */
   private byte readVersionNumber(InputStream inputStream) throws IOException {
     return ReadWriteIOUtils.readBytes(inputStream, 1)[0];
   }
@@ -466,9 +445,7 @@ public class TsFileResource {
     modFile = null;
   }
 
-  /**
-   * Remove the data file, its resource file, and its modification file physically.
-   */
+  /** Remove the data file, its resource file, and its modification file physically. */
   public void remove() {
     try {
       Files.deleteIfExists(file.toPath());
@@ -494,12 +471,14 @@ public class TsFileResource {
 
   void moveTo(File targetDir) {
     fsFactory.moveFile(file, fsFactory.getFile(targetDir, file.getName()));
-    fsFactory.moveFile(fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX),
+    fsFactory.moveFile(
+        fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX),
         fsFactory.getFile(targetDir, file.getName() + RESOURCE_SUFFIX));
     File originModFile = fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX);
     if (originModFile.exists()) {
-      fsFactory.moveFile(originModFile, fsFactory.getFile(targetDir,
-          file.getName() + ModificationFile.FILE_SUFFIX));
+      fsFactory.moveFile(
+          originModFile,
+          fsFactory.getFile(targetDir, file.getName() + ModificationFile.FILE_SUFFIX));
     }
   }
 
@@ -545,22 +524,17 @@ public class TsFileResource {
     isMerging = merging;
   }
 
-  /**
-   * check if any of the device lives over the given time bound
-   */
+  /** check if any of the device lives over the given time bound */
   public boolean stillLives(long timeLowerBound) {
     return timeIndex.stillLives(timeLowerBound);
   }
 
-  /**
-   * @return true if the device is contained in the TsFile and it lives beyond TTL
-   */
-  public boolean isSatisfied(String deviceId,
-      Filter timeFilter, boolean isSeq, long ttl) {
+  /** @return true if the device is contained in the TsFile and it lives beyond TTL */
+  public boolean isSatisfied(String deviceId, Filter timeFilter, boolean isSeq, long ttl) {
     if (!getDevices().contains(deviceId)) {
       if (config.isDebugOn()) {
-        DEBUG_LOGGER.info("Path: {} file {} is not satisfied because of no device!", deviceId,
-            file);
+        DEBUG_LOGGER.info(
+            "Path: {} file {} is not satisfied because of no device!", deviceId, file);
       }
       return false;
     }
@@ -570,8 +544,7 @@ public class TsFileResource {
 
     if (!isAlive(endTime, ttl)) {
       if (config.isDebugOn()) {
-        DEBUG_LOGGER
-            .info("Path: {} file {} is not satisfied because of ttl!", deviceId, file);
+        DEBUG_LOGGER.info("Path: {} file {} is not satisfied because of ttl!", deviceId, file);
       }
       return false;
     }
@@ -579,17 +552,15 @@ public class TsFileResource {
     if (timeFilter != null) {
       boolean res = timeFilter.satisfyStartEndTime(startTime, endTime);
       if (config.isDebugOn() && !res) {
-        DEBUG_LOGGER.info("Path: {} file {} is not satisfied because of time filter!", deviceId,
-            fsFactory);
+        DEBUG_LOGGER.info(
+            "Path: {} file {} is not satisfied because of time filter!", deviceId, fsFactory);
       }
       return res;
     }
     return true;
   }
 
-  /**
-   * @return whether the given time falls in ttl
-   */
+  /** @return whether the given time falls in ttl */
   private boolean isAlive(long time, long dataTTL) {
     return dataTTL == Long.MAX_VALUE || (System.currentTimeMillis() - time) <= dataTTL;
   }
@@ -627,9 +598,7 @@ public class TsFileResource {
     return upgradeTsFileResourceCallBack;
   }
 
-  /**
-   * make sure Either the deviceToIndex is not empty Or the path contains a partition folder
-   */
+  /** make sure Either the deviceToIndex is not empty Or the path contains a partition folder */
   public long getTimePartition() {
     return timeIndex.getTimePartition(file.getAbsolutePath());
   }
@@ -649,7 +618,7 @@ public class TsFileResource {
    * suffix like ".{sysTime}_{randomLong}"
    *
    * @return a new TsFileResource with its file changed to the hardlink or null the hardlink cannot
-   * be created.
+   *     be created.
    */
   public TsFileResource createHardlink() {
     if (!file.exists()) {
@@ -690,9 +659,7 @@ public class TsFileResource {
     this.modFile = modFile;
   }
 
-  /**
-   * @return initial resource map size
-   */
+  /** @return initial resource map size */
   public long calculateRamSize() {
     return timeIndex.calculateRamSize();
   }
@@ -709,8 +676,10 @@ public class TsFileResource {
   public void delete() throws IOException {
     if (file.exists()) {
       Files.delete(file.toPath());
-      Files.delete(FSFactoryProducer.getFSFactory()
-          .getFile(file.toPath() + TsFileResource.RESOURCE_SUFFIX).toPath());
+      Files.delete(
+          FSFactoryProducer.getFSFactory()
+              .getFile(file.toPath() + TsFileResource.RESOURCE_SUFFIX)
+              .toPath());
     }
   }
 
@@ -732,23 +701,23 @@ public class TsFileResource {
       try {
         serialize();
       } catch (IOException e) {
-        logger.error("Cannot serialize TsFileResource {} when updating plan index {}-{}", this,
-            maxPlanIndex, planIndex);
+        logger.error(
+            "Cannot serialize TsFileResource {} when updating plan index {}-{}",
+            this,
+            maxPlanIndex,
+            planIndex);
       }
     }
   }
 
-  /**
-   * For merge, the index range of the new file should be the union of all files' in this merge.
-   */
+  /** For merge, the index range of the new file should be the union of all files' in this merge. */
   public void updatePlanIndexes(TsFileResource another) {
     maxPlanIndex = Math.max(maxPlanIndex, another.maxPlanIndex);
     minPlanIndex = Math.min(minPlanIndex, another.minPlanIndex);
   }
 
   public boolean isPlanIndexOverlap(TsFileResource another) {
-    return another.maxPlanIndex >= this.minPlanIndex &&
-        another.minPlanIndex <= this.maxPlanIndex;
+    return another.maxPlanIndex >= this.minPlanIndex && another.minPlanIndex <= this.maxPlanIndex;
   }
 
   public boolean isPlanRangeCovers(TsFileResource another) {

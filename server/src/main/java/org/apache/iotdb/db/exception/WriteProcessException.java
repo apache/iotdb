@@ -44,5 +44,4 @@ public class WriteProcessException extends IoTDBException {
   public WriteProcessException(Exception exception) {
     super(exception, TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode());
   }
-
 }

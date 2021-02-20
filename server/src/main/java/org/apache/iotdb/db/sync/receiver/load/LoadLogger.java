@@ -64,7 +64,7 @@ public class LoadLogger implements ILoadLogger {
 
   @Override
   public void close() throws IOException {
-    if(bw != null) {
+    if (bw != null) {
       bw.close();
       bw = null;
     }

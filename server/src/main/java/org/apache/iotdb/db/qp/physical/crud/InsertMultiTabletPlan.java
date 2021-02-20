@@ -18,6 +18,12 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -26,16 +32,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 /**
  * Mainly used in the distributed version, when multiple InsertTabletPlans belong to a raft
  * replication group, we merge these InsertTabletPlans into one InsertMultiTabletPlan, which can
- * reduce the number of raft logs. For details, please refer to https://issues.apache.org/jira/browse/IOTDB-1099
+ * reduce the number of raft logs. For details, please refer to
+ * https://issues.apache.org/jira/browse/IOTDB-1099
  */
 public class InsertMultiTabletPlan extends InsertPlan {
 
@@ -43,59 +45,50 @@ public class InsertMultiTabletPlan extends InsertPlan {
    * the value is used to indict the parent InsertTabletPlan's index when the parent
    * InsertTabletPlan is split to multi sub InsertTabletPlans. if the InsertTabletPlan have no
    * parent plan, the value is zero;
-   * <p>
-   * suppose we originally have three InsertTabletPlans in one InsertMultiTabletPlan, then the
+   *
+   * <p>suppose we originally have three InsertTabletPlans in one InsertMultiTabletPlan, then the
    * initial InsertMultiTabletPlan would have the following two attributes:
-   * <p>
-   * insertTabletPlanList={InsertTabletPlan_1,InsertTabletPlan_2,InsertTabletPlan_3}
-   * <p>
-   * parentInsetTablePlanIndexList={0,0,0} both have three values.
    *
-   * <p>
-   * if the InsertTabletPlan_1 is split into two sub InsertTabletPlans, InsertTabletPlan_2 is split
-   * into three sub InsertTabletPlans, InsertTabletPlan_3 is split into four sub InsertTabletPlans.
-   * <p>
-   * InsertTabletPlan_1={InsertTabletPlan_1_subPlan1, InsertTabletPlan_1_subPlan2}
+   * <p>insertTabletPlanList={InsertTabletPlan_1,InsertTabletPlan_2,InsertTabletPlan_3}
    *
-   * <p>
-   * InsertTabletPlan_2={InsertTabletPlan_2_subPlan1, InsertTabletPlan_2_subPlan2,
+   * <p>parentInsetTablePlanIndexList={0,0,0} both have three values.
+   *
+   * <p>if the InsertTabletPlan_1 is split into two sub InsertTabletPlans, InsertTabletPlan_2 is
+   * split into three sub InsertTabletPlans, InsertTabletPlan_3 is split into four sub
+   * InsertTabletPlans.
+   *
+   * <p>InsertTabletPlan_1={InsertTabletPlan_1_subPlan1, InsertTabletPlan_1_subPlan2}
+   *
+   * <p>InsertTabletPlan_2={InsertTabletPlan_2_subPlan1, InsertTabletPlan_2_subPlan2,
    * InsertTabletPlan_2_subPlan3}
    *
-   * <p>
-   * InsertTabletPlan_3={InsertTabletPlan_3_subPlan1, InsertTabletPlan_3_subPlan2,
+   * <p>InsertTabletPlan_3={InsertTabletPlan_3_subPlan1, InsertTabletPlan_3_subPlan2,
    * InsertTabletPlan_3_subPlan3, InsertTabletPlan_3_subPlan4}
-   * <p>
-   * those sub plans belong to two different raft data groups, so will generate two new
-   * InsertMultiTabletPlans
-   * <p>
-   * InsertMultiTabletPlant1.insertTabletPlanList={InsertTabletPlan_1_subPlan1,
-   * InsertTabletPlan_3_subPlan1, InsertTabletPlan_3_subPlan3, InsertTabletPlan_3_subPlan4}
-   * <p>
-   * InsertMultiTabletPlant1.parentInsetTablePlanIndexList={0,2,2,2}
    *
-   * <p>
-   * InsertMultiTabletPlant2.insertTabletPlanList={InsertTabletPlan_1_subPlan2,
+   * <p>those sub plans belong to two different raft data groups, so will generate two new
+   * InsertMultiTabletPlans
+   *
+   * <p>InsertMultiTabletPlant1.insertTabletPlanList={InsertTabletPlan_1_subPlan1,
+   * InsertTabletPlan_3_subPlan1, InsertTabletPlan_3_subPlan3, InsertTabletPlan_3_subPlan4}
+   *
+   * <p>InsertMultiTabletPlant1.parentInsetTablePlanIndexList={0,2,2,2}
+   *
+   * <p>InsertMultiTabletPlant2.insertTabletPlanList={InsertTabletPlan_1_subPlan2,
    * InsertTabletPlan_2_subPlan1, InsertTabletPlan_2_subPlan2, InsertTabletPlan_2_subPlan3,
    * InsertTabletPlan_3_subPlan2}
-   * <p>
-   * InsertMultiTabletPlant2.parentInsetTablePlanIndexList={0,1,1,1,2}
    *
-   * <p>
-   * this is usually used to back-propagate exceptions to the parent plan without losing their
+   * <p>InsertMultiTabletPlant2.parentInsetTablePlanIndexList={0,1,1,1,2}
+   *
+   * <p>this is usually used to back-propagate exceptions to the parent plan without losing their
    * proper positions.
    */
   List<Integer> parentInsertTabletPlanIndexList;
 
-  /**
-   * the InsertTabletPlan list
-   */
+  /** the InsertTabletPlan list */
   List<InsertTabletPlan> insertTabletPlanList;
 
-  /**
-   * record the result of creation of time series
-   */
+  /** record the result of creation of time series */
   private Map<Integer, TSStatus> results = new TreeMap<>();
-
 
   public InsertMultiTabletPlan() {
     super(OperatorType.MULTI_BATCH_INSERT);
@@ -109,8 +102,8 @@ public class InsertMultiTabletPlan extends InsertPlan {
     this.parentInsertTabletPlanIndexList = new ArrayList<>();
   }
 
-  public InsertMultiTabletPlan(List<InsertTabletPlan> insertTabletPlanList,
-      List<Integer> parentInsertTabletPlanIndexList) {
+  public InsertMultiTabletPlan(
+      List<InsertTabletPlan> insertTabletPlanList, List<Integer> parentInsertTabletPlanIndexList) {
     super(OperatorType.MULTI_BATCH_INSERT);
     this.insertTabletPlanList = insertTabletPlanList;
     this.parentInsertTabletPlanIndexList = parentInsertTabletPlanIndexList;
@@ -128,7 +121,6 @@ public class InsertMultiTabletPlan extends InsertPlan {
   public List<Integer> getParentInsertTabletPlanIndexList() {
     return parentInsertTabletPlanIndexList;
   }
-
 
   @Override
   public List<PartialPath> getPaths() {
@@ -168,9 +160,7 @@ public class InsertMultiTabletPlan extends InsertPlan {
     return results;
   }
 
-  /**
-   * @return the total row of the whole InsertTabletPlan
-   */
+  /** @return the total row of the whole InsertTabletPlan */
   public int getTotalRowCount() {
     int rowCount = 0;
     for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
@@ -230,8 +220,7 @@ public class InsertMultiTabletPlan extends InsertPlan {
     this.insertTabletPlanList = insertTabletPlanList;
   }
 
-  public void setResults(
-      Map<Integer, TSStatus> results) {
+  public void setResults(Map<Integer, TSStatus> results) {
     this.results = results;
   }
 
@@ -292,8 +281,10 @@ public class InsertMultiTabletPlan extends InsertPlan {
   @Override
   public String toString() {
     return "InsertMultiTabletPlan{"
-        + " insertTabletPlanList=" + insertTabletPlanList
-        + ", parentInsetTablePlanIndexList=" + parentInsertTabletPlanIndexList
+        + " insertTabletPlanList="
+        + insertTabletPlanList
+        + ", parentInsetTablePlanIndexList="
+        + parentInsertTabletPlanIndexList
         + "}";
   }
 
@@ -318,9 +309,10 @@ public class InsertMultiTabletPlan extends InsertPlan {
   public int hashCode() {
     int result = insertTabletPlanList != null ? insertTabletPlanList.hashCode() : 0;
     result =
-        31 * result + (parentInsertTabletPlanIndexList != null ? parentInsertTabletPlanIndexList
-            .hashCode() : 0);
+        31 * result
+            + (parentInsertTabletPlanIndexList != null
+                ? parentInsertTabletPlanIndexList.hashCode()
+                : 0);
     return result;
   }
 }
-

@@ -18,11 +18,12 @@
  */
 package org.apache.iotdb.db.utils.datastructure;
 
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.commons.lang.ArrayUtils;
 import org.junit.Assert;
 import org.junit.Test;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class DoubleTVListTest {
   public static double delta = 0.001d;
@@ -62,11 +63,14 @@ public class DoubleTVListTest {
       timeList.add(i);
       doubleList.add((double) i);
     }
-    tvList.putDoubles(ArrayUtils.toPrimitive(timeList.toArray(new Long[0])),
-        ArrayUtils.toPrimitive(doubleList.toArray(new Double[0]), 0.0d), 0, 1000);
+    tvList.putDoubles(
+        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])),
+        ArrayUtils.toPrimitive(doubleList.toArray(new Double[0]), 0.0d),
+        0,
+        1000);
     for (long i = 0; i < tvList.size; i++) {
-      Assert.assertEquals((double) tvList.size - i, tvList.getDouble((int)i), delta);
-      Assert.assertEquals(tvList.size - i, tvList.getTime((int)i));
+      Assert.assertEquals((double) tvList.size - i, tvList.getDouble((int) i), delta);
+      Assert.assertEquals(tvList.size - i, tvList.getTime((int) i));
     }
   }
 }

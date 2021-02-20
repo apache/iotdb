@@ -18,16 +18,9 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.Collections;
-import java.util.Scanner;
-
-import org.junit.Assert;
-import org.junit.Ignore;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.constant.TestConstant;
+import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -38,10 +31,18 @@ import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
-import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.constant.TestConstant;
-import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
+import org.apache.iotdb.tsfile.write.schema.Schema;
+
+import org.junit.Assert;
+import org.junit.Ignore;
+
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Collections;
+import java.util.Scanner;
 
 @Ignore
 public class TsFileGeneratorForTest {
@@ -55,12 +56,13 @@ public class TsFileGeneratorForTest {
   private static int pageSize;
   private static FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
-  public static void generateFile(int rowCount, int chunkGroupSize, int pageSize) throws IOException {
+  public static void generateFile(int rowCount, int chunkGroupSize, int pageSize)
+      throws IOException {
     generateFile(rowCount, rowCount, chunkGroupSize, pageSize);
   }
 
-  public static void generateFile(int minRowCount, int maxRowCount, int chunkGroupSize, int pageSize)
-      throws IOException {
+  public static void generateFile(
+      int minRowCount, int maxRowCount, int chunkGroupSize, int pageSize) throws IOException {
     TsFileGeneratorForTest.rowCount = maxRowCount;
     TsFileGeneratorForTest.chunkGroupSize = chunkGroupSize;
     TsFileGeneratorForTest.pageSize = pageSize;
@@ -89,7 +91,8 @@ public class TsFileGeneratorForTest {
     }
   }
 
-  static private void generateSampleInputDataFile(int minRowCount, int maxRowCount) throws IOException {
+  private static void generateSampleInputDataFile(int minRowCount, int maxRowCount)
+      throws IOException {
     File file = fsFactory.getFile(inputDataFile);
     if (file.exists()) {
       Assert.assertTrue(file.delete());
@@ -134,7 +137,13 @@ public class TsFileGeneratorForTest {
         fw.write(d2 + "\r\n");
       }
       // write error
-      String d = "d2,3," + (startTime + rowCount) + ",s2," + (rowCount * 10 + 2) + ",s3," + (rowCount * 10 + 3);
+      String d =
+          "d2,3,"
+              + (startTime + rowCount)
+              + ",s2,"
+              + (rowCount * 10 + 2)
+              + ",s3,"
+              + (rowCount * 10 + 3);
       fw.write(d + "\r\n");
       d = "d2," + (startTime + rowCount + 1) + ",2,s-1," + (rowCount * 10 + 2);
       fw.write(d + "\r\n");
@@ -143,7 +152,7 @@ public class TsFileGeneratorForTest {
     }
   }
 
-  static public void write() throws IOException {
+  public static void write() throws IOException {
     File file = fsFactory.getFile(outputDataFile);
     File errorFile = fsFactory.getFile(errorOutputDataFile);
     if (file.exists()) {
@@ -159,8 +168,8 @@ public class TsFileGeneratorForTest {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(pageSize);
 
     // write
-    try (TsFileWriter innerWriter = new TsFileWriter(file, schema,
-        TSFileDescriptor.getInstance().getConfig());
+    try (TsFileWriter innerWriter =
+            new TsFileWriter(file, schema, TSFileDescriptor.getInstance().getConfig());
         Scanner in = new Scanner(fsFactory.getFile(inputDataFile))) {
       while (in.hasNextLine()) {
         String str = in.nextLine();
@@ -174,34 +183,62 @@ public class TsFileGeneratorForTest {
 
   private static Schema generateTestSchema() {
     Schema schema = new Schema();
-    schema.registerTimeseries(new Path("d1", "s1"), new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.RLE));
-    schema.registerTimeseries(new Path("d1", "s2"), new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
-    schema.registerTimeseries(new Path("d1", "s3"), new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.TS_2DIFF));
-    schema.registerTimeseries(new Path("d1", "s4"), new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED, Collections.singletonMap(Encoder.MAX_STRING_LENGTH, "20")));
-    schema.registerTimeseries(new Path("d1", "s5"), new MeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.RLE));
-    schema.registerTimeseries(new Path("d1", "s6"), new MeasurementSchema("s6", TSDataType.FLOAT, TSEncoding.RLE,
-        CompressionType.SNAPPY, Collections.singletonMap(Encoder.MAX_POINT_NUMBER, "5")));
-    schema.registerTimeseries(new Path("d1", "s7"), new MeasurementSchema("s7", TSDataType.DOUBLE, TSEncoding.GORILLA_V1));
+    schema.registerTimeseries(
+        new Path("d1", "s1"), new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.RLE));
+    schema.registerTimeseries(
+        new Path("d1", "s2"), new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
+    schema.registerTimeseries(
+        new Path("d1", "s3"), new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.TS_2DIFF));
+    schema.registerTimeseries(
+        new Path("d1", "s4"),
+        new MeasurementSchema(
+            "s4",
+            TSDataType.TEXT,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            Collections.singletonMap(Encoder.MAX_STRING_LENGTH, "20")));
+    schema.registerTimeseries(
+        new Path("d1", "s5"), new MeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.RLE));
+    schema.registerTimeseries(
+        new Path("d1", "s6"),
+        new MeasurementSchema(
+            "s6",
+            TSDataType.FLOAT,
+            TSEncoding.RLE,
+            CompressionType.SNAPPY,
+            Collections.singletonMap(Encoder.MAX_POINT_NUMBER, "5")));
+    schema.registerTimeseries(
+        new Path("d1", "s7"),
+        new MeasurementSchema("s7", TSDataType.DOUBLE, TSEncoding.GORILLA_V1));
 
-    schema.registerTimeseries(new Path("d2", "s1"), new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.RLE));
-    schema.registerTimeseries(new Path("d2", "s2"), new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
-    schema.registerTimeseries(new Path("d2", "s3"), new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.TS_2DIFF));
-    schema.registerTimeseries(new Path("d2", "s4"), new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED, Collections.singletonMap(Encoder.MAX_STRING_LENGTH, "20")));
+    schema.registerTimeseries(
+        new Path("d2", "s1"), new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.RLE));
+    schema.registerTimeseries(
+        new Path("d2", "s2"), new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
+    schema.registerTimeseries(
+        new Path("d2", "s3"), new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.TS_2DIFF));
+    schema.registerTimeseries(
+        new Path("d2", "s4"),
+        new MeasurementSchema(
+            "s4",
+            TSDataType.TEXT,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            Collections.singletonMap(Encoder.MAX_STRING_LENGTH, "20")));
     return schema;
   }
 
   /**
    * Writes a File with one incomplete chunk header
-   * 
+   *
    * @param file File to write
    * @throws IOException is thrown when encountering IO issues
    */
   public static void writeFileWithOneIncompleteChunkHeader(File file) throws IOException {
     TsFileWriter writer = new TsFileWriter(file);
 
-    ChunkHeader header = new ChunkHeader("s1", 100, TSDataType.FLOAT, CompressionType.SNAPPY, TSEncoding.PLAIN, 5);
+    ChunkHeader header =
+        new ChunkHeader("s1", 100, TSDataType.FLOAT, CompressionType.SNAPPY, TSEncoding.PLAIN, 5);
     ByteBuffer buffer = ByteBuffer.allocate(header.getSerializedSize());
     header.serializeTo(buffer);
     buffer.flip();

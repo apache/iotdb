@@ -19,19 +19,12 @@
 
 package org.apache.iotdb.cluster.log.logtypes;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
-import java.nio.ByteBuffer;
-import java.util.Collections;
-import java.util.HashMap;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -40,24 +33,34 @@ import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+
 import org.junit.Test;
+
+import java.nio.ByteBuffer;
+import java.util.Collections;
+import java.util.HashMap;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class SerializeLogTest {
 
   @Test
-  public void testPhysicalPlanLog()
-      throws UnknownLogTypeException, IllegalPathException {
+  public void testPhysicalPlanLog() throws UnknownLogTypeException, IllegalPathException {
     PhysicalPlanLog log = new PhysicalPlanLog();
     log.setCurrLogIndex(2);
     log.setCurrLogTerm(2);
     InsertRowPlan plan = new InsertRowPlan();
     plan.setDeviceId(new PartialPath("root.d1"));
-    plan.setMeasurements(new String[]{"s1", "s2", "s3"});
+    plan.setMeasurements(new String[] {"s1", "s2", "s3"});
     plan.setNeedInferType(true);
     plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
-    plan.setValues(new Object[]{"0.1", "1", "\"dd\""});
-    MeasurementMNode[] schemas = {TestUtils.getTestMeasurementMNode(1),
-        TestUtils.getTestMeasurementMNode(2), TestUtils.getTestMeasurementMNode(3)};
+    plan.setValues(new Object[] {"0.1", "1", "\"dd\""});
+    MeasurementMNode[] schemas = {
+      TestUtils.getTestMeasurementMNode(1),
+      TestUtils.getTestMeasurementMNode(2),
+      TestUtils.getTestMeasurementMNode(3)
+    };
     schemas[0].getSchema().setType(TSDataType.DOUBLE);
     schemas[1].getSchema().setType(TSDataType.INT32);
     schemas[2].getSchema().setType(TSDataType.TEXT);
@@ -74,11 +77,21 @@ public class SerializeLogTest {
     logPrime = LogParser.getINSTANCE().parse(byteBuffer);
     assertEquals(log, logPrime);
 
-    log = new PhysicalPlanLog(new CreateTimeSeriesPlan(new PartialPath("root.applyMeta"
-        + ".s1"), TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY,
-        new HashMap<String, String>() {{
-          put("MAX_POINT_NUMBER", "100");
-        }}, Collections.emptyMap(), Collections.emptyMap(), null));
+    log =
+        new PhysicalPlanLog(
+            new CreateTimeSeriesPlan(
+                new PartialPath("root.applyMeta" + ".s1"),
+                TSDataType.DOUBLE,
+                TSEncoding.RLE,
+                CompressionType.SNAPPY,
+                new HashMap<String, String>() {
+                  {
+                    put("MAX_POINT_NUMBER", "100");
+                  }
+                },
+                Collections.emptyMap(),
+                Collections.emptyMap(),
+                null));
     byteBuffer = log.serialize();
     logPrime = LogParser.getINSTANCE().parse(byteBuffer);
     assertEquals(log, logPrime);

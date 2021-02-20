@@ -18,17 +18,15 @@
  */
 package org.apache.iotdb.spark.tsfile.qp.common;
 
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * This class is for filter operator and implements
- * {@link Operator} .<br>
+ * This class is for filter operator and implements {@link Operator} .<br>
  * it may consist of more than two child FilterOperator, but if it's not leaf operator, the relation
  * is same among all of its children.(AND or OR). It's identified by tokenType.
- *
  */
 public class FilterOperator extends Operator implements Comparable<FilterOperator> {
 
@@ -101,7 +99,6 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
     childOperators.add(op);
   }
 
-
   @Override
   public int compareTo(FilterOperator operator) {
     if (singlePath == null && operator.singlePath == null) {
@@ -115,7 +112,6 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
     }
     return operator.singlePath.compareTo(singlePath);
   }
-
 
   public boolean isLeaf() {
     return isLeaf;

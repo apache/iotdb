@@ -19,32 +19,27 @@
 
 package org.apache.iotdb.tsfile.encoding.encoder;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.util.BitSet;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.BitSet;
 
 /**
- * <p>
- * RegularDataEncoder is an encoder for compressing data in type of integer and
- * long. We adapt a hypothesis that the difference between each data point is
- * the same, which it means the data is regular.
- * </p>
- * <p>
- * To encode the regular data, we first create an array as a block to store the
- * data loaded into the encoder. While it reach the default block size, start
- * calculating the delta between each data point in this block in order to
- * checkout whether there are missing points exist in the data. If there is,
- * create a bitmap for this block to denote the position of missing points.
- * Next, store the data info (the data size, the minimum delta value and the
- * first data point of this block) and the bitmap with its info into the result
- * byte array output stream.
- * </p>
+ * RegularDataEncoder is an encoder for compressing data in type of integer and long. We adapt a
+ * hypothesis that the difference between each data point is the same, which it means the data is
+ * regular.
+ *
+ * <p>To encode the regular data, we first create an array as a block to store the data loaded into
+ * the encoder. While it reach the default block size, start calculating the delta between each data
+ * point in this block in order to checkout whether there are missing points exist in the data. If
+ * there is, create a bitmap for this block to denote the position of missing points. Next, store
+ * the data info (the data size, the minimum delta value and the first data point of this block) and
+ * the bitmap with its info into the result byte array output stream.
  */
 public abstract class RegularDataEncoder extends Encoder {
 
@@ -100,10 +95,7 @@ public abstract class RegularDataEncoder extends Encoder {
     writeIndex = -1;
   }
 
-  /**
-   * calling this method to flush all values which haven't encoded to result byte
-   * array.
-   */
+  /** calling this method to flush all values which haven't encoded to result byte array. */
   @Override
   public void flush(ByteArrayOutputStream out) {
     try {
@@ -122,10 +114,7 @@ public abstract class RegularDataEncoder extends Encoder {
     private int newBlockSize;
     private BitSet bitmap;
 
-    /**
-     * constructor of IntRegularEncoder which is a sub-class of RegularDataEncoder.
-     *
-     */
+    /** constructor of IntRegularEncoder which is a sub-class of RegularDataEncoder. */
     public IntRegularEncoder() {
       this(BLOCK_DEFAULT_SIZE);
     }
@@ -214,7 +203,7 @@ public abstract class RegularDataEncoder extends Encoder {
      * input a integer or long value.
      *
      * @param value value to encode
-     * @param out   - the ByteArrayOutputStream which data encode into
+     * @param out - the ByteArrayOutputStream which data encode into
      */
     public void encodeValue(int value, ByteArrayOutputStream out) throws IOException {
       if (writeIndex == -1) {
@@ -340,7 +329,7 @@ public abstract class RegularDataEncoder extends Encoder {
      * input a integer or long value.
      *
      * @param value value to encode
-     * @param out   - the ByteArrayOutputStream which data encode into
+     * @param out - the ByteArrayOutputStream which data encode into
      */
     public void encodeValue(long value, ByteArrayOutputStream out) throws IOException {
       if (writeIndex == -1) {

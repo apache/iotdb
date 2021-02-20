@@ -18,11 +18,12 @@
  */
 package org.apache.iotdb.db.utils.datastructure;
 
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.commons.lang.ArrayUtils;
 import org.junit.Assert;
 import org.junit.Test;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class BooleanTVListTest {
   @Test
@@ -53,10 +54,13 @@ public class BooleanTVListTest {
       timeList.add(i);
       booleanList.add(i % 2 == 0);
     }
-    tvList.putBooleans(ArrayUtils.toPrimitive(timeList.toArray(new Long[0])),
-        ArrayUtils.toPrimitive(booleanList.toArray(new Boolean[0])), 0, 1000);
+    tvList.putBooleans(
+        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])),
+        ArrayUtils.toPrimitive(booleanList.toArray(new Boolean[0])),
+        0,
+        1000);
     for (long i = 0; i < tvList.size; i++) {
-      Assert.assertEquals(tvList.size - i, tvList.getTime((int)i));
+      Assert.assertEquals(tvList.size - i, tvList.getTime((int) i));
     }
   }
 }

@@ -18,6 +18,11 @@
  */
 package org.apache.iotdb.jdbc;
 
+import org.apache.iotdb.service.rpc.thrift.TSIService.Iface;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.InputStream;
 import java.io.Reader;
 import java.math.BigDecimal;
@@ -43,24 +48,18 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
-import org.apache.iotdb.service.rpc.thrift.TSIService.Iface;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedStatement {
 
   private String sql;
   private static final String METHOD_NOT_SUPPORTED_STRING = "Method not supported";
   private static final Logger logger = LoggerFactory.getLogger(IoTDBPreparedStatement.class);
 
-  /**
-   * save the SQL parameters as (paramLoc,paramValue) pairs.
-   */
+  /** save the SQL parameters as (paramLoc,paramValue) pairs. */
   private final Map<Integer, String> parameters = new LinkedHashMap<>();
 
-  IoTDBPreparedStatement(IoTDBConnection connection, Iface client,
-      Long sessionId, String sql,
-      ZoneId zoneId) throws SQLException {
+  IoTDBPreparedStatement(
+      IoTDBConnection connection, Iface client, Long sessionId, String sql, ZoneId zoneId)
+      throws SQLException {
     super(connection, client, sessionId, zoneId);
     this.sql = sql;
   }
@@ -97,21 +96,22 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
   @Override
   public ParameterMetaData getParameterMetaData() throws SQLException {
-    return  new ParameterMetaData() {
+    return new ParameterMetaData() {
       @Override
       public int getParameterCount() throws SQLException {
         return parameters.size();
       }
+
       @Override
       public int isNullable(int param) throws SQLException {
-        return ParameterMetaData.parameterNullableUnknown ;
+        return ParameterMetaData.parameterNullableUnknown;
       }
+
       @Override
       public boolean isSigned(int param) throws SQLException {
-        try{
-          return Integer.parseInt(parameters.get(param))<0;
-        }
-        catch (Exception e){
+        try {
+          return Integer.parseInt(parameters.get(param)) < 0;
+        } catch (Exception e) {
           return false;
         }
       }
@@ -123,23 +123,22 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
       @Override
       public int getScale(int param) throws SQLException {
-        try{
-          double d= Double.parseDouble(parameters.get(param));
-          if (d >= 1) { //we only need the fraction digits
+        try {
+          double d = Double.parseDouble(parameters.get(param));
+          if (d >= 1) { // we only need the fraction digits
             d = d - (long) d;
           }
-          if (d == 0) { //nothing to count
+          if (d == 0) { // nothing to count
             return 0;
           }
-          d *= 10; //shifts 1 digit to left
+          d *= 10; // shifts 1 digit to left
           int count = 1;
-          while (d - (long) d != 0) { //keeps shifting until there are no more fractions
+          while (d - (long) d != 0) { // keeps shifting until there are no more fractions
             d *= 10;
             count++;
           }
           return count;
-        }
-        catch (Exception e){
+        } catch (Exception e) {
           return 0;
         }
       }
@@ -368,10 +367,11 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
       setTimestamp(parameterIndex, (Timestamp) x);
     } else {
       // Can't infer a type.
-      throw new SQLException(String.format(
-          "Can''t infer the SQL type to use for an instance of %s. Use setObject() with"
-              + " an explicit Types value to specify the type to use.",
-          x.getClass().getName()));
+      throw new SQLException(
+          String.format(
+              "Can''t infer the SQL type to use for an instance of %s. Use setObject() with"
+                  + " an explicit Types value to specify the type to use.",
+              x.getClass().getName()));
     }
   }
 
@@ -423,10 +423,10 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
   @Override
   public void setTimestamp(int parameterIndex, Timestamp x) {
-    ZonedDateTime zonedDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(x.getTime()),
-        super.zoneId);
-    this.parameters.put(parameterIndex, zonedDateTime
-        .format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+    ZonedDateTime zonedDateTime =
+        ZonedDateTime.ofInstant(Instant.ofEpochMilli(x.getTime()), super.zoneId);
+    this.parameters.put(
+        parameterIndex, zonedDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
   }
 
   @Override
@@ -451,8 +451,8 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
     StringBuilder newSql = new StringBuilder(parts.get(0));
     for (int i = 1; i < parts.size(); i++) {
       if (logger.isDebugEnabled()) {
-        logger.debug("SQL {}",sql);
-        logger.debug("parameters {}",parameters.size());
+        logger.debug("SQL {}", sql);
+        logger.debug("parameters {}", parameters.size());
       }
       if (!parameters.containsKey(i)) {
         throw new SQLException("Parameter #" + i + " is unset");
@@ -461,7 +461,6 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
       newSql.append(parts.get(i));
     }
     return newSql.toString();
-
   }
 
   private List<String> splitSqlStatement(final String sql) {
@@ -498,7 +497,5 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
     }
     parts.add(sql.substring(off));
     return parts;
-
   }
-
 }

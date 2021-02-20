@@ -18,15 +18,6 @@
  */
 package org.apache.iotdb.tsfile.write;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.List;
-
 import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -44,10 +35,20 @@ import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class SameMeasurementsWithDifferentDataTypesTest {
 
@@ -102,12 +103,17 @@ public class SameMeasurementsWithDifferentDataTypesTest {
     }
 
     Schema schema = new Schema();
-    schema.extendTemplate(TEMPLATE_1, new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
-    schema.extendTemplate(TEMPLATE_1, new MeasurementSchema("s2", TSDataType.INT32, TSEncoding.TS_2DIFF));
-    schema.extendTemplate(TEMPLATE_1, new MeasurementSchema("s3", TSDataType.INT32, TSEncoding.TS_2DIFF));
+    schema.extendTemplate(
+        TEMPLATE_1, new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
+    schema.extendTemplate(
+        TEMPLATE_1, new MeasurementSchema("s2", TSDataType.INT32, TSEncoding.TS_2DIFF));
+    schema.extendTemplate(
+        TEMPLATE_1, new MeasurementSchema("s3", TSDataType.INT32, TSEncoding.TS_2DIFF));
 
-    schema.extendTemplate(TEMPLATE_2, new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.TS_2DIFF));
-    schema.extendTemplate(TEMPLATE_2, new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    schema.extendTemplate(
+        TEMPLATE_2, new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.TS_2DIFF));
+    schema.extendTemplate(
+        TEMPLATE_2, new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
 
     schema.registerDevice("d1", TEMPLATE_1);
     schema.registerDevice("d2", TEMPLATE_2);
