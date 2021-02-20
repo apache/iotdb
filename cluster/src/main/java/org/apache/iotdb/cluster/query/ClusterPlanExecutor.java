@@ -254,18 +254,15 @@ public class ClusterPlanExecutor extends PlanExecutor {
               SyncClientAdaptor.getPathCount(
                   client, partitionGroup.getHeader(), pathsToQuery, level);
         } else {
-          SyncDataClient syncDataClient = null;
-          try {
-            syncDataClient =
-                metaGroupMember
-                    .getClientProvider()
-                    .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-            syncDataClient.setTimeout(RaftServer.getReadOperationTimeoutMS());
-            count = syncDataClient.getPathCount(partitionGroup.getHeader(), pathsToQuery, level);
-          } finally {
-            ClientUtils.putBackSyncClient(syncDataClient);
-          }
+          SyncDataClient syncDataClient =
+              metaGroupMember
+                  .getClientProvider()
+                  .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+          syncDataClient.setTimeout(RaftServer.getReadOperationTimeoutMS());
+          count = syncDataClient.getPathCount(partitionGroup.getHeader(), pathsToQuery, level);
+          ClientUtils.putBackSyncClient(syncDataClient);
         }
+
         logger.debug(
             "{}: get path count of {} from {}, result {}",
             metaGroupMember.getName(),
@@ -360,18 +357,14 @@ public class ClusterPlanExecutor extends PlanExecutor {
               SyncClientAdaptor.getNodeList(
                   client, group.getHeader(), schemaPattern.getFullPath(), level);
         } else {
-          SyncDataClient syncDataClient = null;
-          try {
-            syncDataClient =
-                metaGroupMember
-                    .getClientProvider()
-                    .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-            paths =
-                syncDataClient.getNodeList(group.getHeader(), schemaPattern.getFullPath(), level);
-          } finally {
-            ClientUtils.putBackSyncClient(syncDataClient);
-          }
+          SyncDataClient syncDataClient =
+              metaGroupMember
+                  .getClientProvider()
+                  .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+          paths = syncDataClient.getNodeList(group.getHeader(), schemaPattern.getFullPath(), level);
+          ClientUtils.putBackSyncClient(syncDataClient);
         }
+
         if (paths != null) {
           break;
         }
@@ -384,6 +377,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
         Thread.currentThread().interrupt();
       }
     }
+
     return PartialPath.fromStringList(paths);
   }
 
@@ -473,18 +467,15 @@ public class ClusterPlanExecutor extends PlanExecutor {
           nextChildren =
               SyncClientAdaptor.getNextChildren(client, group.getHeader(), path.getFullPath());
         } else {
-          SyncDataClient syncDataClient = null;
-          try {
-            syncDataClient =
-                metaGroupMember
-                    .getClientProvider()
-                    .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-            nextChildren =
-                syncDataClient.getChildNodePathInNextLevel(group.getHeader(), path.getFullPath());
-          } finally {
-            ClientUtils.putBackSyncClient(syncDataClient);
-          }
+          SyncDataClient syncDataClient =
+              metaGroupMember
+                  .getClientProvider()
+                  .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+          nextChildren =
+              syncDataClient.getChildNodePathInNextLevel(group.getHeader(), path.getFullPath());
+          ClientUtils.putBackSyncClient(syncDataClient);
         }
+
         if (nextChildren != null) {
           break;
         }
