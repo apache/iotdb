@@ -52,6 +52,7 @@ public class MNodeTest {
 
     MNode bNode = new MNode(aNode, "b");
     aNode.addChild(bNode.getName(), bNode);
+    aNode.addAlias("aliasOfb", bNode);
 
     for (int i = 0; i < 500; i++) {
       service.submit(
@@ -65,5 +66,6 @@ public class MNodeTest {
 
     List<String> multiFullPaths = MetaUtils.getMultiFullPaths(rootNode);
     assertEquals("root.c.b", multiFullPaths.get(0));
+    assertEquals("root.c.b", rootNode.getChild("c").getChild("aliasOfb").getFullPath());
   }
 }

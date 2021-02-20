@@ -31,7 +31,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 /**
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the
@@ -60,9 +59,13 @@ public class MNode implements Serializable {
   @SuppressWarnings("squid:S3077")
   protected transient volatile Map<String, MNode> children = null;
 
-  /** suppress warnings reason: volatile for double synchronized check */
+  /**
+   * suppress warnings reason: volatile for double synchronized check
+   *
+   * <p>This will be a ConcurrentHashMap instance
+   */
   @SuppressWarnings("squid:S3077")
-  private transient volatile ConcurrentMap<String, MNode> aliasChildren = null;
+  private transient volatile Map<String, MNode> aliasChildren = null;
 
   /** Constructor of MNode. */
   public MNode(MNode parent, String name) {
@@ -209,8 +212,19 @@ public class MNode implements Serializable {
     return children;
   }
 
+  public Map<String, MNode> getAliasChildren() {
+    if (aliasChildren == null) {
+      return Collections.emptyMap();
+    }
+    return aliasChildren;
+  }
+
   public void setChildren(Map<String, MNode> children) {
     this.children = children;
+  }
+
+  private void setAliasChildren(Map<String, MNode> aliasChildren) {
+    this.aliasChildren = aliasChildren;
   }
 
   public String getName() {
@@ -241,11 +255,18 @@ public class MNode implements Serializable {
     if (oldChildNode == null) {
       return;
     }
-    Map<String, MNode> grandChildren = oldChildNode.getChildren();
+
     // newChildNode builds parent-child relationship
+    Map<String, MNode> grandChildren = oldChildNode.getChildren();
     newChildNode.setChildren(grandChildren);
     grandChildren.forEach(
         (grandChildName, grandChildNode) -> grandChildNode.setParent(newChildNode));
+
+    Map<String, MNode> grandAliasChildren = oldChildNode.getAliasChildren();
+    newChildNode.setAliasChildren(grandAliasChildren);
+    grandAliasChildren.forEach(
+        (grandAliasChildName, grandAliasChild) -> grandAliasChild.setParent(newChildNode));
+
     newChildNode.setParent(this);
 
     this.deleteChild(measurement);
