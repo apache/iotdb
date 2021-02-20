@@ -36,5 +36,5 @@
         <module>interface</module>
         <module>micrometer-metrics</module>
     </modules>
-    <dependencies/>
+
 </project>
