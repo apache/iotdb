@@ -860,7 +860,7 @@ public class MTree implements Serializable {
     }
     Holder<Integer> countHolder = new Holder<>(0);
     try {
-      getAllTimeseriesCountHelper(root, nodes, 1, countHolder, false);
+      getCount(root, nodes, 1, countHolder, false);
     } catch (PathNotExistException e) {
       throw new PathNotExistException(prefixPath.getFullPath());
     }
@@ -868,13 +868,13 @@ public class MTree implements Serializable {
   }
 
   /** Traverse the MTree to get the count of timeseries. */
-  private void getAllTimeseriesCountHelper(
+  private void getCount(
       MNode node, String[] nodes, int idx, Holder<Integer> countHolder, boolean wildcard)
       throws PathNotExistException {
     if (idx < nodes.length) {
       if (PATH_WILDCARD.equals(nodes[idx])) {
         for (MNode child : node.getChildren().values()) {
-          getAllTimeseriesCountHelper(child, nodes, idx + 1, countHolder, true);
+          getCount(child, nodes, idx + 1, countHolder, true);
         }
       } else {
         MNode child = node.getChild(nodes[idx]);
@@ -885,7 +885,7 @@ public class MTree implements Serializable {
             return;
           }
         }
-        getAllTimeseriesCountHelper(child, nodes, idx + 1, countHolder, wildcard);
+        getCount(child, nodes, idx + 1, countHolder, wildcard);
       }
     } else {
       if (node instanceof MeasurementMNode) {
@@ -895,7 +895,7 @@ public class MTree implements Serializable {
         return;
       }
       for (MNode child : node.getChildren().values()) {
-        getAllTimeseriesCountHelper(child, nodes, idx + 1, countHolder, wildcard);
+        getCount(child, nodes, idx + 1, countHolder, wildcard);
       }
     }
   }
