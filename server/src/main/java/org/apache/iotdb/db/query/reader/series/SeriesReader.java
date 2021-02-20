@@ -492,8 +492,8 @@ public class SeriesReader {
     }
     // In case unpacking too many sequence chunks
     boolean hasMeetSeq = false;
-    while (!cachedChunkMetadata.isEmpty() &&
-        orderUtils.isOverlapped(endpointTime, cachedChunkMetadata.peek().getStatistics())) {
+    while (!cachedChunkMetadata.isEmpty()
+        && orderUtils.isOverlapped(endpointTime, cachedChunkMetadata.peek().getStatistics())) {
       if (cachedChunkMetadata.peek().isSeq() && hasMeetSeq) {
         break;
       } else if (cachedChunkMetadata.peek().isSeq()) {

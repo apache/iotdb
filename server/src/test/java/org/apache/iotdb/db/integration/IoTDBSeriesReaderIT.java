@@ -31,7 +31,6 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.executor.QueryRouter;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
-import org.apache.iotdb.jdbc.IoTDBStatement;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -449,13 +448,12 @@ public class IoTDBSeriesReaderIT {
     }
   }
 
-  /**
-   * Test when one un-sequenced file may cover a long time range.
-   */
+  /** Test when one un-sequenced file may cover a long time range. */
   @Test
   public void queryWithLongRangeUnSeqTest() throws SQLException {
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       // make up data
       final String INSERT_TEMPLATE = "insert into root.sg.d1(time, s1) values(%d, %d)";
