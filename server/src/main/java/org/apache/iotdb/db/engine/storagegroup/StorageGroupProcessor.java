@@ -1958,7 +1958,7 @@ public class StorageGroupProcessor {
         CompactionMergeTaskPoolManager.getInstance()
             .submitTask(
                 tsFileManagement
-                .new CompactionMergeTask(this::closeCompactionMergeCallBack,·timePartition));
+                .new CompactionMergeTask(this::closeCompactionMergeCallBack, timePartition));
       } catch (IOException | RejectedExecutionException e) {
         this.closeCompactionMergeCallBack();
         logger.error(
