@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -39,13 +39,13 @@ public class RPCServiceThriftHandler implements TServerEventHandler {
 
   @Override
   public void deleteContext(ServerContext arg0, TProtocol arg1, TProtocol arg2) {
-    //release query resources.
+    // release query resources.
     serviceImpl.handleClientExit();
   }
 
   @Override
   public void preServe() {
-    //nothing
+    // nothing
   }
 
   @Override

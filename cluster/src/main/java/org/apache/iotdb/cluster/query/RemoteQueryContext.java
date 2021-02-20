@@ -19,27 +19,22 @@
 
 package org.apache.iotdb.cluster.query;
 
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.db.query.context.QueryContext;
+
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.db.query.context.QueryContext;
 
 public class RemoteQueryContext extends QueryContext {
-  /**
-   * The remote nodes that are queried in this query, grouped by the header nodes.
-   */
+  /** The remote nodes that are queried in this query, grouped by the header nodes. */
   private Map<Node, Set<Node>> queriedNodesMap = new HashMap<>();
-  /**
-   * The readers constructed locally to respond a remote query.
-   */
+  /** The readers constructed locally to respond a remote query. */
   private Set<Long> localReaderIds = new ConcurrentSkipListSet<>();
 
-  /**
-   * The readers constructed locally to respond a remote query.
-   */
+  /** The readers constructed locally to respond a remote query. */
   private Set<Long> localGroupByExecutorIds = new ConcurrentSkipListSet<>();
 
   public RemoteQueryContext(long jobId) {

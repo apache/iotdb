@@ -19,25 +19,31 @@
 
 package org.apache.iotdb.tsfile.encoding.encoder;
 
+import java.io.ByteArrayOutputStream;
+
 import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.GORILLA_ENCODING_ENDING_LONG;
 import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.LEADING_ZERO_BITS_LENGTH_64BIT;
 import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.MEANINGFUL_XOR_BITS_LENGTH_64BIT;
 import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.VALUE_BITS_LENGTH_64BIT;
 
-import java.io.ByteArrayOutputStream;
-
 /**
- * <p> This class includes code modified from Michael Burman's gorilla-tsc project.
+ * This class includes code modified from Michael Burman's gorilla-tsc project.
  *
- * <p> Copyright: 2016-2018 Michael Burman and/or other contributors
- * <p> Project page: https://github.com/burmanm/gorilla-tsc
- * <p> License: http://www.apache.org/licenses/LICENSE-2.0
+ * <p>Copyright: 2016-2018 Michael Burman and/or other contributors
+ *
+ * <p>Project page: https://github.com/burmanm/gorilla-tsc
+ *
+ * <p>License: http://www.apache.org/licenses/LICENSE-2.0
  */
 public class LongGorillaEncoder extends GorillaEncoderV2 {
 
   private static final int ONE_ITEM_MAX_SIZE =
-      (2 + LEADING_ZERO_BITS_LENGTH_64BIT + MEANINGFUL_XOR_BITS_LENGTH_64BIT
-          + VALUE_BITS_LENGTH_64BIT) / Byte.SIZE + 1;
+      (2
+                  + LEADING_ZERO_BITS_LENGTH_64BIT
+                  + MEANINGFUL_XOR_BITS_LENGTH_64BIT
+                  + VALUE_BITS_LENGTH_64BIT)
+              / Byte.SIZE
+          + 1;
 
   private long storedValue = 0;
 
@@ -103,8 +109,8 @@ public class LongGorillaEncoder extends GorillaEncoderV2 {
   /**
    * If there at least as many leading zeros and as many trailing zeros as previous value, control
    * bit = 0 (type a)
-   * <p>
-   * store the meaningful XORed value
+   *
+   * <p>store the meaningful XORed value
    *
    * @param xor XOR between previous value and current
    */
@@ -117,19 +123,19 @@ public class LongGorillaEncoder extends GorillaEncoderV2 {
 
   /**
    * Stores the length of the number of leading zeros in the next 6 bits
-   * <p>
-   * Stores the length of the meaningful XORed value in the next 6 bits
-   * <p>
-   * Stores the meaningful bits of the XORed value
-   * <p>
-   * (type b)
    *
-   * @param xor           XOR between previous value and current
-   * @param leadingZeros  New leading zeros
+   * <p>Stores the length of the meaningful XORed value in the next 6 bits
+   *
+   * <p>Stores the meaningful bits of the XORed value
+   *
+   * <p>(type b)
+   *
+   * @param xor XOR between previous value and current
+   * @param leadingZeros New leading zeros
    * @param trailingZeros New trailing zeros
    */
-  private void writeNewLeading(long xor, int leadingZeros, int trailingZeros,
-      ByteArrayOutputStream out) {
+  private void writeNewLeading(
+      long xor, int leadingZeros, int trailingZeros, ByteArrayOutputStream out) {
     writeBit(out);
 
     int significantBits = VALUE_BITS_LENGTH_64BIT - leadingZeros - trailingZeros;

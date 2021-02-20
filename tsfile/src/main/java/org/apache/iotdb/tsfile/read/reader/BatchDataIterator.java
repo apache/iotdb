@@ -38,7 +38,8 @@ public class BatchDataIterator implements IPointReader {
 
   @Override
   public TimeValuePair nextTimeValuePair() {
-    TimeValuePair timeValuePair = new TimeValuePair(batchData.currentTime(), batchData.currentTsPrimitiveType());
+    TimeValuePair timeValuePair =
+        new TimeValuePair(batchData.currentTime(), batchData.currentTsPrimitiveType());
     batchData.next();
     return timeValuePair;
   }

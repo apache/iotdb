@@ -18,22 +18,20 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import java.nio.ByteBuffer;
-import java.nio.MappedByteBuffer;
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicLong;
-
-import java.util.function.Consumer;
-import java.util.function.Supplier;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.MmapUtil;
 import org.apache.iotdb.db.utils.TestOnly;
 
-/**
- * The storageGroupInfo records the total memory cost of the Storage Group.
- */
+import java.nio.ByteBuffer;
+import java.nio.MappedByteBuffer;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+
+/** The storageGroupInfo records the total memory cost of the Storage Group. */
 public class StorageGroupInfo {
 
   private StorageGroupProcessor storageGroupProcessor;
@@ -44,17 +42,13 @@ public class StorageGroupInfo {
    */
   private AtomicLong memoryCost;
 
-  /**
-   * The threshold of reporting it's size to SystemInfo
-   */
+  /** The threshold of reporting it's size to SystemInfo */
   private long storageGroupSizeReportThreshold =
       IoTDBDescriptor.getInstance().getConfig().getStorageGroupSizeReportThreshold();
 
   private AtomicLong lastReportedSize = new AtomicLong();
 
-  /**
-   * A set of all unclosed TsFileProcessors in this SG
-   */
+  /** A set of all unclosed TsFileProcessors in this SG */
   private List<TsFileProcessor> reportedTsps = new CopyOnWriteArrayList<>();
 
   public StorageGroupInfo(StorageGroupProcessor storageGroupProcessor) {
@@ -66,9 +60,7 @@ public class StorageGroupInfo {
     return storageGroupProcessor;
   }
 
-  /**
-   * When create a new TsFileProcessor, call this method
-   */
+  /** When create a new TsFileProcessor, call this method */
   public void initTsFileProcessorInfo(TsFileProcessor tsFileProcessor) {
     if (reportedTsps.add(tsFileProcessor)) {
       memoryCost.getAndAdd(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize());
@@ -121,10 +113,10 @@ public class StorageGroupInfo {
   @TestOnly
   private ByteBuffer[] walSupplier() {
     ByteBuffer[] buffers = new ByteBuffer[2];
-    buffers[0] = ByteBuffer
-        .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
-    buffers[1] = ByteBuffer
-        .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+    buffers[0] =
+        ByteBuffer.allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+    buffers[1] =
+        ByteBuffer.allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
     return buffers;
   }
 

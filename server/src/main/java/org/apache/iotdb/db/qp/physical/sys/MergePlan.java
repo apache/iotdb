@@ -18,11 +18,12 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
-import java.util.Collections;
-import java.util.List;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+
+import java.util.Collections;
+import java.util.List;
 
 public class MergePlan extends PhysicalPlan {
 
@@ -38,5 +39,4 @@ public class MergePlan extends PhysicalPlan {
   public List<PartialPath> getPaths() {
     return Collections.emptyList();
   }
-
 }

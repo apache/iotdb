@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.cluster.query;
 
-import java.io.IOException;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -31,7 +30,10 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+
 import org.junit.Test;
+
+import java.io.IOException;
 
 public class ClusterDataQueryExecutorTest extends BaseQueryTest {
 
@@ -43,8 +45,8 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
     plan.setDeduplicatedPaths(pathList);
     plan.setDeduplicatedDataTypes(dataTypes);
     queryExecutor = new ClusterDataQueryExecutor(plan, testMetaMember);
-    RemoteQueryContext context = new RemoteQueryContext(
-        QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
+    RemoteQueryContext context =
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
     try {
       QueryDataSet dataSet = queryExecutor.executeWithoutValueFilter(context);
       checkSequentialDataset(dataSet, 0, 20);
@@ -56,15 +58,16 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
   @Test
   public void testFilter()
       throws IOException, StorageEngineException, QueryProcessException, IllegalPathException {
-    IExpression expression = new SingleSeriesExpression(new PartialPath(TestUtils.getTestSeries(0, 0)),
-        ValueFilter.gtEq(5.0));
+    IExpression expression =
+        new SingleSeriesExpression(
+            new PartialPath(TestUtils.getTestSeries(0, 0)), ValueFilter.gtEq(5.0));
     RawDataQueryPlan plan = new RawDataQueryPlan();
     plan.setDeduplicatedPaths(pathList);
     plan.setDeduplicatedDataTypes(dataTypes);
     plan.setExpression(expression);
     queryExecutor = new ClusterDataQueryExecutor(plan, testMetaMember);
-    RemoteQueryContext context = new RemoteQueryContext(
-        QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
+    RemoteQueryContext context =
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
     try {
       QueryDataSet dataSet = queryExecutor.executeWithValueFilter(context);
       checkSequentialDataset(dataSet, 5, 15);
@@ -72,5 +75,4 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
       QueryResourceManager.getInstance().endQuery(context.getQueryId());
     }
   }
-
 }

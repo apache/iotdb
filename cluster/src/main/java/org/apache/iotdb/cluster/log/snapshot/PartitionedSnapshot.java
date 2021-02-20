@@ -19,6 +19,16 @@
 
 package org.apache.iotdb.cluster.log.snapshot;
 
+import org.apache.iotdb.cluster.exception.CheckConsistencyException;
+import org.apache.iotdb.cluster.exception.SnapshotInstallationException;
+import org.apache.iotdb.cluster.log.Snapshot;
+import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
+import org.apache.iotdb.cluster.server.member.DataGroupMember;
+import org.apache.iotdb.cluster.server.member.RaftMember;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -28,18 +38,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
-import org.apache.iotdb.cluster.exception.CheckConsistencyException;
-import org.apache.iotdb.cluster.exception.SnapshotInstallationException;
-import org.apache.iotdb.cluster.log.Snapshot;
-import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
-import org.apache.iotdb.cluster.server.member.DataGroupMember;
-import org.apache.iotdb.cluster.server.member.RaftMember;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-/**
- * PartitionedSnapshot stores the snapshot of each slot in a map.
- */
+/** PartitionedSnapshot stores the snapshot of each slot in a map. */
 public class PartitionedSnapshot<T extends Snapshot> extends Snapshot {
 
   private static final Logger logger = LoggerFactory.getLogger(PartitionedSnapshot.class);
@@ -51,8 +51,7 @@ public class PartitionedSnapshot<T extends Snapshot> extends Snapshot {
     this(new HashMap<>(), factory);
   }
 
-  private PartitionedSnapshot(
-      Map<Integer, T> slotSnapshots, SnapshotFactory<T> factory) {
+  private PartitionedSnapshot(Map<Integer, T> slotSnapshots, SnapshotFactory<T> factory) {
     this.slotSnapshots = slotSnapshots;
     this.factory = factory;
   }
@@ -100,11 +99,14 @@ public class PartitionedSnapshot<T extends Snapshot> extends Snapshot {
 
   @Override
   public String toString() {
-    return "PartitionedSnapshot{" +
-        "slotSnapshots=" + slotSnapshots.size() +
-        ", lastLogIndex=" + lastLogIndex +
-        ", lastLogTerm=" + lastLogTerm +
-        '}';
+    return "PartitionedSnapshot{"
+        + "slotSnapshots="
+        + slotSnapshots.size()
+        + ", lastLogIndex="
+        + lastLogIndex
+        + ", lastLogTerm="
+        + lastLogTerm
+        + '}';
   }
 
   @Override
@@ -141,7 +143,6 @@ public class PartitionedSnapshot<T extends Snapshot> extends Snapshot {
     }
 
     @Override
-
     public void install(PartitionedSnapshot snapshot, int slot)
         throws SnapshotInstallationException {
       installPartitionedSnapshot(snapshot);
@@ -161,8 +162,11 @@ public class PartitionedSnapshot<T extends Snapshot> extends Snapshot {
      */
     private void installPartitionedSnapshot(PartitionedSnapshot<T> snapshot)
         throws SnapshotInstallationException {
-      logger.info("{}: start to install a snapshot of {}-{}", dataGroupMember.getName(),
-          snapshot.lastLogIndex, snapshot.lastLogTerm);
+      logger.info(
+          "{}: start to install a snapshot of {}-{}",
+          dataGroupMember.getName(),
+          snapshot.lastLogIndex,
+          snapshot.lastLogTerm);
       synchronized (dataGroupMember.getSnapshotApplyLock()) {
         List<Integer> slots =
             ((SlotPartitionTable) dataGroupMember.getMetaGroupMember().getPartitionTable())
@@ -197,8 +201,8 @@ public class PartitionedSnapshot<T extends Snapshot> extends Snapshot {
       } catch (CheckConsistencyException e) {
         throw new SnapshotInstallationException(e);
       }
-      SnapshotInstaller<T> defaultInstaller = (SnapshotInstaller<T>) snapshot
-          .getDefaultInstaller(dataGroupMember);
+      SnapshotInstaller<T> defaultInstaller =
+          (SnapshotInstaller<T>) snapshot.getDefaultInstaller(dataGroupMember);
       defaultInstaller.install(snapshot, slot);
     }
   }

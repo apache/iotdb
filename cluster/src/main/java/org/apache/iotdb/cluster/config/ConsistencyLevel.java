@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.cluster.config;
 
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,9 +34,7 @@ public enum ConsistencyLevel {
    */
   MID_CONSISTENCY("mid"),
 
-  /**
-   * weak consistency do not synchronize with the leader and simply use the local data
-   */
+  /** weak consistency do not synchronize with the leader and simply use the local data */
   WEAK_CONSISTENCY("weak"),
   ;
 
@@ -60,10 +57,11 @@ public enum ConsistencyLevel {
       case "weak":
         return ConsistencyLevel.WEAK_CONSISTENCY;
       default:
-        logger.warn("Unsupported consistency level={}, use default consistency level={}",
-            consistencyLevel, ConsistencyLevel.MID_CONSISTENCY.consistencyLevelName);
+        logger.warn(
+            "Unsupported consistency level={}, use default consistency level={}",
+            consistencyLevel,
+            ConsistencyLevel.MID_CONSISTENCY.consistencyLevelName);
         return ConsistencyLevel.MID_CONSISTENCY;
     }
   }
-
 }

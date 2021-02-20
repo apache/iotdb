@@ -18,13 +18,6 @@
  */
 package org.apache.iotdb.session;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-
-import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -36,10 +29,19 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class SessionUT {
 
@@ -74,13 +76,13 @@ public class SessionUT {
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
 
-      /*
-      inorder data before inserting
-      timestamp   s1
-      2           0
-      0           1
-      1           2
-       */
+    /*
+    inorder data before inserting
+    timestamp   s1
+    2           0
+    0           1
+    1           2
+     */
     // inorder timestamps
     timestamps[0] = 2;
     timestamps[1] = 0;
@@ -93,7 +95,7 @@ public class SessionUT {
     tablet.rowSize = 3;
 
     session.sortTablet(tablet);
-        
+
     /*
     After sorting, if the tablet data is sorted according to the timestamps,
     data in tablet will be
@@ -106,8 +108,8 @@ public class SessionUT {
      */
     long[] resTimestamps = tablet.timestamps;
     long[] resValues = (long[]) tablet.values[0];
-    long[] expectedTimestamps = new long[]{0, 1, 2};
-    long[] expectedValues = new long[]{1, 2, 0};
+    long[] expectedTimestamps = new long[] {0, 1, 2};
+    long[] expectedValues = new long[] {1, 2, 0};
     try {
       assertArrayEquals(expectedTimestamps, resTimestamps);
       assertArrayEquals(expectedValues, resValues);
@@ -124,14 +126,14 @@ public class SessionUT {
 
     String deviceId = "root.sg1.d1";
 
-    session.createTimeseries(deviceId + ".s1", TSDataType.INT64, TSEncoding.RLE,
-        CompressionType.UNCOMPRESSED);
-    session.createTimeseries(deviceId + ".s2", TSDataType.INT64, TSEncoding.RLE,
-        CompressionType.UNCOMPRESSED);
-    session.createTimeseries(deviceId + ".s3", TSDataType.INT64, TSEncoding.RLE,
-        CompressionType.UNCOMPRESSED);
-    session.createTimeseries(deviceId + ".s4", TSDataType.DOUBLE, TSEncoding.RLE,
-        CompressionType.UNCOMPRESSED);
+    session.createTimeseries(
+        deviceId + ".s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.UNCOMPRESSED);
+    session.createTimeseries(
+        deviceId + ".s2", TSDataType.INT64, TSEncoding.RLE, CompressionType.UNCOMPRESSED);
+    session.createTimeseries(
+        deviceId + ".s3", TSDataType.INT64, TSEncoding.RLE, CompressionType.UNCOMPRESSED);
+    session.createTimeseries(
+        deviceId + ".s4", TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.UNCOMPRESSED);
 
     List<MeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));

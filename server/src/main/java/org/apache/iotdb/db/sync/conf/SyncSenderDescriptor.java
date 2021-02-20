@@ -18,6 +18,11 @@
  */
 package org.apache.iotdb.db.sync.conf;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -27,9 +32,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class SyncSenderDescriptor {
 
@@ -52,17 +54,14 @@ public class SyncSenderDescriptor {
     this.conf = conf;
   }
 
-  /**
-   * load an properties file and set sync config variables
-   */
+  /** load an properties file and set sync config variables */
   private void loadProps() {
     InputStream inputStream;
     String url = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
     if (url == null) {
       url = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
       if (url != null) {
-        url = url + File.separatorChar + "conf" + File.separatorChar
-            + SyncConstant.CONFIG_NAME;
+        url = url + File.separatorChar + "conf" + File.separatorChar + SyncConstant.CONFIG_NAME;
       } else {
         logger.warn(
             "Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading config file {}, use default configuration",
@@ -86,11 +85,13 @@ public class SyncSenderDescriptor {
       properties.load(inputStream);
 
       conf.setServerIp(properties.getProperty("server_ip", conf.getServerIp()));
-      conf.setServerPort(Integer
-          .parseInt(properties.getProperty("server_port", Integer.toString(conf.getServerPort()))));
-      conf.setSyncPeriodInSecond(Integer.parseInt(properties
-          .getProperty("sync_period_in_second",
-              Integer.toString(conf.getSyncPeriodInSecond()))));
+      conf.setServerPort(
+          Integer.parseInt(
+              properties.getProperty("server_port", Integer.toString(conf.getServerPort()))));
+      conf.setSyncPeriodInSecond(
+          Integer.parseInt(
+              properties.getProperty(
+                  "sync_period_in_second", Integer.toString(conf.getSyncPeriodInSecond()))));
       String storageGroups = properties.getProperty("sync_storage_groups", null);
       if (storageGroups != null) {
         String[] splits = storageGroups.split(",");
@@ -98,9 +99,11 @@ public class SyncSenderDescriptor {
         Arrays.stream(splits).forEach(sg -> storageGroupList.add(sg.trim()));
         conf.setStorageGroupList(storageGroupList);
       }
-      conf.setMaxNumOfSyncFileRetry(Integer
-          .parseInt(properties.getProperty("max_number_of_sync_file_retry",
-              Integer.toString(conf.getMaxNumOfSyncFileRetry()))));
+      conf.setMaxNumOfSyncFileRetry(
+          Integer.parseInt(
+              properties.getProperty(
+                  "max_number_of_sync_file_retry",
+                  Integer.toString(conf.getMaxNumOfSyncFileRetry()))));
     } catch (IOException e) {
       logger.warn("Cannot load sync config file, use default sync configuration.", e);
     } catch (Exception e) {

@@ -65,7 +65,8 @@ public class ExecutorWithTimeGenerator implements QueryExecutor {
 
     // the size of hasFilter is equal to selectedPathList, if a series has a filter, it is true,
     // otherwise false
-    List<Boolean> cached = markFilterdPaths(expression, selectedPathList, timeGenerator.hasOrNode());
+    List<Boolean> cached =
+        markFilterdPaths(expression, selectedPathList, timeGenerator.hasOrNode());
     List<FileSeriesReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
 
@@ -82,8 +83,8 @@ public class ExecutorWithTimeGenerator implements QueryExecutor {
           readersOfSelectedSeries.add(null);
           continue;
         }
-        FileSeriesReaderByTimestamp seriesReader = new FileSeriesReaderByTimestamp(chunkLoader,
-            chunkMetadataList);
+        FileSeriesReaderByTimestamp seriesReader =
+            new FileSeriesReaderByTimestamp(chunkLoader, chunkMetadataList);
         readersOfSelectedSeries.add(seriesReader);
       } else {
         selectedPathIterator.remove();
@@ -91,11 +92,12 @@ public class ExecutorWithTimeGenerator implements QueryExecutor {
       }
     }
 
-    return new DataSetWithTimeGenerator(selectedPathList, cached, dataTypes, timeGenerator,
-        readersOfSelectedSeries);
+    return new DataSetWithTimeGenerator(
+        selectedPathList, cached, dataTypes, timeGenerator, readersOfSelectedSeries);
   }
 
-  public static List<Boolean> markFilterdPaths(IExpression expression, List<Path> selectedPaths, boolean hasOrNode) {
+  public static List<Boolean> markFilterdPaths(
+      IExpression expression, List<Path> selectedPaths, boolean hasOrNode) {
     List<Boolean> cached = new ArrayList<>();
     if (hasOrNode) {
       for (Path ignored : selectedPaths) {
@@ -112,7 +114,6 @@ public class ExecutorWithTimeGenerator implements QueryExecutor {
     }
 
     return cached;
-
   }
 
   private static void getAllFilteredPaths(IExpression expression, HashSet<Path> paths) {
@@ -123,5 +124,4 @@ public class ExecutorWithTimeGenerator implements QueryExecutor {
       paths.add(((SingleSeriesExpression) expression).getSeriesPath());
     }
   }
-
 }

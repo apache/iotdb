@@ -19,21 +19,27 @@
 
 package org.apache.iotdb.db.engine.merge.manage;
 
+import org.apache.iotdb.db.engine.merge.manage.MergeFuture.MainMergeFuture;
+import org.apache.iotdb.db.engine.merge.manage.MergeFuture.SubMergeFuture;
+import org.apache.iotdb.db.engine.merge.task.MergeMultiChunkTask.MergeChunkHeapTask;
+import org.apache.iotdb.db.engine.merge.task.MergeTask;
+
 import java.util.concurrent.Callable;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.RunnableFuture;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import org.apache.iotdb.db.engine.merge.manage.MergeFuture.MainMergeFuture;
-import org.apache.iotdb.db.engine.merge.manage.MergeFuture.SubMergeFuture;
-import org.apache.iotdb.db.engine.merge.task.MergeMultiChunkTask.MergeChunkHeapTask;
-import org.apache.iotdb.db.engine.merge.task.MergeTask;
 
 public class MergeThreadPool extends ThreadPoolExecutor {
 
   public MergeThreadPool(int corePoolSize, ThreadFactory threadFactory) {
-    super(corePoolSize, corePoolSize, 0, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(),
+    super(
+        corePoolSize,
+        corePoolSize,
+        0,
+        TimeUnit.MILLISECONDS,
+        new LinkedBlockingQueue<>(),
         threadFactory);
   }
 

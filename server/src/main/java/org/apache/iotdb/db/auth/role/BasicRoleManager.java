@@ -18,6 +18,11 @@
  */
 package org.apache.iotdb.db.auth.role;
 
+import org.apache.iotdb.db.auth.AuthException;
+import org.apache.iotdb.db.auth.entity.Role;
+import org.apache.iotdb.db.concurrent.HashLock;
+import org.apache.iotdb.db.utils.AuthUtils;
+
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -25,10 +30,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.db.auth.entity.Role;
-import org.apache.iotdb.db.concurrent.HashLock;
-import org.apache.iotdb.db.utils.AuthUtils;
 
 /**
  * This class reads roles from local files through LocalFileRoleAccessor and manages them in a hash

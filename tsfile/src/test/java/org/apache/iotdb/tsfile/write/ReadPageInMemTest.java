@@ -18,27 +18,26 @@
  */
 package org.apache.iotdb.tsfile.write;
 
-import static org.junit.Assert.fail;
-
-import java.io.File;
-import java.io.IOException;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.constant.TestConstant;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.RecordUtils;
+import org.apache.iotdb.tsfile.write.record.TSRecord;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.write.TsFileWriter;
-import org.apache.iotdb.tsfile.write.record.TSRecord;
-import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.constant.TestConstant;
-import org.apache.iotdb.tsfile.utils.RecordUtils;
+import java.io.File;
+import java.io.IOException;
+
+import static org.junit.Assert.fail;
 
 public class ReadPageInMemTest {
 
@@ -56,21 +55,29 @@ public class ReadPageInMemTest {
   private static Schema getSchema() {
     Schema schema = new Schema();
     TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
-    schema.registerTimeseries(new Path("root.car.d1", "s1"),
+    schema.registerTimeseries(
+        new Path("root.car.d1", "s1"),
         new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.valueOf(conf.getValueEncoder())));
-    schema.registerTimeseries(new Path("root.car.d1", "s2"),
+    schema.registerTimeseries(
+        new Path("root.car.d1", "s2"),
         new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
-    schema.registerTimeseries(new Path("root.car.d1", "s3"),
+    schema.registerTimeseries(
+        new Path("root.car.d1", "s3"),
         new MeasurementSchema("s3", TSDataType.FLOAT, TSEncoding.valueOf(conf.getValueEncoder())));
-    schema.registerTimeseries(new Path("root.car.d1", "s4"),
+    schema.registerTimeseries(
+        new Path("root.car.d1", "s4"),
         new MeasurementSchema("s4", TSDataType.DOUBLE, TSEncoding.valueOf(conf.getValueEncoder())));
-    schema.registerTimeseries(new Path("root.car.d2", "s1"),
+    schema.registerTimeseries(
+        new Path("root.car.d2", "s1"),
         new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.valueOf(conf.getValueEncoder())));
-    schema.registerTimeseries(new Path("root.car.d2", "s2"),
+    schema.registerTimeseries(
+        new Path("root.car.d2", "s2"),
         new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
-    schema.registerTimeseries(new Path("root.car.d2", "s3"),
+    schema.registerTimeseries(
+        new Path("root.car.d2", "s3"),
         new MeasurementSchema("s3", TSDataType.FLOAT, TSEncoding.valueOf(conf.getValueEncoder())));
-    schema.registerTimeseries(new Path("root.car.d2", "s4"),
+    schema.registerTimeseries(
+        new Path("root.car.d2", "s4"),
         new MeasurementSchema("s4", TSDataType.DOUBLE, TSEncoding.valueOf(conf.getValueEncoder())));
     return schema;
   }

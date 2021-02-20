@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.service;
 
-import java.io.IOException;
 import org.apache.iotdb.db.concurrent.IoTDBDefaultThreadExceptionHandler;
 import org.apache.iotdb.db.conf.IoTDBConfigCheck;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -43,14 +42,17 @@ import org.apache.iotdb.db.sync.receiver.SyncServerManager;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.MetricService;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
 
 public class IoTDB implements IoTDBMBean {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDB.class);
-  private final String mbeanName = String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE,
-      IoTDBConstant.JMX_TYPE, "IoTDB");
+  private final String mbeanName =
+      String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, "IoTDB");
   private RegisterManager registerManager = new RegisterManager();
   public static MManager metaManager = MManager.getInstance();
 
@@ -83,8 +85,8 @@ public class IoTDB implements IoTDBMBean {
       checks.verify();
     } catch (StartupException e) {
       // TODO: what are some checks
-      logger.error("{}: failed to start because some checks failed. ",
-          IoTDBConstant.GLOBAL_DB_NAME, e);
+      logger.error(
+          "{}: failed to start because some checks failed. ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return;
     }
     try {
@@ -163,7 +165,6 @@ public class IoTDB implements IoTDBMBean {
         "After initializing, tsFile threshold is {}, memtableSize is {}",
         IoTDBDescriptor.getInstance().getConfig().getTsFileSizeThreshold(),
         IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold());
-
   }
 
   @Override
@@ -191,9 +192,6 @@ public class IoTDB implements IoTDBMBean {
 
     private static final IoTDB INSTANCE = new IoTDB();
 
-    private IoTDBHolder() {
-
-    }
+    private IoTDBHolder() {}
   }
-
 }

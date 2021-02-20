@@ -19,18 +19,17 @@
 
 package org.apache.iotdb.cluster.log.logtypes;
 
+import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.db.utils.SerializeUtils;
+
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
-import org.apache.iotdb.cluster.log.Log;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.db.utils.SerializeUtils;
 
-/**
- * AddNodeLog records the operation of adding a node into this cluster.
- */
+/** AddNodeLog records the operation of adding a node into this cluster. */
 public class AddNodeLog extends Log {
 
   private Node newNode;

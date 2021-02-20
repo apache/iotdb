@@ -17,37 +17,34 @@
  * under the License.
  */
 
-
 package org.apache.iotdb.cluster.server.heartbeat;
 
-import java.net.InetSocketAddress;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService.AsyncProcessor;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService.Processor;
 import org.apache.iotdb.cluster.server.DataClusterServer;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
+
 import org.apache.thrift.TProcessor;
 import org.apache.thrift.transport.TNonblockingServerSocket;
 import org.apache.thrift.transport.TServerSocket;
 import org.apache.thrift.transport.TServerTransport;
 import org.apache.thrift.transport.TTransportException;
 
+import java.net.InetSocketAddress;
+
 public class DataHeartbeatServer extends HeartbeatServer {
 
   private DataClusterServer dataClusterServer;
 
-  /**
-   * Do not use this method for initialization
-   */
-  private DataHeartbeatServer() {
-  }
+  /** Do not use this method for initialization */
+  private DataHeartbeatServer() {}
 
   public DataHeartbeatServer(Node thisNode, DataClusterServer dataClusterServer) {
     super(thisNode);
     this.dataClusterServer = dataClusterServer;
   }
-
 
   @Override
   TProcessor getProcessor() {
@@ -61,12 +58,16 @@ public class DataHeartbeatServer extends HeartbeatServer {
   @Override
   TServerTransport getHeartbeatServerSocket() throws TTransportException {
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      return new TNonblockingServerSocket(new InetSocketAddress(config.getClusterRpcIp(),
-          thisNode.getDataPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET),
+      return new TNonblockingServerSocket(
+          new InetSocketAddress(
+              config.getClusterRpcIp(),
+              thisNode.getDataPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET),
           getConnectionTimeoutInMS());
     } else {
-      return new TServerSocket(new InetSocketAddress(config.getClusterRpcIp(),
-          thisNode.getDataPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET));
+      return new TServerSocket(
+          new InetSocketAddress(
+              config.getClusterRpcIp(),
+              thisNode.getDataPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET));
     }
   }
 

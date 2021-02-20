@@ -18,14 +18,6 @@
  */
 package org.apache.iotdb.db.utils;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
-
-import java.io.File;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -40,6 +32,15 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.utils.Pair;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+
+import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 
 public class FilePathUtils {
 
@@ -56,8 +57,7 @@ public class FilePathUtils {
    * @return Regularized Path
    */
   public static String regularizePath(String filePath) {
-    if (filePath.length() > 0
-        && filePath.charAt(filePath.length() - 1) != File.separatorChar) {
+    if (filePath.length() > 0 && filePath.charAt(filePath.length() - 1) != File.separatorChar) {
       filePath = filePath + File.separatorChar;
     }
     return filePath;
@@ -68,7 +68,8 @@ public class FilePathUtils {
    * accordingly. The sequence TsFile is located at ${IOTDB_DATA_DIR}/data/sequence/. The unsequence
    * TsFile is located at ${IOTDB_DATA_DIR}/data/unsequence/. Where different storage group's TsFile
    * is located at <logicalStorageGroupName>/<virtualStorageGroupName>/<timePartitionId>/<fileName>.
-   * For example, one sequence TsFile may locate at /data/data/sequence/root.group_9/0/0/1611199237113-4-0.tsfile
+   * For example, one sequence TsFile may locate at
+   * /data/data/sequence/root.group_9/0/0/1611199237113-4-0.tsfile
    *
    * @param resource the tsFileResource
    */
@@ -97,20 +98,24 @@ public class FilePathUtils {
    */
   public static String getTsFileNameWithoutHardLink(TsFileResource resource) {
     String[] pathSegments = splitTsFilePath(resource);
-    return pathSegments[pathSegments.length - 1].substring(0,
-        pathSegments[pathSegments.length - 1].lastIndexOf(TsFileConstant.PATH_SEPARATOR));
+    return pathSegments[pathSegments.length - 1].substring(
+        0, pathSegments[pathSegments.length - 1].lastIndexOf(TsFileConstant.PATH_SEPARATOR));
   }
 
   public static String getTsFilePrefixPath(TsFileResource resource) {
     String[] pathSegments = splitTsFilePath(resource);
     int pathLength = pathSegments.length;
-    return pathSegments[pathLength - 4] + File.separator + pathSegments[pathLength - 3]
-        + File.separator + pathSegments[pathLength - 2];
+    return pathSegments[pathLength - 4]
+        + File.separator
+        + pathSegments[pathLength - 3]
+        + File.separator
+        + pathSegments[pathLength - 2];
   }
 
   public static Pair<String, Long> getLogicalSgNameAndTimePartitionIdPair(TsFileResource resource) {
     String[] pathSegments = splitTsFilePath(resource);
-    return new Pair<>(pathSegments[pathSegments.length - 4],
+    return new Pair<>(
+        pathSegments[pathSegments.length - 4],
         Long.parseLong(pathSegments[pathSegments.length - 2]));
   }
 
@@ -122,13 +127,13 @@ public class FilePathUtils {
    * get paths from group by level, like root.sg1.d2.s0, root.sg1.d1.s0 level=1, return
    * [root.sg1.*.s0, 0] and pathIndex turns to be [[0, root.sg1.*.s0], [1, root.sg1.*.s0]]
    *
-   * @param plan      the original Aggregation Plan
+   * @param plan the original Aggregation Plan
    * @param pathIndex the mapping from index of aggregations to the result path name
    * @return
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public static Map<String, AggregateResult> getPathByLevel(AggregationPlan plan,
-      Map<Integer, String> pathIndex) throws QueryProcessException {
+  public static Map<String, AggregateResult> getPathByLevel(
+      AggregationPlan plan, Map<Integer, String> pathIndex) throws QueryProcessException {
     // pathGroupByLevel -> count
     Map<String, AggregateResult> finalPaths = new TreeMap<>();
 
@@ -158,8 +163,9 @@ public class FilePathUtils {
         path.append(TsFileConstant.PATH_SEPARATOR).append(seriesPaths.get(i).getMeasurement());
         key = path.toString();
       }
-      AggregateResult aggRet = AggregateResultFactory
-          .getAggrResultByName(plan.getAggregations().get(i), dataTypes.get(i));
+      AggregateResult aggRet =
+          AggregateResultFactory.getAggrResultByName(
+              plan.getAggregations().get(i), dataTypes.get(i));
       finalPaths.putIfAbsent(key, aggRet);
       pathIndex.put(i, key);
     }
@@ -177,7 +183,9 @@ public class FilePathUtils {
    * @return
    */
   public static List<AggregateResult> mergeRecordByPath(
-      AggregationPlan plan, RowRecord newRecord, Map<String, AggregateResult> finalPaths,
+      AggregationPlan plan,
+      RowRecord newRecord,
+      Map<String, AggregateResult> finalPaths,
       Map<Integer, String> pathIndex) {
     if (newRecord.getFields().size() < finalPaths.size()) {
       return Collections.emptyList();
@@ -185,12 +193,13 @@ public class FilePathUtils {
     List<AggregateResult> aggregateResultList = new ArrayList<>();
     for (int i = 0; i < newRecord.getFields().size(); i++) {
       if (newRecord.getFields().get(i) == null) {
-        aggregateResultList.add(AggregateResultFactory.getAggrResultByName(
-            plan.getAggregations().get(i), plan.getDeduplicatedDataTypes().get(i)));
+        aggregateResultList.add(
+            AggregateResultFactory.getAggrResultByName(
+                plan.getAggregations().get(i), plan.getDeduplicatedDataTypes().get(i)));
       } else {
         TSDataType dataType = newRecord.getFields().get(i).getDataType();
-        AggregateResult aggRet = AggregateResultFactory.getAggrResultByName(
-            plan.getAggregations().get(i), dataType);
+        AggregateResult aggRet =
+            AggregateResultFactory.getAggrResultByName(plan.getAggregations().get(i), dataType);
         switch (dataType) {
           case TEXT:
             aggRet.setBinaryValue(newRecord.getFields().get(i).getBinaryV());
@@ -220,7 +229,8 @@ public class FilePathUtils {
   }
 
   public static List<AggregateResult> mergeRecordByPath(
-      List<AggregateResult> aggResults, Map<String, AggregateResult> finalPaths,
+      List<AggregateResult> aggResults,
+      Map<String, AggregateResult> finalPaths,
       Map<Integer, String> pathIndex) {
     if (aggResults.size() < finalPaths.size()) {
       return Collections.emptyList();

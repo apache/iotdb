@@ -18,10 +18,19 @@
  */
 package org.apache.iotdb.db.integration;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.jdbc.IoTDBSQLException;
+
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -34,18 +43,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.jdbc.Config;
-import org.apache.iotdb.jdbc.IoTDBSQLException;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class IoTDBSimpleQueryIT {
 
@@ -62,9 +64,9 @@ public class IoTDBSimpleQueryIT {
   @Test
   public void testCreateTimeseries1() throws ClassNotFoundException, MetadataException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
-            "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
       statement.execute("SET STORAGE GROUP TO root.sg1");
@@ -73,62 +75,65 @@ public class IoTDBSimpleQueryIT {
       e.printStackTrace();
     }
 
-    MeasurementMNode mNode = (MeasurementMNode) MManager.getInstance()
-        .getNodeByPath(new PartialPath("root.sg1.d0.s1"));
+    MeasurementMNode mNode =
+        (MeasurementMNode) MManager.getInstance().getNodeByPath(new PartialPath("root.sg1.d0.s1"));
     assertNull(mNode.getSchema().getProps());
   }
 
   @Test
   public void testCreateTimeseriesSDTProperties() throws ClassNotFoundException, MetadataException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
-            "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
       statement.execute("SET STORAGE GROUP TO root.sg1");
-      //test set sdt property
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV=2");
+      // test set sdt property
+      statement.execute(
+          "CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV=2");
     } catch (SQLException e) {
       e.printStackTrace();
     }
 
-    MeasurementMNode mNode = (MeasurementMNode) MManager.getInstance()
-        .getNodeByPath(new PartialPath("root.sg1.d0.s1"));
+    MeasurementMNode mNode =
+        (MeasurementMNode) MManager.getInstance().getNodeByPath(new PartialPath("root.sg1.d0.s1"));
 
-    //check if SDT property is set
+    // check if SDT property is set
     assertEquals(2, mNode.getSchema().getProps().size());
   }
 
   @Test
-  public void testCreateTimeseriesWithSDTProperties2() throws ClassNotFoundException, MetadataException {
+  public void testCreateTimeseriesWithSDTProperties2()
+      throws ClassNotFoundException, MetadataException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
-            "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
       statement.execute("SET STORAGE GROUP TO root.sg1");
-      //test set sdt property
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN,"
-          + "LOSS=SDT,COMPDEV=2,COMPMINTIME=2,COMPMAXTIME=10");
+      // test set sdt property
+      statement.execute(
+          "CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN,"
+              + "LOSS=SDT,COMPDEV=2,COMPMINTIME=2,COMPMAXTIME=10");
     } catch (SQLException e) {
       e.printStackTrace();
     }
 
-    MeasurementMNode mNode = (MeasurementMNode) MManager.getInstance()
-        .getNodeByPath(new PartialPath("root.sg1.d0.s1"));
+    MeasurementMNode mNode =
+        (MeasurementMNode) MManager.getInstance().getNodeByPath(new PartialPath("root.sg1.d0.s1"));
 
-    //check if SDT property is set
+    // check if SDT property is set
     assertEquals(4, mNode.getSchema().getProps().size());
   }
 
   @Test
   public void testFailedToCreateTimeseriesSDTProperties() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
-            "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
       statement.execute("SET STORAGE GROUP TO root.sg1");
@@ -136,7 +141,9 @@ public class IoTDBSimpleQueryIT {
         statement.execute(
             "CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV=-2");
       } catch (Exception e) {
-        assertEquals("318: SDT compression deviation cannot be negative. Failed to create timeseries for path root.sg1.d0.s1", e.getMessage());
+        assertEquals(
+            "318: SDT compression deviation cannot be negative. Failed to create timeseries for path root.sg1.d0.s1",
+            e.getMessage());
       }
 
       int count = 0;
@@ -153,28 +160,67 @@ public class IoTDBSimpleQueryIT {
   }
 
   @Test
+  public void testLastQueryNonCached() throws ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "create timeseries root.turbine.d1.s1 with datatype=FLOAT, encoding=GORILLA, compression=SNAPPY");
+      statement.execute(
+          "create timeseries root.turbine.d1.s2 with datatype=FLOAT, encoding=GORILLA, compression=SNAPPY");
+      statement.execute(
+          "create timeseries root.turbine.d2.s1 with datatype=FLOAT, encoding=GORILLA, compression=SNAPPY");
+      statement.execute("insert into root.turbine.d1(timestamp,s1,s2) values(1,1,2)");
+
+      String[] results = {"root.turbine.d1.s1", "root.turbine.d1.s2"};
+
+      int count = 0;
+      try (ResultSet resultSet = statement.executeQuery("select last * from root")) {
+        while (resultSet.next()) {
+          String path = resultSet.getString("timeseries");
+          assertEquals(results[count], path);
+          count++;
+        }
+      }
+
+      assertEquals(2, count);
+
+      try (ResultSet resultSet = statement.executeQuery("select last * from root")) {
+        while (resultSet.next()) {
+          count++;
+        }
+      }
+
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+
+  @Test
   public void testSDTEncodingSeq() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
 
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
-            "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
       statement.execute("SET STORAGE GROUP TO root.sg1");
-      //test set sdt property
-      statement
-          .execute("CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=DOUBLE,ENCODING=PLAIN,LOSS=SDT,COMPDEV=0.01");
+      // test set sdt property
+      statement.execute(
+          "CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=DOUBLE,ENCODING=PLAIN,LOSS=SDT,COMPDEV=0.01");
 
       int degree = 0;
       for (int time = 0; time < 100; time++) {
-        //generate data in sine wave pattern
+        // generate data in sine wave pattern
         double value = 10 * Math.sin(degree++ * 3.141592653589793D / 180.0D);
         String sql = "insert into root.sg1.d0(timestamp,s0) values(" + time + "," + value + ")";
         statement.execute(sql);
       }
 
-      //before SDT encoding
+      // before SDT encoding
       ResultSet resultSet = statement.executeQuery("select s0 from root.sg1.d0");
       int count = 0;
       while (resultSet.next()) {
@@ -182,7 +228,7 @@ public class IoTDBSimpleQueryIT {
       }
       assertEquals(count, 100);
 
-      //after flush and SDT encoding
+      // after flush and SDT encoding
       statement.execute("flush");
       resultSet = statement.executeQuery("select s0 from root.sg1.d0");
       count = 0;
@@ -200,15 +246,15 @@ public class IoTDBSimpleQueryIT {
   public void testSDTEncodingCompDev() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
 
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
-            "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
       statement.execute("SET STORAGE GROUP TO root.sg1");
-      //test set sdt property
-      statement
-          .execute("CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV=2");
+      // test set sdt property
+      statement.execute(
+          "CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV=2");
 
       for (int time = 1; time < 8; time++) {
         String sql = "insert into root.sg1.d0(timestamp,s0) values(" + time + ",1)";
@@ -246,17 +292,17 @@ public class IoTDBSimpleQueryIT {
   public void testSDTEncodingSelectFill() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
 
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
-            "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
       statement.execute("SET STORAGE GROUP TO root.sg1");
       double compDev = 2;
-      //test set sdt property
-      statement
-          .execute(
-              "CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV=" + compDev);
+      // test set sdt property
+      statement.execute(
+          "CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV="
+              + compDev);
 
       int[] originalValues = new int[1000];
 
@@ -265,25 +311,26 @@ public class IoTDBSimpleQueryIT {
       Random rand = new Random();
       for (int i = 1; i < originalValues.length; i++) {
         originalValues[i] = rand.nextInt(500);
-        String sql = "insert into root.sg1.d0(timestamp,s0) values(" + i + "," + originalValues[i] + ")";
+        String sql =
+            "insert into root.sg1.d0(timestamp,s0) values(" + i + "," + originalValues[i] + ")";
         statement.execute(sql);
         map.put(i + "", originalValues[i]);
       }
       statement.execute("flush");
 
       for (int i = 1; i < originalValues.length; i++) {
-        String sql = "select * from root where time = " + i
-            + " fill(int32 [linear, 20ms, 20ms])";
+        String sql = "select * from root where time = " + i + " fill(int32 [linear, 20ms, 20ms])";
         ResultSet resultSet = statement.executeQuery(sql);
 
         while (resultSet.next()) {
           String time = resultSet.getString("Time");
           String value = resultSet.getString("root.sg1.d0.s0");
-          //last value is not stored, cannot linear fill
+          // last value is not stored, cannot linear fill
           if (value == null) {
             continue;
           }
-          // sdt parallelogram's height is 2 * compDev, so after linear fill, the values will fall inside
+          // sdt parallelogram's height is 2 * compDev, so after linear fill, the values will fall
+          // inside
           // the parallelogram of two stored points
           assertTrue(Math.abs(Integer.parseInt(value) - map.get(time)) <= 2 * compDev);
         }
@@ -297,15 +344,15 @@ public class IoTDBSimpleQueryIT {
   public void testSDTEncodingCompMin() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
 
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
-            "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
       statement.execute("SET STORAGE GROUP TO root.sg1");
-      //test set sdt property
-      statement
-          .execute("CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV=2, COMPMINTIME=1");
+      // test set sdt property
+      statement.execute(
+          "CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV=2, COMPMINTIME=1");
 
       for (int time = 1; time < 8; time++) {
         String sql = "insert into root.sg1.d0(timestamp,s0) values(" + time + ",1)";
@@ -326,7 +373,7 @@ public class IoTDBSimpleQueryIT {
       ResultSet resultSet = statement.executeQuery("select * from root");
       int count = 0;
 
-      //will not store time = 16 since time distance to last stored time 15 is within compMinTime
+      // will not store time = 16 since time distance to last stored time 15 is within compMinTime
       String[] timestamps = {"1", "7", "15", "17", "18"};
       String[] values = {"1", "1", "10", "1", "30"};
 
@@ -344,15 +391,15 @@ public class IoTDBSimpleQueryIT {
   public void testSDTEncodingCompMax() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
 
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
-            "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
       statement.execute("SET STORAGE GROUP TO root.sg1");
-      //test set sdt property
-      statement
-          .execute("CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV=2, COMPMAXTIME=20");
+      // test set sdt property
+      statement.execute(
+          "CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV=2, COMPMAXTIME=20");
 
       for (int time = 1; time < 50; time++) {
         String sql = "insert into root.sg1.d0(timestamp,s0) values(" + time + ",1)";
@@ -380,29 +427,29 @@ public class IoTDBSimpleQueryIT {
   public void testSDTEncodingUnseq() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
 
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
-            "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
       statement.execute("SET STORAGE GROUP TO root.sg1");
-      //test set sdt property
-      statement
-          .execute("CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=DOUBLE,ENCODING=PLAIN,LOSS=SDT,COMPDEV=0.01");
+      // test set sdt property
+      statement.execute(
+          "CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=DOUBLE,ENCODING=PLAIN,LOSS=SDT,COMPDEV=0.01");
 
       int degree = 0;
       for (int time = 0; time < 100; time++) {
-        //generate data in sine wave pattern
+        // generate data in sine wave pattern
         double value = 10 * Math.sin(degree++ * 3.141592653589793D / 180.0D);
         String sql = "insert into root.sg1.d0(timestamp,s0) values(" + time + "," + value + ")";
         statement.execute(sql);
       }
 
-      //insert unseq
+      // insert unseq
       String sql = "insert into root.sg1.d0(timestamp,s0) values(2,19)";
       statement.execute(sql);
 
-      //before SDT encoding
+      // before SDT encoding
       ResultSet resultSet = statement.executeQuery("select s0 from root.sg1.d0");
       int count = 0;
       while (resultSet.next()) {
@@ -410,7 +457,7 @@ public class IoTDBSimpleQueryIT {
       }
       assertEquals(count, 100);
 
-      //after flush and SDT encoding
+      // after flush and SDT encoding
       statement.execute("flush");
       resultSet = statement.executeQuery("select s0 from root.sg1.d0");
       count = 0;
@@ -428,25 +475,25 @@ public class IoTDBSimpleQueryIT {
   public void testSDTEncodingMergeSeq() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
 
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
-            "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
       statement.execute("SET STORAGE GROUP TO root.sg1");
-      //test set sdt property
-      statement
-          .execute("CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=DOUBLE,ENCODING=PLAIN,LOSS=SDT,COMPDEV=0.01");
+      // test set sdt property
+      statement.execute(
+          "CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=DOUBLE,ENCODING=PLAIN,LOSS=SDT,COMPDEV=0.01");
 
       int degree = 0;
       for (int time = 0; time < 100; time++) {
-        //generate data in sine wave pattern
+        // generate data in sine wave pattern
         double value = 10 * Math.sin(degree++ * 3.141592653589793D / 180.0D);
         String sql = "insert into root.sg1.d0(timestamp,s0) values(" + time + "," + value + ")";
         statement.execute(sql);
       }
 
-      //before SDT encoding
+      // before SDT encoding
       ResultSet resultSet = statement.executeQuery("select s0 from root.sg1.d0");
       int count = 0;
       while (resultSet.next()) {
@@ -454,7 +501,7 @@ public class IoTDBSimpleQueryIT {
       }
       assertEquals(100, count);
 
-      //after flush and SDT encoding
+      // after flush and SDT encoding
       statement.execute("flush");
       resultSet = statement.executeQuery("select s0 from root.sg1.d0");
       count = 0;
@@ -463,7 +510,7 @@ public class IoTDBSimpleQueryIT {
       }
       assertEquals(15, count);
 
-      //no sdt encoding when merging
+      // no sdt encoding when merging
       statement.execute("merge");
       resultSet = statement.executeQuery("select s0 from root.sg1.d0");
       count = 0;
@@ -481,29 +528,29 @@ public class IoTDBSimpleQueryIT {
   public void testSDTEncodingMergeUnseq() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
 
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
-            "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
       statement.execute("SET STORAGE GROUP TO root.sg1");
-      //test set sdt property
-      statement
-          .execute("CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=DOUBLE,ENCODING=PLAIN,LOSS=SDT,COMPDEV=0.01");
+      // test set sdt property
+      statement.execute(
+          "CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=DOUBLE,ENCODING=PLAIN,LOSS=SDT,COMPDEV=0.01");
 
       int degree = 0;
       for (int time = 0; time < 100; time++) {
-        //generate data in sine wave pattern
+        // generate data in sine wave pattern
         double value = 10 * Math.sin(degree++ * 3.141592653589793D / 180.0D);
         String sql = "insert into root.sg1.d0(timestamp,s0) values(" + time + "," + value + ")";
         statement.execute(sql);
       }
 
-      //insert unseq
+      // insert unseq
       String sql = "insert into root.sg1.d0(timestamp,s0) values(2,19)";
       statement.execute(sql);
 
-      //before SDT encoding
+      // before SDT encoding
       ResultSet resultSet = statement.executeQuery("select s0 from root.sg1.d0");
       int count = 0;
       while (resultSet.next()) {
@@ -511,7 +558,7 @@ public class IoTDBSimpleQueryIT {
       }
       assertEquals(100, count);
 
-      //after flush and SDT encoding
+      // after flush and SDT encoding
       statement.execute("flush");
       resultSet = statement.executeQuery("select s0 from root.sg1.d0");
       count = 0;
@@ -520,7 +567,7 @@ public class IoTDBSimpleQueryIT {
       }
       assertEquals(18, count);
 
-      //no sdt encoding when merging
+      // no sdt encoding when merging
       statement.execute("merge");
       resultSet = statement.executeQuery("select s0 from root.sg1.d0");
       count = 0;
@@ -537,8 +584,9 @@ public class IoTDBSimpleQueryIT {
   @Test
   public void testEmptyDataSet() throws SQLException, ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       ResultSet resultSet = statement.executeQuery("select * from root");
@@ -549,8 +597,9 @@ public class IoTDBSimpleQueryIT {
           fail();
         }
 
-        resultSet = statement.executeQuery(
-            "select count(*) from root where time >= 1 and time <= 100 group by ([0, 100), 20ms, 20ms)");
+        resultSet =
+            statement.executeQuery(
+                "select count(*) from root where time >= 1 and time <= 100 group by ([0, 100), 20ms, 20ms)");
         // has an empty time column
         Assert.assertEquals(1, resultSet.getMetaData().getColumnCount());
         while (resultSet.next()) {
@@ -578,9 +627,10 @@ public class IoTDBSimpleQueryIT {
           fail();
         }
 
-        resultSet = statement.executeQuery(
-            "select count(*) from root where time >= 1 and time <= 100 "
-                + "group by ([0, 100), 20ms, 20ms) align by device");
+        resultSet =
+            statement.executeQuery(
+                "select count(*) from root where time >= 1 and time <= 100 "
+                    + "group by ([0, 100), 20ms, 20ms) align by device");
         // has time and device columns
         Assert.assertEquals(2, resultSet.getMetaData().getColumnCount());
         while (resultSet.next()) {
@@ -597,9 +647,9 @@ public class IoTDBSimpleQueryIT {
   @Test
   public void testOrderByTimeDesc() throws Exception {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
-            "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
       statement.execute("SET STORAGE GROUP TO root.sg1");
@@ -613,19 +663,20 @@ public class IoTDBSimpleQueryIT {
       statement.execute("INSERT INTO root.sg1.d0(timestamp, s1) VALUES (1, 1)");
       statement.execute("flush");
 
-      String[] ret = new String[]{
-          "4,4,null",
-          "3,3,3",
-          "2,2,null",
-          "1,1,1",
-      };
+      String[] ret =
+          new String[] {
+            "4,4,null", "3,3,3", "2,2,null", "1,1,1",
+          };
 
       int cur = 0;
       try (ResultSet resultSet = statement.executeQuery("select * from root order by time desc")) {
         while (resultSet.next()) {
-          String ans = resultSet.getString("Time") + ","
-              + resultSet.getString("root.sg1.d0.s0") + ","
-              + resultSet.getString("root.sg1.d0.s1");
+          String ans =
+              resultSet.getString("Time")
+                  + ","
+                  + resultSet.getString("root.sg1.d0.s0")
+                  + ","
+                  + resultSet.getString("root.sg1.d0.s1");
           assertEquals(ret[cur], ans);
           cur++;
         }
@@ -636,9 +687,9 @@ public class IoTDBSimpleQueryIT {
   @Test
   public void testShowTimeseriesDataSet1() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
-            "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
       statement.execute("SET STORAGE GROUP TO root.sg1");
@@ -672,9 +723,9 @@ public class IoTDBSimpleQueryIT {
   @Test
   public void testShowTimeseriesDataSet2() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
-            "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(10);
       statement.execute("SET STORAGE GROUP TO root.sg1");
@@ -708,9 +759,9 @@ public class IoTDBSimpleQueryIT {
   @Test
   public void testShowTimeseriesDataSet3() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
-            "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(15);
       statement.execute("SET STORAGE GROUP TO root.sg1");
@@ -744,9 +795,9 @@ public class IoTDBSimpleQueryIT {
   @Test
   public void testShowTimeseriesDataSet4() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
-            "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
       statement.execute("SET STORAGE GROUP TO root.sg1");
@@ -780,12 +831,13 @@ public class IoTDBSimpleQueryIT {
   @Test
   public void testShowTimeseriesWithLimitOffset() throws SQLException, ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      List<String> exps = Arrays
-          .asList("root.sg1.d0.s1", "root.sg1.d0.s2", "root.sg1.d0.s3", "root.sg1.d0.s4");
+      List<String> exps =
+          Arrays.asList("root.sg1.d0.s1", "root.sg1.d0.s2", "root.sg1.d0.s3", "root.sg1.d0.s4");
 
       statement.execute("INSERT INTO root.sg1.d0(timestamp, s1) VALUES (5, 5)");
       statement.execute("INSERT INTO root.sg1.d0(timestamp, s2) VALUES (5, 5)");
@@ -806,12 +858,12 @@ public class IoTDBSimpleQueryIT {
   @Test
   public void testShowDevicesWithLimitOffset() throws SQLException, ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      List<String> exps = Arrays
-          .asList("root.sg1.d1", "root.sg1.d2");
+      List<String> exps = Arrays.asList("root.sg1.d1", "root.sg1.d2");
 
       statement.execute("INSERT INTO root.sg1.d0(timestamp, s1) VALUES (5, 5)");
       statement.execute("INSERT INTO root.sg1.d1(timestamp, s2) VALUES (5, 5)");
@@ -832,12 +884,12 @@ public class IoTDBSimpleQueryIT {
   @Test
   public void testShowDevicesWithLimit() throws SQLException, ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      List<String> exps = Arrays
-          .asList("root.sg1.d0", "root.sg1.d1");
+      List<String> exps = Arrays.asList("root.sg1.d0", "root.sg1.d1");
 
       statement.execute("INSERT INTO root.sg1.d0(timestamp, s1) VALUES (5, 5)");
       statement.execute("INSERT INTO root.sg1.d1(timestamp, s2) VALUES (5, 5)");
@@ -858,9 +910,9 @@ public class IoTDBSimpleQueryIT {
   @Test
   public void testFirstOverlappedPageFiltered() throws SQLException, ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
-            "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.sg1");
       statement.execute("CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN");
@@ -884,8 +936,8 @@ public class IoTDBSimpleQueryIT {
       statement.execute("flush");
 
       long count = 0;
-      try (ResultSet resultSet = statement
-          .executeQuery("select s0 from root.sg1.d0 where s0 > 18")) {
+      try (ResultSet resultSet =
+          statement.executeQuery("select s0 from root.sg1.d0 where s0 > 18")) {
         while (resultSet.next()) {
           count++;
         }
@@ -895,13 +947,12 @@ public class IoTDBSimpleQueryIT {
     }
   }
 
-
   @Test
   public void testPartialInsertion() throws SQLException, ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
-            "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.sg1");
       statement.execute("CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN");
@@ -923,18 +974,17 @@ public class IoTDBSimpleQueryIT {
     }
   }
 
-
   @Test
   public void testPartialInsertionAllFailed() throws SQLException, ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
 
-    boolean autoCreateSchemaEnabled = IoTDBDescriptor.getInstance().getConfig()
-        .isAutoCreateSchemaEnabled();
+    boolean autoCreateSchemaEnabled =
+        IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     boolean enablePartialInsert = IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert();
 
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
-            "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
       IoTDBDescriptor.getInstance().getConfig().setEnablePartialInsert(true);
@@ -951,15 +1001,14 @@ public class IoTDBSimpleQueryIT {
 
     IoTDBDescriptor.getInstance().getConfig().setEnablePartialInsert(enablePartialInsert);
     IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(autoCreateSchemaEnabled);
-
   }
 
   @Test
   public void testOverlappedPagesMerge() throws SQLException, ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
-            "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.sg1");
       statement.execute("CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN");
@@ -988,8 +1037,8 @@ public class IoTDBSimpleQueryIT {
 
       long count = 0;
 
-      try (ResultSet resultSet = statement
-          .executeQuery("select s0 from root.sg1.d0 where s0 < 100")) {
+      try (ResultSet resultSet =
+          statement.executeQuery("select s0 from root.sg1.d0 where s0 < 100")) {
         while (resultSet.next()) {
           count++;
         }
@@ -1002,9 +1051,9 @@ public class IoTDBSimpleQueryIT {
   @Test
   public void testUnseqUnsealedDeleteQuery() throws SQLException, ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
-            "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.sg1");
       statement.execute("CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN");
@@ -1037,21 +1086,20 @@ public class IoTDBSimpleQueryIT {
       }
 
       System.out.println(count);
-
     }
   }
 
   @Test
   public void testTimeseriesMetadataCache() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
-            "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.sg1");
       for (int i = 0; i < 10000; i++) {
-        statement
-            .execute("CREATE TIMESERIES root.sg1.d0.s" + i + " WITH DATATYPE=INT32,ENCODING=PLAIN");
+        statement.execute(
+            "CREATE TIMESERIES root.sg1.d0.s" + i + " WITH DATATYPE=INT32,ENCODING=PLAIN");
       }
       for (int i = 1; i < 10000; i++) {
         statement.execute("INSERT INTO root.sg1.d0(timestamp, s" + i + ") VALUES (1000, 1)");
@@ -1063,41 +1111,33 @@ public class IoTDBSimpleQueryIT {
     }
   }
 
-
   @Test
   public void testInvalidSchema() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
-            "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.sg1");
       try {
-        statement
-            .execute("CREATE TIMESERIES root.sg1.d1.s1 with datatype=BOOLEAN, encoding=TS_2DIFF");
+        statement.execute(
+            "CREATE TIMESERIES root.sg1.d1.s1 with datatype=BOOLEAN, encoding=TS_2DIFF");
       } catch (Exception e) {
-        Assert.assertEquals(
-            "303: encoding TS_2DIFF does not support BOOLEAN",
-            e.getMessage());
+        Assert.assertEquals("303: encoding TS_2DIFF does not support BOOLEAN", e.getMessage());
       }
 
       try {
-        statement
-            .execute("CREATE TIMESERIES root.sg1.d1.s3 with datatype=DOUBLE, encoding=REGULAR");
+        statement.execute(
+            "CREATE TIMESERIES root.sg1.d1.s3 with datatype=DOUBLE, encoding=REGULAR");
       } catch (Exception e) {
-        Assert.assertEquals(
-            "303: encoding REGULAR does not support DOUBLE",
-            e.getMessage());
+        Assert.assertEquals("303: encoding REGULAR does not support DOUBLE", e.getMessage());
       }
 
       try {
         statement.execute("CREATE TIMESERIES root.sg1.d1.s4 with datatype=TEXT, encoding=TS_2DIFF");
       } catch (Exception e) {
-        Assert.assertEquals(
-            "303: encoding TS_2DIFF does not support TEXT",
-            e.getMessage());
+        Assert.assertEquals("303: encoding TS_2DIFF does not support TEXT", e.getMessage());
       }
-
 
     } catch (SQLException e) {
       fail();
@@ -1107,8 +1147,9 @@ public class IoTDBSimpleQueryIT {
   @Test
   public void testUseSameStatement() throws SQLException, ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.sg1");
       statement.execute(
@@ -1155,20 +1196,25 @@ public class IoTDBSimpleQueryIT {
   @Test
   public void testInvalidMaxPointNumber() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
-            "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.sg1");
-      statement.execute("CREATE TIMESERIES root.sg1.d1.s1 with datatype=FLOAT, encoding=TS_2DIFF, "
-          + "max_point_number=4");
-      statement.execute("CREATE TIMESERIES root.sg1.d1.s2 with datatype=FLOAT, encoding=TS_2DIFF, "
-          + "max_point_number=2.5");
-      statement.execute("CREATE TIMESERIES root.sg1.d1.s3 with datatype=FLOAT, encoding=RLE, "
-          + "max_point_number=q");
-      statement.execute("CREATE TIMESERIES root.sg1.d1.s4 with datatype=FLOAT, encoding=RLE, "
-          + "max_point_number=-1");
-      statement.execute("insert into root.sg1.d1(timestamp,s1,s2,s3,s4) values(1,1.1234,1.1234,1.1234,1.1234)");
+      statement.execute(
+          "CREATE TIMESERIES root.sg1.d1.s1 with datatype=FLOAT, encoding=TS_2DIFF, "
+              + "max_point_number=4");
+      statement.execute(
+          "CREATE TIMESERIES root.sg1.d1.s2 with datatype=FLOAT, encoding=TS_2DIFF, "
+              + "max_point_number=2.5");
+      statement.execute(
+          "CREATE TIMESERIES root.sg1.d1.s3 with datatype=FLOAT, encoding=RLE, "
+              + "max_point_number=q");
+      statement.execute(
+          "CREATE TIMESERIES root.sg1.d1.s4 with datatype=FLOAT, encoding=RLE, "
+              + "max_point_number=-1");
+      statement.execute(
+          "insert into root.sg1.d1(timestamp,s1,s2,s3,s4) values(1,1.1234,1.1234,1.1234,1.1234)");
 
       try (ResultSet r1 = statement.executeQuery("select s1 from root.sg1.d1")) {
         r1.next();
