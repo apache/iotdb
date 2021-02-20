@@ -1103,11 +1103,22 @@ public class PlanExecutor implements IPlanExecutor {
 
   @Override
   public void insert(InsertRowsPlan plan) throws QueryProcessException {
+    boolean allSuccess = true;
     for (int i = 0; i < plan.getInsertRowPlanList().size(); i++) {
       if (plan.getResults().containsKey(i)) {
+        allSuccess = false;
         continue;
       }
-      insert(plan.getInsertRowPlanList().get(i));
+      try {
+        insert(plan.getInsertRowPlanList().get(i));
+        plan.getResults().put(i, RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+      } catch (QueryProcessException e) {
+        plan.getResults().put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+        allSuccess = false;
+      }
+      if (!allSuccess) {
+        throw new BatchProcessException(plan.getResults().values().toArray(new TSStatus[0]));
+      }
     }
   }
 

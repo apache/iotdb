@@ -204,4 +204,16 @@ public class InsertRowsPlan extends InsertPlan {
   public PartialPath getFirstDeviceId() {
     return insertRowPlanList.get(0).getDeviceId();
   }
+
+  @Override
+  public String toString() {
+    return "InsertRowsPlan{"
+        + " insertRowPlanIndexList="
+        + insertRowPlanIndexList
+        + ", insertRowPlanList="
+        + insertRowPlanList
+        + ", results="
+        + results
+        + "}";
+  }
 }
