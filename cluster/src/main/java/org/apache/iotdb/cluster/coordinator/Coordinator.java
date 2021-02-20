@@ -460,7 +460,7 @@ public class Coordinator {
           // and the second dimension is the number of rows per InsertTabletPlan
           totalRowNum = ((InsertMultiTabletPlan) parentPlan).getTabletsSize();
         } else if (parentPlan instanceof CreateMultiTimeSeriesPlan) {
-          totalRowNum = ((CreateMultiTimeSeriesPlan) parentPlan).getIndexes().size();
+          totalRowNum = ((CreateMultiTimeSeriesPlan) parentPlan).getPaths().size();
         } else if (parentPlan instanceof InsertRowsPlan) {
           totalRowNum = ((InsertRowsPlan) parentPlan).getRowCount();
         }
