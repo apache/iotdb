@@ -18,6 +18,10 @@
  */
 package org.apache.iotdb.tsfile;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
@@ -33,11 +37,6 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.List;
-import java.util.Map;
-
 public class TsFileSequenceRead {
 
   @SuppressWarnings({
@@ -45,7 +44,8 @@ public class TsFileSequenceRead {
     "squid:S106"
   }) // Suppress high Cognitive Complexity and Standard outputs warning
   public static void main(String[] args) throws IOException {
-    String filename = "test.tsfile";
+    String filename =
+        "/Users/surevil/Documents/private/incubator-iotdb/server/target/tmp/system/storage_groups/root.mergeTest/0/root.mergeTest-1613908181961/seq/1613908181521-1-0.tsfile";
     if (args.length >= 1) {
       filename = args[0];
     }

@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.tsfile;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -29,10 +32,6 @@ import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * The class is to show how to read TsFile file named "test.tsfile". The TsFile file "test.tsfile"
@@ -57,7 +56,7 @@ public class TsFileRead {
 
     // file path
     String path =
-        "/Users/surevil/Documents/private/incubator-iotdb/server/target/data/unsequence/root.mergeTest/0/0/1613657007431-22-0.tsfile";
+        "/Users/surevil/Documents/private/incubator-iotdb/server/target/tmp/system/storage_groups/root.mergeTest/0/root.mergeTest-1613907372479/seq/1613907295951-1-0.tsfile";
 
     // create reader and get the readTsFile interface
     try (TsFileSequenceReader reader = new TsFileSequenceReader(path);

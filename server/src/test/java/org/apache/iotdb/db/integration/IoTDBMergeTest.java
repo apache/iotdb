@@ -19,25 +19,23 @@
 
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.jdbc.Config;
-
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.jdbc.Config;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class IoTDBMergeTest {
 
@@ -319,6 +317,15 @@ public class IoTDBMergeTest {
             assertEquals(time + 3, s3);
           }
           cnt++;
+        }
+      }
+
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT s1 FROM root.mergeTest where time >= 1 and time <= 9999 order by time asc")) {
+        while (resultSet.next()) {
+          long time = resultSet.getLong("Time");
+          System.out.println(time);
         }
       }
       assertEquals(10000, cnt);

@@ -19,10 +19,24 @@
 
 package org.apache.iotdb.db.engine.compaction;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
+import static org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.MERGING_MODIFICATION_FILE_NAME;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.Iterator;
+import java.util.List;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.selector.IMergeFileSelector;
@@ -35,21 +49,8 @@ import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.CloseCompactionMergeCallBack;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.util.Iterator;
-import java.util.List;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
-import static org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.MERGING_MODIFICATION_FILE_NAME;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 public abstract class TsFileManagement {
 
@@ -225,6 +226,7 @@ public abstract class TsFileManagement {
       // avoid pending tasks holds the metadata and streams
       mergeResource.clear();
       String taskName = storageGroupName + "-" + System.currentTimeMillis();
+      backup(taskName, mergeResource);
       // do not cache metadata until true candidates are chosen, or too much metadata will be
       // cached during selection
       mergeResource.setCacheDeviceMeta(true);
@@ -262,6 +264,59 @@ public abstract class TsFileManagement {
       logger.error("{} cannot select file for merge", storageGroupName, e);
     } finally {
       writeUnlock();
+    }
+  }
+
+  private void backup(String taskName, MergeResource mergeResource) {
+    File dir = SystemFileFactory.INSTANCE.getFile(storageGroupDir, taskName);
+    if (!dir.exists()) {
+      dir.mkdirs();
+    }
+    File seqDir = new File(dir.getAbsolutePath() + "/seq");
+    if (!seqDir.exists()) {
+      seqDir.mkdirs();
+    }
+    File unseqDir = new File(dir.getAbsolutePath() + "/unseq");
+    if (!unseqDir.exists()) {
+      unseqDir.mkdirs();
+    }
+    for (TsFileResource tsFileResource : mergeResource.getSeqFiles()) {
+      copy(tsFileResource, seqDir);
+    }
+    for (TsFileResource tsFileResource : mergeResource.getUnseqFiles()) {
+      copy(tsFileResource, unseqDir);
+    }
+  }
+
+  private static void copy(TsFileResource orig, File dest) {
+    FileInputStream fileInputStream = null;
+    FileOutputStream fileOutputStream = null;
+    try {
+      fileInputStream = new FileInputStream(orig.getTsFile());
+      fileOutputStream = new FileOutputStream(dest + "/" + orig.getTsFile().getName());
+      byte[] buffer = new byte[1024];
+      int byteread = 0;
+      while ((byteread = fileInputStream.read(buffer)) != -1) {
+        fileOutputStream.write(buffer, 0, byteread);
+      }
+    } catch (IOException e) {
+      System.out.println("文件orig或者dest异常");
+    }
+    byte[] buffer = new byte[1024];
+    try {
+      while (fileInputStream.read(buffer) != -1) { // 将文件内容写到文件中
+        fileOutputStream.write(buffer);
+      }
+
+    } catch (IOException e) {
+
+    } finally {
+      try {
+        if (fileInputStream != null) fileInputStream.close();
+        if (fileOutputStream != null) fileOutputStream.close();
+      } catch (Exception e2) {
+
+      }
     }
   }
 
