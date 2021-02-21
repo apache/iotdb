@@ -278,7 +278,7 @@ public class MManager {
             "spend {} ms to deserialize mtree from mlog.bin", System.currentTimeMillis() - time);
         return idx;
       } catch (Exception e) {
-        throw new IOException("Failed to parser mlog.bin for err:" + e.toString());
+        throw new IOException("Failed to parser mlog.bin for err:" + e);
       }
     } else {
       return 0;
@@ -1117,7 +1117,7 @@ public class MManager {
 
   /** Get metadata in string */
   public String getMetadataInString() {
-    return TIME_SERIES_TREE_HEADER + mtree.toString();
+    return TIME_SERIES_TREE_HEADER + mtree;
   }
 
   public void setTTL(PartialPath storageGroup, long dataTTL) throws MetadataException, IOException {

@@ -100,7 +100,7 @@ public class UDTFExecutor {
     throw new QueryProcessException(
         String.format(
                 "Error occurred during executing UDTF#%s: %s", methodName, System.lineSeparator())
-            + e.toString());
+            + e);
   }
 
   public UDFContext getContext() {

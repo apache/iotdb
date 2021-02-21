@@ -515,7 +515,7 @@ public class SessionExample {
         builder.append("null");
       }
 
-      System.out.println(builder.toString());
+      System.out.println(builder);
     }
 
     dataSet.closeOperationHandle();
