@@ -239,7 +239,7 @@ public class SchemaUtils {
     if (!schemaChecker.get(dataType).contains(encoding)) {
       throw new MetadataException(
           String.format(
-              "encoding %s does not support %s", encoding.toString(), dataType.toString()),
+              "encoding %s does not support %s", encoding, dataType),
           true);
     }
   }

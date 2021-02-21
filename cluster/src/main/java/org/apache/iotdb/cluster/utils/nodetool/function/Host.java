@@ -71,7 +71,7 @@ public class Host extends NodeToolCmd {
         builder.append(", ").append(nodeToString(raftGroup.get(i)));
       }
       builder.append(')');
-      msgPrintln(String.format("%-50s->%20s", builder.toString(), slotNum));
+      msgPrintln(String.format("%-50s->%20s", builder, slotNum));
     }
   }
 }

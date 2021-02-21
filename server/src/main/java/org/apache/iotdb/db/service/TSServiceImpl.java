@@ -772,7 +772,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           FilePathUtils.getPathByLevel((AggregationPlan) plan, pathIndex);
       for (Map.Entry<String, AggregateResult> entry : finalPaths.entrySet()) {
         respColumns.add(
-            entry.getValue().getAggregationType().toString() + "(" + entry.getKey() + ")");
+            entry.getValue().getAggregationType() + "(" + entry.getKey() + ")");
         columnsTypes.add(entry.getValue().getResultDataType().toString());
       }
     } else {
@@ -1658,7 +1658,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       if (!checkAuthorization(paths, plan, sessionIdUsernameMap.get(sessionId))) {
         return RpcUtils.getStatus(
             TSStatusCode.NO_PERMISSION_ERROR,
-            "No permissions for this operation " + plan.getOperatorType().toString());
+            "No permissions for this operation " + plan.getOperatorType());
       }
     } catch (AuthException e) {
       LOGGER.warn("meet error while checking authorization.", e);

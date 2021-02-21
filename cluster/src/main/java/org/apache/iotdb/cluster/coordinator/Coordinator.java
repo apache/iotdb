@@ -267,7 +267,7 @@ public class Coordinator {
       status =
           StatusUtils.getStatus(
               StatusUtils.EXECUTE_STATEMENT_ERROR,
-              MSG_MULTIPLE_ERROR + errorCodePartitionGroups.toString());
+              MSG_MULTIPLE_ERROR + errorCodePartitionGroups);
     }
     logger.debug("{}: executed {} with answer {}", name, plan, status);
     return status;
@@ -421,7 +421,7 @@ public class Coordinator {
       status =
           StatusUtils.getStatus(
               StatusUtils.EXECUTE_STATEMENT_ERROR,
-              MSG_MULTIPLE_ERROR + errorCodePartitionGroups.toString());
+              MSG_MULTIPLE_ERROR + errorCodePartitionGroups);
     }
     return status;
   }
@@ -573,7 +573,7 @@ public class Coordinator {
       status =
           StatusUtils.getStatus(
               StatusUtils.EXECUTE_STATEMENT_ERROR,
-              MSG_MULTIPLE_ERROR + errorCodePartitionGroups.toString());
+              MSG_MULTIPLE_ERROR + errorCodePartitionGroups);
     }
     return status;
   }
