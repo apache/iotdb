@@ -858,10 +858,7 @@ public class MTree implements Serializable {
         return getCount(child, nodes, idx + 1, wildcard);
       }
     } else {
-      int sum = 0;
-      if (node instanceof MeasurementMNode) {
-        sum = 1;
-      }
+      int sum = node instanceof MeasurementMNode ? 1 : 0;
       for (MNode child : node.getChildren().values()) {
         sum += getCount(child, nodes, idx + 1, wildcard);
       }
