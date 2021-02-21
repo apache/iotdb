@@ -23,6 +23,7 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -119,6 +120,33 @@ public class FilePathUtils {
   }
 
   /**
+   * Transform an originalPath to a partial path that satisfies given level.
+   * Path nodes exceed the given level will be replaced by "*", e.g.
+   * generatePartialPathByLevel("root.sg.dh.d1.s1", 2) will return "root.sg.dh.*.s1"
+   * @param originalPath the original timeseries path
+   * @param pathLevel the expected path level
+   * @return result partial path
+   */
+  public static String generatePartialPathByLevel(String originalPath, int pathLevel)
+          throws IllegalPathException {
+    String[] tmpPath = MetaUtils.splitPathToDetachedPath(originalPath);
+    if (tmpPath.length <= pathLevel) {
+      return originalPath;
+    }
+    StringBuilder transformedPath = new StringBuilder();
+    transformedPath.append(tmpPath[0]);
+    for (int k = 1; k < tmpPath.length - 1; k++) {
+      if (k <= pathLevel) {
+        transformedPath.append(TsFileConstant.PATH_SEPARATOR).append(tmpPath[k]);
+      } else {
+        transformedPath.append(TsFileConstant.PATH_SEPARATOR).append(IoTDBConstant.PATH_WILDCARD);
+      }
+    }
+    transformedPath.append(TsFileConstant.PATH_SEPARATOR).append(tmpPath[tmpPath.length - 1]);
+    return transformedPath.toString();
+  }
+
+  /**
    * get paths from group by level, like root.sg1.d2.s0, root.sg1.d1.s0 level=1, return
    * [root.sg1.*.s0, 0] and pathIndex turns to be [[0, root.sg1.*.s0], [1, root.sg1.*.s0]]
    *
@@ -130,40 +158,22 @@ public class FilePathUtils {
   public static Map<String, AggregateResult> getPathByLevel(AggregationPlan plan,
       Map<Integer, String> pathIndex) throws QueryProcessException {
     // pathGroupByLevel -> count
-    Map<String, AggregateResult> finalPaths = new TreeMap<>();
+    Map<String, AggregateResult> finalPaths = new LinkedHashMap<>();
 
     List<PartialPath> seriesPaths = plan.getDeduplicatedPaths();
     List<TSDataType> dataTypes = plan.getDeduplicatedDataTypes();
-    for (int i = 0; i < seriesPaths.size(); i++) {
-      String[] tmpPath;
-      try {
-        tmpPath = MetaUtils.splitPathToDetachedPath(seriesPaths.get(i).getFullPath());
-      } catch (IllegalPathException e) {
-        throw new QueryProcessException(e.getMessage());
+    try {
+      for (int i = 0; i < seriesPaths.size(); i++) {
+        String transformedPath = generatePartialPathByLevel(seriesPaths.get(i).getFullPath(), plan.getLevel());
+        String key = plan.getDeduplicatedAggregations().get(i) + "(" + transformedPath + ")";
+        AggregateResult aggRet = AggregateResultFactory
+                .getAggrResultByName(plan.getDeduplicatedAggregations().get(i), dataTypes.get(i));
+        finalPaths.putIfAbsent(key, aggRet);
+        pathIndex.put(i, key);
       }
-
-      String key;
-      if (tmpPath.length <= plan.getLevel()) {
-        key = seriesPaths.get(i).getFullPath();
-      } else {
-        StringBuilder path = new StringBuilder();
-        path.append(tmpPath[0]);
-        for (int k = 1; k < tmpPath.length - 1; k++) {
-          if (k <= plan.getLevel()) {
-            path.append(TsFileConstant.PATH_SEPARATOR).append(tmpPath[k]);
-          } else {
-            path.append(TsFileConstant.PATH_SEPARATOR).append(IoTDBConstant.PATH_WILDCARD);
-          }
-        }
-        path.append(TsFileConstant.PATH_SEPARATOR).append(seriesPaths.get(i).getMeasurement());
-        key = path.toString();
-      }
-      AggregateResult aggRet = AggregateResultFactory
-          .getAggrResultByName(plan.getAggregations().get(i), dataTypes.get(i));
-      finalPaths.putIfAbsent(key, aggRet);
-      pathIndex.put(i, key);
+    } catch (IllegalPathException e) {
+      throw new QueryProcessException(e.getMessage());
     }
-
     return finalPaths;
   }
 
@@ -186,11 +196,11 @@ public class FilePathUtils {
     for (int i = 0; i < newRecord.getFields().size(); i++) {
       if (newRecord.getFields().get(i) == null) {
         aggregateResultList.add(AggregateResultFactory.getAggrResultByName(
-            plan.getAggregations().get(i), plan.getDeduplicatedDataTypes().get(i)));
+            plan.getDeduplicatedAggregations().get(i), plan.getDeduplicatedDataTypes().get(i)));
       } else {
         TSDataType dataType = newRecord.getFields().get(i).getDataType();
         AggregateResult aggRet = AggregateResultFactory.getAggrResultByName(
-            plan.getAggregations().get(i), dataType);
+            plan.getDeduplicatedAggregations().get(i), dataType);
         switch (dataType) {
           case TEXT:
             aggRet.setBinaryValue(newRecord.getFields().get(i).getBinaryV());

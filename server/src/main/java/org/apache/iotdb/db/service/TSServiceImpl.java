@@ -729,8 +729,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       Map<String, AggregateResult> finalPaths = FilePathUtils
           .getPathByLevel((AggregationPlan) plan, pathIndex);
       for (Map.Entry<String, AggregateResult> entry : finalPaths.entrySet()) {
-        respColumns
-            .add(entry.getValue().getAggregationType().toString() + "(" + entry.getKey() + ")");
+        respColumns.add(entry.getKey());
         columnsTypes.add(entry.getValue().getResultDataType().toString());
       }
     } else {
