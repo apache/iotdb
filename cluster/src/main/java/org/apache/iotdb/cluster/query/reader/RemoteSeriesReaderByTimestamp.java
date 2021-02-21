@@ -23,6 +23,7 @@ import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
+import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.utils.SerializeUtils;
 
@@ -89,20 +90,21 @@ public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
   }
 
   private ByteBuffer fetchResultSync(long timestamp) throws IOException {
+    SyncDataClient curSyncClient = null;
     try {
-      SyncDataClient curSyncClient =
-          sourceInfo.getCurSyncClient(RaftServer.getReadOperationTimeoutMS());
-      ByteBuffer buffer =
-          curSyncClient.fetchSingleSeriesByTimestamp(
-              sourceInfo.getHeader(), sourceInfo.getReaderId(), timestamp);
-      curSyncClient.putBack();
-      return buffer;
+      curSyncClient = sourceInfo.getCurSyncClient(RaftServer.getReadOperationTimeoutMS());
+      return curSyncClient.fetchSingleSeriesByTimestamp(
+          sourceInfo.getHeader(), sourceInfo.getReaderId(), timestamp);
     } catch (TException e) {
       // try other node
       if (!sourceInfo.switchNode(true, timestamp)) {
         return null;
       }
       return fetchResultSync(timestamp);
+    } finally {
+      if (curSyncClient != null) {
+        ClientUtils.putBackSyncClient(curSyncClient);
+      }
     }
   }
 }

@@ -23,6 +23,7 @@ import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.utils.ClientUtils;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
@@ -73,6 +74,8 @@ public class DataClientProviderTest {
         client = provider.getSyncDataClient(node, 100);
       } catch (TException e) {
         Assert.fail(e.getMessage());
+      } finally {
+        ClientUtils.putBackSyncClient(client);
       }
       assertNotNull(client);
       ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(useAsyncServer);
