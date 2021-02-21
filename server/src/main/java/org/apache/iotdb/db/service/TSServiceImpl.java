@@ -97,7 +97,9 @@ import org.apache.iotdb.db.query.control.TracingManager;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.NonAlignEngineDataSet;
 import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
+import org.apache.iotdb.db.query.workloadmanager.Workload;
 import org.apache.iotdb.db.query.workloadmanager.WorkloadManager;
+import org.apache.iotdb.db.query.workloadmanager.queryrecord.QueryRecord;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.FilePathUtils;
@@ -113,6 +115,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.thrift.TException;
 import org.apache.thrift.server.ServerContext;
 import org.slf4j.Logger;
@@ -1745,17 +1748,27 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-  public MeasurementOrderSet divergentDesign(String deviceID) {
+  public ReplicaSet divergentDesign(String deviceID) {
     DivergentDesign divergentDesign = new DivergentDesign(deviceID);
-    Replica[] optimalReplicas = divergentDesign.optimize();
-    MeasurementOrderSet orderSet = new MeasurementOrderSet();
+    Pair<Replica[], Workload[]> optimalResult = divergentDesign.optimize();
+    Replica[] optimalReplicas = optimalResult.left;
+    Workload[] optimalWorkload = optimalResult.right;
+    ReplicaSet replicaSet = new ReplicaSet();
+    replicaSet.measurementOrders = new ArrayList<>();
+    replicaSet.workloadPartition = new ArrayList<>();
     for(Replica replica : optimalReplicas) {
       MeasurementOrder order = new MeasurementOrder();
       order.measurements = replica.getMeasurements();
-      order.setDeviceid(replica.getDeviceId());
-      orderSet.addToMeasurementsOrders(order);
+      replicaSet.measurementOrders.add(order);
     }
-    return orderSet;
+    for(Workload workload : optimalWorkload) {
+      List<String> sqls = new ArrayList<>();
+      for(QueryRecord queryRecord : workload.getRecords()) {
+        sqls.add(queryRecord.toString());
+      }
+      replicaSet.workloadPartition.add(sqls);
+    }
+    return replicaSet;
   }
 
   @Override
@@ -1768,7 +1781,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   public MeasurementOrder optimizeBySA(String deviceID) {
     MeasurementOrderOptimizer.getInstance().optimizeOrder(deviceID, MeasurementOptimizationType.SA);
     List<String> measurements = new ArrayList<>(MeasurementOrderOptimizer.getInstance().getMeasurementsOrder(deviceID));
-    MeasurementOrder result = new MeasurementOrder(deviceID, measurements);
+    MeasurementOrder result = new MeasurementOrder();
+    result.deviceid = deviceID;
+    result.measurements = measurements;
     return result;
   }
 

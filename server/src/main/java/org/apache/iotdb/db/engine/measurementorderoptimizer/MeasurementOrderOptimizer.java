@@ -475,6 +475,15 @@ public class MeasurementOrderOptimizer {
     return optimizedReplica;
   }
 
+  public long getAverageChunkSize(String deviceID) {
+    List<Long> chunkSize = getChunkSize(deviceID);
+    BigInteger totalChunkSize = new BigInteger(String.valueOf(0));
+    for(int i = 0; i < chunkSize.size(); ++i) {
+      totalChunkSize = totalChunkSize.add(new BigInteger(String.valueOf(chunkSize.get(i))));
+    }
+    long averageChunkSize = totalChunkSize.divide(new BigInteger(String.valueOf(chunkSize.size()))).longValue();
+    return averageChunkSize;
+  }
 
   public static void main(String[] args) {
     List<String> a = new ArrayList<>();

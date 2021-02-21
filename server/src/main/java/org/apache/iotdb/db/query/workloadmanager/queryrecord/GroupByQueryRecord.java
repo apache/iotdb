@@ -79,4 +79,17 @@ public class GroupByQueryRecord extends QueryRecord {
   public String getSqlWithTimestamp() {
     return sqlWithTimestamp;
   }
+
+  @Override
+  public String toString() {
+    StringBuilder builder = new StringBuilder();
+    for(String sensor : sensors) {
+      builder.append(sensor);
+      builder.append(' ');
+    }
+    builder.append(startTime);
+    builder.append(' ');
+    builder.append(endTime);
+    return builder.toString();
+  }
 }

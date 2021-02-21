@@ -1331,16 +1331,16 @@ public class Session {
     }
   }
 
-  public MeasurementOrderSet runDivergentDesign(String deviceID) throws IoTDBConnectionException {
-    MeasurementOrderSet order = null;
+  public ReplicaSet runDivergentDesign(String deviceID) throws IoTDBConnectionException {
+    ReplicaSet replicaSet = null;
     try {
-      order = client.divergentDesign(deviceID);
-      return order;
+      replicaSet = client.divergentDesign(deviceID);
+      return replicaSet;
     } catch (TException e) {
       if (reconnect()) {
         try {
-          order = client.divergentDesign(deviceID);
-          return order;
+          replicaSet = client.divergentDesign(deviceID);
+          return replicaSet;
         } catch (TException tException) {
           throw new IoTDBConnectionException(tException);
         }

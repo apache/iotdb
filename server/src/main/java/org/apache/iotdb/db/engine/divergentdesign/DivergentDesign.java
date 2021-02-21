@@ -17,9 +17,9 @@ import java.util.*;
 public class DivergentDesign {
   private List<Workload> workloads;
   private Replica[] replicas;
-  private int replicaNum = 1;
+  private int replicaNum = 3;
   private int balanceFactor = 1;
-  private int maxIter = 50;
+  private int maxIter = 100;
   private float breakPoint = 1e-2f;
   private List<QueryRecord> queryRecords;
   private String deviceID;
@@ -52,7 +52,7 @@ public class DivergentDesign {
     queryRecords.addAll(WorkloadManager.getInstance().getRecord(deviceID));
   }
 
-  public Replica[] optimize() {
+  public Pair<Replica[], Workload[]> optimize() {
     if (queryRecords.size() == 0) {
       getQueryOrderFromManager();
     }
@@ -91,7 +91,7 @@ public class DivergentDesign {
     for(int j = 0; j < replicaNum; ++j) {
       result[j] = databaseAdvisor(curWorkloadPartition[j]);
     }
-    return result;
+    return new Pair<>(result, curWorkloadPartition);
   }
 
   /**

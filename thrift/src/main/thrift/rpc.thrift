@@ -288,12 +288,17 @@ struct ServerProperties {
 }
 
 struct MeasurementOrder {
-    1: required string deviceid;
-    2: required list<string> measurements;
+    1: optional string deviceid;
+    2: optional list<string> measurements;
 }
 
 struct MeasurementOrderSet {
     1: optional list<MeasurementOrder> measurementsOrders;
+}
+
+struct ReplicaSet {
+    1: optional list<MeasurementOrder> measurementOrders;
+    2: optional list<list<string>> workloadPartition;
 }
 
 service TSIService {
@@ -369,7 +374,7 @@ service TSIService {
 
   TSStatus readQueryRecords();
 
-  MeasurementOrderSet divergentDesign(1:string deviceID);
+  ReplicaSet divergentDesign(1:string deviceID);
 
   TSStatus readMetadata();
 

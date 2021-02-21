@@ -129,6 +129,23 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
   }
 
   @Override
+  public long flushToFileWriter(TsFileIOWriter tsfileWriter, Map<String, Integer> indexes) throws IOException {
+    LOG.debug("start flush device id:{}", deviceId);
+    // make sure all the pages have been compressed into buffers, so that we can get correct
+    // groupWriter.getCurrentChunkGroupSize().
+    sealAllChunks();
+    long currentChunkGroupSize = getCurrentChunkGroupSize();
+    String[] order = new String[indexes.size()];
+    for(String measurement : indexes.keySet()) {
+      order[indexes.get(measurement)] = measurement;
+    }
+    for (String measurement : order) {
+      chunkWriters.get(measurement).writeToFileWriter(tsfileWriter);
+    }
+    return currentChunkGroupSize;
+  }
+
+  @Override
   public long updateMaxGroupMemSize() {
     long bufferSize = 0;
     for (IChunkWriter seriesWriter : chunkWriters.values()) {

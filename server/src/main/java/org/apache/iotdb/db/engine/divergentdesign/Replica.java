@@ -23,7 +23,7 @@ public class Replica {
 
   public Replica(String deviceId, List<String> measurements, long averageChunkSize) {
     this.deviceId = deviceId;
-    this.measurements = measurements;
+    this.measurements = new ArrayList<>(measurements);
     chunkSize = new ArrayList<Long>();
     for(int i = 0; i < measurements.size(); ++i) {
       chunkSize.add(averageChunkSize);
@@ -48,5 +48,14 @@ public class Replica {
 
   public String getDeviceId() {
     return deviceId;
+  }
+
+  public void swapMeasurementPos(int left, int right) {
+    String tempMeasurement = measurements.get(left);
+    measurements.set(left, measurements.get(right));
+    measurements.set(right, tempMeasurement);
+    long tempChunkSize = chunkSize.get(left);
+    chunkSize.set(left, chunkSize.get(right));
+    chunkSize.set(right, tempChunkSize);
   }
 }

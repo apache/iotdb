@@ -20,6 +20,7 @@ package org.apache.iotdb.tsfile.write.chunk;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.write.record.Tablet;
@@ -67,6 +68,8 @@ public interface IChunkGroupWriter {
    * @return current ChunkGroupDataSize
    */
   long flushToFileWriter(TsFileIOWriter tsfileWriter) throws IOException;
+
+  long flushToFileWriter(TsFileIOWriter tsfileWriter, Map<String, Integer> indexes) throws IOException;
 
   /**
    * get the max memory occupied at this time.

@@ -262,7 +262,7 @@ public class MemTableFlushTask {
           ChunkWriterImpl chunkWriter = (ChunkWriterImpl) ioMessage;
           totalChunkSize += chunkWriter.getCurrentChunkSize();
           MeasurementSchema schema = chunkWriter.getMeasurementSchema();
-          //logger.info("flush " + schema.getMeasurementId());
+          // logger.info("flush " + schema.getMeasurementId());
           chunkCount += 1;
           chunkWriter.writeToFileWriter(this.writer);
         } else {

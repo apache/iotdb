@@ -4,6 +4,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.MeasurementOrder;
 import org.apache.iotdb.service.rpc.thrift.MeasurementOrderSet;
+import org.apache.iotdb.service.rpc.thrift.ReplicaSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -25,9 +26,12 @@ public class ExperimentSessionWriter {
     session.deleteStorageGroup("root.test");
     session.setStorageGroup("root.test");
     createTimeseries();
-    /*MeasurementOrderSet orderSet = session.runDivergentDesign("root.test.device");
-    showOrderSet(orderSet);*/
-    session.optimizeBySA("root.test.device");
+    ReplicaSet replicaSet = session.runDivergentDesign("root.test.device");
+    showReplicaSet(replicaSet);
+    /*MeasurementOrder order = session.optimizeBySA("root.test.device");
+    for(String measurment : order.measurements) {
+      System.out.println(measurment);
+    }*/
     generateData();
     session.executeNonQueryStatement("flush");
     session.close();
@@ -75,6 +79,22 @@ public class ExperimentSessionWriter {
     for(MeasurementOrder order : orders) {
       for(String measurement : order.measurements) {
         System.out.print(measurement + " ");
+      }
+      System.out.println();
+      System.out.println();
+    }
+  }
+
+  static void showReplicaSet(ReplicaSet replicaSet) {
+    for(int i = 0; i < replicaSet.measurementOrders.size(); ++i) {
+      MeasurementOrder order = replicaSet.measurementOrders.get(i);
+      for(String measurement : order.getMeasurements()) {
+        System.out.print(measurement + " ");
+      }
+      System.out.println();
+      List<String> workload = replicaSet.workloadPartition.get(i);
+      for(String sql : workload) {
+        System.out.println(sql);
       }
       System.out.println();
       System.out.println();

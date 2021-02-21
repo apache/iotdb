@@ -41,7 +41,7 @@ public class TsFileSequenceRead {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static void main(String[] args) throws IOException {
-    String filename = "test.tsfile";
+    String filename = "E:\\Thing\\Workspace\\IoTDB\\res\\divergentDesign2.tsfile";
     if (args.length >= 1) {
       filename = args[0];
     }
@@ -60,11 +60,12 @@ public class TsFileSequenceRead {
       System.out.println("[Chunk Group]");
       System.out.println("position: " + reader.position());
       byte marker;
+      int chunkGroupCnt = 0;
       while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
           case MetaMarker.CHUNK_HEADER:
-            System.out.println("\t[Chunk]");
-            System.out.println("\tposition: " + reader.position());
+            /*System.out.println("\t[Chunk]");
+            System.out.println("\tposition: " + reader.position());*/
             ChunkHeader header = reader.readChunkHeader();
             System.out.println("\tMeasurement: " + header.getMeasurementID());
             Decoder defaultTimeDecoder = Decoder.getDecoderByType(
@@ -74,25 +75,29 @@ public class TsFileSequenceRead {
                     .getDecoderByType(header.getEncodingType(), header.getDataType());
             for (int j = 0; j < header.getNumOfPages(); j++) {
               valueDecoder.reset();
-              System.out.println("\t\t[Page]\n \t\tPage head position: " + reader.position());
+              //System.out.println("\t\t[Page]\n \t\tPage head position: " + reader.position());
               PageHeader pageHeader = reader.readPageHeader(header.getDataType());
-              System.out.println("\t\tPage data position: " + reader.position());
-              System.out.println("\t\tpoints in the page: " + pageHeader.getNumOfValues());
+              //System.out.println("\t\tPage data position: " + reader.position());
+              //System.out.println("\t\tpoints in the page: " + pageHeader.getNumOfValues());
               ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
-              System.out
-                      .println("\t\tUncompressed page data size: " + pageHeader.getUncompressedSize());
+              /*System.out
+                      .println("\t\tUncompressed page data size: " + pageHeader.getUncompressedSize());*/
               PageReader reader1 = new PageReader(pageData, header.getDataType(), valueDecoder,
                       defaultTimeDecoder, null);
               BatchData batchData = reader1.getAllSatisfiedPageData();
+              int i = 0;
               while (batchData.hasCurrent()) {
-                System.out.println(
+                i++;
+                /*System.out.println(
                         "\t\t\ttime, value: " + batchData.currentTime() + ", " + batchData
-                                .currentValue());
+                                .currentValue());*/
                 batchData.next();
               }
+              //System.out.println(i);
             }
             break;
           case MetaMarker.CHUNK_GROUP_FOOTER:
+            chunkGroupCnt++;
             System.out.println("Chunk Group Footer position: " + reader.position());
             ChunkGroupFooter chunkGroupFooter = reader.readChunkGroupFooter();
             System.out.println("device: " + chunkGroupFooter.getDeviceID());
@@ -117,6 +122,7 @@ public class TsFileSequenceRead {
           }
         }
       }
+      System.out.println(chunkGroupCnt);
     }
   }
 }

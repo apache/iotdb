@@ -339,6 +339,27 @@ public class TsFileWriter implements AutoCloseable {
     return false;
   }
 
+  public boolean flushAllChunkGroups(Map<String, Integer> indexes) throws IOException {
+    if (recordCount > 0) {
+      for (Map.Entry<String, IChunkGroupWriter> entry : groupWriters.entrySet()) {
+        long pos = fileWriter.getPos();
+        String deviceId = entry.getKey();
+        IChunkGroupWriter groupWriter = entry.getValue();
+        fileWriter.startChunkGroup(deviceId);
+        long dataSize = groupWriter.flushToFileWriter(fileWriter, indexes);
+        if (fileWriter.getPos() - pos != dataSize) {
+          throw new IOException(
+                  String.format(
+                          "Flushed data size is inconsistent with computation! Estimated: %d, Actual: %d",
+                          dataSize, fileWriter.getPos() - pos));
+        }
+        fileWriter.endChunkGroup();
+      }
+      reset();
+    }
+    return false;
+  }
+
   private void reset() {
     groupWriters.clear();
     recordCount = 0;

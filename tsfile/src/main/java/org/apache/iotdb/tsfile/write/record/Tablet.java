@@ -247,4 +247,8 @@ public class Tablet {
     }
     return valueOccupation;
   }
+
+  public Map<String, Integer> getMeasurementIndex() {
+    return measurementIndex;
+  }
 }

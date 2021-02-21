@@ -264,7 +264,7 @@ public class IoTDBConfig {
   /**
    * How many threads can concurrently flush. When <= 0, use CPU core number.
    */
-  private int concurrentFlushThread = Runtime.getRuntime().availableProcessors();
+  private int concurrentFlushThread = 4;
 
   /**
    * How many threads can concurrently query. When <= 0, use CPU core number.
