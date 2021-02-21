@@ -224,8 +224,7 @@ public class UDFRegistrationService implements IService {
         registrationInformation.put(functionName, information);
         String errorMessage =
             String.format(
-                "Failed to append UDF log when deregistering UDF %s, because %s",
-                functionName, e);
+                "Failed to append UDF log when deregistering UDF %s, because %s", functionName, e);
         logger.error(errorMessage);
         throw new UDFRegistrationException(errorMessage, e);
       }

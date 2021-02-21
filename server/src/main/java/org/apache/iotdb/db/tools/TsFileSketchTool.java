@@ -124,9 +124,7 @@ public class TsFileSketchTool {
                     - 1;
           }
 
-          printlnBoth(
-              pw,
-              str1 + "\t[Chunk Group] of " + chunkGroupMetadata.getDevice() + " ends");
+          printlnBoth(pw, str1 + "\t[Chunk Group] of " + chunkGroupMetadata.getDevice() + " ends");
         }
 
         // metadata begins

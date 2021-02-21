@@ -79,16 +79,14 @@ public class TemporaryQueryDataFileService implements IService {
         recorder.closeFile();
       } catch (IOException e) {
         logger.warn(
-            String.format(
-                "Failed to close file in method deregister(%d), because %s", queryId, e));
+            String.format("Failed to close file in method deregister(%d), because %s", queryId, e));
       }
     }
     try {
       FileUtils.cleanDirectory(SystemFileFactory.INSTANCE.getFile(getDirName(queryId)));
     } catch (IOException e) {
       logger.warn(
-          String.format(
-              "Failed to clean dir in method deregister(%d), because %s", queryId, e));
+          String.format("Failed to clean dir in method deregister(%d), because %s", queryId, e));
     }
   }
 

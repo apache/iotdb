@@ -101,7 +101,6 @@ public class TestConstant {
       measurements.append(",").append(dataPoint.getMeasurementId());
       values.append(",").append(dataPoint.getValue());
     }
-    return String.format(
-        insertTemplate, record.deviceId, measurements, record.time, values);
+    return String.format(insertTemplate, record.deviceId, measurements, record.time, values);
   }
 }
