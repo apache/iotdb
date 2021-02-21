@@ -279,6 +279,7 @@ public class MManagerBasicTest {
       assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1")), 4);
       assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1.*")), 3);
       assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d2.s1")), 1);
+      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d2")), 2);
 
       try {
         manager.getAllTimeseriesCount(new PartialPath("root.laptop.d3.s1"));

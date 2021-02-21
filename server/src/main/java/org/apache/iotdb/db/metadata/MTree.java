@@ -18,18 +18,15 @@
  */
 package org.apache.iotdb.db.metadata;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
-import org.apache.iotdb.db.exception.metadata.IllegalParameterOfPathException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.exception.metadata.*;
 import org.apache.iotdb.db.metadata.MManager.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
@@ -37,16 +34,11 @@ import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
-import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
+import org.apache.iotdb.db.qp.physical.sys.*;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.executor.fill.LastPointReader;
-import org.apache.iotdb.db.utils.Holder;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -54,42 +46,20 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Queue;
-import java.util.Set;
-import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
-import static org.apache.iotdb.db.conf.IoTDBConstant.LOSS;
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
-import static org.apache.iotdb.db.conf.IoTDBConstant.SDT;
-import static org.apache.iotdb.db.conf.IoTDBConstant.SDT_COMP_DEV;
-import static org.apache.iotdb.db.conf.IoTDBConstant.SDT_COMP_MAX_TIME;
-import static org.apache.iotdb.db.conf.IoTDBConstant.SDT_COMP_MIN_TIME;
+import static org.apache.iotdb.db.conf.IoTDBConstant.*;
 
 /** The hierarchical struct of the Metadata Tree is implemented in this class. */
 public class MTree implements Serializable {
@@ -858,45 +828,44 @@ public class MTree implements Serializable {
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
       throw new IllegalPathException(prefixPath.getFullPath());
     }
-    Holder<Integer> countHolder = new Holder<>(0);
     try {
-      getCount(root, nodes, 1, countHolder, false);
+      return getCount(root, nodes, 1, false);
     } catch (PathNotExistException e) {
       throw new PathNotExistException(prefixPath.getFullPath());
     }
-    return countHolder.getValue();
   }
 
   /** Traverse the MTree to get the count of timeseries. */
-  private void getCount(
-      MNode node, String[] nodes, int idx, Holder<Integer> countHolder, boolean wildcard)
+  private int getCount(
+      MNode node, String[] nodes, int idx, boolean wildcard)
       throws PathNotExistException {
     if (idx < nodes.length) {
       if (PATH_WILDCARD.equals(nodes[idx])) {
+        int sum = 0;
         for (MNode child : node.getChildren().values()) {
-          getCount(child, nodes, idx + 1, countHolder, true);
+          sum += getCount(child, nodes, idx + 1, true);
         }
+        return sum;
       } else {
         MNode child = node.getChild(nodes[idx]);
         if (child == null) {
           if (!wildcard) {
             throw new PathNotExistException(node.getName() + NO_CHILDNODE_MSG + nodes[idx]);
           } else {
-            return;
+            return 0;
           }
         }
-        getCount(child, nodes, idx + 1, countHolder, wildcard);
+        return getCount(child, nodes, idx + 1, wildcard);
       }
     } else {
+      int sum = 0;
       if (node instanceof MeasurementMNode) {
-        countHolder.setValue(countHolder.getValue() + 1);
-      }
-      if (node.getChildren().size() == 0) {
-        return;
+        sum = 1;
       }
       for (MNode child : node.getChildren().values()) {
-        getCount(child, nodes, idx + 1, countHolder, wildcard);
+        sum += getCount(child, nodes, idx + 1, wildcard);
       }
+      return sum;
     }
   }
 
