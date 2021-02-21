@@ -378,7 +378,7 @@ public class SeriesReader {
       /*
        * try to unpack all overlapped ChunkMetadata to cachedPageReaders
        */
-      unpackAllOverlappedChunkMetadataToCachedPageReaders(
+      unpackAllOverlappedChunkMetadataToPageReaders(
           orderUtils.getOverlapCheckTime(firstChunkMetadata.getStatistics()), true);
     } else {
       /*
@@ -389,7 +389,7 @@ public class SeriesReader {
         long endpointTime = orderUtils.getOverlapCheckTime(firstPageReader.getStatistics());
         unpackAllOverlappedTsFilesToTimeSeriesMetadata(endpointTime);
         unpackAllOverlappedTimeSeriesMetadataToCachedChunkMetadata(endpointTime, false);
-        unpackAllOverlappedChunkMetadataToCachedPageReaders(endpointTime, false);
+        unpackAllOverlappedChunkMetadataToPageReaders(endpointTime, false);
       }
     }
 
@@ -414,7 +414,7 @@ public class SeriesReader {
         long endpointTime = orderUtils.getOverlapCheckTime(firstPageReader.getStatistics());
         unpackAllOverlappedTsFilesToTimeSeriesMetadata(endpointTime);
         unpackAllOverlappedTimeSeriesMetadataToCachedChunkMetadata(endpointTime, false);
-        unpackAllOverlappedChunkMetadataToCachedPageReaders(endpointTime, false);
+        unpackAllOverlappedChunkMetadataToPageReaders(endpointTime, false);
       }
 
       if (firstPageOverlapped()) {
@@ -446,15 +446,22 @@ public class SeriesReader {
             .getStartTime()));
   }
 
-  private void unpackAllOverlappedChunkMetadataToCachedPageReaders(long endpointTime, boolean init)
+  private void unpackAllOverlappedChunkMetadataToPageReaders(long endpointTime, boolean init)
       throws IOException {
     if (firstChunkMetadata != null &&
         orderUtils.isOverlapped(endpointTime, firstChunkMetadata.getStatistics())) {
       unpackOneChunkMetaData(firstChunkMetadata);
       firstChunkMetadata = null;
     }
+    // In case unpacking too many sequence chunks
+    boolean hasMeetSeq = false;
     while (!cachedChunkMetadata.isEmpty() &&
         orderUtils.isOverlapped(endpointTime, cachedChunkMetadata.peek().getStatistics())) {
+      if (cachedChunkMetadata.peek().isSeq() && hasMeetSeq) {
+        break;
+      } else if (cachedChunkMetadata.peek().isSeq()) {
+        hasMeetSeq = true;
+      }
       unpackOneChunkMetaData(cachedChunkMetadata.poll());
     }
     if (init && firstPageReader == null && (!seqPageReaders.isEmpty() || !unSeqPageReaders
@@ -607,7 +614,7 @@ public class SeriesReader {
           unpackAllOverlappedTsFilesToTimeSeriesMetadata(timeValuePair.getTimestamp());
           unpackAllOverlappedTimeSeriesMetadataToCachedChunkMetadata(
               timeValuePair.getTimestamp(), false);
-          unpackAllOverlappedChunkMetadataToCachedPageReaders(timeValuePair.getTimestamp(), false);
+          unpackAllOverlappedChunkMetadataToPageReaders(timeValuePair.getTimestamp(), false);
           unpackAllOverlappedUnseqPageReadersToMergeReader(timeValuePair.getTimestamp());
 
           if (firstPageReader != null) {
@@ -673,9 +680,9 @@ public class SeriesReader {
 
   private long updateEndPointTime(long currentPageEndPointTime, VersionPageReader pageReader) {
     if (orderUtils.getAscending()) {
-      return Math.max(currentPageEndPointTime, pageReader.getStatistics().getEndTime());
+      return Math.min(currentPageEndPointTime, pageReader.getStatistics().getEndTime());
     } else {
-      return Math.min(currentPageEndPointTime, pageReader.getStatistics().getStartTime());
+      return Math.max(currentPageEndPointTime, pageReader.getStatistics().getStartTime());
     }
   }
 

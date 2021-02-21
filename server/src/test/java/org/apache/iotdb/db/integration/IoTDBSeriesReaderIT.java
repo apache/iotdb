@@ -55,6 +55,7 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -406,6 +407,46 @@ public class IoTDBSeriesReaderIT {
       assertFalse(resultSet.next());
     } finally {
       resultSet.close();
+    }
+  }
+
+  /** Test when one un-sequenced file may cover a long time range. */
+  @Test
+  public void queryWithLongRangeUnSeqTest() throws SQLException {
+    try (Connection connection =
+        DriverManager.getConnection(
+            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      // make up data
+      final String INSERT_TEMPLATE = "insert into root.sg.d1(time, s1) values(%d, %d)";
+      final String FLUSH_CMD = "flush";
+      for (int i = 1; i <= 10; i++) {
+        statement.execute(String.format(INSERT_TEMPLATE, i, i));
+      }
+      statement.execute(FLUSH_CMD);
+      for (int i = 12; i <= 20; i++) {
+        statement.execute(String.format(INSERT_TEMPLATE, i, i));
+      }
+      statement.execute(FLUSH_CMD);
+      for (int i = 21; i <= 110; i++) {
+        statement.execute(String.format(INSERT_TEMPLATE, i, i));
+        if (i % 10 == 0) {
+          statement.execute(FLUSH_CMD);
+        }
+      }
+      // unSeq from here
+      for (int i = 11; i <= 101; i += 10) {
+        statement.execute(String.format(INSERT_TEMPLATE, i, i));
+      }
+      statement.execute(FLUSH_CMD);
+
+      // query from here
+      ResultSet resultSet = statement.executeQuery("select s1 from root.sg.d1 where time > 10");
+      int cnt = 0;
+      while (resultSet.next()) {
+        cnt++;
+      }
+      Assert.assertEquals(100, cnt);
     }
   }
 }
