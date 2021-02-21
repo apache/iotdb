@@ -34,6 +34,7 @@ import io.micrometer.prometheus.PrometheusConfig;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
 
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 public class MicrometerMetricManager implements MetricManager {
@@ -43,6 +44,7 @@ public class MicrometerMetricManager implements MetricManager {
 
   public MicrometerMetricManager() {
     prometheusMeterRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
+    currentMeters = new ConcurrentHashMap<>();
   }
 
   public MeterRegistry getMeterRegistry() {
@@ -53,13 +55,20 @@ public class MicrometerMetricManager implements MetricManager {
   public Counter counter(String metric, String... tags) {
     io.micrometer.core.instrument.Counter innerCounter =
         prometheusMeterRegistry.counter(metric, tags);
-    IMetric counter = currentMeters.get(innerCounter.getId());
-    if (counter == null) {
-      counter = new MicrometerCounter(innerCounter);
-      currentMeters.put(innerCounter.getId(), counter);
-    }
-    return (Counter) counter;
+    return (Counter)
+        currentMeters.computeIfAbsent(
+            innerCounter.getId(), key -> new MicrometerCounter(innerCounter));
   }
+
+  @Override
+  public void count(int delta, String metric, String... tags) {
+    io.micrometer.core.instrument.Counter innerCounter =
+        prometheusMeterRegistry.counter(metric, tags);
+    innerCounter.increment(delta);
+  }
+
+  @Override
+  public void count(long delta, String metric, String... tags) {}
 
   @Override
   public Gauge gauge(String metric, String... tags) {
@@ -80,12 +89,6 @@ public class MicrometerMetricManager implements MetricManager {
   public Timer timer(String metric, String... tags) {
     return null;
   }
-
-  @Override
-  public void count(int delta, String metric, String... tags) {}
-
-  @Override
-  public void count(long delta, String metric, String... tags) {}
 
   @Override
   public void histogram(int value, String metric, String... tags) {}

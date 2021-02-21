@@ -53,16 +53,14 @@ public class MetricService {
         continue;
       }
       size++;
-      //      if (size > 1) {
-      //        throw new RuntimeException("More than one Metric Implementation is detected.");
-      //      }
       factory = mf;
-      break;
     }
 
     // if no more implementation, we use nothingFactory.
     if (size == 0) {
       factory = nothingFactory;
+    } else if (size > 1) {
+      logger.warn("detect more than one MetricFactory, will use {}", factory.getClass().getName());
     }
 
     ServiceLoader<MetricReporter> reporter = ServiceLoader.load(MetricReporter.class);
@@ -70,6 +68,7 @@ public class MetricService {
       reporters.add(r);
       r.setMetricFactory(factory);
       r.start();
+      logger.info("detect MetricReporter {}", r.getClass().getName());
     }
   }
 
