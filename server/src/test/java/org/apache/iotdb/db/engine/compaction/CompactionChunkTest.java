@@ -19,19 +19,6 @@
 
 package org.apache.iotdb.db.engine.compaction;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
-import static org.junit.Assert.assertEquals;
-
-import com.google.common.util.concurrent.RateLimiter;
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionUtils;
@@ -49,9 +36,24 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
+
+import com.google.common.util.concurrent.RateLimiter;
+import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
+import static org.junit.Assert.assertEquals;
 
 public class CompactionChunkTest extends LevelCompactionTest {
 
@@ -72,16 +74,23 @@ public class CompactionChunkTest extends LevelCompactionTest {
 
   @Test
   public void testAppendMerge() throws IOException, IllegalPathException {
-    Map<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> measurementChunkMetadataMap = new HashMap<>();
+    Map<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> measurementChunkMetadataMap =
+        new HashMap<>();
     List<TsFileResource> sourceTsfileResources = seqResources.subList(0, 2);
-    File file = new File(TestConstant.BASE_OUTPUT_PATH
-        .concat(0 + IoTDBConstant.FILE_NAME_SEPARATOR + 0 + IoTDBConstant.FILE_NAME_SEPARATOR + 1
-            + ".tsfile"));
+    File file =
+        new File(
+            TestConstant.BASE_OUTPUT_PATH.concat(
+                0
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 0
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 1
+                    + ".tsfile"));
     TsFileResource targetTsfileResource = new TsFileResource(file);
     RateLimiter compactionWriteRateLimiter = MergeManager.getINSTANCE().getMergeWriteRateLimiter();
     String device = COMPACTION_TEST_SG + PATH_SEPARATOR + "device0";
-    RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(
-        targetTsfileResource.getTsFile());
+    RestorableTsFileIOWriter writer =
+        new RestorableTsFileIOWriter(targetTsfileResource.getTsFile());
     writer.startChunkGroup(device);
     for (TsFileResource tsFileResource : sourceTsfileResources) {
       TsFileSequenceReader reader = new TsFileSequenceReader(tsFileResource.getTsFilePath());
@@ -103,15 +112,21 @@ public class CompactionChunkTest extends LevelCompactionTest {
           }
           chunkMetadataList.add(chunkMetadata);
           readerChunkMetadataMap.put(reader, chunkMetadataList);
-          measurementChunkMetadataMap
-              .put(chunkMetadata.getMeasurementUid(), readerChunkMetadataMap);
+          measurementChunkMetadataMap.put(
+              chunkMetadata.getMeasurementUid(), readerChunkMetadataMap);
         }
       }
-      for (Entry<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> entry : measurementChunkMetadataMap
-          .entrySet()) {
-        CompactionUtils
-            .writeByAppendMerge(0, device, compactionWriteRateLimiter, entry, targetTsfileResource,
-                writer, new HashMap<>(), new ArrayList<>());
+      for (Entry<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> entry :
+          measurementChunkMetadataMap.entrySet()) {
+        CompactionUtils.writeByAppendMerge(
+            0,
+            device,
+            compactionWriteRateLimiter,
+            entry,
+            targetTsfileResource,
+            writer,
+            new HashMap<>(),
+            new ArrayList<>());
       }
       reader.close();
     }
@@ -143,16 +158,23 @@ public class CompactionChunkTest extends LevelCompactionTest {
 
   @Test
   public void testDeserializeMerge() throws IOException, IllegalPathException {
-    Map<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> measurementChunkMetadataMap = new HashMap<>();
+    Map<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> measurementChunkMetadataMap =
+        new HashMap<>();
     List<TsFileResource> sourceTsfileResources = seqResources.subList(0, 2);
-    File file = new File(TestConstant.BASE_OUTPUT_PATH
-        .concat(0 + IoTDBConstant.FILE_NAME_SEPARATOR + 0 + IoTDBConstant.FILE_NAME_SEPARATOR + 1
-            + ".tsfile"));
+    File file =
+        new File(
+            TestConstant.BASE_OUTPUT_PATH.concat(
+                0
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 0
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 1
+                    + ".tsfile"));
     TsFileResource targetTsfileResource = new TsFileResource(file);
     RateLimiter compactionWriteRateLimiter = MergeManager.getINSTANCE().getMergeWriteRateLimiter();
     String device = COMPACTION_TEST_SG + PATH_SEPARATOR + "device0";
-    RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(
-        targetTsfileResource.getTsFile());
+    RestorableTsFileIOWriter writer =
+        new RestorableTsFileIOWriter(targetTsfileResource.getTsFile());
     writer.startChunkGroup(device);
     for (TsFileResource tsFileResource : sourceTsfileResources) {
       TsFileSequenceReader reader = new TsFileSequenceReader(tsFileResource.getTsFilePath());
@@ -174,16 +196,21 @@ public class CompactionChunkTest extends LevelCompactionTest {
           }
           chunkMetadataList.add(chunkMetadata);
           readerChunkMetadataMap.put(reader, chunkMetadataList);
-          measurementChunkMetadataMap
-              .put(chunkMetadata.getMeasurementUid(), readerChunkMetadataMap);
+          measurementChunkMetadataMap.put(
+              chunkMetadata.getMeasurementUid(), readerChunkMetadataMap);
         }
       }
-      for (Entry<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> entry : measurementChunkMetadataMap
-          .entrySet()) {
-        CompactionUtils
-            .writeByDeserializeMerge(0, device, compactionWriteRateLimiter, entry,
-                targetTsfileResource,
-                writer, new HashMap<>(), new ArrayList<>());
+      for (Entry<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> entry :
+          measurementChunkMetadataMap.entrySet()) {
+        CompactionUtils.writeByDeserializeMerge(
+            0,
+            device,
+            compactionWriteRateLimiter,
+            entry,
+            targetTsfileResource,
+            writer,
+            new HashMap<>(),
+            new ArrayList<>());
       }
       reader.close();
     }

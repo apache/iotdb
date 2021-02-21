@@ -19,10 +19,6 @@
 
 package org.apache.iotdb.cluster.query.manage;
 
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
-
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -31,8 +27,13 @@ import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
+
 import org.junit.Before;
 import org.junit.Test;
+
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 
 public class ClusterQueryManagerTest {
 
@@ -45,34 +46,33 @@ public class ClusterQueryManagerTest {
 
   @Test
   public void testContext() {
-    RemoteQueryContext queryContext1 = queryManager.getQueryContext(TestUtils.getNode(0), 1, 1024
-        , -1);
-    RemoteQueryContext queryContext2 = queryManager.getQueryContext(TestUtils.getNode(0), 1, 1024
-        , -1);
-    RemoteQueryContext queryContext3 = queryManager.getQueryContext(TestUtils.getNode(1), 1, 1024
-        , -1);
+    RemoteQueryContext queryContext1 =
+        queryManager.getQueryContext(TestUtils.getNode(0), 1, 1024, -1);
+    RemoteQueryContext queryContext2 =
+        queryManager.getQueryContext(TestUtils.getNode(0), 1, 1024, -1);
+    RemoteQueryContext queryContext3 =
+        queryManager.getQueryContext(TestUtils.getNode(1), 1, 1024, -1);
     assertSame(queryContext1, queryContext2);
     assertNotEquals(queryContext2, queryContext3);
   }
 
   @Test
   public void testRegisterReader() {
-    IBatchReader reader = new IBatchReader() {
-      @Override
-      public boolean hasNextBatch() {
-        return false;
-      }
+    IBatchReader reader =
+        new IBatchReader() {
+          @Override
+          public boolean hasNextBatch() {
+            return false;
+          }
 
-      @Override
-      public BatchData nextBatch() {
-        return null;
-      }
+          @Override
+          public BatchData nextBatch() {
+            return null;
+          }
 
-      @Override
-      public void close() {
-
-      }
-    };
+          @Override
+          public void close() {}
+        };
     long id = queryManager.registerReader(reader);
     assertSame(reader, queryManager.getReader(id));
   }
@@ -86,102 +86,96 @@ public class ClusterQueryManagerTest {
 
   @Test
   public void testRegisterAggregateReader() {
-    IAggregateReader reader = new IAggregateReader() {
-      @Override
-      public boolean hasNextFile() {
-        return false;
-      }
+    IAggregateReader reader =
+        new IAggregateReader() {
+          @Override
+          public boolean hasNextFile() {
+            return false;
+          }
 
-      @Override
-      public boolean canUseCurrentFileStatistics() {
-        return false;
-      }
+          @Override
+          public boolean canUseCurrentFileStatistics() {
+            return false;
+          }
 
-      @Override
-      public Statistics currentFileStatistics() {
-        return null;
-      }
+          @Override
+          public Statistics currentFileStatistics() {
+            return null;
+          }
 
-      @Override
-      public void skipCurrentFile() {
+          @Override
+          public void skipCurrentFile() {}
 
-      }
+          @Override
+          public boolean hasNextChunk() {
+            return false;
+          }
 
-      @Override
-      public boolean hasNextChunk() {
-        return false;
-      }
+          @Override
+          public boolean canUseCurrentChunkStatistics() {
+            return false;
+          }
 
-      @Override
-      public boolean canUseCurrentChunkStatistics() {
-        return false;
-      }
+          @Override
+          public Statistics currentChunkStatistics() {
+            return null;
+          }
 
-      @Override
-      public Statistics currentChunkStatistics() {
-        return null;
-      }
+          @Override
+          public void skipCurrentChunk() {}
 
-      @Override
-      public void skipCurrentChunk() {
+          @Override
+          public boolean hasNextPage() {
+            return false;
+          }
 
-      }
+          @Override
+          public boolean canUseCurrentPageStatistics() {
+            return false;
+          }
 
-      @Override
-      public boolean hasNextPage() {
-        return false;
-      }
+          @Override
+          public Statistics currentPageStatistics() {
+            return null;
+          }
 
-      @Override
-      public boolean canUseCurrentPageStatistics() {
-        return false;
-      }
+          @Override
+          public void skipCurrentPage() {}
 
-      @Override
-      public Statistics currentPageStatistics() {
-        return null;
-      }
+          @Override
+          public BatchData nextPage() {
+            return null;
+          }
 
-      @Override
-      public void skipCurrentPage() {
-
-      }
-
-      @Override
-      public BatchData nextPage() {
-        return null;
-      }
-
-      @Override
-      public boolean isAscending() {
-        return false;
-      }
-    };
+          @Override
+          public boolean isAscending() {
+            return false;
+          }
+        };
     long id = queryManager.registerAggrReader(reader);
     assertSame(reader, queryManager.getAggrReader(id));
   }
 
   @Test
   public void testEndQuery() throws StorageEngineException {
-    RemoteQueryContext queryContext = queryManager.getQueryContext(TestUtils.getNode(0), 1, 1024,
-        -1);
+    RemoteQueryContext queryContext =
+        queryManager.getQueryContext(TestUtils.getNode(0), 1, 1024, -1);
     for (int i = 0; i < 10; i++) {
-      IBatchReader reader = new IBatchReader() {
-        @Override
-        public boolean hasNextBatch() {
-          return false;
-        }
+      IBatchReader reader =
+          new IBatchReader() {
+            @Override
+            public boolean hasNextBatch() {
+              return false;
+            }
 
-        @Override
-        public BatchData nextBatch() {
-          return null;
-        }
+            @Override
+            public BatchData nextBatch() {
+              return null;
+            }
 
-        @Override
-        public void close() {
-
-        }
-      };
+            @Override
+            public void close() {}
+          };
       queryContext.registerLocalReader(queryManager.registerReader(reader));
     }
     queryManager.endQuery(TestUtils.getNode(0), 1);

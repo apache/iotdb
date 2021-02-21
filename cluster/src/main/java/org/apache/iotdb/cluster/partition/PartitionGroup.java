@@ -19,21 +19,21 @@
 
 package org.apache.iotdb.cluster.partition;
 
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+
 import java.util.ArrayList;
 import java.util.Arrays;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
 
 /**
  * PartitionGroup contains all the nodes that will form a data group with a certain node, which are
- * the REPLICATION_NUM - 1 different physical nodes after this node.
- * The first element of the list is called header, which is also the identifier of the data group.
+ * the REPLICATION_NUM - 1 different physical nodes after this node. The first element of the list
+ * is called header, which is also the identifier of the data group.
  */
 public class PartitionGroup extends ArrayList<Node> {
 
   private Node thisNode;
 
-  public PartitionGroup() {
-  }
+  public PartitionGroup() {}
 
   public PartitionGroup(Node... nodes) {
     this.addAll(Arrays.asList(nodes));
@@ -61,5 +61,4 @@ public class PartitionGroup extends ArrayList<Node> {
   public void setThisNode(Node thisNode) {
     this.thisNode = thisNode;
   }
-
 }

@@ -18,36 +18,30 @@
  */
 package org.apache.iotdb.tsfile.write.record;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.apache.iotdb.tsfile.utils.StringContainer;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
- * TSRecord is a kind of format that TsFile receives.TSRecord contains
- * timestamp, deviceId and a list of data points.
+ * TSRecord is a kind of format that TsFile receives.TSRecord contains timestamp, deviceId and a
+ * list of data points.
  */
 public class TSRecord {
 
-  /**
-   * timestamp of this TSRecord.
-   **/
+  /** timestamp of this TSRecord. */
   public long time;
-  /**
-   * deviceId of this TSRecord.
-   **/
+  /** deviceId of this TSRecord. */
   public String deviceId;
-  /**
-   * all value of this TSRecord.
-   **/
+  /** all value of this TSRecord. */
   public List<DataPoint> dataPointList = new ArrayList<>();
 
   /**
    * constructor of TSRecord.
    *
    * @param timestamp timestamp of this TSRecord
-   * @param deviceId  deviceId of this TSRecord
+   * @param deviceId deviceId of this TSRecord
    */
   public TSRecord(long timestamp, String deviceId) {
     this.time = timestamp;
@@ -69,9 +63,9 @@ public class TSRecord {
   }
 
   /**
-   * output this TSRecord in String format.For example: {device id: d1 time:
-   * 123456 ,data:[ {measurement id: s1 type:INT32 value: 1 } {measurement id: s2
-   * type: FLOAT value: 11.11 } {measurement id: s3 type: BOOLEAN value: true }]}
+   * output this TSRecord in String format.For example: {device id: d1 time: 123456 ,data:[
+   * {measurement id: s1 type:INT32 value: 1 } {measurement id: s2 type: FLOAT value: 11.11 }
+   * {measurement id: s3 type: BOOLEAN value: true }]}
    *
    * @return the String format of this TSRecord
    */

@@ -18,10 +18,7 @@
  */
 package org.apache.iotdb.spark.tsfile.qp.common;
 
-/**
- * This class is a superclass of all operator. 
- *
- */
+/** This class is a superclass of all operator. */
 public abstract class Operator {
 
   int tokenIntType;

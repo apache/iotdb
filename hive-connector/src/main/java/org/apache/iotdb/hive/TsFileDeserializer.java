@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.hive;
 
-
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector;
 import org.apache.hadoop.hive.serde2.typeinfo.PrimitiveTypeInfo;
@@ -38,12 +37,11 @@ public class TsFileDeserializer {
   private List<Object> row;
 
   /**
-   * Deserialize an TsFile record, recursing into its component fields and
-   * deserializing them as well.  Fields of the record are matched by name
-   * against fields in the Hive row.
+   * Deserialize an TsFile record, recursing into its component fields and deserializing them as
+   * well. Fields of the record are matched by name against fields in the Hive row.
    *
-   * Because TsFile has some data types that Hive does not, these are converted
-   * during deserialization to types Hive will work with.
+   * <p>Because TsFile has some data types that Hive does not, these are converted during
+   * deserialization to types Hive will work with.
    *
    * @param columnNames List of columns Hive is expecting from record.
    * @param columnTypes List of column types matched by index to names
@@ -53,13 +51,14 @@ public class TsFileDeserializer {
    * @throws TsFileSerDeException For any exception during deserialization
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public Object deserialize(List<String> columnNames, List<TypeInfo> columnTypes,
-                            Writable writable, String deviceId) throws TsFileSerDeException {
-    if(!(writable instanceof MapWritable)) {
+  public Object deserialize(
+      List<String> columnNames, List<TypeInfo> columnTypes, Writable writable, String deviceId)
+      throws TsFileSerDeException {
+    if (!(writable instanceof MapWritable)) {
       throw new TsFileSerDeException("Expecting a MapWritable");
     }
 
-    if(row == null || row.size() != columnNames.size()) {
+    if (row == null || row.size() != columnNames.size()) {
       row = new ArrayList<>(columnNames.size());
     } else {
       row.clear();
@@ -69,10 +68,10 @@ public class TsFileDeserializer {
       return null;
     }
 
-    LOG.debug("device_id: {}", mapWritable.get(new Text("device_id")).toString());
-    LOG.debug("time_stamp: {}" , mapWritable.get(new Text("time_stamp")));
+    LOG.debug("device_id: {}", mapWritable.get(new Text("device_id")));
+    LOG.debug("time_stamp: {}", mapWritable.get(new Text("time_stamp")));
 
-    for(int i = 0; i < columnNames.size(); i++) {
+    for (int i = 0; i < columnNames.size(); i++) {
       TypeInfo columnType = columnTypes.get(i);
       String columnName = columnNames.get(i);
       Writable data = mapWritable.get(new Text(columnName));
@@ -83,63 +82,64 @@ public class TsFileDeserializer {
       if (columnType.getCategory() != ObjectInspector.Category.PRIMITIVE) {
         throw new TsFileSerDeException("Unknown TypeInfo: " + columnType.getCategory());
       }
-      PrimitiveObjectInspector.PrimitiveCategory type = ((PrimitiveTypeInfo) columnType).getPrimitiveCategory();
+      PrimitiveObjectInspector.PrimitiveCategory type =
+          ((PrimitiveTypeInfo) columnType).getPrimitiveCategory();
       switch (type) {
         case BOOLEAN:
           if (data instanceof BooleanWritable) {
-            row.add(((BooleanWritable)data).get());
+            row.add(((BooleanWritable) data).get());
+          } else {
+            throw new TsFileSerDeException(
+                String.format(ERROR_MSG, data.getClass().getName(), type));
           }
-          else {
-            throw new TsFileSerDeException(String.format(ERROR_MSG, data.getClass().getName(), type));
-          }
-          
+
           break;
         case INT:
           if (data instanceof IntWritable) {
-            row.add(((IntWritable)data).get());
-          }
-          else {
-            throw new TsFileSerDeException(String.format(ERROR_MSG, data.getClass().getName(), type));
+            row.add(((IntWritable) data).get());
+          } else {
+            throw new TsFileSerDeException(
+                String.format(ERROR_MSG, data.getClass().getName(), type));
           }
           break;
         case LONG:
           if (data instanceof LongWritable) {
-            row.add(((LongWritable)data).get());
-          }
-          else {
-            throw new TsFileSerDeException(String.format(ERROR_MSG, data.getClass().getName(), type));
+            row.add(((LongWritable) data).get());
+          } else {
+            throw new TsFileSerDeException(
+                String.format(ERROR_MSG, data.getClass().getName(), type));
           }
           break;
         case FLOAT:
           if (data instanceof FloatWritable) {
-            row.add(((FloatWritable)data).get());
-          }
-          else {
-            throw new TsFileSerDeException(String.format(ERROR_MSG, data.getClass().getName(), type));
+            row.add(((FloatWritable) data).get());
+          } else {
+            throw new TsFileSerDeException(
+                String.format(ERROR_MSG, data.getClass().getName(), type));
           }
           break;
         case DOUBLE:
           if (data instanceof DoubleWritable) {
-            row.add(((DoubleWritable)data).get());
-          }
-          else {
-            throw new TsFileSerDeException(String.format(ERROR_MSG, data.getClass().getName(), type));
+            row.add(((DoubleWritable) data).get());
+          } else {
+            throw new TsFileSerDeException(
+                String.format(ERROR_MSG, data.getClass().getName(), type));
           }
           break;
         case STRING:
           if (data instanceof Text) {
             row.add(data.toString());
-          }
-          else {
-            throw new TsFileSerDeException(String.format(ERROR_MSG, data.getClass().getName(), type));
+          } else {
+            throw new TsFileSerDeException(
+                String.format(ERROR_MSG, data.getClass().getName(), type));
           }
           break;
         case TIMESTAMP:
           if (data instanceof LongWritable) {
-            row.add(new Timestamp(((LongWritable)data).get()));
-          }
-          else {
-            throw new TsFileSerDeException(String.format(ERROR_MSG, data.getClass().getName(), type));
+            row.add(new Timestamp(((LongWritable) data).get()));
+          } else {
+            throw new TsFileSerDeException(
+                String.format(ERROR_MSG, data.getClass().getName(), type));
           }
           break;
         default:

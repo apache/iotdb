@@ -19,15 +19,16 @@
 
 package org.apache.iotdb.db.query.udf.datastructure.row;
 
-import static org.apache.iotdb.db.query.udf.datastructure.SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.datastructure.Cache;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.apache.iotdb.db.query.udf.datastructure.SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL;
 
 public class ElasticSerializableRowRecordList {
 
@@ -50,14 +51,15 @@ public class ElasticSerializableRowRecordList {
   protected long totalByteArrayLengthLimit;
   protected long totalByteArrayLength;
 
-  public ElasticSerializableRowRecordList(TSDataType[] dataTypes, long queryId,
-      float memoryLimitInMB, int cacheSize) throws QueryProcessException {
+  public ElasticSerializableRowRecordList(
+      TSDataType[] dataTypes, long queryId, float memoryLimitInMB, int cacheSize)
+      throws QueryProcessException {
     this.dataTypes = dataTypes;
     this.queryId = queryId;
     this.memoryLimitInMB = memoryLimitInMB;
-    int allocatableCapacity = SerializableRowRecordList
-        .calculateCapacity(dataTypes, memoryLimitInMB,
-            INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL);
+    int allocatableCapacity =
+        SerializableRowRecordList.calculateCapacity(
+            dataTypes, memoryLimitInMB, INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL);
     internalRowRecordListCapacity = allocatableCapacity / cacheSize;
     if (internalRowRecordListCapacity == 0) {
       cacheSize = 1;
@@ -90,8 +92,12 @@ public class ElasticSerializableRowRecordList {
     totalByteArrayLength = 0;
   }
 
-  protected ElasticSerializableRowRecordList(TSDataType[] dataTypes, long queryId,
-      float memoryLimitInMB, int internalRowRecordListCapacity, int cacheSize) {
+  protected ElasticSerializableRowRecordList(
+      TSDataType[] dataTypes,
+      long queryId,
+      float memoryLimitInMB,
+      int internalRowRecordListCapacity,
+      int cacheSize) {
     this.dataTypes = dataTypes;
     this.queryId = queryId;
     this.memoryLimitInMB = memoryLimitInMB;
@@ -111,12 +117,14 @@ public class ElasticSerializableRowRecordList {
   }
 
   public long getTime(int index) throws IOException {
-    return cache.get(index / internalRowRecordListCapacity)
+    return cache
+        .get(index / internalRowRecordListCapacity)
         .getTime(index % internalRowRecordListCapacity);
   }
 
   public Object[] getRowRecord(int index) throws IOException {
-    return cache.get(index / internalRowRecordListCapacity)
+    return cache
+        .get(index / internalRowRecordListCapacity)
         .getRowRecord(index % internalRowRecordListCapacity);
   }
 
@@ -138,8 +146,9 @@ public class ElasticSerializableRowRecordList {
 
   private void checkExpansion() {
     if (size % internalRowRecordListCapacity == 0) {
-      rowRecordLists.add(SerializableRowRecordList
-          .newSerializableRowRecordList(queryId, dataTypes, internalRowRecordListCapacity));
+      rowRecordLists.add(
+          SerializableRowRecordList.newSerializableRowRecordList(
+              queryId, dataTypes, internalRowRecordListCapacity));
     }
   }
 
@@ -152,35 +161,44 @@ public class ElasticSerializableRowRecordList {
     while (newByteArrayLengthForMemoryControl * size < totalByteArrayLength) {
       newByteArrayLengthForMemoryControl *= 2;
     }
-    int newInternalTVListCapacity = SerializableRowRecordList
-        .calculateCapacity(dataTypes, memoryLimitInMB, newByteArrayLengthForMemoryControl)
-        / cacheSize;
+    int newInternalTVListCapacity =
+        SerializableRowRecordList.calculateCapacity(
+                dataTypes, memoryLimitInMB, newByteArrayLengthForMemoryControl)
+            / cacheSize;
     if (0 < newInternalTVListCapacity) {
-      applyNewMemoryControlParameters(newByteArrayLengthForMemoryControl,
-          newInternalTVListCapacity);
+      applyNewMemoryControlParameters(
+          newByteArrayLengthForMemoryControl, newInternalTVListCapacity);
       return;
     }
 
-    int delta = (int) ((totalByteArrayLength - totalByteArrayLengthLimit) / size
-        / indexListOfTextFields.length / INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL);
-    newByteArrayLengthForMemoryControl = byteArrayLengthForMemoryControl +
-        2 * (delta + 1) * INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL;
-    newInternalTVListCapacity = SerializableRowRecordList
-        .calculateCapacity(dataTypes, memoryLimitInMB, newByteArrayLengthForMemoryControl)
-        / cacheSize;
+    int delta =
+        (int)
+            ((totalByteArrayLength - totalByteArrayLengthLimit)
+                / size
+                / indexListOfTextFields.length
+                / INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL);
+    newByteArrayLengthForMemoryControl =
+        byteArrayLengthForMemoryControl
+            + 2 * (delta + 1) * INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL;
+    newInternalTVListCapacity =
+        SerializableRowRecordList.calculateCapacity(
+                dataTypes, memoryLimitInMB, newByteArrayLengthForMemoryControl)
+            / cacheSize;
     if (0 < newInternalTVListCapacity) {
-      applyNewMemoryControlParameters(newByteArrayLengthForMemoryControl,
-          newInternalTVListCapacity);
+      applyNewMemoryControlParameters(
+          newByteArrayLengthForMemoryControl, newInternalTVListCapacity);
       return;
     }
 
     throw new QueryProcessException("Memory is not enough for current query.");
   }
 
-  protected void applyNewMemoryControlParameters(int newByteArrayLengthForMemoryControl,
-      int newInternalRowRecordListCapacity) throws IOException, QueryProcessException {
-    ElasticSerializableRowRecordList newElasticSerializableRowRecordList = new ElasticSerializableRowRecordList(
-        dataTypes, queryId, memoryLimitInMB, newInternalRowRecordListCapacity, cacheSize);
+  protected void applyNewMemoryControlParameters(
+      int newByteArrayLengthForMemoryControl, int newInternalRowRecordListCapacity)
+      throws IOException, QueryProcessException {
+    ElasticSerializableRowRecordList newElasticSerializableRowRecordList =
+        new ElasticSerializableRowRecordList(
+            dataTypes, queryId, memoryLimitInMB, newInternalRowRecordListCapacity, cacheSize);
 
     newElasticSerializableRowRecordList.evictionUpperBound = evictionUpperBound;
     int internalListEvictionUpperBound = evictionUpperBound / newInternalRowRecordListCapacity;
@@ -207,8 +225,7 @@ public class ElasticSerializableRowRecordList {
 
   /**
    * @param evictionUpperBound the index of the first element that cannot be evicted. in other
-   *                           words, elements whose index are <b>less than</b> the
-   *                           evictionUpperBound can be evicted.
+   *     words, elements whose index are <b>less than</b> the evictionUpperBound can be evicted.
    */
   public void setEvictionUpperBound(int evictionUpperBound) {
     this.evictionUpperBound = evictionUpperBound;

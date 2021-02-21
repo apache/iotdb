@@ -21,6 +21,7 @@ package org.apache.iotdb.db.utils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -28,18 +29,22 @@ public class EncodingInferenceUtilsTest {
   @Test
   public void getDefaultEncodingTest() {
     IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
-    Assert.assertEquals(conf.getDefaultBooleanEncoding(),
+    Assert.assertEquals(
+        conf.getDefaultBooleanEncoding(),
         EncodingInferenceUtils.getDefaultEncoding(TSDataType.BOOLEAN));
-    Assert.assertEquals(conf.getDefaultInt32Encoding(),
+    Assert.assertEquals(
+        conf.getDefaultInt32Encoding(),
         EncodingInferenceUtils.getDefaultEncoding(TSDataType.INT32));
-    Assert.assertEquals(conf.getDefaultInt64Encoding(),
+    Assert.assertEquals(
+        conf.getDefaultInt64Encoding(),
         EncodingInferenceUtils.getDefaultEncoding(TSDataType.INT64));
-    Assert.assertEquals(conf.getDefaultFloatEncoding(),
+    Assert.assertEquals(
+        conf.getDefaultFloatEncoding(),
         EncodingInferenceUtils.getDefaultEncoding(TSDataType.FLOAT));
-    Assert.assertEquals(conf.getDefaultDoubleEncoding(),
+    Assert.assertEquals(
+        conf.getDefaultDoubleEncoding(),
         EncodingInferenceUtils.getDefaultEncoding(TSDataType.DOUBLE));
-    Assert.assertEquals(conf.getDefaultTextEncoding(),
-        EncodingInferenceUtils.getDefaultEncoding(TSDataType.TEXT));
-
+    Assert.assertEquals(
+        conf.getDefaultTextEncoding(), EncodingInferenceUtils.getDefaultEncoding(TSDataType.TEXT));
   }
 }

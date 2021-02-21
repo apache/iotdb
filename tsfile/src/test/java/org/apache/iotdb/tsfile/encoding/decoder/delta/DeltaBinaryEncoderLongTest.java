@@ -20,6 +20,7 @@ package org.apache.iotdb.tsfile.encoding.decoder.delta;
 
 import org.apache.iotdb.tsfile.encoding.decoder.DeltaBinaryDecoder;
 import org.apache.iotdb.tsfile.encoding.encoder.DeltaBinaryEncoder;
+
 import org.junit.Before;
 import org.junit.Test;
 
@@ -38,9 +39,6 @@ import java.util.Random;
 import java.util.stream.Stream;
 
 import static org.junit.Assert.assertEquals;
-
-import org.apache.iotdb.tsfile.encoding.decoder.DeltaBinaryDecoder;
-import org.apache.iotdb.tsfile.encoding.encoder.DeltaBinaryEncoder;
 
 public class DeltaBinaryEncoderLongTest {
 
@@ -61,7 +59,7 @@ public class DeltaBinaryEncoderLongTest {
   @Test
   public void testBasic() throws IOException {
     reader.reset();
-    long data[] = new long[ROW_NUM];
+    long[] data = new long[ROW_NUM];
     for (int i = 0; i < ROW_NUM; i++) {
       data[i] = i * i * BASIC_FACTOR;
     }
@@ -71,7 +69,7 @@ public class DeltaBinaryEncoderLongTest {
   @Test
   public void testBoundInt() throws IOException {
     reader.reset();
-    long data[] = new long[ROW_NUM];
+    long[] data = new long[ROW_NUM];
     for (int i = 2; i < 21; i++) {
       boundInt(i, data);
     }
@@ -88,7 +86,7 @@ public class DeltaBinaryEncoderLongTest {
   @Test
   public void testRandom() throws IOException {
     reader.reset();
-    long data[] = new long[ROW_NUM];
+    long[] data = new long[ROW_NUM];
     for (int i = 0; i < ROW_NUM; i++) {
       data[i] = ran.nextLong();
     }
@@ -98,7 +96,7 @@ public class DeltaBinaryEncoderLongTest {
   @Test
   public void testMaxMin() throws IOException {
     reader.reset();
-    long data[] = new long[ROW_NUM];
+    long[] data = new long[ROW_NUM];
     for (int i = 0; i < ROW_NUM; i++) {
       data[i] = (i & 1) == 0 ? Long.MAX_VALUE : Long.MIN_VALUE;
     }
@@ -170,11 +168,16 @@ public class DeltaBinaryEncoderLongTest {
     if (distance < 1) {
       return list;
     }
-    Stream.iterate(startDate, d -> {
-      return d.plusDays(1);
-    }).limit(distance + 1).forEach(f -> {
-      list.add(f.toString());
-    });
+    Stream.iterate(
+            startDate,
+            d -> {
+              return d.plusDays(1);
+            })
+        .limit(distance + 1)
+        .forEach(
+            f -> {
+              list.add(f.toString());
+            });
     return list;
   }
 
@@ -195,5 +198,4 @@ public class DeltaBinaryEncoderLongTest {
       assertEquals(data[i++], reader.readLong(buffer));
     }
   }
-
 }

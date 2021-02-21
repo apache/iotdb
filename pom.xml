@@ -151,6 +151,7 @@
         <client-cpp>false</client-cpp>
         <!-- disable enforcer by default-->
         <enforcer.skip>true</enforcer.skip>
+        <spotless.version>2.4.2</spotless.version>
     </properties>
     <!--
         if we claim dependencies in dependencyManagement, then we do not claim
@@ -558,6 +559,7 @@
                             <exclude>**/.git/**</exclude>
                             <exclude>**/.mvn/**</exclude>
                             <exclude>**/.gitignore</exclude>
+                            <exclude>**/.git-blame-ignore-revs</exclude>
                             <!-- Maven related files -->
                             <exclude>**/target/**</exclude>
                             <!-- Eclipse related files -->
@@ -597,6 +599,32 @@
                             <exclude>**/*.zpln</exclude>
                         </excludes>
                     </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>com.diffplug.spotless</groupId>
+                    <artifactId>spotless-maven-plugin</artifactId>
+                    <version>${spotless.version}</version>
+                    <configuration>
+                        <java>
+                            <googleJavaFormat>
+                                <version>1.7</version>
+                                <style>GOOGLE</style>
+                            </googleJavaFormat>
+                            <importOrder>
+                                <order>org.apache.iotdb,,javax,java,\#</order>
+                            </importOrder>
+                            <removeUnusedImports/>
+                        </java>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>spotless-check</id>
+                            <phase>validate</phase>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                        </execution>
+                    </executions>
                 </plugin>
             </plugins>
         </pluginManagement>
@@ -886,6 +914,10 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
             </plugin>
         </plugins>
     </build>

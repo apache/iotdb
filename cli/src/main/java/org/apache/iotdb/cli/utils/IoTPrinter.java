@@ -18,10 +18,11 @@
  */
 package org.apache.iotdb.cli.utils;
 
+import org.apache.commons.lang3.StringUtils;
+
 import java.io.PrintStream;
 import java.lang.Character.UnicodeScript;
 import java.util.List;
-import org.apache.commons.lang3.StringUtils;
 
 public class IoTPrinter {
   private static final PrintStream SCREEN_PRINTER = new PrintStream(System.out);
@@ -95,13 +96,11 @@ public class IoTPrinter {
     return sb;
   }
 
-  /**
-   * compute the number of Chinese characters included in the String
-   */
+  /** compute the number of Chinese characters included in the String */
   public static int computeHANCount(String s) {
-    return (int) s.codePoints()
-        .filter(codePoint -> UnicodeScript.of(codePoint) == UnicodeScript.HAN)
-        .count();
+    return (int)
+        s.codePoints()
+            .filter(codePoint -> UnicodeScript.of(codePoint) == UnicodeScript.HAN)
+            .count();
   }
-
 }

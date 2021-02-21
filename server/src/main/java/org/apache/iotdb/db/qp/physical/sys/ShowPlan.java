@@ -19,11 +19,12 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
-import java.util.Collections;
-import java.util.List;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+
+import java.util.Collections;
+import java.util.List;
 
 public class ShowPlan extends PhysicalPlan {
 
@@ -44,7 +45,8 @@ public class ShowPlan extends PhysicalPlan {
     this.path = path;
   }
 
-  public ShowPlan(ShowContentType showContentType, PartialPath path, int limit, int offset, int fetchSize) {
+  public ShowPlan(
+      ShowContentType showContentType, PartialPath path, int limit, int offset, int fetchSize) {
     this(showContentType, path);
     this.limit = limit;
     this.offset = offset;
@@ -95,12 +97,24 @@ public class ShowPlan extends PhysicalPlan {
 
   @Override
   public String toString() {
-    return String.format("%s %s", getOperatorType().toString(), showContentType);
+    return String.format("%s %s", getOperatorType(), showContentType);
   }
 
   public enum ShowContentType {
-    FLUSH_TASK_INFO, TTL, VERSION, TIMESERIES, STORAGE_GROUP, CHILD_PATH, DEVICES,
-    COUNT_TIMESERIES, COUNT_NODE_TIMESERIES, COUNT_NODES, MERGE_STATUS, FUNCTIONS, COUNT_DEVICES,
-    COUNT_STORAGE_GROUP, QUERY_PROCESSLIST
+    FLUSH_TASK_INFO,
+    TTL,
+    VERSION,
+    TIMESERIES,
+    STORAGE_GROUP,
+    CHILD_PATH,
+    DEVICES,
+    COUNT_TIMESERIES,
+    COUNT_NODE_TIMESERIES,
+    COUNT_NODES,
+    MERGE_STATUS,
+    FUNCTIONS,
+    COUNT_DEVICES,
+    COUNT_STORAGE_GROUP,
+    QUERY_PROCESSLIST
   }
 }

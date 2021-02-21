@@ -18,14 +18,6 @@
  */
 package org.apache.iotdb.db.qp;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
-import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
@@ -41,9 +33,19 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class PlannerTest {
 
@@ -61,54 +63,78 @@ public class PlannerTest {
     EnvironmentUtils.envSetUp();
     mManager.setStorageGroup(new PartialPath("root.vehicle"));
     mManager.setStorageGroup(new PartialPath("root.vehicle1"));
-    mManager.createTimeseries(new PartialPath("root.vehicle.device1.sensor1"),
+    mManager.createTimeseries(
+        new PartialPath("root.vehicle.device1.sensor1"),
         TSDataType.valueOf("INT32"),
-        TSEncoding.valueOf("RLE"), compressionType, Collections
-            .emptyMap());
-    mManager.createTimeseries(new PartialPath("root.vehicle.device1.sensor2"),
+        TSEncoding.valueOf("RLE"),
+        compressionType,
+        Collections.emptyMap());
+    mManager.createTimeseries(
+        new PartialPath("root.vehicle.device1.sensor2"),
         TSDataType.valueOf("INT32"),
-        TSEncoding.valueOf("RLE"), compressionType, Collections
-            .emptyMap());
-    mManager.createTimeseries(new PartialPath("root.vehicle.device1.sensor3"),
+        TSEncoding.valueOf("RLE"),
+        compressionType,
+        Collections.emptyMap());
+    mManager.createTimeseries(
+        new PartialPath("root.vehicle.device1.sensor3"),
         TSDataType.valueOf("INT32"),
-        TSEncoding.valueOf("RLE"), compressionType, Collections
-            .emptyMap());
-    mManager.createTimeseries(new PartialPath("root.vehicle.device2.sensor1"),
+        TSEncoding.valueOf("RLE"),
+        compressionType,
+        Collections.emptyMap());
+    mManager.createTimeseries(
+        new PartialPath("root.vehicle.device2.sensor1"),
         TSDataType.valueOf("INT32"),
-        TSEncoding.valueOf("RLE"), compressionType, Collections
-            .emptyMap());
-    mManager.createTimeseries(new PartialPath("root.vehicle.device2.sensor2"),
+        TSEncoding.valueOf("RLE"),
+        compressionType,
+        Collections.emptyMap());
+    mManager.createTimeseries(
+        new PartialPath("root.vehicle.device2.sensor2"),
         TSDataType.valueOf("INT32"),
-        TSEncoding.valueOf("RLE"), compressionType, Collections
-            .emptyMap());
-    mManager.createTimeseries(new PartialPath("root.vehicle.device2.sensor3"),
+        TSEncoding.valueOf("RLE"),
+        compressionType,
+        Collections.emptyMap());
+    mManager.createTimeseries(
+        new PartialPath("root.vehicle.device2.sensor3"),
         TSDataType.valueOf("INT32"),
-        TSEncoding.valueOf("RLE"), compressionType, Collections
-            .emptyMap());
-    mManager.createTimeseries(new PartialPath("root.vehicle1.device1.sensor1"),
+        TSEncoding.valueOf("RLE"),
+        compressionType,
+        Collections.emptyMap());
+    mManager.createTimeseries(
+        new PartialPath("root.vehicle1.device1.sensor1"),
         TSDataType.valueOf("INT32"),
-        TSEncoding.valueOf("RLE"), compressionType, Collections
-            .emptyMap());
-    mManager.createTimeseries(new PartialPath("root.vehicle1.device1.sensor2"),
+        TSEncoding.valueOf("RLE"),
+        compressionType,
+        Collections.emptyMap());
+    mManager.createTimeseries(
+        new PartialPath("root.vehicle1.device1.sensor2"),
         TSDataType.valueOf("INT32"),
-        TSEncoding.valueOf("RLE"), compressionType, Collections
-            .emptyMap());
-    mManager.createTimeseries(new PartialPath("root.vehicle1.device1.sensor3"),
+        TSEncoding.valueOf("RLE"),
+        compressionType,
+        Collections.emptyMap());
+    mManager.createTimeseries(
+        new PartialPath("root.vehicle1.device1.sensor3"),
         TSDataType.valueOf("INT32"),
-        TSEncoding.valueOf("RLE"), compressionType, Collections
-            .emptyMap());
-    mManager.createTimeseries(new PartialPath("root.vehicle1.device2.sensor1"),
+        TSEncoding.valueOf("RLE"),
+        compressionType,
+        Collections.emptyMap());
+    mManager.createTimeseries(
+        new PartialPath("root.vehicle1.device2.sensor1"),
         TSDataType.valueOf("INT32"),
-        TSEncoding.valueOf("RLE"), compressionType, Collections
-            .emptyMap());
-    mManager.createTimeseries(new PartialPath("root.vehicle1.device2.sensor2"),
+        TSEncoding.valueOf("RLE"),
+        compressionType,
+        Collections.emptyMap());
+    mManager.createTimeseries(
+        new PartialPath("root.vehicle1.device2.sensor2"),
         TSDataType.valueOf("INT32"),
-        TSEncoding.valueOf("RLE"), compressionType, Collections
-            .emptyMap());
-    mManager.createTimeseries(new PartialPath("root.vehicle1.device2.sensor3"),
+        TSEncoding.valueOf("RLE"),
+        compressionType,
+        Collections.emptyMap());
+    mManager.createTimeseries(
+        new PartialPath("root.vehicle1.device2.sensor3"),
         TSDataType.valueOf("INT32"),
-        TSEncoding.valueOf("RLE"), compressionType, Collections
-            .emptyMap());
+        TSEncoding.valueOf("RLE"),
+        compressionType,
+        Collections.emptyMap());
   }
 
   @After
@@ -122,7 +148,8 @@ public class PlannerTest {
     PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(createSGStatement);
     assertEquals(OperatorType.SET_STORAGE_GROUP, plan1.getOperatorType());
 
-    String createTSStatement1 = "create timeseries root.vehicle.d1.s1 with datatype=INT32,encoding=RLE";
+    String createTSStatement1 =
+        "create timeseries root.vehicle.d1.s1 with datatype=INT32,encoding=RLE";
     PhysicalPlan plan2 = processor.parseSQLToPhysicalPlan(createTSStatement1);
     assertEquals(OperatorType.CREATE_TIMESERIES, plan2.getOperatorType());
 
@@ -134,7 +161,8 @@ public class PlannerTest {
     PhysicalPlan plan4 = processor.parseSQLToPhysicalPlan(insertStatement);
     assertEquals(OperatorType.INSERT, plan4.getOperatorType());
 
-    String deleteStatement = "DELETE FROM root.device0.sensor0,root.device0.sensor1 WHERE time <= 5000";
+    String deleteStatement =
+        "DELETE FROM root.device0.sensor0,root.device0.sensor1 WHERE time <= 5000";
     PhysicalPlan plan6 = processor.parseSQLToPhysicalPlan(deleteStatement);
     assertEquals(OperatorType.DELETE, plan6.getOperatorType());
 
@@ -142,15 +170,18 @@ public class PlannerTest {
     PhysicalPlan plan7 = processor.parseSQLToPhysicalPlan(queryStatement1);
     assertEquals(OperatorType.QUERY, plan7.getOperatorType());
 
-    String aggregationStatement = "select sum(*) from root.vehicle where root.vehicle.device1.sensor1 > 50";
+    String aggregationStatement =
+        "select sum(*) from root.vehicle where root.vehicle.device1.sensor1 > 50";
     PhysicalPlan plan8 = processor.parseSQLToPhysicalPlan(aggregationStatement);
     assertEquals(OperatorType.AGGREGATION, plan8.getOperatorType());
 
-    String groupbyStatement = "select sum(*) from root.vehicle where root.vehicle.device1.sensor1 > 50 group by ([100,1100), 20ms)";
+    String groupbyStatement =
+        "select sum(*) from root.vehicle where root.vehicle.device1.sensor1 > 50 group by ([100,1100), 20ms)";
     PhysicalPlan plan9 = processor.parseSQLToPhysicalPlan(groupbyStatement);
     assertEquals(OperatorType.GROUPBYTIME, plan9.getOperatorType());
 
-    String fillStatement = "select sensor1 from root.vehicle.device1 where time = 50 Fill(int32[linear, 5m, 5m], boolean[previous, 5m])";
+    String fillStatement =
+        "select sensor1 from root.vehicle.device1 where time = 50 Fill(int32[linear, 5m, 5m], boolean[previous, 5m])";
     PhysicalPlan plan10 = processor.parseSQLToPhysicalPlan(fillStatement);
     assertEquals(OperatorType.FILL, plan10.getOperatorType());
 
@@ -158,11 +189,13 @@ public class PlannerTest {
     PhysicalPlan plan11 = processor.parseSQLToPhysicalPlan(insertTimeStatement);
     assertEquals(OperatorType.INSERT, plan11.getOperatorType());
 
-    String createTSStatement2 = "create timeseries root.a.b.d_1.1s with datatype=FLOAT,encoding=RLE";
+    String createTSStatement2 =
+        "create timeseries root.a.b.d_1.1s with datatype=FLOAT,encoding=RLE";
     PhysicalPlan plan12 = processor.parseSQLToPhysicalPlan(createTSStatement2);
     assertEquals(OperatorType.CREATE_TIMESERIES, plan12.getOperatorType());
 
-    String queryStatement2 = "select windDirection10min from root.national.4.5.585.9_6666.9_333.88_9";
+    String queryStatement2 =
+        "select windDirection10min from root.national.4.5.585.9_6666.9_333.88_9";
     PhysicalPlan plan13 = processor.parseSQLToPhysicalPlan(queryStatement2);
     assertEquals(OperatorType.QUERY, plan13.getOperatorType());
 
@@ -170,15 +203,18 @@ public class PlannerTest {
     try {
       processor.parseSQLToPhysicalPlan(insertStatementException);
     } catch (Exception e) {
-      assertEquals(new SQLParserException(
-          "the measurementList's size 2 is not consistent with the valueList's size 1")
-          .getMessage(), e.getMessage());
+      assertEquals(
+          new SQLParserException(
+                  "the measurementList's size 2 is not consistent with the valueList's size 1")
+              .getMessage(),
+          e.getMessage());
     }
   }
 
   @Test(expected = ParseCancellationException.class)
   public void parseErrorSQLToPhysicalPlan() throws QueryProcessException {
-    String createTSStatement = "create timeseriess root.vehicle.d1.s1 with datatype=INT32,encoding=RLE";
+    String createTSStatement =
+        "create timeseriess root.vehicle.d1.s1 with datatype=INT32,encoding=RLE";
     processor.parseSQLToPhysicalPlan(createTSStatement);
   }
 
@@ -204,8 +240,8 @@ public class PlannerTest {
     tsRawDataQueryReq.setStartTime(0);
     tsRawDataQueryReq.setEndTime(100);
     tsRawDataQueryReq.setFetchSize(1000);
-    PhysicalPlan physicalPlan = processor
-        .rawDataQueryReqToPhysicalPlan(tsRawDataQueryReq, ZoneId.of("Asia/Shanghai"));
+    PhysicalPlan physicalPlan =
+        processor.rawDataQueryReqToPhysicalPlan(tsRawDataQueryReq, ZoneId.of("Asia/Shanghai"));
     assertEquals(OperatorType.QUERY, physicalPlan.getOperatorType());
     assertEquals(paths.get(0), physicalPlan.getPaths().get(0).getFullPath());
     assertEquals(paths.get(1), physicalPlan.getPaths().get(1).getFullPath());

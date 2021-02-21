@@ -20,15 +20,11 @@
 
 package org.apache.iotdb.cluster.query;
 
-import static org.junit.Assert.assertEquals;
-import static org.mockito.Mockito.when;
-
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
@@ -50,21 +46,25 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URL;
+
+import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.when;
+
 @PowerMockIgnore({"com.sun.org.apache.xerces.*", "javax.xml.*", "org.xml.*", "javax.management.*"})
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({IoTDBDescriptor.class,ClusterDescriptor.class})
+@PrepareForTest({IoTDBDescriptor.class, ClusterDescriptor.class})
 public class LoadConfigurationTest {
 
   private static FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
-  private final static String ENGINE_PROPERTIES_FILE = TestConstant.BASE_OUTPUT_PATH.concat("LoadConfigurationTestEngineProperties");
-  private final static String CLUSTER_PROPERTIES_FILE = TestConstant.BASE_OUTPUT_PATH.concat("LoadConfigurationTestClusterProperties");
+  private static final String ENGINE_PROPERTIES_FILE =
+      TestConstant.BASE_OUTPUT_PATH.concat("LoadConfigurationTestEngineProperties");
+  private static final String CLUSTER_PROPERTIES_FILE =
+      TestConstant.BASE_OUTPUT_PATH.concat("LoadConfigurationTestClusterProperties");
 
-  @Mock
-  private IoTDBDescriptor ioTDBDescriptor;
+  @Mock private IoTDBDescriptor ioTDBDescriptor;
 
-  @Mock
-  private ClusterDescriptor clusterDescriptor;
+  @Mock private ClusterDescriptor clusterDescriptor;
 
   @Before
   public void setUp() throws Exception {
@@ -81,7 +81,7 @@ public class LoadConfigurationTest {
     PowerMockito.doReturn(ioTDBDescriptor).when(IoTDBDescriptor.class, "getInstance");
     when(ioTDBDescriptor.getPropsUrl()).thenReturn(new URL("file:" + ENGINE_PROPERTIES_FILE));
 
-    //init cluster properties
+    // init cluster properties
     File clusterFile = fsFactory.getFile(CLUSTER_PROPERTIES_FILE);
     if (clusterFile.exists()) {
       Assert.assertTrue(clusterFile.delete());
@@ -110,13 +110,17 @@ public class LoadConfigurationTest {
   @Test
   public void testLoadConfigurationGlobal() throws QueryProcessException {
     PhysicalGenerator physicalGenerator = new ClusterPhysicalGenerator();
-    LoadConfigurationOperator loadConfigurationOperator = new LoadConfigurationOperator(
-        LoadConfigurationOperator.LoadConfigurationOperatorType.GLOBAL);
+    LoadConfigurationOperator loadConfigurationOperator =
+        new LoadConfigurationOperator(
+            LoadConfigurationOperator.LoadConfigurationOperatorType.GLOBAL);
 
-    LoadConfigurationPlan loadConfigurationPlan = (LoadConfigurationPlan) physicalGenerator.transformToPhysicalPlan(loadConfigurationOperator, 0);
-    String metricProperties = (String) loadConfigurationPlan.getIoTDBProperties().get("enable_metric_service");
+    LoadConfigurationPlan loadConfigurationPlan =
+        (LoadConfigurationPlan)
+            physicalGenerator.transformToPhysicalPlan(loadConfigurationOperator, 0);
+    String metricProperties =
+        (String) loadConfigurationPlan.getIoTDBProperties().get("enable_metric_service");
     assertEquals("false", metricProperties);
     String clusterIp = (String) loadConfigurationPlan.getClusterProperties().get("cluster_rpc_ip");
     assertEquals("127.0.0.1", clusterIp);
   }
-}
+}

@@ -19,36 +19,31 @@
 
 package org.apache.iotdb.flink.tsfile;
 
-import org.apache.flink.types.Row;
 import org.apache.iotdb.flink.util.TsFileWriteUtil;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
+
+import org.apache.flink.types.Row;
 import org.junit.Before;
 
 import java.io.File;
 
-/**
- * Base class for TsFileInputFormat tests.
- */
+/** Base class for TsFileInputFormat tests. */
 public abstract class RowTsFileInputFormatTestBase extends RowTsFileConnectorTestBase {
 
-	protected String sourceTsFilePath1;
-	protected String sourceTsFilePath2;
-	protected RowRowRecordParser parser = RowRowRecordParser.create(rowTypeInfo, paths);
-	protected QueryExpression queryExpression = QueryExpression.create(paths, null);
+  protected String sourceTsFilePath1;
+  protected String sourceTsFilePath2;
+  protected RowRowRecordParser parser = RowRowRecordParser.create(rowTypeInfo, paths);
+  protected QueryExpression queryExpression = QueryExpression.create(paths, null);
 
-	@Before
-	public void prepareSourceTsFile() throws Exception {
-		sourceTsFilePath1 = String.join(
-			File.separator,
-			tmpDir, "source1.tsfile");
-		sourceTsFilePath2 = String.join(
-			File.separator,
-			tmpDir, "source2.tsfile");
-		TsFileWriteUtil.create1(sourceTsFilePath1);
-		TsFileWriteUtil.create2(sourceTsFilePath2);
-	}
+  @Before
+  public void prepareSourceTsFile() throws Exception {
+    sourceTsFilePath1 = String.join(File.separator, tmpDir, "source1.tsfile");
+    sourceTsFilePath2 = String.join(File.separator, tmpDir, "source2.tsfile");
+    TsFileWriteUtil.create1(sourceTsFilePath1);
+    TsFileWriteUtil.create2(sourceTsFilePath2);
+  }
 
-	protected TsFileInputFormat<Row> prepareInputFormat(String filePath) {
-		return new TsFileInputFormat<>(filePath, queryExpression, parser, config);
-	}
+  protected TsFileInputFormat<Row> prepareInputFormat(String filePath) {
+    return new TsFileInputFormat<>(filePath, queryExpression, parser, config);
+  }
 }

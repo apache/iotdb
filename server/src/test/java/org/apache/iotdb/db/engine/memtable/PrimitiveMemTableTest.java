@@ -18,11 +18,6 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Random;
-
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -32,14 +27,20 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Random;
 
 public class PrimitiveMemTableTest {
 
@@ -53,7 +54,9 @@ public class PrimitiveMemTableTest {
   @Test
   public void memSeriesSortIteratorTest() throws IOException {
     TSDataType dataType = TSDataType.INT32;
-    WritableMemChunk series = new WritableMemChunk(new MeasurementSchema("s1", dataType, TSEncoding.PLAIN), TVList.newList(dataType));
+    WritableMemChunk series =
+        new WritableMemChunk(
+            new MeasurementSchema("s1", dataType, TSEncoding.PLAIN), TVList.newList(dataType));
     int count = 1000;
     for (int i = 0; i < count; i++) {
       series.write(i, i);
@@ -72,22 +75,37 @@ public class PrimitiveMemTableTest {
     IMemTable memTable = new PrimitiveMemTable();
     int count = 10;
     String deviceId = "d1";
-    String measurementId[] = new String[count];
+    String[] measurementId = new String[count];
     for (int i = 0; i < measurementId.length; i++) {
       measurementId[i] = "s" + i;
     }
 
     int dataSize = 10000;
     for (int i = 0; i < dataSize; i++) {
-      memTable.write(deviceId, measurementId[0], new MeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN), dataSize - i - 1,
+      memTable.write(
+          deviceId,
+          measurementId[0],
+          new MeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN),
+          dataSize - i - 1,
           i + 10);
     }
     for (int i = 0; i < dataSize; i++) {
-      memTable.write(deviceId, measurementId[0], new MeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN), i, i);
+      memTable.write(
+          deviceId,
+          measurementId[0],
+          new MeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN),
+          i,
+          i);
     }
-    ReadOnlyMemChunk memChunk = memTable
-        .query(deviceId, measurementId[0], TSDataType.INT32, TSEncoding.RLE, Collections.emptyMap(),
-            Long.MIN_VALUE, null);
+    ReadOnlyMemChunk memChunk =
+        memTable.query(
+            deviceId,
+            measurementId[0],
+            TSDataType.INT32,
+            TSEncoding.RLE,
+            Collections.emptyMap(),
+            Long.MIN_VALUE,
+            null);
     IPointReader iterator = memChunk.getPointReader();
     for (int i = 0; i < dataSize; i++) {
       iterator.hasNextTimeValuePair();
@@ -97,17 +115,35 @@ public class PrimitiveMemTableTest {
     }
   }
 
-  private void write(IMemTable memTable, String deviceId, String sensorId, TSDataType dataType,
-      TSEncoding encoding, int size) throws IOException, QueryProcessException, MetadataException {
+  private void write(
+      IMemTable memTable,
+      String deviceId,
+      String sensorId,
+      TSDataType dataType,
+      TSEncoding encoding,
+      int size)
+      throws IOException, QueryProcessException, MetadataException {
     TimeValuePair[] ret = genTimeValuePair(size, dataType);
 
     for (TimeValuePair aRet : ret) {
-      memTable.write(deviceId, sensorId, new MeasurementSchema(sensorId, dataType, encoding), aRet.getTimestamp(),
+      memTable.write(
+          deviceId,
+          sensorId,
+          new MeasurementSchema(sensorId, dataType, encoding),
+          aRet.getTimestamp(),
           aRet.getValue().getValue());
     }
-    IPointReader tvPair = memTable
-        .query(deviceId, sensorId, dataType, encoding, Collections.emptyMap(), Long.MIN_VALUE, null)
-        .getPointReader();
+    IPointReader tvPair =
+        memTable
+            .query(
+                deviceId,
+                sensorId,
+                dataType,
+                encoding,
+                Collections.emptyMap(),
+                Long.MIN_VALUE,
+                null)
+            .getPointReader();
     Arrays.sort(ret);
     TimeValuePair last = null;
     for (int i = 0; i < ret.length; i++) {
@@ -123,8 +159,10 @@ public class PrimitiveMemTableTest {
       TimeValuePair next = tvPair.nextTimeValuePair();
       Assert.assertEquals(pair.getTimestamp(), next.getTimestamp());
       if (dataType == TSDataType.DOUBLE) {
-        Assert.assertEquals(pair.getValue().getDouble(),
-            MathUtils.roundWithGivenPrecision(next.getValue().getDouble()), delta);
+        Assert.assertEquals(
+            pair.getValue().getDouble(),
+            MathUtils.roundWithGivenPrecision(next.getValue().getDouble()),
+            delta);
       } else if (dataType == TSDataType.FLOAT) {
         float expected = pair.getValue().getFloat();
         float actual = MathUtils.roundWithGivenPrecision(next.getValue().getFloat());
@@ -148,7 +186,7 @@ public class PrimitiveMemTableTest {
     IMemTable memTable = new PrimitiveMemTable();
     int count = 10;
     String deviceId = "d1";
-    String measurementId[] = new String[count];
+    String[] measurementId = new String[count];
     for (int i = 0; i < measurementId.length; i++) {
       measurementId[i] = "s" + i;
     }
@@ -169,28 +207,33 @@ public class PrimitiveMemTableTest {
     for (int i = 0; i < size; i++) {
       switch (dataType) {
         case BOOLEAN:
-          ret[i] = new TimeValuePair(rand.nextLong(),
-              TsPrimitiveType.getByType(dataType, true));
+          ret[i] = new TimeValuePair(rand.nextLong(), TsPrimitiveType.getByType(dataType, true));
           break;
         case INT32:
-          ret[i] = new TimeValuePair(rand.nextLong(),
-              TsPrimitiveType.getByType(dataType, rand.nextInt()));
+          ret[i] =
+              new TimeValuePair(
+                  rand.nextLong(), TsPrimitiveType.getByType(dataType, rand.nextInt()));
           break;
         case INT64:
-          ret[i] = new TimeValuePair(rand.nextLong(),
-              TsPrimitiveType.getByType(dataType, rand.nextLong()));
+          ret[i] =
+              new TimeValuePair(
+                  rand.nextLong(), TsPrimitiveType.getByType(dataType, rand.nextLong()));
           break;
         case FLOAT:
-          ret[i] = new TimeValuePair(rand.nextLong(),
-              TsPrimitiveType.getByType(dataType, rand.nextFloat()));
+          ret[i] =
+              new TimeValuePair(
+                  rand.nextLong(), TsPrimitiveType.getByType(dataType, rand.nextFloat()));
           break;
         case DOUBLE:
-          ret[i] = new TimeValuePair(rand.nextLong(),
-              TsPrimitiveType.getByType(dataType, rand.nextDouble()));
+          ret[i] =
+              new TimeValuePair(
+                  rand.nextLong(), TsPrimitiveType.getByType(dataType, rand.nextDouble()));
           break;
         case TEXT:
-          ret[i] = new TimeValuePair(rand.nextLong(),
-              TsPrimitiveType.getByType(dataType, new Binary("a" + rand.nextDouble())));
+          ret[i] =
+              new TimeValuePair(
+                  rand.nextLong(),
+                  TsPrimitiveType.getByType(dataType, new Binary("a" + rand.nextDouble())));
           break;
         default:
           throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);

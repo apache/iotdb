@@ -20,9 +20,10 @@
 
 package org.apache.iotdb.db.qp.logical.sys;
 
-import java.util.List;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
+
+import java.util.List;
 
 public class ShowTTLOperator extends ShowOperator {
 

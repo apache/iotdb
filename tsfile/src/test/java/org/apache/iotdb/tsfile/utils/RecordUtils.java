@@ -28,14 +28,13 @@ import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.StringDataPoint;
-import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * RecordUtils is a utility class for parsing data in form of CSV string.
- */
+/** RecordUtils is a utility class for parsing data in form of CSV string. */
 public class RecordUtils {
 
   private static final Logger LOG = LoggerFactory.getLogger(RecordUtils.class);
@@ -44,7 +43,7 @@ public class RecordUtils {
    * support input format: {@code <deviceId>,<timestamp>,[<measurementId>,<value>,]}.CSV line is
    * separated by ","
    *
-   * @param str    - input string
+   * @param str - input string
    * @param schema - constructed file schema
    * @return TSRecord constructed from str
    */
@@ -69,7 +68,8 @@ public class RecordUtils {
     for (int i = 2; i < items.length - 1; i += 2) {
       // get measurementId and value
       measurementId = items[i].trim();
-      MeasurementSchema measurementSchema = schema.getSeriesSchema(new Path(deviceId, measurementId));
+      MeasurementSchema measurementSchema =
+          schema.getSeriesSchema(new Path(deviceId, measurementId));
       if (measurementSchema == null) {
         LOG.warn("measurementId:{},type not found, pass", measurementId);
         continue;
@@ -100,7 +100,6 @@ public class RecordUtils {
               ret.addTuple(new StringDataPoint(measurementId, Binary.valueOf(items[i + 1])));
               break;
             default:
-
               LOG.warn("unsupported data type:{}", type);
               break;
           }

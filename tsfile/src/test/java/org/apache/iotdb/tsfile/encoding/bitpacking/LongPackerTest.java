@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.tsfile.encoding.bitpacking;
 
-import static org.junit.Assert.assertEquals;
+import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
+
+import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -29,10 +31,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-import org.junit.Test;
-
-import org.apache.iotdb.tsfile.encoding.bitpacking.LongPacker;
-import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
+import static org.junit.Assert.assertEquals;
 
 public class LongPackerTest {
 
@@ -60,7 +59,7 @@ public class LongPackerTest {
         bb[idx++] = tb[j];
       }
     }
-    long tres[] = new long[count * 8];
+    long[] tres = new long[count * 8];
     packer.unpackAllValues(bb, bb.length, tres);
 
     for (int i = 0; i < count * 8; i++) {

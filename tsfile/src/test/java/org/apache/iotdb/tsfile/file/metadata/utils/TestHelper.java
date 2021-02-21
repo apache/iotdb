@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.utils;
 
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeaderTest;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
@@ -30,7 +28,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public class TestHelper {
@@ -68,7 +65,7 @@ public class TestHelper {
   public static PageHeader createTestPageHeader() {
     Statistics<?> statistics = Statistics.getStatsByType(PageHeaderTest.DATA_TYPE);
     statistics.setEmpty(false);
-    return new PageHeader(PageHeaderTest.UNCOMPRESSED_SIZE, PageHeaderTest.COMPRESSED_SIZE,
-        statistics);
+    return new PageHeader(
+        PageHeaderTest.UNCOMPRESSED_SIZE, PageHeaderTest.COMPRESSED_SIZE, statistics);
   }
 }

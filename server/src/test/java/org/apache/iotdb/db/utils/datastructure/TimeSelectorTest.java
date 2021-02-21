@@ -19,12 +19,13 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
-import java.util.Collections;
-import java.util.Random;
-import java.util.TreeSet;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.util.Collections;
+import java.util.Random;
+import java.util.TreeSet;
 
 public class TimeSelectorTest {
 

@@ -18,8 +18,27 @@
  */
 package org.apache.iotdb.tsfile.write;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
+import org.apache.iotdb.tsfile.constant.TestConstant;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.RecordUtils;
+import org.apache.iotdb.tsfile.utils.StringContainer;
+import org.apache.iotdb.tsfile.write.record.TSRecord;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -28,32 +47,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Random;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.utils.StringContainer;
-import org.apache.iotdb.tsfile.write.record.TSRecord;
-import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.constant.TestConstant;
-import org.apache.iotdb.tsfile.utils.RecordUtils;
-
-/**
- * test writing processing correction combining writing process and reading
- * process.
- */
+/** test writing processing correction combining writing process and reading process. */
 public class WriteTest {
 
   private static final Logger LOG = LoggerFactory.getLogger(WriteTest.class);
@@ -72,10 +69,10 @@ public class WriteTest {
   private int prePageCheckThres;
   private TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
 
-  private String[][] stageDeviceIds = { { "d1", "d2", "d3" }, { "d1" }, { "d2", "d3" } };
-  private String[] measurementIds = { "s0", "s1", "s2", "s3", "s4", "s5" };
+  private String[][] stageDeviceIds = {{"d1", "d2", "d3"}, {"d1"}, {"d2", "d3"}};
+  private String[] measurementIds = {"s0", "s1", "s2", "s3", "s4", "s5"};
   private long longBase = System.currentTimeMillis() * 1000;
-  private String[] enums = { "MAN", "WOMAN" };
+  private String[] enums = {"MAN", "WOMAN"};
 
   @Before
   public void prepare() throws IOException, WriteProcessException {
@@ -106,15 +103,25 @@ public class WriteTest {
     measurementArray.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.TS_2DIFF));
     HashMap<String, String> props = new HashMap<>();
     props.put("max_point_number", "2");
-    measurementArray.add(new MeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE,
-                              TSFileDescriptor.getInstance().getConfig().getCompressor(), props));
+    measurementArray.add(
+        new MeasurementSchema(
+            "s2",
+            TSDataType.FLOAT,
+            TSEncoding.RLE,
+            TSFileDescriptor.getInstance().getConfig().getCompressor(),
+            props));
     props = new HashMap<>();
     props.put("max_point_number", "3");
-    measurementArray.add(new MeasurementSchema("s3", TSDataType.DOUBLE, TSEncoding.TS_2DIFF,
-            TSFileDescriptor.getInstance().getConfig().getCompressor(), props));
+    measurementArray.add(
+        new MeasurementSchema(
+            "s3",
+            TSDataType.DOUBLE,
+            TSEncoding.TS_2DIFF,
+            TSFileDescriptor.getInstance().getConfig().getCompressor(),
+            props));
     measurementArray.add(new MeasurementSchema("s4", TSDataType.BOOLEAN, TSEncoding.PLAIN));
     pathArray = new ArrayList<>();
-    for (int i = 0 ; i < 5; i++) {
+    for (int i = 0; i < 5; i++) {
       pathArray.add(new Path("d1", "s" + i));
     }
     schema = new Schema();
@@ -178,7 +185,13 @@ public class WriteTest {
         fw.write(d2 + "\r\n");
       }
       // write error
-      String d = "d2,3," + (startTime + ROW_COUNT) + ",s2," + (ROW_COUNT * 10 + 2) + ",s3," + (ROW_COUNT * 10 + 3);
+      String d =
+          "d2,3,"
+              + (startTime + ROW_COUNT)
+              + ",s2,"
+              + (ROW_COUNT * 10 + 2)
+              + ",s3,"
+              + (ROW_COUNT * 10 + 3);
       fw.write(d + "\r\n");
       d = "d2," + (startTime + ROW_COUNT + 1) + ",2,s-1," + (ROW_COUNT * 10 + 2);
       fw.write(d + "\r\n");
@@ -197,7 +210,6 @@ public class WriteTest {
     LOG.info("write processing has finished");
     TsFileSequenceReader reader = new TsFileSequenceReader(outputDataFile);
     TsFileMetadata metaData = reader.readFileMetadata();
-
   }
 
   public void write() throws IOException, WriteProcessException {
@@ -210,7 +222,10 @@ public class WriteTest {
     }
     while (true) {
       if (lineCount % stageSize == 0) {
-        LOG.info("write line:{},use time:{}s", lineCount, (System.currentTimeMillis() - startTime) / 1000);
+        LOG.info(
+            "write line:{},use time:{}s",
+            lineCount,
+            (System.currentTimeMillis() - startTime) / 1000);
         stageState++;
         LOG.info("stage:" + stageState);
         if (stageState == stageDeviceIds.length) {
@@ -218,7 +233,8 @@ public class WriteTest {
         }
       }
       if (lineCount == ROW_COUNT / 2) {
-        tsFileWriter.registerTimeseries(pathArray.get(measurementArray.size() - 1),
+        tsFileWriter.registerTimeseries(
+            pathArray.get(measurementArray.size() - 1),
             measurementArray.get(measurementArray.size() - 1));
       }
       strings = getNextRecord(lineCount, stageState);
@@ -234,7 +250,7 @@ public class WriteTest {
     try {
       tsFileWriter.registerTimeseries(path, dupTimeseries);
     } catch (WriteProcessException e) {
-      assertEquals("given timeseries has exists! " + path.toString(), e.getMessage());
+      assertEquals("given timeseries has exists! " + path, e.getMessage());
     }
     try {
       tsFileWriter.close();
@@ -250,8 +266,15 @@ public class WriteTest {
     for (int i = 0; i < ret.length; i++) {
       StringContainer sc = new StringContainer(JsonFormatConstant.TSRECORD_SEPARATOR);
       sc.addTail(stageDeviceIds[stage][i], lineCount);
-      sc.addTail(measurementIds[0], lineCount * 10 + i, measurementIds[1], longBase + lineCount * 20 + i,
-          measurementIds[2], (lineCount * 30 + i) / 3.0, measurementIds[3], (longBase + lineCount * 40 + i) / 7.0);
+      sc.addTail(
+          measurementIds[0],
+          lineCount * 10 + i,
+          measurementIds[1],
+          longBase + lineCount * 20 + i,
+          measurementIds[2],
+          (lineCount * 30 + i) / 3.0,
+          measurementIds[3],
+          (longBase + lineCount * 40 + i) / 7.0);
       sc.addTail(measurementIds[4], ((lineCount + i) & 1) == 0);
       sc.addTail(measurementIds[5], enums[(int) (lineCount + i) % enums.length]);
       ret[i] = sc.toString();

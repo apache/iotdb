@@ -38,7 +38,8 @@ import java.util.NoSuchElementException;
 
 /**
  * This class is copied from apache lucene, version 4.6.1. Estimates the size(memory representation)
- * of Java objects. https://github.com/apache/lucene-solr/blob/releases/lucene-solr/4.6.1/lucene/core/src/java/org/apache/lucene/util/RamUsageEstimator.java
+ * of Java objects.
+ * https://github.com/apache/lucene-solr/blob/releases/lucene-solr/4.6.1/lucene/core/src/java/org/apache/lucene/util/RamUsageEstimator.java
  *
  * @lucene.internal
  * @see #sizeOf(Object)
@@ -47,9 +48,7 @@ import java.util.NoSuchElementException;
  */
 public final class RamUsageEstimator {
 
-  /**
-   * JVM diagnostic features.
-   */
+  /** JVM diagnostic features. */
   public enum JvmFeature {
     OBJECT_REFERENCE_SIZE("Object reference size estimated using array index scale"),
     ARRAY_HEADER_SIZE("Array header size estimated using array based offset"),
@@ -58,7 +57,7 @@ public final class RamUsageEstimator {
 
     public final String description;
 
-    private JvmFeature(String description) {
+    JvmFeature(String description) {
       this.description = description;
     }
 
@@ -68,54 +67,37 @@ public final class RamUsageEstimator {
     }
   }
 
-  /**
-   * JVM info string for debugging and reports.
-   */
+  /** JVM info string for debugging and reports. */
   public static final String JVM_INFO_STRING;
 
-  /**
-   * One kilobyte bytes.
-   */
+  /** One kilobyte bytes. */
   public static final long ONE_KB = 1024;
 
-  /**
-   * One megabyte bytes.
-   */
+  /** One megabyte bytes. */
   public static final long ONE_MB = ONE_KB * ONE_KB;
 
-  /**
-   * One gigabyte bytes.
-   */
+  /** One gigabyte bytes. */
   public static final long ONE_GB = ONE_KB * ONE_MB;
 
-  /**
-   * No instantiation.
-   */
-  private RamUsageEstimator() {
-  }
+  /** No instantiation. */
+  private RamUsageEstimator() {}
 
-  public final static int NUM_BYTES_BOOLEAN = 1;
-  public final static int NUM_BYTES_BYTE = 1;
-  public final static int NUM_BYTES_CHAR = 2;
-  public final static int NUM_BYTES_SHORT = 2;
-  public final static int NUM_BYTES_INT = 4;
-  public final static int NUM_BYTES_FLOAT = 4;
-  public final static int NUM_BYTES_LONG = 8;
-  public final static int NUM_BYTES_DOUBLE = 8;
+  public static final int NUM_BYTES_BOOLEAN = 1;
+  public static final int NUM_BYTES_BYTE = 1;
+  public static final int NUM_BYTES_CHAR = 2;
+  public static final int NUM_BYTES_SHORT = 2;
+  public static final int NUM_BYTES_INT = 4;
+  public static final int NUM_BYTES_FLOAT = 4;
+  public static final int NUM_BYTES_LONG = 8;
+  public static final int NUM_BYTES_DOUBLE = 8;
 
-  /**
-   * Number of bytes this jvm uses to represent an object reference.
-   */
+  /** Number of bytes this jvm uses to represent an object reference. */
   public static final int NUM_BYTES_OBJECT_REF;
 
-  /**
-   * Number of bytes to represent an object header (no fields, no alignments).
-   */
+  /** Number of bytes to represent an object header (no fields, no alignments). */
   public static final int NUM_BYTES_OBJECT_HEADER;
 
-  /**
-   * Number of bytes to represent an array header (no content, but with alignments).
-   */
+  /** Number of bytes to represent an array header (no content, but with alignments). */
   public static final int NUM_BYTES_ARRAY_HEADER;
 
   /**
@@ -124,9 +106,7 @@ public final class RamUsageEstimator {
    */
   public static final int NUM_BYTES_OBJECT_ALIGNMENT;
 
-  /**
-   * Sizes of primitive classes.
-   */
+  /** Sizes of primitive classes. */
   private static final Map<Class<?>, Integer> primitiveSizes;
 
   static {
@@ -141,24 +121,16 @@ public final class RamUsageEstimator {
     primitiveSizes.put(long.class, Integer.valueOf(NUM_BYTES_LONG));
   }
 
-  /**
-   * A handle to <code>sun.misc.Unsafe</code>.
-   */
+  /** A handle to <code>sun.misc.Unsafe</code>. */
   private static final Object theUnsafe;
 
-  /**
-   * A handle to <code>sun.misc.Unsafe#fieldOffset(Field)</code>.
-   */
+  /** A handle to <code>sun.misc.Unsafe#fieldOffset(Field)</code>. */
   private static final Method objectFieldOffsetMethod;
 
-  /**
-   * All the supported "internal" JVM features detected at clinit.
-   */
+  /** All the supported "internal" JVM features detected at clinit. */
   private static final EnumSet<JvmFeature> supportedFeatures;
 
-  /**
-   * Initialize constants and try to collect information about the JVM internals.
-   */
+  /** Initialize constants and try to collect information about the JVM internals. */
   static {
     // Initialize empirically measured defaults. We'll modify them to the current
     // JVM settings later on if possible.
@@ -237,12 +209,14 @@ public final class RamUsageEstimator {
     int objectAlignment = 8;
     try {
       final Class<?> beanClazz = Class.forName("com.sun.management.HotSpotDiagnosticMXBean");
-      // Try to get the diagnostic mxbean without calling {@link ManagementFactory#getPlatformMBeanServer()}
+      // Try to get the diagnostic mxbean without calling {@link
+      // ManagementFactory#getPlatformMBeanServer()}
       // which starts AWT thread (and shows junk in the dock) on a Mac:
       Object hotSpotBean;
       // Java 7+, HotSpot
       try {
-        hotSpotBean = ManagementFactory.class
+        hotSpotBean =
+            ManagementFactory.class
                 .getMethod("getPlatformMXBean", Class.class)
                 .invoke(null, beanClazz);
       } catch (Exception e1) {
@@ -251,18 +225,20 @@ public final class RamUsageEstimator {
           Class<?> sunMF = Class.forName("sun.management.ManagementFactory");
           hotSpotBean = sunMF.getMethod("getDiagnosticMXBean").invoke(null);
         } catch (Exception e2) {
-          // Last resort option is an attempt to get it from ManagementFactory's server anyway (may start AWT).
-          hotSpotBean = ManagementFactory.newPlatformMXBeanProxy(
+          // Last resort option is an attempt to get it from ManagementFactory's server anyway (may
+          // start AWT).
+          hotSpotBean =
+              ManagementFactory.newPlatformMXBeanProxy(
                   ManagementFactory.getPlatformMBeanServer(),
-                  "com.sun.management:type=HotSpotDiagnostic", beanClazz);
+                  "com.sun.management:type=HotSpotDiagnostic",
+                  beanClazz);
         }
       }
       if (hotSpotBean != null) {
         final Method getVMOptionMethod = beanClazz.getMethod("getVMOption", String.class);
         final Object vmOption = getVMOptionMethod.invoke(hotSpotBean, "ObjectAlignmentInBytes");
-        objectAlignment = Integer.parseInt(
-                vmOption.getClass().getMethod("getValue").invoke(vmOption).toString()
-        );
+        objectAlignment =
+            Integer.parseInt(vmOption.getClass().getMethod("getValue").invoke(vmOption).toString());
         supportedFeatures.add(JvmFeature.OBJECT_ALIGNMENT);
       }
     } catch (Exception e) {
@@ -271,14 +247,21 @@ public final class RamUsageEstimator {
 
     NUM_BYTES_OBJECT_ALIGNMENT = objectAlignment;
 
-    JVM_INFO_STRING = "[JVM: " +
-            Constants.JVM_NAME + ", " + Constants.JVM_VERSION + ", " + Constants.JVM_VENDOR + ", " +
-            Constants.JAVA_VENDOR + ", " + Constants.JAVA_VERSION + "]";
+    JVM_INFO_STRING =
+        "[JVM: "
+            + Constants.JVM_NAME
+            + ", "
+            + Constants.JVM_VERSION
+            + ", "
+            + Constants.JVM_VENDOR
+            + ", "
+            + Constants.JAVA_VENDOR
+            + ", "
+            + Constants.JAVA_VERSION
+            + "]";
   }
 
-  /**
-   * Cached information about a given class.
-   */
+  /** Cached information about a given class. */
   private static final class ClassCache {
 
     public final long alignedShallowInstanceSize;
@@ -290,7 +273,8 @@ public final class RamUsageEstimator {
     }
   }
 
-  // Object with just one field to determine the object header size by getting the offset of the dummy field:
+  // Object with just one field to determine the object header size by getting the offset of the
+  // dummy field:
   @SuppressWarnings("unused")
   private static final class DummyOneFieldObject {
 
@@ -315,66 +299,48 @@ public final class RamUsageEstimator {
     return supportedFeatures.size() == JvmFeature.values().length;
   }
 
-  /**
-   * Aligns an object size to be the next multiple of {@link #NUM_BYTES_OBJECT_ALIGNMENT}.
-   */
+  /** Aligns an object size to be the next multiple of {@link #NUM_BYTES_OBJECT_ALIGNMENT}. */
   public static long alignObjectSize(long size) {
     size += (long) NUM_BYTES_OBJECT_ALIGNMENT - 1L;
     return size - (size % NUM_BYTES_OBJECT_ALIGNMENT);
   }
 
-  /**
-   * Returns the size in bytes of the byte[] object.
-   */
+  /** Returns the size in bytes of the byte[] object. */
   public static long sizeOf(byte[] arr) {
     return alignObjectSize((long) NUM_BYTES_ARRAY_HEADER + arr.length);
   }
 
-  /**
-   * Returns the size in bytes of the boolean[] object.
-   */
+  /** Returns the size in bytes of the boolean[] object. */
   public static long sizeOf(boolean[] arr) {
     return alignObjectSize((long) NUM_BYTES_ARRAY_HEADER + arr.length);
   }
 
-  /**
-   * Returns the size in bytes of the char[] object.
-   */
+  /** Returns the size in bytes of the char[] object. */
   public static long sizeOf(char[] arr) {
     return alignObjectSize((long) NUM_BYTES_ARRAY_HEADER + (long) NUM_BYTES_CHAR * arr.length);
   }
 
-  /**
-   * Returns the size in bytes of the short[] object.
-   */
+  /** Returns the size in bytes of the short[] object. */
   public static long sizeOf(short[] arr) {
     return alignObjectSize((long) NUM_BYTES_ARRAY_HEADER + (long) NUM_BYTES_SHORT * arr.length);
   }
 
-  /**
-   * Returns the size in bytes of the int[] object.
-   */
+  /** Returns the size in bytes of the int[] object. */
   public static long sizeOf(int[] arr) {
     return alignObjectSize((long) NUM_BYTES_ARRAY_HEADER + (long) NUM_BYTES_INT * arr.length);
   }
 
-  /**
-   * Returns the size in bytes of the float[] object.
-   */
+  /** Returns the size in bytes of the float[] object. */
   public static long sizeOf(float[] arr) {
     return alignObjectSize((long) NUM_BYTES_ARRAY_HEADER + (long) NUM_BYTES_FLOAT * arr.length);
   }
 
-  /**
-   * Returns the size in bytes of the long[] object.
-   */
+  /** Returns the size in bytes of the long[] object. */
   public static long sizeOf(long[] arr) {
     return alignObjectSize((long) NUM_BYTES_ARRAY_HEADER + (long) NUM_BYTES_LONG * arr.length);
   }
 
-  /**
-   * Returns the size in bytes of the double[] object.
-   */
+  /** Returns the size in bytes of the double[] object. */
   public static long sizeOf(double[] arr) {
     return alignObjectSize((long) NUM_BYTES_ARRAY_HEADER + (long) NUM_BYTES_DOUBLE * arr.length);
   }
@@ -383,9 +349,9 @@ public final class RamUsageEstimator {
    * Estimates the RAM usage by the given object. It will walk the object tree and sum up all
    * referenced objects.
    *
-   * <p><b>Resource Usage:</b> This method internally uses a set of
-   * every object seen during traversals so it does allocate memory (it isn't side-effect free).
-   * After the method exits, this memory should be GCed.</p>
+   * <p><b>Resource Usage:</b> This method internally uses a set of every object seen during
+   * traversals so it does allocate memory (it isn't side-effect free). After the method exits, this
+   * memory should be GCed.
    */
   public static long sizeOf(Object obj) {
     return measureObjectSize(obj);
@@ -396,7 +362,7 @@ public final class RamUsageEstimator {
    * taken by array storage (no subreferences will be followed). For objects, this will be the
    * memory taken by the fields.
    *
-   * JVM object alignments are also applied.
+   * <p>JVM object alignments are also applied.
    */
   public static long shallowSizeOf(Object obj) {
     if (obj == null) {
@@ -440,9 +406,7 @@ public final class RamUsageEstimator {
     return alignObjectSize(size);
   }
 
-  /**
-   * Return shallow size of any <code>array</code>.
-   */
+  /** Return shallow size of any <code>array</code>. */
   private static long shallowSizeOfArray(Object array) {
     long size = NUM_BYTES_ARRAY_HEADER;
     final int len = Array.getLength(array);
@@ -468,7 +432,8 @@ public final class RamUsageEstimator {
     // Objects seen so far.
     final IdentityHashSet<Object> seen = new IdentityHashSet<Object>();
     // Class cache with reference Field and precalculated shallow size.
-    final IdentityHashMap<Class<?>, ClassCache> classCache = new IdentityHashMap<Class<?>, ClassCache>();
+    final IdentityHashMap<Class<?>, ClassCache> classCache =
+        new IdentityHashMap<Class<?>, ClassCache>();
     // Stack of objects pending traversal. Recursion caused stack overflows.
     final ArrayList<Object> stack = new ArrayList<Object>();
     stack.add(root);
@@ -542,9 +507,7 @@ public final class RamUsageEstimator {
     return totalSize;
   }
 
-  /**
-   * Create a cached information about shallow size and reference fields for a given class.
-   */
+  /** Create a cached information about shallow size and reference fields for a given class. */
   private static ClassCache createCacheEntry(final Class<?> clazz) {
     long shallowInstanceSize = NUM_BYTES_OBJECT_HEADER;
     final ArrayList<Field> referenceFields = new ArrayList<Field>(32);
@@ -562,9 +525,8 @@ public final class RamUsageEstimator {
       }
     }
 
-    ClassCache cachedInfo = new ClassCache(
-            alignObjectSize(shallowInstanceSize),
-            referenceFields.toArray(new Field[0]));
+    ClassCache cachedInfo =
+        new ClassCache(alignObjectSize(shallowInstanceSize), referenceFields.toArray(new Field[0]));
     return cachedInfo;
   }
 
@@ -572,8 +534,8 @@ public final class RamUsageEstimator {
    * This method returns the maximum representation size of an object. <code>sizeSoFar</code> is the
    * object's size measured so far. <code>f</code> is the field being probed.
    *
-   * <p>The returned offset will be the maximum of whatever was measured so far and
-   * <code>f</code> field's offset and representation size (unaligned).
+   * <p>The returned offset will be the maximum of whatever was measured so far and <code>f</code>
+   * field's offset and representation size (unaligned).
    */
   private static long adjustForField(long sizeSoFar, final Field f) {
     final Class<?> type = f.getType();
@@ -581,7 +543,7 @@ public final class RamUsageEstimator {
     if (objectFieldOffsetMethod != null) {
       try {
         final long offsetPlusSize =
-                ((Number) objectFieldOffsetMethod.invoke(theUnsafe, f)).longValue() + fsize;
+            ((Number) objectFieldOffsetMethod.invoke(theUnsafe, f)).longValue() + fsize;
         return Math.max(sizeSoFar, offsetPlusSize);
       } catch (IllegalAccessException ex) {
         throw new RuntimeException("Access problem with sun.misc.Unsafe", ex);
@@ -595,9 +557,13 @@ public final class RamUsageEstimator {
         }
         // this should never happen (Unsafe does not declare
         // checked Exceptions for this method), but who knows?
-        throw new RuntimeException("Call to Unsafe's objectFieldOffset() throwed " +
-                "checked Exception when accessing field " +
-                f.getDeclaringClass().getName() + "#" + f.getName(), cause);
+        throw new RuntimeException(
+            "Call to Unsafe's objectFieldOffset() throwed "
+                + "checked Exception when accessing field "
+                + f.getDeclaringClass().getName()
+                + "#"
+                + f.getName(),
+            cause);
       }
     } else {
       // TODO: No alignments based on field type/ subclass fields alignments?
@@ -605,33 +571,25 @@ public final class RamUsageEstimator {
     }
   }
 
-  /**
-   * Return the set of unsupported JVM features that improve the estimation.
-   */
+  /** Return the set of unsupported JVM features that improve the estimation. */
   public static EnumSet<JvmFeature> getUnsupportedFeatures() {
     EnumSet<JvmFeature> unsupported = EnumSet.allOf(JvmFeature.class);
     unsupported.removeAll(supportedFeatures);
     return unsupported;
   }
 
-  /**
-   * Return the set of supported JVM features that improve the estimation.
-   */
+  /** Return the set of supported JVM features that improve the estimation. */
   public static EnumSet<JvmFeature> getSupportedFeatures() {
     return EnumSet.copyOf(supportedFeatures);
   }
 
-  /**
-   * Returns <code>size</code> in human-readable units (GB, MB, KB or bytes).
-   */
+  /** Returns <code>size</code> in human-readable units (GB, MB, KB or bytes). */
   public static String humanReadableUnits(long bytes) {
-    return humanReadableUnits(bytes,
-            new DecimalFormat("0.#", DecimalFormatSymbols.getInstance(Locale.ROOT)));
+    return humanReadableUnits(
+        bytes, new DecimalFormat("0.#", DecimalFormatSymbols.getInstance(Locale.ROOT)));
   }
 
-  /**
-   * Returns <code>size</code> in human-readable units (GB, MB, KB or bytes).
-   */
+  /** Returns <code>size</code> in human-readable units (GB, MB, KB or bytes). */
   public static String humanReadableUnits(long bytes, DecimalFormat df) {
     if (bytes / ONE_GB > 0) {
       return df.format((float) bytes / ONE_GB) + " GB";
@@ -657,28 +615,20 @@ public final class RamUsageEstimator {
   /**
    * An identity hash set implemented using open addressing. No null keys are allowed.
    *
-   * TODO: If this is useful outside this class, make it public - needs some work
+   * <p>TODO: If this is useful outside this class, make it public - needs some work
    */
   static final class IdentityHashSet<KType> implements Iterable<KType> {
 
-    /**
-     * Default load factor.
-     */
-    public final static float DEFAULT_LOAD_FACTOR = 0.75f;
+    /** Default load factor. */
+    public static final float DEFAULT_LOAD_FACTOR = 0.75f;
 
-    /**
-     * Minimum capacity for the set.
-     */
-    public final static int MIN_CAPACITY = 4;
+    /** Minimum capacity for the set. */
+    public static final int MIN_CAPACITY = 4;
 
-    /**
-     * All of set entries. Always of power of two length.
-     */
+    /** All of set entries. Always of power of two length. */
     public Object[] keys;
 
-    /**
-     * Cached number of assigned slots.
-     */
+    /** Cached number of assigned slots. */
     public int assigned;
 
     /**
@@ -687,9 +637,7 @@ public final class RamUsageEstimator {
      */
     public final float loadFactor;
 
-    /**
-     * Cached capacity threshold at which we must resize the buffers.
-     */
+    /** Cached capacity threshold at which we must resize the buffers. */
     private int resizeThreshold;
 
     /**
@@ -700,29 +648,23 @@ public final class RamUsageEstimator {
       this(16, DEFAULT_LOAD_FACTOR);
     }
 
-    /**
-     * Creates a hash set with the given capacity, load factor of {@value #DEFAULT_LOAD_FACTOR}.
-     */
+    /** Creates a hash set with the given capacity, load factor of {@value #DEFAULT_LOAD_FACTOR}. */
     public IdentityHashSet(int initialCapacity) {
       this(initialCapacity, DEFAULT_LOAD_FACTOR);
     }
 
-    /**
-     * Creates a hash set with the given capacity and load factor.
-     */
+    /** Creates a hash set with the given capacity and load factor. */
     public IdentityHashSet(int initialCapacity, float loadFactor) {
       initialCapacity = Math.max(MIN_CAPACITY, initialCapacity);
 
-      assert initialCapacity > 0 : "Initial capacity must be between (0, "
-              + Integer.MAX_VALUE + "].";
+      assert initialCapacity > 0
+          : "Initial capacity must be between (0, " + Integer.MAX_VALUE + "].";
       assert loadFactor > 0 && loadFactor < 1 : "Load factor must be between (0, 1).";
       this.loadFactor = loadFactor;
       allocateBuffers(roundCapacity(initialCapacity));
     }
 
-    /**
-     * Adds a reference to the set. Null keys are not allowed.
-     */
+    /** Adds a reference to the set. Null keys are not allowed. */
     public boolean add(KType e) {
       assert e != null : "Null keys not allowed.";
 
@@ -744,9 +686,7 @@ public final class RamUsageEstimator {
       return true;
     }
 
-    /**
-     * Checks if the set contains a given ref.
-     */
+    /** Checks if the set contains a given ref. */
     public boolean contains(KType e) {
       final int mask = keys.length - 1;
       int slot = rehash(e) & mask;
@@ -763,9 +703,8 @@ public final class RamUsageEstimator {
     /**
      * Rehash via MurmurHash.
      *
-     * <p>The implementation is based on the
-     * finalization step from Austin Appleby's
-     * <code>MurmurHash3</code>.
+     * <p>The implementation is based on the finalization step from Austin Appleby's <code>
+     * MurmurHash3</code>.
      *
      * @see "http://sites.google.com/site/murmurhash/"
      */
@@ -816,13 +755,10 @@ public final class RamUsageEstimator {
       this.resizeThreshold = (int) (capacity * DEFAULT_LOAD_FACTOR);
     }
 
-    /**
-     * Return the next possible capacity, counting from the current buffers' size.
-     */
+    /** Return the next possible capacity, counting from the current buffers' size. */
     protected int nextCapacity(int current) {
       assert current > 0 && Long.bitCount(current) == 1 : "Capacity must be a power of two.";
-      assert ((current << 1) > 0) : "Maximum capacity exceeded ("
-              + (0x80000000 >>> 1) + ").";
+      assert ((current << 1) > 0) : "Maximum capacity exceeded (" + (0x80000000 >>> 1) + ").";
 
       if (current < MIN_CAPACITY / 2) {
         current = MIN_CAPACITY / 2;
@@ -830,9 +766,7 @@ public final class RamUsageEstimator {
       return current << 1;
     }
 
-    /**
-     * Round the capacity to the next allowed value.
-     */
+    /** Round the capacity to the next allowed value. */
     protected int roundCapacity(int requestedCapacity) {
       // Maximum positive integer that is a power of two.
       if (requestedCapacity > (0x80000000 >>> 1)) {
@@ -899,60 +833,38 @@ public final class RamUsageEstimator {
     }
   }
 
-
-  /**
-   * Some useful constants.
-   **/
-
+  /** Some useful constants. */
   static class Constants {
 
-    private Constants() {
-    }  // can't construct
+    private Constants() {} // can't construct
 
-    /**
-     * JVM vendor info.
-     */
+    /** JVM vendor info. */
     public static final String JVM_VENDOR = System.getProperty("java.vm.vendor");
+
     public static final String JVM_VERSION = System.getProperty("java.vm.version");
     public static final String JVM_NAME = System.getProperty("java.vm.name");
 
-    /**
-     * The value of <tt>System.getProperty("java.version")</tt>.
-     **/
+    /** The value of <tt>System.getProperty("java.version")</tt>. */
     public static final String JAVA_VERSION = System.getProperty("java.version");
 
-    /**
-     * The value of <tt>System.getProperty("os.name")</tt>.
-     **/
+    /** The value of <tt>System.getProperty("os.name")</tt>. */
     public static final String OS_NAME = System.getProperty("os.name");
-    /**
-     * True iff running on Linux.
-     */
+    /** True iff running on Linux. */
     public static final boolean LINUX = OS_NAME.startsWith("Linux");
-    /**
-     * True iff running on Windows.
-     */
+    /** True iff running on Windows. */
     public static final boolean WINDOWS = OS_NAME.startsWith("Windows");
-    /**
-     * True iff running on SunOS.
-     */
+    /** True iff running on SunOS. */
     public static final boolean SUN_OS = OS_NAME.startsWith("SunOS");
-    /**
-     * True iff running on Mac OS X
-     */
+    /** True iff running on Mac OS X */
     public static final boolean MAC_OS_X = OS_NAME.startsWith("Mac OS X");
-    /**
-     * True iff running on FreeBSD
-     */
+    /** True iff running on FreeBSD */
     public static final boolean FREE_BSD = OS_NAME.startsWith("FreeBSD");
 
     public static final String OS_ARCH = System.getProperty("os.arch");
     public static final String OS_VERSION = System.getProperty("os.version");
     public static final String JAVA_VENDOR = System.getProperty("java.vendor");
 
-    /**
-     * @deprecated With Lucene 4.0, we are always on Java 6
-     */
+    /** @deprecated With Lucene 4.0, we are always on Java 6 */
     @Deprecated
     public static final boolean JRE_IS_MINIMUM_JAVA6 =
         Boolean.TRUE; // prevent inlining in foreign class files
@@ -960,9 +872,7 @@ public final class RamUsageEstimator {
     public static final boolean JRE_IS_MINIMUM_JAVA7;
     public static final boolean JRE_IS_MINIMUM_JAVA8;
 
-    /**
-     * True iff running on a 64bit JVM
-     */
+    /** True iff running on a 64bit JVM */
     public static final boolean JRE_IS_64BIT;
 
     static {
@@ -972,9 +882,9 @@ public final class RamUsageEstimator {
         final Field unsafeField = unsafeClass.getDeclaredField("theUnsafe");
         unsafeField.setAccessible(true);
         final Object unsafe = unsafeField.get(null);
-        final int addressSize = ((Number) unsafeClass.getMethod("addressSize")
-                .invoke(unsafe)).intValue();
-        //System.out.println("Address size: " + addressSize);
+        final int addressSize =
+            ((Number) unsafeClass.getMethod("addressSize").invoke(unsafe)).intValue();
+        // System.out.println("Address size: " + addressSize);
         is64Bit = addressSize >= 8;
       } catch (Exception e) {
         final String x = System.getProperty("sun.arch.data.model");
@@ -1012,6 +922,5 @@ public final class RamUsageEstimator {
         JRE_IS_MINIMUM_JAVA8 = false;
       }
     }
-
   }
 }

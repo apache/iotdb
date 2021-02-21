@@ -19,10 +19,6 @@
 
 package org.apache.iotdb.cluster.server.service;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.List;
-import java.util.Set;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
@@ -47,9 +43,15 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.service.IoTDB;
+
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.List;
+import java.util.Set;
 
 public class DataSyncService extends BaseSyncService implements TSDataService.Iface {
 
@@ -89,7 +91,9 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
     // if this node has been set readOnly, then it must have been synchronized with the leader
     // otherwise forward the request to the leader
     if (dataGroupMember.getLeader() != null) {
-      logger.debug("{} forwarding a pull snapshot request to the leader {}", name,
+      logger.debug(
+          "{} forwarding a pull snapshot request to the leader {}",
+          name,
           dataGroupMember.getLeader());
       SyncDataClient client =
           (SyncDataClient) dataGroupMember.getSyncClient(dataGroupMember.getLeader());
@@ -208,7 +212,8 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   public ByteBuffer fetchSingleSeriesByTimestamp(Node header, long readerId, long timestamp)
       throws TException {
     try {
-      return dataGroupMember.getLocalQueryExecutor()
+      return dataGroupMember
+          .getLocalQueryExecutor()
           .fetchSingleSeriesByTimestamp(readerId, timestamp);
     } catch (ReaderNotFoundException | IOException e) {
       throw new TException(e);
@@ -294,11 +299,11 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
-  public List<ByteBuffer> getGroupByResult(Node header, long executorId, long startTime,
-      long endTime)
-      throws TException {
+  public List<ByteBuffer> getGroupByResult(
+      Node header, long executorId, long startTime, long endTime) throws TException {
     try {
-      return dataGroupMember.getLocalQueryExecutor()
+      return dataGroupMember
+          .getLocalQueryExecutor()
           .getGroupByResult(executorId, startTime, endTime);
     } catch (ReaderNotFoundException | IOException | QueryProcessException e) {
       throw new TException(e);
@@ -309,7 +314,10 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   public ByteBuffer previousFill(PreviousFillRequest request) throws TException {
     try {
       return dataGroupMember.getLocalQueryExecutor().previousFill(request);
-    } catch (QueryProcessException | StorageEngineException | IOException | IllegalPathException e) {
+    } catch (QueryProcessException
+        | StorageEngineException
+        | IOException
+        | IllegalPathException e) {
       throw new TException(e);
     }
   }
@@ -318,7 +326,11 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   public ByteBuffer last(LastQueryRequest request) throws TException {
     try {
       return dataGroupMember.getLocalQueryExecutor().last(request);
-    } catch (CheckConsistencyException | QueryProcessException | IOException | StorageEngineException | IllegalPathException e) {
+    } catch (CheckConsistencyException
+        | QueryProcessException
+        | IOException
+        | StorageEngineException
+        | IllegalPathException e) {
       throw new TException(e);
     }
   }
@@ -341,7 +353,8 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   public ByteBuffer peekNextNotNullValue(Node header, long executorId, long startTime, long endTime)
       throws TException {
     try {
-      return dataGroupMember.getLocalQueryExecutor()
+      return dataGroupMember
+          .getLocalQueryExecutor()
           .peekNextNotNullValue(executorId, startTime, endTime);
     } catch (ReaderNotFoundException | IOException e) {
       throw new TException(e);

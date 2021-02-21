@@ -19,14 +19,22 @@
 
 package org.apache.iotdb.db.query.aggregation;
 
+import org.apache.iotdb.tsfile.utils.BytesUtils;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 public enum AggregationType {
-
-  COUNT, AVG, SUM, FIRST_VALUE, LAST_VALUE, MAX_TIME, MIN_TIME, MAX_VALUE, MIN_VALUE;
+  COUNT,
+  AVG,
+  SUM,
+  FIRST_VALUE,
+  LAST_VALUE,
+  MAX_TIME,
+  MIN_TIME,
+  MAX_VALUE,
+  MIN_VALUE;
 
   /**
    * give an integer to return a data type.
