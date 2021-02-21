@@ -18,10 +18,6 @@
  */
 package org.apache.iotdb.db.metadata;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -46,6 +42,11 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -836,8 +837,7 @@ public class MTree implements Serializable {
   }
 
   /** Traverse the MTree to get the count of timeseries. */
-  private int getCount(
-      MNode node, String[] nodes, int idx, boolean wildcard)
+  private int getCount(MNode node, String[] nodes, int idx, boolean wildcard)
       throws PathNotExistException {
     if (idx < nodes.length) {
       if (PATH_WILDCARD.equals(nodes[idx])) {
