@@ -169,12 +169,13 @@ public class IoTDBAggregationByLevelIT {
   public void timeFuncGroupByLevelTest() throws Exception {
     String[] retArray =
         new String[] {
-          "100", "600,700",
+          "8,100", "600,2,700,3",
         };
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("select min_time(temperature) from root.*.* GROUP BY level=0");
+      statement.execute(
+          "select count(status), min_time(temperature) from root.*.* GROUP BY level=0");
 
       int cnt = 0;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -212,12 +213,13 @@ public class IoTDBAggregationByLevelIT {
   public void valueFuncGroupByLevelTest() throws Exception {
     String[] retArray =
         new String[] {
-          "61.22", "71.12,62.15",
+          "61.22,125.5", "71.12,71.12,62.15,62.15",
         };
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("select last_value(temperature) from root.*.* GROUP BY level=0");
+      statement.execute(
+          "select last_value(temperature),max_value(temperature) from root.*.* GROUP BY level=0");
 
       int cnt = 0;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -313,15 +315,6 @@ public class IoTDBAggregationByLevelIT {
         planner.parseSQLToPhysicalPlan("select avg(status) from root.sg2.* GROUP BY level=1");
       } catch (Exception e) {
         Assert.assertEquals("Aggregate among unmatched data types", e.getMessage());
-      }
-
-      try {
-        planner.parseSQLToPhysicalPlan(
-            "select avg(status), sum(temperature) from root.sg2.* GROUP BY level=1");
-      } catch (Exception e) {
-        Assert.assertEquals(
-            "Aggregation function is restricted to one if group by level clause exists",
-            e.getMessage());
       }
     }
   }
