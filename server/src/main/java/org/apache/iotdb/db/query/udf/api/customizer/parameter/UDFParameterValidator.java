@@ -58,12 +58,12 @@ public class UDFParameterValidator {
   /**
    * Validates whether the data type of the input series at the specified column is as expected.
    *
-   * @param index            index of the specified column
+   * @param index index of the specified column
    * @param expectedDataType the expected data type
-   * @throws UDFInputSeriesIndexNotValidException    if the index of the specified column is out of
-   *                                                 bound
+   * @throws UDFInputSeriesIndexNotValidException if the index of the specified column is out of
+   *     bound
    * @throws UDFInputSeriesDataTypeNotValidException if the data type of the input series at the
-   *                                                 specified column is not as expected
+   *     specified column is not as expected
    */
   public UDFParameterValidator validateInputSeriesDataType(int index, TSDataType expectedDataType)
       throws UDFException {
@@ -85,15 +85,15 @@ public class UDFParameterValidator {
   /**
    * Validates whether the data type of the input series at the specified column is as expected.
    *
-   * @param index             index of the specified column
+   * @param index index of the specified column
    * @param expectedDataTypes the expected data types
-   * @throws UDFInputSeriesIndexNotValidException    if the index of the specified column is out of
-   *                                                 bound
+   * @throws UDFInputSeriesIndexNotValidException if the index of the specified column is out of
+   *     bound
    * @throws UDFInputSeriesDataTypeNotValidException if the data type of the input series at the
-   *                                                 specified column is not as expected
+   *     specified column is not as expected
    */
-  public UDFParameterValidator validateInputSeriesDataType(int index,
-      TSDataType... expectedDataTypes) throws UDFException {
+  public UDFParameterValidator validateInputSeriesDataType(
+      int index, TSDataType... expectedDataTypes) throws UDFException {
     validateInputSeriesIndex(index);
 
     TSDataType actualDataType;
@@ -117,7 +117,7 @@ public class UDFParameterValidator {
    *
    * @param expectedSeriesNumber the expected number of the input series
    * @throws UDFInputSeriesNumberNotValidException if the number of the input series is not as
-   *                                               expected
+   *     expected
    */
   public UDFParameterValidator validateInputSeriesNumber(int expectedSeriesNumber)
       throws UDFInputSeriesNumberNotValidException {
@@ -132,19 +132,20 @@ public class UDFParameterValidator {
    * Validates whether the number of the input series is as expected.
    *
    * @param expectedSeriesNumberLowerBound the number of the input series must be greater than or
-   *                                       equal to the expectedSeriesNumberLowerBound
+   *     equal to the expectedSeriesNumberLowerBound
    * @param expectedSeriesNumberUpperBound the number of the input series must be less than or equal
-   *                                       to the expectedSeriesNumberUpperBound
+   *     to the expectedSeriesNumberUpperBound
    * @throws UDFInputSeriesNumberNotValidException if the number of the input series is not as
-   *                                               expected
+   *     expected
    */
-  public UDFParameterValidator validateInputSeriesNumber(int expectedSeriesNumberLowerBound,
-      int expectedSeriesNumberUpperBound) throws UDFInputSeriesNumberNotValidException {
+  public UDFParameterValidator validateInputSeriesNumber(
+      int expectedSeriesNumberLowerBound, int expectedSeriesNumberUpperBound)
+      throws UDFInputSeriesNumberNotValidException {
     int actualSeriesNumber = parameters.getPaths().size();
     if (actualSeriesNumber < expectedSeriesNumberLowerBound
         || expectedSeriesNumberUpperBound < actualSeriesNumber) {
-      throw new UDFInputSeriesNumberNotValidException(actualSeriesNumber,
-          expectedSeriesNumberLowerBound, expectedSeriesNumberUpperBound);
+      throw new UDFInputSeriesNumberNotValidException(
+          actualSeriesNumber, expectedSeriesNumberLowerBound, expectedSeriesNumberUpperBound);
     }
     return this;
   }
@@ -154,11 +155,12 @@ public class UDFParameterValidator {
    *
    * @param validationRule the validation rule, which can be a lambda expression
    * @param messageToThrow the message to throw when the given argument is not valid
-   * @param argument       the given argument
+   * @param argument the given argument
    * @throws UDFParameterNotValidException if the given argument is not valid
    */
-  public UDFParameterValidator validate(SingleObjectValidationRule validationRule,
-      String messageToThrow, Object argument) throws UDFParameterNotValidException {
+  public UDFParameterValidator validate(
+      SingleObjectValidationRule validationRule, String messageToThrow, Object argument)
+      throws UDFParameterNotValidException {
     if (!validationRule.validate(argument)) {
       throw new UDFParameterNotValidException(messageToThrow);
     }
@@ -175,11 +177,12 @@ public class UDFParameterValidator {
    *
    * @param validationRule the validation rule, which can be a lambda expression
    * @param messageToThrow the message to throw when the given arguments are not valid
-   * @param arguments      the given arguments
+   * @param arguments the given arguments
    * @throws UDFParameterNotValidException if the given arguments are not valid
    */
-  public UDFParameterValidator validate(MultipleObjectsValidationRule validationRule,
-      String messageToThrow, Object... arguments) throws UDFParameterNotValidException {
+  public UDFParameterValidator validate(
+      MultipleObjectsValidationRule validationRule, String messageToThrow, Object... arguments)
+      throws UDFParameterNotValidException {
     if (!validationRule.validate(arguments)) {
       throw new UDFParameterNotValidException(messageToThrow);
     }
@@ -192,13 +195,12 @@ public class UDFParameterValidator {
   }
 
   /**
-   * Validates whether the index of the specified column is out of bound.
-   * </p>
-   * bound: [0, parameters.getPaths().size())
+   * Validates whether the index of the specified column is out of bound. bound: [0,
+   * parameters.getPaths().size())
    *
    * @param index the index of the specified column
    * @throws UDFInputSeriesIndexNotValidException if the index of the specified column is out of
-   *                                              bound
+   *     bound
    */
   private void validateInputSeriesIndex(int index) throws UDFInputSeriesIndexNotValidException {
     int actualSeriesNumber = parameters.getPaths().size();

@@ -18,7 +18,15 @@
  */
 package org.apache.iotdb.db.metrics.ui;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.metrics.server.SqlArgument;
+import org.apache.iotdb.db.service.TSServiceImpl;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
+
 import com.codahale.metrics.MetricRegistry;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -27,12 +35,6 @@ import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.metrics.server.SqlArgument;
-import org.apache.iotdb.db.service.TSServiceImpl;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class MetricsPage {
 
@@ -50,7 +52,7 @@ public class MetricsPage {
     try {
       URL resource = MetricsPage.class.getClassLoader().getResource("iotdb/ui/static/index.html");
       try (InputStream is = resource.openStream();
-           BufferedReader br = new BufferedReader(new InputStreamReader(is))) {
+          BufferedReader br = new BufferedReader(new InputStreamReader(is))) {
         while ((tmpStr = br.readLine()) != null) {
           html += tmpStr;
         }
@@ -59,30 +61,59 @@ public class MetricsPage {
       logger.error("Response page failed", e);
     }
     html = html.replace("{version}", IoTDBConstant.VERSION);
-    
-    html = html.replace("{server}", mr.getGauges().get("iot-metrics.host").getValue() + ":"
-        + mr.getGauges().get("iot-metrics.port").getValue());
-    
-    int cpuRatio = (int)mr.getGauges().get("iot-metrics.cpu_ratio").getValue();
+
+    html =
+        html.replace(
+            "{server}",
+            mr.getGauges().get("iot-metrics.host").getValue()
+                + ":"
+                + mr.getGauges().get("iot-metrics.port").getValue());
+
+    int cpuRatio = (int) mr.getGauges().get("iot-metrics.cpu_ratio").getValue();
     String os = System.getProperty("os.name");
-    if(cpuRatio != 500) {
-      html = html.replace("{cpu}", mr.getGauges().get("iot-metrics.cores").getValue() + " Total, "
-          + cpuRatio + "% CPU Ratio");
+    if (cpuRatio != 500) {
+      html =
+          html.replace(
+              "{cpu}",
+              mr.getGauges().get("iot-metrics.cores").getValue()
+                  + " Total, "
+                  + cpuRatio
+                  + "% CPU Ratio");
     } else {
-      html = html.replace("{cpu}", mr.getGauges().get("iot-metrics.cores").getValue() + " Total  "
-          + "<font color=\"red\">can't get the cpu ratio,because this OS:["+os+"] is not support</font>");
+      html =
+          html.replace(
+              "{cpu}",
+              mr.getGauges().get("iot-metrics.cores").getValue()
+                  + " Total  "
+                  + "<font color=\"red\">can't get the cpu ratio,because this OS:["
+                  + os
+                  + "] is not support</font>");
     }
-    
-    html = html.replace("{jvm_mem}",mr.getGauges().get("iot-metrics.max_memory").getValue() + "  "
-        + mr.getGauges().get("iot-metrics.total_memory").getValue() + "  "
-        + mr.getGauges().get("iot-metrics.free_memory").getValue() + " (Max/Total/Free)MB");
-    
-    html = html.replace("{host_mem}",String.format("%.0f",
-        ((int) mr.getGauges().get("iot-metrics.totalPhysical_memory").getValue() / 1024.0))
-        + " GB Total,  "+ String.format("%.1f",
-        ((int) mr.getGauges().get("iot-metrics.usedPhysical_memory").getValue() / 1024.0))
-        + " GB Used");
-    
+
+    html =
+        html.replace(
+            "{jvm_mem}",
+            mr.getGauges().get("iot-metrics.max_memory").getValue()
+                + "  "
+                + mr.getGauges().get("iot-metrics.total_memory").getValue()
+                + "  "
+                + mr.getGauges().get("iot-metrics.free_memory").getValue()
+                + " (Max/Total/Free)MB");
+
+    html =
+        html.replace(
+            "{host_mem}",
+            String.format(
+                    "%.0f",
+                    ((int) mr.getGauges().get("iot-metrics.totalPhysical_memory").getValue()
+                        / 1024.0))
+                + " GB Total,  "
+                + String.format(
+                    "%.1f",
+                    ((int) mr.getGauges().get("iot-metrics.usedPhysical_memory").getValue()
+                        / 1024.0))
+                + " GB Used");
+
     html = html.replace("{sql_table}", sqlRow());
     return html;
   }
@@ -114,28 +145,43 @@ public class MetricsPage {
 
         table.append(
             "<tr>"
-                + "<td>" + resp.getOperationType() + "</td>"
-                + "<td>" + sdf.format(new Date(sqlArgument.getStartTime())) + "</td>"
-                + "<td>" + sdf.format(new Date(sqlArgument.getEndTime())) + "</td>"
-                + "<td>" + (int) (sqlArgument.getEndTime() - sqlArgument.getStartTime()) + " ms</td>"
-                + "<td class=\"sql\">" + sqlArgument.getStatement() + "</td>"
-                + "<td>" + status + "</td>"
-                + "<td>" + ((errMsg == null || errMsg.equals("")) ? "== Parsed Physical Plan ==" : errMsg)
-                +   "<span class=\"expand-details\" onclick=\"this.parentNode.querySelector('.stacktrace-details').classList.toggle('collapsed')\">+ details</span>"
-                +   "<div class=\"stacktrace-details collapsed\">"
-                +     "<pre>"
-                +       "Physical Plan: " + sqlArgument.getPlan().getClass().getSimpleName()
-                +       "</br>===========================</br>"
-                +       "OperatorType: " + sqlArgument.getPlan().getOperatorType()
-                +       "</br>===========================</br>"
-                +       "Path: " + sqlArgument.getPlan().getPaths().toString()
-                +     "</pre>"
-                +   "</div>"
+                + "<td>"
+                + resp.getOperationType()
                 + "</td>"
-                +"</tr>");
+                + "<td>"
+                + sdf.format(new Date(sqlArgument.getStartTime()))
+                + "</td>"
+                + "<td>"
+                + sdf.format(new Date(sqlArgument.getEndTime()))
+                + "</td>"
+                + "<td>"
+                + (int) (sqlArgument.getEndTime() - sqlArgument.getStartTime())
+                + " ms</td>"
+                + "<td class=\"sql\">"
+                + sqlArgument.getStatement()
+                + "</td>"
+                + "<td>"
+                + status
+                + "</td>"
+                + "<td>"
+                + ((errMsg == null || errMsg.equals("")) ? "== Parsed Physical Plan ==" : errMsg)
+                + "<span class=\"expand-details\" onclick=\"this.parentNode.querySelector('.stacktrace-details').classList.toggle('collapsed')\">+ details</span>"
+                + "<div class=\"stacktrace-details collapsed\">"
+                + "<pre>"
+                + "Physical Plan: "
+                + sqlArgument.getPlan().getClass().getSimpleName()
+                + "</br>===========================</br>"
+                + "OperatorType: "
+                + sqlArgument.getPlan().getOperatorType()
+                + "</br>===========================</br>"
+                + "Path: "
+                + sqlArgument.getPlan().getPaths()
+                + "</pre>"
+                + "</div>"
+                + "</td>"
+                + "</tr>");
       }
     }
     return table;
   }
-
 }

@@ -19,15 +19,16 @@
 
 package org.apache.iotdb.cluster;
 
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.utils.SerializeUtils;
+
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.utils.SerializeUtils;
 
 public class RemoteTsFileResource extends TsFileResource {
 
@@ -38,8 +39,8 @@ public class RemoteTsFileResource extends TsFileResource {
   /**
    * Whether the plan range ([minPlanIndex, maxPlanIndex]) overlaps with another TsFile in the same
    * time partition. If not (unique = true), we shall have confidence that the file has all data
-   * whose plan indexes are within [minPlanIndex, maxPlanIndex], so we can remove other local
-   * files that overlaps with it.
+   * whose plan indexes are within [minPlanIndex, maxPlanIndex], so we can remove other local files
+   * that overlaps with it.
    */
   private boolean isPlanRangeUnique = false;
 
@@ -104,8 +105,12 @@ public class RemoteTsFileResource extends TsFileResource {
     SerializeUtils.deserialize(source, buffer);
     setFile(new File(SerializeUtils.deserializeString(buffer)));
 
-    timeIndex = IoTDBDescriptor.getInstance().getConfig().getTimeIndexLevel().getTimeIndex()
-        .deserialize(buffer);
+    timeIndex =
+        IoTDBDescriptor.getInstance()
+            .getConfig()
+            .getTimeIndexLevel()
+            .getTimeIndex()
+            .deserialize(buffer);
 
     withModification = buffer.get() == 1;
 

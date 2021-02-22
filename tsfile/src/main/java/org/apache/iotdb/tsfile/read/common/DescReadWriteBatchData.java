@@ -18,16 +18,16 @@
  */
 package org.apache.iotdb.tsfile.read.common;
 
-import java.util.LinkedList;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
+import java.util.LinkedList;
+
 /**
  * This class is for reading and writing batch data in reverse. The data source is from mergeReader.
- * For example,
- * the time sequence from mergeReader is 1000 -> 1, to keep the consistency that the timestamp
- * should be ascending. It will be written in reverse, i.e. the timeRet will be [1, 1000].
+ * For example, the time sequence from mergeReader is 1000 -> 1, to keep the consistency that the
+ * timestamp should be ascending. It will be written in reverse, i.e. the timeRet will be [1, 1000].
  * Then it can be handled the same as DescReadBatchData.
  */
 public class DescReadWriteBatchData extends DescReadBatchData {
@@ -298,8 +298,8 @@ public class DescReadWriteBatchData extends DescReadBatchData {
 
   @Override
   public boolean hasCurrent() {
-    return (readCurListIndex == 0 && readCurArrayIndex > writeCurArrayIndex) || (
-        readCurListIndex > 0 && readCurArrayIndex >= 0);
+    return (readCurListIndex == 0 && readCurArrayIndex > writeCurArrayIndex)
+        || (readCurListIndex > 0 && readCurArrayIndex >= 0);
   }
 
   @Override
@@ -320,49 +320,49 @@ public class DescReadWriteBatchData extends DescReadBatchData {
 
   @Override
   public long getTimeByIndex(int idx) {
-    return timeRet.get((idx + writeCurArrayIndex + 1) / capacity)[(idx + writeCurArrayIndex + 1)
-        % capacity];
+    return timeRet
+        .get((idx + writeCurArrayIndex + 1) / capacity)[(idx + writeCurArrayIndex + 1) % capacity];
   }
 
   @Override
   public long getLongByIndex(int idx) {
-    return longRet.get((idx + writeCurArrayIndex + 1) / capacity)[(idx + writeCurArrayIndex + 1)
-        % capacity];
+    return longRet
+        .get((idx + writeCurArrayIndex + 1) / capacity)[(idx + writeCurArrayIndex + 1) % capacity];
   }
 
   @Override
   public double getDoubleByIndex(int idx) {
-    return doubleRet.get((idx + writeCurArrayIndex + 1) / capacity)[(idx + writeCurArrayIndex + 1)
-        % capacity];
+    return doubleRet
+        .get((idx + writeCurArrayIndex + 1) / capacity)[(idx + writeCurArrayIndex + 1) % capacity];
   }
 
   @Override
   public int getIntByIndex(int idx) {
-    return intRet.get((idx + writeCurArrayIndex + 1) / capacity)[(idx + writeCurArrayIndex + 1)
-        % capacity];
+    return intRet
+        .get((idx + writeCurArrayIndex + 1) / capacity)[(idx + writeCurArrayIndex + 1) % capacity];
   }
 
   @Override
   public float getFloatByIndex(int idx) {
-    return floatRet.get((idx + writeCurArrayIndex + 1) / capacity)[(idx + writeCurArrayIndex + 1)
-        % capacity];
+    return floatRet
+        .get((idx + writeCurArrayIndex + 1) / capacity)[(idx + writeCurArrayIndex + 1) % capacity];
   }
 
   @Override
   public Binary getBinaryByIndex(int idx) {
-    return binaryRet.get((idx + writeCurArrayIndex + 1) / capacity)[(idx + writeCurArrayIndex + 1)
-        % capacity];
+    return binaryRet
+        .get((idx + writeCurArrayIndex + 1) / capacity)[(idx + writeCurArrayIndex + 1) % capacity];
   }
 
   @Override
   public boolean getBooleanByIndex(int idx) {
-    return booleanRet.get((idx + writeCurArrayIndex + 1) / capacity)[(idx + writeCurArrayIndex + 1)
-        % capacity];
+    return booleanRet
+        .get((idx + writeCurArrayIndex + 1) / capacity)[(idx + writeCurArrayIndex + 1) % capacity];
   }
 
   /**
-   * Read: When put data, the writeIndex increases while the readIndex remains 0.
-   * For descending read, we need to read from writeIndex to writeCurArrayIndex
+   * Read: When put data, the writeIndex increases while the readIndex remains 0. For descending
+   * read, we need to read from writeIndex to writeCurArrayIndex
    */
   @Override
   public BatchData flip() {
@@ -370,5 +370,4 @@ public class DescReadWriteBatchData extends DescReadBatchData {
     super.readCurListIndex = writeCurListIndex;
     return this;
   }
-
 }

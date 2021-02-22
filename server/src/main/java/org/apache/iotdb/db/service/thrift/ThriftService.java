@@ -19,33 +19,35 @@
 
 package org.apache.iotdb.db.service.thrift;
 
-import java.util.concurrent.CountDownLatch;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
+
 import org.apache.thrift.TProcessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.concurrent.CountDownLatch;
 
 public abstract class ThriftService implements IService {
 
   private static final Logger logger = LoggerFactory.getLogger(ThriftService.class);
   private static final String STATUS_UP = "UP";
   private static final String STATUS_DOWN = "DOWN";
-  protected final String mbeanName = String
-      .format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE,
-          getID().getJmxName());
+  protected final String mbeanName =
+      String.format(
+          "%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, getID().getJmxName());
   protected ThriftServiceThread thriftServiceThread;
   protected TProcessor processor;
 
   private CountDownLatch stopLatch;
 
-  //whether enable the service. By default it is true.
-  //If we just want to create an IoTDB instance without RPC service, set this false before call
-  //IoTDB.active()
+  // whether enable the service. By default it is true.
+  // If we just want to create an IoTDB instance without RPC service, set this false before call
+  // IoTDB.active()
   private boolean enable = true;
 
   public String getRPCServiceStatus() {
@@ -54,13 +56,13 @@ public abstract class ThriftService implements IService {
     } else {
       logger.debug("Start status is {} when getting status", thriftServiceThread.isServing());
     }
-    if(stopLatch == null) {
+    if (stopLatch == null) {
       logger.debug("Stop latch is null when getting status");
     } else {
       logger.debug("Stop latch is {} when getting status", stopLatch.getCount());
     }
 
-    if(thriftServiceThread != null && thriftServiceThread.isServing()) {
+    if (thriftServiceThread != null && thriftServiceThread.isServing()) {
       return STATUS_UP;
     } else {
       return STATUS_DOWN;
@@ -75,7 +77,7 @@ public abstract class ThriftService implements IService {
   public abstract ThriftService getImplementation();
 
   @Override
-  public  void start()  throws StartupException {
+  public void start() throws StartupException {
     JMXService.registerMBean(getImplementation(), mbeanName);
     startService();
   }
@@ -86,23 +88,26 @@ public abstract class ThriftService implements IService {
     JMXService.deregisterMBean(mbeanName);
   }
 
-  public abstract void initTProcessor() 
+  public abstract void initTProcessor()
       throws ClassNotFoundException, IllegalAccessException, InstantiationException;
+
   public abstract void initThriftServiceThread()
       throws IllegalAccessException, InstantiationException, ClassNotFoundException;
-  public abstract String getBindIP();
-  public abstract int getBindPort();
 
+  public abstract String getBindIP();
+
+  public abstract int getBindPort();
 
   @SuppressWarnings("squid:S2276")
   public void startService() throws StartupException {
     if (!enable) {
-      logger.info("{}: {} is disabled", IoTDBConstant.GLOBAL_DB_NAME,
-          this.getID().getName());
-      return ;
+      logger.info("{}: {} is disabled", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
+      return;
     }
     if (STATUS_UP.equals(getRPCServiceStatus())) {
-      logger.info("{}: {} has been already running now", IoTDBConstant.GLOBAL_DB_NAME,
+      logger.info(
+          "{}: {} has been already running now",
+          IoTDBConstant.GLOBAL_DB_NAME,
           this.getID().getName());
       return;
     }
@@ -115,24 +120,29 @@ public abstract class ThriftService implements IService {
       thriftServiceThread.start();
 
       while (!thriftServiceThread.isServing()) {
-        //sleep 100ms for waiting the rpc server start.
+        // sleep 100ms for waiting the rpc server start.
         Thread.sleep(100);
       }
-    } catch (InterruptedException | ClassNotFoundException |
-        IllegalAccessException | InstantiationException e) {
+    } catch (InterruptedException
+        | ClassNotFoundException
+        | IllegalAccessException
+        | InstantiationException e) {
       Thread.currentThread().interrupt();
       throw new StartupException(this.getID().getName(), e.getMessage());
     }
 
-    logger.info("{}: start {} successfully, listening on ip {} port {}", IoTDBConstant.GLOBAL_DB_NAME,
-        this.getID().getName(), getBindIP(), getBindPort());
+    logger.info(
+        "{}: start {} successfully, listening on ip {} port {}",
+        IoTDBConstant.GLOBAL_DB_NAME,
+        this.getID().getName(),
+        getBindIP(),
+        getBindPort());
   }
 
   private void reset() {
     thriftServiceThread = null;
     stopLatch = new CountDownLatch(1);
   }
-
 
   public void restartService() throws StartupException {
     stopService();
@@ -151,9 +161,11 @@ public abstract class ThriftService implements IService {
     try {
       stopLatch.await();
       reset();
-      logger.info("{}: close {} successfully", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
+      logger.info(
+          "{}: close {} successfully", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
     } catch (InterruptedException e) {
-      logger.error("{}: close {} failed because: ", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName(), e);
+      logger.error(
+          "{}: close {} failed because: ", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName(), e);
       Thread.currentThread().interrupt();
     }
   }

@@ -19,13 +19,14 @@
 
 package org.apache.iotdb.db.query.udf.core.access;
 
-import java.io.IOException;
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.access.RowIterator;
 import org.apache.iotdb.db.query.udf.api.access.RowWindow;
-import org.apache.iotdb.db.query.udf.datastructure.row.ElasticSerializableRowRecordList;
 import org.apache.iotdb.db.query.udf.datastructure.primitive.IntList;
+import org.apache.iotdb.db.query.udf.datastructure.row.ElasticSerializableRowRecordList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import java.io.IOException;
 
 public class RowWindowImpl implements RowWindow {
 
@@ -38,8 +39,11 @@ public class RowWindowImpl implements RowWindow {
   private final RowImpl row;
   private final RowIteratorImpl rowIterator;
 
-  public RowWindowImpl(ElasticSerializableRowRecordList rowRecordList, int[] columnIndexes,
-      TSDataType[] dataTypes, IntList windowRowIndexes) {
+  public RowWindowImpl(
+      ElasticSerializableRowRecordList rowRecordList,
+      int[] columnIndexes,
+      TSDataType[] dataTypes,
+      IntList windowRowIndexes) {
     this.rowRecordList = rowRecordList;
     this.columnIndexes = columnIndexes;
     this.dataTypes = dataTypes;
@@ -56,8 +60,9 @@ public class RowWindowImpl implements RowWindow {
   @Override
   public Row getRow(int rowIndex) throws IOException {
     if (rowIndex < 0 || windowRowIndexes.size() <= rowIndex) {
-      throw new ArrayIndexOutOfBoundsException(String
-          .format("Array index(%d) out of range [%d, %d).", rowIndex, 0, windowRowIndexes.size()));
+      throw new ArrayIndexOutOfBoundsException(
+          String.format(
+              "Array index(%d) out of range [%d, %d).", rowIndex, 0, windowRowIndexes.size()));
     }
     return row.setRowRecord(rowRecordList.getRowRecord(windowRowIndexes.get(rowIndex)));
   }

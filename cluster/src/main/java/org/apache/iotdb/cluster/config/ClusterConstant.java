@@ -27,6 +27,7 @@ public class ClusterConstant {
    * We only change the two values in tests to reduce test time, so they are essentially constant.
    */
   private static long electionLeastTimeOutMs = 2 * 1000L;
+
   private static long electionRandomTimeOutMs = 3 * 1000L;
 
   public static final int SLOT_NUM = 10000;

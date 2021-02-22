@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.tsfile;
 
-import java.io.File;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -30,13 +29,15 @@ import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import java.io.File;
+
 /**
  * An example of writing data with TSRecord to TsFile It uses the interface: public void
  * addMeasurement(MeasurementSchema measurementSchema) throws WriteProcessException
  */
 public class TsFileWriteWithTSRecord {
 
-  public static void main(String args[]) {
+  public static void main(String[] args) {
     try {
       String path = "test.tsfile";
       File f = FSFactoryProducer.getFSFactory().getFile(path);
@@ -48,12 +49,15 @@ public class TsFileWriteWithTSRecord {
         // add measurements into file schema
         for (int i = 0; i < 4; i++) {
           // add measurements into file schema
-          tsFileWriter.registerTimeseries(new Path(Constant.DEVICE_PREFIX + i, Constant.SENSOR_1),
-                  new MeasurementSchema(Constant.SENSOR_1, TSDataType.INT64, TSEncoding.RLE));
-          tsFileWriter.registerTimeseries(new Path(Constant.DEVICE_PREFIX + i, Constant.SENSOR_2),
-                  new MeasurementSchema(Constant.SENSOR_2, TSDataType.INT64, TSEncoding.RLE));
-          tsFileWriter.registerTimeseries(new Path(Constant.DEVICE_PREFIX + i, Constant.SENSOR_3),
-                  new MeasurementSchema(Constant.SENSOR_3, TSDataType.INT64, TSEncoding.RLE));
+          tsFileWriter.registerTimeseries(
+              new Path(Constant.DEVICE_PREFIX + i, Constant.SENSOR_1),
+              new MeasurementSchema(Constant.SENSOR_1, TSDataType.INT64, TSEncoding.RLE));
+          tsFileWriter.registerTimeseries(
+              new Path(Constant.DEVICE_PREFIX + i, Constant.SENSOR_2),
+              new MeasurementSchema(Constant.SENSOR_2, TSDataType.INT64, TSEncoding.RLE));
+          tsFileWriter.registerTimeseries(
+              new Path(Constant.DEVICE_PREFIX + i, Constant.SENSOR_3),
+              new MeasurementSchema(Constant.SENSOR_3, TSDataType.INT64, TSEncoding.RLE));
         }
 
         // construct TSRecord

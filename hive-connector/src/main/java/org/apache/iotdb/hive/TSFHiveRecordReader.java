@@ -18,12 +18,6 @@
  */
 package org.apache.iotdb.hive;
 
-import org.apache.hadoop.io.MapWritable;
-import org.apache.hadoop.io.NullWritable;
-import org.apache.hadoop.io.Text;
-import org.apache.hadoop.mapred.InputSplit;
-import org.apache.hadoop.mapred.JobConf;
-import org.apache.hadoop.mapred.RecordReader;
 import org.apache.iotdb.hadoop.tsfile.IReaderSet;
 import org.apache.iotdb.hadoop.tsfile.TSFInputSplit;
 import org.apache.iotdb.hadoop.tsfile.TSFRecordReader;
@@ -31,6 +25,13 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+
+import org.apache.hadoop.io.MapWritable;
+import org.apache.hadoop.io.NullWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapred.InputSplit;
+import org.apache.hadoop.mapred.JobConf;
+import org.apache.hadoop.mapred.RecordReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,19 +45,16 @@ public class TSFHiveRecordReader implements RecordReader<NullWritable, MapWritab
 
   private static final Logger logger = LoggerFactory.getLogger(TSFHiveRecordReader.class);
 
-  /**
-   * all datasets corresponding to one specific split
-   */
+  /** all datasets corresponding to one specific split */
   private List<QueryDataSet> dataSetList = new ArrayList<>();
   /**
-   * List for name of devices. The order corresponds to the order of dataSetList.
-   * Means that deviceIdList[i] is the name of device for dataSetList[i].
+   * List for name of devices. The order corresponds to the order of dataSetList. Means that
+   * deviceIdList[i] is the name of device for dataSetList[i].
    */
   private List<String> deviceIdList = new ArrayList<>();
-  /**
-   * The index of QueryDataSet that is currently processed
-   */
+  /** The index of QueryDataSet that is currently processed */
   private int currentIndex = 0;
+
   private boolean isReadDeviceId;
   private boolean isReadTime;
   private TsFileSequenceReader reader;
@@ -67,16 +65,22 @@ public class TSFHiveRecordReader implements RecordReader<NullWritable, MapWritab
     while (currentIndex < dataSetList.size()) {
       if (!dataSetList.get(currentIndex).hasNext()) {
         currentIndex++;
-      }
-      else {
+      } else {
         RowRecord rowRecord = dataSetList.get(currentIndex).next();
         List<Field> fields = rowRecord.getFields();
         long timestamp = rowRecord.getTimestamp();
 
         try {
           MapWritable res = new MapWritable();
-          getCurrentValue(deviceIdList, currentIndex, timestamp, isReadTime, isReadDeviceId, fields, measurementIds)
-                  .forEach((k, v) -> res.put(new Text(k.toString().toLowerCase()), v));
+          getCurrentValue(
+                  deviceIdList,
+                  currentIndex,
+                  timestamp,
+                  isReadTime,
+                  isReadDeviceId,
+                  fields,
+                  measurementIds)
+              .forEach((k, v) -> res.put(new Text(k.toString().toLowerCase()), v));
           value.putAll(res);
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
@@ -91,7 +95,7 @@ public class TSFHiveRecordReader implements RecordReader<NullWritable, MapWritab
 
   @Override
   public NullWritable createKey() {
-    return  NullWritable.get();
+    return NullWritable.get();
   }
 
   @Override
@@ -105,16 +109,17 @@ public class TSFHiveRecordReader implements RecordReader<NullWritable, MapWritab
     return 0;
   }
 
-
-  public TSFHiveRecordReader(InputSplit split, JobConf job)
-          throws IOException {
+  public TSFHiveRecordReader(InputSplit split, JobConf job) throws IOException {
     if (split instanceof TSFInputSplit) {
       TSFRecordReader.initialize((TSFInputSplit) split, job, this, dataSetList, deviceIdList);
-    }
-    else {
-      logger.error("The InputSplit class is not {}, the class is {}", TSFInputSplit.class.getName(),
-              split.getClass().getName());
-      throw new InternalError(String.format("The InputSplit class is not %s, the class is %s",
+    } else {
+      logger.error(
+          "The InputSplit class is not {}, the class is {}",
+          TSFInputSplit.class.getName(),
+          split.getClass().getName());
+      throw new InternalError(
+          String.format(
+              "The InputSplit class is not %s, the class is %s",
               TSFInputSplit.class.getName(), split.getClass().getName()));
     }
   }

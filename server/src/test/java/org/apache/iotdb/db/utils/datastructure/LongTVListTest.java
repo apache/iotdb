@@ -18,18 +18,18 @@
  */
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
+
+import org.apache.commons.lang.ArrayUtils;
+import org.junit.Assert;
+import org.junit.Test;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-import org.apache.commons.lang.ArrayUtils;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
-import org.junit.Assert;
-import org.junit.Test;
-
 public class LongTVListTest {
-
 
   @Test
   public void testLongTVList1() {
@@ -39,8 +39,8 @@ public class LongTVListTest {
     }
     tvList.sort();
     for (long i = 0; i < tvList.size; i++) {
-      Assert.assertEquals(i, tvList.getLong((int)i));
-      Assert.assertEquals(i, tvList.getTime((int)i));
+      Assert.assertEquals(i, tvList.getLong((int) i));
+      Assert.assertEquals(i, tvList.getTime((int) i));
     }
   }
 
@@ -52,8 +52,8 @@ public class LongTVListTest {
     }
     tvList.sort();
     for (long i = 0; i < tvList.size; i++) {
-      Assert.assertEquals(i, tvList.getLong((int)i));
-      Assert.assertEquals(i, tvList.getTime((int)i));
+      Assert.assertEquals(i, tvList.getLong((int) i));
+      Assert.assertEquals(i, tvList.getTime((int) i));
     }
   }
 
@@ -71,8 +71,8 @@ public class LongTVListTest {
     tvList.sort();
     inputs.sort(TimeValuePair::compareTo);
     for (long i = 0; i < tvList.size; i++) {
-      Assert.assertEquals(inputs.get((int)i).getTimestamp(), tvList.getTime((int)i));
-      Assert.assertEquals(inputs.get((int)i).getValue().getLong(), tvList.getLong((int)i));
+      Assert.assertEquals(inputs.get((int) i).getTimestamp(), tvList.getTime((int) i));
+      Assert.assertEquals(inputs.get((int) i).getValue().getLong(), tvList.getLong((int) i));
     }
   }
 
@@ -85,11 +85,14 @@ public class LongTVListTest {
       timeList.add(i);
       longList.add(i);
     }
-    tvList.putLongs(ArrayUtils.toPrimitive(timeList.toArray(new Long[0])),
-        ArrayUtils.toPrimitive(longList.toArray(new Long[0])), 0, 1000);
+    tvList.putLongs(
+        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])),
+        ArrayUtils.toPrimitive(longList.toArray(new Long[0])),
+        0,
+        1000);
     for (long i = 0; i < tvList.size; i++) {
-      Assert.assertEquals(tvList.size - i, tvList.getLong((int)i));
-      Assert.assertEquals(tvList.size - i, tvList.getTime((int)i));
+      Assert.assertEquals(tvList.size - i, tvList.getLong((int) i));
+      Assert.assertEquals(tvList.size - i, tvList.getTime((int) i));
     }
   }
 }

@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.cluster.log;
 
-import static org.junit.Assert.assertEquals;
-
-import java.nio.ByteBuffer;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.Constants;
+
 import org.junit.Test;
+
+import java.nio.ByteBuffer;
+
+import static org.junit.Assert.assertEquals;
 
 public class HardStateTest {
 
@@ -33,8 +35,10 @@ public class HardStateTest {
     // Not NULL
     HardState state = new HardState();
     state.setCurrentTerm(2);
-    state.setVoteFor(new Node("127.0.0.1", 30000, 0, 40000)
-                      .setClientIp("127.0.0.1").setClientPort(Constants.RPC_PORT));
+    state.setVoteFor(
+        new Node("127.0.0.1", 30000, 0, 40000)
+            .setClientIp("127.0.0.1")
+            .setClientPort(Constants.RPC_PORT));
     ByteBuffer buffer = state.serialize();
     HardState newState = HardState.deserialize(buffer);
     assertEquals(state, newState);

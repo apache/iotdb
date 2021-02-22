@@ -18,17 +18,6 @@
  */
 package org.apache.iotdb.cluster;
 
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.DefaultParser;
-import org.apache.commons.cli.Option;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
 import org.apache.iotdb.cluster.client.async.AsyncMetaClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.config.ClusterConfig;
@@ -46,6 +35,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+
 import org.apache.thrift.TException;
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
@@ -54,6 +44,10 @@ import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
 
 public class ClusterMain {
 
@@ -71,15 +65,15 @@ public class ClusterMain {
 
   public static void main(String[] args) {
     if (args.length < 1) {
-      logger.error("Usage: <-s|-a|-r> "
+      logger.error(
+          "Usage: <-s|-a|-r> "
               + "[-D{} <cluster module configure file>] "
               + "[-D{} <server module configure file>] "
               + "-s: start the node as a seed\n"
               + "-a: start the node as a new node\n"
               + "-r: remove the node out of the cluster\n",
           ClusterConstant.CLUSTER_CONF,
-          IoTDBConstant.IOTDB_CONF
-      );
+          IoTDBConstant.IOTDB_CONF);
 
       return;
     }
@@ -88,7 +82,7 @@ public class ClusterMain {
     // the server's configuration.
     IoTDBDescriptor.getInstance().getConfig().setEnableRPCService(false);
     IoTDBDescriptor.getInstance().getConfig().setSyncEnable(false);
-    //auto create schema is took over by cluster module, so we disable it in the server module.
+    // auto create schema is took over by cluster module, so we disable it in the server module.
     IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
 
     // params check
@@ -96,11 +90,10 @@ public class ClusterMain {
       ClusterDescriptor.getInstance().replaceHostnameWithIp();
     } catch (Exception e) {
       logger.error("replace hostname with ip failed, {}", e.getMessage());
-      return ;
+      return;
     }
 
     String mode = args[0];
-
 
     logger.info("Running mode {}", mode);
     if (MODE_START.equals(mode)) {
@@ -110,8 +103,11 @@ public class ClusterMain {
         // preStartCustomize();
         metaServer.start();
         metaServer.buildCluster();
-      } catch (TTransportException | StartupException | QueryProcessException |
-          StartUpCheckFailureException | ConfigInconsistentException e) {
+      } catch (TTransportException
+          | StartupException
+          | QueryProcessException
+          | StartUpCheckFailureException
+          | ConfigInconsistentException e) {
         metaServer.stop();
         logger.error("Fail to start meta server", e);
       }
@@ -121,7 +117,11 @@ public class ClusterMain {
         // preStartCustomize();
         metaServer.start();
         metaServer.joinCluster();
-      } catch (TTransportException | StartupException | QueryProcessException | StartUpCheckFailureException | ConfigInconsistentException e) {
+      } catch (TTransportException
+          | StartupException
+          | QueryProcessException
+          | StartUpCheckFailureException
+          | ConfigInconsistentException e) {
         metaServer.stop();
         logger.error("Fail to join cluster", e);
       }
@@ -140,16 +140,18 @@ public class ClusterMain {
     ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
     // check the initial replicateNum and refuse to start when the replicateNum <= 0
     if (config.getReplicationNum() <= 0) {
-      String message = String.format("ReplicateNum should be greater than 0 instead of %d.",
-          config.getReplicationNum());
+      String message =
+          String.format(
+              "ReplicateNum should be greater than 0 instead of %d.", config.getReplicationNum());
       throw new StartupException(metaServer.getMember().getName(), message);
     }
     // check the initial cluster size and refuse to start when the size < quorum
     int quorum = config.getReplicationNum() / 2 + 1;
     if (config.getSeedNodeUrls().size() < quorum) {
-      String message = String.format("Seed number less than quorum, seed number: %s, quorum: "
-              + "%s.",
-          config.getSeedNodeUrls().size(), quorum);
+      String message =
+          String.format(
+              "Seed number less than quorum, seed number: %s, quorum: " + "%s.",
+              config.getSeedNodeUrls().size(), quorum);
       throw new StartupException(metaServer.getMember().getName(), message);
     }
     // assert not duplicated nodes
@@ -157,8 +159,9 @@ public class ClusterMain {
     for (String url : config.getSeedNodeUrls()) {
       Node node = ClusterUtils.parseNode(url);
       if (seedNodes.contains(node)) {
-        String message = String.format(
-            "SeedNodes must not repeat each other. SeedNodes: %s", config.getSeedNodeUrls());
+        String message =
+            String.format(
+                "SeedNodes must not repeat each other. SeedNodes: %s", config.getSeedNodeUrls());
         throw new StartupException(metaServer.getMember().getName(), message);
       }
       seedNodes.add(node);
@@ -167,10 +170,11 @@ public class ClusterMain {
     // assert this node is in all nodes when restart
     if (!metaServer.getMember().getAllNodes().isEmpty()) {
       if (!metaServer.getMember().getAllNodes().contains(metaServer.getMember().getThisNode())) {
-        String message = String.format(
-            "All nodes in partitionTables must contains local node in start-server mode. "
-                + "LocalNode: %s, AllNodes: %s",
-            metaServer.getMember().getThisNode(), metaServer.getMember().getAllNodes());
+        String message =
+            String.format(
+                "All nodes in partitionTables must contains local node in start-server mode. "
+                    + "LocalNode: %s, AllNodes: %s",
+                metaServer.getMember().getThisNode(), metaServer.getMember().getAllNodes());
         throw new StartupException(metaServer.getMember().getName(), message);
       } else {
         return;
@@ -179,18 +183,19 @@ public class ClusterMain {
 
     // assert this node is in seed nodes list
     Node localNode = new Node();
-    localNode.setIp(IoTDBDescriptor.getInstance().getConfig().getRpcAddress()).setMetaPort(config.getInternalMetaPort())
-        .setDataPort(config.getInternalDataPort()).setClientPort(config.getClusterRpcPort());
+    localNode
+        .setIp(IoTDBDescriptor.getInstance().getConfig().getRpcAddress())
+        .setMetaPort(config.getInternalMetaPort())
+        .setDataPort(config.getInternalDataPort())
+        .setClientPort(config.getClusterRpcPort());
     if (!seedNodes.contains(localNode)) {
-      String message = String.format(
-          "SeedNodes must contains local node in start-server mode. LocalNode: %s ,SeedNodes: %s",
-          localNode.toString(), config.getSeedNodeUrls());
+      String message =
+          String.format(
+              "SeedNodes must contains local node in start-server mode. LocalNode: %s ,SeedNodes: %s",
+              localNode.toString(), config.getSeedNodeUrls());
       throw new StartupException(metaServer.getMember().getName(), message);
     }
   }
-
-
-
 
   private static void doRemoveNode(String[] args) throws IOException {
     if (args.length != 3) {
@@ -200,8 +205,8 @@ public class ClusterMain {
     String ip = args[1];
     int metaPort = Integer.parseInt(args[2]);
     ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
-    TProtocolFactory factory = config
-        .isRpcThriftCompressionEnabled() ? new TCompactProtocol.Factory() : new Factory();
+    TProtocolFactory factory =
+        config.isRpcThriftCompressionEnabled() ? new TCompactProtocol.Factory() : new Factory();
     Node nodeToRemove = new Node();
     nodeToRemove.setIp(ip).setMetaPort(metaPort);
     // try sending the request to each seed node
@@ -244,50 +249,50 @@ public class ClusterMain {
     return metaServer;
   }
 
-  /**
-   * Developers may perform pre-start customizations here for debugging or experiments.
-   */
+  /** Developers may perform pre-start customizations here for debugging or experiments. */
   @SuppressWarnings("java:S125") // leaving examples
   private static void preStartCustomize() {
     // customize data distribution
     // The given example tries to divide storage groups like "root.sg_1", "root.sg_2"... into k
     // nodes evenly, and use default strategy for other groups
-    SlotPartitionTable.setSlotStrategy(new SlotStrategy() {
-      SlotStrategy defaultStrategy = new SlotStrategy.DefaultStrategy();
-      int k = 3;
-      @Override
-      public int calculateSlotByTime(String storageGroupName, long timestamp, int maxSlotNum) {
-        int sgSerialNum = extractSerialNumInSGName(storageGroupName) % k;
-        if (sgSerialNum > 0) {
-          return maxSlotNum / k * sgSerialNum;
-        } else {
-          return defaultStrategy.calculateSlotByTime(storageGroupName, timestamp, maxSlotNum);
-        }
-      }
+    SlotPartitionTable.setSlotStrategy(
+        new SlotStrategy() {
+          SlotStrategy defaultStrategy = new SlotStrategy.DefaultStrategy();
+          int k = 3;
 
-      @Override
-      public int calculateSlotByPartitionNum(String storageGroupName, long partitionId,
-          int maxSlotNum) {
-        int sgSerialNum = extractSerialNumInSGName(storageGroupName) % k;
-        if (sgSerialNum > 0) {
-          return maxSlotNum / k * sgSerialNum;
-        } else {
-          return defaultStrategy
-              .calculateSlotByPartitionNum(storageGroupName, partitionId, maxSlotNum);
-        }
-      }
+          @Override
+          public int calculateSlotByTime(String storageGroupName, long timestamp, int maxSlotNum) {
+            int sgSerialNum = extractSerialNumInSGName(storageGroupName) % k;
+            if (sgSerialNum > 0) {
+              return maxSlotNum / k * sgSerialNum;
+            } else {
+              return defaultStrategy.calculateSlotByTime(storageGroupName, timestamp, maxSlotNum);
+            }
+          }
 
-      private int extractSerialNumInSGName(String storageGroupName) {
-        String[] s = storageGroupName.split("_");
-        if (s.length != 2) {
-          return -1;
-        }
-        try {
-          return Integer.parseInt(s[1]);
-        } catch (NumberFormatException e) {
-          return -1;
-        }
-      }
-    });
+          @Override
+          public int calculateSlotByPartitionNum(
+              String storageGroupName, long partitionId, int maxSlotNum) {
+            int sgSerialNum = extractSerialNumInSGName(storageGroupName) % k;
+            if (sgSerialNum > 0) {
+              return maxSlotNum / k * sgSerialNum;
+            } else {
+              return defaultStrategy.calculateSlotByPartitionNum(
+                  storageGroupName, partitionId, maxSlotNum);
+            }
+          }
+
+          private int extractSerialNumInSGName(String storageGroupName) {
+            String[] s = storageGroupName.split("_");
+            if (s.length != 2) {
+              return -1;
+            }
+            try {
+              return Integer.parseInt(s[1]);
+            } catch (NumberFormatException e) {
+              return -1;
+            }
+          }
+        });
   }
 }

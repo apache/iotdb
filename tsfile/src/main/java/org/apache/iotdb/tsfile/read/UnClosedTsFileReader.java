@@ -18,31 +18,25 @@
  */
 package org.apache.iotdb.tsfile.read;
 
-import java.io.IOException;
-
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 
-/**
- * A class for reading unclosed tsfile.
- */
+import java.io.IOException;
+
+/** A class for reading unclosed tsfile. */
 public class UnClosedTsFileReader extends TsFileSequenceReader {
 
   public UnClosedTsFileReader(String file) throws IOException {
     super(file, false);
   }
 
-  /**
-   * unclosed file has no tail magic data.
-   */
+  /** unclosed file has no tail magic data. */
   @Override
   public String readTailMagic() throws IOException {
     throw new NotImplementedException();
   }
 
-  /**
-   * unclosed file has no file metadata.
-   */
+  /** unclosed file has no file metadata. */
   @Override
   public TsFileMetadata readFileMetadata() throws IOException {
     throw new NotImplementedException();

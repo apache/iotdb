@@ -19,12 +19,6 @@
 
 package org.apache.iotdb.cluster.server.handlers.caller;
 
-import static junit.framework.TestCase.assertEquals;
-import static junit.framework.TestCase.assertFalse;
-import static junit.framework.TestCase.assertTrue;
-
-import java.io.IOException;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.cluster.common.TestException;
 import org.apache.iotdb.cluster.common.TestLogManager;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
@@ -34,9 +28,15 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.Constants;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.IOException;
+
+import static junit.framework.TestCase.*;
 
 public class HeartbeatHandlerTest {
 
@@ -46,16 +46,16 @@ public class HeartbeatHandlerTest {
 
   @Before
   public void setUp() {
-    metaGroupMember = new TestMetaGroupMember() {
-      @Override
-      public void catchUp(Node follower, long lastLogIdx) {
-        synchronized (metaGroupMember) {
-          catchUpFlag = true;
-          metaGroupMember.notifyAll();
-        }
-      }
-
-    };
+    metaGroupMember =
+        new TestMetaGroupMember() {
+          @Override
+          public void catchUp(Node follower, long lastLogIdx) {
+            synchronized (metaGroupMember) {
+              catchUpFlag = true;
+              metaGroupMember.notifyAll();
+            }
+          }
+        };
     metaGroupMember.initPeerMap();
     metaGroupMember.setLogManager(new TestLogManager(1));
   }
@@ -73,8 +73,10 @@ public class HeartbeatHandlerTest {
     HeartBeatResponse response = new HeartBeatResponse();
     response.setTerm(Response.RESPONSE_AGREE);
     response.setLastLogTerm(-2);
-    response.setFollower(new Node("192.168.0.6", 9003, 6, 40010).setClientIp("192.168.0.6")
-        .setClientPort(Constants.RPC_PORT));
+    response.setFollower(
+        new Node("192.168.0.6", 9003, 6, 40010)
+            .setClientIp("192.168.0.6")
+            .setClientPort(Constants.RPC_PORT));
     catchUpFlag = false;
     for (int i = 0; i < looseInconsistentNum; i++) {
       handler.onComplete(response);

@@ -19,15 +19,14 @@
 
 package org.apache.iotdb.cluster.server.member;
 
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.monitor.Peer;
 
-/**
- * interfaces that the mbean of RaftMember will use
- */
+import java.util.List;
+import java.util.Map;
+
+/** interfaces that the mbean of RaftMember will use */
 public interface RaftMemberMBean {
 
   List<Node> getAllNodes();
@@ -57,6 +56,4 @@ public interface RaftMemberMBean {
   boolean isCatchUpServiceWorking();
 
   Map<Node, Long> getLastCatchUpResponseTime();
-
-
 }

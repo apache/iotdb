@@ -18,13 +18,9 @@
  */
 package org.apache.iotdb.spark.tsfile.qp.common;
 
-
 import org.apache.iotdb.spark.tsfile.qp.exception.BasicOperatorException;
 
-/**
- * basic operators include < > >= <= !=.
- */
-
+/** basic operators include < > >= <= !=. */
 public class BasicOperator extends FilterOperator {
 
   private String seriesPath;
@@ -55,7 +51,6 @@ public class BasicOperator extends FilterOperator {
   public String getSinglePath() {
     return singlePath;
   }
-
 
   @Override
   public BasicOperator clone() {

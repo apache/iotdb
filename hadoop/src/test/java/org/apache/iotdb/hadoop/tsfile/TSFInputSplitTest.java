@@ -28,10 +28,7 @@ import java.io.IOException;
 
 import static org.junit.Assert.*;
 
-/**
- * Test the {@link TSFInputSplit}
- * Assert the readFields function and write function is right
- */
+/** Test the {@link TSFInputSplit} Assert the readFields function and write function is right */
 public class TSFInputSplitTest {
 
   private TSFInputSplit wInputSplit;
@@ -70,5 +67,4 @@ public class TSFInputSplitTest {
       fail(e.getMessage());
     }
   }
-
 }

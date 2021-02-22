@@ -18,22 +18,22 @@
  */
 package org.apache.iotdb.db.conf.directories;
 
-import java.io.File;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.strategy.DirectoryStrategy;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * The main class of multiple directories. Used to allocate folders to data files.
- */
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+/** The main class of multiple directories. Used to allocate folders to data files. */
 public class DirectoryManager {
 
   private static final Logger logger = LoggerFactory.getLogger(DirectoryManager.class);
@@ -47,16 +47,16 @@ public class DirectoryManager {
     sequenceFileFolders =
         new ArrayList<>(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
     for (int i = 0; i < sequenceFileFolders.size(); i++) {
-      sequenceFileFolders
-          .set(i, sequenceFileFolders.get(i) + File.separator + IoTDBConstant.SEQUENCE_FLODER_NAME);
+      sequenceFileFolders.set(
+          i, sequenceFileFolders.get(i) + File.separator + IoTDBConstant.SEQUENCE_FLODER_NAME);
     }
     mkDataDirs(sequenceFileFolders);
 
     unsequenceFileFolders =
         new ArrayList<>(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
     for (int i = 0; i < unsequenceFileFolders.size(); i++) {
-      unsequenceFileFolders.set(i,
-          unsequenceFileFolders.get(i) + File.separator + IoTDBConstant.UNSEQUENCE_FLODER_NAME);
+      unsequenceFileFolders.set(
+          i, unsequenceFileFolders.get(i) + File.separator + IoTDBConstant.UNSEQUENCE_FLODER_NAME);
     }
     mkDataDirs(unsequenceFileFolders);
 
@@ -90,8 +90,7 @@ public class DirectoryManager {
       this.unsequenceFileFolders = unsequenceFileFolders;
       logger.info("Success to update file folders.");
     } catch (DiskSpaceInsufficientException e) {
-      logger.error(
-          "Fail to update file folders, use previous folders.", e);
+      logger.error("Fail to update file folders, use previous folders.", e);
       throw new LoadConfigurationException(
           "Fail to update file folders because all disks of folders are full, use previous folders.");
     }
@@ -109,9 +108,10 @@ public class DirectoryManager {
       logger.info("Success to update directory strategy.");
     } catch (Exception e) {
       logger.error("Fail to update directory strategy {}, use previous strategy", strategyName, e);
-      throw new LoadConfigurationException(String.format(
-          "Fail to update directory strategy because can't find strategy %s for mult-directories, use previous strategy",
-          strategyName));
+      throw new LoadConfigurationException(
+          String.format(
+              "Fail to update directory strategy because can't find strategy %s for mult-directories, use previous strategy",
+              strategyName));
     }
   }
 
@@ -125,12 +125,12 @@ public class DirectoryManager {
       if (file.mkdirs()) {
         logger.info("folder {} doesn't exist, create it", file.getPath());
       } else {
-        logger.info("create folder {} failed. Is the folder existed: {}", file.getPath(),
-            file.exists());
+        logger.info(
+            "create folder {} failed. Is the folder existed: {}", file.getPath(), file.exists());
       }
     }
   }
-  
+
   public String getNextFolderForSequenceFile() throws DiskSpaceInsufficientException {
     return getSequenceFileFolder(getNextFolderIndexForSequenceFile());
   }
@@ -189,5 +189,4 @@ public class DirectoryManager {
   public List<String> getAllUnSequenceFileFolders() {
     return new ArrayList<>(unsequenceFileFolders);
   }
-
 }

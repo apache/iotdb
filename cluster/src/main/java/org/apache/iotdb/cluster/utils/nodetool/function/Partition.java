@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,31 +18,43 @@
  */
 package org.apache.iotdb.cluster.utils.nodetool.function;
 
-import static org.apache.iotdb.cluster.utils.nodetool.Printer.msgPrintln;
+import org.apache.iotdb.cluster.partition.PartitionGroup;
+import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitorMBean;
 
 import io.airlift.airline.Command;
 import io.airlift.airline.Option;
 import org.apache.commons.collections4.map.MultiKeyMap;
-import org.apache.iotdb.cluster.partition.PartitionGroup;
-import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitorMBean;
 
-@Command(name = "partition", description = "Print the hosts information of specific storage group and time range")
+import static org.apache.iotdb.cluster.utils.nodetool.Printer.msgPrintln;
+
+@Command(
+    name = "partition",
+    description = "Print the hosts information of specific storage group and time range")
 public class Partition extends NodeToolCmd {
 
-  @Option(title = "path", required = true, name = {"-path",
-      "--path"}, description = "Specify a path for accurate hosts information")
+  @Option(
+      title = "path",
+      required = true,
+      name = {"-path", "--path"},
+      description = "Specify a path for accurate hosts information")
   private String path = null;
 
-  @Option(title = "start time", name = {"-st",
-      "--starttime"}, description = "Specify a start time for partition")
+  @Option(
+      title = "start time",
+      name = {"-st", "--starttime"},
+      description = "Specify a start time for partition")
   private long startTime = System.currentTimeMillis();
 
-  @Option(title = "end time", name = {"-et",
-      "--endtime"}, description = "Specify a end time for partition")
+  @Option(
+      title = "end time",
+      name = {"-et", "--endtime"},
+      description = "Specify a end time for partition")
   private long endTime = System.currentTimeMillis();
 
-  @Option(title = "metadata", name = {"-m",
-      "--metadata"}, description = "Query metadata")
+  @Option(
+      title = "metadata",
+      name = {"-m", "--metadata"},
+      description = "Query metadata")
   private boolean metadata = false;
 
   @Override
@@ -69,17 +81,22 @@ public class Partition extends NodeToolCmd {
   }
 
   private void queryDataPartition(ClusterMonitorMBean proxy) {
-    MultiKeyMap<Long, PartitionGroup> timeRangeMapRaftGroup = proxy
-        .getDataPartition(path, startTime, endTime);
+    MultiKeyMap<Long, PartitionGroup> timeRangeMapRaftGroup =
+        proxy.getDataPartition(path, startTime, endTime);
     if (timeRangeMapRaftGroup == null) {
       msgPrintln(BUILDING_CLUSTER_INFO);
     } else if (timeRangeMapRaftGroup.isEmpty()) {
       msgPrintln(String.format("The storage group of path <%s> doesn't exist.", path));
     } else {
       timeRangeMapRaftGroup.forEach(
-          (timeRange, raftGroup) -> msgPrintln(String.format("DATA<%s, %d, %d>\t->\t%s", path,
-              (long) timeRange.getKey(0), (long) timeRange.getKey(1),
-              partitionGroupToString(raftGroup))));
+          (timeRange, raftGroup) ->
+              msgPrintln(
+                  String.format(
+                      "DATA<%s, %d, %d>\t->\t%s",
+                      path,
+                      (long) timeRange.getKey(0),
+                      (long) timeRange.getKey(1),
+                      partitionGroupToString(raftGroup))));
     }
   }
 }

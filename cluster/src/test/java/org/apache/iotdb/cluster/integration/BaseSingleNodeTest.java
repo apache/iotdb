@@ -19,16 +19,18 @@
 
 package org.apache.iotdb.cluster.integration;
 
-import java.util.Collections;
-import java.util.List;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.server.MetaClusterServer;
 import org.apache.iotdb.cluster.utils.Constants;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.session.Session;
+
 import org.junit.After;
 import org.junit.Before;
+
+import java.util.Collections;
+import java.util.List;
 
 public abstract class BaseSingleNodeTest {
 
@@ -60,8 +62,11 @@ public abstract class BaseSingleNodeTest {
     replicaNum = ClusterDescriptor.getInstance().getConfig().getReplicationNum();
     autoCreateSchema = ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(true);
-    ClusterDescriptor.getInstance().getConfig().setSeedNodeUrls(Collections.singletonList(
-        String.format("127.0.0.1:9003:40011:%d", Constants.RPC_PORT)));
+    ClusterDescriptor.getInstance()
+        .getConfig()
+        .setSeedNodeUrls(
+            Collections.singletonList(
+                String.format("127.0.0.1:9003:40011:%d", Constants.RPC_PORT)));
     ClusterDescriptor.getInstance().getConfig().setReplicationNum(1);
     ClusterDescriptor.getInstance().getConfig().setEnableAutoCreateSchema(true);
   }

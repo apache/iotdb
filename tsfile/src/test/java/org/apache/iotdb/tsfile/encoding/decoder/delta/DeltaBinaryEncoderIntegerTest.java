@@ -18,18 +18,18 @@
  */
 package org.apache.iotdb.tsfile.encoding.decoder.delta;
 
-import static org.junit.Assert.assertEquals;
+import org.apache.iotdb.tsfile.encoding.decoder.DeltaBinaryDecoder;
+import org.apache.iotdb.tsfile.encoding.encoder.DeltaBinaryEncoder;
+
+import org.junit.Before;
+import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Random;
 
-import org.junit.Before;
-import org.junit.Test;
-
-import org.apache.iotdb.tsfile.encoding.decoder.DeltaBinaryDecoder;
-import org.apache.iotdb.tsfile.encoding.encoder.DeltaBinaryEncoder;
+import static org.junit.Assert.assertEquals;
 
 public class DeltaBinaryEncoderIntegerTest {
 
@@ -48,7 +48,7 @@ public class DeltaBinaryEncoderIntegerTest {
 
   @Test
   public void testBasic() throws IOException {
-    int data[] = new int[ROW_NUM];
+    int[] data = new int[ROW_NUM];
     for (int i = 0; i < ROW_NUM; i++) {
       data[i] = i * i;
     }
@@ -57,7 +57,7 @@ public class DeltaBinaryEncoderIntegerTest {
 
   @Test
   public void testBoundInt() throws IOException {
-    int data[] = new int[ROW_NUM];
+    int[] data = new int[ROW_NUM];
     for (int i = 0; i < 10; i++) {
       boundInt(i, data);
     }
@@ -72,7 +72,7 @@ public class DeltaBinaryEncoderIntegerTest {
 
   @Test
   public void testRandom() throws IOException {
-    int data[] = new int[ROW_NUM];
+    int[] data = new int[ROW_NUM];
     for (int i = 0; i < ROW_NUM; i++) {
       data[i] = ran.nextInt();
     }
@@ -81,7 +81,7 @@ public class DeltaBinaryEncoderIntegerTest {
 
   @Test
   public void testMaxMin() throws IOException {
-    int data[] = new int[ROW_NUM];
+    int[] data = new int[ROW_NUM];
     for (int i = 0; i < ROW_NUM; i++) {
       data[i] = (i & 1) == 0 ? Integer.MAX_VALUE : Integer.MIN_VALUE;
     }
@@ -107,5 +107,4 @@ public class DeltaBinaryEncoderIntegerTest {
       assertEquals(data[i++], reader.readInt(buffer));
     }
   }
-
 }

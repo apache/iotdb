@@ -18,6 +18,15 @@
  */
 package org.apache.iotdb.db.auth.user;
 
+import org.apache.iotdb.db.auth.AuthException;
+import org.apache.iotdb.db.auth.entity.User;
+import org.apache.iotdb.db.concurrent.HashLock;
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.utils.AuthUtils;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -25,13 +34,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.db.auth.entity.User;
-import org.apache.iotdb.db.concurrent.HashLock;
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.utils.AuthUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * This class stores information of each user in a separate file within a directory, and cache them
@@ -60,9 +62,7 @@ public abstract class BasicUserManager implements IUserManager {
     reset();
   }
 
-  /**
-   * Try to load admin. If it doesn't exist, automatically create one.
-   */
+  /** Try to load admin. If it doesn't exist, automatically create one. */
   private void initAdmin() throws AuthException {
     User admin;
     try {
@@ -312,7 +312,6 @@ public abstract class BasicUserManager implements IUserManager {
     }
   }
 
-
   @Override
   public void replaceAllUsers(Map<String, User> users) throws AuthException {
     synchronized (this) {
@@ -329,5 +328,4 @@ public abstract class BasicUserManager implements IUserManager {
       }
     }
   }
-
 }

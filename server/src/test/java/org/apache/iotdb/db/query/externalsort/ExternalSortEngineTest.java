@@ -28,6 +28,7 @@ import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -41,7 +42,8 @@ import java.util.Random;
 
 public class ExternalSortEngineTest {
 
-  private String baseDir = TestConstant.BASE_OUTPUT_PATH.concat("externalSortTestTmp").concat(File.separator);
+  private String baseDir =
+      TestConstant.BASE_OUTPUT_PATH.concat("externalSortTestTmp").concat(File.separator);
   private long queryId = EnvironmentUtils.TEST_QUERY_JOB_ID;
   private SimpleExternalSortEngine engine;
   private String preBaseDir;
@@ -74,7 +76,7 @@ public class ExternalSortEngineTest {
     readerList1 = engine.executeForIPointReader(queryId, chunkReaderWrapList);
     PriorityMergeReader reader1 = new PriorityMergeReader(readerList1, 1);
     PriorityMergeReader reader2 = new PriorityMergeReader(readerList2, 1);
-//    check(reader1, reader2);
+    //    check(reader1, reader2);
     reader1.close();
     reader2.close();
   }
@@ -94,7 +96,7 @@ public class ExternalSortEngineTest {
     PriorityMergeReader reader1 = new PriorityMergeReader(readerList1, 1);
     PriorityMergeReader reader2 = new PriorityMergeReader(readerList2, 1);
 
-//    check(reader1, reader2);
+    //    check(reader1, reader2);
     reader1.close();
     reader2.close();
   }
@@ -133,7 +135,7 @@ public class ExternalSortEngineTest {
     System.out.println(
         "Time used WITHOUT external sort:" + (System.currentTimeMillis() - startTimestamp) + "ms");
 
-    //reader1.close();
+    // reader1.close();
     reader2.close();
   }
 
@@ -171,9 +173,9 @@ public class ExternalSortEngineTest {
   }
 
   private List<IPointReader> genSimple() {
-    IPointReader reader1 = new FakedSeriesReader(new long[]{1, 2, 3, 4, 5}, 1L);
-    IPointReader reader2 = new FakedSeriesReader(new long[]{1, 5, 6, 7, 8}, 2L);
-    IPointReader reader3 = new FakedSeriesReader(new long[]{4, 5, 6, 7, 10}, 3L);
+    IPointReader reader1 = new FakedSeriesReader(new long[] {1, 2, 3, 4, 5}, 1L);
+    IPointReader reader2 = new FakedSeriesReader(new long[] {1, 5, 6, 7, 8}, 2L);
+    IPointReader reader3 = new FakedSeriesReader(new long[] {4, 5, 6, 7, 10}, 3L);
 
     List<IPointReader> readerList = new ArrayList<>();
     readerList.add(reader1);

@@ -19,6 +19,4 @@
 
 package org.apache.iotdb.cluster.server.member;
 
-public interface MetaGroupMemberMBean {
-
-}
+public interface MetaGroupMemberMBean {}

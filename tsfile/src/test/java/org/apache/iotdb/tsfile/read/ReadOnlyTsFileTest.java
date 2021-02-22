@@ -18,15 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read;
 
-import java.io.IOException;
-import java.util.ArrayList;
-
-import org.junit.Assert;
-import org.junit.Test;
-
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -41,6 +33,12 @@ import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
+
+import org.junit.Assert;
+import org.junit.Test;
+
+import java.io.IOException;
+import java.util.ArrayList;
 
 public class ReadOnlyTsFileTest {
 
@@ -63,14 +61,21 @@ public class ReadOnlyTsFileTest {
   private void queryTest(int rowCount) throws IOException {
     Filter filter = TimeFilter.lt(1480562618100L);
     Filter filter2 = ValueFilter.gt(new Binary("dog"));
-    Filter filter3 = FilterFactory.and(TimeFilter.gtEq(1480562618000L), TimeFilter.ltEq(1480562618100L));
+    Filter filter3 =
+        FilterFactory.and(TimeFilter.gtEq(1480562618000L), TimeFilter.ltEq(1480562618100L));
 
-    IExpression IExpression = BinaryExpression
-        .or(BinaryExpression.and(new SingleSeriesExpression(new Path("d1", "s1"), filter),
-            new SingleSeriesExpression(new Path("d1","s4"), filter2)), new GlobalTimeExpression(filter3));
+    IExpression IExpression =
+        BinaryExpression.or(
+            BinaryExpression.and(
+                new SingleSeriesExpression(new Path("d1", "s1"), filter),
+                new SingleSeriesExpression(new Path("d1", "s4"), filter2)),
+            new GlobalTimeExpression(filter3));
 
-    QueryExpression queryExpression = QueryExpression.create().addSelectedPath(new Path("d1", "s1"))
-        .addSelectedPath(new Path("d1", "s4")).setExpression(IExpression);
+    QueryExpression queryExpression =
+        QueryExpression.create()
+            .addSelectedPath(new Path("d1", "s1"))
+            .addSelectedPath(new Path("d1", "s4"))
+            .setExpression(IExpression);
     QueryDataSet queryDataSet = tsFile.query(queryExpression);
     long aimedTimestamp = 1480562618000L;
     while (queryDataSet.hasNext()) {
@@ -82,7 +87,10 @@ public class ReadOnlyTsFileTest {
       aimedTimestamp++;
     }
 
-    queryExpression = QueryExpression.create().addSelectedPath(new Path("d1", "s1")).addSelectedPath(new Path("d1", "s4"));
+    queryExpression =
+        QueryExpression.create()
+            .addSelectedPath(new Path("d1", "s1"))
+            .addSelectedPath(new Path("d1", "s4"));
     queryDataSet = tsFile.query(queryExpression);
     aimedTimestamp = 1480562618000L;
     int count = 0;
@@ -94,8 +102,11 @@ public class ReadOnlyTsFileTest {
     }
     Assert.assertEquals(rowCount, count);
 
-    queryExpression = QueryExpression.create().addSelectedPath(new Path("d1", "s1")).addSelectedPath(new Path("d1", "s4"))
-        .setExpression(new GlobalTimeExpression(filter3));
+    queryExpression =
+        QueryExpression.create()
+            .addSelectedPath(new Path("d1", "s1"))
+            .addSelectedPath(new Path("d1", "s4"))
+            .setExpression(new GlobalTimeExpression(filter3));
     queryDataSet = tsFile.query(queryExpression);
     aimedTimestamp = 1480562618000L;
     count = 0;
@@ -154,5 +165,4 @@ public class ReadOnlyTsFileTest {
       // fail();
     }
   }
-
 }

@@ -18,11 +18,13 @@
  */
 package org.apache.iotdb.tsfile.write.record.datapoint;
 
-import java.io.IOException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
 
 /**
  * a subclass for Double data type extends DataPoint.
@@ -32,14 +34,10 @@ import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 public class DoubleDataPoint extends DataPoint {
 
   private static final Logger LOG = LoggerFactory.getLogger(DoubleDataPoint.class);
-  /**
-   * actual value.
-   **/
+  /** actual value. */
   private double value;
 
-  /**
-   * constructor of DoubleDataPoint, the value type will be set automatically.
-   */
+  /** constructor of DoubleDataPoint, the value type will be set automatically. */
   public DoubleDataPoint(String measurementId, double v) {
     super(TSDataType.DOUBLE, measurementId);
     this.value = v;

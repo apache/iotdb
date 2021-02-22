@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.query.reader.chunk;
 
-import java.io.IOException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -29,14 +28,16 @@ import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
+import java.io.IOException;
+
 public class MemPageReader implements IPageReader {
 
   private final IPointReader timeValuePairIterator;
   private final ChunkMetadata chunkMetadata;
   private Filter valueFilter;
 
-  public MemPageReader(IPointReader timeValuePairIterator, ChunkMetadata chunkMetadata,
-      Filter filter) {
+  public MemPageReader(
+      IPointReader timeValuePairIterator, ChunkMetadata chunkMetadata, Filter filter) {
     this.timeValuePairIterator = timeValuePairIterator;
     this.chunkMetadata = chunkMetadata;
     this.valueFilter = filter;
@@ -44,12 +45,13 @@ public class MemPageReader implements IPageReader {
 
   @Override
   public BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {
-    BatchData batchData = BatchDataFactory
-        .createBatchData(chunkMetadata.getDataType(), ascending, false);
+    BatchData batchData =
+        BatchDataFactory.createBatchData(chunkMetadata.getDataType(), ascending, false);
     while (timeValuePairIterator.hasNextTimeValuePair()) {
       TimeValuePair timeValuePair = timeValuePairIterator.nextTimeValuePair();
-      if (valueFilter == null || valueFilter
-          .satisfy(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
+      if (valueFilter == null
+          || valueFilter.satisfy(
+              timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
         batchData.putAnObject(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
       }
     }
