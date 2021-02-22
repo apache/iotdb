@@ -80,9 +80,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * The hierarchical struct of the Metadata Tree is implemented in this class.
- */
+/** The hierarchical struct of the Metadata Tree is implemented in this class. */
 public class MTree implements Serializable {
 
   public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -806,7 +804,8 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Get the count of timeseries under the given prefix path.
+   * Get the count of timeseries under the given prefix path. if prefixPath contains '*', then not
+   * throw PathNotExistException()
    *
    * @param prefixPath a prefix path or a full path, may contain '*'.
    */
@@ -815,7 +814,41 @@ public class MTree implements Serializable {
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
       throw new IllegalPathException(prefixPath.getFullPath());
     }
-    return getCount(root, nodes, 1);
+    try {
+      return getCount(root, nodes, 1, false);
+    } catch (PathNotExistException e) {
+      throw new PathNotExistException(prefixPath.getFullPath());
+    }
+  }
+
+  /** Traverse the MTree to get the count of timeseries. */
+  private int getCount(MNode node, String[] nodes, int idx, boolean wildcard)
+      throws PathNotExistException {
+    if (idx < nodes.length) {
+      if (PATH_WILDCARD.equals(nodes[idx])) {
+        int sum = 0;
+        for (MNode child : node.getChildren().values()) {
+          sum += getCount(child, nodes, idx + 1, true);
+        }
+        return sum;
+      } else {
+        MNode child = node.getChild(nodes[idx]);
+        if (child == null) {
+          if (!wildcard) {
+            throw new PathNotExistException(node.getName() + NO_CHILDNODE_MSG + nodes[idx]);
+          } else {
+            return 0;
+          }
+        }
+        return getCount(child, nodes, idx + 1, wildcard);
+      }
+    } else {
+      int sum = node instanceof MeasurementMNode ? 1 : 0;
+      for (MNode child : node.getChildren().values()) {
+        sum += getCount(child, nodes, idx + 1, wildcard);
+      }
+      return sum;
+    }
   }
 
   /**
@@ -867,37 +900,7 @@ public class MTree implements Serializable {
     return getCountInGivenLevel(node, level - (i - 1));
   }
 
-  /**
-   * Traverse the MTree to get the count of timeseries.
-   */
-  private int getCount(MNode node, String[] nodes, int idx) {
-    String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
-    if (!(PATH_WILDCARD).equals(nodeReg)) {
-      MNode next = node.getChild(nodeReg);
-      if (next != null) {
-        if (next instanceof MeasurementMNode) {
-          return 1;
-        } else {
-          return getCount(next, nodes, idx + 1);
-        }
-      } else {
-        return 0;
-      }
-    } else {
-      int cnt = 0;
-      for (MNode child : node.getChildren().values()) {
-        if (child instanceof MeasurementMNode) {
-          cnt++;
-        }
-        cnt += getCount(child, nodes, idx + 1);
-      }
-      return cnt;
-    }
-  }
-
-  /**
-   * Traverse the MTree to get the count of devices.
-   */
+  /** Traverse the MTree to get the count of devices. */
   private int getDevicesCount(MNode node, String[] nodes, int idx) throws MetadataException {
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
     int cnt = 0;
