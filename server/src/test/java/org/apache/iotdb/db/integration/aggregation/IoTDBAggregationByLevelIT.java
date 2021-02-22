@@ -18,16 +18,6 @@
  */
 package org.apache.iotdb.db.integration.aggregation;
 
-import static org.apache.iotdb.db.constant.TestConstant.count;
-import static org.apache.iotdb.db.constant.TestConstant.last_value;
-import static org.apache.iotdb.db.constant.TestConstant.max_time;
-import static org.apache.iotdb.db.constant.TestConstant.max_value;
-import static org.apache.iotdb.db.constant.TestConstant.min_time;
-
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.Statement;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -41,6 +31,12 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
+
+import static org.apache.iotdb.db.constant.TestConstant.count;
+import static org.apache.iotdb.db.constant.TestConstant.last_value;
+import static org.apache.iotdb.db.constant.TestConstant.max_time;
+import static org.apache.iotdb.db.constant.TestConstant.max_value;
+import static org.apache.iotdb.db.constant.TestConstant.min_time;
 
 public class IoTDBAggregationByLevelIT {
 
@@ -183,20 +179,27 @@ public class IoTDBAggregationByLevelIT {
       int cnt = 0;
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
-          String ans = resultSet.getString(count("root.*.*.status"))
-                  + "," + resultSet.getString(min_time("root.*.*.temperature"));
+          String ans =
+              resultSet.getString(count("root.*.*.status"))
+                  + ","
+                  + resultSet.getString(min_time("root.*.*.temperature"));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
       }
 
-      statement.execute("select max_time(status), count(temperature) from root.sg1.* GROUP BY level=2");
+      statement.execute(
+          "select max_time(status), count(temperature) from root.sg1.* GROUP BY level=2");
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
-          String ans = resultSet.getString(max_time("root.sg1.d1.status")) + "," +
-              resultSet.getString(count("root.sg1.d1.temperature")) + "," +
-                  resultSet.getString(max_time("root.sg1.d2.status")) + "," +
-                          resultSet.getString(count("root.sg1.d2.temperature"));
+          String ans =
+              resultSet.getString(max_time("root.sg1.d1.status"))
+                  + ","
+                  + resultSet.getString(count("root.sg1.d1.temperature"))
+                  + ","
+                  + resultSet.getString(max_time("root.sg1.d2.status"))
+                  + ","
+                  + resultSet.getString(count("root.sg1.d2.temperature"));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -219,19 +222,26 @@ public class IoTDBAggregationByLevelIT {
       int cnt = 0;
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
-          String ans = resultSet.getString(last_value("root.*.*.temperature")) +
-                  "," + resultSet.getString(max_value("root.*.*.temperature"));
+          String ans =
+              resultSet.getString(last_value("root.*.*.temperature"))
+                  + ","
+                  + resultSet.getString(max_value("root.*.*.temperature"));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
       }
 
-      statement.execute("select last_value(temperature),max_value(temperature) from root.sg1.* GROUP BY level=2");
+      statement.execute(
+          "select last_value(temperature),max_value(temperature) from root.sg1.* GROUP BY level=2");
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
-          String ans = resultSet.getString(last_value("root.sg1.d1.temperature")) + ","
-                  + resultSet.getString(max_value("root.sg1.d1.temperature")) + ","
-                  + resultSet.getString(last_value("root.sg1.d2.temperature")) + ","
+          String ans =
+              resultSet.getString(last_value("root.sg1.d1.temperature"))
+                  + ","
+                  + resultSet.getString(max_value("root.sg1.d1.temperature"))
+                  + ","
+                  + resultSet.getString(last_value("root.sg1.d2.temperature"))
+                  + ","
                   + resultSet.getString(max_value("root.sg1.d2.temperature"));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;

@@ -18,9 +18,6 @@
  */
 package org.apache.iotdb.db.utils;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
-
-import java.util.LinkedHashMap;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -39,6 +36,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -126,15 +124,16 @@ public class FilePathUtils {
   }
 
   /**
-   * Transform an originalPath to a partial path that satisfies given level.
-   * Path nodes exceed the given level will be replaced by "*", e.g.
-   * generatePartialPathByLevel("root.sg.dh.d1.s1", 2) will return "root.sg.dh.*.s1"
+   * Transform an originalPath to a partial path that satisfies given level. Path nodes exceed the
+   * given level will be replaced by "*", e.g. generatePartialPathByLevel("root.sg.dh.d1.s1", 2)
+   * will return "root.sg.dh.*.s1"
+   *
    * @param originalPath the original timeseries path
    * @param pathLevel the expected path level
    * @return result partial path
    */
   public static String generatePartialPathByLevel(String originalPath, int pathLevel)
-          throws IllegalPathException {
+      throws IllegalPathException {
     String[] tmpPath = MetaUtils.splitPathToDetachedPath(originalPath);
     if (tmpPath.length <= pathLevel) {
       return originalPath;
@@ -170,10 +169,12 @@ public class FilePathUtils {
     List<TSDataType> dataTypes = plan.getDeduplicatedDataTypes();
     try {
       for (int i = 0; i < seriesPaths.size(); i++) {
-        String transformedPath = generatePartialPathByLevel(seriesPaths.get(i).getFullPath(), plan.getLevel());
+        String transformedPath =
+            generatePartialPathByLevel(seriesPaths.get(i).getFullPath(), plan.getLevel());
         String key = plan.getDeduplicatedAggregations().get(i) + "(" + transformedPath + ")";
-        AggregateResult aggRet = AggregateResultFactory
-                .getAggrResultByName(plan.getDeduplicatedAggregations().get(i), dataTypes.get(i));
+        AggregateResult aggRet =
+            AggregateResultFactory.getAggrResultByName(
+                plan.getDeduplicatedAggregations().get(i), dataTypes.get(i));
         finalPaths.putIfAbsent(key, aggRet);
         pathIndex.put(i, key);
       }
