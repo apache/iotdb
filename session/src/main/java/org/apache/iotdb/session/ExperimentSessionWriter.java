@@ -26,7 +26,7 @@ public class ExperimentSessionWriter {
     //session.deleteStorageGroup("root.test");
     session.setStorageGroup("root.test");
     createTimeseries();
-    ReplicaSet replicaSet = session.runDivergentDesign("root.test.device");
+    ReplicaSet replicaSet = session.runMultiReplicaOptimize("root.test.device");
     showReplicaSet(replicaSet);
     /*MeasurementOrder order = session.optimizeBySA("root.test.device");
     for(String measurment : order.measurements) {

@@ -1773,6 +1773,31 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
+  public ReplicaSet divergentDesignWithIterNum(String deviceID, int maxIter) throws TException {
+    DivergentDesign divergentDesign = new DivergentDesign(deviceID);
+    divergentDesign.setMaxIter(maxIter);
+    Pair<Replica[], Workload[]> optimalResult = divergentDesign.optimize();
+    Replica[] optimalReplicas = optimalResult.left;
+    Workload[] optimalWorkload = optimalResult.right;
+    ReplicaSet replicaSet = new ReplicaSet();
+    replicaSet.measurementOrders = new ArrayList<>();
+    replicaSet.workloadPartition = new ArrayList<>();
+    for(Replica replica : optimalReplicas) {
+      MeasurementOrder order = new MeasurementOrder();
+      order.measurements = replica.getMeasurements();
+      replicaSet.measurementOrders.add(order);
+    }
+    for(Workload workload : optimalWorkload) {
+      List<String> sqls = new ArrayList<>();
+      for(QueryRecord queryRecord : workload.getRecords()) {
+        sqls.add(queryRecord.toString());
+      }
+      replicaSet.workloadPartition.add(sqls);
+    }
+    return replicaSet;
+  }
+
+  @Override
   public TSStatus readMetadata() {
     MeasurementOrderOptimizer.getInstance().readMetadataFromFile();
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
@@ -1791,6 +1816,22 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   @Override
   public ReplicaSet multipleReplicaOptimize(String deviceID) throws TException {
     MultiReplicaOrderOptimizer optimizer = new MultiReplicaOrderOptimizer(deviceID);
+    Replica[] replicas = optimizer.optimizeBySA();
+    ReplicaSet resultSet = new ReplicaSet();
+    resultSet.measurementOrders = new ArrayList<>();
+    for(Replica replica : replicas) {
+      MeasurementOrder order = new MeasurementOrder();
+      order.deviceid = deviceID;
+      order.measurements = replica.getMeasurements();
+      resultSet.measurementOrders.add(order);
+    }
+    return resultSet;
+  }
+
+  @Override
+  public ReplicaSet multipleReplicaOptimizeWithIterNum(String deviceID, int maxIter) throws TException {
+    MultiReplicaOrderOptimizer optimizer = new MultiReplicaOrderOptimizer(deviceID);
+    optimizer.setMaxIter(maxIter);
     Replica[] replicas = optimizer.optimizeBySA();
     ReplicaSet resultSet = new ReplicaSet();
     resultSet.measurementOrders = new ArrayList<>();
