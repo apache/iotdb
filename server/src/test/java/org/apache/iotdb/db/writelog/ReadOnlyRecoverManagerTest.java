@@ -64,6 +64,14 @@ public class ReadOnlyRecoverManagerTest {
     assertEquals(false, IoTDBDescriptor.getInstance().getConfig().isReadOnly());
   }
 
+  @Test
+  public void testRetryDefaultSleepIntervalAndAttempts() {
+    assertEquals(3, IoTDBDescriptor.getInstance().getConfig().getReadOnlyRecoverRetryAttempts());
+    assertEquals(
+        10 * 60 * 1000L,
+        IoTDBDescriptor.getInstance().getConfig().getReadOnlyRecoverRetrySleepInterval());
+  }
+
   private static void insertData() throws ClassNotFoundException {
     List<String> sqls =
         new ArrayList<>(

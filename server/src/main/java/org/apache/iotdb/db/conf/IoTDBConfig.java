@@ -636,6 +636,12 @@ public class IoTDBConfig {
   /** the number of virtual storage groups per user-defined storage group */
   private int virtualStorageGroupNum = 1;
 
+  /** read only recover retry attempts */
+  private int readOnlyRecoverRetryAttempts = 3;
+
+  /** read only recover retry sleep interval ms */
+  private long readOnlyRecoverRetrySleepInterval = 10 * 60 * 1000L;
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -2057,5 +2063,21 @@ public class IoTDBConfig {
 
   public void setIoTaskQueueSizeForFlushing(int ioTaskQueueSizeForFlushing) {
     this.ioTaskQueueSizeForFlushing = ioTaskQueueSizeForFlushing;
+  }
+
+  public int getReadOnlyRecoverRetryAttempts() {
+    return readOnlyRecoverRetryAttempts;
+  }
+
+  public void setReadOnlyRecoverRetryAttempts(int readOnlyRecoverRetryAttempts) {
+    this.readOnlyRecoverRetryAttempts = readOnlyRecoverRetryAttempts;
+  }
+
+  public long getReadOnlyRecoverRetrySleepInterval() {
+    return readOnlyRecoverRetrySleepInterval;
+  }
+
+  public void setReadOnlyRecoverRetrySleepInterval(long readOnlyRecoverRetrySleepInterval) {
+    this.readOnlyRecoverRetrySleepInterval = readOnlyRecoverRetrySleepInterval;
   }
 }

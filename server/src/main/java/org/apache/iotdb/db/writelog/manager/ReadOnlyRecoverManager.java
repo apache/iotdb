@@ -35,10 +35,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class ReadOnlyRecoverManager {
   private static final Logger logger = LoggerFactory.getLogger(ReadOnlyRecoverManager.class);
 
-  private static final int READ_ONLY_RECOVER_DEFAULT_RETRY_ATTEMPTS = 3;
-
-  private static final long READ_ONLY_RECOVER_DEFAULT_RETRY_SLEEP_IINTERVAL = 10 * 60 * 1000L;
-
   private static final ReadOnlyRecoverManager INSTANCE = new ReadOnlyRecoverManager();
 
   static {
@@ -57,8 +53,12 @@ public class ReadOnlyRecoverManager {
     this.retryCounterFactory =
         new RetryCounterFactory(
             new RetryCounter.RetryConfig()
-                .setMaxAttempts(READ_ONLY_RECOVER_DEFAULT_RETRY_ATTEMPTS)
-                .setSleepInterval(READ_ONLY_RECOVER_DEFAULT_RETRY_SLEEP_IINTERVAL));
+                .setMaxAttempts(
+                    IoTDBDescriptor.getInstance().getConfig().getReadOnlyRecoverRetryAttempts())
+                .setSleepInterval(
+                    IoTDBDescriptor.getInstance()
+                        .getConfig()
+                        .getReadOnlyRecoverRetrySleepInterval()));
   }
 
   public static ReadOnlyRecoverManager getInstance() {
