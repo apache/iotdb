@@ -32,12 +32,6 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 
-import static org.apache.iotdb.db.constant.TestConstant.count;
-import static org.apache.iotdb.db.constant.TestConstant.last_value;
-import static org.apache.iotdb.db.constant.TestConstant.max_time;
-import static org.apache.iotdb.db.constant.TestConstant.max_value;
-import static org.apache.iotdb.db.constant.TestConstant.min_time;
-
 public class IoTDBAggregationByLevelIT {
 
   private Planner planner = new Planner();
@@ -169,7 +163,7 @@ public class IoTDBAggregationByLevelIT {
   public void timeFuncGroupByLevelTest() throws Exception {
     String[] retArray =
         new String[] {
-          "8,100", "600,2,700,3",
+          "8,100", "600,700,2,3",
         };
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -180,10 +174,7 @@ public class IoTDBAggregationByLevelIT {
       int cnt = 0;
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
-          String ans =
-              resultSet.getString(count("root.*.*.status"))
-                  + ","
-                  + resultSet.getString(min_time("root.*.*.temperature"));
+          String ans = resultSet.getString(1) + "," + resultSet.getString(2);
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -194,13 +185,13 @@ public class IoTDBAggregationByLevelIT {
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(max_time("root.sg1.d1.status"))
+              resultSet.getString(1)
                   + ","
-                  + resultSet.getString(count("root.sg1.d1.temperature"))
+                  + resultSet.getString(2)
                   + ","
-                  + resultSet.getString(max_time("root.sg1.d2.status"))
+                  + resultSet.getString(3)
                   + ","
-                  + resultSet.getString(count("root.sg1.d2.temperature"));
+                  + resultSet.getString(4);
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -213,7 +204,7 @@ public class IoTDBAggregationByLevelIT {
   public void valueFuncGroupByLevelTest() throws Exception {
     String[] retArray =
         new String[] {
-          "61.22,125.5", "71.12,71.12,62.15,62.15",
+          "61.22,125.5", "71.12,62.15,71.12,62.15",
         };
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -224,10 +215,7 @@ public class IoTDBAggregationByLevelIT {
       int cnt = 0;
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
-          String ans =
-              resultSet.getString(last_value("root.*.*.temperature"))
-                  + ","
-                  + resultSet.getString(max_value("root.*.*.temperature"));
+          String ans = resultSet.getString(1) + "," + resultSet.getString(2);
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -238,13 +226,13 @@ public class IoTDBAggregationByLevelIT {
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(last_value("root.sg1.d1.temperature"))
+              resultSet.getString(1)
                   + ","
-                  + resultSet.getString(max_value("root.sg1.d1.temperature"))
+                  + resultSet.getString(2)
                   + ","
-                  + resultSet.getString(last_value("root.sg1.d2.temperature"))
+                  + resultSet.getString(3)
                   + ","
-                  + resultSet.getString(max_value("root.sg1.d2.temperature"));
+                  + resultSet.getString(4);
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }

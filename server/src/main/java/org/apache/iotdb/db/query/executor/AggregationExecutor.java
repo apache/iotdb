@@ -334,7 +334,7 @@ public class AggregationExecutor {
    *
    * @param context query context.
    */
-  public QueryDataSet executeWithValueFilter(QueryContext context, RawDataQueryPlan queryPlan)
+  public QueryDataSet executeWithValueFilter(QueryContext context, AggregationPlan queryPlan)
       throws StorageEngineException, IOException, QueryProcessException {
     int index = 0;
     for (; index < aggregations.size(); index++) {
@@ -426,7 +426,7 @@ public class AggregationExecutor {
    * @param aggregateResultList aggregate result list
    */
   private QueryDataSet constructDataSet(
-      List<AggregateResult> aggregateResultList, RawDataQueryPlan plan)
+      List<AggregateResult> aggregateResultList, AggregationPlan plan)
       throws QueryProcessException {
     RowRecord record = new RowRecord(0);
     for (AggregateResult resultData : aggregateResultList) {
@@ -435,13 +435,11 @@ public class AggregationExecutor {
     }
 
     SingleDataSet dataSet;
-    if (((AggregationPlan) plan).getLevel() >= 0) {
-      Map<Integer, String> pathIndex = new HashMap<>();
-      Map<String, AggregateResult> finalPaths =
-          FilePathUtils.getPathByLevel((AggregationPlan) plan, pathIndex);
+    if (plan.getLevel() >= 0) {
+      Map<String, AggregateResult> finalPaths = plan.getPathByLevel();
 
       List<AggregateResult> mergedAggResults =
-          FilePathUtils.mergeRecordByPath(aggregateResultList, finalPaths, pathIndex);
+          FilePathUtils.mergeRecordByPath(plan, aggregateResultList, finalPaths);
 
       List<PartialPath> paths = new ArrayList<>();
       List<TSDataType> dataTypes = new ArrayList<>();

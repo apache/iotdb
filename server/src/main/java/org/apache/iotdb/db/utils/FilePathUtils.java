@@ -36,7 +36,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -152,52 +151,16 @@ public class FilePathUtils {
   }
 
   /**
-   * get paths from group by level, like root.sg1.d2.s0, root.sg1.d1.s0 level=1, return
-   * [root.sg1.*.s0, 0] and pathIndex turns to be [[0, root.sg1.*.s0], [1, root.sg1.*.s0]]
-   *
-   * @param plan the original Aggregation Plan
-   * @param pathIndex the mapping from index of aggregations to the result path name
-   * @return
-   */
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public static Map<String, AggregateResult> getPathByLevel(
-      AggregationPlan plan, Map<Integer, String> pathIndex) throws QueryProcessException {
-    // pathGroupByLevel -> count
-    Map<String, AggregateResult> finalPaths = new LinkedHashMap<>();
-
-    List<PartialPath> seriesPaths = plan.getDeduplicatedPaths();
-    List<TSDataType> dataTypes = plan.getDeduplicatedDataTypes();
-    try {
-      for (int i = 0; i < seriesPaths.size(); i++) {
-        String transformedPath =
-            generatePartialPathByLevel(seriesPaths.get(i).getFullPath(), plan.getLevel());
-        String key = plan.getDeduplicatedAggregations().get(i) + "(" + transformedPath + ")";
-        AggregateResult aggRet =
-            AggregateResultFactory.getAggrResultByName(
-                plan.getDeduplicatedAggregations().get(i), dataTypes.get(i));
-        finalPaths.putIfAbsent(key, aggRet);
-        pathIndex.put(i, key);
-      }
-    } catch (IllegalPathException e) {
-      throw new QueryProcessException(e.getMessage());
-    }
-    return finalPaths;
-  }
-
-  /**
    * merge the raw record by level, for example raw record [timestamp, root.sg1.d1.s0,
    * root.sg1.d1.s1, root.sg1.d2.s2], level=1 and newRecord data is [100, 1, 1, 1] return [100, 3]
    *
    * @param newRecord
    * @param finalPaths
-   * @param pathIndex
    * @return
    */
   public static List<AggregateResult> mergeRecordByPath(
-      AggregationPlan plan,
-      RowRecord newRecord,
-      Map<String, AggregateResult> finalPaths,
-      Map<Integer, String> pathIndex) {
+      AggregationPlan plan, RowRecord newRecord, Map<String, AggregateResult> finalPaths)
+      throws QueryProcessException {
     if (newRecord.getFields().size() < finalPaths.size()) {
       return Collections.emptyList();
     }
@@ -237,13 +200,14 @@ public class FilePathUtils {
         aggregateResultList.add(aggRet);
       }
     }
-    return mergeRecordByPath(aggregateResultList, finalPaths, pathIndex);
+    return mergeRecordByPath(plan, aggregateResultList, finalPaths);
   }
 
   public static List<AggregateResult> mergeRecordByPath(
+      AggregationPlan plan,
       List<AggregateResult> aggResults,
-      Map<String, AggregateResult> finalPaths,
-      Map<Integer, String> pathIndex) {
+      Map<String, AggregateResult> finalPaths)
+      throws QueryProcessException {
     if (aggResults.size() < finalPaths.size()) {
       return Collections.emptyList();
     }
@@ -252,16 +216,24 @@ public class FilePathUtils {
     }
 
     List<AggregateResult> resultSet = new ArrayList<>();
-    for (int i = 0; i < aggResults.size(); i++) {
-      if (aggResults.get(i) != null) {
-        AggregateResult tempAggResult = finalPaths.get(pathIndex.get(i));
-        if (tempAggResult == null) {
-          finalPaths.put(pathIndex.get(i), aggResults.get(i));
-        } else {
-          tempAggResult.merge(aggResults.get(i));
-          finalPaths.put(pathIndex.get(i), tempAggResult);
+    List<PartialPath> dupPaths = plan.getDeduplicatedPaths();
+    try {
+      for (int i = 0; i < aggResults.size(); i++) {
+        if (aggResults.get(i) != null) {
+          String transformedPath =
+              generatePartialPathByLevel(dupPaths.get(i).getFullPath(), plan.getLevel());
+          String key = plan.getDeduplicatedAggregations().get(i) + "(" + transformedPath + ")";
+          AggregateResult tempAggResult = finalPaths.get(key);
+          if (tempAggResult == null) {
+            finalPaths.put(key, aggResults.get(i));
+          } else {
+            tempAggResult.merge(aggResults.get(i));
+            finalPaths.put(key, tempAggResult);
+          }
         }
       }
+    } catch (IllegalPathException e) {
+      throw new QueryProcessException(e.getMessage());
     }
 
     for (Map.Entry<String, AggregateResult> entry : finalPaths.entrySet()) {
