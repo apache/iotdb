@@ -249,7 +249,12 @@ public class IoTDBAggregationByLevelIT {
         };
     String[] retArray2 =
         new String[] {
-          "null,null", "null,100", "200,200", "300,null", "null,null", "null,500",
+          "null,null,null,null",
+          "null,100,null,88.24",
+          "200,200,31.685,105.5",
+          "300,null,46.77,null",
+          "null,null,null,null",
+          "null,500,null,125.5",
         };
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -268,10 +273,17 @@ public class IoTDBAggregationByLevelIT {
 
       cnt = 0;
       statement.execute(
-          "select max_time(temperature) from root.*.* GROUP BY ([0, 600), 100ms), level=1");
+          "select max_time(temperature), avg(temperature) from root.*.* GROUP BY ([0, 600), 100ms), level=1");
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
-          String ans = resultSet.getString(2) + "," + resultSet.getString(3);
+          String ans =
+              resultSet.getString(2)
+                  + ","
+                  + resultSet.getString(3)
+                  + ","
+                  + resultSet.getString(4)
+                  + ","
+                  + resultSet.getString(5);
           Assert.assertEquals(retArray2[cnt], ans);
           cnt++;
         }

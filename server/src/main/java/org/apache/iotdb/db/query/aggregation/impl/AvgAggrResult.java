@@ -110,7 +110,7 @@ public class AvgAggrResult extends AggregateResult {
     }
   }
 
-  private void updateAvg(TSDataType type, Object sumVal) throws UnSupportedDataTypeException {
+  public void updateAvg(TSDataType type, Object sumVal) throws UnSupportedDataTypeException {
     double val;
     switch (type) {
       case INT32:

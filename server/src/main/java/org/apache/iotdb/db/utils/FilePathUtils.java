@@ -26,6 +26,8 @@ import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
+import org.apache.iotdb.db.query.aggregation.impl.AvgAggrResult;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -175,27 +177,31 @@ public class FilePathUtils {
         AggregateResult aggRet =
             AggregateResultFactory.getAggrResultByName(
                 plan.getDeduplicatedAggregations().get(i), dataType);
-        switch (dataType) {
-          case TEXT:
-            aggRet.setBinaryValue(newRecord.getFields().get(i).getBinaryV());
-            break;
-          case INT32:
-            aggRet.setIntValue(newRecord.getFields().get(i).getIntV());
-            break;
-          case INT64:
-            aggRet.setLongValue(newRecord.getFields().get(i).getLongV());
-            break;
-          case FLOAT:
-            aggRet.setFloatValue(newRecord.getFields().get(i).getFloatV());
-            break;
-          case DOUBLE:
-            aggRet.setDoubleValue(newRecord.getFields().get(i).getDoubleV());
-            break;
-          case BOOLEAN:
-            aggRet.setBooleanValue(newRecord.getFields().get(i).getBoolV());
-            break;
-          default:
-            throw new UnSupportedDataTypeException(dataType.toString());
+        if (aggRet.getAggregationType().equals(AggregationType.AVG)) {
+          ((AvgAggrResult) aggRet).updateAvg(dataType, newRecord.getFields().get(i).getDoubleV());
+        } else {
+          switch (dataType) {
+            case TEXT:
+              aggRet.setBinaryValue(newRecord.getFields().get(i).getBinaryV());
+              break;
+            case INT32:
+              aggRet.setIntValue(newRecord.getFields().get(i).getIntV());
+              break;
+            case INT64:
+              aggRet.setLongValue(newRecord.getFields().get(i).getLongV());
+              break;
+            case FLOAT:
+              aggRet.setFloatValue(newRecord.getFields().get(i).getFloatV());
+              break;
+            case DOUBLE:
+              aggRet.setDoubleValue(newRecord.getFields().get(i).getDoubleV());
+              break;
+            case BOOLEAN:
+              aggRet.setBooleanValue(newRecord.getFields().get(i).getBoolV());
+              break;
+            default:
+              throw new UnSupportedDataTypeException(dataType.toString());
+          }
         }
         aggregateResultList.add(aggRet);
       }
