@@ -1,6 +1,7 @@
 package org.apache.iotdb.db.engine.measurementorderoptimizer;
 
 import org.apache.iotdb.db.engine.divergentdesign.Replica;
+import org.apache.iotdb.db.engine.measurementorderoptimizer.costmodel.CostModel;
 import org.apache.iotdb.db.query.workloadmanager.WorkloadManager;
 import org.apache.iotdb.db.query.workloadmanager.queryrecord.QueryRecord;
 import org.slf4j.Logger;
@@ -12,7 +13,7 @@ import java.util.Random;
 
 public class MultiReplicaOrderOptimizer {
   private int replicaNum = 3;
-  private int maxIter = 1000;
+  private long maxIter = 40000;
   private float breakPoint = 1e-2f;
   private List<QueryRecord> queryRecords;
   private static final Logger LOGGER = LoggerFactory.getLogger(MultiReplicaOrderOptimizer.class);
@@ -53,9 +54,11 @@ public class MultiReplicaOrderOptimizer {
 
   public Replica[] optimizeBySA() {
     float curCost = getCostForCurReplicas(records, replicas);
+    LOGGER.info("Ori cost: " + curCost);
     float temperature = SA_INIT_TEMPERATURE;
     Random r = new Random();
-    for (int k = 0; k < maxIter; ++k) {
+    long k = 0;
+    for ( ; k < maxIter; ++k) {
       temperature = temperature * COOLING_RATE;
 
       int swapReplica = r.nextInt(replicaNum);
@@ -77,10 +80,25 @@ public class MultiReplicaOrderOptimizer {
         replicas[swapReplica].swapMeasurementPos(swapLeft, swapRight);
       }
     }
+    LOGGER.info("Final cost: " + curCost);
+    LOGGER.info("Loop count: " + k);
     return replicas;
   }
 
   private float getCostForCurReplicas(List<QueryRecord> records, Replica[] replicas) {
-    return 0.0f;
+    float totalCost = 0.0f;
+    for(QueryRecord record : records) {
+      List<QueryRecord> tmpList = new ArrayList<>();
+      tmpList.add(record);
+      float minCost = Float.MAX_VALUE;
+      for(Replica replica : replicas) {
+        float curCost = CostModel.approximateAggregationQueryCostWithTimeRange(tmpList, replica.getMeasurements(), replica.getChunkSize());
+        if (curCost < minCost) {
+          minCost = curCost;
+        }
+      }
+      totalCost += minCost;
+    }
+    return totalCost;
   }
 }

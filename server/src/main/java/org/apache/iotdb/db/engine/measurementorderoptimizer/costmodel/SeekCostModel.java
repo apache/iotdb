@@ -105,6 +105,10 @@ public class SeekCostModel {
    * Return the cost of seeking a specified distance according to the empirical data
    */
   public static float getSeekCost(long distance) {
+    if (!init) {
+      readEmpiricalData();
+      init = true;
+    }
     float seekCost = 0;
     for(int i = 0; i < empiricalData.size() - 1; ++i) {
       if (distance >= empiricalData.get(i).left && distance < empiricalData.get(i + 1).left) {

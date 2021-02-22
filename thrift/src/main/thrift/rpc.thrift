@@ -380,4 +380,6 @@ service TSIService {
 
   MeasurementOrder optimizeBySA(1:string deviceID);
 
+  ReplicaSet multipleReplicaOptimize(1:string deviceID);
+
 }

@@ -57,6 +57,7 @@ import org.apache.iotdb.db.engine.divergentdesign.DivergentDesign;
 import org.apache.iotdb.db.engine.divergentdesign.Replica;
 import org.apache.iotdb.db.engine.measurementorderoptimizer.MeasurementOptimizationType;
 import org.apache.iotdb.db.engine.measurementorderoptimizer.MeasurementOrderOptimizer;
+import org.apache.iotdb.db.engine.measurementorderoptimizer.MultiReplicaOrderOptimizer;
 import org.apache.iotdb.db.exception.BatchInsertionException;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -1785,6 +1786,21 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     result.deviceid = deviceID;
     result.measurements = measurements;
     return result;
+  }
+
+  @Override
+  public ReplicaSet multipleReplicaOptimize(String deviceID) throws TException {
+    MultiReplicaOrderOptimizer optimizer = new MultiReplicaOrderOptimizer(deviceID);
+    Replica[] replicas = optimizer.optimizeBySA();
+    ReplicaSet resultSet = new ReplicaSet();
+    resultSet.measurementOrders = new ArrayList<>();
+    for(Replica replica : replicas) {
+      MeasurementOrder order = new MeasurementOrder();
+      order.deviceid = deviceID;
+      order.measurements = replica.getMeasurements();
+      resultSet.measurementOrders.add(order);
+    }
+    return resultSet;
   }
 
   private TSStatus checkAuthority(PhysicalPlan plan, long sessionId) {

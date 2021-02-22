@@ -50,6 +50,10 @@ public class Replica {
     return deviceId;
   }
 
+  public List<Long> getChunkSize() {
+    return chunkSize;
+  }
+
   public void swapMeasurementPos(int left, int right) {
     String tempMeasurement = measurements.get(left);
     measurements.set(left, measurements.get(right));

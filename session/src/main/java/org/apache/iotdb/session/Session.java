@@ -1350,4 +1350,24 @@ public class Session {
       }
     }
   }
+
+  public ReplicaSet runMultiReplicaOptimize(String deviceID) throws IoTDBConnectionException {
+    ReplicaSet replicaSet = null;
+    try {
+      replicaSet = client.multipleReplicaOptimize(deviceID);
+      return replicaSet;
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          replicaSet = client.multipleReplicaOptimize(deviceID);
+          return replicaSet;
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(
+                "Fail to reconnect to server. Please check server status");
+      }
+    }
+  }
 }
