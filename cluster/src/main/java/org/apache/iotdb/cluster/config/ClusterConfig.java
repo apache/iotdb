@@ -147,6 +147,8 @@ public class ClusterConfig {
    */
   private boolean waitForSlowNode = true;
 
+  private boolean openServerRpcPort = false;
+
   public int getSelectorNumOfClientPool() {
     return selectorNumOfClientPool;
   }
@@ -425,5 +427,13 @@ public class ClusterConfig {
 
   public void setInternalIp(String internalIp) {
     this.internalIp = internalIp;
+  }
+
+  public boolean isOpenServerRpcPort() {
+    return openServerRpcPort;
+  }
+
+  public void setOpenServerRpcPort(boolean openServerRpcPort) {
+    this.openServerRpcPort = openServerRpcPort;
   }
 }
