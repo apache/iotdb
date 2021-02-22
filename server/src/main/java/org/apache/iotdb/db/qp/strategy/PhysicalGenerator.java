@@ -878,9 +878,14 @@ public class PhysicalGenerator {
                   .getColumnName()
               : columnForReader;
       if (queryPlan instanceof AggregationPlan && ((AggregationPlan) queryPlan).getLevel() >= 0) {
+        String aggregatePath =
+            originalPath.isMeasurementAliasExists()
+                ? FilePathUtils.generatePartialPathByLevel(
+                    originalPath.getFullPathWithAlias(), ((AggregationPlan) queryPlan).getLevel())
+                : FilePathUtils.generatePartialPathByLevel(
+                    originalPath.toString(), ((AggregationPlan) queryPlan).getLevel());
         columnForDisplay =
-            FilePathUtils.generatePartialPathByLevel(
-                columnForDisplay, ((AggregationPlan) queryPlan).getLevel());
+            queryPlan.getAggregations().get(originalIndex) + "(" + aggregatePath + ")";
       }
       if (!columnForDisplaySet.contains(columnForDisplay)) {
         queryPlan.addPathToIndex(columnForDisplay, queryPlan.getPathToIndex().size());
