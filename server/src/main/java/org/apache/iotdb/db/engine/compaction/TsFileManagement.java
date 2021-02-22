@@ -290,7 +290,7 @@ public abstract class TsFileManagement {
     }
   }
 
-  private static void copy(TsFileResource orig, File dest) {
+  protected static void copy(TsFileResource orig, File dest) {
     FileInputStream fileInputStream = null;
     FileOutputStream fileOutputStream = null;
     try {

@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.compaction.TsFileManagement;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionLogAnalyzer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionUtils;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -624,8 +625,15 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
             CompactionLogger compactionLogger =
                 new CompactionLogger(storageGroupDir, storageGroupName);
             // log source file list and target file for recover
+            File dir =
+                SystemFileFactory.INSTANCE.getFile(
+                    storageGroupDir, "compaction-" + System.currentTimeMillis());
+            if (!dir.exists()) {
+              dir.mkdirs();
+            }
             for (TsFileResource mergeResource : mergeResources.get(i)) {
               compactionLogger.logFile(SOURCE_NAME, mergeResource.getTsFile());
+              copy(mergeResource, dir);
             }
             File newLevelFile =
                 createNewTsFileName(mergeResources.get(i).get(0).getTsFile(), i + 1);
