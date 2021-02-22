@@ -19,12 +19,11 @@
 
 package org.apache.iotdb.cluster.config;
 
+import com.google.common.net.InetAddresses;
 import org.apache.iotdb.cluster.exception.BadSeedUrlFormatException;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-
-import com.google.common.net.InetAddresses;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,7 +62,7 @@ public class ClusterDescriptor {
   }
 
   public String getPropsUrl() {
-    String url = System.getProperty(ClusterConstant.CLUSTER_CONF, null);
+    String url = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
     if (url == null) {
       url = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
       if (url != null) {

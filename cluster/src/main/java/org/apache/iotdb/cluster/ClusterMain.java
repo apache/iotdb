@@ -21,7 +21,6 @@ package org.apache.iotdb.cluster;
 import org.apache.iotdb.cluster.client.async.AsyncMetaClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.config.ClusterConfig;
-import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
 import org.apache.iotdb.cluster.exception.StartUpCheckFailureException;
@@ -35,7 +34,6 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-
 import org.apache.thrift.TException;
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
@@ -67,12 +65,10 @@ public class ClusterMain {
     if (args.length < 1) {
       logger.error(
           "Usage: <-s|-a|-r> "
-              + "[-D{} <cluster module configure file>] "
-              + "[-D{} <server module configure file>] "
+              + "[-D{} <configure folder>] "
               + "-s: start the node as a seed\n"
               + "-a: start the node as a new node\n"
               + "-r: remove the node out of the cluster\n",
-          ClusterConstant.CLUSTER_CONF,
           IoTDBConstant.IOTDB_CONF);
 
       return;
