@@ -115,8 +115,6 @@ import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
@@ -1256,13 +1254,12 @@ public class PlanExecutor implements IPlanExecutor {
               multiPlan.getAlias() == null ? null : multiPlan.getAlias().get(i));
       try {
         createTimeSeries(plan);
-        multiPlan.getResults().put(i, RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
       } catch (QueryProcessException e) {
         multiPlan.getResults().put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
       }
     }
     if (!multiPlan.getResults().isEmpty()) {
-      throw new BatchProcessException(multiPlan.getResults().values().toArray(new TSStatus[0]));
+      throw new BatchProcessException(multiPlan.getFailingStatus());
     }
     return true;
   }
