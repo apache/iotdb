@@ -316,6 +316,20 @@
           id: 'LebronAl',
           date: '2020/12/21'
         },
+        {
+          avatar:'/img/contributor-avatar/xww.jpg',
+          name: 'Xiangwei Wei',
+          role: 'Committer',
+          id: 'Alima777',
+          date: '2021/02/20'
+        },
+        {
+          avatar:'/img/contributor-avatar/yrzh.jpg',
+          name: 'Jesse Zhou',
+          role: 'Committer',
+          id: 'JesseZhou-1',
+          date: '2021/02/20'
+        },
         ]
       }
     },
