@@ -33,7 +33,7 @@ IoTDB为您提供了两种安装方式，您可以参考下面的建议，任选
 
 如果您需要从源码进行编译，还需要安装：
 
-1. Maven>=3.1的运行环境，具体安装方法可以参考以下链接：[https://maven.apache.org/install.html](https://maven.apache.org/install.html)。
+1. Maven >= 3.6 的运行环境，具体安装方法可以参考以下链接：[https://maven.apache.org/install.html](https://maven.apache.org/install.html)。
 
 > 注： 也可以选择不安装，使用我们提供的'mvnw.sh' 或 'mvnw.cmd' 工具。使用时请用'mvnw.sh' 或 'mvnw.cmd'命令代替下文的'mvn'命令。
 

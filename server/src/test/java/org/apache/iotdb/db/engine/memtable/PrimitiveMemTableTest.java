@@ -75,7 +75,7 @@ public class PrimitiveMemTableTest {
     IMemTable memTable = new PrimitiveMemTable();
     int count = 10;
     String deviceId = "d1";
-    String measurementId[] = new String[count];
+    String[] measurementId = new String[count];
     for (int i = 0; i < measurementId.length; i++) {
       measurementId[i] = "s" + i;
     }
@@ -186,7 +186,7 @@ public class PrimitiveMemTableTest {
     IMemTable memTable = new PrimitiveMemTable();
     int count = 10;
     String deviceId = "d1";
-    String measurementId[] = new String[count];
+    String[] measurementId = new String[count];
     for (int i = 0; i < measurementId.length; i++) {
       measurementId[i] = "s" + i;
     }

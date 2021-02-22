@@ -452,9 +452,8 @@ public class IoTDBMultiSeriesIT {
       statement.execute("select s0 from root.vehicle.d0 where s10 < 111");
       fail("not throw exception when unknown time series in where clause");
     } catch (SQLException e) {
-      assertEquals(
-          "411: Error occurred in query process: Filter has some time series don't correspond to any known time series",
-          e.getMessage());
+      assertTrue(
+          e.getMessage().contains("Unknown time series root.vehicle.d0.s10 in `where clause`"));
     }
   }
 

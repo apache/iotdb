@@ -107,7 +107,7 @@ public class SessionPoolExample {
                 for (String columnName : wrapper.getColumnNames()) {
                   builder.append(dataIterator.getString(columnName) + " ");
                 }
-                System.out.println(builder.toString());
+                System.out.println(builder);
               }
             } catch (IoTDBConnectionException | StatementExecutionException e) {
               e.printStackTrace();

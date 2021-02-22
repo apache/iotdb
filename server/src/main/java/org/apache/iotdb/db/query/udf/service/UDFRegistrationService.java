@@ -164,7 +164,7 @@ public class UDFRegistrationService implements IService {
       String errorMessage =
           String.format(
               "Failed to register UDF %s(%s), because its instance can not be constructed successfully. Exception: %s",
-              functionName, className, e.toString());
+              functionName, className, e);
       logger.warn(errorMessage);
       throw new UDFRegistrationException(errorMessage);
     } finally {
@@ -186,7 +186,7 @@ public class UDFRegistrationService implements IService {
       String errorMessage =
           String.format(
               "Failed to append UDF log when registering UDF %s(%s), because %s",
-              functionName, className, e.toString());
+              functionName, className, e);
       logger.error(errorMessage);
       throw new UDFRegistrationException(errorMessage, e);
     }
@@ -224,8 +224,7 @@ public class UDFRegistrationService implements IService {
         registrationInformation.put(functionName, information);
         String errorMessage =
             String.format(
-                "Failed to append UDF log when deregistering UDF %s, because %s",
-                functionName, e.toString());
+                "Failed to append UDF log when deregistering UDF %s, because %s", functionName, e);
         logger.error(errorMessage);
         throw new UDFRegistrationException(errorMessage, e);
       }
@@ -276,7 +275,7 @@ public class UDFRegistrationService implements IService {
       String errorMessage =
           String.format(
               "Failed to reflect UDF %s(%s) instance, because %s",
-              functionName, information.getClassName(), e.toString());
+              functionName, information.getClassName(), e);
       logger.warn(errorMessage);
       throw new QueryProcessException(errorMessage);
     }
