@@ -27,7 +27,6 @@ import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-import java.io.IOException;
 import java.util.List;
 
 public class MemChunkMetadataLoader implements IChunkMetadataLoader {
@@ -76,7 +75,7 @@ public class MemChunkMetadataLoader implements IChunkMetadataLoader {
   }
 
   @Override
-  public void setDiskChunkLoader(List<ChunkMetadata> chunkMetadataList) throws IOException {
+  public void setDiskChunkLoader(List<ChunkMetadata> chunkMetadataList) {
     // DO NOTHING
   }
 }

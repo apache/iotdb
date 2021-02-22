@@ -234,7 +234,7 @@ public class TsFileWriterTest {
   }
 
   @Test
-  public void getIOWriter() throws IOException {
+  public void getIOWriter() {
     // The interface is just for test
     writer.getIOWriter();
     closeFile();

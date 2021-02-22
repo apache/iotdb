@@ -50,7 +50,7 @@ public class MManagerBasicTest {
   private CompressionType compressionType;
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
     compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
     EnvironmentUtils.envSetUp();
   }

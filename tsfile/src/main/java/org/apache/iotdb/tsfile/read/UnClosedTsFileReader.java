@@ -32,13 +32,13 @@ public class UnClosedTsFileReader extends TsFileSequenceReader {
 
   /** unclosed file has no tail magic data. */
   @Override
-  public String readTailMagic() throws IOException {
+  public String readTailMagic() {
     throw new NotImplementedException();
   }
 
   /** unclosed file has no file metadata. */
   @Override
-  public TsFileMetadata readFileMetadata() throws IOException {
+  public TsFileMetadata readFileMetadata() {
     throw new NotImplementedException();
   }
 }

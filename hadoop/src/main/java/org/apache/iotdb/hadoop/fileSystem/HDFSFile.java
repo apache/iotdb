@@ -37,7 +37,6 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
@@ -305,17 +304,17 @@ public class HDFSFile extends File {
   }
 
   @Override
-  public String getCanonicalPath() throws IOException {
+  public String getCanonicalPath() {
     throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
-  public File getCanonicalFile() throws IOException {
+  public File getCanonicalFile() {
     throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
-  public URL toURL() throws MalformedURLException {
+  public URL toURL() {
     throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 

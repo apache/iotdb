@@ -52,7 +52,7 @@ public class MLogParserTest {
   private static final Logger logger = LoggerFactory.getLogger(MLogParserTest.class);
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
     EnvironmentUtils.envSetUp();
   }
 

@@ -88,7 +88,7 @@ public class GroupByTimeDataSet extends QueryDataSet {
   }
 
   @Override
-  public boolean hasNextWithoutConstraint() throws IOException {
+  public boolean hasNextWithoutConstraint() {
     return index < records.size();
   }
 

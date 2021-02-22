@@ -95,7 +95,7 @@ public abstract class DataSnapshotTest {
 
               @Override
               public void removeHardLink(
-                  String hardLinkPath, AsyncMethodCallback<Void> resultHandler) throws TException {
+                  String hardLinkPath, AsyncMethodCallback<Void> resultHandler) {
                 new Thread(
                         () -> {
                           try {

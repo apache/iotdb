@@ -1318,11 +1318,6 @@ public class StorageGroupProcessor {
       if (storageGroupFolder.exists()) {
         org.apache.iotdb.db.utils.FileUtils.deleteDirectory(storageGroupFolder);
       }
-    } catch (IOException e) {
-      logger.error(
-          "Cannot delete the folder in storage group {}, because",
-          logicalStorageGroupName + "-" + virtualStorageGroupId,
-          e);
     } finally {
       writeUnlock();
     }
@@ -1395,11 +1390,7 @@ public class StorageGroupProcessor {
           fsFactory.getFile(
               tsfilePath, logicalStorageGroupName + File.separator + virtualStorageGroupId);
       if (storageGroupFolder.exists()) {
-        try {
-          org.apache.iotdb.db.utils.FileUtils.deleteDirectory(storageGroupFolder);
-        } catch (IOException e) {
-          logger.error("Delete TsFiles failed", e);
-        }
+        org.apache.iotdb.db.utils.FileUtils.deleteDirectory(storageGroupFolder);
       }
     }
   }

@@ -181,7 +181,7 @@ public class DeltaBinaryEncoderLongTest {
     return list;
   }
 
-  private void writeData(long[] data, int length) throws IOException {
+  private void writeData(long[] data, int length) {
     for (int i = 0; i < length; i++) {
       writer.encode(data[i], out);
     }

@@ -40,7 +40,7 @@ import static org.junit.Assert.assertTrue;
 public class IoTDBDeleteStorageGroupIT {
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
   }
