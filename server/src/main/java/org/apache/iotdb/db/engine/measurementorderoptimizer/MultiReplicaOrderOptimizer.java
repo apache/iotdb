@@ -86,6 +86,7 @@ public class MultiReplicaOrderOptimizer {
       } else {
         replicas[swapReplica].swapMeasurementPos(swapLeft, swapRight);
       }
+      LOGGER.info(String.format("Epoch %d: curCost %.3f", k, curCost));
     }
     LOGGER.info("Final cost: " + curCost);
     LOGGER.info("Loop count: " + k);
