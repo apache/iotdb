@@ -83,7 +83,7 @@ public class DivergentDesign {
       ++i;
       curCost = totalCost(curWorkloadPartition);
       nextCost = totalCost(nextWorkloadPartition);
-      LOGGER.info(String.valueOf(i));
+      LOGGER.info(String.format("Epoch%d Cur cost: %.3f, New cost: %.3f", i, curCost, nextCost));
     } while (i < maxIter && Math.abs(curCost - nextCost) > breakPoint);
     curWorkloadPartition = nextWorkloadPartition;
 

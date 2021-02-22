@@ -41,7 +41,7 @@ public class TsFileSequenceRead {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static void main(String[] args) throws IOException {
-    String filename = "E:\\Thing\\Workspace\\IoTDB\\res\\divergentDesign2.tsfile";
+    String filename = "E:\\Thing\\Workspace\\IoTDB\\res\\SA2.tsfile";
     if (args.length >= 1) {
       filename = args[0];
     }

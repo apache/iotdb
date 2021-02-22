@@ -20,8 +20,8 @@ import java.util.List;
 public class MultiReplicaGenerator {
   static final String oriTsFilePath = "E:\\Thing\\Workspace\\IoTDB\\res\\sequence.tsfile";
   static final String deviceName = "root.test.device";
-  static final String physicalConfFile = "E:\\Thing\\Workspace\\IoTDB\\res\\DivergentDesign_3R.txt";
-  static final String generatedTsFilePattern = "E:\\Thing\\Workspace\\IoTDB\\res\\divergentDesign%d.tsfile";
+  static final String physicalConfFile = "E:\\Thing\\Workspace\\IoTDB\\res\\SA_3R.txt";
+  static final String generatedTsFilePattern = "E:\\Thing\\Workspace\\IoTDB\\res\\SA%d.tsfile";
   static final int measureCntPerChunkGroup = 10000;
   static final int replicaCount = 3;
 
