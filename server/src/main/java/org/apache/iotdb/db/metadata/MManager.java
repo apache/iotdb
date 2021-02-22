@@ -1834,9 +1834,23 @@ public class MManager {
     TSDataType dataType;
     for (int i = 0; i < measurementList.length; i++) {
       try {
-        dataType = getTypeInLoc(plan, i);
-        measurementMNode =
-            getOrCreateMeasurementMNode(deviceMNode, measurementList[i], dataType, deviceId);
+        MNode child = getMNode(deviceMNode, measurementList[i]);
+        if (child instanceof MeasurementMNode) {
+          measurementMNode = (MeasurementMNode) child;
+        } else if (child instanceof StorageGroupMNode) {
+          throw new PathAlreadyExistException(deviceId + PATH_SEPARATOR + measurementList[i]);
+        } else {
+          if (!config.isAutoCreateSchemaEnabled()) {
+            throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurementList[i]);
+          } else {
+            // child is null or child is type of MNode
+            dataType = getTypeInLoc(plan, i);
+            // create it, may concurrent created by multiple thread
+            internalCreateTimeseries(deviceId.concatNode(measurementList[i]), dataType);
+            measurementMNode = (MeasurementMNode) deviceMNode.getChild(measurementList[i]);
+          }
+        }
+
         // check type is match
         TSDataType insertDataType = null;
         if (plan instanceof InsertRowPlan) {
@@ -1891,32 +1905,8 @@ public class MManager {
     return deviceMNode;
   }
 
-  public MeasurementMNode getOrCreateMeasurementMNode(
-      MNode deviceMNode, String measurement, TSDataType dataType, PartialPath deviceId)
-      throws MetadataException {
-    MNode child = deviceMNode.getChild(measurement);
-    if (child == null) {
-      autoCreateSchemaOrNot(measurement, dataType, deviceId);
-    } else if (child instanceof StorageGroupMNode) {
-      throw new PathAlreadyExistException(deviceId + PATH_SEPARATOR + measurement);
-    } else if (child instanceof MeasurementMNode) {
-      return (MeasurementMNode) child;
-    } else {
-      autoCreateSchemaOrNot(measurement, dataType, deviceId);
-    }
-
-    return (MeasurementMNode) deviceMNode.getChild(measurement);
-  }
-
-  protected void autoCreateSchemaOrNot(
-      String measurement, TSDataType dataType, PartialPath deviceId) throws MetadataException {
-    // could not create it
-    if (!config.isAutoCreateSchemaEnabled()) {
-      throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurement);
-    } else {
-      // create it, may concurrent created by multiple thread
-      internalCreateTimeseries(deviceId.concatNode(measurement), dataType);
-    }
+  public MNode getMNode(MNode deviceMNode, String measurementName) {
+    return deviceMNode.getChild(measurementName);
   }
 
   /** create timeseries with ignore PathAlreadyExistException */
