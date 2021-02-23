@@ -25,6 +25,7 @@ public class DivergentDesign {
   private List<QueryRecord> queryRecords;
   private String deviceID;
   private static final Logger LOGGER = LoggerFactory.getLogger(DivergentDesign.class);
+  private List<Double> costList = new LinkedList<>();
 
   public DivergentDesign(String deviceID) {
     workloads = new ArrayList<>();
@@ -72,11 +73,13 @@ public class DivergentDesign {
     for(int k = 0; k < replicaNum; ++k) {
       nextReplica[k] = databaseAdvisor(nextWorkloadPartition[k]);
     }
-    float curCost = 0.0f;
-    float nextCost = totalCost(nextWorkloadPartition, nextReplica);
+    double curCost = 0.0f;
+    double nextCost = totalCost(nextWorkloadPartition, nextReplica);
+
     int i = 0;
     do {
       curCost = nextCost;
+      costList.add(curCost);
       curWorkloadPartition = nextWorkloadPartition;
       curReplica = nextReplica;
       nextWorkloadPartition = new Workload[replicaNum];
@@ -216,6 +219,10 @@ public class DivergentDesign {
    */
   private float getCostForSingleQuery(QueryRecord record, Replica replica) {
     return replica.calCostForQuery(record);
+  }
+
+  public List<Double> getCostList() {
+    return costList;
   }
 
 }

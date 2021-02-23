@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 
@@ -25,7 +26,8 @@ public class MultiReplicaOrderOptimizer {
   private List<QueryRecord> records;
   private List<Long> chunkSize;
   private final float SA_INIT_TEMPERATURE = 100.0f;
-  private final float COOLING_RATE = 0.95f;
+  private final float COOLING_RATE = 0.9999828f;
+  private List<Double> costList = new LinkedList<>();
 
   public MultiReplicaOrderOptimizer(String deviceID) {
     this.deviceID = deviceID;
@@ -59,7 +61,7 @@ public class MultiReplicaOrderOptimizer {
   }
 
   public Pair<Replica[], Workload[]> optimizeBySA() {
-    float curCost = getCostAndWorkloadPartitionForCurReplicas(records, replicas).left;
+    double curCost = getCostAndWorkloadPartitionForCurReplicas(records, replicas).left;
     LOGGER.info("Ori cost: " + curCost);
     float temperature = SA_INIT_TEMPERATURE;
     Random r = new Random();
@@ -77,7 +79,7 @@ public class MultiReplicaOrderOptimizer {
       }
       replicas[swapReplica].swapMeasurementPos(swapLeft, swapRight);
       Pair<Float, Workload[]> costAndWorkloadPartition = getCostAndWorkloadPartitionForCurReplicas(records, replicas);
-      float newCost = costAndWorkloadPartition.left;
+      double newCost = costAndWorkloadPartition.left;
       workloadPartition = costAndWorkloadPartition.right;
       float probability = r.nextFloat();
       probability = probability < 0 ? -probability : probability;
@@ -88,6 +90,7 @@ public class MultiReplicaOrderOptimizer {
       } else {
         replicas[swapReplica].swapMeasurementPos(swapLeft, swapRight);
       }
+      costList.add(curCost);
       LOGGER.info(String.format("Epoch %d: curCost %.3f", k, curCost));
     }
     LOGGER.info("Final cost: " + curCost);
@@ -123,5 +126,9 @@ public class MultiReplicaOrderOptimizer {
       }
     }
     return new Pair<>(totalCost, workloads);
+  }
+
+  public List<Double> getCostList() {
+    return costList;
   }
 }

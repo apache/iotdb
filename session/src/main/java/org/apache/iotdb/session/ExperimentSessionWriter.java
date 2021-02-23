@@ -11,6 +11,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -19,21 +22,31 @@ public class ExperimentSessionWriter {
   private static final Session session = new Session("127.0.0.1", 6667, "root", "root");
   private static final int TIMESERIES_NUM = 1000;
   private static int DATA_NUM = 10000;
+  private static final File COST_LOG_FILE = new File("./SA_3R.cost");
+  private static OutputStream COST_LOG_STREAM;
   public static void main(String[] args) throws Exception{
+    if (!COST_LOG_FILE.exists()) {
+      COST_LOG_FILE.createNewFile();
+    }
+    COST_LOG_STREAM = new FileOutputStream(COST_LOG_FILE);
+
     session.open(false);
     session.readRecordFromFile();
     session.readMetadataFromFile();
-    session.deleteStorageGroup("root.test");
+    if (session.checkTimeseriesExists("root.test.device.s0")) {
+      session.deleteStorageGroup("root.test");
+    }
     session.setStorageGroup("root.test");
     createTimeseries();
-    ReplicaSet replicaSet = session.runMultiReplicaOptimize("root.test.device", 200);
+    ReplicaSet replicaSet = session.runMultiReplicaOptimize("root.test.device", 5000);
     showReplicaSet(replicaSet);
+    writeCostLog(replicaSet.costList);
     /*MeasurementOrder order = session.optimizeBySA("root.test.device");
     for(String measurment : order.measurements) {
       System.out.println(measurment);
     }*/
     // generateData();
-    session.executeNonQueryStatement("flush");
+    // session.executeNonQueryStatement("flush");
     session.close();
   }
 
@@ -98,6 +111,20 @@ public class ExperimentSessionWriter {
       }
       System.out.println();
       System.out.println();
+    }
+  }
+
+  static void writeCostLog(List<Double> costList) {
+    StringBuilder builder = new StringBuilder();
+    for(Double cost : costList) {
+      builder.append(cost);
+      builder.append('\n');
+    }
+    try {
+      COST_LOG_STREAM.write(builder.toString().getBytes());
+      COST_LOG_STREAM.close();
+    } catch (Exception e) {
+      e.printStackTrace();
     }
   }
 }

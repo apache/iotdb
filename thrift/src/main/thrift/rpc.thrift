@@ -299,6 +299,7 @@ struct MeasurementOrderSet {
 struct ReplicaSet {
     1: optional list<MeasurementOrder> measurementOrders;
     2: optional list<list<string>> workloadPartition;
+    3: optional list<double> costList;
 }
 
 service TSIService {
