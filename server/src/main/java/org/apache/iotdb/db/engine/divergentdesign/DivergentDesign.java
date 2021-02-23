@@ -25,7 +25,7 @@ public class DivergentDesign {
   private List<QueryRecord> queryRecords;
   private String deviceID;
   private static final Logger LOGGER = LoggerFactory.getLogger(DivergentDesign.class);
-  private List<Double> costList = new LinkedList<>();
+  private List<Double> mCostList = new LinkedList<>();
 
   public DivergentDesign(String deviceID) {
     workloads = new ArrayList<>();
@@ -79,7 +79,7 @@ public class DivergentDesign {
     int i = 0;
     do {
       curCost = nextCost;
-      costList.add(curCost);
+      mCostList.add(curCost);
       curWorkloadPartition = nextWorkloadPartition;
       curReplica = nextReplica;
       nextWorkloadPartition = new Workload[replicaNum];
@@ -222,7 +222,7 @@ public class DivergentDesign {
   }
 
   public List<Double> getCostList() {
-    return costList;
+    return mCostList;
   }
 
 }

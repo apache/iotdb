@@ -1757,6 +1757,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     ReplicaSet replicaSet = new ReplicaSet();
     replicaSet.measurementOrders = new ArrayList<>();
     replicaSet.workloadPartition = new ArrayList<>();
+    replicaSet.costList = divergentDesign.getCostList();
     for(Replica replica : optimalReplicas) {
       MeasurementOrder order = new MeasurementOrder();
       order.measurements = replica.getMeasurements();

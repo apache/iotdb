@@ -22,7 +22,7 @@ public class ExperimentSessionWriter {
   private static final Session session = new Session("192.168.130.38", 6667, "root", "root");
   private static final int TIMESERIES_NUM = 1000;
   private static int DATA_NUM = 10000;
-  private static final File COST_LOG_FILE = new File("./SA_3R.cost");
+  private static final File COST_LOG_FILE = new File("./DivergentDesign_3R.cost");
   private static OutputStream COST_LOG_STREAM;
   public static void main(String[] args) throws Exception{
     if (!COST_LOG_FILE.exists()) {
@@ -38,7 +38,7 @@ public class ExperimentSessionWriter {
     }
     session.setStorageGroup("root.test");
     createTimeseries();
-    ReplicaSet replicaSet = session.runMultiReplicaOptimize("root.test.device", 400000);
+    ReplicaSet replicaSet = session.runDivergentDesign("root.test.device", 200);
     showReplicaSet(replicaSet);
     writeCostLog(replicaSet.costList);
     /*MeasurementOrder order = session.optimizeBySA("root.test.device");
