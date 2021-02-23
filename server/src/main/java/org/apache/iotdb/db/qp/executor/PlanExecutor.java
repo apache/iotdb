@@ -114,6 +114,7 @@ import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
@@ -1268,7 +1269,12 @@ public class PlanExecutor implements IPlanExecutor {
       PartialPath path = deletePathList.get(i);
       try {
         StorageEngine.getInstance().deleteTimeseries(path, deleteTimeSeriesPlan.getIndex());
-        IoTDB.metaManager.deleteTimeseries(path);
+        String failed = IoTDB.metaManager.deleteTimeseries(path);
+        if (failed != null) {
+          deleteTimeSeriesPlan
+              .getResults()
+              .put(i, RpcUtils.getStatus(TSStatusCode.NODE_DELETE_FAILED_ERROR, failed));
+        }
       } catch (StorageEngineException | MetadataException e) {
         deleteTimeSeriesPlan
             .getResults()
