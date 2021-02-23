@@ -98,6 +98,19 @@ public class RegularDataEncoderIntegerTest {
     shouldReadAndWrite(data, ROW_NUM);
   }
 
+  @Test
+  public void testMissingPointsDataSize() throws IOException {
+    int[] originalData = new int[] {1000, 1100, 1200, 1300, 1500, 2000};
+    out = new ByteArrayOutputStream();
+    writeData(originalData, 6);
+    byte[] page = out.toByteArray();
+    buffer = ByteBuffer.wrap(page);
+    int i = 0;
+    while (regularDataDecoder.hasNext(buffer)) {
+      assertEquals(originalData[i++], regularDataDecoder.readInt(buffer));
+    }
+  }
+
   private int[] getMissingPointData(int dataSize, int missingPointInterval) {
     ROW_NUM = dataSize;
 
