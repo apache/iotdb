@@ -110,7 +110,7 @@ public class AvgAggrResult extends AggregateResult {
     }
   }
 
-  public void updateAvg(TSDataType type, Object sumVal) throws UnSupportedDataTypeException {
+  private void updateAvg(TSDataType type, Object sumVal) throws UnSupportedDataTypeException {
     double val;
     switch (type) {
       case INT32:
@@ -133,6 +133,23 @@ public class AvgAggrResult extends AggregateResult {
     }
     avg = avg * ((double) cnt / (cnt + 1)) + val * (1.0 / (cnt + 1));
     cnt++;
+  }
+
+  public void setAvgResult(TSDataType type, Object val) throws UnSupportedDataTypeException {
+    cnt = 1;
+    switch (type) {
+      case INT32:
+      case INT64:
+      case FLOAT:
+      case DOUBLE:
+        avg = (double) val;
+        break;
+      case TEXT:
+      case BOOLEAN:
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Unsupported data type in aggregation AVG : %s", type));
+    }
   }
 
   @Override

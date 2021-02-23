@@ -765,7 +765,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       // same.
       return StaticResps.LAST_RESP.deepCopy();
     } else if (plan instanceof AggregationPlan && ((AggregationPlan) plan).getLevel() >= 0) {
-      Map<String, AggregateResult> finalPaths = ((AggregationPlan) plan).getPathByLevel();
+      Map<String, AggregateResult> finalPaths = ((AggregationPlan) plan).getAggPathByLevel();
       for (Map.Entry<String, AggregateResult> entry : finalPaths.entrySet()) {
         respColumns.add(entry.getKey());
         columnsTypes.add(entry.getValue().getResultDataType().toString());

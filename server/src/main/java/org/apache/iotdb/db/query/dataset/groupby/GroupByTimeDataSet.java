@@ -60,7 +60,7 @@ public class GroupByTimeDataSet extends QueryDataSet {
       logger.debug("paths " + this.paths + " level:" + plan.getLevel());
     }
 
-    Map<String, AggregateResult> finalPaths = plan.getPathByLevel();
+    Map<String, AggregateResult> finalPaths = plan.getAggPathByLevel();
 
     // get all records from GroupByDataSet, then we merge every record
     if (logger.isDebugEnabled()) {

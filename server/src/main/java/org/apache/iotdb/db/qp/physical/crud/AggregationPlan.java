@@ -42,7 +42,8 @@ public class AggregationPlan extends RawDataQueryPlan {
   private List<String> deduplicatedAggregations = new ArrayList<>();
 
   private int level = -1;
-  private Map<String, AggregateResult> finalAggreagtionPaths = new LinkedHashMap<>();
+  // group by level aggregation result path
+  private final Map<String, AggregateResult> levelAggPaths = new LinkedHashMap<>();
 
   public AggregationPlan() {
     super();
@@ -78,9 +79,9 @@ public class AggregationPlan extends RawDataQueryPlan {
     this.level = level;
   }
 
-  public Map<String, AggregateResult> getPathByLevel() throws QueryProcessException {
-    if (!finalAggreagtionPaths.isEmpty()) {
-      return finalAggreagtionPaths;
+  public Map<String, AggregateResult> getAggPathByLevel() throws QueryProcessException {
+    if (!levelAggPaths.isEmpty()) {
+      return levelAggPaths;
     }
     List<PartialPath> seriesPaths = getPaths();
     List<TSDataType> dataTypes = getDataTypes();
@@ -89,13 +90,16 @@ public class AggregationPlan extends RawDataQueryPlan {
         String transformedPath =
             FilePathUtils.generatePartialPathByLevel(seriesPaths.get(i).getFullPath(), getLevel());
         String key = getAggregations().get(i) + "(" + transformedPath + ")";
-        AggregateResult aggRet =
-            AggregateResultFactory.getAggrResultByName(getAggregations().get(i), dataTypes.get(i));
-        finalAggreagtionPaths.putIfAbsent(key, aggRet);
+        if (!levelAggPaths.containsKey(key)) {
+          AggregateResult aggRet =
+              AggregateResultFactory.getAggrResultByName(
+                  getAggregations().get(i), dataTypes.get(i));
+          levelAggPaths.put(key, aggRet);
+        }
       }
     } catch (IllegalPathException e) {
       throw new QueryProcessException(e.getMessage());
     }
-    return finalAggreagtionPaths;
+    return levelAggPaths;
   }
 }

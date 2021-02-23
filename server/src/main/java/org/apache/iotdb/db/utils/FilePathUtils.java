@@ -178,7 +178,8 @@ public class FilePathUtils {
             AggregateResultFactory.getAggrResultByName(
                 plan.getDeduplicatedAggregations().get(i), dataType);
         if (aggRet.getAggregationType().equals(AggregationType.AVG)) {
-          ((AvgAggrResult) aggRet).updateAvg(dataType, newRecord.getFields().get(i).getDoubleV());
+          ((AvgAggrResult) aggRet)
+              .setAvgResult(dataType, newRecord.getFields().get(i).getDoubleV());
         } else {
           switch (dataType) {
             case TEXT:
