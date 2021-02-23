@@ -3,6 +3,7 @@
 **/logs/*
 **/lib/**
 **/data/**
+*.cost
 
 # Python runtime file
 **/__pycache__/**

@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.Random;
 
 public class ExperimentSessionWriter {
-  private static final Session session = new Session("192.168.130.38", 6667, "root", "root");
+  private static final Session session = new Session("127.0.0.1", 6667, "root", "root");
   private static final int TIMESERIES_NUM = 1000;
   private static int DATA_NUM = 10000;
   private static final File COST_LOG_FILE = new File("./DivergentDesign_3R.cost");
@@ -33,12 +33,12 @@ public class ExperimentSessionWriter {
     session.open(false);
     session.readRecordFromFile();
     session.readMetadataFromFile();
-    if (session.checkTimeseriesExists("root.test.device.s0")) {
+    /*if (session.checkTimeseriesExists("root.test.device")) {
       session.deleteStorageGroup("root.test");
     }
     session.setStorageGroup("root.test");
-    createTimeseries();
-    ReplicaSet replicaSet = session.runDivergentDesign("root.test.device", 200);
+    createTimeseries();*/
+    ReplicaSet replicaSet = session.runDivergentDesign("root.test.device", 3);
     showReplicaSet(replicaSet);
     writeCostLog(replicaSet.costList);
     /*MeasurementOrder order = session.optimizeBySA("root.test.device");
