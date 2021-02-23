@@ -22,6 +22,7 @@ import static org.apache.iotdb.cluster.utils.nodetool.Printer.msgPrintln;
 
 import io.airlift.airline.Command;
 import java.util.Map;
+import java.util.Map.Entry;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitorMBean;
 
@@ -30,15 +31,26 @@ public class Status extends NodeToolCmd {
 
   @Override
   public void execute(ClusterMonitorMBean proxy) {
-    Map<Node, Boolean> statusMap = proxy.getAllNodeStatus();
-    if(statusMap == null){
+    Map<Node, Integer> statusMap = proxy.getAllNodeStatus();
+    if (statusMap == null) {
       msgPrintln(BUILDING_CLUSTER_INFO);
       return;
     }
     msgPrintln(String.format("%-30s  %10s", "Node", "Status"));
-    statusMap.forEach(
-        (node, status) -> msgPrintln(String.format("%-30s->%10s", nodeToString(node),
-            (Boolean.TRUE.equals(status) ?
-            "on" : "off"))));
+    for (Entry<Node, Integer> entry : statusMap.entrySet()) {
+      Node node = entry.getKey();
+      Integer statusNum = entry.getValue();
+      String status;
+      if (statusNum == 0) {
+        status = "on";
+      } else if (statusNum == 1) {
+        status = "off";
+      } else if (statusNum == 2) {
+        status = "joining";
+      } else {
+        status = "leaving";
+      }
+      msgPrintln(String.format("%-30s->%10s", nodeToString(node), status));
+    }
   }
 }

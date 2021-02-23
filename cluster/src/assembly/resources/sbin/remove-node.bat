@@ -19,7 +19,7 @@
 
 @echo off
 echo ````````````````````````
-echo Starting IoTDB (Cluster Mode)
+echo Starting to remove a node (Cluster Mode)
 echo ````````````````````````
 
 PATH %PATH%;%JAVA_HOME%\bin\
@@ -57,20 +57,8 @@ popd
 set IOTDB_CONF=%IOTDB_HOME%\conf
 set IOTDB_LOGS=%IOTDB_HOME%\logs
 
-
-IF EXIST "%IOTDB_CONF%\iotdb-env.bat" (
-    IF "%1" == "printgc" (
-      CALL "%IOTDB_CONF%\iotdb-env.bat" printgc
-      SHIFT
-    ) ELSE (
-      CALL "%IOTDB_CONF%\iotdb-env.bat"
-    )
-) ELSE (
-    echo "can't find %IOTDB_CONF%\iotdb-env.bat"
-)
-
 @setlocal ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
-set CONF_PARAMS=-s
+set CONF_PARAMS=-r
 set is_conf_path=false
 for %%i in (%*) do (
 	IF "%%i" == "-c" (

@@ -20,7 +20,7 @@
 
 
 echo ---------------------
-echo "Starting IoTDB (Cluster Mode)"
+echo "Starting to remove a node(Cluster Mode)"
 echo ---------------------
 
 if [ -z "${IOTDB_HOME}" ]; then
@@ -28,13 +28,24 @@ if [ -z "${IOTDB_HOME}" ]; then
 fi
 
 IOTDB_CONF=${IOTDB_HOME}/conf
-# IOTDB_LOGS=${IOTDB_HOME}/logs
 
-if [ -f "$IOTDB_CONF/iotdb-env.sh" ]; then
-    . "$IOTDB_CONF/iotdb-env.sh"
-else
-    echo "can't find $IOTDB_CONF/iotdb-env.sh"
-fi
+is_conf_path=false
+for arg do
+    shift
+    if [ "$arg" == "-c" ]; then
+        is_conf_path=true
+        continue
+    fi
+
+    if [ $is_conf_path == true ]; then
+        IOTDB_CONF=$arg
+        is_conf_path=false
+        continue
+    fi
+    set -- "$@" "$arg"
+done
+
+CONF_PARAMS="-r "$*
 
 if [ -n "$JAVA_HOME" ]; then
     for java in "$JAVA_HOME"/bin/amd64/java "$JAVA_HOME"/bin/java; do
@@ -65,8 +76,9 @@ launch_service()
 	iotdb_parms="$iotdb_parms -DIOTDB_HOME=${IOTDB_HOME}"
 	iotdb_parms="$iotdb_parms -DTSFILE_HOME=${IOTDB_HOME}"
 	iotdb_parms="$iotdb_parms -DIOTDB_CONF=${IOTDB_CONF}"
+	iotdb_parms="$iotdb_parms -DCLUSTER_CONF=${IOTDB_CONF}"
 	iotdb_parms="$iotdb_parms -Dname=iotdb\.IoTDB"
-	exec "$JAVA" $iotdb_parms $IOTDB_JMX_OPTS -cp "$CLASSPATH" "$class" -a
+	exec "$JAVA" $iotdb_parms $IOTDB_JMX_OPTS -cp "$CLASSPATH" "$class" $CONF_PARAMS
 	return $?
 }
 

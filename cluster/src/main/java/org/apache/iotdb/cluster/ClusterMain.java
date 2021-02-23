@@ -68,8 +68,8 @@ public class ClusterMain {
           + "[-internal_data_port <internal data port>] "
           + "[-cluster_rpc_port <cluster rpc port>] "
           + "[-seed_nodes <node1:meta_port:data_port:cluster_rpc_port,"
-          +               "node2:meta_port:data_port:cluster_rpc_port,"
-          +           "...,noden:meta_port:data_port:cluster_rpc_port>] "
+          + "node2:meta_port:data_port:cluster_rpc_port,"
+          + "...,noden:meta_port:data_port:cluster_rpc_port>] "
           + "[-sc] "
           + "[-rpc_port <rpc port>]");
       return;
@@ -276,6 +276,9 @@ public class ClusterMain {
       logger.error("Cluster size is too small, cannot remove any node");
     } else if (response == Response.RESPONSE_REJECT) {
       logger.error("Node {} is not found in the cluster, please check", nodeToRemove);
+    } else if (response == Response.RESPONSE_CHANGE_MEMBERSHIP_CONFLICT) {
+      logger.warn(
+          "The cluster is performing other change membership operations. Change membership operations should be performed one by one. Please try again later");
     } else {
       logger.error("Unexpected response {}", response);
     }
@@ -302,7 +305,7 @@ public class ClusterMain {
       public int calculateSlotByTime(String storageGroupName, long timestamp, int maxSlotNum) {
         int sgSerialNum = extractSerialNumInSGName(storageGroupName) % k;
         if (sgSerialNum >= 0) {
-          return (int)(maxSlotNum / k * (sgSerialNum + 0.5));
+          return (int) (maxSlotNum / k * (sgSerialNum + 0.5));
         } else {
           return defaultStrategy.calculateSlotByTime(storageGroupName, timestamp, maxSlotNum);
         }
@@ -313,7 +316,7 @@ public class ClusterMain {
           int maxSlotNum) {
         int sgSerialNum = extractSerialNumInSGName(storageGroupName) % k;
         if (sgSerialNum >= 0) {
-          return (int)(maxSlotNum / k * (sgSerialNum + 0.5));
+          return (int) (maxSlotNum / k * (sgSerialNum + 0.5));
         } else {
           return defaultStrategy
               .calculateSlotByPartitionNum(storageGroupName, partitionId, maxSlotNum);

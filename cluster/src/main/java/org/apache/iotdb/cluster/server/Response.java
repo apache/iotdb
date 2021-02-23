@@ -49,6 +49,8 @@ public class Response {
   // the new node, which tries to join the cluster, contains conflicted parameters with the
   // cluster, so the operation is rejected.
   public static final long RESPONSE_NEW_NODE_PARAMETER_CONFLICT = -10;
+  // add/remove node operations should one by one
+  public static final long RESPONSE_CHANGE_MEMBERSHIP_CONFLICT = -11;
   // the request is not executed locally anc should be forwarded
   public static final long RESPONSE_NULL = Long.MIN_VALUE;
 

@@ -43,6 +43,11 @@ public class LogPlan extends PhysicalPlan {
     this.log = log;
   }
 
+  public LogPlan(LogPlan plan) {
+    super(false);
+    this.log = plan.log;
+  }
+
   public ByteBuffer getLog() {
     log.clear();
     return log;
@@ -65,8 +70,10 @@ public class LogPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void deserialize(ByteBuffer buffer) {
     int len = buffer.getInt();
-    log = ByteBuffer.wrap(buffer.array(), buffer.position(), len);
+    byte[] data = new byte[len];
+    System.arraycopy(buffer.array(), buffer.position(), data, 0, len);
+    log = ByteBuffer.wrap(data);
   }
 }

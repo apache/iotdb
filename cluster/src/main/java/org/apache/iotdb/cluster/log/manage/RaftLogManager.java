@@ -641,6 +641,9 @@ public abstract class RaftLogManager {
    */
   void applyEntries(List<Log> entries) {
     for (Log entry : entries) {
+      if (entry.isApplied()) {
+        continue;
+      }
       if (blockAppliedCommitIndex > 0 && entry.getCurrLogIndex() > blockAppliedCommitIndex) {
         blockedUnappliedLogList.add(entry);
         continue;

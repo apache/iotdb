@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.log;
 
 import static org.junit.Assert.assertEquals;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
@@ -29,8 +30,12 @@ import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.logtypes.EmptyContentLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
+import org.apache.iotdb.cluster.partition.PartitionGroup;
+import org.apache.iotdb.cluster.utils.PlanSerializer;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.LogPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.junit.Test;
 
@@ -97,5 +102,14 @@ public class LogParserTest {
     ByteBuffer byteBuffer = log.serialize();
     Log serialized = logParser.parse(byteBuffer);
     assertEquals(log, serialized);
+  }
+
+  @Test
+  public void testLogPlan() throws IOException, IllegalPathException, UnknownLogTypeException {
+    AddNodeLog log = new AddNodeLog(TestUtils.seralizePartitionTable, TestUtils.getNode(0));
+    LogPlan logPlan = new LogPlan(log.serialize());
+    ByteBuffer buffer = ByteBuffer.wrap(PlanSerializer.getInstance().serialize(logPlan));
+    PhysicalPlan plan = PhysicalPlan.Factory.create(buffer);
+    LogParser.getINSTANCE().parse(((LogPlan) plan).getLog());
   }
 }

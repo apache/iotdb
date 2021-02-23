@@ -161,7 +161,7 @@ public class ClusterPlanRouter {
       throw new UnsupportedPlanException(plan);
     }
     for (PartitionGroup partitionGroup: partitionTable.calculateGlobalGroups(oldRing)) {
-      result.put(plan, partitionGroup);
+      result.put(new LogPlan(plan), partitionGroup);
     }
     return result;
   }

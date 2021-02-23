@@ -907,7 +907,6 @@ public abstract class RaftMember {
 
     try {
       if (appendLogInGroup(log)) {
-        TSStatus res = StatusUtils.OK;
         return StatusUtils.OK;
       }
     } catch (LogExecutionException e) {

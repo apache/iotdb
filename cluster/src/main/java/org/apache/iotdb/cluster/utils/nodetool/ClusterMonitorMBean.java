@@ -66,9 +66,9 @@ public interface ClusterMonitorMBean {
   /**
    * Get status of all nodes
    *
-   * @return key: node, value: live or not
+   * @return key: node, value: 0(live), 1(offline), 2(joining), 3(leaving)
    */
-  Map<Node, Boolean> getAllNodeStatus();
+  Map<Node, Integer> getAllNodeStatus();
 
   /**
    *

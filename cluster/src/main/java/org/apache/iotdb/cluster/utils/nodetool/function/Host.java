@@ -63,7 +63,7 @@ public class Host extends NodeToolCmd {
       for (int i = 1; i < raftGroup.size(); i++) {
         builder.append(", ").append(nodeToString(raftGroup.get(i)));
       }
-      builder.append(')');
+      builder.append("),id=").append(raftGroup.getId());
       msgPrintln(String.format("%-50s->%20s", builder.toString(), slotNum));
     }
   }

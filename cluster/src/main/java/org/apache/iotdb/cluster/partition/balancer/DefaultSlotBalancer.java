@@ -79,6 +79,7 @@ public class DefaultSlotBalancer implements SlotBalancer {
           previousNodeMap.get(curNode).put(slot, table.getHeaderGroup(entry.getKey(), oldRing));
           slotNodes[slot] = curNode;
         }
+        slotsToMove.clear();
         transferNum -= numToMove;
         if (transferNum > 0) {
           curNode = new RaftNode(newNode, ++raftId);
@@ -89,6 +90,7 @@ public class DefaultSlotBalancer implements SlotBalancer {
             previousNodeMap.get(curNode).put(slot, table.getHeaderGroup(entry.getKey(), oldRing));
             slotNodes[slot] = curNode;
           }
+          slotsToMove.clear();
         }
       }
     }

@@ -19,7 +19,7 @@
 
 @echo off
 echo ````````````````````````
-echo Starting IoTDB
+echo Starting IoTDB (Cluster Mode)
 echo ````````````````````````
 
 PATH %PATH%;%JAVA_HOME%\bin\

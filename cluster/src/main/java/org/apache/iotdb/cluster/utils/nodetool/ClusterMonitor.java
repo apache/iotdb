@@ -134,7 +134,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
   }
 
   @Override
-  public Map<Node, Boolean> getAllNodeStatus() {
+  public Map<Node, Integer> getAllNodeStatus() {
     MetaGroupMember metaGroupMember = getMetaGroupMember();
     if (metaGroupMember == null) {
       return null;
