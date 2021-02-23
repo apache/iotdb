@@ -91,7 +91,9 @@ public class MultiReplicaOrderOptimizer {
         replicas[swapReplica].swapMeasurementPos(swapLeft, swapRight);
       }
       costList.add(curCost);
-      LOGGER.info(String.format("Epoch %d: curCost %.3f", k, curCost));
+      if (k % 500 == 0) {
+        LOGGER.info(String.format("Epoch %d: curCost %.3f", k, curCost));
+      }
     }
     LOGGER.info("Final cost: " + curCost);
     LOGGER.info("Loop count: " + k);
