@@ -31,7 +31,7 @@ public class MeasurementOrderOptimizer {
   // DeviceId -> ChunkGroupCount
   Map<String, Integer> chunkGroupCountMap = new HashMap<>();
   List<QueryRecord> queryRecords = new ArrayList<>();
-  public static final int SA_MAX_ITERATION = 10000000;
+  public static final int SA_MAX_ITERATION = 350000;
   public static final float SA_INIT_TEMPERATURE = 2.0f;
   public static final float SA_COOLING_RATE = 0.02f;
   private static final Logger LOGGER = LoggerFactory.getLogger(MeasurementOrderOptimizer.class);
