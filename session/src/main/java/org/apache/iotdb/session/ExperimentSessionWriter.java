@@ -26,7 +26,7 @@ public class ExperimentSessionWriter {
     session.deleteStorageGroup("root.test");
     session.setStorageGroup("root.test");
     createTimeseries();
-    ReplicaSet replicaSet = session.runMultiReplicaOptimize("root.test.device");
+    ReplicaSet replicaSet = session.runMultiReplicaOptimize("root.test.device", 200);
     showReplicaSet(replicaSet);
     /*MeasurementOrder order = session.optimizeBySA("root.test.device");
     for(String measurment : order.measurements) {
@@ -92,11 +92,11 @@ public class ExperimentSessionWriter {
         System.out.print(measurement + " ");
       }
       System.out.println();
-      /*List<String> workload = replicaSet.workloadPartition.get(i);
+      List<String> workload = replicaSet.workloadPartition.get(i);
       for(String sql : workload) {
         System.out.println(sql);
       }
-      System.out.println();*/
+      System.out.println();
       System.out.println();
     }
   }

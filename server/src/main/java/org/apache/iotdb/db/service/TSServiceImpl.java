@@ -1816,14 +1816,21 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   @Override
   public ReplicaSet multipleReplicaOptimize(String deviceID) throws TException {
     MultiReplicaOrderOptimizer optimizer = new MultiReplicaOrderOptimizer(deviceID);
-    Replica[] replicas = optimizer.optimizeBySA();
+    Pair<Replica[], Workload[]> result = optimizer.optimizeBySA();
     ReplicaSet resultSet = new ReplicaSet();
     resultSet.measurementOrders = new ArrayList<>();
-    for(Replica replica : replicas) {
+    resultSet.workloadPartition = new ArrayList<>();
+    for(int i = 0; i < result.left.length; ++i) {
+      Replica replica = result.left[i];
       MeasurementOrder order = new MeasurementOrder();
       order.deviceid = deviceID;
       order.measurements = replica.getMeasurements();
       resultSet.measurementOrders.add(order);
+      List<String> workloadStr = new ArrayList<>();
+      for(QueryRecord record : result.right[i].getRecords()) {
+        workloadStr.add(record.toString());
+      }
+      resultSet.workloadPartition.add(workloadStr);
     }
     return resultSet;
   }
@@ -1832,14 +1839,21 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   public ReplicaSet multipleReplicaOptimizeWithIterNum(String deviceID, int maxIter) throws TException {
     MultiReplicaOrderOptimizer optimizer = new MultiReplicaOrderOptimizer(deviceID);
     optimizer.setMaxIter(maxIter);
-    Replica[] replicas = optimizer.optimizeBySA();
+    Pair<Replica[], Workload[]> result = optimizer.optimizeBySA();
     ReplicaSet resultSet = new ReplicaSet();
     resultSet.measurementOrders = new ArrayList<>();
-    for(Replica replica : replicas) {
+    resultSet.workloadPartition = new ArrayList<>();
+    for(int i = 0; i < result.left.length; ++i) {
+      Replica replica = result.left[i];
       MeasurementOrder order = new MeasurementOrder();
       order.deviceid = deviceID;
       order.measurements = replica.getMeasurements();
       resultSet.measurementOrders.add(order);
+      List<String> workloadStr = new ArrayList<>();
+      for(QueryRecord record : result.right[i].getRecords()) {
+        workloadStr.add(record.toString());
+      }
+      resultSet.workloadPartition.add(workloadStr);
     }
     return resultSet;
   }

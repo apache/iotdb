@@ -58,11 +58,12 @@ public class MultiReplicaOrderOptimizer {
     maxIter = iter;
   }
 
-  public Replica[] optimizeBySA() {
+  public Pair<Replica[], Workload[]> optimizeBySA() {
     float curCost = getCostAndWorkloadPartitionForCurReplicas(records, replicas).left;
     LOGGER.info("Ori cost: " + curCost);
     float temperature = SA_INIT_TEMPERATURE;
     Random r = new Random();
+    Workload[] workloadPartition = null;
     int k = 0;
     for (; k < maxIter; ++k) {
       temperature = temperature * COOLING_RATE;
@@ -77,6 +78,7 @@ public class MultiReplicaOrderOptimizer {
       replicas[swapReplica].swapMeasurementPos(swapLeft, swapRight);
       Pair<Float, Workload[]> costAndWorkloadPartition = getCostAndWorkloadPartitionForCurReplicas(records, replicas);
       float newCost = costAndWorkloadPartition.left;
+      workloadPartition = costAndWorkloadPartition.right;
       float probability = r.nextFloat();
       probability = probability < 0 ? -probability : probability;
       probability %= 1.0f;
@@ -90,7 +92,7 @@ public class MultiReplicaOrderOptimizer {
     }
     LOGGER.info("Final cost: " + curCost);
     LOGGER.info("Loop count: " + k);
-    return replicas;
+    return new Pair<>(replicas, workloadPartition);
   }
 
   private Pair<Float, Workload[]> getCostAndWorkloadPartitionForCurReplicas(List<QueryRecord> records, Replica[] replicas) {
