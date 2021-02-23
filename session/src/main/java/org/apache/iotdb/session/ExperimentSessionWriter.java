@@ -38,13 +38,15 @@ public class ExperimentSessionWriter {
     }
     session.setStorageGroup("root.test");
     createTimeseries();*/
-    ReplicaSet replicaSet = session.runDivergentDesign("root.test.device", 3);
-    showReplicaSet(replicaSet);
-    writeCostLog(replicaSet.costList);
-    /*MeasurementOrder order = session.optimizeBySA("root.test.device");
+    /*ReplicaSet replicaSet = session.runMultiReplicaOptimize("root.test.device", 500);
+    showReplicaSet(replicaSet);*/
+    //MeasurementOrder order = session.optimizeBySA("root.test.device");
+//    showOrderSet(order);
+    //writeCostLog(replicaSet.costList);
+    MeasurementOrder order = session.optimizeBySA("root.test.device");
     for(String measurment : order.measurements) {
       System.out.println(measurment);
-    }*/
+    }
     // generateData();
     // session.executeNonQueryStatement("flush");
     session.close();

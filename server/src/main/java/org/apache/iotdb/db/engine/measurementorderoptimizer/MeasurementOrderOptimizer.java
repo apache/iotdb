@@ -31,7 +31,7 @@ public class MeasurementOrderOptimizer {
   // DeviceId -> ChunkGroupCount
   Map<String, Integer> chunkGroupCountMap = new HashMap<>();
   List<QueryRecord> queryRecords = new ArrayList<>();
-  public static final int SA_MAX_ITERATION = 1000;
+  public static final int SA_MAX_ITERATION = 500000;
   public static final float SA_INIT_TEMPERATURE = 2.0f;
   public static final float SA_COOLING_RATE = 0.02f;
   private static final Logger LOGGER = LoggerFactory.getLogger(MeasurementOrderOptimizer.class);
@@ -354,6 +354,7 @@ public class MeasurementOrderOptimizer {
         swap(curMeasurementOrder, swapPosFirst, swapPosSecond);
         swap(chunkSize, swapPosFirst, swapPosSecond);
       }
+      LOGGER.info("Cur cost: " + curCost);
     }
 
     measurementsMap.put(deviceID, curMeasurementOrder);

@@ -9,10 +9,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 public class MultiReplicaOrderOptimizer {
   private int replicaNum = 3;
@@ -106,12 +103,17 @@ public class MultiReplicaOrderOptimizer {
     for(int i = 0; i < replicaNum; ++i) {
       workloads[i] = new Workload();
     }
+    List<Integer> indexes = new ArrayList<>();
+    for(int i = 0; i < replicaNum; ++i) {
+      indexes.add(i);
+    }
     for (QueryRecord record : records) {
       List<QueryRecord> tmpList = new ArrayList<>();
       tmpList.add(record);
       float minCost = Float.MAX_VALUE;
       int minIdx = 0;
-      for (int i = 0; i < replicaNum; ++i) {
+      Collections.shuffle(indexes);
+      for (Integer i : indexes) {
         Replica replica = replicas[i];
         float curCost = CostModel.approximateAggregationQueryCostWithTimeRange(tmpList, replica.getMeasurements(), replica.getChunkSize());
         if (curCost < minCost) {
