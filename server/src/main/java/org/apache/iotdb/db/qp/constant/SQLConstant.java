@@ -170,6 +170,8 @@ public class SQLConstant {
   public static final int TOK_QUERY_PROCESSLIST = 97;
   public static final int TOK_KILL_QUERY = 98;
 
+  public static final int TOK_CHILD_NODES = 99;
+
   public static final Map<Integer, String> tokenSymbol = new HashMap<>();
   public static final Map<Integer, String> tokenNames = new HashMap<>();
   public static final Map<Integer, Integer> reverseWords = new HashMap<>();

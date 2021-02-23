@@ -1018,6 +1018,18 @@ public class MManager {
   }
 
   /**
+   * Get child node in the next level of the given path.
+   *
+   * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1,
+   * return [d1, d2] given path = root.sg.d1 return [s1,s2]
+   *
+   * @return All child nodes of given seriesPath.
+   */
+  public Set<String> getChildNodeInNextLevel(PartialPath path) throws MetadataException {
+    return mtree.getChildNodeInNextLevel(path);
+  }
+
+  /**
    * Check whether the path exists.
    *
    * @param path a full path or a prefix path

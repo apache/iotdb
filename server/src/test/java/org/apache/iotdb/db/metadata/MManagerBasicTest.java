@@ -34,7 +34,9 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -450,6 +452,47 @@ public class MManagerBasicTest {
       assertTrue(manager.getStorageGroupByPath(new PartialPath("root.vehicle1.device2")).isEmpty());
       assertTrue(manager.getStorageGroupByPath(new PartialPath("root.vehicle1.device3")).isEmpty());
       assertFalse(manager.getStorageGroupByPath(new PartialPath("root.vehicle1.device")).isEmpty());
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testShowChildNodesWithGivenPrefix() {
+    MManager manager = IoTDB.metaManager;
+    try {
+      manager.setStorageGroup(new PartialPath("root.laptop"));
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d1.s1"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d2.s1"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d1.s2"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+      Set<String> nodes = new HashSet<>(Arrays.asList("s1", "s2"));
+      Set<String> nodes2 = new HashSet<>(Arrays.asList("laptop"));
+      Set<String> nodes3 = new HashSet<>(Arrays.asList("d1", "d2"));
+      Set<String> nexLevelNodes1 =
+          manager.getChildNodeInNextLevel(new PartialPath("root.laptop.d1"));
+      Set<String> nexLevelNodes2 = manager.getChildNodeInNextLevel(new PartialPath("root"));
+      Set<String> nexLevelNodes3 = manager.getChildNodeInNextLevel(new PartialPath("root.laptop"));
+      // usual condition
+      assertEquals(nodes, nexLevelNodes1);
+      assertEquals(nodes2, nexLevelNodes2);
+      assertEquals(nodes3, nexLevelNodes3);
+
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
