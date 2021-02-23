@@ -337,6 +337,18 @@ public class IoTDBDescriptor {
                   "io_task_queue_size_for_flushing",
                   Integer.toString(conf.getIoTaskQueueSizeForFlushing()))));
 
+      conf.setReadOnlyRecoverRetryAttempts(
+          Integer.parseInt(
+              properties.getProperty(
+                  "recover_read_only_retry_attempts",
+                  Integer.toString(conf.getReadOnlyRecoverRetryAttempts()))));
+
+      conf.setReadOnlyRecoverRetrySleepInterval(
+          Long.parseLong(
+              properties.getProperty(
+                  "recover_read_only_retry_sleep_interval",
+                  Long.toString(conf.getReadOnlyRecoverRetrySleepInterval()))));
+
       conf.setMergeChunkPointNumberThreshold(
           Integer.parseInt(
               properties.getProperty(
