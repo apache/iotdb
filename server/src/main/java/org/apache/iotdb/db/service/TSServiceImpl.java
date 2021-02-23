@@ -441,12 +441,31 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       List<TSStatus> result = new ArrayList<>();
       boolean isAllSuccessful = true;
+      InsertRowsPlan insertRowsPlan = new InsertRowsPlan();
+      int index = 0;
       for (String statement : req.getStatements()) {
-        long t2 = System.currentTimeMillis();
-        isAllSuccessful =
-            executeStatementInBatch(statement, result, req.getSessionId()) && isAllSuccessful;
-        Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_ONE_SQL_IN_BATCH, t2);
+        PhysicalPlan physicalPlan =
+            processor.parseSQLToPhysicalPlan(
+                statement, sessionIdZoneIdMap.get(req.getSessionId()), DEFAULT_FETCH_SIZE);
+        if (physicalPlan.getOperatorType().equals(INSERT)) {
+          insertRowsPlan.addOneInsertRowPlan((InsertRowPlan) physicalPlan, index);
+          index++;
+        } else {
+          long t2 = System.currentTimeMillis();
+          isAllSuccessful =
+              executeStatementInBatch(statement, result, req.getSessionId()) && isAllSuccessful;
+          Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_ONE_SQL_IN_BATCH, t2);
+        }
       }
+
+      TSStatus tsStatus = executeNonQueryPlan(insertRowsPlan);
+      result.add(tsStatus);
+      if (tsStatus.equals(RpcUtils.SUCCESS_STATUS)) {
+        isAllSuccessful = isAllSuccessful && true;
+      } else {
+        isAllSuccessful = isAllSuccessful && false;
+      }
+
       return isAllSuccessful
           ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute batch statements successfully")
           : RpcUtils.getStatus(result);
