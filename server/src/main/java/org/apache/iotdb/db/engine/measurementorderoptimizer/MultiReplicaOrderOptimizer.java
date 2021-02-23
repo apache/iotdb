@@ -26,7 +26,7 @@ public class MultiReplicaOrderOptimizer {
   private List<QueryRecord> records;
   private List<Long> chunkSize;
   private final float SA_INIT_TEMPERATURE = 100.0f;
-  private final float COOLING_RATE = 0.9999828f;
+  private final float COOLING_RATE = 0.999971f;
   private List<Double> costList = new LinkedList<>();
 
   public MultiReplicaOrderOptimizer(String deviceID) {
