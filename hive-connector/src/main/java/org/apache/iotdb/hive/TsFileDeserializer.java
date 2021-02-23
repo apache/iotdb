@@ -68,7 +68,7 @@ public class TsFileDeserializer {
       return null;
     }
 
-    LOG.debug("device_id: {}", mapWritable.get(new Text("device_id")).toString());
+    LOG.debug("device_id: {}", mapWritable.get(new Text("device_id")));
     LOG.debug("time_stamp: {}", mapWritable.get(new Text("time_stamp")));
 
     for (int i = 0; i < columnNames.size(); i++) {

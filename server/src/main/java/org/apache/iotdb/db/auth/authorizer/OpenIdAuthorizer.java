@@ -77,7 +77,7 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
     try {
       providerKey = RSAKey.parse(jwk).toRSAPublicKey();
     } catch (java.text.ParseException | JOSEException e) {
-      throw new AuthException("Unable to get OIDC Provider Key from JWK " + jwk.toString(), e);
+      throw new AuthException("Unable to get OIDC Provider Key from JWK " + jwk, e);
     }
     logger.info("Initialized with providerKey: {}", providerKey);
   }

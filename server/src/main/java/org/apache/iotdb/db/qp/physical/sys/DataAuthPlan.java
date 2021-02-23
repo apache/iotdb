@@ -93,7 +93,7 @@ public class DataAuthPlan extends PhysicalPlan {
     } else if (operatorType == OperatorType.REVOKE_WATERMARK_EMBEDDING) {
       type = PhysicalPlanType.REVOKE_WATERMARK_EMBEDDING.ordinal();
     } else {
-      throw new IllegalArgumentException("Unknown operator: " + operatorType.toString());
+      throw new IllegalArgumentException("Unknown operator: " + operatorType);
     }
     return type;
   }

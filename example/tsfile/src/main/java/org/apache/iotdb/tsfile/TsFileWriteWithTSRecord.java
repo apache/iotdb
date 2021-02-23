@@ -37,7 +37,7 @@ import java.io.File;
  */
 public class TsFileWriteWithTSRecord {
 
-  public static void main(String args[]) {
+  public static void main(String[] args) {
     try {
       String path = "test.tsfile";
       File f = FSFactoryProducer.getFSFactory().getFile(path);

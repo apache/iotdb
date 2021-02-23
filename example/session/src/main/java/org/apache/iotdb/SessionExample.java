@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb;
 
-import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -135,7 +134,7 @@ public class SessionExample {
   }
 
   private static void createMultiTimeseries()
-      throws IoTDBConnectionException, BatchExecutionException, StatementExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException {
 
     if (!session.checkTimeseriesExists("root.sg1.d2.s1")
         && !session.checkTimeseriesExists("root.sg1.d2.s2")) {
@@ -516,7 +515,7 @@ public class SessionExample {
         builder.append("null");
       }
 
-      System.out.println(builder.toString());
+      System.out.println(builder);
     }
 
     dataSet.closeOperationHandle();

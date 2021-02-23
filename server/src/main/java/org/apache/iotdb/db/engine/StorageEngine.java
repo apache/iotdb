@@ -704,13 +704,13 @@ public class StorageEngine implements IService {
    *
    * @throws StorageEngineException StorageEngineException
    */
-  public void mergeAll(boolean fullMerge) throws StorageEngineException {
+  public void mergeAll(boolean isFullMerge) throws StorageEngineException {
     if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new StorageEngineException("Current system mode is read only, does not support merge");
     }
 
     for (VirtualStorageGroupManager virtualStorageGroupManager : processorMap.values()) {
-      virtualStorageGroupManager.mergeAll(fullMerge);
+      virtualStorageGroupManager.mergeAll(isFullMerge);
     }
   }
 

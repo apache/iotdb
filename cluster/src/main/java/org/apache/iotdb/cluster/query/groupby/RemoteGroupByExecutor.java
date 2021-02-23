@@ -85,14 +85,18 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
             SyncClientAdaptor.getGroupByResult(
                 client, header, executorId, curStartTime, curEndTime);
       } else {
-        SyncDataClient syncDataClient =
-            metaGroupMember
-                .getClientProvider()
-                .getSyncDataClient(source, RaftServer.getReadOperationTimeoutMS());
-        aggrBuffers = syncDataClient.getGroupByResult(header, executorId, curStartTime, curEndTime);
-        ClientUtils.putBackSyncClient(syncDataClient);
+        SyncDataClient syncDataClient = null;
+        try {
+          syncDataClient =
+              metaGroupMember
+                  .getClientProvider()
+                  .getSyncDataClient(source, RaftServer.getReadOperationTimeoutMS());
+          aggrBuffers =
+              syncDataClient.getGroupByResult(header, executorId, curStartTime, curEndTime);
+        } finally {
+          ClientUtils.putBackSyncClient(syncDataClient);
+        }
       }
-
     } catch (TException e) {
       throw new IOException(e);
     } catch (InterruptedException e) {
@@ -129,15 +133,18 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
             SyncClientAdaptor.peekNextNotNullValue(
                 client, header, executorId, nextStartTime, nextEndTime);
       } else {
-        SyncDataClient syncDataClient =
-            metaGroupMember
-                .getClientProvider()
-                .getSyncDataClient(source, RaftServer.getReadOperationTimeoutMS());
-        aggrBuffer =
-            syncDataClient.peekNextNotNullValue(header, executorId, nextStartTime, nextEndTime);
-        ClientUtils.putBackSyncClient(syncDataClient);
+        SyncDataClient syncDataClient = null;
+        try {
+          syncDataClient =
+              metaGroupMember
+                  .getClientProvider()
+                  .getSyncDataClient(source, RaftServer.getReadOperationTimeoutMS());
+          aggrBuffer =
+              syncDataClient.peekNextNotNullValue(header, executorId, nextStartTime, nextEndTime);
+        } finally {
+          ClientUtils.putBackSyncClient(syncDataClient);
+        }
       }
-
     } catch (TException e) {
       throw new IOException(e);
     } catch (InterruptedException e) {

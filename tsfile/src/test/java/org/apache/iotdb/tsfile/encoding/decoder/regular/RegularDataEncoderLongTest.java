@@ -139,6 +139,19 @@ public class RegularDataEncoderLongTest {
     shouldReadAndWrite(data, ROW_NUM);
   }
 
+  @Test
+  public void testMissingPointsDataSize() throws IOException {
+    long[] originalData = new long[] {1000, 1100, 1200, 1300, 1500, 2000};
+    out = new ByteArrayOutputStream();
+    writeData(originalData, 6);
+    byte[] page = out.toByteArray();
+    buffer = ByteBuffer.wrap(page);
+    int i = 0;
+    while (regularDataDecoder.hasNext(buffer)) {
+      assertEquals(originalData[i++], regularDataDecoder.readLong(buffer));
+    }
+  }
+
   private long[] getMissingPointData(List<String> originalData, int missingPointInterval) {
     List<String> dates = originalData;
 

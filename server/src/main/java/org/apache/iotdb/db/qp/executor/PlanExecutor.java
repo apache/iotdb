@@ -116,8 +116,6 @@ import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
@@ -339,8 +337,7 @@ public class PlanExecutor implements IPlanExecutor {
     if (plan.getOperatorType() == OperatorType.FULL_MERGE) {
       StorageEngine.getInstance().mergeAll(true);
     } else {
-      StorageEngine.getInstance()
-          .mergeAll(IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
+      StorageEngine.getInstance().mergeAll(false);
     }
   }
 
@@ -1265,10 +1262,8 @@ public class PlanExecutor implements IPlanExecutor {
 
   private boolean createMultiTimeSeries(CreateMultiTimeSeriesPlan multiPlan)
       throws BatchProcessException {
-    boolean allSuccess = true;
     for (int i = 0; i < multiPlan.getPaths().size(); i++) {
       if (multiPlan.getResults().containsKey(i)) {
-        allSuccess = false;
         continue;
       }
       CreateTimeSeriesPlan plan =
@@ -1283,14 +1278,12 @@ public class PlanExecutor implements IPlanExecutor {
               multiPlan.getAlias() == null ? null : multiPlan.getAlias().get(i));
       try {
         createTimeSeries(plan);
-        multiPlan.getResults().put(i, RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
       } catch (QueryProcessException e) {
-        allSuccess = false;
         multiPlan.getResults().put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
       }
     }
-    if (!allSuccess) {
-      throw new BatchProcessException(multiPlan.getResults().values().toArray(new TSStatus[0]));
+    if (!multiPlan.getResults().isEmpty()) {
+      throw new BatchProcessException(multiPlan.getFailingStatus());
     }
     return true;
   }

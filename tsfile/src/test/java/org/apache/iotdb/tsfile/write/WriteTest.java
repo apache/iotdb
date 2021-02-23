@@ -250,7 +250,7 @@ public class WriteTest {
     try {
       tsFileWriter.registerTimeseries(path, dupTimeseries);
     } catch (WriteProcessException e) {
-      assertEquals("given timeseries has exists! " + path.toString(), e.getMessage());
+      assertEquals("given timeseries has exists! " + path, e.getMessage());
     }
     try {
       tsFileWriter.close();
