@@ -27,7 +27,20 @@ public class StorageGroupAlreadySetException extends MetadataException {
 
   public StorageGroupAlreadySetException(String path) {
     super(
-        String.format("%s has already been set to storage group", path),
+        getMessage(path, false),
         TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode());
+  }
+
+  public StorageGroupAlreadySetException(String path, boolean hasChild) {
+    super(getMessage(path, hasChild), 
+      TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode());
+  }
+  
+  private static String getMessage(String path, boolean hasChild) {
+    if (hasChild) {
+      return String.format("some children of %s have already been set to storage group", path);
+    } else {
+      return String.format("%s has already been set to storage group", path);
+    }
   }
 }

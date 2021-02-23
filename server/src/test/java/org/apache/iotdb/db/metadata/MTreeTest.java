@@ -53,6 +53,25 @@ public class MTreeTest {
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
   }
+  
+  @Test
+  public void testSetStorageGroupExceptionMessage() throws IllegalPathException {
+    MTree root = new MTree();
+    try {
+      root.setStorageGroup(new PartialPath("root.edge1.access"));
+      root.setStorageGroup(new PartialPath("root.edge1"));
+      fail("Expected exception");
+    } catch (MetadataException e) {
+      assertEquals("some children of root.edge1 have already been set to storage group", e.getMessage());
+    }
+    try {
+      root.setStorageGroup(new PartialPath("root.edge2"));
+      root.setStorageGroup(new PartialPath("root.edge2.access"));
+      fail("Expected exception");
+    } catch (MetadataException e) {
+      assertEquals("root.edge2 has already been set to storage group", e.getMessage());
+    }
+  }
 
   @Test
   public void testAddLeftNodePathWithAlias() throws MetadataException {
