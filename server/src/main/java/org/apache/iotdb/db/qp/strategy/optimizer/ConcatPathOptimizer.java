@@ -88,9 +88,6 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     }
 
     checkAggrOfSelectOperator(select);
-    if (((QueryOperator) operator).isGroupByLevel()) {
-      checkAggrOfGroupByLevel(select);
-    }
 
     boolean isAlignByDevice = false;
     if (operator instanceof QueryOperator) {
@@ -162,14 +159,6 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         && selectOperator.getSuffixPaths().size() != selectOperator.getAggregations().size()) {
       throw new LogicalOptimizeException(
           "Common queries and aggregated queries are not allowed to appear at the same time");
-    }
-  }
-
-  private void checkAggrOfGroupByLevel(SelectOperator selectOperator)
-      throws LogicalOptimizeException {
-    if (selectOperator.getAggregations().size() != 1) {
-      throw new LogicalOptimizeException(
-          "Aggregation function is restricted to one if group by level clause exists");
     }
   }
 
