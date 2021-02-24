@@ -75,7 +75,7 @@ public class DivergentDesign {
     }
     double curCost = 0.0f;
     double nextCost = totalCost(nextWorkloadPartition, nextReplica);
-
+    long startTime = System.currentTimeMillis();
     int i = 0;
     do {
       curCost = nextCost;
@@ -99,7 +99,7 @@ public class DivergentDesign {
       ++i;
       nextCost = totalCost(nextWorkloadPartition, nextReplica);
       LOGGER.info(String.format("Epoch%d Cur cost: %.3f, New cost: %.3f", i, curCost, nextCost));
-    } while (i < maxIter && Math.abs(curCost - nextCost) > breakPoint);
+    } while (i < maxIter && Math.abs(curCost - nextCost) > breakPoint && System.currentTimeMillis() - startTime < 30l * 60l * 1000l);
     curWorkloadPartition = nextWorkloadPartition;
 
     return new Pair<>(nextReplica, curWorkloadPartition);

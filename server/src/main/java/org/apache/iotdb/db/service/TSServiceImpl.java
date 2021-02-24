@@ -1839,15 +1839,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-  public ReplicaSet multipleReplicaOptimizeWithIterNum(String deviceID, int maxIter) throws TException {
+  public ReplicaSet multipleReplicaOptimizeWithChunkSize(String deviceID) throws TException {
     MultiReplicaOrderOptimizer optimizer = new MultiReplicaOrderOptimizer(deviceID);
-    optimizer.setMaxIter(maxIter);
-    Pair<Replica[], Workload[]> result = optimizer.optimizeBySA();
-    List<Double> costList = optimizer.getCostList();
+    Pair<Replica[], Workload[]> result = optimizer.optimizeBySAWithChunkSizeAdjustment();
     ReplicaSet resultSet = new ReplicaSet();
     resultSet.measurementOrders = new ArrayList<>();
     resultSet.workloadPartition = new ArrayList<>();
-    resultSet.costList = costList;
     for(int i = 0; i < result.left.length; ++i) {
       Replica replica = result.left[i];
       MeasurementOrder order = new MeasurementOrder();
@@ -1861,6 +1858,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       resultSet.workloadPartition.add(workloadStr);
     }
     return resultSet;
+  }
+
+  @Override
+  public ReplicaSet runRainbow(String deviceID) throws TException {
+    return null;
   }
 
   @Override

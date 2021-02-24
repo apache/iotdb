@@ -68,10 +68,54 @@ public class MultiReplicaOrderOptimizer {
     long chunkLowerBound = chunkBound.left;
     long chunkUpperBound = chunkBound.right;
     float temperature = SA_INIT_TEMPERATURE;
+    long optimizeStartTime = System.currentTimeMillis();
     Random r = new Random();
     Workload[] workloadPartition = null;
     int k = 0;
-    for (; k < maxIter; ++k) {
+    for (; k < maxIter && System.currentTimeMillis() - optimizeStartTime < 30l * 60l * 1000l; ++k) {
+      temperature = temperature * COOLING_RATE;
+      int selectedReplica = r.nextInt(replicaNum);
+      int swapLeft = r.nextInt(measurementOrder.size());
+      int swapRight = r.nextInt(measurementOrder.size());
+      while (swapLeft == swapRight) {
+        swapLeft = r.nextInt(measurementOrder.size());
+        swapRight = r.nextInt(measurementOrder.size());
+      }
+      replicas[selectedReplica].swapMeasurementPos(swapLeft, swapRight);
+      Pair<Float, Workload[]> costAndWorkloadPartition = getCostAndWorkloadPartitionForCurReplicas(records, replicas);
+      double newCost = costAndWorkloadPartition.left;
+      workloadPartition = costAndWorkloadPartition.right;
+      float probability = r.nextFloat();
+      probability = probability < 0 ? -probability : probability;
+      probability %= 1.0f;
+      if (newCost < curCost ||
+              Math.exp((curCost - newCost) / temperature) > probability) {
+        curCost = newCost;
+      } else {
+        replicas[selectedReplica].swapMeasurementPos(swapLeft, swapRight);
+      }
+      costList.add(curCost);
+      if (k % 500 == 0) {
+        LOGGER.info(String.format("Epoch %d: curCost %.3f", k, curCost));
+      }
+    }
+    LOGGER.info("Final cost: " + curCost);
+    LOGGER.info("Loop count: " + k);
+    return new Pair<>(replicas, workloadPartition);
+  }
+
+  public Pair<Replica[], Workload[]> optimizeBySAWithChunkSizeAdjustment() {
+    double curCost = getCostAndWorkloadPartitionForCurReplicas(records, replicas).left;
+    LOGGER.info("Ori cost: " + curCost);
+    Pair<Long, Long> chunkBound = getChunkSizeBound(records);
+    long chunkLowerBound = chunkBound.left;
+    long chunkUpperBound = chunkBound.right;
+    float temperature = SA_INIT_TEMPERATURE;
+    long optimizeStartTime = System.currentTimeMillis();
+    Random r = new Random();
+    Workload[] workloadPartition = null;
+    int k = 0;
+    for (; k < maxIter && System.currentTimeMillis() - optimizeStartTime < 30l * 60l * 1000l; ++k) {
       temperature = temperature * COOLING_RATE;
       int selectedReplica = r.nextInt(replicaNum);
       int swapLeft = r.nextInt(measurementOrder.size());

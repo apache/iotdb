@@ -390,7 +390,9 @@ service TSIService {
 
   ReplicaSet multipleReplicaOptimize(1:string deviceID);
 
-  ReplicaSet multipleReplicaOptimizeWithIterNum(1:string deviceID, 2:i32 maxIter);
+  ReplicaSet multipleReplicaOptimizeWithChunkSize(1:string deviceID);
+
+  ReplicaSet runRainbow(1:string deviceID);
 
   ChunkSizeOptimizationResult testChunkSizeOptimize(1: list<string> measurements, list<string> ops, i64 startTime, i64 endTime, list<string> measurementOrder);
 
