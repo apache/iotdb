@@ -1392,15 +1392,35 @@ public class Session {
     }
   }
 
-  public ReplicaSet runMultiReplicaOptimize(String deviceID, int maxIter) throws IoTDBConnectionException {
+  public ReplicaSet runMultiReplicaOptimizeWithChunkSize(String deviceID) throws IoTDBConnectionException {
     ReplicaSet replicaSet = null;
     try {
-      replicaSet = client.multipleReplicaOptimizeWithIterNum(deviceID, maxIter);
+      replicaSet = client.multipleReplicaOptimizeWithChunkSize(deviceID);
       return replicaSet;
     } catch (TException e) {
       if (reconnect()) {
         try {
-          replicaSet = client.multipleReplicaOptimizeWithIterNum(deviceID, maxIter);
+          replicaSet = client.multipleReplicaOptimizeWithChunkSize(deviceID);
+          return replicaSet;
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(
+                "Fail to reconnect to server. Please check server status");
+      }
+    }
+  }
+
+  public ReplicaSet runRainbow(String deviceID) throws IoTDBConnectionException {
+    ReplicaSet replicaSet = null;
+    try {
+      replicaSet = client.runRainbow(deviceID);
+      return replicaSet;
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          replicaSet = client.runRainbow(deviceID);
           return replicaSet;
         } catch (TException tException) {
           throw new IoTDBConnectionException(tException);
@@ -1431,4 +1451,5 @@ public class Session {
       }
     }
   }
+
 }
