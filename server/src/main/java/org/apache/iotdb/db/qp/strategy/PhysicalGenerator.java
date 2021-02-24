@@ -40,12 +40,14 @@ import org.apache.iotdb.db.qp.logical.sys.CountOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateFunctionOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateIndexOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
+import org.apache.iotdb.db.qp.logical.sys.CreateTriggerOperator;
 import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeletePartitionOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.DropFunctionOperator;
 import org.apache.iotdb.db.qp.logical.sys.DropIndexOperator;
+import org.apache.iotdb.db.qp.logical.sys.DropTriggerOperator;
 import org.apache.iotdb.db.qp.logical.sys.FlushOperator;
 import org.apache.iotdb.db.qp.logical.sys.KillQueryOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator;
@@ -62,6 +64,9 @@ import org.apache.iotdb.db.qp.logical.sys.ShowFunctionsOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowTriggersOperator;
+import org.apache.iotdb.db.qp.logical.sys.StartTriggerOperator;
+import org.apache.iotdb.db.qp.logical.sys.StopTriggerOperator;
 import org.apache.iotdb.db.qp.logical.sys.TracingOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
@@ -86,11 +91,13 @@ import org.apache.iotdb.db.qp.physical.sys.CreateFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateIndexPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateSnapshotPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropIndexPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.KillQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
@@ -110,6 +117,9 @@ import org.apache.iotdb.db.qp.physical.sys.ShowQueryProcesslistPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTriggersPlan;
+import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
+import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.udf.core.context.UDFContext;
@@ -316,6 +326,8 @@ public class PhysicalGenerator {
             return new ShowQueryProcesslistPlan(ShowContentType.QUERY_PROCESSLIST);
           case SQLConstant.TOK_SHOW_FUNCTIONS:
             return new ShowFunctionsPlan(((ShowFunctionsOperator) operator).showTemporary());
+          case SQLConstant.TOK_SHOW_TRIGGERS:
+            return new ShowTriggersPlan(((ShowTriggersOperator) operator).getPath());
           default:
             throw new LogicalOperatorException(
                 String.format(
@@ -355,6 +367,20 @@ public class PhysicalGenerator {
       case DROP_FUNCTION:
         DropFunctionOperator dropFunctionOperator = (DropFunctionOperator) operator;
         return new DropFunctionPlan(dropFunctionOperator.getUdfName());
+      case CREATE_TRIGGER:
+        CreateTriggerOperator createTriggerOperator = (CreateTriggerOperator) operator;
+        return new CreateTriggerPlan(
+            createTriggerOperator.getTriggerName(),
+            createTriggerOperator.getEvent(),
+            createTriggerOperator.getFullPath(),
+            createTriggerOperator.getClassName(),
+            createTriggerOperator.getAttributes());
+      case DROP_TRIGGER:
+        return new DropTriggerPlan(((DropTriggerOperator) operator).getTriggerName());
+      case START_TRIGGER:
+        return new StartTriggerPlan(((StartTriggerOperator) operator).getTriggerName());
+      case STOP_TRIGGER:
+        return new StopTriggerPlan(((StopTriggerOperator) operator).getTriggerName());
       default:
         throw new LogicalOperatorException(operator.getType().toString(), "");
     }

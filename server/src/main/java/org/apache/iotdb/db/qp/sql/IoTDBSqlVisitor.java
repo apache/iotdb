@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.qp.sql;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.trigger.api.TriggerEvent;
 import org.apache.iotdb.db.exception.index.UnsupportedIndexTypeException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.index.common.IndexType;
@@ -44,12 +45,14 @@ import org.apache.iotdb.db.qp.logical.sys.CreateFunctionOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateIndexOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateSnapshotOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
+import org.apache.iotdb.db.qp.logical.sys.CreateTriggerOperator;
 import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeletePartitionOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.DropFunctionOperator;
 import org.apache.iotdb.db.qp.logical.sys.DropIndexOperator;
+import org.apache.iotdb.db.qp.logical.sys.DropTriggerOperator;
 import org.apache.iotdb.db.qp.logical.sys.FlushOperator;
 import org.apache.iotdb.db.qp.logical.sys.KillQueryOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator;
@@ -69,6 +72,9 @@ import org.apache.iotdb.db.qp.logical.sys.ShowOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowTriggersOperator;
+import org.apache.iotdb.db.qp.logical.sys.StartTriggerOperator;
+import org.apache.iotdb.db.qp.logical.sys.StopTriggerOperator;
 import org.apache.iotdb.db.qp.logical.sys.TracingOperator;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.AggregationCallContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.AggregationElementContext;
@@ -95,6 +101,7 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateIndexContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateRoleContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateSnapshotContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateTimeseriesContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateTriggerContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateUserContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.DateExpressionContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.DeletePartitionContext;
@@ -104,6 +111,7 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.DeleteTimeseriesContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.DropFunctionContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.DropIndexContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.DropRoleContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.DropTriggerContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.DropUserContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.FillClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.FillStatementContext;
@@ -178,6 +186,7 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowQueryProcesslistContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowStorageGroupContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowTTLStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowTimeseriesContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowTriggersContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowVersionContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowWhereClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.SingleStatementContext;
@@ -185,6 +194,8 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.SlimitClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.SlimitStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.SoffsetClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.SpecialLimitStatementContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.StartTriggerContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.StopTriggerContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.StringLiteralContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.SuffixPathContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.TableCallContext;
@@ -193,6 +204,7 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.TagClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.TimeIntervalContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.TracingOffContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.TracingOnContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.TriggerAttributeContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.TypeClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.UdfAttributeContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.UdfCallContext;
@@ -445,6 +457,60 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
         new ShowFunctionsOperator(SQLConstant.TOK_SHOW_FUNCTIONS);
     showFunctionsOperator.setShowTemporary(ctx.TEMPORARY() != null);
     return showFunctionsOperator;
+  }
+
+  @Override
+  public Operator visitCreateTrigger(CreateTriggerContext ctx) {
+    CreateTriggerOperator createTriggerOperator =
+        new CreateTriggerOperator(SQLConstant.TOK_TRIGGER_CREATE);
+    createTriggerOperator.setTriggerName(ctx.triggerName.getText());
+    createTriggerOperator.setEvent(
+        ctx.triggerEventClause().BEFORE() != null
+            ? TriggerEvent.BEFORE_INSERT
+            : TriggerEvent.AFTER_INSERT);
+    createTriggerOperator.setFullPath(parseFullPath(ctx.fullPath()));
+    createTriggerOperator.setClassName(removeStringQuote(ctx.className.getText()));
+    if (ctx.triggerAttributeClause() != null) {
+      for (TriggerAttributeContext triggerAttributeContext :
+          ctx.triggerAttributeClause().triggerAttribute()) {
+        createTriggerOperator.addAttribute(
+            removeStringQuote(triggerAttributeContext.key.getText()),
+            removeStringQuote(triggerAttributeContext.value.getText()));
+      }
+    }
+    return createTriggerOperator;
+  }
+
+  @Override
+  public Operator visitDropTrigger(DropTriggerContext ctx) {
+    DropTriggerOperator dropTriggerOperator = new DropTriggerOperator(SQLConstant.TOK_TRIGGER_DROP);
+    dropTriggerOperator.setTriggerName(ctx.triggerName.getText());
+    return dropTriggerOperator;
+  }
+
+  @Override
+  public Operator visitStartTrigger(StartTriggerContext ctx) {
+    StartTriggerOperator startTriggerOperator =
+        new StartTriggerOperator(SQLConstant.TOK_TRIGGER_START);
+    startTriggerOperator.setTriggerName(ctx.triggerName.getText());
+    return startTriggerOperator;
+  }
+
+  @Override
+  public Operator visitStopTrigger(StopTriggerContext ctx) {
+    StopTriggerOperator stopTriggerOperator = new StopTriggerOperator(SQLConstant.TOK_TRIGGER_STOP);
+    stopTriggerOperator.setTriggerName(ctx.triggerName.getText());
+    return stopTriggerOperator;
+  }
+
+  @Override
+  public Operator visitShowTriggers(ShowTriggersContext ctx) {
+    ShowTriggersOperator showTriggersOperator =
+        new ShowTriggersOperator(SQLConstant.TOK_SHOW_TRIGGERS);
+    if (ctx.fullPath() != null) {
+      showTriggersOperator.setPath(parseFullPath(ctx.fullPath()));
+    }
+    return showTriggersOperator;
   }
 
   @Override

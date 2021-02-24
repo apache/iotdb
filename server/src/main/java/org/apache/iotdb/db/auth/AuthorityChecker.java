@@ -149,6 +149,14 @@ public class AuthorityChecker {
         return PrivilegeType.CREATE_FUNCTION.ordinal();
       case DROP_FUNCTION:
         return PrivilegeType.DROP_FUNCTION.ordinal();
+      case CREATE_TRIGGER:
+        return PrivilegeType.CREATE_TRIGGER.ordinal();
+      case DROP_TRIGGER:
+        return PrivilegeType.DROP_TRIGGER.ordinal();
+      case START_TRIGGER:
+        return PrivilegeType.START_TRIGGER.ordinal();
+      case STOP_TRIGGER:
+        return PrivilegeType.STOP_TRIGGER.ordinal();
       case AUTHOR:
       case METADATA:
       case BASIC_FUNC:
