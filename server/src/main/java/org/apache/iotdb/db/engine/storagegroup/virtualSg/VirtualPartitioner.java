@@ -28,13 +28,12 @@ public interface VirtualPartitioner {
    * @param deviceId device id
    * @return virtual storage group id
    */
-  public int deviceToVirtualStorageGroupId(PartialPath deviceId);
+  int deviceToVirtualStorageGroupId(PartialPath deviceId);
 
   /**
    * get total number of virtual storage group
    *
    * @return total number of virtual storage group
    */
-  public int getPartitionCount();
-
+  int getPartitionCount();
 }

@@ -19,10 +19,6 @@
 
 package org.apache.iotdb.db.query.udf.builtin;
 
-import java.io.IOException;
-import java.util.Comparator;
-import java.util.PriorityQueue;
-import java.util.stream.Collectors;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.api.UDTF;
@@ -36,6 +32,11 @@ import org.apache.iotdb.db.query.udf.api.exception.UDFException;
 import org.apache.iotdb.db.query.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
+
+import java.io.IOException;
+import java.util.Comparator;
+import java.util.PriorityQueue;
+import java.util.stream.Collectors;
 
 public abstract class UDTFSelectK implements UDTF {
 
@@ -51,10 +52,16 @@ public abstract class UDTFSelectK implements UDTF {
   public void validate(UDFParameterValidator validator) throws UDFException {
     validator
         .validateInputSeriesNumber(1)
-        .validateInputSeriesDataType(0, TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT,
-            TSDataType.DOUBLE, TSDataType.TEXT)
+        .validateInputSeriesDataType(
+            0,
+            TSDataType.INT32,
+            TSDataType.INT64,
+            TSDataType.FLOAT,
+            TSDataType.DOUBLE,
+            TSDataType.TEXT)
         .validateRequiredAttribute("k")
-        .validate(k -> 0 < (int) k && (int) k <= 1000,
+        .validate(
+            k -> 0 < (int) k && (int) k <= 1000,
             "k has to be greater than 0 and less than or equal to 1000.",
             validator.getParameters().getInt("k"));
   }
@@ -65,9 +72,7 @@ public abstract class UDTFSelectK implements UDTF {
     k = parameters.getInt("k");
     dataType = parameters.getDataType(0);
     constructPQ();
-    configurations
-        .setAccessStrategy(new RowByRowAccessStrategy())
-        .setOutputDataType(dataType);
+    configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(dataType);
   }
 
   protected abstract void constructPQ() throws UDFInputSeriesDataTypeNotValidException;
@@ -93,8 +98,14 @@ public abstract class UDTFSelectK implements UDTF {
         break;
       default:
         // This will not happen.
-        throw new UDFInputSeriesDataTypeNotValidException(0, dataType, TSDataType.INT32,
-            TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE, TSDataType.TEXT);
+        throw new UDFInputSeriesDataTypeNotValidException(
+            0,
+            dataType,
+            TSDataType.INT32,
+            TSDataType.INT64,
+            TSDataType.FLOAT,
+            TSDataType.DOUBLE,
+            TSDataType.TEXT);
     }
   }
 
@@ -113,44 +124,53 @@ public abstract class UDTFSelectK implements UDTF {
       throws UDFInputSeriesDataTypeNotValidException, IOException, QueryProcessException {
     switch (dataType) {
       case INT32:
-        for (Pair<Long, Integer> pair : intPQ.stream()
-            .sorted(Comparator.comparing(p -> p.left))
-            .collect(Collectors.toList())) {
+        for (Pair<Long, Integer> pair :
+            intPQ.stream().sorted(Comparator.comparing(p -> p.left)).collect(Collectors.toList())) {
           collector.putInt(pair.left, pair.right);
         }
         break;
       case INT64:
-        for (Pair<Long, Long> pair : longPQ.stream()
-            .sorted(Comparator.comparing(p -> p.left))
-            .collect(Collectors.toList())) {
+        for (Pair<Long, Long> pair :
+            longPQ.stream()
+                .sorted(Comparator.comparing(p -> p.left))
+                .collect(Collectors.toList())) {
           collector.putLong(pair.left, pair.right);
         }
         break;
       case FLOAT:
-        for (Pair<Long, Float> pair : floatPQ.stream()
-            .sorted(Comparator.comparing(p -> p.left))
-            .collect(Collectors.toList())) {
+        for (Pair<Long, Float> pair :
+            floatPQ.stream()
+                .sorted(Comparator.comparing(p -> p.left))
+                .collect(Collectors.toList())) {
           collector.putFloat(pair.left, pair.right);
         }
         break;
       case DOUBLE:
-        for (Pair<Long, Double> pair : doublePQ.stream()
-            .sorted(Comparator.comparing(p -> p.left))
-            .collect(Collectors.toList())) {
+        for (Pair<Long, Double> pair :
+            doublePQ.stream()
+                .sorted(Comparator.comparing(p -> p.left))
+                .collect(Collectors.toList())) {
           collector.putDouble(pair.left, pair.right);
         }
         break;
       case TEXT:
-        for (Pair<Long, String> pair : stringPQ.stream()
-            .sorted(Comparator.comparing(p -> p.left))
-            .collect(Collectors.toList())) {
+        for (Pair<Long, String> pair :
+            stringPQ.stream()
+                .sorted(Comparator.comparing(p -> p.left))
+                .collect(Collectors.toList())) {
           collector.putString(pair.left, pair.right);
         }
         break;
       default:
         // This will not happen.
-        throw new UDFInputSeriesDataTypeNotValidException(0, dataType, TSDataType.INT32,
-            TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE, TSDataType.TEXT);
+        throw new UDFInputSeriesDataTypeNotValidException(
+            0,
+            dataType,
+            TSDataType.INT32,
+            TSDataType.INT64,
+            TSDataType.FLOAT,
+            TSDataType.DOUBLE,
+            TSDataType.TEXT);
     }
   }
 }

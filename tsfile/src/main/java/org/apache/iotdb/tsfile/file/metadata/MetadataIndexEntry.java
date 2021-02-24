@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class MetadataIndexEntry {
 

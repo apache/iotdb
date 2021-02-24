@@ -19,25 +19,23 @@
 
 package org.apache.iotdb.tsfile;
 
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.Tablet;
-import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 
-import java.io.File;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * An example of writing data with Tablet to TsFile
- */
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+
+/** An example of writing data with Tablet to TsFile */
 public class TsFileWriteWithTablet {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileWriteWithTablet.class);
@@ -62,9 +60,11 @@ public class TsFileWriteWithTablet {
       List<MeasurementSchema> measurementSchemas = new ArrayList<>();
       // add measurements into file schema (all with INT64 data type)
       for (int i = 0; i < sensorNum; i++) {
-        MeasurementSchema measurementSchema = new MeasurementSchema(sensorPrefix + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF);
+        MeasurementSchema measurementSchema =
+            new MeasurementSchema(sensorPrefix + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF);
         measurementSchemas.add(measurementSchema);
-        schema.registerTimeseries(new Path(device, sensorPrefix + (i + 1)),
+        schema.registerTimeseries(
+            new Path(device, sensorPrefix + (i + 1)),
             new MeasurementSchema(sensorPrefix + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF));
       }
 

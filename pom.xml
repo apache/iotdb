@@ -100,6 +100,8 @@
         <module>cross-tests</module>
         <module>zeppelin-interpreter</module>
         <module>client-py</module>
+        <module>compile-tools</module>
+        <module>client-cpp</module>
     </modules>
     <!-- Properties Management -->
     <properties>
@@ -141,7 +143,7 @@
         <sonar.organization>apache</sonar.organization>
         <!-- Exclude all generated code -->
         <sonar.exclusions>**/generated-sources</sonar.exclusions>
-        <sonar.java.checkstyle.reportPaths>checkstyle.xml</sonar.java.checkstyle.reportPaths>
+        <sonar.java.checkstyle.reportPaths>target/checkstyle-report.xml</sonar.java.checkstyle.reportPaths>
         <sonar.coverage.jacoco.xmlReportPaths>target/jacoco-merged-reports/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
         <sonar.junit.reportPaths>target/surefire-reports,target/failsafe-reports</sonar.junit.reportPaths>
         <!-- By default, the argLine is empty-->
@@ -151,6 +153,7 @@
         <client-cpp>false</client-cpp>
         <!-- disable enforcer by default-->
         <enforcer.skip>true</enforcer.skip>
+        <spotless.version>2.4.2</spotless.version>
     </properties>
     <!--
         if we claim dependencies in dependencyManagement, then we do not claim
@@ -368,7 +371,7 @@
             <dependency>
                 <groupId>org.glassfish.jaxb</groupId>
                 <artifactId>jaxb-runtime</artifactId>
-                <version>2.4.0-b180725.0644</version>
+                <version>3.0.0</version>
                 <exclusions>
                     <exclusion>
                         <groupId>jakarta.activation</groupId>
@@ -558,6 +561,7 @@
                             <exclude>**/.git/**</exclude>
                             <exclude>**/.mvn/**</exclude>
                             <exclude>**/.gitignore</exclude>
+                            <exclude>**/.git-blame-ignore-revs</exclude>
                             <!-- Maven related files -->
                             <exclude>**/target/**</exclude>
                             <!-- Eclipse related files -->
@@ -597,6 +601,32 @@
                             <exclude>**/*.zpln</exclude>
                         </excludes>
                     </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>com.diffplug.spotless</groupId>
+                    <artifactId>spotless-maven-plugin</artifactId>
+                    <version>${spotless.version}</version>
+                    <configuration>
+                        <java>
+                            <googleJavaFormat>
+                                <version>1.7</version>
+                                <style>GOOGLE</style>
+                            </googleJavaFormat>
+                            <importOrder>
+                                <order>org.apache.iotdb,,javax,java,\#</order>
+                            </importOrder>
+                            <removeUnusedImports/>
+                        </java>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>spotless-check</id>
+                            <phase>validate</phase>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                        </execution>
+                    </executions>
                 </plugin>
             </plugins>
         </pluginManagement>
@@ -767,6 +797,7 @@
                             <goal>check</goal>
                         </goals>
                         <configuration>
+                            <outputFile>target/checkstyle-report.xml</outputFile>
                             <configLocation>checkstyle.xml</configLocation>
                         </configuration>
                     </execution>
@@ -886,6 +917,10 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+            </plugin>
         </plugins>
     </build>
     <profiles>
@@ -901,6 +936,7 @@
                 </os>
             </activation>
             <properties>
+                <os.classifier>windows-x86_64</os.classifier>
                 <thrift.download-url>http://artfiles.org/apache.org/thrift/${thrift.version}/thrift-${thrift.version}.exe</thrift.download-url>
                 <thrift.executable>thrift-${thrift.version}-win-x86_64.exe</thrift.executable>
                 <thrift.skip-making-executable>true</thrift.skip-making-executable>
@@ -917,6 +953,7 @@
                 </os>
             </activation>
             <properties>
+                <os.classifier>linux-x86_64</os.classifier>
                 <thrift.download-url>https://github.com/jt2594838/mvn-thrift-compiler/raw/master/thrift_0.12.0_0.13.0_linux.exe</thrift.download-url>
                 <thrift.executable>thrift_0.12.0_0.13.0_linux.exe</thrift.executable>
                 <thrift.skip-making-executable>false</thrift.skip-making-executable>
@@ -932,6 +969,7 @@
                 </os>
             </activation>
             <properties>
+                <os.classifier>mac-x86_64</os.classifier>
                 <thrift.download-url>https://github.com/jt2594838/mvn-thrift-compiler/raw/master/thrift_0.12.0_0.13.0_mac.exe</thrift.download-url>
                 <thrift.executable>thrift_0.12.0_0.13.0_mac.exe</thrift.executable>
                 <thrift.skip-making-executable>false</thrift.skip-making-executable>
@@ -1067,19 +1105,6 @@
                                     <outputDirectory>${project.build.directory}/generated-sources-go</outputDirectory>
                                 </configuration>
                             </execution>
-                            <execution>
-                                <id>generate-thrift-sources-cpp</id>
-                                <phase>generate-sources</phase>
-                                <goals>
-                                    <goal>compile</goal>
-                                </goals>
-                                <configuration>
-                                    <generator>cpp</generator>
-                                    <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
-                                    <thriftSourceRoot>${basedir}/src/main/thrift</thriftSourceRoot>
-                                    <outputDirectory>${project.build.directory}/generated-sources-cpp</outputDirectory>
-                                </configuration>
-                            </execution>
                         </executions>
                     </plugin>
                 </plugins>
@@ -1157,17 +1182,6 @@
             <id>site</id>
             <modules>
                 <module>site</module>
-            </modules>
-        </profile>
-        <profile>
-            <id>client-cpp</id>
-            <!-- we set client-cpp as true to enable the client-cpp-example-->
-            <properties>
-                <client-cpp>true</client-cpp>
-            </properties>
-            <modules>
-                <module>compile-tools</module>
-                <module>client-cpp</module>
             </modules>
         </profile>
         <!-- code coverage for ut and it, and then merge them together.-->

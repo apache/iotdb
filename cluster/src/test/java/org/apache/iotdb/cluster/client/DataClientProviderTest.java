@@ -19,18 +19,21 @@
 
 package org.apache.iotdb.cluster.client;
 
-import static org.junit.Assert.assertNotNull;
-
-import java.io.IOException;
-import java.net.ServerSocket;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.utils.ClientUtils;
+
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.junit.Assert;
 import org.junit.Test;
+
+import java.io.IOException;
+import java.net.ServerSocket;
+
+import static org.junit.Assert.assertNotNull;
 
 public class DataClientProviderTest {
 
@@ -49,15 +52,17 @@ public class DataClientProviderTest {
     Node node = new Node();
     node.setDataPort(9003).setIp("localhost");
     ServerSocket serverSocket = new ServerSocket(node.getDataPort());
-    Thread listenThread = new Thread(() -> {
-      while (!Thread.interrupted()) {
-        try {
-          serverSocket.accept();
-        } catch (IOException e) {
-          return;
-        }
-      }
-    });
+    Thread listenThread =
+        new Thread(
+            () -> {
+              while (!Thread.interrupted()) {
+                try {
+                  serverSocket.accept();
+                } catch (IOException e) {
+                  return;
+                }
+              }
+            });
     listenThread.start();
 
     try {
@@ -69,6 +74,8 @@ public class DataClientProviderTest {
         client = provider.getSyncDataClient(node, 100);
       } catch (TException e) {
         Assert.fail(e.getMessage());
+      } finally {
+        ClientUtils.putBackSyncClient(client);
       }
       assertNotNull(client);
       ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(useAsyncServer);

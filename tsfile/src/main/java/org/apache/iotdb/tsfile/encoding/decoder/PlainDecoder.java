@@ -19,16 +19,15 @@
 
 package org.apache.iotdb.tsfile.encoding.decoder;
 
-import java.io.IOException;
-import java.math.BigDecimal;
-import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.exception.encoding.TsFileDecodingException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 
-public class PlainDecoder extends Decoder {
+import java.math.BigDecimal;
+import java.nio.ByteBuffer;
 
+public class PlainDecoder extends Decoder {
 
   public PlainDecoder() {
     super(TSEncoding.PLAIN);
@@ -73,7 +72,7 @@ public class PlainDecoder extends Decoder {
   }
 
   @Override
-  public boolean hasNext(ByteBuffer buffer) throws IOException {
+  public boolean hasNext(ByteBuffer buffer) {
     return buffer.remaining() > 0;
   }
 

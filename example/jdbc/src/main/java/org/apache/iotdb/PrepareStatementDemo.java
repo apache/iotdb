@@ -30,10 +30,10 @@ public class PrepareStatementDemo {
 
   public static void main(String[] args) throws ClassNotFoundException, SQLException {
     Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
-    try (Connection connection = DriverManager
-        .getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        PreparedStatement preparedStatement = connection
-            .prepareStatement(
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        PreparedStatement preparedStatement =
+            connection.prepareStatement(
                 "insert into root.ln.wf01.wt01(timestamp,status,temperature) values(?,?,?)")) {
 
       preparedStatement.setLong(1, 1509465600000L);
@@ -60,9 +60,7 @@ public class PrepareStatementDemo {
       preparedStatement.execute();
       preparedStatement.clearParameters();
 
-
-
-      try(ResultSet resultSet = preparedStatement.executeQuery("select * from root")) {
+      try (ResultSet resultSet = preparedStatement.executeQuery("select * from root")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         while (resultSet.next()) {
           StringBuilder builder = new StringBuilder();
@@ -72,11 +70,10 @@ public class PrepareStatementDemo {
           System.out.println(builder);
         }
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          System.out
-              .println(resultSetMetaData.getColumnType(i) + "-" + resultSetMetaData.getColumnName(i));
+          System.out.println(
+              resultSetMetaData.getColumnType(i) + "-" + resultSetMetaData.getColumnName(i));
         }
       }
     }
   }
-
 }

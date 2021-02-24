@@ -18,16 +18,15 @@
  */
 package org.apache.iotdb.tsfile.read.filter.basic;
 
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Objects;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 
-/**
- * Definition for binary filter operations.
- */
+/** Definition for binary filter operations. */
 public abstract class BinaryFilter implements Filter, Serializable {
 
   private static final long serialVersionUID = 1039585564327602465L;
@@ -35,8 +34,7 @@ public abstract class BinaryFilter implements Filter, Serializable {
   protected Filter left;
   protected Filter right;
 
-  public BinaryFilter() {
-  }
+  public BinaryFilter() {}
 
   protected BinaryFilter(Filter left, Filter right) {
     this.left = left;
@@ -82,7 +80,8 @@ public abstract class BinaryFilter implements Filter, Serializable {
       return false;
     }
     BinaryFilter other = ((BinaryFilter) obj);
-    return this.left.equals(other.left) && this.right.equals(other.right)
+    return this.left.equals(other.left)
+        && this.right.equals(other.right)
         && this.getSerializeId().equals(other.getSerializeId());
   }
 

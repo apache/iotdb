@@ -19,15 +19,14 @@
 
 package org.apache.iotdb.db.engine.cache;
 
+import org.apache.iotdb.tsfile.common.cache.Accountable;
+
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map.Entry;
 import java.util.Set;
-import org.apache.iotdb.tsfile.common.cache.Accountable;
 
-/**
- * This class is an LRU cache. <b>Note: It's not thread safe.</b>
- */
+/** This class is an LRU cache. <b>Note: It's not thread safe.</b> */
 public abstract class LRULinkedHashMap<K extends Accountable, V> {
 
   private static final float LOAD_FACTOR_MAP = 0.75f;
@@ -37,18 +36,12 @@ public abstract class LRULinkedHashMap<K extends Accountable, V> {
 
   private final LinkedHashMap<K, V> linkedHashMap;
 
-  /**
-   * maximum memory threshold.
-   */
+  /** maximum memory threshold. */
   private final long maxMemory;
-  /**
-   * current used memory.
-   */
+  /** current used memory. */
   private long usedMemory;
 
-  /**
-   * memory size we need to retain while the cache is full
-   */
+  /** memory size we need to retain while the cache is full */
   private final long retainMemory;
 
   protected int count = 0;
@@ -99,14 +92,10 @@ public abstract class LRULinkedHashMap<K extends Accountable, V> {
     return v;
   }
 
-  /**
-   * approximately estimate the additional size of key and value.
-   */
+  /** approximately estimate the additional size of key and value. */
   protected abstract long calEntrySize(K key, V value);
 
-  /**
-   * calculate the proportion of used memory.
-   */
+  /** calculate the proportion of used memory. */
   public double getUsedMemoryProportion() {
     return usedMemory * 1.0 / maxMemory;
   }

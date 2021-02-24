@@ -19,6 +19,17 @@
 
 package org.apache.iotdb.db.query.udf.service;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.query.udf.datastructure.SerializableList.SerializationRecorder;
+import org.apache.iotdb.db.service.IService;
+import org.apache.iotdb.db.service.ServiceType;
+
+import org.apache.commons.io.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -26,15 +37,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
-import org.apache.commons.io.FileUtils;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.exception.StartupException;
-import org.apache.iotdb.db.query.udf.datastructure.SerializableList.SerializationRecorder;
-import org.apache.iotdb.db.service.IService;
-import org.apache.iotdb.db.service.ServiceType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class TemporaryQueryDataFileService implements IService {
 
@@ -42,7 +44,10 @@ public class TemporaryQueryDataFileService implements IService {
 
   private static final String TEMPORARY_FILE_DIR =
       IoTDBDescriptor.getInstance().getConfig().getSystemDir()
-          + File.separator + "udf" + File.separator + "tmp";
+          + File.separator
+          + "udf"
+          + File.separator
+          + "tmp";
 
   private final AtomicLong uniqueDataId;
   private final Map<Long, List<SerializationRecorder>> recorders;
@@ -73,15 +78,15 @@ public class TemporaryQueryDataFileService implements IService {
       try {
         recorder.closeFile();
       } catch (IOException e) {
-        logger.warn(String.format("Failed to close file in method deregister(%d), because %s",
-            queryId, e.toString()));
+        logger.warn(
+            String.format("Failed to close file in method deregister(%d), because %s", queryId, e));
       }
     }
     try {
       FileUtils.cleanDirectory(SystemFileFactory.INSTANCE.getFile(getDirName(queryId)));
     } catch (IOException e) {
-      logger.warn(String.format("Failed to clean dir in method deregister(%d), because %s",
-          queryId, e.toString()));
+      logger.warn(
+          String.format("Failed to clean dir in method deregister(%d), because %s", queryId, e));
     }
   }
 
@@ -128,9 +133,9 @@ public class TemporaryQueryDataFileService implements IService {
 
   private static class TemporaryQueryDataFileServiceHelper {
 
-    private static final TemporaryQueryDataFileService INSTANCE = new TemporaryQueryDataFileService();
+    private static final TemporaryQueryDataFileService INSTANCE =
+        new TemporaryQueryDataFileService();
 
-    private TemporaryQueryDataFileServiceHelper() {
-    }
+    private TemporaryQueryDataFileServiceHelper() {}
   }
 }

@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
-import java.util.List;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.RootOperator;
+
+import java.util.List;
 
 /**
  * SFWOperator(select-from-where) includes four subclass: INSERT,DELETE,UPDATE,QUERY. All of these
@@ -52,9 +53,7 @@ public abstract class SFWOperator extends RootOperator {
     return selectOperator;
   }
 
-  /**
-   * set selectOperator, then init hasAggregation according to selectOperator.
-   */
+  /** set selectOperator, then init hasAggregation according to selectOperator. */
   public void setSelectOperator(SelectOperator sel) {
     this.selectOperator = sel;
     if (sel.hasAggregation()) {

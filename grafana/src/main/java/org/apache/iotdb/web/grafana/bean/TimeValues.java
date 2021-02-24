@@ -18,9 +18,7 @@
  */
 package org.apache.iotdb.web.grafana.bean;
 
-/**
- * Created by dell on 2017/7/18.
- */
+/** Created by dell on 2017/7/18. */
 public class TimeValues {
 
   private long time;

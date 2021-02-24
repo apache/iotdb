@@ -83,6 +83,20 @@ Precautions:
 * Do not use special Unicode chars, e.g., U+FF1A 
 * Do not use the character of dollar (as we will use Latex to generate pdf files)
 
+### Code Formatting
+
+We use the [Spotless
+plugin](https://github.com/diffplug/spotless/tree/main/plugin-maven) together with [google-java-format](https://github.com/google/google-java-format) to format our Java code. You can configure your IDE to automatically apply formatting on saving with these steps(Take idea as an example):
+
+1. Download the [google-java-format
+   plugin v1.7.0.5](https://plugins.jetbrains.com/plugin/8527-google-java-format/versions/stable/83169), it can be installed in IDEA (Preferences -> plugins -> search google-java-format), [More detailed setup manual](https://github.com/google/google-java-format#intellij-android-studio-and-other-jetbrains-ides)
+2. Install the plugin from disk (Plugins -> little gear icon -> "Install plugin from disk" -> Navigate to downloaded zip file)
+3. In the plugin settings, enable the plugin and keep the default Google code style (2-space indents)
+4. Remember to never update this plugin to a later version，until Spotless was upgraded to version 1.8+.
+5. Install the [Save Actions
+   plugin](https://plugins.jetbrains.com/plugin/7642-save-actions) , and enable the plugin, along with "Optimize imports" and "Reformat file"
+6. In the "Save Actions" settings page, setup a "File Path Inclusion" for `.*\.java`. Otherwise you will get unintended reformatting in other files you edit.
+
 ## Contributing code
 
 You can go to jira to pick up the existing issue or create your own issue and get it. The comment says that I can do this issue.
@@ -92,6 +106,7 @@ You can go to jira to pick up the existing issue or create your own issue and ge
 * Add code style as the root java-google-style.xml in the idea
 * Modify the code and add test cases (unit test, integration test)
   * Integration test reference:server/src/test/java/org/apache/iotdb/db/integration/IoTDBTimeZoneIT
+* Use `mvn spotless:check` to check the code style and use `mvn spotless:apply` to correct the code style
 * Submit a PR, starting with [IOTDB-jira number]
 * Email to dev mailing list：(I've submitted a PR for issue IOTDB-xxx [link])
 * Make changes based on other people's reviews and continue to update until merged

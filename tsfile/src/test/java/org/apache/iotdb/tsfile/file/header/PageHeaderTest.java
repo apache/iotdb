@@ -19,21 +19,20 @@
 
 package org.apache.iotdb.tsfile.file.header;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import org.apache.iotdb.tsfile.constant.TestConstant;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.utils.TestHelper;
+import org.apache.iotdb.tsfile.file.metadata.utils.Utils;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.constant.TestConstant;
-import org.apache.iotdb.tsfile.file.metadata.utils.TestHelper;
-import org.apache.iotdb.tsfile.file.metadata.utils.Utils;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 
 public class PageHeaderTest {
   public static final int UNCOMPRESSED_SIZE = 123456;
@@ -45,8 +44,7 @@ public class PageHeaderTest {
   private final String PATH = TestConstant.BASE_OUTPUT_PATH.concat("outputPageHeader.tsfile");
 
   @Before
-  public void setUp() {
-  }
+  public void setUp() {}
 
   @After
   public void tearDown() {
@@ -107,5 +105,4 @@ public class PageHeaderTest {
       }
     }
   }
-
 }

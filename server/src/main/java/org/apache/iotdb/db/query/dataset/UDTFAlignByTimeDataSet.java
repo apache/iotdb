@@ -19,10 +19,6 @@
 
 package org.apache.iotdb.db.query.dataset;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
@@ -41,27 +37,42 @@ import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+
 public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignByTimeDataSet {
 
   protected TimeSelector timeHeap;
 
-  /**
-   * execute with value filter
-   */
-  public UDTFAlignByTimeDataSet(QueryContext context, UDTFPlan udtfPlan,
-      List<PartialPath> deduplicatedPaths, List<TSDataType> deduplicatedDataTypes,
-      TimeGenerator timestampGenerator, List<IReaderByTimestamp> readersOfSelectedSeries,
-      List<Boolean> cached) throws IOException, QueryProcessException {
-    super(context, udtfPlan, deduplicatedPaths, deduplicatedDataTypes, timestampGenerator,
-        readersOfSelectedSeries, cached);
+  /** execute with value filter */
+  public UDTFAlignByTimeDataSet(
+      QueryContext context,
+      UDTFPlan udtfPlan,
+      List<PartialPath> deduplicatedPaths,
+      List<TSDataType> deduplicatedDataTypes,
+      TimeGenerator timestampGenerator,
+      List<IReaderByTimestamp> readersOfSelectedSeries,
+      List<Boolean> cached)
+      throws IOException, QueryProcessException {
+    super(
+        context,
+        udtfPlan,
+        deduplicatedPaths,
+        deduplicatedDataTypes,
+        timestampGenerator,
+        readersOfSelectedSeries,
+        cached);
     initTimeHeap();
   }
 
-  /**
-   * execute without value filter
-   */
-  public UDTFAlignByTimeDataSet(QueryContext context, UDTFPlan udtfPlan,
-      List<PartialPath> deduplicatedPaths, List<TSDataType> deduplicatedDataTypes,
+  /** execute without value filter */
+  public UDTFAlignByTimeDataSet(
+      QueryContext context,
+      UDTFPlan udtfPlan,
+      List<PartialPath> deduplicatedPaths,
+      List<TSDataType> deduplicatedDataTypes,
       List<ManagedSeriesReader> readersOfSelectedSeries)
       throws QueryProcessException, IOException, InterruptedException {
     super(context, udtfPlan, deduplicatedPaths, deduplicatedDataTypes, readersOfSelectedSeries);
@@ -119,23 +130,35 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
           switch (type) {
             case INT32:
               int intValue = reader.currentInt();
-              ReadWriteIOUtils.write(encoder != null && encoder.needEncode(minTime)
-                  ? encoder.encodeInt(intValue, minTime) : intValue, valueBAOSList[i]);
+              ReadWriteIOUtils.write(
+                  encoder != null && encoder.needEncode(minTime)
+                      ? encoder.encodeInt(intValue, minTime)
+                      : intValue,
+                  valueBAOSList[i]);
               break;
             case INT64:
               long longValue = reader.currentLong();
-              ReadWriteIOUtils.write(encoder != null && encoder.needEncode(minTime)
-                  ? encoder.encodeLong(longValue, minTime) : longValue, valueBAOSList[i]);
+              ReadWriteIOUtils.write(
+                  encoder != null && encoder.needEncode(minTime)
+                      ? encoder.encodeLong(longValue, minTime)
+                      : longValue,
+                  valueBAOSList[i]);
               break;
             case FLOAT:
               float floatValue = reader.currentFloat();
-              ReadWriteIOUtils.write(encoder != null && encoder.needEncode(minTime)
-                  ? encoder.encodeFloat(floatValue, minTime) : floatValue, valueBAOSList[i]);
+              ReadWriteIOUtils.write(
+                  encoder != null && encoder.needEncode(minTime)
+                      ? encoder.encodeFloat(floatValue, minTime)
+                      : floatValue,
+                  valueBAOSList[i]);
               break;
             case DOUBLE:
               double doubleValue = reader.currentDouble();
-              ReadWriteIOUtils.write(encoder != null && encoder.needEncode(minTime)
-                  ? encoder.encodeDouble(doubleValue, minTime) : doubleValue, valueBAOSList[i]);
+              ReadWriteIOUtils.write(
+                  encoder != null && encoder.needEncode(minTime)
+                      ? encoder.encodeDouble(doubleValue, minTime)
+                      : doubleValue,
+                  valueBAOSList[i]);
               break;
             case BOOLEAN:
               ReadWriteIOUtils.write(reader.currentBoolean(), valueBAOSList[i]);
@@ -182,8 +205,8 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
       int remaining = rowCount % 8;
       if (remaining != 0) {
         for (int i = 0; i < columnsNum; ++i) {
-          ReadWriteIOUtils
-              .write((byte) (currentBitmapList[i] << (8 - remaining)), bitmapBAOSList[i]);
+          ReadWriteIOUtils.write(
+              (byte) (currentBitmapList[i] << (8 - remaining)), bitmapBAOSList[i]);
         }
       }
     }
@@ -191,8 +214,11 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
     return packBuffer(tsQueryDataSet, timeBAOS, valueBAOSList, bitmapBAOSList);
   }
 
-  protected TSQueryDataSet packBuffer(TSQueryDataSet tsQueryDataSet, PublicBAOS timeBAOS,
-      PublicBAOS[] valueBAOSList, PublicBAOS[] bitmapBAOSList) {
+  protected TSQueryDataSet packBuffer(
+      TSQueryDataSet tsQueryDataSet,
+      PublicBAOS timeBAOS,
+      PublicBAOS[] valueBAOSList,
+      PublicBAOS[] bitmapBAOSList) {
     int columnsNum = transformers.length;
 
     ByteBuffer timeBuffer = ByteBuffer.allocate(timeBAOS.size());
@@ -212,8 +238,8 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
     return tsQueryDataSet;
   }
 
-  protected void putPBOSToBuffer(PublicBAOS[] bitmapBAOSList, List<ByteBuffer> bitmapBufferList,
-      int tsIndex) {
+  protected void putPBOSToBuffer(
+      PublicBAOS[] bitmapBAOSList, List<ByteBuffer> bitmapBufferList, int tsIndex) {
     ByteBuffer bitmapBuffer = ByteBuffer.allocate(bitmapBAOSList[tsIndex].size());
     bitmapBuffer.put(bitmapBAOSList[tsIndex].getBuf(), 0, bitmapBAOSList[tsIndex].size());
     bitmapBuffer.flip();

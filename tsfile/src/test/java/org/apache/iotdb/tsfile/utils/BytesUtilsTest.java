@@ -18,8 +18,9 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import org.apache.iotdb.tsfile.constant.TestConstant;
+
+import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -27,8 +28,9 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import org.apache.iotdb.tsfile.constant.TestConstant;
-import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class BytesUtilsTest {
 
@@ -53,11 +55,10 @@ public class BytesUtilsTest {
     int rb2 = BytesUtils.bytesToInt(ret, 4);
     assertEquals("testBytesToFloat", b1, rb1);
     assertEquals("testBytesToFloat", b2, rb2);
-
   }
 
   @Test
-  public void testFloatToBytes() throws Exception {
+  public void testFloatToBytes() {
     // fail("NotFilter yet implemented");
     float b = 25.0f;
     byte[] bb = BytesUtils.floatToBytes(b);
@@ -79,7 +80,7 @@ public class BytesUtilsTest {
   }
 
   @Test
-  public void testBoolToBytes() throws Exception {
+  public void testBoolToBytes() {
     boolean b = true;
     byte[] bb = BytesUtils.boolToBytes(b);
     boolean bf = BytesUtils.bytesToBool(bb);
@@ -87,7 +88,7 @@ public class BytesUtilsTest {
   }
 
   @Test
-  public void testBytesToBool() throws Exception {
+  public void testBytesToBool() {
     boolean b = false;
     byte[] bb = BytesUtils.boolToBytes(b);
     boolean bf = BytesUtils.bytesToBool(bb);
@@ -210,7 +211,7 @@ public class BytesUtilsTest {
   }
 
   @Test
-  public void testSubBytes() throws IOException {
+  public void testSubBytes() {
     List<byte[]> list = new ArrayList<byte[]>();
     float f1 = 12.4f;
     boolean b1 = true;
@@ -379,5 +380,4 @@ public class BytesUtilsTest {
     InputStream in = new ByteArrayInputStream(bs);
     assertEquals(l, BytesUtils.readBool(in));
   }
-
 }

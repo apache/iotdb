@@ -21,5 +21,4 @@ package org.apache.iotdb.db.rescon;
 public interface TVListAllocatorMBean {
 
   int getNumberOfTVLists();
-
 }

@@ -29,14 +29,15 @@ public class ShowDevicesPlan extends ShowPlan {
   public ShowDevicesPlan() {
     super(ShowContentType.DEVICES);
   }
+  private boolean hasSgCol;
 
   public ShowDevicesPlan(PartialPath path) {
     super(ShowContentType.DEVICES, path);
   }
 
-  public ShowDevicesPlan(PartialPath path, int limit, int offset,
-      int fetchSize) {
+  public ShowDevicesPlan(PartialPath path, int limit, int offset, int fetchSize, boolean hasSgCol) {
     super(ShowContentType.DEVICES, path, limit, offset, fetchSize);
+    this.hasSgCol = hasSgCol;
   }
 
   @Override
@@ -55,5 +56,8 @@ public class ShowDevicesPlan extends ShowPlan {
     offset = buffer.getInt();
     this.index = buffer.getLong();
   }
-}
 
+  public boolean hasSgCol() {
+    return hasSgCol;
+  }
+}

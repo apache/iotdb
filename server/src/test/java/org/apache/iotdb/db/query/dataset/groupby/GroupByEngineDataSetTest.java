@@ -18,23 +18,23 @@
  */
 package org.apache.iotdb.db.query.dataset.groupby;
 
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
+import org.apache.iotdb.db.query.aggregation.impl.CountAggrResult;
+import org.apache.iotdb.tsfile.utils.Pair;
+
+import org.junit.Assert;
+import org.junit.Test;
+
 import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.TimeZone;
-import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
-import org.apache.iotdb.db.query.aggregation.impl.CountAggrResult;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.junit.Assert;
-import org.junit.Test;
 
 public class GroupByEngineDataSetTest {
 
-  /**
-   * Sliding step > unit && last time interval = unit
-   */
+  /** Sliding step > unit && last time interval = unit */
   @Test
   public void calNextTimePartitionTest1() throws IOException {
     long queryId = 1000L;
@@ -52,8 +52,8 @@ public class GroupByEngineDataSetTest {
     groupByTimePlan.setStartTime(startTime);
     groupByTimePlan.setEndTime(endTime);
 
-    GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId,
-        groupByTimePlan);
+    GroupByEngineDataSet groupByEngine =
+        new GroupByWithValueFilterDataSet(queryId, groupByTimePlan);
     int cnt = 0;
     while (groupByEngine.hasNext()) {
       Pair pair = groupByEngine.nextTimePartition();
@@ -64,9 +64,7 @@ public class GroupByEngineDataSetTest {
     Assert.assertEquals(startTimeArray.length, cnt);
   }
 
-  /**
-   * Sliding step = unit && last time interval = unit
-   */
+  /** Sliding step = unit && last time interval = unit */
   @Test
   public void calNextTimePartitionTest2() throws IOException {
     long queryId = 1000L;
@@ -83,8 +81,8 @@ public class GroupByEngineDataSetTest {
     groupByTimePlan.setSlidingStep(slidingStep);
     groupByTimePlan.setStartTime(startTime);
     groupByTimePlan.setEndTime(endTime);
-    GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId,
-        groupByTimePlan);
+    GroupByEngineDataSet groupByEngine =
+        new GroupByWithValueFilterDataSet(queryId, groupByTimePlan);
     int cnt = 0;
     while (groupByEngine.hasNext()) {
       Pair pair = groupByEngine.nextTimePartition();
@@ -95,9 +93,7 @@ public class GroupByEngineDataSetTest {
     Assert.assertEquals(startTimeArray.length, cnt);
   }
 
-  /**
-   * Sliding step = unit && last time interval < unit
-   */
+  /** Sliding step = unit && last time interval < unit */
   @Test
   public void calNextTimePartitionTest3() throws IOException {
     long queryId = 1000L;
@@ -114,7 +110,8 @@ public class GroupByEngineDataSetTest {
     groupByTimePlan.setSlidingStep(slidingStep);
     groupByTimePlan.setStartTime(startTime);
     groupByTimePlan.setEndTime(endTime);
-    GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId, groupByTimePlan);
+    GroupByEngineDataSet groupByEngine =
+        new GroupByWithValueFilterDataSet(queryId, groupByTimePlan);
     int cnt = 0;
     while (groupByEngine.hasNext()) {
       Pair pair = groupByEngine.nextTimePartition();
@@ -125,9 +122,7 @@ public class GroupByEngineDataSetTest {
     Assert.assertEquals(startTimeArray.length, cnt);
   }
 
-  /**
-   * Desc query && sliding step > unit && last time interval = unit
-   */
+  /** Desc query && sliding step > unit && last time interval = unit */
   @Test
   public void calNextTimePartitionDescTest1() throws IOException {
     long queryId = 1000L;
@@ -146,7 +141,8 @@ public class GroupByEngineDataSetTest {
     groupByTimePlan.setStartTime(startTime);
     groupByTimePlan.setEndTime(endTime);
 
-    GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId, groupByTimePlan);
+    GroupByEngineDataSet groupByEngine =
+        new GroupByWithValueFilterDataSet(queryId, groupByTimePlan);
     int cnt = 0;
     while (groupByEngine.hasNext()) {
       Pair pair = groupByEngine.nextTimePartition();
@@ -157,9 +153,7 @@ public class GroupByEngineDataSetTest {
     Assert.assertEquals(startTimeArray.length, cnt);
   }
 
-  /**
-   * Desc query && Sliding step = unit && last time interval = unit
-   */
+  /** Desc query && Sliding step = unit && last time interval = unit */
   @Test
   public void calNextTimePartitionDescTest2() throws IOException {
     long queryId = 1000L;
@@ -177,8 +171,8 @@ public class GroupByEngineDataSetTest {
     groupByTimePlan.setSlidingStep(slidingStep);
     groupByTimePlan.setStartTime(startTime);
     groupByTimePlan.setEndTime(endTime);
-    GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId,
-        groupByTimePlan);
+    GroupByEngineDataSet groupByEngine =
+        new GroupByWithValueFilterDataSet(queryId, groupByTimePlan);
     int cnt = 0;
     while (groupByEngine.hasNext()) {
       Pair pair = groupByEngine.nextTimePartition();
@@ -189,9 +183,7 @@ public class GroupByEngineDataSetTest {
     Assert.assertEquals(startTimeArray.length, cnt);
   }
 
-  /**
-   * Desc query && Sliding step = unit && last time interval < unit
-   */
+  /** Desc query && Sliding step = unit && last time interval < unit */
   @Test
   public void calNextTimePartitionDescTest3() throws IOException {
     long queryId = 1000L;
@@ -212,8 +204,8 @@ public class GroupByEngineDataSetTest {
 
     ArrayList<Object> aggrList = new ArrayList<>();
     aggrList.add(new CountAggrResult());
-    GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId,
-        groupByTimePlan);
+    GroupByEngineDataSet groupByEngine =
+        new GroupByWithValueFilterDataSet(queryId, groupByTimePlan);
     int cnt = 0;
     while (groupByEngine.hasNext()) {
       Pair pair = groupByEngine.nextTimePartition();
@@ -228,13 +220,13 @@ public class GroupByEngineDataSetTest {
   @Test
   public void testGroupByMonth1() throws IOException {
     long queryId = 1000L;
-    //interval = 1mo
+    // interval = 1mo
     long unit = 1 * 30 * 86400_000L;
-    //sliding step = 2mo
+    // sliding step = 2mo
     long slidingStep = 2 * 30 * 86400_000L;
-    //11/01/2019:19:57:18
+    // 11/01/2019:19:57:18
     long startTime = 1572609438000L;
-    //04/01/2020:19:57:18
+    // 04/01/2020:19:57:18
     long endTime = 1585742238000L;
 
     DateFormat df = new SimpleDateFormat("MM/dd/yyyy:HH:mm:ss");
@@ -250,8 +242,8 @@ public class GroupByEngineDataSetTest {
     groupByTimePlan.setIntervalByMonth(true);
     groupByTimePlan.setSlidingStepByMonth(true);
 
-    GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId,
-        groupByTimePlan);
+    GroupByEngineDataSet groupByEngine =
+        new GroupByWithValueFilterDataSet(queryId, groupByTimePlan);
     int cnt = 0;
 
     while (groupByEngine.hasNext()) {
@@ -268,22 +260,34 @@ public class GroupByEngineDataSetTest {
   @Test
   public void testGroupByMonth2() throws IOException {
     long queryId = 1000L;
-    //interval = 1mo
+    // interval = 1mo
     long unit = 1 * 30 * 86400_000L;
-    //sliding step = 1mo
+    // sliding step = 1mo
     long slidingStep = 1 * 30 * 86400_000L;
-    //10/31/2019:19:57:18
-    //test edge case 2/29
+    // 10/31/2019:19:57:18
+    // test edge case 2/29
     long startTime = 1572523038000L;
-    //04/01/2020:19:57:18
+    // 04/01/2020:19:57:18
     long endTime = 1585742238000L;
 
     DateFormat df = new SimpleDateFormat("MM/dd/yyyy:HH:mm:ss");
     df.setTimeZone(TimeZone.getTimeZone("GMT+8:00"));
-    String[] startTimeArray = {"10/31/2019:19:57:18", "11/30/2019:19:57:18", "12/31/2019:19:57:18",
-        "01/31/2020:19:57:18", "02/29/2020:19:57:18", "03/31/2020:19:57:18"};
-    String[] endTimeArray = {"11/30/2019:19:57:18", "12/31/2019:19:57:18", "01/31/2020:19:57:18",
-        "02/29/2020:19:57:18", "03/31/2020:19:57:18", "04/01/2020:19:57:18"};
+    String[] startTimeArray = {
+      "10/31/2019:19:57:18",
+      "11/30/2019:19:57:18",
+      "12/31/2019:19:57:18",
+      "01/31/2020:19:57:18",
+      "02/29/2020:19:57:18",
+      "03/31/2020:19:57:18"
+    };
+    String[] endTimeArray = {
+      "11/30/2019:19:57:18",
+      "12/31/2019:19:57:18",
+      "01/31/2020:19:57:18",
+      "02/29/2020:19:57:18",
+      "03/31/2020:19:57:18",
+      "04/01/2020:19:57:18"
+    };
 
     GroupByTimePlan groupByTimePlan = new GroupByTimePlan();
     groupByTimePlan.setInterval(unit);
@@ -293,8 +297,8 @@ public class GroupByEngineDataSetTest {
     groupByTimePlan.setIntervalByMonth(true);
     groupByTimePlan.setSlidingStepByMonth(true);
 
-    GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId,
-        groupByTimePlan);
+    GroupByEngineDataSet groupByEngine =
+        new GroupByWithValueFilterDataSet(queryId, groupByTimePlan);
     int cnt = 0;
 
     while (groupByEngine.hasNext()) {
@@ -311,14 +315,14 @@ public class GroupByEngineDataSetTest {
   @Test
   public void testGroupByMonth3() throws IOException {
     long queryId = 1000L;
-    //interval = 2mo
+    // interval = 2mo
     long unit = 2 * 30 * 86400_000L;
-    //sliding step = 3mo
+    // sliding step = 3mo
     long slidingStep = 3 * 30 * 86400_000L;
-    //10/31/2019:19:57:18
-    //test edge case 2/29
+    // 10/31/2019:19:57:18
+    // test edge case 2/29
     long startTime = 1572523038000L;
-    //04/01/2020:19:57:18
+    // 04/01/2020:19:57:18
     long endTime = 1585742238000L;
 
     DateFormat df = new SimpleDateFormat("MM/dd/yyyy:HH:mm:ss");
@@ -334,8 +338,8 @@ public class GroupByEngineDataSetTest {
     groupByTimePlan.setIntervalByMonth(true);
     groupByTimePlan.setSlidingStepByMonth(true);
 
-    GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId,
-        groupByTimePlan);
+    GroupByEngineDataSet groupByEngine =
+        new GroupByWithValueFilterDataSet(queryId, groupByTimePlan);
     int cnt = 0;
 
     while (groupByEngine.hasNext()) {
@@ -351,23 +355,35 @@ public class GroupByEngineDataSetTest {
   @Test
   public void testGroupByMonth4() throws IOException {
     long queryId = 1000L;
-    //interval = 10days
+    // interval = 10days
     long unit = 10 * 86400_000L;
-    //sliding step = 1mo
+    // sliding step = 1mo
     long slidingStep = 1 * 30 * 86400_000L;
-    //10/31/2019:19:57:18
-    //test edge case 2/29
+    // 10/31/2019:19:57:18
+    // test edge case 2/29
     long startTime = 1572523038000L;
-    //04/01/2020:19:57:18
+    // 04/01/2020:19:57:18
     long endTime = 1585742238000L;
 
     DateFormat df = new SimpleDateFormat("MM/dd/yyyy:HH:mm:ss");
     df.setTimeZone(TimeZone.getTimeZone("GMT+8:00"));
 
-    String[] startTimeArray = {"10/31/2019:19:57:18", "11/30/2019:19:57:18", "12/31/2019:19:57:18",
-        "01/31/2020:19:57:18", "02/29/2020:19:57:18", "03/31/2020:19:57:18"};
-    String[] endTimeArray = {"11/10/2019:19:57:18", "12/10/2019:19:57:18",
-        "01/10/2020:19:57:18", "02/10/2020:19:57:18", "03/10/2020:19:57:18", "04/01/2020:19:57:18"};
+    String[] startTimeArray = {
+      "10/31/2019:19:57:18",
+      "11/30/2019:19:57:18",
+      "12/31/2019:19:57:18",
+      "01/31/2020:19:57:18",
+      "02/29/2020:19:57:18",
+      "03/31/2020:19:57:18"
+    };
+    String[] endTimeArray = {
+      "11/10/2019:19:57:18",
+      "12/10/2019:19:57:18",
+      "01/10/2020:19:57:18",
+      "02/10/2020:19:57:18",
+      "03/10/2020:19:57:18",
+      "04/01/2020:19:57:18"
+    };
 
     GroupByTimePlan groupByTimePlan = new GroupByTimePlan();
     groupByTimePlan.setInterval(unit);
@@ -377,8 +393,8 @@ public class GroupByEngineDataSetTest {
     groupByTimePlan.setIntervalByMonth(false);
     groupByTimePlan.setSlidingStepByMonth(true);
 
-    GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId,
-        groupByTimePlan);
+    GroupByEngineDataSet groupByEngine =
+        new GroupByWithValueFilterDataSet(queryId, groupByTimePlan);
     int cnt = 0;
 
     while (groupByEngine.hasNext()) {
@@ -394,22 +410,34 @@ public class GroupByEngineDataSetTest {
   @Test
   public void testGroupByMonthDescending1() throws IOException {
     long queryId = 1000L;
-    //interval = 1mo
+    // interval = 1mo
     long unit = 1 * 30 * 86400_000L;
-    //sliding step = 1mo
+    // sliding step = 1mo
     long slidingStep = 1 * 30 * 86400_000L;
-    //10/31/2019:19:57:18
-    //test edge case 2/29
+    // 10/31/2019:19:57:18
+    // test edge case 2/29
     long startTime = 1572523038000L;
-    //04/01/2020:19:57:18
+    // 04/01/2020:19:57:18
     long endTime = 1585742238000L;
 
     DateFormat df = new SimpleDateFormat("MM/dd/yyyy:HH:mm:ss");
     df.setTimeZone(TimeZone.getTimeZone("GMT+8:00"));
-    String[] startTimeArray = {"03/31/2020:19:57:18", "02/29/2020:19:57:18", "01/31/2020:19:57:18",
-        "12/31/2019:19:57:18", "11/30/2019:19:57:18", "10/31/2019:19:57:18"};
-    String[] endTimeArray = {"04/01/2020:19:57:18", "03/31/2020:19:57:18", "02/29/2020:19:57:18",
-        "01/31/2020:19:57:18", "12/31/2019:19:57:18", "11/30/2019:19:57:18"};
+    String[] startTimeArray = {
+      "03/31/2020:19:57:18",
+      "02/29/2020:19:57:18",
+      "01/31/2020:19:57:18",
+      "12/31/2019:19:57:18",
+      "11/30/2019:19:57:18",
+      "10/31/2019:19:57:18"
+    };
+    String[] endTimeArray = {
+      "04/01/2020:19:57:18",
+      "03/31/2020:19:57:18",
+      "02/29/2020:19:57:18",
+      "01/31/2020:19:57:18",
+      "12/31/2019:19:57:18",
+      "11/30/2019:19:57:18"
+    };
 
     GroupByTimePlan groupByTimePlan = new GroupByTimePlan();
     groupByTimePlan.setInterval(unit);
@@ -420,8 +448,8 @@ public class GroupByEngineDataSetTest {
     groupByTimePlan.setSlidingStepByMonth(true);
     groupByTimePlan.setAscending(false);
 
-    GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId,
-        groupByTimePlan);
+    GroupByEngineDataSet groupByEngine =
+        new GroupByWithValueFilterDataSet(queryId, groupByTimePlan);
     int cnt = 0;
 
     while (groupByEngine.hasNext()) {
@@ -437,13 +465,13 @@ public class GroupByEngineDataSetTest {
   @Test
   public void testGroupByMonthDescending2() throws IOException {
     long queryId = 1000L;
-    //interval = 1mo
+    // interval = 1mo
     long unit = 1 * 30 * 86400_000L;
-    //sliding step = 2mo
+    // sliding step = 2mo
     long slidingStep = 2 * 30 * 86400_000L;
-    //10/31/2019:19:57:18
+    // 10/31/2019:19:57:18
     long startTime = 1572523038000L;
-    //04/01/2020:19:57:18
+    // 04/01/2020:19:57:18
     long endTime = 1585742238000L;
 
     DateFormat df = new SimpleDateFormat("MM/dd/yyyy:HH:mm:ss");
@@ -460,8 +488,8 @@ public class GroupByEngineDataSetTest {
     groupByTimePlan.setSlidingStepByMonth(true);
     groupByTimePlan.setAscending(false);
 
-    GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId,
-        groupByTimePlan);
+    GroupByEngineDataSet groupByEngine =
+        new GroupByWithValueFilterDataSet(queryId, groupByTimePlan);
     int cnt = 0;
 
     while (groupByEngine.hasNext()) {

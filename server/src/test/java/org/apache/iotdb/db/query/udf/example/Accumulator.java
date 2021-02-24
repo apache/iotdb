@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.db.query.udf.example;
 
-import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.*;
-
-import java.io.IOException;
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.access.RowIterator;
@@ -31,11 +28,16 @@ import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+
+import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.*;
 
 public class Accumulator implements UDTF {
 
@@ -43,9 +45,7 @@ public class Accumulator implements UDTF {
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
-    validator
-        .validateInputSeriesNumber(1)
-        .validateInputSeriesDataType(0, TSDataType.INT32);
+    validator.validateInputSeriesNumber(1).validateInputSeriesDataType(0, TSDataType.INT32);
   }
 
   @Override
@@ -54,15 +54,16 @@ public class Accumulator implements UDTF {
     configurations.setOutputDataType(TSDataType.INT32);
     switch (parameters.getStringOrDefault(ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_ROW_BY_ROW)) {
       case ACCESS_STRATEGY_SLIDING_SIZE:
-        configurations.setAccessStrategy(new SlidingSizeWindowAccessStrategy(
-            parameters.getInt(WINDOW_SIZE_KEY)));
+        configurations.setAccessStrategy(
+            new SlidingSizeWindowAccessStrategy(parameters.getInt(WINDOW_SIZE_KEY)));
         break;
       case ACCESS_STRATEGY_SLIDING_TIME:
-        configurations.setAccessStrategy(new SlidingTimeWindowAccessStrategy(
-            parameters.getLong(TIME_INTERVAL_KEY),
-            parameters.getLong(SLIDING_STEP_KEY),
-            parameters.getLong(DISPLAY_WINDOW_BEGIN_KEY),
-            parameters.getLong(DISPLAY_WINDOW_END_KEY)));
+        configurations.setAccessStrategy(
+            new SlidingTimeWindowAccessStrategy(
+                parameters.getLong(TIME_INTERVAL_KEY),
+                parameters.getLong(SLIDING_STEP_KEY),
+                parameters.getLong(DISPLAY_WINDOW_BEGIN_KEY),
+                parameters.getLong(DISPLAY_WINDOW_END_KEY)));
         break;
       case ACCESS_STRATEGY_ROW_BY_ROW:
       default:

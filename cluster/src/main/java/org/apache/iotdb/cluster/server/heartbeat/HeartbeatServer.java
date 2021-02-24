@@ -19,12 +19,6 @@
 
 package org.apache.iotdb.cluster.server.heartbeat;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.SynchronousQueue;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -32,6 +26,7 @@ import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.rpc.RpcTransportFactory;
+
 import org.apache.thrift.TProcessor;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -45,6 +40,13 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.atomic.AtomicLong;
+
 /**
  * HeartbeatServer works as a broker (network and protocol layer) that sends and receive the
  * heartbeat requests to the proper RaftMembers to process.
@@ -56,24 +58,20 @@ public abstract class HeartbeatServer {
       ClusterDescriptor.getInstance().getConfig().getConnectionTimeoutInMS();
 
   ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
-  /**
-   * the heartbeat socket poolServer will listen to
-   */
+  /** the heartbeat socket poolServer will listen to */
   private TServerTransport heartbeatSocket;
 
-  /**
-   * the heartbeat RPC processing server
-   */
+  /** the heartbeat RPC processing server */
   private TServer heartbeatPoolServer;
 
   Node thisNode;
 
-  private TProtocolFactory heartbeatProtocolFactory = config.isRpcThriftCompressionEnabled() ?
-      new TCompactProtocol.Factory() : new TBinaryProtocol.Factory();
+  private TProtocolFactory heartbeatProtocolFactory =
+      config.isRpcThriftCompressionEnabled()
+          ? new TCompactProtocol.Factory()
+          : new TBinaryProtocol.Factory();
 
-  /**
-   * This thread pool is to run the thrift server (heartbeatPoolServer above)
-   */
+  /** This thread pool is to run the thrift server (heartbeatPoolServer above) */
   private ExecutorService heartbeatClientService;
 
   HeartbeatServer() {
@@ -90,7 +88,6 @@ public abstract class HeartbeatServer {
   public static int getConnectionTimeoutInMS() {
     return connectionTimeoutInMS;
   }
-
 
   /**
    * Establish a thrift server with the configurations in ClusterConfig to listen to and respond to
@@ -131,7 +128,6 @@ public abstract class HeartbeatServer {
    */
   abstract TProcessor getProcessor();
 
-
   /**
    * A socket that will be used to establish a thrift server to listen to RPC heartbeat requests.
    * DataHeartServer and MetaHeartServer use different port, so this is to be determined.
@@ -158,34 +154,36 @@ public abstract class HeartbeatServer {
    */
   abstract String getServerClientName();
 
-
   private TServer getSyncHeartbeatServer() throws TTransportException {
     heartbeatSocket = getHeartbeatServerSocket();
-    return ClusterUtils.createTThreadPoolServer(heartbeatSocket, getClientThreadPrefix(),
-        getProcessor(), heartbeatProtocolFactory);
+    return ClusterUtils.createTThreadPoolServer(
+        heartbeatSocket, getClientThreadPrefix(), getProcessor(), heartbeatProtocolFactory);
   }
 
   private TServer getAsyncHeartbeatServer() throws TTransportException {
     heartbeatSocket = getHeartbeatServerSocket();
-    int maxConcurrentClientNum = Math.max(CommonUtils.getCpuCores(),
-            config.getMaxConcurrentClientNum());
+    int maxConcurrentClientNum =
+        Math.max(CommonUtils.getCpuCores(), config.getMaxConcurrentClientNum());
     Args poolArgs =
         new Args((TNonblockingServerTransport) heartbeatSocket)
             .maxWorkerThreads(maxConcurrentClientNum)
             .minWorkerThreads(CommonUtils.getCpuCores());
 
-    poolArgs.executorService(new ThreadPoolExecutor(poolArgs.minWorkerThreads,
-        poolArgs.maxWorkerThreads, poolArgs.getStopTimeoutVal(), poolArgs.getStopTimeoutUnit(),
-        new SynchronousQueue<>(), new ThreadFactory() {
-      private AtomicLong threadIndex = new AtomicLong(0);
+    poolArgs.executorService(
+        new ThreadPoolExecutor(
+            poolArgs.minWorkerThreads,
+            poolArgs.maxWorkerThreads,
+            poolArgs.getStopTimeoutVal(),
+            poolArgs.getStopTimeoutUnit(),
+            new SynchronousQueue<>(),
+            new ThreadFactory() {
+              private AtomicLong threadIndex = new AtomicLong(0);
 
-
-      @Override
-      public Thread newThread(Runnable r) {
-        return new Thread(r,
-            getClientThreadPrefix() + threadIndex.incrementAndGet());
-      }
-    }));
+              @Override
+              public Thread newThread(Runnable r) {
+                return new Thread(r, getClientThreadPrefix() + threadIndex.incrementAndGet());
+              }
+            }));
     poolArgs.processor(getProcessor());
     poolArgs.protocolFactory(heartbeatProtocolFactory);
     // async service requires FramedTransport
@@ -203,8 +201,8 @@ public abstract class HeartbeatServer {
       heartbeatPoolServer = getSyncHeartbeatServer();
     }
 
-    heartbeatClientService = Executors
-        .newSingleThreadExecutor(r -> new Thread(r, getServerClientName()));
+    heartbeatClientService =
+        Executors.newSingleThreadExecutor(r -> new Thread(r, getServerClientName()));
     heartbeatClientService.submit(() -> heartbeatPoolServer.serve());
 
     logger.info("Cluster node's heartbeat {} is up", thisNode);

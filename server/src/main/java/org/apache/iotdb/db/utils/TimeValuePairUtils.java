@@ -33,8 +33,7 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
 
 public class TimeValuePairUtils {
 
-  private TimeValuePairUtils() {
-  }
+  private TimeValuePairUtils() {}
 
   /**
    * get given data's current (time,value) pair.
@@ -51,14 +50,14 @@ public class TimeValuePairUtils {
       case FLOAT:
         return new TimeValuePair(data.currentTime(), new TsPrimitiveType.TsFloat(data.getFloat()));
       case DOUBLE:
-        return new TimeValuePair(data.currentTime(),
-            new TsPrimitiveType.TsDouble(data.getDouble()));
+        return new TimeValuePair(
+            data.currentTime(), new TsPrimitiveType.TsDouble(data.getDouble()));
       case TEXT:
-        return new TimeValuePair(data.currentTime(),
-            new TsPrimitiveType.TsBinary(data.getBinary()));
+        return new TimeValuePair(
+            data.currentTime(), new TsPrimitiveType.TsBinary(data.getBinary()));
       case BOOLEAN:
-        return new TimeValuePair(data.currentTime(),
-            new TsPrimitiveType.TsBoolean(data.getBoolean()));
+        return new TimeValuePair(
+            data.currentTime(), new TsPrimitiveType.TsBoolean(data.getBoolean()));
       default:
         throw new UnSupportedDataTypeException(String.valueOf(data.getDataType()));
     }

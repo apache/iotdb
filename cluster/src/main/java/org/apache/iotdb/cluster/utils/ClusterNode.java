@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.cluster.utils;
 
-import java.util.Objects;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+
+import java.util.Objects;
 
 /**
  * ClusterNode overrides hashcode() and equals() in Node to avoid duplicates in hash data structures
@@ -28,8 +29,7 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
  */
 public class ClusterNode extends Node {
 
-  public ClusterNode() {
-  }
+  public ClusterNode() {}
 
   public ClusterNode(String ip, int metaPort, int nodeIdentifier, int dataPort, int clientPort) {
     super(ip, metaPort, nodeIdentifier, dataPort, clientPort);
@@ -48,10 +48,11 @@ public class ClusterNode extends Node {
   }
 
   public boolean equals(ClusterNode that) {
-    return Objects.equals(this.ip, that.ip) && this.dataPort == that.dataPort
-        && this.metaPort == that.metaPort && this.clientPort == that.clientPort;
+    return Objects.equals(this.ip, that.ip)
+        && this.dataPort == that.dataPort
+        && this.metaPort == that.metaPort
+        && this.clientPort == that.clientPort;
   }
-
 
   @Override
   public int hashCode() {
@@ -61,11 +62,17 @@ public class ClusterNode extends Node {
   @Override
   public String toString() {
     return "ClusterNode{"
-        + " ip='" + ip + '\''
-        + ", metaPort=" + metaPort
-        + ", nodeIdentifier=" + nodeIdentifier
-        + ", dataPort=" + dataPort
-        + ", clientPort=" + clientPort
+        + " ip='"
+        + ip
+        + '\''
+        + ", metaPort="
+        + metaPort
+        + ", nodeIdentifier="
+        + nodeIdentifier
+        + ", dataPort="
+        + dataPort
+        + ", clientPort="
+        + clientPort
         + "}";
   }
 }

@@ -18,19 +18,19 @@
  */
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.db.sync.conf.SyncSenderDescriptor;
+
 import java.io.File;
 import java.text.DecimalFormat;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import org.apache.iotdb.db.sync.conf.SyncSenderDescriptor;
 
 public class SyncUtils {
 
   private static final String IP_SEPARATOR = "\\.";
 
-  private SyncUtils() {
-  }
+  private SyncUtils() {}
 
   /**
    * This method is to get a snapshot file seriesPath according to a tsfile seriesPath. Due to
@@ -38,7 +38,14 @@ public class SyncUtils {
    * sender.
    */
   public static File getSnapshotFile(File file) {
-    String relativeFilePath = file.getParentFile().getName() + File.separator + file.getName();
+    String relativeFilePath =
+        file.getParentFile().getParentFile().getParentFile().getName()
+            + File.separator
+            + file.getParentFile().getParentFile().getName()
+            + File.separator
+            + file.getParentFile().getName()
+            + File.separator
+            + file.getName();
     String snapshotDir = SyncSenderDescriptor.getInstance().getConfig().getSnapshotPath();
     if (!new File(snapshotDir).exists()) {
       new File(snapshotDir).mkdirs();
@@ -46,14 +53,14 @@ public class SyncUtils {
     return new File(snapshotDir, relativeFilePath);
   }
 
-  /**
-   * Verify sending list is empty or not It's used by sync sender.
-   */
-  public static boolean isEmpty(Map<String, Map<Long, Set<File>>> sendingFileList) {
-    for (Entry<String, Map<Long, Set<File>>> entry: sendingFileList.entrySet()) {
-      for(Entry<Long, Set<File>> innerEntry: entry.getValue().entrySet()) {
-        if (!innerEntry.getValue().isEmpty()) {
-          return false;
+  /** Verify sending list is empty or not It's used by sync sender. */
+  public static boolean isEmpty(Map<String, Map<Long, Map<Long, Set<File>>>> sendingFileList) {
+    for (Entry<String, Map<Long, Map<Long, Set<File>>>> entry : sendingFileList.entrySet()) {
+      for (Entry<Long, Map<Long, Set<File>>> vgEntry : entry.getValue().entrySet()) {
+        for (Entry<Long, Set<File>> innerEntry : vgEntry.getValue().entrySet()) {
+          if (!innerEntry.getValue().isEmpty()) {
+            return false;
+          }
         }
       }
     }
@@ -76,9 +83,7 @@ public class SyncUtils {
     return false;
   }
 
-  /**
-   * Verify IP address with IP segment.
-   */
+  /** Verify IP address with IP segment. */
   private static boolean verifyIP(String ipSegment, String ipAddress, int subnetMark) {
     String ipSegmentBinary;
     String ipAddressBinary;
@@ -86,16 +91,16 @@ public class SyncUtils {
     DecimalFormat df = new DecimalFormat("00000000");
     StringBuilder ipSegmentBuilder = new StringBuilder();
     for (String IPsplit : ipSplits) {
-      ipSegmentBuilder.append(df.format(
-          Integer.parseInt(Integer.toBinaryString(Integer.parseInt(IPsplit)))));
+      ipSegmentBuilder.append(
+          df.format(Integer.parseInt(Integer.toBinaryString(Integer.parseInt(IPsplit)))));
     }
     ipSegmentBinary = ipSegmentBuilder.toString();
     ipSegmentBinary = ipSegmentBinary.substring(0, subnetMark);
     ipSplits = ipAddress.split(IP_SEPARATOR);
     StringBuilder ipAddressBuilder = new StringBuilder();
     for (String IPsplit : ipSplits) {
-      ipAddressBuilder.append(df.format(
-          Integer.parseInt(Integer.toBinaryString(Integer.parseInt(IPsplit)))));
+      ipAddressBuilder.append(
+          df.format(Integer.parseInt(Integer.toBinaryString(Integer.parseInt(IPsplit)))));
     }
     ipAddressBinary = ipAddressBuilder.toString();
     ipAddressBinary = ipAddressBinary.substring(0, subnetMark);
