@@ -988,7 +988,7 @@ public class PlanExecutor implements IPlanExecutor {
     try {
       IoTDB.metaManager.setTTL(plan.getStorageGroup(), plan.getDataTTL());
       StorageEngine.getInstance().setTTL(plan.getStorageGroup(), plan.getDataTTL());
-    } catch (MetadataException | StorageEngineException e) {
+    } catch (MetadataException e) {
       throw new QueryProcessException(e);
     } catch (IOException e) {
       throw new QueryProcessException(e.getMessage());

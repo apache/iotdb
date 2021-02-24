@@ -100,7 +100,7 @@ public class MemChunkReader implements IChunkReader, IPointReader {
   }
 
   @Override
-  public List<IPageReader> loadPageReaderList() throws IOException {
+  public List<IPageReader> loadPageReaderList() {
     return this.pageReaderList;
   }
 }

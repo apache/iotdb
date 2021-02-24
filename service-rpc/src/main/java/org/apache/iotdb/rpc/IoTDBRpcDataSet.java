@@ -279,7 +279,7 @@ public class IoTDBRpcDataSet {
     return isNull(index, rowsIndex - 1);
   }
 
-  public boolean isNull(String columnName) throws StatementExecutionException {
+  public boolean isNull(String columnName) {
     int index = columnOrdinalMap.get(columnName) - START_INDEX;
     // time column will never be null
     if (index < 0) {

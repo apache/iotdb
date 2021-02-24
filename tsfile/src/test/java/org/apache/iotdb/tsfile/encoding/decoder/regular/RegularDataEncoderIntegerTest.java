@@ -137,7 +137,7 @@ public class RegularDataEncoderIntegerTest {
     return data;
   }
 
-  private void writeData(int[] data, int length) throws IOException {
+  private void writeData(int[] data, int length) {
     for (int i = 0; i < length; i++) {
       regularDataEncoder.encode(data[i], out);
     }

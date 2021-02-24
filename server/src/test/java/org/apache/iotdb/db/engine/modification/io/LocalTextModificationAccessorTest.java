@@ -71,7 +71,7 @@ public class LocalTextModificationAccessorTest {
   }
 
   @Test
-  public void readNull() throws IOException {
+  public void readNull() {
     String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("mod.temp");
     LocalTextModificationAccessor accessor = new LocalTextModificationAccessor(tempFileName);
     new File(tempFileName).delete();

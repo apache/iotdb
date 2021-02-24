@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.qp.logical;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.index.common.IndexType;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
@@ -110,7 +109,7 @@ public class IndexLogicalPlanTest {
   }
 
   @Test
-  public void testParseQueryIndexWholeMatching() throws IllegalPathException {
+  public void testParseQueryIndexWholeMatching() {
     String sqlStr =
         "SELECT TOP 2 Glu FROM root.Ery.* WHERE Glu LIKE (0, 120, 20, 80, 120, 100, 80, 0)";
     Operator op = generator.generate(sqlStr, ZoneId.systemDefault());
@@ -129,7 +128,7 @@ public class IndexLogicalPlanTest {
   }
 
   @Test
-  public void testParseQueryIndexSubMatching() throws IllegalPathException {
+  public void testParseQueryIndexSubMatching() {
     String sqlStr =
         "SELECT Speed.* FROM root.Wind.AZQ02 WHERE Speed "
             + "CONTAIN (15, 14, 12, 12, 12, 11) WITH TOLERANCE 1 "

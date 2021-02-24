@@ -104,7 +104,7 @@ public class TSFHiveRecordReader implements RecordReader<NullWritable, MapWritab
   }
 
   @Override
-  public long getPos() throws IOException {
+  public long getPos() {
     // can't know
     return 0;
   }

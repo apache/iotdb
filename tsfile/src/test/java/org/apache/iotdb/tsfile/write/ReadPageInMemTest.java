@@ -98,7 +98,7 @@ public class ReadPageInMemTest {
   }
 
   @After
-  public void tearDown() throws Exception {
+  public void tearDown() {
     file.delete();
     conf.setPageSizeInByte(pageSize);
     conf.setGroupSizeInByte(ChunkGroupSize);
