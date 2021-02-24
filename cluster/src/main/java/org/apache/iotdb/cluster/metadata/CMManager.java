@@ -1423,13 +1423,12 @@ public class CMManager extends MManager {
   }
 
   @Override
-  protected MeasurementMNode getMeasurementMNode(MNode deviceMNode, String measurement) {
-    MNode child;
-    child = deviceMNode.getChild(measurement);
+  public MNode getMNode(MNode deviceMNode, String measurementName) {
+    MNode child = deviceMNode.getChild(measurementName);
     if (child == null) {
-      child = mRemoteMetaCache.get(deviceMNode.getPartialPath().concatNode(measurement));
+      child = mRemoteMetaCache.get(deviceMNode.getPartialPath().concatNode(measurementName));
     }
-    return child != null ? (MeasurementMNode) child : null;
+    return child;
   }
 
   public List<ShowTimeSeriesResult> showLocalTimeseries(
