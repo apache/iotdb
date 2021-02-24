@@ -40,7 +40,6 @@ import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.QueryIdNotExsitException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.UDFRegistrationException;
-import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -143,7 +142,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -1293,37 +1291,26 @@ public class PlanExecutor implements IPlanExecutor {
   protected boolean deleteTimeSeries(DeleteTimeSeriesPlan deleteTimeSeriesPlan)
       throws QueryProcessException {
     List<PartialPath> deletePathList = deleteTimeSeriesPlan.getPaths();
-    try {
-      List<String> failedNames = new LinkedList<>();
-      List<String> nonExistPaths = new ArrayList<>();
-      for (PartialPath path : deletePathList) {
+    for (int i = 0; i < deletePathList.size(); i++) {
+      PartialPath path = deletePathList.get(i);
+      try {
         StorageEngine.getInstance().deleteTimeseries(path, deleteTimeSeriesPlan.getIndex());
-        String failedTimeseries = deleteTimeSeries(path, nonExistPaths);
-        if (failedTimeseries != null) {
-          failedNames.add(failedTimeseries);
+        String failed = IoTDB.metaManager.deleteTimeseries(path);
+        if (failed != null) {
+          deleteTimeSeriesPlan
+              .getResults()
+              .put(i, RpcUtils.getStatus(TSStatusCode.NODE_DELETE_FAILED_ERROR, failed));
         }
+      } catch (StorageEngineException | MetadataException e) {
+        deleteTimeSeriesPlan
+            .getResults()
+            .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
       }
-      if (!nonExistPaths.isEmpty()) {
-        throw new PathNotExistException(nonExistPaths);
-      }
-      if (!failedNames.isEmpty()) {
-        throw new DeleteFailedException(String.join(",", failedNames));
-      }
-    } catch (MetadataException | StorageEngineException e) {
-      throw new QueryProcessException(e);
+    }
+    if (!deleteTimeSeriesPlan.getResults().isEmpty()) {
+      throw new BatchProcessException(deleteTimeSeriesPlan.getFailingStatus());
     }
     return true;
-  }
-
-  private String deleteTimeSeries(PartialPath path, List<String> nonExistPaths)
-      throws MetadataException {
-    String failedTimeseries = null;
-    try {
-      failedTimeseries = IoTDB.metaManager.deleteTimeseries(path);
-    } catch (PathNotExistException e) {
-      nonExistPaths.add(path.getFullPath());
-    }
-    return failedTimeseries;
   }
 
   private boolean alterTimeSeries(AlterTimeSeriesPlan alterTimeSeriesPlan)
