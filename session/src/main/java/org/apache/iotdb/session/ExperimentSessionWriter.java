@@ -2,6 +2,7 @@ package org.apache.iotdb.session;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.service.rpc.thrift.ChunkSizeOptimizationResult;
 import org.apache.iotdb.service.rpc.thrift.MeasurementOrder;
 import org.apache.iotdb.service.rpc.thrift.MeasurementOrderSet;
 import org.apache.iotdb.service.rpc.thrift.ReplicaSet;
@@ -19,10 +20,11 @@ import java.util.List;
 import java.util.Random;
 
 public class ExperimentSessionWriter {
-  private static final Session session = new Session("192.168.130.38", 6667, "root", "root");
+  private static final Session session = new Session("127.0.0.1", 6667, "root", "root");
   private static final int TIMESERIES_NUM = 1000;
   private static int DATA_NUM = 10000;
   private static final File COST_LOG_FILE = new File("./DivergentDesign_3R.cost");
+  private static final File CHUNK_SIZE_OPT_LOG_FILE = new File("E:\\Thing\\Workspace\\IoTDB\\res\\ChunkSizeOpt.txt");
   private static OutputStream COST_LOG_STREAM;
   public static void main(String[] args) throws Exception{
     if (!COST_LOG_FILE.exists()) {
@@ -31,24 +33,9 @@ public class ExperimentSessionWriter {
     COST_LOG_STREAM = new FileOutputStream(COST_LOG_FILE);
 
     session.open(false);
-    session.readRecordFromFile();
-    session.readMetadataFromFile();
-    /*if (session.checkTimeseriesExists("root.test.device")) {
-      session.deleteStorageGroup("root.test");
-    }
-    session.setStorageGroup("root.test");
-    createTimeseries();*/
-    ReplicaSet replicaSet = session.runDivergentDesign("root.test.device");
-    showReplicaSet(replicaSet);
-    //MeasurementOrder order = session.optimizeBySA("root.test.device");
-//    showOrderSet(order);
-    writeCostLog(replicaSet.costList);
-    /*MeasurementOrder order = session.optimizeBySA("root.test.device");
-    for(String measurment : order.measurements) {
-      System.out.println(measurment);
-    }*/
-    // generateData();
-    // session.executeNonQueryStatement("flush");
+//    session.readRecordFromFile();
+//    session.readMetadataFromFile();
+    testChunkSizeOptimze();
     session.close();
   }
 
@@ -125,6 +112,36 @@ public class ExperimentSessionWriter {
     try {
       COST_LOG_STREAM.write(builder.toString().getBytes());
       COST_LOG_STREAM.close();
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+
+  static void testChunkSizeOptimze() {
+    List<String> measurements = new ArrayList<>();
+    List<String> ops = new ArrayList<>();
+    measurements.add("s500");
+    ops.add("avg");
+    List<String> measurementOrders = new ArrayList<>();
+    for(int i = 0; i < 1000; ++i) {
+      measurementOrders.add("s" + i);
+    }
+    long startTime = 2200l;
+    long endTime = 3200l;
+    try {
+      ChunkSizeOptimizationResult result = session.runOptimizeChunkSize(measurements, ops, startTime, endTime, measurementOrders);
+      if (!CHUNK_SIZE_OPT_LOG_FILE.exists()) {
+        CHUNK_SIZE_OPT_LOG_FILE.createNewFile();
+      }
+      OutputStream os = new FileOutputStream(CHUNK_SIZE_OPT_LOG_FILE);
+      StringBuilder builder = new StringBuilder();
+      for(int i = 0; i < result.chunkSize.size(); ++i) {
+        builder.append(result.chunkSize.get(i));
+        builder.append(' ');
+        builder.append(result.cost.get(i));
+        builder.append('\n');
+      }
+      os.write(builder.toString().getBytes());
     } catch (Exception e) {
       e.printStackTrace();
     }

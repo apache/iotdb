@@ -25,6 +25,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+
 import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -71,38 +72,38 @@ public class Session {
 
   public Session(String host, int rpcPort) {
     this(host, rpcPort, Config.DEFAULT_USER, Config.DEFAULT_PASSWORD, Config.DEFAULT_FETCH_SIZE,
-        null, Config.DEFAULT_INITIAL_BUFFER_CAPACITY, Config.DEFAULT_MAX_FRAME_SIZE);
+            null, Config.DEFAULT_INITIAL_BUFFER_CAPACITY, Config.DEFAULT_MAX_FRAME_SIZE);
   }
 
   public Session(String host, String rpcPort, String username, String password) {
     this(host, Integer.parseInt(rpcPort), username, password, Config.DEFAULT_FETCH_SIZE, null,
-        Config.DEFAULT_INITIAL_BUFFER_CAPACITY, Config.DEFAULT_MAX_FRAME_SIZE);
+            Config.DEFAULT_INITIAL_BUFFER_CAPACITY, Config.DEFAULT_MAX_FRAME_SIZE);
   }
 
   public Session(String host, int rpcPort, String username, String password) {
     this(host, rpcPort, username, password, Config.DEFAULT_FETCH_SIZE, null,
-        Config.DEFAULT_INITIAL_BUFFER_CAPACITY, Config.DEFAULT_MAX_FRAME_SIZE);
+            Config.DEFAULT_INITIAL_BUFFER_CAPACITY, Config.DEFAULT_MAX_FRAME_SIZE);
   }
 
   public Session(String host, int rpcPort, String username, String password, int fetchSize) {
     this(host, rpcPort, username, password, fetchSize, null,
-        Config.DEFAULT_INITIAL_BUFFER_CAPACITY, Config.DEFAULT_MAX_FRAME_SIZE);
+            Config.DEFAULT_INITIAL_BUFFER_CAPACITY, Config.DEFAULT_MAX_FRAME_SIZE);
   }
 
   public Session(String host, int rpcPort, String username, String password, ZoneId zoneId) {
     this(host, rpcPort, username, password, Config.DEFAULT_FETCH_SIZE, zoneId,
-        Config.DEFAULT_INITIAL_BUFFER_CAPACITY, Config.DEFAULT_MAX_FRAME_SIZE);
+            Config.DEFAULT_INITIAL_BUFFER_CAPACITY, Config.DEFAULT_MAX_FRAME_SIZE);
   }
 
   public Session(String host, int rpcPort, String username, String password, int fetchSize,
-      ZoneId zoneId) {
+                 ZoneId zoneId) {
     this(host, rpcPort, username, password, fetchSize, zoneId,
-        Config.DEFAULT_INITIAL_BUFFER_CAPACITY, Config.DEFAULT_MAX_FRAME_SIZE);
+            Config.DEFAULT_INITIAL_BUFFER_CAPACITY, Config.DEFAULT_MAX_FRAME_SIZE);
   }
 
   @SuppressWarnings("squid:S107")
   public Session(String host, int rpcPort, String username, String password, int fetchSize,
-      ZoneId zoneId, int initialBufferCapacity, int maxFrameSize) {
+                 ZoneId zoneId, int initialBufferCapacity, int maxFrameSize) {
     this.host = host;
     this.rpcPort = rpcPort;
     this.username = username;
@@ -122,7 +123,7 @@ public class Session {
   }
 
   private synchronized void open(boolean enableRPCCompression, int connectionTimeoutInMs)
-      throws IoTDBConnectionException {
+          throws IoTDBConnectionException {
     if (!isClosed) {
       return;
     }
@@ -131,7 +132,7 @@ public class Session {
     this.connectionTimeoutInMs = connectionTimeoutInMs;
 
     transport = new TFastFramedTransport(new TSocket(host, rpcPort, connectionTimeoutInMs),
-        initialBufferCapacity, maxFrameSize);
+            initialBufferCapacity, maxFrameSize);
 
     if (!transport.isOpen()) {
       try {
@@ -159,11 +160,11 @@ public class Session {
 
       if (protocolVersion.getValue() != openResp.getServerProtocolVersion().getValue()) {
         logger.warn("Protocol differ, Client version is {}}, but Server version is {}",
-            protocolVersion.getValue(), openResp.getServerProtocolVersion().getValue());
+                protocolVersion.getValue(), openResp.getServerProtocolVersion().getValue());
         if (openResp.getServerProtocolVersion().getValue() == 0) {// less than 0.10
           throw new TException(String
-              .format("Protocol not supported, Client version is %s, but Server version is %s",
-                  protocolVersion.getValue(), openResp.getServerProtocolVersion().getValue()));
+                  .format("Protocol not supported, Client version is %s, but Server version is %s",
+                          protocolVersion.getValue(), openResp.getServerProtocolVersion().getValue()));
         }
       }
 
@@ -189,7 +190,7 @@ public class Session {
       client.closeSession(req);
     } catch (TException e) {
       throw new IoTDBConnectionException(
-          "Error occurs when closing session at server. Maybe server is down.", e);
+              "Error occurs when closing session at server. Maybe server is down.", e);
     } finally {
       isClosed = true;
       if (transport != null) {
@@ -206,8 +207,8 @@ public class Session {
    * @see Session#insertTablet(Tablet)
    */
   public void insertRecord(String deviceId, long time, List<String> measurements,
-      List<TSDataType> types,
-      Object... values) throws IoTDBConnectionException, StatementExecutionException {
+                           List<TSDataType> types,
+                           Object... values) throws IoTDBConnectionException, StatementExecutionException {
     List<Object> valuesList = new ArrayList<>(Arrays.asList(values));
 
     insertRecord(deviceId, time, measurements, types, valuesList);
@@ -226,7 +227,7 @@ public class Session {
    * @param tablet data batch
    */
   public void insertTablet(Tablet tablet)
-      throws StatementExecutionException, IoTDBConnectionException {
+          throws StatementExecutionException, IoTDBConnectionException {
     insertTablet(tablet, false);
   }
 
@@ -237,7 +238,7 @@ public class Session {
    * @param sorted whether times in Tablet are in ascending order
    */
   public void insertTablet(Tablet tablet, boolean sorted)
-      throws IoTDBConnectionException, StatementExecutionException {
+          throws IoTDBConnectionException, StatementExecutionException {
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted);
     try {
       RpcUtils.verifySuccess(client.insertTablet(request));
@@ -250,13 +251,13 @@ public class Session {
         }
       } else {
         throw new IoTDBConnectionException(
-            "Fail to reconnect to server. Please check server status");
+                "Fail to reconnect to server. Please check server status");
       }
     }
   }
 
   private TSInsertTabletReq genTSInsertTabletReq(Tablet tablet, boolean sorted)
-      throws BatchExecutionException {
+          throws BatchExecutionException {
     if (sorted) {
       if (!checkSorted(tablet)) {
         throw new BatchExecutionException("Times in Tablet are not in ascending order");
@@ -287,7 +288,7 @@ public class Session {
    * @param tablets data batch in multiple device
    */
   public void insertTablets(Map<String, Tablet> tablets)
-      throws IoTDBConnectionException, StatementExecutionException {
+          throws IoTDBConnectionException, StatementExecutionException {
     insertTablets(tablets, false);
   }
 
@@ -299,7 +300,7 @@ public class Session {
    * @param sorted  whether times in each Tablet are in ascending order
    */
   public void insertTablets(Map<String, Tablet> tablets, boolean sorted)
-      throws IoTDBConnectionException, StatementExecutionException {
+          throws IoTDBConnectionException, StatementExecutionException {
 
     TSInsertTabletsReq request = genTSInsertTabletsReq(tablets, sorted);
     try {
@@ -313,13 +314,13 @@ public class Session {
         }
       } else {
         throw new IoTDBConnectionException(
-            "Fail to reconnect to server. Please check server status");
+                "Fail to reconnect to server. Please check server status");
       }
     }
   }
 
   private TSInsertTabletsReq genTSInsertTabletsReq(Map<String, Tablet> tablets, boolean sorted)
-      throws BatchExecutionException {
+          throws BatchExecutionException {
     TSInsertTabletsReq request = new TSInsertTabletsReq();
     request.setSessionId(sessionId);
 
@@ -358,11 +359,11 @@ public class Session {
    * @see Session#insertTablet(Tablet)
    */
   public void insertRecords(List<String> deviceIds, List<Long> times,
-      List<List<String>> measurementsList, List<List<TSDataType>> typesList,
-      List<List<Object>> valuesList)
-      throws IoTDBConnectionException, StatementExecutionException {
+                            List<List<String>> measurementsList, List<List<TSDataType>> typesList,
+                            List<List<Object>> valuesList)
+          throws IoTDBConnectionException, StatementExecutionException {
     TSInsertRecordsReq request = genTSInsertRecordsReq(deviceIds, times, measurementsList,
-        typesList, valuesList);
+            typesList, valuesList);
     try {
       RpcUtils.verifySuccess(client.insertRecords(request));
     } catch (TException e) {
@@ -374,7 +375,7 @@ public class Session {
         }
       } else {
         throw new IoTDBConnectionException(
-            "Fail to reconnect to server. Please check server status");
+                "Fail to reconnect to server. Please check server status");
       }
     }
   }
@@ -389,9 +390,9 @@ public class Session {
    * @see Session#insertTablet(Tablet)
    */
   public void insertRecordsOfOneDevice(String deviceId, List<Long> times,
-      List<List<String>> measurementsList, List<List<TSDataType>> typesList,
-      List<List<Object>> valuesList)
-      throws IoTDBConnectionException, StatementExecutionException {
+                                       List<List<String>> measurementsList, List<List<TSDataType>> typesList,
+                                       List<List<Object>> valuesList)
+          throws IoTDBConnectionException, StatementExecutionException {
     insertRecordsOfOneDevice(deviceId, times, measurementsList, typesList, valuesList, false);
   }
 
@@ -406,11 +407,11 @@ public class Session {
    * @see Session#insertTablet(Tablet)
    */
   public void insertRecordsOfOneDevice(String deviceId, List<Long> times,
-      List<List<String>> measurementsList, List<List<TSDataType>> typesList,
-      List<List<Object>> valuesList, boolean haveSorted)
-      throws IoTDBConnectionException, StatementExecutionException {
+                                       List<List<String>> measurementsList, List<List<TSDataType>> typesList,
+                                       List<List<Object>> valuesList, boolean haveSorted)
+          throws IoTDBConnectionException, StatementExecutionException {
     TSInsertRecordsOfOneDeviceReq request = genTSInsertRecordsOfOneDeviceReq(deviceId, times,
-        measurementsList, typesList, valuesList, haveSorted);
+            measurementsList, typesList, valuesList, haveSorted);
     try {
       RpcUtils.verifySuccess(client.insertRecordsOfOneDevice(request));
     } catch (TException e) {
@@ -422,26 +423,26 @@ public class Session {
         }
       } else {
         throw new IoTDBConnectionException(
-            "Fail to reconnect to server. Please check server status");
+                "Fail to reconnect to server. Please check server status");
       }
     }
   }
 
   private TSInsertRecordsOfOneDeviceReq genTSInsertRecordsOfOneDeviceReq(String deviceId,
-      List<Long> times, List<List<String>> measurementsList, List<List<TSDataType>> typesList,
-      List<List<Object>> valuesList, boolean haveSorted)
-      throws IoTDBConnectionException, BatchExecutionException {
+                                                                         List<Long> times, List<List<String>> measurementsList, List<List<TSDataType>> typesList,
+                                                                         List<List<Object>> valuesList, boolean haveSorted)
+          throws IoTDBConnectionException, BatchExecutionException {
     // check params size
     int len = times.size();
     if (len != measurementsList.size() || len != valuesList.size()) {
       throw new IllegalArgumentException(
-          "times, measurementsList and valuesList's size should be equal");
+              "times, measurementsList and valuesList's size should be equal");
     }
 
     if (haveSorted) {
       if (!checkSorted(times)) {
         throw new BatchExecutionException(
-            "Times in InsertOneDeviceRecords are not in ascending order");
+                "Times in InsertOneDeviceRecords are not in ascending order");
       }
     } else {
       //sort
@@ -481,7 +482,7 @@ public class Session {
   }
 
   private List<ByteBuffer> objectValuesListToByteBufferList(List<List<Object>> valuesList,
-      List<List<TSDataType>> typesList) throws IoTDBConnectionException {
+                                                            List<List<TSDataType>> typesList) throws IoTDBConnectionException {
     List<ByteBuffer> buffersList = new ArrayList<>();
     for (int i = 0; i < valuesList.size(); i++) {
       ByteBuffer buffer = ByteBuffer.allocate(calculateLength(typesList.get(i), valuesList.get(i)));
@@ -494,13 +495,13 @@ public class Session {
 
 
   private TSInsertRecordsReq genTSInsertRecordsReq(List<String> deviceIds, List<Long> times,
-      List<List<String>> measurementsList, List<List<TSDataType>> typesList,
-      List<List<Object>> valuesList) throws IoTDBConnectionException {
+                                                   List<List<String>> measurementsList, List<List<TSDataType>> typesList,
+                                                   List<List<Object>> valuesList) throws IoTDBConnectionException {
     // check params size
     int len = deviceIds.size();
     if (len != times.size() || len != measurementsList.size() || len != valuesList.size()) {
       throw new IllegalArgumentException(
-          "deviceIds, times, measurementsList and valuesList's size should be equal");
+              "deviceIds, times, measurementsList and valuesList's size should be equal");
     }
 
     TSInsertRecordsReq request = new TSInsertRecordsReq();
@@ -523,11 +524,11 @@ public class Session {
    * @see Session#insertTablet(Tablet)
    */
   public void insertRecords(List<String> deviceIds, List<Long> times,
-      List<List<String>> measurementsList, List<List<String>> valuesList)
-      throws IoTDBConnectionException, StatementExecutionException {
+                            List<List<String>> measurementsList, List<List<String>> valuesList)
+          throws IoTDBConnectionException, StatementExecutionException {
 
     TSInsertStringRecordsReq request = genTSInsertStringRecordsReq(deviceIds, times,
-        measurementsList, valuesList);
+            measurementsList, valuesList);
     try {
       RpcUtils.verifySuccess(client.insertStringRecords(request));
     } catch (TException e) {
@@ -539,19 +540,19 @@ public class Session {
         }
       } else {
         throw new IoTDBConnectionException(
-            "Fail to reconnect to server. Please check server status");
+                "Fail to reconnect to server. Please check server status");
       }
     }
   }
 
   private TSInsertStringRecordsReq genTSInsertStringRecordsReq(List<String> deviceIds,
-      List<Long> times,
-      List<List<String>> measurementsList, List<List<String>> valuesList) {
+                                                               List<Long> times,
+                                                               List<List<String>> measurementsList, List<List<String>> valuesList) {
     // check params size
     int len = deviceIds.size();
     if (len != times.size() || len != measurementsList.size() || len != valuesList.size()) {
       throw new IllegalArgumentException(
-          "deviceIds, times, measurementsList and valuesList's size should be equal");
+              "deviceIds, times, measurementsList and valuesList's size should be equal");
     }
 
     TSInsertStringRecordsReq request = new TSInsertStringRecordsReq();
@@ -571,8 +572,8 @@ public class Session {
    * @see Session#insertTablet(Tablet)
    */
   public void insertRecord(String deviceId, long time, List<String> measurements,
-      List<TSDataType> types,
-      List<Object> values) throws IoTDBConnectionException, StatementExecutionException {
+                           List<TSDataType> types,
+                           List<Object> values) throws IoTDBConnectionException, StatementExecutionException {
     TSInsertRecordReq request = genTSInsertRecordReq(deviceId, time, measurements, types, values);
     try {
       RpcUtils.verifySuccess(client.insertRecord(request));
@@ -585,15 +586,15 @@ public class Session {
         }
       } else {
         throw new IoTDBConnectionException(
-            "Fail to reconnect to server. Please check server status");
+                "Fail to reconnect to server. Please check server status");
       }
     }
   }
 
   private TSInsertRecordReq genTSInsertRecordReq(String deviceId, long time,
-      List<String> measurements,
-      List<TSDataType> types,
-      List<Object> values) throws IoTDBConnectionException {
+                                                 List<String> measurements,
+                                                 List<TSDataType> types,
+                                                 List<Object> values) throws IoTDBConnectionException {
     TSInsertRecordReq request = new TSInsertRecordReq();
     request.setSessionId(sessionId);
     request.setDeviceId(deviceId);
@@ -614,10 +615,10 @@ public class Session {
    * @see Session#insertTablet(Tablet)
    */
   public void insertRecord(String deviceId, long time, List<String> measurements,
-      List<String> values) throws IoTDBConnectionException, StatementExecutionException {
+                           List<String> values) throws IoTDBConnectionException, StatementExecutionException {
 
     TSInsertStringRecordReq request = genTSInsertStringRecordReq(deviceId, time, measurements,
-        values);
+            values);
     try {
       RpcUtils.verifySuccess(client.insertStringRecord(request));
     } catch (TException e) {
@@ -629,13 +630,13 @@ public class Session {
         }
       } else {
         throw new IoTDBConnectionException(
-            "Fail to reconnect to server. Please check server status");
+                "Fail to reconnect to server. Please check server status");
       }
     }
   }
 
   private TSInsertStringRecordReq genTSInsertStringRecordReq(String deviceId, long time,
-      List<String> measurements, List<String> values) {
+                                                             List<String> measurements, List<String> values) {
     TSInsertStringRecordReq request = new TSInsertStringRecordReq();
     request.setSessionId(sessionId);
     request.setDeviceId(deviceId);
@@ -654,7 +655,7 @@ public class Session {
    * @throws IoTDBConnectionException
    */
   private void putValues(List<TSDataType> types, List<Object> values, ByteBuffer buffer)
-      throws IoTDBConnectionException {
+          throws IoTDBConnectionException {
     for (int i = 0; i < values.size(); i++) {
       ReadWriteIOUtils.write(types.get(i), buffer);
       switch (types.get(i)) {
@@ -698,7 +699,7 @@ public class Session {
   }
 
   private int calculateLength(List<TSDataType> types, List<Object> values)
-      throws IoTDBConnectionException {
+          throws IoTDBConnectionException {
     int res = 0;
     for (int i = 0; i < types.size(); i++) {
       // types
@@ -736,7 +737,7 @@ public class Session {
    * this method should be used to test other time cost in client
    */
   public void testInsertTablet(Tablet tablet)
-      throws IoTDBConnectionException, StatementExecutionException {
+          throws IoTDBConnectionException, StatementExecutionException {
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, false);
 
     try {
@@ -751,7 +752,7 @@ public class Session {
    * this method should be used to test other time cost in client
    */
   public void testInsertTablet(Tablet tablet, boolean sorted)
-      throws IoTDBConnectionException, StatementExecutionException {
+          throws IoTDBConnectionException, StatementExecutionException {
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted);
 
     try {
@@ -766,7 +767,7 @@ public class Session {
    * this method should be used to test other time cost in client
    */
   public void testInsertTablets(Map<String, Tablet> tablets)
-      throws IoTDBConnectionException, StatementExecutionException {
+          throws IoTDBConnectionException, StatementExecutionException {
     TSInsertTabletsReq request = genTSInsertTabletsReq(tablets, false);
 
     try {
@@ -781,7 +782,7 @@ public class Session {
    * this method should be used to test other time cost in client
    */
   public void testInsertTablets(Map<String, Tablet> tablets, boolean sorted)
-      throws IoTDBConnectionException, StatementExecutionException {
+          throws IoTDBConnectionException, StatementExecutionException {
     TSInsertTabletsReq request = genTSInsertTabletsReq(tablets, sorted);
 
     try {
@@ -796,10 +797,10 @@ public class Session {
    * this method should be used to test other time cost in client
    */
   public void testInsertRecords(List<String> deviceIds, List<Long> times,
-      List<List<String>> measurementsList, List<List<String>> valuesList)
-      throws IoTDBConnectionException, StatementExecutionException {
+                                List<List<String>> measurementsList, List<List<String>> valuesList)
+          throws IoTDBConnectionException, StatementExecutionException {
     TSInsertStringRecordsReq request = genTSInsertStringRecordsReq(deviceIds, times,
-        measurementsList, valuesList);
+            measurementsList, valuesList);
 
     try {
       RpcUtils.verifySuccess(client.testInsertStringRecords(request));
@@ -809,11 +810,11 @@ public class Session {
   }
 
   public void testInsertRecords(List<String> deviceIds, List<Long> times,
-      List<List<String>> measurementsList, List<List<TSDataType>> typesList,
-      List<List<Object>> valuesList)
-      throws IoTDBConnectionException, StatementExecutionException {
+                                List<List<String>> measurementsList, List<List<TSDataType>> typesList,
+                                List<List<Object>> valuesList)
+          throws IoTDBConnectionException, StatementExecutionException {
     TSInsertRecordsReq request = genTSInsertRecordsReq(deviceIds, times, measurementsList,
-        typesList, valuesList);
+            typesList, valuesList);
     try {
       RpcUtils.verifySuccess(client.testInsertRecords(request));
     } catch (TException e) {
@@ -827,9 +828,9 @@ public class Session {
    * this method should be used to test other time cost in client
    */
   public void testInsertRecord(String deviceId, long time, List<String> measurements,
-      List<String> values) throws IoTDBConnectionException, StatementExecutionException {
+                               List<String> values) throws IoTDBConnectionException, StatementExecutionException {
     TSInsertStringRecordReq request = genTSInsertStringRecordReq(deviceId, time, measurements,
-        values);
+            values);
 
     try {
       RpcUtils.verifySuccess(client.testInsertStringRecord(request));
@@ -843,8 +844,8 @@ public class Session {
    * this method should be used to test other time cost in client
    */
   public void testInsertRecord(String deviceId, long time, List<String> measurements,
-      List<TSDataType> types, List<Object> values)
-      throws IoTDBConnectionException, StatementExecutionException {
+                               List<TSDataType> types, List<Object> values)
+          throws IoTDBConnectionException, StatementExecutionException {
     TSInsertRecordReq request = genTSInsertRecordReq(deviceId, time, measurements, types, values);
 
     try {
@@ -860,7 +861,7 @@ public class Session {
    * @param path timeseries to delete, should be a whole path
    */
   public void deleteTimeseries(String path)
-      throws IoTDBConnectionException, StatementExecutionException {
+          throws IoTDBConnectionException, StatementExecutionException {
     List<String> paths = new ArrayList<>();
     paths.add(path);
     deleteTimeseries(paths);
@@ -872,7 +873,7 @@ public class Session {
    * @param paths timeseries to delete, should be a whole path
    */
   public void deleteTimeseries(List<String> paths)
-      throws IoTDBConnectionException, StatementExecutionException {
+          throws IoTDBConnectionException, StatementExecutionException {
     try {
       RpcUtils.verifySuccess(client.deleteTimeseries(sessionId, paths));
     } catch (TException e) {
@@ -887,7 +888,7 @@ public class Session {
    * @param time data with time stamp less than or equal to time will be deleted
    */
   public void deleteData(String path, long time)
-      throws IoTDBConnectionException, StatementExecutionException {
+          throws IoTDBConnectionException, StatementExecutionException {
     List<String> paths = new ArrayList<>();
     paths.add(path);
     deleteData(paths, time);
@@ -900,7 +901,7 @@ public class Session {
    * @param endTime data with time stamp less than or equal to time will be deleted
    */
   public void deleteData(List<String> paths, long endTime)
-      throws IoTDBConnectionException, StatementExecutionException {
+          throws IoTDBConnectionException, StatementExecutionException {
     deleteData(paths, Long.MIN_VALUE, endTime);
   }
 
@@ -912,7 +913,7 @@ public class Session {
    * @param endTime   delete range end time
    */
   public void deleteData(List<String> paths, long startTime, long endTime)
-      throws IoTDBConnectionException, StatementExecutionException {
+          throws IoTDBConnectionException, StatementExecutionException {
     TSDeleteDataReq request = new TSDeleteDataReq();
     request.setSessionId(sessionId);
     request.setPaths(paths);
@@ -927,7 +928,7 @@ public class Session {
   }
 
   public void setStorageGroup(String storageGroupId)
-      throws IoTDBConnectionException, StatementExecutionException {
+          throws IoTDBConnectionException, StatementExecutionException {
     try {
       RpcUtils.verifySuccess(client.setStorageGroup(sessionId, storageGroupId));
     } catch (TException e) {
@@ -937,14 +938,14 @@ public class Session {
 
 
   public void deleteStorageGroup(String storageGroup)
-      throws IoTDBConnectionException, StatementExecutionException {
+          throws IoTDBConnectionException, StatementExecutionException {
     List<String> groups = new ArrayList<>();
     groups.add(storageGroup);
     deleteStorageGroups(groups);
   }
 
   public void deleteStorageGroups(List<String> storageGroup)
-      throws IoTDBConnectionException, StatementExecutionException {
+          throws IoTDBConnectionException, StatementExecutionException {
     try {
       RpcUtils.verifySuccess(client.deleteStorageGroups(sessionId, storageGroup));
     } catch (TException e) {
@@ -953,15 +954,15 @@ public class Session {
   }
 
   public void createTimeseries(String path, TSDataType dataType,
-      TSEncoding encoding, CompressionType compressor)
-      throws IoTDBConnectionException, StatementExecutionException {
+                               TSEncoding encoding, CompressionType compressor)
+          throws IoTDBConnectionException, StatementExecutionException {
     createTimeseries(path, dataType, encoding, compressor, null, null, null, null);
   }
 
   public void createTimeseries(String path, TSDataType dataType,
-      TSEncoding encoding, CompressionType compressor, Map<String, String> props,
-      Map<String, String> tags, Map<String, String> attributes, String measurementAlias)
-      throws IoTDBConnectionException, StatementExecutionException {
+                               TSEncoding encoding, CompressionType compressor, Map<String, String> props,
+                               Map<String, String> tags, Map<String, String> attributes, String measurementAlias)
+          throws IoTDBConnectionException, StatementExecutionException {
     TSCreateTimeseriesReq request = new TSCreateTimeseriesReq();
     request.setSessionId(sessionId);
     request.setPath(path);
@@ -981,10 +982,10 @@ public class Session {
   }
 
   public void createMultiTimeseries(List<String> paths, List<TSDataType> dataTypes,
-      List<TSEncoding> encodings, List<CompressionType> compressors,
-      List<Map<String, String>> propsList, List<Map<String, String>> tagsList,
-      List<Map<String, String>> attributesList, List<String> measurementAliasList)
-      throws IoTDBConnectionException, StatementExecutionException {
+                                    List<TSEncoding> encodings, List<CompressionType> compressors,
+                                    List<Map<String, String>> propsList, List<Map<String, String>> tagsList,
+                                    List<Map<String, String>> attributesList, List<String> measurementAliasList)
+          throws IoTDBConnectionException, StatementExecutionException {
 
     TSCreateMultiTimeseriesReq request = new TSCreateMultiTimeseriesReq();
     request.setSessionId(sessionId);
@@ -1021,7 +1022,7 @@ public class Session {
   }
 
   public boolean checkTimeseriesExists(String path)
-      throws IoTDBConnectionException, StatementExecutionException {
+          throws IoTDBConnectionException, StatementExecutionException {
     SessionDataSet dataSet = executeQueryStatement(String.format("SHOW TIMESERIES %s", path));
     boolean result = dataSet.hasNext();
     dataSet.closeOperationHandle();
@@ -1036,7 +1037,7 @@ public class Session {
   }
 
   public synchronized void setTimeZone(String zoneId)
-      throws StatementExecutionException, IoTDBConnectionException {
+          throws StatementExecutionException, IoTDBConnectionException {
     TSSetTimeZoneReq req = new TSSetTimeZoneReq(sessionId, zoneId);
     TSStatus resp;
     try {
@@ -1056,7 +1057,7 @@ public class Session {
    * @return result set
    */
   public SessionDataSet executeQueryStatement(String sql)
-      throws StatementExecutionException, IoTDBConnectionException {
+          throws StatementExecutionException, IoTDBConnectionException {
 
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, statementId);
 
@@ -1075,15 +1076,15 @@ public class Session {
         }
       } else {
         throw new IoTDBConnectionException(
-            "Fail to reconnect to server. Please check server status");
+                "Fail to reconnect to server. Please check server status");
       }
     }
 
     RpcUtils.verifySuccess(execResp.getStatus());
     return new SessionDataSet(sql, execResp.getColumns(), execResp.getDataTypeList(),
-        execResp.columnNameIndexMap,
-        execResp.getQueryId(), client, sessionId, execResp.queryDataSet,
-        execResp.isIgnoreTimeStamp());
+            execResp.columnNameIndexMap,
+            execResp.getQueryId(), client, sessionId, execResp.queryDataSet,
+            execResp.isIgnoreTimeStamp());
   }
 
   /**
@@ -1092,7 +1093,7 @@ public class Session {
    * @param sql non query statement
    */
   public void executeNonQueryStatement(String sql)
-      throws IoTDBConnectionException, StatementExecutionException {
+          throws IoTDBConnectionException, StatementExecutionException {
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, statementId);
     TSExecuteStatementResp execResp;
     try {
@@ -1108,7 +1109,7 @@ public class Session {
         }
       } else {
         throw new IoTDBConnectionException(
-            "Fail to reconnect to server. Please check server status");
+                "Fail to reconnect to server. Please check server status");
       }
     }
     RpcUtils.verifySuccess(execResp.getStatus());
@@ -1127,9 +1128,9 @@ public class Session {
    */
 
   public SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
-      throws StatementExecutionException, IoTDBConnectionException {
+          throws StatementExecutionException, IoTDBConnectionException {
     TSRawDataQueryReq execReq = new TSRawDataQueryReq(sessionId, paths, startTime, endTime,
-        statementId);
+            statementId);
     execReq.setFetchSize(fetchSize);
 
     TSExecuteStatementResp execResp;
@@ -1146,15 +1147,15 @@ public class Session {
         }
       } else {
         throw new IoTDBConnectionException(
-            "Fail to reconnect to server. Please check server status");
+                "Fail to reconnect to server. Please check server status");
       }
     }
 
     RpcUtils.verifySuccess(execResp.getStatus());
     return new SessionDataSet("", execResp.getColumns(), execResp.getDataTypeList(),
-        execResp.columnNameIndexMap,
-        execResp.getQueryId(), client, sessionId, execResp.queryDataSet,
-        execResp.isIgnoreTimeStamp());
+            execResp.columnNameIndexMap,
+            execResp.getQueryId(), client, sessionId, execResp.queryDataSet,
+            execResp.isIgnoreTimeStamp());
   }
 
   /**
@@ -1195,7 +1196,7 @@ public class Session {
     Arrays.sort(tablet.timestamps, 0, tablet.rowSize);
     for (int i = 0; i < tablet.getSchemas().size(); i++) {
       tablet.values[i] =
-          sortList(tablet.values[i], tablet.getSchemas().get(i).getType(), index);
+              sortList(tablet.values[i], tablet.getSchemas().get(i).getType(), index);
     }
   }
 
@@ -1401,6 +1402,26 @@ public class Session {
         try {
           replicaSet = client.multipleReplicaOptimizeWithIterNum(deviceID, maxIter);
           return replicaSet;
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(
+                "Fail to reconnect to server. Please check server status");
+      }
+    }
+  }
+
+  public ChunkSizeOptimizationResult runOptimizeChunkSize(List<String> measurements, List<String> ops, long startTime, long endTime, List<String> measurementOrder) throws IoTDBConnectionException {
+    ChunkSizeOptimizationResult result = null;
+    try {
+      result = client.testChunkSizeOptimize(measurements, ops, startTime, endTime, measurementOrder);
+      return result;
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          result = client.testChunkSizeOptimize(measurements, ops, startTime, endTime, measurementOrder);
+          return result;
         } catch (TException tException) {
           throw new IoTDBConnectionException(tException);
         }

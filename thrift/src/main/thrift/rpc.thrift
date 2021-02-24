@@ -302,6 +302,11 @@ struct ReplicaSet {
     3: optional list<double> costList;
 }
 
+struct ChunkSizeOptimizationResult {
+    1: required list<i64> chunkSize;
+    2: required list<double> cost;
+}
+
 service TSIService {
 	TSOpenSessionResp openSession(1:TSOpenSessionReq req);
 
@@ -386,5 +391,7 @@ service TSIService {
   ReplicaSet multipleReplicaOptimize(1:string deviceID);
 
   ReplicaSet multipleReplicaOptimizeWithIterNum(1:string deviceID, 2:i32 maxIter);
+
+  ChunkSizeOptimizationResult testChunkSizeOptimize(1: list<string> measurements, list<string> ops, i64 startTime, i64 endTime, list<string> measurementOrder);
 
 }

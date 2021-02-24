@@ -100,6 +100,7 @@ import org.apache.iotdb.db.query.dataset.NonAlignEngineDataSet;
 import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.workloadmanager.Workload;
 import org.apache.iotdb.db.query.workloadmanager.WorkloadManager;
+import org.apache.iotdb.db.query.workloadmanager.queryrecord.GroupByQueryRecord;
 import org.apache.iotdb.db.query.workloadmanager.queryrecord.QueryRecord;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
@@ -1860,6 +1861,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       resultSet.workloadPartition.add(workloadStr);
     }
     return resultSet;
+  }
+
+  @Override
+  public ChunkSizeOptimizationResult testChunkSizeOptimize(List<String> measurments, List<String> ops,  long startTime, long endTime, List<String> measurementOrder) throws TException {
+    GroupByQueryRecord record = new GroupByQueryRecord("test", measurments, ops, startTime, endTime, 0);
+    Pair<List<Long>, List<Double>> data = MultiReplicaOrderOptimizer.chunkSizeOptimize(record, measurementOrder);
+    ChunkSizeOptimizationResult result = new ChunkSizeOptimizationResult(data.left, data.right);
+    return result;
   }
 
   private TSStatus checkAuthority(PhysicalPlan plan, long sessionId) {

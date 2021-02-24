@@ -13,6 +13,7 @@ public class Replica {
   private List<String> measurements;
   private List<Long> chunkSize;
   private int totalChunkGroupNum;
+  private long averageChunkSize;
 
   public Replica(String deviceId) {
     this.deviceId = deviceId;
@@ -23,6 +24,7 @@ public class Replica {
 
   public Replica(String deviceId, List<String> measurements, long averageChunkSize) {
     this.deviceId = deviceId;
+    this.averageChunkSize = averageChunkSize;
     this.measurements = new ArrayList<>(measurements);
     chunkSize = new ArrayList<Long>();
     for(int i = 0; i < measurements.size(); ++i) {
@@ -32,12 +34,12 @@ public class Replica {
 
   public float calCostForQuery(QueryRecord query) {
     float cost = 0.0f;
-    List<QueryRecord> recordList = new ArrayList<>();
-    recordList.add(query);
     if (query instanceof AggregationQueryRecord) {
+      List<QueryRecord> recordList = new ArrayList<>();
+      recordList.add(query);
       cost = CostModel.approximateAggregationQueryCostWithoutTimeRange(recordList, measurements, chunkSize, totalChunkGroupNum);
     } else {
-      cost = CostModel.approximateAggregationQueryCostWithTimeRange(recordList, measurements, chunkSize);
+      cost = CostModel.approximateSingleAggregationQueryCostWithTimeRange(query, measurements, averageChunkSize);
     }
     return cost;
   }
@@ -61,5 +63,13 @@ public class Replica {
     long tempChunkSize = chunkSize.get(left);
     chunkSize.set(left, chunkSize.get(right));
     chunkSize.set(right, tempChunkSize);
+  }
+
+  public void setAverageChunkSize(long averageChunkSize) {
+    this.averageChunkSize = averageChunkSize;
+  }
+
+  public long getAverageChunkSize() {
+    return averageChunkSize;
   }
 }

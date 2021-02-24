@@ -31,6 +31,7 @@ public class MeasurementOrderOptimizer {
   // DeviceId -> ChunkGroupCount
   Map<String, Integer> chunkGroupCountMap = new HashMap<>();
   List<QueryRecord> queryRecords = new ArrayList<>();
+  long averageChunkSize;
   public static final int SA_MAX_ITERATION = 350000;
   public static final float SA_INIT_TEMPERATURE = 2.0f;
   public static final float SA_COOLING_RATE = 0.02f;
@@ -486,6 +487,13 @@ public class MeasurementOrderOptimizer {
     }
     long averageChunkSize = totalChunkSize.divide(new BigInteger(String.valueOf(chunkSize.size()))).longValue();
     return averageChunkSize;
+  }
+
+  /**
+   * To adjust the chunk size
+   */
+  public void chunkSizeAdjustment() {
+
   }
 
   public static void main(String[] args) {

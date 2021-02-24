@@ -16,6 +16,7 @@ public class MeasurePointEstimator {
    */
   private final File EMPIRICAL_FILE;
   private static final Logger LOGGER = LoggerFactory.getLogger(MeasurePointEstimator.class);
+  // Pair<ChunkSize, MeasurementPointNum>
   List<Pair<Long, Integer>> empiricalData = new ArrayList<>();
 
   public static class MeasurePointEstimatorHolder {
@@ -46,7 +47,7 @@ public class MeasurePointEstimator {
     try {
       CsvReader reader = new CsvReader(EMPIRICAL_FILE.getAbsolutePath());
       reader.readHeaders();
-      while(reader.readRecord()) {
+      while (reader.readRecord()) {
         String chunkSize = reader.get("ChunkSize");
         String pointNum = reader.get("PointNum");
         empiricalData.add(new Pair<>(stringDataToBytes(chunkSize), Integer.valueOf(pointNum)));
@@ -58,20 +59,21 @@ public class MeasurePointEstimator {
 
   /**
    * Convert the data size in string to long
+   *
    * @param data: Data size in string, such as "10KB", "20MB"
    * @return The number of byte in Long
    */
   private long stringDataToBytes(String data) {
     String[] suffixes = {"B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"};
     long result = 0;
-    for(int i = suffixes.length - 1; i >= 0; --i) {
+    for (int i = suffixes.length - 1; i >= 0; --i) {
       if (data.endsWith(suffixes[i])) {
         int pos = data.indexOf(suffixes[i]);
         float base = Float.valueOf(data.substring(0, pos));
-        for(int j = 0; j < i; ++j) {
+        for (int j = 0; j < i; ++j) {
           base *= 1024.0;
         }
-        result = (long)base;
+        result = (long) base;
         break;
       }
     }
@@ -80,6 +82,7 @@ public class MeasurePointEstimator {
 
   /**
    * Get the number of measure point according to the chunk size by linear interpolation.
+   *
    * @param chunkSize: The number of byte of the chunk size
    * @return The number of the measure point.
    */
@@ -87,15 +90,15 @@ public class MeasurePointEstimator {
     if (empiricalData.size() == 0) {
       readEmpiricalData();
     }
-    for(int i = 0; i < empiricalData.size() - 1; ++i) {
+    for (int i = 0; i < empiricalData.size() - 1; ++i) {
       if (chunkSize >= empiricalData.get(i).left &&
-      chunkSize < empiricalData.get(i + 1).left) {
-        double deltaY = empiricalData.get(i+1).right - empiricalData.get(i).right;
-        double deltaX = empiricalData.get(i+1).left - empiricalData.get(i).left;
+              chunkSize < empiricalData.get(i + 1).left) {
+        double deltaY = empiricalData.get(i + 1).right - empiricalData.get(i).right;
+        double deltaX = empiricalData.get(i + 1).left - empiricalData.get(i).left;
         double dx = chunkSize - empiricalData.get(i).left;
         double result = empiricalData.get(i).right;
         result += (dx / deltaX) * deltaY;
-        return (int)result;
+        return (int) result;
       }
     }
     if (chunkSize == empiricalData.get(empiricalData.size() - 1).left) {
@@ -109,4 +112,20 @@ public class MeasurePointEstimator {
     return -1;
   }
 
+  public long getChunkSize(int measurementPoint) {
+    if (empiricalData.size() == 0) {
+      readEmpiricalData();
+    }
+    long resultChunkSize = -1l;
+    for (int i = 0; i < empiricalData.size() - 1; ++i) {
+      Pair<Long, Integer> curPair = empiricalData.get(i);
+      Pair<Long, Integer> nextPair = empiricalData.get(i + 1);
+      if (measurementPoint >= curPair.right && measurementPoint <= nextPair.right) {
+        resultChunkSize = curPair.left;
+        resultChunkSize += (long)((float)(measurementPoint - curPair.right) / (float) (nextPair.right - curPair.right) * (float)(nextPair.left - curPair.left));
+        break;
+      }
+    }
+    return resultChunkSize;
+  }
 }
