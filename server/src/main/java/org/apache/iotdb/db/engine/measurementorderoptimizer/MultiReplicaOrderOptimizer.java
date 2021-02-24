@@ -24,7 +24,7 @@ public class MultiReplicaOrderOptimizer {
   private List<QueryRecord> records;
   private List<Long> chunkSize;
   private final float SA_INIT_TEMPERATURE = 20.0f;
-  private final float COOLING_RATE = 0.99995f;
+  private final float COOLING_RATE = 0.999f;
   private List<Double> costList = new LinkedList<>();
   private static long CHUNK_SIZE_STEP_NUM = 70000l;
   private final float CHUNK_SIZE_LOWER_BOUND = 0.8f;
