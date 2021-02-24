@@ -71,7 +71,7 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
   }
 
   @Override
-  public void write(Tablet tablet) throws WriteProcessException, IOException {
+  public void write(Tablet tablet) throws WriteProcessException {
     List<MeasurementSchema> timeseries = tablet.getSchemas();
     for (int i = 0; i < timeseries.size(); i++) {
       String measurementId = timeseries.get(i).getMeasurementId();
@@ -83,8 +83,8 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
     }
   }
 
-  private void writeByDataType(Tablet tablet, String measurementId, TSDataType dataType, int index)
-      throws IOException {
+  private void writeByDataType(
+      Tablet tablet, String measurementId, TSDataType dataType, int index) {
     int batchSize = tablet.rowSize;
     switch (dataType) {
       case INT32:

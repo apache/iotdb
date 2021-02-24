@@ -42,7 +42,7 @@ public class IntRleDecoderTest {
   private List<Integer> hybridList;
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
     rleList = new ArrayList<>();
     int rleCount = 11;
     int rleNum = 18;
@@ -96,7 +96,7 @@ public class IntRleDecoderTest {
   }
 
   @After
-  public void tearDown() throws Exception {}
+  public void tearDown() {}
 
   @Test
   public void testRleReadBigInt() throws IOException {

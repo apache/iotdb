@@ -95,20 +95,20 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
   }
 
   @Override
-  public ParameterMetaData getParameterMetaData() throws SQLException {
+  public ParameterMetaData getParameterMetaData() {
     return new ParameterMetaData() {
       @Override
-      public int getParameterCount() throws SQLException {
+      public int getParameterCount() {
         return parameters.size();
       }
 
       @Override
-      public int isNullable(int param) throws SQLException {
+      public int isNullable(int param) {
         return ParameterMetaData.parameterNullableUnknown;
       }
 
       @Override
-      public boolean isSigned(int param) throws SQLException {
+      public boolean isSigned(int param) {
         try {
           return Integer.parseInt(parameters.get(param)) < 0;
         } catch (Exception e) {
@@ -117,12 +117,12 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
       }
 
       @Override
-      public int getPrecision(int param) throws SQLException {
+      public int getPrecision(int param) {
         return parameters.get(param).length();
       }
 
       @Override
-      public int getScale(int param) throws SQLException {
+      public int getScale(int param) {
         try {
           double d = Double.parseDouble(parameters.get(param));
           if (d >= 1) { // we only need the fraction digits
@@ -144,32 +144,32 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
       }
 
       @Override
-      public int getParameterType(int param) throws SQLException {
+      public int getParameterType(int param) {
         return 0;
       }
 
       @Override
-      public String getParameterTypeName(int param) throws SQLException {
+      public String getParameterTypeName(int param) {
         return null;
       }
 
       @Override
-      public String getParameterClassName(int param) throws SQLException {
+      public String getParameterClassName(int param) {
         return null;
       }
 
       @Override
-      public int getParameterMode(int param) throws SQLException {
+      public int getParameterMode(int param) {
         return 0;
       }
 
       @Override
-      public <T> T unwrap(Class<T> iface) throws SQLException {
+      public <T> T unwrap(Class<T> iface) {
         return null;
       }
 
       @Override
-      public boolean isWrapperFor(Class<?> iface) throws SQLException {
+      public boolean isWrapperFor(Class<?> iface) {
         return false;
       }
     };

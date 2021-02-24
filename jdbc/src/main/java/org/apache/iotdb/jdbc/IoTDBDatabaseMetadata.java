@@ -180,7 +180,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   }
 
   @Override
-  public String getDatabaseProductVersion() throws SQLException {
+  public String getDatabaseProductVersion() {
     return DATABASE_VERSION;
   }
 
@@ -200,12 +200,12 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   }
 
   @Override
-  public String getDriverName() throws SQLException {
+  public String getDriverName() {
     return org.apache.iotdb.jdbc.IoTDBDriver.class.getName();
   }
 
   @Override
-  public String getDriverVersion() throws SQLException {
+  public String getDriverVersion() {
     return DATABASE_VERSION;
   }
 
@@ -499,7 +499,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   }
 
   @Override
-  public String getUserName() throws SQLException {
+  public String getUserName() {
     return client.toString();
   }
 

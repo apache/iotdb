@@ -129,14 +129,14 @@ public class IoTDBFlushQueryMergeIT {
 
       for (int i = 1; i <= 3; i++) {
         for (int j = 10; j < 20; j++) {
-          statement.execute(String.format(insertTemplate, i, j, j, j * 0.1, String.valueOf(j)));
+          statement.execute(String.format(insertTemplate, i, j, j, j * 0.1, j));
         }
       }
       statement.execute("FLUSH");
 
       for (int i = 1; i <= 3; i++) {
         for (int j = 0; j < 10; j++) {
-          statement.execute(String.format(insertTemplate, i, j, j, j * 0.1, String.valueOf(j)));
+          statement.execute(String.format(insertTemplate, i, j, j, j * 0.1, j));
         }
       }
       statement.execute("FLUSH root.group1");
@@ -144,7 +144,7 @@ public class IoTDBFlushQueryMergeIT {
 
       for (int i = 1; i <= 3; i++) {
         for (int j = 0; j < 30; j++) {
-          statement.execute(String.format(insertTemplate, i, j, j, j * 0.1, String.valueOf(j)));
+          statement.execute(String.format(insertTemplate, i, j, j, j * 0.1, j));
         }
       }
       statement.execute("FLUSH root.group1 TRUE");

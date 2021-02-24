@@ -30,7 +30,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 
 import static org.junit.Assert.assertEquals;
@@ -62,7 +61,7 @@ public class MemTableFlushTaskTest {
   }
 
   @Test
-  public void testFlushMemTable() throws ExecutionException, InterruptedException, IOException {
+  public void testFlushMemTable() throws ExecutionException, InterruptedException {
     MemTableTestUtils.produceData(
         memTable,
         startTime,

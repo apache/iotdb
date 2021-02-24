@@ -26,6 +26,7 @@ import org.apache.iotdb.cluster.client.sync.SyncClientPool;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocolFactory;
@@ -77,7 +78,11 @@ public class DataClientProvider {
   }
 
   /**
-   * Get a thrift client that will connect to "node" using the data port.
+   * IMPORTANT!!! After calling this function, the caller should make sure to call {@link
+   * org.apache.iotdb.cluster.utils.ClientUtils#putBackSyncClient(Client)} to put the client back
+   * into the client pool, otherwise there is a risk of client leakage.
+   *
+   * <p>Get a thrift client that will connect to "node" using the data port.
    *
    * @param node the node to be connected
    * @param timeout timeout threshold of connection

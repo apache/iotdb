@@ -28,7 +28,7 @@ import java.io.IOException;
 public class StartClientScriptIT extends AbstractScript {
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
   }
@@ -39,7 +39,7 @@ public class StartClientScriptIT extends AbstractScript {
   }
 
   @Test
-  public void test() throws IOException, InterruptedException {
+  public void test() throws IOException {
     String os = System.getProperty("os.name").toLowerCase();
     if (os.startsWith("windows")) {
       testOnWindows();

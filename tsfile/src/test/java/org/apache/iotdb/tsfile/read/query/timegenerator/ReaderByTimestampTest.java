@@ -19,7 +19,6 @@
 package org.apache.iotdb.tsfile.read.query.timegenerator;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -47,7 +46,7 @@ public class ReaderByTimestampTest {
   private int rowCount = 1000000;
 
   @Before
-  public void before() throws InterruptedException, WriteProcessException, IOException {
+  public void before() throws IOException {
     TSFileDescriptor.getInstance().getConfig().setTimeEncoder("TS_2DIFF");
     TsFileGeneratorForSeriesReaderByTimestamp.generateFile(rowCount, 10 * 1024 * 1024, 10000);
     fileReader = new TsFileSequenceReader(FILE_PATH); // TODO remove this class

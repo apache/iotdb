@@ -161,7 +161,7 @@ public class TsFileWriter implements AutoCloseable {
   public void registerTimeseries(Path path, MeasurementSchema measurementSchema)
       throws WriteProcessException {
     if (schema.containsTimeseries(path)) {
-      throw new WriteProcessException("given timeseries has exists! " + path.toString());
+      throw new WriteProcessException("given timeseries has exists! " + path);
     }
     schema.registerTimeseries(path, measurementSchema);
   }

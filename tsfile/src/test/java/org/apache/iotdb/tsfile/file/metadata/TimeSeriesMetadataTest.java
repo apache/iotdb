@@ -51,7 +51,7 @@ public class TimeSeriesMetadataTest {
   }
 
   @Test
-  public void testWriteIntoFile() throws IOException {
+  public void testWriteIntoFile() {
     TimeseriesMetadata timeseriesMetadata =
         TestHelper.createSimpleTimseriesMetaData(measurementUID);
     serialized(timeseriesMetadata);

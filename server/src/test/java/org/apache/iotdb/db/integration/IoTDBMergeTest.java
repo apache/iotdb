@@ -374,7 +374,7 @@ public class IoTDBMergeTest {
           for (int i = 0; i < colNum; i++) {
             stringBuilder.append(resultSet.getString(i + 1)).append(",");
           }
-          System.out.println(stringBuilder.toString());
+          System.out.println(stringBuilder);
           cnt++;
         }
       }

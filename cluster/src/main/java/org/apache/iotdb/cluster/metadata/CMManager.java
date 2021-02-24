@@ -53,6 +53,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -372,6 +373,27 @@ public class CMManager extends MManager {
     return super.getSeriesSchema(device, measurement);
   }
 
+  /**
+   * Check whether the path exists.
+   *
+   * @param path a full path or a prefix path
+   */
+  @Override
+  public boolean isPathExist(PartialPath path) {
+    boolean localExist = super.isPathExist(path);
+    if (localExist) {
+      return true;
+    }
+
+    // search the cache
+    cacheLock.readLock().lock();
+    try {
+      return mRemoteMetaCache.containsKey(path);
+    } finally {
+      cacheLock.readLock().unlock();
+    }
+  }
+
   private static class RemoteMetaCache extends LRUCache<PartialPath, MeasurementMNode> {
 
     RemoteMetaCache(int cacheSize) {
@@ -397,6 +419,10 @@ public class CMManager extends MManager {
         return null;
       }
     }
+
+    public synchronized boolean containsKey(PartialPath key) {
+      return cache.containsKey(key);
+    }
   }
 
   /**
@@ -406,8 +432,12 @@ public class CMManager extends MManager {
   public void createSchema(PhysicalPlan plan) throws MetadataException, CheckConsistencyException {
     // try to set storage group
     List<PartialPath> deviceIds;
-    // only handle InsertPlan, CreateTimeSeriesPlan and CreateMultiTimeSeriesPlan currently
-    if (plan instanceof InsertPlan && !(plan instanceof InsertMultiTabletPlan)) {
+    // only handle InsertPlan, CreateTimeSeriesPlan and CreateMultiTimeSeriesPlan currently,
+    if (plan instanceof InsertPlan
+        && !(plan instanceof InsertMultiTabletPlan)
+        && !(plan instanceof InsertRowsPlan)) {
+      // InsertMultiTabletPlan and InsertRowsPlan have multiple devices, and other types of
+      // InsertPlan have only one device.
       deviceIds = Collections.singletonList(((InsertPlan) plan).getDeviceId());
     } else if (plan instanceof CreateTimeSeriesPlan) {
       deviceIds = Collections.singletonList(((CreateTimeSeriesPlan) plan).getPath());
@@ -503,7 +533,26 @@ public class CMManager extends MManager {
       boolean success = createTimeseries(insertTabletPlan);
       allSuccess = allSuccess && success;
       if (!success) {
-        logger.error("create timeseries for device={} failed", insertTabletPlan.getDeviceId());
+        logger.error(
+            "create timeseries for device={} failed, plan={}",
+            insertTabletPlan.getDeviceId(),
+            insertTabletPlan);
+      }
+    }
+    return allSuccess;
+  }
+
+  public boolean createTimeseries(InsertRowsPlan insertRowsPlan)
+      throws CheckConsistencyException, IllegalPathException {
+    boolean allSuccess = true;
+    for (InsertRowPlan insertRowPlan : insertRowsPlan.getInsertRowPlanList()) {
+      boolean success = createTimeseries(insertRowPlan);
+      allSuccess = allSuccess && success;
+      if (!success) {
+        logger.error(
+            "create timeseries for device={} failed, plan={}",
+            insertRowPlan.getDeviceId(),
+            insertRowPlan);
       }
     }
     return allSuccess;
@@ -519,6 +568,10 @@ public class CMManager extends MManager {
       throws IllegalPathException, CheckConsistencyException {
     if (insertPlan instanceof InsertMultiTabletPlan) {
       return createTimeseries((InsertMultiTabletPlan) insertPlan);
+    }
+
+    if (insertPlan instanceof InsertRowsPlan) {
+      return createTimeseries((InsertRowsPlan) insertPlan);
     }
 
     List<String> seriesList = new ArrayList<>();
@@ -646,14 +699,18 @@ public class CMManager extends MManager {
               SyncClientAdaptor.getUnregisteredMeasurements(
                   client, partitionGroup.getHeader(), seriesList);
         } else {
-          SyncDataClient syncDataClient =
-              metaGroupMember
-                  .getClientProvider()
-                  .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-          result = syncDataClient.getUnregisteredTimeseries(partitionGroup.getHeader(), seriesList);
-          ClientUtils.putBackSyncClient(syncDataClient);
+          SyncDataClient syncDataClient = null;
+          try {
+            syncDataClient =
+                metaGroupMember
+                    .getClientProvider()
+                    .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+            result =
+                syncDataClient.getUnregisteredTimeseries(partitionGroup.getHeader(), seriesList);
+          } finally {
+            ClientUtils.putBackSyncClient(syncDataClient);
+          }
         }
-
         if (result != null) {
           return result;
         }
@@ -826,16 +883,21 @@ public class CMManager extends MManager {
               .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       schemas = SyncClientAdaptor.pullTimeseriesSchema(client, request);
     } else {
-      SyncDataClient syncDataClient =
-          metaGroupMember
-              .getClientProvider()
-              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-      PullSchemaResp pullSchemaResp = syncDataClient.pullTimeSeriesSchema(request);
-      ByteBuffer buffer = pullSchemaResp.schemaBytes;
-      int size = buffer.getInt();
-      schemas = new ArrayList<>(size);
-      for (int i = 0; i < size; i++) {
-        schemas.add(TimeseriesSchema.deserializeFrom(buffer));
+      SyncDataClient syncDataClient = null;
+      try {
+        syncDataClient =
+            metaGroupMember
+                .getClientProvider()
+                .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+        PullSchemaResp pullSchemaResp = syncDataClient.pullTimeSeriesSchema(request);
+        ByteBuffer buffer = pullSchemaResp.schemaBytes;
+        int size = buffer.getInt();
+        schemas = new ArrayList<>(size);
+        for (int i = 0; i < size; i++) {
+          schemas.add(TimeseriesSchema.deserializeFrom(buffer));
+        }
+      } finally {
+        ClientUtils.putBackSyncClient(syncDataClient);
       }
     }
 
@@ -1060,12 +1122,16 @@ public class CMManager extends MManager {
               .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       result = SyncClientAdaptor.getAllPaths(client, header, pathsToQuery, withAlias);
     } else {
-      SyncDataClient syncDataClient =
-          metaGroupMember
-              .getClientProvider()
-              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-      result = syncDataClient.getAllPaths(header, pathsToQuery, withAlias);
-      ClientUtils.putBackSyncClient(syncDataClient);
+      SyncDataClient syncDataClient = null;
+      try {
+        syncDataClient =
+            metaGroupMember
+                .getClientProvider()
+                .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+        result = syncDataClient.getAllPaths(header, pathsToQuery, withAlias);
+      } finally {
+        ClientUtils.putBackSyncClient(syncDataClient);
+      }
     }
 
     if (result != null) {
@@ -1180,12 +1246,16 @@ public class CMManager extends MManager {
               .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       paths = SyncClientAdaptor.getAllDevices(client, header, pathsToQuery);
     } else {
-      SyncDataClient syncDataClient =
-          metaGroupMember
-              .getClientProvider()
-              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-      paths = syncDataClient.getAllDevices(header, pathsToQuery);
-      ClientUtils.putBackSyncClient(syncDataClient);
+      SyncDataClient syncDataClient = null;
+      try {
+        syncDataClient =
+            metaGroupMember
+                .getClientProvider()
+                .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+        paths = syncDataClient.getAllDevices(header, pathsToQuery);
+      } finally {
+        ClientUtils.putBackSyncClient(syncDataClient);
+      }
     }
     return paths;
   }
@@ -1501,17 +1571,20 @@ public class CMManager extends MManager {
               .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       resultBinary = SyncClientAdaptor.getAllMeasurementSchema(client, group.getHeader(), plan);
     } else {
-      SyncDataClient syncDataClient =
-          metaGroupMember
-              .getClientProvider()
-              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-      ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-      DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-      plan.serialize(dataOutputStream);
-      resultBinary =
-          syncDataClient.getAllMeasurementSchema(
-              group.getHeader(), ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
-      ClientUtils.putBackSyncClient(syncDataClient);
+      SyncDataClient syncDataClient = null;
+      try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+          DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
+        syncDataClient =
+            metaGroupMember
+                .getClientProvider()
+                .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+        plan.serialize(dataOutputStream);
+        resultBinary =
+            syncDataClient.getAllMeasurementSchema(
+                group.getHeader(), ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+      } finally {
+        ClientUtils.putBackSyncClient(syncDataClient);
+      }
     }
     return resultBinary;
   }

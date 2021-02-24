@@ -55,6 +55,7 @@ import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
@@ -80,7 +81,6 @@ import org.apache.iotdb.db.query.dataset.DirectNonAlignDataSet;
 import org.apache.iotdb.db.query.dataset.UDTFDataSet;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
-import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -138,10 +138,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
@@ -765,12 +765,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       // same.
       return StaticResps.LAST_RESP.deepCopy();
     } else if (plan instanceof AggregationPlan && ((AggregationPlan) plan).getLevel() >= 0) {
-      Map<Integer, String> pathIndex = new HashMap<>();
-      Map<String, AggregateResult> finalPaths =
-          FilePathUtils.getPathByLevel((AggregationPlan) plan, pathIndex);
+      Map<String, AggregateResult> finalPaths = ((AggregationPlan) plan).getAggPathByLevel();
       for (Map.Entry<String, AggregateResult> entry : finalPaths.entrySet()) {
-        respColumns.add(
-            entry.getValue().getAggregationType().toString() + "(" + entry.getKey() + ")");
+        respColumns.add(entry.getKey());
         columnsTypes.add(entry.getValue().getResultDataType().toString());
       }
     } else {
@@ -1144,10 +1141,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           req.deviceIds.get(0),
           req.getTimestamps().get(0));
     }
-
-    List<TSStatus> statusList = new ArrayList<>();
-
-    boolean isAllSuccessful = true;
+    boolean allSuccess = true;
+    InsertRowsPlan insertRowsPlan = new InsertRowsPlan();
     for (int i = 0; i < req.deviceIds.size(); i++) {
       try {
         InsertRowPlan plan =
@@ -1157,23 +1152,46 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
                 req.getMeasurementsList().get(i).toArray(new String[0]),
                 req.valuesList.get(i));
         TSStatus status = checkAuthority(plan, req.getSessionId());
-        if (status == null) {
-          status = executeNonQueryPlan(plan);
-          isAllSuccessful =
-              ((status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode())
-                  && isAllSuccessful);
+        if (status != null) {
+          insertRowsPlan.getResults().put(i, status);
+          allSuccess = false;
         }
-        statusList.add(status);
+        insertRowsPlan.addOneInsertRowPlan(plan, i);
       } catch (Exception e) {
-        isAllSuccessful = false;
-        statusList.add(
-            onNPEOrUnexpectedException(e, "inserting records", TSStatusCode.INTERNAL_SERVER_ERROR));
+        allSuccess = false;
+        insertRowsPlan
+            .getResults()
+            .put(
+                i,
+                onNPEOrUnexpectedException(
+                    e, "inserting records", TSStatusCode.INTERNAL_SERVER_ERROR));
       }
     }
+    TSStatus tsStatus = executeNonQueryPlan(insertRowsPlan);
 
-    return isAllSuccessful
-        ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
-        : RpcUtils.getStatus(statusList);
+    return judgeFinalTsStatus(
+        allSuccess, tsStatus, insertRowsPlan.getResults(), req.deviceIds.size());
+  }
+
+  private TSStatus judgeFinalTsStatus(
+      boolean allSuccess,
+      TSStatus executeTsStatus,
+      Map<Integer, TSStatus> checkTsStatus,
+      int totalRowCount) {
+
+    if (allSuccess) {
+      return executeTsStatus;
+    }
+
+    if (executeTsStatus.subStatus == null) {
+      TSStatus[] tmpSubTsStatus = new TSStatus[totalRowCount];
+      Arrays.fill(tmpSubTsStatus, RpcUtils.SUCCESS_STATUS);
+      executeTsStatus.subStatus = Arrays.asList(tmpSubTsStatus);
+    }
+    for (Entry<Integer, TSStatus> entry : checkTsStatus.entrySet()) {
+      executeTsStatus.subStatus.set(entry.getKey(), entry.getValue());
+    }
+    return RpcUtils.getStatus(executeTsStatus.subStatus);
   }
 
   @Override
@@ -1232,10 +1250,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           req.getTimestamps().get(0));
     }
 
-    List<TSStatus> statusList = new ArrayList<>();
-    InsertRowPlan plan = new InsertRowPlan();
-    boolean isAllSuccessful = true;
+    boolean allSuccess = true;
+    InsertRowsPlan insertRowsPlan = new InsertRowsPlan();
     for (int i = 0; i < req.deviceIds.size(); i++) {
+      InsertRowPlan plan = new InsertRowPlan();
       try {
         plan.setDeviceId(new PartialPath(req.getDeviceIds().get(i)));
         plan.setTime(req.getTimestamps().get(i));
@@ -1244,24 +1262,24 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         plan.setValues(req.getValuesList().get(i).toArray(new Object[0]));
         plan.setNeedInferType(true);
         TSStatus status = checkAuthority(plan, req.getSessionId());
-        if (status == null) {
-          status = executeNonQueryPlan(plan);
-          isAllSuccessful =
-              ((status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode())
-                  && isAllSuccessful);
+        if (status != null) {
+          insertRowsPlan.getResults().put(i, status);
         }
-        statusList.add(status);
+        insertRowsPlan.addOneInsertRowPlan(plan, i);
       } catch (Exception e) {
-        isAllSuccessful = false;
-        statusList.add(
-            onNPEOrUnexpectedException(
-                e, "inserting string records", TSStatusCode.INTERNAL_SERVER_ERROR));
+        insertRowsPlan
+            .getResults()
+            .put(
+                i,
+                onNPEOrUnexpectedException(
+                    e, "inserting string records", TSStatusCode.INTERNAL_SERVER_ERROR));
+        allSuccess = false;
       }
     }
+    TSStatus tsStatus = executeNonQueryPlan(insertRowsPlan);
 
-    return isAllSuccessful
-        ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
-        : RpcUtils.getStatus(statusList);
+    return judgeFinalTsStatus(
+        allSuccess, tsStatus, insertRowsPlan.getResults(), req.deviceIds.size());
   }
 
   @Override
@@ -1656,7 +1674,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       if (!checkAuthorization(paths, plan, sessionIdUsernameMap.get(sessionId))) {
         return RpcUtils.getStatus(
             TSStatusCode.NO_PERMISSION_ERROR,
-            "No permissions for this operation " + plan.getOperatorType().toString());
+            "No permissions for this operation " + plan.getOperatorType());
       }
     } catch (AuthException e) {
       LOGGER.warn("meet error while checking authorization.", e);

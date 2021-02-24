@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
-import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -39,7 +38,7 @@ public class MemtableBenchmark {
     }
   }
 
-  public static void main(String[] args) throws WriteProcessException {
+  public static void main(String[] args) {
     IMemTable memTable = new PrimitiveMemTable();
     final long startTime = System.currentTimeMillis();
     // cpu not locality

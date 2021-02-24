@@ -34,7 +34,7 @@ import java.sql.Statement;
 public class IoTDBVersionIT {
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
     EnvironmentUtils.envSetUp();
   }
 

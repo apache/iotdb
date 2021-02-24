@@ -90,7 +90,7 @@ public class PhysicalPlanLog extends Log {
 
   @Override
   public String toString() {
-    return plan.toString() + ",term:" + getCurrLogTerm() + ",index:" + getCurrLogIndex();
+    return plan + ",term:" + getCurrLogTerm() + ",index:" + getCurrLogIndex();
   }
 
   @Override

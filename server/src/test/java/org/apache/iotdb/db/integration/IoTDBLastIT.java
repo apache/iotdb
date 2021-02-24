@@ -441,7 +441,7 @@ public class IoTDBLastIT {
   }
 
   @Test
-  public void lastAfterDeletionTest() throws SQLException, MetadataException {
+  public void lastAfterDeletionTest() throws SQLException {
     String[] retArray =
         new String[] {
           "350,root.ln.wf01.wt05.temperature,31.2", "200,root.ln.wf01.wt05.temperature,78.2"
@@ -497,7 +497,7 @@ public class IoTDBLastIT {
   }
 
   @Test
-  public void lastWithFilterTest() throws SQLException, MetadataException {
+  public void lastWithFilterTest() throws SQLException {
     String[] retArray = new String[] {"500,root.ln.wf01.wt01.temperature,22.1"};
 
     try (Connection connection =

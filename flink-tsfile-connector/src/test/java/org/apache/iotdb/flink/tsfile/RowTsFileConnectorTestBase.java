@@ -63,7 +63,7 @@ public abstract class RowTsFileConnectorTestBase {
   protected RowTypeInfo rowTypeInfo = new RowTypeInfo(typeInformations, filedNames);
 
   @Before
-  public void prepareTempDirectory() throws Exception {
+  public void prepareTempDirectory() {
     tmpDir = String.join(File.separator, TsFileWriteUtil.TMP_DIR, UUID.randomUUID().toString());
     new File(tmpDir).mkdirs();
     config.setBatchSize(500);
