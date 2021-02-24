@@ -434,77 +434,64 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   @Override
   public TSStatus executeBatchStatement(TSExecuteBatchStatementReq req) {
     long t1 = System.currentTimeMillis();
-    try {
-      if (!checkLogin(req.getSessionId())) {
-        return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
-      }
+    List<TSStatus> result = new ArrayList<>();
+    boolean isAllSuccessful = true;
+    if (!checkLogin(req.getSessionId())) {
+      return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
+    }
 
-      List<TSStatus> result = new ArrayList<>();
-      boolean isAllSuccessful = true;
-      InsertRowsPlan insertRowsPlan = new InsertRowsPlan();
-      int index = 0;
-      for (String statement : req.getStatements()) {
+    InsertRowsPlan insertRowsPlan = new InsertRowsPlan();
+    int index = 0;
+    for (String statement : req.getStatements()) {
+      long t2 = System.currentTimeMillis();
+      try {
         PhysicalPlan physicalPlan =
             processor.parseSQLToPhysicalPlan(
                 statement, sessionIdZoneIdMap.get(req.getSessionId()), DEFAULT_FETCH_SIZE);
-        if (physicalPlan.getOperatorType().equals(INSERT)) {
+        if (physicalPlan.isQuery()) {
+          throw new QueryInBatchStatementException(statement);
+        }
+
+        if (physicalPlan.getOperatorType().equals(OperatorType.INSERT)) {
           insertRowsPlan.addOneInsertRowPlan((InsertRowPlan) physicalPlan, index);
           index++;
         } else {
-          long t2 = System.currentTimeMillis();
-          isAllSuccessful =
-              executeStatementInBatch(statement, result, req.getSessionId()) && isAllSuccessful;
-          Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_ONE_SQL_IN_BATCH, t2);
+          TSStatus tsStatus = executeNonQueryPlan(insertRowsPlan);
+          index = 0;
+          result.add(tsStatus);
+          if (tsStatus.equals(RpcUtils.SUCCESS_STATUS)) {
+            isAllSuccessful = isAllSuccessful && true;
+          } else {
+            isAllSuccessful = isAllSuccessful && false;
+          }
+
+          TSExecuteStatementResp resp = executeUpdateStatement(physicalPlan, req.getSessionId());
+          if (resp.getStatus().code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            result.add(resp.status);
+            isAllSuccessful = isAllSuccessful && true;
+          } else {
+            result.add(resp.status);
+            isAllSuccessful = isAllSuccessful && false;
+          }
+        }
+      } catch (Exception e) {
+        TSStatus status = tryCatchQueryException(e);
+        if (status != null) {
+          result.add(status);
+          isAllSuccessful = isAllSuccessful && false;
+        } else {
+          result.add(
+              onNPEOrUnexpectedException(
+                  e, "executing " + statement, TSStatusCode.INTERNAL_SERVER_ERROR));
+          isAllSuccessful = isAllSuccessful && true;
         }
       }
-
-      TSStatus tsStatus = executeNonQueryPlan(insertRowsPlan);
-      result.add(tsStatus);
-      if (tsStatus.equals(RpcUtils.SUCCESS_STATUS)) {
-        isAllSuccessful = isAllSuccessful && true;
-      } else {
-        isAllSuccessful = isAllSuccessful && false;
-      }
-
-      return isAllSuccessful
-          ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute batch statements successfully")
-          : RpcUtils.getStatus(result);
-    } catch (Exception e) {
-      return onNPEOrUnexpectedException(
-          e, "executing executeBatchStatement", TSStatusCode.INTERNAL_SERVER_ERROR);
-    } finally {
-      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_JDBC_BATCH, t1);
+      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_ONE_SQL_IN_BATCH, t2);
     }
-  }
-
-  // execute one statement of a batch. Currently, query is not allowed in a batch statement and
-  // on finding queries in a batch, such query will be ignored and an error will be generated
-  private boolean executeStatementInBatch(String statement, List<TSStatus> result, long sessionId) {
-    try {
-      PhysicalPlan physicalPlan =
-          processor.parseSQLToPhysicalPlan(
-              statement, sessionIdZoneIdMap.get(sessionId), DEFAULT_FETCH_SIZE);
-      if (physicalPlan.isQuery()) {
-        throw new QueryInBatchStatementException(statement);
-      }
-      TSExecuteStatementResp resp = executeUpdateStatement(physicalPlan, sessionId);
-      if (resp.getStatus().code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        result.add(resp.status);
-      } else {
-        result.add(resp.status);
-        return false;
-      }
-    } catch (Exception e) {
-      TSStatus status = tryCatchQueryException(e);
-      if (status != null) {
-        result.add(status);
-        return false;
-      }
-      result.add(
-          onNPEOrUnexpectedException(
-              e, "executing " + statement, TSStatusCode.INTERNAL_SERVER_ERROR));
-    }
-    return true;
+    Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_JDBC_BATCH, t1);
+    return isAllSuccessful
+        ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute batch statements successfully")
+        : RpcUtils.getStatus(result);
   }
 
   @Override
