@@ -167,8 +167,8 @@ public class MultiReplicaOrderOptimizer {
       tmpList.add(record);
       float minCost = Float.MAX_VALUE;
       int minIdx = 0;
-      Collections.shuffle(indexes);
-      for (Integer i : indexes) {
+      // Collections.shuffle(indexes);
+      for (int i = 0; i < replicaNum; ++i) {
         Replica replica = replicas[i];
         float curCost = CostModel.approximateAggregationQueryCostWithTimeRange(tmpList, replica.getMeasurements(), replica.getAverageChunkSize());
         if (curCost < minCost) {

@@ -318,8 +318,8 @@ public class MeasurementOrderOptimizer {
     for (String measurement : curMeasurementOrder) {
       chunkSize.add(chunkSizeMapForCurDevice.get(measurement));
     }
-    float curCost = CostModel.approximateAggregationQueryCostWithoutTimeRange(queryRecordsForCurDevice,
-            curMeasurementOrder, chunkSize, chunkGroupCountMap.get(deviceID));
+    float curCost = CostModel.
+            approximateAggregationQueryCostWithTimeRange(queryRecordsForCurDevice, curMeasurementOrder, chunkSize);
     float temperature = SA_INIT_TEMPERATURE;
     Random r = new Random();
 
@@ -341,8 +341,8 @@ public class MeasurementOrderOptimizer {
       swap(curMeasurementOrder, swapPosFirst, swapPosSecond);
       swap(chunkSize, swapPosFirst, swapPosSecond);
 
-      float newCost = CostModel.approximateAggregationQueryCostWithoutTimeRange(queryRecordsForCurDevice,
-              curMeasurementOrder, chunkSize, chunkGroupCountMap.get(deviceID));
+      float newCost = CostModel.
+              approximateAggregationQueryCostWithTimeRange(queryRecordsForCurDevice, curMeasurementOrder, chunkSize);
       float probability = r.nextFloat();
       probability = probability < 0 ? -probability : probability;
       probability %= 1.0;
@@ -355,9 +355,9 @@ public class MeasurementOrderOptimizer {
         swap(curMeasurementOrder, swapPosFirst, swapPosSecond);
         swap(chunkSize, swapPosFirst, swapPosSecond);
       }
-//      if (k % 500 == 0) {
-//        LOGGER.info(String.format("Epoch %d: Cur cost %.3f", k, curCost));
-//      }
+      if (k % 500 == 0) {
+        LOGGER.info(String.format("Epoch %d: Cur cost %.3f", k, curCost));
+      }
     }
 
     measurementsMap.put(deviceID, curMeasurementOrder);
