@@ -415,7 +415,7 @@ public class AuthorPlan extends PhysicalPlan {
         type = PhysicalPlanType.DELETE_USER.ordinal();
         break;
       default:
-        throw new IllegalArgumentException("Unknown operator: " + operatorType.toString());
+        throw new IllegalArgumentException("Unknown operator: " + operatorType);
     }
     return type;
   }

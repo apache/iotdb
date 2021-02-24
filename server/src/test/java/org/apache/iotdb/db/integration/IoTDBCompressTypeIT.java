@@ -39,7 +39,7 @@ import java.sql.Statement;
  */
 public class IoTDBCompressTypeIT {
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
   }

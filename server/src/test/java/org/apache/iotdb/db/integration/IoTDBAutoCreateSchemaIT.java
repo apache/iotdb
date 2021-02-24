@@ -22,6 +22,7 @@ package org.apache.iotdb.db.integration;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.jdbc.IoTDBSQLException;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -33,22 +34,34 @@ import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
  * IoTDB server should be defined as integration test.
  */
 public class IoTDBAutoCreateSchemaIT {
+  private Statement statement;
+  private Connection connection;
 
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
+
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    statement = connection.createStatement();
   }
 
   @After
   public void tearDown() throws Exception {
+    statement.close();
+    connection.close();
     EnvironmentUtils.cleanEnv();
   }
 
@@ -140,5 +153,98 @@ public class IoTDBAutoCreateSchemaIT {
     } catch (Exception e) {
       e.printStackTrace();
     }
+  }
+
+  /**
+   * insert data when the time series that is a prefix path of an existing time series hasn't been
+   * created
+   */
+  @Test
+  public void testInsertAutoCreate1() throws Exception {
+    String[] timeSeriesArray = {"root.sg1.a.a", "root.sg1.a", "root.sg1.a.a.a"};
+
+    for (String timeSeries : timeSeriesArray) {
+      statement.execute(
+          String.format("INSERT INTO %s(timestamp, a) values(123, \"aabb\")", timeSeries));
+    }
+
+    // ensure that insert data in cache is right.
+    insertAutoCreate1Tool();
+
+    EnvironmentUtils.stopDaemon();
+    setUp();
+
+    // ensure that insert data in cache is right after recovering.
+    insertAutoCreate1Tool();
+  }
+
+  private void insertAutoCreate1Tool() throws SQLException {
+    boolean hasResult = statement.execute("select * from root.sg1");
+    Assert.assertTrue(hasResult);
+
+    Set<String> strSet = new HashSet<>();
+    String[] valueList = {};
+    try (ResultSet resultSet = statement.getResultSet()) {
+      while (resultSet.next()) {
+        valueList =
+            new String[] {
+              resultSet.getString("root.sg1.a.a"),
+              resultSet.getString("root.sg1.a.a.a"),
+              resultSet.getString("root.sg1.a.a.a.a")
+            };
+        strSet = new HashSet<>(Arrays.asList(valueList));
+      }
+    }
+    Assert.assertEquals(3, valueList.length);
+    Assert.assertEquals(1, strSet.size());
+    Assert.assertTrue(strSet.contains("aabb"));
+  }
+
+  /**
+   * test if automatically creating a time series will cause the storage group with same name to
+   * disappear
+   */
+  @Test
+  public void testInsertAutoCreate2() throws Exception {
+    String storageGroup = "root.sg2.a.b.c";
+    String timeSeriesPrefix = "root.sg2.a.b";
+
+    statement.execute(String.format("SET storage group TO %s", storageGroup));
+    try {
+      statement.execute(
+          String.format("INSERT INTO %s(timestamp, c) values(123, \"aabb\")", timeSeriesPrefix));
+    } catch (IoTDBSQLException ignored) {
+    }
+
+    // ensure that current storage group in cache is right.
+    InsertAutoCreate2Tool(storageGroup, timeSeriesPrefix);
+
+    EnvironmentUtils.stopDaemon();
+    setUp();
+
+    // ensure that storage group in cache is right after recovering.
+    InsertAutoCreate2Tool(storageGroup, timeSeriesPrefix);
+  }
+
+  private void InsertAutoCreate2Tool(String storageGroup, String timeSeriesPrefix)
+      throws SQLException {
+    statement.execute("show timeseries");
+    Set<String> resultList = new HashSet<>();
+    try (ResultSet resultSet = statement.getResultSet()) {
+      while (resultSet.next()) {
+        String str = resultSet.getString("timeseries");
+        resultList.add(str);
+      }
+    }
+    Assert.assertFalse(resultList.contains(timeSeriesPrefix + "c"));
+
+    statement.execute("show storage group");
+    resultList.clear();
+    try (ResultSet resultSet = statement.getResultSet()) {
+      while (resultSet.next()) {
+        resultList.add(resultSet.getString("storage group"));
+      }
+    }
+    Assert.assertTrue(resultList.contains(storageGroup));
   }
 }

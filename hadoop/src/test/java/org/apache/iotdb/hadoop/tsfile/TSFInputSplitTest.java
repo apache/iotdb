@@ -37,7 +37,7 @@ public class TSFInputSplitTest {
   private DataOutputBuffer dataOutputBuffer = new DataOutputBuffer();
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
     // For the test data
     Path path = new Path("input");
 

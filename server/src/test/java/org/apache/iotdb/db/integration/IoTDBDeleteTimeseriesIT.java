@@ -41,7 +41,7 @@ public class IoTDBDeleteTimeseriesIT {
   private CompactionStrategy tsFileManagementStrategy;
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     memtableSizeThreshold = IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold();

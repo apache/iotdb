@@ -53,7 +53,7 @@ public class IoTDBDriver implements Driver {
   }
 
   @Override
-  public boolean acceptsURL(String url) throws SQLException {
+  public boolean acceptsURL(String url) {
     return Pattern.matches(TSFILE_URL_PREFIX, url);
   }
 
@@ -86,7 +86,7 @@ public class IoTDBDriver implements Driver {
   }
 
   @Override
-  public DriverPropertyInfo[] getPropertyInfo(String url, Properties info) throws SQLException {
+  public DriverPropertyInfo[] getPropertyInfo(String url, Properties info) {
     // TODO Auto-generated method stub
     return new DriverPropertyInfo[0];
   }

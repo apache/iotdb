@@ -19,7 +19,6 @@
 package org.apache.iotdb.tsfile.read.query.executor;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -56,7 +55,7 @@ public class QueryExecutorTest {
   private TsFileExecutor queryExecutorWithQueryFilter;
 
   @Before
-  public void before() throws InterruptedException, WriteProcessException, IOException {
+  public void before() throws IOException {
     TSFileDescriptor.getInstance().getConfig().setTimeEncoder("TS_2DIFF");
     TsFileGeneratorForTest.generateFile(rowCount, 16 * 1024 * 1024, 10000);
     fileReader = new TsFileSequenceReader(FILE_PATH);

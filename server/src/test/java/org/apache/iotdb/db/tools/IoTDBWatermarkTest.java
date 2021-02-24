@@ -37,7 +37,6 @@ import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.sql.Statement;
 
 import static org.junit.Assert.fail;
@@ -103,7 +102,7 @@ public class IoTDBWatermarkTest {
     EnvironmentUtils.cleanEnv();
   }
 
-  private static void insertData() throws ClassNotFoundException, SQLException {
+  private static void insertData() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
             DriverManager.getConnection(
@@ -142,7 +141,7 @@ public class IoTDBWatermarkTest {
 
   @Test
   public void EncodeAndDecodeTest1()
-      throws IOException, ClassNotFoundException, SQLException, LogicalOperatorException {
+      throws IOException, ClassNotFoundException, LogicalOperatorException {
     // Watermark Embedding
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
@@ -195,7 +194,7 @@ public class IoTDBWatermarkTest {
 
   @Test
   public void EncodeAndDecodeTest2()
-      throws IOException, ClassNotFoundException, SQLException, LogicalOperatorException {
+      throws IOException, ClassNotFoundException, LogicalOperatorException {
     // No Watermark Embedding
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =

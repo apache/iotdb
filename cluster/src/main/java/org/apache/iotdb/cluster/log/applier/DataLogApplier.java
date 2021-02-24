@@ -37,6 +37,8 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.service.IoTDB;
 
@@ -67,6 +69,8 @@ public class DataLogApplier extends BaseApplier {
         PhysicalPlan plan = physicalPlanLog.getPlan();
         if (plan instanceof InsertMultiTabletPlan) {
           applyInsert((InsertMultiTabletPlan) plan);
+        } else if (plan instanceof InsertRowsPlan) {
+          applyInsert((InsertRowsPlan) plan);
         } else if (plan instanceof InsertPlan) {
           applyInsert((InsertPlan) plan);
         } else {
@@ -98,6 +102,13 @@ public class DataLogApplier extends BaseApplier {
       throws StorageGroupNotSetException, QueryProcessException, StorageEngineException {
     for (InsertTabletPlan insertTabletPlan : plan.getInsertTabletPlanList()) {
       applyInsert(insertTabletPlan);
+    }
+  }
+
+  private void applyInsert(InsertRowsPlan plan)
+      throws StorageGroupNotSetException, QueryProcessException, StorageEngineException {
+    for (InsertRowPlan insertRowPlan : plan.getInsertRowPlanList()) {
+      applyInsert(insertRowPlan);
     }
   }
 

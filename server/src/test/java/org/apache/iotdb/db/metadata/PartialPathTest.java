@@ -31,7 +31,7 @@ import java.util.List;
 
 public class PartialPathTest {
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
     EnvironmentUtils.envSetUp();
   }
 

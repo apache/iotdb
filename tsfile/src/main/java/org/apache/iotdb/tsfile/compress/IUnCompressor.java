@@ -204,12 +204,12 @@ public interface IUnCompressor {
     }
 
     @Override
-    public int getUncompressedLength(byte[] array, int offset, int length) throws IOException {
+    public int getUncompressedLength(byte[] array, int offset, int length) {
       throw new UnsupportedOperationException("unsupported get uncompress length");
     }
 
     @Override
-    public int getUncompressedLength(ByteBuffer buffer) throws IOException {
+    public int getUncompressedLength(ByteBuffer buffer) {
       throw new UnsupportedOperationException("unsupported get uncompress length");
     }
 
@@ -267,7 +267,7 @@ public interface IUnCompressor {
   class GZIPUnCompressor implements IUnCompressor {
 
     @Override
-    public int getUncompressedLength(byte[] array, int offset, int length) throws IOException {
+    public int getUncompressedLength(byte[] array, int offset, int length) {
       throw new UnsupportedOperationException("unsupported get uncompress length");
     }
 

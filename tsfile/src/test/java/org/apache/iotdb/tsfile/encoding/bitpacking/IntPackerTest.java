@@ -50,7 +50,7 @@ public class IntPackerTest {
         bb[idx++] = tb[j];
       }
     }
-    int res[] = new int[count * 8];
+    int[] res = new int[count * 8];
     packer.unpackAllValues(bb, bb.length, res);
 
     for (int i = 0; i < count * 8; i++) {

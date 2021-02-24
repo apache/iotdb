@@ -160,7 +160,7 @@ public class SchemaUtils {
    * @throws MetadataException
    */
   public static List<TSDataType> getAggregatedDataTypes(
-      List<TSDataType> measurementDataType, String aggregation) throws MetadataException {
+      List<TSDataType> measurementDataType, String aggregation) {
     TSDataType dataType = getAggregationType(aggregation);
     if (dataType != null) {
       return Collections.nCopies(measurementDataType.size(), dataType);
@@ -238,9 +238,7 @@ public class SchemaUtils {
       throws MetadataException {
     if (!schemaChecker.get(dataType).contains(encoding)) {
       throw new MetadataException(
-          String.format(
-              "encoding %s does not support %s", encoding.toString(), dataType.toString()),
-          true);
+          String.format("encoding %s does not support %s", encoding, dataType), true);
     }
   }
 }

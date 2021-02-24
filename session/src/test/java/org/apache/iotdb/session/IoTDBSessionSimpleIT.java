@@ -45,6 +45,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -417,6 +418,25 @@ public class IoTDBSessionSimpleIT {
     assertFalse(dataSet.hasNext());
 
     session.deleteStorageGroup(storageGroup);
+    session.close();
+  }
+
+  @Test
+  public void testDeleteNonExistTimeSeries()
+      throws StatementExecutionException, IoTDBConnectionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+    session.insertRecord(
+        "root.sg1.d1", 0, Arrays.asList("t1", "t2", "t3"), Arrays.asList("123", "333", "444"));
+    try {
+      session.deleteTimeseries(Arrays.asList("root.sg1.d1.t6", "root.sg1.d1.t2", "root.sg1.d1.t3"));
+    } catch (BatchExecutionException e) {
+      assertEquals("Path [root.sg1.d1.t6] does not exist;", e.getMessage());
+    }
+    assertTrue(session.checkTimeseriesExists("root.sg1.d1.t1"));
+    assertFalse(session.checkTimeseriesExists("root.sg1.d1.t2"));
+    assertFalse(session.checkTimeseriesExists("root.sg1.d1.t3"));
+
     session.close();
   }
 

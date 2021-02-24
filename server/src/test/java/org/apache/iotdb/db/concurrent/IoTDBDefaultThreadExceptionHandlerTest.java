@@ -33,14 +33,14 @@ public class IoTDBDefaultThreadExceptionHandlerTest {
   private AtomicInteger count;
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
     handler = Thread.getDefaultUncaughtExceptionHandler();
     Thread.setDefaultUncaughtExceptionHandler(new TestExceptionHandler(message));
     count = new AtomicInteger(0);
   }
 
   @After
-  public void tearDown() throws Exception {
+  public void tearDown() {
     Thread.setDefaultUncaughtExceptionHandler(handler);
   }
 
