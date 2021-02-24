@@ -277,8 +277,7 @@ public class DeletionFileNodeTest {
   }
 
   @Test
-  public void testDeleteInOverflowFile()
-      throws StorageEngineException, QueryProcessException, IllegalPathException {
+  public void testDeleteInOverflowFile() throws StorageEngineException, IllegalPathException {
     // insert into BufferWrite
     for (int i = 101; i <= 200; i++) {
       TSRecord record = new TSRecord(i, processorName);

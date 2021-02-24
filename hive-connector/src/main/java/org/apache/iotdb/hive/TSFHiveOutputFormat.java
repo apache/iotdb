@@ -71,5 +71,5 @@ public class TSFHiveOutputFormat extends TSFOutputFormat
 
   // Not doing any check
   @Override
-  public void checkOutputSpecs(FileSystem ignored, JobConf job) throws IOException {}
+  public void checkOutputSpecs(FileSystem ignored, JobConf job) {}
 }

@@ -28,7 +28,6 @@ import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
@@ -213,7 +212,7 @@ public class MetaSimpleSnapshot extends Snapshot {
           try {
             IoTDB.metaManager.setTTL(sgPath, entry.getValue());
             StorageEngine.getInstance().setTTL(sgPath, entry.getValue());
-          } catch (MetadataException | StorageEngineException | IOException e) {
+          } catch (MetadataException | IOException e) {
             logger.error(
                 "{}: Cannot set ttl in storage group {} , errMessage: {}",
                 metaGroupMember.getName(),

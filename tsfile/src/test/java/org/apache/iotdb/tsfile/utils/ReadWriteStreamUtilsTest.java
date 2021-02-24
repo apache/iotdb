@@ -38,7 +38,7 @@ public class ReadWriteStreamUtilsTest {
   private List<Long> littleEndianLongList;
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
     unsignedVarIntList = new ArrayList<Integer>();
     littleEndianIntList = new ArrayList<Integer>();
     littleEndianLongList = new ArrayList<Long>();
@@ -66,7 +66,7 @@ public class ReadWriteStreamUtilsTest {
   }
 
   @After
-  public void tearDown() throws Exception {}
+  public void tearDown() {}
 
   @Test
   public void testGetIntMinBitWidth() {

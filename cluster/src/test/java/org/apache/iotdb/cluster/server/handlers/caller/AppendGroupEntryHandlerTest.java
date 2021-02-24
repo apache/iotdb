@@ -27,7 +27,6 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.RaftMember;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.junit.After;
@@ -57,7 +56,7 @@ public class AppendGroupEntryHandlerTest {
   }
 
   @After
-  public void tearDown() throws IOException, StorageEngineException {
+  public void tearDown() throws IOException {
     ClusterDescriptor.getInstance().getConfig().setReplicationNum(prevReplicationNum);
     member.stop();
     member.closeLogManager();

@@ -45,7 +45,7 @@ import static org.junit.Assert.fail;
 public class MTreeTest {
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
     EnvironmentUtils.envSetUp();
   }
 

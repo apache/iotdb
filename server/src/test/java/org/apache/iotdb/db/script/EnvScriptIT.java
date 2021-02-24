@@ -33,13 +33,13 @@ import static org.junit.Assert.assertTrue;
 public class EnvScriptIT {
 
   @Before
-  public void setUp() throws Exception {}
+  public void setUp() {}
 
   @After
-  public void tearDown() throws Exception {}
+  public void tearDown() {}
 
   @Test
-  public void test() throws IOException, InterruptedException {
+  public void test() throws IOException {
     String os = System.getProperty("os.name").toLowerCase();
     if (os.startsWith("windows")) {
       testStartClientOnWindows(".bat", os);

@@ -24,8 +24,6 @@ import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-
 /**
  * a subclass for Boolean data type extends DataPoint.
  *
@@ -44,7 +42,7 @@ public class BooleanDataPoint extends DataPoint {
   }
 
   @Override
-  public void writeTo(long time, IChunkWriter writer) throws IOException {
+  public void writeTo(long time, IChunkWriter writer) {
     if (writer == null) {
       LOG.warn("given IChunkWriter is null, do nothing and return");
       return;

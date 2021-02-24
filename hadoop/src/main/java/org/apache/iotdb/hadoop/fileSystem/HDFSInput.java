@@ -101,22 +101,22 @@ public class HDFSInput implements TsFileInput {
   }
 
   @Override
-  public int read() throws IOException {
+  public int read() {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public int read(byte[] b, int off, int len) throws IOException {
+  public int read(byte[] b, int off, int len) {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public FileChannel wrapAsFileChannel() throws IOException {
+  public FileChannel wrapAsFileChannel() {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public InputStream wrapAsInputStream() throws IOException {
+  public InputStream wrapAsInputStream() {
     return fsDataInputStream;
   }
 
@@ -126,7 +126,7 @@ public class HDFSInput implements TsFileInput {
   }
 
   @Override
-  public int readInt() throws IOException {
+  public int readInt() {
     throw new UnsupportedOperationException();
   }
 

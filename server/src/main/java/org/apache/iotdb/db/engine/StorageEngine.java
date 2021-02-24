@@ -746,7 +746,7 @@ public class StorageEngine implements IService {
     return true;
   }
 
-  public void setTTL(PartialPath storageGroup, long dataTTL) throws StorageEngineException {
+  public void setTTL(PartialPath storageGroup, long dataTTL) {
     // storage group has no data
     if (!processorMap.containsKey(storageGroup)) {
       return;
@@ -853,8 +853,7 @@ public class StorageEngine implements IService {
     processorMap.get(storageGroup).setPartitionVersionToMax(partitionId, newMaxVersion);
   }
 
-  public void removePartitions(PartialPath storageGroupPath, TimePartitionFilter filter)
-      throws StorageEngineException {
+  public void removePartitions(PartialPath storageGroupPath, TimePartitionFilter filter) {
     processorMap.get(storageGroupPath).removePartitions(filter);
   }
 

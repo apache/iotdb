@@ -26,6 +26,8 @@ import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
+import org.apache.iotdb.db.query.aggregation.impl.AvgAggrResult;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -38,7 +40,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 
@@ -124,53 +125,31 @@ public class FilePathUtils {
   }
 
   /**
-   * get paths from group by level, like root.sg1.d2.s0, root.sg1.d1.s0 level=1, return
-   * [root.sg1.*.s0, 0] and pathIndex turns to be [[0, root.sg1.*.s0], [1, root.sg1.*.s0]]
+   * Transform an originalPath to a partial path that satisfies given level. Path nodes exceed the
+   * given level will be replaced by "*", e.g. generatePartialPathByLevel("root.sg.dh.d1.s1", 2)
+   * will return "root.sg.dh.*.s1"
    *
-   * @param plan the original Aggregation Plan
-   * @param pathIndex the mapping from index of aggregations to the result path name
-   * @return
+   * @param originalPath the original timeseries path
+   * @param pathLevel the expected path level
+   * @return result partial path
    */
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public static Map<String, AggregateResult> getPathByLevel(
-      AggregationPlan plan, Map<Integer, String> pathIndex) throws QueryProcessException {
-    // pathGroupByLevel -> count
-    Map<String, AggregateResult> finalPaths = new TreeMap<>();
-
-    List<PartialPath> seriesPaths = plan.getDeduplicatedPaths();
-    List<TSDataType> dataTypes = plan.getDeduplicatedDataTypes();
-    for (int i = 0; i < seriesPaths.size(); i++) {
-      String[] tmpPath;
-      try {
-        tmpPath = MetaUtils.splitPathToDetachedPath(seriesPaths.get(i).getFullPath());
-      } catch (IllegalPathException e) {
-        throw new QueryProcessException(e.getMessage());
-      }
-
-      String key;
-      if (tmpPath.length <= plan.getLevel()) {
-        key = seriesPaths.get(i).getFullPath();
-      } else {
-        StringBuilder path = new StringBuilder();
-        path.append(tmpPath[0]);
-        for (int k = 1; k < tmpPath.length - 1; k++) {
-          if (k <= plan.getLevel()) {
-            path.append(TsFileConstant.PATH_SEPARATOR).append(tmpPath[k]);
-          } else {
-            path.append(TsFileConstant.PATH_SEPARATOR).append(IoTDBConstant.PATH_WILDCARD);
-          }
-        }
-        path.append(TsFileConstant.PATH_SEPARATOR).append(seriesPaths.get(i).getMeasurement());
-        key = path.toString();
-      }
-      AggregateResult aggRet =
-          AggregateResultFactory.getAggrResultByName(
-              plan.getAggregations().get(i), dataTypes.get(i));
-      finalPaths.putIfAbsent(key, aggRet);
-      pathIndex.put(i, key);
+  public static String generatePartialPathByLevel(String originalPath, int pathLevel)
+      throws IllegalPathException {
+    String[] tmpPath = MetaUtils.splitPathToDetachedPath(originalPath);
+    if (tmpPath.length <= pathLevel) {
+      return originalPath;
     }
-
-    return finalPaths;
+    StringBuilder transformedPath = new StringBuilder();
+    transformedPath.append(tmpPath[0]);
+    for (int k = 1; k < tmpPath.length - 1; k++) {
+      if (k <= pathLevel) {
+        transformedPath.append(TsFileConstant.PATH_SEPARATOR).append(tmpPath[k]);
+      } else {
+        transformedPath.append(TsFileConstant.PATH_SEPARATOR).append(IoTDBConstant.PATH_WILDCARD);
+      }
+    }
+    transformedPath.append(TsFileConstant.PATH_SEPARATOR).append(tmpPath[tmpPath.length - 1]);
+    return transformedPath.toString();
   }
 
   /**
@@ -179,14 +158,11 @@ public class FilePathUtils {
    *
    * @param newRecord
    * @param finalPaths
-   * @param pathIndex
    * @return
    */
   public static List<AggregateResult> mergeRecordByPath(
-      AggregationPlan plan,
-      RowRecord newRecord,
-      Map<String, AggregateResult> finalPaths,
-      Map<Integer, String> pathIndex) {
+      AggregationPlan plan, RowRecord newRecord, Map<String, AggregateResult> finalPaths)
+      throws QueryProcessException {
     if (newRecord.getFields().size() < finalPaths.size()) {
       return Collections.emptyList();
     }
@@ -195,43 +171,50 @@ public class FilePathUtils {
       if (newRecord.getFields().get(i) == null) {
         aggregateResultList.add(
             AggregateResultFactory.getAggrResultByName(
-                plan.getAggregations().get(i), plan.getDeduplicatedDataTypes().get(i)));
+                plan.getDeduplicatedAggregations().get(i), plan.getDeduplicatedDataTypes().get(i)));
       } else {
         TSDataType dataType = newRecord.getFields().get(i).getDataType();
         AggregateResult aggRet =
-            AggregateResultFactory.getAggrResultByName(plan.getAggregations().get(i), dataType);
-        switch (dataType) {
-          case TEXT:
-            aggRet.setBinaryValue(newRecord.getFields().get(i).getBinaryV());
-            break;
-          case INT32:
-            aggRet.setIntValue(newRecord.getFields().get(i).getIntV());
-            break;
-          case INT64:
-            aggRet.setLongValue(newRecord.getFields().get(i).getLongV());
-            break;
-          case FLOAT:
-            aggRet.setFloatValue(newRecord.getFields().get(i).getFloatV());
-            break;
-          case DOUBLE:
-            aggRet.setDoubleValue(newRecord.getFields().get(i).getDoubleV());
-            break;
-          case BOOLEAN:
-            aggRet.setBooleanValue(newRecord.getFields().get(i).getBoolV());
-            break;
-          default:
-            throw new UnSupportedDataTypeException(dataType.toString());
+            AggregateResultFactory.getAggrResultByName(
+                plan.getDeduplicatedAggregations().get(i), dataType);
+        if (aggRet.getAggregationType().equals(AggregationType.AVG)) {
+          ((AvgAggrResult) aggRet)
+              .setAvgResult(dataType, newRecord.getFields().get(i).getDoubleV());
+        } else {
+          switch (dataType) {
+            case TEXT:
+              aggRet.setBinaryValue(newRecord.getFields().get(i).getBinaryV());
+              break;
+            case INT32:
+              aggRet.setIntValue(newRecord.getFields().get(i).getIntV());
+              break;
+            case INT64:
+              aggRet.setLongValue(newRecord.getFields().get(i).getLongV());
+              break;
+            case FLOAT:
+              aggRet.setFloatValue(newRecord.getFields().get(i).getFloatV());
+              break;
+            case DOUBLE:
+              aggRet.setDoubleValue(newRecord.getFields().get(i).getDoubleV());
+              break;
+            case BOOLEAN:
+              aggRet.setBooleanValue(newRecord.getFields().get(i).getBoolV());
+              break;
+            default:
+              throw new UnSupportedDataTypeException(dataType.toString());
+          }
         }
         aggregateResultList.add(aggRet);
       }
     }
-    return mergeRecordByPath(aggregateResultList, finalPaths, pathIndex);
+    return mergeRecordByPath(plan, aggregateResultList, finalPaths);
   }
 
   public static List<AggregateResult> mergeRecordByPath(
+      AggregationPlan plan,
       List<AggregateResult> aggResults,
-      Map<String, AggregateResult> finalPaths,
-      Map<Integer, String> pathIndex) {
+      Map<String, AggregateResult> finalPaths)
+      throws QueryProcessException {
     if (aggResults.size() < finalPaths.size()) {
       return Collections.emptyList();
     }
@@ -240,16 +223,24 @@ public class FilePathUtils {
     }
 
     List<AggregateResult> resultSet = new ArrayList<>();
-    for (int i = 0; i < aggResults.size(); i++) {
-      if (aggResults.get(i) != null) {
-        AggregateResult tempAggResult = finalPaths.get(pathIndex.get(i));
-        if (tempAggResult == null) {
-          finalPaths.put(pathIndex.get(i), aggResults.get(i));
-        } else {
-          tempAggResult.merge(aggResults.get(i));
-          finalPaths.put(pathIndex.get(i), tempAggResult);
+    List<PartialPath> dupPaths = plan.getDeduplicatedPaths();
+    try {
+      for (int i = 0; i < aggResults.size(); i++) {
+        if (aggResults.get(i) != null) {
+          String transformedPath =
+              generatePartialPathByLevel(dupPaths.get(i).getFullPath(), plan.getLevel());
+          String key = plan.getDeduplicatedAggregations().get(i) + "(" + transformedPath + ")";
+          AggregateResult tempAggResult = finalPaths.get(key);
+          if (tempAggResult == null) {
+            finalPaths.put(key, aggResults.get(i));
+          } else {
+            tempAggResult.merge(aggResults.get(i));
+            finalPaths.put(key, tempAggResult);
+          }
         }
       }
+    } catch (IllegalPathException e) {
+      throw new QueryProcessException(e.getMessage());
     }
 
     for (Map.Entry<String, AggregateResult> entry : finalPaths.entrySet()) {
