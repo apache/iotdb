@@ -81,7 +81,8 @@ public class MManagerBasicTest {
     try {
       manager.setStorageGroup(new PartialPath("root.laptop"));
     } catch (MetadataException e) {
-      Assert.assertEquals("root.laptop has already been set to storage group", e.getMessage());
+      Assert.assertEquals(
+          "some children of root.laptop have already been set to storage group", e.getMessage());
     }
 
     try {

@@ -419,7 +419,8 @@ public class MTreeTest {
     try {
       root.setStorageGroup(new PartialPath("root.laptop"));
     } catch (MetadataException e) {
-      Assert.assertEquals("root.laptop has already been set to storage group", e.getMessage());
+      Assert.assertEquals(
+          "some children of root.laptop have already been set to storage group", e.getMessage());
     }
     // check timeseries
     assertFalse(root.isPathExist(new PartialPath("root.laptop.d1.s0")));
