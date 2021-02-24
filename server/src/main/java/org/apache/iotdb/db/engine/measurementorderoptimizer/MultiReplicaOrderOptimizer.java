@@ -14,7 +14,7 @@ import java.util.*;
 
 public class MultiReplicaOrderOptimizer {
   private int replicaNum = 3;
-  private int maxIter = 500000;
+  private int maxIter = 5000000;
   private float breakPoint = 1e-2f;
   private List<QueryRecord> queryRecords;
   private static final Logger LOGGER = LoggerFactory.getLogger(MultiReplicaOrderOptimizer.class);
@@ -24,7 +24,7 @@ public class MultiReplicaOrderOptimizer {
   private List<QueryRecord> records;
   private List<Long> chunkSize;
   private final float SA_INIT_TEMPERATURE = 100.0f;
-  private final float COOLING_RATE = 0.999971f;
+  private final float COOLING_RATE = 0.99995f;
   private List<Double> costList = new LinkedList<>();
   private static long CHUNK_SIZE_STEP_NUM = 70000l;
   private final float CHUNK_SIZE_LOWER_BOUND = 0.8f;
