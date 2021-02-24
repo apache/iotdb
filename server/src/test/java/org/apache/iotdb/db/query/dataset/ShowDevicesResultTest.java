@@ -18,11 +18,12 @@
  */
 package org.apache.iotdb.db.query.dataset;
 
+import org.junit.Assert;
+import org.junit.Test;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import org.junit.Assert;
-import org.junit.Test;
 
 public class ShowDevicesResultTest {
 
