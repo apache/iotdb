@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.exception.WriteProcessException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,8 +37,7 @@ public class MemTableManager {
   public static final int MEMTABLE_NUM_FOR_EACH_PARTITION = 4;
   private int currentMemtableNumber = 0;
 
-  private MemTableManager() {
-  }
+  private MemTableManager() {}
 
   public static MemTableManager getInstance() {
     return InstanceHolder.INSTANCE;
@@ -45,37 +45,37 @@ public class MemTableManager {
 
   /**
    * Called when memory control is disabled
-   * @throws WriteProcessException 
+   *
+   * @throws WriteProcessException
    */
-  public synchronized IMemTable getAvailableMemTable(String storageGroup) 
+  public synchronized IMemTable getAvailableMemTable(String storageGroup)
       throws WriteProcessException {
     if (!reachMaxMemtableNumber()) {
       currentMemtableNumber++;
       return new PrimitiveMemTable();
-    } else {
-      // wait until the total number of memtable is less than the system capacity
-      int waitCount = 1;
-      while (true) {
-        if (!reachMaxMemtableNumber()) {
-          currentMemtableNumber++;
-          return new PrimitiveMemTable();
-        }
-        try {
-          wait(WAIT_TIME);
-        } catch (InterruptedException e) {
-          logger.error("{} fails to wait for memtables {}, continue to wait", storageGroup, e);
-          Thread.currentThread().interrupt();
-          throw new WriteProcessException(e);
-        }
-        if (waitCount++ % 10 == 0) {
-          logger.info("{} has waited for a memtable for {}ms", storageGroup, waitCount * WAIT_TIME);
-        }
+    }
+
+    // wait until the total number of memtable is less than the system capacity
+    int waitCount = 1;
+    while (true) {
+      if (!reachMaxMemtableNumber()) {
+        currentMemtableNumber++;
+        return new PrimitiveMemTable();
       }
-      
+      try {
+        wait(WAIT_TIME);
+      } catch (InterruptedException e) {
+        logger.error("{} fails to wait for memtables {}, continue to wait", storageGroup, e);
+        Thread.currentThread().interrupt();
+        throw new WriteProcessException(e);
+      }
+      if (waitCount++ % 10 == 0) {
+        logger.info("{} has waited for a memtable for {}ms", storageGroup, waitCount * WAIT_TIME);
+      }
     }
   }
 
-  public synchronized int getCurrentMemtableNumber() {
+  public int getCurrentMemtableNumber() {
     return currentMemtableNumber;
   }
 
@@ -88,20 +88,16 @@ public class MemTableManager {
     notifyAll();
   }
 
-  /**
-   * Called when memory control is disabled
-   */
+  /** Called when memory control is disabled */
   private boolean reachMaxMemtableNumber() {
     return currentMemtableNumber >= CONFIG.getMaxMemtableNumber();
   }
 
-  /**
-   * Called when memory control is disabled
-   */
+  /** Called when memory control is disabled */
   public synchronized void addOrDeleteStorageGroup(int diff) {
     int maxMemTableNum = CONFIG.getMaxMemtableNumber();
-    maxMemTableNum += MEMTABLE_NUM_FOR_EACH_PARTITION 
-        * CONFIG.getConcurrentWritingTimePartition() * diff;
+    maxMemTableNum +=
+        MEMTABLE_NUM_FOR_EACH_PARTITION * CONFIG.getConcurrentWritingTimePartition() * diff;
     CONFIG.setMaxMemtableNumber(maxMemTableNum);
     notifyAll();
   }
@@ -110,7 +106,6 @@ public class MemTableManager {
 
     private static final MemTableManager INSTANCE = new MemTableManager();
 
-    private InstanceHolder() {
-    }
+    private InstanceHolder() {}
   }
 }

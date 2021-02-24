@@ -18,9 +18,23 @@
  */
 package org.apache.iotdb.db.sync.sender.transfer;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.directories.DirectoryManager;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.sync.conf.SyncSenderConfig;
+import org.apache.iotdb.db.sync.conf.SyncSenderDescriptor;
+import org.apache.iotdb.db.sync.sender.recover.ISyncSenderLogAnalyzer;
+import org.apache.iotdb.db.sync.sender.recover.SyncSenderLogAnalyzer;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.utils.FilePathUtils;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -30,23 +44,10 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
 import java.util.Set;
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.exception.StartupException;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.sync.conf.SyncSenderConfig;
-import org.apache.iotdb.db.sync.conf.SyncSenderDescriptor;
-import org.apache.iotdb.db.sync.sender.recover.ISyncSenderLogAnalyzer;
-import org.apache.iotdb.db.sync.sender.recover.SyncSenderLogAnalyzer;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.db.utils.FilePathUtils;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class SyncClientTest {
 
@@ -57,36 +58,48 @@ public class SyncClientTest {
   private ISyncSenderLogAnalyzer senderLogAnalyzer;
 
   @Before
-  public void setUp()
-      throws IOException, InterruptedException, StartupException, DiskSpaceInsufficientException {
+  public void setUp() throws DiskSpaceInsufficientException {
     EnvironmentUtils.envSetUp();
-    dataDir = new File(DirectoryManager.getInstance().getNextFolderForSequenceFile())
-        .getParentFile().getAbsolutePath();
+    dataDir =
+        new File(DirectoryManager.getInstance().getNextFolderForSequenceFile())
+            .getParentFile()
+            .getAbsolutePath();
     config.update(dataDir);
     senderLogAnalyzer = new SyncSenderLogAnalyzer(config.getSenderFolderPath());
   }
 
   @After
-  public void tearDown() throws InterruptedException, IOException, StorageEngineException {
+  public void tearDown() throws IOException, StorageEngineException {
     EnvironmentUtils.cleanEnv();
   }
 
   @Test
   public void makeFileSnapshot() throws IOException {
-    Map<String, Set<File>> allFileList = new HashMap<>();
+    Map<String, Map<Long, Map<Long, Set<File>>>> allFileList = new HashMap<>();
 
     Random r = new Random(0);
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 5; j++) {
         if (!allFileList.containsKey(String.valueOf(i))) {
-          allFileList.put(String.valueOf(i), new HashSet<>());
+          allFileList
+              .computeIfAbsent(String.valueOf(i), k -> new HashMap<>())
+              .computeIfAbsent(0L, k -> new HashMap<>())
+              .computeIfAbsent(0L, k -> new HashSet<>());
         }
         String rand = String.valueOf(r.nextInt(10000));
-        String fileName = FilePathUtils.regularizePath(dataDir) + IoTDBConstant.SEQUENCE_FLODER_NAME
-            + File.separator + i
-            + File.separator + rand;
+        String fileName =
+            FilePathUtils.regularizePath(dataDir)
+                + IoTDBConstant.SEQUENCE_FLODER_NAME
+                + File.separator
+                + i
+                + File.separator
+                + "0"
+                + File.separator
+                + "0"
+                + File.separator
+                + rand;
         File file = new File(fileName);
-        allFileList.get(String.valueOf(i)).add(file);
+        allFileList.get(String.valueOf(i)).get(0L).get(0L).add(file);
         if (!file.getParentFile().exists()) {
           file.getParentFile().mkdirs();
         }
@@ -104,11 +117,15 @@ public class SyncClientTest {
     File sequenceFile = new File(dataDir, IoTDBConstant.SEQUENCE_FLODER_NAME);
     for (File sgFile : sequenceFile.listFiles()) {
       dataFileMap.putIfAbsent(sgFile.getName(), new HashSet<>());
-      for (File tsfile : sgFile.listFiles()) {
-        if (!tsfile.getName().endsWith(TsFileResource.RESOURCE_SUFFIX)) {
-          ((SyncClient)manager).makeFileSnapshot(tsfile);
+      for (File vgFile : sgFile.listFiles()) {
+        for (File trFile : vgFile.listFiles()) {
+          for (File tsfile : trFile.listFiles()) {
+            if (!tsfile.getName().endsWith(TsFileResource.RESOURCE_SUFFIX)) {
+              ((SyncClient) manager).makeFileSnapshot(tsfile);
+            }
+            dataFileMap.get(sgFile.getName()).add(tsfile.getName());
+          }
         }
-        dataFileMap.get(sgFile.getName()).add(tsfile.getName());
       }
     }
 
@@ -118,8 +135,12 @@ public class SyncClientTest {
     Map<String, Set<String>> snapFileMap = new HashMap<>();
     for (File sgFile : new File(config.getSnapshotPath()).listFiles()) {
       snapFileMap.putIfAbsent(sgFile.getName(), new HashSet<>());
-      for (File snapshotTsfile : sgFile.listFiles()) {
-        snapFileMap.get(sgFile.getName()).add(snapshotTsfile.getName());
+      for (File vgFile : sgFile.listFiles()) {
+        for (File trFile : vgFile.listFiles()) {
+          for (File snapshotTsfile : trFile.listFiles()) {
+            snapFileMap.get(sgFile.getName()).add(snapshotTsfile.getName());
+          }
+        }
       }
     }
 

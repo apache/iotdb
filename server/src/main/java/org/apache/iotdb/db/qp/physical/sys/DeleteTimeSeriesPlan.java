@@ -18,19 +18,26 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 public class DeleteTimeSeriesPlan extends PhysicalPlan {
 
   private List<PartialPath> deletePathList;
+  private Map<Integer, TSStatus> results = new TreeMap<>();
 
   public DeleteTimeSeriesPlan(List<PartialPath> deletePathList) {
     super(false, Operator.OperatorType.DELETE_TIMESERIES);
@@ -88,5 +95,21 @@ public class DeleteTimeSeriesPlan extends PhysicalPlan {
   @Override
   public void setPaths(List<PartialPath> fullPaths) {
     this.deletePathList = fullPaths;
+  }
+
+  public Map<Integer, TSStatus> getResults() {
+    return results;
+  }
+
+  public TSStatus[] getFailingStatus() {
+    if (results.isEmpty()) {
+      return new TSStatus[0];
+    }
+    TSStatus[] failingStatus = new TSStatus[deletePathList.size()];
+    Arrays.fill(failingStatus, RpcUtils.SUCCESS_STATUS);
+    for (Map.Entry<Integer, TSStatus> status : results.entrySet()) {
+      failingStatus[status.getKey()] = status.getValue();
+    }
+    return failingStatus;
   }
 }

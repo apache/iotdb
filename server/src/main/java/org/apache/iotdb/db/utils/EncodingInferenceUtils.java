@@ -30,9 +30,7 @@ public class EncodingInferenceUtils {
     // util class
   }
 
-  /**
-   * Get default encoding by dataType
-   */
+  /** Get default encoding by dataType */
   public static TSEncoding getDefaultEncoding(TSDataType dataType) {
     IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
     switch (dataType) {
@@ -50,8 +48,7 @@ public class EncodingInferenceUtils {
         return conf.getDefaultTextEncoding();
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", dataType.toString()));
+            String.format("Data type %s is not supported.", dataType));
     }
-
   }
 }

@@ -33,9 +33,7 @@ public interface ILoadLogger {
   String LOAD_DELETED_FILE_NAME_START = "load deleted files start";
   String LOAD_TSFILE_START = "load tsfile start";
 
-  /**
-   * Start to load deleted files.
-   */
+  /** Start to load deleted files. */
   void startLoadDeletedFiles() throws IOException;
 
   /**
@@ -45,9 +43,7 @@ public interface ILoadLogger {
    */
   void finishLoadDeletedFile(File file) throws IOException;
 
-  /**
-   * Start to load tsfiles
-   */
+  /** Start to load tsfiles */
   void startLoadTsFiles() throws IOException;
 
   /**
@@ -58,5 +54,4 @@ public interface ILoadLogger {
   void finishLoadTsfile(File file) throws IOException;
 
   void close() throws IOException;
-
 }

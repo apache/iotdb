@@ -33,6 +33,7 @@ import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.reader.series.AbstractFileSeriesReader;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -70,11 +71,11 @@ public class ReaderTest {
   public void readTest() throws IOException {
     int count = 0;
     CachedChunkLoaderImpl seriesChunkLoader = new CachedChunkLoaderImpl(fileReader);
-    List<ChunkMetadata> chunkMetadataList = metadataQuerierByFile
-        .getChunkMetaDataList(new Path("d1", "s1"));
+    List<ChunkMetadata> chunkMetadataList =
+        metadataQuerierByFile.getChunkMetaDataList(new Path("d1", "s1"));
 
-    AbstractFileSeriesReader seriesReader = new FileSeriesReader(seriesChunkLoader,
-        chunkMetadataList, null);
+    AbstractFileSeriesReader seriesReader =
+        new FileSeriesReader(seriesChunkLoader, chunkMetadataList, null);
     long startTime = TsFileGeneratorForTest.START_TIMESTAMP;
     BatchData data = null;
 
@@ -106,16 +107,18 @@ public class ReaderTest {
   @Test
   public void readWithFilterTest() throws IOException {
     CachedChunkLoaderImpl seriesChunkLoader = new CachedChunkLoaderImpl(fileReader);
-    List<ChunkMetadata> chunkMetadataList = metadataQuerierByFile
-        .getChunkMetaDataList(new Path("d1", "s1"));
+    List<ChunkMetadata> chunkMetadataList =
+        metadataQuerierByFile.getChunkMetaDataList(new Path("d1", "s1"));
 
-    Filter filter = new FilterFactory().or(
-        FilterFactory.and(TimeFilter.gt(1480563570029L), TimeFilter.lt(1480563570033L)),
-        FilterFactory.and(ValueFilter.gtEq(9520331), ValueFilter.ltEq(9520361)));
-    SingleSeriesExpression singleSeriesExp = new SingleSeriesExpression(new Path("d1", "s1"), filter);
-    AbstractFileSeriesReader seriesReader = new FileSeriesReader(seriesChunkLoader,
-        chunkMetadataList,
-        singleSeriesExp.getFilter());
+    Filter filter =
+        new FilterFactory()
+            .or(
+                FilterFactory.and(TimeFilter.gt(1480563570029L), TimeFilter.lt(1480563570033L)),
+                FilterFactory.and(ValueFilter.gtEq(9520331), ValueFilter.ltEq(9520361)));
+    SingleSeriesExpression singleSeriesExp =
+        new SingleSeriesExpression(new Path("d1", "s1"), filter);
+    AbstractFileSeriesReader seriesReader =
+        new FileSeriesReader(seriesChunkLoader, chunkMetadataList, singleSeriesExp.getFilter());
 
     BatchData data;
 

@@ -19,23 +19,6 @@
 
 package org.apache.iotdb.cluster;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.DefaultParser;
-import org.apache.commons.cli.Option;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.jdbc.Config;
@@ -59,6 +42,13 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -68,6 +58,18 @@ import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @SuppressWarnings("java:S106")
 public class ClientMain {
@@ -91,81 +93,76 @@ public class ClientMain {
     options.addOption(new Option(PARAM_QUERY, "Perform query"));
     options.addOption(new Option(PARAM_DELETE_SERIES, "Perform deleting timeseries"));
     options.addOption(new Option(PARAM_DELETE_STORAGE_GROUP, "Perform deleting storage group"));
-    options.addOption(new Option(PARAM_QUERY_PORTS, true, "Ports to query (ip is currently "
-        + "localhost)"));
+    options.addOption(
+        new Option(PARAM_QUERY_PORTS, true, "Ports to query (ip is currently " + "localhost)"));
     options.addOption(new Option(PARAM_INSERT_PORT, true, "Port to perform insertion"));
     options.addOption(new Option(PARAM_BATCH, "Test batch statement"));
   }
 
   private static Map<String, TSStatus> failedQueries;
 
-  private static final String[] STORAGE_GROUPS = new String[]{
-      "root.beijing",
-      "root.shanghai",
-      "root.guangzhou",
-      "root.shenzhen",
-  };
+  private static final String[] STORAGE_GROUPS =
+      new String[] {
+        "root.beijing", "root.shanghai", "root.guangzhou", "root.shenzhen",
+      };
 
-  private static final String[] DEVICES = new String[]{
-      "root.beijing.d1",
-      "root.shanghai.d1",
-      "root.guangzhou.d1",
-      "root.shenzhen.d1",
-  };
+  private static final String[] DEVICES =
+      new String[] {
+        "root.beijing.d1", "root.shanghai.d1", "root.guangzhou.d1", "root.shenzhen.d1",
+      };
 
-  private static final String[] MEASUREMENTS = new String[]{
-      "s1"
-  };
+  private static final String[] MEASUREMENTS = new String[] {"s1"};
 
-  private static final TSDataType[] DATA_TYPES = new TSDataType[]{
-      TSDataType.DOUBLE
-  };
+  private static final TSDataType[] DATA_TYPES = new TSDataType[] {TSDataType.DOUBLE};
 
   private static List<MeasurementSchema> schemas;
 
-  private static final String[] DATA_QUERIES = new String[]{
-      // raw data multi series
-      "SELECT * FROM root",
-      "SELECT * FROM root WHERE time <= 691200000",
-      "SELECT * FROM root WHERE time >= 391200000 and time <= 691200000",
-      "SELECT * FROM root.*.* WHERE s1 <= 0.7",
-      // raw data single series
-      "SELECT s1 FROM root.beijing.d1",
-      "SELECT s1 FROM root.shanghai.d1",
-      "SELECT s1 FROM root.guangzhou.d1",
-      "SELECT s1 FROM root.shenzhen.d1",
-      // aggregation
-      "SELECT count(s1) FROM root.*.*",
-      "SELECT avg(s1) FROM root.*.*",
-      "SELECT sum(s1) FROM root.*.*",
-      "SELECT max_value(s1) FROM root.*.*",
-      "SELECT count(s1) FROM root.*.* where time <= 691200000",
-      "SELECT count(s1) FROM root.*.* where s1 <= 0.7",
-      // group by device
-      "SELECT * FROM root GROUP BY DEVICE",
-      // fill
-      "SELECT s1 FROM root.beijing.d1 WHERE time = 86400000 FILL (DOUBLE[PREVIOUS,1d])",
-      "SELECT s1 FROM root.shanghai.d1 WHERE time = 86400000 FILL (DOUBLE[LINEAR,1d,1d])",
-      "SELECT s1 FROM root.guangzhou.d1 WHERE time = 126400000 FILL (DOUBLE[PREVIOUS,1d])",
-      "SELECT s1 FROM root.shenzhen.d1 WHERE time = 126400000 FILL (DOUBLE[LINEAR,1d,1d])",
-      // group by
-      "SELECT COUNT(*) FROM root.*.* GROUP BY ([0, 864000000), 3d, 3d)",
-      "SELECT AVG(*) FROM root.*.* WHERE s1 <= 0.7 GROUP BY ([0, 864000000), 3d, 3d)",
-      // last
-      "SELECT LAST s1 FROM root.*.*",
-  };
+  private static final String[] DATA_QUERIES =
+      new String[] {
+        // raw data multi series
+        "SELECT * FROM root",
+        "SELECT * FROM root WHERE time <= 691200000",
+        "SELECT * FROM root WHERE time >= 391200000 and time <= 691200000",
+        "SELECT * FROM root.*.* WHERE s1 <= 0.7",
+        // raw data single series
+        "SELECT s1 FROM root.beijing.d1",
+        "SELECT s1 FROM root.shanghai.d1",
+        "SELECT s1 FROM root.guangzhou.d1",
+        "SELECT s1 FROM root.shenzhen.d1",
+        // aggregation
+        "SELECT count(s1) FROM root.*.*",
+        "SELECT avg(s1) FROM root.*.*",
+        "SELECT sum(s1) FROM root.*.*",
+        "SELECT max_value(s1) FROM root.*.*",
+        "SELECT count(s1) FROM root.*.* where time <= 691200000",
+        "SELECT count(s1) FROM root.*.* where s1 <= 0.7",
+        // group by device
+        "SELECT * FROM root GROUP BY DEVICE",
+        // fill
+        "SELECT s1 FROM root.beijing.d1 WHERE time = 86400000 FILL (DOUBLE[PREVIOUS,1d])",
+        "SELECT s1 FROM root.shanghai.d1 WHERE time = 86400000 FILL (DOUBLE[LINEAR,1d,1d])",
+        "SELECT s1 FROM root.guangzhou.d1 WHERE time = 126400000 FILL (DOUBLE[PREVIOUS,1d])",
+        "SELECT s1 FROM root.shenzhen.d1 WHERE time = 126400000 FILL (DOUBLE[LINEAR,1d,1d])",
+        // group by
+        "SELECT COUNT(*) FROM root.*.* GROUP BY ([0, 864000000), 3d, 3d)",
+        "SELECT AVG(*) FROM root.*.* WHERE s1 <= 0.7 GROUP BY ([0, 864000000), 3d, 3d)",
+        // last
+        "SELECT LAST s1 FROM root.*.*",
+      };
 
-  private static final String[] META_QUERY = new String[]{
-      "SHOW STORAGE GROUP",
-      "SHOW TIMESERIES root",
-      "COUNT TIMESERIES root",
-      "COUNT TIMESERIES root GROUP BY LEVEL=2",
-      "SHOW DEVICES",
-      "SHOW TIMESERIES root limit 1 offset 1",
-  };
+  private static final String[] META_QUERY =
+      new String[] {
+        "SHOW STORAGE GROUP",
+        "SHOW TIMESERIES root",
+        "COUNT TIMESERIES root",
+        "COUNT TIMESERIES root GROUP BY LEVEL=2",
+        "SHOW DEVICES",
+        "SHOW TIMESERIES root limit 1 offset 1",
+      };
 
   public static void main(String[] args)
-      throws TException, StatementExecutionException, IoTDBConnectionException, ParseException, SQLException, ClassNotFoundException {
+      throws TException, StatementExecutionException, IoTDBConnectionException, ParseException,
+          SQLException, ClassNotFoundException {
     CommandLineParser parser = new DefaultParser();
     CommandLine commandLine = parser.parse(options, args);
     boolean noOption = args.length == 0;
@@ -173,8 +170,7 @@ public class ClientMain {
     failedQueries = new HashMap<>();
     prepareSchema();
 
-
-    if (commandLine.hasOption(PARAM_INSERT_PORT)){
+    if (commandLine.hasOption(PARAM_INSERT_PORT)) {
       port = Integer.parseInt(commandLine.getOptionValue(PARAM_INSERT_PORT));
     }
 
@@ -207,7 +203,7 @@ public class ClientMain {
         queryPorts = parseIntArray(commandLine.getOptionValue(PARAM_QUERY_PORTS));
       }
       if (queryPorts == null) {
-        queryPorts = new int[]{55560, 55561, 55562};
+        queryPorts = new int[] {55560, 55561, 55562};
       }
       for (int queryPort : queryPorts) {
         System.out.println("Test port: " + queryPort);
@@ -226,8 +222,7 @@ public class ClientMain {
     }
   }
 
-  private static void doDeleteSeries(boolean noOption, CommandLine commandLine)
-      throws TException {
+  private static void doDeleteSeries(boolean noOption, CommandLine commandLine) throws TException {
     if (noOption || commandLine.hasOption(PARAM_DELETE_SERIES)) {
       System.out.println("Test delete timeseries");
       Client client = getClient(ip, port);
@@ -269,8 +264,9 @@ public class ClientMain {
   }
 
   private static long connectClient(Client client) throws TException {
-    TSOpenSessionReq openReq = new TSOpenSessionReq(TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3,
-        ZoneId.systemDefault().getId());
+    TSOpenSessionReq openReq =
+        new TSOpenSessionReq(
+            TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3, ZoneId.systemDefault().getId());
     openReq.setUsername("root");
     openReq.setPassword("root");
     TSOpenSessionResp openResp = client.openSession(openReq);
@@ -283,8 +279,9 @@ public class ClientMain {
     TTransport transport = RpcTransportFactory.INSTANCE.getTransport(new TSocket(ip, port));
     transport.open();
     TProtocol protocol =
-        IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable() ?
-            new TCompactProtocol(transport) : new TBinaryProtocol(transport);
+        IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable()
+            ? new TCompactProtocol(transport)
+            : new TBinaryProtocol(transport);
     return factory.getClient(protocol);
   }
 
@@ -293,8 +290,9 @@ public class ClientMain {
     for (String device : DEVICES) {
       for (int i = 0; i < MEASUREMENTS.length; i++) {
         String measurement = MEASUREMENTS[i];
-        schemas.add(new MeasurementSchema(device + IoTDBConstant.PATH_SEPARATOR + measurement,
-            DATA_TYPES[i]));
+        schemas.add(
+            new MeasurementSchema(
+                device + IoTDBConstant.PATH_SEPARATOR + measurement, DATA_TYPES[i]));
       }
     }
   }
@@ -316,8 +314,9 @@ public class ClientMain {
     if (logger.isInfoEnabled()) {
       logger.info("{ {} }", query);
     }
-    TSExecuteStatementResp resp = client
-        .executeQueryStatement(new TSExecuteStatementReq(sessionId, query, statementId).setFetchSize(1000));
+    TSExecuteStatementResp resp =
+        client.executeQueryStatement(
+            new TSExecuteStatementReq(sessionId, query, statementId).setFetchSize(1000));
     if (resp.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       failedQueries.put(query, resp.status);
       return;
@@ -328,9 +327,18 @@ public class ClientMain {
       logger.info(resp.columns.toString());
     }
 
-    SessionDataSet dataSet = new SessionDataSet(query, resp.getColumns(),
-        resp.getDataTypeList(), resp.columnNameIndexMap, queryId, client, sessionId,
-        resp.queryDataSet, false);
+    SessionDataSet dataSet =
+        new SessionDataSet(
+            query,
+            resp.getColumns(),
+            resp.getDataTypeList(),
+            resp.columnNameIndexMap,
+            queryId,
+            statementId,
+            client,
+            sessionId,
+            resp.queryDataSet,
+            false);
 
     while (dataSet.hasNext()) {
       if (logger.isInfoEnabled()) {
@@ -350,7 +358,7 @@ public class ClientMain {
       logger.info(client.deleteStorageGroups(sessionId, Arrays.asList(STORAGE_GROUPS)).toString());
     }
 
-    testQuery(client, sessionId, new String[]{"SELECT * FROM root"});
+    testQuery(client, sessionId, new String[] {"SELECT * FROM root"});
   }
 
   private static void registerTimeseries(long sessionId, Client client) throws TException {
@@ -433,9 +441,9 @@ public class ClientMain {
 
   private static void testBatch(String ip, int port) throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + String.format("%s:%d/", ip, port), "root",
-            "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + String.format("%s:%d/", ip, port), "root", "root");
         Statement statement = connection.createStatement()) {
 
       statement.addBatch("SET STORAGE GROUP TO root.batch1");
@@ -453,7 +461,7 @@ public class ClientMain {
           for (int i = 0; i < colNum; i++) {
             stringBuilder.append(set.getString(i + 1)).append(",");
           }
-          System.out.println(stringBuilder.toString());
+          System.out.println(stringBuilder);
         }
       }
     }

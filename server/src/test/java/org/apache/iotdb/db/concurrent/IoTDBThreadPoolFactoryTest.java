@@ -18,8 +18,11 @@
  */
 package org.apache.iotdb.db.concurrent;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import org.apache.thrift.server.TThreadPoolServer;
+import org.apache.thrift.server.TThreadPoolServer.Args;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -28,11 +31,9 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.thrift.server.TThreadPoolServer;
-import org.apache.thrift.server.TThreadPoolServer.Args;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class IoTDBThreadPoolFactoryTest {
 
@@ -46,17 +47,16 @@ public class IoTDBThreadPoolFactoryTest {
   }
 
   @After
-  public void tearDown() throws Exception {
-  }
+  public void tearDown() throws Exception {}
 
   @Test
-  public void testNewFixedThreadPool() throws InterruptedException, ExecutionException {
+  public void testNewFixedThreadPool() {
     String reason = "(can be ignored in Tests) NewFixedThreadPool";
     Thread.UncaughtExceptionHandler handler = new TestExceptionHandler(reason);
     int threadCount = 4;
     latch = new CountDownLatch(threadCount);
-    ExecutorService exec = IoTDBThreadPoolFactory
-        .newFixedThreadPool(threadCount / 2, POOL_NAME, handler);
+    ExecutorService exec =
+        IoTDBThreadPoolFactory.newFixedThreadPool(threadCount / 2, POOL_NAME, handler);
     for (int i = 0; i < threadCount; i++) {
       Runnable task = new TestThread(reason);
       exec.execute(task);
@@ -70,7 +70,7 @@ public class IoTDBThreadPoolFactoryTest {
   }
 
   @Test
-  public void testNewSingleThreadExecutor() throws InterruptedException {
+  public void testNewSingleThreadExecutor() {
     String reason = "(can be ignored in Tests)NewSingleThreadExecutor";
     Thread.UncaughtExceptionHandler handler = new TestExceptionHandler(reason);
     int threadCount = 2;
@@ -89,7 +89,7 @@ public class IoTDBThreadPoolFactoryTest {
   }
 
   @Test
-  public void testNewCachedThreadPool() throws InterruptedException {
+  public void testNewCachedThreadPool() {
     String reason = "(can be ignored in Tests) NewCachedThreadPool";
     Thread.UncaughtExceptionHandler handler = new TestExceptionHandler(reason);
     int threadCount = 4;
@@ -113,8 +113,8 @@ public class IoTDBThreadPoolFactoryTest {
     Thread.UncaughtExceptionHandler handler = new TestExceptionHandler(reason);
     int threadCount = 2;
     latch = new CountDownLatch(threadCount);
-    ScheduledExecutorService exec = IoTDBThreadPoolFactory
-        .newSingleThreadScheduledExecutor(POOL_NAME, handler);
+    ScheduledExecutorService exec =
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(POOL_NAME, handler);
     for (int i = 0; i < threadCount; i++) {
       Runnable task = new TestThread(reason);
       ScheduledFuture<?> future = exec.scheduleAtFixedRate(task, 0, 1, TimeUnit.SECONDS);
@@ -140,8 +140,8 @@ public class IoTDBThreadPoolFactoryTest {
     Thread.UncaughtExceptionHandler handler = new TestExceptionHandler(reason);
     int threadCount = 4;
     latch = new CountDownLatch(threadCount);
-    ScheduledExecutorService exec = IoTDBThreadPoolFactory
-        .newScheduledThreadPool(threadCount / 2, POOL_NAME, handler);
+    ScheduledExecutorService exec =
+        IoTDBThreadPoolFactory.newScheduledThreadPool(threadCount / 2, POOL_NAME, handler);
     for (int i = 0; i < threadCount; i++) {
       Runnable task = new TestThread(reason);
       ScheduledFuture<?> future = exec.scheduleAtFixedRate(task, 0, 1, TimeUnit.SECONDS);
@@ -162,7 +162,7 @@ public class IoTDBThreadPoolFactoryTest {
   }
 
   @Test
-  public void testCreateJDBCClientThreadPool() throws InterruptedException {
+  public void testCreateJDBCClientThreadPool() {
     String reason = "(can be ignored in Tests) CreateJDBCClientThreadPool";
     TThreadPoolServer.Args args = new Args(null);
     args.maxWorkerThreads = 4;
@@ -172,8 +172,8 @@ public class IoTDBThreadPoolFactoryTest {
     Thread.UncaughtExceptionHandler handler = new TestExceptionHandler(reason);
     int threadCount = 4;
     latch = new CountDownLatch(threadCount);
-    ExecutorService exec = IoTDBThreadPoolFactory
-        .createThriftRpcClientThreadPool(args, POOL_NAME, handler);
+    ExecutorService exec =
+        IoTDBThreadPoolFactory.createThriftRpcClientThreadPool(args, POOL_NAME, handler);
     for (int i = 0; i < threadCount; i++) {
       Runnable task = new TestThread(reason);
       exec.execute(task);
@@ -214,6 +214,5 @@ public class IoTDBThreadPoolFactoryTest {
     public void runMayThrow() {
       throw new RuntimeException(name);
     }
-
   }
 }

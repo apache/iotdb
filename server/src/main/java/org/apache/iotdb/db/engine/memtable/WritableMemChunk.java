@@ -154,6 +154,13 @@ public class WritableMemChunk implements IWritableMemChunk {
 
   @Override
   public synchronized TVList getSortedTVListForQuery() {
+    sortTVList();
+    // increase reference count
+    list.increaseReferenceCount();
+    return list;
+  }
+
+  private void sortTVList() {
     // check reference count
     if ((list.getReferenceCount() > 0 && !list.isSorted())) {
       list = list.clone();
@@ -162,24 +169,11 @@ public class WritableMemChunk implements IWritableMemChunk {
     if (!list.isSorted()) {
       list.sort();
     }
-
-    // increase reference count
-    list.increaseReferenceCount();
-
-    return list;
   }
 
   @Override
   public synchronized TVList getSortedTVListForFlush() {
-    // check reference count
-    if ((list.getReferenceCount() > 0 && !list.isSorted())) {
-      list = list.clone();
-    }
-
-    if (!list.isSorted()) {
-      list.sort();
-    }
-
+    sortTVList();
     return list;
   }
 
@@ -214,9 +208,11 @@ public class WritableMemChunk implements IWritableMemChunk {
     StringBuilder out = new StringBuilder("MemChunk Size: " + size + System.lineSeparator());
     if (size != 0) {
       out.append("Data type:").append(schema.getType()).append(System.lineSeparator());
-      out.append("First point:").append(getSortedTVListForQuery().getTimeValuePair(0))
+      out.append("First point:")
+          .append(getSortedTVListForQuery().getTimeValuePair(0))
           .append(System.lineSeparator());
-      out.append("Last point:").append(getSortedTVListForQuery().getTimeValuePair(size - 1))
+      out.append("Last point:")
+          .append(getSortedTVListForQuery().getTimeValuePair(size - 1))
           .append(System.lineSeparator());
     }
     return out.toString();

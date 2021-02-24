@@ -22,9 +22,7 @@ import org.apache.iotdb.db.exception.IoTDBException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-/**
- * This exception is thrown while meeting error in optimizing logical operator.
- */
+/** This exception is thrown while meeting error in optimizing logical operator. */
 public class LogicalOptimizeException extends LogicalOperatorException {
 
   private static final long serialVersionUID = -7098092782689670064L;
@@ -34,8 +32,11 @@ public class LogicalOptimizeException extends LogicalOperatorException {
   }
 
   public LogicalOptimizeException(String filterOperator, int tokenInt) {
-    super(String.format("Unknown token in [%s]: [%s], [%s].", filterOperator, tokenInt,
-        SQLConstant.tokenNames.get(tokenInt)), TSStatusCode.LOGICAL_OPTIMIZE_ERROR.getStatusCode());
+    super(
+        String.format(
+            "Unknown token in [%s]: [%s], [%s].",
+            filterOperator, tokenInt, SQLConstant.tokenNames.get(tokenInt)),
+        TSStatusCode.LOGICAL_OPTIMIZE_ERROR.getStatusCode());
   }
 
   public LogicalOptimizeException(IoTDBException e) {

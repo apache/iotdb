@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.db.query.udf.datastructure.primitive;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.query.udf.datastructure.Cache;
+
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 
 public class ElasticSerializableIntList implements IntList {
 
@@ -77,33 +78,22 @@ public class ElasticSerializableIntList implements IntList {
     }
   }
 
-  /**
-   * <b>Note: It's not thread safe.</b>
-   */
-  private class LRUCache {
-
-    private final int capacity;
-    private final LinkedList<Integer> cache;
+  private class LRUCache extends Cache {
 
     LRUCache(int capacity) {
-      this.capacity = capacity;
-      cache = new LinkedList<>();
+      super(capacity);
     }
 
     SerializableIntList get(int targetIndex) throws IOException {
-      if (!cache.removeFirstOccurrence(targetIndex)) {
-        if (capacity <= cache.size()) {
-          int lastIndex = cache.removeLast();
+      if (!removeFirstOccurrence(targetIndex)) {
+        if (cacheCapacity <= cacheSize) {
+          int lastIndex = removeLast();
           intLists.get(lastIndex).serialize();
         }
         intLists.get(targetIndex).deserialize();
       }
-      cache.addFirst(targetIndex);
+      addFirst(targetIndex);
       return intLists.get(targetIndex);
-    }
-
-    void clear() {
-      cache.clear();
     }
   }
 }

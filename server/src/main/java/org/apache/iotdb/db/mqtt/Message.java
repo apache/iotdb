@@ -20,54 +20,57 @@ package org.apache.iotdb.db.mqtt;
 
 import java.util.List;
 
-/**
- * Message describes the information sometime sent from the devices.
- */
+/** Message describes the information sometime sent from the devices. */
 public class Message {
-    private String device;
-    private Long timestamp;
-    private List<String> measurements;
-    private List<String> values;
+  private String device;
+  private Long timestamp;
+  private List<String> measurements;
+  private List<String> values;
 
-    public String getDevice() {
-        return device;
-    }
+  public String getDevice() {
+    return device;
+  }
 
-    public void setDevice(String device) {
-        this.device = device;
-    }
+  public void setDevice(String device) {
+    this.device = device;
+  }
 
-    public Long getTimestamp() {
-        return timestamp;
-    }
+  public Long getTimestamp() {
+    return timestamp;
+  }
 
-    public void setTimestamp(Long timestamp) {
-        this.timestamp = timestamp;
-    }
+  public void setTimestamp(Long timestamp) {
+    this.timestamp = timestamp;
+  }
 
-    public List<String> getMeasurements() {
-        return measurements;
-    }
+  public List<String> getMeasurements() {
+    return measurements;
+  }
 
-    public void setMeasurements(List<String> measurements) {
-        this.measurements = measurements;
-    }
+  public void setMeasurements(List<String> measurements) {
+    this.measurements = measurements;
+  }
 
-    public List<String> getValues() {
-        return values;
-    }
+  public List<String> getValues() {
+    return values;
+  }
 
-    public void setValues(List<String> values) {
-        this.values = values;
-    }
+  public void setValues(List<String> values) {
+    this.values = values;
+  }
 
-    @Override
-    public String toString() {
-        return "Message{" +
-                "device='" + device + '\'' +
-                ", timestamp=" + timestamp +
-                ", measurements=" + measurements +
-                ", values=" + values +
-                '}';
-    }
+  @Override
+  public String toString() {
+    return "Message{"
+        + "device='"
+        + device
+        + '\''
+        + ", timestamp="
+        + timestamp
+        + ", measurements="
+        + measurements
+        + ", values="
+        + values
+        + '}';
+  }
 }

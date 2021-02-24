@@ -18,14 +18,13 @@
  */
 package org.apache.iotdb.db.auth.user;
 
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.entity.User;
 
-/**
- * This interface provides accesses to users.
- */
+import java.util.List;
+import java.util.Map;
+
+/** This interface provides accesses to users. */
 public interface IUserManager {
 
   /**
@@ -59,35 +58,33 @@ public interface IUserManager {
   /**
    * Grant a privilege on a seriesPath to a user.
    *
-   * @param username    The username of the user to which the privilege should be added.
-   * @param path        The seriesPath on which the privilege takes effect. If the privilege is a
-   *                    seriesPath-free privilege, this should be "root".
+   * @param username The username of the user to which the privilege should be added.
+   * @param path The seriesPath on which the privilege takes effect. If the privilege is a
+   *     seriesPath-free privilege, this should be "root".
    * @param privilegeId An integer that represents a privilege.
    * @return True if the permission is successfully added, false if the permission already exists.
-   * @throws AuthException If the user does not exist or the privilege or the seriesPath is
-   *                       illegal.
+   * @throws AuthException If the user does not exist or the privilege or the seriesPath is illegal.
    */
   boolean grantPrivilegeToUser(String username, String path, int privilegeId) throws AuthException;
 
   /**
    * Revoke a privilege on seriesPath from a user.
    *
-   * @param username    The username of the user from which the privilege should be removed.
-   * @param path        The seriesPath on which the privilege takes effect. If the privilege is a
-   *                    seriesPath-free privilege, this should be "root".
+   * @param username The username of the user from which the privilege should be removed.
+   * @param path The seriesPath on which the privilege takes effect. If the privilege is a
+   *     seriesPath-free privilege, this should be "root".
    * @param privilegeId An integer that represents a privilege.
    * @return True if the permission is successfully revoked, false if the permission does not
-   * exists.
-   * @throws AuthException If the user does not exist or the privilege or the seriesPath is
-   *                       illegal.
+   *     exists.
+   * @throws AuthException If the user does not exist or the privilege or the seriesPath is illegal.
    */
-  boolean revokePrivilegeFromUser(String username, String path,
-      int privilegeId) throws AuthException;
+  boolean revokePrivilegeFromUser(String username, String path, int privilegeId)
+      throws AuthException;
 
   /**
    * Modify the password of a user.
    *
-   * @param username    The user whose password is to be modified.
+   * @param username The user whose password is to be modified.
    * @param newPassword The new password.
    * @return True if the password is successfully modified, false if the new password is illegal.
    * @throws AuthException If the user does not exists.
@@ -114,9 +111,7 @@ public interface IUserManager {
    */
   boolean revokeRoleFromUser(String roleName, String username) throws AuthException;
 
-  /**
-   * Re-initialize this object.
-   */
+  /** Re-initialize this object. */
   void reset() throws AuthException;
 
   /**
@@ -144,16 +139,12 @@ public interface IUserManager {
    */
   void setUserUseWaterMark(String userName, boolean useWaterMark) throws AuthException;
 
-
   /**
-   * clear all old users info, replace the old users with the new one. The caller should
-   * guarantee that no other methods of this interface are invoked concurrently when this method
-   * is called.
+   * clear all old users info, replace the old users with the new one. The caller should guarantee
+   * that no other methods of this interface are invoked concurrently when this method is called.
    *
    * @param users new users info
    * @throws AuthException
    */
   void replaceAllUsers(Map<String, User> users) throws AuthException;
-
-
 }

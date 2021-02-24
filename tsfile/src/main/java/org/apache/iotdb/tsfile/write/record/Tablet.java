@@ -18,59 +18,46 @@
  */
 package org.apache.iotdb.tsfile.write.record;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 /**
  * A tablet data of one device, the tablet contains multiple measurements of this device that share
  * the same time column.
- * <p>
- * for example:  device root.sg1.d1
- * <p>
- * time, m1, m2, m3 1,  1,  2,  3 2,  1,  2,  3 3,  1,  2,  3
- * <p>
- * Notice: The tablet should not have empty cell
+ *
+ * <p>for example: device root.sg1.d1
+ *
+ * <p>time, m1, m2, m3 1, 1, 2, 3 2, 1, 2, 3 3, 1, 2, 3
+ *
+ * <p>Notice: The tablet should not have empty cell
  */
 public class Tablet {
 
   private static final int DEFAULT_SIZE = 1024;
   private static final String NOT_SUPPORT_DATATYPE = "Data type %s is not supported.";
 
-  /**
-   * deviceId of this tablet
-   */
+  /** deviceId of this tablet */
   public String deviceId;
 
-  /**
-   * the list of measurement schemas for creating the tablet
-   */
+  /** the list of measurement schemas for creating the tablet */
   private List<MeasurementSchema> schemas;
 
-  /**
-   * measurementId->indexOf(measurementSchema)
-   */
+  /** measurementId->indexOf(measurementSchema) */
   private Map<String, Integer> measurementIndex;
 
-  /**
-   * timestamps in this tablet
-   */
+  /** timestamps in this tablet */
   public long[] timestamps;
-  /**
-   * each object is a primitive type array, which represents values of one measurement
-   */
+  /** each object is a primitive type array, which represents values of one measurement */
   public Object[] values;
-  /**
-   * the number of rows to include in this tablet
-   */
+  /** the number of rows to include in this tablet */
   public int rowSize;
-  /**
-   * the maximum number of rows for this tablet
-   */
+  /** the maximum number of rows for this tablet */
   private int maxRowNumber;
 
   /**
@@ -78,8 +65,8 @@ public class Tablet {
    * should be the same size).
    *
    * @param deviceId the name of the device specified to be written in
-   * @param schemas  the list of measurement schemas for creating the tablet, only measurementId and
-   *                 type take effects
+   * @param schemas the list of measurement schemas for creating the tablet, only measurementId and
+   *     type take effects
    */
   public Tablet(String deviceId, List<MeasurementSchema> schemas) {
     this(deviceId, schemas, DEFAULT_SIZE);
@@ -89,9 +76,9 @@ public class Tablet {
    * Return a tablet with the specified number of rows (maxBatchSize). Only call this constructor
    * directly for testing purposes. Tablet should normally always be default size.
    *
-   * @param deviceId     the name of the device specified to be written in
-   * @param schemas      the list of measurement schemas for creating the row batch, only
-   *                     measurementId and type take effects
+   * @param deviceId the name of the device specified to be written in
+   * @param schemas the list of measurement schemas for creating the row batch, only measurementId
+   *     and type take effects
    * @param maxRowNumber the maximum number of rows for this tablet
    */
   public Tablet(String deviceId, List<MeasurementSchema> schemas, int maxRowNumber) {
@@ -118,36 +105,42 @@ public class Tablet {
     MeasurementSchema measurementSchema = schemas.get(indexOfValue);
 
     switch (measurementSchema.getType()) {
-      case TEXT: {
-        Binary[] sensor = (Binary[]) values[indexOfValue];
-        sensor[rowIndex] = (Binary) value;
-        break;
-      }
-      case FLOAT: {
-        float[] sensor = (float[]) values[indexOfValue];
-        sensor[rowIndex] = (float) value;
-        break;
-      }
-      case INT32: {
-        int[] sensor = (int[]) values[indexOfValue];
-        sensor[rowIndex] = (int) value;
-        break;
-      }
-      case INT64: {
-        long[] sensor = (long[]) values[indexOfValue];
-        sensor[rowIndex] = (long) value;
-        break;
-      }
-      case DOUBLE: {
-        double[] sensor = (double[]) values[indexOfValue];
-        sensor[rowIndex] = (double) value;
-        break;
-      }
-      case BOOLEAN: {
-        boolean[] sensor = (boolean[]) values[indexOfValue];
-        sensor[rowIndex] = (boolean) value;
-        break;
-      }
+      case TEXT:
+        {
+          Binary[] sensor = (Binary[]) values[indexOfValue];
+          sensor[rowIndex] = (Binary) value;
+          break;
+        }
+      case FLOAT:
+        {
+          float[] sensor = (float[]) values[indexOfValue];
+          sensor[rowIndex] = (float) value;
+          break;
+        }
+      case INT32:
+        {
+          int[] sensor = (int[]) values[indexOfValue];
+          sensor[rowIndex] = (int) value;
+          break;
+        }
+      case INT64:
+        {
+          long[] sensor = (long[]) values[indexOfValue];
+          sensor[rowIndex] = (long) value;
+          break;
+        }
+      case DOUBLE:
+        {
+          double[] sensor = (double[]) values[indexOfValue];
+          sensor[rowIndex] = (double) value;
+          break;
+        }
+      case BOOLEAN:
+        {
+          boolean[] sensor = (boolean[]) values[indexOfValue];
+          sensor[rowIndex] = (boolean) value;
+          break;
+        }
       default:
         throw new UnSupportedDataTypeException(
             String.format(NOT_SUPPORT_DATATYPE, measurementSchema.getType()));
@@ -158,16 +151,12 @@ public class Tablet {
     return schemas;
   }
 
-  /**
-   * Return the maximum number of rows for this tablet
-   */
+  /** Return the maximum number of rows for this tablet */
   public int getMaxRowNumber() {
     return maxRowNumber;
   }
 
-  /**
-   * Reset Tablet to the default state - set the rowSize to 0
-   */
+  /** Reset Tablet to the default state - set the rowSize to 0 */
   public void reset() {
     rowSize = 0;
   }
@@ -208,13 +197,9 @@ public class Tablet {
     return rowSize * 8;
   }
 
-  /**
-   * @return total bytes of values
-   */
+  /** @return total bytes of values */
   public int getValueBytesSize() {
-    /**
-     * total byte size that values occupies
-     */
+    /** total byte size that values occupies */
     int valueOccupation = 0;
     for (int i = 0; i < schemas.size(); i++) {
       switch (schemas.get(i).getType()) {

@@ -18,16 +18,17 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
 public class DeletePlan extends PhysicalPlan {
 
@@ -115,8 +116,9 @@ public class DeletePlan extends PhysicalPlan {
       return false;
     }
     DeletePlan that = (DeletePlan) o;
-    return deleteStartTime == that.deleteStartTime && deleteEndTime == that.deleteEndTime && Objects
-        .equals(paths, that.paths);
+    return deleteStartTime == that.deleteStartTime
+        && deleteEndTime == that.deleteEndTime
+        && Objects.equals(paths, that.paths);
   }
 
   @Override

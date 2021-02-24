@@ -19,19 +19,18 @@
 
 package org.apache.iotdb.db.query.udf.core.input;
 
-import java.io.IOException;
-import java.util.List;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithValueFilter;
 import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
+import org.apache.iotdb.db.query.dataset.UDFInputDataSet;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.access.RowWindow;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.AccessStrategy;
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
 import org.apache.iotdb.db.query.udf.core.access.RowImpl;
 import org.apache.iotdb.db.query.udf.core.access.RowWindowImpl;
 import org.apache.iotdb.db.query.udf.core.input.SafetyLine.SafetyPile;
@@ -39,54 +38,68 @@ import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.db.query.udf.core.reader.LayerRowReader;
 import org.apache.iotdb.db.query.udf.core.reader.LayerRowWindowReader;
 import org.apache.iotdb.db.query.udf.datastructure.primitive.ElasticSerializableIntList;
-import org.apache.iotdb.db.query.udf.datastructure.row.ElasticSerializableRowRecordList;
 import org.apache.iotdb.db.query.udf.datastructure.primitive.IntList;
 import org.apache.iotdb.db.query.udf.datastructure.primitive.SerializableIntList;
 import org.apache.iotdb.db.query.udf.datastructure.primitive.WrappedIntArray;
+import org.apache.iotdb.db.query.udf.datastructure.row.ElasticSerializableRowRecordList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 import org.apache.iotdb.tsfile.utils.Binary;
+
+import java.io.IOException;
+import java.util.List;
 
 public class InputLayer {
 
   private long queryId;
 
-  private QueryDataSet queryDataSet;
+  private UDFInputDataSet queryDataSet;
   private TSDataType[] dataTypes;
+  private int timestampIndex;
 
   private ElasticSerializableRowRecordList rowRecordList;
   private SafetyLine safetyLine;
 
-  /**
-   * InputLayerWithoutValueFilter
-   */
-  public InputLayer(long queryId, float memoryBudgetInMB, List<PartialPath> paths,
-      List<TSDataType> dataTypes, List<ManagedSeriesReader> readers)
+  /** InputLayerWithoutValueFilter */
+  public InputLayer(
+      long queryId,
+      float memoryBudgetInMB,
+      List<PartialPath> paths,
+      List<TSDataType> dataTypes,
+      List<ManagedSeriesReader> readers)
       throws QueryProcessException, IOException, InterruptedException {
-    constructInputLayer(queryId, memoryBudgetInMB,
-        new RawQueryDataSetWithoutValueFilter(paths, dataTypes, readers, true));
+    constructInputLayer(
+        queryId,
+        memoryBudgetInMB,
+        new RawQueryDataSetWithoutValueFilter(queryId, paths, dataTypes, readers, true));
   }
 
-  /**
-   * InputLayerWithValueFilter
-   */
-  public InputLayer(long queryId, float memoryBudgetInMB, List<PartialPath> paths,
-      List<TSDataType> dataTypes, TimeGenerator timeGenerator, List<IReaderByTimestamp> readers,
-      List<Boolean> cached) throws QueryProcessException {
-    constructInputLayer(queryId, memoryBudgetInMB,
+  /** InputLayerWithValueFilter */
+  public InputLayer(
+      long queryId,
+      float memoryBudgetInMB,
+      List<PartialPath> paths,
+      List<TSDataType> dataTypes,
+      TimeGenerator timeGenerator,
+      List<IReaderByTimestamp> readers,
+      List<Boolean> cached)
+      throws QueryProcessException {
+    constructInputLayer(
+        queryId,
+        memoryBudgetInMB,
         new RawQueryDataSetWithValueFilter(paths, dataTypes, timeGenerator, readers, cached, true));
   }
 
-  private void constructInputLayer(long queryId, float memoryBudgetInMB, QueryDataSet queryDataSet)
+  private void constructInputLayer(
+      long queryId, float memoryBudgetInMB, UDFInputDataSet queryDataSet)
       throws QueryProcessException {
     this.queryId = queryId;
     this.queryDataSet = queryDataSet;
     dataTypes = queryDataSet.getDataTypes().toArray(new TSDataType[0]);
-    rowRecordList = new ElasticSerializableRowRecordList(dataTypes, queryId, memoryBudgetInMB,
-        1 + dataTypes.length / 2);
+    timestampIndex = dataTypes.length;
+    rowRecordList =
+        new ElasticSerializableRowRecordList(
+            dataTypes, queryId, memoryBudgetInMB, 1 + dataTypes.length / 2);
     safetyLine = new SafetyLine();
   }
 
@@ -102,15 +115,16 @@ public class InputLayer {
     return new InputLayerRowReader(columnIndexes);
   }
 
-  public LayerRowWindowReader constructRowWindowReader(int[] columnIndexes, AccessStrategy strategy,
-      float memoryBudgetInMB) throws QueryProcessException, IOException {
+  public LayerRowWindowReader constructRowWindowReader(
+      int[] columnIndexes, AccessStrategy strategy, float memoryBudgetInMB)
+      throws QueryProcessException, IOException {
     switch (strategy.getAccessStrategyType()) {
       case SLIDING_TIME_WINDOW:
-        return new InputLayerRowSlidingTimeWindowReader(columnIndexes,
-            (SlidingTimeWindowAccessStrategy) strategy, memoryBudgetInMB);
+        return new InputLayerRowSlidingTimeWindowReader(
+            columnIndexes, (SlidingTimeWindowAccessStrategy) strategy, memoryBudgetInMB);
       case SLIDING_SIZE_WINDOW:
-        return new InputLayerRowSlidingSizeWindowReader(columnIndexes,
-            (SlidingSizeWindowAccessStrategy) strategy, memoryBudgetInMB);
+        return new InputLayerRowSlidingSizeWindowReader(
+            columnIndexes, (SlidingSizeWindowAccessStrategy) strategy, memoryBudgetInMB);
       default:
         throw new IllegalStateException(
             "Unexpected access strategy: " + strategy.getAccessStrategyType());
@@ -125,10 +139,10 @@ public class InputLayer {
     private int currentRowIndex;
 
     private boolean hasCachedRowRecord;
-    private RowRecord cachedRowRecord;
+    private Object[] cachedRowRecord;
 
     InputLayerPointReader(int columnIndex) {
-      this.safetyPile = safetyLine.addSafetyPile();
+      safetyPile = safetyLine.addSafetyPile();
 
       this.columnIndex = columnIndex;
       currentRowIndex = -1;
@@ -144,8 +158,8 @@ public class InputLayer {
       }
 
       for (int i = currentRowIndex + 1; i < rowRecordList.size(); ++i) {
-        RowRecord rowRecordCandidate = rowRecordList.getRowRecord(i);
-        if (rowRecordCandidate.getFields().get(columnIndex) != null) {
+        Object[] rowRecordCandidate = rowRecordList.getRowRecord(i);
+        if (rowRecordCandidate[columnIndex] != null) {
           hasCachedRowRecord = true;
           cachedRowRecord = rowRecordCandidate;
           currentRowIndex = i;
@@ -154,10 +168,10 @@ public class InputLayer {
       }
 
       if (!hasCachedRowRecord) {
-        while (queryDataSet.hasNextWithoutConstraint()) {
-          RowRecord rowRecordCandidate = queryDataSet.nextWithoutConstraint();
+        while (queryDataSet.hasNextRowInObjects()) {
+          Object[] rowRecordCandidate = queryDataSet.nextRowInObjects();
           rowRecordList.put(rowRecordCandidate);
-          if (rowRecordCandidate.getFields().get(columnIndex) != null) {
+          if (rowRecordCandidate[columnIndex] != null) {
             hasCachedRowRecord = true;
             cachedRowRecord = rowRecordCandidate;
             currentRowIndex = rowRecordList.size() - 1;
@@ -184,59 +198,56 @@ public class InputLayer {
 
     @Override
     public long currentTime() {
-      return cachedRowRecord.getTimestamp();
+      return (long) cachedRowRecord[timestampIndex];
     }
 
     @Override
     public int currentInt() {
-      return cachedRowRecord.getFields().get(columnIndex).getIntV();
+      return (int) cachedRowRecord[columnIndex];
     }
 
     @Override
     public long currentLong() {
-      return cachedRowRecord.getFields().get(columnIndex).getLongV();
+      return (long) cachedRowRecord[columnIndex];
     }
 
     @Override
     public float currentFloat() {
-      return cachedRowRecord.getFields().get(columnIndex).getFloatV();
+      return (float) cachedRowRecord[columnIndex];
     }
 
     @Override
     public double currentDouble() {
-      return cachedRowRecord.getFields().get(columnIndex).getDoubleV();
+      return (double) cachedRowRecord[columnIndex];
     }
 
     @Override
     public boolean currentBoolean() {
-      return cachedRowRecord.getFields().get(columnIndex).getBoolV();
+      return (boolean) cachedRowRecord[columnIndex];
     }
 
     @Override
     public Binary currentBinary() {
-      return cachedRowRecord.getFields().get(columnIndex).getBinaryV();
+      return (Binary) cachedRowRecord[columnIndex];
     }
   }
 
   private class InputLayerRowReader implements LayerRowReader {
 
-    private final int[] columnIndexes;
-    private final SafetyPile[] safetyPiles;
+    private final SafetyPile safetyPile;
 
+    private final int[] columnIndexes;
     private int currentRowIndex;
 
     private boolean hasCachedRowRecord;
-    private RowRecord cachedRowRecord;
+    private Object[] cachedRowRecord;
 
     private final RowImpl row;
 
     public InputLayerRowReader(int[] columnIndexes) {
-      this.columnIndexes = columnIndexes;
-      safetyPiles = new SafetyPile[columnIndexes.length];
-      for (int i = 0; i < safetyPiles.length; ++i) {
-        safetyPiles[i] = safetyLine.addSafetyPile();
-      }
+      safetyPile = safetyLine.addSafetyPile();
 
+      this.columnIndexes = columnIndexes;
       currentRowIndex = -1;
 
       hasCachedRowRecord = false;
@@ -252,7 +263,7 @@ public class InputLayer {
       }
 
       for (int i = currentRowIndex + 1; i < rowRecordList.size(); ++i) {
-        RowRecord rowRecordCandidate = rowRecordList.getRowRecord(i);
+        Object[] rowRecordCandidate = rowRecordList.getRowRecord(i);
         if (hasNotNullSelectedFields(rowRecordCandidate, columnIndexes)) {
           hasCachedRowRecord = true;
           cachedRowRecord = rowRecordCandidate;
@@ -262,8 +273,8 @@ public class InputLayer {
       }
 
       if (!hasCachedRowRecord) {
-        while (queryDataSet.hasNextWithoutConstraint()) {
-          RowRecord rowRecordCandidate = queryDataSet.nextWithoutConstraint();
+        while (queryDataSet.hasNextRowInObjects()) {
+          Object[] rowRecordCandidate = queryDataSet.nextRowInObjects();
           rowRecordList.put(rowRecordCandidate);
           if (hasNotNullSelectedFields(rowRecordCandidate, columnIndexes)) {
             hasCachedRowRecord = true;
@@ -282,9 +293,7 @@ public class InputLayer {
       hasCachedRowRecord = false;
       cachedRowRecord = null;
 
-      for (SafetyPile safetyPile : safetyPiles) {
-        safetyPile.moveForwardTo(currentRowIndex + 1);
-      }
+      safetyPile.moveForwardTo(currentRowIndex + 1);
     }
 
     @Override
@@ -294,7 +303,7 @@ public class InputLayer {
 
     @Override
     public long currentTime() {
-      return cachedRowRecord.getTimestamp();
+      return (long) cachedRowRecord[timestampIndex];
     }
 
     @Override
@@ -305,9 +314,10 @@ public class InputLayer {
 
   private class InputLayerRowSlidingSizeWindowReader implements LayerRowWindowReader {
 
+    private final SafetyPile safetyPile;
+
     private final int[] columnIndexes;
     private final TSDataType[] columnDataTypes;
-    private final SafetyPile[] safetyPiles;
 
     private final int windowSize;
     private final IntList rowIndexes;
@@ -317,21 +327,22 @@ public class InputLayer {
 
     private int maxIndexInLastWindow;
 
-    private InputLayerRowSlidingSizeWindowReader(int[] columnIndexes,
-        SlidingSizeWindowAccessStrategy accessStrategy, float memoryBudgetInMB)
+    private InputLayerRowSlidingSizeWindowReader(
+        int[] columnIndexes, SlidingSizeWindowAccessStrategy accessStrategy, float memoryBudgetInMB)
         throws QueryProcessException {
+      safetyPile = safetyLine.addSafetyPile();
+
       this.columnIndexes = columnIndexes;
       columnDataTypes = new TSDataType[columnIndexes.length];
-      safetyPiles = new SafetyPile[columnIndexes.length];
       for (int i = 0; i < columnIndexes.length; ++i) {
         columnDataTypes[i] = dataTypes[columnIndexes[i]];
-        safetyPiles[i] = safetyLine.addSafetyPile();
       }
 
       windowSize = accessStrategy.getWindowSize();
-      rowIndexes = windowSize < SerializableIntList.calculateCapacity(memoryBudgetInMB)
-          ? new WrappedIntArray(windowSize)
-          : new ElasticSerializableIntList(queryId, memoryBudgetInMB, 2);
+      rowIndexes =
+          windowSize < SerializableIntList.calculateCapacity(memoryBudgetInMB)
+              ? new WrappedIntArray(windowSize)
+              : new ElasticSerializableIntList(queryId, memoryBudgetInMB, 2);
       rowWindow = new RowWindowImpl(rowRecordList, columnIndexes, dataTypes, rowIndexes);
 
       slidingStep = accessStrategy.getSlidingStep();
@@ -357,8 +368,8 @@ public class InputLayer {
         }
       }
 
-      while (queryDataSet.hasNextWithoutConstraint()) {
-        RowRecord rowRecordCandidate = queryDataSet.nextWithoutConstraint();
+      while (queryDataSet.hasNextRowInObjects()) {
+        Object[] rowRecordCandidate = queryDataSet.nextRowInObjects();
         rowRecordList.put(rowRecordCandidate);
         if (hasNotNullSelectedFields(rowRecordCandidate, columnIndexes)) {
           rowIndexes.put(rowRecordList.size() - 1);
@@ -376,9 +387,7 @@ public class InputLayer {
     public void readyForNext() throws IOException, QueryProcessException {
       updateMaxIndexForLastWindow();
 
-      for (SafetyPile safetyPile : safetyPiles) {
-        safetyPile.moveForwardTo(maxIndexInLastWindow + 1);
-      }
+      safetyPile.moveForwardTo(maxIndexInLastWindow + 1);
 
       rowIndexes.clear();
     }
@@ -405,8 +414,8 @@ public class InputLayer {
         }
       }
 
-      while (queryDataSet.hasNextWithoutConstraint()) {
-        RowRecord rowRecordCandidate = queryDataSet.nextWithoutConstraint();
+      while (queryDataSet.hasNextRowInObjects()) {
+        Object[] rowRecordCandidate = queryDataSet.nextRowInObjects();
         rowRecordList.put(rowRecordCandidate);
         if (hasNotNullSelectedFields(rowRecordCandidate, columnIndexes)) {
           ++currentStep;
@@ -433,9 +442,10 @@ public class InputLayer {
 
   private class InputLayerRowSlidingTimeWindowReader implements LayerRowWindowReader {
 
+    private final SafetyPile safetyPile;
+
     private final int[] columnIndexes;
     private final TSDataType[] columnDataTypes;
-    private final SafetyPile[] safetyPiles;
 
     private final long timeInterval;
     private final long slidingStep;
@@ -449,15 +459,15 @@ public class InputLayer {
 
     private final boolean hasAtLeastOneRow;
 
-    private InputLayerRowSlidingTimeWindowReader(int[] columnIndexes,
-        SlidingTimeWindowAccessStrategy accessStrategy, float memoryBudgetInMB)
+    private InputLayerRowSlidingTimeWindowReader(
+        int[] columnIndexes, SlidingTimeWindowAccessStrategy accessStrategy, float memoryBudgetInMB)
         throws QueryProcessException, IOException {
+      safetyPile = safetyLine.addSafetyPile();
+
       this.columnIndexes = columnIndexes;
       columnDataTypes = new TSDataType[columnIndexes.length];
-      safetyPiles = new SafetyPile[columnIndexes.length];
       for (int i = 0; i < columnIndexes.length; ++i) {
         columnDataTypes[i] = dataTypes[columnIndexes[i]];
-        safetyPiles[i] = safetyLine.addSafetyPile();
       }
 
       timeInterval = accessStrategy.getTimeInterval();
@@ -470,11 +480,12 @@ public class InputLayer {
       nextWindowTimeBegin = accessStrategy.getDisplayWindowBegin();
       nextIndexBegin = 0;
 
-      if (rowRecordList.size() == 0 && queryDataSet.hasNextWithoutConstraint()) {
-        rowRecordList.put(queryDataSet.nextWithoutConstraint());
+      if (rowRecordList.size() == 0 && queryDataSet.hasNextRowInObjects()) {
+        rowRecordList.put(queryDataSet.nextRowInObjects());
 
         if (nextWindowTimeBegin == Long.MIN_VALUE) {
-          // display window begin should be set to the same as the min timestamp of the query result set
+          // display window begin should be set to the same as the min timestamp of the query result
+          // set
           nextWindowTimeBegin = rowRecordList.getTime(0);
         }
       }
@@ -492,10 +503,10 @@ public class InputLayer {
 
       long nextWindowTimeEnd = Math.min(nextWindowTimeBegin + timeInterval, displayWindowEnd);
       int oldRowRecordListSize = rowRecordList.size();
-      while (rowRecordList.getRowRecord(rowRecordList.size() - 1).getTimestamp()
+      while ((Long) rowRecordList.getRowRecord(rowRecordList.size() - 1)[timestampIndex]
           < nextWindowTimeEnd) {
-        if (queryDataSet.hasNextWithoutConstraint()) {
-          rowRecordList.put(queryDataSet.nextWithoutConstraint());
+        if (queryDataSet.hasNextRowInObjects()) {
+          rowRecordList.put(queryDataSet.nextRowInObjects());
         } else if (displayWindowEnd == Long.MAX_VALUE
             // display window end == the max timestamp of the query result set
             && oldRowRecordListSize == rowRecordList.size()) {
@@ -506,7 +517,7 @@ public class InputLayer {
       }
 
       for (int i = nextIndexBegin; i < rowRecordList.size(); ++i) {
-        if (nextWindowTimeBegin <= rowRecordList.getRowRecord(i).getTimestamp()) {
+        if (nextWindowTimeBegin <= (Long) rowRecordList.getRowRecord(i)[timestampIndex]) {
           nextIndexBegin = i;
           break;
         }
@@ -516,8 +527,8 @@ public class InputLayer {
       }
 
       for (int i = nextIndexBegin; i < rowRecordList.size(); ++i) {
-        RowRecord rowRecordCandidate = rowRecordList.getRowRecord(i);
-        if (nextWindowTimeEnd <= rowRecordCandidate.getTimestamp()) {
+        Object[] rowRecordCandidate = rowRecordList.getRowRecord(i);
+        if (nextWindowTimeEnd <= (Long) rowRecordCandidate[timestampIndex]) {
           break;
         }
         if (hasNotNullSelectedFields(rowRecordCandidate, columnIndexes)) {
@@ -532,9 +543,7 @@ public class InputLayer {
     public void readyForNext() {
       nextWindowTimeBegin += slidingStep;
 
-      for (SafetyPile safetyPile : safetyPiles) {
-        safetyPile.moveForwardTo(nextIndexBegin);
-      }
+      safetyPile.moveForwardTo(nextIndexBegin);
 
       rowIndexes.clear();
     }
@@ -550,11 +559,10 @@ public class InputLayer {
     }
   }
 
-  private static boolean hasNotNullSelectedFields(RowRecord rowRecordCandidate,
-      int[] columnIndexes) {
-    List<Field> fields = rowRecordCandidate.getFields();
+  private static boolean hasNotNullSelectedFields(
+      Object[] rowRecordCandidate, int[] columnIndexes) {
     for (int columnIndex : columnIndexes) {
-      if (fields.get(columnIndex) != null) {
+      if (rowRecordCandidate[columnIndex] != null) {
         return true;
       }
     }

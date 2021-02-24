@@ -18,11 +18,12 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.PartialPath;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
 
 public class ShowTimeSeriesPlan extends ShowPlan {
 
@@ -37,8 +38,14 @@ public class ShowTimeSeriesPlan extends ShowPlan {
     super(ShowContentType.TIMESERIES, path);
   }
 
-  public ShowTimeSeriesPlan(PartialPath path, boolean isContains, String key, String value, int limit,
-      int offset, boolean orderByHeat) {
+  public ShowTimeSeriesPlan(
+      PartialPath path,
+      boolean isContains,
+      String key,
+      String value,
+      int limit,
+      int offset,
+      boolean orderByHeat) {
     super(ShowContentType.TIMESERIES);
     this.path = path;
     this.isContains = isContains;

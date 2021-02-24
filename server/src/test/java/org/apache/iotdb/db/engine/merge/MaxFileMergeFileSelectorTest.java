@@ -19,16 +19,18 @@
 
 package org.apache.iotdb.db.engine.merge;
 
-import static org.junit.Assert.assertEquals;
+import org.apache.iotdb.db.engine.merge.manage.MergeResource;
+import org.apache.iotdb.db.engine.merge.selector.IMergeFileSelector;
+import org.apache.iotdb.db.engine.merge.selector.MaxFileMergeFileSelector;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.MergeException;
+
+import org.junit.Test;
 
 import java.io.IOException;
 import java.util.List;
-import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.engine.merge.selector.MaxFileMergeFileSelector;
-import org.apache.iotdb.db.engine.merge.selector.IMergeFileSelector;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.MergeException;
-import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
 
 public class MaxFileMergeFileSelectorTest extends MergeTest {
 
@@ -78,8 +80,8 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
     List[] result = mergeFileSelector.select();
     List<TsFileResource> seqSelected = result[0];
     List<TsFileResource> unseqSelected = result[1];
-    assertEquals(seqResources.subList(0, 3), seqSelected);
-    assertEquals(unseqResources.subList(0, 3), unseqSelected);
+    assertEquals(seqResources.subList(0, 4), seqSelected);
+    assertEquals(unseqResources.subList(0, 4), unseqSelected);
     resource.clear();
   }
 }

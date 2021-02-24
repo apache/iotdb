@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.tsfile.read.reader;
 
-import java.io.IOException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -56,7 +55,5 @@ public class FakedMultiBatchReader implements IBatchReader {
   }
 
   @Override
-  public void close() throws IOException {
-
-  }
+  public void close() {}
 }

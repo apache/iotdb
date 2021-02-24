@@ -19,34 +19,18 @@
 
 package org.apache.iotdb.tsfile.encoding.decoder;
 
-import java.io.IOException;
-import java.math.BigDecimal;
-import java.nio.ByteBuffer;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import org.apache.iotdb.tsfile.encoding.common.EndianType;
 import org.apache.iotdb.tsfile.exception.encoding.TsFileDecodingException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
+
+import java.math.BigDecimal;
+import java.nio.ByteBuffer;
 
 public class PlainDecoder extends Decoder {
 
-  private static final Logger logger = LoggerFactory.getLogger(PlainDecoder.class);
-  private EndianType endianType;
-
-  public EndianType getEndianType() {
-    return endianType;
-  }
-
-  public void setEndianType(EndianType endianType) {
-    this.endianType = endianType;
-  }
-
-  public PlainDecoder(EndianType endianType) {
+  public PlainDecoder() {
     super(TSEncoding.PLAIN);
-    this.endianType = endianType;
   }
 
   @Override
@@ -61,7 +45,7 @@ public class PlainDecoder extends Decoder {
 
   @Override
   public int readInt(ByteBuffer buffer) {
-    return buffer.getInt();
+    return ReadWriteForEncodingUtils.readVarInt(buffer);
   }
 
   @Override
@@ -88,7 +72,7 @@ public class PlainDecoder extends Decoder {
   }
 
   @Override
-  public boolean hasNext(ByteBuffer buffer) throws IOException {
+  public boolean hasNext(ByteBuffer buffer) {
     return buffer.remaining() > 0;
   }
 

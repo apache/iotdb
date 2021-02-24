@@ -18,32 +18,27 @@
  */
 package org.apache.iotdb.rpc;
 
-import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Arrays;
 
 /**
  * Helper class that wraps a byte[] so that it can expand and be reused. Users should call
  * resizeIfNecessary to make sure the buffer has suitable capacity, and then use the array as
  * needed.
- * <p>
- * Resizing policies: Expanding: If the required size > current capacity * 1.5, expand to the
+ *
+ * <p>Resizing policies: Expanding: If the required size > current capacity * 1.5, expand to the
  * required size, otherwise expand to current capacity * 1.5. Shrinking: If initial size < the
  * required size < current capacity * 0.6, and such small requests last for more than 5 times,
  * shrink to the middle of the required size and current capacity.
  */
 class AutoResizingBuffer {
 
-  // if resizeIfNecessary is called continuously with a small size for more than
-  // MAX_BUFFER_OVERSIZE_TIME times, we will shrink the buffer to reclaim space
-  private static final int MAX_BUFFER_OVERSIZE_TIME = 5;
-  private static final long MIN_SHRINK_INTERVAL = 60_000L;
-
   private byte[] array;
-  private int bufTooLargeCounter = MAX_BUFFER_OVERSIZE_TIME;
-  private int initialCapacity;
+  private int bufTooLargeCounter = RpcUtils.MAX_BUFFER_OVERSIZE_TIME;
+  private final int initialCapacity;
   private long lastShrinkTime;
-
 
   private static final Logger logger = LoggerFactory.getLogger(AutoResizingBuffer.class);
 
@@ -60,15 +55,16 @@ class AutoResizingBuffer {
       int growCapacity = currentCapacity + (currentCapacity >> 1);
       int newCapacity = Math.max(growCapacity, size);
       this.array = Arrays.copyOf(array, newCapacity);
-      bufTooLargeCounter = MAX_BUFFER_OVERSIZE_TIME;
-      logger
-          .debug("{} expand from {} to {}, request: {}", this, currentCapacity, newCapacity, size);
-    } else if (size > initialCapacity && currentCapacity * loadFactor > size
+      bufTooLargeCounter = RpcUtils.MAX_BUFFER_OVERSIZE_TIME;
+      logger.debug(
+          "{} expand from {} to {}, request: {}", this, currentCapacity, newCapacity, size);
+    } else if (size > initialCapacity
+        && currentCapacity * loadFactor > size
         && bufTooLargeCounter-- <= 0
-        && System.currentTimeMillis() - lastShrinkTime > MIN_SHRINK_INTERVAL) {
+        && System.currentTimeMillis() - lastShrinkTime > RpcUtils.MIN_SHRINK_INTERVAL) {
       // do not resize if it is reading the request size and do not shrink too often
       array = Arrays.copyOf(array, size + (currentCapacity - size) / 2);
-      bufTooLargeCounter = MAX_BUFFER_OVERSIZE_TIME;
+      bufTooLargeCounter = RpcUtils.MAX_BUFFER_OVERSIZE_TIME;
       lastShrinkTime = System.currentTimeMillis();
       logger.debug("{} shrink from {} to {}", this, currentCapacity, size);
     }

@@ -35,14 +35,18 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.service.IoTDB;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * DataLogApplier applies logs like data insertion/deletion/update and timeseries creation to
- * IoTDB.
+ * DataLogApplier applies logs like data insertion/deletion/update and timeseries creation to IoTDB.
  */
 public class DataLogApplier extends BaseApplier {
 
@@ -63,7 +67,11 @@ public class DataLogApplier extends BaseApplier {
       if (log instanceof PhysicalPlanLog) {
         PhysicalPlanLog physicalPlanLog = (PhysicalPlanLog) log;
         PhysicalPlan plan = physicalPlanLog.getPlan();
-        if (plan instanceof InsertPlan) {
+        if (plan instanceof InsertMultiTabletPlan) {
+          applyInsert((InsertMultiTabletPlan) plan);
+        } else if (plan instanceof InsertRowsPlan) {
+          applyInsert((InsertRowsPlan) plan);
+        } else if (plan instanceof InsertPlan) {
           applyInsert((InsertPlan) plan);
         } else {
           applyPhysicalPlan(plan, dataGroupMember);
@@ -71,9 +79,11 @@ public class DataLogApplier extends BaseApplier {
       } else if (log instanceof CloseFileLog) {
         CloseFileLog closeFileLog = ((CloseFileLog) log);
         StorageEngine.getInstance()
-            .closeStorageGroupProcessor(new PartialPath(closeFileLog.getStorageGroupName()),
+            .closeStorageGroupProcessor(
+                new PartialPath(closeFileLog.getStorageGroupName()),
                 closeFileLog.getPartitionId(),
-                closeFileLog.isSeq(), false);
+                closeFileLog.isSeq(),
+                false);
       } else {
         logger.error("Unsupported log: {}", log);
       }
@@ -85,6 +95,20 @@ public class DataLogApplier extends BaseApplier {
       log.setException(e);
     } finally {
       log.setApplied(true);
+    }
+  }
+
+  private void applyInsert(InsertMultiTabletPlan plan)
+      throws StorageGroupNotSetException, QueryProcessException, StorageEngineException {
+    for (InsertTabletPlan insertTabletPlan : plan.getInsertTabletPlanList()) {
+      applyInsert(insertTabletPlan);
+    }
+  }
+
+  private void applyInsert(InsertRowsPlan plan)
+      throws StorageGroupNotSetException, QueryProcessException, StorageEngineException {
+    for (InsertRowPlan insertRowPlan : plan.getInsertRowPlanList()) {
+      applyInsert(insertRowPlan);
     }
   }
 
@@ -105,8 +129,9 @@ public class DataLogApplier extends BaseApplier {
       }
       sg = IoTDB.metaManager.getStorageGroupPath(plan.getDeviceId());
     }
-    int slotId = SlotPartitionTable.getSlotStrategy().calculateSlotByTime(sg.getFullPath(), time,
-        ClusterConstant.SLOT_NUM);
+    int slotId =
+        SlotPartitionTable.getSlotStrategy()
+            .calculateSlotByTime(sg.getFullPath(), time, ClusterConstant.SLOT_NUM);
     // the slot may not be writable because it is pulling file versions, wait until it is done
     dataGroupMember.getSlotManager().waitSlotForWrite(slotId);
     applyPhysicalPlan(plan, dataGroupMember);

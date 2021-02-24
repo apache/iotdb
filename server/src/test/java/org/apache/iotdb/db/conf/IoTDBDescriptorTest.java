@@ -72,5 +72,4 @@ public class IoTDBDescriptorTest {
     URL confURL = desc.getPropsUrl();
     Assert.assertEquals(confURL.toString(), path.toString());
   }
-
 }

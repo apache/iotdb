@@ -19,30 +19,43 @@
 
 package org.apache.iotdb.db.query.udf.core.input;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class SafetyLine {
 
   public static final int INITIAL_PILE_POSITION = -1;
 
-  private final List<Integer> safetyPiles;
+  private int[] safetyPiles;
+  private int size;
 
   public SafetyLine() {
-    safetyPiles = new ArrayList<>();
+    safetyPiles = new int[8];
+    size = 0;
   }
 
+  /**
+   * @return the index of the first element that cannot be evicted. in other words, elements whose
+   *     index are <b>less than</b> the return value can be evicted.
+   */
   public int getSafetyLine() {
-    int min = INITIAL_PILE_POSITION;
-    for (int safetyPile : safetyPiles) {
-      min = Math.min(safetyPile, min);
+    int min = safetyPiles[0];
+    for (int i = 1; i < size; ++i) {
+      min = Math.min(safetyPiles[i], min);
     }
     return min;
   }
 
   public SafetyPile addSafetyPile() {
-    safetyPiles.add(INITIAL_PILE_POSITION);
-    return new SafetyPile(safetyPiles.size() - 1);
+    checkExpansion();
+    safetyPiles[size] = INITIAL_PILE_POSITION;
+    return new SafetyPile(size++);
+  }
+
+  private void checkExpansion() {
+    if (size < safetyPiles.length) {
+      return;
+    }
+    int[] newSafetyPiles = new int[safetyPiles.length << 1];
+    System.arraycopy(safetyPiles, 0, newSafetyPiles, 0, size);
+    safetyPiles = newSafetyPiles;
   }
 
   public class SafetyPile {
@@ -53,8 +66,12 @@ public class SafetyLine {
       this.safetyPileIndex = safetyPileIndex;
     }
 
+    /**
+     * @param safetyPilePosition the index of the first element that cannot be evicted. in other
+     *     words, elements whose index are <b>less than</b> the safetyPilePosition can be evicted.
+     */
     public void moveForwardTo(int safetyPilePosition) {
-      safetyPiles.set(safetyPileIndex, safetyPilePosition);
+      safetyPiles[safetyPileIndex] = safetyPilePosition;
     }
   }
 }

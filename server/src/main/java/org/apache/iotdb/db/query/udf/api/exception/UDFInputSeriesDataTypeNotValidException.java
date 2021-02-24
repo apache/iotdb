@@ -19,22 +19,25 @@
 
 package org.apache.iotdb.db.query.udf.api.exception;
 
-import java.util.Arrays;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import java.util.Arrays;
 
 public class UDFInputSeriesDataTypeNotValidException extends UDFParameterNotValidException {
 
-  public UDFInputSeriesDataTypeNotValidException(int index, TSDataType actual,
-      TSDataType expected) {
-    super(String.format(
-        "the data type of the input series (index: %d) is not valid. expected: %s. actual: %s.",
-        index, expected.toString(), actual.toString()));
+  public UDFInputSeriesDataTypeNotValidException(
+      int index, TSDataType actual, TSDataType expected) {
+    super(
+        String.format(
+            "the data type of the input series (index: %d) is not valid. expected: %s. actual: %s.",
+            index, expected, actual));
   }
 
-  public UDFInputSeriesDataTypeNotValidException(int index, TSDataType actual,
-      TSDataType... expected) {
-    super(String.format(
-        "the data type of the input series (index: %d) is not valid. expected: %s. actual: %s.",
-        index, Arrays.toString(expected), actual.toString()));
+  public UDFInputSeriesDataTypeNotValidException(
+      int index, TSDataType actual, TSDataType... expected) {
+    super(
+        String.format(
+            "the data type of the input series (index: %d) is not valid. expected: %s. actual: %s.",
+            index, Arrays.toString(expected), actual));
   }
 }

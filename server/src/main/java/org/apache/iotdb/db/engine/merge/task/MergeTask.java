@@ -19,16 +19,6 @@
 
 package org.apache.iotdb.db.engine.merge.task;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.concurrent.Callable;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
@@ -40,15 +30,26 @@ import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.concurrent.Callable;
+
 /**
  * MergeTask merges given seqFiles and unseqFiles into new ones, which basically consists of three
- * steps: 1. rewrite overflowed, modified or small-sized chunks into temp merge files
- *        2. move the merged chunks in the temp files back to the seqFiles or move the unmerged
- *        chunks in the seqFiles into temp files and replace the seqFiles with the temp files.
- *        3. remove unseqFiles
+ * steps: 1. rewrite overflowed, modified or small-sized chunks into temp merge files 2. move the
+ * merged chunks in the temp files back to the seqFiles or move the unmerged chunks in the seqFiles
+ * into temp files and replace the seqFiles with the temp files. 3. remove unseqFiles
  */
 public class MergeTask implements Callable<Void> {
 
@@ -60,20 +61,22 @@ public class MergeTask implements Callable<Void> {
   String storageGroupName;
   MergeLogger mergeLogger;
   MergeContext mergeContext = new MergeContext();
-
-  private MergeCallback callback;
   int concurrentMergeSeriesNum;
   String taskName;
   boolean fullMerge;
-
   States states = States.START;
-
   MergeMultiChunkTask chunkTask;
   MergeFileTask fileTask;
+  private MergeCallback callback;
 
-  MergeTask(List<TsFileResource> seqFiles,
-      List<TsFileResource> unseqFiles, String storageGroupSysDir, MergeCallback callback,
-      String taskName, boolean fullMerge, String storageGroupName) {
+  MergeTask(
+      List<TsFileResource> seqFiles,
+      List<TsFileResource> unseqFiles,
+      String storageGroupSysDir,
+      MergeCallback callback,
+      String taskName,
+      boolean fullMerge,
+      String storageGroupName) {
     this.resource = new MergeResource(seqFiles, unseqFiles);
     this.storageGroupSysDir = storageGroupSysDir;
     this.callback = callback;
@@ -83,8 +86,14 @@ public class MergeTask implements Callable<Void> {
     this.storageGroupName = storageGroupName;
   }
 
-  public MergeTask(MergeResource mergeResource, String storageGroupSysDir, MergeCallback callback,
-      String taskName, boolean fullMerge, int concurrentMergeSeriesNum, String storageGroupName) {
+  public MergeTask(
+      MergeResource mergeResource,
+      String storageGroupSysDir,
+      MergeCallback callback,
+      String taskName,
+      boolean fullMerge,
+      int concurrentMergeSeriesNum,
+      String storageGroupName) {
     this.resource = mergeResource;
     this.storageGroupSysDir = storageGroupSysDir;
     this.callback = callback;
@@ -110,18 +119,28 @@ public class MergeTask implements Callable<Void> {
     cleanUp(false);
     // call the callback to make sure the StorageGroup exit merging status, but passing 2
     // empty file lists to avoid files being deleted.
-    callback.call(Collections.emptyList(), Collections.emptyList(),
+    callback.call(
+        Collections.emptyList(),
+        Collections.emptyList(),
         new File(storageGroupSysDir, MergeLogger.MERGE_LOG_NAME));
   }
 
   private void doMerge() throws IOException, MetadataException {
+    if (resource.getSeqFiles().isEmpty()) {
+      logger.info("{} no sequence file to merge into, so will abort task.", taskName);
+      abort();
+      return;
+    }
     if (logger.isInfoEnabled()) {
-      logger.info("{} starts to merge {} seqFiles, {} unseqFiles", taskName,
-          resource.getSeqFiles().size(), resource.getUnseqFiles().size());
+      logger.info(
+          "{} starts to merge {} seqFiles, {} unseqFiles",
+          taskName,
+          resource.getSeqFiles().size(),
+          resource.getUnseqFiles().size());
     }
     long startTime = System.currentTimeMillis();
-    long totalFileSize = MergeUtils.collectFileSizes(resource.getSeqFiles(),
-        resource.getUnseqFiles());
+    long totalFileSize =
+        MergeUtils.collectFileSizes(resource.getSeqFiles(), resource.getUnseqFiles());
     mergeLogger = new MergeLogger(storageGroupSysDir);
 
     mergeLogger.logFiles(resource);
@@ -141,8 +160,16 @@ public class MergeTask implements Callable<Void> {
 
     mergeLogger.logMergeStart();
 
-    chunkTask = new MergeMultiChunkTask(mergeContext, taskName, mergeLogger, resource,
-        fullMerge, unmergedSeries, concurrentMergeSeriesNum, storageGroupName);
+    chunkTask =
+        new MergeMultiChunkTask(
+            mergeContext,
+            taskName,
+            mergeLogger,
+            resource,
+            fullMerge,
+            unmergedSeries,
+            concurrentMergeSeriesNum,
+            storageGroupName);
     states = States.MERGE_CHUNKS;
     chunkTask.mergeSeries();
     if (Thread.interrupted()) {
@@ -151,8 +178,8 @@ public class MergeTask implements Callable<Void> {
       return;
     }
 
-    fileTask = new MergeFileTask(taskName, mergeContext, mergeLogger, resource,
-        resource.getSeqFiles());
+    fileTask =
+        new MergeFileTask(taskName, mergeContext, mergeLogger, resource, resource.getSeqFiles());
     states = States.MERGE_FILES;
     chunkTask = null;
     fileTask.mergeFiles();
@@ -173,9 +200,16 @@ public class MergeTask implements Callable<Void> {
       double fileRate =
           (resource.getSeqFiles().size() + resource.getUnseqFiles().size()) / elapsedTime;
       double ptRate = mergeContext.getTotalPointWritten() / elapsedTime;
-      logger.info("{} ends after {}s, byteRate: {}MB/s, seriesRate {}/s, chunkRate: {}/s, "
+      logger.info(
+          "{} ends after {}s, byteRate: {}MB/s, seriesRate {}/s, chunkRate: {}/s, "
               + "fileRate: {}/s, ptRate: {}/s",
-          taskName, elapsedTime, byteRate, seriesRate, chunkRate, fileRate, ptRate);
+          taskName,
+          elapsedTime,
+          byteRate,
+          seriesRate,
+          chunkRate,
+          fileRate,
+          ptRate);
     }
   }
 
@@ -212,14 +246,6 @@ public class MergeTask implements Callable<Void> {
     return storageGroupName;
   }
 
-  enum States {
-    START,
-    MERGE_CHUNKS,
-    MERGE_FILES,
-    CLEAN_UP,
-    ABORTED
-  }
-
   public String getProgress() {
     switch (states) {
       case ABORTED:
@@ -238,5 +264,13 @@ public class MergeTask implements Callable<Void> {
 
   public String getTaskName() {
     return taskName;
+  }
+
+  enum States {
+    START,
+    MERGE_CHUNKS,
+    MERGE_FILES,
+    CLEAN_UP,
+    ABORTED
   }
 }

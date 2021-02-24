@@ -26,7 +26,8 @@ public class UnSupportedFillTypeException extends QueryProcessException {
   private static final long serialVersionUID = 2166251102397630376L;
 
   public UnSupportedFillTypeException(TSDataType dataType) {
-    super(String.format("Unsupported linear fill data type: [%s]", dataType.toString()),
+    super(
+        String.format("Unsupported linear fill data type: [%s]", dataType),
         TSStatusCode.UNSUPPORTED_FILL_TYPE_ERROR.getStatusCode());
   }
 }

@@ -19,34 +19,35 @@
 
 package org.apache.iotdb.db.query.udf.datastructure.row;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.MB;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.query.udf.datastructure.SerializableList;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.query.udf.datastructure.SerializableList;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import static org.apache.iotdb.db.conf.IoTDBConstant.MB;
 
 public class SerializableRowRecordList implements SerializableList {
 
   protected static final int MIN_OBJECT_HEADER_SIZE = 8;
   protected static final int MIN_ARRAY_HEADER_SIZE = MIN_OBJECT_HEADER_SIZE + 4;
 
-  public static SerializableRowRecordList newSerializableRowRecordList(TSDataType[] dataTypes,
-      long queryId) {
+  public static SerializableRowRecordList newSerializableRowRecordList(
+      long queryId, TSDataType[] dataTypes, int internalRowRecordListCapacity) {
     SerializationRecorder recorder = new SerializationRecorder(queryId);
-    return new SerializableRowRecordList(dataTypes, recorder);
+    return new SerializableRowRecordList(recorder, dataTypes, internalRowRecordListCapacity);
   }
 
-  protected static int calculateCapacity(TSDataType[] dataTypes, float memoryLimitInMB,
-      int byteArrayLengthForMemoryControl) throws QueryProcessException {
+  protected static int calculateCapacity(
+      TSDataType[] dataTypes, float memoryLimitInMB, int byteArrayLengthForMemoryControl)
+      throws QueryProcessException {
     int rowLength = ReadWriteIOUtils.LONG_LEN; // timestamp
     for (TSDataType dataType : dataTypes) { // fields
       switch (dataType) {
@@ -66,8 +67,8 @@ public class SerializableRowRecordList implements SerializableList {
           rowLength += ReadWriteIOUtils.BOOLEAN_LEN;
           break;
         case TEXT:
-          rowLength += MIN_OBJECT_HEADER_SIZE + MIN_ARRAY_HEADER_SIZE
-              + byteArrayLengthForMemoryControl;
+          rowLength +=
+              MIN_OBJECT_HEADER_SIZE + MIN_ARRAY_HEADER_SIZE + byteArrayLengthForMemoryControl;
           break;
         default:
           throw new UnSupportedDataTypeException(dataType.toString());
@@ -81,35 +82,37 @@ public class SerializableRowRecordList implements SerializableList {
     return size;
   }
 
-  private final TSDataType[] dataTypes;
   private final SerializationRecorder serializationRecorder;
+  private final TSDataType[] dataTypes;
+  private final int internalRowRecordListCapacity;
+  private final int seriesNumber;
 
-  private List<RowRecord> rowRecords;
+  private List<Object[]> rowRecords;
 
-  private SerializableRowRecordList(TSDataType[] dataTypes,
-      SerializationRecorder serializationRecorder) {
-    this.dataTypes = dataTypes;
+  private SerializableRowRecordList(
+      SerializationRecorder serializationRecorder,
+      TSDataType[] dataTypes,
+      int internalRowRecordListCapacity) {
     this.serializationRecorder = serializationRecorder;
+    this.dataTypes = dataTypes;
+    this.internalRowRecordListCapacity = internalRowRecordListCapacity;
+    seriesNumber = dataTypes.length;
     init();
-  }
-
-  public boolean isEmpty() {
-    return rowRecords.isEmpty();
   }
 
   public int size() {
     return rowRecords.size();
   }
 
-  public RowRecord getRowRecord(int index) {
+  public Object[] getRowRecord(int index) {
     return rowRecords.get(index);
   }
 
   public long getTime(int index) {
-    return rowRecords.get(index).getTimestamp();
+    return (long) rowRecords.get(index)[seriesNumber];
   }
 
-  public void put(RowRecord rowRecord) {
+  public void put(Object[] rowRecord) {
     rowRecords.add(rowRecord);
   }
 
@@ -120,7 +123,7 @@ public class SerializableRowRecordList implements SerializableList {
 
   @Override
   public void init() {
-    rowRecords = new ArrayList<>();
+    rowRecords = new ArrayList<>(internalRowRecordListCapacity);
   }
 
   @Override
@@ -129,7 +132,7 @@ public class SerializableRowRecordList implements SerializableList {
     serializationRecorder.setSerializedElementSize(size);
     int serializedByteLength = 0;
     int nullCount = 0;
-    for (RowRecord record : rowRecords) {
+    for (Object[] record : rowRecords) {
       if (record != null) {
         break;
       }
@@ -137,8 +140,8 @@ public class SerializableRowRecordList implements SerializableList {
     }
     serializedByteLength += ReadWriteIOUtils.write(nullCount, outputStream);
     for (int i = nullCount; i < size; ++i) {
-      RowRecord rowRecord = rowRecords.get(i);
-      serializedByteLength += ReadWriteIOUtils.write(rowRecord.getTimestamp(), outputStream);
+      Object[] rowRecord = rowRecords.get(i);
+      serializedByteLength += ReadWriteIOUtils.write((long) rowRecord[seriesNumber], outputStream);
       serializedByteLength += writeFields(rowRecord, outputStream);
     }
     serializationRecorder.setSerializedByteLength(serializedByteLength);
@@ -152,17 +155,17 @@ public class SerializableRowRecordList implements SerializableList {
       put(null);
     }
     for (int i = nullCount; i < serializedElementSize; ++i) {
-      long timestamp = ReadWriteIOUtils.readLong(byteBuffer);
-      List<Field> fields = readFields(byteBuffer);
-      put(new RowRecord(timestamp, fields));
+      Object[] rowRecord = new Object[seriesNumber + 1];
+      rowRecord[seriesNumber] = ReadWriteIOUtils.readLong(byteBuffer); // timestamp
+      readFields(byteBuffer, rowRecord);
+      put(rowRecord);
     }
   }
 
-  private int writeFields(RowRecord rowRecord, PublicBAOS outputStream) throws IOException {
+  private int writeFields(Object[] rowRecord, PublicBAOS outputStream) throws IOException {
     int serializedByteLength = 0;
-    List<Field> fields = rowRecord.getFields();
-    for (int i = 0; i < dataTypes.length; ++i) {
-      Field field = fields.get(i);
+    for (int i = 0; i < seriesNumber; ++i) {
+      Object field = rowRecord[i];
       boolean isNull = field == null;
       serializedByteLength += ReadWriteIOUtils.write(isNull, outputStream);
       if (isNull) {
@@ -171,22 +174,22 @@ public class SerializableRowRecordList implements SerializableList {
 
       switch (dataTypes[i]) {
         case INT32:
-          serializedByteLength += ReadWriteIOUtils.write(field.getIntV(), outputStream);
+          serializedByteLength += ReadWriteIOUtils.write((int) field, outputStream);
           break;
         case INT64:
-          serializedByteLength += ReadWriteIOUtils.write(field.getLongV(), outputStream);
+          serializedByteLength += ReadWriteIOUtils.write((long) field, outputStream);
           break;
         case FLOAT:
-          serializedByteLength += ReadWriteIOUtils.write(field.getFloatV(), outputStream);
+          serializedByteLength += ReadWriteIOUtils.write((float) field, outputStream);
           break;
         case DOUBLE:
-          serializedByteLength += ReadWriteIOUtils.write(field.getDoubleV(), outputStream);
+          serializedByteLength += ReadWriteIOUtils.write((double) field, outputStream);
           break;
         case BOOLEAN:
-          serializedByteLength += ReadWriteIOUtils.write(field.getBoolV(), outputStream);
+          serializedByteLength += ReadWriteIOUtils.write((boolean) field, outputStream);
           break;
         case TEXT:
-          serializedByteLength += ReadWriteIOUtils.write(field.getBinaryV(), outputStream);
+          serializedByteLength += ReadWriteIOUtils.write((Binary) field, outputStream);
           break;
         default:
           throw new UnSupportedDataTypeException(dataTypes[i].toString());
@@ -195,47 +198,36 @@ public class SerializableRowRecordList implements SerializableList {
     return serializedByteLength;
   }
 
-  private List<Field> readFields(ByteBuffer byteBuffer) {
-    List<Field> fields = new ArrayList<>();
-    for (TSDataType dataType : dataTypes) {
+  private void readFields(ByteBuffer byteBuffer, Object[] rowRecord) {
+    for (int i = 0; i < seriesNumber; ++i) {
       boolean isNull = ReadWriteIOUtils.readBool(byteBuffer);
       if (isNull) {
-        fields.add(null);
         continue;
       }
 
-      Field field;
-      switch (dataType) {
+      switch (dataTypes[i]) {
         case INT32:
-          field = new Field(TSDataType.INT32);
-          field.setIntV(ReadWriteIOUtils.readInt(byteBuffer));
+          rowRecord[i] = ReadWriteIOUtils.readInt(byteBuffer);
           break;
         case INT64:
-          field = new Field(TSDataType.INT64);
-          field.setLongV(ReadWriteIOUtils.readLong(byteBuffer));
+          rowRecord[i] = ReadWriteIOUtils.readLong(byteBuffer);
           break;
         case FLOAT:
-          field = new Field(TSDataType.FLOAT);
-          field.setFloatV(ReadWriteIOUtils.readFloat(byteBuffer));
+          rowRecord[i] = ReadWriteIOUtils.readFloat(byteBuffer);
           break;
         case DOUBLE:
-          field = new Field(TSDataType.DOUBLE);
-          field.setDoubleV(ReadWriteIOUtils.readDouble(byteBuffer));
+          rowRecord[i] = ReadWriteIOUtils.readDouble(byteBuffer);
           break;
         case BOOLEAN:
-          field = new Field(TSDataType.BOOLEAN);
-          field.setBoolV(ReadWriteIOUtils.readBool(byteBuffer));
+          rowRecord[i] = ReadWriteIOUtils.readBool(byteBuffer);
           break;
         case TEXT:
-          field = new Field(TSDataType.TEXT);
-          field.setBinaryV(ReadWriteIOUtils.readBinary(byteBuffer));
+          rowRecord[i] = ReadWriteIOUtils.readBinary(byteBuffer);
           break;
         default:
-          throw new UnSupportedDataTypeException(dataType.toString());
+          throw new UnSupportedDataTypeException(dataTypes[i].toString());
       }
-      fields.add(field);
     }
-    return fields;
   }
 
   @Override

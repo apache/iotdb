@@ -18,15 +18,16 @@
  */
 package org.apache.iotdb.hadoop.fileSystem;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
+import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 
 /**
  * This class is used to wrap the {@link}FSDataOutputStream and implement the interface
@@ -49,8 +50,7 @@ public class HDFSOutput implements TsFileOutput {
     path = new Path(filePath);
   }
 
-  public HDFSOutput(Path path, Configuration configuration, boolean overwrite)
-      throws IOException {
+  public HDFSOutput(Path path, Configuration configuration, boolean overwrite) throws IOException {
     fs = path.getFileSystem(HDFSConfUtil.setConf(configuration));
     fsDataOutputStream = fs.exists(path) ? fs.append(path) : fs.create(path, overwrite);
     this.path = path;
@@ -61,7 +61,13 @@ public class HDFSOutput implements TsFileOutput {
     fsDataOutputStream.write(b);
   }
 
-  public void write(ByteBuffer b) throws IOException {
+  @Override
+  public void write(byte b) throws IOException {
+    fsDataOutputStream.write(b);
+  }
+
+  @Override
+  public void write(ByteBuffer b) {
     throw new UnsupportedOperationException("Unsupported operation.");
   }
 
@@ -76,7 +82,7 @@ public class HDFSOutput implements TsFileOutput {
   }
 
   @Override
-  public OutputStream wrapAsStream() throws IOException {
+  public OutputStream wrapAsStream() {
     return fsDataOutputStream;
   }
 

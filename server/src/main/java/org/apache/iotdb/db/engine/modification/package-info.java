@@ -17,7 +17,5 @@
  * under the License.
  */
 
-/**
- * modification is the functional module responsible for processing UPDATE and DELETE.
- */
+/** modification is the functional module responsible for processing UPDATE and DELETE. */
 package org.apache.iotdb.db.engine.modification;

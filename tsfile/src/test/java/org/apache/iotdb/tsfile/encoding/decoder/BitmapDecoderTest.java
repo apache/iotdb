@@ -19,12 +19,8 @@
 
 package org.apache.iotdb.tsfile.encoding.decoder;
 
-import static org.junit.Assert.assertEquals;
-
-import java.io.ByteArrayOutputStream;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
+import org.apache.iotdb.tsfile.encoding.encoder.BitmapEncoder;
+import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 
 import org.junit.After;
 import org.junit.Before;
@@ -32,8 +28,12 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.iotdb.tsfile.encoding.encoder.BitmapEncoder;
-import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
+import java.io.ByteArrayOutputStream;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.Assert.assertEquals;
 
 @Deprecated
 public class BitmapDecoderTest {
@@ -44,7 +44,7 @@ public class BitmapDecoderTest {
   private List<Boolean> booleanList;
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
     intList = new ArrayList<Integer>();
     int[] int_array = {0, 1, 2, 3, 4, 5, 6, 7, 8};
     int int_len = int_array.length;
@@ -63,8 +63,7 @@ public class BitmapDecoderTest {
   }
 
   @After
-  public void tearDown() throws Exception {
-  }
+  public void tearDown() {}
 
   @Test
   public void testBitmapReadInt() throws Exception {

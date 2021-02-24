@@ -18,7 +18,13 @@
  */
 package org.apache.iotdb.tsfile.encoding.decoder;
 
-import static org.junit.Assert.assertEquals;
+import org.apache.iotdb.tsfile.encoding.encoder.LongRleEncoder;
+import org.apache.iotdb.tsfile.encoding.encoder.RleEncoder;
+import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -27,16 +33,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
-import org.apache.iotdb.tsfile.encoding.common.EndianType;
-import org.apache.iotdb.tsfile.encoding.decoder.LongRleDecoder;
-import org.apache.iotdb.tsfile.encoding.decoder.RleDecoder;
-import org.apache.iotdb.tsfile.encoding.encoder.LongRleEncoder;
-import org.apache.iotdb.tsfile.encoding.encoder.RleEncoder;
-import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
+import static org.junit.Assert.assertEquals;
 
 public class LongRleDecoderTest {
 
@@ -48,7 +45,7 @@ public class LongRleDecoderTest {
   private int hybridWidth;
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
     rleList = new ArrayList<Long>();
     int rleCount = 11;
     int rleNum = 38;
@@ -106,8 +103,7 @@ public class LongRleDecoderTest {
   }
 
   @After
-  public void tearDown() throws Exception {
-  }
+  public void tearDown() {}
 
   @Test
   public void testRleReadBigLong() throws IOException {
@@ -116,16 +112,16 @@ public class LongRleDecoderTest {
       list.add(i);
     }
     int width = ReadWriteForEncodingUtils.getLongMaxBitWidth(list);
-    testLength(list, width, false, 1);
+    testLength(list, false, 1);
     for (int i = 1; i < 10; i++) {
-      testLength(list, width, false, i);
+      testLength(list, false, i);
     }
   }
 
   @Test
   public void testRleReadLong() throws IOException {
     for (int i = 1; i < 2; i++) {
-      testLength(rleList, rleBitWidth, false, i);
+      testLength(rleList, false, i);
     }
   }
 
@@ -147,24 +143,21 @@ public class LongRleDecoderTest {
     }
     int bitWidth = ReadWriteForEncodingUtils.getLongMaxBitWidth(repeatList);
     for (int i = 1; i < 10; i++) {
-      testLength(repeatList, bitWidth, false, i);
+      testLength(repeatList, false, i);
     }
   }
 
   @Test
   public void testBitPackingReadLong() throws IOException {
     for (int i = 1; i < 10; i++) {
-      testLength(bpList, bpBitWidth, false, i);
+      testLength(bpList, false, i);
     }
   }
 
   @Test
   public void testHybridReadLong() throws IOException {
     for (int i = 1; i < 10; i++) {
-      long start = System.currentTimeMillis();
-      testLength(hybridList, hybridWidth, false, i);
-      long end = System.currentTimeMillis();
-      System.out.println(String.format("Turn %d use time %d ms", i, end - start));
+      testLength(hybridList, false, i);
     }
   }
 
@@ -184,7 +177,7 @@ public class LongRleDecoderTest {
 
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     int bitWidth = ReadWriteForEncodingUtils.getLongMaxBitWidth(list);
-    RleEncoder<Long> encoder = new LongRleEncoder(EndianType.BIG_ENDIAN);
+    RleEncoder<Long> encoder = new LongRleEncoder();
     for (long value : list) {
       encoder.encode(value, baos);
     }
@@ -203,10 +196,9 @@ public class LongRleDecoderTest {
     }
   }
 
-  public void testLength(List<Long> list, int bitWidth, boolean isDebug, int repeatCount)
-      throws IOException {
+  public void testLength(List<Long> list, boolean isDebug, int repeatCount) throws IOException {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    RleEncoder<Long> encoder = new LongRleEncoder(EndianType.BIG_ENDIAN);
+    RleEncoder<Long> encoder = new LongRleEncoder();
     for (int i = 0; i < repeatCount; i++) {
       for (long value : list) {
         encoder.encode(value, baos);
@@ -215,7 +207,7 @@ public class LongRleDecoderTest {
     }
 
     ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
-    RleDecoder decoder = new LongRleDecoder(EndianType.BIG_ENDIAN);
+    RleDecoder decoder = new LongRleDecoder();
     for (int i = 0; i < repeatCount; i++) {
       for (long value : list) {
         long value_ = decoder.readLong(buffer);

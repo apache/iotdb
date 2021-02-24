@@ -19,16 +19,11 @@
 
 package org.apache.iotdb.db.writelog.recover;
 
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -46,8 +41,16 @@ import org.apache.iotdb.db.writelog.io.ILogReader;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Supplier;
 
 /**
  * LogReplayer finds the logNode of the TsFile given by insertFilePath and logNodePrefix, reads the
@@ -59,7 +62,6 @@ public class LogReplayer {
   private String logNodePrefix;
   private String insertFilePath;
   private ModificationFile modFile;
-  private VersionController versionController;
   private TsFileResource currentTsFileResource;
   private IMemTable recoverMemTable;
 
@@ -69,13 +71,16 @@ public class LogReplayer {
   private Map<String, Long> tempStartTimeMap = new HashMap<>();
   private Map<String, Long> tempEndTimeMap = new HashMap<>();
 
-  public LogReplayer(String logNodePrefix, String insertFilePath, ModificationFile modFile,
-      VersionController versionController, TsFileResource currentTsFileResource,
-      IMemTable memTable, boolean sequence) {
+  public LogReplayer(
+      String logNodePrefix,
+      String insertFilePath,
+      ModificationFile modFile,
+      TsFileResource currentTsFileResource,
+      IMemTable memTable,
+      boolean sequence) {
     this.logNodePrefix = logNodePrefix;
     this.insertFilePath = insertFilePath;
     this.modFile = modFile;
-    this.versionController = versionController;
     this.currentTsFileResource = currentTsFileResource;
     this.recoverMemTable = memTable;
     this.sequence = sequence;
@@ -85,9 +90,12 @@ public class LogReplayer {
    * finds the logNode of the TsFile given by insertFilePath and logNodePrefix, reads the WALs from
    * the logNode and redoes them into a given MemTable and ModificationFile.
    */
-  public void replayLogs() {
-    WriteLogNode logNode = MultiFileLogNodeManager.getInstance().getNode(
-        logNodePrefix + FSFactoryProducer.getFSFactory().getFile(insertFilePath).getName());
+  public void replayLogs(Supplier<ByteBuffer[]> supplier) {
+    WriteLogNode logNode =
+        MultiFileLogNodeManager.getInstance()
+            .getNode(
+                logNodePrefix + FSFactoryProducer.getFSFactory().getFile(insertFilePath).getName(),
+                supplier);
 
     ILogReader logReader = logNode.getLogReader();
     try {
@@ -99,12 +107,14 @@ public class LogReplayer {
           } else if (plan instanceof DeletePlan) {
             replayDelete((DeletePlan) plan);
           }
+        } catch (PathNotExistException ignored) {
+          // can not get path because it is deleted
         } catch (Exception e) {
-          logger.error("recover wal of {} failed", insertFilePath, e);
+          logger.warn("recover wal of {} failed", insertFilePath, e);
         }
       }
     } catch (IOException e) {
-      logger.error("meet error when redo wal of {}", insertFilePath, e);
+      logger.warn("meet error when redo wal of {}", insertFilePath, e);
     } finally {
       logReader.close();
       try {
@@ -121,14 +131,15 @@ public class LogReplayer {
     List<PartialPath> paths = deletePlan.getPaths();
     for (PartialPath path : paths) {
       for (PartialPath device : IoTDB.metaManager.getDevices(path.getDevicePath())) {
-        recoverMemTable
-            .delete(path, device, deletePlan.getDeleteStartTime(),
-                deletePlan.getDeleteEndTime());
+        recoverMemTable.delete(
+            path, device, deletePlan.getDeleteStartTime(), deletePlan.getDeleteEndTime());
       }
-      modFile
-          .write(
-              new Deletion(path, versionController.nextVersion(), deletePlan.getDeleteStartTime(),
-                  deletePlan.getDeleteEndTime()));
+      modFile.write(
+          new Deletion(
+              path,
+              currentTsFileResource.getTsFileSize(),
+              deletePlan.getDeleteStartTime(),
+              deletePlan.getDeleteEndTime()));
     }
   }
 
@@ -145,8 +156,7 @@ public class LogReplayer {
       }
       // the last chunk group may contain the same data with the logs, ignore such logs in seq file
       long lastEndTime = currentTsFileResource.getEndTime(plan.getDeviceId().getFullPath());
-      if (lastEndTime != Long.MIN_VALUE && lastEndTime >= minTime &&
-          sequence) {
+      if (lastEndTime != Long.MIN_VALUE && lastEndTime >= minTime && sequence) {
         return;
       }
       Long startTime = tempStartTimeMap.get(plan.getDeviceId().getFullPath());
@@ -164,27 +174,32 @@ public class LogReplayer {
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
-    //set measurementMNodes, WAL already serializes the real data type, so no need to infer type
+    // set measurementMNodes, WAL already serializes the real data type, so no need to infer type
     plan.setMeasurementMNodes(mNodes);
-    //mark failed plan manually
+    // mark failed plan manually
     checkDataTypeAndMarkFailed(mNodes, plan);
     if (plan instanceof InsertRowPlan) {
       recoverMemTable.insert((InsertRowPlan) plan);
     } else {
-      recoverMemTable.insertTablet((InsertTabletPlan) plan, 0, ((InsertTabletPlan) plan).getRowCount());
+      recoverMemTable.insertTablet(
+          (InsertTabletPlan) plan, 0, ((InsertTabletPlan) plan).getRowCount());
     }
   }
 
   private void checkDataTypeAndMarkFailed(final MeasurementMNode[] mNodes, InsertPlan tPlan) {
     for (int i = 0; i < mNodes.length; i++) {
       if (mNodes[i] == null) {
-        tPlan.markFailedMeasurementInsertion(i,
-            new PathNotExistException(tPlan.getDeviceId().getFullPath() +
-                IoTDBConstant.PATH_SEPARATOR + tPlan.getMeasurements()[i]));
+        tPlan.markFailedMeasurementInsertion(
+            i,
+            new PathNotExistException(
+                tPlan.getDeviceId().getFullPath()
+                    + IoTDBConstant.PATH_SEPARATOR
+                    + tPlan.getMeasurements()[i]));
       } else if (mNodes[i].getSchema().getType() != tPlan.getDataTypes()[i]) {
-        tPlan.markFailedMeasurementInsertion(i,
-            new DataTypeMismatchException(mNodes[i].getName(), tPlan.getDataTypes()[i],
-                mNodes[i].getSchema().getType()));
+        tPlan.markFailedMeasurementInsertion(
+            i,
+            new DataTypeMismatchException(
+                mNodes[i].getName(), tPlan.getDataTypes()[i], mNodes[i].getSchema().getType()));
       }
     }
   }

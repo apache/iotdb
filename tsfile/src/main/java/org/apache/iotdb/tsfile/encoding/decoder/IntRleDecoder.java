@@ -19,42 +19,33 @@
 
 package org.apache.iotdb.tsfile.encoding.decoder;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.encoding.bitpacking.IntPacker;
+import org.apache.iotdb.tsfile.exception.encoding.TsFileDecodingException;
+import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.encoding.bitpacking.IntPacker;
-import org.apache.iotdb.tsfile.encoding.common.EndianType;
-import org.apache.iotdb.tsfile.exception.encoding.TsFileDecodingException;
-import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 
-/**
- * Decoder for int value using rle or bit-packing.
- */
+/** Decoder for int value using rle or bit-packing. */
 public class IntRleDecoder extends RleDecoder {
 
   private static final Logger logger = LoggerFactory.getLogger(IntRleDecoder.class);
 
-  /**
-   * current value for rle repeated value.
-   */
+  /** current value for rle repeated value. */
   private int currentValue;
 
-  /**
-   * buffer to save all values in group using bit-packing.
-   */
+  /** buffer to save all values in group using bit-packing. */
   private int[] currentBuffer;
 
-  /**
-   * packer for unpacking int values.
-   */
+  /** packer for unpacking int values. */
   private IntPacker packer;
 
-  public IntRleDecoder(EndianType endianType) {
-    super(endianType);
+  public IntRleDecoder() {
+    super();
     currentValue = 0;
   }
 
@@ -80,22 +71,26 @@ public class IntRleDecoder extends RleDecoder {
       try {
         readNext();
       } catch (IOException e) {
-        logger.error("tsfile-encoding IntRleDecoder: error occurs when reading all encoding number,"
-            + " length is {}, bit width is {}", length, bitWidth, e);
+        logger.error(
+            "tsfile-encoding IntRleDecoder: error occurs when reading all encoding number,"
+                + " length is {}, bit width is {}",
+            length,
+            bitWidth,
+            e);
       }
     }
     --currentCount;
     int result;
     switch (mode) {
-    case RLE:
-      result = currentValue;
-      break;
-    case BIT_PACKED:
-      result = currentBuffer[bitPackingNum - currentCount - 1];
-      break;
-    default:
-      throw new TsFileDecodingException(
-          String.format("tsfile-encoding IntRleDecoder: not a valid mode %s", mode));
+      case RLE:
+        result = currentValue;
+        break;
+      case BIT_PACKED:
+        result = currentBuffer[bitPackingNum - currentCount - 1];
+        break;
+      default:
+        throw new TsFileDecodingException(
+            String.format("tsfile-encoding IntRleDecoder: not a valid mode %s", mode));
     }
 
     if (!hasNextPackage()) {
@@ -111,7 +106,8 @@ public class IntRleDecoder extends RleDecoder {
 
   @Override
   protected void readNumberInRle() throws IOException {
-    currentValue = ReadWriteForEncodingUtils.readIntLittleEndianPaddedOnBitWidth(byteCache, bitWidth);
+    currentValue =
+        ReadWriteForEncodingUtils.readIntLittleEndianPaddedOnBitWidth(byteCache, bitWidth);
   }
 
   @Override
@@ -125,5 +121,4 @@ public class IntRleDecoder extends RleDecoder {
     // save all int values in currentBuffer
     packer.unpackAllValues(bytes, bytesToRead, currentBuffer);
   }
-
 }

@@ -19,6 +19,16 @@
 
 package org.apache.iotdb.cluster.server;
 
+import org.apache.iotdb.cluster.partition.PartitionGroup;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.server.member.DataGroupMember;
+import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
+import org.apache.iotdb.cluster.utils.ClusterUtils;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -27,22 +37,14 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.iotdb.cluster.partition.PartitionGroup;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.server.member.DataGroupMember;
-import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
-import org.apache.iotdb.cluster.utils.ClusterUtils;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * When a node is added or removed, several partition groups are affected and nodes may exit some
- * groups. For example, the local node is #5 and it is in a data group of [1, 3, 5], then node #3
- * is added, so the group becomes [1, 3, 4] and the local node must leave the group. However, #5
- * may have data that #4 needs to pull, so the Member of #5 in this group is stopped but not
- * removed yet and when system recovers, we need to resume the groups so that they can keep
- * providing snapshots for data transfers.
+ * groups. For example, the local node is #5 and it is in a data group of [1, 3, 5], then node #3 is
+ * added, so the group becomes [1, 3, 4] and the local node must leave the group. However, #5 may
+ * have data that #4 needs to pull, so the Member of #5 in this group is stopped but not removed yet
+ * and when system recovers, we need to resume the groups so that they can keep providing snapshots
+ * for data transfers.
  */
 public class StoppedMemberManager {
 
@@ -57,16 +59,16 @@ public class StoppedMemberManager {
   private DataGroupMember.Factory memberFactory;
   private Node thisNode;
 
-  StoppedMemberManager(
-      Factory memberFactory, Node thisNode) {
+  StoppedMemberManager(Factory memberFactory, Node thisNode) {
     this.memberFactory = memberFactory;
     this.thisNode = thisNode;
     recover();
   }
 
   /**
-   * When a DataGroupMember is removed, add it here and record this removal, so in next start-up
-   * we can recover it as a data source for data transfers.
+   * When a DataGroupMember is removed, add it here and record this removal, so in next start-up we
+   * can recover it as a data source for data transfers.
+   *
    * @param header
    * @param dataGroupMember
    */
@@ -85,14 +87,15 @@ public class StoppedMemberManager {
   }
 
   /**
-   * When a DataGroupMember is resumed, add it here and record this removal, so in next start-up
-   * we will not recover it here.
+   * When a DataGroupMember is resumed, add it here and record this removal, so in next start-up we
+   * will not recover it here.
+   *
    * @param header
    */
   public synchronized void remove(Node header) {
     removedMemberMap.remove(header);
     try (BufferedWriter writer = new BufferedWriter(new FileWriter(stoppedMembersFileName, true))) {
-      writer.write(RESUMED + ";" + header.toString());
+      writer.write(RESUMED + ";" + header);
       writer.newLine();
     } catch (IOException e) {
       logger.error("Cannot record resumed member of header {}", header, e);

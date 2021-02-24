@@ -19,13 +19,14 @@
 
 package org.apache.iotdb.db.query.dataset;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 
 public class ListDataSet extends QueryDataSet {
 

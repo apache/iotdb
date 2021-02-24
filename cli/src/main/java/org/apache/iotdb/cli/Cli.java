@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.cli;
 
-import static org.apache.iotdb.cli.utils.IoTPrinter.println;
+import org.apache.iotdb.exception.ArgsErrorException;
+import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.jdbc.IoTDBConnection;
+import org.apache.iotdb.rpc.RpcUtils;
 
-import java.io.IOException;
-import java.sql.DriverManager;
-import java.sql.SQLException;
 import jline.console.ConsoleReader;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -30,15 +30,15 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.iotdb.exception.ArgsErrorException;
-import org.apache.iotdb.jdbc.Config;
-import org.apache.iotdb.jdbc.IoTDBConnection;
-import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.thrift.TException;
 
-/**
- * args[]: -h 127.0.0.1 -p 6667 -u root -pw root
- */
+import java.io.IOException;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+
+import static org.apache.iotdb.cli.utils.IoTPrinter.println;
+
+/** args[]: -h 127.0.0.1 -p 6667 -u root -pw root */
 public class Cli extends AbstractCli {
 
   private static CommandLine commandLine;
@@ -101,27 +101,25 @@ public class Cli extends AbstractCli {
       return false;
     } catch (NumberFormatException e) {
       println(
-          IOTDB_CLI_PREFIX + "> error format of max print row count, it should be a number and greater than 0");
+          IOTDB_CLI_PREFIX
+              + "> error format of max print row count, it should be a number and greater than 0");
       return false;
     }
     return true;
   }
 
   private static void serve() {
-    try (ConsoleReader reader = new ConsoleReader()) {
-      reader.setExpandEvents(false);
-
+    try {
       host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine, false, host);
       port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine, false, port);
       username = checkRequiredArg(USERNAME_ARGS, USERNAME_NAME, commandLine, true, null);
 
       password = commandLine.getOptionValue(PASSWORD_ARGS);
-      if (password == null) {
-        password = reader.readLine("please input your password:", '\0');
-      }
-      if (hasExecuteSQL) {
-        try (IoTDBConnection connection = (IoTDBConnection) DriverManager
-            .getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)) {
+      if (hasExecuteSQL && password != null) {
+        try (IoTDBConnection connection =
+            (IoTDBConnection)
+                DriverManager.getConnection(
+                    Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)) {
           properties = connection.getServerProperties();
           AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
           processCommand(execute, connection);
@@ -130,8 +128,13 @@ public class Cli extends AbstractCli {
           println(IOTDB_CLI_PREFIX + "> can't execute sql because" + e.getMessage());
         }
       }
-
-      receiveCommands(reader);
+      try (ConsoleReader reader = new ConsoleReader()) {
+        reader.setExpandEvents(false);
+        if (password == null) {
+          password = reader.readLine("please input your password:", '\0');
+        }
+        receiveCommands(reader);
+      }
     } catch (ArgsErrorException e) {
       println(IOTDB_CLI_PREFIX + "> input params error because" + e.getMessage());
     } catch (Exception e) {
@@ -140,8 +143,10 @@ public class Cli extends AbstractCli {
   }
 
   private static void receiveCommands(ConsoleReader reader) throws TException, IOException {
-    try (IoTDBConnection connection = (IoTDBConnection) DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)) {
+    try (IoTDBConnection connection =
+        (IoTDBConnection)
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)) {
       String s;
       properties = connection.getServerProperties();
       AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
@@ -158,8 +163,9 @@ public class Cli extends AbstractCli {
         }
       }
     } catch (SQLException e) {
-      println(String
-          .format("%s> %s Host is %s, port is %s.", IOTDB_CLI_PREFIX, e.getMessage(), host, port));
+      println(
+          String.format(
+              "%s> %s Host is %s, port is %s.", IOTDB_CLI_PREFIX, e.getMessage(), host, port));
     }
   }
 }

@@ -19,14 +19,6 @@
 
 package org.apache.iotdb.cluster.server.heartbeat;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-
-import java.nio.ByteBuffer;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 import org.apache.iotdb.cluster.common.TestAsyncClient;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
@@ -43,64 +35,73 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.Before;
+
+import java.nio.ByteBuffer;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
 
   private Set<Node> idConflictNodes = new HashSet<>();
   private ByteBuffer partitionTableBuffer;
-  private PartitionTable partitionTable = new PartitionTable() {
-    @Override
-    public PartitionGroup route(String storageGroupName, long timestamp) {
-      return null;
-    }
+  private PartitionTable partitionTable =
+      new PartitionTable() {
+        @Override
+        public PartitionGroup route(String storageGroupName, long timestamp) {
+          return null;
+        }
 
-    @Override
-    public Node routeToHeaderByTime(String storageGroupName, long timestamp) {
-      return null;
-    }
+        @Override
+        public Node routeToHeaderByTime(String storageGroupName, long timestamp) {
+          return null;
+        }
 
-    @Override
-    public NodeAdditionResult addNode(Node node) {
-      return null;
-    }
+        @Override
+        public NodeAdditionResult addNode(Node node) {
+          return null;
+        }
 
-    @Override
-    public NodeRemovalResult removeNode(Node node) {
-      return null;
-    }
+        @Override
+        public NodeRemovalResult removeNode(Node node) {
+          return null;
+        }
 
-    @Override
-    public List<PartitionGroup> getLocalGroups() {
-      return null;
-    }
+        @Override
+        public List<PartitionGroup> getLocalGroups() {
+          return null;
+        }
 
-    @Override
-    public PartitionGroup getHeaderGroup(Node header) {
-      return null;
-    }
+        @Override
+        public PartitionGroup getHeaderGroup(Node header) {
+          return null;
+        }
 
-    @Override
-    public ByteBuffer serialize() {
-      return partitionTableBuffer;
-    }
+        @Override
+        public ByteBuffer serialize() {
+          return partitionTableBuffer;
+        }
 
-    @Override
-    public void deserialize(ByteBuffer buffer) {
+        @Override
+        public void deserialize(ByteBuffer buffer) {}
 
-    }
+        @Override
+        public List<Node> getAllNodes() {
+          return null;
+        }
 
-    @Override
-    public List<Node> getAllNodes() {
-      return null;
-    }
-
-    @Override
-    public List<PartitionGroup> getGlobalGroups() {
-      return null;
-    }
-  };
+        @Override
+        public List<PartitionGroup> getGlobalGroups() {
+          return null;
+        }
+      };
 
   @Override
   RaftMember getMember() {
@@ -147,51 +148,54 @@ public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
   AsyncClient getClient(Node node) {
     return new TestAsyncClient(node.nodeIdentifier) {
       @Override
-      public void sendHeartbeat(HeartBeatRequest request,
-          AsyncMethodCallback<HeartBeatResponse> resultHandler) {
+      public void sendHeartbeat(
+          HeartBeatRequest request, AsyncMethodCallback<HeartBeatResponse> resultHandler) {
         HeartBeatRequest requestCopy = new HeartBeatRequest(request);
-        new Thread(() -> {
-          if (testHeartbeat) {
-            assertEquals(TestUtils.getNode(0), requestCopy.getLeader());
-            assertEquals(6, requestCopy.getCommitLogIndex());
-            assertEquals(10, requestCopy.getTerm());
-            assertNull(requestCopy.getHeader());
-            if (node.getNodeIdentifier() < 3) {
-              assertTrue(requestCopy.isRegenerateIdentifier());
-            } else if (node.getNodeIdentifier() < 6) {
-              assertTrue(requestCopy.isRequireIdentifier());
-            } else if (node.getNodeIdentifier() < 9) {
-              assertEquals(partitionTableBuffer, requestCopy.partitionTableBytes);
-            }
-            synchronized (receivedNodes) {
-              receivedNodes.add(getSerialNum());
-              for (int i = 1; i < 10; i++) {
-                if (!receivedNodes.contains(i)) {
-                  return;
-                }
-              }
-              testThread.interrupt();
-            }
-          } else if (respondToElection) {
-            synchronized (testThread) {
-              testThread.notifyAll();
-            }
-          }
-        }).start();
+        new Thread(
+                () -> {
+                  if (testHeartbeat) {
+                    assertEquals(TestUtils.getNode(0), requestCopy.getLeader());
+                    assertEquals(6, requestCopy.getCommitLogIndex());
+                    assertEquals(10, requestCopy.getTerm());
+                    assertNull(requestCopy.getHeader());
+                    if (node.getNodeIdentifier() < 3) {
+                      assertTrue(requestCopy.isRegenerateIdentifier());
+                    } else if (node.getNodeIdentifier() < 6) {
+                      assertTrue(requestCopy.isRequireIdentifier());
+                    } else if (node.getNodeIdentifier() < 9) {
+                      assertEquals(partitionTableBuffer, requestCopy.partitionTableBytes);
+                    }
+                    synchronized (receivedNodes) {
+                      receivedNodes.add(getSerialNum());
+                      for (int i = 1; i < 10; i++) {
+                        if (!receivedNodes.contains(i)) {
+                          return;
+                        }
+                      }
+                      testThread.interrupt();
+                    }
+                  } else if (respondToElection) {
+                    synchronized (testThread) {
+                      testThread.notifyAll();
+                    }
+                  }
+                })
+            .start();
       }
 
       @Override
-      public void startElection(ElectionRequest request,
-          AsyncMethodCallback<Long> resultHandler) {
-        new Thread(() -> {
-          assertEquals(TestUtils.getNode(0), request.getElector());
-          assertEquals(11, request.getTerm());
-          assertEquals(6, request.getLastLogIndex());
-          assertEquals(6, request.getLastLogTerm());
-          if (respondToElection) {
-            resultHandler.onComplete(Response.RESPONSE_AGREE);
-          }
-        }).start();
+      public void startElection(ElectionRequest request, AsyncMethodCallback<Long> resultHandler) {
+        new Thread(
+                () -> {
+                  assertEquals(TestUtils.getNode(0), request.getElector());
+                  assertEquals(11, request.getTerm());
+                  assertEquals(6, request.getLastLogIndex());
+                  assertEquals(6, request.getLastLogTerm());
+                  if (respondToElection) {
+                    resultHandler.onComplete(Response.RESPONSE_AGREE);
+                  }
+                })
+            .start();
       }
     };
   }

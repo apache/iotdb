@@ -19,7 +19,20 @@
 
 package org.apache.iotdb.cluster.config;
 
+import org.apache.iotdb.cluster.exception.BadSeedUrlFormatException;
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+
 import com.google.common.net.InetAddresses;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -30,17 +43,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.DefaultParser;
-import org.apache.commons.cli.Option;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
-import org.apache.iotdb.cluster.exception.BadSeedUrlFormatException;
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class ClusterDescriptor {
 
@@ -51,7 +53,6 @@ public class ClusterDescriptor {
   private static final String OPTION_INTERVAL_DATA_PORT = "internal_data_port";
   private static final String OPTION_CLUSTER_RPC_PORT = "cluster_rpc_port";
   private static final String OPTION_SEED_NODES = "seed_nodes";
-
 
   private ClusterConfig config = new ClusterConfig();
   private static CommandLine commandLine;
@@ -91,23 +92,33 @@ public class ClusterDescriptor {
   public void replaceProps(String[] params) {
     Options options = new Options();
 
-    Option metaPort = new Option(OPTION_INTERVAL_META_PORT, OPTION_INTERVAL_META_PORT, true,
-        "port for metadata service");
+    Option metaPort =
+        new Option(
+            OPTION_INTERVAL_META_PORT,
+            OPTION_INTERVAL_META_PORT,
+            true,
+            "port for metadata service");
     metaPort.setRequired(false);
     options.addOption(metaPort);
 
-    Option dataPort = new Option(OPTION_INTERVAL_DATA_PORT, OPTION_INTERVAL_DATA_PORT, true,
-        "port for data service");
+    Option dataPort =
+        new Option(
+            OPTION_INTERVAL_DATA_PORT, OPTION_INTERVAL_DATA_PORT, true, "port for data service");
     dataPort.setRequired(false);
     options.addOption(dataPort);
 
-    Option clusterRpcPort = new Option(OPTION_CLUSTER_RPC_PORT, OPTION_CLUSTER_RPC_PORT, true,
-        "port for client service");
+    Option clusterRpcPort =
+        new Option(
+            OPTION_CLUSTER_RPC_PORT, OPTION_CLUSTER_RPC_PORT, true, "port for client service");
     clusterRpcPort.setRequired(false);
     options.addOption(clusterRpcPort);
 
-    Option seedNodes = new Option(OPTION_SEED_NODES, OPTION_SEED_NODES, true,
-        "comma-separated {IP/DOMAIN}:meta_port:data_port:client_port pairs");
+    Option seedNodes =
+        new Option(
+            OPTION_SEED_NODES,
+            OPTION_SEED_NODES,
+            true,
+            "comma-separated {IP/DOMAIN}:meta_port:data_port:client_port pairs");
     seedNodes.setRequired(false);
     options.addOption(seedNodes);
 
@@ -116,20 +127,20 @@ public class ClusterDescriptor {
       logger.error("replaces properties failed, use default conf params");
     } else {
       if (commandLine.hasOption(OPTION_INTERVAL_META_PORT)) {
-        config.setInternalMetaPort(Integer.parseInt(commandLine.getOptionValue(
-            OPTION_INTERVAL_META_PORT)));
+        config.setInternalMetaPort(
+            Integer.parseInt(commandLine.getOptionValue(OPTION_INTERVAL_META_PORT)));
         logger.debug("replace local meta port with={}", config.getInternalMetaPort());
       }
 
       if (commandLine.hasOption(OPTION_INTERVAL_DATA_PORT)) {
-        config.setInternalDataPort(Integer.parseInt(commandLine.getOptionValue(
-            OPTION_INTERVAL_DATA_PORT)));
+        config.setInternalDataPort(
+            Integer.parseInt(commandLine.getOptionValue(OPTION_INTERVAL_DATA_PORT)));
         logger.debug("replace local data port with={}", config.getInternalDataPort());
       }
 
       if (commandLine.hasOption(OPTION_CLUSTER_RPC_PORT)) {
-        config.setClusterRpcPort(Integer.parseInt(commandLine.getOptionValue(
-            OPTION_CLUSTER_RPC_PORT)));
+        config.setClusterRpcPort(
+            Integer.parseInt(commandLine.getOptionValue(OPTION_CLUSTER_RPC_PORT)));
         logger.debug("replace local cluster rpc port with={}", config.getClusterRpcPort());
       }
 
@@ -164,7 +175,9 @@ public class ClusterDescriptor {
       }
     }
     config.setSeedNodeUrls(newSeedUrls);
-    logger.debug("after replace, the clusterRpcIP={}, seedUrls={}", config.getClusterRpcIp(),
+    logger.debug(
+        "after replace, the clusterRpcIP={}, seedUrls={}",
+        config.getClusterRpcIp(),
         config.getSeedNodeUrls());
   }
 
@@ -179,9 +192,7 @@ public class ClusterDescriptor {
     return true;
   }
 
-  /**
-   * load an property file and set TsfileDBConfig variables.
-   */
+  /** load an property file and set TsfileDBConfig variables. */
   private void loadProps() {
 
     String url = getPropsUrl();
@@ -196,101 +207,147 @@ public class ClusterDescriptor {
     }
     config.setClusterRpcIp(properties.getProperty("cluster_rpc_ip", config.getClusterRpcIp()));
 
-    config.setInternalMetaPort(Integer.parseInt(properties.getProperty(OPTION_INTERVAL_META_PORT,
-        String.valueOf(config.getInternalMetaPort()))));
+    config.setInternalMetaPort(
+        Integer.parseInt(
+            properties.getProperty(
+                OPTION_INTERVAL_META_PORT, String.valueOf(config.getInternalMetaPort()))));
 
-    config.setInternalDataPort(Integer.parseInt(properties.getProperty(OPTION_INTERVAL_DATA_PORT,
-        Integer.toString(config.getInternalDataPort()))));
+    config.setInternalDataPort(
+        Integer.parseInt(
+            properties.getProperty(
+                OPTION_INTERVAL_DATA_PORT, Integer.toString(config.getInternalDataPort()))));
 
-    config.setClusterRpcPort(Integer.parseInt(properties.getProperty(OPTION_CLUSTER_RPC_PORT,
-        Integer.toString(config.getClusterRpcPort()))));
+    config.setClusterRpcPort(
+        Integer.parseInt(
+            properties.getProperty(
+                OPTION_CLUSTER_RPC_PORT, Integer.toString(config.getClusterRpcPort()))));
 
-    config.setMaxConcurrentClientNum(Integer.parseInt(properties.getProperty(
-        "max_concurrent_client_num", String.valueOf(config.getMaxConcurrentClientNum()))));
+    config.setMaxConcurrentClientNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_concurrent_client_num", String.valueOf(config.getMaxConcurrentClientNum()))));
 
-    config.setReplicationNum(Integer.parseInt(properties.getProperty(
-        "default_replica_num", String.valueOf(config.getReplicationNum()))));
+    config.setReplicationNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "default_replica_num", String.valueOf(config.getReplicationNum()))));
 
     config.setClusterName(properties.getProperty("cluster_name", config.getClusterName()));
 
-    config.setRpcThriftCompressionEnabled(Boolean.parseBoolean(properties.getProperty(
-        "rpc_thrift_compression_enable", String.valueOf(config.isRpcThriftCompressionEnabled()))));
+    config.setRpcThriftCompressionEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "rpc_thrift_compression_enable",
+                String.valueOf(config.isRpcThriftCompressionEnabled()))));
 
-    config.setConnectionTimeoutInMS(Integer.parseInt(properties
-        .getProperty("connection_timeout_ms", String.valueOf(config.getConnectionTimeoutInMS()))));
+    config.setConnectionTimeoutInMS(
+        Integer.parseInt(
+            properties.getProperty(
+                "connection_timeout_ms", String.valueOf(config.getConnectionTimeoutInMS()))));
 
-    config.setReadOperationTimeoutMS(Integer.parseInt(properties
-        .getProperty("read_operation_timeout_ms",
-            String.valueOf(config.getReadOperationTimeoutMS()))));
+    config.setReadOperationTimeoutMS(
+        Integer.parseInt(
+            properties.getProperty(
+                "read_operation_timeout_ms", String.valueOf(config.getReadOperationTimeoutMS()))));
 
-    config.setCatchUpTimeoutMS(Integer.parseInt(properties
-        .getProperty("catch_up_timeout_ms",
-            String.valueOf(config.getCatchUpTimeoutMS()))));
+    config.setCatchUpTimeoutMS(
+        Integer.parseInt(
+            properties.getProperty(
+                "catch_up_timeout_ms", String.valueOf(config.getCatchUpTimeoutMS()))));
 
-    config.setWriteOperationTimeoutMS(Integer.parseInt(properties
-        .getProperty("write_operation_timeout_ms",
-            String.valueOf(config.getWriteOperationTimeoutMS()))));
+    config.setWriteOperationTimeoutMS(
+        Integer.parseInt(
+            properties.getProperty(
+                "write_operation_timeout_ms",
+                String.valueOf(config.getWriteOperationTimeoutMS()))));
 
-    config.setUseBatchInLogCatchUp(Boolean.parseBoolean(properties.getProperty(
-        "use_batch_in_catch_up", String.valueOf(config.isUseBatchInLogCatchUp()))));
+    config.setUseBatchInLogCatchUp(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "use_batch_in_catch_up", String.valueOf(config.isUseBatchInLogCatchUp()))));
 
-    config.setMinNumOfLogsInMem(Integer.parseInt(properties
-        .getProperty("min_num_of_logs_in_mem", String.valueOf(config.getMinNumOfLogsInMem()))));
+    config.setMinNumOfLogsInMem(
+        Integer.parseInt(
+            properties.getProperty(
+                "min_num_of_logs_in_mem", String.valueOf(config.getMinNumOfLogsInMem()))));
 
-    config.setMaxNumOfLogsInMem(Integer.parseInt(properties
-        .getProperty("max_num_of_logs_in_mem", String.valueOf(config.getMaxNumOfLogsInMem()))));
+    config.setMaxNumOfLogsInMem(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_num_of_logs_in_mem", String.valueOf(config.getMaxNumOfLogsInMem()))));
 
-    config.setLogDeleteCheckIntervalSecond(Integer.parseInt(properties
-        .getProperty("log_deletion_check_interval_second",
-            String.valueOf(config.getLogDeleteCheckIntervalSecond()))));
+    config.setLogDeleteCheckIntervalSecond(
+        Integer.parseInt(
+            properties.getProperty(
+                "log_deletion_check_interval_second",
+                String.valueOf(config.getLogDeleteCheckIntervalSecond()))));
 
-    config.setEnableAutoCreateSchema(Boolean.parseBoolean(properties
-        .getProperty("enable_auto_create_schema",
-            String.valueOf(config.isEnableAutoCreateSchema()))));
+    config.setEnableAutoCreateSchema(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_auto_create_schema", String.valueOf(config.isEnableAutoCreateSchema()))));
 
     config.setUseAsyncServer(
-        Boolean.parseBoolean(properties.getProperty("is_use_async_server",
-            String.valueOf(config.isUseAsyncServer()))));
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "is_use_async_server", String.valueOf(config.isUseAsyncServer()))));
 
     config.setUseAsyncApplier(
-        Boolean.parseBoolean(properties.getProperty("is_use_async_applier",
-            String.valueOf(config.isUseAsyncApplier()))));
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "is_use_async_applier", String.valueOf(config.isUseAsyncApplier()))));
 
     config.setEnableRaftLogPersistence(
-        Boolean.parseBoolean(properties.getProperty("is_enable_raft_log_persistence",
-            String.valueOf(config.isEnableRaftLogPersistence()))));
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "is_enable_raft_log_persistence",
+                String.valueOf(config.isEnableRaftLogPersistence()))));
 
-    config.setFlushRaftLogThreshold(Integer.parseInt(properties
-        .getProperty("flush_raft_log_threshold", String.valueOf(config.getFlushRaftLogThreshold())))
-    );
+    config.setFlushRaftLogThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "flush_raft_log_threshold", String.valueOf(config.getFlushRaftLogThreshold()))));
 
-    config.setRaftLogBufferSize(Integer.parseInt(properties
-        .getProperty("raft_log_buffer_size", String.valueOf(config.getRaftLogBufferSize())))
-    );
+    config.setRaftLogBufferSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "raft_log_buffer_size", String.valueOf(config.getRaftLogBufferSize()))));
 
-    config.setMaxRaftLogIndexSizeInMemory(Integer
-        .parseInt(properties.getProperty("max_raft_log_index_size_in_memory",
-            String.valueOf(config.getMaxRaftLogIndexSizeInMemory()))));
+    config.setMaxRaftLogIndexSizeInMemory(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_raft_log_index_size_in_memory",
+                String.valueOf(config.getMaxRaftLogIndexSizeInMemory()))));
 
-    config.setMaxRaftLogPersistDataSizePerFile(Integer
-        .parseInt(properties.getProperty("max_raft_log_persist_data_size_per_file",
-            String.valueOf(config.getMaxRaftLogPersistDataSizePerFile()))));
+    config.setMaxRaftLogPersistDataSizePerFile(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_raft_log_persist_data_size_per_file",
+                String.valueOf(config.getMaxRaftLogPersistDataSizePerFile()))));
 
-    config.setMaxNumberOfPersistRaftLogFiles(Integer
-        .parseInt(properties.getProperty("max_number_of_persist_raft_log_files",
-            String.valueOf(config.getMaxNumberOfPersistRaftLogFiles()))));
+    config.setMaxNumberOfPersistRaftLogFiles(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_number_of_persist_raft_log_files",
+                String.valueOf(config.getMaxNumberOfPersistRaftLogFiles()))));
 
     config.setMaxPersistRaftLogNumberOnDisk(
-        Integer.parseInt(properties.getProperty("max_persist_raft_log_number_on_disk",
-            String.valueOf(config.getMaxPersistRaftLogNumberOnDisk()))));
+        Integer.parseInt(
+            properties.getProperty(
+                "max_persist_raft_log_number_on_disk",
+                String.valueOf(config.getMaxPersistRaftLogNumberOnDisk()))));
 
     config.setMaxNumberOfLogsPerFetchOnDisk(
-        Integer.parseInt(properties.getProperty("max_number_of_logs_per_fetch_on_disk",
-            String.valueOf(config.getMaxNumberOfLogsPerFetchOnDisk()))));
+        Integer.parseInt(
+            properties.getProperty(
+                "max_number_of_logs_per_fetch_on_disk",
+                String.valueOf(config.getMaxNumberOfLogsPerFetchOnDisk()))));
 
     config.setEnableUsePersistLogOnDiskToCatchUp(
-        Boolean.parseBoolean(properties.getProperty("enable_use_persist_log_on_disk_to_catch_up",
-            String.valueOf(config.isEnableUsePersistLogOnDiskToCatchUp()))));
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_use_persist_log_on_disk_to_catch_up",
+                String.valueOf(config.isEnableUsePersistLogOnDiskToCatchUp()))));
 
     String consistencyLevel = properties.getProperty("consistency_level");
     if (consistencyLevel != null) {
@@ -353,12 +410,15 @@ public class ClusterDescriptor {
    */
   public void loadHotModifiedProps(Properties properties) {
 
-    config.setMaxConcurrentClientNum(Integer.parseInt(properties
-        .getProperty("max_concurrent_client_num",
-            String.valueOf(config.getMaxConcurrentClientNum()))));
+    config.setMaxConcurrentClientNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_concurrent_client_num", String.valueOf(config.getMaxConcurrentClientNum()))));
 
-    config.setConnectionTimeoutInMS(Integer.parseInt(properties
-        .getProperty("connection_timeout_ms", String.valueOf(config.getConnectionTimeoutInMS()))));
+    config.setConnectionTimeoutInMS(
+        Integer.parseInt(
+            properties.getProperty(
+                "connection_timeout_ms", String.valueOf(config.getConnectionTimeoutInMS()))));
 
     logger.info("Set cluster configuration {}", properties);
   }
@@ -367,5 +427,4 @@ public class ClusterDescriptor {
     InetAddress address = InetAddress.getByName(hostname);
     return address.getHostAddress();
   }
-
 }

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.query.udf.core.executor;
 
-import java.time.ZoneId;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.Row;
@@ -30,6 +29,8 @@ import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.core.context.UDFContext;
 import org.apache.iotdb.db.query.udf.datastructure.tv.ElasticSerializableTVList;
 import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
+
+import java.time.ZoneId;
 
 public class UDTFExecutor {
 
@@ -62,9 +63,9 @@ public class UDTFExecutor {
     }
     configurations.check();
 
-    collector = ElasticSerializableTVList
-        .newElasticSerializableTVList(configurations.getOutputDataType(), queryId,
-            collectorMemoryBudgetInMB, 1);
+    collector =
+        ElasticSerializableTVList.newElasticSerializableTVList(
+            configurations.getOutputDataType(), queryId, collectorMemoryBudgetInMB, 1);
   }
 
   public void execute(Row row) throws QueryProcessException {
@@ -96,9 +97,10 @@ public class UDTFExecutor {
   }
 
   private void onError(String methodName, Exception e) throws QueryProcessException {
-    throw new QueryProcessException(String
-        .format("Error occurred during executing UDTF#%s: %s", methodName, System.lineSeparator())
-        + e.toString());
+    throw new QueryProcessException(
+        String.format(
+                "Error occurred during executing UDTF#%s: %s", methodName, System.lineSeparator())
+            + e);
   }
 
   public UDFContext getContext() {

@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.db.conf.directories.strategy;
 
-import java.io.IOException;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.utils.CommonUtils;
+
+import java.io.IOException;
 
 public class MinFolderOccupiedSpaceFirstStrategy extends DirectoryStrategy {
 

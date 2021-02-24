@@ -17,11 +17,15 @@
     <fileSets>
         <fileSet>
             <directory>src/assembly/resources</directory>
-            <outputDirectory>/</outputDirectory>
+            <outputDirectory>${file.separator}</outputDirectory>
         </fileSet>
         <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/server/src/assembly/resources</directory>
-            <outputDirectory>/</outputDirectory>
+            <directory>${maven.multiModuleProjectDirectory}/server/src/assembly/resources/conf</directory>
+            <outputDirectory>${file.separator}conf</outputDirectory>
+        </fileSet>
+        <fileSet>
+            <directory>${maven.multiModuleProjectDirectory}/server/src/assembly/resources/tools</directory>
+            <outputDirectory>${file.separator}tools</outputDirectory>
         </fileSet>
     </fileSets>
 </assembly>

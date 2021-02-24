@@ -18,31 +18,32 @@
  */
 package org.apache.iotdb.db.qp.strategy;
 
-import java.time.ZoneId;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.sql.IoTDBSqlVisitor;
+import org.apache.iotdb.db.qp.sql.SqlBaseLexer;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser;
+
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.atn.PredictionMode;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.antlr.v4.runtime.tree.ParseTree;
-import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.sql.IoTDBSqlVisitor;
-import org.apache.iotdb.db.qp.sql.SqlBaseLexer;
-import org.apache.iotdb.db.qp.sql.SqlBaseParser;
 
-/**
- * LogicalGenerator.
- */
+import java.time.ZoneId;
+
+/** LogicalGenerator. */
 public class LogicalGenerator {
 
-  public LogicalGenerator() {
-  }
+  public LogicalGenerator() {}
 
   public Operator generate(String sql, ZoneId zoneId) throws ParseCancellationException {
     IoTDBSqlVisitor ioTDBSqlVisitor = new IoTDBSqlVisitor();
     ioTDBSqlVisitor.setZoneId(zoneId);
     CharStream charStream1 = CharStreams.fromString(sql);
     SqlBaseLexer lexer1 = new SqlBaseLexer(charStream1);
+    lexer1.removeErrorListeners();
+    lexer1.addErrorListener(SQLParseError.INSTANCE);
     CommonTokenStream tokens1 = new CommonTokenStream(lexer1);
     SqlBaseParser parser1 = new SqlBaseParser(tokens1);
     parser1.getInterpreter().setPredictionMode(PredictionMode.SLL);
@@ -50,16 +51,18 @@ public class LogicalGenerator {
     parser1.addErrorListener(SQLParseError.INSTANCE);
     ParseTree tree;
     try {
-      tree = parser1.singleStatement();  // STAGE 1
+      tree = parser1.singleStatement(); // STAGE 1
     } catch (Exception ex) {
       CharStream charStream2 = CharStreams.fromString(sql);
       SqlBaseLexer lexer2 = new SqlBaseLexer(charStream2);
+      lexer2.removeErrorListeners();
+      lexer2.addErrorListener(SQLParseError.INSTANCE);
       CommonTokenStream tokens2 = new CommonTokenStream(lexer2);
       SqlBaseParser parser2 = new SqlBaseParser(tokens2);
       parser2.getInterpreter().setPredictionMode(PredictionMode.LL);
       parser2.removeErrorListeners();
       parser2.addErrorListener(SQLParseError.INSTANCE);
-      tree = parser2.singleStatement();  // STAGE 2
+      tree = parser2.singleStatement(); // STAGE 2
       // if we parse ok, it's LL not SLL
     }
     return ioTDBSqlVisitor.visit(tree);

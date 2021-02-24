@@ -20,8 +20,9 @@
 package org.apache.iotdb.rpc;
 
 /**
- * Note that this class is mainly copied from class {@link org.apache.thrift.transport.AutoExpandingBufferWriteTransport}.
- * since that class does not support inheritance, so rewrite this class.
+ * Note that this class is mainly copied from class {@link
+ * org.apache.thrift.transport.AutoExpandingBufferWriteTransport}. since that class does not support
+ * inheritance, so rewrite this class.
  */
 public class AutoScalingBufferWriteTransport extends NonOpenTransport {
 
@@ -57,7 +58,8 @@ public class AutoScalingBufferWriteTransport extends NonOpenTransport {
     buf.resizeIfNecessary(size);
   }
 
-  public AutoResizingBuffer getBuf() {
-    return buf;
+  @Override
+  public byte[] getBuffer() {
+    return buf.array();
   }
 }

@@ -38,6 +38,9 @@ IoTDB > set storage group to root.sgcc
 IoTDB> set storage group to root.ln.wf01
 Msg: org.apache.iotdb.exception.MetadataException: org.apache.iotdb.exception.MetadataException: The prefix of root.ln.wf01 has been set to the storage group.
 ```
+存储组节点名只支持中英文字符、数字和下划线的组合。
+
+还需注意，如果在Windows系统上部署，存储组名是大小写不敏感的。例如同时创建`root.ln` 和 `root.LN` 是不被允许的。
 
 ## 查看存储组
 
@@ -92,6 +95,7 @@ error: encoding TS_2DIFF does not support BOOLEAN
 ```
 
 详细的数据类型与编码方式的对应列表请参见[编码方式](../Concept/Encoding.md)。
+
 
 ### 标签点管理
 
@@ -358,6 +362,7 @@ It costs 0.002s
 ## 删除时间序列
 
 我们可以使用`DELETE TimeSeries <PrefixPath>`语句来删除我们之前创建的时间序列。SQL语句如下所示：
+
 ```
 IoTDB> delete timeseries root.ln.wf01.wt01.status
 IoTDB> delete timeseries root.ln.wf01.wt01.temperature, root.ln.wf02.wt02.hardware
@@ -366,17 +371,22 @@ IoTDB> delete timeseries root.ln.wf02.*
 
 ## 查看设备
 
+* SHOW DEVICES prefixPath? (WITH STORAGE GROUP)? limitClause? #showDevices
+
 与 `Show Timeseries` 相似，IoTDB 目前也支持两种方式查看设备。
+
 * `SHOW DEVICES` 语句显示当前所有的设备信息，等价于 `SHOW DEVICES root`。
 * `SHOW DEVICES <PrefixPath>` 语句规定了 `PrefixPath`，返回在给定的前缀路径下的设备信息。
 
 SQL语句如下所示：
+
 ```
 IoTDB> show devices
 IoTDB> show devices root.ln
 ```
 
 你可以获得如下数据：
+
 ```
 +-------------------+
 |            devices|
@@ -395,6 +405,42 @@ It costs 0.002s
 |root.ln.wf01.wt01|
 |root.ln.wf02.wt02|
 +-----------------+
+Total line number = 2
+It costs 0.001s
+```
+
+查看设备及其存储组信息，可以使用 `SHOW DEVICES WITH STORAGE GROUP` 语句。
+
+* `SHOW DEVICES WITH STORAGE GROUP` 语句显示当前所有的设备信息和其所在的存储组，等价于 `SHOW DEVICES root`。
+* `SHOW DEVICES <PrefixPath> WITH STORAGE GROUP` 语句规定了 `PrefixPath`，返回在给定的前缀路径下的设备信息和其所在的存储组。
+
+SQL语句如下所示：
+
+```
+IoTDB> show devices with storage group
+IoTDB> show devices root.ln with storage group
+```
+
+你可以获得如下数据：
+
+```
++-------------------+-------------+
+|            devices|storage group|
++-------------------+-------------+
+|  root.ln.wf01.wt01|      root.ln|
+|  root.ln.wf02.wt02|      root.ln|
+|root.sgcc.wf03.wt01|    root.sgcc|
+|    root.turbine.d1| root.turbine|
++-------------------+-------------+
+Total line number = 4
+It costs 0.003s
+
++-----------------+-------------+
+|          devices|storage group|
++-----------------+-------------+
+|root.ln.wf01.wt01|      root.ln|
+|root.ln.wf02.wt02|      root.ln|
++-----------------+-------------+
 Total line number = 2
 It costs 0.001s
 ```
