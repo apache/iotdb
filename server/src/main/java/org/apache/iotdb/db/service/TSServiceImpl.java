@@ -456,34 +456,33 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           insertRowsPlan.addOneInsertRowPlan((InsertRowPlan) physicalPlan, index);
           index++;
         } else {
-          TSStatus tsStatus = executeNonQueryPlan(insertRowsPlan);
-          index = 0;
-          result.add(tsStatus);
-          if (tsStatus.equals(RpcUtils.SUCCESS_STATUS)) {
-            isAllSuccessful = isAllSuccessful && true;
-          } else {
-            isAllSuccessful = isAllSuccessful && false;
+          if (insertRowsPlan.getRowCount() > 0) {
+            TSStatus tsStatus = executeNonQueryPlan(insertRowsPlan);
+            index = 0;
+            insertRowsPlan = new InsertRowsPlan();
+            result.add(tsStatus);
+            if (!tsStatus.equals(RpcUtils.SUCCESS_STATUS)) {
+              isAllSuccessful = false;
+            }
           }
 
           TSExecuteStatementResp resp = executeUpdateStatement(physicalPlan, req.getSessionId());
           if (resp.getStatus().code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             result.add(resp.status);
-            isAllSuccessful = isAllSuccessful && true;
           } else {
             result.add(resp.status);
-            isAllSuccessful = isAllSuccessful && false;
+            isAllSuccessful = false;
           }
         }
       } catch (Exception e) {
         TSStatus status = tryCatchQueryException(e);
         if (status != null) {
           result.add(status);
-          isAllSuccessful = isAllSuccessful && false;
+          isAllSuccessful = false;
         } else {
           result.add(
               onNPEOrUnexpectedException(
                   e, "executing " + statement, TSStatusCode.INTERNAL_SERVER_ERROR));
-          isAllSuccessful = isAllSuccessful && true;
         }
       }
       Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_ONE_SQL_IN_BATCH, t2);
