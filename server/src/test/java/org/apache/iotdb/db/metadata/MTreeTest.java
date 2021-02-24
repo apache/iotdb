@@ -53,7 +53,7 @@ public class MTreeTest {
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
   }
-  
+
   @Test
   public void testSetStorageGroupExceptionMessage() throws IllegalPathException {
     MTree root = new MTree();
@@ -62,7 +62,8 @@ public class MTreeTest {
       root.setStorageGroup(new PartialPath("root.edge1"));
       fail("Expected exception");
     } catch (MetadataException e) {
-      assertEquals("some children of root.edge1 have already been set to storage group", e.getMessage());
+      assertEquals(
+          "some children of root.edge1 have already been set to storage group", e.getMessage());
     }
     try {
       root.setStorageGroup(new PartialPath("root.edge2"));
