@@ -127,7 +127,7 @@ public class ExperimentSessionWriter {
       measurementOrders.add("s" + i);
     }
     long startTime = 2200l;
-    long endTime = 3200l;
+    long endTime = 3400l;
     try {
       ChunkSizeOptimizationResult result = session.runOptimizeChunkSize(measurements, ops, startTime, endTime, measurementOrders);
       if (!CHUNK_SIZE_OPT_LOG_FILE.exists()) {
@@ -148,6 +148,5 @@ public class ExperimentSessionWriter {
   }
 
   static void testMultipleReplicaSA() {
-
   }
 }

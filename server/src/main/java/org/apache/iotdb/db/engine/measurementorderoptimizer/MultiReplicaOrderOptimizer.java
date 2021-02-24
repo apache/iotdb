@@ -28,7 +28,7 @@ public class MultiReplicaOrderOptimizer {
   private List<Double> costList = new LinkedList<>();
   private static long CHUNK_SIZE_STEP_NUM = 70000l;
   private final float CHUNK_SIZE_LOWER_BOUND = 0.8f;
-  private final float CHUNK_SIZE_UPPER_BOUND = 1.3f;
+  private final float CHUNK_SIZE_UPPER_BOUND = 2.0f;
 
   public MultiReplicaOrderOptimizer(String deviceID) {
     this.deviceID = deviceID;
