@@ -40,32 +40,7 @@ public class CostModel {
       totalChunkSize += chunkSize.get(i);
     }
     long averageChunkSize = totalChunkSize / chunkSize.size();
-    long chunkLength = MeasurePointEstimator.getInstance().getMeasurePointNum(averageChunkSize);
-
-    float cost = 0.0f;
-    for (QueryRecord queryRecord : queryRecords) {
-      float singleQueryCost = 0.0f;
-      GroupByQueryRecord groupByRecord = (GroupByQueryRecord) queryRecord;
-      long visitLength = groupByRecord.getVisitLength();
-      int visitCnt = (int) Math.ceil(((double) visitLength / (double) chunkLength));
-      // Calculate the cost in single chunk group
-      List<String> visitMeasurements = sortInSameOrderAndDeduplicate(queryRecord.getSensors(), measurements);
-      int k = 0;
-      int intervalCnt = 0;
-      for (int i = 0; i < measurements.size() && k < visitMeasurements.size(); ++i) {
-        if (measurements.get(i).equals(visitMeasurements.get(k))) {
-          k++;
-          singleQueryCost += SeekCostModel.getSeekCost(intervalCnt * averageChunkSize);
-          singleQueryCost += ReadCostModel.getReadCost(averageChunkSize);
-          intervalCnt = 0;
-        } else {
-          intervalCnt++;
-        }
-      }
-      singleQueryCost *= visitCnt;
-      cost += singleQueryCost;
-    }
-    return cost;
+    return approximateAggregationQueryCostWithTimeRange(queryRecords, measurements, averageChunkSize);
   }
 
   public static float approximateAggregationQueryCostWithTimeRange(List<QueryRecord> queryRecords, List<String> measurements, long averageChunkSize) {
@@ -74,26 +49,7 @@ public class CostModel {
 
     float cost = 0.0f;
     for (QueryRecord queryRecord : queryRecords) {
-      float singleQueryCost = 0.0f;
-      GroupByQueryRecord groupByRecord = (GroupByQueryRecord) queryRecord;
-      long visitLength = groupByRecord.getVisitLength();
-      int visitCnt = (int) Math.ceil(((double) visitLength / (double) chunkLength)) + 1;
-      // Calculate the cost in single chunk group
-      List<String> visitMeasurements = sortInSameOrderAndDeduplicate(queryRecord.getSensors(), measurements);
-      int k = 0;
-      int intervalCnt = 0;
-      for (int i = 0; i < measurements.size() && k < visitMeasurements.size(); ++i) {
-        if (measurements.get(i).equals(visitMeasurements.get(k))) {
-          k++;
-          singleQueryCost += SeekCostModel.getSeekCost(intervalCnt * averageChunkSize);
-          singleQueryCost += ReadCostModel.getReadCost(averageChunkSize);
-          intervalCnt = 0;
-        } else {
-          intervalCnt++;
-        }
-      }
-      singleQueryCost *= visitCnt;
-      cost += singleQueryCost;
+      cost += approximateSingleAggregationQueryCostWithTimeRange(queryRecord, measurements, averageChunkSize);
     }
     return cost;
   }
