@@ -78,18 +78,18 @@ public class NodeRemovalResult {
     }
   }
 
-  public void deserialize(ByteBuffer buffer, Map<Integer, Node> idNodeMap) {
+  public void deserialize(ByteBuffer buffer) {
     int removedGroupListSize = buffer.getInt();
     for (int i = 0 ; i < removedGroupListSize; i++) {
       PartitionGroup group = new PartitionGroup();
-      group.deserialize(buffer, idNodeMap);
+      group.deserialize(buffer);
       removedGroupList.add(group);
     }
 
     int newGroupListSize = buffer.getInt();
     for (int i = 0 ; i < newGroupListSize; i++) {
       PartitionGroup group = new PartitionGroup();
-      group.deserialize(buffer, idNodeMap);
+      group.deserialize(buffer);
       newGroupList.add(group);
     }
   }

@@ -1934,7 +1934,7 @@ public class MetaGroupMember extends RaftMember {
     // node removal must be serialized to reduce potential concurrency problem
     synchronized (logManager) {
       // update partition table
-      partitionTable.removeNode(node);
+      partitionTable.removeNode(target);
       ((SlotPartitionTable) partitionTable).setLastLogIndex(logManager.getLastLogIndex() + 1);
 
       RemoveNodeLog removeNodeLog = new RemoveNodeLog();
@@ -1986,7 +1986,6 @@ public class MetaGroupMember extends RaftMember {
         if (allNodes.contains(oldNode)) {
           allNodes.remove(oldNode);
           idNodeMap.remove(oldNode.nodeIdentifier);
-
         }
 
         // save the updated partition table

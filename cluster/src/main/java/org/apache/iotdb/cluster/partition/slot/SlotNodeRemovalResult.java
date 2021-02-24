@@ -29,6 +29,7 @@ import java.util.Map;
 import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
+import org.apache.iotdb.db.utils.SerializeUtils;
 
 /**
  * SlotNodeRemovalResult stores the removed partition group and who will take over its slots.
@@ -61,11 +62,13 @@ public class SlotNodeRemovalResult extends NodeRemovalResult {
   }
 
   @Override
-  public void deserialize(ByteBuffer buffer, Map<Integer, Node> idNodeMap) {
-    super.deserialize(buffer, idNodeMap);
+  public void deserialize(ByteBuffer buffer) {
+    super.deserialize(buffer);
     int size = buffer.getInt();
     for (int i = 0 ; i < size; i++) {
-      RaftNode raftNode = new RaftNode(idNodeMap.get(buffer.getInt()), buffer.getInt());
+      Node node = new Node();
+      SerializeUtils.deserialize(node, buffer);
+      RaftNode raftNode = new RaftNode(node, buffer.getInt());
       List<Integer> slots = new ArrayList<>();
       int slotSize = buffer.getInt();
       for (int j = 0 ; j < slotSize; j++) {

@@ -628,7 +628,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
         DataGroupMember dataGroupMember = entry.getValue();
         if (dataGroupMember.getHeader().equals(node) || node.equals(thisNode)) {
           entryIterator.remove();
-          removeMember(entry.getKey(), entry.getValue());
+          removeMember(entry.getKey(), dataGroupMember);
         } else {
           // the group should be updated and pull new slots from the removed node
           dataGroupMember.removeNode(node, removalResult);

@@ -54,6 +54,7 @@ public class RemoveNodeLog extends Log {
   }
 
   public ByteBuffer getPartitionTable() {
+    partitionTable.clear();
     return partitionTable;
   }
 
@@ -90,7 +91,9 @@ public class RemoveNodeLog extends Log {
     SerializeUtils.deserialize(removedNode, buffer);
 
     int len = buffer.getInt();
-    partitionTable = ByteBuffer.wrap(buffer.array(), buffer.position(), len);
+    byte[] data = new byte[len];
+    System.arraycopy(buffer.array(), buffer.position(), data, 0, len);
+    partitionTable = ByteBuffer.wrap(data);
   }
 
   public Node getRemovedNode() {

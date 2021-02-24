@@ -25,9 +25,9 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Map;
 import java.util.Objects;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.db.utils.SerializeUtils;
 
 /**
  * PartitionGroup contains all the nodes that will form a data group with a certain node, which are
@@ -73,15 +73,17 @@ public class PartitionGroup extends ArrayList<Node> {
     dataOutputStream.writeInt(getId());
     dataOutputStream.writeInt(size());
     for (Node node : this) {
-      dataOutputStream.writeInt(node.getNodeIdentifier());
+      SerializeUtils.serialize(node, dataOutputStream);
     }
   }
 
-  public void deserialize(ByteBuffer buffer, Map<Integer, Node> idNodeMap) {
+  public void deserialize(ByteBuffer buffer) {
     id = buffer.getInt();
     int nodeNum = buffer.getInt();
     for (int i2 = 0; i2 < nodeNum; i2++) {
-      add(idNodeMap.get(buffer.getInt()));
+      Node node = new Node();
+      SerializeUtils.deserialize(node, buffer);
+      add(node);
     }
   }
 

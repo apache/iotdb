@@ -200,7 +200,7 @@ public class SlotPartitionTable implements PartitionTable {
     // assuming the nodes are [1,2,3,4,5]
     int nodeIndex = nodeRing.indexOf(raftNode.getNode());
     if (nodeIndex == -1) {
-      logger.error("Node {} is not in the cluster", raftNode.getNode());
+      logger.warn("Node {} is not in the cluster", raftNode.getNode());
       return null;
     }
     int endIndex = nodeIndex + replicationNum;
@@ -307,7 +307,7 @@ public class SlotPartitionTable implements PartitionTable {
       }
     }
 
-    calculateGlobalGroups(nodeRing);
+    globalGroups = calculateGlobalGroups(nodeRing);
 
     // the slots movement is only done logically, the new node itself will pull data from the
     // old node
@@ -354,7 +354,7 @@ public class SlotPartitionTable implements PartitionTable {
 
       dataOutputStream.writeInt(previousNodeMap.size());
       for (Entry<RaftNode, Map<Integer, PartitionGroup>> nodeMapEntry : previousNodeMap.entrySet()) {
-        dataOutputStream.writeInt(nodeMapEntry.getKey().getNode().getNodeIdentifier());
+        SerializeUtils.serialize(nodeMapEntry.getKey().getNode(), dataOutputStream);
         dataOutputStream.writeInt(nodeMapEntry.getKey().getRaftId());
         Map<Integer, PartitionGroup> prevHolders = nodeMapEntry.getValue();
         dataOutputStream.writeInt(prevHolders.size());
@@ -383,15 +383,15 @@ public class SlotPartitionTable implements PartitionTable {
     logger.info("Initializing the partition table from buffer");
     totalSlotNumbers = buffer.getInt();
     int size = buffer.getInt();
-    Map<Integer, Node> idNodeMap = new HashMap<>();
+    nodeSlotMap = new HashMap<>();
+    Node node;
     for (int i = 0; i < size; i++) {
-      Node node = new Node();
+      node = new Node();
       SerializeUtils.deserialize(node, buffer);
       RaftNode raftNode = new RaftNode(node, buffer.getInt());
       List<Integer> slots = new ArrayList<>();
       SerializeUtils.deserializeIntList(slots, buffer);
       nodeSlotMap.put(raftNode, slots);
-      idNodeMap.put(node.getNodeIdentifier(), node);
       for (Integer slot : slots) {
         slotNodes[slot] = raftNode;
       }
@@ -400,22 +400,24 @@ public class SlotPartitionTable implements PartitionTable {
     int prevNodeMapSize = buffer.getInt();
     previousNodeMap = new HashMap<>();
     for (int i = 0; i < prevNodeMapSize; i++) {
-      int nodeId = buffer.getInt();
-      RaftNode node = new RaftNode(idNodeMap.get(nodeId), buffer.getInt());
+      node = new Node();
+      SerializeUtils.deserialize(node, buffer);
+      RaftNode raftNode = new RaftNode(node, buffer.getInt());
 
       Map<Integer, PartitionGroup> prevHolders = new HashMap<>();
       int holderNum = buffer.getInt();
       for (int i1 = 0; i1 < holderNum; i1++) {
         PartitionGroup group = new PartitionGroup();
-        group.deserialize(buffer, idNodeMap);
+        group.deserialize(buffer);
         prevHolders.put(buffer.getInt(), group);
       }
-      previousNodeMap.put(node, prevHolders);
+      previousNodeMap.put(raftNode, prevHolders);
     }
 
     nodeRemovalResult = new NodeRemovalResult();
-    nodeRemovalResult.deserialize(buffer, idNodeMap);
+    nodeRemovalResult.deserialize(buffer);
 
+    nodeRing.clear();
     for (RaftNode raftNode : nodeSlotMap.keySet()) {
       if (!nodeRing.contains(raftNode.getNode())) {
         nodeRing.add(raftNode.getNode());
@@ -527,7 +529,7 @@ public class SlotPartitionTable implements PartitionTable {
         result.addNewGroup(newGrp);
       }
 
-      calculateGlobalGroups(nodeRing);
+      globalGroups = calculateGlobalGroups(nodeRing);
 
       // the slots movement is only done logically, the new node itself will pull data from the
       // old node
@@ -563,7 +565,7 @@ public class SlotPartitionTable implements PartitionTable {
     List<PartitionGroup> result = new ArrayList<>();
     for (Node node : nodeRing) {
       for (int i = 0; i < multiRaftFactor; i++) {
-        result.add(getHeaderGroup(new RaftNode(node, i)));
+        result.add(getHeaderGroup(new RaftNode(node, i), nodeRing));
       }
     }
     return result;

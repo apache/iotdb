@@ -752,6 +752,9 @@ public class DataGroupMember extends RaftMember {
       if (allNodes.contains(removedNode)) {
         // update the group if the deleted node was in it
         PartitionGroup newGroup = metaGroupMember.getPartitionTable().getHeaderGroup(new RaftNode(getHeader(), getRaftGroupId()));
+        if (newGroup == null) {
+          return;
+        }
         Node newNodeToGroup = newGroup.get(newGroup.size() - 1);
         allNodes.add(newNodeToGroup);
         peerMap.putIfAbsent(newNodeToGroup, new Peer(logManager.getLastLogIndex()));
