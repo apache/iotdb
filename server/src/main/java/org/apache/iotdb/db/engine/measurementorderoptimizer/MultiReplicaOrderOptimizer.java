@@ -72,7 +72,7 @@ public class MultiReplicaOrderOptimizer {
     Random r = new Random();
     Workload[] workloadPartition = null;
     int k = 0;
-    for (; k < maxIter && System.currentTimeMillis() - optimizeStartTime < 30l * 60l * 1000l; ++k) {
+    for (; k < maxIter && System.currentTimeMillis() - optimizeStartTime < 45l * 60l * 1000l; ++k) {
       temperature = temperature * COOLING_RATE;
       int selectedReplica = r.nextInt(replicaNum);
       int swapLeft = r.nextInt(measurementOrder.size());
@@ -115,7 +115,7 @@ public class MultiReplicaOrderOptimizer {
     Random r = new Random();
     Workload[] workloadPartition = null;
     int k = 0;
-    for (; k < maxIter && System.currentTimeMillis() - optimizeStartTime < 30l * 60l * 1000l; ++k) {
+    for (; k < maxIter && System.currentTimeMillis() - optimizeStartTime < 45l * 60l * 1000l; ++k) {
       temperature = temperature * COOLING_RATE;
       int selectedReplica = r.nextInt(replicaNum);
       int swapLeft = r.nextInt(measurementOrder.size());
