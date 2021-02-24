@@ -20,10 +20,10 @@ import java.util.List;
 import java.util.Random;
 
 public class ExperimentSessionWriter {
-  private static final Session session = new Session("192.168.130.38", 6667, "root", "root");
+  private static final Session session = new Session("127.0.0.1", 6667, "root", "root");
   private static final int TIMESERIES_NUM = 1000;
   private static int DATA_NUM = 10000;
-  private static final File COST_LOG_FILE = new File("E:\\Thing\\Workspace\\IoTDB\\res\\Order_3R.cost");
+  private static final File COST_LOG_FILE = new File("E:\\Thing\\Workspace\\IoTDB\\res\\DD_3R.cost");
   private static final File CHUNK_SIZE_OPT_LOG_FILE = new File("E:\\Thing\\Workspace\\IoTDB\\res\\ChunkSizeOpt.txt");
   private static OutputStream COST_LOG_STREAM;
   public static void main(String[] args) throws Exception{
@@ -36,8 +36,8 @@ public class ExperimentSessionWriter {
     session.readRecordFromFile();
     session.readMetadataFromFile();
     // session.deleteStorageGroup("root.test");
-    createTimeseries();
-    testMultipleReplicaSA();
+    // createTimeseries();
+    testDivergentDesign();
     session.close();
   }
 
@@ -153,6 +153,17 @@ public class ExperimentSessionWriter {
     try {
       long startTime = System.currentTimeMillis();
       ReplicaSet replicaSet = session.runMultiReplicaOptimize("root.test.device");
+      long lastTime = System.currentTimeMillis() - startTime;
+      System.out.println(lastTime / 1000l + " s");
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+
+  static void testDivergentDesign() {
+    try {
+      long startTime = System.currentTimeMillis();
+      ReplicaSet replicaSet = session.runDivergentDesign("root.test.device");
       long lastTime = System.currentTimeMillis() - startTime;
       System.out.println(lastTime / 1000l + " s");
     } catch (Exception e) {

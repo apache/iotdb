@@ -32,7 +32,7 @@ public class MeasurementOrderOptimizer {
   Map<String, Integer> chunkGroupCountMap = new HashMap<>();
   List<QueryRecord> queryRecords = new ArrayList<>();
   long averageChunkSize;
-  public static final int SA_MAX_ITERATION = 350000;
+  public static final int SA_MAX_ITERATION = 200000;
   public static final float SA_INIT_TEMPERATURE = 2.0f;
   public static final float SA_COOLING_RATE = 0.02f;
   private static final Logger LOGGER = LoggerFactory.getLogger(MeasurementOrderOptimizer.class);
@@ -432,8 +432,8 @@ public class MeasurementOrderOptimizer {
     for (String measurement : curMeasurementOrder) {
       chunkSize.add(chunkSizeMapForCurDevice.get(measurement));
     }
-    float curCost = CostModel.approximateAggregationQueryCostWithoutTimeRange(queryRecordsForCurDevice,
-            curMeasurementOrder, chunkSize, chunkGroupCountMap.get(deviceID));
+    float curCost = CostModel.
+            approximateAggregationQueryCostWithTimeRange(queryRecordsForCurDevice, curMeasurementOrder, chunkSize);
     float temperature = SA_INIT_TEMPERATURE;
     Random r = new Random();
 
@@ -455,8 +455,8 @@ public class MeasurementOrderOptimizer {
       swap(curMeasurementOrder, swapPosFirst, swapPosSecond);
       swap(chunkSize, swapPosFirst, swapPosSecond);
 
-      float newCost = CostModel.approximateAggregationQueryCostWithoutTimeRange(queryRecordsForCurDevice,
-              curMeasurementOrder, chunkSize, chunkGroupCountMap.get(deviceID));
+      float newCost = CostModel.
+              approximateAggregationQueryCostWithTimeRange(queryRecordsForCurDevice, curMeasurementOrder, chunkSize);
       float probability = r.nextFloat();
       probability = probability < 0 ? -probability : probability;
       probability %= 1.0;
