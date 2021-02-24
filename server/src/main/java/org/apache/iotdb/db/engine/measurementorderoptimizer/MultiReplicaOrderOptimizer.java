@@ -23,7 +23,7 @@ public class MultiReplicaOrderOptimizer {
   private List<String> measurementOrder;
   private List<QueryRecord> records;
   private List<Long> chunkSize;
-  private final float SA_INIT_TEMPERATURE = 100.0f;
+  private final float SA_INIT_TEMPERATURE = 20.0f;
   private final float COOLING_RATE = 0.99995f;
   private List<Double> costList = new LinkedList<>();
   private static long CHUNK_SIZE_STEP_NUM = 70000l;

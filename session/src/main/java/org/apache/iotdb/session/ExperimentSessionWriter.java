@@ -35,7 +35,7 @@ public class ExperimentSessionWriter {
     session.open(false);
     session.readRecordFromFile();
     session.readMetadataFromFile();
-    session.deleteStorageGroup("root.test");
+    // session.deleteStorageGroup("root.test");
     createTimeseries();
     testMultipleReplicaSA();
     session.close();
