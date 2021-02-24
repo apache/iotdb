@@ -365,7 +365,7 @@ service TSDataService extends RaftService {
   /**
    * Get the devices from the header according to the showDevicesPlan
    **/
-  set<string> getDevices(1:Node header, 2: binary planBinary)
+  binary getDevices(1:Node header, 2: binary planBinary)
 
   list<string> getNodeList(1:Node header, 2:string path, 3:int nodeLevel)
 

@@ -245,19 +245,18 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
   }
 
   @Override
-  public void getDevices(Node header, ByteBuffer planBinary,
-      AsyncMethodCallback<Set<String>> resultHandler) {
+  public void getDevices(
+      Node header, ByteBuffer planBinary, AsyncMethodCallback<ByteBuffer> resultHandler) {
     try {
-      resultHandler
-          .onComplete(dataGroupMember.getLocalQueryExecutor().getDevices(planBinary));
+      resultHandler.onComplete(dataGroupMember.getLocalQueryExecutor().getDevices(planBinary));
     } catch (CheckConsistencyException | IOException | MetadataException e) {
       resultHandler.onError(e);
     }
   }
 
   @Override
-  public void getNodeList(Node header, String path, int nodeLevel,
-      AsyncMethodCallback<List<String>> resultHandler) {
+  public void getNodeList(
+      Node header, String path, int nodeLevel, AsyncMethodCallback<List<String>> resultHandler) {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
       resultHandler.onComplete(((CMManager) IoTDB.metaManager).getNodeList(path, nodeLevel));

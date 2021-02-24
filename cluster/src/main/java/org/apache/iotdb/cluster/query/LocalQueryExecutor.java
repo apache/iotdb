@@ -19,16 +19,6 @@
 
 package org.apache.iotdb.cluster.query;
 
-import static org.apache.iotdb.session.Config.DEFAULT_FETCH_SIZE;
-
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.ReaderNotFoundException;
 import org.apache.iotdb.cluster.metadata.CMManager;
@@ -57,6 +47,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
 import org.apache.iotdb.db.query.dataset.groupby.LocalGroupByExecutor;
@@ -421,16 +412,20 @@ public class LocalQueryExecutor {
     return ByteBuffer.wrap(outputStream.toByteArray());
   }
 
-  public Set<String> getDevices(ByteBuffer planBuffer)
+  public ByteBuffer getDevices(ByteBuffer planBuffer)
       throws CheckConsistencyException, IOException, MetadataException {
     dataGroupMember.syncLeaderWithConsistencyCheck(false);
     ShowDevicesPlan plan = (ShowDevicesPlan) PhysicalPlan.Factory.create(planBuffer);
-    Set<PartialPath> partialPaths = getCMManager().getLocalDevices(plan);
-    Set<String> results = new HashSet<>(partialPaths.size());
-    for (PartialPath path : partialPaths) {
-      results.add(path.getFullPath());
+    List<ShowDevicesResult> allDevicesResult = getCMManager().getLocalDevices(plan);
+
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    try (DataOutputStream dataOutputStream = new DataOutputStream(outputStream)) {
+      dataOutputStream.writeInt(allDevicesResult.size());
+      for (ShowDevicesResult result : allDevicesResult) {
+        result.serialize(outputStream);
+      }
     }
-    return results;
+    return ByteBuffer.wrap(outputStream.toByteArray());
   }
 
   /**
@@ -518,6 +513,7 @@ public class LocalQueryExecutor {
     }
     List<Integer> nodeSlots =
         ((SlotPartitionTable) dataGroupMember.getMetaGroupMember().getPartitionTable())
+            .getNodeSlots(dataGroupMember.getHeader());
     try {
       if (ascending) {
         AggregationExecutor.aggregateOneSeries(

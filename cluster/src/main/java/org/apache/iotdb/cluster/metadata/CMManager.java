@@ -60,6 +60,7 @@ import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
@@ -1438,15 +1439,16 @@ public class CMManager extends MManager {
     return super.showTimeseries(plan, context);
   }
 
-  public Set<PartialPath> getLocalDevices(ShowDevicesPlan plan) throws MetadataException {
+  public List<ShowDevicesResult> getLocalDevices(ShowDevicesPlan plan) throws MetadataException {
     return super.getDevices(plan);
   }
 
   @Override
-  public Set<PartialPath> getDevices(ShowDevicesPlan plan) throws MetadataException {
-    ConcurrentSkipListSet<PartialPath> resultSet = new ConcurrentSkipListSet<>();
-    ExecutorService pool = new ThreadPoolExecutor(THREAD_POOL_SIZE, THREAD_POOL_SIZE, 0,
-        TimeUnit.SECONDS, new LinkedBlockingDeque<>());
+  public List<ShowDevicesResult> getDevices(ShowDevicesPlan plan) throws MetadataException {
+    ConcurrentSkipListSet<ShowDevicesResult> resultSet = new ConcurrentSkipListSet<>();
+    ExecutorService pool =
+        new ThreadPoolExecutor(
+            THREAD_POOL_SIZE, THREAD_POOL_SIZE, 0, TimeUnit.SECONDS, new LinkedBlockingDeque<>());
     List<PartitionGroup> globalGroups = metaGroupMember.getPartitionTable().getGlobalGroups();
 
     int limit = plan.getLimit() == 0 ? Integer.MAX_VALUE : plan.getLimit();
@@ -1459,24 +1461,27 @@ public class CMManager extends MManager {
     }
 
     if (logger.isDebugEnabled()) {
-      logger.debug("Fetch devices schemas of {} from {} groups", plan.getPath(),
-          globalGroups.size());
+      logger.debug(
+          "Fetch devices schemas of {} from {} groups", plan.getPath(), globalGroups.size());
     }
 
     List<Future<Void>> futureList = new ArrayList<>();
     for (PartitionGroup group : globalGroups) {
-      futureList.add(pool.submit(() -> {
-        try {
-          getDevices(group, plan, resultSet);
-        } catch (CheckConsistencyException e) {
-          logger.error("Cannot get show devices result of {} from {}", plan, group);
-        }
-        return null;
-      }));
+      futureList.add(
+          pool.submit(
+              () -> {
+                try {
+                  getDevices(group, plan, resultSet);
+                } catch (CheckConsistencyException e) {
+                  logger.error("Cannot get show devices result of {} from {}", plan, group);
+                }
+                return null;
+              }));
     }
 
     waitForThreadPool(futureList, pool, "getDevices()");
-    Set<PartialPath> showDevicesResults = applyShowDevicesLimitOffset(resultSet, limit, offset);
+    List<ShowDevicesResult> showDevicesResults =
+        applyShowDevicesLimitOffset(resultSet, limit, offset);
     logger.debug("show devices {} has {} results", plan.getPath(), showDevicesResults.size());
     return showDevicesResults;
   }
@@ -1542,10 +1547,10 @@ public class CMManager extends MManager {
     return showTimeSeriesResults;
   }
 
-  private Set<PartialPath> applyShowDevicesLimitOffset(ConcurrentSkipListSet<PartialPath> resultSet,
-      int limit, int offset) {
-    Set<PartialPath> showDevicesResults = new HashSet<>();
-    Iterator<PartialPath> iterator = resultSet.iterator();
+  private List<ShowDevicesResult> applyShowDevicesLimitOffset(
+      Set<ShowDevicesResult> resultSet, int limit, int offset) {
+    List<ShowDevicesResult> showDevicesResults = new ArrayList<>();
+    Iterator<ShowDevicesResult> iterator = resultSet.iterator();
     while (iterator.hasNext() && limit > 0) {
       if (offset > 0) {
         offset--;
@@ -1571,7 +1576,8 @@ public class CMManager extends MManager {
     }
   }
 
-  private void getDevices(PartitionGroup group, ShowDevicesPlan plan, Set<PartialPath> resultSet)
+  private void getDevices(
+      PartitionGroup group, ShowDevicesPlan plan, Set<ShowDevicesResult> resultSet)
       throws CheckConsistencyException, MetadataException {
     if (group.contains(metaGroupMember.getThisNode())) {
       getLocalDevices(group, plan, resultSet);
@@ -1580,19 +1586,18 @@ public class CMManager extends MManager {
     }
   }
 
-  private void getLocalDevices(PartitionGroup group, ShowDevicesPlan plan,
-      Set<PartialPath> resultSet)
+  private void getLocalDevices(
+      PartitionGroup group, ShowDevicesPlan plan, Set<ShowDevicesResult> resultSet)
       throws CheckConsistencyException, MetadataException {
     Node header = group.getHeader();
     DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header);
     localDataMember.syncLeaderWithConsistencyCheck(false);
     try {
-      Set<PartialPath> localResult = super.getDevices(plan);
+      List<ShowDevicesResult> localResult = super.getDevices(plan);
       resultSet.addAll(localResult);
       logger.debug("Fetched {} devices of {} from {}", localResult.size(), plan.getPath(), group);
     } catch (MetadataException e) {
-      logger
-          .error("Cannot execute show devices plan {} from {} locally.", plan, group);
+      logger.error("Cannot execute show devices plan {} from {} locally.", plan, group);
       throw e;
     }
   }
@@ -1609,8 +1614,11 @@ public class CMManager extends MManager {
     try {
       List<ShowTimeSeriesResult> localResult = super.showTimeseries(plan, context);
       resultSet.addAll(localResult);
-      logger.debug("Fetched local timeseries {} schemas of {} from {}", localResult.size(),
-          plan.getPath(), group);
+      logger.debug(
+          "Fetched local timeseries {} schemas of {} from {}",
+          localResult.size(),
+          plan.getPath(),
+          group);
     } catch (MetadataException e) {
       logger.error("Cannot execute show timeseries plan  {} from {} locally.", plan, group);
       throw e;
@@ -1638,8 +1646,8 @@ public class CMManager extends MManager {
 
     if (resultBinary != null) {
       int size = resultBinary.getInt();
-      logger
-          .debug("Fetched remote timeseries {} schemas of {} from {}", size, plan.getPath(), group);
+      logger.debug(
+          "Fetched remote timeseries {} schemas of {} from {}", size, plan.getPath(), group);
       for (int i = 0; i < size; i++) {
         resultSet.add(ShowTimeSeriesResult.deserialize(resultBinary));
       }
@@ -1648,13 +1656,13 @@ public class CMManager extends MManager {
     }
   }
 
-  private void getRemoteDevices(PartitionGroup group, ShowDevicesPlan plan,
-      Set<PartialPath> resultSet) {
-    Set<String> results = null;
+  private void getRemoteDevices(
+      PartitionGroup group, ShowDevicesPlan plan, Set<ShowDevicesResult> resultSet) {
+    ByteBuffer resultBinary = null;
     for (Node node : group) {
       try {
-        results = getRemoteDevices(node, group, plan);
-        if (results != null) {
+        resultBinary = getRemoteDevices(node, group, plan);
+        if (resultBinary != null) {
           break;
         }
       } catch (IOException e) {
@@ -1667,19 +1675,14 @@ public class CMManager extends MManager {
       }
     }
 
-    if (results == null) {
-      logger.error("Failed to execute show devices {} in group: {}.", plan, group);
-      return;
-    }
-
-    logger.debug("Fetched remote devices {} schemas of {} from {}", results.size(), plan.getPath(),
-        group);
-    for (String path : results) {
-      try {
-        resultSet.add(new PartialPath(path));
-      } catch (IllegalPathException e) {
-        logger.error("Failed to execute show devices {} in group: {}.", plan, group);
+    if (resultBinary != null) {
+      int size = resultBinary.getInt();
+      logger.debug("Fetched remote devices {} schemas of {} from {}", size, plan.getPath(), group);
+      for (int i = 0; i < size; i++) {
+        resultSet.add(ShowDevicesResult.deserialize(resultBinary));
       }
+    } else {
+      logger.error("Failed to execute show devices {} in group: {}.", plan, group);
     }
   }
 
@@ -1712,24 +1715,33 @@ public class CMManager extends MManager {
     return resultBinary;
   }
 
-  private Set<String> getRemoteDevices(Node node, PartitionGroup group, ShowDevicesPlan plan)
+  private ByteBuffer getRemoteDevices(Node node, PartitionGroup group, ShowDevicesPlan plan)
       throws IOException, TException, InterruptedException {
-    Set<String> results;
+    ByteBuffer resultBinary;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      AsyncDataClient client = metaGroupMember
-          .getClientProvider().getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-      results = SyncClientAdaptor.getDevices(client, group.getHeader(), plan);
+      AsyncDataClient client =
+          metaGroupMember
+              .getClientProvider()
+              .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+      resultBinary = SyncClientAdaptor.getDevices(client, group.getHeader(), plan);
     } else {
-      SyncDataClient syncDataClient = metaGroupMember
-          .getClientProvider().getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-      ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-      DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-      plan.serialize(dataOutputStream);
-      results = syncDataClient
-          .getDevices(group.getHeader(), ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
-      ClientUtils.putBackSyncClient(syncDataClient);
+      SyncDataClient syncDataClient = null;
+      try {
+        syncDataClient =
+            metaGroupMember
+                .getClientProvider()
+                .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+        plan.serialize(dataOutputStream);
+        resultBinary =
+            syncDataClient.getDevices(
+                group.getHeader(), ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+      } finally {
+        ClientUtils.putBackSyncClient(syncDataClient);
+      }
     }
-    return results;
+    return resultBinary;
   }
 
   public GetAllPathsResult getAllPaths(List<String> paths, boolean withAlias)

@@ -361,18 +361,17 @@ public class SyncClientAdaptor {
     return handler.getResult(RaftServer.getReadOperationTimeoutMS());
   }
 
-  public static Set<String> getDevices(AsyncDataClient client, Node header, ShowDevicesPlan plan)
+  public static ByteBuffer getDevices(AsyncDataClient client, Node header, ShowDevicesPlan plan)
       throws InterruptedException, TException, IOException {
     GetDevicesHandler handler = new GetDevicesHandler();
-    AtomicReference<Set<String>> response = new AtomicReference<>(null);
+    AtomicReference<ByteBuffer> response = new AtomicReference<>(null);
     handler.setResponse(response);
     handler.setContact(client.getNode());
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     plan.serialize(dataOutputStream);
 
-    client.getDevices(header, ByteBuffer.wrap(byteArrayOutputStream.toByteArray()),
-        handler);
+    client.getDevices(header, ByteBuffer.wrap(byteArrayOutputStream.toByteArray()), handler);
     synchronized (response) {
       if (response.get() == null) {
         response.wait(RaftServer.getReadOperationTimeoutMS());

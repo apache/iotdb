@@ -19,12 +19,6 @@
 
 package org.apache.iotdb.db.query.dataset;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_DEVICES;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;

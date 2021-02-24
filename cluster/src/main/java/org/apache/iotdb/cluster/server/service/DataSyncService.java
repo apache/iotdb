@@ -242,7 +242,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
-  public Set<String> getDevices(Node header, ByteBuffer planBinary) throws TException {
+  public ByteBuffer getDevices(Node header, ByteBuffer planBinary) throws TException {
     try {
       return dataGroupMember.getLocalQueryExecutor().getDevices(planBinary);
     } catch (CheckConsistencyException | IOException | MetadataException e) {
