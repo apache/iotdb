@@ -73,7 +73,13 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.reader.IChunkReader;
+import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -1939,6 +1945,36 @@ public class StorageGroupProcessor {
     logger.info(
         "signal closing storage group condition in {}",
         logicalStorageGroupName + "-" + virtualStorageGroupId);
+
+    List<TsFileResource> tsFileResources = tsFileManagement.getTsFileList(true);
+    if (tsFileResources.size() > 1) {
+      TsFileResource lastTsFileResource = tsFileResources.get(tsFileResources.size() - 1);
+      try (TsFileSequenceReader reader =
+          new TsFileSequenceReader(tsFileProcessor.getTsFileResource().getTsFilePath())) {
+        List<Path> paths = reader.getAllPaths();
+        for (Path path : paths) {
+          long lastTime = lastTsFileResource.getEndTime(path.getDevice());
+          List<ChunkMetadata> chunkMetadataList = reader.getChunkMetadataList(path);
+          for (ChunkMetadata chunkMetadata : chunkMetadataList) {
+            Chunk chunk = reader.readMemChunk(chunkMetadata);
+            IChunkReader chunkReader = new ChunkReader(chunk, null);
+            while (chunkReader.hasNextSatisfiedPage()) {
+              BatchData batchData = chunkReader.nextPageData();
+              for (int i = 0; i < batchData.length(); i++) {
+                if (batchData.getTimeByIndex(i) < lastTime) {
+                  logger.error(
+                      "seq file {} sequence error",
+                      tsFileProcessor.getTsFileResource().getTsFile());
+                }
+                lastTime = batchData.getTimeByIndex(i);
+              }
+            }
+          }
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    }
 
     if (!compactionMergeWorking && !CompactionMergeTaskPoolManager.getInstance().isTerminated()) {
       compactionMergeWorking = true;

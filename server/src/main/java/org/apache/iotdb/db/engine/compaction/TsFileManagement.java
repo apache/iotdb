@@ -228,7 +228,7 @@ public abstract class TsFileManagement {
       // avoid pending tasks holds the metadata and streams
       mergeResource.clear();
       String taskName = storageGroupName + "-" + System.currentTimeMillis();
-      backup(taskName, mergeResource);
+      //      backup(taskName, mergeResource);
       // do not cache metadata until true candidates are chosen, or too much metadata will be
       // cached during selection
       mergeResource.setCacheDeviceMeta(true);
