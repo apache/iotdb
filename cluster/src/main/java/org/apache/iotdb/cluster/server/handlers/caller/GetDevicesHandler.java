@@ -38,7 +38,7 @@ public class GetDevicesHandler implements AsyncMethodCallback<ByteBuffer> {
 
   @Override
   public void onComplete(ByteBuffer resp) {
-    logger.info("Received devices schema from {}", contact);
+    logger.debug("Received devices schema from {}", contact);
     synchronized (result) {
       result.set(resp);
       result.notifyAll();

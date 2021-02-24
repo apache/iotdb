@@ -372,7 +372,7 @@ public class SyncClientAdaptor {
     plan.serialize(dataOutputStream);
 
     client.getDevices(header, ByteBuffer.wrap(byteArrayOutputStream.toByteArray()), handler);
-    synchronized (response) {
+    synchronized (handler) {
       if (response.get() == null) {
         response.wait(RaftServer.getReadOperationTimeoutMS());
       }
