@@ -72,6 +72,12 @@ public class MTreeTest {
     } catch (MetadataException e) {
       assertEquals("root.edge2 has already been set to storage group", e.getMessage());
     }
+    try {
+      root.setStorageGroup(new PartialPath("root.edge1.access"));
+      fail("Expected exception");
+    } catch (MetadataException e) {
+      assertEquals("root.edge1.access has already been set to storage group", e.getMessage());
+    }
   }
 
   @Test
