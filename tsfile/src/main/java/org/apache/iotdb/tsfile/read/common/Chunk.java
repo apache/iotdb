@@ -69,6 +69,17 @@ public class Chunk implements Accountable {
   }
 
   public void mergeChunk(Chunk chunk) throws IOException {
+    System.out.println("now merge chunk");
+    System.out.println(
+        String.format(
+            "chunk measurementID {}, chunkHeader pageNum:{}",
+            chunkHeader.getMeasurementID(),
+            chunkHeader.getNumOfPages()));
+    System.out.println(
+        String.format(
+            "chunk measurementID {}, chunkHeader pageNum:{}",
+            chunk.chunkHeader.getMeasurementID(),
+            chunk.chunkHeader.getNumOfPages()));
     int dataSize = 0;
     // from where the page data of the merged chunk starts, if -1, it means the merged chunk has
     // more than one page

@@ -162,8 +162,10 @@ class MergeFileTask {
 
     seqFile.writeLock();
     try {
+      ChunkCache.getInstance().clear();
       ChunkMetadataCache.getInstance().remove(seqFile);
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
+      TimeSeriesMetadataCache.getInstance().clear();
 
       resource.removeFileReader(seqFile);
       TsFileIOWriter oldFileWriter = getOldFileWriter(seqFile);
