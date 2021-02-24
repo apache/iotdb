@@ -443,7 +443,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     InsertRowsPlan insertRowsPlan = new InsertRowsPlan();
     int index = 0;
     for (String statement : req.getStatements()) {
-      long t2 = System.currentTimeMillis();
       try {
         PhysicalPlan physicalPlan =
             processor.parseSQLToPhysicalPlan(
@@ -457,20 +456,23 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           index++;
         } else {
           if (insertRowsPlan.getRowCount() > 0) {
+            long t2 = System.currentTimeMillis();
             TSStatus tsStatus = executeNonQueryPlan(insertRowsPlan);
+            Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_ROWS_PLAN_IN_BATCH, t2);
             index = 0;
             insertRowsPlan = new InsertRowsPlan();
-            result.add(tsStatus);
+            for (TSStatus status : tsStatus.getSubStatus()) {
+              result.add(status);
+            }
             if (!tsStatus.equals(RpcUtils.SUCCESS_STATUS)) {
               isAllSuccessful = false;
             }
           }
-
+          long t2 = System.currentTimeMillis();
           TSExecuteStatementResp resp = executeUpdateStatement(physicalPlan, req.getSessionId());
-          if (resp.getStatus().code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            result.add(resp.status);
-          } else {
-            result.add(resp.status);
+          Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_ONE_SQL_IN_BATCH, t2);
+          result.add(resp.status);
+          if (resp.getStatus().code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             isAllSuccessful = false;
           }
         }
@@ -485,7 +487,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
                   e, "executing " + statement, TSStatusCode.INTERNAL_SERVER_ERROR));
         }
       }
-      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_ONE_SQL_IN_BATCH, t2);
     }
     Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_JDBC_BATCH, t1);
     return isAllSuccessful
