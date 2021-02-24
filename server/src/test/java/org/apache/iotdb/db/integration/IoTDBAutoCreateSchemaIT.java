@@ -49,7 +49,7 @@ public class IoTDBAutoCreateSchemaIT {
   private Connection connection;
 
   @Before
-  public void setUp() {
+  public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
 
