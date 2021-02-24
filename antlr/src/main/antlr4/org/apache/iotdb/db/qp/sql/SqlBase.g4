@@ -101,7 +101,7 @@ statement
     | DROP TRIGGER triggerName=ID #dropTrigger
     | START TRIGGER triggerName=ID #startTrigger
     | STOP TRIGGER triggerName=ID #stopTrigger
-    | SHOW (ALL | SYNC | ASYNC)? TRIGGERS (ON fullPath)? #showTriggers
+    | SHOW TRIGGERS (ON fullPath)? #showTriggers
     | SELECT topClause? selectElements
     fromClause
     whereClause?
@@ -694,12 +694,7 @@ autoCreateSchema
     ;
 
 triggerEventClause
-    : ON ALL EVENTS
-    | triggerEvent (OPERATOR_AND triggerEvent)*
-    ;
-
-triggerEvent
-    : (BEFORE | AFTER) (INSERT | UPDATE | DELETE)
+    : (BEFORE | AFTER) INSERT
     ;
 
 triggerAttributeClause
@@ -707,7 +702,7 @@ triggerAttributeClause
     ;
 
 triggerAttribute
-    : key=stringLiteral ':' value=stringLiteral
+    : key=stringLiteral OPERATOR_EQ value=stringLiteral
     ;
 
 //============================
