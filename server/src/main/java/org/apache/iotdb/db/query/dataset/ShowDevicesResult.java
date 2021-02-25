@@ -18,7 +18,17 @@
  */
 package org.apache.iotdb.db.query.dataset;
 
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.util.Objects;
+
 public class ShowDevicesResult extends ShowResult {
+  public ShowDevicesResult() {
+    super();
+  }
 
   public ShowDevicesResult(String name, String sgName) {
     super(name, sgName);
@@ -26,5 +36,39 @@ public class ShowDevicesResult extends ShowResult {
 
   public ShowDevicesResult(String name) {
     super(name);
+  }
+
+  public void serialize(OutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(name, outputStream);
+    ReadWriteIOUtils.write(sgName, outputStream);
+  }
+
+  public static ShowDevicesResult deserialize(ByteBuffer buffer) {
+    ShowDevicesResult result = new ShowDevicesResult();
+    result.name = ReadWriteIOUtils.readString(buffer);
+    result.sgName = ReadWriteIOUtils.readString(buffer);
+    return result;
+  }
+
+  @Override
+  public String toString() {
+    return "ShowDevicesResult{" + " name='" + name + '\'' + ", sgName='" + sgName + '\'' + "}";
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    ShowDevicesResult result = (ShowDevicesResult) o;
+    return Objects.equals(name, result.name) && Objects.equals(sgName, result.sgName);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(name, sgName);
   }
 }

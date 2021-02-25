@@ -22,7 +22,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.upgrade.UpgradeLog;
 import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
-import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 
@@ -49,7 +48,7 @@ public class UpgradeSevice implements IService {
   }
 
   @Override
-  public void start() throws StartupException {
+  public void start() {
     int updateThreadNum = IoTDBDescriptor.getInstance().getConfig().getUpgradeThreadNum();
     if (updateThreadNum <= 0) {
       updateThreadNum = 1;

@@ -100,6 +100,8 @@
         <module>cross-tests</module>
         <module>zeppelin-interpreter</module>
         <module>client-py</module>
+        <module>compile-tools</module>
+        <module>client-cpp</module>
     </modules>
     <!-- Properties Management -->
     <properties>
@@ -934,6 +936,7 @@
                 </os>
             </activation>
             <properties>
+                <os.classifier>windows-x86_64</os.classifier>
                 <thrift.download-url>http://artfiles.org/apache.org/thrift/${thrift.version}/thrift-${thrift.version}.exe</thrift.download-url>
                 <thrift.executable>thrift-${thrift.version}-win-x86_64.exe</thrift.executable>
                 <thrift.skip-making-executable>true</thrift.skip-making-executable>
@@ -950,6 +953,7 @@
                 </os>
             </activation>
             <properties>
+                <os.classifier>linux-x86_64</os.classifier>
                 <thrift.download-url>https://github.com/jt2594838/mvn-thrift-compiler/raw/master/thrift_0.12.0_0.13.0_linux.exe</thrift.download-url>
                 <thrift.executable>thrift_0.12.0_0.13.0_linux.exe</thrift.executable>
                 <thrift.skip-making-executable>false</thrift.skip-making-executable>
@@ -965,6 +969,7 @@
                 </os>
             </activation>
             <properties>
+                <os.classifier>mac-x86_64</os.classifier>
                 <thrift.download-url>https://github.com/jt2594838/mvn-thrift-compiler/raw/master/thrift_0.12.0_0.13.0_mac.exe</thrift.download-url>
                 <thrift.executable>thrift_0.12.0_0.13.0_mac.exe</thrift.executable>
                 <thrift.skip-making-executable>false</thrift.skip-making-executable>
@@ -1100,19 +1105,6 @@
                                     <outputDirectory>${project.build.directory}/generated-sources-go</outputDirectory>
                                 </configuration>
                             </execution>
-                            <execution>
-                                <id>generate-thrift-sources-cpp</id>
-                                <phase>generate-sources</phase>
-                                <goals>
-                                    <goal>compile</goal>
-                                </goals>
-                                <configuration>
-                                    <generator>cpp</generator>
-                                    <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
-                                    <thriftSourceRoot>${basedir}/src/main/thrift</thriftSourceRoot>
-                                    <outputDirectory>${project.build.directory}/generated-sources-cpp</outputDirectory>
-                                </configuration>
-                            </execution>
                         </executions>
                     </plugin>
                 </plugins>
@@ -1190,17 +1182,6 @@
             <id>site</id>
             <modules>
                 <module>site</module>
-            </modules>
-        </profile>
-        <profile>
-            <id>client-cpp</id>
-            <!-- we set client-cpp as true to enable the client-cpp-example-->
-            <properties>
-                <client-cpp>true</client-cpp>
-            </properties>
-            <modules>
-                <module>compile-tools</module>
-                <module>client-cpp</module>
             </modules>
         </profile>
         <!-- code coverage for ut and it, and then merge them together.-->

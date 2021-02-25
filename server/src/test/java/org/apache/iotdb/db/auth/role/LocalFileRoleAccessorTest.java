@@ -43,7 +43,7 @@ public class LocalFileRoleAccessorTest {
   private LocalFileRoleAccessor accessor;
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
     EnvironmentUtils.envSetUp();
     testFolder = new File(TestConstant.BASE_OUTPUT_PATH.concat("test"));
     testFolder.mkdirs();

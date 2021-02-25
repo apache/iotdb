@@ -470,7 +470,12 @@ public class MManager {
       createTimeseries(
           new CreateTimeSeriesPlan(path, dataType, encoding, compressor, props, null, null, null));
     } catch (PathAlreadyExistException | AliasAlreadyExistException e) {
-      // ignore
+      if (logger.isDebugEnabled()) {
+        logger.debug(
+            "Ignore PathAlreadyExistException and AliasAlreadyExistException when Concurrent inserting"
+                + " a non-exist time series {}",
+            path);
+      }
     }
   }
 
@@ -989,10 +994,6 @@ public class MManager {
       }
     }
     return res;
-  }
-
-  protected MeasurementMNode getMeasurementMNode(MNode deviceMNode, String measurement) {
-    return (MeasurementMNode) deviceMNode.getChild(measurement);
   }
 
   public MeasurementSchema getSeriesSchema(PartialPath device, String measurement)
@@ -1828,28 +1829,26 @@ public class MManager {
     MNode deviceMNode = getDeviceNodeWithAutoCreate(deviceId);
 
     // 2. get schema of each measurement
+    // if do not has measurement
+    MeasurementMNode measurementMNode;
+    TSDataType dataType;
     for (int i = 0; i < measurementList.length; i++) {
       try {
-        // if do not has measurement
-        MeasurementMNode measurementMNode;
-        if (!deviceMNode.hasChild(measurementList[i])) {
-          // could not create it
+        MNode child = getMNode(deviceMNode, measurementList[i]);
+        if (child instanceof MeasurementMNode) {
+          measurementMNode = (MeasurementMNode) child;
+        } else if (child instanceof StorageGroupMNode) {
+          throw new PathAlreadyExistException(deviceId + PATH_SEPARATOR + measurementList[i]);
+        } else {
           if (!config.isAutoCreateSchemaEnabled()) {
-            // but measurement not in MTree and cannot auto-create, try the cache
-            measurementMNode = getMeasurementMNode(deviceMNode, measurementList[i]);
-            if (measurementMNode == null) {
-              throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurementList[i]);
-            }
+            throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurementList[i]);
           } else {
-            // create it
-
-            TSDataType dataType = getTypeInLoc(plan, i);
+            // child is null or child is type of MNode
+            dataType = getTypeInLoc(plan, i);
             // create it, may concurrent created by multiple thread
             internalCreateTimeseries(deviceId.concatNode(measurementList[i]), dataType);
             measurementMNode = (MeasurementMNode) deviceMNode.getChild(measurementList[i]);
           }
-        } else {
-          measurementMNode = getMeasurementMNode(deviceMNode, measurementList[i]);
         }
 
         // check type is match
@@ -1906,24 +1905,19 @@ public class MManager {
     return deviceMNode;
   }
 
+  public MNode getMNode(MNode deviceMNode, String measurementName) {
+    return deviceMNode.getChild(measurementName);
+  }
+
   /** create timeseries with ignore PathAlreadyExistException */
   private void internalCreateTimeseries(PartialPath path, TSDataType dataType)
       throws MetadataException {
-    try {
-      createTimeseries(
-          path,
-          dataType,
-          getDefaultEncoding(dataType),
-          TSFileDescriptor.getInstance().getConfig().getCompressor(),
-          Collections.emptyMap());
-    } catch (PathAlreadyExistException | AliasAlreadyExistException e) {
-      if (logger.isDebugEnabled()) {
-        logger.debug(
-            "Ignore PathAlreadyExistException and AliasAlreadyExistException when Concurrent inserting"
-                + " a non-exist time series {}",
-            path);
-      }
-    }
+    createTimeseries(
+        path,
+        dataType,
+        getDefaultEncoding(dataType),
+        TSFileDescriptor.getInstance().getConfig().getCompressor(),
+        Collections.emptyMap());
   }
 
   /** get dataType of plan, in loc measurements only support InsertRowPlan and InsertTabletPlan */

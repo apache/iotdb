@@ -32,7 +32,6 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.types.Row;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
@@ -41,7 +40,7 @@ import java.util.stream.Collectors;
 /** The example of reading TsFile via Flink DataStream API. */
 public class FlinkTsFileStreamSource {
 
-  public static void main(String[] args) throws IOException {
+  public static void main(String[] args) {
     String path = "test.tsfile";
     TsFileUtils.writeTsFile(path);
     new File(path).deleteOnExit();

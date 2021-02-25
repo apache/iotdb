@@ -101,5 +101,5 @@ public class CountAggrResult extends AggregateResult {
   protected void deserializeSpecificFields(ByteBuffer buffer) {}
 
   @Override
-  protected void serializeSpecificFields(OutputStream outputStream) throws IOException {}
+  protected void serializeSpecificFields(OutputStream outputStream) {}
 }

@@ -744,17 +744,7 @@ public class DataGroupMember extends RaftMember {
           return slotSet.contains(slot);
         };
     for (PartialPath sg : allStorageGroupNames) {
-      try {
-        StorageEngine.getInstance().removePartitions(sg, filter);
-      } catch (StorageEngineException e) {
-        logger.warn(
-            "{}: failed to remove partitions of {} and {} other slots in {}",
-            name,
-            slots.get(0),
-            slots.size() - 1,
-            sg,
-            e);
-      }
+      StorageEngine.getInstance().removePartitions(sg, filter);
     }
     for (Integer slot : slots) {
       slotManager.setToNull(slot);
