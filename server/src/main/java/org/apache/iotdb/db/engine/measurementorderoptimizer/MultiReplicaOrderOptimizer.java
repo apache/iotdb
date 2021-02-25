@@ -233,11 +233,11 @@ public class MultiReplicaOrderOptimizer {
   }
 
   public Pair<Replica[], Workload[]> optimizeBySAWithRainbow() {
-    double curCost = getCostAndWorkloadPartitionForCurReplicas(records, replicas).left;
-    LOGGER.info("Ori cost: " + curCost);
     for(Replica replica : replicas) {
       replica.setAverageChunkSize(MeasurePointEstimator.getInstance().getChunkSize(30000));
     }
+    double curCost = getCostAndWorkloadPartitionForCurReplicas(records, replicas).left;
+    LOGGER.info("Ori cost: " + curCost);
     Pair<Long, Long> chunkBound = getChunkSizeBound(records);
     long chunkLowerBound = chunkBound.left;
     long chunkUpperBound = chunkBound.right;
