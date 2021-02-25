@@ -1332,6 +1332,7 @@ public class Session {
     }
   }
 
+
   public ReplicaSet runDivergentDesign(String deviceID) throws IoTDBConnectionException {
     ReplicaSet replicaSet = null;
     try {
@@ -1352,15 +1353,15 @@ public class Session {
     }
   }
 
-  public ReplicaSet runDivergentDesign(String deviceID, int maxIter) throws IoTDBConnectionException {
+  public ReplicaSet runDivergentDesign(String deviceID, int replicaNum) throws IoTDBConnectionException {
     ReplicaSet replicaSet = null;
     try {
-      replicaSet = client.divergentDesignWithIterNum(deviceID, maxIter);
+      replicaSet = client.divergentDesignWithReplicaNum(deviceID, replicaNum);
       return replicaSet;
     } catch (TException e) {
       if (reconnect()) {
         try {
-          replicaSet = client.divergentDesignWithIterNum(deviceID, maxIter);
+          replicaSet = client.divergentDesignWithReplicaNum(deviceID, replicaNum);
           return replicaSet;
         } catch (TException tException) {
           throw new IoTDBConnectionException(tException);
@@ -1392,6 +1393,26 @@ public class Session {
     }
   }
 
+  public ReplicaSet runMultiReplicaOptimize(String deviceID, int replicaNum) throws IoTDBConnectionException {
+    ReplicaSet replicaSet = null;
+    try {
+      replicaSet = client.multipleReplicaOptimizeWithReplicaNum(deviceID, replicaNum);
+      return replicaSet;
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          replicaSet = client.multipleReplicaOptimizeWithReplicaNum(deviceID, replicaNum);
+          return replicaSet;
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(
+                "Fail to reconnect to server. Please check server status");
+      }
+    }
+  }
+
   public ReplicaSet runMultiReplicaOptimizeWithChunkSize(String deviceID) throws IoTDBConnectionException {
     ReplicaSet replicaSet = null;
     try {
@@ -1401,6 +1422,26 @@ public class Session {
       if (reconnect()) {
         try {
           replicaSet = client.multipleReplicaOptimizeWithChunkSize(deviceID);
+          return replicaSet;
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(
+                "Fail to reconnect to server. Please check server status");
+      }
+    }
+  }
+
+  public ReplicaSet runMultiReplicaOptimizeWithChunkSize(String deviceID, int replicaNum) throws IoTDBConnectionException {
+    ReplicaSet replicaSet = null;
+    try {
+      replicaSet = client.multipleReplicaOptimizeWithChunkSizeAndReplicaNum(deviceID, replicaNum);
+      return replicaSet;
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          replicaSet = client.multipleReplicaOptimizeWithChunkSizeAndReplicaNum(deviceID, replicaNum);
           return replicaSet;
         } catch (TException tException) {
           throw new IoTDBConnectionException(tException);
