@@ -1453,15 +1453,15 @@ public class Session {
     }
   }
 
-  public ReplicaSet runRainbow(String deviceID) throws IoTDBConnectionException {
+  public ReplicaSet runRainbow(String deviceID, int replicaNum) throws IoTDBConnectionException {
     ReplicaSet replicaSet = null;
     try {
-      replicaSet = client.runRainbow(deviceID);
+      replicaSet = client.runRainbowWithReplicaNum(deviceID, replicaNum);
       return replicaSet;
     } catch (TException e) {
       if (reconnect()) {
         try {
-          replicaSet = client.runRainbow(deviceID);
+          replicaSet = client.runRainbowWithReplicaNum(deviceID, replicaNum);
           return replicaSet;
         } catch (TException tException) {
           throw new IoTDBConnectionException(tException);

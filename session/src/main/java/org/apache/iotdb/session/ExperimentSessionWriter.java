@@ -197,4 +197,15 @@ public class ExperimentSessionWriter {
       e.printStackTrace();
     }
   }
+
+  static void testRainbow(int replicaNum) {
+    try {
+      long startTime = System.currentTimeMillis();
+      ReplicaSet replicaSet = session.runRainbow("root.test.device", replicaNum);
+      long lastTime = System.currentTimeMillis() - startTime;
+      System.out.println(lastTime / 1000l + " s");
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
 }
