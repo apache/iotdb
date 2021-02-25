@@ -101,7 +101,7 @@ public class IoTDBConstant {
   public static final String FUNCTION_TYPE_EXTERNAL_UDTF = "external UDTF";
 
   public static final String COLUMN_TRIGGER_NAME = "trigger name";
-  public static final String COLUMN_TRIGGER_ACTIVATED = "activated";
+  public static final String COLUMN_TRIGGER_STATUS = "status";
   public static final String COLUMN_TRIGGER_EVENT = "event";
   public static final String COLUMN_TRIGGER_PATH = "path";
   public static final String COLUMN_TRIGGER_CLASS = "class name";
