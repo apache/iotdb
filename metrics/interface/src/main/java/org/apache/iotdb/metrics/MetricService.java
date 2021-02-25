@@ -18,55 +18,65 @@
  */
 package org.apache.iotdb.metrics;
 
-import org.apache.iotdb.metrics.impl.DoNothingFactory;
+import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.ServiceLoader;
 
-/** MetricService is the entr */
+/** MetricService is the entry to manage all Metric system */
 public class MetricService {
 
   private static final Logger logger = LoggerFactory.getLogger(MetricService.class);
 
   private static final List<MetricReporter> reporters = new ArrayList<>();
 
-  private static MetricFactory factory;
-
   static {
     init();
   }
 
+  private static final MetricService INSTANCE = new MetricService();
+
+  private static MetricManager metricManager;
+
+  public static MetricService getINSTANCE() {
+    return INSTANCE;
+  }
+
+  private MetricService() {}
+
   private static void init() {
-
-    ServiceLoader<MetricFactory> metricFactories = ServiceLoader.load(MetricFactory.class);
+    logger.debug("init metric service");
+    ServiceLoader<MetricManager> metricManagers = ServiceLoader.load(MetricManager.class);
     int size = 0;
-    MetricFactory nothingFactory = null;
+    MetricManager nothingManager = new DoNothingMetricManager();
 
-    for (MetricFactory mf : metricFactories) {
-      if (mf instanceof DoNothingFactory) {
-        nothingFactory = mf;
+    for (MetricManager mf : metricManagers) {
+      if (mf instanceof DoNothingMetricManager) {
+        nothingManager = mf;
         continue;
       }
       size++;
-      factory = mf;
+      metricManager = mf;
     }
 
-    // if no more implementation, we use nothingFactory.
+    // if no more implementations, we use nothingFactory.
     if (size == 0) {
-      factory = nothingFactory;
+      metricManager = nothingManager;
     } else if (size > 1) {
-      logger.warn("detect more than one MetricFactory, will use {}", factory.getClass().getName());
+      logger.warn(
+          "detect more than one MetricManager, will use {}", metricManager.getClass().getName());
     }
+    // do some init work
+    metricManager.init();
 
     ServiceLoader<MetricReporter> reporter = ServiceLoader.load(MetricReporter.class);
     for (MetricReporter r : reporter) {
       reporters.add(r);
-      r.setMetricFactory(factory);
+      r.setMetricManager(metricManager);
       r.start();
       logger.info("detect MetricReporter {}", r.getClass().getName());
     }
@@ -74,23 +84,20 @@ public class MetricService {
 
   public static void stop() {
     for (MetricReporter r : reporters) {
+      logger.info("detect MetricReporter {}", r.getClass().getName());
       r.stop();
     }
   }
 
-  public static MetricManager getMetric(String namespace) {
-    return factory.getMetric(namespace);
+  public static MetricManager getMetricManager() {
+    return metricManager;
   }
 
   public static void enableKnownMetric(KnownMetric metric) {
-    factory.enableKnownMetric(metric);
-  }
-
-  public static Map<String, MetricManager> getAllMetrics() {
-    return factory.getAllMetrics();
+    metricManager.enableKnownMetric(metric);
   }
 
   public static boolean isEnable() {
-    return factory.isEnable();
+    return metricManager.isEnable();
   }
 }

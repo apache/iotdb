@@ -24,11 +24,17 @@ import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.type.Timer;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public interface MetricManager {
-
+  /*
+   * The following functions will create or get a exist Metric
+   * @param metric: the metric name
+   * @param tags: string appear in pairs, like sg="ln",user="user1" will be "sg", "ln", "user", "user1"
+   * @return Metric Instance
+   */
   Counter counter(String metric, String... tags);
 
   Gauge gauge(String metric, String... tags);
@@ -39,7 +45,13 @@ public interface MetricManager {
 
   Timer timer(String metric, String... tags);
 
-  // metric.counter(5, "insertRecords","interface","insertRecords","sg","sg1");
+  /*
+   * The following functions just update the current record value
+   * @param the delta value will be recorded
+   * @param metric the metric name
+   * @param tags string appear in pairs, like sg="ln",user="user1" will be "sg", "ln", "user", "user1"
+   */
+
   void count(int delta, String metric, String... tags);
 
   void count(long delta, String metric, String... tags);
@@ -52,26 +64,40 @@ public interface MetricManager {
 
   void gauge(long value, String metric, String... tags);
 
-  void meter(int value, String metric, String... tags);
+  void rate(int value, String metric, String... tags);
 
-  void meter(long value, String metric, String... tags);
+  void rate(long value, String metric, String... tags);
 
   void timer(long delta, TimeUnit timeUnit, String metric, String... tags);
 
-  void timerStart(String metric, String... tags);
+  /** @return all MetricKeys, key is metric name, value is tags, which is a string array */
+  List<String[]> getAllMetricKeys();
 
-  void timerEnd(String metric, String... tags);
-
-  Map<String, String[]> getAllMetricKeys();
-
-  // key is name + tags
+  // key is name + tags, value
   Map<String[], Counter> getAllCounters();
 
   Map<String[], Gauge> getAllGauges();
 
-  Map<String[], Rate> getAllMeters();
+  Map<String[], Rate> getAllRates();
 
   Map<String[], Histogram> getAllHistograms();
 
   Map<String[], Timer> getAllTimers();
+
+  /** @return whether enable metricService */
+  boolean isEnable();
+
+  /**
+   * enable pre-defined metric set
+   *
+   * @param metric which metric set we want to collect
+   */
+  void enableKnownMetric(KnownMetric metric);
+
+  /**
+   * init something
+   *
+   * @return
+   */
+  boolean init();
 }

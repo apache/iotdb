@@ -84,7 +84,6 @@ import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
-import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
@@ -211,8 +210,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private static final AtomicInteger queryCount = new AtomicInteger(0);
 
   private QueryTimeManager queryTimeManager = QueryTimeManager.getInstance();
-
-  Counter counter = IoTDB.serverMetricManager.counter("request_total", "user", "root");
 
   public TSServiceImpl() throws QueryProcessException {
     processor = new Planner();
@@ -502,6 +499,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           processor.parseSQLToPhysicalPlan(
               statement, sessionIdZoneIdMap.get(req.getSessionId()), req.fetchSize);
 
+      physicalPlan.setLoginUserName(sessionIdUsernameMap.get(req.getSessionId()));
+
       return physicalPlan.isQuery()
           ? internalExecuteQueryStatement(
               statement,
@@ -528,6 +527,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           processor.parseSQLToPhysicalPlan(
               statement, sessionIdZoneIdMap.get(req.getSessionId()), req.fetchSize);
 
+      physicalPlan.setLoginUserName(sessionIdUsernameMap.get(req.getSessionId()));
+
       return physicalPlan.isQuery()
           ? internalExecuteQueryStatement(
               statement,
@@ -553,6 +554,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       PhysicalPlan physicalPlan =
           processor.rawDataQueryReqToPhysicalPlan(req, sessionIdZoneIdMap.get(req.getSessionId()));
+      physicalPlan.setLoginUserName(sessionIdUsernameMap.get(req.getSessionId()));
       return physicalPlan.isQuery()
           ? internalExecuteQueryStatement(
               "",
@@ -697,6 +699,25 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       if (!(plan instanceof ShowQueryProcesslistPlan)) {
         queryTimeManager.unRegisterQuery(queryId);
       }
+
+      LOGGER.info(
+          "{}, {}, {}",
+          plan.getOperatorType().name(),
+          plan.getLoginUserName(),
+          config.getRpcAddress());
+
+      IoTDB.serverMetricManager.timer(
+          System.currentTimeMillis() - startTime,
+          TimeUnit.MILLISECONDS,
+          "query_latency",
+          "sg",
+          "root",
+          "query_type",
+          plan.getOperatorType().name(),
+          "user",
+          plan.getLoginUserName(),
+          "host",
+          config.getRpcAddress());
       return resp;
     } catch (Exception e) {
       releaseQueryResourceNoExceptions(queryId);
@@ -1148,7 +1169,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           req.deviceIds.get(0),
           req.getTimestamps().get(0));
     }
-    counter.inc();
 
     List<TSStatus> statusList = new ArrayList<>();
 
@@ -1175,6 +1195,18 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
             onNPEOrUnexpectedException(e, "inserting records", TSStatusCode.INTERNAL_SERVER_ERROR));
       }
     }
+
+    long startTime = System.currentTimeMillis();
+    IoTDB.serverMetricManager.timer(
+        System.currentTimeMillis() - startTime,
+        TimeUnit.MILLISECONDS,
+        "insert_records_latency",
+        "sg",
+        "root",
+        "user",
+        sessionIdUsernameMap.get(req.getSessionId()),
+        "host",
+        config.getRpcAddress());
 
     return isAllSuccessful
         ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
@@ -1657,6 +1689,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private TSStatus checkAuthority(PhysicalPlan plan, long sessionId) {
     List<PartialPath> paths = plan.getPaths();
+    plan.setLoginUserName(sessionIdUsernameMap.get(sessionId));
     try {
       if (!checkAuthorization(paths, plan, sessionIdUsernameMap.get(sessionId))) {
         return RpcUtils.getStatus(

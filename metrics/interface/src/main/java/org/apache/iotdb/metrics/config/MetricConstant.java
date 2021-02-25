@@ -16,12 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.metrics;
 
-public interface MetricReporter {
-  boolean start();
+package org.apache.iotdb.metrics.config;
 
-  void setMetricManager(MetricManager metricManager);
-
-  boolean stop();
+public class MetricConstant {
+  static final String METRIC_CONF = "METRIC_CONF";
+  public static final String IOTDB_HOME = "IOTDB_HOME";
 }

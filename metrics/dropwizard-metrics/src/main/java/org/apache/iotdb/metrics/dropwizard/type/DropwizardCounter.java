@@ -16,12 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.metrics;
 
-public interface MetricReporter {
-  boolean start();
+package org.apache.iotdb.metrics.dropwizard.type;
 
-  void setMetricManager(MetricManager metricManager);
+import org.apache.iotdb.metrics.type.Counter;
 
-  boolean stop();
+public class DropwizardCounter implements Counter {
+  com.codahale.metrics.Counter counter;
+
+  public DropwizardCounter(com.codahale.metrics.Counter counter) {
+    this.counter = counter;
+  }
+
+  @Override
+  public void inc() {
+    counter.inc();
+  }
+
+  @Override
+  public void inc(long n) {
+    counter.inc(n);
+  }
+
+  @Override
+  public long count() {
+    return counter.getCount();
+  }
 }

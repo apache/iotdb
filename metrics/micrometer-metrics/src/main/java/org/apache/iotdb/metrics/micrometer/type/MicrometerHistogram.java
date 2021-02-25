@@ -16,31 +16,37 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.metrics.type;
 
-import java.io.OutputStream;
+package org.apache.iotdb.metrics.micrometer.type;
 
-/** used by Timer and Histogram */
-public interface HistogramSnapshot {
+import org.apache.iotdb.metrics.type.Histogram;
 
-  public abstract double getValue(double quantile);
+public class MicrometerHistogram implements Histogram {
 
-  public abstract long[] getValues();
+  io.micrometer.core.instrument.DistributionSummary distributionSummary;
 
-  public abstract int size();
+  public MicrometerHistogram(
+      io.micrometer.core.instrument.DistributionSummary distributionSummary) {
+    this.distributionSummary = distributionSummary;
+  }
 
-  public double getMedian();
+  @Override
+  public void update(int value) {
+    distributionSummary.record(value);
+  }
 
-  public abstract long getMax();
+  @Override
+  public void update(long value) {
+    distributionSummary.record(value);
+  }
 
-  public abstract double getMean();
+  @Override
+  public long count() {
+    return distributionSummary.count();
+  }
 
-  public abstract long getMin();
-
-  /**
-   * Writes the values of the snapshot to the given stream.
-   *
-   * @param output an output stream
-   */
-  public abstract void dump(OutputStream output);
+  @Override
+  public org.apache.iotdb.metrics.type.HistogramSnapshot takeSnapshot() {
+    return new MicrometerHistogramSnapshot(distributionSummary.takeSnapshot());
+  }
 }

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.metrics.impl;
 
+import org.apache.iotdb.metrics.KnownMetric;
 import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Gauge;
@@ -25,6 +26,7 @@ import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.type.Timer;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -74,22 +76,16 @@ public class DoNothingMetricManager implements MetricManager {
   public void gauge(long value, String metric, String... tags) {}
 
   @Override
-  public void meter(int value, String metric, String... tags) {}
+  public void rate(int value, String metric, String... tags) {}
 
   @Override
-  public void meter(long value, String metric, String... tags) {}
+  public void rate(long value, String metric, String... tags) {}
 
   @Override
   public void timer(long delta, TimeUnit timeUnit, String metric, String... tags) {}
 
   @Override
-  public void timerStart(String metric, String... tags) {}
-
-  @Override
-  public void timerEnd(String metric, String... tags) {}
-
-  @Override
-  public Map<String, String[]> getAllMetricKeys() {
+  public List<String[]> getAllMetricKeys() {
     return null;
   }
 
@@ -104,7 +100,7 @@ public class DoNothingMetricManager implements MetricManager {
   }
 
   @Override
-  public Map<String[], Rate> getAllMeters() {
+  public Map<String[], Rate> getAllRates() {
     return null;
   }
 
@@ -116,5 +112,18 @@ public class DoNothingMetricManager implements MetricManager {
   @Override
   public Map<String[], Timer> getAllTimers() {
     return null;
+  }
+
+  @Override
+  public boolean isEnable() {
+    return false;
+  }
+
+  @Override
+  public void enableKnownMetric(KnownMetric metric) {}
+
+  @Override
+  public boolean init() {
+    return false;
   }
 }

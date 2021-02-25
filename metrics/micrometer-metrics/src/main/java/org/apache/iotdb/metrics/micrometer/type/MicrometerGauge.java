@@ -16,12 +16,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.metrics;
 
-public interface MetricReporter {
-  boolean start();
+package org.apache.iotdb.metrics.micrometer.type;
 
-  void setMetricManager(MetricManager metricManager);
+import org.apache.iotdb.metrics.type.Gauge;
 
-  boolean stop();
+import io.micrometer.core.instrument.Tags;
+
+import java.util.concurrent.atomic.AtomicLong;
+
+public class MicrometerGauge implements Gauge {
+  private final AtomicLong atomicLong;
+
+  public MicrometerGauge(
+      io.micrometer.core.instrument.MeterRegistry meterRegistry,
+      String metricName,
+      String... tags) {
+    atomicLong = meterRegistry.gauge(metricName, Tags.of(tags), new AtomicLong(0));
+  }
+
+  @Override
+  public long value() {
+    return atomicLong.get();
+  }
+
+  @Override
+  public void set(long value) {
+    atomicLong.set(value);
+  }
 }

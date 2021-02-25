@@ -16,33 +16,39 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.metrics.impl;
 
-import org.apache.iotdb.metrics.KnownMetric;
-import org.apache.iotdb.metrics.MetricFactory;
-import org.apache.iotdb.metrics.MetricManager;
+package org.apache.iotdb.metrics.micrometer.type;
 
-import java.util.Collections;
-import java.util.Map;
+import org.apache.iotdb.metrics.type.HistogramSnapshot;
+import org.apache.iotdb.metrics.type.Rate;
+import org.apache.iotdb.metrics.type.Timer;
 
-public class DoNothingFactory implements MetricFactory {
-  private DoNothingMetricManager metric = new DoNothingMetricManager();
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
-  @Override
-  public MetricManager getMetric(String namespace) {
-    return metric;
+public class MicrometerTimer implements Timer {
+
+  io.micrometer.core.instrument.Timer timer;
+  MicrometerRate micrometerRate;
+
+  public MicrometerTimer(io.micrometer.core.instrument.Timer timer) {
+    this.timer = timer;
+    micrometerRate = new MicrometerRate(new AtomicLong(0));
   }
 
   @Override
-  public void enableKnownMetric(KnownMetric metric) {}
-
-  @Override
-  public Map<String, MetricManager> getAllMetrics() {
-    return Collections.emptyMap();
+  public void update(long duration, TimeUnit unit) {
+    timer.record(duration, unit);
+    micrometerRate.mark(duration);
   }
 
   @Override
-  public boolean isEnable() {
-    return true;
+  public HistogramSnapshot takeSnapshot() {
+    return new MicrometerHistogramSnapshot(timer.takeSnapshot());
+  }
+
+  @Override
+  public Rate getImmutableRate() {
+    return micrometerRate;
   }
 }

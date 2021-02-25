@@ -16,12 +16,36 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.metrics;
 
-public interface MetricReporter {
-  boolean start();
+package org.apache.iotdb.metrics.utils;
 
-  void setMetricManager(MetricManager metricManager);
+import java.util.HashMap;
+import java.util.Map;
 
-  boolean stop();
+public enum ReporterType {
+  JMX("jmx"),
+  PROMETHEUS("prometheus"),
+  IOTDB("iotdb");
+
+  private String name;
+
+  ReporterType(String name) {
+    this.name = name;
+  }
+
+  public String getName() {
+    return name;
+  }
+
+  private static final Map<String, ReporterType> lookup = new HashMap<>();
+
+  static {
+    for (ReporterType reporterType : ReporterType.values()) {
+      lookup.put(reporterType.getName(), reporterType);
+    }
+  }
+
+  public static ReporterType get(String name) {
+    return lookup.get(name);
+  }
 }

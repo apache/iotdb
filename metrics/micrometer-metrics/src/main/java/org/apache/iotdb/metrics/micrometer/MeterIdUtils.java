@@ -16,23 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.metrics;
 
-import java.util.Map;
+package org.apache.iotdb.metrics.micrometer;
 
-public interface MetricFactory {
+import io.micrometer.core.instrument.Meter;
+import io.micrometer.core.instrument.Tags;
 
-  /**
-   * repeated calling the method will return the same Object instance.
-   *
-   * @param namespace
-   * @return
-   */
-  MetricManager getMetric(String namespace);
+public class MeterIdUtils {
 
-  void enableKnownMetric(KnownMetric metric);
+  private MeterIdUtils() {}
 
-  Map<String, MetricManager> getAllMetrics();
-
-  boolean isEnable();
+  public static Meter.Id fromMetricName(String metricName, Meter.Type type, String... tags) {
+    return new Meter.Id(metricName, Tags.of(tags), null, null, type);
+  }
 }

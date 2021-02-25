@@ -16,12 +16,37 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.metrics;
 
-public interface MetricReporter {
-  boolean start();
+package org.apache.iotdb.metrics.dropwizard.type;
 
-  void setMetricManager(MetricManager metricManager);
+import org.apache.iotdb.metrics.type.Histogram;
+import org.apache.iotdb.metrics.type.HistogramSnapshot;
 
-  boolean stop();
+public class DropwizardHistogram implements Histogram {
+
+  com.codahale.metrics.Histogram histogram;
+
+  public DropwizardHistogram(com.codahale.metrics.Histogram histogram) {
+    this.histogram = histogram;
+  }
+
+  @Override
+  public void update(int value) {
+    histogram.update(value);
+  }
+
+  @Override
+  public void update(long value) {
+    histogram.update(value);
+  }
+
+  @Override
+  public long count() {
+    return histogram.getCount();
+  }
+
+  @Override
+  public HistogramSnapshot takeSnapshot() {
+    return new DropwizardHistogramSnapshot(histogram.getSnapshot());
+  }
 }

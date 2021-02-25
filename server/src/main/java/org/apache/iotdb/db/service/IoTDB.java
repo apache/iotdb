@@ -53,14 +53,14 @@ public class IoTDB implements IoTDBMBean {
   private static final Logger logger = LoggerFactory.getLogger(IoTDB.class);
   private final String mbeanName =
       String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, "IoTDB");
-  private RegisterManager registerManager = new RegisterManager();
+  private final RegisterManager registerManager = new RegisterManager();
   public static MManager metaManager = MManager.getInstance();
 
   public static IoTDB getInstance() {
     return IoTDBHolder.INSTANCE;
   }
 
-  public static MetricManager serverMetricManager = MetricService.getMetric("iotdb");
+  public static final MetricManager serverMetricManager = MetricService.getMetricManager();
 
   public static void main(String[] args) {
     if (args.length > 0) {
@@ -153,6 +153,7 @@ public class IoTDB implements IoTDBMBean {
     logger.info("Deactivating IoTDB...");
     registerManager.deregisterAll();
     JMXService.deregisterMBean(mbeanName);
+    MetricService.stop();
     logger.info("IoTDB is deactivated.");
   }
 

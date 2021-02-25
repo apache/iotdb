@@ -19,32 +19,63 @@
 
 package org.apache.iotdb.metrics.micrometer;
 
-import org.apache.iotdb.metrics.MetricFactory;
+import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.MetricReporter;
+import org.apache.iotdb.metrics.config.MetricConfig;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.utils.ReporterType;
 
 import com.sun.net.httpserver.HttpServer;
+import io.micrometer.jmx.JmxMeterRegistry;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
+import java.util.List;
 
 public class MicrometerMetricReporter implements MetricReporter {
-  MetricFactory micrometerMetricFactory;
-  Thread runThread;
+  private static final Logger logger = LoggerFactory.getLogger(MicrometerMetricReporter.class);
+  private MetricManager micrometerMetricManager;
+  private final MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
+  private Thread runThread;
+
+  private JmxMeterRegistry jmxMeterRegistry;
 
   @Override
   public boolean start() {
+    List<String> reporters = metricConfig.getReporterList();
+    for (String reporter : reporters) {
+      switch (ReporterType.get(reporter)) {
+        case JMX:
+          startJmxReporter(
+              ((MicrometerMetricManager) micrometerMetricManager).getJmxMeterRegistry());
+          break;
+        case IOTDB:
+          break;
+        case PROMETHEUS:
+          startPrometheusReporter(
+              ((MicrometerMetricManager) micrometerMetricManager).getPrometheusMeterRegistry());
+          break;
+        default:
+          logger.warn("Dropwizard don't support reporter type {}", reporter);
+      }
+    }
+
+    return true;
+  }
+
+  private void startPrometheusReporter(PrometheusMeterRegistry prometheusMeterRegistry) {
     try {
-      HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
+      HttpServer server =
+          HttpServer.create(
+              new InetSocketAddress(Integer.parseInt(metricConfig.getPrometheusExporterPort())), 0);
       server.createContext(
           "/prometheus",
           httpExchange -> {
-            String response =
-                ((PrometheusMeterRegistry)
-                        ((MicrometerMetricManager) micrometerMetricFactory.getMetric("iotdb"))
-                            .getMeterRegistry())
-                    .scrape();
+            String response = prometheusMeterRegistry.scrape();
             httpExchange.sendResponseHeaders(200, response.getBytes().length);
             try (OutputStream os = httpExchange.getResponseBody()) {
               os.write(response.getBytes());
@@ -56,12 +87,16 @@ public class MicrometerMetricReporter implements MetricReporter {
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
-    return true;
+  }
+
+  private void startJmxReporter(JmxMeterRegistry jmxMeterRegistry) {
+    logger.debug("start jmx reporter from micrometer");
+    jmxMeterRegistry.start();
   }
 
   @Override
-  public void setMetricFactory(MetricFactory metricFactory) {
-    micrometerMetricFactory = metricFactory;
+  public void setMetricManager(MetricManager metricManager) {
+    micrometerMetricManager = metricManager;
   }
 
   @Override
@@ -69,8 +104,10 @@ public class MicrometerMetricReporter implements MetricReporter {
     try {
       runThread.join();
     } catch (InterruptedException e) {
-      e.printStackTrace();
+      logger.warn("Failed to stop prometheus reporter", e);
     }
+
+    ((MicrometerMetricManager) micrometerMetricManager).getJmxMeterRegistry().stop();
     return true;
   }
 }

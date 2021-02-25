@@ -25,6 +25,7 @@ import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.entity.PathPrivilege;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -147,6 +148,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CANCELLED;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CHILD_PATHS;
@@ -185,6 +187,7 @@ public class PlanExecutor implements IPlanExecutor {
   private IAuthorizer authorizer;
 
   private static final String INSERT_MEASUREMENTS_FAILED_MESSAGE = "failed to insert measurements ";
+  private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   public PlanExecutor() throws QueryProcessException {
     queryRouter = new QueryRouter();
@@ -1099,6 +1102,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   @Override
   public void insert(InsertRowPlan insertRowPlan) throws QueryProcessException {
+    long startTime = System.currentTimeMillis();
     try {
       insertRowPlan.setMeasurementMNodes(
           new MeasurementMNode[insertRowPlan.getMeasurements().length]);
@@ -1109,6 +1113,16 @@ public class PlanExecutor implements IPlanExecutor {
       if (insertRowPlan.getFailedMeasurements() != null) {
         checkFailedMeasurments(insertRowPlan);
       }
+      IoTDB.serverMetricManager.timer(
+          System.currentTimeMillis() - startTime,
+          TimeUnit.MILLISECONDS,
+          "insert_latency",
+          "sg",
+          "root", // TODO infer from insertRowPlan.getDeviceId()
+          "user",
+          insertRowPlan.getLoginUserName(),
+          "host",
+          config.getRpcAddress());
     } catch (StorageEngineException | MetadataException e) {
       if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
         StatMonitor.getInstance().updateFailedStatValue();
@@ -1135,6 +1149,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   @Override
   public void insertTablet(InsertTabletPlan insertTabletPlan) throws QueryProcessException {
+    long startTime = System.currentTimeMillis();
     try {
       insertTabletPlan.setMeasurementMNodes(
           new MeasurementMNode[insertTabletPlan.getMeasurements().length]);
@@ -1143,6 +1158,16 @@ public class PlanExecutor implements IPlanExecutor {
       if (insertTabletPlan.getFailedMeasurements() != null) {
         checkFailedMeasurments(insertTabletPlan);
       }
+      IoTDB.serverMetricManager.timer(
+          System.currentTimeMillis() - startTime,
+          TimeUnit.MILLISECONDS,
+          "insert_tablet_latency",
+          "sg",
+          "root", // TODO infer from insertTabletPlan.getDeviceId()
+          "user",
+          insertTabletPlan.getLoginUserName(),
+          "host",
+          config.getRpcAddress());
     } catch (StorageEngineException | MetadataException e) {
       if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
         StatMonitor.getInstance().updateFailedStatValue();
