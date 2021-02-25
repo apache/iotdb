@@ -41,7 +41,7 @@ public class TsFileSequenceRead {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static void main(String[] args) throws IOException {
-    String filename = "E:\\Thing\\Workspace\\IoTDB\\res\\SA2.tsfile";
+    String filename = "E:\\Thing\\Workspace\\IoTDB\\res\\sequence.tsfile";
     if (args.length >= 1) {
       filename = args[0];
     }
@@ -64,8 +64,8 @@ public class TsFileSequenceRead {
       while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
           case MetaMarker.CHUNK_HEADER:
-            /*System.out.println("\t[Chunk]");
-            System.out.println("\tposition: " + reader.position());*/
+            System.out.println("\t[Chunk]");
+            System.out.println("\tposition: " + reader.position());
             ChunkHeader header = reader.readChunkHeader();
             System.out.println("\tMeasurement: " + header.getMeasurementID());
             Decoder defaultTimeDecoder = Decoder.getDecoderByType(

@@ -1909,6 +1909,28 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
+  public ReplicaSet runRainbowWithReplicaNum(String deviceID, int replicaNum) throws TException {
+    MultiReplicaOrderOptimizer optimizer = new MultiReplicaOrderOptimizer(deviceID, replicaNum);
+    Pair<Replica[], Workload[]> result = optimizer.optimizeBySAWithRainbow();
+    ReplicaSet resultSet = new ReplicaSet();
+    resultSet.measurementOrders = new ArrayList<>();
+    resultSet.workloadPartition = new ArrayList<>();
+    for(int i = 0; i < result.left.length; ++i) {
+      Replica replica = result.left[i];
+      MeasurementOrder order = new MeasurementOrder();
+      order.deviceid = deviceID;
+      order.measurements = replica.getMeasurements();
+      resultSet.measurementOrders.add(order);
+      List<String> workloadStr = new ArrayList<>();
+      for(QueryRecord record : result.right[i].getRecords()) {
+        workloadStr.add(record.toString());
+      }
+      resultSet.workloadPartition.add(workloadStr);
+    }
+    return resultSet;
+  }
+
+  @Override
   public ChunkSizeOptimizationResult testChunkSizeOptimize(List<String> measurments, List<String> ops,  long startTime, long endTime, List<String> measurementOrder) throws TException {
     GroupByQueryRecord record = new GroupByQueryRecord("test", measurments, ops, startTime, endTime, 0);
     Pair<List<Long>, List<Double>> data = MultiReplicaOrderOptimizer.chunkSizeOptimize(record, measurementOrder);

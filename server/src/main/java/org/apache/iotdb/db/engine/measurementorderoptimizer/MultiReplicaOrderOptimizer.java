@@ -1,5 +1,7 @@
 package org.apache.iotdb.db.engine.measurementorderoptimizer;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.divergentdesign.Replica;
 import org.apache.iotdb.db.engine.measurementorderoptimizer.costmodel.CostModel;
 import org.apache.iotdb.db.query.workloadmanager.Workload;
@@ -228,5 +230,51 @@ public class MultiReplicaOrderOptimizer {
     }
 
     return new Pair<>(lowerBound, upperBound);
+  }
+
+  public Pair<Replica[], Workload[]> optimizeBySAWithRainbow() {
+    double curCost = getCostAndWorkloadPartitionForCurReplicas(records, replicas).left;
+    LOGGER.info("Ori cost: " + curCost);
+    for(Replica replica : replicas) {
+      replica.setAverageChunkSize(MeasurePointEstimator.getInstance().getChunkSize(30000));
+    }
+    Pair<Long, Long> chunkBound = getChunkSizeBound(records);
+    long chunkLowerBound = chunkBound.left;
+    long chunkUpperBound = chunkBound.right;
+    float temperature = SA_INIT_TEMPERATURE;
+    long optimizeStartTime = System.currentTimeMillis();
+    Random r = new Random();
+    Workload[] workloadPartition = null;
+    int k = 0;
+    for (; k < maxIter && System.currentTimeMillis() - optimizeStartTime < 45l * 60l * 1000l; ++k) {
+      temperature = temperature * COOLING_RATE;
+      int selectedReplica = r.nextInt(replicaNum);
+      int swapLeft = r.nextInt(measurementOrder.size());
+      int swapRight = r.nextInt(measurementOrder.size());
+      while (swapLeft == swapRight) {
+        swapLeft = r.nextInt(measurementOrder.size());
+        swapRight = r.nextInt(measurementOrder.size());
+      }
+      replicas[selectedReplica].swapMeasurementPos(swapLeft, swapRight);
+      Pair<Float, Workload[]> costAndWorkloadPartition = getCostAndWorkloadPartitionForCurReplicas(records, replicas);
+      double newCost = costAndWorkloadPartition.left;
+      workloadPartition = costAndWorkloadPartition.right;
+      float probability = r.nextFloat();
+      probability = probability < 0 ? -probability : probability;
+      probability %= 1.0f;
+      if (newCost < curCost ||
+              Math.exp((curCost - newCost) / temperature) > probability) {
+        curCost = newCost;
+      } else {
+        replicas[selectedReplica].swapMeasurementPos(swapLeft, swapRight);
+      }
+      costList.add(curCost);
+      if (k % 500 == 0) {
+        LOGGER.info(String.format("Epoch %d: curCost %.3f", k, curCost));
+      }
+    }
+    LOGGER.info("Final cost: " + curCost);
+    LOGGER.info("Loop count: " + k);
+    return new Pair<>(replicas, workloadPartition);
   }
 }

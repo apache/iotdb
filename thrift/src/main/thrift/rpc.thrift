@@ -398,6 +398,8 @@ service TSIService {
 
   ReplicaSet runRainbow(1:string deviceID);
 
+  ReplicaSet runRainbowWithReplicaNum(1:string deviceID, 2:i32 replicaNum);
+
   ChunkSizeOptimizationResult testChunkSizeOptimize(1: list<string> measurements, list<string> ops, i64 startTime, i64 endTime, list<string> measurementOrder);
 
 }
