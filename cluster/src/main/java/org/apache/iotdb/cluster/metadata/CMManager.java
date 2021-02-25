@@ -434,10 +434,10 @@ public class CMManager extends MManager {
   public void createSchema(PhysicalPlan plan) throws MetadataException, CheckConsistencyException {
     List<PartialPath> storageGroups = new ArrayList<>();
     // for InsertPlan, try to just use deviceIds to get related storage groups because there's no
-    // need to call getPaths to concat deviceId and sensor as they will gain same result.
-    // for CreateTimeSeriesPlan, use getPath() to get timeseries to get related storage group
-    // for CreateTimeMultiSeriesPlan, use getPaths() to get all timeseries to get related storage
-    // groups
+    // need to call getPaths to concat deviceId and sensor as they will gain same result,
+    // for CreateTimeSeriesPlan, use getPath() to get timeseries to get related storage group,
+    // for CreateMultiTimeSeriesPlan, use getPaths() to get all timeseries to get related storage
+    // groups.
     if (plan instanceof InsertRowPlan
         || plan instanceof InsertRowsOfOneDevicePlan
         || plan instanceof InsertTabletPlan) {
