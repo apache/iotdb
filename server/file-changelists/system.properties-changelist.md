@@ -26,8 +26,8 @@ Last updated on 2021-2-25 by Haonan Hou
 | Latest Changes                     |
 | ---------------------------------- |
 | Change `iotdb_version=0.11.x` to `0.12.x`  |
-| Add `virtual_storage_group_num` ([#2405] (https://github.com/apache/iotdb/pull/2405)) |
-| Add `time_encoder` ([#2621] (https://github.com/apache/iotdb/pull/2621)) |
+| Add `virtual_storage_group_num` ([#2405](https://github.com/apache/iotdb/pull/2405)) |
+| Add `time_encoder` ([#2621](https://github.com/apache/iotdb/pull/2621)) |
 
 # 0.10.x -> 0.11.x
 
