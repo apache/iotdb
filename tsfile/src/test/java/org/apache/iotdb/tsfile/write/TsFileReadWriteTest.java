@@ -58,7 +58,7 @@ public class TsFileReadWriteTest {
   private File f;
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
     f = new File(path);
     if (f.exists()) {
       assertTrue(f.delete());
@@ -66,7 +66,7 @@ public class TsFileReadWriteTest {
   }
 
   @After
-  public void tearDown() throws Exception {
+  public void tearDown() {
     f = new File(path);
     if (f.exists()) {
       assertTrue(f.delete());

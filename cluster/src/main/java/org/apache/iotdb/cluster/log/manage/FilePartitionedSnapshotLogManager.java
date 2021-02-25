@@ -117,11 +117,23 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
     collectTsFiles();
 
     // 2.register the measurement
+    boolean slotExistsInPartition;
+    List<Integer> slots = null;
+    if (dataGroupMember.getMetaGroupMember() != null) {
+      slots =
+          ((SlotPartitionTable) dataGroupMember.getMetaGroupMember().getPartitionTable())
+              .getNodeSlots(dataGroupMember.getHeader());
+    }
+
     for (Map.Entry<Integer, Collection<TimeseriesSchema>> entry : slotTimeseries.entrySet()) {
       int slotNum = entry.getKey();
-      FileSnapshot snapshot = slotSnapshots.computeIfAbsent(slotNum, s -> new FileSnapshot());
-      if (snapshot.getTimeseriesSchemas().isEmpty()) {
-        snapshot.setTimeseriesSchemas(entry.getValue());
+      slotExistsInPartition = slots == null || slots.contains(slotNum);
+
+      if (slotExistsInPartition) {
+        FileSnapshot snapshot = slotSnapshots.computeIfAbsent(slotNum, s -> new FileSnapshot());
+        if (snapshot.getTimeseriesSchemas().isEmpty()) {
+          snapshot.setTimeseriesSchemas(entry.getValue());
+        }
       }
     }
   }

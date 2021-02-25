@@ -26,6 +26,7 @@ import org.apache.iotdb.cluster.query.ClusterPlanExecutor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -73,6 +74,8 @@ abstract class BaseApplier implements LogApplier {
       } catch (QueryProcessException e) {
         if (e.getCause() instanceof StorageGroupNotSetException) {
           executeAfterSync(plan);
+        } else if (e instanceof BatchProcessException) {
+          logger.warn("Exception occurred while processing non-query. ", e);
         } else {
           throw e;
         }

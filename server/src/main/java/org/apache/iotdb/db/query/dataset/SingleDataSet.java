@@ -23,7 +23,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -41,12 +40,12 @@ public class SingleDataSet extends QueryDataSet {
   }
 
   @Override
-  public boolean hasNextWithoutConstraint() throws IOException {
+  public boolean hasNextWithoutConstraint() {
     return i == 0;
   }
 
   @Override
-  public RowRecord nextWithoutConstraint() throws IOException {
+  public RowRecord nextWithoutConstraint() {
     i++;
     return record;
   }

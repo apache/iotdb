@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 
@@ -28,7 +27,6 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -95,7 +93,7 @@ public class IoTDBRecoverIT {
   }
 
   @Test
-  public void mergeTest() throws SQLException, IOException, StartupException {
+  public void mergeTest() {
     String[] retArray = new String[] {"0,2", "0,4", "0,3"};
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");

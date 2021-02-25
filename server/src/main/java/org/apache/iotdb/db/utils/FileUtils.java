@@ -23,7 +23,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
@@ -34,7 +33,7 @@ public class FileUtils {
 
   private FileUtils() {}
 
-  public static void deleteDirectory(File folder) throws IOException {
+  public static void deleteDirectory(File folder) {
     if (folder.isDirectory()) {
       for (File file : folder.listFiles()) {
         deleteDirectory(file);

@@ -136,6 +136,8 @@ Under the root path of iotdb:
 > mvn clean package -DskipTests
 ```
 
+Using `-P compile-cpp` for compiling cpp client (For more details, read client-cpp's Readme file.)
+
 Then the binary version (including both server and cli) can be found at **distribution/target/apache-iotdb-{project.version}-bin.zip**
 
 > NOTE: Directories "thrift/target/generated-sources/thrift" and "antlr/target/generated-sources/antlr4" need to be added to sources roots to avoid compilation errors in the IDE.

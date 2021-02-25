@@ -41,7 +41,7 @@ public class ReadWriteToBytesUtilsTest {
   }
 
   @Test
-  public void testShort2() throws IOException {
+  public void testShort2() {
     for (short i : new short[] {1, 2, 3, 4, 5}) {
       ByteBuffer output = ByteBuffer.allocate(2);
       ReadWriteIOUtils.write(i, output);
