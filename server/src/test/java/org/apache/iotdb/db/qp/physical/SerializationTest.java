@@ -111,8 +111,8 @@ public class SerializationTest {
   public void testFlush() throws IOException, IllegalPathException {
     Map<PartialPath, List<Pair<Long, Boolean>>> storageGroupPartitionIds = new HashMap<>();
 
-    Boolean isSeqArray[] = new Boolean[] {null, true};
-    boolean isSyncArray[] = new boolean[] {true, false};
+    Boolean[] isSeqArray = new Boolean[] {null, true};
+    boolean[] isSyncArray = new boolean[] {true, false};
     Random random = new Random();
     for (int i = 0; i < 10; i++) {
       List<Pair<Long, Boolean>> partitionIdPairs = new ArrayList<>();

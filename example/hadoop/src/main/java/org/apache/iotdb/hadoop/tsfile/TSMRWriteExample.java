@@ -40,13 +40,12 @@ import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
 
 import java.io.IOException;
-import java.net.URISyntaxException;
 
 /** One example for writing TsFile with MapReduce. */
 public class TSMRWriteExample {
 
   public static void main(String[] args)
-      throws IOException, ClassNotFoundException, TSFHadoopException, URISyntaxException {
+      throws IOException, ClassNotFoundException, TSFHadoopException {
 
     if (args.length != 3) {
       System.out.println("Please give hdfs url, input path, output path");

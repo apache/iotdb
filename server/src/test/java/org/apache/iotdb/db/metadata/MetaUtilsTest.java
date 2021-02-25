@@ -19,11 +19,13 @@
 package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.mnode.MNode;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.List;
 
 import static org.junit.Assert.assertArrayEquals;
 
@@ -75,5 +77,38 @@ public class MetaUtilsTest {
     } catch (IllegalPathException e) {
       Assert.assertEquals("root.sg.d1.'s1' is not a legal path", e.getMessage());
     }
+  }
+
+  @Test
+  public void testGetMultiFullPaths() {
+    MNode rootNode = new MNode(null, "root");
+
+    // builds the relationship of root.a and root.aa
+    MNode aNode = new MNode(rootNode, "a");
+    rootNode.addChild(aNode.getName(), aNode);
+    MNode aaNode = new MNode(rootNode, "aa");
+    rootNode.addChild(aaNode.getName(), aaNode);
+
+    // builds the relationship of root.a.b and root.aa.bb
+    MNode bNode = new MNode(aNode, "b");
+    aNode.addChild(bNode.getName(), bNode);
+    MNode bbNode = new MNode(aaNode, "bb");
+    aaNode.addChild(bbNode.getName(), bbNode);
+
+    // builds the relationship of root.aa.bb.cc
+    MNode ccNode = new MNode(bbNode, "cc");
+    bbNode.addChild(ccNode.getName(), ccNode);
+
+    List<String> multiFullPaths = MetaUtils.getMultiFullPaths(rootNode);
+    Assert.assertSame(2, multiFullPaths.size());
+
+    multiFullPaths.forEach(
+        fullPath -> {
+          if (fullPath.contains("aa")) {
+            Assert.assertEquals("root.aa.bb.cc", fullPath);
+          } else {
+            Assert.assertEquals("root.a.b", fullPath);
+          }
+        });
   }
 }

@@ -23,8 +23,6 @@ import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;
 import org.apache.iotdb.cluster.log.manage.serializable.SyncLogDequeSerializer;
 
-import java.io.IOException;
-
 public class TestLogManager extends RaftLogManager {
 
   public TestLogManager(int nodeIdentifier) {
@@ -37,5 +35,5 @@ public class TestLogManager extends RaftLogManager {
   }
 
   @Override
-  public void takeSnapshot() throws IOException {}
+  public void takeSnapshot() {}
 }

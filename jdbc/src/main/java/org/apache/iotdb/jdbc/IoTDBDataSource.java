@@ -23,7 +23,6 @@ import javax.sql.DataSource;
 import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.sql.SQLFeatureNotSupportedException;
 import java.util.Properties;
 
 public class IoTDBDataSource implements DataSource {
@@ -94,7 +93,7 @@ public class IoTDBDataSource implements DataSource {
   }
 
   @Override
-  public Connection getConnection(String username, String password) throws SQLException {
+  public Connection getConnection(String username, String password) {
     try {
       Properties newProp = new Properties();
       newProp.setProperty("user", username);
@@ -107,33 +106,33 @@ public class IoTDBDataSource implements DataSource {
   }
 
   @Override
-  public PrintWriter getLogWriter() throws SQLException {
+  public PrintWriter getLogWriter() {
     return null;
   }
 
   @Override
-  public void setLogWriter(PrintWriter printWriter) throws SQLException {}
+  public void setLogWriter(PrintWriter printWriter) {}
 
   @Override
-  public void setLoginTimeout(int i) throws SQLException {}
+  public void setLoginTimeout(int i) {}
 
   @Override
-  public int getLoginTimeout() throws SQLException {
+  public int getLoginTimeout() {
     return 0;
   }
 
   @Override
-  public java.util.logging.Logger getParentLogger() throws SQLFeatureNotSupportedException {
+  public java.util.logging.Logger getParentLogger() {
     return null;
   }
 
   @Override
-  public <T> T unwrap(Class<T> aClass) throws SQLException {
+  public <T> T unwrap(Class<T> aClass) {
     return null;
   }
 
   @Override
-  public boolean isWrapperFor(Class<?> aClass) throws SQLException {
+  public boolean isWrapperFor(Class<?> aClass) {
     return false;
   }
 }

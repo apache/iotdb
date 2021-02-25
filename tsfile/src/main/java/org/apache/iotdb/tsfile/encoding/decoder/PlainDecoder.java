@@ -24,7 +24,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 
@@ -73,7 +72,7 @@ public class PlainDecoder extends Decoder {
   }
 
   @Override
-  public boolean hasNext(ByteBuffer buffer) throws IOException {
+  public boolean hasNext(ByteBuffer buffer) {
     return buffer.remaining() > 0;
   }
 

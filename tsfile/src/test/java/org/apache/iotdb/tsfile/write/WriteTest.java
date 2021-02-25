@@ -75,7 +75,7 @@ public class WriteTest {
   private String[] enums = {"MAN", "WOMAN"};
 
   @Before
-  public void prepare() throws IOException, WriteProcessException {
+  public void prepare() throws IOException {
     inputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("writeTestInputData");
     outputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("writeTestOutputData.tsfile");
     errorOutputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("writeTestErrorOutputData.tsfile");
@@ -250,7 +250,7 @@ public class WriteTest {
     try {
       tsFileWriter.registerTimeseries(path, dupTimeseries);
     } catch (WriteProcessException e) {
-      assertEquals("given timeseries has exists! " + path.toString(), e.getMessage());
+      assertEquals("given timeseries has exists! " + path, e.getMessage());
     }
     try {
       tsFileWriter.close();

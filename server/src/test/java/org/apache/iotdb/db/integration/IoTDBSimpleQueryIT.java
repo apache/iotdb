@@ -52,7 +52,7 @@ import static org.junit.Assert.fail;
 public class IoTDBSimpleQueryIT {
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
     EnvironmentUtils.envSetUp();
   }
 

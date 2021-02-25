@@ -30,7 +30,7 @@ public class UDFInputSeriesDataTypeNotValidException extends UDFParameterNotVali
     super(
         String.format(
             "the data type of the input series (index: %d) is not valid. expected: %s. actual: %s.",
-            index, expected.toString(), actual.toString()));
+            index, expected, actual));
   }
 
   public UDFInputSeriesDataTypeNotValidException(
@@ -38,6 +38,6 @@ public class UDFInputSeriesDataTypeNotValidException extends UDFParameterNotVali
     super(
         String.format(
             "the data type of the input series (index: %d) is not valid. expected: %s. actual: %s.",
-            index, Arrays.toString(expected), actual.toString()));
+            index, Arrays.toString(expected), actual));
   }
 }

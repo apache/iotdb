@@ -43,14 +43,14 @@ public class TSFHadoopTest {
   private String tsfilePath = TestConstant.BASE_OUTPUT_PATH.concat("example_mr.tsfile");
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
 
     TsFileTestHelper.deleteTsFile(tsfilePath);
     inputFormat = new TSFInputFormat();
   }
 
   @After
-  public void tearDown() throws Exception {
+  public void tearDown() {
 
     TsFileTestHelper.deleteTsFile(tsfilePath);
   }

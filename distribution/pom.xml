@@ -29,6 +29,7 @@
     </parent>
     <artifactId>iotdb-distribution</artifactId>
     <name>IoTDB Distribution</name>
+    <modules/>
     <build>
         <plugins>
             <plugin>
@@ -38,14 +39,19 @@
                 <executions>
                     <!-- Package binaries-->
                     <execution>
-                        <id>binary-release-assembly</id>
+                        <id>all-bin</id>
                         <phase>package</phase>
                         <goals>
                             <goal>single</goal>
                         </goals>
                         <configuration>
                             <descriptors>
-                                <descriptor>src/assembly/distribution.xml</descriptor>
+                                <descriptor>src/assembly/all.xml</descriptor>
+                                <descriptor>src/assembly/server.xml</descriptor>
+                                <descriptor>src/assembly/cluster.xml</descriptor>
+                                <descriptor>src/assembly/cli.xml</descriptor>
+                                <descriptor>src/assembly/grafana.xml</descriptor>
+                                <descriptor>src/assembly/client-cpp.xml</descriptor>
                             </descriptors>
                             <finalName>apache-iotdb-${project.version}</finalName>
                         </configuration>
@@ -71,10 +77,16 @@
                                 <algorithm>SHA-512</algorithm>
                             </algorithms>
                             <fileSets>
+                                <!--bin-all-->
                                 <fileSet>
                                     <directory>${project.build.directory}</directory>
                                     <includes>
-                                        <include>apache-iotdb-${project.version}-bin.zip</include>
+                                        <include>apache-iotdb-${project.version}-all-bin.zip</include>
+                                        <include>apache-iotdb-${project.version}-server-bin.zip</include>
+                                        <include>apache-iotdb-${project.version}-cli-bin.zip</include>
+                                        <include>apache-iotdb-${project.version}-cluster-bin.zip</include>
+                                        <include>apache-iotdb-${project.version}-grafana-bin.zip</include>
+                                        <include>apache-iotdb-${project.version}-client-cpp-bin.zip</include>
                                     </includes>
                                 </fileSet>
                             </fileSets>
@@ -115,6 +127,19 @@
             <artifactId>iotdb-grafana</artifactId>
             <version>${project.version}</version>
             <type>war</type>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>cluster</artifactId>
+            <version>${project.version}</version>
+            <type>zip</type>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>client-cpp</artifactId>
+            <version>${project.version}</version>
+            <type>pom</type>
+            <!--            <classifier>${os.classifier}</classifier>-->
         </dependency>
     </dependencies>
 </project>

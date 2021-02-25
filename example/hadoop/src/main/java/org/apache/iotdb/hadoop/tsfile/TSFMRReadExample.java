@@ -27,7 +27,6 @@ import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
 
 import java.io.IOException;
-import java.net.URISyntaxException;
 
 /**
  * One example for reading TsFile with MapReduce. This MR Job is used to get the result of
@@ -37,7 +36,7 @@ import java.net.URISyntaxException;
 public class TSFMRReadExample {
 
   public static void main(String[] args)
-      throws IOException, ClassNotFoundException, TSFHadoopException, URISyntaxException {
+      throws IOException, ClassNotFoundException, TSFHadoopException {
 
     if (args.length != 3) {
       System.out.println("Please give hdfs url, input path, output path");

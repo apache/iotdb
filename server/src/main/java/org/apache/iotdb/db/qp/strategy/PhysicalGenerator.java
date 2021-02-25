@@ -114,6 +114,7 @@ import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.udf.core.context.UDFContext;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -876,6 +877,16 @@ public class PhysicalGenerator {
                   .getContext()
                   .getColumnName()
               : columnForReader;
+      if (queryPlan instanceof AggregationPlan && ((AggregationPlan) queryPlan).getLevel() >= 0) {
+        String aggregatePath =
+            originalPath.isMeasurementAliasExists()
+                ? FilePathUtils.generatePartialPathByLevel(
+                    originalPath.getFullPathWithAlias(), ((AggregationPlan) queryPlan).getLevel())
+                : FilePathUtils.generatePartialPathByLevel(
+                    originalPath.toString(), ((AggregationPlan) queryPlan).getLevel());
+        columnForDisplay =
+            queryPlan.getAggregations().get(originalIndex) + "(" + aggregatePath + ")";
+      }
       if (!columnForDisplaySet.contains(columnForDisplay)) {
         queryPlan.addPathToIndex(columnForDisplay, queryPlan.getPathToIndex().size());
         if (queryPlan instanceof UDTFPlan) {

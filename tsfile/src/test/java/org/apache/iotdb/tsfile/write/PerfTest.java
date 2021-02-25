@@ -114,7 +114,7 @@ public class PerfTest {
     }
   }
 
-  private static void write() throws IOException, InterruptedException, WriteProcessException {
+  private static void write() throws IOException, InterruptedException {
     File file = new File(outputDataFile);
     File errorFile = new File(errorOutputDataFile);
     if (file.exists()) {

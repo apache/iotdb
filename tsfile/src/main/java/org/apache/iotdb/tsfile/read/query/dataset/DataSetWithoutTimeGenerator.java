@@ -173,7 +173,7 @@ public class DataSetWithoutTimeGenerator extends QueryDataSet {
         field.setBinaryV(col.getBinary());
         break;
       default:
-        throw new UnSupportedDataTypeException("UnSupported" + String.valueOf(col.getDataType()));
+        throw new UnSupportedDataTypeException("UnSupported" + col.getDataType());
     }
   }
 }

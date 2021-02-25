@@ -106,7 +106,7 @@ public class IoTDBDaemonIT {
     EnvironmentUtils.cleanEnv();
   }
 
-  private static void insertData() throws ClassNotFoundException, SQLException {
+  private static void insertData() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
             DriverManager.getConnection(
@@ -215,7 +215,7 @@ public class IoTDBDaemonIT {
   }
 
   @Test
-  public void selectAllSQLTest() throws ClassNotFoundException, SQLException {
+  public void selectAllSQLTest() throws ClassNotFoundException {
     String[] retArray =
         new String[] {
           "1,101,1101,null,null,999",
@@ -290,7 +290,7 @@ public class IoTDBDaemonIT {
   }
 
   @Test
-  public void selectWildCardSQLTest() throws ClassNotFoundException, SQLException {
+  public void selectWildCardSQLTest() throws ClassNotFoundException {
     String[] retArray =
         new String[] {"2,2.22", "3,3.33", "4,4.44", "102,10.0", "105,11.11", "1000,1000.11"};
 
@@ -321,7 +321,7 @@ public class IoTDBDaemonIT {
   }
 
   @Test
-  public void dnfErrorSQLTest() throws ClassNotFoundException, SQLException {
+  public void dnfErrorSQLTest() throws ClassNotFoundException {
     String[] retArray =
         new String[] {
           "1,101,1101",
@@ -366,7 +366,7 @@ public class IoTDBDaemonIT {
   }
 
   @Test
-  public void selectAndOperatorTest() throws ClassNotFoundException, SQLException {
+  public void selectAndOperatorTest() throws ClassNotFoundException {
     String[] retArray = new String[] {"1000,22222,55555,888"};
 
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -403,7 +403,7 @@ public class IoTDBDaemonIT {
   }
 
   @Test
-  public void selectAndOpeCrossTest() throws ClassNotFoundException, SQLException {
+  public void selectAndOpeCrossTest() throws ClassNotFoundException {
     String[] retArray = new String[] {"1000,22222,55555"};
 
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -437,7 +437,7 @@ public class IoTDBDaemonIT {
   }
 
   @Test
-  public void selectOneColumnWithFilterTest() throws ClassNotFoundException, SQLException {
+  public void selectOneColumnWithFilterTest() throws ClassNotFoundException {
     String[] retArray = new String[] {"102,180", "104,190", "946684800000,100"};
 
     Class.forName(Config.JDBC_DRIVER_NAME);

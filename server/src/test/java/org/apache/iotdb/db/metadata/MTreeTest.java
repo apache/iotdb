@@ -22,6 +22,7 @@ import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -45,7 +46,7 @@ import static org.junit.Assert.fail;
 public class MTreeTest {
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
     EnvironmentUtils.envSetUp();
   }
 
@@ -766,5 +767,31 @@ public class MTreeTest {
     } catch (MetadataException e1) {
       fail(e1.getMessage());
     }
+  }
+
+  @Test
+  public void testCreateTimeseries() throws MetadataException {
+    MTree root = new MTree();
+    String sgPath = "root.sg1";
+    root.setStorageGroup(new PartialPath(sgPath));
+
+    root.createTimeseries(
+        new PartialPath("root.sg1.a.b.c"),
+        TSDataType.INT32,
+        TSEncoding.RLE,
+        TSFileDescriptor.getInstance().getConfig().getCompressor(),
+        Collections.emptyMap(),
+        null);
+
+    root.createTimeseries(
+        new PartialPath("root.sg1.a.b"),
+        TSDataType.INT32,
+        TSEncoding.RLE,
+        TSFileDescriptor.getInstance().getConfig().getCompressor(),
+        Collections.emptyMap(),
+        null);
+
+    MNode node = root.getNodeByPath(new PartialPath("root.sg1.a.b"));
+    Assert.assertTrue(node instanceof MeasurementMNode);
   }
 }

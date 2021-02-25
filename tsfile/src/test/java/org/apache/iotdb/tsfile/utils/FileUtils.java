@@ -71,7 +71,7 @@ public class FileUtils {
     return ((double) a) / Math.pow(10, round);
   }
 
-  public static enum Unit {
+  public enum Unit {
     B,
     KB,
     MB,
