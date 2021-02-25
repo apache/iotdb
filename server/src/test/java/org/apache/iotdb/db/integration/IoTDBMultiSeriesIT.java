@@ -99,7 +99,7 @@ public class IoTDBMultiSeriesIT {
         .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
   }
 
-  private static void insertData() throws ClassNotFoundException, SQLException {
+  private static void insertData() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
             DriverManager.getConnection(
@@ -318,7 +318,7 @@ public class IoTDBMultiSeriesIT {
   // "select s0 from root.vehicle.d0 where s0 >= 20" : test select same series with same series
   // filter
   @Test
-  public void selectOneSeriesWithValueFilterTest() throws ClassNotFoundException, SQLException {
+  public void selectOneSeriesWithValueFilterTest() throws ClassNotFoundException {
 
     String selectSql = "select s0 from root.vehicle.d0 where s0 >= 20";
 
@@ -352,7 +352,7 @@ public class IoTDBMultiSeriesIT {
   // "select s0 from root.vehicle.d0 where time > 22987 " : test select clause with only global time
   // filter
   @Test
-  public void seriesGlobalTimeFilterTest() throws ClassNotFoundException, SQLException {
+  public void seriesGlobalTimeFilterTest() throws ClassNotFoundException {
 
     Class.forName(Config.JDBC_DRIVER_NAME);
 
@@ -387,7 +387,7 @@ public class IoTDBMultiSeriesIT {
   // "select s1 from root.vehicle.d0 where s0 < 111" : test select clause with different series
   // filter
   @Test
-  public void crossSeriesReadUpdateTest() throws ClassNotFoundException, SQLException {
+  public void crossSeriesReadUpdateTest() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
 
     boolean hasResultSet;

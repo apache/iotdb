@@ -97,7 +97,7 @@ public class ShowPlan extends PhysicalPlan {
 
   @Override
   public String toString() {
-    return String.format("%s %s", getOperatorType().toString(), showContentType);
+    return String.format("%s %s", getOperatorType(), showContentType);
   }
 
   public enum ShowContentType {

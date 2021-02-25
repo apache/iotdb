@@ -46,7 +46,7 @@ public class SchemaUtilsTest {
   }
 
   @Test
-  public void getAggregatedDataTypesTest() throws MetadataException {
+  public void getAggregatedDataTypesTest() {
     List<TSDataType> measurementTypes = new ArrayList<>();
     measurementTypes.add(TSDataType.INT64);
     measurementTypes.add(TSDataType.TEXT);

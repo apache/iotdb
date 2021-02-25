@@ -1354,11 +1354,6 @@ public class StorageGroupProcessor {
       if (storageGroupFolder.exists()) {
         org.apache.iotdb.db.utils.FileUtils.deleteDirectory(storageGroupFolder);
       }
-    } catch (IOException e) {
-      logger.error(
-          "Cannot delete the folder in storage group {}, because",
-          logicalStorageGroupName + "-" + virtualStorageGroupId,
-          e);
     } finally {
       writeUnlock();
     }
@@ -1431,11 +1426,7 @@ public class StorageGroupProcessor {
           fsFactory.getFile(
               tsfilePath, logicalStorageGroupName + File.separator + virtualStorageGroupId);
       if (storageGroupFolder.exists()) {
-        try {
-          org.apache.iotdb.db.utils.FileUtils.deleteDirectory(storageGroupFolder);
-        } catch (IOException e) {
-          logger.error("Delete TsFiles failed", e);
-        }
+        org.apache.iotdb.db.utils.FileUtils.deleteDirectory(storageGroupFolder);
       }
     }
   }
@@ -1976,6 +1967,12 @@ public class StorageGroupProcessor {
         "signal closing storage group condition in {}",
         logicalStorageGroupName + "-" + virtualStorageGroupId);
 
+    executeCompaction(
+        tsFileProcessor.getTimeRangeId(),
+        IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
+  }
+
+  private void executeCompaction(long timePartition, boolean fullMerge) {
     if (!compactionMergeWorking && !CompactionMergeTaskPoolManager.getInstance().isTerminated()) {
       compactionMergeWorking = true;
       logger.info(
@@ -1983,12 +1980,12 @@ public class StorageGroupProcessor {
           logicalStorageGroupName + "-" + virtualStorageGroupId);
       try {
         // fork and filter current tsfile, then commit then to compaction merge
-        tsFileManagement.forkCurrentFileList(tsFileProcessor.getTimeRangeId());
+        tsFileManagement.forkCurrentFileList(timePartition);
+        tsFileManagement.setForceFullMerge(fullMerge);
         CompactionMergeTaskPoolManager.getInstance()
             .submitTask(
                 tsFileManagement
-                .new CompactionMergeTask(
-                    this::closeCompactionMergeCallBack, tsFileProcessor.getTimeRangeId()));
+                .new CompactionMergeTask(this::closeCompactionMergeCallBack, timePartition));
       } catch (IOException | RejectedExecutionException e) {
         this.closeCompactionMergeCallBack();
         logger.error(
@@ -2107,14 +2104,12 @@ public class StorageGroupProcessor {
     resources.clear();
   }
 
-  public void merge(boolean fullMerge) {
+  public void merge(boolean isFullMerge) {
     writeLock();
     try {
-      this.tsFileManagement.merge(
-          fullMerge,
-          tsFileManagement.getTsFileList(true),
-          tsFileManagement.getTsFileList(false),
-          dataTTL);
+      for (long timePartitionId : timePartitionIdVersionControllerMap.keySet()) {
+        executeCompaction(timePartitionId, isFullMerge);
+      }
     } finally {
       writeUnlock();
     }

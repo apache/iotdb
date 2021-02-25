@@ -78,7 +78,7 @@ public class RowTsFileInputFormatITCase extends RowTsFileInputFormatTestBase {
   }
 
   @Test
-  public void testStreamExecution() throws Exception {
+  public void testStreamExecution() {
     // read files in a directory
     TsFileInputFormat<Row> inputFormat = prepareInputFormat(tmpDir);
     DataStream<Row> source = senv.createInput(inputFormat);

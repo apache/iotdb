@@ -52,7 +52,7 @@ public class IoTDBQuotedPathIT {
   }
 
   @Test
-  public void test() throws SQLException {
+  public void test() {
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");

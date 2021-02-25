@@ -37,7 +37,6 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
@@ -99,7 +98,7 @@ public class HDFSFile extends File {
     try {
       return fs.getFileStatus(hdfsPath).getLen();
     } catch (IOException e) {
-      logger.error("Fail to get length of the file {}, ", hdfsPath.toUri().toString(), e);
+      logger.error("Fail to get length of the file {}, ", hdfsPath.toUri(), e);
       return 0;
     }
   }
@@ -109,7 +108,7 @@ public class HDFSFile extends File {
     try {
       return fs.exists(hdfsPath);
     } catch (IOException e) {
-      logger.error("Fail to check whether the file {} exists. ", hdfsPath.toUri().toString(), e);
+      logger.error("Fail to check whether the file {} exists. ", hdfsPath.toUri(), e);
       return false;
     }
   }
@@ -124,7 +123,7 @@ public class HDFSFile extends File {
       }
       return files.toArray(new HDFSFile[0]);
     } catch (IOException e) {
-      logger.error("Fail to list files in {}. ", hdfsPath.toUri().toString(), e);
+      logger.error("Fail to list files in {}. ", hdfsPath.toUri(), e);
       return null;
     }
   }
@@ -144,7 +143,7 @@ public class HDFSFile extends File {
     try {
       return !fs.exists(hdfsPath) || fs.delete(hdfsPath, true);
     } catch (IOException e) {
-      logger.error("Fail to delete file {}. ", hdfsPath.toUri().toString(), e);
+      logger.error("Fail to delete file {}. ", hdfsPath.toUri(), e);
       return false;
     }
   }
@@ -154,7 +153,7 @@ public class HDFSFile extends File {
     try {
       return !exists() && fs.mkdirs(hdfsPath);
     } catch (IOException e) {
-      logger.error("Fail to create directory {}. ", hdfsPath.toUri().toString(), e);
+      logger.error("Fail to create directory {}. ", hdfsPath.toUri(), e);
       return false;
     }
   }
@@ -164,7 +163,7 @@ public class HDFSFile extends File {
     try {
       return exists() && fs.getFileStatus(hdfsPath).isDirectory();
     } catch (IOException e) {
-      logger.error("Fail to judge whether {} is a directory. ", hdfsPath.toUri().toString(), e);
+      logger.error("Fail to judge whether {} is a directory. ", hdfsPath.toUri(), e);
       return false;
     }
   }
@@ -174,7 +173,7 @@ public class HDFSFile extends File {
     try {
       return fs.getStatus().getRemaining();
     } catch (IOException e) {
-      logger.error("Fail to get free space of {}. ", hdfsPath.toUri().toString(), e);
+      logger.error("Fail to get free space of {}. ", hdfsPath.toUri(), e);
       return 0L;
     }
   }
@@ -214,7 +213,7 @@ public class HDFSFile extends File {
     try {
       return fs.rename(hdfsPath, new Path(dest.getAbsolutePath()));
     } catch (IOException e) {
-      logger.error("Failed to rename file {} to {}. ", hdfsPath.toString(), dest.getName(), e);
+      logger.error("Failed to rename file {} to {}. ", hdfsPath, dest.getName(), e);
       return false;
     }
   }
@@ -305,17 +304,17 @@ public class HDFSFile extends File {
   }
 
   @Override
-  public String getCanonicalPath() throws IOException {
+  public String getCanonicalPath() {
     throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
-  public File getCanonicalFile() throws IOException {
+  public File getCanonicalFile() {
     throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
-  public URL toURL() throws MalformedURLException {
+  public URL toURL() {
     throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 

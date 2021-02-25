@@ -33,17 +33,24 @@
         <thrift.with.cpp>ON</thrift.with.cpp>
         <thrift.with.csharp>ON</thrift.with.csharp>
         <thrift.with.python>ON</thrift.with.python>
+        <chmod.command>chmod</chmod.command>
+        <chmod.command.para>+x cmake</chmod.command.para>
     </properties>
     <profiles>
-        <!-- Profile for linux -->
         <profile>
-            <id>os-unix</id>
+            <id>os-windows</id>
             <activation>
                 <os>
-                    <family>unix</family>
+                    <family>windows</family>
                 </os>
             </activation>
-            <!-- Make the cmake executable executable (Seems not to be per default) -->
+            <properties>
+                <chmod.command>echo</chmod.command>
+                <chmod.command.para>"do nothing"</chmod.command.para>
+            </properties>
+        </profile>
+        <profile>
+            <id>compile-cpp</id>
             <build>
                 <plugins>
                     <plugin>
@@ -59,138 +66,164 @@
                                 </goals>
                                 <configuration>
                                     <basedir>${cmake.root.dir}/bin</basedir>
-                                    <executable>chmod</executable>
-                                    <arguments>
-                                        <argument>+x</argument>
-                                        <argument>cmake</argument>
-                                    </arguments>
+                                    <executable>${chmod.command}</executable>
+                                    <commandlineArgs>${chmod.command.para}</commandlineArgs>
                                 </configuration>
                             </execution>
                         </executions>
                     </plugin>
-                </plugins>
-            </build>
-        </profile>
-        <!-- Profile for mac -->
-        <profile>
-            <id>os-mac</id>
-            <activation>
-                <os>
-                    <family>mac</family>
-                </os>
-            </activation>
-            <!-- Make the cmake executable executable (Seems not to be per default) -->
-            <build>
-                <plugins>
                     <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>exec-maven-plugin</artifactId>
-                        <version>1.6.0</version>
+                        <groupId>com.googlecode.maven-download-plugin</groupId>
+                        <artifactId>download-maven-plugin</artifactId>
+                        <version>1.3.0</version>
                         <executions>
+                            <!-- Download the CMake binary distribution for this platform. -->
                             <execution>
-                                <id>make-cmake-executable</id>
-                                <phase>process-sources</phase>
+                                <id>get-cmake</id>
+                                <phase>generate-sources</phase>
                                 <goals>
-                                    <goal>exec</goal>
+                                    <goal>wget</goal>
                                 </goals>
                                 <configuration>
-                                    <basedir>${cmake.root.dir}/bin</basedir>
-                                    <executable>chmod</executable>
-                                    <arguments>
-                                        <argument>+x</argument>
-                                        <argument>cmake</argument>
-                                    </arguments>
+                                    <url>${cmake.url}</url>
+                                    <unpack>true</unpack>
+                                    <outputDirectory>${project.build.directory}</outputDirectory>
+                                </configuration>
+                            </execution>
+                            <!-- Download the sources for building the thrift compiler -->
+                            <execution>
+                                <id>get-thrift</id>
+                                <phase>generate-sources</phase>
+                                <goals>
+                                    <goal>wget</goal>
+                                </goals>
+                                <configuration>
+                                    <url>https://archive.apache.org/dist/thrift/${thrift.version}/thrift-${thrift.version}.zip</url>
+                                    <unpack>true</unpack>
+                                    <outputDirectory>${project.build.directory}</outputDirectory>
                                 </configuration>
                             </execution>
                         </executions>
                     </plugin>
-                </plugins>
-            </build>
-        </profile>
-        <!-- If C++ is enabled, we need to add another assembly to the build to package the libraries -->
-        <profile>
-            <id>with-cpp</id>
-            <properties>
-                <thrift.with.cpp>ON</thrift.with.cpp>
-            </properties>
-            <build>
-                <plugins>
                     <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-assembly-plugin</artifactId>
+                        <groupId>com.googlecode.cmake-maven-project</groupId>
+                        <artifactId>cmake-maven-plugin</artifactId>
+                        <version>3.7.2-b1</version>
                         <executions>
+                            <!-- Uses a CMake generator to generate the build using the build tool of choice -->
                             <execution>
-                                <id>package-thrift-cpp</id>
-                                <phase>package</phase>
+                                <id>cmake-generate</id>
+                                <phase>generate-sources</phase>
                                 <goals>
-                                    <goal>single</goal>
+                                    <goal>generate</goal>
                                 </goals>
                                 <configuration>
-                                    <finalName>${project.artifactId}-${project.version}</finalName>
-                                    <descriptors>
-                                        <descriptor>src/assembly/cpp.xml</descriptor>
-                                    </descriptors>
+                                    <classifier>${os.classifier}</classifier>
+                                    <!--
+                        We need to use a newer version of cmake, so disable downloading
+                        and tell the plugin where to find that version.
+                      -->
+                                    <downloadBinaries>false</downloadBinaries>
+                                    <sourcePath>${project.build.directory}/thrift-${thrift.version}</sourcePath>
+                                    <targetPath>${project.build.directory}/build</targetPath>
+                                    <generator>${cmake.generator}</generator>
+                                    <options>
+                                        <!-- Disable testing for now -->
+                                        <option>-DBUILD_TESTING=OFF</option>
+                                        <!-- Enable and disable the building of code generators for different languages -->
+                                        <option>-DTHRIFT_COMPILER_AS3=OFF</option>
+                                        <option>-DTHRIFT_COMPILER_C_GLIB=OFF</option>
+                                        <option>-DTHRIFT_COMPILER_CL=OFF</option>
+                                        <option>-DTHRIFT_COMPILER_CPP=${thrift.with.cpp}</option>
+                                        <option>-DTHRIFT_COMPILER_CSHARP=${thrift.with.csharp}</option>
+                                        <option>-DTHRIFT_COMPILER_D=OFF</option>
+                                        <option>-DTHRIFT_COMPILER_DART=OFF</option>
+                                        <option>-DTHRIFT_COMPILER_DELPHI=OFF</option>
+                                        <option>-DTHRIFT_COMPILER_ERL=OFF</option>
+                                        <option>-DTHRIFT_COMPILER_GO=ON</option>
+                                        <option>-DTHRIFT_COMPILER_GV=OFF</option>
+                                        <option>-DTHRIFT_COMPILER_HAXE=OFF</option>
+                                        <option>-DTHRIFT_COMPILER_HS=OFF</option>
+                                        <option>-DTHRIFT_COMPILER_HTML=OFF</option>
+                                        <option>-DTHRIFT_COMPILER_JAVA=ON</option>
+                                        <option>-DTHRIFT_COMPILER_JAVAME=ON</option>
+                                        <option>-DTHRIFT_COMPILER_JS=ON</option>
+                                        <option>-DTHRIFT_COMPILER_JSON=OFF</option>
+                                        <option>-DTHRIFT_COMPILER_LUA=OFF</option>
+                                        <option>-DTHRIFT_COMPILER_NETCORE=ON</option>
+                                        <option>-DTHRIFT_COMPILER_NETSTD=ON</option>
+                                        <option>-DTHRIFT_COMPILER_OCAML=OFF</option>
+                                        <option>-DTHRIFT_COMPILER_PERL=OFF</option>
+                                        <option>-DTHRIFT_COMPILER_PHP=OFF</option>
+                                        <option>-DTHRIFT_COMPILER_PY=${thrift.with.python}</option>
+                                        <option>-DTHRIFT_COMPILER_RB=OFF</option>
+                                        <option>-DTHRIFT_COMPILER_RS=OFF</option>
+                                        <option>-DTHRIFT_COMPILER_ST=OFF</option>
+                                        <option>-DTHRIFT_COMPILER_SWIFT=OFF</option>
+                                        <option>-DTHRIFT_COMPILER_XML=OFF</option>
+                                        <option>-DTHRIFT_COMPILER_XSD=OFF</option>
+                                        <!-- Enable and disable the building of libs for different languages -->
+                                        <option>-DBUILD_C_GLIB=OFF</option>
+                                        <option>-DBUILD_CPP=${thrift.with.cpp}</option>
+                                        <!-- Unfortunately this doesn't exist yet -->
+                                        <option>-DBUILD_CSHARP=${thrift.with.csharp}</option>
+                                        <!-- Don't build Java, as the libs are available via Maven -->
+                                        <option>-DBUILD_JAVA=OFF</option>
+                                        <option>-DBUILD_PYTHON=${thrift.with.python}</option>
+                                        <option>-DBUILD_HASKELL=OFF</option>
+                                        <option>-DWITH_SHARED_LIB=OFF</option>
+                                        <!-- Generate libthrift.a to compile IoTDB Session -->
+                                        <option>-DWITH_STATIC_LIB=ON</option>
+                                        <option>-DCMAKE_POSITION_INDEPENDENT_CODE=ON</option>
+                                        <!-- Specify openssl include path for Mac OS -->
+                                        <option>${openssl.include.dir}</option>
+                                        <!-- Specify new version Bison path for Mac OS -->
+                                        <option>${bison.executable.dir}</option>
+                                        <option>-DBOOST_INCLUDEDIR=${boost.include.dir}</option>
+                                        <option>-DBOOST_LIBRARYDIR=${boost.library.dir}</option>
+                                    </options>
+                                </configuration>
+                            </execution>
+                            <!-- Actually executes the build -->
+                            <execution>
+                                <id>cmake-compile</id>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>compile</goal>
+                                </goals>
+                                <configuration>
+                                    <classifier>${os.classifier}</classifier>
+                                    <config>${cmake.build.type}</config>
+                                    <!--
+                        We need to use a newer version of cmake, so disable downloading
+                        and tell the plugin where to find that version.
+                      -->
+                                    <downloadBinaries>false</downloadBinaries>
+                                    <!-- The directory where the "generate" step generated the build configuration -->
+                                    <projectDirectory>${project.build.directory}/build</projectDirectory>
                                 </configuration>
                             </execution>
                         </executions>
                     </plugin>
-                </plugins>
-            </build>
-        </profile>
-        <!-- If C# is enabled, we need to add another assembly to the build to package the libraries -->
-        <profile>
-            <id>with-dotnet</id>
-            <properties>
-                <thrift.with.csharp>ON</thrift.with.csharp>
-            </properties>
-            <build>
-                <plugins>
-                    <!-- This library is currently not buildable via CMake (yet) -->
-                    <!--plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-assembly-plugin</artifactId>
-            <executions>
-              <execution>
-                <id>package-thrift-cpp</id>
-                <phase>package</phase>
-                <goals>
-                  <goal>single</goal>
-                </goals>
-                <configuration>
-                  <finalName>${project.artifactId}-${project.version}</finalName>
-                  <descriptors>
-                    <descriptor>src/assembly/csharp.xml</descriptor>
-                  </descriptors>
-                </configuration>
-              </execution>
-            </executions>
-          </plugin-->
-                </plugins>
-            </build>
-        </profile>
-        <!-- If Python is enabled, we need to add another assembly to the build to package the libraries -->
-        <profile>
-            <id>with-python</id>
-            <properties>
-                <thrift.with.python>ON</thrift.with.python>
-            </properties>
-            <build>
-                <plugins>
+                    <!-- Copy the config.h file into thrift include directory -->
                     <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-assembly-plugin</artifactId>
+                        <groupId>com.coderplus.maven.plugins</groupId>
+                        <artifactId>copy-rename-maven-plugin</artifactId>
+                        <version>1.0</version>
                         <executions>
                             <execution>
-                                <id>package-thrift-python</id>
-                                <phase>package</phase>
+                                <id>copy-thrift-config</id>
                                 <goals>
-                                    <goal>single</goal>
+                                    <goal>copy</goal>
                                 </goals>
+                                <phase>generate-resources</phase>
                                 <configuration>
-                                    <finalName>${project.artifactId}-${project.version}</finalName>
-                                    <descriptors>
-                                        <descriptor>src/assembly/python.xml</descriptor>
-                                    </descriptors>
+                                    <fileSets>
+                                        <fileSet>
+                                            <sourceFile>${project.build.directory}/build/thrift/config.h</sourceFile>
+                                            <destinationFile>${project.build.directory}/thrift-${thrift.version}/lib/cpp/src/thrift/config.h</destinationFile>
+                                        </fileSet>
+                                    </fileSets>
                                 </configuration>
                             </execution>
                         </executions>
@@ -199,191 +232,4 @@
             </build>
         </profile>
     </profiles>
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>com.googlecode.maven-download-plugin</groupId>
-                <artifactId>download-maven-plugin</artifactId>
-                <executions>
-                    <!-- Download the CMake binary distribution for this platform. -->
-                    <execution>
-                        <id>get-cmake</id>
-                        <phase>generate-sources</phase>
-                        <goals>
-                            <goal>wget</goal>
-                        </goals>
-                        <configuration>
-                            <url>${cmake.url}</url>
-                            <unpack>true</unpack>
-                            <outputDirectory>${project.build.directory}</outputDirectory>
-                            <overwrite>true</overwrite>
-                        </configuration>
-                    </execution>
-                    <!-- Download the sources for building the thrift compiler -->
-                    <execution>
-                        <id>get-thrift</id>
-                        <phase>generate-sources</phase>
-                        <goals>
-                            <goal>wget</goal>
-                        </goals>
-                        <configuration>
-                            <url>https://archive.apache.org/dist/thrift/${thrift.version}/thrift-${thrift.version}.zip</url>
-                            <unpack>true</unpack>
-                            <outputDirectory>${project.build.directory}</outputDirectory>
-                            <overwrite>false</overwrite>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>com.googlecode.cmake-maven-project</groupId>
-                <artifactId>cmake-maven-plugin</artifactId>
-                <version>3.7.2-b1</version>
-                <executions>
-                    <!-- Uses a CMake generator to generate the build using the build tool of choice -->
-                    <execution>
-                        <id>cmake-generate</id>
-                        <phase>generate-sources</phase>
-                        <goals>
-                            <goal>generate</goal>
-                        </goals>
-                        <configuration>
-                            <classifier>${os.classifier}</classifier>
-                            <!--
-                We need to use a newer version of cmake, so disable downloading
-                and tell the plugin where to find that version.
-              -->
-                            <downloadBinaries>false</downloadBinaries>
-                            <sourcePath>${project.build.directory}/thrift-${thrift.version}</sourcePath>
-                            <targetPath>${project.build.directory}/build</targetPath>
-                            <generator>${cmake.generator}</generator>
-                            <options>
-                                <!-- Disable testing for now -->
-                                <option>-DBUILD_TESTING=OFF</option>
-                                <!-- Enable and disable the building of code generators for different languages -->
-                                <option>-DTHRIFT_COMPILER_AS3=OFF</option>
-                                <option>-DTHRIFT_COMPILER_C_GLIB=OFF</option>
-                                <option>-DTHRIFT_COMPILER_CL=OFF</option>
-                                <option>-DTHRIFT_COMPILER_CPP=${thrift.with.cpp}</option>
-                                <option>-DTHRIFT_COMPILER_CSHARP=${thrift.with.csharp}</option>
-                                <option>-DTHRIFT_COMPILER_D=OFF</option>
-                                <option>-DTHRIFT_COMPILER_DART=OFF</option>
-                                <option>-DTHRIFT_COMPILER_DELPHI=OFF</option>
-                                <option>-DTHRIFT_COMPILER_ERL=OFF</option>
-                                <option>-DTHRIFT_COMPILER_GO=ON</option>
-                                <option>-DTHRIFT_COMPILER_GV=OFF</option>
-                                <option>-DTHRIFT_COMPILER_HAXE=OFF</option>
-                                <option>-DTHRIFT_COMPILER_HS=OFF</option>
-                                <option>-DTHRIFT_COMPILER_HTML=OFF</option>
-                                <option>-DTHRIFT_COMPILER_JAVA=ON</option>
-                                <option>-DTHRIFT_COMPILER_JAVAME=ON</option>
-                                <option>-DTHRIFT_COMPILER_JS=ON</option>
-                                <option>-DTHRIFT_COMPILER_JSON=OFF</option>
-                                <option>-DTHRIFT_COMPILER_LUA=OFF</option>
-                                <option>-DTHRIFT_COMPILER_NETCORE=ON</option>
-                                <option>-DTHRIFT_COMPILER_NETSTD=ON</option>
-                                <option>-DTHRIFT_COMPILER_OCAML=OFF</option>
-                                <option>-DTHRIFT_COMPILER_PERL=OFF</option>
-                                <option>-DTHRIFT_COMPILER_PHP=OFF</option>
-                                <option>-DTHRIFT_COMPILER_PY=${thrift.with.python}</option>
-                                <option>-DTHRIFT_COMPILER_RB=OFF</option>
-                                <option>-DTHRIFT_COMPILER_RS=OFF</option>
-                                <option>-DTHRIFT_COMPILER_ST=OFF</option>
-                                <option>-DTHRIFT_COMPILER_SWIFT=OFF</option>
-                                <option>-DTHRIFT_COMPILER_XML=OFF</option>
-                                <option>-DTHRIFT_COMPILER_XSD=OFF</option>
-                                <!-- Enable and disable the building of libs for different languages -->
-                                <option>-DBUILD_C_GLIB=OFF</option>
-                                <option>-DBUILD_CPP=${thrift.with.cpp}</option>
-                                <!-- Unfortunately this doesn't exist yet -->
-                                <option>-DBUILD_CSHARP=${thrift.with.csharp}</option>
-                                <!-- Don't build Java, as the libs are available via Maven -->
-                                <option>-DBUILD_JAVA=OFF</option>
-                                <option>-DBUILD_PYTHON=${thrift.with.python}</option>
-                                <option>-DBUILD_HASKELL=OFF</option>
-                                <option>-DWITH_SHARED_LIB=OFF</option>
-                                <!-- Generate libthrift.a to compile IoTDB Session -->
-                                <option>-DWITH_STATIC_LIB=ON</option>
-                                <option>-DCMAKE_POSITION_INDEPENDENT_CODE=ON</option>
-                                <!-- Specify openssl include path for Mac OS -->
-                                <option>${openssl.include.dir}</option>
-                                <!-- Specify new version Bison path for Mac OS -->
-                                <option>${bison.executable.dir}</option>
-                                <option>-DBOOST_INCLUDEDIR=${boost.include.dir}</option>
-                                <option>-DBOOST_LIBRARYDIR=${boost.library.dir}</option>
-                            </options>
-                        </configuration>
-                    </execution>
-                    <!-- Actually executes the build -->
-                    <execution>
-                        <id>cmake-compile</id>
-                        <phase>compile</phase>
-                        <goals>
-                            <goal>compile</goal>
-                        </goals>
-                        <configuration>
-                            <classifier>${os.classifier}</classifier>
-                            <config>${cmake.build.type}</config>
-                            <!--
-                We need to use a newer version of cmake, so disable downloading
-                and tell the plugin where to find that version.
-              -->
-                            <downloadBinaries>false</downloadBinaries>
-                            <!-- The directory where the "generate" step generated the build configuration -->
-                            <projectDirectory>${project.build.directory}/build</projectDirectory>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <!-- Add the thrift compiler executable to the build -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-assembly-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>source-release-assembly</id>
-                        <configuration>
-                            <skip>true</skip>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>package-thrift-compiler</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>single</goal>
-                        </goals>
-                        <configuration>
-                            <finalName>${project.artifactId}-${project.version}</finalName>
-                            <descriptors>
-                                <descriptor>src/assembly/compiler.xml</descriptor>
-                            </descriptors>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <!-- Copy the config.h file into thrift include directory -->
-            <plugin>
-                <groupId>com.coderplus.maven.plugins</groupId>
-                <artifactId>copy-rename-maven-plugin</artifactId>
-                <version>1.0</version>
-                <executions>
-                    <execution>
-                        <id>copy-thrift-config</id>
-                        <goals>
-                            <goal>copy</goal>
-                        </goals>
-                        <phase>generate-resources</phase>
-                        <configuration>
-                            <fileSets>
-                                <fileSet>
-                                    <sourceFile>${project.build.directory}/build/thrift/config.h</sourceFile>
-                                    <destinationFile>${project.build.directory}/thrift-${thrift.version}/lib/cpp/src/thrift/config.h</destinationFile>
-                                </fileSet>
-                            </fileSets>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-        </plugins>
-    </build>
 </project>

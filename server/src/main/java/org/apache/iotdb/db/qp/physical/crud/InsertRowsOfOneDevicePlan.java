@@ -108,11 +108,10 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan {
 
   @Override
   public void serialize(ByteBuffer buffer) {
-    int type = PhysicalPlanType.INSERT.ordinal();
+    int type = PhysicalPlanType.BATCH_INSERT_ONE_DEVICE.ordinal();
     buffer.put((byte) type);
 
     putString(buffer, deviceId.getFullPath());
-
     buffer.putInt(rowPlans.length);
     for (InsertRowPlan plan : rowPlans) {
       buffer.putLong(plan.getTime());
@@ -122,7 +121,6 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan {
 
   @Override
   public void deserialize(ByteBuffer buffer) throws IllegalPathException {
-
     this.deviceId = new PartialPath(readString(buffer));
     this.rowPlans = new InsertRowPlan[buffer.getInt()];
     for (int i = 0; i < rowPlans.length; i++) {

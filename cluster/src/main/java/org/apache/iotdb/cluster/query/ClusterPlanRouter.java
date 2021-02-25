@@ -32,6 +32,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CountPlan;
@@ -52,6 +53,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 public class ClusterPlanRouter {
 
@@ -110,7 +112,9 @@ public class ClusterPlanRouter {
 
   public Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(PhysicalPlan plan)
       throws UnsupportedPlanException, MetadataException {
-    if (plan instanceof InsertTabletPlan) {
+    if (plan instanceof InsertRowsPlan) {
+      return splitAndRoutePlan((InsertRowsPlan) plan);
+    } else if (plan instanceof InsertTabletPlan) {
       return splitAndRoutePlan((InsertTabletPlan) plan);
     } else if (plan instanceof InsertMultiTabletPlan) {
       return splitAndRoutePlan((InsertMultiTabletPlan) plan);
@@ -223,6 +227,35 @@ public class ClusterPlanRouter {
       for (Map.Entry<PartialPath, InsertMultiTabletPlan> sgPathEntry : sgPathPlanMap.entrySet()) {
         result.put(sgPathEntry.getValue(), pg);
       }
+    }
+    return result;
+  }
+
+  /**
+   * @param insertRowsPlan InsertRowsPlan
+   * @return key is InsertRowsPlan, value is the partition group the plan belongs to, all
+   *     InsertRowPlans in InsertRowsPlan belongs to one same storage group.
+   */
+  private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(InsertRowsPlan insertRowsPlan)
+      throws MetadataException {
+    Map<PhysicalPlan, PartitionGroup> result = new HashMap<>();
+    Map<PartitionGroup, InsertRowsPlan> groupPlanMap = new HashMap<>();
+    for (int i = 0; i < insertRowsPlan.getInsertRowPlanList().size(); i++) {
+      InsertRowPlan rowPlan = insertRowsPlan.getInsertRowPlanList().get(i);
+      PartialPath storageGroup = getMManager().getStorageGroupPath(rowPlan.getDeviceId());
+      PartitionGroup group = partitionTable.route(storageGroup.getFullPath(), rowPlan.getTime());
+      if (groupPlanMap.containsKey(group)) {
+        InsertRowsPlan tmpPlan = groupPlanMap.get(group);
+        tmpPlan.addOneInsertRowPlan(rowPlan, i);
+      } else {
+        InsertRowsPlan tmpPlan = new InsertRowsPlan();
+        tmpPlan.addOneInsertRowPlan(rowPlan, i);
+        groupPlanMap.put(group, tmpPlan);
+      }
+    }
+
+    for (Entry<PartitionGroup, InsertRowsPlan> entry : groupPlanMap.entrySet()) {
+      result.put(entry.getValue(), entry.getKey());
     }
     return result;
   }

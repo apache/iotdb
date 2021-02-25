@@ -600,7 +600,7 @@ public class StorageGroupProcessorTest {
     }
 
     processor.syncCloseAllWorkingTsFileProcessors();
-    processor.merge(true);
+    processor.merge(IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
     while (processor.getTsFileManagement().isUnseqMerging) {
       // wait
     }
@@ -608,7 +608,6 @@ public class StorageGroupProcessorTest {
     QueryDataSource queryDataSource =
         processor.query(new PartialPath(deviceId), measurementId, context, null, null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
-    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       Assert.assertTrue(resource.isClosed());
     }
