@@ -47,6 +47,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 public class IoTDB implements IoTDBMBean {
 
@@ -60,7 +61,7 @@ public class IoTDB implements IoTDBMBean {
     return IoTDBHolder.INSTANCE;
   }
 
-  public static final MetricManager serverMetricManager = MetricService.getMetricManager();
+  public static final MetricManager serverMetricManager = MetricService.getMetricManager();;
 
   public static void main(String[] args) {
     if (args.length > 0) {
@@ -135,7 +136,7 @@ public class IoTDB implements IoTDBMBean {
       try {
         Thread.sleep(1000);
       } catch (InterruptedException e) {
-        logger.warn("IoTDB failed to set up for:" + e.getMessage());
+        logger.warn("IoTDB failed to set up.", e);
         Thread.currentThread().interrupt();
         return;
       }

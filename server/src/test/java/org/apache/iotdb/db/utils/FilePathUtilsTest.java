@@ -18,10 +18,9 @@
  */
 package org.apache.iotdb.db.utils;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.utils.Pair;
-
-import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;

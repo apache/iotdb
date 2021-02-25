@@ -90,8 +90,8 @@ public class MicrometerMetricReporter implements MetricReporter {
   }
 
   private void startJmxReporter(JmxMeterRegistry jmxMeterRegistry) {
-    logger.debug("start jmx reporter from micrometer");
-    jmxMeterRegistry.start();
+    logger.info("start jmx reporter from micrometer");
+    //jmxMeterRegistry.start();
   }
 
   @Override

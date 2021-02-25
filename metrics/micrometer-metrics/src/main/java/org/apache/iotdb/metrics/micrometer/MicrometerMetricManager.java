@@ -82,7 +82,7 @@ public class MicrometerMetricManager implements MetricManager {
 
   @Override
   public boolean init() {
-    logger.debug("micrometer init registry");
+    logger.info("micrometer init registry");
     List<String> reporters = metricConfig.getReporterList();
     for (String reporter : reporters) {
       switch (ReporterType.get(reporter)) {

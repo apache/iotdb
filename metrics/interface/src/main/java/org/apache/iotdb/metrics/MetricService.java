@@ -49,7 +49,7 @@ public class MetricService {
   private MetricService() {}
 
   private static void init() {
-    logger.debug("init metric service");
+    logger.info("init metric service");
     ServiceLoader<MetricManager> metricManagers = ServiceLoader.load(MetricManager.class);
     int size = 0;
     MetricManager nothingManager = new DoNothingMetricManager();
