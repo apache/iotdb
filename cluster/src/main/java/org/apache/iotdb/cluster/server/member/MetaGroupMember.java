@@ -692,9 +692,15 @@ public class MetaGroupMember extends RaftMember {
   public void processValidHeartbeatResp(HeartBeatResponse response, Node receiver) {
     // register the id of the node
     if (response.isSetFollowerIdentifier()) {
+      // register the follower, the response.getFollower() contains the node information of the
+      // receiver.
       registerNodeIdentifier(response.getFollower(), response.getFollowerIdentifier());
       // if all nodes' ids are known, we can build the partition table
       if (allNodesIdKnown()) {
+        // When the meta raft group is established, the follower reports its node information to the
+        // leader through the first heartbeat. After the leader knows the node information of all
+        // nodes, it can replace the incomplete node information previously saved locally, and build
+        // partitionTable to send it to other followers.
         allNodes = new ArrayList<>(idNodeMap.values());
         if (partitionTable == null) {
           partitionTable = new SlotPartitionTable(allNodes, thisNode);
