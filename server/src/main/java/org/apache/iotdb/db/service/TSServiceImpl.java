@@ -1775,9 +1775,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-  public ReplicaSet divergentDesignWithIterNum(String deviceID, int maxIter) throws TException {
-    DivergentDesign divergentDesign = new DivergentDesign(deviceID);
-    divergentDesign.setMaxIter(maxIter);
+  public ReplicaSet divergentDesignWithReplicaNum(String deviceID, int replicaNum) throws TException {
+    DivergentDesign divergentDesign = new DivergentDesign(replicaNum, deviceID);
     Pair<Replica[], Workload[]> optimalResult = divergentDesign.optimize();
     Replica[] optimalReplicas = optimalResult.left;
     Workload[] optimalWorkload = optimalResult.right;
@@ -1839,8 +1838,52 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
+  public ReplicaSet multipleReplicaOptimizeWithReplicaNum(String deviceID, int replicaNum) throws TException {
+    MultiReplicaOrderOptimizer optimizer = new MultiReplicaOrderOptimizer(deviceID, replicaNum);
+    Pair<Replica[], Workload[]> result = optimizer.optimizeBySA();
+    ReplicaSet resultSet = new ReplicaSet();
+    resultSet.measurementOrders = new ArrayList<>();
+    resultSet.workloadPartition = new ArrayList<>();
+    for(int i = 0; i < result.left.length; ++i) {
+      Replica replica = result.left[i];
+      MeasurementOrder order = new MeasurementOrder();
+      order.deviceid = deviceID;
+      order.measurements = replica.getMeasurements();
+      resultSet.measurementOrders.add(order);
+      List<String> workloadStr = new ArrayList<>();
+      for(QueryRecord record : result.right[i].getRecords()) {
+        workloadStr.add(record.toString());
+      }
+      resultSet.workloadPartition.add(workloadStr);
+    }
+    return resultSet;
+  }
+
+  @Override
   public ReplicaSet multipleReplicaOptimizeWithChunkSize(String deviceID) throws TException {
     MultiReplicaOrderOptimizer optimizer = new MultiReplicaOrderOptimizer(deviceID);
+    Pair<Replica[], Workload[]> result = optimizer.optimizeBySAWithChunkSizeAdjustment();
+    ReplicaSet resultSet = new ReplicaSet();
+    resultSet.measurementOrders = new ArrayList<>();
+    resultSet.workloadPartition = new ArrayList<>();
+    for(int i = 0; i < result.left.length; ++i) {
+      Replica replica = result.left[i];
+      MeasurementOrder order = new MeasurementOrder();
+      order.deviceid = deviceID;
+      order.measurements = replica.getMeasurements();
+      resultSet.measurementOrders.add(order);
+      List<String> workloadStr = new ArrayList<>();
+      for(QueryRecord record : result.right[i].getRecords()) {
+        workloadStr.add(record.toString());
+      }
+      resultSet.workloadPartition.add(workloadStr);
+    }
+    return resultSet;
+  }
+
+  @Override
+  public ReplicaSet multipleReplicaOptimizeWithChunkSizeAndReplicaNum(String deviceID, int replicaNum) throws TException {
+    MultiReplicaOrderOptimizer optimizer = new MultiReplicaOrderOptimizer(deviceID, replicaNum);
     Pair<Replica[], Workload[]> result = optimizer.optimizeBySAWithChunkSizeAdjustment();
     ReplicaSet resultSet = new ReplicaSet();
     resultSet.measurementOrders = new ArrayList<>();

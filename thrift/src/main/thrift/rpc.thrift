@@ -382,7 +382,7 @@ service TSIService {
 
   ReplicaSet divergentDesign(1:string deviceID);
 
-  ReplicaSet divergentDesignWithIterNum(1:string deviceID, 2:i32 maxIter);
+  ReplicaSet divergentDesignWithReplicaNum(1:string deviceID, 2:i32 replicaNum);
 
   TSStatus readMetadata();
 
@@ -390,7 +390,11 @@ service TSIService {
 
   ReplicaSet multipleReplicaOptimize(1:string deviceID);
 
+  ReplicaSet multipleReplicaOptimizeWithReplicaNum(1:string deviceID, 2:i32 replicaNum);
+
   ReplicaSet multipleReplicaOptimizeWithChunkSize(1:string deviceID);
+
+  ReplicaSet multipleReplicaOptimizeWithChunkSizeAndReplicaNum(1:string deviceID, 2:i32 replicaNum);
 
   ReplicaSet runRainbow(1:string deviceID);
 
