@@ -23,8 +23,6 @@ import org.apache.iotdb.db.metadata.PartialPath;
 
 public class ShowTriggersPlan extends ShowPlan {
 
-  private final PartialPath path;
-
   public ShowTriggersPlan(PartialPath path) {
     super(ShowContentType.TRIGGERS);
     this.path = path;

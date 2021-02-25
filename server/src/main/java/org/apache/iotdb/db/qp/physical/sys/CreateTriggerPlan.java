@@ -24,7 +24,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -72,6 +72,6 @@ public class CreateTriggerPlan extends PhysicalPlan {
 
   @Override
   public List<PartialPath> getPaths() {
-    return new ArrayList<>();
+    return Collections.emptyList();
   }
 }
