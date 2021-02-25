@@ -1242,24 +1242,12 @@ TRIGGERS
     : T R I G G E R S
     ;
 
-SYNC
-    : S Y N C
-    ;
-
-ASYNC
-    : A S Y N C
-    ;
-
 BEFORE
     : B E F O R E
     ;
 
 AFTER
     : A F T E R
-    ;
-
-EVENTS
-    : E V E N T S
     ;
 
 START
