@@ -22,7 +22,6 @@ package org.apache.iotdb.tsfile.encoding.encoder;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 
 /** Encoder for int value using gorilla encoding. */
 public class SinglePrecisionEncoderV1 extends GorillaEncoderV1 {
@@ -85,7 +84,7 @@ public class SinglePrecisionEncoderV1 extends GorillaEncoderV1 {
   }
 
   @Override
-  public void flush(ByteArrayOutputStream out) throws IOException {
+  public void flush(ByteArrayOutputStream out) {
     encode(Float.NaN, out);
     clearBuffer(out);
     reset();

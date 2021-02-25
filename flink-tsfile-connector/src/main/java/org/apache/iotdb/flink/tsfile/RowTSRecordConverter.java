@@ -37,7 +37,6 @@ import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.types.Row;
 import org.apache.flink.util.Collector;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -57,7 +56,7 @@ public class RowTSRecordConverter implements TSRecordConverter<Row> {
   }
 
   @Override
-  public void open(Schema schema) throws IOException {
+  public void open(Schema schema) {
     this.tsRecordIndexMapping = new int[rowTypeInfo.getArity()];
     this.dataPointIndexMapping = new int[rowTypeInfo.getArity()];
     List<TSRecord> outputTemplateList = new ArrayList<>();
@@ -112,7 +111,7 @@ public class RowTSRecordConverter implements TSRecordConverter<Row> {
   }
 
   @Override
-  public void convert(Row input, Collector<TSRecord> collector) throws IOException {
+  public void convert(Row input, Collector<TSRecord> collector) {
     long timestamp = (long) input.getField(timeIndex);
     for (TSRecord tsRecord : reuse) {
       tsRecord.dataPointList.clear();
@@ -159,7 +158,7 @@ public class RowTSRecordConverter implements TSRecordConverter<Row> {
   }
 
   @Override
-  public void close() throws IOException {
+  public void close() {
     outputTemplate = null;
     timeIndex = -1;
     tsRecordIndexMapping = null;

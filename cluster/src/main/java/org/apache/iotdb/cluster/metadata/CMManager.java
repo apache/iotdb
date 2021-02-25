@@ -53,11 +53,14 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
@@ -431,8 +434,12 @@ public class CMManager extends MManager {
   public void createSchema(PhysicalPlan plan) throws MetadataException, CheckConsistencyException {
     // try to set storage group
     List<PartialPath> deviceIds;
-    // only handle InsertPlan, CreateTimeSeriesPlan and CreateMultiTimeSeriesPlan currently
-    if (plan instanceof InsertPlan && !(plan instanceof InsertMultiTabletPlan)) {
+    // only handle InsertPlan, CreateTimeSeriesPlan and CreateMultiTimeSeriesPlan currently,
+    if (plan instanceof InsertPlan
+        && !(plan instanceof InsertMultiTabletPlan)
+        && !(plan instanceof InsertRowsPlan)) {
+      // InsertMultiTabletPlan and InsertRowsPlan have multiple devices, and other types of
+      // InsertPlan have only one device.
       deviceIds = Collections.singletonList(((InsertPlan) plan).getDeviceId());
     } else if (plan instanceof CreateTimeSeriesPlan) {
       deviceIds = Collections.singletonList(((CreateTimeSeriesPlan) plan).getPath());
@@ -528,7 +535,26 @@ public class CMManager extends MManager {
       boolean success = createTimeseries(insertTabletPlan);
       allSuccess = allSuccess && success;
       if (!success) {
-        logger.error("create timeseries for device={} failed", insertTabletPlan.getDeviceId());
+        logger.error(
+            "create timeseries for device={} failed, plan={}",
+            insertTabletPlan.getDeviceId(),
+            insertTabletPlan);
+      }
+    }
+    return allSuccess;
+  }
+
+  public boolean createTimeseries(InsertRowsPlan insertRowsPlan)
+      throws CheckConsistencyException, IllegalPathException {
+    boolean allSuccess = true;
+    for (InsertRowPlan insertRowPlan : insertRowsPlan.getInsertRowPlanList()) {
+      boolean success = createTimeseries(insertRowPlan);
+      allSuccess = allSuccess && success;
+      if (!success) {
+        logger.error(
+            "create timeseries for device={} failed, plan={}",
+            insertRowPlan.getDeviceId(),
+            insertRowPlan);
       }
     }
     return allSuccess;
@@ -544,6 +570,10 @@ public class CMManager extends MManager {
       throws IllegalPathException, CheckConsistencyException {
     if (insertPlan instanceof InsertMultiTabletPlan) {
       return createTimeseries((InsertMultiTabletPlan) insertPlan);
+    }
+
+    if (insertPlan instanceof InsertRowsPlan) {
+      return createTimeseries((InsertRowsPlan) insertPlan);
     }
 
     List<String> seriesList = new ArrayList<>();
@@ -1395,18 +1425,64 @@ public class CMManager extends MManager {
   }
 
   @Override
-  protected MeasurementMNode getMeasurementMNode(MNode deviceMNode, String measurement) {
-    MNode child;
-    child = deviceMNode.getChild(measurement);
+  public MNode getMNode(MNode deviceMNode, String measurementName) {
+    MNode child = deviceMNode.getChild(measurementName);
     if (child == null) {
-      child = mRemoteMetaCache.get(deviceMNode.getPartialPath().concatNode(measurement));
+      child = mRemoteMetaCache.get(deviceMNode.getPartialPath().concatNode(measurementName));
     }
-    return child != null ? (MeasurementMNode) child : null;
+    return child;
   }
 
   public List<ShowTimeSeriesResult> showLocalTimeseries(
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
     return super.showTimeseries(plan, context);
+  }
+
+  public List<ShowDevicesResult> getLocalDevices(ShowDevicesPlan plan) throws MetadataException {
+    return super.getDevices(plan);
+  }
+
+  @Override
+  public List<ShowDevicesResult> getDevices(ShowDevicesPlan plan) throws MetadataException {
+    ConcurrentSkipListSet<ShowDevicesResult> resultSet = new ConcurrentSkipListSet<>();
+    ExecutorService pool =
+        new ThreadPoolExecutor(
+            THREAD_POOL_SIZE, THREAD_POOL_SIZE, 0, TimeUnit.SECONDS, new LinkedBlockingDeque<>());
+    List<PartitionGroup> globalGroups = metaGroupMember.getPartitionTable().getGlobalGroups();
+
+    int limit = plan.getLimit() == 0 ? Integer.MAX_VALUE : plan.getLimit();
+    int offset = plan.getOffset();
+    // do not use limit and offset in sub-queries unless offset is 0, otherwise the results are
+    // not combinable
+    if (offset != 0) {
+      plan.setLimit(0);
+      plan.setOffset(0);
+    }
+
+    if (logger.isDebugEnabled()) {
+      logger.debug(
+          "Fetch devices schemas of {} from {} groups", plan.getPath(), globalGroups.size());
+    }
+
+    List<Future<Void>> futureList = new ArrayList<>();
+    for (PartitionGroup group : globalGroups) {
+      futureList.add(
+          pool.submit(
+              () -> {
+                try {
+                  getDevices(group, plan, resultSet);
+                } catch (CheckConsistencyException e) {
+                  logger.error("Cannot get show devices result of {} from {}", plan, group);
+                }
+                return null;
+              }));
+    }
+
+    waitForThreadPool(futureList, pool, "getDevices()");
+    List<ShowDevicesResult> showDevicesResults =
+        applyShowDevicesLimitOffset(resultSet, limit, offset);
+    logger.debug("show devices {} has {} results", plan.getPath(), showDevicesResults.size());
+    return showDevicesResults;
   }
 
   @Override
@@ -1470,6 +1546,22 @@ public class CMManager extends MManager {
     return showTimeSeriesResults;
   }
 
+  private List<ShowDevicesResult> applyShowDevicesLimitOffset(
+      Set<ShowDevicesResult> resultSet, int limit, int offset) {
+    List<ShowDevicesResult> showDevicesResults = new ArrayList<>();
+    Iterator<ShowDevicesResult> iterator = resultSet.iterator();
+    while (iterator.hasNext() && limit > 0) {
+      if (offset > 0) {
+        offset--;
+        iterator.next();
+      } else {
+        limit--;
+        showDevicesResults.add(iterator.next());
+      }
+    }
+    return showDevicesResults;
+  }
+
   private void showTimeseries(
       PartitionGroup group,
       ShowTimeSeriesPlan plan,
@@ -1480,6 +1572,32 @@ public class CMManager extends MManager {
       showLocalTimeseries(group, plan, resultSet, context);
     } else {
       showRemoteTimeseries(group, plan, resultSet);
+    }
+  }
+
+  private void getDevices(
+      PartitionGroup group, ShowDevicesPlan plan, Set<ShowDevicesResult> resultSet)
+      throws CheckConsistencyException, MetadataException {
+    if (group.contains(metaGroupMember.getThisNode())) {
+      getLocalDevices(group, plan, resultSet);
+    } else {
+      getRemoteDevices(group, plan, resultSet);
+    }
+  }
+
+  private void getLocalDevices(
+      PartitionGroup group, ShowDevicesPlan plan, Set<ShowDevicesResult> resultSet)
+      throws CheckConsistencyException, MetadataException {
+    Node header = group.getHeader();
+    DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header);
+    localDataMember.syncLeaderWithConsistencyCheck(false);
+    try {
+      List<ShowDevicesResult> localResult = super.getDevices(plan);
+      resultSet.addAll(localResult);
+      logger.debug("Fetched {} devices of {} from {}", localResult.size(), plan.getPath(), group);
+    } catch (MetadataException e) {
+      logger.error("Cannot execute show devices plan {} from {} locally.", plan, group);
+      throw e;
     }
   }
 
@@ -1495,7 +1613,11 @@ public class CMManager extends MManager {
     try {
       List<ShowTimeSeriesResult> localResult = super.showTimeseries(plan, context);
       resultSet.addAll(localResult);
-      logger.debug("Fetched {} schemas of {} from {}", localResult.size(), plan.getPath(), group);
+      logger.debug(
+          "Fetched local timeseries {} schemas of {} from {}",
+          localResult.size(),
+          plan.getPath(),
+          group);
     } catch (MetadataException e) {
       logger.error("Cannot execute show timeseries plan  {} from {} locally.", plan, group);
       throw e;
@@ -1523,12 +1645,43 @@ public class CMManager extends MManager {
 
     if (resultBinary != null) {
       int size = resultBinary.getInt();
-      logger.debug("Fetched {} schemas of {} from {}", size, plan.getPath(), group);
+      logger.debug(
+          "Fetched remote timeseries {} schemas of {} from {}", size, plan.getPath(), group);
       for (int i = 0; i < size; i++) {
         resultSet.add(ShowTimeSeriesResult.deserialize(resultBinary));
       }
     } else {
       logger.error("Failed to execute show timeseries {} in group: {}.", plan, group);
+    }
+  }
+
+  private void getRemoteDevices(
+      PartitionGroup group, ShowDevicesPlan plan, Set<ShowDevicesResult> resultSet) {
+    ByteBuffer resultBinary = null;
+    for (Node node : group) {
+      try {
+        resultBinary = getRemoteDevices(node, group, plan);
+        if (resultBinary != null) {
+          break;
+        }
+      } catch (IOException e) {
+        logger.error(LOG_FAIL_CONNECT, node, e);
+      } catch (TException e) {
+        logger.error("Error occurs when getting devices schemas in node {}.", node, e);
+      } catch (InterruptedException e) {
+        logger.error("Interrupted when getting devices schemas in node {}.", node, e);
+        Thread.currentThread().interrupt();
+      }
+    }
+
+    if (resultBinary != null) {
+      int size = resultBinary.getInt();
+      logger.debug("Fetched remote devices {} schemas of {} from {}", size, plan.getPath(), group);
+      for (int i = 0; i < size; i++) {
+        resultSet.add(ShowDevicesResult.deserialize(resultBinary));
+      }
+    } else {
+      logger.error("Failed to execute show devices {} in group: {}.", plan, group);
     }
   }
 
@@ -1553,6 +1706,35 @@ public class CMManager extends MManager {
         plan.serialize(dataOutputStream);
         resultBinary =
             syncDataClient.getAllMeasurementSchema(
+                group.getHeader(), ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+      } finally {
+        ClientUtils.putBackSyncClient(syncDataClient);
+      }
+    }
+    return resultBinary;
+  }
+
+  private ByteBuffer getRemoteDevices(Node node, PartitionGroup group, ShowDevicesPlan plan)
+      throws IOException, TException, InterruptedException {
+    ByteBuffer resultBinary;
+    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+      AsyncDataClient client =
+          metaGroupMember
+              .getClientProvider()
+              .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+      resultBinary = SyncClientAdaptor.getDevices(client, group.getHeader(), plan);
+    } else {
+      SyncDataClient syncDataClient = null;
+      try {
+        syncDataClient =
+            metaGroupMember
+                .getClientProvider()
+                .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+        plan.serialize(dataOutputStream);
+        resultBinary =
+            syncDataClient.getDevices(
                 group.getHeader(), ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
       } finally {
         ClientUtils.putBackSyncClient(syncDataClient);

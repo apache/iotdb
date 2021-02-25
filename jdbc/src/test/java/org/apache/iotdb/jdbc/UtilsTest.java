@@ -34,10 +34,10 @@ import static org.junit.Assert.fail;
 public class UtilsTest {
 
   @Before
-  public void setUp() throws Exception {}
+  public void setUp() {}
 
   @After
-  public void tearDown() throws Exception {}
+  public void tearDown() {}
 
   @Test
   public void testParseURL() throws IoTDBURLException {

@@ -33,7 +33,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -61,8 +60,7 @@ public class GroupByTimeDataSet extends QueryDataSet {
       logger.debug("paths " + this.paths + " level:" + plan.getLevel());
     }
 
-    Map<Integer, String> pathIndex = new HashMap<>();
-    Map<String, AggregateResult> finalPaths = FilePathUtils.getPathByLevel(plan, pathIndex);
+    Map<String, AggregateResult> finalPaths = plan.getAggPathByLevel();
 
     // get all records from GroupByDataSet, then we merge every record
     if (logger.isDebugEnabled()) {
@@ -72,7 +70,7 @@ public class GroupByTimeDataSet extends QueryDataSet {
       RowRecord rawRecord = dataSet.nextWithoutConstraint();
       RowRecord curRecord = new RowRecord(rawRecord.getTimestamp());
       List<AggregateResult> mergedAggResults =
-          FilePathUtils.mergeRecordByPath(plan, rawRecord, finalPaths, pathIndex);
+          FilePathUtils.mergeRecordByPath(plan, rawRecord, finalPaths);
       for (AggregateResult resultData : mergedAggResults) {
         TSDataType dataType = resultData.getResultDataType();
         curRecord.addField(resultData.getResult(), dataType);
@@ -88,7 +86,7 @@ public class GroupByTimeDataSet extends QueryDataSet {
   }
 
   @Override
-  public boolean hasNextWithoutConstraint() throws IOException {
+  public boolean hasNextWithoutConstraint() {
     return index < records.size();
   }
 

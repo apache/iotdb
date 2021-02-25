@@ -127,7 +127,7 @@ public class LocalTextModificationAccessor
   }
 
   private static String encodeDeletion(Deletion del) {
-    return del.getType().toString()
+    return del.getType()
         + SEPARATOR
         + del.getPathString()
         + SEPARATOR

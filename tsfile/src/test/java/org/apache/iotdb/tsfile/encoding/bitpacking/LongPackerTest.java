@@ -59,7 +59,7 @@ public class LongPackerTest {
         bb[idx++] = tb[j];
       }
     }
-    long tres[] = new long[count * 8];
+    long[] tres = new long[count * 8];
     packer.unpackAllValues(bb, bb.length, tres);
 
     for (int i = 0; i < count * 8; i++) {

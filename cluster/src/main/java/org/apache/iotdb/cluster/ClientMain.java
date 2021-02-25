@@ -461,7 +461,7 @@ public class ClientMain {
           for (int i = 0; i < colNum; i++) {
             stringBuilder.append(set.getString(i + 1)).append(",");
           }
-          System.out.println(stringBuilder.toString());
+          System.out.println(stringBuilder);
         }
       }
     }

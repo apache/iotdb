@@ -653,7 +653,7 @@ private WatermarkEncoder getWatermarkEncoder() {
 
   @Override
   public String getDatabaseProductVersion() {
-   return DATABASE_VERSION;
+    return DATABASE_VERSION;
   }
 
   @Override
@@ -672,12 +672,12 @@ private WatermarkEncoder getWatermarkEncoder() {
   }
 
   @Override
-  public String getDriverName(){
+  public String getDriverName() {
     return org.apache.iotdb.jdbc.IoTDBDriver.class.getName();
   }
 
   @Override
-  public String getDriverVersion(){
+  public String getDriverVersion() {
     return DATABASE_VERSION;
   }
 

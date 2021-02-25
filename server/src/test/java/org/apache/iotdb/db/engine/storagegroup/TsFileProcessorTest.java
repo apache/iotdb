@@ -72,7 +72,7 @@ public class TsFileProcessorTest {
   protected static final int INIT_ARRAY_SIZE = 64;
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
     EnvironmentUtils.envSetUp();
     MetadataManagerHelper.initMetadata();
     context = EnvironmentUtils.TEST_QUERY_CONTEXT;

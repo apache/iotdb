@@ -327,7 +327,7 @@ public class IoTDBConnection implements Connection {
   }
 
   @Override
-  public boolean isValid(int arg0) throws SQLException {
+  public boolean isValid(int arg0) {
     return !isClosed;
   }
 
