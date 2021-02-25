@@ -822,14 +822,17 @@ public class IoTDBDescriptor {
 
     int maxWalBytebufferNumForEachPartition =
         Integer.parseInt(
-            properties.getProperty("max_wal_bytebuffer_num_for_each_partition", Integer.toString(conf.getMaxWalBytebufferNumForEachPartition())));
+            properties.getProperty(
+                "max_wal_bytebuffer_num_for_each_partition",
+                Integer.toString(conf.getMaxWalBytebufferNumForEachPartition())));
     if (maxWalBytebufferNumForEachPartition > 0) {
       conf.setMaxWalBytebufferNumForEachPartition(maxWalBytebufferNumForEachPartition);
     }
 
     long poolTrimIntervalInMS =
         Integer.parseInt(
-            properties.getProperty("wal_pool_trim_interval_ms", Long.toString(conf.getWalPoolTrimIntervalInMS())));
+            properties.getProperty(
+                "wal_pool_trim_interval_ms", Long.toString(conf.getWalPoolTrimIntervalInMS())));
     if (poolTrimIntervalInMS > 0) {
       conf.setWalPoolTrimIntervalInMS(poolTrimIntervalInMS);
     }
