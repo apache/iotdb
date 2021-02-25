@@ -264,6 +264,13 @@ public class MergeMultiChunkTask {
         IoTDBDescriptor.getInstance().getConfig().getMergeChunkSubThreadNum();
     MetaListEntry[] metaListEntries = new MetaListEntry[currMergingPaths.size()];
     PriorityQueue<Integer>[] chunkIdxHeaps = new PriorityQueue[mergeChunkSubTaskNum];
+
+    // if merge path is smaller than mergeChunkSubTaskNum, will use merge path number.
+    // so thread are not wasted.
+    if (currMergingPaths.size() < mergeChunkSubTaskNum) {
+      mergeChunkSubTaskNum = currMergingPaths.size();
+    }
+
     for (int i = 0; i < mergeChunkSubTaskNum; i++) {
       chunkIdxHeaps[i] = new PriorityQueue<>();
     }
