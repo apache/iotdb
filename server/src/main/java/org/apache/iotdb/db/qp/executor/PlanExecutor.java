@@ -174,6 +174,7 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_CLASS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_EVENT;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_NAME;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_PATH;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_ACTIVATED;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
@@ -854,12 +855,18 @@ public class PlanExecutor implements IPlanExecutor {
     return new ListDataSet(
         Arrays.asList(
             new PartialPath(COLUMN_TRIGGER_NAME, false),
+            new PartialPath(COLUMN_TRIGGER_ACTIVATED, false),
             new PartialPath(COLUMN_TRIGGER_EVENT, false),
             new PartialPath(COLUMN_TRIGGER_PATH, false),
             new PartialPath(COLUMN_TRIGGER_CLASS, false),
             new PartialPath(COLUMN_TRIGGER_ATTRIBUTES, false)),
         Arrays.asList(
-            TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT));
+            TSDataType.TEXT,
+            TSDataType.BOOLEAN,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT));
   }
 
   private void addRowRecordForShowQuery(
