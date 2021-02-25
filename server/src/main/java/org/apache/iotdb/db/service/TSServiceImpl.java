@@ -431,6 +431,25 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return IoTDB.metaManager.getAllTimeseriesPath(path);
   }
 
+  private boolean executeInsertRowsPlan(InsertRowsPlan insertRowsPlan, List<TSStatus> result) {
+    long t2 = System.currentTimeMillis();
+    TSStatus tsStatus = executeNonQueryPlan(insertRowsPlan);
+    Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_ROWS_PLAN_IN_BATCH, t2);
+    int startIndex = result.size();
+    if (startIndex > 0) {
+      startIndex = startIndex - 1;
+    }
+    for (int i = 0; i < insertRowsPlan.getRowCount(); i++) {
+      result.add(RpcUtils.SUCCESS_STATUS);
+    }
+    if (tsStatus.subStatus != null) {
+      for (Entry<Integer, TSStatus> entry : insertRowsPlan.getResults().entrySet()) {
+        result.set(startIndex + entry.getKey(), entry.getValue());
+      }
+    }
+    return tsStatus.equals(RpcUtils.SUCCESS_STATUS);
+  }
+
   @Override
   public TSStatus executeBatchStatement(TSExecuteBatchStatementReq req) {
     long t1 = System.currentTimeMillis();
@@ -442,7 +461,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
     InsertRowsPlan insertRowsPlan = new InsertRowsPlan();
     int index = 0;
-    for (String statement : req.getStatements()) {
+    for (int i = 0; i < req.getStatements().size(); i++) {
+      String statement = req.getStatements().get(i);
       try {
         PhysicalPlan physicalPlan =
             processor.parseSQLToPhysicalPlan(
@@ -454,19 +474,17 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         if (physicalPlan.getOperatorType().equals(OperatorType.INSERT)) {
           insertRowsPlan.addOneInsertRowPlan((InsertRowPlan) physicalPlan, index);
           index++;
+          if (i == req.getStatements().size() - 1
+              && !executeInsertRowsPlan(insertRowsPlan, result)) {
+            isAllSuccessful = false;
+          }
         } else {
           if (insertRowsPlan.getRowCount() > 0) {
-            long t2 = System.currentTimeMillis();
-            TSStatus tsStatus = executeNonQueryPlan(insertRowsPlan);
-            Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_ROWS_PLAN_IN_BATCH, t2);
-            index = 0;
-            insertRowsPlan = new InsertRowsPlan();
-            for (TSStatus status : tsStatus.getSubStatus()) {
-              result.add(status);
-            }
-            if (!tsStatus.equals(RpcUtils.SUCCESS_STATUS)) {
+            if (!executeInsertRowsPlan(insertRowsPlan, result)) {
               isAllSuccessful = false;
             }
+            index = 0;
+            insertRowsPlan = new InsertRowsPlan();
           }
           long t2 = System.currentTimeMillis();
           TSExecuteStatementResp resp = executeUpdateStatement(physicalPlan, req.getSessionId());
