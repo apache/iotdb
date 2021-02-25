@@ -32,8 +32,9 @@ public class ClusterNode extends Node {
   // TODO hxd: maintain the client IP and Port
   public ClusterNode() {}
 
-  public ClusterNode(String ip, int metaPort, int nodeIdentifier, int dataPort) {
-    super(ip, metaPort, nodeIdentifier, dataPort);
+  public ClusterNode(
+      String ip, int metaPort, int nodeIdentifier, int dataPort, int clientPort, String clientIp) {
+    super(ip, metaPort, nodeIdentifier, dataPort, clientPort, clientIp);
   }
 
   public ClusterNode(Node other) {
@@ -52,12 +53,13 @@ public class ClusterNode extends Node {
     return Objects.equals(this.ip, that.ip)
         && this.dataPort == that.dataPort
         && this.metaPort == that.metaPort
-        && this.clientPort == that.clientPort;
+        && this.clientPort == that.clientPort
+        && this.clientIp.equals(that.clientIp);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(ip, metaPort, dataPort, clientPort);
+    return Objects.hash(ip, metaPort, dataPort, clientPort, clientIp);
   }
 
   @Override
@@ -74,6 +76,9 @@ public class ClusterNode extends Node {
         + dataPort
         + ", clientPort="
         + clientPort
+        + ", clientIp='"
+        + clientIp
+        + '\''
         + "}";
   }
 }

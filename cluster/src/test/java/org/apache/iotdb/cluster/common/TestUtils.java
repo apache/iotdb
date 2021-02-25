@@ -76,6 +76,8 @@ public class TestUtils {
     node.setMetaPort(ClusterDescriptor.getInstance().getConfig().getInternalMetaPort());
     node.setDataPort(ClusterDescriptor.getInstance().getConfig().getInternalDataPort());
     node.setNodeIdentifier(nodeNum);
+    node.setClientPort(IoTDBDescriptor.getInstance().getConfig().getRpcPort());
+    node.setClientIp(IoTDBDescriptor.getInstance().getConfig().getRpcAddress());
     return node;
   }
 

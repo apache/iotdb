@@ -75,6 +75,8 @@ public class ClusterUtils {
    */
   public static final int META_HEARTBEAT_PORT_OFFSET = 1;
 
+  public static String UNKNOWN_CLIENT_IP = "UNKNOWN_IP";
+
   private ClusterUtils() {
     // util class
   }
@@ -303,34 +305,32 @@ public class ClusterUtils {
     int idLastPos = str.indexOf(',', idFirstPos);
     int dataPortFirstPos = str.indexOf("dataPort:", idLastPos) + "dataPort:".length();
     int dataPortLastPos = str.indexOf(',', dataPortFirstPos);
-    int clientPortFirstPos = str.indexOf("clientPort:", idLastPos) + "clientPort:".length();
-    int clientPortLastPos = str.indexOf(')', clientPortFirstPos);
+    int clientPortFirstPos = str.indexOf("clientPort:", dataPortLastPos) + "clientPort:".length();
+    int clientPortLastPos = str.indexOf(',', clientPortFirstPos);
+    int clientIpFirstPos = str.indexOf("clientIp:", clientPortLastPos) + "clientIp:".length();
+    int clientIpLastPos = str.indexOf(')', clientIpFirstPos);
 
     String ip = str.substring(ipFirstPos, ipLastPos);
     int metaPort = Integer.parseInt(str.substring(metaPortFirstPos, metaPortLastPos));
     int id = Integer.parseInt(str.substring(idFirstPos, idLastPos));
     int dataPort = Integer.parseInt(str.substring(dataPortFirstPos, dataPortLastPos));
     int clientPort = Integer.parseInt(str.substring(clientPortFirstPos, clientPortLastPos));
+    String clientIp = str.substring(clientIpFirstPos, clientIpLastPos);
     // TODO hxd: we do not set values to all fields of a Node.
-    return new Node(ip, metaPort, id, dataPort).setClientPort(clientPort);
+    return new Node(ip, metaPort, id, dataPort, clientPort, clientIp);
   }
 
   public static Node parseNode(String nodeUrl) {
     Node result = new Node();
     String[] split = nodeUrl.split(":");
-    if (split.length != 4) {
+    if (split.length != 2) {
       logger.warn("Bad seed url: {}", nodeUrl);
       return null;
     }
     String ip = split[0];
     try {
       int metaPort = Integer.parseInt(split[1]);
-      int dataPort = Integer.parseInt(split[2]);
-      int clientPort = Integer.parseInt(split[3]);
-      result.setIp(ip);
-      result.setMetaPort(metaPort);
-      result.setDataPort(dataPort);
-      result.setClientPort(clientPort);
+      result.setIp(ip).setMetaPort(metaPort).setClientIp(UNKNOWN_CLIENT_IP);
     } catch (NumberFormatException e) {
       logger.warn("Bad seed url: {}", nodeUrl);
     }

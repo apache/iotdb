@@ -40,8 +40,17 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.physical.sys.*;
+import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.CountPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan.LoadConfigurationPlanType;
+import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -49,7 +58,11 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
-import org.junit.*;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Ignore;
+import org.junit.Test;
 import org.mockito.internal.util.reflection.Whitebox;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,10 +71,21 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Random;
 import java.util.stream.IntStream;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 @Ignore // need maintenance
 @SuppressWarnings({"java:S2699"})
@@ -181,20 +205,27 @@ public class SlotPartitionTableTest {
   private void assertGetHeaderGroup(int start, int last) {
     PartitionGroup group =
         localTable.getHeaderGroup(
-            new Node("localhost", 30000 + start, start, 40000 + start)
-                .setClientIp("localhost")
-                .setClientPort(Constants.RPC_PORT + start));
+            new Node(
+                "localhost",
+                30000 + start,
+                start,
+                40000 + start,
+                Constants.RPC_PORT + start,
+                "localhost"));
     assertEquals(replica_size, group.size());
     assertEquals(
-        new Node("localhost", 30000 + start, start, 40000 + start)
-            .setClientIp("localhost")
-            .setClientPort(Constants.RPC_PORT + start),
+        new Node(
+            "localhost",
+            30000 + start,
+            start,
+            40000 + start,
+            Constants.RPC_PORT + start,
+            "localhost"),
         group.getHeader());
 
     assertEquals(
-        new Node("localhost", 30000 + last, last, 40000 + last)
-            .setClientIp("localhost")
-            .setClientPort(Constants.RPC_PORT + start),
+        new Node(
+            "localhost", 30000 + last, last, 40000 + last, Constants.RPC_PORT + start, "localhost"),
         group.get(replica_size - 1));
   }
 
@@ -519,9 +550,7 @@ public class SlotPartitionTableTest {
   }
 
   private Node getNode(int i) {
-    return new Node("localhost", 30000 + i, i, 40000 + i)
-        .setClientIp("localhost")
-        .setClientPort(Constants.RPC_PORT + i);
+    return new Node("localhost", 30000 + i, i, 40000 + i, Constants.RPC_PORT + i, "localhost");
   }
 
   @Test

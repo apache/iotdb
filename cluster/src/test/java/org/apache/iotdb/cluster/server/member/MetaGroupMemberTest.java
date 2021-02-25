@@ -1039,10 +1039,7 @@ public class MetaGroupMemberTest extends MemberTest {
     request.setLeaderCommit(0);
     request.setPrevLogIndex(-1);
     request.setPrevLogTerm(-1);
-    request.setLeader(
-        new Node("127.0.0.1", 30000, 0, 40000)
-            .setClientIp("127.0.0.1")
-            .setClientPort(Constants.RPC_PORT));
+    request.setLeader(new Node("127.0.0.1", 30000, 0, 40000, Constants.RPC_PORT, "127.0.0.1"));
     AtomicReference<Long> result = new AtomicReference<>();
     GenericHandler<Long> handler = new GenericHandler<>(TestUtils.getNode(0), result);
     new MetaAsyncService(testMetaMember).appendEntry(request, handler);

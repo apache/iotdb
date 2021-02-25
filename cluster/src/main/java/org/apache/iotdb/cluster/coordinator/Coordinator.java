@@ -595,7 +595,7 @@ public class Coordinator {
       }
       if (!StatusUtils.TIME_OUT.equals(status)) {
         if (!status.isSetRedirectNode()) {
-          status.setRedirectNode(new EndPoint(node.getIp(), node.getClientPort()));
+          status.setRedirectNode(new EndPoint(node.getClientIp(), node.getClientPort()));
         }
         return status;
       } else {

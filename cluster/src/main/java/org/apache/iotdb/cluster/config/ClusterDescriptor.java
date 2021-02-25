@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.cluster.config;
 
-import com.google.common.net.InetAddresses;
 import org.apache.iotdb.cluster.exception.BadSeedUrlFormatException;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+
+import com.google.common.net.InetAddresses;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,12 +43,21 @@ public class ClusterDescriptor {
 
   private static final Logger logger = LoggerFactory.getLogger(ClusterDescriptor.class);
   private static final ClusterDescriptor INSTANCE = new ClusterDescriptor();
-
-  private ClusterConfig config = new ClusterConfig();
+  private final ClusterConfig config = new ClusterConfig();
 
   private ClusterDescriptor() {
     // copy needed configurations from the server's config to the cluster.
     config.setClusterRpcPort(IoTDBDescriptor.getInstance().getConfig().getRpcPort());
+    // if open the server rpc port, we will enable the rpc service and change the server's rpc port
+    // to rpc_port + 1
+    if (config.isOpenServerRpcPort()) {
+      IoTDBDescriptor.getInstance().getConfig().setEnableRPCService(true);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setRpcPort(IoTDBDescriptor.getInstance().getConfig().getRpcPort() + 1);
+    } else {
+      IoTDBDescriptor.getInstance().getConfig().setEnableRPCService(false);
+    }
     // then load settings from cluster's file.
     // so, iotdb-cluster.properties can overwrite iotdb-properties.
     loadProps();
@@ -82,7 +92,6 @@ public class ClusterDescriptor {
   }
 
   public void replaceHostnameWithIp() throws UnknownHostException, BadSeedUrlFormatException {
-
     boolean isInvalidClusterInternalIp = InetAddresses.isInetAddress(config.getInternalIp());
     if (!isInvalidClusterInternalIp) {
       config.setInternalIp(hostnameToIP(config.getInternalIp()));
@@ -90,21 +99,21 @@ public class ClusterDescriptor {
     List<String> newSeedUrls = new ArrayList<>();
     for (String seedUrl : config.getSeedNodeUrls()) {
       String[] splits = seedUrl.split(":");
-      if (splits.length != 4) {
+      if (splits.length != 2) {
         throw new BadSeedUrlFormatException(seedUrl);
       }
       String seedIP = splits[0];
       boolean isInvalidSeedIp = InetAddresses.isInetAddress(seedIP);
       if (!isInvalidSeedIp) {
         String newSeedIP = hostnameToIP(seedIP);
-        newSeedUrls.add(newSeedIP + ":" + splits[1] + ":" + splits[2] + ":" + splits[3]);
+        newSeedUrls.add(newSeedIP + ":" + splits[1]);
       } else {
         newSeedUrls.add(seedUrl);
       }
     }
     config.setSeedNodeUrls(newSeedUrls);
     logger.debug(
-        "after replace, the rpcIP={}, internalIP={} seedUrls={}",
+        "after replace, the rpcIP={}, internalIP={}, seedUrls={}",
         IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
         config.getInternalIp(),
         config.getSeedNodeUrls());
@@ -208,6 +217,11 @@ public class ClusterDescriptor {
         Boolean.parseBoolean(
             properties.getProperty(
                 "is_use_async_server", String.valueOf(config.isUseAsyncServer()))));
+
+    config.setOpenServerRpcPort(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "open_server_rpc_port", String.valueOf(config.isOpenServerRpcPort()))));
 
     config.setUseAsyncApplier(
         Boolean.parseBoolean(

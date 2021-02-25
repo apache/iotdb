@@ -36,7 +36,9 @@ import org.junit.Test;
 
 import java.io.IOException;
 
-import static junit.framework.TestCase.*;
+import static junit.framework.TestCase.assertEquals;
+import static junit.framework.TestCase.assertFalse;
+import static junit.framework.TestCase.assertTrue;
 
 public class HeartbeatHandlerTest {
 
@@ -74,9 +76,7 @@ public class HeartbeatHandlerTest {
     response.setTerm(Response.RESPONSE_AGREE);
     response.setLastLogTerm(-2);
     response.setFollower(
-        new Node("192.168.0.6", 9003, 6, 40010)
-            .setClientIp("192.168.0.6")
-            .setClientPort(Constants.RPC_PORT));
+        new Node("192.168.0.6", 9003, 6, 40010, Constants.RPC_PORT, "192.168.0.6"));
     catchUpFlag = false;
     for (int i = 0; i < looseInconsistentNum; i++) {
       handler.onComplete(response);

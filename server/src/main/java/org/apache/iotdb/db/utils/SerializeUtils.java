@@ -121,27 +121,34 @@ public class SerializeUtils {
 
   public static void serialize(Node node, DataOutputStream dataOutputStream) {
     try {
-      byte[] ipBytes = node.ip.getBytes();
-      dataOutputStream.writeInt(ipBytes.length);
-      dataOutputStream.write(ipBytes);
+      byte[] internalIpBytes = node.ip.getBytes();
+      dataOutputStream.writeInt(internalIpBytes.length);
+      dataOutputStream.write(internalIpBytes);
       dataOutputStream.writeInt(node.metaPort);
       dataOutputStream.writeInt(node.nodeIdentifier);
       dataOutputStream.writeInt(node.dataPort);
       dataOutputStream.writeInt(node.clientPort);
+      byte[] clientIpBytes = node.ip.getBytes();
+      dataOutputStream.writeInt(clientIpBytes.length);
+      dataOutputStream.write(clientIpBytes);
     } catch (IOException e) {
       // unreachable
     }
   }
 
   public static void deserialize(Node node, ByteBuffer buffer) {
-    int ipLength = buffer.getInt();
-    byte[] ipBytes = new byte[ipLength];
-    buffer.get(ipBytes);
-    node.setIp(new String(ipBytes));
+    int internalIpLength = buffer.getInt();
+    byte[] internalIpBytes = new byte[internalIpLength];
+    buffer.get(internalIpBytes);
+    node.setIp(new String(internalIpBytes));
     node.setMetaPort(buffer.getInt());
     node.setNodeIdentifier(buffer.getInt());
     node.setDataPort(buffer.getInt());
     node.setClientPort(buffer.getInt());
+    int clientIpLength = buffer.getInt();
+    byte[] clientIpBytes = new byte[clientIpLength];
+    buffer.get(clientIpBytes);
+    node.setClientIp(new String(clientIpBytes));
   }
 
   public static void deserialize(Node node, DataInputStream stream) throws IOException {

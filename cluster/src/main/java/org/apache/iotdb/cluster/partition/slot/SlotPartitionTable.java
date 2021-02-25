@@ -303,7 +303,6 @@ public class SlotPartitionTable implements PartitionTable {
 
   @Override
   public ByteBuffer serialize() {
-
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream(4096);
     DataOutputStream dataOutputStream = new DataOutputStream(outputStream);
 
@@ -326,7 +325,6 @@ public class SlotPartitionTable implements PartitionTable {
           dataOutputStream.writeInt(integerNodeEntry.getValue().getNodeIdentifier());
         }
       }
-
       dataOutputStream.writeLong(lastLogIndex);
     } catch (IOException ignored) {
       // not reachable
@@ -336,7 +334,6 @@ public class SlotPartitionTable implements PartitionTable {
 
   @Override
   public void deserialize(ByteBuffer buffer) {
-
     logger.info("Initializing the partition table from buffer");
     totalSlotNumbers = buffer.getInt();
     int size = buffer.getInt();

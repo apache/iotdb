@@ -113,8 +113,9 @@ struct Node {
   2: required int metaPort
   3: required int nodeIdentifier
   4: required int dataPort
-  5: optional int clientPort
-  6: optional string clientIp
+  5: required int clientPort
+  // When the cluster is set up for the first time, the clientIp of other nodes is unknown
+  6: required string clientIp
 }
 
 // leader -> follower

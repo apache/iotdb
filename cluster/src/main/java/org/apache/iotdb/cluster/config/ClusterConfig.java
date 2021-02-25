@@ -35,13 +35,12 @@ public class ClusterConfig {
 
   /** each one is a "<IP | domain name>:<meta port>:<data port>:<client port></>" string tuple */
   private List<String> seedNodeUrls =
-      Arrays.asList(
-          String.format("127.0.0.1:%d:%d:%d", internalMetaPort, internalDataPort, clusterRpcPort));
+      Arrays.asList(String.format("%s:%d", internalIp, internalMetaPort));
 
   @ClusterConsistent private boolean isRpcThriftCompressionEnabled = false;
   private int maxConcurrentClientNum = 10000;
 
-  @ClusterConsistent private int replicationNum = 2;
+  @ClusterConsistent private int replicationNum = 3;
 
   @ClusterConsistent private String clusterName = "default";
 

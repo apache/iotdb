@@ -34,6 +34,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+
 import org.apache.thrift.TException;
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
@@ -76,7 +77,6 @@ public class ClusterMain {
 
     // init server's configuration first, because the cluster configuration may read settings from
     // the server's configuration.
-    IoTDBDescriptor.getInstance().getConfig().setEnableRPCService(false);
     IoTDBDescriptor.getInstance().getConfig().setSyncEnable(false);
     // auto create schema is took over by cluster module, so we disable it in the server module.
     IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
@@ -180,10 +180,11 @@ public class ClusterMain {
     // assert this node is in seed nodes list
     Node localNode = new Node();
     localNode
-        .setIp(IoTDBDescriptor.getInstance().getConfig().getRpcAddress())
+        .setIp(config.getInternalIp())
         .setMetaPort(config.getInternalMetaPort())
         .setDataPort(config.getInternalDataPort())
-        .setClientPort(config.getClusterRpcPort());
+        .setClientPort(config.getClusterRpcPort())
+        .setClientIp(IoTDBDescriptor.getInstance().getConfig().getRpcAddress());
     if (!seedNodes.contains(localNode)) {
       String message =
           String.format(

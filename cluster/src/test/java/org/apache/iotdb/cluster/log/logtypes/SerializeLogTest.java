@@ -104,9 +104,7 @@ public class SerializeLogTest {
     log.setCurrLogIndex(2);
     log.setCurrLogTerm(2);
     log.setNewNode(
-        new Node("apache.iotdb.com", 1234, 1, 4321)
-            .setClientIp("apache.iotdb.com")
-            .setClientPort(Constants.RPC_PORT));
+        new Node("apache.iotdb.com", 1234, 1, 4321, Constants.RPC_PORT, "apache.iotdb.com"));
     ByteBuffer byteBuffer = log.serialize();
     Log logPrime = LogParser.getINSTANCE().parse(byteBuffer);
     assertEquals(log, logPrime);

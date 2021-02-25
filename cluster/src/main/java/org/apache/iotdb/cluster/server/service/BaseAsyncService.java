@@ -154,7 +154,8 @@ public abstract class BaseAsyncService implements RaftService.AsyncIface {
       resultHandler.onComplete(
           StatusUtils.getStatus(
               status,
-              new EndPoint(member.getThisNode().getIp(), member.getThisNode().getClientPort())));
+              new EndPoint(
+                  member.getThisNode().getClientIp(), member.getThisNode().getClientPort())));
     } catch (Exception e) {
       resultHandler.onError(e);
     }

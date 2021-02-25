@@ -20,6 +20,5 @@
 package org.apache.iotdb.cluster.utils;
 
 public class Constants {
-
   public static int RPC_PORT = 6667;
 }

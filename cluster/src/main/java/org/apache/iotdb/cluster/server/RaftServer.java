@@ -83,10 +83,13 @@ public abstract class RaftServer implements RaftService.AsyncIface, RaftService.
 
   RaftServer() {
     thisNode = new Node();
+    // set internal rpc ip and ports
     thisNode.setIp(config.getInternalIp());
     thisNode.setMetaPort(config.getInternalMetaPort());
     thisNode.setDataPort(config.getInternalDataPort());
+    // set client rpc ip and ports
     thisNode.setClientPort(config.getClusterRpcPort());
+    thisNode.setClientIp(IoTDBDescriptor.getInstance().getConfig().getRpcAddress());
   }
 
   RaftServer(Node thisNode) {
