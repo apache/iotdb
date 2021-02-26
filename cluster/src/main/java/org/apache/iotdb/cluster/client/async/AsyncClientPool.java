@@ -94,7 +94,7 @@ public class AsyncClientPool {
           client = asyncClientFactory.getAsyncClient(clusterNode, this);
         }
       } else {
-        client = clientDeque.getFirst();
+        client = clientDeque.pop();
       }
     }
     return client;
@@ -122,21 +122,19 @@ public class AsyncClientPool {
       return null;
     }
 
-    synchronized (this) {
-      if (!clientQueue.isEmpty()) {
-        return clientQueue.poll();
-      }
-
-      int nodeClientNum = nodeClientNumMap.get(node);
-      logger.warn(
-          "Cannot get an available client after {}ms, create a new one, factory {} now is {}",
-          WAIT_CLIENT_TIMEOUT_MS,
-          asyncClientFactory,
-          nodeClientNum);
-
-      client = asyncClientFactory.getAsyncClient(node, this);
-      nodeClientNumMap.put(node, nodeClientNum + 1);
+    if (!clientQueue.isEmpty()) {
+      return clientQueue.poll();
     }
+
+    int nodeClientNum = nodeClientNumMap.get(node);
+    logger.warn(
+        "Cannot get an available client after {}ms, create a new one, factory {} now is {}",
+        WAIT_CLIENT_TIMEOUT_MS,
+        asyncClientFactory,
+        nodeClientNum);
+
+    client = asyncClientFactory.getAsyncClient(node, this);
+    nodeClientNumMap.put(node, nodeClientNum + 1);
 
     return client;
   }

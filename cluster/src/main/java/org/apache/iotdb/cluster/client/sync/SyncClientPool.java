@@ -111,24 +111,20 @@ public class SyncClientPool {
       return null;
     }
 
-    // Get lock again in case multi thread wait timeout and go here and concurrnet change
-    // nodeClientNum
-    synchronized (this) {
-      if (!clientDeque.isEmpty()) {
-        return clientDeque.pop();
-      }
-
-      logger.warn(
-          "Cannot get an available client after {}ms, create a new one", WAIT_CLIENT_TIMEOUT_MS);
-
-      Client client;
-      int nodeClientNum = nodeClientNumMap.get(node);
-      client = createClient(node, nodeClientNum);
-      if (client != null) {
-        nodeClientNumMap.put(node, nodeClientNum + 1);
-      }
-      return client;
+    if (!clientDeque.isEmpty()) {
+      return clientDeque.pop();
     }
+
+    logger.warn(
+        "Cannot get an available client after {}ms, create a new one", WAIT_CLIENT_TIMEOUT_MS);
+
+    Client client;
+    int nodeClientNum = nodeClientNumMap.get(node);
+    client = createClient(node, nodeClientNum);
+    if (client != null) {
+      nodeClientNumMap.put(node, nodeClientNum + 1);
+    }
+    return client;
   }
 
   /**
@@ -149,13 +145,13 @@ public class SyncClientPool {
         try {
           clientDeque.push(syncClientFactory.getSyncClient(node, this));
           NodeStatusManager.getINSTANCE().activate(node);
-          this.notify();
         } catch (TTransportException e) {
           logger.error("Cannot open transport for client {}", node, e);
           nodeClientNumMap.computeIfPresent(clusterNode, (n, oldValue) -> oldValue - 1);
           NodeStatusManager.getINSTANCE().deactivate(node);
         }
       }
+      this.notify();
     }
   }
 
