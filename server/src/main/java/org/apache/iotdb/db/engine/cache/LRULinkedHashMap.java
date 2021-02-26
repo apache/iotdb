@@ -48,7 +48,7 @@ public abstract class LRULinkedHashMap<K extends Accountable, V> {
   protected long averageSize = 0;
 
   public LRULinkedHashMap(long maxMemory) {
-    this.linkedHashMap = new LinkedHashMap<>(INITIAL_CAPACITY, LOAD_FACTOR_MAP);
+    this.linkedHashMap = new LinkedHashMap<>(INITIAL_CAPACITY, LOAD_FACTOR_MAP, true);
     this.maxMemory = maxMemory;
     this.retainMemory = (long) (maxMemory * RETAIN_PERCENT);
   }

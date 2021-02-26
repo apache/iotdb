@@ -107,6 +107,7 @@ public class ShowPlan extends PhysicalPlan {
     TIMESERIES,
     STORAGE_GROUP,
     CHILD_PATH,
+    CHILD_NODE,
     DEVICES,
     COUNT_TIMESERIES,
     COUNT_NODE_TIMESERIES,

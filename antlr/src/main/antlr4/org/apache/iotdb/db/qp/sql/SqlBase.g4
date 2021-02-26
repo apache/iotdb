@@ -77,6 +77,7 @@ statement
     | SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause? #showTimeseries
     | SHOW STORAGE GROUP prefixPath? #showStorageGroup
     | SHOW CHILD PATHS prefixPath? #showChildPaths
+    | SHOW CHILD NODES prefixPath? #showChildNodes
     | SHOW DEVICES prefixPath? (WITH STORAGE GROUP)? limitClause? #showDevices
     | SHOW MERGE #showMergeStatus
     | SHOW QUERY PROCESSLIST #showQueryProcesslist
