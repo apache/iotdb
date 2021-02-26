@@ -1118,6 +1118,7 @@ public class MTree implements Serializable {
    * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1,
    * return [root.sg1.d1, root.sg1.d2]
    *
+   * @param path The given path
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
   Set<String> getChildNodePathInNextLevel(PartialPath path) throws MetadataException {
@@ -1175,6 +1176,77 @@ public class MTree implements Serializable {
       } else if (idx == length) {
         String nodeName = node.getName();
         res.add(parent + nodeName);
+      }
+    }
+  }
+
+  /**
+   * Get child node in the next level of the given path.
+   *
+   * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1,
+   * return [d1, d2]
+   *
+   * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1.d1
+   * return [s1, s2]
+   *
+   * @param partial Path
+   * @return All child nodes' seriesPath(s) of given seriesPath.
+   */
+  Set<String> getChildNodeInNextLevel(PartialPath path) throws MetadataException {
+    String[] nodes = path.getNodes();
+    if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
+      throw new IllegalPathException(path.getFullPath());
+    }
+    Set<String> childNodes = new TreeSet<>();
+    findChildNodeInNextLevel(root, nodes, 1, "", childNodes, nodes.length + 1);
+    return childNodes;
+  }
+
+  /**
+   * Traverse the MTree to match all child node path in next level
+   *
+   * @param node the current traversing node
+   * @param nodes split the prefix path with '.'
+   * @param idx the current index of array nodes
+   * @param parent store the node string having traversed
+   * @param res store all matched device names
+   * @param length expected length of path
+   */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  private void findChildNodeInNextLevel(
+      MNode node, String[] nodes, int idx, String parent, Set<String> res, int length) {
+    if (node == null) {
+      return;
+    }
+    String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
+    if (!nodeReg.contains(PATH_WILDCARD)) {
+      if (idx == length) {
+        res.add(node.getName());
+      } else {
+        findChildNodeInNextLevel(
+            node.getChild(nodeReg),
+            nodes,
+            idx + 1,
+            parent + node.getName() + PATH_SEPARATOR,
+            res,
+            length);
+      }
+    } else {
+      if (node.getChildren().size() > 0) {
+        for (MNode child : node.getChildren().values()) {
+          if (!Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
+            continue;
+          }
+          if (idx == length) {
+            res.add(node.getName());
+          } else {
+            findChildNodeInNextLevel(
+                child, nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR, res, length);
+          }
+        }
+      } else if (idx == length) {
+        String nodeName = node.getName();
+        res.add(nodeName);
       }
     }
   }
