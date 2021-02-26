@@ -337,7 +337,7 @@ public class MergeManager implements IService, MergeManagerMBean {
           .append(storageGroup)
           .append(System.lineSeparator());
       for (TaskStatus status : statusList) {
-        builder.append("\t\t").append(status.toString()).append(System.lineSeparator());
+        builder.append("\t\t").append(status).append(System.lineSeparator());
       }
     }
 
@@ -351,7 +351,7 @@ public class MergeManager implements IService, MergeManagerMBean {
           .append(storageGroup)
           .append(System.lineSeparator());
       for (TaskStatus status : statusList) {
-        builder.append("\t\t").append(status.toString()).append(System.lineSeparator());
+        builder.append("\t\t").append(status).append(System.lineSeparator());
       }
     }
     return builder.toString();

@@ -105,7 +105,7 @@ public class TsFileSerDe extends AbstractSerDe {
   }
 
   @Override
-  public Writable serialize(Object obj, ObjectInspector objInspector) throws SerDeException {
+  public Writable serialize(Object obj, ObjectInspector objInspector) {
     // Not support yet
     return null;
   }
@@ -122,7 +122,7 @@ public class TsFileSerDe extends AbstractSerDe {
   }
 
   @Override
-  public ObjectInspector getObjectInspector() throws SerDeException {
+  public ObjectInspector getObjectInspector() {
     return oi;
   }
 

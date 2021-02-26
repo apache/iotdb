@@ -42,7 +42,7 @@ import static org.junit.Assert.fail;
 public class IoTDBTagIT {
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
   }

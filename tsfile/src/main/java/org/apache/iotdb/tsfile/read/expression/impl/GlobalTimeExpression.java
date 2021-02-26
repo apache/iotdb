@@ -56,6 +56,6 @@ public class GlobalTimeExpression implements IUnaryExpression, Serializable {
 
   @Override
   public String toString() {
-    return "[" + this.filter.toString() + "]";
+    return "[" + this.filter + "]";
   }
 }

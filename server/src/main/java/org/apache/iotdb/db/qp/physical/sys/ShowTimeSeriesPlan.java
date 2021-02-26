@@ -116,7 +116,7 @@ public class ShowTimeSeriesPlan extends ShowPlan {
     key = readString(buffer);
     value = readString(buffer);
     limit = buffer.getInt();
-    limit = buffer.getInt();
+    offset = buffer.getInt();
     orderByHeat = buffer.get() == 1;
     this.index = buffer.getLong();
   }

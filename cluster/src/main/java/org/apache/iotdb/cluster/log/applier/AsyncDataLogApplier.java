@@ -31,6 +31,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.service.IoTDB;
 
@@ -142,6 +143,10 @@ public class AsyncDataLogApplier implements LogApplier {
    * same. this is done in {@link
    * org.apache.iotdb.cluster.query.ClusterPlanRouter#splitAndRoutePlan(InsertMultiTabletPlan)}
    *
+   * <p>We can also sure that the storage group of all InsertRowPlans in InsertRowsPlan are the
+   * same. this is done in {@link
+   * org.apache.iotdb.cluster.query.ClusterPlanRouter#splitAndRoutePlan(InsertRowsPlan)}
+   *
    * @return the sg that the plan belongs to
    * @throws StorageGroupNotSetException if no sg found
    */
@@ -150,6 +155,9 @@ public class AsyncDataLogApplier implements LogApplier {
     if (plan instanceof InsertMultiTabletPlan) {
       PartialPath deviceId = ((InsertMultiTabletPlan) plan).getFirstDeviceId();
       sgPath = IoTDB.metaManager.getStorageGroupPath(deviceId);
+    } else if (plan instanceof InsertRowsPlan) {
+      PartialPath path = ((InsertRowsPlan) plan).getFirstDeviceId();
+      sgPath = IoTDB.metaManager.getStorageGroupPath(path);
     } else if (plan instanceof InsertPlan) {
       PartialPath deviceId = ((InsertPlan) plan).getDeviceId();
       sgPath = IoTDB.metaManager.getStorageGroupPath(deviceId);

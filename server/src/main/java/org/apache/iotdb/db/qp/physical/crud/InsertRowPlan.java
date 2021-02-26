@@ -290,8 +290,11 @@ public class InsertRowPlan extends InsertPlan {
   public void serialize(DataOutputStream stream) throws IOException {
     int type = PhysicalPlanType.INSERT.ordinal();
     stream.writeByte((byte) type);
-    stream.writeLong(time);
+    subSerialize(stream);
+  }
 
+  public void subSerialize(DataOutputStream stream) throws IOException {
+    stream.writeLong(time);
     putString(stream, deviceId.getFullPath());
     serializeMeasurementsAndValues(stream);
   }
@@ -435,8 +438,11 @@ public class InsertRowPlan extends InsertPlan {
   public void serialize(ByteBuffer buffer) {
     int type = PhysicalPlanType.INSERT.ordinal();
     buffer.put((byte) type);
-    buffer.putLong(time);
+    subSerialize(buffer);
+  }
 
+  public void subSerialize(ByteBuffer buffer) {
+    buffer.putLong(time);
     putString(buffer, deviceId.getFullPath());
     serializeMeasurementsAndValues(buffer);
   }

@@ -85,7 +85,7 @@ public class MetricsService implements MetricsServiceMBean, IService {
   }
 
   @Override
-  public synchronized void startService() throws StartupException {
+  public synchronized void startService() {
     if (!IoTDBDescriptor.getInstance().getConfig().isEnableMetricService()) {
       return;
     }
@@ -120,7 +120,7 @@ public class MetricsService implements MetricsServiceMBean, IService {
   }
 
   @Override
-  public void restartService() throws StartupException {
+  public void restartService() {
     stopService();
     startService();
   }

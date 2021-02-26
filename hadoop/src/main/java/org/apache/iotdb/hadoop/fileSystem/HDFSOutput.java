@@ -67,7 +67,7 @@ public class HDFSOutput implements TsFileOutput {
   }
 
   @Override
-  public void write(ByteBuffer b) throws IOException {
+  public void write(ByteBuffer b) {
     throw new UnsupportedOperationException("Unsupported operation.");
   }
 
@@ -82,7 +82,7 @@ public class HDFSOutput implements TsFileOutput {
   }
 
   @Override
-  public OutputStream wrapAsStream() throws IOException {
+  public OutputStream wrapAsStream() {
     return fsDataOutputStream;
   }
 

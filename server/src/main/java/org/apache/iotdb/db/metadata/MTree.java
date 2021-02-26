@@ -22,14 +22,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
-import org.apache.iotdb.db.exception.metadata.IllegalParameterOfPathException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.exception.metadata.*;
 import org.apache.iotdb.db.metadata.MManager.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
@@ -37,11 +30,7 @@ import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
-import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
+import org.apache.iotdb.db.qp.physical.sys.*;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
@@ -64,31 +53,14 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Queue;
-import java.util.Set;
-import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
-import static org.apache.iotdb.db.conf.IoTDBConstant.LOSS;
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
-import static org.apache.iotdb.db.conf.IoTDBConstant.SDT;
-import static org.apache.iotdb.db.conf.IoTDBConstant.SDT_COMP_DEV;
-import static org.apache.iotdb.db.conf.IoTDBConstant.SDT_COMP_MAX_TIME;
-import static org.apache.iotdb.db.conf.IoTDBConstant.SDT_COMP_MIN_TIME;
+import static org.apache.iotdb.db.conf.IoTDBConstant.*;
 
 /** The hierarchical struct of the Metadata Tree is implemented in this class. */
 public class MTree implements Serializable {
@@ -242,23 +214,33 @@ public class MTree implements Serializable {
     // synchronize check and add, we need addChild and add Alias become atomic operation
     // only write on mtree will be synchronized
     synchronized (this) {
-      if (cur.hasChild(leafName)) {
+      MNode child = cur.getChild(leafName);
+      if (child instanceof MeasurementMNode || child instanceof StorageGroupMNode) {
         throw new PathAlreadyExistException(path.getFullPath());
       }
-      if (alias != null && cur.hasChild(alias)) {
-        throw new AliasAlreadyExistException(path.getFullPath(), alias);
-      }
-      MeasurementMNode leaf =
-          new MeasurementMNode(cur, leafName, alias, dataType, encoding, compressor, props);
 
-      cur.addChild(leafName, leaf);
+      if (alias != null) {
+        MNode childByAlias = cur.getChild(alias);
+        if (childByAlias instanceof MeasurementMNode) {
+          throw new AliasAlreadyExistException(path.getFullPath(), alias);
+        }
+      }
+
+      // this measurementMNode could be a leaf or not.
+      MeasurementMNode measurementMNode =
+          new MeasurementMNode(cur, leafName, alias, dataType, encoding, compressor, props);
+      if (child != null) {
+        cur.replaceChild(measurementMNode.getName(), measurementMNode);
+      } else {
+        cur.addChild(leafName, measurementMNode);
+      }
 
       // link alias to LeafMNode
       if (alias != null) {
-        cur.addAlias(alias, leaf);
+        cur.addAlias(alias, measurementMNode);
       }
 
-      return leaf;
+      return measurementMNode;
     }
   }
 
@@ -847,7 +829,8 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Get the count of timeseries under the given prefix path.
+   * Get the count of timeseries under the given prefix path. if prefixPath contains '*', then not
+   * throw PathNotExistException()
    *
    * @param prefixPath a prefix path or a full path, may contain '*'.
    */
@@ -857,9 +840,39 @@ public class MTree implements Serializable {
       throw new IllegalPathException(prefixPath.getFullPath());
     }
     try {
-      return getCount(root, nodes, 1);
+      return getCount(root, nodes, 1, false);
     } catch (PathNotExistException e) {
       throw new PathNotExistException(prefixPath.getFullPath());
+    }
+  }
+
+  /** Traverse the MTree to get the count of timeseries. */
+  private int getCount(MNode node, String[] nodes, int idx, boolean wildcard)
+      throws PathNotExistException {
+    if (idx < nodes.length) {
+      if (PATH_WILDCARD.equals(nodes[idx])) {
+        int sum = 0;
+        for (MNode child : node.getChildren().values()) {
+          sum += getCount(child, nodes, idx + 1, true);
+        }
+        return sum;
+      } else {
+        MNode child = node.getChild(nodes[idx]);
+        if (child == null) {
+          if (!wildcard) {
+            throw new PathNotExistException(node.getName() + NO_CHILDNODE_MSG + nodes[idx]);
+          } else {
+            return 0;
+          }
+        }
+        return getCount(child, nodes, idx + 1, wildcard);
+      }
+    } else {
+      int sum = node instanceof MeasurementMNode ? 1 : 0;
+      for (MNode child : node.getChildren().values()) {
+        sum += getCount(child, nodes, idx + 1, wildcard);
+      }
+      return sum;
     }
   }
 
@@ -910,34 +923,8 @@ public class MTree implements Serializable {
     return getCountInGivenLevel(node, level - (i - 1));
   }
 
-  /** Traverse the MTree to get the count of timeseries. */
-  private int getCount(MNode node, String[] nodes, int idx) throws PathNotExistException {
-    String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
-    if (!(PATH_WILDCARD).equals(nodeReg)) {
-      MNode next = node.getChild(nodeReg);
-      if (next != null) {
-        if (next instanceof MeasurementMNode) {
-          return 1;
-        } else {
-          return getCount(next, nodes, idx + 1);
-        }
-      } else {
-        throw new PathNotExistException(node.getName() + NO_CHILDNODE_MSG + nodeReg);
-      }
-    } else {
-      int cnt = 0;
-      for (MNode child : node.getChildren().values()) {
-        if (child instanceof MeasurementMNode) {
-          cnt++;
-        }
-        cnt += getCount(child, nodes, idx + 1);
-      }
-      return cnt;
-    }
-  }
-
   /** Traverse the MTree to get the count of devices. */
-  private int getDevicesCount(MNode node, String[] nodes, int idx) throws MetadataException {
+  private int getDevicesCount(MNode node, String[] nodes, int idx) {
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
     int cnt = 0;
     if (!(PATH_WILDCARD).equals(nodeReg)) {
@@ -963,8 +950,7 @@ public class MTree implements Serializable {
   }
 
   /** Traverse the MTree to get the count of storage group. */
-  private int getStorageGroupCount(MNode node, String[] nodes, int idx, String parent)
-      throws MetadataException {
+  private int getStorageGroupCount(MNode node, String[] nodes, int idx, String parent) {
     int cnt = 0;
     if (node instanceof StorageGroupMNode && idx >= nodes.length) {
       cnt++;

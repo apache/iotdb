@@ -57,7 +57,7 @@ public final class RamUsageEstimator {
 
     public final String description;
 
-    private JvmFeature(String description) {
+    JvmFeature(String description) {
       this.description = description;
     }
 

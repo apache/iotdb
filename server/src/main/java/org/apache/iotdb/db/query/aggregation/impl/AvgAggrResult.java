@@ -135,6 +135,23 @@ public class AvgAggrResult extends AggregateResult {
     cnt++;
   }
 
+  public void setAvgResult(TSDataType type, Object val) throws UnSupportedDataTypeException {
+    cnt = 1;
+    switch (type) {
+      case INT32:
+      case INT64:
+      case FLOAT:
+      case DOUBLE:
+        avg = (double) val;
+        break;
+      case TEXT:
+      case BOOLEAN:
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Unsupported data type in aggregation AVG : %s", type));
+    }
+  }
+
   @Override
   public boolean hasFinalResult() {
     return false;

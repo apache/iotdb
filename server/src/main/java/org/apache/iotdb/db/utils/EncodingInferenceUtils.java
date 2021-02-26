@@ -48,7 +48,7 @@ public class EncodingInferenceUtils {
         return conf.getDefaultTextEncoding();
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", dataType.toString()));
+            String.format("Data type %s is not supported.", dataType));
     }
   }
 }

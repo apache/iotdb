@@ -43,7 +43,7 @@ import static org.junit.Assert.assertTrue;
 public class IoTDBAuthorizationIT {
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
   }

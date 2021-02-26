@@ -49,13 +49,12 @@ public class MinValueAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage) throws IOException {
+  public void updateResultFromPageData(BatchData dataInThisPage) {
     updateResultFromPageData(dataInThisPage, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound)
-      throws IOException {
+  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound) {
     while (dataInThisPage.hasCurrent()
         && dataInThisPage.currentTime() < maxBound
         && dataInThisPage.currentTime() >= minBound) {
@@ -97,7 +96,7 @@ public class MinValueAggrResult extends AggregateResult {
   protected void deserializeSpecificFields(ByteBuffer buffer) {}
 
   @Override
-  protected void serializeSpecificFields(OutputStream outputStream) throws IOException {}
+  protected void serializeSpecificFields(OutputStream outputStream) {}
 
   private void updateResult(Comparable<Object> minVal) {
     if (minVal == null) {

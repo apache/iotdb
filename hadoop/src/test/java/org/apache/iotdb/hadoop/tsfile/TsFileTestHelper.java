@@ -31,7 +31,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -109,7 +108,7 @@ public class TsFileTestHelper {
     }
   }
 
-  public static void main(String[] args) throws FileNotFoundException, IOException {
+  public static void main(String[] args) throws IOException {
     String filePath = "example_mr.tsfile";
     File file = new File(filePath);
     if (file.exists()) {

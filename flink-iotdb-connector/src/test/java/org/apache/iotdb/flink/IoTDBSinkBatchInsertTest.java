@@ -39,7 +39,7 @@ public class IoTDBSinkBatchInsertTest {
   private SessionPool pool;
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
     IoTDBOptions options = new IoTDBOptions();
     options.setTimeseriesOptionList(
         Lists.newArrayList(new IoTDBOptions.TimeseriesOption("root.sg.D01.temperature")));
