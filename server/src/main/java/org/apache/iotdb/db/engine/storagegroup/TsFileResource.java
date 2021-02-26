@@ -739,4 +739,8 @@ public class TsFileResource {
   public long getVersion() {
     return version;
   }
+
+  public void setTimeIndex(ITimeIndex timeIndex) {
+    this.timeIndex = timeIndex;
+  }
 }
