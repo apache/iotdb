@@ -81,4 +81,9 @@ public class SyncMetaClient extends Client {
   public Node getNode() {
     return node;
   }
+
+  @Override
+  public String toString() {
+    return "SyncMetaClient{" + " node=" + node + ", pool=" + pool + "}";
+  }
 }

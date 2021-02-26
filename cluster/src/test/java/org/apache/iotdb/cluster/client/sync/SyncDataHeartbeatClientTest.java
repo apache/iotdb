@@ -35,7 +35,7 @@ public class SyncDataHeartbeatClientTest {
   @Test
   public void test() throws IOException, TTransportException, InterruptedException {
     Node node = new Node();
-    node.setDataPort(40010).setIp("localhost");
+    node.setDataPort(40010).setIp("localhost").setClientIp("localhost");
     ServerSocket serverSocket = new ServerSocket(node.getDataPort() + 1);
     Thread listenThread =
         new Thread(
@@ -55,7 +55,7 @@ public class SyncDataHeartbeatClientTest {
       SyncDataHeartbeatClient syncClient = factoryAsync.getSyncClient(node, null);
       Assert.assertEquals(
           "SyncHeartbeatDataClient{node=Node(ip:localhost, metaPort:0, nodeIdentifier:0,"
-              + " dataPort:40010, clientPort:0),dataHeartbeatPort=40011}",
+              + " dataPort:40010, clientPort:0, clientIp:localhost),dataHeartbeatPort=40011}",
           syncClient.toString());
     } finally {
       serverSocket.close();

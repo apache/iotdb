@@ -37,7 +37,7 @@ public class AsyncMetaHeartbeatClientTest {
     AsyncClient asyncClient = factoryAsync.getAsyncClient(TestUtils.getNode(0), null);
     Assert.assertEquals(
         "AsyncMetaHeartbeatClient{node=Node(ip:192.168.0.0, metaPort:9003, "
-            + "nodeIdentifier:0, dataPort:40010, clientPort:0),metaHeartbeatPort=9004}",
+            + "nodeIdentifier:0, dataPort:40010, clientPort:6667, clientIp:0.0.0.0),metaHeartbeatPort=9004}",
         asyncClient.toString());
   }
 }

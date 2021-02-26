@@ -25,7 +25,7 @@ public class SyncDataClientTest {
   @Test
   public void test() throws IOException, InterruptedException {
     Node node = new Node();
-    node.setDataPort(40010).setIp("localhost");
+    node.setDataPort(40010).setIp("localhost").setClientIp("localhost");
     ServerSocket serverSocket = new ServerSocket(node.getDataPort());
     Thread listenThread =
         new Thread(
@@ -57,7 +57,7 @@ public class SyncDataClientTest {
 
       assertEquals(
           "DataClient{node=ClusterNode{ ip='localhost', metaPort=0, nodeIdentifier=0,"
-              + " dataPort=40010, clientPort=0}}",
+              + " dataPort=40010, clientPort=0, clientIp='localhost'}}",
           client.toString());
 
       client =

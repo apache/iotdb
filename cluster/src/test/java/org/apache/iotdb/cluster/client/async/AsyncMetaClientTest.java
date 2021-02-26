@@ -64,7 +64,7 @@ public class AsyncMetaClientTest {
     assertTrue(client.isReady());
 
     assertEquals(
-        "MetaClient{node=ClusterNode{ ip='192.168.0.0', metaPort=9003, nodeIdentifier=0, dataPort=40010, clientPort=0}}",
+        "MetaClient{node=ClusterNode{ ip='192.168.0.0', metaPort=9003, nodeIdentifier=0, dataPort=40010, clientPort=6667, clientIp='0.0.0.0'}}",
         client.toString());
   }
 }

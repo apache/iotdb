@@ -35,7 +35,7 @@ public class SyncMetaHeartbeatClientTest {
   @Test
   public void test() throws IOException, TTransportException, InterruptedException {
     Node node = new Node();
-    node.setMetaPort(9003).setIp("localhost");
+    node.setMetaPort(9003).setIp("localhost").setClientIp("localhost");
     ServerSocket serverSocket = new ServerSocket(node.getMetaPort() + 1);
     Thread listenThread =
         new Thread(
@@ -55,7 +55,7 @@ public class SyncMetaHeartbeatClientTest {
       SyncMetaHeartbeatClient syncClient = factoryAsync.getSyncClient(node, null);
       Assert.assertEquals(
           "SyncMetaHeartbeatClient{node=Node(ip:localhost, metaPort:9003,"
-              + " nodeIdentifier:0, dataPort:0, clientPort:0),metaHeartbeatPort=9004}",
+              + " nodeIdentifier:0, dataPort:0, clientPort:0, clientIp:localhost),metaHeartbeatPort=9004}",
           syncClient.toString());
     } finally {
       serverSocket.close();

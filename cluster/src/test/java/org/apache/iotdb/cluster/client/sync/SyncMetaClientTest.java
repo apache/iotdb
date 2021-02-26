@@ -25,7 +25,7 @@ public class SyncMetaClientTest {
   @Test
   public void test() throws IOException, InterruptedException {
     Node node = new Node();
-    node.setMetaPort(9003).setIp("localhost");
+    node.setMetaPort(9003).setIp("localhost").setClientIp("localhost");
     ServerSocket serverSocket = new ServerSocket(node.getMetaPort());
     Thread listenThread =
         new Thread(
