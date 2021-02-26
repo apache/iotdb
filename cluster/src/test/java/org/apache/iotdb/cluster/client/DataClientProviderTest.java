@@ -50,7 +50,7 @@ public class DataClientProviderTest {
   @Test
   public void testSync() throws IOException, InterruptedException {
     Node node = new Node();
-    node.setDataPort(9003).setIp("localhost");
+    node.setDataPort(9003).setIp("localhost").setClientIp("localhost");
     ServerSocket serverSocket = new ServerSocket(node.getDataPort());
     Thread listenThread =
         new Thread(

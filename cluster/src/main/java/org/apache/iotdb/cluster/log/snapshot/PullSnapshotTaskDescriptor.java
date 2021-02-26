@@ -116,6 +116,18 @@ public class PullSnapshotTaskDescriptor {
   }
 
   @Override
+  public String toString() {
+    return "PullSnapshotTaskDescriptor{"
+        + " previousHolders="
+        + previousHolders
+        + ", slots="
+        + slots
+        + ", requireReadOnly="
+        + requireReadOnly
+        + "}";
+  }
+
+  @Override
   public int hashCode() {
     return Objects.hash(previousHolders, slots, requireReadOnly);
   }

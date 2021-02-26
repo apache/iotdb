@@ -132,6 +132,7 @@ public class SerializeUtils {
       dataOutputStream.writeInt(clientIpBytes.length);
       dataOutputStream.write(clientIpBytes);
     } catch (IOException e) {
+      System.out.println("111111111");
       // unreachable
     }
   }
@@ -154,18 +155,29 @@ public class SerializeUtils {
   public static void deserialize(Node node, DataInputStream stream) throws IOException {
     int ipLength = stream.readInt();
     byte[] ipBytes = new byte[ipLength];
-    int readSize = stream.read(ipBytes);
-    if (readSize != ipLength) {
+    int readIpSize = stream.read(ipBytes);
+    if (readIpSize != ipLength) {
       throw new IOException(
           String.format(
-              "No sufficient bytes read when deserializing the ip of " + "a " + "node: %d/%d",
-              readSize, ipLength));
+              "No sufficient bytes read when deserializing the ip of a node: %d/%d",
+              readIpSize, ipLength));
     }
     node.setIp(new String(ipBytes));
     node.setMetaPort(stream.readInt());
     node.setNodeIdentifier(stream.readInt());
     node.setDataPort(stream.readInt());
     node.setClientPort(stream.readInt());
+
+    int clientIpLength = stream.readInt();
+    byte[] clientIpBytes = new byte[clientIpLength];
+    int readClientIpSize = stream.read(clientIpBytes);
+    if (readClientIpSize != clientIpLength) {
+      throw new IOException(
+          String.format(
+              "No sufficient bytes read when deserializing the clientIp of a node: %d/%d",
+              readClientIpSize, clientIpLength));
+    }
+    node.setClientIp(new String(clientIpBytes));
   }
 
   public static void serializeBatchData(BatchData batchData, DataOutputStream outputStream) {

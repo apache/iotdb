@@ -19,6 +19,33 @@
 
 package org.apache.iotdb.cluster.server.member;
 
+import static org.apache.iotdb.cluster.server.NodeCharacter.ELECTOR;
+import static org.apache.iotdb.cluster.server.NodeCharacter.FOLLOWER;
+import static org.apache.iotdb.cluster.server.NodeCharacter.LEADER;
+import static org.awaitility.Awaitility.await;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.DataClientProvider;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.common.TestAsyncClient;
@@ -100,7 +127,6 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
-
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol.Factory;
@@ -108,34 +134,6 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
-
-import static org.apache.iotdb.cluster.server.NodeCharacter.ELECTOR;
-import static org.apache.iotdb.cluster.server.NodeCharacter.FOLLOWER;
-import static org.apache.iotdb.cluster.server.NodeCharacter.LEADER;
-import static org.awaitility.Awaitility.await;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 public class MetaGroupMemberTest extends MemberTest {
 
@@ -1007,14 +1005,18 @@ public class MetaGroupMemberTest extends MemberTest {
   @Test
   public void testProcessValidHeartbeatResp() throws QueryProcessException {
     System.out.println("Start testProcessValidHeartbeatResp()");
-    MetaGroupMember metaGroupMember = getMetaGroupMember(TestUtils.getNode(10));
+    MetaGroupMember metaGroupMember = getMetaGroupMember(TestUtils.getNode(9));
     metaGroupMember.start();
     metaGroupMember.onElectionWins();
+    System.out.println(metaGroupMember.getAllNodes().size() + "," + metaGroupMember.getAllNodes());
+    System.out.println(
+        metaGroupMember.idNodeMap.size() + ", " + metaGroupMember.idNodeMap.toString());
     try {
       for (int i = 0; i < 10; i++) {
         HeartBeatResponse response = new HeartBeatResponse();
         response.setFollowerIdentifier(i);
         response.setRequirePartitionTable(true);
+        response.setFollower(TestUtils.getNode(i));
         metaGroupMember.processValidHeartbeatResp(response, TestUtils.getNode(i));
         metaGroupMember.removeBlindNode(TestUtils.getNode(i));
       }
