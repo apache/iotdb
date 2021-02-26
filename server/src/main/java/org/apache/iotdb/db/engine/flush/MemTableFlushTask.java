@@ -237,7 +237,6 @@ public class MemTableFlushTask {
                   (Pair<TVList, MeasurementSchema>) task;
               IChunkWriter seriesWriter = new ChunkWriterImpl(encodingMessage.right);
               writeOneSeries(encodingMessage.left, seriesWriter, encodingMessage.right.getType());
-              seriesWriter.sealCurrentPage();
               seriesWriter.clearPageWriter();
               try {
                 ioTaskQueue.put(seriesWriter);
@@ -271,7 +270,7 @@ public class MemTableFlushTask {
             storageGroup,
             writer.getFile().getName());
         while (true) {
-          Object ioMessage = null;
+          Object ioMessage;
           try {
             ioMessage = ioTaskQueue.take();
           } catch (InterruptedException e1) {
