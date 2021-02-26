@@ -19,16 +19,10 @@
 
 package org.apache.iotdb.db.engine.merge;
 
-import static org.junit.Assert.assertEquals;
-
-import java.io.File;
-import java.io.IOException;
-import java.lang.reflect.Field;
-import java.util.List;
-import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
+import org.apache.iotdb.db.engine.compaction.level.LevelCompactionTsFileManagement;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.selector.IMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.selector.MaxFileMergeFileSelector;
@@ -36,7 +30,16 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.ITimeIndex;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+
 import org.junit.Test;
+
+import java.io.File;
+import java.io.IOException;
+import java.lang.reflect.Field;
+import java.util.List;
+import java.util.Set;
+
+import static org.junit.Assert.assertEquals;
 
 public class MaxFileMergeFileSelectorTest extends MergeTest {
 
@@ -135,6 +138,62 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
     secondTsFileResource.setTimeIndex(newTimeIndex);
     unseqResources.clear();
     unseqResources.add(largeUnseqTsFileResource);
+
+    MergeResource resource = new MergeResource(seqResources, unseqResources);
+    IMergeFileSelector mergeFileSelector = new MaxFileMergeFileSelector(resource, Long.MAX_VALUE);
+    List[] result = mergeFileSelector.select();
+    assertEquals(0, result.length);
+    resource.clear();
+  }
+
+  /**
+   * test unseq merge select with the following files: {0seq-0-0-0.tsfile 0-100 1seq-1-1-0.tsfile
+   * 100-200 2seq-2-2-0.tsfile 200-300 3seq-3-3-0.tsfile 300-400 4seq-4-4-0.tsfile 400-500}
+   * {10unseq-10-10-0.tsfile 0-500}
+   */
+  @Test
+  public void testFileOpenSelectionFromCompaction()
+      throws MergeException, IOException, WriteProcessException, NoSuchFieldException,
+          IllegalAccessException {
+    File file =
+        new File(
+            TestConstant.BASE_OUTPUT_PATH.concat(
+                10
+                    + "unseq"
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 10
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 10
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 0
+                    + ".tsfile"));
+    TsFileResource largeUnseqTsFileResource = new TsFileResource(file);
+    largeUnseqTsFileResource.setClosed(true);
+    largeUnseqTsFileResource.setMinPlanIndex(10);
+    largeUnseqTsFileResource.setMaxPlanIndex(10);
+    largeUnseqTsFileResource.setVersion(10);
+    prepareFile(largeUnseqTsFileResource, 0, seqFileNum * ptNum, 0);
+
+    // update the second file's status to open
+    TsFileResource secondTsFileResource = seqResources.get(1);
+    secondTsFileResource.setClosed(false);
+    Set<String> devices = secondTsFileResource.getDevices();
+    // update the end time of the file to Long.MIN_VALUE, so we can simulate a real open file
+    Field timeIndexField = TsFileResource.class.getDeclaredField("timeIndex");
+    timeIndexField.setAccessible(true);
+    ITimeIndex timeIndex = (ITimeIndex) timeIndexField.get(secondTsFileResource);
+    ITimeIndex newTimeIndex =
+        IoTDBDescriptor.getInstance().getConfig().getTimeIndexLevel().getTimeIndex();
+    for (String device : devices) {
+      newTimeIndex.updateStartTime(device, timeIndex.getStartTime(device));
+    }
+    secondTsFileResource.setTimeIndex(newTimeIndex);
+    unseqResources.clear();
+    unseqResources.add(largeUnseqTsFileResource);
+
+    LevelCompactionTsFileManagement levelCompactionTsFileManagement =
+        new LevelCompactionTsFileManagement("", "");
+    levelCompactionTsFileManagement.merge(false, seqResources, unseqResources, Long.MAX_VALUE);
 
     MergeResource resource = new MergeResource(seqResources, unseqResources);
     IMergeFileSelector mergeFileSelector = new MaxFileMergeFileSelector(resource, Long.MAX_VALUE);
