@@ -33,7 +33,7 @@ import java.sql.Statement;
 
 import static org.junit.Assert.fail;
 
-public class IoTDBKillQueryTest {
+public class IoTDBKillQueryIT {
 
   @Before
   public void setUp() throws Exception {

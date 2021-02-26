@@ -161,7 +161,7 @@ public interface ICompressor extends Serializable {
     }
 
     @Override
-    public byte[] compress(byte[] data) throws IOException {
+    public byte[] compress(byte[] data) {
       if (data == null) {
         return new byte[0];
       }
@@ -169,12 +169,12 @@ public interface ICompressor extends Serializable {
     }
 
     @Override
-    public int compress(byte[] data, int offset, int length, byte[] compressed) throws IOException {
+    public int compress(byte[] data, int offset, int length, byte[] compressed) {
       return compressor.compress(data, offset, length, compressed, 0);
     }
 
     @Override
-    public int compress(ByteBuffer data, ByteBuffer compressed) throws IOException {
+    public int compress(ByteBuffer data, ByteBuffer compressed) {
       compressor.compress(data, compressed);
       return data.limit();
     }

@@ -175,7 +175,7 @@ public class MetricsPage {
                 + sqlArgument.getPlan().getOperatorType()
                 + "</br>===========================</br>"
                 + "Path: "
-                + sqlArgument.getPlan().getPaths().toString()
+                + sqlArgument.getPlan().getPaths()
                 + "</pre>"
                 + "</div>"
                 + "</td>"

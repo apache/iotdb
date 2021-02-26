@@ -42,10 +42,12 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
 import org.apache.iotdb.db.query.dataset.groupby.LocalGroupByExecutor;
@@ -404,6 +406,22 @@ public class LocalQueryExecutor {
     try (DataOutputStream dataOutputStream = new DataOutputStream(outputStream)) {
       dataOutputStream.writeInt(allTimeseriesSchema.size());
       for (ShowTimeSeriesResult result : allTimeseriesSchema) {
+        result.serialize(outputStream);
+      }
+    }
+    return ByteBuffer.wrap(outputStream.toByteArray());
+  }
+
+  public ByteBuffer getDevices(ByteBuffer planBuffer)
+      throws CheckConsistencyException, IOException, MetadataException {
+    dataGroupMember.syncLeaderWithConsistencyCheck(false);
+    ShowDevicesPlan plan = (ShowDevicesPlan) PhysicalPlan.Factory.create(planBuffer);
+    List<ShowDevicesResult> allDevicesResult = getCMManager().getLocalDevices(plan);
+
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    try (DataOutputStream dataOutputStream = new DataOutputStream(outputStream)) {
+      dataOutputStream.writeInt(allDevicesResult.size());
+      for (ShowDevicesResult result : allDevicesResult) {
         result.serialize(outputStream);
       }
     }

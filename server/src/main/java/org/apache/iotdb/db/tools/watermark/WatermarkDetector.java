@@ -188,7 +188,7 @@ public class WatermarkDetector {
    * @param alpha significance level
    * @return the minimum b
    */
-  private static int calMin(int l, double alpha) throws IOException {
+  private static int calMin(int l, double alpha) {
     int b = l;
     BigDecimal sum = new BigDecimal("1");
 

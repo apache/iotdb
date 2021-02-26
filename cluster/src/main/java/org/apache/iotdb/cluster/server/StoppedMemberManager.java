@@ -95,7 +95,7 @@ public class StoppedMemberManager {
   public synchronized void remove(Node header) {
     removedMemberMap.remove(header);
     try (BufferedWriter writer = new BufferedWriter(new FileWriter(stoppedMembersFileName, true))) {
-      writer.write(RESUMED + ";" + header.toString());
+      writer.write(RESUMED + ";" + header);
       writer.newLine();
     } catch (IOException e) {
       logger.error("Cannot record resumed member of header {}", header, e);

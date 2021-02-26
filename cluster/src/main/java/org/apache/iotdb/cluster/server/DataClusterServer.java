@@ -419,6 +419,14 @@ public class DataClusterServer extends RaftServer
   }
 
   @Override
+  public void getDevices(
+      Node header, ByteBuffer planBytes, AsyncMethodCallback<ByteBuffer> resultHandler)
+      throws TException {
+    DataAsyncService service = getDataAsyncService(header, resultHandler, "Get devices");
+    service.getDevices(header, planBytes, resultHandler);
+  }
+
+  @Override
   public void getNodeList(
       Node header, String path, int nodeLevel, AsyncMethodCallback<List<String>> resultHandler) {
     DataAsyncService service = getDataAsyncService(header, resultHandler, "Get node list");
@@ -754,6 +762,11 @@ public class DataClusterServer extends RaftServer
   @Override
   public ByteBuffer getAllMeasurementSchema(Node header, ByteBuffer planBinary) throws TException {
     return getDataSyncService(header).getAllMeasurementSchema(header, planBinary);
+  }
+
+  @Override
+  public ByteBuffer getDevices(Node header, ByteBuffer planBinary) throws TException {
+    return getDataSyncService(header).getDevices(header, planBinary);
   }
 
   @Override

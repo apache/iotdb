@@ -26,6 +26,7 @@ import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
@@ -44,6 +45,7 @@ import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -312,6 +314,10 @@ public abstract class PhysicalPlan {
           plan = new ShowTimeSeriesPlan();
           plan.deserialize(buffer);
           break;
+        case SHOW_DEVICES:
+          plan = new ShowDevicesPlan();
+          plan.deserialize(buffer);
+          break;
         case LOAD_CONFIGURATION:
           plan = new LoadConfigurationPlan();
           plan.deserialize(buffer);
@@ -346,6 +352,10 @@ public abstract class PhysicalPlan {
           break;
         case STORAGE_GROUP_MNODE:
           plan = new StorageGroupMNodePlan();
+          plan.deserialize(buffer);
+          break;
+        case BATCH_INSERT_ROWS:
+          plan = new InsertRowsPlan();
           plan.deserialize(buffer);
           break;
         default:
@@ -390,7 +400,9 @@ public abstract class PhysicalPlan {
     MEASUREMENT_MNODE,
     STORAGE_GROUP_MNODE,
     BATCH_INSERT_ONE_DEVICE,
-    MULTI_BATCH_INSERT
+    MULTI_BATCH_INSERT,
+    BATCH_INSERT_ROWS,
+    SHOW_DEVICES
   }
 
   public long getIndex() {

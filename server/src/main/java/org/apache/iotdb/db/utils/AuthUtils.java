@@ -133,7 +133,7 @@ public class AuthUtils {
           return;
         default:
           throw new AuthException(
-              String.format("Illegal privilege %s on seriesPath %s", type.toString(), path));
+              String.format("Illegal privilege %s on seriesPath %s", type, path));
       }
     } else {
       switch (type) {

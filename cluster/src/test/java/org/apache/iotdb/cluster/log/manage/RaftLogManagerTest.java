@@ -916,8 +916,7 @@ public class RaftLogManagerTest {
   }
 
   @Test
-  public void testAppendCommitted()
-      throws LogExecutionException, GetEntriesWrongParametersException, EntryCompactedException {
+  public void testAppendCommitted() throws LogExecutionException {
     CommittedEntryManager committedEntryManager =
         new CommittedEntryManager(
             ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());

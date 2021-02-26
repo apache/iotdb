@@ -26,14 +26,12 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.junit.After;
 import org.junit.Test;
 
-import java.io.IOException;
-
 import static org.junit.Assert.*;
 
 public class CommitLogCallbackTest {
 
   @Test
-  public void test() throws InterruptedException, IOException {
+  public void test() throws InterruptedException {
     RaftMember raftMember = new TestMetaGroupMember();
     CommitLogCallback commitLogCallback = new CommitLogCallback(raftMember);
     synchronized (raftMember.getSyncLock()) {

@@ -83,7 +83,7 @@ public class TsFileSketchTool {
         for (ChunkGroupMetadata chunkGroupMetadata : allChunkGroupMetadata) {
           printlnBoth(
               pw,
-              str1.toString()
+              str1
                   + "\t[Chunk Group] of "
                   + chunkGroupMetadata.getDevice()
                   + ", num of Chunks:"
@@ -124,9 +124,7 @@ public class TsFileSketchTool {
                     - 1;
           }
 
-          printlnBoth(
-              pw,
-              str1.toString() + "\t[Chunk Group] of " + chunkGroupMetadata.getDevice() + " ends");
+          printlnBoth(pw, str1 + "\t[Chunk Group] of " + chunkGroupMetadata.getDevice() + " ends");
         }
 
         // metadata begins
