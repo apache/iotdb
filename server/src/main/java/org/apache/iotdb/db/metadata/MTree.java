@@ -1109,6 +1109,7 @@ public class MTree implements Serializable {
    * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1,
    * return [root.sg1.d1, root.sg1.d2]
    *
+   * @param path The given path
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
   Set<String> getChildNodePathInNextLevel(PartialPath path) throws MetadataException {
@@ -1179,6 +1180,7 @@ public class MTree implements Serializable {
    * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1.d1
    * return [s1, s2]
    *
+   * @param partial Path
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
   Set<String> getChildNodeInNextLevel(PartialPath path) throws MetadataException {

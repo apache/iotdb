@@ -1011,6 +1011,7 @@ public class MManager {
    * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1,
    * return [root.sg1.d1, root.sg1.d2]
    *
+   * @param path The given path
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
   public Set<String> getChildNodePathInNextLevel(PartialPath path) throws MetadataException {
