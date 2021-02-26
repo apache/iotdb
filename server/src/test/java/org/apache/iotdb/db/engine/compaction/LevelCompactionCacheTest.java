@@ -115,6 +115,7 @@ public class LevelCompactionCacheTest extends LevelCompactionTest {
     } catch (Exception e) {
       assertTrue(true);
     }
+    reader.close();
   }
 
   /** close compaction merge callback, to release some locks */
