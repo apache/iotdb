@@ -123,7 +123,6 @@ public class ClusterDescriptor {
 
   /** load an property file and set TsfileDBConfig variables. */
   private void loadProps() {
-
     String url = getPropsUrl();
     Properties properties = System.getProperties();
     if (url != null) {

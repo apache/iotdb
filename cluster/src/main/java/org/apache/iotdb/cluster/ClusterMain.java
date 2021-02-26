@@ -66,7 +66,7 @@ public class ClusterMain {
     if (args.length < 1) {
       logger.error(
           "Usage: <-s|-a|-r> "
-              + "[-D{} <configure folder>] "
+              + "[-D{} <configure folder>] \n"
               + "-s: start the node as a seed\n"
               + "-a: start the node as a new node\n"
               + "-r: remove the node out of the cluster\n",

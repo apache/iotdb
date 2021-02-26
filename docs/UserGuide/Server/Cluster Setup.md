@@ -35,45 +35,27 @@ To start the service of one of the nodes, you need to execute the following comm
 
 ```bash
 # Unix/OS X
-> nohup sbin/start-node.sh >/dev/null 2>&1 &
-or
-> nohup sbin/start-node.sh -c <conf_path> -internal_meta_port 9003 >/dev/null 2>&1 &
+> nohup sbin/start-node.sh [printgc] [<conf_path>] >/dev/null 2>&1 &
 
 # Windows
 > sbin\start-node.bat
 or
-> sbin\start-node.bat -c <conf_path> -internal_meta_port 9003
+> sbin\start-node.bat <conf_path>
 ```
+`printgc` means whether enable the gc and print gc logs when start the node,  
+`<conf_path>` use the configuration file in the `conf_path` folder to override the default configuration file.
 
-`-c <conf_path>` use the configuration file in the `conf_path` folder to override the default configuration file; 
-`-internal_meta_port 9003` overrides the specific configuration item `internal_meta_port`.
-The currently supported items to overwrite the original configurations when starting IoTDB are the followings :
-`internal_meta_port, internal_data_port, cluster_rpc_port, seed_nodes`. 
-When both exist, the specified configuration item will overwrite the configurations in the configuration file.
-
-## Example of pseudo-distributed scaffolding for 3 nodes and 2 replicas
+## Example of pseudo-distributed scaffolding for 3 nodes and 3 replicas
 ```bash
-# First step (Note that this path is not suitable for Windows MinGW)
 > mvn clean package -pl cluster -am -Dmaven.test.skip=true
-> cp -rf ./cluster/target/cluster-0.11.0-SNAPSHOT ./cluster/target/cluster-0.11.0-SNAPSHOT1
-> cp -rf ./cluster/target/cluster-0.11.0-SNAPSHOT ./cluster/target/cluster-0.11.0-SNAPSHOT2
-> sed -i -e 's/6667/6668/g' ./cluster/target/cluster-0.11.0-SNAPSHOT1/conf/iotdb-engine.properties
-> sed -i -e 's/6667/6669/g' ./cluster/target/cluster-0.11.0-SNAPSHOT2/conf/iotdb-engine.properties
+> cp -rf ./cluster/target/cluster-0.12.0-SNAPSHOT ./cluster/target/cluster-0.12.0-SNAPSHOT1
+> cp -rf ./cluster/target/cluster-0.12.0-SNAPSHOT ./cluster/target/cluster-0.12.0-SNAPSHOT2
 
-# Second step: Unix/OS X/Windows (git bash or WSL)
-> sed -i -e 's/31999/32000/g' ./cluster/target/cluster-0.11.0-SNAPSHOT1/conf/iotdb-env.sh
-> sed -i -e 's/31999/32001/g' ./cluster/target/cluster-0.11.0-SNAPSHOT2/conf/iotdb-env.sh
 > chmod -R 777 ./cluster/target/
-> nohup ./cluster/target/cluster-0.11.0-SNAPSHOT/sbin/start-node.sh >/dev/null 2>&1 &
-> nohup ./cluster/target/cluster-0.11.0-SNAPSHOT1/sbin/start-node.sh -internal_meta_port 9005 -internal_data_port 40012 -cluster_rpc_port 6668 >/dev/null 2>&1 &
-> nohup ./cluster/target/cluster-0.11.0-SNAPSHOT2/sbin/start-node.sh -internal_meta_port 9007 -internal_data_port 40014 -cluster_rpc_port 6669 >/dev/null 2>&1 &
 
-# Second step: Windows (MinGW)
-> sed -i -e 's/31999/32000/g'  cluster\target\cluster-0.11.0-SNAPSHOT\conf\iotdb-env.bat
-> sed -i -e 's/31999/32001/g'  cluster\target\cluster-0.11.0-SNAPSHOT\conf\iotdb-env.bat
-> nohup cluster\target\cluster-0.11.0-SNAPSHOT\sbin\start-node.bat 
-> nohup cluster\target\cluster-0.11.0-SNAPSHOT1\sbin\start-node.bat  -internal_meta_port 9005 -internal_data_port 40012 -cluster_rpc_port 6668
-> nohup cluster\target\cluster-0.11.0-SNAPSHOT2\sbin\start-node.bat  -internal_meta_port 9007 -internal_data_port 40014 -cluster_rpc_port 6669
+> nohup ./cluster/target/cluster-0.12.0-SNAPSHOT/sbin/start-node.sh  ./cluster/target/test-classes/node1conf/ >/dev/null 2>&1 &
+> nohup ./cluster/target/cluster-0.12.0-SNAPSHOT1/sbin/start-node.sh ./cluster/target/test-classes/node2conf/ >/dev/null 2>&1 &
+> nohup ./cluster/target/cluster-0.12.0-SNAPSHOT2/sbin/start-node.sh ./cluster/target/test-classes/node3conf/ >/dev/null 2>&1 &
 ```
 
 ## OverWrite the configurations of Stand-alone node
@@ -106,6 +88,15 @@ What's more, Users can configure settings of TsFile (the data files), such as th
 For detailed description of the two configuration files `iotdb-engine.properties`, `iotdb-env.sh`/`iotdb-env.bat`, please refer to [Configuration Manual](Config%20Manual.md). 
 The configuration items described below are in the `iotdb-cluster.properties` file.
 
+* internal\_ip
+
+|Name|internal\_ip|
+|:---:|:---|
+|Description|IP address of internal communication between nodes in IOTDB cluster, such as heartbeat, snapshot, raft log, etc|
+|Type|String|
+|Default|127.0.0.1|
+|Effective| After restart system, shall NOT change after cluster is up|
+
 * internal\_meta\_port
 
 |Name|internal\_meta\_port|
@@ -124,22 +115,22 @@ The configuration items described below are in the `iotdb-cluster.properties` fi
 |Default|40010|
 |Effective| After restart system, shall NOT change after cluster is up|
 
-* cluster\_rpc\_port
+* open\_server\_rpc\_port
 
-|Name|cluster\_rpc\_port|
+|Name|open\_server\_rpc\_port|
 |:---:|:---|
-|Description|The port used to communicate with the clients (JDBC, CLI, Session API...), please confirm that the port is not reserved by the system and is not occupied|
-|Type|Int32|
-|Default|6667|
+|Description|whether open port for server module (for debug purpose), if true, the single's server rpc_port will be changed to `rpc_port (in iotdb-engines.properties) + 1`|
+|Type|Boolean|
+|Default|False|
 |Effective| After restart system|
 
 * seed\_nodes
 
 |Name|seed\_nodes|
 |:---:|:---|
-|Description|The address of the nodes in the cluster, `{IP/DOMAIN}:internal_meta_port:internal_data_port:cluster_rpc_port` format, separated by commas; for the pseudo-distributed mode, you can fill in `localhost`, or `127.0.0.1` or mixed, but the real ip address cannot appear; for the distributed mode, real ip or hostname is supported, but `localhost` or `127.0.0.1` cannot appear. When used by `start-node.sh(.bat)`, this configuration means the nodes that will form the initial cluster, so every node that use `start-node.sh(.bat)` should have the same `seed_nodes`, or the building of the initial cluster will fail. WARNING: if the initial cluster is built, this should not be changed before the environment is cleaned. When used by `add-node.sh(.bat)`, this means the nodes to which that the application of joining the cluster will be sent, as all nodes can respond to a request, this configuration can be any nodes that already in the cluster, unnecessary to be the nodes that were used to build the initial cluster by `start-node.sh(.bat)`. Several nodes will be picked randomly to send the request, the number of nodes picked depends on the number of retries.|
+|Description|The address of the nodes in the cluster, `{IP/DOMAIN}:internal_meta_port` format, separated by commas; for the pseudo-distributed mode, you can fill in `localhost`, or `127.0.0.1` or mixed, but the real ip address cannot appear; for the distributed mode, real ip or hostname is supported, but `localhost` or `127.0.0.1` cannot appear. When used by `start-node.sh(.bat)`, this configuration means the nodes that will form the initial cluster, so every node that use `start-node.sh(.bat)` should have the same `seed_nodes`, or the building of the initial cluster will fail. WARNING: if the initial cluster is built, this should not be changed before the environment is cleaned. When used by `add-node.sh(.bat)`, this means the nodes to which that the application of joining the cluster will be sent, as all nodes can respond to a request, this configuration can be any nodes that already in the cluster, unnecessary to be the nodes that were used to build the initial cluster by `start-node.sh(.bat)`. Several nodes will be picked randomly to send the request, the number of nodes picked depends on the number of retries.|
 |Type|String|
-|Default|127.0.0.1:9003:40010:6667,127.0.0.1:9005:40012:6668,127.0.0.1:9007:40014:6669|
+|Default|127.0.0.1:9003,127.0.0.1:9005,127.0.0.1:9007|
 |Effective| After restart system|
 
 * rpc\_thrift\_compression\_enable
@@ -157,7 +148,7 @@ The configuration items described below are in the `iotdb-cluster.properties` fi
 |:---:|:---|
 |Description|Number of cluster replicas of timeseries schema and data. Storage group info is always fully replicated in all nodes.|
 |Type|Int32|
-|Default|2|
+|Default|3|
 |Effective| After restart system, shall NOT change after cluster is up|
 
 * cluster\_name

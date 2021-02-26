@@ -31,43 +31,25 @@ __集群模式目前是测试版！请谨慎在生产环境中使用。__
 
 ```bash
 # Unix/OS X
-> nohup sbin/start-node.sh >/dev/null 2>&1 &
-or
-> nohup sbin/start-node.sh -c <conf_path> -internal_meta_port 9003 >/dev/null 2>&1 &
+> nohup sbin/start-node.sh [printgc] [<conf_path>] >/dev/null 2>&1 &
 
 # Windows
 > sbin\start-node.bat
-or
-> sbin\start-node.bat -c <conf_path> -internal_meta_port 9003
 ```
+`printgc`表示在启动的时候，会开启GC日志。
+`<conf_path>`使用`conf_path`文件夹里面的配置文件覆盖默认配置文件。
 
-`-c <conf_path>`使用`conf_path`文件夹里面的配置文件覆盖默认配置文件; `-internal_meta_port 9003`覆盖特定配置项`internal_meta_port`的配置，
-目前支持的启动覆盖原有配置的配置项有：
-`internal_meta_port、internal_data_port、cluster_rpc_port、seed_nodes`。当配置文件和配置项都被指定的时候，指定配置项的配置会覆盖配置文件中的配置。
-
-## 3节点2副本伪分布式搭建示例
+## 3节点3副本伪分布式搭建示例
 ```bash
-# 第一步 (注意以下路径在 Windows MinGW 中并不适用)
 > mvn clean package -pl cluster -am -Dmaven.test.skip=true
-> cp -rf ./cluster/target/cluster-0.11.0-SNAPSHOT ./cluster/target/cluster-0.11.0-SNAPSHOT1
-> cp -rf ./cluster/target/cluster-0.11.0-SNAPSHOT ./cluster/target/cluster-0.11.0-SNAPSHOT2
-> sed -i -e 's/6667/6668/g' ./cluster/target/cluster-0.11.0-SNAPSHOT1/conf/iotdb-engine.properties
-> sed -i -e 's/6667/6669/g' ./cluster/target/cluster-0.11.0-SNAPSHOT2/conf/iotdb-engine.properties
+> cp -rf ./cluster/target/cluster-0.12.0-SNAPSHOT ./cluster/target/cluster-0.12.0-SNAPSHOT1
+> cp -rf ./cluster/target/cluster-0.12.0-SNAPSHOT ./cluster/target/cluster-0.12.0-SNAPSHOT2
 
-# 第二步: Unix/OS X/Windows (git bash or WSL)
-> sed -i -e 's/31999/32000/g' ./cluster/target/cluster-0.11.0-SNAPSHOT1/conf/iotdb-env.sh
-> sed -i -e 's/31999/32001/g' ./cluster/target/cluster-0.11.0-SNAPSHOT2/conf/iotdb-env.sh
 > chmod -R 777 ./cluster/target/
-> nohup ./cluster/target/cluster-0.11.0-SNAPSHOT/sbin/start-node.sh >/dev/null 2>&1 &
-> nohup ./cluster/target/cluster-0.11.0-SNAPSHOT1/sbin/start-node.sh -internal_meta_port 9005 -internal_data_port 40012 -cluster_rpc_port 6668 >/dev/null 2>&1 &
-> nohup ./cluster/target/cluster-0.11.0-SNAPSHOT2/sbin/start-node.sh -internal_meta_port 9007 -internal_data_port 40014 -cluster_rpc_port 6669 >/dev/null 2>&1 &
 
-# 第二步: Windows (MinGW)
-> sed -i -e 's/31999/32000/g'  cluster\target\cluster-0.11.0-SNAPSHOT\conf\iotdb-env.bat
-> sed -i -e 's/31999/32001/g'  cluster\target\cluster-0.11.0-SNAPSHOT\conf\iotdb-env.bat
-> nohup cluster\target\cluster-0.11.0-SNAPSHOT\sbin\start-node.bat 
-> nohup cluster\target\cluster-0.11.0-SNAPSHOT1\sbin\start-node.bat  -internal_meta_port 9005 -internal_data_port 40012 -cluster_rpc_port 6668
-> nohup cluster\target\cluster-0.11.0-SNAPSHOT2\sbin\start-node.bat  -internal_meta_port 9007 -internal_data_port 40014 -cluster_rpc_port 6669
+> nohup ./cluster/target/cluster-0.12.0-SNAPSHOT/sbin/start-node.sh  ./cluster/target/test-classes/node1conf/ >/dev/null 2>&1 &
+> nohup ./cluster/target/cluster-0.12.0-SNAPSHOT1/sbin/start-node.sh ./cluster/target/test-classes/node2conf/ >/dev/null 2>&1 &
+> nohup ./cluster/target/cluster-0.12.0-SNAPSHOT2/sbin/start-node.sh ./cluster/target/test-classes/node3conf/ >/dev/null 2>&1 &
 ```
 
 ## 被覆盖的单机版选项
@@ -99,6 +81,15 @@ iotdb-engines.properties配置文件中的部分内容会不再生效：
 
 `iotdb-engine.properties`、`iotdb-env.sh`/`iotdb-env.bat` 两个配置文件详细说明请参考[配置手册](Config%20Manual.md)，下面描述的配置项是在`iotdb-cluster.properties`文件中的。
 
+* internal\_ip
+
+|名字|internal\_ip|
+|:---:|:---|
+|描述|IOTDB 集群各个节点之间内部通信的IP地址，比如心跳、snapshot快照、raft log等|
+|类型|String|
+|默认值|127.0.0.1|
+|改后生效方式|重启服务器生效，集群建立后不可再修改|
+
 * internal\_meta\_port
 
 |名字|internal\_meta\_port|
@@ -117,22 +108,22 @@ iotdb-engines.properties配置文件中的部分内容会不再生效：
 |默认值|40010|
 |改后生效方式|重启服务器生效，集群建立后不可再修改|
 
-* cluster\_rpc\_port
+* open\_server\_rpc\_port
 
-|名字|cluster\_rpc\_port|
+|名字|open\_server\_rpc\_port|
 |:---:|:---|
-|描述|与客户端（JDBC，Session API， CLI等）通信的端口，请确认该端口不是系统保留端口并且未被占用|
-|类型|Int32|
-|默认值|6667|
-|改后生效方式|重启服务器生效|
+|描述|是否打开单机模块的rpc port，用于调试模式，如果设置为true，则单机模块的rpc port设置为`rpc_port (in iotdb-engines.properties) + 1`|
+|类型|Boolean|
+|默认值|false|
+|改后生效方式|重启服务器生效，集群建立后不可再修改|
 
 * seed\_nodes
 
 |名字|seed\_nodes|
 |:---:|:---|
-|描述|集群中节点的地址，`{IP/DOMAIN}:internal_meta_port:internal_data_port:cluster_rpc_port`格式，用逗号分割；对于伪分布式模式，可以都填写`localhost`，或是`127.0.0.1` 或是混合填写，但是不能够出现真实的ip地址；对于分布式模式，支持填写real ip 或是hostname，但是不能够出现`localhost`或是`127.0.0.1`。当使用`start-node.sh(.bat)`启动节点时，此配置意味着形成初始群集的节点，每个节点的`seed_nodes`应该一致，否则群集将初始化失败；当使用`add-node.sh(.bat)`添加节点到集群中时，此配置项可以是集群中已经存在的任何节点，不需要是用`start-node.sh(bat)`构建初始集群的节点。|
+|描述|集群中节点的地址，`{IP/DOMAIN}:internal_meta_port`格式，用逗号分割；对于伪分布式模式，可以都填写`localhost`，或是`127.0.0.1` 或是混合填写，但是不能够出现真实的ip地址；对于分布式模式，支持填写real ip 或是hostname，但是不能够出现`localhost`或是`127.0.0.1`。当使用`start-node.sh(.bat)`启动节点时，此配置意味着形成初始群集的节点，每个节点的`seed_nodes`应该一致，否则群集将初始化失败；当使用`add-node.sh(.bat)`添加节点到集群中时，此配置项可以是集群中已经存在的任何节点，不需要是用`start-node.sh(bat)`构建初始集群的节点。|
 |类型|String|
-|默认值|127.0.0.1:9003:40010:6667,127.0.0.1:9005:40012:6668,127.0.0.1:9007:40014:6669|
+|默认值|127.0.0.1:9003,127.0.0.1:9005,127.0.0.1:9007|
 |改后生效方式|重启服务器生效|
 
 * rpc\_thrift\_compression\_enable
@@ -150,7 +141,7 @@ iotdb-engines.properties配置文件中的部分内容会不再生效：
 |:---:|:---|
 |描述|集群副本数|
 |类型|Int32|
-|默认值|2|
+|默认值|3|
 |改后生效方式|重启服务器生效，集群建立后不可更改|
 
 * cluster\_name

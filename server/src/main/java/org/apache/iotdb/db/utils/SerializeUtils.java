@@ -128,7 +128,7 @@ public class SerializeUtils {
       dataOutputStream.writeInt(node.nodeIdentifier);
       dataOutputStream.writeInt(node.dataPort);
       dataOutputStream.writeInt(node.clientPort);
-      byte[] clientIpBytes = node.ip.getBytes();
+      byte[] clientIpBytes = node.clientIp.getBytes();
       dataOutputStream.writeInt(clientIpBytes.length);
       dataOutputStream.write(clientIpBytes);
     } catch (IOException e) {
