@@ -280,48 +280,26 @@ SHOW CHILD NODES prefixPath
 可以查看此前缀路径的下一层的所有节点。
 
 示例：
-* 演示所用序列
-
-```
-+------------------+-----+-------------+--------+--------+-----------+----+----------+
-|        timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
-+------------------+-----+-------------+--------+--------+-----------+----+----------+
-|root.vehicle.d1.s1| null| root.vehicle| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
-|root.vehicle.d1.s2| null| root.vehicle| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
-|root.vehicle.d2.s1| null| root.vehicle| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
-+------------------+-----+-------------+--------+--------+-----------+----+----------+
-```
 
 * 查询 root 的下一层：show child paths root
 
 ```
 +------------+
-| child paths|
+| child nodes|
 +------------+
-|root.vehicle|
+|          ln|
 +------------+
 ```
 
-* 查询 root.vehicle的下一层 ：show child paths root.vehicle
+* 查询 root.vehicle的下一层 ：show child paths root.ln
 
 ```
-+-----------+
-|child nodes|
-+-----------+
-|         d1|
-|         d2|
-+-----------+
-```
-
-* 查询 root.vehicl.d1的下一层 ：show child nodes root.vehicle.d1
-
-```
-+-----------+
-|child nodes|
-+-----------+
-|         s1|
-|         s2|
-+-----------+
++------------+
+| child nodes|
++------------+
+|        wf01|
+|        wf02|
++------------+
 ```
 
 ## 统计时间序列总数
