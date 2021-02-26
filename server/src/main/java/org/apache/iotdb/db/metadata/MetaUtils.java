@@ -21,9 +21,14 @@ package org.apache.iotdb.db.metadata;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.utils.TestOnly;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
 
@@ -99,5 +104,37 @@ public class MetaUtils {
     String[] storageGroupNodes = new String[level + 1];
     System.arraycopy(nodeNames, 0, storageGroupNodes, 0, level + 1);
     return new PartialPath(storageGroupNodes);
+  }
+
+  @TestOnly
+  public static List<String> getMultiFullPaths(MNode node) {
+    if (node == null) {
+      return Collections.emptyList();
+    }
+
+    List<MNode> lastNodeList = new ArrayList<>();
+    collectLastNode(node, lastNodeList);
+
+    List<String> result = new ArrayList<>();
+    for (MNode mNode : lastNodeList) {
+      result.add(mNode.getFullPath());
+    }
+
+    return result;
+  }
+
+  @TestOnly
+  public static void collectLastNode(MNode node, List<MNode> lastNodeList) {
+    if (node != null) {
+      Map<String, MNode> children = node.getChildren();
+      if (children.isEmpty()) {
+        lastNodeList.add(node);
+      }
+
+      for (Entry<String, MNode> entry : children.entrySet()) {
+        MNode childNode = entry.getValue();
+        collectLastNode(childNode, lastNodeList);
+      }
+    }
   }
 }

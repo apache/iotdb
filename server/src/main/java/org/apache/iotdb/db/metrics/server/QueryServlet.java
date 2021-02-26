@@ -20,7 +20,6 @@ package org.apache.iotdb.db.metrics.server;
 
 import org.apache.iotdb.db.metrics.ui.MetricsPage;
 
-import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -39,8 +38,7 @@ public class QueryServlet extends HttpServlet {
   }
 
   @Override
-  protected void doGet(HttpServletRequest req, HttpServletResponse resp)
-      throws ServletException, IOException {
+  protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
     resp.setContentType("text/html;charset=utf-8");
     req.setCharacterEncoding("utf-8");
     resp.setStatus(HttpServletResponse.SC_OK);
@@ -52,8 +50,7 @@ public class QueryServlet extends HttpServlet {
   }
 
   @Override
-  protected void doPost(HttpServletRequest req, HttpServletResponse resp)
-      throws ServletException, IOException {
+  protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
     doGet(req, resp);
   }
 }

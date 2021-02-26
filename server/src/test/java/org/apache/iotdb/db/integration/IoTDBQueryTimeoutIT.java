@@ -36,7 +36,7 @@ import java.sql.Statement;
 
 import static org.junit.Assert.fail;
 
-public class IoTDBQueryTimeoutTest {
+public class IoTDBQueryTimeoutIT {
 
   @BeforeClass
   public static void setUp() throws Exception {

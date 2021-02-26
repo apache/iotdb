@@ -53,11 +53,16 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
@@ -425,54 +430,77 @@ public class CMManager extends MManager {
   }
 
   /**
-   * create storage groups for CreateTimeseriesPlan and InsertPlan, also create timeseries for
-   * InsertPlan. Only the two kind of plans can use this method.
+   * create storage groups for CreateTimeseriesPlan, CreateMultiTimeseriesPlan and InsertPlan, also
+   * create timeseries for InsertPlan. Only the three kind of plans can use this method.
    */
   public void createSchema(PhysicalPlan plan) throws MetadataException, CheckConsistencyException {
-    // try to set storage group
-    List<PartialPath> deviceIds;
-    // only handle InsertPlan, CreateTimeSeriesPlan and CreateMultiTimeSeriesPlan currently
-    if (plan instanceof InsertPlan && !(plan instanceof InsertMultiTabletPlan)) {
-      deviceIds = Collections.singletonList(((InsertPlan) plan).getDeviceId());
+    List<PartialPath> storageGroups = new ArrayList<>();
+    // for InsertPlan, try to just use deviceIds to get related storage groups because there's no
+    // need to call getPaths to concat deviceId and sensor as they will gain same result,
+    // for CreateTimeSeriesPlan, use getPath() to get timeseries to get related storage group,
+    // for CreateMultiTimeSeriesPlan, use getPaths() to get all timeseries to get related storage
+    // groups.
+    if (plan instanceof InsertRowPlan
+        || plan instanceof InsertRowsOfOneDevicePlan
+        || plan instanceof InsertTabletPlan) {
+      storageGroups.addAll(
+          getStorageGroups(Collections.singletonList(((InsertPlan) plan).getDeviceId())));
+    } else if (plan instanceof InsertRowsPlan) {
+      storageGroups.addAll(
+          getStorageGroups(
+              ((InsertRowsPlan) plan)
+                  .getInsertRowPlanList().stream()
+                      .map(InsertPlan::getDeviceId)
+                      .collect(Collectors.toList())));
+    } else if (plan instanceof InsertMultiTabletPlan) {
+      storageGroups.addAll(
+          getStorageGroups(
+              ((InsertMultiTabletPlan) plan)
+                  .getInsertTabletPlanList().stream()
+                      .map(InsertPlan::getDeviceId)
+                      .collect(Collectors.toList())));
     } else if (plan instanceof CreateTimeSeriesPlan) {
-      deviceIds = Collections.singletonList(((CreateTimeSeriesPlan) plan).getPath());
+      storageGroups.addAll(
+          getStorageGroups(Collections.singletonList(((CreateTimeSeriesPlan) plan).getPath())));
     } else {
-      deviceIds = plan.getPaths().stream().distinct().collect(Collectors.toList());
+      storageGroups.addAll(getStorageGroups(plan.getPaths()));
     }
 
-    for (PartialPath deviceId : deviceIds) {
-      createStorageGroup(deviceId);
-    }
+    // create storage groups
+    createStorageGroups(storageGroups);
 
     // need to verify the storage group is created
-    verifyCreatedSgSuccess(deviceIds, plan);
+    verifyCreatedSgSuccess(storageGroups, plan);
 
-    if (plan instanceof InsertPlan) {
-      // try to create timeseries
-      boolean isAutoCreateTimeseriesSuccess = createTimeseries((InsertPlan) plan);
-      if (!isAutoCreateTimeseriesSuccess) {
-        throw new MetadataException("Failed to create timeseries from InsertPlan automatically.");
-      }
+    // try to create timeseries for insertPlan
+    if (plan instanceof InsertPlan && !createTimeseries((InsertPlan) plan)) {
+      throw new MetadataException("Failed to create timeseries from InsertPlan automatically.");
     }
   }
 
+  /** return storage groups paths for given deviceIds or timeseries. */
+  private List<PartialPath> getStorageGroups(List<PartialPath> paths) throws MetadataException {
+    Set<PartialPath> storageGroups = new HashSet<>();
+    for (PartialPath path : paths) {
+      storageGroups.add(
+          MetaUtils.getStorageGroupPathByLevel(
+              path, IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel()));
+    }
+    return new ArrayList<>(storageGroups);
+  }
+
   @SuppressWarnings("squid:S3776")
-  private void verifyCreatedSgSuccess(List<PartialPath> deviceIds, PhysicalPlan physicalPlan)
-      throws MetadataException {
+  private void verifyCreatedSgSuccess(List<PartialPath> storageGroups, PhysicalPlan physicalPlan) {
     long startTime = System.currentTimeMillis();
-    boolean[] ready = new boolean[deviceIds.size()];
+    boolean[] ready = new boolean[storageGroups.size()];
     Arrays.fill(ready, false);
     while (true) {
       boolean allReady = true;
-      for (int i = 0; i < deviceIds.size(); i++) {
+      for (int i = 0; i < storageGroups.size(); i++) {
         if (ready[i]) {
           continue;
         }
-        PartialPath storageGroupName =
-            MetaUtils.getStorageGroupPathByLevel(
-                deviceIds.get(i),
-                IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel());
-        if (IoTDB.metaManager.isStorageGroup(storageGroupName)) {
+        if (IoTDB.metaManager.isStorageGroup(storageGroups.get(i))) {
           ready[i] = true;
         } else {
           allReady = false;
@@ -495,24 +523,23 @@ public class CMManager extends MManager {
   }
 
   /**
-   * Create storage group automatically for deviceId.
+   * Create storage groups automatically for paths.
    *
-   * @param deviceId
+   * @param storageGroups the uncreated storage groups
    */
-  private void createStorageGroup(PartialPath deviceId) throws MetadataException {
-    PartialPath storageGroupName =
-        MetaUtils.getStorageGroupPathByLevel(
-            deviceId, IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel());
-    SetStorageGroupPlan setStorageGroupPlan = new SetStorageGroupPlan(storageGroupName);
-    TSStatus setStorageGroupResult =
-        metaGroupMember.processNonPartitionedMetaPlan(setStorageGroupPlan);
-    if (setStorageGroupResult.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        && setStorageGroupResult.getCode()
-            != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()) {
-      throw new MetadataException(
-          String.format(
-              "Status Code: %d, failed to set storage group %s",
-              setStorageGroupResult.getCode(), storageGroupName));
+  private void createStorageGroups(List<PartialPath> storageGroups) throws MetadataException {
+    for (PartialPath storageGroup : storageGroups) {
+      SetStorageGroupPlan setStorageGroupPlan = new SetStorageGroupPlan(storageGroup);
+      TSStatus setStorageGroupResult =
+          metaGroupMember.processNonPartitionedMetaPlan(setStorageGroupPlan);
+      if (setStorageGroupResult.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && setStorageGroupResult.getCode()
+              != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()) {
+        throw new MetadataException(
+            String.format(
+                "Status Code: %d, failed to set storage group %s",
+                setStorageGroupResult.getCode(), storageGroup));
+      }
     }
   }
 
@@ -528,7 +555,26 @@ public class CMManager extends MManager {
       boolean success = createTimeseries(insertTabletPlan);
       allSuccess = allSuccess && success;
       if (!success) {
-        logger.error("create timeseries for device={} failed", insertTabletPlan.getDeviceId());
+        logger.error(
+            "create timeseries for device={} failed, plan={}",
+            insertTabletPlan.getDeviceId(),
+            insertTabletPlan);
+      }
+    }
+    return allSuccess;
+  }
+
+  public boolean createTimeseries(InsertRowsPlan insertRowsPlan)
+      throws CheckConsistencyException, IllegalPathException {
+    boolean allSuccess = true;
+    for (InsertRowPlan insertRowPlan : insertRowsPlan.getInsertRowPlanList()) {
+      boolean success = createTimeseries(insertRowPlan);
+      allSuccess = allSuccess && success;
+      if (!success) {
+        logger.error(
+            "create timeseries for device={} failed, plan={}",
+            insertRowPlan.getDeviceId(),
+            insertRowPlan);
       }
     }
     return allSuccess;
@@ -544,6 +590,10 @@ public class CMManager extends MManager {
       throws IllegalPathException, CheckConsistencyException {
     if (insertPlan instanceof InsertMultiTabletPlan) {
       return createTimeseries((InsertMultiTabletPlan) insertPlan);
+    }
+
+    if (insertPlan instanceof InsertRowsPlan) {
+      return createTimeseries((InsertRowsPlan) insertPlan);
     }
 
     List<String> seriesList = new ArrayList<>();
@@ -576,7 +626,12 @@ public class CMManager extends MManager {
   private boolean createTimeseries(
       List<String> unregisteredSeriesList, List<String> seriesList, InsertPlan insertPlan)
       throws IllegalPathException {
+    List<PartialPath> paths = new ArrayList<>();
+    List<TSDataType> dataTypes = new ArrayList<>();
+    List<TSEncoding> encodings = new ArrayList<>();
+    List<CompressionType> compressionTypes = new ArrayList<>();
     for (String seriesPath : unregisteredSeriesList) {
+      paths.add(new PartialPath(seriesPath));
       int index = seriesList.indexOf(seriesPath);
       TSDataType dataType;
       // use data types in insertPlan if provided, otherwise infer them from the values
@@ -590,40 +645,35 @@ public class CMManager extends MManager {
                     : ((InsertRowPlan) insertPlan).getValues()[index],
                 true);
       }
+      dataTypes.add(dataType);
       // use default encoding and compression from the config
-      TSEncoding encoding = getDefaultEncoding(dataType);
-      CompressionType compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
-      CreateTimeSeriesPlan createTimeSeriesPlan =
-          new CreateTimeSeriesPlan(
-              new PartialPath(seriesPath),
-              dataType,
-              encoding,
-              compressionType,
-              null,
-              null,
-              null,
-              null);
-      // TODO-Cluster: add executeNonQueryBatch() to create the series in batch
-      TSStatus result;
-      try {
-        result = coordinator.processPartitionedPlan(createTimeSeriesPlan);
-      } catch (UnsupportedPlanException e) {
-        logger.error(
-            "Failed to create timeseries {} automatically. Unsupported plan exception {} ",
-            seriesPath,
-            e.getMessage());
-        return false;
-      }
-      if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          && result.getCode() != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()
-          && result.getCode() != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
-        logger.error(
-            "{} failed to execute create timeseries {}: {}",
-            metaGroupMember.getThisNode(),
-            seriesPath,
-            result);
-        return false;
-      }
+      encodings.add(getDefaultEncoding(dataType));
+      compressionTypes.add(TSFileDescriptor.getInstance().getConfig().getCompressor());
+    }
+    CreateMultiTimeSeriesPlan plan = new CreateMultiTimeSeriesPlan();
+    plan.setPaths(paths);
+    plan.setDataTypes(dataTypes);
+    plan.setEncodings(encodings);
+    plan.setCompressors(compressionTypes);
+    TSStatus result;
+    try {
+      result = coordinator.processPartitionedPlan(plan);
+    } catch (UnsupportedPlanException e) {
+      logger.error(
+          "Failed to create timeseries {} automatically. Unsupported plan exception {} ",
+          paths,
+          e.getMessage());
+      return false;
+    }
+    if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && result.getCode() != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()
+        && result.getCode() != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+      logger.error(
+          "{} failed to execute create timeseries {}: {}",
+          metaGroupMember.getThisNode(),
+          paths,
+          result);
+      return false;
     }
     return true;
   }
@@ -1395,18 +1445,64 @@ public class CMManager extends MManager {
   }
 
   @Override
-  protected MeasurementMNode getMeasurementMNode(MNode deviceMNode, String measurement) {
-    MNode child;
-    child = deviceMNode.getChild(measurement);
+  public MNode getMNode(MNode deviceMNode, String measurementName) {
+    MNode child = deviceMNode.getChild(measurementName);
     if (child == null) {
-      child = mRemoteMetaCache.get(deviceMNode.getPartialPath().concatNode(measurement));
+      child = mRemoteMetaCache.get(deviceMNode.getPartialPath().concatNode(measurementName));
     }
-    return child != null ? (MeasurementMNode) child : null;
+    return child;
   }
 
   public List<ShowTimeSeriesResult> showLocalTimeseries(
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
     return super.showTimeseries(plan, context);
+  }
+
+  public List<ShowDevicesResult> getLocalDevices(ShowDevicesPlan plan) throws MetadataException {
+    return super.getDevices(plan);
+  }
+
+  @Override
+  public List<ShowDevicesResult> getDevices(ShowDevicesPlan plan) throws MetadataException {
+    ConcurrentSkipListSet<ShowDevicesResult> resultSet = new ConcurrentSkipListSet<>();
+    ExecutorService pool =
+        new ThreadPoolExecutor(
+            THREAD_POOL_SIZE, THREAD_POOL_SIZE, 0, TimeUnit.SECONDS, new LinkedBlockingDeque<>());
+    List<PartitionGroup> globalGroups = metaGroupMember.getPartitionTable().getGlobalGroups();
+
+    int limit = plan.getLimit() == 0 ? Integer.MAX_VALUE : plan.getLimit();
+    int offset = plan.getOffset();
+    // do not use limit and offset in sub-queries unless offset is 0, otherwise the results are
+    // not combinable
+    if (offset != 0) {
+      plan.setLimit(0);
+      plan.setOffset(0);
+    }
+
+    if (logger.isDebugEnabled()) {
+      logger.debug(
+          "Fetch devices schemas of {} from {} groups", plan.getPath(), globalGroups.size());
+    }
+
+    List<Future<Void>> futureList = new ArrayList<>();
+    for (PartitionGroup group : globalGroups) {
+      futureList.add(
+          pool.submit(
+              () -> {
+                try {
+                  getDevices(group, plan, resultSet);
+                } catch (CheckConsistencyException e) {
+                  logger.error("Cannot get show devices result of {} from {}", plan, group);
+                }
+                return null;
+              }));
+    }
+
+    waitForThreadPool(futureList, pool, "getDevices()");
+    List<ShowDevicesResult> showDevicesResults =
+        applyShowDevicesLimitOffset(resultSet, limit, offset);
+    logger.debug("show devices {} has {} results", plan.getPath(), showDevicesResults.size());
+    return showDevicesResults;
   }
 
   @Override
@@ -1470,6 +1566,22 @@ public class CMManager extends MManager {
     return showTimeSeriesResults;
   }
 
+  private List<ShowDevicesResult> applyShowDevicesLimitOffset(
+      Set<ShowDevicesResult> resultSet, int limit, int offset) {
+    List<ShowDevicesResult> showDevicesResults = new ArrayList<>();
+    Iterator<ShowDevicesResult> iterator = resultSet.iterator();
+    while (iterator.hasNext() && limit > 0) {
+      if (offset > 0) {
+        offset--;
+        iterator.next();
+      } else {
+        limit--;
+        showDevicesResults.add(iterator.next());
+      }
+    }
+    return showDevicesResults;
+  }
+
   private void showTimeseries(
       PartitionGroup group,
       ShowTimeSeriesPlan plan,
@@ -1480,6 +1592,32 @@ public class CMManager extends MManager {
       showLocalTimeseries(group, plan, resultSet, context);
     } else {
       showRemoteTimeseries(group, plan, resultSet);
+    }
+  }
+
+  private void getDevices(
+      PartitionGroup group, ShowDevicesPlan plan, Set<ShowDevicesResult> resultSet)
+      throws CheckConsistencyException, MetadataException {
+    if (group.contains(metaGroupMember.getThisNode())) {
+      getLocalDevices(group, plan, resultSet);
+    } else {
+      getRemoteDevices(group, plan, resultSet);
+    }
+  }
+
+  private void getLocalDevices(
+      PartitionGroup group, ShowDevicesPlan plan, Set<ShowDevicesResult> resultSet)
+      throws CheckConsistencyException, MetadataException {
+    Node header = group.getHeader();
+    DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header);
+    localDataMember.syncLeaderWithConsistencyCheck(false);
+    try {
+      List<ShowDevicesResult> localResult = super.getDevices(plan);
+      resultSet.addAll(localResult);
+      logger.debug("Fetched {} devices of {} from {}", localResult.size(), plan.getPath(), group);
+    } catch (MetadataException e) {
+      logger.error("Cannot execute show devices plan {} from {} locally.", plan, group);
+      throw e;
     }
   }
 
@@ -1495,7 +1633,11 @@ public class CMManager extends MManager {
     try {
       List<ShowTimeSeriesResult> localResult = super.showTimeseries(plan, context);
       resultSet.addAll(localResult);
-      logger.debug("Fetched {} schemas of {} from {}", localResult.size(), plan.getPath(), group);
+      logger.debug(
+          "Fetched local timeseries {} schemas of {} from {}",
+          localResult.size(),
+          plan.getPath(),
+          group);
     } catch (MetadataException e) {
       logger.error("Cannot execute show timeseries plan  {} from {} locally.", plan, group);
       throw e;
@@ -1523,12 +1665,43 @@ public class CMManager extends MManager {
 
     if (resultBinary != null) {
       int size = resultBinary.getInt();
-      logger.debug("Fetched {} schemas of {} from {}", size, plan.getPath(), group);
+      logger.debug(
+          "Fetched remote timeseries {} schemas of {} from {}", size, plan.getPath(), group);
       for (int i = 0; i < size; i++) {
         resultSet.add(ShowTimeSeriesResult.deserialize(resultBinary));
       }
     } else {
       logger.error("Failed to execute show timeseries {} in group: {}.", plan, group);
+    }
+  }
+
+  private void getRemoteDevices(
+      PartitionGroup group, ShowDevicesPlan plan, Set<ShowDevicesResult> resultSet) {
+    ByteBuffer resultBinary = null;
+    for (Node node : group) {
+      try {
+        resultBinary = getRemoteDevices(node, group, plan);
+        if (resultBinary != null) {
+          break;
+        }
+      } catch (IOException e) {
+        logger.error(LOG_FAIL_CONNECT, node, e);
+      } catch (TException e) {
+        logger.error("Error occurs when getting devices schemas in node {}.", node, e);
+      } catch (InterruptedException e) {
+        logger.error("Interrupted when getting devices schemas in node {}.", node, e);
+        Thread.currentThread().interrupt();
+      }
+    }
+
+    if (resultBinary != null) {
+      int size = resultBinary.getInt();
+      logger.debug("Fetched remote devices {} schemas of {} from {}", size, plan.getPath(), group);
+      for (int i = 0; i < size; i++) {
+        resultSet.add(ShowDevicesResult.deserialize(resultBinary));
+      }
+    } else {
+      logger.error("Failed to execute show devices {} in group: {}.", plan, group);
     }
   }
 
@@ -1553,6 +1726,35 @@ public class CMManager extends MManager {
         plan.serialize(dataOutputStream);
         resultBinary =
             syncDataClient.getAllMeasurementSchema(
+                group.getHeader(), ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+      } finally {
+        ClientUtils.putBackSyncClient(syncDataClient);
+      }
+    }
+    return resultBinary;
+  }
+
+  private ByteBuffer getRemoteDevices(Node node, PartitionGroup group, ShowDevicesPlan plan)
+      throws IOException, TException, InterruptedException {
+    ByteBuffer resultBinary;
+    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+      AsyncDataClient client =
+          metaGroupMember
+              .getClientProvider()
+              .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+      resultBinary = SyncClientAdaptor.getDevices(client, group.getHeader(), plan);
+    } else {
+      SyncDataClient syncDataClient = null;
+      try {
+        syncDataClient =
+            metaGroupMember
+                .getClientProvider()
+                .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+        plan.serialize(dataOutputStream);
+        resultBinary =
+            syncDataClient.getDevices(
                 group.getHeader(), ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
       } finally {
         ClientUtils.putBackSyncClient(syncDataClient);

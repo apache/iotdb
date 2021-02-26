@@ -25,7 +25,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -47,7 +46,7 @@ public class PrecisionTest {
   }
 
   @Test
-  public void testDoublePrecision1() throws IOException, ClassNotFoundException {
+  public void testDoublePrecision1() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
             DriverManager.getConnection(
@@ -71,7 +70,7 @@ public class PrecisionTest {
   }
 
   @Test
-  public void testDoublePrecision2() throws IOException, ClassNotFoundException {
+  public void testDoublePrecision2() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
             DriverManager.getConnection(
@@ -95,7 +94,7 @@ public class PrecisionTest {
   }
 
   @Test
-  public void testFloatPrecision1() throws IOException, ClassNotFoundException {
+  public void testFloatPrecision1() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
             DriverManager.getConnection(
@@ -119,7 +118,7 @@ public class PrecisionTest {
   }
 
   @Test
-  public void testFloatPrecision2() throws IOException, ClassNotFoundException {
+  public void testFloatPrecision2() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
             DriverManager.getConnection(

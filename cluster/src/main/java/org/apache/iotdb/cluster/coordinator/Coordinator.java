@@ -44,6 +44,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -306,8 +307,10 @@ public class Coordinator {
     } else {
       if (plan instanceof InsertTabletPlan
           || plan instanceof InsertMultiTabletPlan
-          || plan instanceof CreateMultiTimeSeriesPlan) {
-        // InsertTabletPlan, InsertMultiTabletPlan and CreateMultiTimeSeriesPlan contains many rows,
+          || plan instanceof CreateMultiTimeSeriesPlan
+          || plan instanceof InsertRowsPlan) {
+        // InsertTabletPlan, InsertMultiTabletPlan, InsertRowsPlan and CreateMultiTimeSeriesPlan
+        // contains many rows,
         // each will correspond to a TSStatus as its execution result,
         // as the plan is split and the sub-plans may have interleaving ranges,
         // we must assure that each TSStatus is placed to the right position
@@ -455,8 +458,11 @@ public class Coordinator {
           // and the second dimension is the number of rows per InsertTabletPlan
           totalRowNum = ((InsertMultiTabletPlan) parentPlan).getTabletsSize();
         } else if (parentPlan instanceof CreateMultiTimeSeriesPlan) {
-          totalRowNum = ((CreateMultiTimeSeriesPlan) parentPlan).getIndexes().size();
+          totalRowNum = ((CreateMultiTimeSeriesPlan) parentPlan).getPaths().size();
+        } else if (parentPlan instanceof InsertRowsPlan) {
+          totalRowNum = ((InsertRowsPlan) parentPlan).getRowCount();
         }
+
         if (subStatus == null) {
           subStatus = new TSStatus[totalRowNum];
           Arrays.fill(subStatus, RpcUtils.SUCCESS_STATUS);
@@ -492,8 +498,14 @@ public class Coordinator {
           for (int i = 0; i < subPlan.getIndexes().size(); i++) {
             subStatus[subPlan.getIndexes().get(i)] = tmpStatus.subStatus.get(i);
           }
+        } else if (parentPlan instanceof InsertRowsPlan) {
+          InsertRowsPlan subPlan = (InsertRowsPlan) entry.getKey();
+          for (int i = 0; i < subPlan.getInsertRowPlanIndexList().size(); i++) {
+            subStatus[subPlan.getInsertRowPlanIndexList().get(i)] = tmpStatus.subStatus.get(i);
+          }
         }
       }
+
       if (tmpStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // execution failed, record the error message
         errorCodePartitionGroups.add(
@@ -549,6 +561,21 @@ public class Coordinator {
         subStatus[integerTSStatusEntry.getKey()] = integerTSStatusEntry.getValue();
       }
     }
+
+    if (parentPlan instanceof InsertRowsPlan
+        && !((InsertRowsPlan) parentPlan).getResults().isEmpty()) {
+      if (subStatus == null) {
+        subStatus = new TSStatus[totalRowNum];
+        Arrays.fill(subStatus, RpcUtils.SUCCESS_STATUS);
+      }
+      noFailure = false;
+      isBatchFailure = true;
+      for (Map.Entry<Integer, TSStatus> integerTSStatusEntry :
+          ((InsertRowsPlan) parentPlan).getResults().entrySet()) {
+        subStatus[integerTSStatusEntry.getKey()] = integerTSStatusEntry.getValue();
+      }
+    }
+
     return concludeFinalStatus(
         noFailure, endPoint, isBatchFailure, subStatus, errorCodePartitionGroups);
   }

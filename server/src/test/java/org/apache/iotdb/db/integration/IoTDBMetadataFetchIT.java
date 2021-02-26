@@ -55,7 +55,7 @@ public class IoTDBMetadataFetchIT {
   private DatabaseMetaData databaseMetaData;
   private static final Logger logger = LoggerFactory.getLogger(IoTDBMetadataFetchIT.class);
 
-  private static void insertSQL() throws ClassNotFoundException, SQLException {
+  private static void insertSQL() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
             DriverManager.getConnection(

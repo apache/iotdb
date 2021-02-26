@@ -20,7 +20,6 @@ package org.apache.iotdb.db.service;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.mqtt.BrokerAuthenticator;
 import org.apache.iotdb.db.mqtt.PublishHandler;
 
@@ -45,7 +44,7 @@ public class MQTTService implements IService {
   private MQTTService() {}
 
   @Override
-  public void start() throws StartupException {
+  public void start() {
     startup();
   }
 

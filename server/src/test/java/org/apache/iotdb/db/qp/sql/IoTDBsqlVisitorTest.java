@@ -38,13 +38,13 @@ public class IoTDBsqlVisitorTest {
   IoTDBSqlVisitor visitor;
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
     visitor = new IoTDBSqlVisitor();
     visitor.setZoneId(ZonedDateTime.now().getOffset());
   }
 
   @After
-  public void tearDown() throws Exception {}
+  public void tearDown() {}
 
   @Test
   public void testParseTimeFormatNow() {

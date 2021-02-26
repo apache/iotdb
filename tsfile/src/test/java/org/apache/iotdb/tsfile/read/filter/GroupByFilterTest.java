@@ -32,7 +32,7 @@ public class GroupByFilterTest {
   private GroupByFilter groupByFilter;
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
     groupByFilter = new GroupByFilter(3, 24, 8, 8 + 30 * 24 + 3 + 6);
   }
 

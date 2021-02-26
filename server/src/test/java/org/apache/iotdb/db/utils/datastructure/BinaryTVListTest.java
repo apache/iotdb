@@ -20,7 +20,7 @@ package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.tsfile.utils.Binary;
 
-import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.junit.Assert;
 import org.junit.Test;
 

@@ -88,7 +88,7 @@ public class DeltaBinaryEncoderIntegerTest {
     shouldReadAndWrite(data, ROW_NUM);
   }
 
-  private void writeData(int[] data, int length) throws IOException {
+  private void writeData(int[] data, int length) {
     for (int i = 0; i < length; i++) {
       writer.encode(data[i], out);
     }

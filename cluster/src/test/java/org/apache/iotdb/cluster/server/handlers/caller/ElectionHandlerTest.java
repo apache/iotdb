@@ -82,7 +82,7 @@ public class ElectionHandlerTest {
   }
 
   @Test
-  public void testLogMismatch() throws InterruptedException {
+  public void testLogMismatch() {
     AtomicBoolean terminated = new AtomicBoolean(false);
     AtomicBoolean electionValid = new AtomicBoolean(false);
     long electorTerm = 10;

@@ -106,8 +106,7 @@ public class LongRleDecoder extends RleDecoder {
   }
 
   @Override
-  protected void readBitPackingBuffer(int bitPackedGroupCount, int lastBitPackedNum)
-      throws IOException {
+  protected void readBitPackingBuffer(int bitPackedGroupCount, int lastBitPackedNum) {
     currentBuffer = new long[bitPackedGroupCount * TSFileConfig.RLE_MIN_REPEATED_NUM];
     byte[] bytes = new byte[bitPackedGroupCount * bitWidth];
     int bytesToRead = bitPackedGroupCount * bitWidth;

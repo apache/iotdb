@@ -23,12 +23,16 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>org.apache.iotdb</groupId>
-        <artifactId>client-cpp</artifactId>
+        <artifactId>iotdb-examples</artifactId>
         <version>0.12.0-SNAPSHOT</version>
-        <relativePath>../../client-cpp/pom.xml</relativePath>
+        <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>client-cpp-example</artifactId>
     <name>IoTDB-Client CPP Examples</name>
+    <properties>
+        <cmake-version>3.17.3</cmake-version>
+        <cmake.build.type>Release</cmake.build.type>
+    </properties>
     <profiles>
         <profile>
             <id>os-unix</id>
@@ -38,6 +42,7 @@
                 </os>
             </activation>
             <properties>
+                <cmake.generator>Unix Makefiles</cmake.generator>
                 <cmake.root.dir>${project.parent.basedir}/../compile-tools/thrift/target/cmake-${cmake-version}-Linux-x86_64/</cmake.root.dir>
             </properties>
         </profile>
@@ -49,6 +54,7 @@
                 </os>
             </activation>
             <properties>
+                <cmake.generator>Unix Makefiles</cmake.generator>
                 <cmake.root.dir>${project.parent.basedir}/../compile-tools/thrift/target/cmake-${cmake-version}-Darwin-x86_64/CMake.app/Contents</cmake.root.dir>
                 <boost.include.dir>/usr/local/include</boost.include.dir>
             </properties>
@@ -61,105 +67,117 @@
                 </os>
             </activation>
             <properties>
+                <cmake.generator>Visual Studio 16 2019</cmake.generator>
                 <cmake.root.dir>${project.parent.basedir}/../compile-tools/thrift/target/cmake-${cmake-version}-win64-x64/</cmake.root.dir>
                 <boost.include.dir/>
             </properties>
         </profile>
+        <profile>
+            <id>compile-cpp</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.coderplus.maven.plugins</groupId>
+                        <artifactId>copy-rename-maven-plugin</artifactId>
+                        <version>1.0</version>
+                        <executions>
+                            <execution>
+                                <id>copy-thrift-source</id>
+                                <goals>
+                                    <goal>copy</goal>
+                                </goals>
+                                <configuration>
+                                    <fileSets>
+                                        <fileSet>
+                                            <sourceFile>${project.basedir}/src/SessionExample.cpp</sourceFile>
+                                            <destinationFile>${project.build.directory}/SessionExample.cpp</destinationFile>
+                                        </fileSet>
+                                        <fileSet>
+                                            <sourceFile>${project.basedir}/src/CMakeLists.txt</sourceFile>
+                                            <destinationFile>${project.build.directory}/CMakeLists.txt</destinationFile>
+                                        </fileSet>
+                                        <fileSet>
+                                            <sourceFile>${project.parent.basedir}/../client-cpp/target/client-cpp-${project.version}-cpp-${os.classifier}.zip</sourceFile>
+                                            <destinationFile>${project.build.directory}/client-cpp-${project.version}-cpp-${os.classifier}.zip</destinationFile>
+                                        </fileSet>
+                                    </fileSets>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>unpack-client</id>
+                                <goals>
+                                    <goal>unpack</goal>
+                                </goals>
+                                <configuration>
+                                    <artifactItems>
+                                        <artifactItem>
+                                            <groupId>org.apache.iotdb</groupId>
+                                            <artifactId>client-cpp</artifactId>
+                                            <version>${project.version}</version>
+                                            <type>zip</type>
+                                            <classifier>cpp-${os.classifier}</classifier>
+                                            <overWrite>true</overWrite>
+                                        </artifactItem>
+                                    </artifactItems>
+                                    <outputDirectory>${project.build.directory}/client</outputDirectory>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>com.googlecode.cmake-maven-project</groupId>
+                        <artifactId>cmake-maven-plugin</artifactId>
+                        <version>3.7.2-b1</version>
+                        <executions>
+                            <execution>
+                                <id>cmake-generate</id>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>generate</goal>
+                                </goals>
+                                <configuration>
+                                    <classifier>${os.classifier}</classifier>
+                                    <downloadBinaries>false</downloadBinaries>
+                                    <sourcePath>${project.build.directory}</sourcePath>
+                                    <targetPath>${project.build.directory}</targetPath>
+                                    <generator>${cmake.generator}</generator>
+                                    <options>
+                                        <option>-DBOOST_INCLUDEDIR=${boost.include.dir}</option>
+                                    </options>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>cmake-compile</id>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>compile</goal>
+                                </goals>
+                                <configuration>
+                                    <classifier>${os.classifier}</classifier>
+                                    <config>${cmake.build.type}</config>
+                                    <downloadBinaries>false</downloadBinaries>
+                                    <!-- The directory where the "generate" step generated the build configuration -->
+                                    <projectDirectory>${project.build.directory}</projectDirectory>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
     </profiles>
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>com.coderplus.maven.plugins</groupId>
-                <artifactId>copy-rename-maven-plugin</artifactId>
-                <version>1.0</version>
-                <executions>
-                    <execution>
-                        <id>copy-thrift-source</id>
-                        <goals>
-                            <goal>copy</goal>
-                        </goals>
-                        <configuration>
-                            <fileSets>
-                                <fileSet>
-                                    <sourceFile>${project.basedir}/src/SessionExample.cpp</sourceFile>
-                                    <destinationFile>${project.build.directory}/SessionExample.cpp</destinationFile>
-                                </fileSet>
-                                <fileSet>
-                                    <sourceFile>${project.basedir}/src/CMakeLists.txt</sourceFile>
-                                    <destinationFile>${project.build.directory}/CMakeLists.txt</destinationFile>
-                                </fileSet>
-                                <fileSet>
-                                    <sourceFile>${project.parent.basedir}/target/client-cpp-${project.version}-cpp-${os.classifier}.zip</sourceFile>
-                                    <destinationFile>${project.build.directory}/client-cpp-${project.version}-cpp-${os.classifier}.zip</destinationFile>
-                                </fileSet>
-                            </fileSets>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-dependency-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>unpack-client</id>
-                        <goals>
-                            <goal>unpack</goal>
-                        </goals>
-                        <configuration>
-                            <artifactItems>
-                                <artifactItem>
-                                    <groupId>org.apache.iotdb</groupId>
-                                    <artifactId>client-cpp</artifactId>
-                                    <version>${project.version}</version>
-                                    <type>zip</type>
-                                    <classifier>cpp-${os.classifier}</classifier>
-                                    <overWrite>true</overWrite>
-                                </artifactItem>
-                            </artifactItems>
-                            <outputDirectory>${project.build.directory}/client</outputDirectory>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>com.googlecode.cmake-maven-project</groupId>
-                <artifactId>cmake-maven-plugin</artifactId>
-                <version>3.7.2-b1</version>
-                <executions>
-                    <execution>
-                        <id>cmake-generate</id>
-                        <phase>compile</phase>
-                        <goals>
-                            <goal>generate</goal>
-                        </goals>
-                        <configuration>
-                            <classifier>${os.classifier}</classifier>
-                            <downloadBinaries>false</downloadBinaries>
-                            <sourcePath>${project.build.directory}</sourcePath>
-                            <targetPath>${project.build.directory}</targetPath>
-                            <generator>${cmake.generator}</generator>
-                            <options>
-                                <option>-DBOOST_INCLUDEDIR=${boost.include.dir}</option>
-                            </options>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>cmake-compile</id>
-                        <phase>compile</phase>
-                        <goals>
-                            <goal>compile</goal>
-                        </goals>
-                        <configuration>
-                            <classifier>${os.classifier}</classifier>
-                            <config>${cmake.build.type}</config>
-                            <downloadBinaries>false</downloadBinaries>
-                            <!-- The directory where the "generate" step generated the build configuration -->
-                            <projectDirectory>${project.build.directory}</projectDirectory>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-        </plugins>
-    </build>
+    <dependencies>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>client-cpp</artifactId>
+            <version>${project.version}</version>
+            <type>pom</type>
+        </dependency>
+    </dependencies>
 </project>
