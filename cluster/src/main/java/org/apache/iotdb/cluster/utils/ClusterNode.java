@@ -29,7 +29,6 @@ import java.util.Objects;
  */
 public class ClusterNode extends Node {
 
-  // TODO hxd: maintain the client IP and Port
   public ClusterNode() {}
 
   public ClusterNode(

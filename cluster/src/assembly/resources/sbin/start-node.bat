@@ -92,7 +92,6 @@ set JAVA_OPTS=-ea^
  -Dlogback.configurationFile="%IOTDB_CONF%\logback.xml"^
  -DIOTDB_HOME="%IOTDB_HOME%"^
  -DTSFILE_HOME="%IOTDB_HOME%"^
- -DCLUSTER_CONF="%IOTDB_CONF%"^
  -DIOTDB_CONF="%IOTDB_CONF%"
 
 @REM ***** CLASSPATH library setting *****

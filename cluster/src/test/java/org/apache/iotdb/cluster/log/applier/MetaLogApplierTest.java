@@ -79,7 +79,6 @@ public class MetaLogApplierTest extends IoTDBTest {
   @Test
   public void testApplyAddNode() {
     nodes.clear();
-    // TODO hxd:
     Node node = new Node("localhost", 1111, 0, 2222, Constants.RPC_PORT, "localhost");
     AddNodeLog log = new AddNodeLog();
     log.setNewNode(node);

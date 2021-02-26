@@ -57,7 +57,7 @@ public class ClusterUtils {
 
   public static final int WAIT_START_UP_CHECK_TIME_SEC = 5;
 
-  public static final long START_UP_TIME_THRESHOLD_MS = 600 * 1000L;
+  public static final long START_UP_TIME_THRESHOLD_MS = 5 * 60 * 1000L;
 
   public static final long START_UP_CHECK_TIME_INTERVAL_MS = 3 * 1000L;
 
@@ -316,7 +316,6 @@ public class ClusterUtils {
     int dataPort = Integer.parseInt(str.substring(dataPortFirstPos, dataPortLastPos));
     int clientPort = Integer.parseInt(str.substring(clientPortFirstPos, clientPortLastPos));
     String clientIp = str.substring(clientIpFirstPos, clientIpLastPos);
-    // TODO hxd: we do not set values to all fields of a Node.
     return new Node(ip, metaPort, id, dataPort, clientPort, clientIp);
   }
 

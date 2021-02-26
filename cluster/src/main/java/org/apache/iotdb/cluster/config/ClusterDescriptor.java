@@ -81,7 +81,7 @@ public class ClusterDescriptor {
         url = url + File.separatorChar + "conf" + File.separatorChar + ClusterConfig.CONFIG_NAME;
       } else {
         logger.warn(
-            "Cannot find IOTDB_HOME or CLUSTER_CONF environment variable when loading "
+            "Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading "
                 + "config file {}, use default configuration",
             ClusterConfig.CONFIG_NAME);
         // update all data seriesPath
