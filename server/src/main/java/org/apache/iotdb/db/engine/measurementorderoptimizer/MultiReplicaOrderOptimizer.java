@@ -120,7 +120,48 @@ public class MultiReplicaOrderOptimizer {
     for (; k < maxIter && System.currentTimeMillis() - optimizeStartTime < 45l * 60l * 1000l; ++k) {
       temperature = temperature * COOLING_RATE;
       int selectedReplica = r.nextInt(replicaNum);
-      int swapLeft = r.nextInt(measurementOrder.size());
+      int operation = r.nextInt(2);
+      if (operation == 0) {
+        // Swap chunk order
+        int swapLeft = r.nextInt(measurementOrder.size());
+        int swapRight = r.nextInt(measurementOrder.size());
+        while (swapLeft == swapRight) {
+          swapLeft = r.nextInt(measurementOrder.size());
+          swapRight = r.nextInt(measurementOrder.size());
+        }
+        replicas[selectedReplica].swapMeasurementPos(swapLeft, swapRight);
+        Pair<Float, Workload[]> costAndWorkloadPartition = getCostAndWorkloadPartitionForCurReplicas(records, replicas);
+        double newCost = costAndWorkloadPartition.left;
+        workloadPartition = costAndWorkloadPartition.right;
+        float probability = r.nextFloat();
+        probability = probability < 0 ? -probability : probability;
+        probability %= 1.0f;
+        if (newCost < curCost ||
+                Math.exp((curCost - newCost) / temperature) > probability) {
+          curCost = newCost;
+        } else {
+          replicas[selectedReplica].swapMeasurementPos(swapLeft, swapRight);
+        }
+      } else {
+        // Change chunk size
+        long newChunkSize = Math.abs(r.nextLong());
+        newChunkSize = newChunkSize % (chunkUpperBound - chunkLowerBound) + chunkLowerBound;
+        long curChunkSize = replicas[selectedReplica].getAverageChunkSize();
+        replicas[selectedReplica].setAverageChunkSize(newChunkSize);
+        Pair<Float, Workload[]> costAndWorkloadPartition = getCostAndWorkloadPartitionForCurReplicas(records, replicas);
+        double newCost = costAndWorkloadPartition.left;
+        workloadPartition = costAndWorkloadPartition.right;
+        float probability = r.nextFloat();
+        probability = probability < 0 ? -probability : probability;
+        probability %= 1.0f;
+        if (newCost < curCost ||
+                Math.exp((curCost - newCost) / temperature) > probability) {
+          curCost = newCost;
+        } else {
+          replicas[selectedReplica].setAverageChunkSize(curChunkSize);
+        }
+      }
+      /*int swapLeft = r.nextInt(measurementOrder.size());
       int swapRight = r.nextInt(measurementOrder.size());
       while (swapLeft == swapRight) {
         swapLeft = r.nextInt(measurementOrder.size());
@@ -143,15 +184,19 @@ public class MultiReplicaOrderOptimizer {
       } else {
         replicas[selectedReplica].swapMeasurementPos(swapLeft, swapRight);
         replicas[selectedReplica].setAverageChunkSize(curChunkSize);
-      }
+      }*/
       costList.add(curCost);
-      if (k % 500 == 0) {
+      if (k % 1000 == 0) {
         LOGGER.info(String.format("Epoch %d: curCost %.3f", k, curCost));
       }
     }
     LOGGER.info("Final cost: " + curCost);
     LOGGER.info("Loop count: " + k);
     return new Pair<>(replicas, workloadPartition);
+  }
+
+  public Pair<Replica[], Workload[]> optimizeByGAWithChunkSizeAdjustment() {
+    return null;
   }
 
   private Pair<Float, Workload[]> getCostAndWorkloadPartitionForCurReplicas(List<QueryRecord> records, Replica[] replicas) {

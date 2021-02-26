@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.Random;
 
 public class ExperimentSessionWriter {
-  private static final Session session = new Session("127.0.0.1", 6667, "root", "root");
+  private static final Session session = new Session("192.168.130.38", 6667, "root", "root");
   // private static final Session session = new Session("127.0.0.1", 6667, "root", "root");
   private static final int TIMESERIES_NUM = 1000;
   private static int DATA_NUM = 10000;
@@ -42,8 +42,13 @@ public class ExperimentSessionWriter {
     //testDivergentDesign(5);
     //testMultipleReplicaSA(5);
 //    testMultipleReplicaSAWithChunkSize(5);
-    testRainbow(3);
+    testRainbow(1);
     session.close();
+    // 1 -> 3
+    // 2 -> 4
+    // 3 -> 5
+    // 4 -> 2
+    // 5 -> 1
   }
 
   static void createTimeseries() throws StatementExecutionException, IoTDBConnectionException {
