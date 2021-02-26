@@ -34,7 +34,7 @@ import java.sql.Statement;
 
 import static org.junit.Assert.fail;
 
-public class IoTDBTracingTest {
+public class IoTDBTracingIT {
 
   @BeforeClass
   public static void setUp() {

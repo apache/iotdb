@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.cache;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
@@ -35,7 +36,9 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
@@ -48,6 +51,9 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.stream.Collectors;
 
 public class ChunkMetadataCacheTest {
 
@@ -160,7 +166,6 @@ public class ChunkMetadataCacheTest {
 
     List<TsFileResource> seqResources = queryDataSource.getSeqResources();
     List<TsFileResource> unseqResources = queryDataSource.getUnseqResources();
-
     Assert.assertEquals(1, seqResources.size());
     Assert.assertEquals(3, unseqResources.size());
     Assert.assertTrue(seqResources.get(0).isClosed());
@@ -168,9 +173,38 @@ public class ChunkMetadataCacheTest {
     Assert.assertTrue(unseqResources.get(1).isClosed());
     Assert.assertTrue(unseqResources.get(2).isClosed());
 
-    List<ChunkMetadata> metaDataList =
-        ChunkMetadataCache.getInstance()
-            .get(seqResources.get(0).getTsFilePath(), new Path(storageGroup, measurementId5), null);
-    Assert.assertEquals(0, metaDataList.size());
+    String seqTsFilePath = seqResources.get(0).getTsFilePath();
+    TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(seqTsFilePath, true);
+    Map<String, List<TimeseriesMetadata>> stringListMap = tsFileReader.getAllTimeseriesMetadata();
+    List<TimeseriesMetadata> timeseriesMetadataList = stringListMap.get(storageGroup);
+
+    ChunkMetadataCache chunkMetadataCache = ChunkMetadataCache.getInstance();
+    chunkMetadataCache.clear();
+    double hitRatio = chunkMetadataCache.calculateChunkMetaDataHitRatio();
+    for (TimeseriesMetadata tsMd : timeseriesMetadataList) {
+      chunkMetadataCache.get(seqTsFilePath, new Path(storageGroup, tsMd.getMeasurementId()), tsMd);
+    }
+    double decreasedHitRatio = chunkMetadataCache.calculateChunkMetaDataHitRatio();
+    Assert.assertTrue("The hit rate should not increase", decreasedHitRatio <= hitRatio);
+
+    // After an element is accessed, the newest element is put at the tail, so the head is the
+    // eldest one
+    TimeseriesMetadata tsMd2 = timeseriesMetadataList.get(2);
+    chunkMetadataCache.get(seqTsFilePath, new Path(storageGroup, tsMd2.getMeasurementId()), tsMd2);
+
+    String keyPrefix =
+        seqTsFilePath + IoTDBConstant.PATH_SEPARATOR + storageGroup + IoTDBConstant.PATH_SEPARATOR;
+    AccountableString key0 =
+        new AccountableString(keyPrefix + timeseriesMetadataList.get(0).getMeasurementId());
+    AccountableString key2 =
+        new AccountableString(keyPrefix + timeseriesMetadataList.get(2).getMeasurementId());
+
+    List<AccountableString> keyList =
+        chunkMetadataCache.entrySet().stream().map(Entry::getKey).collect(Collectors.toList());
+    Assert.assertEquals("Now, the eldest(head) key should be key0", keyList.get(0), key0);
+    Assert.assertEquals("Now, the newest(tail) key should be key2", keyList.get(4), key2);
+
+    double increasedHitRatio = ChunkMetadataCache.getInstance().calculateChunkMetaDataHitRatio();
+    Assert.assertTrue("The hit rate should increase", decreasedHitRatio < increasedHitRatio);
   }
 }

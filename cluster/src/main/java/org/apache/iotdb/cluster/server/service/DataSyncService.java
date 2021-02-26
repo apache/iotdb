@@ -242,6 +242,15 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
+  public ByteBuffer getDevices(Node header, ByteBuffer planBinary) throws TException {
+    try {
+      return dataGroupMember.getLocalQueryExecutor().getDevices(planBinary);
+    } catch (CheckConsistencyException | IOException | MetadataException e) {
+      throw new TException(e);
+    }
+  }
+
+  @Override
   public List<String> getNodeList(Node header, String path, int nodeLevel) throws TException {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);

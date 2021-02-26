@@ -92,17 +92,27 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
   void collectTimeseriesSchemas() {
     slotTimeseries.clear();
     List<StorageGroupMNode> allSgNodes = IoTDB.metaManager.getAllStorageGroupNodes();
+    boolean slotExistsInPartition;
+    List<Integer> slots = null;
+    if (dataGroupMember.getMetaGroupMember() != null) {
+      slots =
+          ((SlotPartitionTable) dataGroupMember.getMetaGroupMember().getPartitionTable())
+              .getNodeSlots(dataGroupMember.getHeader());
+    }
     for (MNode sgNode : allSgNodes) {
       String storageGroupName = sgNode.getFullPath();
       int slot =
           SlotPartitionTable.getSlotStrategy()
               .calculateSlotByTime(
                   storageGroupName, 0, ((SlotPartitionTable) partitionTable).getTotalSlotNumbers());
+      slotExistsInPartition = slots == null || slots.contains(slot);
 
-      Collection<TimeseriesSchema> schemas =
-          slotTimeseries.computeIfAbsent(slot, s -> new HashSet<>());
-      IoTDB.metaManager.collectTimeseriesSchema(sgNode, schemas);
-      logger.debug("{}: {} timeseries are snapshot in slot {}", getName(), schemas.size(), slot);
+      if (slotExistsInPartition) {
+        Collection<TimeseriesSchema> schemas =
+            slotTimeseries.computeIfAbsent(slot, s -> new HashSet<>());
+        IoTDB.metaManager.collectTimeseriesSchema(sgNode, schemas);
+        logger.debug("{}: {} timeseries are snapshot in slot {}", getName(), schemas.size(), slot);
+      }
     }
   }
 }
