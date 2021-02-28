@@ -19,10 +19,16 @@
 
 package org.apache.iotdb.db.engine.merge;
 
+import static org.junit.Assert.assertEquals;
+
+import java.io.File;
+import java.io.IOException;
+import java.lang.reflect.Field;
+import java.util.List;
+import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.compaction.level.LevelCompactionTsFileManagement;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.selector.IMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.selector.MaxFileMergeFileSelector;
@@ -30,16 +36,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.ITimeIndex;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-
 import org.junit.Test;
-
-import java.io.File;
-import java.io.IOException;
-import java.lang.reflect.Field;
-import java.util.List;
-import java.util.Set;
-
-import static org.junit.Assert.assertEquals;
 
 public class MaxFileMergeFileSelectorTest extends MergeTest {
 
@@ -153,8 +150,7 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
    */
   @Test
   public void testFileOpenSelectionFromCompaction()
-      throws MergeException, IOException, WriteProcessException, NoSuchFieldException,
-          IllegalAccessException {
+      throws IOException, WriteProcessException, NoSuchFieldException, IllegalAccessException {
     File file =
         new File(
             TestConstant.BASE_OUTPUT_PATH.concat(
@@ -191,14 +187,10 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
     unseqResources.clear();
     unseqResources.add(largeUnseqTsFileResource);
 
-    LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement("", "");
-    levelCompactionTsFileManagement.merge(false, seqResources, unseqResources, Long.MAX_VALUE);
-
-    MergeResource resource = new MergeResource(seqResources, unseqResources);
-    IMergeFileSelector mergeFileSelector = new MaxFileMergeFileSelector(resource, Long.MAX_VALUE);
-    List[] result = mergeFileSelector.select();
-    assertEquals(0, result.length);
-    resource.clear();
+    long timeLowerBound = System.currentTimeMillis() - Long.MAX_VALUE;
+    MergeResource mergeResource = new MergeResource(seqResources, unseqResources, timeLowerBound);
+    assertEquals(5, mergeResource.getSeqFiles().size());
+    assertEquals(1, mergeResource.getUnseqFiles().size());
+    mergeResource.clear();
   }
 }
