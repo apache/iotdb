@@ -22,6 +22,7 @@ import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -34,8 +35,11 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -368,6 +372,49 @@ public class MTreeTest {
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testGetAllChildNodeNamesByPath() {
+    MTree root = new MTree();
+    try {
+      root.setStorageGroup(new PartialPath("root.a.d0"));
+      root.createTimeseries(
+          new PartialPath("root.a.d0.s0"),
+          TSDataType.INT32,
+          TSEncoding.RLE,
+          TSFileDescriptor.getInstance().getConfig().getCompressor(),
+          Collections.emptyMap(),
+          null);
+      root.createTimeseries(
+          new PartialPath("root.a.d0.s1"),
+          TSDataType.INT32,
+          TSEncoding.RLE,
+          TSFileDescriptor.getInstance().getConfig().getCompressor(),
+          Collections.emptyMap(),
+          null);
+      root.createTimeseries(
+          new PartialPath("root.a.d5"),
+          TSDataType.INT32,
+          TSEncoding.RLE,
+          TSFileDescriptor.getInstance().getConfig().getCompressor(),
+          Collections.emptyMap(),
+          null);
+
+      // getChildNodeByPath
+      Set<String> result1 = root.getChildNodeInNextLevel(new PartialPath("root.a.d0"));
+      Set<String> result2 = root.getChildNodeInNextLevel(new PartialPath("root.a"));
+      Set<String> result3 = root.getChildNodeInNextLevel(new PartialPath("root"));
+      assertEquals(result1, new HashSet<>(Arrays.asList("s0", "s1")));
+      assertEquals(result2, new HashSet<>(Arrays.asList("d0", "d5")));
+      assertEquals(result3, new HashSet<>(Arrays.asList("a")));
+
+      // if child node is nll   will return  null HashSet
+      Set<String> result5 = root.getChildNodeInNextLevel(new PartialPath("root.a.d5"));
+      assertEquals(result5, new HashSet<>(Arrays.asList()));
+    } catch (MetadataException e1) {
+      e1.printStackTrace();
     }
   }
 
@@ -766,5 +813,31 @@ public class MTreeTest {
     } catch (MetadataException e1) {
       fail(e1.getMessage());
     }
+  }
+
+  @Test
+  public void testCreateTimeseries() throws MetadataException {
+    MTree root = new MTree();
+    String sgPath = "root.sg1";
+    root.setStorageGroup(new PartialPath(sgPath));
+
+    root.createTimeseries(
+        new PartialPath("root.sg1.a.b.c"),
+        TSDataType.INT32,
+        TSEncoding.RLE,
+        TSFileDescriptor.getInstance().getConfig().getCompressor(),
+        Collections.emptyMap(),
+        null);
+
+    root.createTimeseries(
+        new PartialPath("root.sg1.a.b"),
+        TSDataType.INT32,
+        TSEncoding.RLE,
+        TSFileDescriptor.getInstance().getConfig().getCompressor(),
+        Collections.emptyMap(),
+        null);
+
+    MNode node = root.getNodeByPath(new PartialPath("root.sg1.a.b"));
+    Assert.assertTrue(node instanceof MeasurementMNode);
   }
 }

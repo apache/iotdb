@@ -470,7 +470,12 @@ public class MManager {
       createTimeseries(
           new CreateTimeSeriesPlan(path, dataType, encoding, compressor, props, null, null, null));
     } catch (PathAlreadyExistException | AliasAlreadyExistException e) {
-      // ignore
+      if (logger.isDebugEnabled()) {
+        logger.debug(
+            "Ignore PathAlreadyExistException and AliasAlreadyExistException when Concurrent inserting"
+                + " a non-exist time series {}",
+            path);
+      }
     }
   }
 
@@ -991,10 +996,6 @@ public class MManager {
     return res;
   }
 
-  protected MeasurementMNode getMeasurementMNode(MNode deviceMNode, String measurement) {
-    return (MeasurementMNode) deviceMNode.getChild(measurement);
-  }
-
   public MeasurementSchema getSeriesSchema(PartialPath device, String measurement)
       throws MetadataException {
     MNode node = mtree.getNodeByPath(device);
@@ -1011,10 +1012,23 @@ public class MManager {
    * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1,
    * return [root.sg1.d1, root.sg1.d2]
    *
+   * @param path The given path
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
   public Set<String> getChildNodePathInNextLevel(PartialPath path) throws MetadataException {
     return mtree.getChildNodePathInNextLevel(path);
+  }
+
+  /**
+   * Get child node in the next level of the given path.
+   *
+   * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1,
+   * return [d1, d2] given path = root.sg.d1 return [s1,s2]
+   *
+   * @return All child nodes of given seriesPath.
+   */
+  public Set<String> getChildNodeInNextLevel(PartialPath path) throws MetadataException {
+    return mtree.getChildNodeInNextLevel(path);
   }
 
   /**
@@ -1828,28 +1842,26 @@ public class MManager {
     MNode deviceMNode = getDeviceNodeWithAutoCreate(deviceId);
 
     // 2. get schema of each measurement
+    // if do not has measurement
+    MeasurementMNode measurementMNode;
+    TSDataType dataType;
     for (int i = 0; i < measurementList.length; i++) {
       try {
-        // if do not has measurement
-        MeasurementMNode measurementMNode;
-        if (!deviceMNode.hasChild(measurementList[i])) {
-          // could not create it
+        MNode child = getMNode(deviceMNode, measurementList[i]);
+        if (child instanceof MeasurementMNode) {
+          measurementMNode = (MeasurementMNode) child;
+        } else if (child instanceof StorageGroupMNode) {
+          throw new PathAlreadyExistException(deviceId + PATH_SEPARATOR + measurementList[i]);
+        } else {
           if (!config.isAutoCreateSchemaEnabled()) {
-            // but measurement not in MTree and cannot auto-create, try the cache
-            measurementMNode = getMeasurementMNode(deviceMNode, measurementList[i]);
-            if (measurementMNode == null) {
-              throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurementList[i]);
-            }
+            throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurementList[i]);
           } else {
-            // create it
-
-            TSDataType dataType = getTypeInLoc(plan, i);
+            // child is null or child is type of MNode
+            dataType = getTypeInLoc(plan, i);
             // create it, may concurrent created by multiple thread
             internalCreateTimeseries(deviceId.concatNode(measurementList[i]), dataType);
             measurementMNode = (MeasurementMNode) deviceMNode.getChild(measurementList[i]);
           }
-        } else {
-          measurementMNode = getMeasurementMNode(deviceMNode, measurementList[i]);
         }
 
         // check type is match
@@ -1906,24 +1918,19 @@ public class MManager {
     return deviceMNode;
   }
 
+  public MNode getMNode(MNode deviceMNode, String measurementName) {
+    return deviceMNode.getChild(measurementName);
+  }
+
   /** create timeseries with ignore PathAlreadyExistException */
   private void internalCreateTimeseries(PartialPath path, TSDataType dataType)
       throws MetadataException {
-    try {
-      createTimeseries(
-          path,
-          dataType,
-          getDefaultEncoding(dataType),
-          TSFileDescriptor.getInstance().getConfig().getCompressor(),
-          Collections.emptyMap());
-    } catch (PathAlreadyExistException | AliasAlreadyExistException e) {
-      if (logger.isDebugEnabled()) {
-        logger.debug(
-            "Ignore PathAlreadyExistException and AliasAlreadyExistException when Concurrent inserting"
-                + " a non-exist time series {}",
-            path);
-      }
-    }
+    createTimeseries(
+        path,
+        dataType,
+        getDefaultEncoding(dataType),
+        TSFileDescriptor.getInstance().getConfig().getCompressor(),
+        Collections.emptyMap());
   }
 
   /** get dataType of plan, in loc measurements only support InsertRowPlan and InsertTabletPlan */
