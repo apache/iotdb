@@ -27,15 +27,15 @@ var config = {
 
     // 静态网站部署的目录
     base: '',
-  
+
     // 网站标题
     title: 'IoTDB Website',
-  
+
     // <meta name="description" content="...">
-    description: 'Apache IoTDB', 
-  
+    description: 'Apache IoTDB',
+
     markdown: {
-      
+
       // 显示代码行号
       lineNumbers: true
     },
@@ -43,18 +43,18 @@ var config = {
 
         // 项目的 github 地址
         repo: 'https://github.com/apache/iotdb.git',
-    
+
         // github 地址的链接名
         repoLabel: 'gitHub',
-		
+
 		logo: '/img/logo.png',
-		
+
 		searchMaxSuggestions:10,
 
 		displayAllHeaders: true,
-		
+
 		sidebarDepth: 0,
-    
+
 		locales: {
 		  '/': {
 			selectText: 'Languages',
@@ -554,6 +554,9 @@ var config = {
 							['Operation Manual/DDL Data Definition Language','DDL (Data Definition Language)'],
 							['Operation Manual/DML Data Manipulation Language','DML (Data Manipulation Language)'],
 							['Operation Manual/UDF User Defined Function','UDF (User Defined Function)'],
+							// The trigger module has not been implemented yet,
+							// so the website should not show users how to use it to avoid misleading.
+              // ['Operation Manual/Triggers','Triggers'],
 							['Operation Manual/Kill Query','Kill Query'],
 							['Operation Manual/Administration','Administration'],
 							['Operation Manual/SQL Reference','SQL Reference']
@@ -836,7 +839,7 @@ var config = {
 							['8-System Tools/1-Sync','同步工具'],
 							['8-System Tools/2-Memory Estimation Tool','内存预估工具']
 						]
-					},		   
+					},
 				],
 				'/zh/UserGuide/V0.9.x/': [
 					{
@@ -1175,7 +1178,10 @@ var config = {
 						children: [
 							['Operation Manual/DDL Data Definition Language','DDL (数据定义语言)'],
 							['Operation Manual/DML Data Manipulation Language','DML (数据操作语言)'],
-							['Operation Manual/UDF User Defined Function','UDF（用户自定义函数）'],
+              ['Operation Manual/UDF User Defined Function','UDF（用户自定义函数）'],
+							// The trigger module has not been implemented yet,
+							// so the website should not show users how to use it to avoid misleading.
+              // ['Operation Manual/Triggers','触发器'],
 							['Operation Manual/Kill Query','中止查询'],
 							['Operation Manual/Administration','权限管理语句'],
 							['Operation Manual/SQL Reference','SQL 参考文档']
@@ -1308,7 +1314,7 @@ var config = {
       },
 	locales: {
 		'/': {
-		  lang: 'en-US', 
+		  lang: 'en-US',
 		  title: ' ',
 		  description: ' '
 		},
@@ -1319,6 +1325,6 @@ var config = {
 		}
 	  },
   }
-  
+
   module.exports = config
   

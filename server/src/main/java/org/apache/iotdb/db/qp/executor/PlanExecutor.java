@@ -79,10 +79,12 @@ import org.apache.iotdb.db.qp.physical.sys.CountPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropFunctionPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.KillQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
@@ -98,6 +100,9 @@ import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTriggersPlan;
+import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
+import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
@@ -165,6 +170,12 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PROGRESS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ROLE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TASK_NAME;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_ATTRIBUTES;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_CLASS;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_EVENT;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_NAME;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_PATH;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_STATUS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
@@ -307,6 +318,14 @@ public class PlanExecutor implements IPlanExecutor {
         return operateCreateFunction((CreateFunctionPlan) plan);
       case DROP_FUNCTION:
         return operateDropFunction((DropFunctionPlan) plan);
+      case CREATE_TRIGGER:
+        return operateCreateTrigger((CreateTriggerPlan) plan);
+      case DROP_TRIGGER:
+        return operateDropTrigger((DropTriggerPlan) plan);
+      case START_TRIGGER:
+        return operateStartTrigger((StartTriggerPlan) plan);
+      case STOP_TRIGGER:
+        return operateStopTrigger((StopTriggerPlan) plan);
       case CREATE_INDEX:
         throw new QueryProcessException("Create index hasn't been supported yet");
       case DROP_INDEX:
@@ -333,6 +352,22 @@ public class PlanExecutor implements IPlanExecutor {
   private boolean operateDropFunction(DropFunctionPlan plan) throws UDFRegistrationException {
     UDFRegistrationService.getInstance().deregister(plan.getUdfName());
     return true;
+  }
+
+  private boolean operateCreateTrigger(CreateTriggerPlan plan) {
+    return false;
+  }
+
+  private boolean operateDropTrigger(DropTriggerPlan plan) {
+    return false;
+  }
+
+  private boolean operateStartTrigger(StartTriggerPlan plan) {
+    return false;
+  }
+
+  private boolean operateStopTrigger(StopTriggerPlan plan) {
+    return false;
   }
 
   private void operateMerge(MergePlan plan) throws StorageEngineException {
@@ -505,6 +540,8 @@ public class PlanExecutor implements IPlanExecutor {
         return processShowQueryProcesslist();
       case FUNCTIONS:
         return processShowFunctions((ShowFunctionsPlan) showPlan);
+      case TRIGGERS:
+        return processShowTriggers((ShowTriggersPlan) showPlan);
       default:
         throw new QueryProcessException(String.format("Unrecognized show plan %s", showPlan));
     }
@@ -839,6 +876,24 @@ public class PlanExecutor implements IPlanExecutor {
       rowRecord.addField(className, TSDataType.TEXT);
       listDataSet.putRecord(rowRecord);
     }
+  }
+
+  private QueryDataSet processShowTriggers(ShowTriggersPlan showPlan) {
+    return new ListDataSet(
+        Arrays.asList(
+            new PartialPath(COLUMN_TRIGGER_NAME, false),
+            new PartialPath(COLUMN_TRIGGER_STATUS, false),
+            new PartialPath(COLUMN_TRIGGER_EVENT, false),
+            new PartialPath(COLUMN_TRIGGER_PATH, false),
+            new PartialPath(COLUMN_TRIGGER_CLASS, false),
+            new PartialPath(COLUMN_TRIGGER_ATTRIBUTES, false)),
+        Arrays.asList(
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT));
   }
 
   private void addRowRecordForShowQuery(
