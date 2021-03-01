@@ -293,6 +293,10 @@ public class ClusterDescriptor {
     }
   }
 
+  /**
+   * @param seedUrls the seed urls
+   * @return the seed urls as a list
+   */
   public static List<String> getSeedUrlList(String seedUrls) {
     if (seedUrls == null) {
       return Collections.emptyList();

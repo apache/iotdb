@@ -33,7 +33,7 @@ public class ClusterConfig {
   private int internalDataPort = 40010;
   private int clusterRpcPort = 6667;
 
-  /** each one is a <internalIp | domain name>:<meta port> string tuple */
+  /** each one is a {internalIp | domain name}:{meta port} string tuple */
   private List<String> seedNodeUrls =
       Arrays.asList(String.format("%s:%d", internalIp, internalMetaPort));
 
