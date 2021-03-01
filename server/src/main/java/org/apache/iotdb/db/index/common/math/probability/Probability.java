@@ -20,5 +20,4 @@ package org.apache.iotdb.db.index.common.math.probability;
 public abstract class Probability {
 
   public abstract double getNextRandom();
-
 }

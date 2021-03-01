@@ -91,9 +91,9 @@ public enum IndexType {
       case NO_INDEX:
         return new NoIndex(path, tsDataType, indexInfo);
       case ELB_INDEX:
-//        return new ELBIndex(path, tsDataType, indexDir, indexInfo);
+        //        return new ELBIndex(path, tsDataType, indexDir, indexInfo);
       case RTREE_PAA:
-//        return new RTreePAAIndex(path, tsDataType, indexDir, indexInfo);
+        //        return new RTreePAAIndex(path, tsDataType, indexDir, indexInfo);
       default:
         throw new NotImplementedException("unsupported index type:" + indexType);
     }

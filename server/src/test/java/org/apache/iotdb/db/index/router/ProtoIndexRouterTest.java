@@ -25,9 +25,7 @@ import java.util.Map;
 import static org.apache.iotdb.db.index.common.IndexConstant.INDEX_SLIDE_STEP;
 import static org.apache.iotdb.db.index.common.IndexConstant.INDEX_WINDOW_RANGE;
 import static org.apache.iotdb.db.index.common.IndexConstant.PAA_DIM;
-import static org.apache.iotdb.db.index.common.IndexType.ELB_INDEX;
 import static org.apache.iotdb.db.index.common.IndexType.NO_INDEX;
-import static org.apache.iotdb.db.index.common.IndexType.RTREE_PAA;
 
 public class ProtoIndexRouterTest {
 
