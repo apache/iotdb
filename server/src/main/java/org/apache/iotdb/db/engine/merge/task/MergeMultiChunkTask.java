@@ -267,7 +267,7 @@ public class MergeMultiChunkTask {
         for (int i = 0; i < currMergingPaths.size(); i++) {
           if (currMergingPaths.get(i).getMeasurement().equals(currSensor)) {
             modifications[i] = resource.getModifications(currTsFile, currMergingPaths.get(i));
-            seqChunkMeta[i] = resource.queryChunkMetadata(currMergingPaths.get(i), currTsFile);
+            seqChunkMeta[i] = measurementChunkMetadataListEntry.getValue();
             modifyChunkMetaData(seqChunkMeta[i], modifications[i]);
 
             if (Thread.interrupted()) {
