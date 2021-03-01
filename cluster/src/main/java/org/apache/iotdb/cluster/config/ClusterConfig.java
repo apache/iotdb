@@ -147,12 +147,11 @@ public class ClusterConfig {
    */
   private boolean waitForSlowNode = true;
 
+  /** when consistency level set to mid, query failed if the log lag exceeds maxReadLogLog. */
+  private long maxReadLogLag = 1000L;
+
   public int getSelectorNumOfClientPool() {
     return selectorNumOfClientPool;
-  }
-
-  public void setSelectorNumOfClientPool(int selectorNumOfClientPool) {
-    this.selectorNumOfClientPool = selectorNumOfClientPool;
   }
 
   public int getMaxClientPerNodePerMember() {
@@ -423,7 +422,11 @@ public class ClusterConfig {
     return waitForSlowNode;
   }
 
-  public void setWaitForSlowNode(boolean waitForSlowNode) {
-    this.waitForSlowNode = waitForSlowNode;
+  public long getMaxReadLogLag() {
+    return maxReadLogLag;
+  }
+
+  public void setMaxReadLogLag(long maxReadLogLag) {
+    this.maxReadLogLag = maxReadLogLag;
   }
 }

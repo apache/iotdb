@@ -107,7 +107,7 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 @SuppressWarnings("java:S3077") // reference volatile is enough
 public abstract class RaftMember {
-
+  private static final Logger logger = LoggerFactory.getLogger(RaftMember.class);
   public static final boolean USE_LOG_DISPATCHER = false;
 
   private static final String MSG_FORWARD_TIMEOUT = "{}: Forward {} to {} time out";
@@ -115,7 +115,6 @@ public abstract class RaftMember {
       "{}: encountered an error when forwarding {} to" + " {}";
   private static final String MSG_NO_LEADER_COMMIT_INDEX =
       "{}: Cannot request commit index from {}";
-  private static final Logger logger = LoggerFactory.getLogger(RaftMember.class);
   private static final String MSG_NO_LEADER_IN_SYNC = "{}: No leader is found when synchronizing";
   public static final String MSG_LOG_IS_ACCEPTED = "{}: log {} is accepted";
   /**
@@ -731,19 +730,45 @@ public abstract class RaftMember {
   public void syncLeaderWithConsistencyCheck(boolean isWriteRequest)
       throws CheckConsistencyException {
     if (isWriteRequest) {
-      if (!syncLeader()) {
+      if (!syncLeader(
+          new CheckConsistency() {
+            @Override
+            public void postCheckConsistency(long leaderCommitId, long localAppliedId)
+                throws CheckConsistencyException {
+              if (leaderCommitId > localAppliedId) {
+                throw CheckConsistencyException.CHECK_STRONG_CONSISTENCY_EXCEPTION;
+              }
+            }
+          })) {
         throw CheckConsistencyException.CHECK_STRONG_CONSISTENCY_EXCEPTION;
       }
     } else {
       switch (ClusterDescriptor.getInstance().getConfig().getConsistencyLevel()) {
         case STRONG_CONSISTENCY:
-          if (!syncLeader()) {
-            throw CheckConsistencyException.CHECK_STRONG_CONSISTENCY_EXCEPTION;
-          }
-          return;
+          syncLeader(
+              new CheckConsistency() {
+
+                @Override
+                public void postCheckConsistency(long leaderCommitId, long localAppliedId)
+                    throws CheckConsistencyException {
+                  if (leaderCommitId > localAppliedId) {
+                    throw CheckConsistencyException.CHECK_STRONG_CONSISTENCY_EXCEPTION;
+                  }
+                }
+              });
+          break;
         case MID_CONSISTENCY:
           // do not care success or not
-          syncLeader();
+          syncLeader(
+              new CheckConsistency() {
+                @Override
+                public void postCheckConsistency(long leaderCommitId, long localAppliedId)
+                    throws CheckConsistencyException {
+                  if (leaderCommitId - localAppliedId > config.getMaxReadLogLag()) {
+                    throw CheckConsistencyException.CHECK_MID_CONSISTENCY_EXCEPTION;
+                  }
+                }
+              });
           return;
         case WEAK_CONSISTENCY:
           // do nothing
@@ -757,13 +782,21 @@ public abstract class RaftMember {
     }
   }
 
+  public interface CheckConsistency {
+    void postCheckConsistency(long leaderCommitId, long localAppliedId)
+        throws CheckConsistencyException;
+  }
+
   /**
    * Request and check the leader's commitId to see whether this node has caught up. If not, wait
    * until this node catches up.
    *
    * @return true if the node has caught up, false otherwise
+   * @throws CheckConsistencyException if leaderCommitId bigger than localAppliedId a threshold
+   *     value after timeout
+   * @param checkConsistency
    */
-  public boolean syncLeader() {
+  public boolean syncLeader(CheckConsistency checkConsistency) throws CheckConsistencyException {
     if (character == NodeCharacter.LEADER) {
       return true;
     }
@@ -777,7 +810,7 @@ public abstract class RaftMember {
       return true;
     }
     logger.debug("{}: try synchronizing with the leader {}", name, leader.get());
-    return waitUntilCatchUp();
+    return waitUntilCatchUp(checkConsistency);
   }
 
   /** Wait until the leader of this node becomes known or time out. */
@@ -806,10 +839,11 @@ public abstract class RaftMember {
    * it.
    *
    * @return true if this node has caught up before timeout, false otherwise
+   * @throws CheckConsistencyException if leaderCommitId bigger than localAppliedId a threshold
+   *     value after timeout
    */
-  private boolean waitUntilCatchUp() {
-    long startTime = System.currentTimeMillis();
-    long waitedTime = 0;
+  private boolean waitUntilCatchUp(CheckConsistency checkConsistency)
+      throws CheckConsistencyException {
     long leaderCommitId;
     try {
       leaderCommitId =
@@ -829,9 +863,29 @@ public abstract class RaftMember {
       return false;
     }
 
+    if (syncLocalApply(leaderCommitId)) {
+      return true;
+    }
+    if (checkConsistency != null) {
+      checkConsistency.postCheckConsistency(
+          leaderCommitId, logManager.getMaxHaveAppliedCommitIndex());
+    }
+    return false;
+  }
+
+  /**
+   * sync local applyId to leader commitId
+   *
+   * @param leaderCommitId leader commit id
+   * @return true if leaderCommitId <= localAppliedId
+   */
+  private boolean syncLocalApply(long leaderCommitId) {
+    long startTime = System.currentTimeMillis();
+    long waitedTime = 0;
+    long localAppliedId = 0;
     while (waitedTime < RaftServer.getSyncLeaderMaxWaitMs()) {
       try {
-        long localAppliedId = logManager.getMaxHaveAppliedCommitIndex();
+        localAppliedId = logManager.getMaxHaveAppliedCommitIndex();
         logger.debug("{}: synchronizing commitIndex {}/{}", name, localAppliedId, leaderCommitId);
         if (leaderCommitId <= localAppliedId) {
           // this node has caught up
@@ -854,6 +908,7 @@ public abstract class RaftMember {
       }
     }
     logger.warn("{}: Failed to synchronize with the leader after {}ms", name, waitedTime);
+
     return false;
   }
 

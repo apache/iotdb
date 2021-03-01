@@ -814,9 +814,13 @@ public class CMManager extends MManager {
   private void pullTimeSeriesSchemas(PartitionGroup partitionGroup, List<String> prefixPaths) {
     if (partitionGroup.contains(metaGroupMember.getThisNode())) {
       // the node is in the target group, synchronize with leader should be enough
-      metaGroupMember
-          .getLocalDataMember(partitionGroup.getHeader(), "Pull timeseries of " + prefixPaths)
-          .syncLeader();
+      try {
+        metaGroupMember
+            .getLocalDataMember(partitionGroup.getHeader(), "Pull timeseries of " + prefixPaths)
+            .syncLeader(null);
+      } catch (CheckConsistencyException e) {
+        logger.warn("Failed to check consistency.", e);
+      }
       return;
     }
 
@@ -1063,7 +1067,11 @@ public class CMManager extends MManager {
       if (partitionGroup.contains(metaGroupMember.getThisNode())) {
         // this node is a member of the group, perform a local query after synchronizing with the
         // leader
-        metaGroupMember.getLocalDataMember(partitionGroup.getHeader()).syncLeader();
+        try {
+          metaGroupMember.getLocalDataMember(partitionGroup.getHeader()).syncLeader(null);
+        } catch (CheckConsistencyException e) {
+          logger.warn("Failed to check consistency.", e);
+        }
         List<PartialPath> allTimeseriesName = getMatchedPathsLocally(pathUnderSG, withAlias);
         logger.debug(
             "{}: get matched paths of {} locally, result {}",
@@ -1199,7 +1207,11 @@ public class CMManager extends MManager {
       if (partitionGroup.contains(metaGroupMember.getThisNode())) {
         // this node is a member of the group, perform a local query after synchronizing with the
         // leader
-        metaGroupMember.getLocalDataMember(partitionGroup.getHeader()).syncLeader();
+        try {
+          metaGroupMember.getLocalDataMember(partitionGroup.getHeader()).syncLeader(null);
+        } catch (CheckConsistencyException e) {
+          logger.warn("Failed to check consistency.", e);
+        }
         Set<PartialPath> allDevices = getDevices(pathUnderSG);
         logger.debug(
             "{}: get matched paths of {} locally, result {}",
@@ -1795,7 +1807,11 @@ public class CMManager extends MManager {
     try {
       return super.getStorageGroupPath(path);
     } catch (StorageGroupNotSetException e) {
-      metaGroupMember.syncLeader();
+      try {
+        metaGroupMember.syncLeader(null);
+      } catch (CheckConsistencyException ex) {
+        logger.warn("Failed to check consistency.", e);
+      }
       return super.getStorageGroupPath(path);
     }
   }

@@ -349,6 +349,10 @@ public class ClusterDescriptor {
                 "enable_use_persist_log_on_disk_to_catch_up",
                 String.valueOf(config.isEnableUsePersistLogOnDiskToCatchUp()))));
 
+    config.setMaxReadLogLag(
+        Long.parseLong(
+            properties.getProperty("max_read_log_lag", String.valueOf(config.getMaxReadLogLag()))));
+
     String consistencyLevel = properties.getProperty("consistency_level");
     if (consistencyLevel != null) {
       config.setConsistencyLevel(ConsistencyLevel.getConsistencyLevel(consistencyLevel));

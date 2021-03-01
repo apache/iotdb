@@ -182,7 +182,7 @@ public class DataGroupMemberTest extends MemberTest {
     DataGroupMember dataGroupMember =
         new DataGroupMember(new Factory(), nodes, node, testMetaMember) {
           @Override
-          public boolean syncLeader() {
+          public boolean syncLeader(CheckConsistency checkConsistency) {
             return true;
           }
 

@@ -42,6 +42,7 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
+import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
 import org.apache.iotdb.cluster.server.service.DataAsyncService;
 import org.apache.iotdb.cluster.server.service.MetaAsyncService;
@@ -91,7 +92,7 @@ public class DataLogApplierTest extends IoTDBTest {
   private TestMetaGroupMember testMetaGroupMember =
       new TestMetaGroupMember() {
         @Override
-        public boolean syncLeader() {
+        public boolean syncLeader(RaftMember.CheckConsistency checkConsistency) {
           return true;
         }
 
