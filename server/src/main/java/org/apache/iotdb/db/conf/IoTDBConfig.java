@@ -167,7 +167,7 @@ public class IoTDBConfig {
    */
   private int walBufferSize = 16 * 1024 * 1024;
 
-  private int maxWalBytebufferNumForEachPartition = 8;
+  private int maxWalBytebufferNumForEachPartition = 6;
 
   private long walPoolTrimIntervalInMS = 10_000;
 
