@@ -18,11 +18,12 @@
  */
 package org.apache.iotdb.tsfile.read.query.dataset;
 
-import java.io.IOException;
-import java.util.List;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+
+import java.io.IOException;
+import java.util.List;
 
 public abstract class QueryDataSet {
 
@@ -34,8 +35,7 @@ public abstract class QueryDataSet {
   protected int alreadyReturnedRowNum = 0;
   protected boolean ascending;
 
-  public QueryDataSet() {
-  }
+  public QueryDataSet() {}
 
   public QueryDataSet(List<Path> paths, List<TSDataType> dataTypes) {
     initQueryDataSetFields(paths, dataTypes, true);
@@ -45,7 +45,8 @@ public abstract class QueryDataSet {
     initQueryDataSetFields(paths, dataTypes, ascending);
   }
 
-  protected void initQueryDataSetFields(List<Path> paths, List<TSDataType> dataTypes, boolean ascending) {
+  protected void initQueryDataSetFields(
+      List<Path> paths, List<TSDataType> dataTypes, boolean ascending) {
     this.paths = paths;
     this.dataTypes = dataTypes;
     this.ascending = ascending;
@@ -72,9 +73,7 @@ public abstract class QueryDataSet {
 
   public abstract boolean hasNextWithoutConstraint() throws IOException;
 
-  /**
-   * This method is used for batch query, return RowRecord.
-   */
+  /** This method is used for batch query, return RowRecord. */
   public RowRecord next() throws IOException {
     if (rowLimit > 0) {
       alreadyReturnedRowNum++;

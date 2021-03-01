@@ -21,15 +21,14 @@ package org.apache.iotdb.db.query.reader.series;
 
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.PathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -51,27 +50,35 @@ public class SeriesReaderByTimestampTest {
   private List<TsFileResource> unseqResources = new ArrayList<>();
 
   @Before
-  public void setUp() throws MetadataException, PathException, IOException, WriteProcessException {
+  public void setUp() throws MetadataException, IOException, WriteProcessException {
     SeriesReaderTestUtil.setUp(measurementSchemas, deviceIds, seqResources, unseqResources);
   }
 
   @After
-  public void tearDown() throws IOException, StorageEngineException {
+  public void tearDown() throws IOException {
     SeriesReaderTestUtil.tearDown(seqResources, unseqResources);
   }
 
   @Test
   public void test() throws IOException, IllegalPathException {
-    QueryDataSource dataSource = new QueryDataSource(
-        new PartialPath(SERIES_READER_TEST_SG + ".device0.sensor0"),
-        seqResources, unseqResources);
+    QueryDataSource dataSource =
+        new QueryDataSource(
+            new PartialPath(SERIES_READER_TEST_SG + ".device0.sensor0"),
+            seqResources,
+            unseqResources);
 
     Set<String> allSensors = new HashSet<>();
     allSensors.add("sensor0");
 
-    SeriesReaderByTimestamp seriesReader = new SeriesReaderByTimestamp(
-        new PartialPath(SERIES_READER_TEST_SG + ".device0.sensor0"), allSensors,
-        TSDataType.INT32, new QueryContext(), dataSource, null, true);
+    SeriesReaderByTimestamp seriesReader =
+        new SeriesReaderByTimestamp(
+            new PartialPath(SERIES_READER_TEST_SG + ".device0.sensor0"),
+            allSensors,
+            TSDataType.INT32,
+            new QueryContext(),
+            dataSource,
+            null,
+            true);
 
     for (int time = 0; time < 500; time++) {
       Integer value = (Integer) seriesReader.getValueInTimestamp(time);

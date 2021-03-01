@@ -18,17 +18,19 @@
  */
 package org.apache.iotdb.hadoop.fileSystem;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
+import org.apache.iotdb.tsfile.read.reader.TsFileInput;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.ChecksumFileSystem;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.iotdb.tsfile.read.reader.TsFileInput;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 
 public class HDFSInput implements TsFileInput {
 
@@ -99,22 +101,22 @@ public class HDFSInput implements TsFileInput {
   }
 
   @Override
-  public int read() throws IOException {
+  public int read() {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public int read(byte[] b, int off, int len) throws IOException {
+  public int read(byte[] b, int off, int len) {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public FileChannel wrapAsFileChannel() throws IOException {
+  public FileChannel wrapAsFileChannel() {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public InputStream wrapAsInputStream() throws IOException {
+  public InputStream wrapAsInputStream() {
     return fsDataInputStream;
   }
 
@@ -124,7 +126,7 @@ public class HDFSInput implements TsFileInput {
   }
 
   @Override
-  public int readInt() throws IOException {
+  public int readInt() {
     throw new UnsupportedOperationException();
   }
 

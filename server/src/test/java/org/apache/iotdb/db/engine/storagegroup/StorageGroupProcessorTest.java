@@ -18,19 +18,15 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
+import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -49,10 +45,16 @@ import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public class StorageGroupProcessorTest {
 
@@ -63,10 +65,10 @@ public class StorageGroupProcessorTest {
   private StorageGroupProcessor processor;
   private QueryContext context = EnvironmentUtils.TEST_QUERY_CONTEXT;
 
-
   @Before
   public void setUp() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig()
+    IoTDBDescriptor.getInstance()
+        .getConfig()
         .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
     MetadataManagerHelper.initMetadata();
     EnvironmentUtils.envSetUp();
@@ -81,7 +83,8 @@ public class StorageGroupProcessorTest {
     EnvironmentUtils.cleanDir(TestConstant.OUTPUT_DATA_DIR);
     MergeManager.getINSTANCE().stop();
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance().getConfig()
+    IoTDBDescriptor.getInstance()
+        .getConfig()
         .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
   }
 
@@ -119,9 +122,14 @@ public class StorageGroupProcessorTest {
 
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessors()) {
-      tsfileProcessor
-          .query(deviceId, measurementId, TSDataType.INT32, TSEncoding.RLE, Collections.emptyMap(),
-              new QueryContext(), tsfileResourcesForQuery);
+      tsfileProcessor.query(
+          deviceId,
+          measurementId,
+          TSDataType.INT32,
+          TSEncoding.RLE,
+          Collections.emptyMap(),
+          new QueryContext(),
+          tsfileResourcesForQuery);
     }
 
     Assert.assertEquals(1, tsfileResourcesForQuery.size());
@@ -153,13 +161,38 @@ public class StorageGroupProcessorTest {
       e.printStackTrace();
     }
     processor.syncCloseAllWorkingTsFileProcessors();
-    QueryDataSource queryDataSource = processor
-        .query(new PartialPath(deviceId), measurementId, context,
-            null, null);
+    QueryDataSource queryDataSource =
+        processor.query(new PartialPath(deviceId), measurementId, context, null, null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       Assert.assertTrue(resource.isClosed());
     }
+  }
+
+  @Test
+  public void testInsertDataAndRemovePartitionAndInsert()
+      throws WriteProcessException, QueryProcessException, IllegalPathException {
+    for (int j = 0; j < 10; j++) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      processor.insert(new InsertRowPlan(record));
+      processor.asyncCloseAllWorkingTsFileProcessors();
+    }
+    processor.syncCloseAllWorkingTsFileProcessors();
+
+    processor.removePartitions((storageGroupName, timePartitionId) -> true);
+
+    for (int j = 0; j < 10; j++) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      processor.insert(new InsertRowPlan(record));
+      processor.asyncCloseAllWorkingTsFileProcessors();
+    }
+    processor.syncCloseAllWorkingTsFileProcessors();
+
+    QueryDataSource queryDataSource =
+        processor.query(new PartialPath(deviceId), measurementId, context, null, null);
+    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
   }
 
   @Test
@@ -173,14 +206,15 @@ public class StorageGroupProcessorTest {
     dataTypes.add(TSDataType.INT64.ordinal());
 
     MeasurementMNode[] measurementMNodes = new MeasurementMNode[2];
-    measurementMNodes[0] = new MeasurementMNode(null, "s0",
-        new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN), null);
-    measurementMNodes[1] = new MeasurementMNode(null, "s1",
-        new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null);
+    measurementMNodes[0] =
+        new MeasurementMNode(
+            null, "s0", new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN), null);
+    measurementMNodes[1] =
+        new MeasurementMNode(
+            null, "s1", new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null);
 
-    InsertTabletPlan insertTabletPlan1 = new InsertTabletPlan(new PartialPath("root.vehicle.d0"),
-        measurements,
-        dataTypes);
+    InsertTabletPlan insertTabletPlan1 =
+        new InsertTabletPlan(new PartialPath("root.vehicle.d0"), measurements, dataTypes);
     insertTabletPlan1.setMeasurementMNodes(measurementMNodes);
 
     long[] times = new long[100];
@@ -200,9 +234,8 @@ public class StorageGroupProcessorTest {
     processor.insertTablet(insertTabletPlan1);
     processor.asyncCloseAllWorkingTsFileProcessors();
 
-    InsertTabletPlan insertTabletPlan2 = new InsertTabletPlan(new PartialPath("root.vehicle.d0"),
-        measurements,
-        dataTypes);
+    InsertTabletPlan insertTabletPlan2 =
+        new InsertTabletPlan(new PartialPath("root.vehicle.d0"), measurements, dataTypes);
     insertTabletPlan2.setMeasurementMNodes(measurementMNodes);
 
     for (int r = 50; r < 149; r++) {
@@ -218,9 +251,8 @@ public class StorageGroupProcessorTest {
     processor.asyncCloseAllWorkingTsFileProcessors();
     processor.syncCloseAllWorkingTsFileProcessors();
 
-    QueryDataSource queryDataSource = processor
-        .query(new PartialPath(deviceId), measurementId, context,
-            null, null);
+    QueryDataSource queryDataSource =
+        processor.query(new PartialPath(deviceId), measurementId, context, null, null);
 
     Assert.assertEquals(2, queryDataSource.getSeqResources().size());
     Assert.assertEquals(1, queryDataSource.getUnseqResources().size());
@@ -228,7 +260,6 @@ public class StorageGroupProcessorTest {
       Assert.assertTrue(resource.isClosed());
     }
   }
-
 
   @Test
   public void testSeqAndUnSeqSyncClose()
@@ -250,9 +281,8 @@ public class StorageGroupProcessorTest {
 
     processor.syncCloseAllWorkingTsFileProcessors();
 
-    QueryDataSource queryDataSource = processor
-        .query(new PartialPath(deviceId), measurementId, context,
-            null, null);
+    QueryDataSource queryDataSource =
+        processor.query(new PartialPath(deviceId), measurementId, context, null, null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     Assert.assertEquals(10, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
@@ -291,9 +321,8 @@ public class StorageGroupProcessorTest {
       tsfileProcessor.syncFlush();
     }
 
-    QueryDataSource queryDataSource = processor
-        .query(new PartialPath(deviceId), measurementId, context,
-            null, null);
+    QueryDataSource queryDataSource =
+        processor.query(new PartialPath(deviceId), measurementId, context, null, null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
@@ -325,14 +354,15 @@ public class StorageGroupProcessorTest {
     dataTypes.add(TSDataType.INT64.ordinal());
 
     MeasurementMNode[] measurementMNodes = new MeasurementMNode[2];
-    measurementMNodes[0] = new MeasurementMNode(null, "s0",
-        new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN), null);
-    measurementMNodes[1] = new MeasurementMNode(null, "s1",
-        new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null);
+    measurementMNodes[0] =
+        new MeasurementMNode(
+            null, "s0", new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN), null);
+    measurementMNodes[1] =
+        new MeasurementMNode(
+            null, "s1", new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null);
 
-    InsertTabletPlan insertTabletPlan1 = new InsertTabletPlan(new PartialPath("root.vehicle.d0"),
-        measurements,
-        dataTypes);
+    InsertTabletPlan insertTabletPlan1 =
+        new InsertTabletPlan(new PartialPath("root.vehicle.d0"), measurements, dataTypes);
 
     long[] times = new long[100];
     Object[] columns = new Object[2];
@@ -352,9 +382,8 @@ public class StorageGroupProcessorTest {
     processor.insertTablet(insertTabletPlan1);
     processor.asyncCloseAllWorkingTsFileProcessors();
 
-    InsertTabletPlan insertTabletPlan2 = new InsertTabletPlan(new PartialPath("root.vehicle.d0"),
-        measurements,
-        dataTypes);
+    InsertTabletPlan insertTabletPlan2 =
+        new InsertTabletPlan(new PartialPath("root.vehicle.d0"), measurements, dataTypes);
 
     for (int r = 149; r >= 50; r--) {
       times[r - 50] = r;
@@ -374,9 +403,8 @@ public class StorageGroupProcessorTest {
       tsfileProcessor.syncFlush();
     }
 
-    QueryDataSource queryDataSource = processor
-        .query(new PartialPath(deviceId), measurementId, context,
-            null, null);
+    QueryDataSource queryDataSource =
+        processor.query(new PartialPath(deviceId), measurementId, context, null, null);
 
     Assert.assertEquals(2, queryDataSource.getSeqResources().size());
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
@@ -408,14 +436,15 @@ public class StorageGroupProcessorTest {
     dataTypes.add(TSDataType.INT64.ordinal());
 
     MeasurementMNode[] measurementMNodes = new MeasurementMNode[2];
-    measurementMNodes[0] = new MeasurementMNode(null, "s0",
-        new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN), null);
-    measurementMNodes[1] = new MeasurementMNode(null, "s1",
-        new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null);
+    measurementMNodes[0] =
+        new MeasurementMNode(
+            null, "s0", new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN), null);
+    measurementMNodes[1] =
+        new MeasurementMNode(
+            null, "s1", new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null);
 
-    InsertTabletPlan insertTabletPlan1 = new InsertTabletPlan(new PartialPath("root.vehicle.d0"),
-        measurements,
-        dataTypes);
+    InsertTabletPlan insertTabletPlan1 =
+        new InsertTabletPlan(new PartialPath("root.vehicle.d0"), measurements, dataTypes);
 
     long[] times = new long[1200];
     Object[] columns = new Object[2];
@@ -435,9 +464,8 @@ public class StorageGroupProcessorTest {
     processor.insertTablet(insertTabletPlan1);
     processor.asyncCloseAllWorkingTsFileProcessors();
 
-    InsertTabletPlan insertTabletPlan2 = new InsertTabletPlan(new PartialPath("root.vehicle.d0"),
-        measurements,
-        dataTypes);
+    InsertTabletPlan insertTabletPlan2 =
+        new InsertTabletPlan(new PartialPath("root.vehicle.d0"), measurements, dataTypes);
 
     for (int r = 1249; r >= 50; r--) {
       times[r - 50] = r;
@@ -457,9 +485,8 @@ public class StorageGroupProcessorTest {
       tsfileProcessor.syncFlush();
     }
 
-    QueryDataSource queryDataSource = processor
-        .query(new PartialPath(deviceId), measurementId, context,
-            null, null);
+    QueryDataSource queryDataSource =
+        processor.query(new PartialPath(deviceId), measurementId, context, null, null);
 
     Assert.assertEquals(2, queryDataSource.getSeqResources().size());
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
@@ -491,14 +518,15 @@ public class StorageGroupProcessorTest {
     dataTypes.add(TSDataType.INT64.ordinal());
 
     MeasurementMNode[] measurementMNodes = new MeasurementMNode[2];
-    measurementMNodes[0] = new MeasurementMNode(null, "s0",
-        new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN), null);
-    measurementMNodes[1] = new MeasurementMNode(null, "s1",
-        new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null);
+    measurementMNodes[0] =
+        new MeasurementMNode(
+            null, "s0", new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN), null);
+    measurementMNodes[1] =
+        new MeasurementMNode(
+            null, "s1", new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null);
 
-    InsertTabletPlan insertTabletPlan1 = new InsertTabletPlan(new PartialPath("root.vehicle.d0"),
-        measurements,
-        dataTypes);
+    InsertTabletPlan insertTabletPlan1 =
+        new InsertTabletPlan(new PartialPath("root.vehicle.d0"), measurements, dataTypes);
 
     long[] times = new long[1200];
     Object[] columns = new Object[2];
@@ -518,9 +546,8 @@ public class StorageGroupProcessorTest {
     processor.insertTablet(insertTabletPlan1);
     processor.asyncCloseAllWorkingTsFileProcessors();
 
-    InsertTabletPlan insertTabletPlan2 = new InsertTabletPlan(new PartialPath("root.vehicle.d0"),
-        measurements,
-        dataTypes);
+    InsertTabletPlan insertTabletPlan2 =
+        new InsertTabletPlan(new PartialPath("root.vehicle.d0"), measurements, dataTypes);
 
     for (int r = 1249; r >= 50; r--) {
       times[r - 50] = r;
@@ -540,9 +567,8 @@ public class StorageGroupProcessorTest {
       tsfileProcessor.syncFlush();
     }
 
-    QueryDataSource queryDataSource = processor
-        .query(new PartialPath(deviceId), measurementId, context,
-            null, null);
+    QueryDataSource queryDataSource =
+        processor.query(new PartialPath(deviceId), measurementId, context, null, null);
 
     Assert.assertEquals(2, queryDataSource.getSeqResources().size());
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
@@ -566,7 +592,6 @@ public class StorageGroupProcessorTest {
     }
     processor.syncCloseAllWorkingTsFileProcessors();
 
-
     for (int j = 10; j >= 1; j--) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
@@ -575,16 +600,14 @@ public class StorageGroupProcessorTest {
     }
 
     processor.syncCloseAllWorkingTsFileProcessors();
-    processor.merge(true);
+    processor.merge(IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
     while (processor.getTsFileManagement().isUnseqMerging) {
       // wait
     }
 
-    QueryDataSource queryDataSource = processor
-        .query(new PartialPath(deviceId), measurementId, context,
-            null, null);
+    QueryDataSource queryDataSource =
+        processor.query(new PartialPath(deviceId), measurementId, context, null, null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
-    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       Assert.assertTrue(resource.isClosed());
     }
@@ -596,8 +619,11 @@ public class StorageGroupProcessorTest {
   class DummySGP extends StorageGroupProcessor {
 
     DummySGP(String systemInfoDir, String storageGroupName) throws StorageGroupProcessorException {
-      super(systemInfoDir, storageGroupName, new TsFileFlushPolicy.DirectFlushPolicy(), storageGroupName);
+      super(
+          systemInfoDir,
+          storageGroupName,
+          new TsFileFlushPolicy.DirectFlushPolicy(),
+          storageGroupName);
     }
-
   }
 }

@@ -19,17 +19,18 @@
 
 package org.apache.iotdb.db.query.udf.core.transformer;
 
-import java.io.IOException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.core.reader.LayerRowWindowReader;
+
+import java.io.IOException;
 
 public class UDFQueryRowWindowTransformer extends UDFQueryTransformer {
 
   protected final LayerRowWindowReader layerRowWindowReader;
 
-  public UDFQueryRowWindowTransformer(LayerRowWindowReader layerRowWindowReader,
-      UDTFExecutor executor) {
+  public UDFQueryRowWindowTransformer(
+      LayerRowWindowReader layerRowWindowReader, UDTFExecutor executor) {
     super(executor);
     this.layerRowWindowReader = layerRowWindowReader;
   }

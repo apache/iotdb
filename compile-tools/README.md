@@ -26,49 +26,51 @@
 * Maven 3.5+
 * Flex
 * Bison 2.7+
+* Boost
 * OpenSSL 1.0+
 
-Make sure a complete C++ building environment is prepared on your machine.
 
 ### Mac
 
-1. Bison
+- Bison
 
-Bison 2.3 is preinstalled on OSX, but this version is too low. 
-When building Thrift with Bison 2.3, the following error would pop out:
+ Bison 2.3 is preinstalled on OSX, but this version is too low.
+ When building Thrift with Bison 2.3, the following error would pop out:
 
-```invalid directive: '%code'```
+ 
+  ```invalid directive: '%code'```		
+		
+ For such case, please update `Bison`:		
+		
+```		
+     brew install bison		
+     brew link bison --force		
+```
+		
+ Then, you need to tell the OS where the new bison is.		
+		
+ For Bash users:		
+ ```    		
+     echo 'export PATH="/usr/local/opt/bison/bin:$PATH"' >> ~/.bash_profile		
+ ```
+		
+ For zsh users:		
+ ```    		
+     echo 'export PATH="/usr/local/opt/bison/bin:$PATH"' >> ~/.zshrc
+ ```
 
-For such case, please update `Bison`:
+- Boost
+
+Please make sure a relative new version of Boost is ready on your machine.
+If no Boost available, install the latest version of Boost:
 
 ```
-    brew install bison
-    brew link bison --force
+    brew install boost
+    brew link boost
 ```
 
-Then, you need to tell the OS where the new bison is.
 
-For Bash users:
-```    
-    echo 'export PATH="/usr/local/opt/bison/bin:$PATH"' >> ~/.bash_profile
-```
-
-For zsh users:
-```    
-    echo 'export PATH="/usr/local/opt/bison/bin:$PATH"' >> ~/.zshrc
-```
-
-Then,
-
-```
-mv /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bison /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bison2.3
-
-ln -s /usr/local/opt/bison/bin/bison /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bison
-``` 
-
-
-
-2. OpenSSL
+- OpenSSL
 
 Make sure the Openssl libraries has been install on your Mac.
 The default Openssl include file search path is "/usr/local/opt/openssl/include".
@@ -86,23 +88,37 @@ To install all dependencies, run:
 Debian/Ubuntu:
 
 ```
-sudo apt install gcc g++ bison flex -y
+sudo apt-get install gcc g++ bison flex libboost-all-dev
 ```
 
 CentOS:
 ```
-yum install gcc g++ bison flex
+yum install gcc g++ bison flex boost-devel
 ```
-
-
 
 ### Windows
 
+Make sure a complete Windows C++ building environment is prepared on your machine. 
+MSVC, MinGW... are supported.
+
+If you are using MS Visual Studio, remember to install Visual Studio C/C++ IDE and compiler(supporting CMake, Clang, MinGW).
+
 #### Flex and Bison
-For Flex and Bison, they could be downloaded from SourceForge: https://sourceforge.net/projects/winflexbison/
+Windows Flex and Bison could be downloaded from SourceForge: https://sourceforge.net/projects/winflexbison/
 
 After downloaded, please rename the executables to flex.exe and bison.exe and add them to "PATH" environment variables.
 
+#### Boost
+For Boost, please download from the official website: https://www.boost.org/users/download/
+
+Then build Boost by executing bootstrap.bat and b2.exe.
+```
+bootstrap.bat
+.\b2.exe
+```
+
+To help CMake find your Boost libraries on windows, you should set `-Dboost.include.dir=${your boost header folder} -Dboost.library.dir=${your boost lib (stage) folder}`
+to your mvn build command.
 
 #### Cmake generator on Windows
 
@@ -145,3 +161,23 @@ There is a long list of supported Cmake generators on Windows environment.
 
 When building client-cpp project, use -Dcmake.generator="" option to specify a Cmake generator.
 E.g., `mvn package -Dcmake.generator="Visual Studio 15 2017 [arch]"`
+
+
+### FAQ
+
+#### on Mac
+
+if you occur some errors when compiling thrift source code, try to downgrade your xcode-commandline from 12 to 11.5
+
+see https://stackoverflow.com/questions/63592445/ld-unsupported-tapi-file-type-tapi-tbd-in-yaml-file/65518087#65518087
+
+#### on Windows
+
+When Building Thrift and downloading packages via "wget", a possible annoying issue may occur with
+error message looks like:
+```
+Failed to delete cached file C:\Users\Administrator\.m2\repository\.cache\download-maven-plugin\index.ser
+```
+Possible fix:
+- Try to delete the ".m2\repository\\.cache\" directory and try again.
+- Add "\<skipCache>true\</skipCache>" configuration to the download-maven-plugin maven phase that complains this error.

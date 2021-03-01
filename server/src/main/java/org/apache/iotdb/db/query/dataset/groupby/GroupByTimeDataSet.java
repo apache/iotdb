@@ -19,11 +19,6 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
@@ -32,13 +27,18 @@ import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 public class GroupByTimeDataSet extends QueryDataSet {
 
-  private static final Logger logger = LoggerFactory
-    .getLogger(GroupByTimeDataSet.class);
+  private static final Logger logger = LoggerFactory.getLogger(GroupByTimeDataSet.class);
 
   private List<RowRecord> records = new ArrayList<>();
   private int index = 0;
@@ -47,8 +47,9 @@ public class GroupByTimeDataSet extends QueryDataSet {
   private GroupByTimePlan groupByTimePlan;
   private QueryContext context;
 
-  public GroupByTimeDataSet(QueryContext context, GroupByTimePlan plan, GroupByEngineDataSet dataSet)
-    throws QueryProcessException, IOException {
+  public GroupByTimeDataSet(
+      QueryContext context, GroupByTimePlan plan, GroupByEngineDataSet dataSet)
+      throws QueryProcessException, IOException {
     this.queryId = context.getQueryId();
     this.paths = new ArrayList<>(plan.getDeduplicatedPaths());
     this.dataTypes = plan.getDeduplicatedDataTypes();
@@ -59,8 +60,7 @@ public class GroupByTimeDataSet extends QueryDataSet {
       logger.debug("paths " + this.paths + " level:" + plan.getLevel());
     }
 
-    Map<Integer, String> pathIndex = new HashMap<>();
-    Map<String, AggregateResult> finalPaths = FilePathUtils.getPathByLevel(plan, pathIndex);
+    Map<String, AggregateResult> finalPaths = plan.getAggPathByLevel();
 
     // get all records from GroupByDataSet, then we merge every record
     if (logger.isDebugEnabled()) {
@@ -69,8 +69,8 @@ public class GroupByTimeDataSet extends QueryDataSet {
     while (dataSet != null && dataSet.hasNextWithoutConstraint()) {
       RowRecord rawRecord = dataSet.nextWithoutConstraint();
       RowRecord curRecord = new RowRecord(rawRecord.getTimestamp());
-      List<AggregateResult> mergedAggResults = FilePathUtils.mergeRecordByPath(
-              plan, rawRecord, finalPaths, pathIndex);
+      List<AggregateResult> mergedAggResults =
+          FilePathUtils.mergeRecordByPath(plan, rawRecord, finalPaths);
       for (AggregateResult resultData : mergedAggResults) {
         TSDataType dataType = resultData.getResultDataType();
         curRecord.addField(resultData.getResult(), dataType);
@@ -86,7 +86,7 @@ public class GroupByTimeDataSet extends QueryDataSet {
   }
 
   @Override
-  public boolean hasNextWithoutConstraint() throws IOException {
+  public boolean hasNextWithoutConstraint() {
     return index < records.size();
   }
 

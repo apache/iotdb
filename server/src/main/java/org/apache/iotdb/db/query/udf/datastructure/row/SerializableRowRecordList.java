@@ -19,12 +19,6 @@
 
 package org.apache.iotdb.db.query.udf.datastructure.row;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.MB;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.datastructure.SerializableList;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -33,19 +27,27 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.apache.iotdb.db.conf.IoTDBConstant.MB;
+
 public class SerializableRowRecordList implements SerializableList {
 
   protected static final int MIN_OBJECT_HEADER_SIZE = 8;
   protected static final int MIN_ARRAY_HEADER_SIZE = MIN_OBJECT_HEADER_SIZE + 4;
 
-  public static SerializableRowRecordList newSerializableRowRecordList(long queryId,
-      TSDataType[] dataTypes, int internalRowRecordListCapacity) {
+  public static SerializableRowRecordList newSerializableRowRecordList(
+      long queryId, TSDataType[] dataTypes, int internalRowRecordListCapacity) {
     SerializationRecorder recorder = new SerializationRecorder(queryId);
     return new SerializableRowRecordList(recorder, dataTypes, internalRowRecordListCapacity);
   }
 
-  protected static int calculateCapacity(TSDataType[] dataTypes, float memoryLimitInMB,
-      int byteArrayLengthForMemoryControl) throws QueryProcessException {
+  protected static int calculateCapacity(
+      TSDataType[] dataTypes, float memoryLimitInMB, int byteArrayLengthForMemoryControl)
+      throws QueryProcessException {
     int rowLength = ReadWriteIOUtils.LONG_LEN; // timestamp
     for (TSDataType dataType : dataTypes) { // fields
       switch (dataType) {
@@ -65,8 +67,8 @@ public class SerializableRowRecordList implements SerializableList {
           rowLength += ReadWriteIOUtils.BOOLEAN_LEN;
           break;
         case TEXT:
-          rowLength += MIN_OBJECT_HEADER_SIZE + MIN_ARRAY_HEADER_SIZE
-              + byteArrayLengthForMemoryControl;
+          rowLength +=
+              MIN_OBJECT_HEADER_SIZE + MIN_ARRAY_HEADER_SIZE + byteArrayLengthForMemoryControl;
           break;
         default:
           throw new UnSupportedDataTypeException(dataType.toString());
@@ -87,8 +89,10 @@ public class SerializableRowRecordList implements SerializableList {
 
   private List<Object[]> rowRecords;
 
-  private SerializableRowRecordList(SerializationRecorder serializationRecorder,
-      TSDataType[] dataTypes, int internalRowRecordListCapacity) {
+  private SerializableRowRecordList(
+      SerializationRecorder serializationRecorder,
+      TSDataType[] dataTypes,
+      int internalRowRecordListCapacity) {
     this.serializationRecorder = serializationRecorder;
     this.dataTypes = dataTypes;
     this.internalRowRecordListCapacity = internalRowRecordListCapacity;

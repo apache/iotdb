@@ -18,7 +18,21 @@
  */
 package org.apache.iotdb.db.writelog.node;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.directories.DirectoryManager;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.writelog.io.ILogReader;
+import org.apache.iotdb.db.writelog.io.ILogWriter;
+import org.apache.iotdb.db.writelog.io.LogWriter;
+import org.apache.iotdb.db.writelog.io.MultiFileLogReader;
+
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import org.apache.commons.io.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -30,22 +44,8 @@ import java.util.Comparator;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.ReentrantLock;
-import org.apache.commons.io.FileUtils;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.writelog.io.ILogReader;
-import org.apache.iotdb.db.writelog.io.ILogWriter;
-import org.apache.iotdb.db.writelog.io.LogWriter;
-import org.apache.iotdb.db.writelog.io.MultiFileLogReader;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-/**
- * This WriteLogNode is used to manage insert ahead logs of a TsFile.
- */
+/** This WriteLogNode is used to manage insert ahead logs of a TsFile. */
 public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<ExclusiveWriteLogNode> {
 
   public static final String WAL_FILE_NAME = "wal";
@@ -93,6 +93,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     }
   }
 
+  @Override
   public void initBuffer(ByteBuffer[] byteBuffers) {
     this.logBufferWorking = byteBuffers[0];
     this.logBufferIdle = byteBuffers[1];
@@ -111,8 +112,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
         sync();
       }
     } catch (BufferOverflowException e) {
-      throw new IOException(
-          "Log cannot fit into the buffer, please increase wal_buffer_size", e);
+      throw new IOException("Log cannot fit into the buffer, please increase wal_buffer_size", e);
     } finally {
       lock.unlock();
     }
@@ -169,7 +169,6 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     forceWal();
   }
 
-
   @Override
   public void notifyStartFlush() throws FileNotFoundException {
     lock.lock();
@@ -185,8 +184,8 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   public void notifyEndFlush() {
     lock.lock();
     try {
-      File logFile = SystemFileFactory.INSTANCE
-          .getFile(logDirectory, WAL_FILE_NAME + ++lastFlushedId);
+      File logFile =
+          SystemFileFactory.INSTANCE.getFile(logDirectory, WAL_FILE_NAME + ++lastFlushedId);
       discard(logFile);
     } finally {
       lock.unlock();
@@ -219,7 +218,8 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   @Override
   public ILogReader getLogReader() {
     File[] logFiles = SystemFileFactory.INSTANCE.getFile(logDirectory).listFiles();
-    Arrays.sort(logFiles,
+    Arrays.sort(
+        logFiles,
         Comparator.comparingInt(f -> Integer.parseInt(f.getName().replace(WAL_FILE_NAME, ""))));
     return new MultiFileLogReader(logFiles);
   }

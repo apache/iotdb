@@ -18,26 +18,24 @@
  */
 package org.apache.iotdb.tsfile.read.filter.operator;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.Serializable;
-import java.nio.ByteBuffer;
-import java.util.Objects;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
 
-/**
- * NotFilter necessary. Use InvertExpressionVisitor
- */
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.Serializable;
+import java.nio.ByteBuffer;
+import java.util.Objects;
+
+/** NotFilter necessary. Use InvertExpressionVisitor */
 public class NotFilter implements Filter, Serializable {
 
   private static final long serialVersionUID = 584860326604020881L;
   private Filter that;
 
-  public NotFilter() {
-  }
+  public NotFilter() {}
 
   public NotFilter(Filter that) {
     this.that = that;

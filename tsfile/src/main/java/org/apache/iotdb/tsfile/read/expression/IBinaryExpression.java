@@ -27,5 +27,4 @@ public interface IBinaryExpression extends IExpression {
   void setLeft(IExpression leftExpression);
 
   void setRight(IExpression rightExpression);
-
 }

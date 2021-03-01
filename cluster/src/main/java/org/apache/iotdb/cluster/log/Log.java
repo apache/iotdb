@@ -38,6 +38,7 @@ public abstract class Log implements Comparable<Log> {
 
   // for async application
   private volatile boolean applied;
+
   @SuppressWarnings("java:S3077")
   private volatile Exception exception;
 
@@ -50,7 +51,12 @@ public abstract class Log implements Comparable<Log> {
 
   public enum Types {
     // DO CHECK LogParser when you add a new type of log
-    ADD_NODE, PHYSICAL_PLAN, CLOSE_FILE, REMOVE_NODE, EMPTY_CONTENT, TEST_LARGE_CONTENT
+    ADD_NODE,
+    PHYSICAL_PLAN,
+    CLOSE_FILE,
+    REMOVE_NODE,
+    EMPTY_CONTENT,
+    TEST_LARGE_CONTENT
   }
 
   public long getCurrLogIndex() {
@@ -98,8 +104,7 @@ public abstract class Log implements Comparable<Log> {
       return false;
     }
     Log log = (Log) o;
-    return currLogIndex == log.currLogIndex &&
-        currLogTerm == log.currLogTerm;
+    return currLogIndex == log.currLogIndex && currLogTerm == log.currLogTerm;
   }
 
   @Override

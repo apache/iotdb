@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.db.query.dataset;
 
-import java.io.IOException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
+
+import java.io.IOException;
 
 public interface DirectAlignByTimeDataSet {
 

@@ -19,10 +19,6 @@
 
 package org.apache.iotdb.cluster.server.service;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.file.Files;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
@@ -40,8 +36,14 @@ import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.file.Files;
 
 public abstract class BaseAsyncService implements RaftService.AsyncIface {
 
@@ -54,8 +56,8 @@ public abstract class BaseAsyncService implements RaftService.AsyncIface {
   }
 
   @Override
-  public void sendHeartbeat(HeartBeatRequest request,
-      AsyncMethodCallback<HeartBeatResponse> resultHandler) {
+  public void sendHeartbeat(
+      HeartBeatRequest request, AsyncMethodCallback<HeartBeatResponse> resultHandler) {
     resultHandler.onComplete(member.processHeartbeatRequest(request));
   }
 
@@ -104,8 +106,8 @@ public abstract class BaseAsyncService implements RaftService.AsyncIface {
   }
 
   @Override
-  public void readFile(String filePath, long offset, int length,
-      AsyncMethodCallback<ByteBuffer> resultHandler) {
+  public void readFile(
+      String filePath, long offset, int length, AsyncMethodCallback<ByteBuffer> resultHandler) {
     try {
       resultHandler.onComplete(IOUtils.readFile(filePath, offset, length));
     } catch (IOException e) {
@@ -114,8 +116,7 @@ public abstract class BaseAsyncService implements RaftService.AsyncIface {
   }
 
   @Override
-  public void removeHardLink(String hardLinkPath,
-      AsyncMethodCallback<Void> resultHandler) {
+  public void removeHardLink(String hardLinkPath, AsyncMethodCallback<Void> resultHandler) {
     try {
       Files.deleteIfExists(new File(hardLinkPath).toPath());
       resultHandler.onComplete(null);
@@ -125,14 +126,14 @@ public abstract class BaseAsyncService implements RaftService.AsyncIface {
   }
 
   @Override
-  public void matchTerm(long index, long term, Node header,
-      AsyncMethodCallback<Boolean> resultHandler) {
+  public void matchTerm(
+      long index, long term, Node header, AsyncMethodCallback<Boolean> resultHandler) {
     resultHandler.onComplete(member.matchLog(index, term));
   }
 
   @Override
-  public void executeNonQueryPlan(ExecutNonQueryReq request,
-      AsyncMethodCallback<TSStatus> resultHandler) {
+  public void executeNonQueryPlan(
+      ExecutNonQueryReq request, AsyncMethodCallback<TSStatus> resultHandler) {
     if (member.getCharacter() != NodeCharacter.LEADER) {
       // forward the plan to the leader
       AsyncClient client = member.getAsyncClient(member.getLeader());
@@ -150,8 +151,10 @@ public abstract class BaseAsyncService implements RaftService.AsyncIface {
 
     try {
       TSStatus status = member.executeNonQueryPlan(request);
-      resultHandler.onComplete(StatusUtils.getStatus(status,
-          new EndPoint(member.getThisNode().getIp(), member.getThisNode().getClientPort())));
+      resultHandler.onComplete(
+          StatusUtils.getStatus(
+              status,
+              new EndPoint(member.getThisNode().getIp(), member.getThisNode().getClientPort())));
     } catch (Exception e) {
       resultHandler.onError(e);
     }

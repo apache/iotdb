@@ -39,7 +39,6 @@ public class AutoScalingBufferReadTransport extends NonOpenTransport {
     limit = length;
   }
 
-
   @Override
   public final int read(byte[] target, int off, int len) {
     int amtToRead = Math.min(len, getBytesRemainingInBuffer());
@@ -84,5 +83,4 @@ public class AutoScalingBufferReadTransport extends NonOpenTransport {
   public void position(int newPosition) {
     this.pos = newPosition;
   }
-
 }

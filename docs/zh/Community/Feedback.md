@@ -35,10 +35,12 @@
 
 * Twitter: https://twitter.com/apacheiotdb
 
+* 对中文用户，欢迎加入QQ群: 659990460.
+  
 * 我们非常期待您分享您使用IoTDB的经验: [调研问卷](https://github.com/apache/iotdb/issues/748)
 
 * 对中文用户，欢迎关注微信公众号，IoTDB漫游指南
 
 * 对中文用户，我们提供了钉钉群，可以搜索群名称加入：Apache IoTDB交流1群
 
-IoTDB社区会不定期举办Meetup，相关信息会在邮件列表和[研讨会议和报告列表](Materials.md) 页面找到。
+IoTDB社区会不定期举办Meetup，相关信息会在邮件列表和[研讨会议和报告列表](https://iotdb.apache.org/Community/Materials.html) 页面找到。

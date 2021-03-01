@@ -18,13 +18,13 @@
  */
 package org.apache.iotdb.rpc;
 
-import static org.apache.iotdb.rpc.RpcUtils.DEFAULT_BUF_CAPACITY;
-import static org.apache.iotdb.rpc.RpcUtils.DEFAULT_MAX_LENGTH;
-
 import org.apache.thrift.transport.TFramedTransport;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.apache.thrift.transport.TTransportFactory;
+
+import static org.apache.iotdb.rpc.RpcUtils.DEFAULT_BUF_CAPACITY;
+import static org.apache.iotdb.rpc.RpcUtils.DEFAULT_MAX_LENGTH;
 
 public class TElasticFramedTransport extends TTransport {
 
@@ -56,8 +56,8 @@ public class TElasticFramedTransport extends TTransport {
     this(underlying, DEFAULT_BUF_CAPACITY, DEFAULT_MAX_LENGTH);
   }
 
-  public TElasticFramedTransport(TTransport underlying, int initialBufferCapacity,
-      int softMaxLength) {
+  public TElasticFramedTransport(
+      TTransport underlying, int initialBufferCapacity, int softMaxLength) {
     this.underlying = underlying;
     this.softMaxLength = softMaxLength;
     readBuffer = new AutoScalingBufferReadTransport(initialBufferCapacity);
@@ -72,6 +72,7 @@ public class TElasticFramedTransport extends TTransport {
    * small requests.
    */
   protected final int softMaxLength;
+
   protected final TTransport underlying;
   protected AutoScalingBufferReadTransport readBuffer;
   protected AutoScalingBufferWriteTransport writeBuffer;
@@ -110,14 +111,17 @@ public class TElasticFramedTransport extends TTransport {
 
     if (size < 0) {
       close();
-      throw new TTransportException(TTransportException.CORRUPTED_DATA,
-          "Read a negative frame size (" + size + ")!");
+      throw new TTransportException(
+          TTransportException.CORRUPTED_DATA, "Read a negative frame size (" + size + ")!");
     }
 
     if (size > RpcUtils.FRAME_HARD_MAX_LENGTH) {
       close();
-      throw new TTransportException(TTransportException.CORRUPTED_DATA,
-          "Frame size (" + size + ") larger than protect max length ("
+      throw new TTransportException(
+          TTransportException.CORRUPTED_DATA,
+          "Frame size ("
+              + size
+              + ") larger than protect max length ("
               + RpcUtils.FRAME_HARD_MAX_LENGTH
               + ")!");
     }

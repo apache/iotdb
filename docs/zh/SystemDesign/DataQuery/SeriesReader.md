@@ -275,7 +275,7 @@ private BatchData cachedBatchData;
 
 #### nextPage()
 
-* 主要功能：返回下一个相交或不想交的 page
+* 主要功能：返回下一个相交或不相交的 page
 
 * 约束：在调用这个方法前，需要保证调用了 hasNextPage() 并且为 true。也就是，有可能缓存了一个相交的 `cachedBatchData`，或者缓存了不相交的 `firstPageReader`。
 

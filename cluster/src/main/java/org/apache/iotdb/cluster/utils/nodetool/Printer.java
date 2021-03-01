@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -26,15 +26,13 @@ public class Printer {
   private static final PrintStream SCREEN_PRINTER = new PrintStream(System.out);
   private static final PrintStream ERR_PRINTER = new PrintStream(System.err);
 
-  private Printer(){
-  }
+  private Printer() {}
 
-  public static void msgPrintln(String s){
+  public static void msgPrintln(String s) {
     SCREEN_PRINTER.println(s);
   }
 
-  public static void errPrintln(String s){
+  public static void errPrintln(String s) {
     ERR_PRINTER.println(s);
   }
-
 }

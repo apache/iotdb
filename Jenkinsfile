@@ -85,7 +85,7 @@ pipeline {
                 sh 'mvn clean'
                 // We'll deploy to a relative directory so we can
                 // deploy new versions only if the entire build succeeds
-                sh 'mvn ${MVN_TEST_FAIL_IGNORE} -DaltDeploymentRepository=snapshot-repo::default::file:./local-snapshots-dir -P client-cpp clean deploy'
+                sh 'mvn ${MVN_TEST_FAIL_IGNORE} -DaltDeploymentRepository=snapshot-repo::default::file:./local-snapshots-dir -P client-cpp clean deploy -P get-jar-with-dependencies'
             }
             post {
                 always {
@@ -120,7 +120,7 @@ pipeline {
             steps {
                 echo 'Deploying'
                 // Deploy the artifacts using the wagon-maven-plugin.
-                sh 'mvn -f jenkins.pom -X -P deploy-snapshots -P client-cpp wagon:upload'
+                sh 'mvn -f jenkins.pom -X -P deploy-snapshots -P client-cpp wagon:upload -P get-jar-with-dependencies'
             }
         }
 

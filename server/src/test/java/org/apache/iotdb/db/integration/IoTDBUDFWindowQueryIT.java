@@ -19,15 +19,6 @@
 
 package org.apache.iotdb.db.integration;
 
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -37,9 +28,19 @@ import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class IoTDBUDFWindowQueryIT {
 
@@ -55,7 +56,7 @@ public class IoTDBUDFWindowQueryIT {
   public static final String DISPLAY_WINDOW_BEGIN_KEY = "displayWindowBegin";
   public static final String DISPLAY_WINDOW_END_KEY = "displayWindowEnd";
 
-  protected final static int ITERATION_TIMES = 100_000;
+  protected static final int ITERATION_TIMES = 100_000;
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -71,21 +72,29 @@ public class IoTDBUDFWindowQueryIT {
 
   private static void createTimeSeries() throws MetadataException {
     IoTDB.metaManager.setStorageGroup(new PartialPath("root.vehicle"));
-    IoTDB.metaManager
-        .createTimeseries(new PartialPath("root.vehicle.d1.s1"), TSDataType.INT32, TSEncoding.PLAIN,
-            CompressionType.UNCOMPRESSED, null);
-    IoTDB.metaManager
-        .createTimeseries(new PartialPath("root.vehicle.d1.s2"), TSDataType.INT32, TSEncoding.PLAIN,
-            CompressionType.UNCOMPRESSED, null);
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath("root.vehicle.d1.s1"),
+        TSDataType.INT32,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath("root.vehicle.d1.s2"),
+        TSDataType.INT32,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
   }
 
   private static void generateData() {
-    try (Connection connection = DriverManager.getConnection(
-        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       for (int i = 0; i < ITERATION_TIMES; ++i) {
-        statement.execute((String
-            .format("insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)", i, i, i)));
+        statement.execute(
+            (String.format(
+                "insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)", i, i, i)));
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -93,11 +102,12 @@ public class IoTDBUDFWindowQueryIT {
   }
 
   private static void registerUDF() {
-    try (Connection connection = DriverManager.getConnection(
-        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement
-          .execute("create function counter as \"org.apache.iotdb.db.query.udf.example.Counter\"");
+      statement.execute(
+          "create function counter as \"org.apache.iotdb.db.query.udf.example.Counter\"");
       statement.execute(
           "create function accumulator as \"org.apache.iotdb.db.query.udf.example.Accumulator\"");
       statement.execute(
@@ -121,12 +131,14 @@ public class IoTDBUDFWindowQueryIT {
 
   @Test
   public void testRowByRow() {
-    String sql = String.format("select counter(s1, \"%s\"=\"%s\") from root.vehicle.d1",
-        ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_ROW_BY_ROW);
+    String sql =
+        String.format(
+            "select counter(s1, \"%s\"=\"%s\") from root.vehicle.d1",
+            ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_ROW_BY_ROW);
 
-    try (Statement statement = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
-            "root", "root").createStatement()) {
+    try (Statement statement =
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
+            .createStatement()) {
       ResultSet resultSet = statement.executeQuery(sql);
       int count = 0;
       assertEquals(2, resultSet.getMetaData().getColumnCount());
@@ -180,20 +192,23 @@ public class IoTDBUDFWindowQueryIT {
   }
 
   private void testSlidingSizeWindow(int windowSize) {
-    String sql = String
-        .format("select accumulator(s1, \"%s\"=\"%s\", \"%s\"=\"%s\") from root.vehicle.d1",
+    String sql =
+        String.format(
+            "select accumulator(s1, \"%s\"=\"%s\", \"%s\"=\"%s\") from root.vehicle.d1",
             ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_SLIDING_SIZE, WINDOW_SIZE_KEY, windowSize);
 
-    try (Statement statement = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
-            "root", "root").createStatement()) {
+    try (Statement statement =
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
+            .createStatement()) {
       ResultSet resultSet = statement.executeQuery(sql);
       assertEquals(2, resultSet.getMetaData().getColumnCount());
 
       int count = 0;
       while (resultSet.next()) {
-        int expectedWindowSize = (count < ITERATION_TIMES / windowSize)
-            ? windowSize : ITERATION_TIMES - (ITERATION_TIMES / windowSize) * windowSize;
+        int expectedWindowSize =
+            (count < ITERATION_TIMES / windowSize)
+                ? windowSize
+                : ITERATION_TIMES - (ITERATION_TIMES / windowSize) * windowSize;
 
         int expectedAccumulation = 0;
         for (int i = count * windowSize; i < count * windowSize + expectedWindowSize; ++i) {
@@ -212,26 +227,38 @@ public class IoTDBUDFWindowQueryIT {
 
   @Test
   public void testSlidingTimeWindow1() {
-    testSlidingTimeWindow((int) (0.33 * ITERATION_TIMES), (int) (0.33 * ITERATION_TIMES),
-        (int) (0.33 * ITERATION_TIMES), (int) (0.33 * ITERATION_TIMES));
+    testSlidingTimeWindow(
+        (int) (0.33 * ITERATION_TIMES),
+        (int) (0.33 * ITERATION_TIMES),
+        (int) (0.33 * ITERATION_TIMES),
+        (int) (0.33 * ITERATION_TIMES));
   }
 
   @Test
   public void testSlidingTimeWindow2() {
-    testSlidingTimeWindow((int) (0.033 * ITERATION_TIMES), (int) (2 * 0.033 * ITERATION_TIMES),
-        ITERATION_TIMES / 2, ITERATION_TIMES);
+    testSlidingTimeWindow(
+        (int) (0.033 * ITERATION_TIMES),
+        (int) (2 * 0.033 * ITERATION_TIMES),
+        ITERATION_TIMES / 2,
+        ITERATION_TIMES);
   }
 
   @Test
   public void testSlidingTimeWindow3() {
-    testSlidingTimeWindow((int) (2 * 0.033 * ITERATION_TIMES), (int) (0.033 * ITERATION_TIMES),
-        ITERATION_TIMES / 2, ITERATION_TIMES);
+    testSlidingTimeWindow(
+        (int) (2 * 0.033 * ITERATION_TIMES),
+        (int) (0.033 * ITERATION_TIMES),
+        ITERATION_TIMES / 2,
+        ITERATION_TIMES);
   }
 
   @Test
   public void testSlidingTimeWindow4() {
-    testSlidingTimeWindow((int) (0.033 * ITERATION_TIMES), (int) (0.033 * ITERATION_TIMES),
-        ITERATION_TIMES / 2, ITERATION_TIMES);
+    testSlidingTimeWindow(
+        (int) (0.033 * ITERATION_TIMES),
+        (int) (0.033 * ITERATION_TIMES),
+        ITERATION_TIMES / 2,
+        ITERATION_TIMES);
   }
 
   @Test
@@ -241,38 +268,38 @@ public class IoTDBUDFWindowQueryIT {
 
   @Test
   public void testSlidingTimeWindow6() {
-    testSlidingTimeWindow((int) (1.01 * ITERATION_TIMES), (int) (0.01 * ITERATION_TIMES), 0,
-        ITERATION_TIMES / 2);
+    testSlidingTimeWindow(
+        (int) (1.01 * ITERATION_TIMES), (int) (0.01 * ITERATION_TIMES), 0, ITERATION_TIMES / 2);
   }
 
   @Test
   public void testSlidingTimeWindow7() {
-    testSlidingTimeWindow((int) (0.01 * ITERATION_TIMES), (int) (1.01 * ITERATION_TIMES), 0,
-        ITERATION_TIMES / 2);
+    testSlidingTimeWindow(
+        (int) (0.01 * ITERATION_TIMES), (int) (1.01 * ITERATION_TIMES), 0, ITERATION_TIMES / 2);
   }
 
   @Test
   public void testSlidingTimeWindow8() {
-    testSlidingTimeWindow((int) (1.01 * ITERATION_TIMES), (int) (1.01 * ITERATION_TIMES), 0,
-        ITERATION_TIMES / 2);
+    testSlidingTimeWindow(
+        (int) (1.01 * ITERATION_TIMES), (int) (1.01 * ITERATION_TIMES), 0, ITERATION_TIMES / 2);
   }
 
   @Test
   public void testSlidingTimeWindow9() {
-    testSlidingTimeWindow((int) (0.01 * ITERATION_TIMES), (int) (0.05 * ITERATION_TIMES),
-        ITERATION_TIMES / 2, 0);
+    testSlidingTimeWindow(
+        (int) (0.01 * ITERATION_TIMES), (int) (0.05 * ITERATION_TIMES), ITERATION_TIMES / 2, 0);
   }
 
   @Test
   public void testSlidingTimeWindow10() {
-    testSlidingTimeWindow((int) (-0.01 * ITERATION_TIMES), (int) (0.05 * ITERATION_TIMES), 0,
-        ITERATION_TIMES / 2);
+    testSlidingTimeWindow(
+        (int) (-0.01 * ITERATION_TIMES), (int) (0.05 * ITERATION_TIMES), 0, ITERATION_TIMES / 2);
   }
 
   @Test
   public void testSlidingTimeWindow11() {
-    testSlidingTimeWindow((int) (0.01 * ITERATION_TIMES), (int) (-0.05 * ITERATION_TIMES), 0,
-        ITERATION_TIMES / 2);
+    testSlidingTimeWindow(
+        (int) (0.01 * ITERATION_TIMES), (int) (-0.05 * ITERATION_TIMES), 0, ITERATION_TIMES / 2);
   }
 
   @Test
@@ -285,28 +312,33 @@ public class IoTDBUDFWindowQueryIT {
     testSlidingTimeWindow(0, (int) (0.05 * ITERATION_TIMES), 0, ITERATION_TIMES / 2);
   }
 
-  private void testSlidingTimeWindow(int timeInterval, int slidingStep, int displayWindowBegin,
-      int displayWindowEnd) {
-    String sql = String.format(
-        "select accumulator(s1, \"%s\"=\"%s\", \"%s\"=\"%s\", \"%s\"=\"%s\", \"%s\"=\"%s\", \"%s\"=\"%s\") from root.vehicle.d1",
-        ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_SLIDING_TIME,
-        TIME_INTERVAL_KEY, timeInterval,
-        SLIDING_STEP_KEY, slidingStep,
-        DISPLAY_WINDOW_BEGIN_KEY, displayWindowBegin,
-        DISPLAY_WINDOW_END_KEY, displayWindowEnd
-    );
+  private void testSlidingTimeWindow(
+      int timeInterval, int slidingStep, int displayWindowBegin, int displayWindowEnd) {
+    String sql =
+        String.format(
+            "select accumulator(s1, \"%s\"=\"%s\", \"%s\"=\"%s\", \"%s\"=\"%s\", \"%s\"=\"%s\", \"%s\"=\"%s\") from root.vehicle.d1",
+            ACCESS_STRATEGY_KEY,
+            ACCESS_STRATEGY_SLIDING_TIME,
+            TIME_INTERVAL_KEY,
+            timeInterval,
+            SLIDING_STEP_KEY,
+            slidingStep,
+            DISPLAY_WINDOW_BEGIN_KEY,
+            displayWindowBegin,
+            DISPLAY_WINDOW_END_KEY,
+            displayWindowEnd);
 
-    try (Statement statement = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
-            "root", "root").createStatement()) {
+    try (Statement statement =
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
+            .createStatement()) {
       ResultSet resultSet = statement.executeQuery(sql);
       assertEquals(2, resultSet.getMetaData().getColumnCount());
 
       int count = 0;
       while (resultSet.next()) {
         int begin = displayWindowBegin + count * slidingStep;
-        int expectedWindowSize = begin + timeInterval < displayWindowEnd
-            ? timeInterval : displayWindowEnd - begin;
+        int expectedWindowSize =
+            begin + timeInterval < displayWindowEnd ? timeInterval : displayWindowEnd - begin;
 
         int expectedAccumulation = 0;
         for (int i = displayWindowBegin + count * slidingStep;
@@ -356,22 +388,24 @@ public class IoTDBUDFWindowQueryIT {
   }
 
   public void testSlidingTimeWindowWithTimeIntervalOnly(int timeInterval) {
-    String sql = String.format("select time_window_tester(s1, \"%s\"=\"%s\") from root.vehicle.d1",
-        TIME_INTERVAL_KEY, timeInterval);
+    String sql =
+        String.format(
+            "select time_window_tester(s1, \"%s\"=\"%s\") from root.vehicle.d1",
+            TIME_INTERVAL_KEY, timeInterval);
 
     int displayWindowBegin = 0;
     int displayWindowEnd = ITERATION_TIMES;
-    try (Statement statement = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
-            "root", "root").createStatement()) {
+    try (Statement statement =
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
+            .createStatement()) {
       ResultSet resultSet = statement.executeQuery(sql);
       assertEquals(2, resultSet.getMetaData().getColumnCount());
 
       int count = 0;
       while (resultSet.next()) {
         int begin = displayWindowBegin + count * timeInterval;
-        int expectedWindowSize = begin + timeInterval < displayWindowEnd
-            ? timeInterval : displayWindowEnd - begin;
+        int expectedWindowSize =
+            begin + timeInterval < displayWindowEnd ? timeInterval : displayWindowEnd - begin;
 
         int expectedAccumulation = 0;
         for (int i = displayWindowBegin + count * timeInterval;
@@ -443,40 +477,50 @@ public class IoTDBUDFWindowQueryIT {
   @Test
   public void testSlidingSizeWindowWithSlidingStep7() {
     testSlidingSizeWindowWithSlidingStep((int) (1.5 * ITERATION_TIMES), 4333, 0);
-    testSlidingSizeWindowWithSlidingStep((int) (1.5 * ITERATION_TIMES), 4333,
-        (int) (0.434 * ITERATION_TIMES));
-    testSlidingSizeWindowWithSlidingStep((int) (1.5 * ITERATION_TIMES), 4333,
-        (int) (1.5 * ITERATION_TIMES));
+    testSlidingSizeWindowWithSlidingStep(
+        (int) (1.5 * ITERATION_TIMES), 4333, (int) (0.434 * ITERATION_TIMES));
+    testSlidingSizeWindowWithSlidingStep(
+        (int) (1.5 * ITERATION_TIMES), 4333, (int) (1.5 * ITERATION_TIMES));
   }
 
   @Test
   public void testSlidingSizeWindowWithSlidingStep8() {
     testSlidingSizeWindowWithSlidingStep(10000, (int) (1.5 * ITERATION_TIMES), 0);
-    testSlidingSizeWindowWithSlidingStep(10000, (int) (1.5 * ITERATION_TIMES),
-        (int) (0.434 * ITERATION_TIMES));
-    testSlidingSizeWindowWithSlidingStep(10000, (int) (1.5 * ITERATION_TIMES),
-        (int) (1.5 * ITERATION_TIMES));
+    testSlidingSizeWindowWithSlidingStep(
+        10000, (int) (1.5 * ITERATION_TIMES), (int) (0.434 * ITERATION_TIMES));
+    testSlidingSizeWindowWithSlidingStep(
+        10000, (int) (1.5 * ITERATION_TIMES), (int) (1.5 * ITERATION_TIMES));
   }
 
   @Test
   public void testSlidingSizeWindowWithSlidingStep9() {
-    testSlidingSizeWindowWithSlidingStep((int) (1.5 * ITERATION_TIMES),
-        (int) (1.5 * ITERATION_TIMES), 0);
-    testSlidingSizeWindowWithSlidingStep((int) (1.5 * ITERATION_TIMES),
-        (int) (1.5 * ITERATION_TIMES), (int) (0.434 * ITERATION_TIMES));
-    testSlidingSizeWindowWithSlidingStep((int) (1.5 * ITERATION_TIMES),
-        (int) (1.5 * ITERATION_TIMES), (int) (1.5 * ITERATION_TIMES));
+    testSlidingSizeWindowWithSlidingStep(
+        (int) (1.5 * ITERATION_TIMES), (int) (1.5 * ITERATION_TIMES), 0);
+    testSlidingSizeWindowWithSlidingStep(
+        (int) (1.5 * ITERATION_TIMES),
+        (int) (1.5 * ITERATION_TIMES),
+        (int) (0.434 * ITERATION_TIMES));
+    testSlidingSizeWindowWithSlidingStep(
+        (int) (1.5 * ITERATION_TIMES),
+        (int) (1.5 * ITERATION_TIMES),
+        (int) (1.5 * ITERATION_TIMES));
   }
 
-  public void testSlidingSizeWindowWithSlidingStep(int windowSize, int slidingStep,
-      int consumptionPoint) {
-    String sql = String.format(
-        "select size_window_0(s1, \"%s\"=\"%s\", \"%s\"=\"%s\"), size_window_1(s1, \"%s\"=\"%s\") from root.vehicle.d1",
-        "windowSize", windowSize, "slidingStep", slidingStep, "consumptionPoint", consumptionPoint);
+  public void testSlidingSizeWindowWithSlidingStep(
+      int windowSize, int slidingStep, int consumptionPoint) {
+    String sql =
+        String.format(
+            "select size_window_0(s1, \"%s\"=\"%s\", \"%s\"=\"%s\"), size_window_1(s1, \"%s\"=\"%s\") from root.vehicle.d1",
+            "windowSize",
+            windowSize,
+            "slidingStep",
+            slidingStep,
+            "consumptionPoint",
+            consumptionPoint);
 
-    try (Statement statement = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
-            "root", "root").createStatement()) {
+    try (Statement statement =
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
+            .createStatement()) {
       ResultSet resultSet = statement.executeQuery(sql);
       assertEquals(3, resultSet.getMetaData().getColumnCount());
 
@@ -497,8 +541,8 @@ public class IoTDBUDFWindowQueryIT {
         } else {
           String actual = resultSet.getString(2);
           if (actual != null) {
-            assertEquals(ITERATION_TIMES - count * slidingStep,
-                Integer.parseInt(resultSet.getString(2)));
+            assertEquals(
+                ITERATION_TIMES - count * slidingStep, Integer.parseInt(resultSet.getString(2)));
             ++count;
           }
         }

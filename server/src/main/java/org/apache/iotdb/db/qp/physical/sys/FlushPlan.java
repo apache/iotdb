@@ -18,6 +18,16 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -27,24 +37,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class FlushPlan extends PhysicalPlan {
 
   private static final Logger logger = LoggerFactory.getLogger(FlushPlan.class);
   /**
    * key-> storage group, value->list of pair, Pair<PartitionId, isSequence>,
-   * <p>
-   * Notice, the value maybe null, when it is null, all partitions under the storage groups are flushed,
-   * so do not use {@link java.util.concurrent.ConcurrentHashMap} when
-   * initializing as ConcurrentMap dose not support null key and value
+   *
+   * <p>Notice, the value maybe null, when it is null, all partitions under the storage groups are
+   * flushed, so do not use {@link java.util.concurrent.ConcurrentHashMap} when initializing as
+   * ConcurrentMap dose not support null key and value
    */
   private Map<PartialPath, List<Pair<Long, Boolean>>> storageGroupPartitionIds;
 
@@ -53,9 +55,7 @@ public class FlushPlan extends PhysicalPlan {
 
   private boolean isSync;
 
-  /**
-   * only for deserialize
-   */
+  /** only for deserialize */
   public FlushPlan() {
     super(false, OperatorType.FLUSH);
   }
@@ -74,7 +74,9 @@ public class FlushPlan extends PhysicalPlan {
     this.isSync = false;
   }
 
-  public FlushPlan(Boolean isSeq, boolean isSync,
+  public FlushPlan(
+      Boolean isSeq,
+      boolean isSync,
       Map<PartialPath, List<Pair<Long, Boolean>>> storageGroupPartitionIds) {
     super(false, OperatorType.FLUSH);
     this.storageGroupPartitionIds = storageGroupPartitionIds;
@@ -96,8 +98,8 @@ public class FlushPlan extends PhysicalPlan {
       return Collections.emptyList();
     }
     List<PartialPath> ret = new ArrayList<>();
-    for (Entry<PartialPath, List<Pair<Long, Boolean>>> entry : storageGroupPartitionIds
-        .entrySet()) {
+    for (Entry<PartialPath, List<Pair<Long, Boolean>>> entry :
+        storageGroupPartitionIds.entrySet()) {
       ret.add(entry.getKey());
     }
     return ret;
@@ -127,8 +129,8 @@ public class FlushPlan extends PhysicalPlan {
     } else {
       stream.write((byte) 1);
       stream.writeInt(storageGroupPartitionIds.size());
-      for (Entry<PartialPath, List<Pair<Long, Boolean>>> entry : storageGroupPartitionIds
-          .entrySet()) {
+      for (Entry<PartialPath, List<Pair<Long, Boolean>>> entry :
+          storageGroupPartitionIds.entrySet()) {
         ReadWriteIOUtils.write(entry.getKey().getFullPath(), stream);
         if (entry.getValue() == null) {
           // null value
@@ -166,8 +168,8 @@ public class FlushPlan extends PhysicalPlan {
       // null value
       buffer.put((byte) 1);
       buffer.putInt(storageGroupPartitionIds.size());
-      for (Entry<PartialPath, List<Pair<Long, Boolean>>> entry : storageGroupPartitionIds
-          .entrySet()) {
+      for (Entry<PartialPath, List<Pair<Long, Boolean>>> entry :
+          storageGroupPartitionIds.entrySet()) {
         ReadWriteIOUtils.write(entry.getKey().getFullPath(), buffer);
         if (entry.getValue() == null) {
           // null value
@@ -231,10 +233,12 @@ public class FlushPlan extends PhysicalPlan {
   @Override
   public String toString() {
     return "FlushPlan{"
-        + " storageGroupPartitionIds=" + storageGroupPartitionIds
-        + ", isSeq=" + isSeq
-        + ", isSync=" + isSync
+        + " storageGroupPartitionIds="
+        + storageGroupPartitionIds
+        + ", isSeq="
+        + isSeq
+        + ", isSync="
+        + isSync
         + "}";
   }
-
 }

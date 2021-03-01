@@ -19,21 +19,6 @@
 
 package org.apache.iotdb.cluster.query;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.concurrent.ConcurrentSkipListSet;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
@@ -72,9 +57,26 @@ import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class ClusterPlanExecutor extends PlanExecutor {
 
@@ -93,7 +95,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
   @Override
   public QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context)
       throws IOException, StorageEngineException, QueryFilterOptimizationException,
-      QueryProcessException, MetadataException, InterruptedException {
+          QueryProcessException, MetadataException, InterruptedException {
     if (queryPlan instanceof QueryPlan) {
       logger.debug("Executing a query: {}", queryPlan);
       return processDataQuery((QueryPlan) queryPlan, context);
@@ -158,8 +160,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
    * Split the paths by the data group they belong to and query them from the groups separately.
    *
    * @param sgPathMap the key is the storage group name and the value is the path to be queried with
-   *                  storage group added
-   * @param level     the max depth to match the pattern, -1 means matching the whole pattern
+   *     storage group added
+   * @param level the max depth to match the pattern, -1 means matching the whole pattern
    * @return the number of paths that match the pattern at given level
    * @throws MetadataException
    */
@@ -172,20 +174,25 @@ public class ClusterPlanExecutor extends PlanExecutor {
       String storageGroupName = sgPathEntry.getKey();
       PartialPath pathUnderSG = new PartialPath(sgPathEntry.getValue());
       // find the data group that should hold the timeseries schemas of the storage group
-      PartitionGroup partitionGroup = metaGroupMember.getPartitionTable()
-          .route(storageGroupName, 0);
+      PartitionGroup partitionGroup =
+          metaGroupMember.getPartitionTable().route(storageGroupName, 0);
       if (partitionGroup.contains(metaGroupMember.getThisNode())) {
         // this node is a member of the group, perform a local query after synchronizing with the
         // leader
-        metaGroupMember.getLocalDataMember(partitionGroup.getHeader())
+        metaGroupMember
+            .getLocalDataMember(partitionGroup.getHeader())
             .syncLeaderWithConsistencyCheck(false);
         int localResult = getLocalPathCount(pathUnderSG, level);
-        logger.debug("{}: get path count of {} locally, result {}", metaGroupMember.getName(),
-            partitionGroup, localResult);
+        logger.debug(
+            "{}: get path count of {} locally, result {}",
+            metaGroupMember.getName(),
+            partitionGroup,
+            localResult);
         result.addAndGet(localResult);
       } else {
         // batch the queries of the same group to reduce communication
-        groupPathMap.computeIfAbsent(partitionGroup, p -> new ArrayList<>())
+        groupPathMap
+            .computeIfAbsent(partitionGroup, p -> new ArrayList<>())
             .add(pathUnderSG.getFullPath());
       }
     }
@@ -199,15 +206,20 @@ public class ClusterPlanExecutor extends PlanExecutor {
     for (Entry<PartitionGroup, List<String>> partitionGroupPathEntry : groupPathMap.entrySet()) {
       PartitionGroup partitionGroup = partitionGroupPathEntry.getKey();
       List<String> pathsToQuery = partitionGroupPathEntry.getValue();
-      remoteFutures.add(remoteQueryThreadPool.submit(() -> {
-        try {
-          result.addAndGet(getRemotePathCount(partitionGroup, pathsToQuery, level));
-        } catch (MetadataException e) {
-          logger.warn("Cannot get remote path count of {} from {}", pathsToQuery, partitionGroup,
-              e);
-        }
-        return null;
-      }));
+      remoteFutures.add(
+          remoteQueryThreadPool.submit(
+              () -> {
+                try {
+                  result.addAndGet(getRemotePathCount(partitionGroup, pathsToQuery, level));
+                } catch (MetadataException e) {
+                  logger.warn(
+                      "Cannot get remote path count of {} from {}",
+                      pathsToQuery,
+                      partitionGroup,
+                      e);
+                }
+                return null;
+              }));
     }
     waitForThreadPool(remoteFutures, remoteQueryThreadPool, "getPathCount()");
 
@@ -224,8 +236,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
     return localResult;
   }
 
-  private int getRemotePathCount(PartitionGroup partitionGroup, List<String> pathsToQuery,
-      int level)
+  private int getRemotePathCount(
+      PartitionGroup partitionGroup, List<String> pathsToQuery, int level)
       throws MetadataException {
     // choose the node with lowest latency or highest throughput
     List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
@@ -233,21 +245,33 @@ public class ClusterPlanExecutor extends PlanExecutor {
       try {
         Integer count;
         if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-          AsyncDataClient client = metaGroupMember
-              .getClientProvider().getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+          AsyncDataClient client =
+              metaGroupMember
+                  .getClientProvider()
+                  .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
           client.setTimeout(RaftServer.getReadOperationTimeoutMS());
-          count = SyncClientAdaptor.getPathCount(client, partitionGroup.getHeader(),
-              pathsToQuery, level);
+          count =
+              SyncClientAdaptor.getPathCount(
+                  client, partitionGroup.getHeader(), pathsToQuery, level);
         } else {
-          SyncDataClient syncDataClient = metaGroupMember
-              .getClientProvider().getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-          syncDataClient.setTimeout(RaftServer.getReadOperationTimeoutMS());
-          count = syncDataClient.getPathCount(partitionGroup.getHeader(), pathsToQuery, level);
-          ClientUtils.putBackSyncClient(syncDataClient);
+          SyncDataClient syncDataClient = null;
+          try {
+            syncDataClient =
+                metaGroupMember
+                    .getClientProvider()
+                    .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+            syncDataClient.setTimeout(RaftServer.getReadOperationTimeoutMS());
+            count = syncDataClient.getPathCount(partitionGroup.getHeader(), pathsToQuery, level);
+          } finally {
+            ClientUtils.putBackSyncClient(syncDataClient);
+          }
         }
-
-        logger.debug("{}: get path count of {} from {}, result {}", metaGroupMember.getName(),
-            partitionGroup, node, count);
+        logger.debug(
+            "{}: get path count of {} from {}, result {}",
+            metaGroupMember.getName(),
+            partitionGroup,
+            node,
+            count);
         if (count != null) {
           return count;
         }
@@ -276,23 +300,26 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
     List<Future<Void>> futureList = new ArrayList<>();
     for (PartitionGroup group : metaGroupMember.getPartitionTable().getGlobalGroups()) {
-      futureList.add(pool.submit(() -> {
-        List<PartialPath> paths;
-        paths = getNodesList(group, schemaPattern, level);
-        if (paths != null) {
-          nodeSet.addAll(paths);
-        } else {
-          logger.error("Fail to get node list of {}@{} from {}", schemaPattern, level, group);
-        }
-        return null;
-      }));
+      futureList.add(
+          pool.submit(
+              () -> {
+                List<PartialPath> paths;
+                paths = getNodesList(group, schemaPattern, level);
+                if (paths != null) {
+                  nodeSet.addAll(paths);
+                } else {
+                  logger.error(
+                      "Fail to get node list of {}@{} from {}", schemaPattern, level, group);
+                }
+                return null;
+              }));
     }
     waitForThreadPool(futureList, pool, "getNodesList()");
     return new ArrayList<>(nodeSet);
   }
 
-  private List<PartialPath> getNodesList(PartitionGroup group, PartialPath schemaPattern,
-      int level) throws CheckConsistencyException, MetadataException {
+  private List<PartialPath> getNodesList(PartitionGroup group, PartialPath schemaPattern, int level)
+      throws CheckConsistencyException, MetadataException {
     if (group.contains(metaGroupMember.getThisNode())) {
       return getLocalNodesList(group, schemaPattern, level);
     } else {
@@ -300,39 +327,51 @@ public class ClusterPlanExecutor extends PlanExecutor {
     }
   }
 
-  private List<PartialPath> getLocalNodesList(PartitionGroup group, PartialPath schemaPattern,
-      int level) throws CheckConsistencyException, MetadataException {
+  private List<PartialPath> getLocalNodesList(
+      PartitionGroup group, PartialPath schemaPattern, int level)
+      throws CheckConsistencyException, MetadataException {
     Node header = group.getHeader();
     DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header);
     localDataMember.syncLeaderWithConsistencyCheck(false);
     try {
-      return IoTDB.metaManager.getNodesList(schemaPattern, level,
+      return IoTDB.metaManager.getNodesList(
+          schemaPattern,
+          level,
           new SlotSgFilter(
               ((SlotPartitionTable) metaGroupMember.getPartitionTable()).getNodeSlots(header)));
     } catch (MetadataException e) {
-      logger
-          .error("Cannot not get node list of {}@{} from {} locally", schemaPattern, level, group);
+      logger.error(
+          "Cannot not get node list of {}@{} from {} locally", schemaPattern, level, group);
       throw e;
     }
   }
 
-  private List<PartialPath> getRemoteNodesList(PartitionGroup group, PartialPath schemaPattern,
-      int level) {
+  private List<PartialPath> getRemoteNodesList(
+      PartitionGroup group, PartialPath schemaPattern, int level) {
     List<String> paths = null;
     for (Node node : group) {
       try {
         if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-          AsyncDataClient client = metaGroupMember
-              .getClientProvider().getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-          paths = SyncClientAdaptor
-              .getNodeList(client, group.getHeader(), schemaPattern.getFullPath(), level);
+          AsyncDataClient client =
+              metaGroupMember
+                  .getClientProvider()
+                  .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+          paths =
+              SyncClientAdaptor.getNodeList(
+                  client, group.getHeader(), schemaPattern.getFullPath(), level);
         } else {
-          SyncDataClient syncDataClient = metaGroupMember
-              .getClientProvider().getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-          paths = syncDataClient.getNodeList(group.getHeader(), schemaPattern.getFullPath(), level);
-          ClientUtils.putBackSyncClient(syncDataClient);
+          SyncDataClient syncDataClient = null;
+          try {
+            syncDataClient =
+                metaGroupMember
+                    .getClientProvider()
+                    .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+            paths =
+                syncDataClient.getNodeList(group.getHeader(), schemaPattern.getFullPath(), level);
+          } finally {
+            ClientUtils.putBackSyncClient(syncDataClient);
+          }
         }
-
         if (paths != null) {
           break;
         }
@@ -345,7 +384,6 @@ public class ClusterPlanExecutor extends PlanExecutor {
         Thread.currentThread().interrupt();
       }
     }
-
     return PartialPath.fromStringList(paths);
   }
 
@@ -357,27 +395,29 @@ public class ClusterPlanExecutor extends PlanExecutor {
     List<Future<Void>> futureList = new ArrayList<>();
 
     for (PartitionGroup group : metaGroupMember.getPartitionTable().getGlobalGroups()) {
-      futureList.add(pool.submit(() -> {
-        Set<String> nextChildren = null;
-        try {
-          nextChildren = getNextChildren(group, path);
-        } catch (CheckConsistencyException e) {
-          logger.error("Fail to get next children of {} from {}", path, group, e);
-        }
-        if (nextChildren != null) {
-          resultSet.addAll(nextChildren);
-        } else {
-          logger.error("Fail to get next children of {} from {}", path, group);
-        }
-        return null;
-      }));
+      futureList.add(
+          pool.submit(
+              () -> {
+                Set<String> nextChildren = null;
+                try {
+                  nextChildren = getNextChildren(group, path);
+                } catch (CheckConsistencyException e) {
+                  logger.error("Fail to get next children of {} from {}", path, group, e);
+                }
+                if (nextChildren != null) {
+                  resultSet.addAll(nextChildren);
+                } else {
+                  logger.error("Fail to get next children of {} from {}", path, group);
+                }
+                return null;
+              }));
     }
     waitForThreadPool(futureList, pool, "getPathNextChildren()");
     return resultSet;
   }
 
-  public static void waitForThreadPool(List<Future<Void>> futures, ExecutorService pool,
-      String methodName)
+  public static void waitForThreadPool(
+      List<Future<Void>> futures, ExecutorService pool, String methodName)
       throws MetadataException {
     for (Future<Void> future : futures) {
       try {
@@ -416,8 +456,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     try {
       return IoTDB.metaManager.getChildNodePathInNextLevel(path);
     } catch (MetadataException e) {
-      logger
-          .error("Cannot not get next children of {} from {} locally", path, group);
+      logger.error("Cannot not get next children of {} from {} locally", path, group);
       return Collections.emptySet();
     }
   }
@@ -427,18 +466,25 @@ public class ClusterPlanExecutor extends PlanExecutor {
     for (Node node : group) {
       try {
         if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-          AsyncDataClient client = metaGroupMember
-              .getClientProvider().getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-          nextChildren = SyncClientAdaptor
-              .getNextChildren(client, group.getHeader(), path.getFullPath());
+          AsyncDataClient client =
+              metaGroupMember
+                  .getClientProvider()
+                  .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+          nextChildren =
+              SyncClientAdaptor.getNextChildren(client, group.getHeader(), path.getFullPath());
         } else {
-          SyncDataClient syncDataClient = metaGroupMember
-              .getClientProvider().getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-          nextChildren = syncDataClient
-              .getChildNodePathInNextLevel(group.getHeader(), path.getFullPath());
-          ClientUtils.putBackSyncClient(syncDataClient);
+          SyncDataClient syncDataClient = null;
+          try {
+            syncDataClient =
+                metaGroupMember
+                    .getClientProvider()
+                    .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+            nextChildren =
+                syncDataClient.getChildNodePathInNextLevel(group.getHeader(), path.getFullPath());
+          } finally {
+            ClientUtils.putBackSyncClient(syncDataClient);
+          }
         }
-
         if (nextChildren != null) {
           break;
         }
@@ -461,8 +507,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
-  protected AlignByDeviceDataSet getAlignByDeviceDataSet(AlignByDevicePlan plan,
-      QueryContext context, IQueryRouter router) {
+  protected AlignByDeviceDataSet getAlignByDeviceDataSet(
+      AlignByDevicePlan plan, QueryContext context, IQueryRouter router) {
     return new ClusterAlignByDeviceDataSet(plan, context, router);
   }
 
@@ -478,8 +524,9 @@ public class ClusterPlanExecutor extends PlanExecutor {
         ClusterDescriptor.getInstance().loadHotModifiedProps();
         break;
       default:
-        throw new QueryProcessException(String
-            .format("Unrecognized load configuration plan type: %s",
+        throw new QueryProcessException(
+            String.format(
+                "Unrecognized load configuration plan type: %s",
                 plan.getLoadConfigurationPlanType()));
     }
   }
@@ -491,7 +538,10 @@ public class ClusterPlanExecutor extends PlanExecutor {
       return;
     }
     for (PartialPath path : deletePlan.getPaths()) {
-      delete(path, deletePlan.getDeleteStartTime(), deletePlan.getDeleteEndTime(),
+      delete(
+          path,
+          deletePlan.getDeleteStartTime(),
+          deletePlan.getDeleteEndTime(),
           deletePlan.getIndex());
     }
   }
@@ -505,6 +555,4 @@ public class ClusterPlanExecutor extends PlanExecutor {
       throw new QueryProcessException(e);
     }
   }
-
-
 }

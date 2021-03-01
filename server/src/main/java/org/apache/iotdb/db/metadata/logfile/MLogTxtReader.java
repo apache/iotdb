@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.metadata.logfile;
 
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,9 +29,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 
-/**
- * reader for reading mlog.txt
- */
+/** reader for reading mlog.txt */
 public class MLogTxtReader implements AutoCloseable {
   private static final Logger logger = LoggerFactory.getLogger(MLogTxtReader.class);
 

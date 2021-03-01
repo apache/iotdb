@@ -23,34 +23,25 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-
 /**
  * The type of MetadataIndexNode
  *
- * INTERNAL_DEVICE: internal nodes of the index tree's device level
- * LEAF_DEVICE: leaf nodes of the index tree's device level, points to measurement level
- * INTERNAL_MEASUREMENT: internal nodes of the index tree's measurement level
- * LEAF_MEASUREMENT: leaf nodes of the index tree's device level, points to TimeseriesMetadata
+ * <p>INTERNAL_DEVICE: internal nodes of the index tree's device level LEAF_DEVICE: leaf nodes of
+ * the index tree's device level, points to measurement level INTERNAL_MEASUREMENT: internal nodes
+ * of the index tree's measurement level LEAF_MEASUREMENT: leaf nodes of the index tree's device
+ * level, points to TimeseriesMetadata
  */
 public enum MetadataIndexNodeType {
-  /**
-   * INTERNAL_DEVICE
-   */
+  /** INTERNAL_DEVICE */
   INTERNAL_DEVICE((byte) 0),
 
-  /**
-   * LEAF_DEVICE
-   */
+  /** LEAF_DEVICE */
   LEAF_DEVICE((byte) 1),
 
-  /**
-   * INTERNAL_MEASUREMENT
-   */
+  /** INTERNAL_MEASUREMENT */
   INTERNAL_MEASUREMENT((byte) 2),
 
-  /**
-   * INTERNAL_MEASUREMENT
-   */
+  /** INTERNAL_MEASUREMENT */
   LEAF_MEASUREMENT((byte) 3);
 
   private final byte type;

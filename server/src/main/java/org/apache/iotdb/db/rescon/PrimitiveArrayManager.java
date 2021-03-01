@@ -18,41 +18,35 @@
  */
 package org.apache.iotdb.db.rescon;
 
-import java.util.ArrayDeque;
-import java.util.Arrays;
-import java.util.EnumMap;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Manage all primitive data list in memory, including get and release operation.
- */
+import java.util.ArrayDeque;
+import java.util.Arrays;
+import java.util.EnumMap;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
+
+/** Manage all primitive data list in memory, including get and release operation. */
 public class PrimitiveArrayManager {
 
-  /**
-   * data type -> ArrayDeque<Array>
-   */
-  private static final Map<TSDataType, ArrayDeque<Object>> bufferedArraysMap = new EnumMap<>(
-      TSDataType.class);
+  /** data type -> ArrayDeque<Array> */
+  private static final Map<TSDataType, ArrayDeque<Object>> bufferedArraysMap =
+      new EnumMap<>(TSDataType.class);
 
-  /**
-   * data type -> current number of buffered arrays
-   */
-  private static final Map<TSDataType, Integer> bufferedArraysNumMap = new EnumMap<>(
-      TSDataType.class);
+  /** data type -> current number of buffered arrays */
+  private static final Map<TSDataType, Integer> bufferedArraysNumMap =
+      new EnumMap<>(TSDataType.class);
 
-  /**
-   * data type -> ratio of data type in schema, which could be seen as recommended ratio
-   */
-  private static final Map<TSDataType, Double> bufferedArraysNumRatio = new EnumMap<>(
-      TSDataType.class);
+  /** data type -> ratio of data type in schema, which could be seen as recommended ratio */
+  private static final Map<TSDataType, Double> bufferedArraysNumRatio =
+      new EnumMap<>(TSDataType.class);
 
   private static final Logger logger = LoggerFactory.getLogger(PrimitiveArrayManager.class);
 
@@ -60,20 +54,14 @@ public class PrimitiveArrayManager {
 
   public static final int ARRAY_SIZE = config.getPrimitiveArraySize();
 
-  /**
-   * threshold total size of arrays for all data types
-   */
+  /** threshold total size of arrays for all data types */
   private static final double BUFFERED_ARRAY_SIZE_THRESHOLD =
       config.getAllocateMemoryForWrite() * config.getBufferedArraysMemoryProportion();
 
-  /**
-   * total size of buffered arrays
-   */
+  /** total size of buffered arrays */
   private static AtomicLong bufferedArraysRamSize = new AtomicLong();
 
-  /**
-   * total size of out of buffer arrays
-   */
+  /** total size of out of buffer arrays */
   private static AtomicLong outOfBufferArraysRamSize = new AtomicLong();
 
   static {
@@ -150,7 +138,7 @@ public class PrimitiveArrayManager {
    * Get primitive data lists according to data type and size, only for TVList's sorting
    *
    * @param dataType data type
-   * @param size     needed capacity
+   * @param size needed capacity
    * @return an array of primitive data arrays
    */
   public static Object createDataListsByType(TSDataType dataType, int size) {
@@ -242,7 +230,8 @@ public class PrimitiveArrayManager {
         if (logger.isDebugEnabled()) {
           logger.debug(
               "The ratio of {} in buffered array has not reached the schema ratio. Replaced by {}",
-              dataType, replacedDataType);
+              dataType,
+              replacedDataType);
         }
         bringBackBufferedArray(dataType, dataArray);
       } else {
@@ -258,7 +247,7 @@ public class PrimitiveArrayManager {
   /**
    * Bring back a buffered array
    *
-   * @param dataType  data type
+   * @param dataType data type
    * @param dataArray data array
    */
   private static void bringBackBufferedArray(TSDataType dataType, Object dataArray) {
@@ -273,18 +262,19 @@ public class PrimitiveArrayManager {
    * Bring back out of buffered array
    *
    * @param dataType data type
-   * @param size     capacity
+   * @param size capacity
    */
   private static void bringBackOOBArray(TSDataType dataType, int size) {
     outOfBufferArraysRamSize.addAndGet((long) -size * dataType.getDataTypeSize());
   }
 
   /**
-   * @param schemaDataTypeNumMap schema DataType Num Map (for each series, increase a long and a specific type)
+   * @param schemaDataTypeNumMap schema DataType Num Map (for each series, increase a long and a
+   *     specific type)
    * @param total current DataType Total Num (twice of number of time series)
    */
-  public static void updateSchemaDataTypeNum(Map<TSDataType, Integer> schemaDataTypeNumMap,
-      long total) {
+  public static void updateSchemaDataTypeNum(
+      Map<TSDataType, Integer> schemaDataTypeNumMap, long total) {
     for (Map.Entry<TSDataType, Integer> entry : schemaDataTypeNumMap.entrySet()) {
       TSDataType dataType = entry.getKey();
       bufferedArraysNumRatio.put(dataType, (double) schemaDataTypeNumMap.get(dataType) / total);
@@ -303,9 +293,9 @@ public class PrimitiveArrayManager {
     for (int num : bufferedArraysNumMap.values()) {
       total += num;
     }
-    return total != 0 &&
-        ((double) bufferedArraysNumMap.getOrDefault(dataType, 0) / total >
-            bufferedArraysNumRatio.getOrDefault(dataType, 0.0));
+    return total != 0
+        && ((double) bufferedArraysNumMap.getOrDefault(dataType, 0) / total
+            > bufferedArraysNumRatio.getOrDefault(dataType, 0.0));
   }
 
   public static void close() {

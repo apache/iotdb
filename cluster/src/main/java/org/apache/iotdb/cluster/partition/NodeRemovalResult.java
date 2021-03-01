@@ -19,9 +19,7 @@
 
 package org.apache.iotdb.cluster.partition;
 
-/**
- * NodeRemovalResult stores the removed partition group.
- */
+/** NodeRemovalResult stores the removed partition group. */
 public class NodeRemovalResult {
   private PartitionGroup removedGroup;
   // if the removed group contains the local node, the local node should join a new group to

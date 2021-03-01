@@ -19,12 +19,13 @@
 
 package org.apache.iotdb.db.query.udf.core.access;
 
-import java.io.IOException;
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.access.RowIterator;
-import org.apache.iotdb.db.query.udf.datastructure.row.ElasticSerializableRowRecordList;
 import org.apache.iotdb.db.query.udf.datastructure.primitive.IntList;
+import org.apache.iotdb.db.query.udf.datastructure.row.ElasticSerializableRowRecordList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import java.io.IOException;
 
 public class RowIteratorImpl implements RowIterator {
 
@@ -33,8 +34,11 @@ public class RowIteratorImpl implements RowIterator {
   private final RowImpl row;
   private int rowIndex;
 
-  public RowIteratorImpl(ElasticSerializableRowRecordList rowRecordList, int[] columnIndexes,
-      TSDataType[] dataTypes, IntList windowRowIndexes) {
+  public RowIteratorImpl(
+      ElasticSerializableRowRecordList rowRecordList,
+      int[] columnIndexes,
+      TSDataType[] dataTypes,
+      IntList windowRowIndexes) {
     this.rowRecordList = rowRecordList;
     this.windowRowIndexes = windowRowIndexes;
     row = new RowImpl(columnIndexes, dataTypes);

@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.sync.receiver;
 
 import org.apache.iotdb.db.sync.receiver.transfer.SyncServiceImpl;
+
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.server.ServerContext;
 import org.apache.thrift.server.TServerEventHandler;
@@ -40,13 +41,13 @@ public class SyncServerThriftHandler implements TServerEventHandler {
 
   @Override
   public void deleteContext(ServerContext arg0, TProtocol arg1, TProtocol arg2) {
-    //release query resources.
+    // release query resources.
     serviceImpl.handleClientExit();
   }
 
   @Override
   public void preServe() {
-    //nothing
+    // nothing
   }
 
   @Override
@@ -54,4 +55,3 @@ public class SyncServerThriftHandler implements TServerEventHandler {
     // nothing
   }
 }
-

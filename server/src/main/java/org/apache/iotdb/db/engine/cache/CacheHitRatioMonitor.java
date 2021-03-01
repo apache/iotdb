@@ -23,11 +23,11 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class CacheHitRatioMonitor implements CacheHitRatioMonitorMXBean, IService {
-
 
   private static Logger logger = LoggerFactory.getLogger(CacheHitRatioMonitor.class);
   static final CacheHitRatioMonitor instance = AsyncCacheHitRatioHolder.DISPLAYER;
@@ -135,7 +135,6 @@ public class CacheHitRatioMonitor implements CacheHitRatioMonitorMXBean, IServic
 
     private static final CacheHitRatioMonitor DISPLAYER = new CacheHitRatioMonitor();
 
-    private AsyncCacheHitRatioHolder() {
-    }
+    private AsyncCacheHitRatioHolder() {}
   }
 }

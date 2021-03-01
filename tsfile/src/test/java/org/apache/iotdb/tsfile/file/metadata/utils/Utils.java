@@ -18,13 +18,6 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.utils;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
@@ -32,7 +25,16 @@ import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.statistics.BooleanStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.IntegerStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+
 import org.junit.Assert;
+
+import java.util.List;
+import java.util.Map;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class Utils {
 
@@ -53,8 +55,8 @@ public class Utils {
     }
   }
 
-  public static void isMapStringEqual(Map<String, String> mapA, Map<String, String> mapB,
-      String name) {
+  public static void isMapStringEqual(
+      Map<String, String> mapA, Map<String, String> mapB, String name) {
     if ((mapA == null) ^ (mapB == null)) {
       System.out.println("error");
       fail(String.format("one of %s is null", name));
@@ -69,8 +71,8 @@ public class Utils {
     }
   }
 
-  public static void isTwoTsDigestEqual(Statistics statisticsA, Statistics statisticsB,
-      String name) {
+  public static void isTwoTsDigestEqual(
+      Statistics statisticsA, Statistics statisticsB, String name) {
     if ((statisticsA == null) ^ (statisticsB == null)) {
       System.out.println("error");
       fail(String.format("one of %s is null", name));
@@ -84,7 +86,7 @@ public class Utils {
    * when one of A and B is Null, A != B, so test case fails.
    *
    * @return false - A and B both are NULL, so we do not need to check whether their members are
-   * equal true - A and B both are not NULL, so we need to check their members
+   *     equal true - A and B both are not NULL, so we need to check their members
    */
   public static boolean isTwoObjectsNotNULL(Object objectA, Object objectB, String name) {
     if ((objectA == null) && (objectB == null)) {
@@ -106,8 +108,8 @@ public class Utils {
     assertTrue(str1.toString().equals(str2.toString()));
   }
 
-  public static void isTimeSeriesChunkMetadataEqual(ChunkMetadata metadata1,
-      ChunkMetadata metadata2) {
+  public static void isTimeSeriesChunkMetadataEqual(
+      ChunkMetadata metadata1, ChunkMetadata metadata2) {
     if (Utils.isTwoObjectsNotNULL(metadata1, metadata2, "ChunkMetaData")) {
       assertTrue(metadata1.getOffsetOfChunkHeader() == metadata2.getOffsetOfChunkHeader());
       assertTrue(metadata1.getNumOfPoints() == metadata2.getNumOfPoints());
@@ -121,8 +123,8 @@ public class Utils {
 
   public static boolean isFileMetaDataEqual(TsFileMetadata metadata1, TsFileMetadata metadata2) {
     if (Utils.isTwoObjectsNotNULL(metadata1, metadata2, "File MetaData")) {
-      if (Utils.isTwoObjectsNotNULL(metadata1.getMetadataIndex(), metadata2.getMetadataIndex(),
-          "Metadata Index")) {
+      if (Utils.isTwoObjectsNotNULL(
+          metadata1.getMetadataIndex(), metadata2.getMetadataIndex(), "Metadata Index")) {
         MetadataIndexNode metaDataIndex1 = metadata1.getMetadataIndex();
         MetadataIndexNode metaDataIndex2 = metadata2.getMetadataIndex();
         return metaDataIndex1.getChildren().size() == metaDataIndex2.getChildren().size();
@@ -138,8 +140,8 @@ public class Utils {
       assertEquals(header1.getNumOfValues(), header2.getNumOfValues());
       assertEquals(header1.getEndTime(), header2.getEndTime());
       assertEquals(header1.getStartTime(), header2.getStartTime());
-      if (Utils
-          .isTwoObjectsNotNULL(header1.getStatistics(), header2.getStatistics(), "statistics")) {
+      if (Utils.isTwoObjectsNotNULL(
+          header1.getStatistics(), header2.getStatistics(), "statistics")) {
         Utils.isStatisticsEqual(header1.getStatistics(), header2.getStatistics());
       }
     }

@@ -31,5 +31,4 @@ public class WriteProcessRejectException extends WriteProcessException {
   public WriteProcessRejectException(String message, int errorCode) {
     super(message, errorCode);
   }
-
 }

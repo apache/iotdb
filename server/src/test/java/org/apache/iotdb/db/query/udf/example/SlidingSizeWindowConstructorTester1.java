@@ -27,21 +27,20 @@ import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameterValida
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class SlidingSizeWindowConstructorTester1 implements UDTF {
 
-  private static final Logger logger = LoggerFactory
-      .getLogger(SlidingSizeWindowConstructorTester1.class);
+  private static final Logger logger =
+      LoggerFactory.getLogger(SlidingSizeWindowConstructorTester1.class);
 
   private int consumptionPoint;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
-    validator
-        .validateInputSeriesNumber(1)
-        .validateInputSeriesDataType(0, TSDataType.INT32);
+    validator.validateInputSeriesNumber(1).validateInputSeriesDataType(0, TSDataType.INT32);
   }
 
   @Override

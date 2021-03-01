@@ -25,5 +25,4 @@ public class QueryIdNotExsitException extends IoTDBException {
   public QueryIdNotExsitException(String message) {
     super(message, TSStatusCode.QUERY_ID_NOT_EXIST.getStatusCode());
   }
-
 }

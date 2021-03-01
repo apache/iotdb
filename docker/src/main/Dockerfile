@@ -21,7 +21,7 @@
 
 FROM openjdk:11-jre-slim
 
-ADD distribution/target/apache-iotdb-*-bin.zip /
+ADD distribution/target/apache-iotdb-*-all-bin.zip /
 
 RUN apt update \
   && apt install lsof procps unzip -y \

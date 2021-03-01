@@ -18,13 +18,14 @@
  */
 package org.apache.iotdb.db.qp.strategy.optimizer;
 
-import static org.apache.iotdb.db.qp.constant.SQLConstant.KW_AND;
-import static org.apache.iotdb.db.qp.constant.SQLConstant.KW_OR;
+import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
+import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
-import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
+
+import static org.apache.iotdb.db.qp.constant.SQLConstant.KW_AND;
+import static org.apache.iotdb.db.qp.constant.SQLConstant.KW_OR;
 
 public class DnfFilterOptimizer implements IFilterOptimizer {
 
@@ -41,8 +42,10 @@ public class DnfFilterOptimizer implements IFilterOptimizer {
   }
 
   private void dealWithLeftAndRightAndChildren(
-      List<FilterOperator> leftAndChildren, List<FilterOperator> rightAndChildren,
-      List<FilterOperator> newChildrenList) throws LogicalOptimizeException {
+      List<FilterOperator> leftAndChildren,
+      List<FilterOperator> rightAndChildren,
+      List<FilterOperator> newChildrenList)
+      throws LogicalOptimizeException {
     for (FilterOperator leftAndChild : leftAndChildren) {
       for (FilterOperator rightAndChild : rightAndChildren) {
         FilterOperator r = mergeToConjunction(leftAndChild.copy(), rightAndChild.copy());
@@ -59,7 +62,6 @@ public class DnfFilterOptimizer implements IFilterOptimizer {
     if (childOperators.size() != 2) {
       throw new LogicalOptimizeException(
           "node :" + filter.getTokenName() + " has " + childOperators.size() + " children");
-
     }
     FilterOperator left = getDnf(childOperators.get(0));
     FilterOperator right = getDnf(childOperators.get(1));
@@ -87,8 +89,9 @@ public class DnfFilterOptimizer implements IFilterOptimizer {
   }
 
   /**
-   * used by getDnf. merge two conjunction filter operators into a conjunction.<br> conjunction
-   * operator consists of {@code FunctionOperator} and inner operator which token is KW_AND.<br>
+   * used by getDnf. merge two conjunction filter operators into a conjunction.<br>
+   * conjunction operator consists of {@code FunctionOperator} and inner operator which token is
+   * KW_AND.<br>
    * e.g. (a and b) merge (c) is (a and b and c)
    *
    * @param operator1 To be merged operator
@@ -107,8 +110,9 @@ public class DnfFilterOptimizer implements IFilterOptimizer {
   }
 
   /**
-   * used by getDnf. get conjunction node. <br> If child is basic function or AND node, return a
-   * list just containing this. <br> If this child is OR, return children of OR.
+   * used by getDnf. get conjunction node. <br>
+   * If child is basic function or AND node, return a list just containing this. <br>
+   * If this child is OR, return children of OR.
    *
    * @param child operator
    * @return children operator
@@ -158,5 +162,4 @@ public class DnfFilterOptimizer implements IFilterOptimizer {
       newChildrenList.addAll(operator.getChildren());
     }
   }
-
 }

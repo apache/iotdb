@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.cluster.query.filter;
 
-import java.util.List;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.db.metadata.MManager.StorageGroupFilter;
+
+import java.util.List;
 
 public class SlotSgFilter implements StorageGroupFilter {
 
@@ -38,8 +39,9 @@ public class SlotSgFilter implements StorageGroupFilter {
   }
 
   private static boolean satisfy(String storageGroup, List<Integer> nodeSlots) {
-    int slot = SlotPartitionTable.getSlotStrategy().calculateSlotByPartitionNum(storageGroup,0,
-        ClusterConstant.SLOT_NUM);
+    int slot =
+        SlotPartitionTable.getSlotStrategy()
+            .calculateSlotByPartitionNum(storageGroup, 0, ClusterConstant.SLOT_NUM);
     return nodeSlots.contains(slot);
   }
 }

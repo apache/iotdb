@@ -29,6 +29,5 @@ public class CheckConsistencyException extends Exception {
   }
 
   public static final CheckConsistencyException CHECK_STRONG_CONSISTENCY_EXCEPTION =
-      new CheckConsistencyException(
-      "strong consistency, sync with leader failed");
+      new CheckConsistencyException("strong consistency, sync with leader failed");
 }

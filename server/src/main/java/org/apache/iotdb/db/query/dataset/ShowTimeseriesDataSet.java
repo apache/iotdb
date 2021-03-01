@@ -19,20 +19,6 @@
 
 package org.apache.iotdb.db.query.dataset;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ATTRIBUTES;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TAGS;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_ALIAS;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_DATATYPE;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_ENCODING;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
@@ -42,20 +28,45 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ATTRIBUTES;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TAGS;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_ALIAS;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_DATATYPE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_ENCODING;
+
 public class ShowTimeseriesDataSet extends ShowDataSet {
 
   private final QueryContext context;
 
-  private static final Path[] resourcePaths = {new PartialPath(COLUMN_TIMESERIES, false),
-      new PartialPath(COLUMN_TIMESERIES_ALIAS, false),
-      new PartialPath(COLUMN_STORAGE_GROUP, false),
-      new PartialPath(COLUMN_TIMESERIES_DATATYPE, false),
-      new PartialPath(COLUMN_TIMESERIES_ENCODING, false),
-      new PartialPath(COLUMN_TIMESERIES_COMPRESSION, false),
-      new PartialPath(COLUMN_TAGS, false),
-      new PartialPath(COLUMN_ATTRIBUTES, false)};
-  private static final TSDataType[] resourceTypes = {TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT,
-      TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT};
+  private static final Path[] resourcePaths = {
+    new PartialPath(COLUMN_TIMESERIES, false),
+    new PartialPath(COLUMN_TIMESERIES_ALIAS, false),
+    new PartialPath(COLUMN_STORAGE_GROUP, false),
+    new PartialPath(COLUMN_TIMESERIES_DATATYPE, false),
+    new PartialPath(COLUMN_TIMESERIES_ENCODING, false),
+    new PartialPath(COLUMN_TIMESERIES_COMPRESSION, false),
+    new PartialPath(COLUMN_TAGS, false),
+    new PartialPath(COLUMN_ATTRIBUTES, false)
+  };
+  private static final TSDataType[] resourceTypes = {
+    TSDataType.TEXT,
+    TSDataType.TEXT,
+    TSDataType.TEXT,
+    TSDataType.TEXT,
+    TSDataType.TEXT,
+    TSDataType.TEXT,
+    TSDataType.TEXT,
+    TSDataType.TEXT
+  };
 
   public ShowTimeseriesDataSet(ShowTimeSeriesPlan showTimeSeriesPlan, QueryContext context)
       throws MetadataException {
@@ -66,8 +77,10 @@ public class ShowTimeseriesDataSet extends ShowDataSet {
     getQueryDataSet();
   }
 
+  @Override
   public List<RowRecord> getQueryDataSet() throws MetadataException {
-    List<ShowTimeSeriesResult> timeseriesList = IoTDB.metaManager.showTimeseries((ShowTimeSeriesPlan) plan, context);
+    List<ShowTimeSeriesResult> timeseriesList =
+        IoTDB.metaManager.showTimeseries((ShowTimeSeriesPlan) plan, context);
     List<RowRecord> records = new ArrayList<>();
     for (ShowTimeSeriesResult result : timeseriesList) {
       RowRecord record = new RowRecord(0);
@@ -86,9 +99,10 @@ public class ShowTimeseriesDataSet extends ShowDataSet {
   }
 
   private void updateRecord(RowRecord record, Map<String, String> map) {
-    String text = map.entrySet().stream()
-        .map(e -> "\"" + e.getKey() + "\"" + ":" + "\"" + e.getValue() + "\"")
-        .collect(Collectors.joining(","));
+    String text =
+        map.entrySet().stream()
+            .map(e -> "\"" + e.getKey() + "\"" + ":" + "\"" + e.getValue() + "\"")
+            .collect(Collectors.joining(","));
 
     updateRecord(record, text.length() == 0 ? null : "{" + text + "}");
   }

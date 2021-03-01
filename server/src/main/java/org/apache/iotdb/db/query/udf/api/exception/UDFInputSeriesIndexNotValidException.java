@@ -22,8 +22,9 @@ package org.apache.iotdb.db.query.udf.api.exception;
 public class UDFInputSeriesIndexNotValidException extends UDFParameterNotValidException {
 
   public UDFInputSeriesIndexNotValidException(int providedIndex, int validIndexUpperBound) {
-    super(String
-        .format("the index (%d) of the input series is not valid. valid index range: [0, %d).",
+    super(
+        String.format(
+            "the index (%d) of the input series is not valid. valid index range: [0, %d).",
             providedIndex, validIndexUpperBound));
   }
 }

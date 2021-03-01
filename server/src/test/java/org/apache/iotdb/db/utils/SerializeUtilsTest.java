@@ -18,10 +18,18 @@
  */
 package org.apache.iotdb.db.utils;
 
-import java.io.ByteArrayInputStream;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+
+import org.junit.Assert;
+import org.junit.Test;
+
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
-import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -29,16 +37,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.filter.TimeFilter;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
-import org.junit.Assert;
-import org.junit.Test;
 
 public class SerializeUtilsTest {
   @Test
@@ -215,9 +213,7 @@ public class SerializeUtilsTest {
     }
   }
 
-  /**
-   * This method tests SerializeUtils.serializeTVPair() and SerializeUtils.deserializeTVPair()
-   */
+  /** This method tests SerializeUtils.serializeTVPair() and SerializeUtils.deserializeTVPair() */
   @Test
   public void serdesTVPairTest() {
     List<TimeValuePair> TVPairs = new ArrayList<>();
@@ -231,7 +227,8 @@ public class SerializeUtilsTest {
     TVPairs.add(p4);
     TimeValuePair p5 = new TimeValuePair(0, TsPrimitiveType.getByType(TSDataType.DOUBLE, 1.0d));
     TVPairs.add(p5);
-    TimeValuePair p6 = new TimeValuePair(0, TsPrimitiveType.getByType(TSDataType.TEXT, Binary.valueOf("a")));
+    TimeValuePair p6 =
+        new TimeValuePair(0, TsPrimitiveType.getByType(TSDataType.TEXT, Binary.valueOf("a")));
     TVPairs.add(p6);
 
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -242,12 +239,9 @@ public class SerializeUtilsTest {
       Assert.assertEquals(tv, SerializeUtils.deserializeTVPair(buffer));
       baos.reset();
     }
-
   }
 
-  /**
-   * This method tests SerializeUtils.serializeTVPairs() and SerializeUtils.deserializeTVPairs()
-   */
+  /** This method tests SerializeUtils.serializeTVPairs() and SerializeUtils.deserializeTVPairs() */
   @Test
   public void serdesTVPairsTest() {
     List<List<TimeValuePair>> TVPairs = new ArrayList<>();
@@ -261,7 +255,8 @@ public class SerializeUtilsTest {
     TVPairs.add(Collections.singletonList(p4));
     TimeValuePair p5 = new TimeValuePair(0, TsPrimitiveType.getByType(TSDataType.DOUBLE, 1.0d));
     TVPairs.add(Collections.singletonList(p5));
-    TimeValuePair p6 = new TimeValuePair(0, TsPrimitiveType.getByType(TSDataType.TEXT, Binary.valueOf("a")));
+    TimeValuePair p6 =
+        new TimeValuePair(0, TsPrimitiveType.getByType(TSDataType.TEXT, Binary.valueOf("a")));
     TVPairs.add(Collections.singletonList(p6));
 
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -274,9 +269,7 @@ public class SerializeUtilsTest {
     }
   }
 
-  /**
-   * This method tests SerializeUtils.serializeObject() and SerializeUtils.deserializeObject()
-   */
+  /** This method tests SerializeUtils.serializeObject() and SerializeUtils.deserializeObject() */
   @Test
   public void serdesObjectTest() {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -286,12 +279,10 @@ public class SerializeUtilsTest {
     Assert.assertEquals(1, SerializeUtils.deserializeObject(buffer));
   }
 
-  /**
-   * This method tests SerializeUtils.serializeObjects() and SerializeUtils.deserializeObjects()
-   */
+  /** This method tests SerializeUtils.serializeObjects() and SerializeUtils.deserializeObjects() */
   @Test
   public void serdesObjectsTest() {
-    Object[] objects = { 1, "2", 3d};
+    Object[] objects = {1, "2", 3d};
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     DataOutputStream outputStream = new DataOutputStream(baos);
     SerializeUtils.serializeObjects(objects, outputStream);
@@ -299,14 +290,11 @@ public class SerializeUtilsTest {
     Assert.assertArrayEquals(objects, SerializeUtils.deserializeObjects(buffer));
   }
 
-  /**
-   * This method tests SerializeUtils.serializeLongs() and SerializeUtils.deserializeLongs()
-   */
+  /** This method tests SerializeUtils.serializeLongs() and SerializeUtils.deserializeLongs() */
   @Test
   public void serdesLongsTest() {
     long[] array = {1, 10, 100, 1000, 10000};
     ByteBuffer buffer = SerializeUtils.serializeLongs(array);
     Assert.assertArrayEquals(array, SerializeUtils.deserializeLongs(buffer));
   }
-
 }

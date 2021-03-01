@@ -38,9 +38,7 @@ public class Schema implements Serializable {
    */
   private Map<Path, MeasurementSchema> registeredTimeseries;
 
-  /**
-   * template name -> (measuremnet -> MeasurementSchema)
-   */
+  /** template name -> (measuremnet -> MeasurementSchema) */
   private Map<String, Map<String, MeasurementSchema>> deviceTemplates;
 
   public Schema() {
@@ -66,8 +64,8 @@ public class Schema implements Serializable {
     if (deviceTemplates == null) {
       deviceTemplates = new HashMap<>();
     }
-    Map<String, MeasurementSchema> template = this.deviceTemplates
-        .getOrDefault(templateName, new HashMap<>());
+    Map<String, MeasurementSchema> template =
+        this.deviceTemplates.getOrDefault(templateName, new HashMap<>());
     template.put(descriptor.getMeasurementId(), descriptor);
     this.deviceTemplates.put(templateName, template);
   }
@@ -98,9 +96,7 @@ public class Schema implements Serializable {
     return deviceTemplates;
   }
 
-  /**
-   * check if this schema contains a measurement named measurementId.
-   */
+  /** check if this schema contains a measurement named measurementId. */
   public boolean containsTimeseries(Path path) {
     return registeredTimeseries.containsKey(path);
   }
@@ -109,5 +105,4 @@ public class Schema implements Serializable {
   public Map<Path, MeasurementSchema> getRegisteredTimeseriesMap() {
     return registeredTimeseries;
   }
-
 }

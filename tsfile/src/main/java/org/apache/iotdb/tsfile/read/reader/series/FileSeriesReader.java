@@ -18,22 +18,23 @@
  */
 package org.apache.iotdb.tsfile.read.reader.series;
 
-import java.io.IOException;
-import java.util.List;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
+import java.io.IOException;
+import java.util.List;
+
 /**
- * Series reader is used to query one series of one TsFile,
- * and this reader has a filter operating on the same series.
+ * Series reader is used to query one series of one TsFile, and this reader has a filter operating
+ * on the same series.
  */
 public class FileSeriesReader extends AbstractFileSeriesReader {
 
-  public FileSeriesReader(IChunkLoader chunkLoader,
-      List<ChunkMetadata> chunkMetadataList, Filter filter) {
+  public FileSeriesReader(
+      IChunkLoader chunkLoader, List<ChunkMetadata> chunkMetadataList, Filter filter) {
     super(chunkLoader, chunkMetadataList, filter);
   }
 
@@ -47,5 +48,4 @@ public class FileSeriesReader extends AbstractFileSeriesReader {
   protected boolean chunkSatisfied(ChunkMetadata chunkMetaData) {
     return filter == null || filter.satisfy(chunkMetaData.getStatistics());
   }
-
 }

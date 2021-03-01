@@ -419,21 +419,41 @@ It costs 0.003s
 ```
 
 
-Assuming another timeseries is added, called "root.ln.wf02.wt01.status".
-To query the number of "status" points of both two paths "root.ln.wf01" and "root.ln.wf02".
+Suppose we add another two timeseries, "root.ln.wf01.wt01.temperature" and "root.ln.wf02.wt01.temperature".
+To query the count and the sum of "temperature" under path "root.ln.*.*", 
+aggregating on level=2, use following statement:
+
 ```
-select count(status) from root.ln.*.* group by level=2
+select count(temperature), sum(temperature) from root.ln.*.* group by level=2
 ```
 Result：
 
 ```
-+----------------------------+----------------------------+
-|COUNT(root.ln.wf01.*.status)|COUNT(root.ln.wf02.*.status)|
-+----------------------------+----------------------------+
-|                       10080|                       10082|
-+----------------------------+----------------------------+
++---------------------------------+---------------------------------+-------------------------------+-------------------------------+
+|count(root.ln.wf02.*.temperature)|count(root.ln.wf01.*.temperature)|sum(root.ln.wf02.*.temperature)|sum(root.ln.wf01.*.temperature)|
++---------------------------------+---------------------------------+-------------------------------+-------------------------------+
+|                                8|                                4|                          228.0|              91.83000183105469|
++---------------------------------+---------------------------------+-------------------------------+-------------------------------+
 Total line number = 1
-It costs 0.003s
+It costs 0.013s
+```
+
+To query the count and the sum of path "root.ln.\*.\*.temperature" aggregating on "root.ln" level,
+simply set level=1
+
+```
+select count(temperature), sum(temperature) from root.ln.*.* group by level=1
+```
+Result：
+
+```
++------------------------------+----------------------------+
+|count(root.ln.*.*.temperature)|sum(root.ln.*.*.temperature)|
++------------------------------+----------------------------+
+|                            12|           319.8300018310547|
++------------------------------+----------------------------+
+Total line number = 1
+It costs 0.013s
 ```
 
 All supported aggregation functions are: count, sum, avg, last_value, first_value, min_time, max_time, min_value, max_value.

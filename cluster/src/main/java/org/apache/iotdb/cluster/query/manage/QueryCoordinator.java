@@ -19,12 +19,13 @@
 
 package org.apache.iotdb.cluster.query.manage;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.monitor.NodeStatus;
 import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 
 /**
  * QueryCoordinator records the spec and load of each node, deciding the order of replicas that
@@ -37,7 +38,6 @@ public class QueryCoordinator {
   private static final NodeStatusManager STATUS_MANAGER = NodeStatusManager.getINSTANCE();
 
   private final Comparator<Node> nodeComparator = Comparator.comparing(this::getNodeStatus);
-
 
   private QueryCoordinator() {
     // singleton class

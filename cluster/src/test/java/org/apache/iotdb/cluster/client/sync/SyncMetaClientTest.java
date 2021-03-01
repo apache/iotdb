@@ -4,19 +4,21 @@
 
 package org.apache.iotdb.cluster.client.sync;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
-import java.io.IOException;
-import java.net.ServerSocket;
 import org.apache.iotdb.cluster.client.sync.SyncMetaClient.FactorySync;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
+
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.apache.thrift.transport.TSocket;
 import org.junit.Test;
+
+import java.io.IOException;
+import java.net.ServerSocket;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class SyncMetaClientTest {
 
@@ -25,15 +27,17 @@ public class SyncMetaClientTest {
     Node node = new Node();
     node.setMetaPort(9003).setIp("localhost");
     ServerSocket serverSocket = new ServerSocket(node.getMetaPort());
-    Thread listenThread = new Thread(() -> {
-      while (!Thread.interrupted()) {
-        try {
-          serverSocket.accept();
-        } catch (IOException e) {
-          return;
-        }
-      }
-    });
+    Thread listenThread =
+        new Thread(
+            () -> {
+              while (!Thread.interrupted()) {
+                try {
+                  serverSocket.accept();
+                } catch (IOException e) {
+                  return;
+                }
+              }
+            });
     listenThread.start();
 
     try {
@@ -48,8 +52,8 @@ public class SyncMetaClientTest {
       assertEquals(client, newClient);
       assertTrue(client.getInputProtocol().getTransport().isOpen());
 
-      client = new SyncMetaClient(new TBinaryProtocol(new TSocket(node.getIp(),
-          node.getDataPort())));
+      client =
+          new SyncMetaClient(new TBinaryProtocol(new TSocket(node.getIp(), node.getDataPort())));
       // client without a belong pool will be closed after putBack()
       client.putBack();
       assertFalse(client.getInputProtocol().getTransport().isOpen());

@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,9 +18,7 @@
  */
 package org.apache.iotdb.spark.db;
 
-/**
- * this class contains several constants used in SQL.
- */
+/** this class contains several constants used in SQL. */
 public class SQLConstant {
 
   public static final String RESERVED_TIME = "time";

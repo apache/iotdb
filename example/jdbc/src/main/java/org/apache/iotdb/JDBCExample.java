@@ -31,10 +31,11 @@ public class JDBCExample {
 
   public static void main(String[] args) throws ClassNotFoundException, SQLException {
     Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
-    try (Connection connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-      Statement statement = connection.createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
 
-      //set JDBC fetchSize
+      // set JDBC fetchSize
       statement.setFetchSize(10000);
 
       try {
@@ -59,8 +60,9 @@ public class JDBCExample {
       outputResult(resultSet);
       resultSet = statement.executeQuery("select count(*) from root");
       outputResult(resultSet);
-      resultSet = statement.executeQuery(
-          "select count(*) from root where time >= 1 and time <= 100 group by ([0, 100), 20ms, 20ms)");
+      resultSet =
+          statement.executeQuery(
+              "select count(*) from root where time >= 1 and time <= 100 group by ([0, 100), 20ms, 20ms)");
       outputResult(resultSet);
     } catch (IoTDBSQLException e) {
       System.out.println(e.getMessage());
@@ -90,10 +92,16 @@ public class JDBCExample {
       System.out.println("--------------------------\n");
     }
   }
-  
-  private static String prepareInsertStatment(int time) {
-    return "insert into root.sg1.d1(timestamp, s1, s2, s3) values(" + time + "," + 1 + "," + 1 + ","
-        + 1 + ")";
-  }
 
+  private static String prepareInsertStatment(int time) {
+    return "insert into root.sg1.d1(timestamp, s1, s2, s3) values("
+        + time
+        + ","
+        + 1
+        + ","
+        + 1
+        + ","
+        + 1
+        + ")";
+  }
 }

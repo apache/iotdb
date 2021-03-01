@@ -33,5 +33,4 @@ public class LoadConfigurationException extends Exception {
   public LoadConfigurationException(Throwable cause) {
     super(cause);
   }
-
 }

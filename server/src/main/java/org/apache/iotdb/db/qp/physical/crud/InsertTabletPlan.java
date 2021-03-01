@@ -18,13 +18,6 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -43,6 +36,14 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsFloat;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsInt;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+
 @SuppressWarnings("java:S1135") // ignore todos
 public class InsertTabletPlan extends InsertPlan {
 
@@ -54,7 +55,8 @@ public class InsertTabletPlan extends InsertPlan {
   private Object[] columns;
   private ByteBuffer valueBuffer;
   private int rowCount = 0;
-  // indicate whether this plan has been set 'start' or 'end' in order to support plan transmission without data loss in cluster version
+  // indicate whether this plan has been set 'start' or 'end' in order to support plan transmission
+  // without data loss in cluster version
   boolean isExecuting = false;
   // cached values
   private Long maxTime = Long.MIN_VALUE;
@@ -62,15 +64,18 @@ public class InsertTabletPlan extends InsertPlan {
   private List<PartialPath> paths;
   private int start;
   private int end;
-  // when this plan is sub-plan split from another InsertTabletPlan, this indicates the original positions of values in
-  // this plan. For example, if the plan contains 5 timestamps, and range = [1,4,10,12], then it means that the first 3
-  // timestamps in this plan are from range[1,4) of the parent plan, and the last 2 timestamps are from range[10,12)
+  // when this plan is sub-plan split from another InsertTabletPlan, this indicates the original
+  // positions of values in
+  // this plan. For example, if the plan contains 5 timestamps, and range = [1,4,10,12], then it
+  // means that the first 3
+  // timestamps in this plan are from range[1,4) of the parent plan, and the last 2 timestamps are
+  // from range[10,12)
   // of the parent plan.
-  // this is usually used to back-propagate exceptions to the parent plan without losing their proper positions.
+  // this is usually used to back-propagate exceptions to the parent plan without losing their
+  // proper positions.
   private List<Integer> range;
 
   private List<Object> failedColumns;
-
 
   public InsertTabletPlan() {
     super(OperatorType.BATCHINSERT);
@@ -224,8 +229,8 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   private void writeMeasurements(ByteBuffer buffer) {
-    buffer
-        .putInt(measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
+    buffer.putInt(
+        measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
     for (String m : measurements) {
       if (m != null) {
         putString(buffer, m);
@@ -294,8 +299,8 @@ public class InsertTabletPlan extends InsertPlan {
     }
   }
 
-  private void serializeColumn(TSDataType dataType, Object column, ByteBuffer buffer,
-      int start, int end) {
+  private void serializeColumn(
+      TSDataType dataType, Object column, ByteBuffer buffer, int start, int end) {
     int curStart = isExecuting ? start : 0;
     int curEnd = isExecuting ? end : rowCount;
     switch (dataType) {
@@ -337,13 +342,13 @@ public class InsertTabletPlan extends InsertPlan {
         }
         break;
       default:
-        throw new UnSupportedDataTypeException(
-            String.format(DATATYPE_UNSUPPORTED, dataType));
+        throw new UnSupportedDataTypeException(String.format(DATATYPE_UNSUPPORTED, dataType));
     }
   }
 
-  private void serializeColumn(TSDataType dataType, Object column, DataOutputStream outputStream,
-      int start, int end) throws IOException {
+  private void serializeColumn(
+      TSDataType dataType, Object column, DataOutputStream outputStream, int start, int end)
+      throws IOException {
     int curStart = isExecuting ? start : 0;
     int curEnd = isExecuting ? end : rowCount;
     switch (dataType) {
@@ -385,8 +390,7 @@ public class InsertTabletPlan extends InsertPlan {
         }
         break;
       default:
-        throw new UnSupportedDataTypeException(
-            String.format(DATATYPE_UNSUPPORTED, dataType));
+        throw new UnSupportedDataTypeException(String.format(DATATYPE_UNSUPPORTED, dataType));
     }
   }
 
@@ -520,10 +524,15 @@ public class InsertTabletPlan extends InsertPlan {
 
   @Override
   public String toString() {
-    return "InsertTabletPlan {" +
-        "deviceId:" + deviceId +
-        ", timesRange[" + times[0] + "," + times[times.length - 1] + "]" +
-        '}';
+    return "InsertTabletPlan {"
+        + "deviceId:"
+        + deviceId
+        + ", timesRange["
+        + times[0]
+        + ","
+        + times[times.length - 1]
+        + "]"
+        + '}';
   }
 
   @Override
@@ -560,21 +569,19 @@ public class InsertTabletPlan extends InsertPlan {
     }
     InsertTabletPlan that = (InsertTabletPlan) o;
 
-    return rowCount == that.rowCount &&
-        Arrays.equals(times, that.times) &&
-        Objects.equals(timeBuffer, that.timeBuffer) &&
-        Objects.equals(valueBuffer, that.valueBuffer) &&
-        Objects.equals(maxTime, that.maxTime) &&
-        Objects.equals(minTime, that.minTime) &&
-        Objects.equals(paths, that.paths) &&
-        Objects.equals(range, that.range);
+    return rowCount == that.rowCount
+        && Arrays.equals(times, that.times)
+        && Objects.equals(timeBuffer, that.timeBuffer)
+        && Objects.equals(valueBuffer, that.valueBuffer)
+        && Objects.equals(maxTime, that.maxTime)
+        && Objects.equals(minTime, that.minTime)
+        && Objects.equals(paths, that.paths)
+        && Objects.equals(range, that.range);
   }
 
   @Override
   public int hashCode() {
-    int result = Objects
-        .hash(timeBuffer, valueBuffer, rowCount, maxTime, minTime, paths,
-            range);
+    int result = Objects.hash(timeBuffer, valueBuffer, rowCount, maxTime, minTime, paths, range);
     result = 31 * result + Arrays.hashCode(times);
     return result;
   }
@@ -601,8 +608,10 @@ public class InsertTabletPlan extends InsertPlan {
       throw new QueryProcessException("Values are null");
     }
     if (measurements.length != columns.length) {
-      throw new QueryProcessException(String.format("Measurements length [%d] does not match "
-          + "columns length [%d]", measurements.length, columns.length));
+      throw new QueryProcessException(
+          String.format(
+              "Measurements length [%d] does not match " + "columns length [%d]",
+              measurements.length, columns.length));
     }
     for (Object value : columns) {
       if (value == null) {

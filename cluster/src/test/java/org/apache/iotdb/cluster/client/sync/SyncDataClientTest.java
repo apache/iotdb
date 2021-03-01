@@ -4,31 +4,21 @@
 
 package org.apache.iotdb.cluster.client.sync;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-
-import java.io.IOException;
-import java.net.InetAddress;
-import java.net.ServerSocket;
-import java.net.Socket;
-import org.apache.iotdb.cluster.client.async.AsyncClientPool;
-import org.apache.iotdb.cluster.client.async.AsyncDataClient;
-import org.apache.iotdb.cluster.client.async.AsyncDataClient.SingleManagerFactory;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient.FactorySync;
-import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
-import org.apache.iotdb.cluster.server.RaftServer;
-import org.apache.thrift.TException;
-import org.apache.thrift.async.AsyncMethodCallback;
-import org.apache.thrift.async.TAsyncClientManager;
+
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
-import org.apache.thrift.transport.TNonblockingSocket;
 import org.apache.thrift.transport.TSocket;
 import org.junit.Test;
+
+import java.io.IOException;
+import java.net.ServerSocket;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class SyncDataClientTest {
 
@@ -37,15 +27,17 @@ public class SyncDataClientTest {
     Node node = new Node();
     node.setDataPort(40010).setIp("localhost");
     ServerSocket serverSocket = new ServerSocket(node.getDataPort());
-    Thread listenThread = new Thread(() -> {
-      while (!Thread.interrupted()) {
-        try {
-          serverSocket.accept();
-        } catch (IOException e) {
-          return;
-        }
-      }
-    });
+    Thread listenThread =
+        new Thread(
+            () -> {
+              while (!Thread.interrupted()) {
+                try {
+                  serverSocket.accept();
+                } catch (IOException e) {
+                  return;
+                }
+              }
+            });
     listenThread.start();
 
     try {
@@ -63,11 +55,13 @@ public class SyncDataClientTest {
       assertEquals(client, newClient);
       assertTrue(client.getInputProtocol().getTransport().isOpen());
 
-      assertEquals("DataClient{node=ClusterNode{ ip='localhost', metaPort=0, nodeIdentifier=0,"
-          + " dataPort=40010, clientPort=0}}", client.toString());
+      assertEquals(
+          "DataClient{node=ClusterNode{ ip='localhost', metaPort=0, nodeIdentifier=0,"
+              + " dataPort=40010, clientPort=0}}",
+          client.toString());
 
-      client = new SyncDataClient(new TBinaryProtocol(new TSocket(node.getIp(),
-          node.getDataPort())));
+      client =
+          new SyncDataClient(new TBinaryProtocol(new TSocket(node.getIp(), node.getDataPort())));
       // client without a belong pool will be closed after putBack()
       client.putBack();
       assertFalse(client.getInputProtocol().getTransport().isOpen());

@@ -26,7 +26,8 @@ public class QueryInBatchStatementException extends IoTDBException {
   private static final long serialVersionUID = 204423954433950490L;
 
   public QueryInBatchStatementException(String statement) {
-    super(String.format("Query statement not allowed in batch: [%s]", statement),
+    super(
+        String.format("Query statement not allowed in batch: [%s]", statement),
         TSStatusCode.QUERY_NOT_ALLOWED.getStatusCode());
   }
 }

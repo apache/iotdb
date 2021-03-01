@@ -19,17 +19,17 @@
 
 package org.apache.iotdb.cluster.server.monitor;
 
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.rpc.RpcStat;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
- * A node report collects the current runtime information of the local node, which contains:
- * 1. The MetaMemberReport of the meta member.
- * 2. The DataMemberReports of each data member.
+ * A node report collects the current runtime information of the local node, which contains: 1. The
+ * MetaMemberReport of the meta member. 2. The DataMemberReports of each data member.
  */
 @SuppressWarnings("java:S107") // reports need enough parameters
 public class NodeReport {
@@ -43,13 +43,11 @@ public class NodeReport {
     dataMemberReportList = new ArrayList<>();
   }
 
-  public void setMetaMemberReport(
-      MetaMemberReport metaMemberReport) {
+  public void setMetaMemberReport(MetaMemberReport metaMemberReport) {
     this.metaMemberReport = metaMemberReport;
   }
 
-  public void setDataMemberReportList(
-      List<DataMemberReport> dataMemberReportList) {
+  public void setDataMemberReportList(List<DataMemberReport> dataMemberReportList) {
     this.dataMemberReportList = dataMemberReportList;
   }
 
@@ -80,9 +78,18 @@ public class NodeReport {
     long prevLastLogIndex;
     long maxAppliedLogIndex;
 
-    RaftMemberReport(NodeCharacter character, Node leader, long term, long lastLogTerm,
-        long lastLogIndex, long commitIndex, long commitTerm, boolean isReadOnly,
-        long lastHeartbeatReceivedTime, long prevLastLogIndex, long maxAppliedLogIndex) {
+    RaftMemberReport(
+        NodeCharacter character,
+        Node leader,
+        long term,
+        long lastLogTerm,
+        long lastLogIndex,
+        long commitIndex,
+        long commitTerm,
+        boolean isReadOnly,
+        long lastHeartbeatReceivedTime,
+        long prevLastLogIndex,
+        long maxAppliedLogIndex) {
       this.character = character;
       this.leader = leader;
       this.term = term;
@@ -97,16 +104,33 @@ public class NodeReport {
     }
   }
 
-  /**
-   * MetaMemberReport has no additional fields currently.
-   */
+  /** MetaMemberReport has no additional fields currently. */
   public static class MetaMemberReport extends RaftMemberReport {
 
-    public MetaMemberReport(NodeCharacter character, Node leader, long term, long lastLogTerm,
-        long lastLogIndex, long commitIndex, long commitTerm, boolean isReadOnly,
-        long lastHeartbeatReceivedTime, long prevLastLogIndex, long maxAppliedLogIndex) {
-      super(character, leader, term, lastLogTerm, lastLogIndex, commitIndex, commitTerm, isReadOnly,
-          lastHeartbeatReceivedTime, prevLastLogIndex, maxAppliedLogIndex);
+    public MetaMemberReport(
+        NodeCharacter character,
+        Node leader,
+        long term,
+        long lastLogTerm,
+        long lastLogIndex,
+        long commitIndex,
+        long commitTerm,
+        boolean isReadOnly,
+        long lastHeartbeatReceivedTime,
+        long prevLastLogIndex,
+        long maxAppliedLogIndex) {
+      super(
+          character,
+          leader,
+          term,
+          lastLogTerm,
+          lastLogIndex,
+          commitIndex,
+          commitTerm,
+          isReadOnly,
+          lastHeartbeatReceivedTime,
+          prevLastLogIndex,
+          maxAppliedLogIndex);
     }
 
     @Override
@@ -115,70 +139,127 @@ public class NodeReport {
       long readCompressedBytes = RpcStat.getReadCompressedBytes();
       long writeBytes = RpcStat.getWriteBytes();
       long writeCompressedBytes = RpcStat.getWriteCompressedBytes();
-      double readCompressionRatio
-          = (double) readBytes / readCompressedBytes;
+      double readCompressionRatio = (double) readBytes / readCompressedBytes;
       double writeCompressionRatio = (double) writeBytes / writeCompressedBytes;
       String transportCompressionReport = "";
       if (RpcTransportFactory.isUseSnappy()) {
         transportCompressionReport =
-            ", readBytes=" + readBytes + "/" + readCompressedBytes + "(" + readCompressionRatio +
-                ")" +
-                ", writeBytes=" + writeBytes + "/" + writeCompressedBytes + "(" + writeCompressionRatio +
-                ")";
+            ", readBytes="
+                + readBytes
+                + "/"
+                + readCompressedBytes
+                + "("
+                + readCompressionRatio
+                + ")"
+                + ", writeBytes="
+                + writeBytes
+                + "/"
+                + writeCompressedBytes
+                + "("
+                + writeCompressionRatio
+                + ")";
       }
-      return "MetaMemberReport{" +
-          "character=" + character +
-          ", Leader=" + leader +
-          ", term=" + term +
-          ", lastLogTerm=" + lastLogTerm +
-          ", lastLogIndex=" + lastLogIndex +
-          ", commitIndex=" + commitIndex +
-          ", commitTerm=" + commitTerm +
-          ", appliedLogIndex=" + maxAppliedLogIndex +
-          ", readOnly=" + isReadOnly +
-          ", lastHeartbeat=" + (System.currentTimeMillis() - lastHeartbeatReceivedTime) + "ms ago" +
-          ", logIncrement=" + (lastLogIndex - prevLastLogIndex) +
-          transportCompressionReport +
-          ", \n timer: "+ Timer.getReport() +
-          '}';
+      return "MetaMemberReport{"
+          + "character="
+          + character
+          + ", Leader="
+          + leader
+          + ", term="
+          + term
+          + ", lastLogTerm="
+          + lastLogTerm
+          + ", lastLogIndex="
+          + lastLogIndex
+          + ", commitIndex="
+          + commitIndex
+          + ", commitTerm="
+          + commitTerm
+          + ", appliedLogIndex="
+          + maxAppliedLogIndex
+          + ", readOnly="
+          + isReadOnly
+          + ", lastHeartbeat="
+          + (System.currentTimeMillis() - lastHeartbeatReceivedTime)
+          + "ms ago"
+          + ", logIncrement="
+          + (lastLogIndex - prevLastLogIndex)
+          + transportCompressionReport
+          + ", \n timer: "
+          + Timer.getReport()
+          + '}';
     }
   }
 
   /**
-   * A DataMemberReport additionally contains the header, so it can be told which group this
-   * member belongs to.
+   * A DataMemberReport additionally contains the header, so it can be told which group this member
+   * belongs to.
    */
   public static class DataMemberReport extends RaftMemberReport {
     Node header;
     long headerLatency;
 
-    public DataMemberReport(NodeCharacter character, Node leader, long term, long lastLogTerm,
-        long lastLogIndex, long commitIndex, long commitTerm, Node header, boolean isReadOnly,
+    public DataMemberReport(
+        NodeCharacter character,
+        Node leader,
+        long term,
+        long lastLogTerm,
+        long lastLogIndex,
+        long commitIndex,
+        long commitTerm,
+        Node header,
+        boolean isReadOnly,
         long headerLatency,
-        long lastHeartbeatReceivedTime, long prevLastLogIndex, long maxAppliedLogIndex) {
-      super(character, leader, term, lastLogTerm, lastLogIndex, commitIndex, commitTerm, isReadOnly,
-          lastHeartbeatReceivedTime, prevLastLogIndex, maxAppliedLogIndex);
+        long lastHeartbeatReceivedTime,
+        long prevLastLogIndex,
+        long maxAppliedLogIndex) {
+      super(
+          character,
+          leader,
+          term,
+          lastLogTerm,
+          lastLogIndex,
+          commitIndex,
+          commitTerm,
+          isReadOnly,
+          lastHeartbeatReceivedTime,
+          prevLastLogIndex,
+          maxAppliedLogIndex);
       this.header = header;
       this.headerLatency = headerLatency;
     }
 
     @Override
     public String toString() {
-      return "DataMemberReport{" +
-          "header=" + header +
-          ", character=" + character +
-          ", Leader=" + leader +
-          ", term=" + term +
-          ", lastLogTerm=" + lastLogTerm +
-          ", lastLogIndex=" + lastLogIndex +
-          ", commitIndex=" + commitIndex +
-          ", commitTerm=" + commitTerm +
-          ", appliedLogIndex=" + maxAppliedLogIndex +
-          ", readOnly=" + isReadOnly +
-          ", headerLatency=" + headerLatency + "ns" +
-          ", lastHeartbeat=" + (System.currentTimeMillis() - lastHeartbeatReceivedTime) + "ms ago" +
-          ", logIncrement=" + (lastLogIndex - prevLastLogIndex) +
-          '}';
+      return "DataMemberReport{"
+          + "header="
+          + header
+          + ", character="
+          + character
+          + ", Leader="
+          + leader
+          + ", term="
+          + term
+          + ", lastLogTerm="
+          + lastLogTerm
+          + ", lastLogIndex="
+          + lastLogIndex
+          + ", commitIndex="
+          + commitIndex
+          + ", commitTerm="
+          + commitTerm
+          + ", appliedLogIndex="
+          + maxAppliedLogIndex
+          + ", readOnly="
+          + isReadOnly
+          + ", headerLatency="
+          + headerLatency
+          + "ns"
+          + ", lastHeartbeat="
+          + (System.currentTimeMillis() - lastHeartbeatReceivedTime)
+          + "ms ago"
+          + ", logIncrement="
+          + (lastLogIndex - prevLastLogIndex)
+          + '}';
     }
   }
 }

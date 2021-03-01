@@ -18,12 +18,6 @@
  */
 package org.apache.iotdb;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -36,6 +30,12 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+
 public class SessionExample {
 
   private static Session session;
@@ -46,13 +46,12 @@ public class SessionExample {
   private static final String ROOT_SG1_D1_S5 = "root.sg1.d1.s5";
   private static final String ROOT_SG1_D1 = "root.sg1.d1";
 
-
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open(false);
 
-    //set session fetchSize
+    // set session fetchSize
     session.setFetchSize(10000);
 
     try {
@@ -84,16 +83,16 @@ public class SessionExample {
       throws IoTDBConnectionException, StatementExecutionException {
 
     if (!session.checkTimeseriesExists(ROOT_SG1_D1_S1)) {
-      session.createTimeseries(ROOT_SG1_D1_S1, TSDataType.INT64, TSEncoding.RLE,
-          CompressionType.SNAPPY);
+      session.createTimeseries(
+          ROOT_SG1_D1_S1, TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
     }
     if (!session.checkTimeseriesExists(ROOT_SG1_D1_S2)) {
-      session.createTimeseries(ROOT_SG1_D1_S2, TSDataType.INT64, TSEncoding.RLE,
-          CompressionType.SNAPPY);
+      session.createTimeseries(
+          ROOT_SG1_D1_S2, TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
     }
     if (!session.checkTimeseriesExists(ROOT_SG1_D1_S3)) {
-      session.createTimeseries(ROOT_SG1_D1_S3, TSDataType.INT64, TSEncoding.RLE,
-          CompressionType.SNAPPY);
+      session.createTimeseries(
+          ROOT_SG1_D1_S3, TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
     }
 
     // create timeseries with tags and attributes
@@ -102,8 +101,15 @@ public class SessionExample {
       tags.put("tag1", "v1");
       Map<String, String> attributes = new HashMap<>();
       tags.put("description", "v1");
-      session.createTimeseries(ROOT_SG1_D1_S4, TSDataType.INT64, TSEncoding.RLE,
-          CompressionType.SNAPPY, null, tags, attributes, "temperature");
+      session.createTimeseries(
+          ROOT_SG1_D1_S4,
+          TSDataType.INT64,
+          TSEncoding.RLE,
+          CompressionType.SNAPPY,
+          null,
+          tags,
+          attributes,
+          "temperature");
     }
 
     // create timeseries with SDT property, SDT will take place when flushing
@@ -115,16 +121,23 @@ public class SessionExample {
       props.put("COMPDEV", "0.01");
       props.put("COMPMINTIME", "2");
       props.put("COMPMAXTIME", "10");
-      session.createTimeseries(ROOT_SG1_D1_S5, TSDataType.INT64, TSEncoding.RLE,
-          CompressionType.SNAPPY, props, null, null, null);
+      session.createTimeseries(
+          ROOT_SG1_D1_S5,
+          TSDataType.INT64,
+          TSEncoding.RLE,
+          CompressionType.SNAPPY,
+          props,
+          null,
+          null,
+          null);
     }
   }
 
   private static void createMultiTimeseries()
-      throws IoTDBConnectionException, BatchExecutionException, StatementExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException {
 
-    if (!session.checkTimeseriesExists("root.sg1.d2.s1") && !session
-        .checkTimeseriesExists("root.sg1.d2.s2")) {
+    if (!session.checkTimeseriesExists("root.sg1.d2.s1")
+        && !session.checkTimeseriesExists("root.sg1.d2.s2")) {
       List<String> paths = new ArrayList<>();
       paths.add("root.sg1.d2.s1");
       paths.add("root.sg1.d2.s2");
@@ -155,9 +168,8 @@ public class SessionExample {
       alias.add("weight1");
       alias.add("weight2");
 
-      session
-          .createMultiTimeseries(paths, tsDataTypes, tsEncodings, compressionTypes, null, tagsList,
-              attributesList, alias);
+      session.createMultiTimeseries(
+          paths, tsDataTypes, tsEncodings, compressionTypes, null, tagsList, attributesList, alias);
     }
   }
 
@@ -257,17 +269,17 @@ public class SessionExample {
   /**
    * insert the data of a device. For each timestamp, the number of measurements is the same.
    *
-   * a Tablet example:
-   *
-   *      device1
-   * time s1, s2, s3
-   * 1,   1,  1,  1
-   * 2,   2,  2,  2
-   * 3,   3,  3,  3
-   *
-   * Users need to control the count of Tablet and write a batch when it reaches the maxBatchSize
+   * <p>Users need to control the count of Tablet and write a batch when it reaches the maxBatchSize
    */
   private static void insertTablet() throws IoTDBConnectionException, StatementExecutionException {
+    /*
+     * A Tablet example:
+     *      device1
+     * time s1, s2, s3
+     * 1,   1,  1,  1
+     * 2,   2,  2,  2
+     * 3,   3,  3,  3
+     */
     // The schema of measurements of one device
     // only measurementId and data type in MeasurementSchema take effects in Tablet
     List<MeasurementSchema> schemaList = new ArrayList<>();
@@ -277,7 +289,7 @@ public class SessionExample {
 
     Tablet tablet = new Tablet(ROOT_SG1_D1, schemaList, 100);
 
-    //Method 1 to add tablet data
+    // Method 1 to add tablet data
     long timestamp = System.currentTimeMillis();
 
     for (long row = 0; row < 100; row++) {
@@ -299,7 +311,7 @@ public class SessionExample {
       tablet.reset();
     }
 
-    //Method 2 to add tablet data
+    // Method 2 to add tablet data
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
 
@@ -339,7 +351,7 @@ public class SessionExample {
     tabletMap.put("root.sg1.d2", tablet2);
     tabletMap.put("root.sg1.d3", tablet3);
 
-    //Method 1 to add tablet data
+    // Method 1 to add tablet data
     long timestamp = System.currentTimeMillis();
     for (long row = 0; row < 100; row++) {
       int row1 = tablet1.rowSize++;
@@ -370,7 +382,7 @@ public class SessionExample {
       tablet3.reset();
     }
 
-    //Method 2 to add tablet data
+    // Method 2 to add tablet data
     long[] timestamps1 = tablet1.timestamps;
     Object[] values1 = tablet1.values;
     long[] timestamps2 = tablet2.timestamps;
@@ -503,7 +515,7 @@ public class SessionExample {
         builder.append("null");
       }
 
-      System.out.println(builder.toString());
+      System.out.println(builder);
     }
 
     dataSet.closeOperationHandle();

@@ -18,12 +18,11 @@
 
 package org.apache.iotdb.flink;
 
-import java.util.List;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-/**
- * Event serializes the device/sensor related data, such as time, measurements etc.
- */
+import java.util.List;
+
+/** Event serializes the device/sensor related data, such as time, measurements etc. */
 public class Event {
 
   private String device;
@@ -32,7 +31,11 @@ public class Event {
   private List<TSDataType> types;
   private List<Object> values;
 
-  public Event(String device, Long timestamp, List<String> measurements, List<TSDataType> types,
+  public Event(
+      String device,
+      Long timestamp,
+      List<String> measurements,
+      List<TSDataType> types,
       List<Object> values) {
     this.device = device;
     this.timestamp = timestamp;

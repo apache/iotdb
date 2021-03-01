@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.db.query.udf.service;
 
-import java.lang.reflect.InvocationTargetException;
 import org.apache.iotdb.db.query.udf.api.UDTF;
+
+import java.lang.reflect.InvocationTargetException;
 
 public class UDFRegistrationInformation {
 
@@ -31,8 +32,12 @@ public class UDFRegistrationInformation {
 
   private Class<?> functionClass;
 
-  public UDFRegistrationInformation(String functionName, String className, boolean isTemporary,
-      boolean isBuiltin, Class<?> functionClass) {
+  public UDFRegistrationInformation(
+      String functionName,
+      String className,
+      boolean isTemporary,
+      boolean isBuiltin,
+      Class<?> functionClass) {
     this.functionName = functionName;
     this.className = className;
     this.isTemporary = isTemporary;
@@ -48,9 +53,7 @@ public class UDFRegistrationInformation {
     return className;
   }
 
-  /**
-   * For a builtin function, this method always returns false.
-   */
+  /** For a builtin function, this method always returns false. */
   public boolean isTemporary() {
     return !isBuiltin && isTemporary;
   }
@@ -68,7 +71,8 @@ public class UDFRegistrationInformation {
   }
 
   public boolean isUDTF()
-      throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
+      throws NoSuchMethodException, IllegalAccessException, InvocationTargetException,
+          InstantiationException {
     return functionClass.getDeclaredConstructor().newInstance() instanceof UDTF;
   }
 

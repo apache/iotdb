@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.cluster.log;
 
-import java.nio.ByteBuffer;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.Log.Types;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
@@ -28,12 +27,13 @@ import org.apache.iotdb.cluster.log.logtypes.EmptyContentLog;
 import org.apache.iotdb.cluster.log.logtypes.LargeTestLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * LogParser transform a ByteBuffer into a Log.
- */
+import java.nio.ByteBuffer;
+
+/** LogParser transform a ByteBuffer into a Log. */
 public class LogParser {
 
   private static final Logger logger = LoggerFactory.getLogger(LogParser.class);

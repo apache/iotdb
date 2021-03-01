@@ -21,13 +21,14 @@ package org.apache.iotdb.cluster.exception;
 
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 
-public class PullFileException extends Exception{
+public class PullFileException extends Exception {
 
   public PullFileException(String fileName, Node node) {
     super(String.format("Cannot pull file %s from %s due to network condition", fileName, node));
   }
 
   public PullFileException(String fileName, Node node, Exception e) {
-    super(String.format("Cannot pull file %s from %s because %s", fileName, node, e.getMessage()), e);
+    super(
+        String.format("Cannot pull file %s from %s because %s", fileName, node, e.getMessage()), e);
   }
 }

@@ -19,12 +19,13 @@
 
 package org.apache.iotdb.db.query.udf.datastructure.tv;
 
-import static org.apache.iotdb.db.query.udf.datastructure.SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL;
-
-import java.io.IOException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+
+import java.io.IOException;
+
+import static org.apache.iotdb.db.query.udf.datastructure.SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL;
 
 public class ElasticSerializableBinaryTVList extends ElasticSerializableTVList {
 
@@ -69,33 +70,43 @@ public class ElasticSerializableBinaryTVList extends ElasticSerializableTVList {
     while (newByteArrayLengthForMemoryControl * size < totalByteArrayLength) {
       newByteArrayLengthForMemoryControl *= 2;
     }
-    int newInternalTVListCapacity = SerializableBinaryTVList
-        .calculateCapacity(memoryLimitInMB, newByteArrayLengthForMemoryControl) / cacheSize;
+    int newInternalTVListCapacity =
+        SerializableBinaryTVList.calculateCapacity(
+                memoryLimitInMB, newByteArrayLengthForMemoryControl)
+            / cacheSize;
     if (0 < newInternalTVListCapacity) {
-      applyNewMemoryControlParameters(newByteArrayLengthForMemoryControl,
-          newInternalTVListCapacity);
+      applyNewMemoryControlParameters(
+          newByteArrayLengthForMemoryControl, newInternalTVListCapacity);
       return;
     }
 
-    int delta = (int) ((totalByteArrayLength - totalByteArrayLengthLimit) / size
-        / INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL);
-    newByteArrayLengthForMemoryControl = byteArrayLengthForMemoryControl +
-        2 * (delta + 1) * INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL;
-    newInternalTVListCapacity = SerializableBinaryTVList
-        .calculateCapacity(memoryLimitInMB, newByteArrayLengthForMemoryControl) / cacheSize;
+    int delta =
+        (int)
+            ((totalByteArrayLength - totalByteArrayLengthLimit)
+                / size
+                / INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL);
+    newByteArrayLengthForMemoryControl =
+        byteArrayLengthForMemoryControl
+            + 2 * (delta + 1) * INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL;
+    newInternalTVListCapacity =
+        SerializableBinaryTVList.calculateCapacity(
+                memoryLimitInMB, newByteArrayLengthForMemoryControl)
+            / cacheSize;
     if (0 < newInternalTVListCapacity) {
-      applyNewMemoryControlParameters(newByteArrayLengthForMemoryControl,
-          newInternalTVListCapacity);
+      applyNewMemoryControlParameters(
+          newByteArrayLengthForMemoryControl, newInternalTVListCapacity);
       return;
     }
 
     throw new QueryProcessException("Memory is not enough for current query.");
   }
 
-  protected void applyNewMemoryControlParameters(int newByteArrayLengthForMemoryControl,
-      int newInternalTVListCapacity) throws IOException, QueryProcessException {
-    ElasticSerializableTVList newElasticSerializableTVList = new ElasticSerializableTVList(
-        TSDataType.TEXT, queryId, memoryLimitInMB, newInternalTVListCapacity, cacheSize);
+  protected void applyNewMemoryControlParameters(
+      int newByteArrayLengthForMemoryControl, int newInternalTVListCapacity)
+      throws IOException, QueryProcessException {
+    ElasticSerializableTVList newElasticSerializableTVList =
+        new ElasticSerializableTVList(
+            TSDataType.TEXT, queryId, memoryLimitInMB, newInternalTVListCapacity, cacheSize);
 
     newElasticSerializableTVList.evictionUpperBound = evictionUpperBound;
     int internalListEvictionUpperBound = evictionUpperBound / newInternalTVListCapacity;

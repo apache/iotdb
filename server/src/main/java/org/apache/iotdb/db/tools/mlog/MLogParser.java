@@ -18,13 +18,6 @@
  */
 package org.apache.iotdb.db.tools.mlog;
 
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.DefaultParser;
-import org.apache.commons.cli.HelpFormatter;
-import org.apache.commons.cli.Option;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
 import org.apache.iotdb.db.metadata.MLogTxtWriter;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
@@ -37,14 +30,20 @@ import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
+
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-/**
- * parse the binary mlog or snapshot to text
- */
+/** parse the binary mlog or snapshot to text */
 public class MLogParser {
 
   private static final Logger logger = LoggerFactory.getLogger(MLogParser.class);
@@ -69,19 +68,30 @@ public class MLogParser {
   public static Options createOptions() {
     Options options = new Options();
 
-    Option opFile = Option.builder(FILE_ARGS).required().argName(FILE_NAME).hasArg().desc(
-      "Need to specify a binary mlog file to parse (required)")
-      .build();
+    Option opFile =
+        Option.builder(FILE_ARGS)
+            .required()
+            .argName(FILE_NAME)
+            .hasArg()
+            .desc("Need to specify a binary mlog file to parse (required)")
+            .build();
     options.addOption(opFile);
 
-    Option opOut = Option.builder(OUT_ARGS).required(false).argName(OUT_NAME).hasArg().desc(
-      "Could specify the output file after parse (optional)")
-      .build();
+    Option opOut =
+        Option.builder(OUT_ARGS)
+            .required(false)
+            .argName(OUT_NAME)
+            .hasArg()
+            .desc("Could specify the output file after parse (optional)")
+            .build();
     options.addOption(opOut);
 
-    Option opHelp = Option.builder(HELP_ARGS).longOpt(HELP_ARGS)
-      .hasArg(false).desc("Display help information")
-      .build();
+    Option opHelp =
+        Option.builder(HELP_ARGS)
+            .longOpt(HELP_ARGS)
+            .hasArg(false)
+            .desc("Display help information")
+            .build();
     options.addOption(opHelp);
 
     return options;
@@ -129,7 +139,7 @@ public class MLogParser {
   }
 
   public static String checkRequiredArg(String arg, String name, CommandLine commandLine)
-    throws ParseException {
+      throws ParseException {
     String str = commandLine.getOptionValue(arg);
     if (str == null) {
       String msg = String.format("Required values for option '%s' not provided", name);
@@ -142,14 +152,14 @@ public class MLogParser {
 
   public static void parseFromFile(String inputFile, String outputFile) throws IOException {
     try (MLogReader mLogReader = new MLogReader(inputFile);
-         MLogTxtWriter mLogTxtWriter = new MLogTxtWriter(outputFile)) {
+        MLogTxtWriter mLogTxtWriter = new MLogTxtWriter(outputFile)) {
 
       while (mLogReader.hasNext()) {
         PhysicalPlan plan = mLogReader.next();
         switch (plan.getOperatorType()) {
           case CREATE_TIMESERIES:
-            mLogTxtWriter.createTimeseries((CreateTimeSeriesPlan)plan,
-              ((CreateTimeSeriesPlan) plan).getTagOffset());
+            mLogTxtWriter.createTimeseries(
+                (CreateTimeSeriesPlan) plan, ((CreateTimeSeriesPlan) plan).getTagOffset());
             break;
           case DELETE_TIMESERIES:
             for (PartialPath partialPath : plan.getPaths()) {
@@ -165,16 +175,19 @@ public class MLogParser {
             }
             break;
           case TTL:
-            mLogTxtWriter.setTTL(((SetTTLPlan) plan).getStorageGroup().getFullPath(),
-              ((SetTTLPlan) plan).getDataTTL());
+            mLogTxtWriter.setTTL(
+                ((SetTTLPlan) plan).getStorageGroup().getFullPath(),
+                ((SetTTLPlan) plan).getDataTTL());
             break;
           case CHANGE_ALIAS:
-            mLogTxtWriter.changeAlias(((ChangeAliasPlan) plan).getPath().getFullPath(),
-              ((ChangeAliasPlan) plan).getAlias());
+            mLogTxtWriter.changeAlias(
+                ((ChangeAliasPlan) plan).getPath().getFullPath(),
+                ((ChangeAliasPlan) plan).getAlias());
             break;
           case CHANGE_TAG_OFFSET:
-            mLogTxtWriter.changeOffset(((ChangeTagOffsetPlan) plan).getPath().getFullPath(),
-              ((ChangeTagOffsetPlan) plan).getOffset());
+            mLogTxtWriter.changeOffset(
+                ((ChangeTagOffsetPlan) plan).getPath().getFullPath(),
+                ((ChangeTagOffsetPlan) plan).getOffset());
             break;
           case MEASUREMENT_MNODE:
             mLogTxtWriter.serializeMeasurementMNode((MeasurementMNodePlan) plan);

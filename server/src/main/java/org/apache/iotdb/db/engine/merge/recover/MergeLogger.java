@@ -19,18 +19,17 @@
 
 package org.apache.iotdb.db.engine.merge.recover;
 
+import org.apache.iotdb.db.engine.merge.manage.MergeResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.metadata.PartialPath;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.List;
-import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.metadata.PartialPath;
 
-/**
- * MergeLogger records the progress of a merge in file "merge.log" as text lines.
- */
+/** MergeLogger records the progress of a merge in file "merge.log" as text lines. */
 public class MergeLogger {
 
   public static final String MERGE_LOG_NAME = "merge.log";

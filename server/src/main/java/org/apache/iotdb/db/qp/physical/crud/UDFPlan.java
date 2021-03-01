@@ -19,16 +19,17 @@
 
 package org.apache.iotdb.db.qp.physical.crud;
 
-import java.util.List;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.core.context.UDFContext;
 
+import java.util.List;
+
 /**
  * UDF execution plan.
- * <p>
- * The life cycle of an executor:
- * <p>
- * constructUdfExecutors -> initializeUdfExecutor -> finalizeUDFExecutors
+ *
+ * <p>The life cycle of an executor:
+ *
+ * <p>constructUdfExecutors -> initializeUdfExecutor -> finalizeUDFExecutors
  */
 public interface UDFPlan {
 
@@ -38,14 +39,10 @@ public interface UDFPlan {
    */
   void constructUdfExecutors(List<UDFContext> udfContexts);
 
-  /**
-   * Allocate computing resources, create UDF instances, and call UDF initialization methods.
-   */
+  /** Allocate computing resources, create UDF instances, and call UDF initialization methods. */
   void initializeUdfExecutors(long queryId, float collectorMemoryBudgetInMb)
       throws QueryProcessException;
 
-  /**
-   * Call UDF finalization methods and release computing resources.
-   */
+  /** Call UDF finalization methods and release computing resources. */
   void finalizeUDFExecutors(long queryId);
 }

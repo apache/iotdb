@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.tsfile.read.common;
 
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -34,18 +32,22 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsFloat;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsInt;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * <code>BatchData</code> is a self-defined data structure which is optimized for different type of
  * values. This class can be viewed as a collection which is more efficient than ArrayList.
- * <p>
- * This class records a time list and a value list, which could be replaced by TVList in the future
- * <p>
- * When you use BatchData in query process, it does not contain duplicated timestamps. The batch
+ *
+ * <p>This class records a time list and a value list, which could be replaced by TVList in the
+ * future
+ *
+ * <p>When you use BatchData in query process, it does not contain duplicated timestamps. The batch
  * data may be empty.
- * <p>
- * If you get a batch data, you can iterate the data as the following codes:
- * <p>
- * while (batchData.hasCurrent()) { long time = batchData.currentTime(); Object value =
+ *
+ * <p>If you get a batch data, you can iterate the data as the following codes:
+ *
+ * <p>while (batchData.hasCurrent()) { long time = batchData.currentTime(); Object value =
  * batchData.currentValue(); batchData.next(); }
  */
 public class BatchData {
@@ -414,7 +416,6 @@ public class BatchData {
     writeCurArrayIndex++;
     count++;
   }
-
 
   public boolean getBoolean() {
     return this.booleanRet.get(readCurListIndex)[readCurArrayIndex];

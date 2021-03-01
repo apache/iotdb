@@ -18,29 +18,30 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+
 public class DeleteStorageGroupPlan extends PhysicalPlan {
-  
+
   private List<PartialPath> deletePathList;
-  
-  public DeleteStorageGroupPlan (List<PartialPath> deletePathList) {
-	  super(false, Operator.OperatorType.DELETE_STORAGE_GROUP);
-	  this.deletePathList = deletePathList;
+
+  public DeleteStorageGroupPlan(List<PartialPath> deletePathList) {
+    super(false, Operator.OperatorType.DELETE_STORAGE_GROUP);
+    this.deletePathList = deletePathList;
   }
 
   public DeleteStorageGroupPlan() {
     super(false, Operator.OperatorType.DELETE_STORAGE_GROUP);
   }
-  
+
   @Override
   public List<PartialPath> getPaths() {
     return deletePathList;
@@ -80,5 +81,4 @@ public class DeleteStorageGroupPlan extends PhysicalPlan {
 
     this.index = buffer.getLong();
   }
-
 }

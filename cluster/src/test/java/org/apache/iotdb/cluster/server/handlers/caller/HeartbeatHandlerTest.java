@@ -19,12 +19,6 @@
 
 package org.apache.iotdb.cluster.server.handlers.caller;
 
-import static junit.framework.TestCase.assertEquals;
-import static junit.framework.TestCase.assertFalse;
-import static junit.framework.TestCase.assertTrue;
-
-import java.io.IOException;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.cluster.common.TestException;
 import org.apache.iotdb.cluster.common.TestLogManager;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
@@ -33,9 +27,17 @@ import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.IOException;
+
+import static junit.framework.TestCase.assertEquals;
+import static junit.framework.TestCase.assertFalse;
+import static junit.framework.TestCase.assertTrue;
 
 public class HeartbeatHandlerTest {
 
@@ -45,16 +47,16 @@ public class HeartbeatHandlerTest {
 
   @Before
   public void setUp() {
-    metaGroupMember = new TestMetaGroupMember() {
-      @Override
-      public void catchUp(Node follower, long lastLogIdx) {
-        synchronized (metaGroupMember) {
-          catchUpFlag = true;
-          metaGroupMember.notifyAll();
-        }
-      }
-
-    };
+    metaGroupMember =
+        new TestMetaGroupMember() {
+          @Override
+          public void catchUp(Node follower, long lastLogIdx) {
+            synchronized (metaGroupMember) {
+              catchUpFlag = true;
+              metaGroupMember.notifyAll();
+            }
+          }
+        };
     metaGroupMember.initPeerMap();
     metaGroupMember.setLogManager(new TestLogManager(1));
   }

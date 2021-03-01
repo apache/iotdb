@@ -18,14 +18,15 @@
  */
 package org.apache.iotdb.tsfile.read.common;
 
-import java.io.Serializable;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
+import java.io.Serializable;
+
 /**
- * This class represent a time series in TsFile,
- * which is usually defined by a device and a measurement.
+ * This class represent a time series in TsFile, which is usually defined by a device and a
+ * measurement.
  *
- * If you want to use one String such as "device1.measurement1" to init Path in TsFile API,
+ * <p>If you want to use one String such as "device1.measurement1" to init Path in TsFile API,
  * please use the new Path(string, true) to split it to device and measurement.
  */
 public class Path implements Serializable, Comparable<Path> {
@@ -40,7 +41,8 @@ public class Path implements Serializable, Comparable<Path> {
 
   /**
    * this constructor doesn't split the path, only useful for table header.
-   * @param pathSc the path that wouldn't  be split.
+   *
+   * @param pathSc the path that wouldn't be split.
    */
   @SuppressWarnings("the path that wouldn't be split")
   public Path(String pathSc) {
@@ -49,13 +51,14 @@ public class Path implements Serializable, Comparable<Path> {
 
   /**
    * @param pathSc path
-   * @param needSplit whether need to be split to device and measurement, doesn't support escape character yet.
+   * @param needSplit whether need to be split to device and measurement, doesn't support escape
+   *     character yet.
    */
   public Path(String pathSc, boolean needSplit) {
     if (pathSc == null) {
       throw new IllegalArgumentException(ILLEGAL_PATH_ARGUMENT);
     }
-    if(!needSplit) {
+    if (!needSplit) {
       fullPath = pathSc;
     } else {
       if (pathSc.length() > 0) {
@@ -96,10 +99,9 @@ public class Path implements Serializable, Comparable<Path> {
   }
 
   /**
-   * construct a Path directly using device and measurement, no need to reformat
-   * the path
+   * construct a Path directly using device and measurement, no need to reformat the path
    *
-   * @param device      root.deviceType.d1
+   * @param device root.deviceType.d1
    * @param measurement s1 , does not contain TsFileConstant.PATH_SEPARATOR
    */
   public Path(String device, String measurement) {
@@ -108,7 +110,7 @@ public class Path implements Serializable, Comparable<Path> {
     }
     this.device = device;
     this.measurement = measurement;
-    if(!device.equals("")) {
+    if (!device.equals("")) {
       this.fullPath = device + TsFileConstant.PATH_SEPARATOR + measurement;
     } else {
       fullPath = measurement;
@@ -127,7 +129,9 @@ public class Path implements Serializable, Comparable<Path> {
     return measurement;
   }
 
-  public String getFullPathWithAlias() { throw new IllegalArgumentException("doesn't alias in TSFile Path"); }
+  public String getFullPathWithAlias() {
+    throw new IllegalArgumentException("doesn't alias in TSFile Path");
+  }
 
   @Override
   public int hashCode() {
@@ -157,5 +161,4 @@ public class Path implements Serializable, Comparable<Path> {
   public Path clone() {
     return new Path(fullPath);
   }
-
 }

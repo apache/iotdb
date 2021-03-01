@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.db.query.aggregation;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
@@ -31,6 +28,10 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 
 public abstract class AggregateResult {
 
@@ -79,20 +80,19 @@ public abstract class AggregateResult {
    * Aggregate results cannot be calculated using Statistics directly, using the data in each page
    *
    * @param dataInThisPage the data in Page
-   * @param minBound       calculate points whose time >= bound
-   * @param maxBound       calculate points whose time < bound
+   * @param minBound calculate points whose time >= bound
+   * @param maxBound calculate points whose time < bound
    */
-  public abstract void updateResultFromPageData(BatchData dataInThisPage, long minBound,
-      long maxBound) throws IOException;
+  public abstract void updateResultFromPageData(
+      BatchData dataInThisPage, long minBound, long maxBound) throws IOException;
 
   /**
-   * <p> This method calculates the aggregation using common timestamps of the cross series
-   * filter. </p>
+   * This method calculates the aggregation using common timestamps of the cross series filter.
    *
    * @throws IOException TsFile data read error
    */
-  public abstract void updateResultUsingTimestamps(long[] timestamps, int length,
-      IReaderByTimestamp dataReader) throws IOException;
+  public abstract void updateResultUsingTimestamps(
+      long[] timestamps, int length, IReaderByTimestamp dataReader) throws IOException;
 
   /**
    * Judge if aggregation results have been calculated. In other words, if the aggregated result
@@ -102,17 +102,15 @@ public abstract class AggregateResult {
    */
   public abstract boolean hasFinalResult();
 
-  /**
-   * Merge another aggregateResult into this
-   */
+  /** Merge another aggregateResult into this */
   public abstract void merge(AggregateResult another);
 
   public static AggregateResult deserializeFrom(ByteBuffer buffer) {
     AggregationType aggregationType = AggregationType.deserialize(buffer);
     TSDataType dataType = TSDataType.deserialize(buffer.get());
     boolean ascending = ReadWriteIOUtils.readBool(buffer);
-    AggregateResult aggregateResult = AggregateResultFactory
-        .getAggrResultByType(aggregationType, dataType, ascending);
+    AggregateResult aggregateResult =
+        AggregateResultFactory.getAggrResultByType(aggregationType, dataType, ascending);
     boolean hasResult = ReadWriteIOUtils.readBool(buffer);
     if (hasResult) {
       switch (dataType) {
