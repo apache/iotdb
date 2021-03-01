@@ -187,7 +187,6 @@ public class PlanExecutor implements IPlanExecutor {
   private IAuthorizer authorizer;
 
   private static final String INSERT_MEASUREMENTS_FAILED_MESSAGE = "failed to insert measurements ";
-  private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   public PlanExecutor() throws QueryProcessException {
     queryRouter = new QueryRouter();
@@ -1149,7 +1148,6 @@ public class PlanExecutor implements IPlanExecutor {
 
   @Override
   public void insert(InsertRowPlan insertRowPlan) throws QueryProcessException {
-    long startTime = System.currentTimeMillis();
     try {
       insertRowPlan.setMeasurementMNodes(
           new MeasurementMNode[insertRowPlan.getMeasurements().length]);
@@ -1186,7 +1184,6 @@ public class PlanExecutor implements IPlanExecutor {
 
   @Override
   public void insertTablet(InsertTabletPlan insertTabletPlan) throws QueryProcessException {
-    long startTime = System.currentTimeMillis();
     try {
       insertTabletPlan.setMeasurementMNodes(
           new MeasurementMNode[insertTabletPlan.getMeasurements().length]);
