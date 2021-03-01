@@ -113,4 +113,53 @@ public class MetricConfig {
       this.prometheusExporterPort = prometheusExporterPort;
     }
   }
+
+  /** the following is iotdb related config */
+  public static class IoTDBReporterConfig {
+    private String iotdbSg = "_sysmetric";
+    private String iotdbUser = "root";
+    private String iotdbPasswd = "root";
+    private String iotdbIp = "127.0.0.1";
+    private String iotdbPort = "6667";
+
+    public String getIotdbSg() {
+      return iotdbSg;
+    }
+
+    public void setIotdbSg(String iotdbSg) {
+      this.iotdbSg = iotdbSg;
+    }
+
+    public String getIotdbUser() {
+      return iotdbUser;
+    }
+
+    public void setIotdbUser(String iotdbUser) {
+      this.iotdbUser = iotdbUser;
+    }
+
+    public String getIotdbPasswd() {
+      return iotdbPasswd;
+    }
+
+    public void setIotdbPasswd(String iotdbPasswd) {
+      this.iotdbPasswd = iotdbPasswd;
+    }
+
+    public String getIotdbIp() {
+      return iotdbIp;
+    }
+
+    public void setIotdbIp(String iotdbIp) {
+      this.iotdbIp = iotdbIp;
+    }
+
+    public String getIotdbPort() {
+      return iotdbPort;
+    }
+
+    public void setIotdbPort(String iotdbPort) {
+      this.iotdbPort = iotdbPort;
+    }
+  }
 }

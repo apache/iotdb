@@ -44,6 +44,7 @@ public class MicrometerMetricReporter implements MetricReporter {
 
   @Override
   public boolean start() {
+
     List<String> reporters = metricConfig.getMetricReporterList();
     for (String reporter : reporters) {
       switch (ReporterType.get(reporter)) {
@@ -92,7 +93,6 @@ public class MicrometerMetricReporter implements MetricReporter {
 
   private void startJmxReporter(JmxMeterRegistry jmxMeterRegistry) {
     logger.info("start jmx reporter from micrometer");
-    // jmxMeterRegistry.start();
   }
 
   @Override

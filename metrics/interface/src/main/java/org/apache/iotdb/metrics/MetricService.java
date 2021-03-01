@@ -32,6 +32,8 @@ import java.util.ServiceLoader;
 public class MetricService {
 
   private static final Logger logger = LoggerFactory.getLogger(MetricService.class);
+  private static final MetricConfig metricConfig =
+    MetricConfigDescriptor.getInstance().getMetricConfig();
 
   static {
     init();
@@ -41,9 +43,6 @@ public class MetricService {
 
   private static MetricManager metricManager;
   private static MetricReporter metricReporter;
-
-  private static final MetricConfig metricConfig =
-      MetricConfigDescriptor.getInstance().getMetricConfig();
 
   public static MetricService getINSTANCE() {
     return INSTANCE;
@@ -94,10 +93,15 @@ public class MetricService {
     }
     // do some init work
     metricReporter.setMetricManager(metricManager);
-    metricReporter.start();
+    if (isEnable()) {
+      metricReporter.start();
+    }
   }
 
   public static void stop() {
+    if (!isEnable()) {
+      return;
+    }
     metricReporter.stop();
   }
 
@@ -110,6 +114,6 @@ public class MetricService {
   }
 
   public static boolean isEnable() {
-    return metricManager.isEnable();
+    return metricConfig.getEnableMetric();
   }
 }

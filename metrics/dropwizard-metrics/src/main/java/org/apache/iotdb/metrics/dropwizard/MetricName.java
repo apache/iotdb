@@ -91,7 +91,7 @@ public class MetricName {
       return false;
     }
     MetricName that = (MetricName) obj;
-    if (this.name != that.name) {
+    if (!this.name.equals(that.name)) {
       return false;
     }
     if (that.getTags().size() != this.tags.size()) {
