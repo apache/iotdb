@@ -1143,7 +1143,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           req.deviceIds.get(0),
           req.getTimestamps().get(0));
     }
-    boolean allSuccess = true;
+    boolean checkAllSuccess = true;
     InsertRowsPlan insertRowsPlan = new InsertRowsPlan();
     for (int i = 0; i < req.deviceIds.size(); i++) {
       try {
@@ -1156,11 +1156,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         TSStatus status = checkAuthority(plan, req.getSessionId());
         if (status != null) {
           insertRowsPlan.getResults().put(i, status);
-          allSuccess = false;
+          checkAllSuccess = false;
         }
         insertRowsPlan.addOneInsertRowPlan(plan, i);
       } catch (Exception e) {
-        allSuccess = false;
+        checkAllSuccess = false;
         insertRowsPlan
             .getResults()
             .put(
@@ -1172,16 +1172,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     TSStatus tsStatus = executeNonQueryPlan(insertRowsPlan);
 
     return judgeFinalTsStatus(
-        allSuccess, tsStatus, insertRowsPlan.getResults(), req.deviceIds.size());
+        checkAllSuccess, tsStatus, insertRowsPlan.getResults(), req.deviceIds.size());
   }
 
   private TSStatus judgeFinalTsStatus(
-      boolean allSuccess,
+      boolean checkAllSuccess,
       TSStatus executeTsStatus,
       Map<Integer, TSStatus> checkTsStatus,
       int totalRowCount) {
 
-    if (allSuccess) {
+    if (checkAllSuccess) {
       return executeTsStatus;
     }
 
@@ -1252,7 +1252,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           req.getTimestamps().get(0));
     }
 
-    boolean allSuccess = true;
+    boolean allCheckSuccess = true;
     InsertRowsPlan insertRowsPlan = new InsertRowsPlan();
     for (int i = 0; i < req.deviceIds.size(); i++) {
       InsertRowPlan plan = new InsertRowPlan();
@@ -1266,6 +1266,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         TSStatus status = checkAuthority(plan, req.getSessionId());
         if (status != null) {
           insertRowsPlan.getResults().put(i, status);
+          allCheckSuccess = false;
         }
         insertRowsPlan.addOneInsertRowPlan(plan, i);
       } catch (Exception e) {
@@ -1275,13 +1276,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
                 i,
                 onNPEOrUnexpectedException(
                     e, "inserting string records", TSStatusCode.INTERNAL_SERVER_ERROR));
-        allSuccess = false;
+        allCheckSuccess = false;
       }
     }
     TSStatus tsStatus = executeNonQueryPlan(insertRowsPlan);
 
     return judgeFinalTsStatus(
-        allSuccess, tsStatus, insertRowsPlan.getResults(), req.deviceIds.size());
+        allCheckSuccess, tsStatus, insertRowsPlan.getResults(), req.deviceIds.size());
   }
 
   @Override
