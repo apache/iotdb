@@ -16,14 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.metrics;
 
-public interface MetricReporter {
-  boolean start();
+package org.apache.iotdb.metrics.impl;
 
-  void setMetricManager(MetricManager metricManager);
+import org.apache.iotdb.metrics.type.Histogram;
+import org.apache.iotdb.metrics.type.HistogramSnapshot;
 
-  boolean stop();
+public class DoNothingHistogram implements Histogram {
+  @Override
+  public void update(int value) {
+    // do nothing
+  }
 
-  String getName();
+  @Override
+  public void update(long value) {
+    // do nothing
+  }
+
+  @Override
+  public long count() {
+    return 0;
+  }
+
+  @Override
+  public HistogramSnapshot takeSnapshot() {
+    return new DoNothingHistogramSnapshot();
+  }
 }

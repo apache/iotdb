@@ -26,35 +26,42 @@ import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.type.Timer;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class DoNothingMetricManager implements MetricManager {
 
+  private final DoNothingCounter doNothingCounter = new DoNothingCounter();
+  private final DoNothingHistogram doNothingHistogram = new DoNothingHistogram();
+  private final DoNothingGauge doNothingGauge = new DoNothingGauge();
+  private final DoNothingRate doNothingRate = new DoNothingRate();
+  private final DoNothingTimer doNothingTimer = new DoNothingTimer();
+
   @Override
   public Counter counter(String metric, String... tags) {
-    return null;
+    return doNothingCounter;
   }
 
   @Override
   public Gauge gauge(String metric, String... tags) {
-    return null;
+    return doNothingGauge;
   }
 
   @Override
   public Histogram histogram(String metric, String... tags) {
-    return null;
+    return doNothingHistogram;
   }
 
   @Override
   public Rate rate(String metric, String... tags) {
-    return null;
+    return doNothingRate;
   }
 
   @Override
   public Timer timer(String metric, String... tags) {
-    return null;
+    return doNothingTimer;
   }
 
   @Override
@@ -86,32 +93,32 @@ public class DoNothingMetricManager implements MetricManager {
 
   @Override
   public List<String[]> getAllMetricKeys() {
-    return null;
+    return Collections.emptyList();
   }
 
   @Override
   public Map<String[], Counter> getAllCounters() {
-    return null;
+    return Collections.emptyMap();
   }
 
   @Override
   public Map<String[], Gauge> getAllGauges() {
-    return null;
+    return Collections.emptyMap();
   }
 
   @Override
   public Map<String[], Rate> getAllRates() {
-    return null;
+    return Collections.emptyMap();
   }
 
   @Override
   public Map<String[], Histogram> getAllHistograms() {
-    return null;
+    return Collections.emptyMap();
   }
 
   @Override
   public Map<String[], Timer> getAllTimers() {
-    return null;
+    return Collections.emptyMap();
   }
 
   @Override
@@ -125,5 +132,10 @@ public class DoNothingMetricManager implements MetricManager {
   @Override
   public boolean init() {
     return false;
+  }
+
+  @Override
+  public String getName() {
+    return "DoNothingMetricManager";
   }
 }

@@ -16,14 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.metrics;
 
-public interface MetricReporter {
-  boolean start();
+package org.apache.iotdb.metrics.impl;
 
-  void setMetricManager(MetricManager metricManager);
+import org.apache.iotdb.metrics.type.Counter;
 
-  boolean stop();
+public class DoNothingCounter implements Counter {
+  @Override
+  public void inc() {
+    // do nothing
+  }
 
-  String getName();
+  @Override
+  public void inc(long n) {
+    // do nothing
+  }
+
+  @Override
+  public long count() {
+    return 0;
+  }
 }

@@ -16,14 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.metrics;
 
-public interface MetricReporter {
-  boolean start();
+package org.apache.iotdb.metrics.impl;
 
-  void setMetricManager(MetricManager metricManager);
+import org.apache.iotdb.metrics.type.Gauge;
 
-  boolean stop();
+public class DoNothingGauge implements Gauge {
+  @Override
+  public long value() {
+    return 0;
+  }
 
-  String getName();
+  @Override
+  public void set(long value) {
+    // do nothing
+  }
 }

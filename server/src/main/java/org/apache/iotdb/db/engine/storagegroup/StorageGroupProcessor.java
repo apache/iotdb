@@ -66,7 +66,6 @@ import org.apache.iotdb.db.utils.MmapUtil;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
-import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -274,10 +273,6 @@ public class StorageGroupProcessor {
   // DEFAULT_POOL_TRIM_INTERVAL_MILLIS
   private long timeWhenPoolNotEmpty = Long.MAX_VALUE;
 
-  private Timer write_total_timer;
-
-  private Timer read_total_timer;
-
   /** get the direct byte buffer from pool, each fetch contains two ByteBuffer */
   public ByteBuffer[] getWalDirectByteBuffer() {
     ByteBuffer[] res = new ByteBuffer[2];
@@ -389,24 +384,6 @@ public class StorageGroupProcessor {
         DEFAULT_POOL_TRIM_INTERVAL_MILLIS,
         TimeUnit.MILLISECONDS);
     recover();
-    read_total_timer =
-        IoTDB.serverMetricManager.timer(
-            "read_latency",
-            "sg",
-            logicalStorageGroupName,
-            "user",
-            "total",
-            "host",
-            config.getRpcAddress());
-    write_total_timer =
-        IoTDB.serverMetricManager.timer(
-            "write_latency",
-            "sg",
-            logicalStorageGroupName,
-            "user",
-            "total",
-            "host",
-            config.getRpcAddress());
   }
 
   public String getLogicalStorageGroupName() {
@@ -806,7 +783,6 @@ public class StorageGroupProcessor {
     if (!isAlive(insertRowPlan.getTime())) {
       throw new OutOfTTLException(insertRowPlan.getTime(), (System.currentTimeMillis() - dataTTL));
     }
-    long startTime = System.currentTimeMillis();
     if (enableMemControl) {
       StorageEngine.blockInsertionIfReject();
     }
@@ -837,18 +813,6 @@ public class StorageGroupProcessor {
     } finally {
       writeUnlock();
     }
-    long end = System.currentTimeMillis();
-    logger.info("timer insert cost {} millis", end - startTime);
-    IoTDB.serverMetricManager.timer(
-        end - startTime,
-        TimeUnit.MILLISECONDS,
-        "insert_row_latency",
-        "sg",
-        logicalStorageGroupName,
-        "user",
-        insertRowPlan.getLoginUserName(),
-        "host",
-        config.getRpcAddress());
   }
 
   /**

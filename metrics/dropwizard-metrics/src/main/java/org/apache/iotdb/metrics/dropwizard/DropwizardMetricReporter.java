@@ -40,7 +40,7 @@ public class DropwizardMetricReporter implements MetricReporter {
 
   @Override
   public boolean start() {
-    List<String> reporters = metricConfig.getReporterList();
+    List<String> reporters = metricConfig.getMetricReporterList();
     for (String reporter : reporters) {
       switch (ReporterType.get(reporter)) {
         case JMX:
@@ -74,7 +74,7 @@ public class DropwizardMetricReporter implements MetricReporter {
 
   @Override
   public boolean stop() {
-    List<String> reporters = metricConfig.getReporterList();
+    List<String> reporters = metricConfig.getMetricReporterList();
     for (String reporter : reporters) {
       switch (ReporterType.get(reporter)) {
         case JMX:
@@ -89,5 +89,10 @@ public class DropwizardMetricReporter implements MetricReporter {
       }
     }
     return true;
+  }
+
+  @Override
+  public String getName() {
+    return "DropwizardMetricReporter";
   }
 }

@@ -100,4 +100,6 @@ public interface MetricManager {
    * @return
    */
   boolean init();
+
+  String getName();
 }

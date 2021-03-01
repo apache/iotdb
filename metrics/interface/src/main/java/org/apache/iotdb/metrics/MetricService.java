@@ -18,21 +18,20 @@
  */
 package org.apache.iotdb.metrics;
 
+import org.apache.iotdb.metrics.config.MetricConfig;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
+import org.apache.iotdb.metrics.impl.DoNothingMetricReporter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.ServiceLoader;
 
 /** MetricService is the entry to manage all Metric system */
 public class MetricService {
 
   private static final Logger logger = LoggerFactory.getLogger(MetricService.class);
-
-  private static final List<MetricReporter> reporters = new ArrayList<>();
 
   static {
     init();
@@ -41,6 +40,10 @@ public class MetricService {
   private static final MetricService INSTANCE = new MetricService();
 
   private static MetricManager metricManager;
+  private static MetricReporter metricReporter;
+
+  private static final MetricConfig metricConfig =
+      MetricConfigDescriptor.getInstance().getMetricConfig();
 
   public static MetricService getINSTANCE() {
     return INSTANCE;
@@ -55,15 +58,14 @@ public class MetricService {
     MetricManager nothingManager = new DoNothingMetricManager();
 
     for (MetricManager mf : metricManagers) {
-      if (mf instanceof DoNothingMetricManager) {
-        nothingManager = mf;
-        continue;
-      }
       size++;
-      metricManager = mf;
+      if (metricConfig.getMetricManagerType().equals(mf.getName())) {
+        metricManager = mf;
+        break;
+      }
     }
 
-    // if no more implementations, we use nothingFactory.
+    // if no more implementations, we use nothingManager.
     if (size == 0) {
       metricManager = nothingManager;
     } else if (size > 1) {
@@ -74,19 +76,29 @@ public class MetricService {
     metricManager.init();
 
     ServiceLoader<MetricReporter> reporter = ServiceLoader.load(MetricReporter.class);
+    size = 0;
     for (MetricReporter r : reporter) {
-      reporters.add(r);
-      r.setMetricManager(metricManager);
-      r.start();
-      logger.info("detect MetricReporter {}", r.getClass().getName());
+      size++;
+      if (metricConfig.getMetricReporterType().equals(r.getName())) {
+        metricReporter = r;
+        logger.info("detect MetricReporter {}", r.getClass().getName());
+      }
     }
+
+    // if no more implementations, we use nothingReporter.
+    if (size == 0) {
+      metricReporter = new DoNothingMetricReporter();
+    } else if (size > 1) {
+      logger.warn(
+          "detect more than one MetricReporter, will use {}", metricReporter.getClass().getName());
+    }
+    // do some init work
+    metricReporter.setMetricManager(metricManager);
+    metricReporter.start();
   }
 
   public static void stop() {
-    for (MetricReporter r : reporters) {
-      logger.info("detect MetricReporter {}", r.getClass().getName());
-      r.stop();
-    }
+    metricReporter.stop();
   }
 
   public static MetricManager getMetricManager() {

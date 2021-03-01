@@ -18,12 +18,17 @@
 #
 
 # whether enable the module
-enable_metric=true
+enableMetric: true
 
 # can be multiple reporter, e.g., jmx,prometheus,iotdb
-metric_reporter_list=jmx
+metricReporterList:
+  - jmx
 
-push_period_in_second=5
+  # the following configure should be matched
+metricManagerType: MicrometerMetricManager
+metricReporterType: MicrometerMetricReporter
+
+pushPeriodInSecond: 5
 
 
 ########################################################
@@ -32,7 +37,8 @@ push_period_in_second=5
 # then the following must be set                       #
 #                                                      #
 ########################################################
-prometheus_exporter_port=8090
+prometheusReporterConfig:
+  prometheusExporterPort: 8090
 
 ########################################################
 #                                                      #
@@ -40,10 +46,9 @@ prometheus_exporter_port=8090
 # then the following must be set                       #
 #                                                      #
 ########################################################
-iotdb_ip=127.0.0.1
-iotdb_port=6667
-iotdb_sg=_sysmetric
-iotdb_user=root
-iotdb_passwd=root
-
-
+ioTDBReporterConfig:
+  iotdbIp: 127.0.0.1
+  iotdbPort: 6667
+  iotdbSg: _sysmetric
+  iotdbUser: root
+  iotdbPasswd: root

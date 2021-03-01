@@ -706,18 +706,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           plan.getLoginUserName(),
           config.getRpcAddress());
 
-      IoTDB.serverMetricManager.timer(
-          System.currentTimeMillis() - startTime,
-          TimeUnit.MILLISECONDS,
-          "query_latency",
-          "sg",
-          "root",
-          "query_type",
-          plan.getOperatorType().name(),
-          "user",
-          plan.getLoginUserName(),
-          "host",
-          config.getRpcAddress());
       return resp;
     } catch (Exception e) {
       releaseQueryResourceNoExceptions(queryId);
@@ -1192,19 +1180,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
                     e, "inserting records", TSStatusCode.INTERNAL_SERVER_ERROR));
       }
     }
-    long startTime = System.currentTimeMillis();
     TSStatus tsStatus = executeNonQueryPlan(insertRowsPlan);
-
-    IoTDB.serverMetricManager.timer(
-        System.currentTimeMillis() - startTime,
-        TimeUnit.MILLISECONDS,
-        "insert_records_latency",
-        "sg",
-        "root",
-        "user",
-        sessionIdUsernameMap.get(req.getSessionId()),
-        "host",
-        config.getRpcAddress());
 
     return judgeFinalTsStatus(
         allSuccess, tsStatus, insertRowsPlan.getResults(), req.deviceIds.size());

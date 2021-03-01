@@ -16,14 +16,44 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.metrics;
 
-public interface MetricReporter {
-  boolean start();
+package org.apache.iotdb.metrics.impl;
 
-  void setMetricManager(MetricManager metricManager);
+import org.apache.iotdb.metrics.type.Rate;
 
-  boolean stop();
+public class DoNothingRate implements Rate {
+  @Override
+  public long getCount() {
+    return 0;
+  }
 
-  String getName();
+  @Override
+  public double getOneMinuteRate() {
+    return 0;
+  }
+
+  @Override
+  public double getMeanRate() {
+    return 0;
+  }
+
+  @Override
+  public double getFiveMinuteRate() {
+    return 0;
+  }
+
+  @Override
+  public double getFifteenMinuteRate() {
+    return 0;
+  }
+
+  @Override
+  public void mark() {
+    // do nothing
+  }
+
+  @Override
+  public void mark(long n) {
+    // do nothing
+  }
 }

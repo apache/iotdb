@@ -65,7 +65,7 @@ public class DropwizardMetricManager implements MetricManager {
 
   public DropwizardMetricManager() {
     metricRegistry = new MetricRegistry();
-    isEnable = metricConfig.isEnabled();
+    isEnable = metricConfig.getEnableMetric();
     currentMeters = new ConcurrentHashMap<>();
   }
 
@@ -358,5 +358,10 @@ public class DropwizardMetricManager implements MetricManager {
   @Override
   public boolean init() {
     return true;
+  }
+
+  @Override
+  public String getName() {
+    return "DropwizardMetricManager";
   }
 }

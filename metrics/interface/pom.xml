@@ -31,5 +31,11 @@
     <name>metric interface</name>
     <description>Metrics interface for IoTDB</description>
     <url>https://github.com/thulab/iotdb/tree/master/tsfile</url>
-    <dependencies/>
+    <dependencies>
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+            <version>1.17</version>
+        </dependency>
+    </dependencies>
 </project>

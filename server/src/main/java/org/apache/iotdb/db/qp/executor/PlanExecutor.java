@@ -147,7 +147,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CANCELLED;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CHILD_PATHS;
@@ -1135,16 +1134,6 @@ public class PlanExecutor implements IPlanExecutor {
       if (insertRowPlan.getFailedMeasurements() != null) {
         checkFailedMeasurments(insertRowPlan);
       }
-      IoTDB.serverMetricManager.timer(
-          System.currentTimeMillis() - startTime,
-          TimeUnit.MILLISECONDS,
-          "insert_latency",
-          "sg",
-          "root", // TODO infer from insertRowPlan.getDeviceId()
-          "user",
-          insertRowPlan.getLoginUserName(),
-          "host",
-          config.getRpcAddress());
     } catch (StorageEngineException | MetadataException e) {
       if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
         StatMonitor.getInstance().updateFailedStatValue();
@@ -1180,16 +1169,6 @@ public class PlanExecutor implements IPlanExecutor {
       if (insertTabletPlan.getFailedMeasurements() != null) {
         checkFailedMeasurments(insertTabletPlan);
       }
-      IoTDB.serverMetricManager.timer(
-          System.currentTimeMillis() - startTime,
-          TimeUnit.MILLISECONDS,
-          "insert_tablet_latency",
-          "sg",
-          "root", // TODO infer from insertTabletPlan.getDeviceId()
-          "user",
-          insertTabletPlan.getLoginUserName(),
-          "host",
-          config.getRpcAddress());
     } catch (StorageEngineException | MetadataException e) {
       if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
         StatMonitor.getInstance().updateFailedStatValue();

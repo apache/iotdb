@@ -16,14 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.metrics;
 
-public interface MetricReporter {
-  boolean start();
+package org.apache.iotdb.metrics.impl;
 
-  void setMetricManager(MetricManager metricManager);
+import org.apache.iotdb.metrics.type.HistogramSnapshot;
+import org.apache.iotdb.metrics.type.Rate;
+import org.apache.iotdb.metrics.type.Timer;
 
-  boolean stop();
+import java.util.concurrent.TimeUnit;
 
-  String getName();
+public class DoNothingTimer implements Timer {
+  @Override
+  public void update(long duration, TimeUnit unit) {
+    // do nothing
+  }
+
+  @Override
+  public HistogramSnapshot takeSnapshot() {
+    return new DoNothingHistogramSnapshot();
+  }
+
+  @Override
+  public Rate getImmutableRate() {
+    return new DoNothingRate();
+  }
 }

@@ -27,99 +27,90 @@ import java.util.List;
 
 public class MetricConfig {
   private static final Logger logger = LoggerFactory.getLogger(MetricConfig.class);
-  static final String CONFIG_NAME = "iotdb-metric.properties";
-
-  /** The period of data pushed by the reporter to the remote monitoring system */
-  private int pushPeriodInSecond = 5;
+  static final String CONFIG_NAME = "iotdb-metric.yml";
 
   /** enable publishing data */
-  private boolean isEnabled = true;
+  private Boolean enableMetric = true;
+
+  /** The period of data pushed by the reporter to the remote monitoring system */
+  private Integer pushPeriodInSecond = 5;
+
+  private String metricManagerType = "MicrometerMetricManager";
+  private String metricReporterType = "MicrometerMetricReporter";
 
   /** provide or push metric data to remote system, could be jmx, prometheus, iotdb, etc. */
-  private List<String> reporterList =
-      Arrays.asList("jmx", "prometheus"); // Collections.singletonList("jmx");
+  private List<String> metricReporterList = Arrays.asList("jmx");
 
-  // the following is prometheus related config
-  /** the http server's port for prometheus exporter to get metric data */
-  private String prometheusExporterPort = "8090";
+  private PrometheusReporterConfig prometheusReporterConfig;
+  private IoTDBReporterConfig ioTDBReporterConfig;
 
-  // the following is iotdb related config
+  public Boolean getEnableMetric() {
+    return enableMetric;
+  }
 
-  private String iotdbSg = "monitor";
-  private String iotdbUser = "root";
-  private String iotdbPasswd = "root";
-  private String iotdbIp = "127.0.0.1";
-  private String iotdbPort = "6667";
+  public void setEnableMetric(Boolean enableMetric) {
+    this.enableMetric = enableMetric;
+  }
 
-  public int getPushPeriodInSecond() {
+  public Integer getPushPeriodInSecond() {
     return pushPeriodInSecond;
   }
 
-  public void setPushPeriodInSecond(int pushPeriodInSecond) {
+  public void setPushPeriodInSecond(Integer pushPeriodInSecond) {
     this.pushPeriodInSecond = pushPeriodInSecond;
   }
 
-  public boolean isEnabled() {
-    return isEnabled;
+  public String getMetricManagerType() {
+    return metricManagerType;
   }
 
-  public void setEnabled(boolean enabled) {
-    isEnabled = enabled;
+  public void setMetricManagerType(String metricManagerType) {
+    this.metricManagerType = metricManagerType;
   }
 
-  public String getPrometheusExporterPort() {
-    return prometheusExporterPort;
+  public String getMetricReporterType() {
+    return metricReporterType;
   }
 
-  public void setPrometheusExporterPort(String prometheusExporterPort) {
-    this.prometheusExporterPort = prometheusExporterPort;
+  public void setMetricReporterType(String metricReporterType) {
+    this.metricReporterType = metricReporterType;
   }
 
-  public List<String> getReporterList() {
-    return reporterList;
+  public List<String> getMetricReporterList() {
+    return metricReporterList;
   }
 
-  public void setReporterList(List<String> reporterList) {
-    this.reporterList = reporterList;
+  public void setMetricReporterList(List<String> metricReporterList) {
+    this.metricReporterList = metricReporterList;
   }
 
-  public String getIotdbSg() {
-    return iotdbSg;
+  public PrometheusReporterConfig getPrometheusReporterConfig() {
+    return prometheusReporterConfig;
   }
 
-  public void setIotdbSg(String iotdbSg) {
-    this.iotdbSg = iotdbSg;
+  public void setPrometheusReporterConfig(PrometheusReporterConfig prometheusReporterConfig) {
+    this.prometheusReporterConfig = prometheusReporterConfig;
   }
 
-  public String getIotdbUser() {
-    return iotdbUser;
+  public IoTDBReporterConfig getIoTDBReporterConfig() {
+    return ioTDBReporterConfig;
   }
 
-  public void setIotdbUser(String iotdbUser) {
-    this.iotdbUser = iotdbUser;
+  public void setIoTDBReporterConfig(IoTDBReporterConfig ioTDBReporterConfig) {
+    this.ioTDBReporterConfig = ioTDBReporterConfig;
   }
 
-  public String getIotdbPasswd() {
-    return iotdbPasswd;
-  }
+  /** the following is prometheus related config */
+  public static class PrometheusReporterConfig {
+    /** the http server's port for prometheus exporter to get metric data */
+    private String prometheusExporterPort = "8090";
 
-  public void setIotdbPasswd(String iotdbPasswd) {
-    this.iotdbPasswd = iotdbPasswd;
-  }
+    public String getPrometheusExporterPort() {
+      return prometheusExporterPort;
+    }
 
-  public String getIotdbIp() {
-    return iotdbIp;
-  }
-
-  public void setIotdbIp(String iotdbIp) {
-    this.iotdbIp = iotdbIp;
-  }
-
-  public String getIotdbPort() {
-    return iotdbPort;
-  }
-
-  public void setIotdbPort(String iotdbPort) {
-    this.iotdbPort = iotdbPort;
+    public void setPrometheusExporterPort(String prometheusExporterPort) {
+      this.prometheusExporterPort = prometheusExporterPort;
+    }
   }
 }

@@ -77,13 +77,13 @@ public class MicrometerMetricManager implements MetricManager {
   public MicrometerMetricManager() {
     meterRegistry = Metrics.globalRegistry;
     currentMeters = new ConcurrentHashMap<>();
-    isEnable = metricConfig.isEnabled();
+    isEnable = metricConfig.getEnableMetric();
   }
 
   @Override
   public boolean init() {
     logger.info("micrometer init registry");
-    List<String> reporters = metricConfig.getReporterList();
+    List<String> reporters = metricConfig.getMetricReporterList();
     for (String reporter : reporters) {
       switch (ReporterType.get(reporter)) {
         case JMX:
@@ -446,5 +446,10 @@ public class MicrometerMetricManager implements MetricManager {
   @Override
   public boolean isEnable() {
     return isEnable;
+  }
+
+  @Override
+  public String getName() {
+    return "MicrometerMetricManager";
   }
 }

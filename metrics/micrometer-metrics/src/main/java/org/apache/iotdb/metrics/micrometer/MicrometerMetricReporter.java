@@ -42,11 +42,9 @@ public class MicrometerMetricReporter implements MetricReporter {
   private final MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
   private Thread runThread;
 
-  private JmxMeterRegistry jmxMeterRegistry;
-
   @Override
   public boolean start() {
-    List<String> reporters = metricConfig.getReporterList();
+    List<String> reporters = metricConfig.getMetricReporterList();
     for (String reporter : reporters) {
       switch (ReporterType.get(reporter)) {
         case JMX:
@@ -71,7 +69,10 @@ public class MicrometerMetricReporter implements MetricReporter {
     try {
       HttpServer server =
           HttpServer.create(
-              new InetSocketAddress(Integer.parseInt(metricConfig.getPrometheusExporterPort())), 0);
+              new InetSocketAddress(
+                  Integer.parseInt(
+                      metricConfig.getPrometheusReporterConfig().getPrometheusExporterPort())),
+              0);
       server.createContext(
           "/prometheus",
           httpExchange -> {
@@ -109,5 +110,10 @@ public class MicrometerMetricReporter implements MetricReporter {
 
     ((MicrometerMetricManager) micrometerMetricManager).getJmxMeterRegistry().stop();
     return true;
+  }
+
+  @Override
+  public String getName() {
+    return "MicrometerMetricReporter";
   }
 }

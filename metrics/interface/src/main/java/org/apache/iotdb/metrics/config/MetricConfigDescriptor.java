@@ -21,19 +21,17 @@ package org.apache.iotdb.metrics.config;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.constructor.Constructor;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Properties;
 
 public class MetricConfigDescriptor {
   private static final Logger logger = LoggerFactory.getLogger(MetricConfigDescriptor.class);
-  private final MetricConfig metricConfig = new MetricConfig();
+  private MetricConfig metricConfig = new MetricConfig();
 
   public MetricConfig getMetricConfig() {
     return metricConfig;
@@ -71,58 +69,17 @@ public class MetricConfigDescriptor {
   private void loadProps() {
 
     String url = getPropsUrl();
-    Properties properties = System.getProperties();
+
+    Constructor constructor = new Constructor(MetricConfig.class);
+    Yaml yaml = new Yaml(constructor);
     if (url != null) {
       try (InputStream inputStream = new FileInputStream(new File(url))) {
         logger.info("Start to read config file {}", url);
-        properties.load(inputStream);
+        metricConfig = (MetricConfig) yaml.load(inputStream);
       } catch (IOException e) {
         logger.warn("Fail to find config file {}", url, e);
       }
     }
-
-    metricConfig.setEnabled(
-        Boolean.parseBoolean(
-            properties.getProperty("enable_metric", Boolean.toString(metricConfig.isEnabled()))));
-
-    String reporterList = properties.getProperty("metric_reporter_list");
-    if (reporterList != null) {
-      metricConfig.setReporterList(getReporterList(reporterList));
-    }
-
-    metricConfig.setPushPeriodInSecond(
-        Integer.parseInt(
-            properties.getProperty(
-                "push_period_in_second", Integer.toString(metricConfig.getPushPeriodInSecond()))));
-
-    metricConfig.setPrometheusExporterPort(
-        properties.getProperty(
-            "prometheus_exporter_port", metricConfig.getPrometheusExporterPort()));
-
-    metricConfig.setIotdbIp(properties.getProperty("iotdb_ip", metricConfig.getIotdbIp()));
-
-    metricConfig.setIotdbPort(properties.getProperty("iotdb_port", metricConfig.getIotdbPort()));
-
-    metricConfig.setIotdbSg(properties.getProperty("iotdb_sg", metricConfig.getIotdbSg()));
-    metricConfig.setIotdbUser(properties.getProperty("iotdb_user", metricConfig.getIotdbUser()));
-    metricConfig.setIotdbPasswd(
-        properties.getProperty("iotdb_passwd", metricConfig.getIotdbPasswd()));
-  }
-
-  private List<String> getReporterList(String reporterList) {
-    if (reporterList == null) {
-      return Collections.emptyList();
-    }
-    List<String> reporters = new ArrayList<>();
-    String[] split = reporterList.split(",");
-    for (String reporter : split) {
-      reporter = reporter.trim();
-      if ("".equals(reporter)) {
-        continue;
-      }
-      reporters.add(reporter);
-    }
-    return reporters;
   }
 
   private static class MetricConfigDescriptorHolder {
