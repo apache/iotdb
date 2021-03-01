@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.tsfile.write;
 
-import java.io.File;
-import java.io.IOException;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.file.MetaMarker;
@@ -34,10 +32,14 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.File;
+import java.io.IOException;
 
 public class TsFileIOWriterTest {
 
@@ -59,9 +61,14 @@ public class TsFileIOWriterTest {
 
     // chunk group 1
     writer.startChunkGroup(deviceId);
-    writer.startFlushChunk(measurementSchema, measurementSchema.getCompressor(),
+    writer.startFlushChunk(
+        measurementSchema,
+        measurementSchema.getCompressor(),
         measurementSchema.getType(),
-        measurementSchema.getEncodingType(), statistics, 0, 0);
+        measurementSchema.getEncodingType(),
+        statistics,
+        0,
+        0);
     writer.endCurrentChunk();
     writer.endChunkGroup();
 

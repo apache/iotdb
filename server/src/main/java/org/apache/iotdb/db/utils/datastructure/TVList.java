@@ -19,13 +19,6 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
-import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
-import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -34,6 +27,13 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Binary;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 
 public abstract class TVList {
 
@@ -205,6 +205,7 @@ public abstract class TVList {
 
   protected abstract void expandValues();
 
+  @Override
   public abstract TVList clone();
 
   public TVList clone(long version) {
@@ -280,8 +281,8 @@ public abstract class TVList {
   abstract void clearValue();
 
   /**
-   * The arrays for sorting are not including in write memory now,
-   * the memory usage is considered as temporary memory.
+   * The arrays for sorting are not including in write memory now, the memory usage is considered as
+   * temporary memory.
    */
   abstract void clearSortedValue();
 
@@ -334,7 +335,7 @@ public abstract class TVList {
         runHi++;
       }
       reverseRange(lo, runHi);
-    } else {                              // Ascending
+    } else { // Ascending
       while (runHi < hi && getTime(runHi) >= getTime(runHi - 1)) {
         runHi++;
       }
@@ -353,9 +354,7 @@ public abstract class TVList {
 
   protected abstract void setPivotTo(int pos);
 
-  /**
-   * From TimSort.java
-   */
+  /** From TimSort.java */
   protected void binarySort(int lo, int hi, int start) {
     assert lo <= start && start <= hi;
     if (start == lo) {
@@ -390,7 +389,7 @@ public abstract class TVList {
        * first slot after them -- that's why this sort is stable.
        * Slide elements over to make room for pivot.
        */
-      int n = start - left;  // The number of elements to move
+      int n = start - left; // The number of elements to move
       for (int i = n; i >= 1; i--) {
         set(left + i - 1, left + i);
       }
@@ -470,21 +469,19 @@ public abstract class TVList {
     sorted = sorted && inputSorted && (size == 0 || inPutMinTime >= getTime(size - 1));
   }
 
-  /**
-   * for log
-   */
+  /** for log */
   public abstract TimeValuePair getTimeValuePair(int index);
 
-  protected abstract TimeValuePair getTimeValuePair(int index, long time,
-      Integer floatPrecision, TSEncoding encoding);
+  protected abstract TimeValuePair getTimeValuePair(
+      int index, long time, Integer floatPrecision, TSEncoding encoding);
 
   @TestOnly
   public IPointReader getIterator() {
     return new Ite();
   }
 
-  public IPointReader getIterator(int floatPrecision, TSEncoding encoding, int size,
-      List<TimeRange> deletionList) {
+  public IPointReader getIterator(
+      int floatPrecision, TSEncoding encoding, int size, List<TimeRange> deletionList) {
     return new Ite(floatPrecision, encoding, size, deletionList);
   }
 
@@ -500,9 +497,7 @@ public abstract class TVList {
      * because TV list may be share with different query, each iterator has to record it's own size
      */
     private int iteSize = 0;
-    /**
-     * this field is effective only in the Tvlist in a RealOnlyMemChunk.
-     */
+    /** this field is effective only in the Tvlist in a RealOnlyMemChunk. */
     private List<TimeRange> deletionList;
 
     public Ite() {
@@ -576,5 +571,4 @@ public abstract class TVList {
   public long getLastTime() {
     return getTime(size - 1);
   }
-
 }

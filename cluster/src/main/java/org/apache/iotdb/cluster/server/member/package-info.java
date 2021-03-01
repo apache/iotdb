@@ -18,7 +18,7 @@
  */
 
 /**
- * member package provides raft logic implementation without concern of the network layer, so
- * that with a proper broker a single connection can support multiple data groups.
+ * member package provides raft logic implementation without concern of the network layer, so that
+ * with a proper broker a single connection can support multiple data groups.
  */
 package org.apache.iotdb.cluster.server.member;

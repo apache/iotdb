@@ -19,11 +19,6 @@
 
 package org.apache.iotdb.cluster.server.heartbeat;
 
-import static org.junit.Assert.assertEquals;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.List;
 import org.apache.iotdb.cluster.common.TestAsyncClient;
 import org.apache.iotdb.cluster.common.TestDataGroupMember;
 import org.apache.iotdb.cluster.common.TestLogManager;
@@ -41,9 +36,16 @@ import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
+
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.After;
 import org.junit.Before;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.List;
+
+import static org.junit.Assert.assertEquals;
 
 public class DataHeartbeatThreadTest extends HeartbeatThreadTest {
 
@@ -59,8 +61,7 @@ public class DataHeartbeatThreadTest extends HeartbeatThreadTest {
       }
 
       @Override
-      public void updateHardState(long currentTerm, Node leader) {
-      }
+      public void updateHardState(long currentTerm, Node leader) {}
 
       @Override
       public AsyncClient getAsyncClient(Node node) {
@@ -88,45 +89,48 @@ public class DataHeartbeatThreadTest extends HeartbeatThreadTest {
   AsyncClient getClient(Node node) {
     return new TestAsyncClient(node.nodeIdentifier) {
       @Override
-      public void sendHeartbeat(HeartBeatRequest request,
-          AsyncMethodCallback<HeartBeatResponse> resultHandler) {
-        new Thread(() -> {
-          if (testHeartbeat) {
-            assertEquals(TestUtils.getNode(0), request.getLeader());
-            assertEquals(13, request.getCommitLogIndex());
-            assertEquals(10, request.getTerm());
-            assertEquals(TestUtils.getNode(0), request.getHeader());
-            synchronized (receivedNodes) {
-              receivedNodes.add(getSerialNum());
-              for (int i = 1; i < 10; i++) {
-                if (!receivedNodes.contains(i)) {
-                  return;
-                }
-              }
-              testThread.interrupt();
-            }
-          } else if (respondToElection) {
-            synchronized (testThread) {
-              testThread.notifyAll();
-            }
-          }
-        }).start();
+      public void sendHeartbeat(
+          HeartBeatRequest request, AsyncMethodCallback<HeartBeatResponse> resultHandler) {
+        new Thread(
+                () -> {
+                  if (testHeartbeat) {
+                    assertEquals(TestUtils.getNode(0), request.getLeader());
+                    assertEquals(13, request.getCommitLogIndex());
+                    assertEquals(10, request.getTerm());
+                    assertEquals(TestUtils.getNode(0), request.getHeader());
+                    synchronized (receivedNodes) {
+                      receivedNodes.add(getSerialNum());
+                      for (int i = 1; i < 10; i++) {
+                        if (!receivedNodes.contains(i)) {
+                          return;
+                        }
+                      }
+                      testThread.interrupt();
+                    }
+                  } else if (respondToElection) {
+                    synchronized (testThread) {
+                      testThread.notifyAll();
+                    }
+                  }
+                })
+            .start();
       }
 
       @Override
-      public void startElection(ElectionRequest request,
-          AsyncMethodCallback<Long> resultHandler) {
-        new Thread(() -> {
-          assertEquals(TestUtils.getNode(0), request.getElector());
-          assertEquals(11, request.getTerm());
-          assertEquals(6, request.getLastLogIndex());
-          assertEquals(6, request.getLastLogTerm());
-          assertEquals(13, request.getDataLogLastTerm());
-          assertEquals(13, request.getDataLogLastIndex());
-          if (respondToElection) {
-            resultHandler.onComplete(Response.RESPONSE_AGREE);
-          }
-        }).start();
+      public void startElection(ElectionRequest request, AsyncMethodCallback<Long> resultHandler) {
+        new Thread(
+                () -> {
+                  assertEquals(TestUtils.getNode(0), request.getElector());
+                  assertEquals(11, request.getTerm());
+                  assertEquals(6, request.getLastLogIndex());
+                  assertEquals(6, request.getLastLogTerm());
+                  assertEquals(13, request.getDataLogLastTerm());
+                  assertEquals(13, request.getDataLogLastIndex());
+                  if (respondToElection) {
+                    resultHandler.onComplete(Response.RESPONSE_AGREE);
+                  }
+                })
+            .start();
       }
     };
   }

@@ -19,13 +19,11 @@
 
 package org.apache.iotdb.tsfile.encoding.encoder;
 
-import java.io.ByteArrayOutputStream;
-
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 
-/**
- * Encoder for int value using gorilla encoding.
- */
+import java.io.ByteArrayOutputStream;
+
+/** Encoder for int value using gorilla encoding. */
 public class DoublePrecisionEncoderV1 extends GorillaEncoderV1 {
 
   private long preValue;
@@ -62,8 +60,8 @@ public class DoublePrecisionEncoderV1 extends GorillaEncoderV1 {
           // and last tailingZeroNum '0'
           writeBit(true, out);
           writeBit(false, out);
-          writeBits(tmp, out, TSFileConfig.VALUE_BITS_LENGTH_64BIT - 1 - leadingZeroNum,
-              tailingZeroNum);
+          writeBits(
+              tmp, out, TSFileConfig.VALUE_BITS_LENGTH_64BIT - 1 - leadingZeroNum, tailingZeroNum);
         } else {
           // case: write '11', leading zero num of value, effective bits len and effective
           // bit value
@@ -72,8 +70,13 @@ public class DoublePrecisionEncoderV1 extends GorillaEncoderV1 {
           writeBits(leadingZeroNumTmp, out, TSFileConfig.LEADING_ZERO_BITS_LENGTH_64BIT - 1, 0);
           writeBits(
               (long) TSFileConfig.VALUE_BITS_LENGTH_64BIT - leadingZeroNumTmp - tailingZeroNumTmp,
-              out, TSFileConfig.DOUBLE_VALUE_LENGTH - 1, 0);
-          writeBits(tmp, out, TSFileConfig.VALUE_BITS_LENGTH_64BIT - 1 - leadingZeroNumTmp,
+              out,
+              TSFileConfig.DOUBLE_VALUE_LENGTH - 1,
+              0);
+          writeBits(
+              tmp,
+              out,
+              TSFileConfig.VALUE_BITS_LENGTH_64BIT - 1 - leadingZeroNumTmp,
               tailingZeroNumTmp);
         }
       }

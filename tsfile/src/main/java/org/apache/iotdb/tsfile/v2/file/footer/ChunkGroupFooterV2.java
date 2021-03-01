@@ -19,14 +19,14 @@
 
 package org.apache.iotdb.tsfile.v2.file.footer;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.ByteBuffer;
-
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.ByteBuffer;
 
 public class ChunkGroupFooterV2 {
 
@@ -37,7 +37,8 @@ public class ChunkGroupFooterV2 {
    *
    * @param markerRead Whether the marker of the CHUNK_GROUP_FOOTER is read ahead.
    */
-  public static ChunkGroupHeader deserializeFrom(InputStream inputStream, boolean markerRead) throws IOException {
+  public static ChunkGroupHeader deserializeFrom(InputStream inputStream, boolean markerRead)
+      throws IOException {
     if (!markerRead) {
       byte marker = (byte) inputStream.read();
       if (marker != MetaMarker.CHUNK_GROUP_HEADER) {

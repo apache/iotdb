@@ -208,9 +208,11 @@ public class WritableMemChunk implements IWritableMemChunk {
     StringBuilder out = new StringBuilder("MemChunk Size: " + size + System.lineSeparator());
     if (size != 0) {
       out.append("Data type:").append(schema.getType()).append(System.lineSeparator());
-      out.append("First point:").append(getSortedTVListForQuery().getTimeValuePair(0))
+      out.append("First point:")
+          .append(getSortedTVListForQuery().getTimeValuePair(0))
           .append(System.lineSeparator());
-      out.append("Last point:").append(getSortedTVListForQuery().getTimeValuePair(size - 1))
+      out.append("Last point:")
+          .append(getSortedTVListForQuery().getTimeValuePair(size - 1))
           .append(System.lineSeparator());
     }
     return out.toString();

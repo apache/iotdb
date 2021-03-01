@@ -19,12 +19,13 @@
 
 package org.apache.iotdb.cluster.query;
 
-import java.util.List;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.utils.Pair;
+
+import java.util.List;
 
 public class ClusterConcatPathOptimizer extends ConcatPathOptimizer {
 

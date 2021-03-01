@@ -21,9 +21,7 @@ package org.apache.iotdb.spark.tsfile.qp.common;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * this class contains several constants used in SQL.
- */
+/** this class contains several constants used in SQL. */
 public class SQLConstant {
 
   public static final String DELTA_OBJECT_NAME = "delta_object_name";
@@ -73,7 +71,6 @@ public class SQLConstant {
   public static final int TOK_PORPERTY_DELETE_LABEL = 56;
   public static final int TOK_PORPERTY_LINK = 57;
   public static final int TOK_PORPERTY_UNLINK = 58;
-
 
   public static Map<Integer, String> tokenSymbol = new HashMap<Integer, String>();
   public static Map<Integer, String> tokenNames = new HashMap<Integer, String>();
@@ -126,7 +123,6 @@ public class SQLConstant {
     tokenNames.put(TOK_PORPERTY_DELETE_LABEL, "TOK_PORPERTY_DELETE_LABEL");
     tokenNames.put(TOK_PORPERTY_LINK, "TOK_PORPERTY_LINK");
     tokenNames.put(TOK_PORPERTY_UNLINK, "TOK_PORPERTY_UNLINK");
-
   }
 
   static {
@@ -144,6 +140,5 @@ public class SQLConstant {
     return pathStr.equals(SQLConstant.RESERVED_TIME)
         || pathStr.equals(SQLConstant.RESERVED_FREQ)
         || pathStr.equals(SQLConstant.RESERVED_DELTA_OBJECT);
-
   }
 }

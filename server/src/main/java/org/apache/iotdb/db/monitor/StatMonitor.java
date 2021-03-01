@@ -18,13 +18,6 @@
  */
 package org.apache.iotdb.db.monitor;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -53,8 +46,17 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
+
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 public class StatMonitor implements StatMonitorMBean, IService {
 
@@ -62,9 +64,9 @@ public class StatMonitor implements StatMonitorMBean, IService {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final MManager mManager = IoTDB.metaManager;
   private static final StorageEngine storageEngine = StorageEngine.getInstance();
-  private final String mbeanName = String
-      .format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE,
-          getID().getJmxName());
+  private final String mbeanName =
+      String.format(
+          "%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, getID().getJmxName());
 
   List<PartialPath> globalSeries = new ArrayList<>(3);
   // monitor series value.   e.g. root.stats.global.TOTAL_POINTS -> value
@@ -84,16 +86,15 @@ public class StatMonitor implements StatMonitorMBean, IService {
   public void initMonitorSeriesInfo() {
     String[] globalMonitorSeries = MonitorConstants.STAT_GLOBAL_ARRAY;
     for (int i = 0; i < StatMeasurementConstants.values().length; i++) {
-      PartialPath globalMonitorPath = new PartialPath(globalMonitorSeries)
-          .concatNode(StatMeasurementConstants.values()[i].getMeasurement());
+      PartialPath globalMonitorPath =
+          new PartialPath(globalMonitorSeries)
+              .concatNode(StatMeasurementConstants.values()[i].getMeasurement());
       globalSeries.add(globalMonitorPath);
       globalSeriesValue.add(0L);
     }
   }
 
-  /**
-   * Generate tsRecords for stat parameters and insert them into StorageEngine.
-   */
+  /** Generate tsRecords for stat parameters and insert them into StorageEngine. */
   public void saveStatValue(String storageGroupName)
       throws MetadataException, StorageEngineException {
     long insertTime = System.currentTimeMillis();
@@ -104,8 +105,12 @@ public class StatMonitor implements StatMonitorMBean, IService {
     }
     TSRecord tsRecord = new TSRecord(insertTime, storageGroupSeries.getDevice());
     tsRecord.addTuple(
-        new LongDataPoint(StatMeasurementConstants.TOTAL_POINTS.getMeasurement(),
-            storageEngine.getProcessorMap().get(new PartialPath(storageGroupName)).getMonitorSeriesValue()));
+        new LongDataPoint(
+            StatMeasurementConstants.TOTAL_POINTS.getMeasurement(),
+            storageEngine
+                .getProcessorMap()
+                .get(new PartialPath(storageGroupName))
+                .getMonitorSeriesValue()));
     storageEngine.insert(new InsertRowPlan(tsRecord));
 
     // update global monitor series
@@ -115,16 +120,12 @@ public class StatMonitor implements StatMonitorMBean, IService {
         registSeriesToMManager(seriesPath);
       }
       tsRecord = new TSRecord(insertTime, seriesPath.getDevice());
-      tsRecord.addTuple(
-          new LongDataPoint(seriesPath.getMeasurement(), globalSeriesValue.get(i)));
+      tsRecord.addTuple(new LongDataPoint(seriesPath.getMeasurement(), globalSeriesValue.get(i)));
       storageEngine.insert(new InsertRowPlan(tsRecord));
     }
   }
 
-
-  /**
-   * Recover the cache values of monitor series using last query if time series exist.
-   */
+  /** Recover the cache values of monitor series using last query if time series exist. */
   public void recovery() {
     try {
       for (int i = 0; i < globalSeries.size(); i++) {
@@ -139,11 +140,13 @@ public class StatMonitor implements StatMonitorMBean, IService {
       for (PartialPath storageGroupPath : storageGroupPaths) {
         if (!storageGroupPath.getFullPath().equals(MonitorConstants.STAT_STORAGE_GROUP_NAME)) {
           // for storage group which is not global, only TOTAL_POINTS is registered now
-          PartialPath monitorSeriesPath = getStorageGroupMonitorSeries(
-              storageGroupPath.getFullPath());
+          PartialPath monitorSeriesPath =
+              getStorageGroupMonitorSeries(storageGroupPath.getFullPath());
           TimeValuePair timeValuePair = getLastValue(monitorSeriesPath);
           if (timeValuePair != null) {
-            storageEngine.getProcessorMap().get(storageGroupPath)
+            storageEngine
+                .getProcessorMap()
+                .get(storageGroupPath)
                 .setMonitorSeriesValue(timeValuePair.getValue().getLong());
           }
         }
@@ -156,12 +159,17 @@ public class StatMonitor implements StatMonitorMBean, IService {
   private TimeValuePair getLastValue(PartialPath monitorSeries)
       throws StorageEngineException, QueryProcessException, IOException {
     if (mManager.isPathExist(monitorSeries)) {
-      TimeValuePair timeValuePair = LastQueryExecutor
-          .calculateLastPairForSeriesLocally(Collections.singletonList(monitorSeries),
-              Collections.singletonList(TSDataType.INT64),
-              new QueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, 1)),
-              null, Collections.singletonMap(monitorSeries.getDevice(),
-                  Collections.singleton(monitorSeries.getMeasurement()))).get(0).right;
+      TimeValuePair timeValuePair =
+          LastQueryExecutor.calculateLastPairForSeriesLocally(
+                  Collections.singletonList(monitorSeries),
+                  Collections.singletonList(TSDataType.INT64),
+                  new QueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, 1)),
+                  null,
+                  Collections.singletonMap(
+                      monitorSeries.getDevice(),
+                      Collections.singleton(monitorSeries.getMeasurement())))
+              .get(0)
+              .right;
       if (timeValuePair.getValue() != null) {
         return timeValuePair;
       }
@@ -177,8 +185,11 @@ public class StatMonitor implements StatMonitorMBean, IService {
   }
 
   private void registSeriesToMManager(PartialPath fullPath) throws MetadataException {
-    mManager.createTimeseries(fullPath, TSDataType.valueOf(MonitorConstants.INT64),
-        TSEncoding.valueOf("TS_2DIFF"), TSFileDescriptor.getInstance().getConfig().getCompressor(),
+    mManager.createTimeseries(
+        fullPath,
+        TSDataType.valueOf(MonitorConstants.INT64),
+        TSEncoding.valueOf("TS_2DIFF"),
+        TSFileDescriptor.getInstance().getConfig().getCompressor(),
         null);
   }
 
@@ -217,8 +228,9 @@ public class StatMonitor implements StatMonitorMBean, IService {
   @Override
   public long getStorageGroupTotalPointsNum(String storageGroupName) {
     try {
-      VirtualStorageGroupManager virtualStorageGroupManager = storageEngine.getProcessorMap().get(new PartialPath(storageGroupName));
-      if(virtualStorageGroupManager == null){
+      VirtualStorageGroupManager virtualStorageGroupManager =
+          storageEngine.getProcessorMap().get(new PartialPath(storageGroupName));
+      if (virtualStorageGroupManager == null) {
         return 0;
       }
 
@@ -286,7 +298,7 @@ public class StatMonitor implements StatMonitorMBean, IService {
   private static class StatMonitorHolder {
 
     private StatMonitorHolder() {
-      //allowed do nothing
+      // allowed do nothing
     }
 
     private static final StatMonitor INSTANCE = new StatMonitor();

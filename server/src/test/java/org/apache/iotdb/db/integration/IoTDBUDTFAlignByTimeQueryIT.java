@@ -19,20 +19,6 @@
 
 package org.apache.iotdb.db.integration;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -42,21 +28,37 @@ import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 public class IoTDBUDTFAlignByTimeQueryIT {
 
-  protected final static int ITERATION_TIMES = 10_000;
+  protected static final int ITERATION_TIMES = 10_000;
 
-  protected final static int ADDEND = 500_000_000;
+  protected static final int ADDEND = 500_000_000;
 
-  protected final static int LIMIT = (int) (0.1 * ITERATION_TIMES);
-  protected final static int OFFSET = (int) (0.1 * ITERATION_TIMES);
+  protected static final int LIMIT = (int) (0.1 * ITERATION_TIMES);
+  protected static final int OFFSET = (int) (0.1 * ITERATION_TIMES);
 
-  protected final static int SLIMIT = 10;
-  protected final static int SOFFSET = 2;
+  protected static final int SLIMIT = 10;
+  protected static final int SOFFSET = 2;
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -72,45 +74,79 @@ public class IoTDBUDTFAlignByTimeQueryIT {
 
   private static void createTimeSeries() throws MetadataException {
     IoTDB.metaManager.setStorageGroup(new PartialPath("root.vehicle"));
-    IoTDB.metaManager
-        .createTimeseries(new PartialPath("root.vehicle.d1.s1"), TSDataType.INT32, TSEncoding.PLAIN,
-            CompressionType.UNCOMPRESSED, null);
-    IoTDB.metaManager
-        .createTimeseries(new PartialPath("root.vehicle.d1.s2"), TSDataType.INT64, TSEncoding.PLAIN,
-            CompressionType.UNCOMPRESSED, null);
-    IoTDB.metaManager
-        .createTimeseries(new PartialPath("root.vehicle.d2.s1"), TSDataType.FLOAT, TSEncoding.PLAIN,
-            CompressionType.UNCOMPRESSED, null);
-    IoTDB.metaManager.createTimeseries(new PartialPath("root.vehicle.d2.s2"), TSDataType.DOUBLE,
-        TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null);
-    IoTDB.metaManager
-        .createTimeseries(new PartialPath("root.vehicle.d3.s1"), TSDataType.FLOAT, TSEncoding.PLAIN,
-            CompressionType.UNCOMPRESSED, null);
-    IoTDB.metaManager.createTimeseries(new PartialPath("root.vehicle.d3.s2"), TSDataType.DOUBLE,
-        TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null);
-    IoTDB.metaManager.createTimeseries(new PartialPath("root.vehicle.d4.s1"), TSDataType.INT32,
-        TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null);
-    IoTDB.metaManager.createTimeseries(new PartialPath("root.vehicle.d4.s2"), TSDataType.INT32,
-        TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null);
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath("root.vehicle.d1.s1"),
+        TSDataType.INT32,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath("root.vehicle.d1.s2"),
+        TSDataType.INT64,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath("root.vehicle.d2.s1"),
+        TSDataType.FLOAT,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath("root.vehicle.d2.s2"),
+        TSDataType.DOUBLE,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath("root.vehicle.d3.s1"),
+        TSDataType.FLOAT,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath("root.vehicle.d3.s2"),
+        TSDataType.DOUBLE,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath("root.vehicle.d4.s1"),
+        TSDataType.INT32,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath("root.vehicle.d4.s2"),
+        TSDataType.INT32,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
   }
 
   private static void generateData() {
-    try (Connection connection = DriverManager.getConnection(
-        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       for (int i = 0; i < ITERATION_TIMES; ++i) {
-        statement.execute((i % 3 != 0
-            ? String
-            .format("insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)", i, i, i)
-            : i % 2 == 0
-                ? String.format("insert into root.vehicle.d1(timestamp,s1) values(%d,%d)", i, i)
-                : String.format("insert into root.vehicle.d1(timestamp,s2) values(%d,%d)", i, i)));
-        statement.execute((String
-            .format("insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)", i, i, i)));
-        statement.execute((String
-            .format("insert into root.vehicle.d3(timestamp,s1,s2) values(%d,%d,%d)", i, i, i)));
-        statement.execute((String
-            .format("insert into root.vehicle.d4(timestamp,s1) values(%d,%d)", 2 * i, 3 * i)));
+        statement.execute(
+            (i % 3 != 0
+                ? String.format(
+                    "insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)", i, i, i)
+                : i % 2 == 0
+                    ? String.format("insert into root.vehicle.d1(timestamp,s1) values(%d,%d)", i, i)
+                    : String.format(
+                        "insert into root.vehicle.d1(timestamp,s2) values(%d,%d)", i, i)));
+        statement.execute(
+            (String.format(
+                "insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)", i, i, i)));
+        statement.execute(
+            (String.format(
+                "insert into root.vehicle.d3(timestamp,s1,s2) values(%d,%d,%d)", i, i, i)));
+        statement.execute(
+            (String.format(
+                "insert into root.vehicle.d4(timestamp,s1) values(%d,%d)", 2 * i, 3 * i)));
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -118,8 +154,9 @@ public class IoTDBUDTFAlignByTimeQueryIT {
   }
 
   private static void registerUDF() {
-    try (Connection connection = DriverManager.getConnection(
-        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute("create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
       statement.execute(
@@ -144,14 +181,16 @@ public class IoTDBUDTFAlignByTimeQueryIT {
 
   @Test
   public void queryWithoutValueFilter1() {
-    String sqlStr = "select udf(d1.s2, d1.s1), udf(d1.s1, d1.s2), d1.s1, d1.s2, udf(d1.s1, d1.s2), udf(d1.s2, d1.s1), d1.s1, d1.s2 from root.vehicle";
+    String sqlStr =
+        "select udf(d1.s2, d1.s1), udf(d1.s1, d1.s2), d1.s1, d1.s2, udf(d1.s1, d1.s2), udf(d1.s2, d1.s1), d1.s1, d1.s2 from root.vehicle";
 
     Set<Integer> s1s2 = new HashSet<>(Arrays.asList(0, 1, 4, 5));
     Set<Integer> s1 = new HashSet<>(Arrays.asList(2, 6));
     Set<Integer> s2 = new HashSet<>(Arrays.asList(3, 7));
 
-    try (Statement statement = DriverManager.getConnection(
-        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root").createStatement()) {
+    try (Statement statement =
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
+            .createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
 
       int count = 0;
@@ -164,8 +203,9 @@ public class IoTDBUDTFAlignByTimeQueryIT {
         actual = new StringBuilder();
         for (int i = 2; i <= columnCount; ++i) {
           String actualString = resultSet.getString(i);
-          actual.append(actualString == null
-              ? "null" : Double.parseDouble(actualString)).append(", ");
+          actual
+              .append(actualString == null ? "null" : Double.parseDouble(actualString))
+              .append(", ");
 
           if (s1s2.contains(i - 2)) {
             expected.append(count % 3 != 0 ? (float) (count * 2) : "null").append(", ");
@@ -189,8 +229,9 @@ public class IoTDBUDTFAlignByTimeQueryIT {
   public void queryWithoutValueFilter2() {
     String sqlStr = "select udf(*, *) from root.vehicle.d1";
 
-    try (Statement statement = DriverManager.getConnection(
-        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root").createStatement()) {
+    try (Statement statement =
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
+            .createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       int count = 0;
       int columnCount = resultSet.getMetaData().getColumnCount();
@@ -215,8 +256,9 @@ public class IoTDBUDTFAlignByTimeQueryIT {
     Set<Integer> s1AndS2 = new HashSet<>(Arrays.asList(2, 3, 4, 5, 8, 9, 10, 11));
     Set<Integer> s1OrS2 = new HashSet<>(Arrays.asList(0, 1, 6, 7, 12, 13));
 
-    try (Statement statement = DriverManager.getConnection(
-        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root").createStatement()) {
+    try (Statement statement =
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
+            .createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       int count = 0;
       int columnCount = resultSet.getMetaData().getColumnCount();
@@ -248,8 +290,9 @@ public class IoTDBUDTFAlignByTimeQueryIT {
     Set<Integer> s1AndS2 = new HashSet<>(Arrays.asList(6, 7, 8, 9));
     Set<Integer> s1OrS2 = new HashSet<>(Arrays.asList(4, 5));
 
-    try (Statement statement = DriverManager.getConnection(
-        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root").createStatement()) {
+    try (Statement statement =
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
+            .createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       int count = 0;
       int columnCount = resultSet.getMetaData().getColumnCount();
@@ -258,8 +301,9 @@ public class IoTDBUDTFAlignByTimeQueryIT {
         for (int i = 2; i <= columnCount; ++i) {
           String actualString = resultSet.getString(i);
           if (s1AndS2WithAddend.contains(i - 2)) {
-            assertTrue(actualString == null
-                || (int) (Double.parseDouble(actualString)) == count * 2 + ADDEND);
+            assertTrue(
+                actualString == null
+                    || (int) (Double.parseDouble(actualString)) == count * 2 + ADDEND);
           } else if (s1AndS2.contains(i - 2)) {
             assertTrue(
                 actualString == null || (int) (Double.parseDouble(actualString)) == count * 2);
@@ -279,13 +323,15 @@ public class IoTDBUDTFAlignByTimeQueryIT {
   public void queryWithoutValueFilter5() {
     String sqlStr = "select multiplier(s2, \"a\"=\"2\", \"b\"=\"5\") from root.vehicle.d1";
 
-    try (Statement statement = DriverManager.getConnection(
-        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root").createStatement()) {
+    try (Statement statement =
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
+            .createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
 
       assertEquals(1 + 1, resultSet.getMetaData().getColumnCount());
       assertEquals("Time", resultSet.getMetaData().getColumnName(1));
-      assertEquals("multiplier(root.vehicle.d1.s2, \"a\"=\"2\", \"b\"=\"5\")",
+      assertEquals(
+          "multiplier(root.vehicle.d1.s2, \"a\"=\"2\", \"b\"=\"5\")",
           resultSet.getMetaData().getColumnName(2));
 
       for (int i = 0; i < ITERATION_TIMES; ++i) {
@@ -303,8 +349,9 @@ public class IoTDBUDTFAlignByTimeQueryIT {
   public void queryWithoutValueFilter6() {
     String sqlStr = "select max(s1), max(s2) from root.vehicle.d4";
 
-    try (Statement statement = DriverManager.getConnection(
-        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root").createStatement()) {
+    try (Statement statement =
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
+            .createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
 
       assertEquals(1 + 2, resultSet.getMetaData().getColumnCount());
@@ -313,10 +360,12 @@ public class IoTDBUDTFAlignByTimeQueryIT {
 
       String columnS1 = "max(root.vehicle.d4.s1)";
       String columnS2 = "max(root.vehicle.d4.s2)";
-      assertTrue(columnS1.equals(resultSet.getMetaData().getColumnName(2))
-          || columnS2.equals(resultSet.getMetaData().getColumnName(2)));
-      assertTrue(columnS1.equals(resultSet.getMetaData().getColumnName(3))
-          || columnS2.equals(resultSet.getMetaData().getColumnName(3)));
+      assertTrue(
+          columnS1.equals(resultSet.getMetaData().getColumnName(2))
+              || columnS2.equals(resultSet.getMetaData().getColumnName(2)));
+      assertTrue(
+          columnS1.equals(resultSet.getMetaData().getColumnName(3))
+              || columnS2.equals(resultSet.getMetaData().getColumnName(3)));
 
       assertTrue(resultSet.next());
       assertEquals(3 * (ITERATION_TIMES - 1), Integer.parseInt(resultSet.getString(columnS1)));
@@ -331,8 +380,9 @@ public class IoTDBUDTFAlignByTimeQueryIT {
   public void queryWithoutValueFilter7() {
     String sqlStr = "select terminate(s1), terminate(s2) from root.vehicle.d4";
 
-    try (Statement statement = DriverManager.getConnection(
-        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root").createStatement()) {
+    try (Statement statement =
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
+            .createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
 
       assertEquals(1 + 2, resultSet.getMetaData().getColumnCount());
@@ -341,10 +391,12 @@ public class IoTDBUDTFAlignByTimeQueryIT {
 
       String columnS1 = "terminate(root.vehicle.d4.s1)";
       String columnS2 = "terminate(root.vehicle.d4.s2)";
-      assertTrue(columnS1.equals(resultSet.getMetaData().getColumnName(2))
-          || columnS2.equals(resultSet.getMetaData().getColumnName(2)));
-      assertTrue(columnS1.equals(resultSet.getMetaData().getColumnName(3))
-          || columnS2.equals(resultSet.getMetaData().getColumnName(3)));
+      assertTrue(
+          columnS1.equals(resultSet.getMetaData().getColumnName(2))
+              || columnS2.equals(resultSet.getMetaData().getColumnName(2)));
+      assertTrue(
+          columnS1.equals(resultSet.getMetaData().getColumnName(3))
+              || columnS2.equals(resultSet.getMetaData().getColumnName(3)));
 
       for (int i = 0; i < ITERATION_TIMES; ++i) {
         assertTrue(resultSet.next());
@@ -366,13 +418,17 @@ public class IoTDBUDTFAlignByTimeQueryIT {
   public void queryWithoutValueFilter8() {
     String sqlStr = "select validate(s1, s2, 'k'='') from root.vehicle.d3";
 
-    try (Statement statement = DriverManager.getConnection(
-        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root").createStatement()) {
+    try (Statement statement =
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
+            .createStatement()) {
       statement.executeQuery(sqlStr);
       fail();
     } catch (SQLException throwable) {
-      assertTrue(throwable.getMessage().contains(
-          "the data type of the input series (index: 0) is not valid. expected: [INT32, INT64]. actual: FLOAT."));
+      assertTrue(
+          throwable
+              .getMessage()
+              .contains(
+                  "the data type of the input series (index: 0) is not valid. expected: [INT32, INT64]. actual: FLOAT."));
     }
   }
 
@@ -380,13 +436,16 @@ public class IoTDBUDTFAlignByTimeQueryIT {
   public void queryWithoutValueFilter9() {
     String sqlStr = "select validate(s1, s2, s1, 'k'=''), * from root.vehicle.d1";
 
-    try (Statement statement = DriverManager.getConnection(
-        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root").createStatement()) {
+    try (Statement statement =
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
+            .createStatement()) {
       statement.executeQuery(sqlStr);
       fail();
     } catch (SQLException throwable) {
-      assertTrue(throwable.getMessage().contains(
-          "the number of the input series is not valid. expected: 2. actual: 3."));
+      assertTrue(
+          throwable
+              .getMessage()
+              .contains("the number of the input series is not valid. expected: 2. actual: 3."));
     }
   }
 
@@ -394,8 +453,9 @@ public class IoTDBUDTFAlignByTimeQueryIT {
   public void queryWithoutValueFilter10() {
     String sqlStr = "select validate(s1, s2), * from root.vehicle.d1";
 
-    try (Statement statement = DriverManager.getConnection(
-        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root").createStatement()) {
+    try (Statement statement =
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
+            .createStatement()) {
       statement.executeQuery(sqlStr);
       fail();
     } catch (SQLException throwable) {
@@ -408,15 +468,17 @@ public class IoTDBUDTFAlignByTimeQueryIT {
   public void queryWithValueFilter1() {
     String sqlStr =
         "select udf(d2.s2, d2.s1), udf(d2.s1, d2.s2), d2.s1, d2.s2, udf(d2.s1, d2.s2), udf(d2.s2, d2.s1), d2.s1, d2.s2 from root.vehicle"
-            + String.format(" where d2.s1 >= %d and d2.s2 < %d", (int) (0.25 * ITERATION_TIMES),
-            (int) (0.75 * ITERATION_TIMES));
+            + String.format(
+                " where d2.s1 >= %d and d2.s2 < %d",
+                (int) (0.25 * ITERATION_TIMES), (int) (0.75 * ITERATION_TIMES));
 
     Set<Integer> s1s2 = new HashSet<>(Arrays.asList(0, 1, 4, 5));
     Set<Integer> s1 = new HashSet<>(Arrays.asList(2, 6));
     Set<Integer> s2 = new HashSet<>(Arrays.asList(3, 7));
 
-    try (Statement statement = DriverManager.getConnection(
-        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root").createStatement()) {
+    try (Statement statement =
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
+            .createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       int index = (int) (0.25 * ITERATION_TIMES);
       int columnCount = resultSet.getMetaData().getColumnCount();
@@ -443,16 +505,20 @@ public class IoTDBUDTFAlignByTimeQueryIT {
   @Test
   public void queryWithValueFilter2() {
     String sqlStr =
-        "select udf(*, *, \"addend\"=\"" + ADDEND + "\"), *, udf(*, *) from root.vehicle.d2"
-            + String.format(" where s1 >= %d and s2 < %d", (int) (0.25 * ITERATION_TIMES),
-            (int) (0.75 * ITERATION_TIMES));
+        "select udf(*, *, \"addend\"=\""
+            + ADDEND
+            + "\"), *, udf(*, *) from root.vehicle.d2"
+            + String.format(
+                " where s1 >= %d and s2 < %d",
+                (int) (0.25 * ITERATION_TIMES), (int) (0.75 * ITERATION_TIMES));
 
     Set<Integer> s1AndS2WithAddend = new HashSet<>(Arrays.asList(0, 1, 2, 3));
     Set<Integer> s1AndS2 = new HashSet<>(Arrays.asList(6, 7, 8, 9));
     Set<Integer> s1OrS2 = new HashSet<>(Arrays.asList(4, 5));
 
-    try (Statement statement = DriverManager.getConnection(
-        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root").createStatement()) {
+    try (Statement statement =
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
+            .createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       int index = (int) (0.25 * ITERATION_TIMES);
       int columnCount = resultSet.getMetaData().getColumnCount();
@@ -480,15 +546,17 @@ public class IoTDBUDTFAlignByTimeQueryIT {
   public void queryWithValueFilter3() {
     String sqlStr =
         "select udf(d1.s2, d1.s1), udf(d1.s1, d1.s2), d1.s1, d1.s2, udf(d1.s1, d1.s2), udf(d1.s2, d1.s1), d1.s1, d1.s2 from root.vehicle"
-            + String.format(" where d3.s1 >= %d and d3.s2 < %d", (int) (0.3 * ITERATION_TIMES),
-            (int) (0.7 * ITERATION_TIMES));
+            + String.format(
+                " where d3.s1 >= %d and d3.s2 < %d",
+                (int) (0.3 * ITERATION_TIMES), (int) (0.7 * ITERATION_TIMES));
 
     Set<Integer> s1s2 = new HashSet<>(Arrays.asList(0, 1, 4, 5));
     Set<Integer> s1 = new HashSet<>(Arrays.asList(2, 6));
     Set<Integer> s2 = new HashSet<>(Arrays.asList(3, 7));
 
-    try (Statement statement = DriverManager.getConnection(
-        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root").createStatement()) {
+    try (Statement statement =
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
+            .createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       int index = (int) (0.3 * ITERATION_TIMES);
       int columnCount = resultSet.getMetaData().getColumnCount();
@@ -528,16 +596,18 @@ public class IoTDBUDTFAlignByTimeQueryIT {
   public void queryWithValueFilter4() {
     String sqlStr =
         "select udf(s2, s1), udf(s1, s2), s1, s2, udf(s1, s2), udf(s2, s1), s1, s2 from root.vehicle.d2, root.vehicle.d3"
-            + String.format(" where root.vehicle.d2.s1 >= %d and root.vehicle.d3.s2 < %d",
-            (int) (0.3 * ITERATION_TIMES), (int) (0.7 * ITERATION_TIMES));
+            + String.format(
+                " where root.vehicle.d2.s1 >= %d and root.vehicle.d3.s2 < %d",
+                (int) (0.3 * ITERATION_TIMES), (int) (0.7 * ITERATION_TIMES));
 
-    Set<Integer> s1s2 = new HashSet<>(
-        Arrays.asList(0, 1, 2, 3, 4, 5, 6, 7, 12, 13, 14, 15, 16, 17, 18, 19));
+    Set<Integer> s1s2 =
+        new HashSet<>(Arrays.asList(0, 1, 2, 3, 4, 5, 6, 7, 12, 13, 14, 15, 16, 17, 18, 19));
     Set<Integer> s1 = new HashSet<>(Arrays.asList(8, 9, 20, 21));
     Set<Integer> s2 = new HashSet<>(Arrays.asList(10, 11, 22, 23));
 
-    try (Statement statement = DriverManager.getConnection(
-        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root").createStatement()) {
+    try (Statement statement =
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
+            .createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       int index = (int) (0.3 * ITERATION_TIMES);
       int columnCount = resultSet.getMetaData().getColumnCount();
@@ -563,11 +633,13 @@ public class IoTDBUDTFAlignByTimeQueryIT {
   public void queryWithValueFilter5() {
     String sqlStr =
         "select *, udf(*, *), udf(*, *) from root.vehicle.d2, root.vehicle.d3, root.vehicle.d2"
-            + String.format(" where root.vehicle.d2.s1 >= %d and root.vehicle.d3.s2 < %d",
-            (int) (0.3 * ITERATION_TIMES), (int) (0.7 * ITERATION_TIMES));
+            + String.format(
+                " where root.vehicle.d2.s1 >= %d and root.vehicle.d3.s2 < %d",
+                (int) (0.3 * ITERATION_TIMES), (int) (0.7 * ITERATION_TIMES));
 
-    try (Statement statement = DriverManager.getConnection(
-        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root").createStatement()) {
+    try (Statement statement =
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
+            .createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       int index = (int) (0.3 * ITERATION_TIMES);
       int columnCount = resultSet.getMetaData().getColumnCount();
@@ -589,12 +661,14 @@ public class IoTDBUDTFAlignByTimeQueryIT {
   public void queryWithValueFilter6() {
     String sqlStr =
         "select *, udf(*, *), udf(*, *) from root.vehicle.d2, root.vehicle.d3, root.vehicle.d2"
-            + String.format(" where root.vehicle.d2.s1 >= %d and root.vehicle.d3.s2 < %d ",
-            (int) (0.3 * ITERATION_TIMES), (int) (0.7 * ITERATION_TIMES))
+            + String.format(
+                " where root.vehicle.d2.s1 >= %d and root.vehicle.d3.s2 < %d ",
+                (int) (0.3 * ITERATION_TIMES), (int) (0.7 * ITERATION_TIMES))
             + String.format(" limit %d offset %d", LIMIT, OFFSET);
 
-    try (Statement statement = DriverManager.getConnection(
-        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root").createStatement()) {
+    try (Statement statement =
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
+            .createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       int index = (int) (0.3 * ITERATION_TIMES) + OFFSET;
       int columnCount = resultSet.getMetaData().getColumnCount();
@@ -616,12 +690,14 @@ public class IoTDBUDTFAlignByTimeQueryIT {
   public void queryWithValueFilter7() {
     String sqlStr =
         "select *, udf(*, *), udf(*, *) from root.vehicle.d2, root.vehicle.d3, root.vehicle.d2"
-            + String.format(" where root.vehicle.d2.s1 >= %d and root.vehicle.d3.s2 < %d ",
-            (int) (0.3 * ITERATION_TIMES), (int) (0.7 * ITERATION_TIMES))
+            + String.format(
+                " where root.vehicle.d2.s1 >= %d and root.vehicle.d3.s2 < %d ",
+                (int) (0.3 * ITERATION_TIMES), (int) (0.7 * ITERATION_TIMES))
             + String.format(" slimit %d soffset %d", SLIMIT, SOFFSET);
 
-    try (Statement statement = DriverManager.getConnection(
-        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root").createStatement()) {
+    try (Statement statement =
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
+            .createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       int index = (int) (0.3 * ITERATION_TIMES);
       int columnCount = resultSet.getMetaData().getColumnCount();
@@ -629,8 +705,8 @@ public class IoTDBUDTFAlignByTimeQueryIT {
       while (resultSet.next()) {
         for (int i = 2; i <= columnCount; ++i) {
           String actualString = resultSet.getString(i);
-          assertEquals(i - 2 + SOFFSET < 6 ? index : 2 * index, Double.parseDouble(actualString),
-              0);
+          assertEquals(
+              i - 2 + SOFFSET < 6 ? index : 2 * index, Double.parseDouble(actualString), 0);
         }
         ++index;
       }
@@ -642,12 +718,15 @@ public class IoTDBUDTFAlignByTimeQueryIT {
 
   @Test
   public void queryWithValueFilter8() {
-    String sqlStr = "select max(s1), max(s2) from root.vehicle.d4"
-        + String.format(" where root.vehicle.d4.s1 >= %d and root.vehicle.d4.s2 < %d ",
-        (int) (0.3 * ITERATION_TIMES), (int) (0.7 * ITERATION_TIMES));
+    String sqlStr =
+        "select max(s1), max(s2) from root.vehicle.d4"
+            + String.format(
+                " where root.vehicle.d4.s1 >= %d and root.vehicle.d4.s2 < %d ",
+                (int) (0.3 * ITERATION_TIMES), (int) (0.7 * ITERATION_TIMES));
 
-    try (Statement statement = DriverManager.getConnection(
-        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root").createStatement()) {
+    try (Statement statement =
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
+            .createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
 
       assertEquals(1 + 2, resultSet.getMetaData().getColumnCount());
@@ -656,10 +735,12 @@ public class IoTDBUDTFAlignByTimeQueryIT {
 
       String columnS1 = "max(root.vehicle.d4.s1)";
       String columnS2 = "max(root.vehicle.d4.s2)";
-      assertTrue(columnS1.equals(resultSet.getMetaData().getColumnName(2))
-          || columnS2.equals(resultSet.getMetaData().getColumnName(2)));
-      assertTrue(columnS1.equals(resultSet.getMetaData().getColumnName(3))
-          || columnS2.equals(resultSet.getMetaData().getColumnName(3)));
+      assertTrue(
+          columnS1.equals(resultSet.getMetaData().getColumnName(2))
+              || columnS2.equals(resultSet.getMetaData().getColumnName(2)));
+      assertTrue(
+          columnS1.equals(resultSet.getMetaData().getColumnName(3))
+              || columnS2.equals(resultSet.getMetaData().getColumnName(3)));
 
       assertFalse(resultSet.next());
     } catch (SQLException throwable) {
@@ -669,12 +750,15 @@ public class IoTDBUDTFAlignByTimeQueryIT {
 
   @Test
   public void queryWithValueFilter9() {
-    String sqlStr = "select max(s1), max(s2) from root.vehicle.d4"
-        + String.format(" where root.vehicle.d4.s1 >= %d and root.vehicle.d4.s1 < %d ",
-        (int) (0.3 * ITERATION_TIMES), (int) (0.7 * ITERATION_TIMES));
+    String sqlStr =
+        "select max(s1), max(s2) from root.vehicle.d4"
+            + String.format(
+                " where root.vehicle.d4.s1 >= %d and root.vehicle.d4.s1 < %d ",
+                (int) (0.3 * ITERATION_TIMES), (int) (0.7 * ITERATION_TIMES));
 
-    try (Statement statement = DriverManager.getConnection(
-        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root").createStatement()) {
+    try (Statement statement =
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
+            .createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
 
       assertEquals(1 + 2, resultSet.getMetaData().getColumnCount());
@@ -683,14 +767,16 @@ public class IoTDBUDTFAlignByTimeQueryIT {
 
       String columnS1 = "max(root.vehicle.d4.s1)";
       String columnS2 = "max(root.vehicle.d4.s2)";
-      assertTrue(columnS1.equals(resultSet.getMetaData().getColumnName(2))
-          || columnS2.equals(resultSet.getMetaData().getColumnName(2)));
-      assertTrue(columnS1.equals(resultSet.getMetaData().getColumnName(3))
-          || columnS2.equals(resultSet.getMetaData().getColumnName(3)));
+      assertTrue(
+          columnS1.equals(resultSet.getMetaData().getColumnName(2))
+              || columnS2.equals(resultSet.getMetaData().getColumnName(2)));
+      assertTrue(
+          columnS1.equals(resultSet.getMetaData().getColumnName(3))
+              || columnS2.equals(resultSet.getMetaData().getColumnName(3)));
 
       assertTrue(resultSet.next());
-      assertEquals((int) (0.7 * ITERATION_TIMES) - 1,
-          Integer.parseInt(resultSet.getString(columnS1)));
+      assertEquals(
+          (int) (0.7 * ITERATION_TIMES) - 1, Integer.parseInt(resultSet.getString(columnS1)));
       assertNull(resultSet.getString(columnS2));
       assertFalse(resultSet.next());
     } catch (SQLException throwable) {
@@ -700,12 +786,15 @@ public class IoTDBUDTFAlignByTimeQueryIT {
 
   @Test
   public void queryWithValueFilter10() {
-    String sqlStr = "select terminate(s1), terminate(s2) from root.vehicle.d4"
-        + String.format(" where root.vehicle.d4.s1 >= %d and root.vehicle.d4.s1 < %d ",
-        (int) (0.3 * ITERATION_TIMES), (int) (0.7 * ITERATION_TIMES));
+    String sqlStr =
+        "select terminate(s1), terminate(s2) from root.vehicle.d4"
+            + String.format(
+                " where root.vehicle.d4.s1 >= %d and root.vehicle.d4.s1 < %d ",
+                (int) (0.3 * ITERATION_TIMES), (int) (0.7 * ITERATION_TIMES));
 
-    try (Statement statement = DriverManager.getConnection(
-        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root").createStatement()) {
+    try (Statement statement =
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
+            .createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
 
       assertEquals(1 + 2, resultSet.getMetaData().getColumnCount());
@@ -714,10 +803,12 @@ public class IoTDBUDTFAlignByTimeQueryIT {
 
       String columnS1 = "terminate(root.vehicle.d4.s1)";
       String columnS2 = "terminate(root.vehicle.d4.s2)";
-      assertTrue(columnS1.equals(resultSet.getMetaData().getColumnName(2))
-          || columnS2.equals(resultSet.getMetaData().getColumnName(2)));
-      assertTrue(columnS1.equals(resultSet.getMetaData().getColumnName(3))
-          || columnS2.equals(resultSet.getMetaData().getColumnName(3)));
+      assertTrue(
+          columnS1.equals(resultSet.getMetaData().getColumnName(2))
+              || columnS2.equals(resultSet.getMetaData().getColumnName(2)));
+      assertTrue(
+          columnS1.equals(resultSet.getMetaData().getColumnName(3))
+              || columnS2.equals(resultSet.getMetaData().getColumnName(3)));
 
       for (int i = 0; i < (int) ((0.7 - 0.3) * ITERATION_TIMES) / 3 + 1; ++i) {
         assertTrue(resultSet.next());
@@ -726,7 +817,8 @@ public class IoTDBUDTFAlignByTimeQueryIT {
       }
 
       assertTrue(resultSet.next());
-      assertEquals((int) ((0.7 - 0.3) * ITERATION_TIMES) / 3 + 1,
+      assertEquals(
+          (int) ((0.7 - 0.3) * ITERATION_TIMES) / 3 + 1,
           Integer.parseInt(resultSet.getString(columnS1)));
       assertNull(resultSet.getString(columnS2));
 

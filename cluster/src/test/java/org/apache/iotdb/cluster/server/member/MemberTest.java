@@ -19,20 +19,8 @@
 
 package org.apache.iotdb.cluster.server.member;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.client.DataClientProvider;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.service.RegisterManager;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.cluster.common.TestAsyncDataClient;
 import org.apache.iotdb.cluster.common.TestAsyncMetaClient;
 import org.apache.iotdb.cluster.common.TestDataGroupMember;
@@ -59,18 +47,32 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.service.RegisterManager;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
+
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class MemberTest {
 
@@ -136,7 +138,14 @@ public class MemberTest {
     List<String> testUrls = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       Node node = TestUtils.getNode(i);
-      testUrls.add(node.getIp() + ":" + node.getMetaPort() + ":" + node.getDataPort() + ":" + node.getClientPort());
+      testUrls.add(
+          node.getIp()
+              + ":"
+              + node.getMetaPort()
+              + ":"
+              + node.getDataPort()
+              + ":"
+              + node.getClientPort());
     }
     ClusterDescriptor.getInstance().getConfig().setSeedNodeUrls(testUrls);
 
@@ -188,60 +197,62 @@ public class MemberTest {
   }
 
   private DataGroupMember newDataGroupMember(Node node) {
-    DataGroupMember newMember = new TestDataGroupMember(node, partitionTable.getHeaderGroup(node)) {
+    DataGroupMember newMember =
+        new TestDataGroupMember(node, partitionTable.getHeaderGroup(node)) {
 
-      @Override
-      public boolean syncLeader() {
-        return true;
-      }
+          @Override
+          public boolean syncLeader() {
+            return true;
+          }
 
-      @Override
-      public long appendEntry(AppendEntryRequest request) {
-        return Response.RESPONSE_AGREE;
-      }
+          @Override
+          public long appendEntry(AppendEntryRequest request) {
+            return Response.RESPONSE_AGREE;
+          }
 
-      @Override
-      public AsyncClient getAsyncClient(Node node) {
-        try {
-          return new TestAsyncDataClient(node, dataGroupMemberMap);
-        } catch (IOException e) {
-          return null;
-        }
-      }
+          @Override
+          public AsyncClient getAsyncClient(Node node) {
+            try {
+              return new TestAsyncDataClient(node, dataGroupMemberMap);
+            } catch (IOException e) {
+              return null;
+            }
+          }
 
-      @Override
-      public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
-        try {
-          return new TestAsyncDataClient(node, dataGroupMemberMap);
-        } catch (IOException e) {
-          return null;
-        }
-      }
+          @Override
+          public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
+            try {
+              return new TestAsyncDataClient(node, dataGroupMemberMap);
+            } catch (IOException e) {
+              return null;
+            }
+          }
 
-      @Override
-      public AsyncClient getSendLogAsyncClient(Node node) {
-        return getAsyncClient(node);
-      }
-    };
+          @Override
+          public AsyncClient getSendLogAsyncClient(Node node) {
+            return getAsyncClient(node);
+          }
+        };
     newMember.setThisNode(node);
     newMember.setMetaGroupMember(testMetaMember);
     newMember.setLeader(node);
     newMember.setCharacter(NodeCharacter.LEADER);
-    newMember
-        .setLogManager(
-            getLogManager(partitionTable.getHeaderGroup(TestUtils.getNode(0)), newMember));
+    newMember.setLogManager(
+        getLogManager(partitionTable.getHeaderGroup(TestUtils.getNode(0)), newMember));
 
     newMember.setAppendLogThreadPool(testThreadPool);
     return newMember;
   }
 
-  private PartitionedSnapshotLogManager getLogManager(PartitionGroup partitionGroup,
-      DataGroupMember dataGroupMember) {
-    return new TestPartitionedLogManager(new DataLogApplier(testMetaMember, dataGroupMember),
-        testMetaMember.getPartitionTable(), partitionGroup.getHeader(), FileSnapshot.Factory.INSTANCE) {
+  private PartitionedSnapshotLogManager getLogManager(
+      PartitionGroup partitionGroup, DataGroupMember dataGroupMember) {
+    return new TestPartitionedLogManager(
+        new DataLogApplier(testMetaMember, dataGroupMember),
+        testMetaMember.getPartitionTable(),
+        partitionGroup.getHeader(),
+        FileSnapshot.Factory.INSTANCE) {
       @Override
-      public void takeSnapshot() {
-      }
+      public void takeSnapshot() {}
     };
   }
 
@@ -250,38 +261,38 @@ public class MemberTest {
   }
 
   private MetaGroupMember newMetaGroupMember(Node node) {
-    MetaGroupMember ret = new TestMetaGroupMember() {
+    MetaGroupMember ret =
+        new TestMetaGroupMember() {
 
-      @Override
-      public DataGroupMember getLocalDataMember(Node header,
-          Object request) {
-        return getDataGroupMember(header);
-      }
+          @Override
+          public DataGroupMember getLocalDataMember(Node header, Object request) {
+            return getDataGroupMember(header);
+          }
 
-      @Override
-      public DataGroupMember getLocalDataMember(Node header) {
-        return getDataGroupMember(header);
-      }
+          @Override
+          public DataGroupMember getLocalDataMember(Node header) {
+            return getDataGroupMember(header);
+          }
 
-      @Override
-      public AsyncClient getAsyncClient(Node node) {
-        try {
-          return new TestAsyncMetaClient(null, null, node, null) {
-            @Override
-            public void queryNodeStatus(AsyncMethodCallback<TNodeStatus> resultHandler) {
-              new Thread(() -> resultHandler.onComplete(new TNodeStatus())).start();
+          @Override
+          public AsyncClient getAsyncClient(Node node) {
+            try {
+              return new TestAsyncMetaClient(null, null, node, null) {
+                @Override
+                public void queryNodeStatus(AsyncMethodCallback<TNodeStatus> resultHandler) {
+                  new Thread(() -> resultHandler.onComplete(new TNodeStatus())).start();
+                }
+              };
+            } catch (IOException e) {
+              return null;
             }
-          };
-        } catch (IOException e) {
-          return null;
-        }
-      }
+          }
 
-      @Override
-      public AsyncClient getSendLogAsyncClient(Node node) {
-        return getAsyncClient(node);
-      }
-    };
+          @Override
+          public AsyncClient getSendLogAsyncClient(Node node) {
+            return getAsyncClient(node);
+          }
+        };
     ret.setThisNode(node);
     ret.setCoordinator(new Coordinator());
     ret.setPartitionTable(partitionTable);
@@ -290,37 +301,39 @@ public class MemberTest {
     ret.setLeader(node);
     ret.setCharacter(NodeCharacter.LEADER);
     ret.setAppendLogThreadPool(testThreadPool);
-    ret.setClientProvider(new DataClientProvider(new Factory()) {
-      @Override
-      public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
-        return new TestAsyncDataClient(node, dataGroupMemberMap);
-      }
-    });
+    ret.setClientProvider(
+        new DataClientProvider(new Factory()) {
+          @Override
+          public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
+            return new TestAsyncDataClient(node, dataGroupMemberMap);
+          }
+        });
     return ret;
   }
 
   private DataGroupMember newDataGroupMemberWithSyncLeader(Node node, boolean syncLeader) {
-    DataGroupMember newMember = new TestDataGroupMember(node, partitionTable.getHeaderGroup(node)) {
+    DataGroupMember newMember =
+        new TestDataGroupMember(node, partitionTable.getHeaderGroup(node)) {
 
-      @Override
-      public boolean syncLeader() {
-        return syncLeader;
-      }
+          @Override
+          public boolean syncLeader() {
+            return syncLeader;
+          }
 
-      @Override
-      public long appendEntry(AppendEntryRequest request) {
-        return Response.RESPONSE_AGREE;
-      }
+          @Override
+          public long appendEntry(AppendEntryRequest request) {
+            return Response.RESPONSE_AGREE;
+          }
 
-      @Override
-      public AsyncClient getAsyncClient(Node node) {
-        try {
-          return new TestAsyncDataClient(node, dataGroupMemberMap);
-        } catch (IOException e) {
-          return null;
-        }
-      }
-    };
+          @Override
+          public AsyncClient getAsyncClient(Node node) {
+            try {
+              return new TestAsyncDataClient(node, dataGroupMemberMap);
+            } catch (IOException e) {
+              return null;
+            }
+          }
+        };
     newMember.setThisNode(node);
     newMember.setMetaGroupMember(testMetaMember);
     newMember.setLeader(node);
@@ -334,9 +347,10 @@ public class MemberTest {
   public void testsyncLeaderWithConsistencyCheck() {
 
     // 1. write request : Strong consistency level with syncLeader false
-    DataGroupMember dataGroupMemberWithWriteStrongConsistencyFalse = newDataGroupMemberWithSyncLeader(
-        TestUtils.getNode(0), false);
-    ClusterDescriptor.getInstance().getConfig()
+    DataGroupMember dataGroupMemberWithWriteStrongConsistencyFalse =
+        newDataGroupMemberWithSyncLeader(TestUtils.getNode(0), false);
+    ClusterDescriptor.getInstance()
+        .getConfig()
         .setConsistencyLevel(ConsistencyLevel.WEAK_CONSISTENCY);
     CheckConsistencyException exception = null;
     try {
@@ -348,9 +362,10 @@ public class MemberTest {
     Assert.assertEquals(CheckConsistencyException.CHECK_STRONG_CONSISTENCY_EXCEPTION, exception);
 
     // 2. write request : Strong consistency level with syncLeader true
-    DataGroupMember dataGroupMemberWithWriteStrongConsistencyTrue = newDataGroupMemberWithSyncLeader(
-        TestUtils.getNode(0), true);
-    ClusterDescriptor.getInstance().getConfig()
+    DataGroupMember dataGroupMemberWithWriteStrongConsistencyTrue =
+        newDataGroupMemberWithSyncLeader(TestUtils.getNode(0), true);
+    ClusterDescriptor.getInstance()
+        .getConfig()
         .setConsistencyLevel(ConsistencyLevel.WEAK_CONSISTENCY);
     exception = null;
     try {
@@ -361,9 +376,10 @@ public class MemberTest {
     Assert.assertNull(exception);
 
     // 3. Strong consistency level with syncLeader false
-    DataGroupMember dataGroupMemberWithStrongConsistencyFalse = newDataGroupMemberWithSyncLeader(
-        TestUtils.getNode(0), false);
-    ClusterDescriptor.getInstance().getConfig()
+    DataGroupMember dataGroupMemberWithStrongConsistencyFalse =
+        newDataGroupMemberWithSyncLeader(TestUtils.getNode(0), false);
+    ClusterDescriptor.getInstance()
+        .getConfig()
         .setConsistencyLevel(ConsistencyLevel.STRONG_CONSISTENCY);
     exception = null;
     try {
@@ -375,9 +391,10 @@ public class MemberTest {
     Assert.assertEquals(CheckConsistencyException.CHECK_STRONG_CONSISTENCY_EXCEPTION, exception);
 
     // 4. Strong consistency level with syncLeader true
-    DataGroupMember dataGroupMemberWithStrongConsistencyTrue = newDataGroupMemberWithSyncLeader(
-        TestUtils.getNode(0), true);
-    ClusterDescriptor.getInstance().getConfig()
+    DataGroupMember dataGroupMemberWithStrongConsistencyTrue =
+        newDataGroupMemberWithSyncLeader(TestUtils.getNode(0), true);
+    ClusterDescriptor.getInstance()
+        .getConfig()
         .setConsistencyLevel(ConsistencyLevel.STRONG_CONSISTENCY);
     exception = null;
     try {
@@ -388,9 +405,10 @@ public class MemberTest {
     Assert.assertNull(exception);
 
     // 5. Mid consistency level with syncLeader false
-    DataGroupMember dataGroupMemberWithMidConsistencyFalse = newDataGroupMemberWithSyncLeader(
-        TestUtils.getNode(0), false);
-    ClusterDescriptor.getInstance().getConfig()
+    DataGroupMember dataGroupMemberWithMidConsistencyFalse =
+        newDataGroupMemberWithSyncLeader(TestUtils.getNode(0), false);
+    ClusterDescriptor.getInstance()
+        .getConfig()
         .setConsistencyLevel(ConsistencyLevel.MID_CONSISTENCY);
     exception = null;
     try {
@@ -401,9 +419,10 @@ public class MemberTest {
     Assert.assertNull(exception);
 
     // 6. Mid consistency level with syncLeader true
-    DataGroupMember dataGroupMemberWithMidConsistencyTrue = newDataGroupMemberWithSyncLeader(
-        TestUtils.getNode(0), true);
-    ClusterDescriptor.getInstance().getConfig()
+    DataGroupMember dataGroupMemberWithMidConsistencyTrue =
+        newDataGroupMemberWithSyncLeader(TestUtils.getNode(0), true);
+    ClusterDescriptor.getInstance()
+        .getConfig()
         .setConsistencyLevel(ConsistencyLevel.MID_CONSISTENCY);
     exception = null;
     try {
@@ -414,9 +433,10 @@ public class MemberTest {
     Assert.assertNull(exception);
 
     // 7. Weak consistency level with syncLeader false
-    DataGroupMember dataGroupMemberWithWeakConsistencyFalse = newDataGroupMemberWithSyncLeader(
-        TestUtils.getNode(0), false);
-    ClusterDescriptor.getInstance().getConfig()
+    DataGroupMember dataGroupMemberWithWeakConsistencyFalse =
+        newDataGroupMemberWithSyncLeader(TestUtils.getNode(0), false);
+    ClusterDescriptor.getInstance()
+        .getConfig()
         .setConsistencyLevel(ConsistencyLevel.WEAK_CONSISTENCY);
     exception = null;
     try {
@@ -427,9 +447,10 @@ public class MemberTest {
     Assert.assertNull(exception);
 
     // 8. Weak consistency level with syncLeader true
-    DataGroupMember dataGroupMemberWithWeakConsistencyTrue = newDataGroupMemberWithSyncLeader(
-        TestUtils.getNode(0), true);
-    ClusterDescriptor.getInstance().getConfig()
+    DataGroupMember dataGroupMemberWithWeakConsistencyTrue =
+        newDataGroupMemberWithSyncLeader(TestUtils.getNode(0), true);
+    ClusterDescriptor.getInstance()
+        .getConfig()
         .setConsistencyLevel(ConsistencyLevel.WEAK_CONSISTENCY);
     exception = null;
     try {

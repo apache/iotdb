@@ -19,15 +19,16 @@
 
 package org.apache.iotdb.db.engine.version;
 
+import org.apache.iotdb.db.constant.TestConstant;
 
-import static org.junit.Assert.assertEquals;
+import org.apache.commons.io.FileUtils;
+import org.junit.Assert;
+import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
-import org.apache.commons.io.FileUtils;
-import org.apache.iotdb.db.constant.TestConstant;
-import org.junit.Assert;
-import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
 
 public class SimpleFileVersionControllerTest {
   @Test
@@ -43,11 +44,11 @@ public class SimpleFileVersionControllerTest {
       for (int i = 0; i < 150; i++) {
         versionController.nextVersion();
       }
-      assertEquals(SimpleFileVersionController.getSaveInterval() + 150,
-          versionController.currVersion());
+      assertEquals(
+          SimpleFileVersionController.getSaveInterval() + 150, versionController.currVersion());
       versionController = new SimpleFileVersionController(tempFilePath, 1);
-      assertEquals(SimpleFileVersionController.getSaveInterval() + 200,
-          versionController.currVersion());
+      assertEquals(
+          SimpleFileVersionController.getSaveInterval() + 200, versionController.currVersion());
     } finally {
       FileUtils.deleteDirectory(new File(tempFilePath));
     }

@@ -18,10 +18,6 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -30,35 +26,40 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-/**
- * Represents an MNode which has a Measurement or Sensor attached to it.
- */
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+
+/** Represents an MNode which has a Measurement or Sensor attached to it. */
 public class MeasurementMNode extends MNode {
 
   private static final long serialVersionUID = -1199657856921206435L;
 
-  /**
-   * measurement's Schema for one timeseries represented by current leaf node
-   */
+  /** measurement's Schema for one timeseries represented by current leaf node */
   private MeasurementSchema schema;
+
   private String alias;
   // tag/attribute's start offset in tag file
   private long offset = -1;
 
   private TimeValuePair cachedLastValuePair = null;
 
-  /**
-   * @param alias alias of measurementName
-   */
-  public MeasurementMNode(MNode parent, String measurementName, String alias, TSDataType dataType,
-      TSEncoding encoding, CompressionType type, Map<String, String> props) {
+  /** @param alias alias of measurementName */
+  public MeasurementMNode(
+      MNode parent,
+      String measurementName,
+      String alias,
+      TSDataType dataType,
+      TSEncoding encoding,
+      CompressionType type,
+      Map<String, String> props) {
     super(parent, measurementName);
     this.schema = new MeasurementSchema(measurementName, dataType, encoding, type, props);
     this.alias = alias;
   }
 
-  public MeasurementMNode(MNode parent, String measurementName, MeasurementSchema schema,
-      String alias) {
+  public MeasurementMNode(
+      MNode parent, String measurementName, MeasurementSchema schema, String alias) {
     super(parent, measurementName);
     this.schema = schema;
     this.alias = alias;
@@ -79,14 +80,15 @@ public class MeasurementMNode extends MNode {
     }
 
     if (cachedLastValuePair == null) {
-      // If no cached last, (1) a last query (2) an unseq insertion or (3) a seq insertion will update cache.
+      // If no cached last, (1) a last query (2) an unseq insertion or (3) a seq insertion will
+      // update cache.
       if (!highPriorityUpdate || latestFlushedTime <= timeValuePair.getTimestamp()) {
         cachedLastValuePair =
             new TimeValuePair(timeValuePair.getTimestamp(), timeValuePair.getValue());
       }
     } else if (timeValuePair.getTimestamp() > cachedLastValuePair.getTimestamp()
         || (timeValuePair.getTimestamp() == cachedLastValuePair.getTimestamp()
-        && highPriorityUpdate)) {
+            && highPriorityUpdate)) {
       cachedLastValuePair.setTimestamp(timeValuePair.getTimestamp());
       cachedLastValuePair.setValue(timeValuePair.getValue());
     }
@@ -131,10 +133,10 @@ public class MeasurementMNode extends MNode {
   /**
    * deserialize MeasuremetMNode from string array
    *
-   * @param nodeInfo node information array. For example: "2,s0,speed,2,2,1,year:2020;month:jan;,-1,0"
-   *                 representing: [0] nodeType [1] name [2] alias [3] TSDataType.ordinal() [4]
-   *                 TSEncoding.ordinal() [5] CompressionType.ordinal() [6] props [7] offset [8]
-   *                 children size
+   * @param nodeInfo node information array. For example:
+   *     "2,s0,speed,2,2,1,year:2020;month:jan;,-1,0" representing: [0] nodeType [1] name [2] alias
+   *     [3] TSDataType.ordinal() [4] TSEncoding.ordinal() [5] CompressionType.ordinal() [6] props
+   *     [7] offset [8] children size
    */
   public static MeasurementMNode deserializeFrom(String[] nodeInfo) {
     String name = nodeInfo[1];
@@ -145,19 +147,22 @@ public class MeasurementMNode extends MNode {
         props.put(propInfo.split(":")[0], propInfo.split(":")[1]);
       }
     }
-    MeasurementSchema schema = new MeasurementSchema(name, Byte.parseByte(nodeInfo[3]),
-        Byte.parseByte(nodeInfo[4]), Byte.parseByte(nodeInfo[5]), props);
+    MeasurementSchema schema =
+        new MeasurementSchema(
+            name,
+            Byte.parseByte(nodeInfo[3]),
+            Byte.parseByte(nodeInfo[4]),
+            Byte.parseByte(nodeInfo[5]),
+            props);
     MeasurementMNode node = new MeasurementMNode(null, name, schema, alias);
     node.setOffset(Long.parseLong(nodeInfo[7]));
     return node;
   }
 
-  /**
-   * deserialize MeasuremetMNode from MeasurementNodePlan
-   */
+  /** deserialize MeasuremetMNode from MeasurementNodePlan */
   public static MeasurementMNode deserializeFrom(MeasurementMNodePlan plan) {
-    MeasurementMNode node = new MeasurementMNode(null, plan.getName(),
-      plan.getSchema(), plan.getAlias());
+    MeasurementMNode node =
+        new MeasurementMNode(null, plan.getName(), plan.getSchema(), plan.getAlias());
     node.setOffset(plan.getOffset());
 
     return node;

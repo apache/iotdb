@@ -19,32 +19,34 @@
 
 package org.apache.iotdb.db.engine.merge;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.constant.TestConstant;
+import org.apache.iotdb.db.engine.merge.manage.MergeResource;
+import org.apache.iotdb.db.engine.merge.task.MergeTask;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+
+import org.apache.commons.io.FileUtils;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.List;
-import org.apache.commons.io.FileUtils;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.engine.merge.task.MergeTask;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class MergeLogTest extends MergeTest {
 
   File tempSGDir;
 
-
+  @Override
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     super.setUp();
@@ -52,6 +54,7 @@ public class MergeLogTest extends MergeTest {
     tempSGDir.mkdirs();
   }
 
+  @Override
   @After
   public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();
@@ -62,17 +65,23 @@ public class MergeLogTest extends MergeTest {
   public void testMergeLog() throws Exception {
     IoTDBDescriptor.getInstance().getConfig().setMergeChunkPointNumberThreshold(Integer.MAX_VALUE);
     MergeTask mergeTask =
-        new MergeTask(new MergeResource(seqResources.subList(0, 1), unseqResources.subList(0, 1)),
-            tempSGDir.getPath(), this::testCallBack, "test", false, 1, MERGE_TEST_SG);
+        new MergeTask(
+            new MergeResource(seqResources.subList(0, 1), unseqResources.subList(0, 1)),
+            tempSGDir.getPath(),
+            this::testCallBack,
+            "test",
+            false,
+            1,
+            MERGE_TEST_SG);
     mergeTask.call();
   }
 
-  private void testCallBack(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles,
-      File mergeLog) {
+  private void testCallBack(
+      List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles, File mergeLog) {
     int lineCnt = 0;
     try (BufferedReader bufferedReader = new BufferedReader(new FileReader(mergeLog))) {
       while (bufferedReader.readLine() != null) {
-        lineCnt ++;
+        lineCnt++;
       }
     } catch (IOException e) {
       e.printStackTrace();
@@ -80,5 +89,4 @@ public class MergeLogTest extends MergeTest {
     }
     assertEquals(309, lineCnt);
   }
-
 }

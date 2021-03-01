@@ -33,8 +33,8 @@ public interface Row {
 
   /**
    * Returns the int value at the specified column in this row.
-   * <p>
-   * Users need to ensure that the data type of the specified column is {@code TSDataType.INT32}.
+   *
+   * <p>Users need to ensure that the data type of the specified column is {@code TSDataType.INT32}.
    *
    * @param columnIndex index of the specified column
    * @return the int value at the specified column in this row
@@ -43,8 +43,8 @@ public interface Row {
 
   /**
    * Returns the long value at the specified column in this row.
-   * <p>
-   * Users need to ensure that the data type of the specified column is {@code TSDataType.INT64}.
+   *
+   * <p>Users need to ensure that the data type of the specified column is {@code TSDataType.INT64}.
    *
    * @param columnIndex index of the specified column
    * @return the long value at the specified column in this row
@@ -53,8 +53,8 @@ public interface Row {
 
   /**
    * Returns the float value at the specified column in this row.
-   * <p>
-   * Users need to ensure that the data type of the specified column is {@code TSDataType.FLOAT}.
+   *
+   * <p>Users need to ensure that the data type of the specified column is {@code TSDataType.FLOAT}.
    *
    * @param columnIndex index of the specified column
    * @return the float value at the specified column in this row
@@ -63,8 +63,9 @@ public interface Row {
 
   /**
    * Returns the double value at the specified column in this row.
-   * <p>
-   * Users need to ensure that the data type of the specified column is {@code TSDataType.DOUBLE}.
+   *
+   * <p>Users need to ensure that the data type of the specified column is {@code
+   * TSDataType.DOUBLE}.
    *
    * @param columnIndex index of the specified column
    * @return the double value at the specified column in this row
@@ -73,8 +74,9 @@ public interface Row {
 
   /**
    * Returns the boolean value at the specified column in this row.
-   * <p>
-   * Users need to ensure that the data type of the specified column is {@code TSDataType.BOOLEAN}.
+   *
+   * <p>Users need to ensure that the data type of the specified column is {@code
+   * TSDataType.BOOLEAN}.
    *
    * @param columnIndex index of the specified column
    * @return the boolean value at the specified column in this row
@@ -83,8 +85,8 @@ public interface Row {
 
   /**
    * Returns the Binary value at the specified column in this row.
-   * <p>
-   * Users need to ensure that the data type of the specified column is {@code TSDataType.TEXT}.
+   *
+   * <p>Users need to ensure that the data type of the specified column is {@code TSDataType.TEXT}.
    *
    * @param columnIndex index of the specified column
    * @return the Binary value at the specified column in this row
@@ -93,8 +95,8 @@ public interface Row {
 
   /**
    * Returns the String value at the specified column in this row.
-   * <p>
-   * Users need to ensure that the data type of the specified column is {@code TSDataType.TEXT}.
+   *
+   * <p>Users need to ensure that the data type of the specified column is {@code TSDataType.TEXT}.
    *
    * @param columnIndex index of the specified column
    * @return the String value at the specified column in this row

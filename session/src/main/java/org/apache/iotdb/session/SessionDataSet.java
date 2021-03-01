@@ -18,14 +18,8 @@
  */
 package org.apache.iotdb.session;
 
-import static org.apache.iotdb.rpc.IoTDBRpcDataSet.START_INDEX;
-
-import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import org.apache.iotdb.rpc.IoTDBRpcDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.IoTDBRpcDataSet;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
@@ -35,27 +29,73 @@ import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
+
 import org.apache.thrift.TException;
+
+import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+import static org.apache.iotdb.rpc.IoTDBRpcDataSet.START_INDEX;
 
 public class SessionDataSet {
 
   private final IoTDBRpcDataSet ioTDBRpcDataSet;
 
-  public SessionDataSet(String sql, List<String> columnNameList, List<String> columnTypeList,
+  public SessionDataSet(
+      String sql,
+      List<String> columnNameList,
+      List<String> columnTypeList,
       Map<String, Integer> columnNameIndex,
-      long queryId, TSIService.Iface client, long sessionId, TSQueryDataSet queryDataSet,
+      long queryId,
+      long statementId,
+      TSIService.Iface client,
+      long sessionId,
+      TSQueryDataSet queryDataSet,
       boolean ignoreTimeStamp) {
-    this.ioTDBRpcDataSet = new IoTDBRpcDataSet(sql, columnNameList, columnTypeList, columnNameIndex,
-        ignoreTimeStamp, queryId, client, sessionId, queryDataSet, Config.DEFAULT_FETCH_SIZE, 0);
+    this.ioTDBRpcDataSet =
+        new IoTDBRpcDataSet(
+            sql,
+            columnNameList,
+            columnTypeList,
+            columnNameIndex,
+            ignoreTimeStamp,
+            queryId,
+            statementId,
+            client,
+            sessionId,
+            queryDataSet,
+            Config.DEFAULT_FETCH_SIZE,
+            0);
   }
 
-  public SessionDataSet(String sql, List<String> columnNameList, List<String> columnTypeList,
+  public SessionDataSet(
+      String sql,
+      List<String> columnNameList,
+      List<String> columnTypeList,
       Map<String, Integer> columnNameIndex,
-      long queryId, TSIService.Iface client, long sessionId, TSQueryDataSet queryDataSet,
-      boolean ignoreTimeStamp, long timeout) {
-    this.ioTDBRpcDataSet = new IoTDBRpcDataSet(sql, columnNameList, columnTypeList, columnNameIndex,
-        ignoreTimeStamp, queryId, client, sessionId, queryDataSet, Config.DEFAULT_FETCH_SIZE,
-        timeout);
+      long queryId,
+      long statementId,
+      TSIService.Iface client,
+      long sessionId,
+      TSQueryDataSet queryDataSet,
+      boolean ignoreTimeStamp,
+      long timeout) {
+    this.ioTDBRpcDataSet =
+        new IoTDBRpcDataSet(
+            sql,
+            columnNameList,
+            columnTypeList,
+            columnNameIndex,
+            ignoreTimeStamp,
+            queryId,
+            statementId,
+            client,
+            sessionId,
+            queryDataSet,
+            Config.DEFAULT_FETCH_SIZE,
+            timeout);
   }
 
   public int getFetchSize() {
@@ -74,11 +114,9 @@ public class SessionDataSet {
     return new ArrayList<>(ioTDBRpcDataSet.columnTypeList);
   }
 
-
   public boolean hasNext() throws StatementExecutionException, IoTDBConnectionException {
     return ioTDBRpcDataSet.next();
   }
-
 
   private RowRecord constructRowRecordFromValueArray() throws StatementExecutionException {
     List<Field> outFields = new ArrayList<>();
@@ -124,8 +162,9 @@ public class SessionDataSet {
             field.setBinaryV(new Binary(valueBytes));
             break;
           default:
-            throw new UnSupportedDataTypeException(String
-                .format("Data type %s is not supported.",
+            throw new UnSupportedDataTypeException(
+                String.format(
+                    "Data type %s is not supported.",
                     ioTDBRpcDataSet.columnTypeDeduplicatedList.get(i)));
         }
       } else {
@@ -135,7 +174,6 @@ public class SessionDataSet {
     }
     return new RowRecord(BytesUtils.bytesToLong(ioTDBRpcDataSet.time), outFields);
   }
-
 
   public RowRecord next() throws StatementExecutionException, IoTDBConnectionException {
     if (!ioTDBRpcDataSet.hasCachedRecord && !hasNext()) {

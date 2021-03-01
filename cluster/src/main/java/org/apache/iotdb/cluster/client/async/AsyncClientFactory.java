@@ -19,14 +19,16 @@
 
 package org.apache.iotdb.cluster.client.async;
 
-import java.io.IOException;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
+
 import org.apache.thrift.async.TAsyncClientManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class AsyncClientFactory {
 
@@ -37,8 +39,9 @@ public abstract class AsyncClientFactory {
 
   static {
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      managers = new TAsyncClientManager[ClusterDescriptor.getInstance().getConfig()
-          .getSelectorNumOfClientPool()];
+      managers =
+          new TAsyncClientManager
+              [ClusterDescriptor.getInstance().getConfig().getSelectorNumOfClientPool()];
       for (int i = 0; i < managers.length; i++) {
         try {
           managers[i] = new TAsyncClientManager();

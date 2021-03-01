@@ -19,14 +19,6 @@
 
 package org.apache.iotdb.db.query.dataset;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.atomic.AtomicIntegerArray;
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
@@ -42,8 +34,18 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicIntegerArray;
 
 public class NonAlignEngineDataSet extends QueryDataSet implements DirectNonAlignDataSet {
 
@@ -54,8 +56,10 @@ public class NonAlignEngineDataSet extends QueryDataSet implements DirectNonAlig
     private WatermarkEncoder encoder;
     private int index;
 
-    public ReadTask(ManagedSeriesReader reader,
-        BlockingQueue<Pair<ByteBuffer, ByteBuffer>> blockingQueue, WatermarkEncoder encoder,
+    public ReadTask(
+        ManagedSeriesReader reader,
+        BlockingQueue<Pair<ByteBuffer, ByteBuffer>> blockingQueue,
+        WatermarkEncoder encoder,
         int index) {
       this.reader = reader;
       this.blockingQueue = blockingQueue;
@@ -232,9 +236,7 @@ public class NonAlignEngineDataSet extends QueryDataSet implements DirectNonAlig
   private static final int BLOCKING_QUEUE_CAPACITY = 5;
 
   private final long queryId;
-  /**
-   * flag that main thread is interrupted or not
-   */
+  /** flag that main thread is interrupted or not */
   private volatile boolean interrupted = false;
 
   private static final QueryTaskPoolManager pool = QueryTaskPoolManager.getInstance();
@@ -244,11 +246,14 @@ public class NonAlignEngineDataSet extends QueryDataSet implements DirectNonAlig
   /**
    * constructor of EngineDataSet.
    *
-   * @param paths     paths in List structure
+   * @param paths paths in List structure
    * @param dataTypes time series data type
-   * @param readers   readers in List(IPointReader) structure
+   * @param readers readers in List(IPointReader) structure
    */
-  public NonAlignEngineDataSet(long queryId, List<PartialPath> paths, List<TSDataType> dataTypes,
+  public NonAlignEngineDataSet(
+      long queryId,
+      List<PartialPath> paths,
+      List<TSDataType> dataTypes,
       List<ManagedSeriesReader> readers) {
     super(new ArrayList<>(paths), dataTypes);
     this.queryId = queryId;
@@ -282,9 +287,7 @@ public class NonAlignEngineDataSet extends QueryDataSet implements DirectNonAlig
     this.initialized = true;
   }
 
-  /**
-   * for RPC in RawData query between client and server fill time buffers and value buffers
-   */
+  /** for RPC in RawData query between client and server fill time buffers and value buffers */
   @Override
   public TSQueryNonAlignDataSet fillBuffer(int fetchSize, WatermarkEncoder encoder)
       throws InterruptedException {
@@ -301,8 +304,8 @@ public class NonAlignEngineDataSet extends QueryDataSet implements DirectNonAlig
       if (!noMoreDataInQueueArray[seriesIndex]) {
         // check the interrupted status of query before take next batch
         QueryTimeManager.checkQueryAlive(queryId);
-        Pair<ByteBuffer, ByteBuffer> timeValueByteBufferPair = blockingQueueArray[seriesIndex]
-            .take();
+        Pair<ByteBuffer, ByteBuffer> timeValueByteBufferPair =
+            blockingQueueArray[seriesIndex].take();
         if (timeValueByteBufferPair.left == null || timeValueByteBufferPair.right == null) {
           noMoreDataInQueueArray[seriesIndex] = true;
           timeValueByteBufferPair.left = ByteBuffer.allocate(0);
@@ -324,8 +327,8 @@ public class NonAlignEngineDataSet extends QueryDataSet implements DirectNonAlig
           // now we should submit it again
           if (!reader.isManagedByQueryManager() && reader.hasRemaining()) {
             reader.setManagedByQueryManager(true);
-            pool.submit(new ReadTask(reader, blockingQueueArray[seriesIndex],
-                encoder, seriesIndex));
+            pool.submit(
+                new ReadTask(reader, blockingQueueArray[seriesIndex], encoder, seriesIndex));
           }
         }
       }
@@ -347,5 +350,4 @@ public class NonAlignEngineDataSet extends QueryDataSet implements DirectNonAlig
   public RowRecord nextWithoutConstraint() {
     return null;
   }
-
 }

@@ -23,5 +23,4 @@ public class NullFieldException extends TsFileRuntimeException {
   public NullFieldException() {
     super("Field is null");
   }
-
 }

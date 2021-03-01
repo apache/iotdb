@@ -19,22 +19,25 @@
 
 package org.apache.iotdb.db.query.udf.datastructure.tv;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.MB;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+
+import static org.apache.iotdb.db.conf.IoTDBConstant.MB;
+
 public class SerializableDoubleTVList extends SerializableTVList {
 
   protected static int calculateCapacity(float memoryLimitInMB) {
     float memoryLimitInB = memoryLimitInMB * MB / 2;
-    return TSFileConfig.ARRAY_CAPACITY_THRESHOLD *
-        (int) (memoryLimitInB / ((ReadWriteIOUtils.LONG_LEN + ReadWriteIOUtils.DOUBLE_LEN)
-            * TSFileConfig.ARRAY_CAPACITY_THRESHOLD));
+    return TSFileConfig.ARRAY_CAPACITY_THRESHOLD
+        * (int)
+            (memoryLimitInB
+                / ((ReadWriteIOUtils.LONG_LEN + ReadWriteIOUtils.DOUBLE_LEN)
+                    * TSFileConfig.ARRAY_CAPACITY_THRESHOLD));
   }
 
   protected SerializableDoubleTVList(SerializationRecorder serializationRecorder) {

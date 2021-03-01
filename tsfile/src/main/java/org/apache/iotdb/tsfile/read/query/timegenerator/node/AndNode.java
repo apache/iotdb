@@ -33,7 +33,7 @@ public class AndNode implements Node {
   /**
    * Constructor of AndNode.
    *
-   * @param leftChild  left child
+   * @param leftChild left child
    * @param rightChild right child
    */
   public AndNode(Node leftChild, Node rightChild) {

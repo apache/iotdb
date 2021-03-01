@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.cluster.log;
 
-import static org.junit.Assert.assertEquals;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+
+import org.junit.Test;
 
 import java.nio.ByteBuffer;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
 
 public class HardStateTest {
 

@@ -19,30 +19,35 @@
 
 package org.apache.iotdb.db.query.udf.datastructure;
 
-import static org.junit.Assert.*;
+import org.apache.iotdb.db.query.udf.datastructure.tv.SerializableLongTVList;
+import org.apache.iotdb.db.query.udf.datastructure.tv.SerializableTVList;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import org.junit.After;
+import org.junit.Before;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.query.udf.datastructure.tv.SerializableLongTVList;
-import org.apache.iotdb.db.query.udf.datastructure.tv.SerializableTVList;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.junit.After;
-import org.junit.Before;
+
+import static org.junit.Assert.*;
 
 public class SerializableLongTVListTest extends SerializableTVListTest {
 
   private List<Long> originalList;
   private SerializableLongTVList testList;
 
+  @Override
   @Before
   public void setUp() throws Exception {
     super.setUp();
     originalList = new ArrayList<>();
-    testList = (SerializableLongTVList) SerializableTVList
-        .newSerializableTVList(TSDataType.INT64, QUERY_ID);
+    testList =
+        (SerializableLongTVList)
+            SerializableTVList.newSerializableTVList(TSDataType.INT64, QUERY_ID);
   }
 
+  @Override
   @After
   public void tearDown() {
     super.tearDown();

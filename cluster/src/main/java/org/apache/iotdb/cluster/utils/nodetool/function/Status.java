@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,12 +18,14 @@
  */
 package org.apache.iotdb.cluster.utils.nodetool.function;
 
-import static org.apache.iotdb.cluster.utils.nodetool.Printer.msgPrintln;
-
-import io.airlift.airline.Command;
-import java.util.Map;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitorMBean;
+
+import io.airlift.airline.Command;
+
+import java.util.Map;
+
+import static org.apache.iotdb.cluster.utils.nodetool.Printer.msgPrintln;
 
 @Command(name = "status", description = "Print status of all nodes")
 public class Status extends NodeToolCmd {
@@ -31,14 +33,16 @@ public class Status extends NodeToolCmd {
   @Override
   public void execute(ClusterMonitorMBean proxy) {
     Map<Node, Boolean> statusMap = proxy.getAllNodeStatus();
-    if(statusMap == null){
+    if (statusMap == null) {
       msgPrintln(BUILDING_CLUSTER_INFO);
       return;
     }
     msgPrintln(String.format("%-30s  %10s", "Node", "Status"));
     statusMap.forEach(
-        (node, status) -> msgPrintln(String.format("%-30s->%10s", nodeToString(node),
-            (Boolean.TRUE.equals(status) ?
-            "on" : "off"))));
+        (node, status) ->
+            msgPrintln(
+                String.format(
+                    "%-30s->%10s",
+                    nodeToString(node), (Boolean.TRUE.equals(status) ? "on" : "off"))));
   }
 }

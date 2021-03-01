@@ -19,14 +19,6 @@
 
 package org.apache.iotdb.cluster.query;
 
-import static org.junit.Assert.assertFalse;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -51,8 +43,18 @@ import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+
+import static org.junit.Assert.assertFalse;
 
 public class ClusterQueryRouterTest extends BaseQueryTest {
 
@@ -83,18 +85,30 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
 
   @Test
   public void testAggregation()
-      throws StorageEngineException, IOException, QueryProcessException, QueryFilterOptimizationException, IllegalPathException {
+      throws StorageEngineException, IOException, QueryProcessException,
+          QueryFilterOptimizationException, IllegalPathException {
     AggregationPlan plan = new AggregationPlan();
-    List<PartialPath> paths = Arrays.asList(
-        new PartialPath(TestUtils.getTestSeries(0, 0)),
-        new PartialPath(TestUtils.getTestSeries(0, 1)),
-        new PartialPath(TestUtils.getTestSeries(0, 2)),
-        new PartialPath(TestUtils.getTestSeries(0, 3)),
-        new PartialPath(TestUtils.getTestSeries(0, 4)));
-    List<TSDataType> dataTypes = Arrays.asList(TSDataType.DOUBLE, TSDataType.DOUBLE,
-        TSDataType.DOUBLE, TSDataType.DOUBLE, TSDataType.DOUBLE);
-    List<String> aggregations = Arrays.asList(SQLConstant.MIN_TIME, SQLConstant.MAX_VALUE,
-        SQLConstant.AVG, SQLConstant.COUNT, SQLConstant.SUM);
+    List<PartialPath> paths =
+        Arrays.asList(
+            new PartialPath(TestUtils.getTestSeries(0, 0)),
+            new PartialPath(TestUtils.getTestSeries(0, 1)),
+            new PartialPath(TestUtils.getTestSeries(0, 2)),
+            new PartialPath(TestUtils.getTestSeries(0, 3)),
+            new PartialPath(TestUtils.getTestSeries(0, 4)));
+    List<TSDataType> dataTypes =
+        Arrays.asList(
+            TSDataType.DOUBLE,
+            TSDataType.DOUBLE,
+            TSDataType.DOUBLE,
+            TSDataType.DOUBLE,
+            TSDataType.DOUBLE);
+    List<String> aggregations =
+        Arrays.asList(
+            SQLConstant.MIN_TIME,
+            SQLConstant.MAX_VALUE,
+            SQLConstant.AVG,
+            SQLConstant.COUNT,
+            SQLConstant.SUM);
     plan.setPaths(paths);
     plan.setDeduplicatedPaths(paths);
     plan.setDataTypes(dataTypes);
@@ -106,7 +120,7 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
     try {
       QueryDataSet queryDataSet = clusterQueryRouter.aggregate(plan, context);
-      checkDoubleDataset(queryDataSet, new Object[]{0.0, 19.0, 9.5, 20.0, 190.0});
+      checkDoubleDataset(queryDataSet, new Object[] {0.0, 19.0, 9.5, 20.0, 190.0});
       assertFalse(queryDataSet.hasNext());
     } finally {
       QueryResourceManager.getInstance().endQuery(context.getQueryId());
@@ -117,14 +131,15 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
   public void testPreviousFill()
       throws QueryProcessException, StorageEngineException, IOException, IllegalPathException {
     FillQueryPlan plan = new FillQueryPlan();
-    plan.setDeduplicatedPaths(Collections.singletonList(
-        new PartialPath(TestUtils.getTestSeries(0, 10))));
+    plan.setDeduplicatedPaths(
+        Collections.singletonList(new PartialPath(TestUtils.getTestSeries(0, 10))));
     plan.setDeduplicatedDataTypes(Collections.singletonList(TSDataType.DOUBLE));
     plan.setPaths(plan.getDeduplicatedPaths());
     plan.setDataTypes(plan.getDeduplicatedDataTypes());
     long defaultFillInterval = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
-    Map<TSDataType, IFill> tsDataTypeIFillMap = Collections.singletonMap(TSDataType.DOUBLE,
-        new PreviousFill(TSDataType.DOUBLE, 0, defaultFillInterval));
+    Map<TSDataType, IFill> tsDataTypeIFillMap =
+        Collections.singletonMap(
+            TSDataType.DOUBLE, new PreviousFill(TSDataType.DOUBLE, 0, defaultFillInterval));
     plan.setFillType(tsDataTypeIFillMap);
     QueryContext context =
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
@@ -132,13 +147,14 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
     try {
       QueryDataSet queryDataSet;
       long[] queryTimes = new long[] {-1, 0, 5, 10, 20};
-      Object[][] answers = new Object[][]{
-          new Object[]{null},
-          new Object[]{0.0},
-          new Object[]{0.0},
-          new Object[]{10.0},
-          new Object[]{10.0},
-      };
+      Object[][] answers =
+          new Object[][] {
+            new Object[] {null},
+            new Object[] {0.0},
+            new Object[] {0.0},
+            new Object[] {10.0},
+            new Object[] {10.0},
+          };
       for (int i = 0; i < queryTimes.length; i++) {
         plan.setQueryTime(queryTimes[i]);
         queryDataSet = clusterQueryRouter.fill(plan, context);
@@ -154,14 +170,16 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
   public void testLinearFill()
       throws QueryProcessException, StorageEngineException, IOException, IllegalPathException {
     FillQueryPlan plan = new FillQueryPlan();
-    plan.setDeduplicatedPaths(Collections.singletonList(
-        new PartialPath(TestUtils.getTestSeries(0, 10))));
+    plan.setDeduplicatedPaths(
+        Collections.singletonList(new PartialPath(TestUtils.getTestSeries(0, 10))));
     plan.setDeduplicatedDataTypes(Collections.singletonList(TSDataType.DOUBLE));
     plan.setPaths(plan.getDeduplicatedPaths());
     plan.setDataTypes(plan.getDeduplicatedDataTypes());
     long defaultFillInterval = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
-    Map<TSDataType, IFill> tsDataTypeIFillMap = Collections.singletonMap(TSDataType.DOUBLE,
-        new LinearFill(TSDataType.DOUBLE, 0, defaultFillInterval, defaultFillInterval));
+    Map<TSDataType, IFill> tsDataTypeIFillMap =
+        Collections.singletonMap(
+            TSDataType.DOUBLE,
+            new LinearFill(TSDataType.DOUBLE, 0, defaultFillInterval, defaultFillInterval));
     plan.setFillType(tsDataTypeIFillMap);
 
     QueryContext context =
@@ -170,13 +188,14 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
     try {
       QueryDataSet queryDataSet;
       long[] queryTimes = new long[] {-1, 0, 5, 10, 20};
-      Object[][] answers = new Object[][]{
-          new Object[]{null},
-          new Object[]{0.0},
-          new Object[]{5.0},
-          new Object[]{10.0},
-          new Object[]{null},
-      };
+      Object[][] answers =
+          new Object[][] {
+            new Object[] {null},
+            new Object[] {0.0},
+            new Object[] {5.0},
+            new Object[] {10.0},
+            new Object[] {null},
+          };
       for (int i = 0; i < queryTimes.length; i++) {
         plan.setQueryTime(queryTimes[i]);
         queryDataSet = clusterQueryRouter.fill(plan, context);
@@ -190,7 +209,8 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
 
   @Test
   public void testVFilterGroupBy()
-      throws IOException, StorageEngineException, QueryFilterOptimizationException, QueryProcessException, IllegalPathException {
+      throws IOException, StorageEngineException, QueryFilterOptimizationException,
+          QueryProcessException, IllegalPathException {
     QueryContext queryContext =
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
     try {
@@ -215,19 +235,22 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
       groupByPlan.setSlidingStep(5);
       groupByPlan.setInterval(5);
 
-      IExpression expression = BinaryExpression.and(
-          new SingleSeriesExpression(new PartialPath(TestUtils.getTestSeries(0, 0)), ValueFilter.gtEq(5.0)),
-          new SingleSeriesExpression(new PartialPath(TestUtils.getTestSeries(5, 0)), TimeFilter.ltEq(15))
-      );
+      IExpression expression =
+          BinaryExpression.and(
+              new SingleSeriesExpression(
+                  new PartialPath(TestUtils.getTestSeries(0, 0)), ValueFilter.gtEq(5.0)),
+              new SingleSeriesExpression(
+                  new PartialPath(TestUtils.getTestSeries(5, 0)), TimeFilter.ltEq(15)));
       groupByPlan.setExpression(expression);
       QueryDataSet queryDataSet = clusterQueryRouter.groupBy(groupByPlan, queryContext);
 
-      Object[][] answers = new Object[][] {
-          new Object[] {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
-          new Object[] {5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0},
-          new Object[] {5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0},
-          new Object[] {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0},
-      };
+      Object[][] answers =
+          new Object[][] {
+            new Object[] {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
+            new Object[] {5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0},
+            new Object[] {5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0},
+            new Object[] {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0},
+          };
       for (Object[] answer : answers) {
         checkDoubleDataset(queryDataSet, answer);
       }
@@ -239,7 +262,8 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
 
   @Test
   public void testNoVFilterGroupBy()
-      throws StorageEngineException, IOException, QueryFilterOptimizationException, QueryProcessException, IllegalPathException {
+      throws StorageEngineException, IOException, QueryFilterOptimizationException,
+          QueryProcessException, IllegalPathException {
     QueryContext queryContext =
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
     try {
@@ -266,12 +290,13 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
 
       QueryDataSet dataSet = clusterQueryRouter.groupBy(groupByPlan, queryContext);
 
-      Object[][] answers = new Object[][] {
-          new Object[] {5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0},
-          new Object[] {5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0},
-          new Object[] {5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0},
-          new Object[] {5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0},
-      };
+      Object[][] answers =
+          new Object[][] {
+            new Object[] {5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0},
+            new Object[] {5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0},
+            new Object[] {5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0},
+            new Object[] {5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0},
+          };
       for (Object[] answer : answers) {
         checkDoubleDataset(dataSet, answer);
       }

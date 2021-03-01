@@ -18,16 +18,6 @@
  */
 package org.apache.iotdb.db.integration;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
@@ -38,9 +28,21 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.concurrent.TimeUnit;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class IoTDBNewTsFileCompactionIT {
 
@@ -59,23 +61,25 @@ public class IoTDBNewTsFileCompactionIT {
     EnvironmentUtils.closeStatMonitor();
     prevSeqLevelFileNum = IoTDBDescriptor.getInstance().getConfig().getSeqFileNumInEachLevel();
     prevSeqLevelNum = IoTDBDescriptor.getInstance().getConfig().getSeqLevelNum();
-    prevMergePagePointNumber = IoTDBDescriptor.getInstance().getConfig()
-        .getMergePagePointNumberThreshold();
-    preMaxNumberOfPointsInPage = TSFileDescriptor.getInstance().getConfig()
-        .getMaxNumberOfPointsInPage();
+    prevMergePagePointNumber =
+        IoTDBDescriptor.getInstance().getConfig().getMergePagePointNumberThreshold();
+    preMaxNumberOfPointsInPage =
+        TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
     preCompactionStrategy = IoTDBDescriptor.getInstance().getConfig().getCompactionStrategy();
     storageGroupPath = new PartialPath("root.sg1");
     IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(2);
     IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(2);
     IoTDBDescriptor.getInstance().getConfig().setMergePagePointNumberThreshold(1);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(1);
-    IoTDBDescriptor.getInstance().getConfig()
+    IoTDBDescriptor.getInstance()
+        .getConfig()
         .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
 
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       statement.execute("SET STORAGE GROUP TO root.sg1");
@@ -87,27 +91,30 @@ public class IoTDBNewTsFileCompactionIT {
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(prevSeqLevelFileNum);
     IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(prevSeqLevelNum);
-    IoTDBDescriptor.getInstance().getConfig()
+    IoTDBDescriptor.getInstance()
+        .getConfig()
         .setMergePagePointNumberThreshold(prevMergePagePointNumber);
-    TSFileDescriptor.getInstance().getConfig()
+    TSFileDescriptor.getInstance()
+        .getConfig()
         .setMaxNumberOfPointsInPage(preMaxNumberOfPointsInPage);
     IoTDBDescriptor.getInstance().getConfig().setCompactionStrategy(preCompactionStrategy);
   }
 
   /**
-   * first file has only one page for each chunk and only one chunk for each time series
-   * second file has only one page for each chunk and only one chunk for each time series
+   * first file has only one page for each chunk and only one chunk for each time series second file
+   * has only one page for each chunk and only one chunk for each time series
    */
   @Test
   public void test1() throws SQLException {
     String[][] retArray = {
-        {"1", "1"},
-        {"2", "2"}
+      {"1", "1"},
+      {"2", "2"}
     };
-    int preAvgSeriesPointNumberThreshold = IoTDBDescriptor.getInstance().getConfig()
-        .getAvgSeriesPointNumberThreshold();
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    int preAvgSeriesPointNumberThreshold =
+        IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(10000);
@@ -138,26 +145,28 @@ public class IoTDBNewTsFileCompactionIT {
       e.printStackTrace();
       fail();
     } finally {
-      IoTDBDescriptor.getInstance().getConfig()
+      IoTDBDescriptor.getInstance()
+          .getConfig()
           .setAvgSeriesPointNumberThreshold(preAvgSeriesPointNumberThreshold);
     }
   }
 
   /**
-   * first file has only one page for each chunk and two chunks for each time series
-   * second file has only one page for each chunk and only one chunk for each time series
+   * first file has only one page for each chunk and two chunks for each time series second file has
+   * only one page for each chunk and only one chunk for each time series
    */
   @Test
   public void test2() throws SQLException {
     String[][] retArray = {
-        {"1", "1"},
-        {"2", "2"},
-        {"3", "3"}
+      {"1", "1"},
+      {"2", "2"},
+      {"3", "3"}
     };
-    int preAvgSeriesPointNumberThreshold = IoTDBDescriptor.getInstance().getConfig()
-        .getAvgSeriesPointNumberThreshold();
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    int preAvgSeriesPointNumberThreshold =
+        IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(1);
@@ -190,26 +199,28 @@ public class IoTDBNewTsFileCompactionIT {
       e.printStackTrace();
       fail();
     } finally {
-      IoTDBDescriptor.getInstance().getConfig()
+      IoTDBDescriptor.getInstance()
+          .getConfig()
           .setAvgSeriesPointNumberThreshold(preAvgSeriesPointNumberThreshold);
     }
   }
 
   /**
-   * first file has two pages for each chunk and only one chunk for each time series
-   * second file has only one page for each chunk and only one chunk for each time series
+   * first file has two pages for each chunk and only one chunk for each time series second file has
+   * only one page for each chunk and only one chunk for each time series
    */
   @Test
   public void test3() throws SQLException {
     String[][] retArray = {
-        {"1", "1"},
-        {"2", "2"},
-        {"3", "3"},
+      {"1", "1"},
+      {"2", "2"},
+      {"3", "3"},
     };
-    int preAvgSeriesPointNumberThreshold = IoTDBDescriptor.getInstance().getConfig()
-        .getAvgSeriesPointNumberThreshold();
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    int preAvgSeriesPointNumberThreshold =
+        IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(10000);
@@ -241,28 +252,30 @@ public class IoTDBNewTsFileCompactionIT {
       e.printStackTrace();
       fail();
     } finally {
-      IoTDBDescriptor.getInstance().getConfig()
+      IoTDBDescriptor.getInstance()
+          .getConfig()
           .setAvgSeriesPointNumberThreshold(preAvgSeriesPointNumberThreshold);
     }
   }
 
   /**
-   * first file has two pages for each chunk and two chunks for each time series
-   * second file has only one page for each chunk and only one chunk for each time series
+   * first file has two pages for each chunk and two chunks for each time series second file has
+   * only one page for each chunk and only one chunk for each time series
    */
   @Test
   public void test4() throws SQLException {
     String[][] retArray = {
-        {"1", "1"},
-        {"2", "2"},
-        {"3", "3"},
-        {"4", "4"},
-        {"5", "5"},
+      {"1", "1"},
+      {"2", "2"},
+      {"3", "3"},
+      {"4", "4"},
+      {"5", "5"},
     };
-    int preAvgSeriesPointNumberThreshold = IoTDBDescriptor.getInstance().getConfig()
-        .getAvgSeriesPointNumberThreshold();
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    int preAvgSeriesPointNumberThreshold =
+        IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(2);
@@ -298,26 +311,28 @@ public class IoTDBNewTsFileCompactionIT {
       e.printStackTrace();
       fail();
     } finally {
-      IoTDBDescriptor.getInstance().getConfig()
+      IoTDBDescriptor.getInstance()
+          .getConfig()
           .setAvgSeriesPointNumberThreshold(preAvgSeriesPointNumberThreshold);
     }
   }
 
   /**
-   * first file has only one page for each chunk and only one chunk for each time series
-   * second file has two pages for each chunk and only one chunk for each time series
+   * first file has only one page for each chunk and only one chunk for each time series second file
+   * has two pages for each chunk and only one chunk for each time series
    */
   @Test
   public void test5() throws SQLException {
     String[][] retArray = {
-        {"1", "1"},
-        {"2", "2"},
-        {"3", "3"},
+      {"1", "1"},
+      {"2", "2"},
+      {"3", "3"},
     };
-    int preAvgSeriesPointNumberThreshold = IoTDBDescriptor.getInstance().getConfig()
-        .getAvgSeriesPointNumberThreshold();
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    int preAvgSeriesPointNumberThreshold =
+        IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(10000);
@@ -350,27 +365,29 @@ public class IoTDBNewTsFileCompactionIT {
       e.printStackTrace();
       fail();
     } finally {
-      IoTDBDescriptor.getInstance().getConfig()
+      IoTDBDescriptor.getInstance()
+          .getConfig()
           .setAvgSeriesPointNumberThreshold(preAvgSeriesPointNumberThreshold);
     }
   }
 
   /**
-   * first file has only one page for each chunk and two chunks for each time series
-   * second file has two pages for each chunk and only one chunk for each time series
+   * first file has only one page for each chunk and two chunks for each time series second file has
+   * two pages for each chunk and only one chunk for each time series
    */
   @Test
   public void test6() throws SQLException {
     String[][] retArray = {
-        {"1", "1"},
-        {"2", "2"},
-        {"3", "3"},
-        {"4", "4"},
+      {"1", "1"},
+      {"2", "2"},
+      {"3", "3"},
+      {"4", "4"},
     };
-    int preAvgSeriesPointNumberThreshold = IoTDBDescriptor.getInstance().getConfig()
-        .getAvgSeriesPointNumberThreshold();
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    int preAvgSeriesPointNumberThreshold =
+        IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(1);
@@ -407,27 +424,29 @@ public class IoTDBNewTsFileCompactionIT {
       e.printStackTrace();
       fail();
     } finally {
-      IoTDBDescriptor.getInstance().getConfig()
+      IoTDBDescriptor.getInstance()
+          .getConfig()
           .setAvgSeriesPointNumberThreshold(preAvgSeriesPointNumberThreshold);
     }
   }
 
   /**
-   * first file has two pages for each chunk and only one chunk for each time series
-   * second file has two pages for each chunk and only one chunk for each time series
+   * first file has two pages for each chunk and only one chunk for each time series second file has
+   * two pages for each chunk and only one chunk for each time series
    */
   @Test
   public void test7() throws SQLException {
     String[][] retArray = {
-        {"1", "1"},
-        {"2", "2"},
-        {"3", "3"},
-        {"4", "4"}
+      {"1", "1"},
+      {"2", "2"},
+      {"3", "3"},
+      {"4", "4"}
     };
-    int preAvgSeriesPointNumberThreshold = IoTDBDescriptor.getInstance().getConfig()
-        .getAvgSeriesPointNumberThreshold();
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    int preAvgSeriesPointNumberThreshold =
+        IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(10000);
@@ -460,29 +479,31 @@ public class IoTDBNewTsFileCompactionIT {
       e.printStackTrace();
       fail();
     } finally {
-      IoTDBDescriptor.getInstance().getConfig()
+      IoTDBDescriptor.getInstance()
+          .getConfig()
           .setAvgSeriesPointNumberThreshold(preAvgSeriesPointNumberThreshold);
     }
   }
 
   /**
-   * first file has two pages for each chunk and two chunks for each time series
-   * second file has two pages for each chunk and only one chunk for each time series
+   * first file has two pages for each chunk and two chunks for each time series second file has two
+   * pages for each chunk and only one chunk for each time series
    */
   @Test
   public void test8() throws SQLException {
     String[][] retArray = {
-        {"1", "1"},
-        {"2", "2"},
-        {"3", "3"},
-        {"4", "4"},
-        {"5", "5"},
-        {"6", "6"}
+      {"1", "1"},
+      {"2", "2"},
+      {"3", "3"},
+      {"4", "4"},
+      {"5", "5"},
+      {"6", "6"}
     };
-    int preAvgSeriesPointNumberThreshold = IoTDBDescriptor.getInstance().getConfig()
-        .getAvgSeriesPointNumberThreshold();
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    int preAvgSeriesPointNumberThreshold =
+        IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(2);
@@ -520,26 +541,28 @@ public class IoTDBNewTsFileCompactionIT {
       e.printStackTrace();
       fail();
     } finally {
-      IoTDBDescriptor.getInstance().getConfig()
+      IoTDBDescriptor.getInstance()
+          .getConfig()
           .setAvgSeriesPointNumberThreshold(preAvgSeriesPointNumberThreshold);
     }
   }
 
   /**
-   * first file has only one page for each chunk and only one chunk for each time series
-   * second file has only one page for each chunk and two chunks for each time series
+   * first file has only one page for each chunk and only one chunk for each time series second file
+   * has only one page for each chunk and two chunks for each time series
    */
   @Test
   public void test9() throws SQLException {
     String[][] retArray = {
-        {"1", "1"},
-        {"2", "2"},
-        {"3", "3"},
+      {"1", "1"},
+      {"2", "2"},
+      {"3", "3"},
     };
-    int preAvgSeriesPointNumberThreshold = IoTDBDescriptor.getInstance().getConfig()
-        .getAvgSeriesPointNumberThreshold();
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    int preAvgSeriesPointNumberThreshold =
+        IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(10000);
@@ -573,27 +596,29 @@ public class IoTDBNewTsFileCompactionIT {
       e.printStackTrace();
       fail();
     } finally {
-      IoTDBDescriptor.getInstance().getConfig()
+      IoTDBDescriptor.getInstance()
+          .getConfig()
           .setAvgSeriesPointNumberThreshold(preAvgSeriesPointNumberThreshold);
     }
   }
 
   /**
-   * first file has only one page for each chunk and two chunks for each time series
-   * second file has only one page for each chunk and two chunks for each time series
+   * first file has only one page for each chunk and two chunks for each time series second file has
+   * only one page for each chunk and two chunks for each time series
    */
   @Test
   public void test10() throws SQLException {
     String[][] retArray = {
-        {"1", "1"},
-        {"2", "2"},
-        {"3", "3"},
-        {"4", "4"}
+      {"1", "1"},
+      {"2", "2"},
+      {"3", "3"},
+      {"4", "4"}
     };
-    int preAvgSeriesPointNumberThreshold = IoTDBDescriptor.getInstance().getConfig()
-        .getAvgSeriesPointNumberThreshold();
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    int preAvgSeriesPointNumberThreshold =
+        IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(1);
@@ -625,7 +650,8 @@ public class IoTDBNewTsFileCompactionIT {
       }
       assertEquals(retArray.length, cnt);
 
-      try (ResultSet resultSet = statement.executeQuery("SELECT count(s1) FROM root.sg1.d1 where time < 4")) {
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT count(s1) FROM root.sg1.d1 where time < 4")) {
         assertTrue(resultSet.next());
         assertEquals(3L, resultSet.getLong("count(root.sg1.d1.s1)"));
       }
@@ -633,27 +659,29 @@ public class IoTDBNewTsFileCompactionIT {
       e.printStackTrace();
       fail();
     } finally {
-      IoTDBDescriptor.getInstance().getConfig()
+      IoTDBDescriptor.getInstance()
+          .getConfig()
           .setAvgSeriesPointNumberThreshold(preAvgSeriesPointNumberThreshold);
     }
   }
 
   /**
-   * first file has two pages for each chunk and only one chunk for each time series
-   * second file has only one page for each chunk and two chunks for each time series
+   * first file has two pages for each chunk and only one chunk for each time series second file has
+   * only one page for each chunk and two chunks for each time series
    */
   @Test
   public void test11() throws SQLException {
     String[][] retArray = {
-        {"1", "1"},
-        {"2", "2"},
-        {"3", "3"},
-        {"4", "4"}
+      {"1", "1"},
+      {"2", "2"},
+      {"3", "3"},
+      {"4", "4"}
     };
-    int preAvgSeriesPointNumberThreshold = IoTDBDescriptor.getInstance().getConfig()
-        .getAvgSeriesPointNumberThreshold();
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    int preAvgSeriesPointNumberThreshold =
+        IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(10000);
@@ -687,29 +715,31 @@ public class IoTDBNewTsFileCompactionIT {
       e.printStackTrace();
       fail();
     } finally {
-      IoTDBDescriptor.getInstance().getConfig()
+      IoTDBDescriptor.getInstance()
+          .getConfig()
           .setAvgSeriesPointNumberThreshold(preAvgSeriesPointNumberThreshold);
     }
   }
 
   /**
-   * first file has two pages for each chunk and two chunks for each time series
-   * second file has only one page for each chunk and two chunks for each time series
+   * first file has two pages for each chunk and two chunks for each time series second file has
+   * only one page for each chunk and two chunks for each time series
    */
   @Test
   public void test12() throws SQLException {
     String[][] retArray = {
-        {"1", "1"},
-        {"2", "2"},
-        {"3", "3"},
-        {"4", "4"},
-        {"5", "5"},
-        {"6", "6"}
+      {"1", "1"},
+      {"2", "2"},
+      {"3", "3"},
+      {"4", "4"},
+      {"5", "5"},
+      {"6", "6"}
     };
-    int preAvgSeriesPointNumberThreshold = IoTDBDescriptor.getInstance().getConfig()
-        .getAvgSeriesPointNumberThreshold();
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    int preAvgSeriesPointNumberThreshold =
+        IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(2);
@@ -747,28 +777,30 @@ public class IoTDBNewTsFileCompactionIT {
       e.printStackTrace();
       fail();
     } finally {
-      IoTDBDescriptor.getInstance().getConfig()
+      IoTDBDescriptor.getInstance()
+          .getConfig()
           .setAvgSeriesPointNumberThreshold(preAvgSeriesPointNumberThreshold);
     }
   }
 
   /**
-   * first file has only one page for each chunk and only one chunk for each time series
-   * second file has two pages for each chunk and two chunks for each time series
+   * first file has only one page for each chunk and only one chunk for each time series second file
+   * has two pages for each chunk and two chunks for each time series
    */
   @Test
   public void test13() throws SQLException {
     String[][] retArray = {
-        {"1", "1"},
-        {"2", "2"},
-        {"3", "3"},
-        {"4", "4"},
-        {"5", "5"}
+      {"1", "1"},
+      {"2", "2"},
+      {"3", "3"},
+      {"4", "4"},
+      {"5", "5"}
     };
-    int preAvgSeriesPointNumberThreshold = IoTDBDescriptor.getInstance().getConfig()
-        .getAvgSeriesPointNumberThreshold();
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    int preAvgSeriesPointNumberThreshold =
+        IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(10000);
@@ -786,7 +818,6 @@ public class IoTDBNewTsFileCompactionIT {
       statement.execute("INSERT INTO root.sg1.d1(time,s1) values(4, 4)");
       statement.execute("INSERT INTO root.sg1.d1(time,s1) values(5, 5)");
       statement.execute("FLUSH");
-
 
       assertTrue(waitForMergeFinish());
 
@@ -806,29 +837,31 @@ public class IoTDBNewTsFileCompactionIT {
       e.printStackTrace();
       fail();
     } finally {
-      IoTDBDescriptor.getInstance().getConfig()
+      IoTDBDescriptor.getInstance()
+          .getConfig()
           .setAvgSeriesPointNumberThreshold(preAvgSeriesPointNumberThreshold);
     }
   }
 
   /**
-   * first file has only one page for each chunk and two chunks for each time series
-   * second file has two pages for each chunk and two chunks for each time series
+   * first file has only one page for each chunk and two chunks for each time series second file has
+   * two pages for each chunk and two chunks for each time series
    */
   @Test
   public void test14() throws SQLException {
     String[][] retArray = {
-        {"1", "1"},
-        {"2", "2"},
-        {"3", "3"},
-        {"4", "4"},
-        {"5", "5"},
-        {"6", "6"}
+      {"1", "1"},
+      {"2", "2"},
+      {"3", "3"},
+      {"4", "4"},
+      {"5", "5"},
+      {"6", "6"}
     };
-    int preAvgSeriesPointNumberThreshold = IoTDBDescriptor.getInstance().getConfig()
-        .getAvgSeriesPointNumberThreshold();
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    int preAvgSeriesPointNumberThreshold =
+        IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(1);
@@ -867,29 +900,31 @@ public class IoTDBNewTsFileCompactionIT {
       e.printStackTrace();
       fail();
     } finally {
-      IoTDBDescriptor.getInstance().getConfig()
+      IoTDBDescriptor.getInstance()
+          .getConfig()
           .setAvgSeriesPointNumberThreshold(preAvgSeriesPointNumberThreshold);
     }
   }
 
   /**
-   * first file has two pages for each chunk and only one chunk for each time series
-   * second file has two pages for each chunk and two chunks for each time series
+   * first file has two pages for each chunk and only one chunk for each time series second file has
+   * two pages for each chunk and two chunks for each time series
    */
   @Test
   public void test15() throws SQLException {
     String[][] retArray = {
-        {"1", "1"},
-        {"2", "2"},
-        {"3", "3"},
-        {"4", "4"},
-        {"5", "5"},
-        {"6", "6"}
+      {"1", "1"},
+      {"2", "2"},
+      {"3", "3"},
+      {"4", "4"},
+      {"5", "5"},
+      {"6", "6"}
     };
-    int preAvgSeriesPointNumberThreshold = IoTDBDescriptor.getInstance().getConfig()
-        .getAvgSeriesPointNumberThreshold();
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    int preAvgSeriesPointNumberThreshold =
+        IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(10000);
@@ -928,31 +963,33 @@ public class IoTDBNewTsFileCompactionIT {
       e.printStackTrace();
       fail();
     } finally {
-      IoTDBDescriptor.getInstance().getConfig()
+      IoTDBDescriptor.getInstance()
+          .getConfig()
           .setAvgSeriesPointNumberThreshold(preAvgSeriesPointNumberThreshold);
     }
   }
 
   /**
-   * first file has two pages for each chunk and two chunks for each time series
-   * second file has two pages for each chunk and two chunks for each time series
+   * first file has two pages for each chunk and two chunks for each time series second file has two
+   * pages for each chunk and two chunks for each time series
    */
   @Test
   public void test16() throws SQLException {
     String[][] retArray = {
-        {"1", "1"},
-        {"2", "2"},
-        {"3", "3"},
-        {"4", "4"},
-        {"5", "5"},
-        {"6", "6"},
-        {"7", "7"},
-        {"8", "8"}
+      {"1", "1"},
+      {"2", "2"},
+      {"3", "3"},
+      {"4", "4"},
+      {"5", "5"},
+      {"6", "6"},
+      {"7", "7"},
+      {"8", "8"}
     };
-    int preAvgSeriesPointNumberThreshold = IoTDBDescriptor.getInstance().getConfig()
-        .getAvgSeriesPointNumberThreshold();
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    int preAvgSeriesPointNumberThreshold =
+        IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(2);
@@ -992,21 +1029,18 @@ public class IoTDBNewTsFileCompactionIT {
       e.printStackTrace();
       fail();
     } finally {
-      IoTDBDescriptor.getInstance().getConfig()
+      IoTDBDescriptor.getInstance()
+          .getConfig()
           .setAvgSeriesPointNumberThreshold(preAvgSeriesPointNumberThreshold);
     }
   }
 
-
-  /**
-   * wait until merge is finished
-   */
-  private boolean waitForMergeFinish()
-      throws StorageEngineException, InterruptedException {
-    StorageGroupProcessor storageGroupProcessor = StorageEngine.getInstance()
-        .getProcessor(storageGroupPath);
-    LevelCompactionTsFileManagement tsFileManagement = (LevelCompactionTsFileManagement) storageGroupProcessor
-        .getTsFileManagement();
+  /** wait until merge is finished */
+  private boolean waitForMergeFinish() throws StorageEngineException, InterruptedException {
+    StorageGroupProcessor storageGroupProcessor =
+        StorageEngine.getInstance().getProcessor(storageGroupPath);
+    LevelCompactionTsFileManagement tsFileManagement =
+        (LevelCompactionTsFileManagement) storageGroupProcessor.getTsFileManagement();
 
     long startTime = System.nanoTime();
     // get the size of level 1's tsfile list to judge whether merge is finished

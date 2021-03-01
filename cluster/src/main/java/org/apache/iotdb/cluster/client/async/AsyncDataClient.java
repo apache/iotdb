@@ -19,13 +19,12 @@
 
 package org.apache.iotdb.cluster.client.async;
 
-import java.io.IOException;
-import java.util.Date;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService.AsyncClient;
 import org.apache.iotdb.cluster.server.RaftServer;
+
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.async.TAsyncMethodCall;
 import org.apache.thrift.protocol.TProtocolFactory;
@@ -33,6 +32,9 @@ import org.apache.thrift.transport.TNonblockingSocket;
 import org.apache.thrift.transport.TNonblockingTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.Date;
 
 /**
  * Notice: Because a client will be returned to a pool immediately after a successful request, you
@@ -47,17 +49,25 @@ public class AsyncDataClient extends AsyncClient {
   Node node;
   AsyncClientPool pool;
 
-  public AsyncDataClient(TProtocolFactory protocolFactory,
+  public AsyncDataClient(
+      TProtocolFactory protocolFactory,
       TAsyncClientManager clientManager,
       TNonblockingTransport transport) {
     super(protocolFactory, clientManager, transport);
   }
 
-  public AsyncDataClient(TProtocolFactory protocolFactory,
-      TAsyncClientManager clientManager, Node node, AsyncClientPool pool) throws IOException {
+  public AsyncDataClient(
+      TProtocolFactory protocolFactory,
+      TAsyncClientManager clientManager,
+      Node node,
+      AsyncClientPool pool)
+      throws IOException {
     // the difference of the two clients lies in the port
-    super(protocolFactory, clientManager, new TNonblockingSocket(node.getIp(), node.getDataPort()
-        , RaftServer.getConnectionTimeoutInMS()));
+    super(
+        protocolFactory,
+        clientManager,
+        new TNonblockingSocket(
+            node.getIp(), node.getDataPort(), RaftServer.getConnectionTimeoutInMS()));
     this.node = node;
     this.pool = pool;
   }
@@ -70,7 +80,6 @@ public class AsyncDataClient extends AsyncClient {
       pool.putClient(node, this);
       pool.onComplete(node);
     }
-
   }
 
   @SuppressWarnings("squid:S1135")
@@ -79,7 +88,7 @@ public class AsyncDataClient extends AsyncClient {
     super.onError(e);
     if (pool != null) {
       pool.recreateClient(node);
-      //TODO: if e instance of network failure
+      // TODO: if e instance of network failure
       pool.onError(node);
     }
   }
@@ -128,9 +137,7 @@ public class AsyncDataClient extends AsyncClient {
 
   @Override
   public String toString() {
-    return "DataClient{" +
-        "node=" + node +
-        '}';
+    return "DataClient{" + "node=" + node + '}';
   }
 
   public Node getNode() {
@@ -139,7 +146,10 @@ public class AsyncDataClient extends AsyncClient {
 
   public boolean isReady() {
     if (___currentMethod != null) {
-      logger.warn("Client {} is running {} and will timeout at {}", hashCode(), ___currentMethod,
+      logger.warn(
+          "Client {} is running {} and will timeout at {}",
+          hashCode(),
+          ___currentMethod,
           new Date(___currentMethod.getTimeoutTimestamp()));
     }
     return ___currentMethod == null && !hasError();

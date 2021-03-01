@@ -18,13 +18,6 @@
  */
 package org.apache.iotdb.spark.tsfile.qp.optimizer;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import org.apache.iotdb.spark.tsfile.qp.common.BasicOperator;
 import org.apache.iotdb.spark.tsfile.qp.common.FilterOperator;
 import org.apache.iotdb.spark.tsfile.qp.common.SQLConstant;
@@ -33,6 +26,14 @@ import org.apache.iotdb.spark.tsfile.qp.common.TSQueryPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class PhysicalOptimizer {
 
@@ -46,8 +47,9 @@ public class PhysicalOptimizer {
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public List<TSQueryPlan> optimize(SingleQuery singleQuery, List<String> paths,
-      TsFileSequenceReader in, Long start, Long end) throws IOException {
+  public List<TSQueryPlan> optimize(
+      SingleQuery singleQuery, List<String> paths, TsFileSequenceReader in, Long start, Long end)
+      throws IOException {
 
     Map<String, TSDataType> allMeasurementsInFile = in.getAllMeasurements();
 
@@ -76,14 +78,18 @@ public class PhysicalOptimizer {
       flag = true;
       Map<String, Set<String>> selectColumns = mergeColumns(singleQuery.getColumnFilterOperator());
       if (!flag) {
-        //e.g. where column1 = 'd1' and column2 = 'd2', should not query
+        // e.g. where column1 = 'd1' and column2 = 'd2', should not query
         return new ArrayList<>();
       }
 
       // if select deltaObject, then match with measurement
       if (!selectColumns.isEmpty()) {
         List<String> actualDeltaObjects = in.getDeviceNameInRange(start, end);
-        combination(actualDeltaObjects, selectColumns, selectColumns.keySet().toArray(), 0,
+        combination(
+            actualDeltaObjects,
+            selectColumns,
+            selectColumns.keySet().toArray(),
+            0,
             new String[selectColumns.size()]);
       } else {
         validDeltaObjects.addAll(in.getDeviceNameInRange(start, end));
@@ -118,19 +124,22 @@ public class PhysicalOptimizer {
     return tsFileQueries;
   }
 
-
   /**
    * calculate combinations of selected columns and add valid deltaObjects to validDeltaObjects
    *
    * @param actualDeltaObjects deltaObjects from file
-   * @param columnValues       e.g. (device:{d1,d2}) (board:{c1,c2}) or (delta_object:{d1,d2})
-   * @param columns            e.g. device, board
-   * @param beginIndex         current recursion list index
-   * @param values             combination of column values
+   * @param columnValues e.g. (device:{d1,d2}) (board:{c1,c2}) or (delta_object:{d1,d2})
+   * @param columns e.g. device, board
+   * @param beginIndex current recursion list index
+   * @param values combination of column values
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private void combination(List<String> actualDeltaObjects, Map<String, Set<String>> columnValues,
-      Object[] columns, int beginIndex, String[] values) {
+  private void combination(
+      List<String> actualDeltaObjects,
+      Map<String, Set<String>> columnValues,
+      Object[] columns,
+      int beginIndex,
+      String[] values) {
     // which should in column names -> now just device_name
     // use delta_object column
     if (columnValues.containsKey(SQLConstant.RESERVED_DELTA_OBJECT)) {
@@ -146,8 +155,8 @@ public class PhysicalOptimizer {
     if (beginIndex == columns.length) {
       for (String deltaObject : actualDeltaObjects) {
         boolean valid = true;
-        //if deltaObject is root.column1_value.column2_value then
-        //actualValues is [root, column1_value, column2_value]
+        // if deltaObject is root.column1_value.column2_value then
+        // actualValues is [root, column1_value, column2_value]
         String[] actualValues = deltaObject.split(SQLConstant.REGEX_PATH_SEPARATOR);
         for (int i = 0; i < columns.length; i++) {
           int columnIndex = columnNames.indexOf(columns[i].toString());
@@ -215,7 +224,7 @@ public class PhysicalOptimizer {
       switch (columnFilterOperator.getTokenIntType()) {
         case SQLConstant.KW_AND:
           ret.right.retainAll(temp.right);
-          //example: "where device = d1 and device = d2" should not query data
+          // example: "where device = d1 and device = d2" should not query data
           if (ret.right.isEmpty()) {
             flag = false;
           }

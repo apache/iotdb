@@ -21,8 +21,8 @@ package org.apache.iotdb.db.engine.memtable;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 
 public class MemTableTestUtils {
 
@@ -34,23 +34,32 @@ public class MemTableTestUtils {
   private static Schema schema = new Schema();
 
   static {
-    schema
-        .registerTimeseries(new Path(deviceId0, measurementId0), 
-            new MeasurementSchema(measurementId0, dataType0, TSEncoding.PLAIN));
+    schema.registerTimeseries(
+        new Path(deviceId0, measurementId0),
+        new MeasurementSchema(measurementId0, dataType0, TSEncoding.PLAIN));
   }
 
-  public static void produceData(IMemTable iMemTable, long startTime, long endTime, String deviceId,
-      String measurementId, TSDataType dataType) {
+  public static void produceData(
+      IMemTable iMemTable,
+      long startTime,
+      long endTime,
+      String deviceId,
+      String measurementId,
+      TSDataType dataType) {
     if (startTime > endTime) {
       throw new RuntimeException(String.format("start time %d > end time %d", startTime, endTime));
     }
     for (long l = startTime; l <= endTime; l++) {
-      iMemTable.write(deviceId, measurementId, new MeasurementSchema(measurementId, dataType, TSEncoding.PLAIN), l, (int)l);
+      iMemTable.write(
+          deviceId,
+          measurementId,
+          new MeasurementSchema(measurementId, dataType, TSEncoding.PLAIN),
+          l,
+          (int) l);
     }
   }
 
   public static Schema getSchema() {
     return schema;
   }
-
 }

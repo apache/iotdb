@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.query.reader.chunk.metadata;
 
-import java.util.List;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -28,6 +27,8 @@ import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
+import java.util.List;
+
 public class MemChunkMetadataLoader implements IChunkMetadataLoader {
 
   private TsFileResource resource;
@@ -35,7 +36,8 @@ public class MemChunkMetadataLoader implements IChunkMetadataLoader {
   private QueryContext context;
   private Filter timeFilter;
 
-  public MemChunkMetadataLoader(TsFileResource resource, PartialPath seriesPath, QueryContext context, Filter timeFilter) {
+  public MemChunkMetadataLoader(
+      TsFileResource resource, PartialPath seriesPath, QueryContext context, Filter timeFilter) {
     this.resource = resource;
     this.seriesPath = seriesPath;
     this.context = context;
@@ -59,9 +61,12 @@ public class MemChunkMetadataLoader implements IChunkMetadataLoader {
     /*
      * remove not satisfied ChunkMetaData
      */
-    chunkMetadataList.removeIf(chunkMetaData -> (timeFilter != null && !timeFilter
-            .satisfyStartEndTime(chunkMetaData.getStartTime(), chunkMetaData.getEndTime()))
-            || chunkMetaData.getStartTime() > chunkMetaData.getEndTime());
+    chunkMetadataList.removeIf(
+        chunkMetaData ->
+            (timeFilter != null
+                    && !timeFilter.satisfyStartEndTime(
+                        chunkMetaData.getStartTime(), chunkMetaData.getEndTime()))
+                || chunkMetaData.getStartTime() > chunkMetaData.getEndTime());
 
     for (ChunkMetadata metadata : chunkMetadataList) {
       metadata.setVersion(resource.getVersion());

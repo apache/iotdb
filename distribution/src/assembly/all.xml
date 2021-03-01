@@ -20,23 +20,26 @@
 
 -->
 <assembly>
-    <id>bin</id>
+    <id>all-bin</id>
     <formats>
         <format>dir</format>
         <format>zip</format>
     </formats>
-    <includeBaseDirectory>true</includeBaseDirectory>
+    <baseDirectory>apache-iotdb-${project.version}-all-bin</baseDirectory>
     <dependencySets>
         <dependencySet>
             <includes>
-                <include>*:zip:*</include>
+                <include>*:iotdb-server:zip:*</include>
+                <include>*:iotdb-cli:zip:*</include>
+                <include>*:cluster:zip:*</include>
             </includes>
             <outputDirectory>${file.separator}</outputDirectory>
+            <outputFileNameMapping>${artifact.artifactId}.${artifact.extension}</outputFileNameMapping>
             <unpack>true</unpack>
         </dependencySet>
         <dependencySet>
             <includes>
-                <include>*:iotdb-grafana:*</include>
+                <include>*:iotdb-grafana:war:*</include>
             </includes>
             <outputDirectory>tools/grafana/</outputDirectory>
             <outputFileNameMapping>${artifact.artifactId}.${artifact.extension}</outputFileNameMapping>
@@ -44,6 +47,10 @@
         </dependencySet>
     </dependencySets>
     <fileSets>
+        <!--        <fileSet>-->
+        <!--            <outputDirectory>conf</outputDirectory>-->
+        <!--            <directory>${maven.multiModuleProjectDirectory}/server/src/assembly/resources/conf</directory>-->
+        <!--        </fileSet>-->
         <fileSet>
             <outputDirectory>sbin</outputDirectory>
             <directory>${maven.multiModuleProjectDirectory}/server/src/assembly/resources/sbin</directory>
@@ -60,8 +67,18 @@
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/licenses</directory>
-            <outputDirectory>licenses</outputDirectory>
+            <outputDirectory>tools</outputDirectory>
+            <directory>${maven.multiModuleProjectDirectory}/cli/src/assembly/resources/tools</directory>
+            <fileMode>0755</fileMode>
+        </fileSet>
+        <!--        <fileSet>-->
+        <!--            <outputDirectory>conf</outputDirectory>-->
+        <!--            <directory>${maven.multiModuleProjectDirectory}/cluster/src/assembly/resources/conf</directory>-->
+        <!--        </fileSet>-->
+        <fileSet>
+            <outputDirectory>sbin</outputDirectory>
+            <directory>${maven.multiModuleProjectDirectory}/cluster/src/assembly/resources/sbin</directory>
+            <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>
             <directory>${maven.multiModuleProjectDirectory}/docs</directory>
@@ -70,30 +87,16 @@
     </fileSets>
     <files>
         <file>
+            <source>${maven.multiModuleProjectDirectory}/grafana/src/main/resources/application.properties</source>
+            <destName>tools/grafana/application.properties</destName>
+        </file>
+        <file>
             <source>${maven.multiModuleProjectDirectory}/server/src/assembly/resources/conf/iotdb-env.sh</source>
             <destName>conf/iotdb-env.sh</destName>
             <fileMode>0755</fileMode>
         </file>
-        <file>
-            <source>${maven.multiModuleProjectDirectory}/README.md</source>
-        </file>
-        <file>
-            <source>${maven.multiModuleProjectDirectory}/README_ZH.md</source>
-        </file>
-        <file>
-            <source>${maven.multiModuleProjectDirectory}/LICENSE-binary</source>
-            <destName>LICENSE</destName>
-        </file>
-        <file>
-            <source>${maven.multiModuleProjectDirectory}/NOTICE-binary</source>
-            <destName>NOTICE</destName>
-        </file>
-        <file>
-            <source>${maven.multiModuleProjectDirectory}/RELEASE_NOTES.md</source>
-        </file>
-        <file>
-            <source>${maven.multiModuleProjectDirectory}/grafana/src/main/resources/application.properties</source>
-            <destName>tools/grafana/application.properties</destName>
-        </file>
     </files>
+    <componentDescriptors>
+        <componentDescriptor>common-files.xml</componentDescriptor>
+    </componentDescriptors>
 </assembly>

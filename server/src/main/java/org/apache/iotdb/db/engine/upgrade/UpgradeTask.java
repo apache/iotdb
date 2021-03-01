@@ -18,10 +18,6 @@
  */
 package org.apache.iotdb.db.engine.upgrade;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.service.UpgradeSevice;
@@ -30,8 +26,14 @@ import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class UpgradeTask extends WrappedRunnable {
 
@@ -50,10 +52,11 @@ public class UpgradeTask extends WrappedRunnable {
     try {
       String oldTsfilePath = upgradeResource.getTsFile().getAbsolutePath();
       List<TsFileResource> upgradedResources;
-      if (!UpgradeUtils.isUpgradedFileGenerated(oldTsfilePath)) {
+      if (!UpgradeUtils.isUpgradedFileGenerated(upgradeResource.getTsFile().getName())) {
+        logger.info("generate upgraded file for {}", upgradeResource.getTsFile());
         upgradedResources = generateUpgradedFiles();
-      }
-      else {
+      } else {
+        logger.info("find upgraded file for {}", upgradeResource.getTsFile());
         upgradedResources = findUpgradedFiles();
       }
       upgradeResource.writeLock();
@@ -64,20 +67,21 @@ public class UpgradeTask extends WrappedRunnable {
         upgradeResource.writeUnlock();
       }
       UpgradeSevice.setCntUpgradeFileNum(UpgradeSevice.getCntUpgradeFileNum() - 1);
-      logger.info("Upgrade completes, file path:{} , the remaining upgraded file num: {}",
-          oldTsfilePath, UpgradeSevice.getCntUpgradeFileNum());
+      logger.info(
+          "Upgrade completes, file path:{} , the remaining upgraded file num: {}",
+          oldTsfilePath,
+          UpgradeSevice.getCntUpgradeFileNum());
       if (UpgradeSevice.getCntUpgradeFileNum() == 0) {
         UpgradeSevice.getINSTANCE().stop();
         logger.info("All files upgraded successfully! ");
       }
     } catch (Exception e) {
-      logger.error("meet error when upgrade file:{}", upgradeResource.getTsFile().getAbsolutePath(),
-          e);
+      logger.error(
+          "meet error when upgrade file:{}", upgradeResource.getTsFile().getAbsolutePath(), e);
     }
   }
 
-  private List<TsFileResource> generateUpgradedFiles() 
-      throws IOException, WriteProcessException {
+  private List<TsFileResource> generateUpgradedFiles() throws IOException, WriteProcessException {
     upgradeResource.readLock();
     String oldTsfilePath = upgradeResource.getTsFile().getAbsolutePath();
     List<TsFileResource> upgradedResources = new ArrayList<>();
@@ -96,18 +100,27 @@ public class UpgradeTask extends WrappedRunnable {
   private List<TsFileResource> findUpgradedFiles() throws IOException {
     upgradeResource.readLock();
     List<TsFileResource> upgradedResources = new ArrayList<>();
+    String oldTsfilePath = upgradeResource.getTsFile().getAbsolutePath();
+    UpgradeLog.writeUpgradeLogFile(
+        oldTsfilePath + COMMA_SEPERATOR + UpgradeCheckStatus.BEGIN_UPGRADE_FILE);
     try {
       File upgradeFolder = upgradeResource.getTsFile().getParentFile();
       for (File tempPartitionDir : upgradeFolder.listFiles()) {
-        if (tempPartitionDir.isDirectory() &&
-            fsFactory.getFile(tempPartitionDir, upgradeResource.getTsFile().getName() 
-                + TsFileResource.RESOURCE_SUFFIX).exists()) {
-          TsFileResource resource = new TsFileResource(
-              fsFactory.getFile(tempPartitionDir, upgradeResource.getTsFile().getName()));
+        if (tempPartitionDir.isDirectory()
+            && fsFactory
+                .getFile(
+                    tempPartitionDir,
+                    upgradeResource.getTsFile().getName() + TsFileResource.RESOURCE_SUFFIX)
+                .exists()) {
+          TsFileResource resource =
+              new TsFileResource(
+                  fsFactory.getFile(tempPartitionDir, upgradeResource.getTsFile().getName()));
           resource.deserialize();
           upgradedResources.add(resource);
         }
       }
+      UpgradeLog.writeUpgradeLogFile(
+          oldTsfilePath + COMMA_SEPERATOR + UpgradeCheckStatus.AFTER_UPGRADE_FILE);
     } finally {
       upgradeResource.readUnlock();
     }

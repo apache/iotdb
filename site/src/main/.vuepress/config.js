@@ -727,7 +727,7 @@ var config = {
 						{ text: 'Wiki', link: 'https://cwiki.apache.org/confluence/display/iotdb'},
 					    { text: '开发人员', link: '/zh/Community/Community-Project Committers'},
 					    { text: '技术支持', link: '/zh/Community/Community-Powered By'},
-							{ text: '活动与报告', link: '/zh/Community/Materials'},
+							{ text: '活动与报告', link: '/Community/Materials'},
 							{ text: '交流与反馈', link: '/zh/Community/Feedback'},
 					]
 				  },
@@ -764,7 +764,7 @@ var config = {
 						title: '0-开始使用',
 						children: [
 							['0-Get Started/1-QuickStart','快速入门'],
-							['0-Get Started/2-Frequently asked questions','经常问的问题'],
+							['0-Get Started/2-Frequently asked questions','常见问题'],
 							['0-Get Started/3-Publication','调查报告']
 						]
 					},
@@ -938,7 +938,7 @@ var config = {
 						title: '开始',
 						children: [
 							['Get Started/QuickStart','快速入门'],
-							['Get Started/Frequently asked questions','经常问的问题'],
+							['Get Started/Frequently asked questions','常见问题'],
 							['Get Started/Publication','调查报告']
 						]
 					},
@@ -1031,7 +1031,7 @@ var config = {
 						title: '开始',
 						children: [
 							['Get Started/QuickStart','快速入门'],
-							['Get Started/Frequently asked questions','经常问的问题'],
+							['Get Started/Frequently asked questions','常见问题'],
 							['Get Started/Publication','调查报告']
 						]
 					},
@@ -1124,7 +1124,7 @@ var config = {
 						title: '开始',
 						children: [
 							['Get Started/QuickStart','快速入门'],
-							['Get Started/Frequently asked questions','经常问的问题'],
+							['Get Started/Frequently asked questions','常见问题'],
 							['Get Started/Publication','调查报告']
 						]
 					},

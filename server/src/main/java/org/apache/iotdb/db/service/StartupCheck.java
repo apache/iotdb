@@ -23,8 +23,6 @@ import org.apache.iotdb.db.exception.StartupException;
 @FunctionalInterface
 public interface StartupCheck {
 
-  /**
-   * Run some tests to check whether system is safe to be started.
-   */
+  /** Run some tests to check whether system is safe to be started. */
   void execute() throws StartupException;
 }

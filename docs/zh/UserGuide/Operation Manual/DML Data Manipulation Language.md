@@ -469,7 +469,7 @@ select count(status) from root.ln.wf01.* group by level=2
 
 ```
 +----------------------------+
-|COUNT(root.ln.wf01.*.status)|
+|count(root.ln.wf01.*.status)|
 +----------------------------+
 |                       10080|
 +----------------------------+
@@ -478,21 +478,37 @@ It costs 0.003s
 ```
 
 
-假设此时在"root.ln"下面加入名为wf02的子序列，如"root.ln.wf02.wt01.status"。
-需要同时查询"root.ln.wf01"和"root.ln.wf02"下各自status子序列的点个数。则使用查询：
+假设此时添加两条序列，"root.ln.wf01.wt01.temperature" and "root.ln.wf02.wt01.temperature"。
+需要同时查询"root.ln.\*.\*.temperature"在第二层级的count聚合结果和sum聚合结果，可以使用下列查询语句：
 ```
-select count(status) from root.ln.*.* group by level=2
+select count(temperature), sum(temperature) from root.ln.*.* group by level=2
 ```
 运行结果：
 
 ```
-+----------------------------+----------------------------+
-|COUNT(root.ln.wf01.*.status)|COUNT(root.ln.wf02.*.status)|
-+----------------------------+----------------------------+
-|                       10080|                       10082|
-+----------------------------+----------------------------+
++---------------------------------+---------------------------------+-------------------------------+-------------------------------+
+|count(root.ln.wf02.*.temperature)|count(root.ln.wf01.*.temperature)|sum(root.ln.wf02.*.temperature)|sum(root.ln.wf01.*.temperature)|
++---------------------------------+---------------------------------+-------------------------------+-------------------------------+
+|                                8|                                4|                          228.0|              91.83000183105469|
++---------------------------------+---------------------------------+-------------------------------+-------------------------------+
 Total line number = 1
-It costs 0.003s
+It costs 0.013s
+```
+
+若统计"root.ln.\*.\*"下第一层级的count聚合结果和sum聚合结果，则设置level=1即可:
+```
+select count(temperature), sum(temperature) from root.ln.*.* group by level=1
+```
+运行结果：
+
+```
++------------------------------+----------------------------+
+|count(root.ln.*.*.temperature)|sum(root.ln.*.*.temperature)|
++------------------------------+----------------------------+
+|                            12|           319.8300018310547|
++------------------------------+----------------------------+
+Total line number = 1
+It costs 0.013s
 ```
 
 分层聚合查询也可被用于其他聚合函数，当前所支持的聚合函数为：count, sum, avg, last_value, first_value, min_time, max_time, min_value, max_value

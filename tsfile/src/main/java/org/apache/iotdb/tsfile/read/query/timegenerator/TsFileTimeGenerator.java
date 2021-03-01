@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.tsfile.read.query.timegenerator;
 
-import java.io.IOException;
-import java.util.List;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.controller.IMetadataQuerier;
@@ -28,13 +26,17 @@ import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
 
+import java.io.IOException;
+import java.util.List;
+
 public class TsFileTimeGenerator extends TimeGenerator {
 
   private IChunkLoader chunkLoader;
   private IMetadataQuerier metadataQuerier;
 
-  public TsFileTimeGenerator(IExpression iexpression, IChunkLoader chunkLoader,
-      IMetadataQuerier metadataQuerier) throws IOException {
+  public TsFileTimeGenerator(
+      IExpression iexpression, IChunkLoader chunkLoader, IMetadataQuerier metadataQuerier)
+      throws IOException {
     this.chunkLoader = chunkLoader;
     this.metadataQuerier = metadataQuerier;
 
@@ -44,8 +46,8 @@ public class TsFileTimeGenerator extends TimeGenerator {
   @Override
   protected IBatchReader generateNewBatchReader(SingleSeriesExpression expression)
       throws IOException {
-    List<ChunkMetadata> chunkMetadataList = metadataQuerier
-        .getChunkMetaDataList(expression.getSeriesPath());
+    List<ChunkMetadata> chunkMetadataList =
+        metadataQuerier.getChunkMetaDataList(expression.getSeriesPath());
     return new FileSeriesReader(chunkLoader, chunkMetadataList, expression.getFilter());
   }
 

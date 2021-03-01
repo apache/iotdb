@@ -239,7 +239,7 @@
 
 |名字| force\_wal\_period\_in\_ms |
 |:---:|:---|
-|描述| 写前日志定期刷新到磁盘的周期，单位毫秒，有可能丢失至多flush\_wal\_period\_in\_ms毫秒的操作。 |
+|描述| 写前日志定期刷新到磁盘的周期，单位毫秒，有可能丢失至多force\_wal\_period\_in\_ms毫秒的操作。 |
 |类型|Int32|
 |默认值| 10 |
 |改后生效方式|触发生效|
@@ -262,16 +262,7 @@
 |默认值| 0 |
 |改后生效方式|重启服务器生效|
 
-* enable\_mem\_comtrol
-
-|Name| enable\_mem\_control |
-|:---:|:---|
-|Description| 开启内存控制，避免爆内存|
-|Type|Bool|
-|Default| true |
-|Effective|重启服务器生效|
-
-* enable\_mem\_comtrol
+* enable\_mem\_control
 
 |Name| enable\_mem\_control |
 |:---:|:---|
@@ -602,23 +593,6 @@
 |默认值|FLOAT |
 |改后生效方式|重启服务器生效|
 
-* enable\_partition
-
-|名字| enable\_partition |
-|:---:|:---|
-|描述| 是否启用数据分区。如果禁用，则所有数据都属于分区0 |
-|取值| BOOLEAN |
-|默认值| false |
-|改后生效方式|重启服务器生效|
-
-* partition\_interval
-
-|名字| partition\_interval |
-|:---:|:---|
-|描述| 对每个存储组内的数据进行分区的时间范围，单位为秒|
-|取值| LONG |
-|默认值|604800 |
-|改后生效方式|重启服务器生效|
 
 ## 开启GC日志
 GC日志默认是关闭的。为了性能调优，用户可能会需要收集GC信息。

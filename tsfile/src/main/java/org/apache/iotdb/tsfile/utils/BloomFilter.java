@@ -18,15 +18,15 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
-import java.util.BitSet;
-
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+
+import java.util.BitSet;
 
 public class BloomFilter {
 
   private static final int MINIMAL_SIZE = 256;
   private static final int MAXIMAL_HASH_FUNCTION_SIZE = 8;
-  private static final int[] SEEDS = new int[]{5, 7, 11, 19, 31, 37, 43, 59};
+  private static final int[] SEEDS = new int[] {5, 7, 11, 19, 31, 37, 43, 59};
   private int size;
   private int hashFunctionSize;
   private BitSet bits;
@@ -69,8 +69,8 @@ public class BloomFilter {
     double ln2 = Math.log(2);
     int size = (int) (-numOfString * Math.log(errorPercent) / ln2 / ln2) + 1;
     int hashFunctionSize = (int) (-Math.log(errorPercent) / ln2) + 1;
-    return new BloomFilter(Math.max(MINIMAL_SIZE, size),
-        Math.min(MAXIMAL_HASH_FUNCTION_SIZE, hashFunctionSize));
+    return new BloomFilter(
+        Math.max(MINIMAL_SIZE, size), Math.min(MAXIMAL_HASH_FUNCTION_SIZE, hashFunctionSize));
   }
 
   /**

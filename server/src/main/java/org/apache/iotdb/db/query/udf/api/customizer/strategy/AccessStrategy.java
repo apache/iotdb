@@ -32,19 +32,13 @@ public interface AccessStrategy {
 
   enum AccessStrategyType {
 
-    /**
-     * @see RowByRowAccessStrategy
-     */
+    /** @see RowByRowAccessStrategy */
     ROW_BY_ROW,
 
-    /**
-     * @see SlidingTimeWindowAccessStrategy
-     */
+    /** @see SlidingTimeWindowAccessStrategy */
     SLIDING_TIME_WINDOW,
 
-    /**
-     * @see SlidingSizeWindowAccessStrategy
-     */
+    /** @see SlidingSizeWindowAccessStrategy */
     SLIDING_SIZE_WINDOW
   }
 

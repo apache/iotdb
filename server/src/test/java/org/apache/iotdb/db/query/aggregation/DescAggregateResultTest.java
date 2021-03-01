@@ -19,27 +19,27 @@
 
 package org.apache.iotdb.db.query.aggregation;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.Binary;
+
 import org.junit.Assert;
 import org.junit.Test;
 
-/**
- * Unit tests of desc aggregate result.
- */
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+
+/** Unit tests of desc aggregate result. */
 public class DescAggregateResultTest {
 
   @Test
   public void maxTimeDescAggrResultTest() throws QueryProcessException, IOException {
-    AggregateResult maxTimeDescAggrResult = AggregateResultFactory
-        .getAggrResultByName(SQLConstant.MAX_TIME, TSDataType.FLOAT, false);
+    AggregateResult maxTimeDescAggrResult =
+        AggregateResultFactory.getAggrResultByName(SQLConstant.MAX_TIME, TSDataType.FLOAT, false);
 
     Statistics statistics1 = Statistics.getStatsByType(TSDataType.FLOAT);
     Statistics statistics2 = Statistics.getStatsByType(TSDataType.FLOAT);
@@ -60,8 +60,8 @@ public class DescAggregateResultTest {
 
   @Test
   public void minTimeDescAggrResultTest() throws QueryProcessException, IOException {
-    AggregateResult minTimeDescAggrResult = AggregateResultFactory
-        .getAggrResultByName(SQLConstant.MIN_TIME, TSDataType.FLOAT, false);
+    AggregateResult minTimeDescAggrResult =
+        AggregateResultFactory.getAggrResultByName(SQLConstant.MIN_TIME, TSDataType.FLOAT, false);
 
     Statistics statistics1 = Statistics.getStatsByType(TSDataType.FLOAT);
     Statistics statistics2 = Statistics.getStatsByType(TSDataType.FLOAT);
@@ -82,8 +82,9 @@ public class DescAggregateResultTest {
 
   @Test
   public void firstValueDescAggrResultTest() throws QueryProcessException, IOException {
-    AggregateResult firstValueDescAggrResult = AggregateResultFactory
-        .getAggrResultByName(SQLConstant.FIRST_VALUE, TSDataType.BOOLEAN, false);
+    AggregateResult firstValueDescAggrResult =
+        AggregateResultFactory.getAggrResultByName(
+            SQLConstant.FIRST_VALUE, TSDataType.BOOLEAN, false);
 
     Statistics statistics1 = Statistics.getStatsByType(TSDataType.BOOLEAN);
     Statistics statistics2 = Statistics.getStatsByType(TSDataType.BOOLEAN);
@@ -104,8 +105,8 @@ public class DescAggregateResultTest {
 
   @Test
   public void lastValueDescAggrResultTest() throws QueryProcessException, IOException {
-    AggregateResult lastValueDescAggrResult = AggregateResultFactory
-        .getAggrResultByName(SQLConstant.LAST_VALUE, TSDataType.TEXT, false);
+    AggregateResult lastValueDescAggrResult =
+        AggregateResultFactory.getAggrResultByName(SQLConstant.LAST_VALUE, TSDataType.TEXT, false);
 
     Statistics statistics1 = Statistics.getStatsByType(TSDataType.TEXT);
     Statistics statistics2 = Statistics.getStatsByType(TSDataType.TEXT);

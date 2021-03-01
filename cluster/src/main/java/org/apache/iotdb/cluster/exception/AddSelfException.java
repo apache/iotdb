@@ -19,9 +19,7 @@
 
 package org.apache.iotdb.cluster.exception;
 
-/**
- * Raised when a node received an AddNodeRequest of adding itself.
- */
+/** Raised when a node received an AddNodeRequest of adding itself. */
 public class AddSelfException extends Exception {
 
   public AddSelfException() {

@@ -18,10 +18,6 @@
  */
 package org.apache.iotdb.cluster.utils.nodetool;
 
-
-import com.google.common.collect.Lists;
-import io.airlift.airline.Help;
-import java.util.List;
 import org.apache.iotdb.cluster.utils.nodetool.function.Host;
 import org.apache.iotdb.cluster.utils.nodetool.function.LogView;
 import org.apache.iotdb.cluster.utils.nodetool.function.Partition;
@@ -29,17 +25,17 @@ import org.apache.iotdb.cluster.utils.nodetool.function.Ring;
 import org.apache.iotdb.cluster.utils.nodetool.function.Status;
 import org.apache.iotdb.db.utils.CommonUtils;
 
+import com.google.common.collect.Lists;
+import io.airlift.airline.Help;
+
+import java.util.List;
+
 public class NodeTool {
 
   public static void main(String... args) {
-    List<Class<? extends Runnable>> commands = Lists.newArrayList(
-        Help.class,
-        Ring.class,
-        Partition.class,
-        Host.class,
-        Status.class,
-        LogView.class
-    );
+    List<Class<? extends Runnable>> commands =
+        Lists.newArrayList(
+            Help.class, Ring.class, Partition.class, Host.class, Status.class, LogView.class);
 
     int status = CommonUtils.runCli(commands, args, "nodetool", "Manage your IoTDB cluster");
     System.exit(status);

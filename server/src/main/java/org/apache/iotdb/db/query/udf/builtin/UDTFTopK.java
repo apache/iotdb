@@ -19,14 +19,16 @@
 
 package org.apache.iotdb.db.query.udf.builtin;
 
-import java.util.Comparator;
-import java.util.PriorityQueue;
 import org.apache.iotdb.db.query.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import java.util.Comparator;
+import java.util.PriorityQueue;
+
 public class UDTFTopK extends UDTFSelectK {
 
+  @Override
   protected void constructPQ() throws UDFInputSeriesDataTypeNotValidException {
     switch (dataType) {
       case INT32:
@@ -46,8 +48,14 @@ public class UDTFTopK extends UDTFSelectK {
         break;
       default:
         // This will not happen.
-        throw new UDFInputSeriesDataTypeNotValidException(0, dataType, TSDataType.INT32,
-            TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE, TSDataType.TEXT);
+        throw new UDFInputSeriesDataTypeNotValidException(
+            0,
+            dataType,
+            TSDataType.INT32,
+            TSDataType.INT64,
+            TSDataType.FLOAT,
+            TSDataType.DOUBLE,
+            TSDataType.TEXT);
     }
   }
 

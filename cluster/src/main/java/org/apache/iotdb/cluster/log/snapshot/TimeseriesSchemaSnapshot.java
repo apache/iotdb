@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.cluster.log.snapshot;
 
-import java.util.Collection;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+
+import java.util.Collection;
 
 public interface TimeseriesSchemaSnapshot {
 

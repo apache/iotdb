@@ -19,31 +19,6 @@
 
 package org.apache.iotdb.cluster.server.member;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import java.io.IOException;
-import java.net.SocketTimeoutException;
-import java.nio.BufferUnderflowException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.ConcurrentModificationException;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Random;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.async.AsyncClientPool;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncClientPool;
@@ -73,13 +48,13 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.server.NodeCharacter;
-import org.apache.iotdb.cluster.server.monitor.Peer;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
-import org.apache.iotdb.cluster.server.monitor.Timer;
-import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendNodeEntryHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
+import org.apache.iotdb.cluster.server.monitor.Peer;
+import org.apache.iotdb.cluster.server.monitor.Timer;
+import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.cluster.utils.PlanSerializer;
@@ -96,13 +71,39 @@ import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.net.SocketTimeoutException;
+import java.nio.BufferUnderflowException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.ConcurrentModificationException;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
+
 /**
- * RaftMember process the common raft logic like leader election, log appending, catch-up and so
- * on.
+ * RaftMember process the common raft logic like leader election, log appending, catch-up and so on.
  */
 @SuppressWarnings("java:S3077") // reference volatile is enough
 public abstract class RaftMember {
@@ -110,16 +111,17 @@ public abstract class RaftMember {
   public static final boolean USE_LOG_DISPATCHER = false;
 
   private static final String MSG_FORWARD_TIMEOUT = "{}: Forward {} to {} time out";
-  private static final String MSG_FORWARD_ERROR = "{}: encountered an error when forwarding {} to"
-      + " {}";
-  private static final String MSG_NO_LEADER_COMMIT_INDEX = "{}: Cannot request commit index from {}";
+  private static final String MSG_FORWARD_ERROR =
+      "{}: encountered an error when forwarding {} to" + " {}";
+  private static final String MSG_NO_LEADER_COMMIT_INDEX =
+      "{}: Cannot request commit index from {}";
   private static final Logger logger = LoggerFactory.getLogger(RaftMember.class);
   private static final String MSG_NO_LEADER_IN_SYNC = "{}: No leader is found when synchronizing";
   public static final String MSG_LOG_IS_ACCEPTED = "{}: log {} is accepted";
   /**
    * when there is no leader, wait for waitLeaderTimeMs before return a NoLeader response to the
    * client.
-   **/
+   */
   private static long waitLeaderTimeMs = 60 * 1000L;
 
   /**
@@ -127,33 +129,26 @@ public abstract class RaftMember {
    * on this may be woken.
    */
   private final Object waitLeaderCondition = new Object();
-  /**
-   * the lock is to make sure that only one thread can apply snapshot at the same time
-   */
+  /** the lock is to make sure that only one thread can apply snapshot at the same time */
   private final Object snapshotApplyLock = new Object();
+
   protected Node thisNode = ClusterConstant.EMPTY_NODE;
-  /**
-   * the nodes that belong to the same raft group as thisNode.
-   */
+  /** the nodes that belong to the same raft group as thisNode. */
   protected List<Node> allNodes;
+
   ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
-  /**
-   * the name of the member, to distinguish several members in the logs.
-   */
+  /** the name of the member, to distinguish several members in the logs. */
   String name;
-  /**
-   * to choose nodes to send request of joining cluster randomly.
-   */
+  /** to choose nodes to send request of joining cluster randomly. */
   Random random = new Random();
-  /**
-   * when the node is a leader, this map is used to track log progress of each follower.
-   */
+  /** when the node is a leader, this map is used to track log progress of each follower. */
   Map<Node, Peer> peerMap;
   /**
    * the current term of the node, this object also works as lock of some transactions of the member
    * like elections.
    */
   AtomicLong term = new AtomicLong(0);
+
   volatile NodeCharacter character = NodeCharacter.ELECTOR;
   AtomicReference<Node> leader = new AtomicReference<>(ClusterConstant.EMPTY_NODE);
   /**
@@ -167,9 +162,7 @@ public abstract class RaftMember {
    * offline.
    */
   volatile long lastHeartbeatReceivedTime;
-  /**
-   * the raft logs are all stored and maintained in the log manager
-   */
+  /** the raft logs are all stored and maintained in the log manager */
   RaftLogManager logManager;
   /**
    * the single thread pool that runs the heartbeat thread, which send heartbeats to the follower
@@ -187,9 +180,7 @@ public abstract class RaftMember {
    * member by comparing it with the current last log index.
    */
   long lastReportedLogIndex;
-  /**
-   * the thread pool that runs catch-up tasks
-   */
+  /** the thread pool that runs catch-up tasks */
   private ExecutorService catchUpService;
   /**
    * lastCatchUpResponseTime records when is the latest response of each node's catch-up. There
@@ -204,6 +195,7 @@ public abstract class RaftMember {
    * requests. It will be initialized according to the implementation of the subclasses
    */
   private AsyncClientPool asyncClientPool;
+
   private AsyncClientPool asyncSendLogClientPool;
   private SyncClientPool syncClientPool;
   private AsyncClientPool asyncHeartbeatClientPool;
@@ -224,22 +216,22 @@ public abstract class RaftMember {
    * one slow node.
    */
   private ExecutorService serialToParallelPool;
-  /**
-   * a thread pool that is used to do commit log tasks asynchronous in heartbeat thread
-   */
+  /** a thread pool that is used to do commit log tasks asynchronous in heartbeat thread */
   private ExecutorService commitLogPool;
   /**
    * logDispatcher buff the logs orderly according to their log indexes and send them sequentially,
-   * which avoids the followers receiving out-of-order logs, forcing them to wait for previous
-   * logs.
+   * which avoids the followers receiving out-of-order logs, forcing them to wait for previous logs.
    */
   private LogDispatcher logDispatcher;
 
-  protected RaftMember() {
-  }
+  protected RaftMember() {}
 
-  protected RaftMember(String name, AsyncClientPool asyncPool, SyncClientPool syncPool,
-      AsyncClientPool asyncHeartbeatPool, SyncClientPool syncHeartbeatPool) {
+  protected RaftMember(
+      String name,
+      AsyncClientPool asyncPool,
+      SyncClientPool syncPool,
+      AsyncClientPool asyncHeartbeatPool,
+      SyncClientPool syncHeartbeatPool) {
     this.name = name;
     this.asyncClientPool = asyncPool;
     this.syncClientPool = syncPool;
@@ -248,8 +240,12 @@ public abstract class RaftMember {
     this.asyncSendLogClientPool = asyncClientPool;
   }
 
-  protected RaftMember(String name, AsyncClientPool asyncPool, SyncClientPool syncPool,
-      AsyncClientPool asyncHeartbeatPool, SyncClientPool syncHeartbeatPool,
+  protected RaftMember(
+      String name,
+      AsyncClientPool asyncPool,
+      SyncClientPool syncPool,
+      AsyncClientPool asyncHeartbeatPool,
+      SyncClientPool syncHeartbeatPool,
       AsyncClientPool asyncSendLogClientPool) {
     this.name = name;
     this.asyncClientPool = asyncPool;
@@ -274,24 +270,28 @@ public abstract class RaftMember {
 
   void startBackGroundThreads() {
     heartBeatService =
-        Executors.newSingleThreadScheduledExecutor(r -> new Thread(r,
-            name + "-HeartbeatThread@" + System.currentTimeMillis()));
+        Executors.newSingleThreadScheduledExecutor(
+            r -> new Thread(r, name + "-HeartbeatThread@" + System.currentTimeMillis()));
     catchUpService =
-        Executors.newCachedThreadPool(new ThreadFactoryBuilder().setNameFormat(getName() +
-            "-CatchUpThread%d").build());
+        Executors.newCachedThreadPool(
+            new ThreadFactoryBuilder().setNameFormat(getName() + "-CatchUpThread%d").build());
     appendLogThreadPool =
-        Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() * 10,
-            new ThreadFactoryBuilder().setNameFormat(getName() +
-                "-AppendLog%d").build());
+        Executors.newFixedThreadPool(
+            Runtime.getRuntime().availableProcessors() * 10,
+            new ThreadFactoryBuilder().setNameFormat(getName() + "-AppendLog%d").build());
     if (!ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      serialToParallelPool = new ThreadPoolExecutor(allNodes.size(), Math.max(allNodes.size(), Runtime.getRuntime().availableProcessors()),
-          1000L, TimeUnit.MILLISECONDS,
-          new LinkedBlockingQueue<>(), new ThreadFactoryBuilder().setNameFormat(getName() +
-          "-SerialToParallel%d").build());
+      serialToParallelPool =
+          new ThreadPoolExecutor(
+              allNodes.size(),
+              Math.max(allNodes.size(), Runtime.getRuntime().availableProcessors()),
+              1000L,
+              TimeUnit.MILLISECONDS,
+              new LinkedBlockingQueue<>(),
+              new ThreadFactoryBuilder().setNameFormat(getName() + "-SerialToParallel%d").build());
     }
-    commitLogPool = Executors
-        .newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat(getName() +
-            "-CommitLog%d").build());
+    commitLogPool =
+        Executors.newSingleThreadExecutor(
+            new ThreadFactoryBuilder().setNameFormat(getName() + "-CommitLog%d").build());
   }
 
   public String getName() {
@@ -329,8 +329,10 @@ public abstract class RaftMember {
       appendLogThreadPool.awaitTermination(10, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      logger.error("Unexpected interruption when waiting for heartBeatService and catchUpService "
-          + "to end", e);
+      logger.error(
+          "Unexpected interruption when waiting for heartBeatService and catchUpService "
+              + "to end",
+          e);
     }
     if (serialToParallelPool != null) {
       serialToParallelPool.shutdownNow();
@@ -408,8 +410,9 @@ public abstract class RaftMember {
         if (logManager.getCommitLogIndex() < request.getCommitLogIndex()) {
           // there are more local logs that can be committed, commit them in a ThreadPool so the
           // heartbeat response will not be blocked
-          CommitLogTask commitLogTask = new CommitLogTask(logManager, request.getCommitLogIndex(),
-              request.getCommitLogTerm());
+          CommitLogTask commitLogTask =
+              new CommitLogTask(
+                  logManager, request.getCommitLogIndex(), request.getCommitLogTerm());
           commitLogTask.registerCallback(new CommitLogCallback(this));
           // if the log is not consistent, the commitment will be blocked until the leader makes the
           // node catch up
@@ -417,12 +420,16 @@ public abstract class RaftMember {
             commitLogPool.submit(commitLogTask);
           }
 
-          logger
-              .debug("{}: Inconsistent log found, leaderCommit: {}-{}, localCommit: {}-{}, "
-                      + "localLast: {}-{}", name,
-                  request.getCommitLogIndex(), request.getCommitLogTerm(),
-                  logManager.getCommitLogIndex(), logManager.getCommitLogTerm(),
-                  logManager.getLastLogIndex(), logManager.getLastLogTerm());
+          logger.debug(
+              "{}: Inconsistent log found, leaderCommit: {}-{}, localCommit: {}-{}, "
+                  + "localLast: {}-{}",
+              name,
+              request.getCommitLogIndex(),
+              request.getCommitLogTerm(),
+              logManager.getCommitLogIndex(),
+              logManager.getCommitLogTerm(),
+              logManager.getLastLogIndex(),
+              logManager.getLastLogTerm());
         }
 
         if (logger.isTraceEnabled()) {
@@ -440,16 +447,16 @@ public abstract class RaftMember {
   public long processElectionRequest(ElectionRequest electionRequest) {
     synchronized (term) {
       long currentTerm = term.get();
-      long response = checkElectorTerm(currentTerm, electionRequest.getTerm(),
-          electionRequest.getElector());
+      long response =
+          checkElectorTerm(currentTerm, electionRequest.getTerm(), electionRequest.getElector());
       if (response != Response.RESPONSE_AGREE) {
         return response;
       }
 
       // compare the log progress of the elector with this node
       response = checkElectorLogProgress(electionRequest);
-      logger.info("{} sending response {} to the elector {}", name, response,
-          electionRequest.getElector());
+      logger.info(
+          "{} sending response {} to the elector {}", name, response, electionRequest.getElector());
       return response;
     }
   }
@@ -457,24 +464,33 @@ public abstract class RaftMember {
   private long checkElectorTerm(long currentTerm, long electorTerm, Node elector) {
     if (electorTerm < currentTerm) {
       // the elector has a smaller term thus the request is invalid
-      logger.info("{} sending localTerm {} to the elector {} because it's term {} is smaller.",
-          name, currentTerm, elector, electorTerm);
+      logger.info(
+          "{} sending localTerm {} to the elector {} because it's term {} is smaller.",
+          name,
+          currentTerm,
+          elector,
+          electorTerm);
       return currentTerm;
     }
-    if (currentTerm == electorTerm && voteFor != null && !Objects
-        .equals(voteFor, elector)) {
+    if (currentTerm == electorTerm && voteFor != null && !Objects.equals(voteFor, elector)) {
       // this node has voted in this round, but not for the elector, as one node cannot vote
       // twice, reject the request
       logger.info(
           "{} sending rejection to the elector {} because member already has voted {} in this term {}.",
-          name, elector, voteFor, currentTerm);
+          name,
+          elector,
+          voteFor,
+          currentTerm);
       return Response.RESPONSE_REJECT;
     }
     if (electorTerm > currentTerm) {
       // the elector has a larger term, this node should update its term first
       logger.info(
           "{} received an election from elector {} which has bigger term {} than localTerm {}, raftMember should step down first and then continue to decide whether to grant it's vote by log status.",
-          name, elector, electorTerm, currentTerm);
+          name,
+          elector,
+          electorTerm,
+          currentTerm);
       stepDown(electorTerm, false);
     }
     return Response.RESPONSE_AGREE;
@@ -496,16 +512,13 @@ public abstract class RaftMember {
     Log log = LogParser.getINSTANCE().parse(request.entry);
     Timer.Statistic.RAFT_RECEIVER_LOG_PARSE.calOperationCostTimeFromStart(startTime);
 
-    long result = appendEntry(request.prevLogIndex, request.prevLogTerm, request.leaderCommit,
-        log);
+    long result = appendEntry(request.prevLogIndex, request.prevLogTerm, request.leaderCommit, log);
     logger.debug("{} AppendEntryRequest of {} completed with result {}", name, log, result);
 
     return result;
   }
 
-  /**
-   * Similar to appendEntry, while the incoming load is batch of logs instead of a single log.
-   */
+  /** Similar to appendEntry, while the incoming load is batch of logs instead of a single log. */
   public long appendEntries(AppendEntriesRequest request) throws UnknownLogTypeException {
     logger.debug("{} received an AppendEntriesRequest", name);
 
@@ -532,11 +545,13 @@ public abstract class RaftMember {
 
     Timer.Statistic.RAFT_RECEIVER_LOG_PARSE.calOperationCostTimeFromStart(startTime);
 
-    response = appendEntries(request.prevLogIndex, request.prevLogTerm, request.leaderCommit,
-        logs);
+    response = appendEntries(request.prevLogIndex, request.prevLogTerm, request.leaderCommit, logs);
     if (logger.isDebugEnabled()) {
-      logger.debug("{} AppendEntriesRequest of log size {} completed with result {}", name,
-          request.getEntries().size(), response);
+      logger.debug(
+          "{} AppendEntriesRequest of log size {} completed with result {}",
+          name,
+          request.getEntries().size(),
+          response);
     }
     return response;
   }
@@ -559,13 +574,18 @@ public abstract class RaftMember {
     return getSyncClient(syncHeartbeatClientPool, node, false);
   }
 
-  public void sendLogAsync(Log log, AtomicInteger voteCounter, Node node,
-      AtomicBoolean leaderShipStale, AtomicLong newLeaderTerm, AppendEntryRequest request,
+  public void sendLogAsync(
+      Log log,
+      AtomicInteger voteCounter,
+      Node node,
+      AtomicBoolean leaderShipStale,
+      AtomicLong newLeaderTerm,
+      AppendEntryRequest request,
       Peer peer) {
     AsyncClient client = getSendLogAsyncClient(node);
     if (client != null) {
-      AppendNodeEntryHandler handler = getAppendNodeEntryHandler(log, voteCounter, node,
-          leaderShipStale, newLeaderTerm, peer);
+      AppendNodeEntryHandler handler =
+          getAppendNodeEntryHandler(log, voteCounter, node, leaderShipStale, newLeaderTerm, peer);
       try {
         client.appendEntry(request, handler);
         logger.debug("{} sending a log to {}: {}", name, node, log);
@@ -638,24 +658,16 @@ public abstract class RaftMember {
     return lastCatchUpResponseTime;
   }
 
-  /**
-   * Sub-classes will add their own process of HeartBeatResponse in this method.
-   */
-  public void processValidHeartbeatResp(HeartBeatResponse response, Node receiver) {
+  /** Sub-classes will add their own process of HeartBeatResponse in this method. */
+  public void processValidHeartbeatResp(HeartBeatResponse response, Node receiver) {}
 
-  }
-
-  /**
-   * The actions performed when the node wins in an election (becoming a leader).
-   */
-  public void onElectionWins() {
-
-  }
+  /** The actions performed when the node wins in an election (becoming a leader). */
+  public void onElectionWins() {}
 
   /**
    * Update the followers' log by sending logs whose index >= followerLastMatchedLogIndex to the
-   * follower. If some of the required logs are removed, also send the snapshot.
-   * <br>notice that if a part of data is in the snapshot, then it is not in the logs</>
+   * follower. If some of the required logs are removed, also send the snapshot. <br>
+   * notice that if a part of data is in the snapshot, then it is not in the logs</>
    */
   public void catchUp(Node follower, long lastLogIdx) {
     // for one follower, there is at most one ongoing catch-up, so the same data will not be sent
@@ -674,17 +686,18 @@ public abstract class RaftMember {
     }
     logger.info("{}: Start to make {} catch up", name, follower);
     if (!catchUpService.isShutdown()) {
-      Future<?> future = catchUpService.submit(new CatchUpTask(follower, peerMap.get(follower),
-          this, lastLogIdx));
-      catchUpService.submit(() -> {
-        try {
-          future.get();
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-        } catch (ExecutionException e) {
-          logger.error("{}: Catch up task exits with unexpected exception", name, e);
-        }
-      });
+      Future<?> future =
+          catchUpService.submit(new CatchUpTask(follower, peerMap.get(follower), this, lastLogIdx));
+      catchUpService.submit(
+          () -> {
+            try {
+              future.get();
+            } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+            } catch (ExecutionException e) {
+              logger.error("{}: Catch up task exits with unexpected exception", name, e);
+            }
+          });
     }
   }
 
@@ -704,8 +717,7 @@ public abstract class RaftMember {
   }
 
   /**
-   * Execute a non-query plan.
-   * Subclass may have their individual implements.
+   * Execute a non-query plan. Subclass may have their individual implements.
    *
    * @param plan a non-query plan.
    * @return A TSStatus indicating the execution result.
@@ -739,8 +751,8 @@ public abstract class RaftMember {
         default:
           // this should not happen in theory
           throw new CheckConsistencyException(
-              "unknown consistency=" + ClusterDescriptor.getInstance().getConfig()
-                  .getConsistencyLevel().name());
+              "unknown consistency="
+                  + ClusterDescriptor.getInstance().getConfig().getConsistencyLevel().name());
       }
     }
   }
@@ -768,9 +780,7 @@ public abstract class RaftMember {
     return waitUntilCatchUp();
   }
 
-  /**
-   * Wait until the leader of this node becomes known or time out.
-   */
+  /** Wait until the leader of this node becomes known or time out. */
   public void waitLeader() {
     long startTime = System.currentTimeMillis();
     while (leader.get() == null || ClusterConstant.EMPTY_NODE.equals(leader.get())) {
@@ -802,8 +812,10 @@ public abstract class RaftMember {
     long waitedTime = 0;
     long leaderCommitId;
     try {
-      leaderCommitId = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer() ?
-          requestCommitIdAsync() : requestCommitIdSync();
+      leaderCommitId =
+          ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()
+              ? requestCommitIdAsync()
+              : requestCommitIdSync();
       if (leaderCommitId == Long.MAX_VALUE) {
         // Long.MAX_VALUE representing there is a network issue
         return false;
@@ -850,7 +862,7 @@ public abstract class RaftMember {
    * call this method. Will commit the log locally and send it to followers
    *
    * @return OK if over half of the followers accept the log or null if the leadership is lost
-   * during the appending
+   *     during the appending
    */
   TSStatus processPlanLocally(PhysicalPlan plan) {
     if (USE_LOG_DISPATCHER) {
@@ -893,11 +905,11 @@ public abstract class RaftMember {
     // assign term and index to the new log and append it
     SendLogRequest sendLogRequest;
 
-    long startTime = Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2
-        .getOperationStartTime();
+    long startTime =
+        Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2.getOperationStartTime();
     synchronized (logManager) {
-      Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2
-          .calOperationCostTimeFromStart(startTime);
+      Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2.calOperationCostTimeFromStart(
+          startTime);
 
       log.setCurrLogTerm(getTerm().get());
       log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
@@ -919,11 +931,13 @@ public abstract class RaftMember {
     }
 
     try {
-      AppendLogResult appendLogResult = waitAppendResult(sendLogRequest.getVoteCounter(),
-          sendLogRequest.getLeaderShipStale(),
-          sendLogRequest.getNewLeaderTerm());
-      Timer.Statistic.RAFT_SENDER_LOG_FROM_CREATE_TO_ACCEPT
-          .calOperationCostTimeFromStart(sendLogRequest.getLog().getCreateTime());
+      AppendLogResult appendLogResult =
+          waitAppendResult(
+              sendLogRequest.getVoteCounter(),
+              sendLogRequest.getLeaderShipStale(),
+              sendLogRequest.getNewLeaderTerm());
+      Timer.Statistic.RAFT_SENDER_LOG_FROM_CREATE_TO_ACCEPT.calOperationCostTimeFromStart(
+          sendLogRequest.getLog().getCreateTime());
       switch (appendLogResult) {
         case OK:
           logger.debug(MSG_LOG_IS_ACCEPTED, name, log);
@@ -1041,9 +1055,7 @@ public abstract class RaftMember {
     return peerMap;
   }
 
-  /**
-   * @return true if there is a log whose index is "index" and term is "term", false otherwise
-   */
+  /** @return true if there is a log whose index is "index" and term is "term", false otherwise */
   public boolean matchLog(long index, long term) {
     boolean matched = logManager.matchTerm(term, index);
     logger.debug("Log {}-{} matched: {}", index, term, matched);
@@ -1058,19 +1070,15 @@ public abstract class RaftMember {
     return syncLock;
   }
 
-  /**
-   * Sub-classes will add their own process of HeartBeatRequest in this method.
-   */
-  void processValidHeartbeatReq(HeartBeatRequest request, HeartBeatResponse response) {
-
-  }
+  /** Sub-classes will add their own process of HeartBeatRequest in this method. */
+  void processValidHeartbeatReq(HeartBeatRequest request, HeartBeatResponse response) {}
 
   /**
    * Verify the validity of an ElectionRequest, and make itself a follower of the elector if the
    * request is valid.
    *
    * @return Response.RESPONSE_AGREE if the elector is valid or the local term if the elector has a
-   * smaller term or Response.RESPONSE_LOG_MISMATCH if the elector has older logs.
+   *     smaller term or Response.RESPONSE_LOG_MISMATCH if the elector has older logs.
    */
   long checkElectorLogProgress(ElectionRequest electionRequest) {
 
@@ -1081,17 +1089,29 @@ public abstract class RaftMember {
     // check the log progress of the elector
     long resp = checkLogProgress(thatLastLogIndex, thatLastLogTerm);
     if (resp == Response.RESPONSE_AGREE) {
-      logger.info("{} accepted an election request, term:{}/{}, logIndex:{}/{}, logTerm:{}/{}",
-          name, thatTerm, term.get(), thatLastLogIndex, logManager.getLastLogIndex(),
-          thatLastLogTerm, logManager.getLastLogTerm());
+      logger.info(
+          "{} accepted an election request, term:{}/{}, logIndex:{}/{}, logTerm:{}/{}",
+          name,
+          thatTerm,
+          term.get(),
+          thatLastLogIndex,
+          logManager.getLastLogIndex(),
+          thatLastLogTerm,
+          logManager.getLastLogTerm());
       setCharacter(NodeCharacter.FOLLOWER);
       lastHeartbeatReceivedTime = System.currentTimeMillis();
       setVoteFor(electionRequest.getElector());
       updateHardState(thatTerm, getVoteFor());
     } else {
-      logger.info("{} rejected an election request, term:{}/{}, logIndex:{}/{}, logTerm:{}/{}",
-          name, thatTerm, term.get(), thatLastLogIndex, logManager.getLastLogIndex(),
-          thatLastLogTerm, logManager.getLastLogTerm());
+      logger.info(
+          "{} rejected an election request, term:{}/{}, logIndex:{}/{}, logTerm:{}/{}",
+          name,
+          thatTerm,
+          term.get(),
+          thatLastLogIndex,
+          logManager.getLastLogIndex(),
+          thatLastLogTerm,
+          logManager.getLastLogTerm());
     }
     return resp;
   }
@@ -1101,7 +1121,7 @@ public abstract class RaftMember {
    * lastLogIndex is smaller than the voter's Otherwise accept the election.
    *
    * @return Response.RESPONSE_AGREE if the elector is valid or the local term if the elector has a
-   * smaller term or Response.RESPONSE_LOG_MISMATCH if the elector has older logs.
+   *     smaller term or Response.RESPONSE_LOG_MISMATCH if the elector has older logs.
    */
   long checkLogProgress(long lastLogIndex, long lastLogTerm) {
     long response;
@@ -1118,10 +1138,10 @@ public abstract class RaftMember {
   /**
    * Forward a non-query plan to a node using the default client.
    *
-   * @param plan   a non-query plan
-   * @param node   cannot be the local node
+   * @param plan a non-query plan
+   * @param node cannot be the local node
    * @param header must be set for data group communication, set to null for meta group
-   *               communication
+   *     communication
    * @return a TSStatus indicating if the forwarding is successful.
    */
   public TSStatus forwardPlan(PhysicalPlan plan, Node node, Node header) {
@@ -1137,9 +1157,10 @@ public abstract class RaftMember {
     } else {
       status = forwardPlanSync(plan, node, header);
     }
-    if (status.getCode() == TSStatusCode.NO_CONNECTION.getStatusCode() &&
-        (header == null || header.equals(getHeader())) &&
-        (leader.get() != null) && leader.get().equals(node)) {
+    if (status.getCode() == TSStatusCode.NO_CONNECTION.getStatusCode()
+        && (header == null || header.equals(getHeader()))
+        && (leader.get() != null)
+        && leader.get().equals(node)) {
       // leader is down, trigger a new election by resetting heartbeat
       lastHeartbeatReceivedTime = -1;
       leader.set(null);
@@ -1151,7 +1172,7 @@ public abstract class RaftMember {
   /**
    * Forward a non-query plan to "receiver" using "client".
    *
-   * @param plan   a non-query plan
+   * @param plan a non-query plan
    * @param header to determine which DataGroupMember of "receiver" will process the request.
    * @return a TSStatus indicating if the forwarding is successful.
    */
@@ -1159,13 +1180,15 @@ public abstract class RaftMember {
     AsyncClient client = getAsyncClient(receiver);
     if (client == null) {
       logger.debug("{}: can not get client for node={}", name, receiver);
-      return StatusUtils.NO_CONNECTION.deepCopy().setMessage(String.format("%s cannot be reached"
-          , receiver));
+      return StatusUtils.NO_CONNECTION
+          .deepCopy()
+          .setMessage(String.format("%s cannot be reached", receiver));
     }
     return forwardPlanAsync(plan, receiver, header, client);
   }
 
-  public TSStatus forwardPlanAsync(PhysicalPlan plan, Node receiver, Node header, AsyncClient client) {
+  public TSStatus forwardPlanAsync(
+      PhysicalPlan plan, Node receiver, Node header, AsyncClient client) {
     try {
       TSStatus tsStatus = SyncClientAdaptor.executeNonQuery(client, plan, header, receiver);
       if (tsStatus == null) {
@@ -1174,8 +1197,7 @@ public abstract class RaftMember {
       }
       return tsStatus;
     } catch (IOException | TException e) {
-      logger
-          .error(MSG_FORWARD_ERROR, name, plan, receiver, e);
+      logger.error(MSG_FORWARD_ERROR, name, plan, receiver, e);
       return StatusUtils.getStatus(StatusUtils.INTERNAL_ERROR, e.getMessage());
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
@@ -1208,8 +1230,7 @@ public abstract class RaftMember {
       }
       return tsStatus;
     } catch (IOException e) {
-      logger
-          .error(MSG_FORWARD_ERROR, name, plan, receiver, e);
+      logger.error(MSG_FORWARD_ERROR, name, plan, receiver, e);
       return StatusUtils.getStatus(StatusUtils.INTERNAL_ERROR, e.getMessage());
     } catch (TException e) {
       TSStatus status;
@@ -1217,8 +1238,7 @@ public abstract class RaftMember {
         status = StatusUtils.TIME_OUT;
         logger.warn(MSG_FORWARD_TIMEOUT, name, plan, receiver);
       } else {
-        logger
-            .error(MSG_FORWARD_ERROR, name, plan, receiver, e);
+        logger.error(MSG_FORWARD_ERROR, name, plan, receiver, e);
         status = StatusUtils.getStatus(StatusUtils.INTERNAL_ERROR, e.getMessage());
       }
       // the connection may be broken, close it to avoid it being reused
@@ -1233,7 +1253,7 @@ public abstract class RaftMember {
    * Get an asynchronous thrift client of the given node.
    *
    * @return an asynchronous thrift client or null if the caller tries to connect the local node or
-   * the node cannot be reached.
+   *     the node cannot be reached.
    */
   public AsyncClient getAsyncClient(Node node) {
     return getAsyncClient(node, asyncClientPool, true);
@@ -1291,14 +1311,15 @@ public abstract class RaftMember {
    * one follower tells the node that it is no longer a valid leader, or a timeout is triggered.
    */
   @SuppressWarnings({"java:S2445"}) // safe synchronized
-  private AppendLogResult waitAppendResult(AtomicInteger voteCounter,
-      AtomicBoolean leaderShipStale, AtomicLong newLeaderTerm) {
+  private AppendLogResult waitAppendResult(
+      AtomicInteger voteCounter, AtomicBoolean leaderShipStale, AtomicLong newLeaderTerm) {
     // wait for the followers to vote
     long startTime = Timer.Statistic.RAFT_SENDER_VOTE_COUNTER.getOperationStartTime();
     synchronized (voteCounter) {
       long waitStart = System.currentTimeMillis();
       long alreadyWait = 0;
-      while (voteCounter.get() > 0 && alreadyWait < RaftServer.getWriteOperationTimeoutMS()
+      while (voteCounter.get() > 0
+          && alreadyWait < RaftServer.getWriteOperationTimeoutMS()
           && voteCounter.get() != Integer.MAX_VALUE) {
         try {
           voteCounter.wait(RaftServer.getWriteOperationTimeoutMS());
@@ -1332,11 +1353,11 @@ public abstract class RaftMember {
 
   @SuppressWarnings("java:S2445")
   void commitLog(Log log) throws LogExecutionException {
-    long startTime = Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_COMMIT
-        .getOperationStartTime();
+    long startTime =
+        Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_COMMIT.getOperationStartTime();
     synchronized (logManager) {
-      Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_COMMIT
-          .calOperationCostTimeFromStart(startTime);
+      Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_COMMIT.calOperationCostTimeFromStart(
+          startTime);
 
       startTime = Statistic.RAFT_SENDER_COMMIT_LOG_IN_MANAGER.getOperationStartTime();
       logManager.commitTo(log.getCurrLogIndex());
@@ -1362,25 +1383,23 @@ public abstract class RaftMember {
     }
   }
 
-  private TSStatus handleLogExecutionException(
-      PhysicalPlanLog log, LogExecutionException e) {
+  private TSStatus handleLogExecutionException(PhysicalPlanLog log, LogExecutionException e) {
     Throwable cause = IOUtils.getRootCause(e);
     if (cause instanceof BatchProcessException) {
-      return RpcUtils
-          .getStatus(Arrays.asList(((BatchProcessException) cause).getFailingStatus()));
+      return RpcUtils.getStatus(Arrays.asList(((BatchProcessException) cause).getFailingStatus()));
     }
-    TSStatus tsStatus = StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR,
-        cause.getMessage());
+    TSStatus tsStatus =
+        StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, cause.getMessage());
     if (cause instanceof RuntimeException) {
       logger.error("RuntimeException during executing {}", log, cause);
     }
     if (cause instanceof IoTDBException) {
       tsStatus.setCode(((IoTDBException) cause).getErrorCode());
     }
-    if (!(cause instanceof PathNotExistException) &&
-        !(cause instanceof StorageGroupNotSetException) &&
-        !(cause instanceof PathAlreadyExistException) &&
-        !(cause instanceof StorageGroupAlreadySetException)) {
+    if (!(cause instanceof PathNotExistException)
+        && !(cause instanceof StorageGroupNotSetException)
+        && !(cause instanceof PathAlreadyExistException)
+        && !(cause instanceof StorageGroupAlreadySetException)) {
       logger.debug("{} cannot be executed because ", log, cause);
     }
     return tsStatus;
@@ -1414,7 +1433,7 @@ public abstract class RaftMember {
    * heartbeat timer.
    *
    * @param fromLeader true if the request is from a leader, false if the request is from an
-   *                   elector.
+   *     elector.
    */
   public void stepDown(long newTerm, boolean fromLeader) {
     synchronized (term) {
@@ -1445,9 +1464,7 @@ public abstract class RaftMember {
     this.thisNode = thisNode;
   }
 
-  /**
-   * @return the header of the data raft group or null if this is in a meta group.
-   */
+  /** @return the header of the data raft group or null if this is in a meta group. */
   public Node getHeader() {
     return null;
   }
@@ -1528,7 +1545,7 @@ public abstract class RaftMember {
    * success.
    *
    * @param requiredQuorum the number of votes needed to make the log valid, when requiredQuorum <=
-   *                       0, half of the cluster size will be used.
+   *     0, half of the cluster size will be used.
    * @return an AppendLogResult
    */
   private AppendLogResult sendLogToFollowers(Log log, int requiredQuorum) {
@@ -1537,8 +1554,8 @@ public abstract class RaftMember {
       return sendLogToFollowers(log, new AtomicInteger(allNodes.size() / 2));
     } else {
       // make sure quorum does not exceed the number of members - 1
-      return sendLogToFollowers(log, new AtomicInteger(Math.min(requiredQuorum,
-          allNodes.size() - 1)));
+      return sendLogToFollowers(
+          log, new AtomicInteger(Math.min(requiredQuorum, allNodes.size() - 1)));
     }
   }
 
@@ -1570,8 +1587,10 @@ public abstract class RaftMember {
         // if there are more than one followers, send the requests in parallel so that one slow
         // follower will not be blocked
         for (Node node : allNodes) {
-          appendLogThreadPool.submit(() -> sendLogToFollower(log, voteCounter, node,
-              leaderShipStale, newLeaderTerm, request));
+          appendLogThreadPool.submit(
+              () ->
+                  sendLogToFollower(
+                      log, voteCounter, node, leaderShipStale, newLeaderTerm, request));
           if (character != NodeCharacter.LEADER) {
             return AppendLogResult.LEADERSHIP_STALE;
           }
@@ -1595,11 +1614,14 @@ public abstract class RaftMember {
     return waitAppendResult(voteCounter, leaderShipStale, newLeaderTerm);
   }
 
-  /**
-   * Send "log" to "node".
-   */
-  public void sendLogToFollower(Log log, AtomicInteger voteCounter, Node node,
-      AtomicBoolean leaderShipStale, AtomicLong newLeaderTerm, AppendEntryRequest request) {
+  /** Send "log" to "node". */
+  public void sendLogToFollower(
+      Log log,
+      AtomicInteger voteCounter,
+      Node node,
+      AtomicBoolean leaderShipStale,
+      AtomicLong newLeaderTerm,
+      AppendEntryRequest request) {
     if (node.equals(thisNode)) {
       return;
     }
@@ -1654,13 +1676,18 @@ public abstract class RaftMember {
     return alreadyWait <= RaftServer.getWriteOperationTimeoutMS();
   }
 
-  private void sendLogSync(Log log, AtomicInteger voteCounter, Node node,
-      AtomicBoolean leaderShipStale, AtomicLong newLeaderTerm, AppendEntryRequest request,
+  private void sendLogSync(
+      Log log,
+      AtomicInteger voteCounter,
+      Node node,
+      AtomicBoolean leaderShipStale,
+      AtomicLong newLeaderTerm,
+      AppendEntryRequest request,
       Peer peer) {
     Client client = getSyncClient(node);
     if (client != null) {
-      AppendNodeEntryHandler handler = getAppendNodeEntryHandler(log, voteCounter,
-          node, leaderShipStale, newLeaderTerm, peer);
+      AppendNodeEntryHandler handler =
+          getAppendNodeEntryHandler(log, voteCounter, node, leaderShipStale, newLeaderTerm, peer);
       try {
         logger.debug("{} sending a log to {}: {}", name, node, log);
         long result = client.appendEntry(request);
@@ -1676,8 +1703,13 @@ public abstract class RaftMember {
     }
   }
 
-  public AppendNodeEntryHandler getAppendNodeEntryHandler(Log log, AtomicInteger voteCounter,
-      Node node, AtomicBoolean leaderShipStale, AtomicLong newLeaderTerm, Peer peer) {
+  public AppendNodeEntryHandler getAppendNodeEntryHandler(
+      Log log,
+      AtomicInteger voteCounter,
+      Node node,
+      AtomicBoolean leaderShipStale,
+      AtomicLong newLeaderTerm,
+      Peer peer) {
     AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
     handler.setReceiver(node);
     handler.setVoteCounter(voteCounter);
@@ -1703,7 +1735,7 @@ public abstract class RaftMember {
    * and append "log" to it. Otherwise report a log mismatch.
    *
    * @return Response.RESPONSE_AGREE when the log is successfully appended or Response
-   * .RESPONSE_LOG_MISMATCH if the previous log of "log" is not found.
+   *     .RESPONSE_LOG_MISMATCH if the previous log of "log" is not found.
    */
   private long appendEntry(long prevLogIndex, long prevLogTerm, long leaderCommit, Log log) {
     long resp = checkPrevLogIndex(prevLogIndex);
@@ -1727,16 +1759,13 @@ public abstract class RaftMember {
     return resp;
   }
 
-  /**
-   * Wait until all logs before "prevLogIndex" arrive or a timeout is reached.
-   */
+  /** Wait until all logs before "prevLogIndex" arrive or a timeout is reached. */
   private boolean waitForPrevLog(long prevLogIndex) {
     long waitStart = System.currentTimeMillis();
     long alreadyWait = 0;
     Object logUpdateCondition = logManager.getLogUpdateCondition(prevLogIndex);
     long lastLogIndex = logManager.getLastLogIndex();
-    while (lastLogIndex < prevLogIndex &&
-        alreadyWait <= RaftServer.getWriteOperationTimeoutMS()) {
+    while (lastLogIndex < prevLogIndex && alreadyWait <= RaftServer.getWriteOperationTimeoutMS()) {
       try {
         // each time new logs are appended, this will be notified
         synchronized (logUpdateCondition) {
@@ -1776,12 +1805,16 @@ public abstract class RaftMember {
    *
    * @param logs append logs
    * @return Response.RESPONSE_AGREE when the log is successfully appended or Response
-   * .RESPONSE_LOG_MISMATCH if the previous log of "log" is not found.
+   *     .RESPONSE_LOG_MISMATCH if the previous log of "log" is not found.
    */
-  private long appendEntries(long prevLogIndex, long prevLogTerm, long leaderCommit,
-      List<Log> logs) {
-    logger.debug("{}, prevLogIndex={}, prevLogTerm={}, leaderCommit={}", name, prevLogIndex,
-        prevLogTerm, leaderCommit);
+  private long appendEntries(
+      long prevLogIndex, long prevLogTerm, long leaderCommit, List<Log> logs) {
+    logger.debug(
+        "{}, prevLogIndex={}, prevLogTerm={}, leaderCommit={}",
+        name,
+        prevLogIndex,
+        prevLogTerm,
+        leaderCommit);
     if (logs.isEmpty()) {
       return Response.RESPONSE_AGREE;
     }
@@ -1822,8 +1855,8 @@ public abstract class RaftMember {
       // leader term
       localTerm = term.get();
       if (leaderTerm < localTerm) {
-        logger.debug("{} rejected the AppendEntriesRequest for term: {}/{}", name, leaderTerm,
-            localTerm);
+        logger.debug(
+            "{} rejected the AppendEntriesRequest for term: {}/{}", name, leaderTerm, localTerm);
         return localTerm;
       } else {
         if (leaderTerm > localTerm) {
@@ -1842,6 +1875,8 @@ public abstract class RaftMember {
   }
 
   enum AppendLogResult {
-    OK, TIME_OUT, LEADERSHIP_STALE
+    OK,
+    TIME_OUT,
+    LEADERSHIP_STALE
   }
 }

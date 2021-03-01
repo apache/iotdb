@@ -18,14 +18,16 @@
  */
 package org.apache.iotdb.db.query.reader.chunk;
 
-import java.io.IOException;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
 
+import java.io.IOException;
+
 /**
  * To read chunk data on disk by timestamp, this class implements an interface {@link
  * IReaderByTimestamp} based on the data reader {@link ChunkReaderByTimestamp}.
+ *
  * <p>
  */
 public class DiskChunkReaderByTimestamp implements IReaderByTimestamp {

@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.cluster.common;
 
-import java.util.NoSuchElementException;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+
+import java.util.NoSuchElementException;
 
 public class TestManagedSeriesReader implements ManagedSeriesReader, IReaderByTimestamp {
 
@@ -68,7 +69,6 @@ public class TestManagedSeriesReader implements ManagedSeriesReader, IReaderByTi
     }
     return null;
   }
-
 
   @Override
   public boolean hasNextBatch() {

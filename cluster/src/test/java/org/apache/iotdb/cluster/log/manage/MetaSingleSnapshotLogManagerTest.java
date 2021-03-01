@@ -19,11 +19,6 @@
 
 package org.apache.iotdb.cluster.log.manage;
 
-import static org.junit.Assert.assertEquals;
-
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.cluster.common.IoTDBTest;
 import org.apache.iotdb.cluster.common.TestLogApplier;
 import org.apache.iotdb.cluster.common.TestUtils;
@@ -37,9 +32,16 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+
+import static org.junit.Assert.assertEquals;
 
 public class MetaSingleSnapshotLogManagerTest extends IoTDBTest {
 
@@ -53,8 +55,7 @@ public class MetaSingleSnapshotLogManagerTest extends IoTDBTest {
     Coordinator coordinator = new Coordinator(metaGroupMember);
     metaGroupMember.setCoordinator(coordinator);
     metaGroupMember.setPartitionTable(new SlotPartitionTable(new Node()));
-    logManager =
-        new MetaSingleSnapshotLogManager(new TestLogApplier(), metaGroupMember);
+    logManager = new MetaSingleSnapshotLogManager(new TestLogApplier(), metaGroupMember);
   }
 
   @Override
@@ -76,8 +77,7 @@ public class MetaSingleSnapshotLogManagerTest extends IoTDBTest {
       logManager.takeSnapshot();
       MetaSimpleSnapshot snapshot = (MetaSimpleSnapshot) logManager.getSnapshot();
       Map<PartialPath, Long> storageGroupTTLMap = snapshot.getStorageGroupTTLMap();
-      PartialPath[] storageGroups = storageGroupTTLMap.keySet()
-          .toArray(new PartialPath[0]);
+      PartialPath[] storageGroups = storageGroupTTLMap.keySet().toArray(new PartialPath[0]);
       Arrays.sort(storageGroups);
 
       assertEquals(10, storageGroups.length);
@@ -89,6 +89,5 @@ public class MetaSingleSnapshotLogManagerTest extends IoTDBTest {
     } finally {
       logManager.close();
     }
-
   }
 }

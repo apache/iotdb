@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.cluster.server.monitor;
 
-import java.net.ConnectException;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.cluster.client.async.AsyncMetaClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncMetaClient;
@@ -31,9 +28,14 @@ import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.db.utils.TestOnly;
+
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.net.ConnectException;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * NodeStatusManager manages the status (network latency, workload, connectivity) of each node in
@@ -106,7 +108,7 @@ public class NodeStatusManager {
    *
    * @param node
    * @param tryUpdate when set to true, the manager will try to update the status of the node if it
-   *                  is old enough, otherwise, it will just return the last recorded status.
+   *     is old enough, otherwise, it will just return the last recorded status.
    * @return
    */
   public NodeStatus getNodeStatus(Node node, boolean tryUpdate) {
@@ -145,8 +147,11 @@ public class NodeStatusManager {
     } else {
       nodeStatus.setLastResponseLatency(Long.MAX_VALUE);
     }
-    logger.info("NodeStatus of {} is updated, status: {}, response time: {}", node,
-        nodeStatus.getStatus(), nodeStatus.getLastResponseLatency());
+    logger.info(
+        "NodeStatus of {} is updated, status: {}, response time: {}",
+        node,
+        nodeStatus.getStatus(),
+        nodeStatus.getLastResponseLatency());
   }
 
   public long getLastResponseLatency(Node node) {
@@ -170,7 +175,7 @@ public class NodeStatusManager {
   /**
    * @param node
    * @return whether the node is CURRENTLY available, this method will not try to update its status
-   * to avoid deadlock
+   *     to avoid deadlock
    */
   public boolean isActivated(Node node) {
     return getNodeStatus(node, false).isActivated();

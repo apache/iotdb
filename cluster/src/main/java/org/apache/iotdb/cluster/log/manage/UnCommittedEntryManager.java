@@ -19,15 +19,17 @@
 
 package org.apache.iotdb.cluster.log.manage;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import org.apache.iotdb.cluster.exception.EntryUnavailableException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.db.utils.TestOnly;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public class UnCommittedEntryManager {
 
@@ -50,7 +52,6 @@ public class UnCommittedEntryManager {
   long getFirstUnCommittedIndex() {
     return offset;
   }
-
 
   /**
    * Return last entry's index if this instance has at least one uncommitted entry.
@@ -76,7 +77,7 @@ public class UnCommittedEntryManager {
    *
    * @param index request entry index
    * @return -1 if index < offset, or index > last or entries is empty, or return the entry's term
-   * for given index
+   *     for given index
    * @throws EntryUnavailableException
    */
   @SuppressWarnings("java:S1135") // ignore todos
@@ -86,7 +87,8 @@ public class UnCommittedEntryManager {
       if (entryPos < 0) {
         logger.debug(
             "invalid unCommittedEntryManager maybeTerm : parameter: index({}) < offset({})",
-            index, index - entryPos);
+            index,
+            index - entryPos);
         return -1;
       }
       long last = maybeLastIndex();
@@ -148,8 +150,7 @@ public class UnCommittedEntryManager {
     Log firstAppendingEntry = appendingEntries.get(0);
     Log lastAppendingEntry = appendingEntries.get(appendingEntries.size() - 1);
     if (maybeTerm(firstAppendingEntry.getCurrLogIndex()) == firstAppendingEntry.getCurrLogTerm()
-        &&
-        maybeTerm(lastAppendingEntry.getCurrLogIndex()) == lastAppendingEntry.getCurrLogTerm()) {
+        && maybeTerm(lastAppendingEntry.getCurrLogIndex()) == lastAppendingEntry.getCurrLogTerm()) {
       // skip existing entry
       return;
     }
@@ -157,9 +158,9 @@ public class UnCommittedEntryManager {
     long after = appendingEntries.get(0).getCurrLogIndex();
     long len = after - offset;
     if (len < 0) {
-      // the logs are being truncated to before our current offset portion, which is committed entries
-      logger.error("The logs which first index is {} are going to truncate committed logs",
-          after);
+      // the logs are being truncated to before our current offset portion, which is committed
+      // entries
+      logger.error("The logs which first index is {} are going to truncate committed logs", after);
     } else if (len == entries.size()) {
       // after is the next index in the entries
       // directly append
@@ -192,9 +193,9 @@ public class UnCommittedEntryManager {
     long after = appendingEntry.getCurrLogIndex();
     long len = after - offset;
     if (len < 0) {
-      // the logs are being truncated to before our current offset portion, which is committed entries
-      logger.error("The logs which first index is {} are going to truncate committed logs",
-          after);
+      // the logs are being truncated to before our current offset portion, which is committed
+      // entries
+      logger.error("The logs which first index is {} are going to truncate committed logs", after);
     } else if (len == entries.size()) {
       // after is the next index in the entries
       // directly append
@@ -202,8 +203,8 @@ public class UnCommittedEntryManager {
     } else {
       // clear conflict entries
       // then append
-      logger.info("truncate the entries after index {}, append a new entry {}", after,
-          appendingEntry);
+      logger.info(
+          "truncate the entries after index {}, append a new entry {}", after, appendingEntry);
       int truncateIndex = (int) (after - offset);
       if (truncateIndex < entries.size()) {
         entries.subList(truncateIndex, entries.size()).clear();
@@ -216,15 +217,14 @@ public class UnCommittedEntryManager {
    * Pack entries from low through high - 1, just like slice (entries[low:high]). offset <= low <=
    * high. Note that caller must ensure low <= high.
    *
-   * @param low  request index low bound
+   * @param low request index low bound
    * @param high request index upper bound
    */
   public List<Log> getEntries(long low, long high) {
     if (low > high) {
       if (logger.isDebugEnabled()) {
-        logger
-            .debug("invalid unCommittedEntryManager getEntries: parameter: low({}) > high({})",
-                low, high);
+        logger.debug(
+            "invalid unCommittedEntryManager getEntries: parameter: low({}) > high({})", low, high);
       }
       return Collections.emptyList();
     }
@@ -234,18 +234,29 @@ public class UnCommittedEntryManager {
       // getEntries(low, Integer.MAX_VALUE) if low is larger than lastIndex.
       logger.info(
           "unCommittedEntryManager getEntries[{},{}) out of bound : [{},{}] , return empty ArrayList",
-          low, high, offset, upper);
+          low,
+          high,
+          offset,
+          upper);
       return Collections.emptyList();
     }
     if (low < offset) {
-      logger.debug("unCommittedEntryManager getEntries[{},{}) out of bound : [{},{}]", low,
-          high, offset, upper);
+      logger.debug(
+          "unCommittedEntryManager getEntries[{},{}) out of bound : [{},{}]",
+          low,
+          high,
+          offset,
+          upper);
       low = offset;
     }
     if (high > upper) {
       logger.info(
           "unCommittedEntryManager getEntries[{},{}) out of bound : [{},{}] , adjust parameter 'high' to {}",
-          low, high, offset, upper, upper);
+          low,
+          high,
+          offset,
+          upper,
+          upper);
       // don't throw a exception to support getEntries(low, Integer.MAX_VALUE).
       high = upper;
     }

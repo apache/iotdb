@@ -19,9 +19,7 @@
 
 package org.apache.iotdb.db.query.udf.datastructure;
 
-/**
- * <b>Note: It's not thread safe.</b>
- */
+/** <b>Note: It's not thread safe.</b> */
 public abstract class Cache {
 
   private static class Node {
@@ -30,8 +28,7 @@ public abstract class Cache {
     private int value;
     private Node succeeding;
 
-    private Node() {
-    }
+    private Node() {}
 
     private Node remove() {
       previous.succeeding = succeeding;

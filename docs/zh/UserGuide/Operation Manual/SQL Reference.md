@@ -245,18 +245,21 @@ Note: This statement can be used in IoTDB Client and JDBC.
 * 显示所有设备语句
 
 ```
-SHOW DEVICES limitClause?
-Eg: IoTDB > SHOW DEVICES 
+SHOW DEVICES (WITH STORAGE GROUP)? limitClause? 
+Eg: IoTDB > SHOW DEVICES
+Eg: IoTDB > SHOW DEVICES WITH STORAGE GROUP
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
 * 显示特定设备语句
 
 ```
-SHOW DEVICES <PrefixPath> limitClause?
+SHOW DEVICES <PrefixPath> (WITH STORAGE GROUP)? limitClause?
 Eg: IoTDB > SHOW DEVICES root
 Eg: IoTDB > SHOW DEVICES root.ln
 Eg: IoTDB > SHOW DEVICES root.*.wf01
+Eg: IoTDB > SHOW DEVICES root.ln WITH STORAGE GROUP
+Eg: IoTDB > SHOW DEVICES root.*.wf01 WITH STORAGE GROUP
 Note: The path can be prefix path or star path.
 Note: This statement can be used in IoTDB Client and JDBC.
 ```

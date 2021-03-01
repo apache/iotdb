@@ -18,8 +18,9 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import org.apache.iotdb.tsfile.constant.TestConstant;
+
+import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -28,10 +29,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-import org.junit.Test;
-
-import org.apache.iotdb.tsfile.utils.BytesUtils;
-import org.apache.iotdb.tsfile.constant.TestConstant;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class BytesUtilsTest {
 
@@ -56,11 +55,10 @@ public class BytesUtilsTest {
     int rb2 = BytesUtils.bytesToInt(ret, 4);
     assertEquals("testBytesToFloat", b1, rb1);
     assertEquals("testBytesToFloat", b2, rb2);
-
   }
 
   @Test
-  public void testFloatToBytes() throws Exception {
+  public void testFloatToBytes() {
     // fail("NotFilter yet implemented");
     float b = 25.0f;
     byte[] bb = BytesUtils.floatToBytes(b);
@@ -82,7 +80,7 @@ public class BytesUtilsTest {
   }
 
   @Test
-  public void testBoolToBytes() throws Exception {
+  public void testBoolToBytes() {
     boolean b = true;
     byte[] bb = BytesUtils.boolToBytes(b);
     boolean bf = BytesUtils.bytesToBool(bb);
@@ -90,7 +88,7 @@ public class BytesUtilsTest {
   }
 
   @Test
-  public void testBytesToBool() throws Exception {
+  public void testBytesToBool() {
     boolean b = false;
     byte[] bb = BytesUtils.boolToBytes(b);
     boolean bf = BytesUtils.bytesToBool(bb);
@@ -213,7 +211,7 @@ public class BytesUtilsTest {
   }
 
   @Test
-  public void testSubBytes() throws IOException {
+  public void testSubBytes() {
     List<byte[]> list = new ArrayList<byte[]>();
     float f1 = 12.4f;
     boolean b1 = true;
@@ -276,10 +274,6 @@ public class BytesUtilsTest {
     int rb2 = BytesUtils.bytesToInt(ret, 24, 24);
     int rb3 = BytesUtils.bytesToInt(ret, 48, 24);
     int rb4 = BytesUtils.bytesToInt(ret, 72, 24);
-    intToBinaryShowForTest(b1);
-    byteArrayToBinaryShowForTest(ret);
-    intToBinaryShowForTest(b2);
-    byteArrayToBinaryShowForTest(ret);
     assertEquals("testIntToBytesWithWidth1", b1, rb1);
     assertEquals("testIntToBytesWithWidth2", b2, rb2);
     assertEquals("testIntToBytesWithWidth3", b3, rb3);
@@ -294,10 +288,6 @@ public class BytesUtilsTest {
     long b2 = (1 << (bitLen % 32)) * basic + r.nextInt();
     long b3 = (1 << (bitLen % 32)) * basic + r.nextInt();
     long b4 = (1 << (bitLen % 32)) * basic + r.nextInt();
-    longToBinaryShowForTest(b1);
-    longToBinaryShowForTest(b2);
-    longToBinaryShowForTest(b3);
-    longToBinaryShowForTest(b4);
     byte[] ret = new byte[(int) Math.ceil(bitLen * 4.0 / 8.0)];
     BytesUtils.longToBytes(b1, ret, bitLen * 0, bitLen);
     BytesUtils.longToBytes(b2, ret, bitLen * 1, bitLen);
@@ -390,5 +380,4 @@ public class BytesUtilsTest {
     InputStream in = new ByteArrayInputStream(bs);
     assertEquals(l, BytesUtils.readBool(in));
   }
-
 }

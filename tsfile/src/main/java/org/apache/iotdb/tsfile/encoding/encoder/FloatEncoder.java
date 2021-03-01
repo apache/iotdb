@@ -19,42 +19,34 @@
 
 package org.apache.iotdb.tsfile.encoding.encoder;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import org.apache.iotdb.tsfile.exception.encoding.TsFileEncodingException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+
 /**
- * Encoder for float or double value using rle or two-diff according to
- * following grammar.
+ * Encoder for float or double value using rle or two-diff according to following grammar.
  *
- * <pre>
- * {@code
+ * <pre>{@code
  * float encoder: <maxPointvalue> <encoded-data>
  * maxPointvalue := number for accuracy of decimal places, store as unsigned var int
  * encoded-data := same as encoder's pattern
- * }
- * </pre>
+ * }</pre>
  */
 public class FloatEncoder extends Encoder {
 
   private Encoder encoder;
 
-  /**
-   * number for accuracy of decimal places.
-   */
+  /** number for accuracy of decimal places. */
   private int maxPointNumber;
 
-  /**
-   * maxPointValue = 10^(maxPointNumber).
-   */
+  /** maxPointValue = 10^(maxPointNumber). */
   private double maxPointValue;
 
-  /**
-   * flag to check whether maxPointNumber is saved in the stream.
-   */
+  /** flag to check whether maxPointNumber is saved in the stream. */
   private boolean isMaxPointNumberSaved;
 
   public FloatEncoder(TSEncoding encodingType, TSDataType dataType, int maxPointNumber) {
@@ -68,7 +60,8 @@ public class FloatEncoder extends Encoder {
       } else if (dataType == TSDataType.DOUBLE) {
         encoder = new LongRleEncoder();
       } else {
-        throw new TsFileEncodingException(String.format("data type %s is not supported by FloatEncoder", dataType));
+        throw new TsFileEncodingException(
+            String.format("data type %s is not supported by FloatEncoder", dataType));
       }
     } else if (encodingType == TSEncoding.TS_2DIFF) {
       if (dataType == TSDataType.FLOAT) {
@@ -76,10 +69,12 @@ public class FloatEncoder extends Encoder {
       } else if (dataType == TSDataType.DOUBLE) {
         encoder = new DeltaBinaryEncoder.LongDeltaEncoder();
       } else {
-        throw new TsFileEncodingException(String.format("data type %s is not supported by FloatEncoder", dataType));
+        throw new TsFileEncodingException(
+            String.format("data type %s is not supported by FloatEncoder", dataType));
       }
     } else {
-      throw new TsFileEncodingException(String.format("%s encoding is not supported by FloatEncoder", encodingType));
+      throw new TsFileEncodingException(
+          String.format("%s encoding is not supported by FloatEncoder", encodingType));
     }
   }
 
@@ -140,5 +135,4 @@ public class FloatEncoder extends Encoder {
   public long getMaxByteSize() {
     return encoder.getMaxByteSize();
   }
-
 }

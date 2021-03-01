@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,12 +18,14 @@
  */
 package org.apache.iotdb.cluster.utils.nodetool.function;
 
-import static org.apache.iotdb.cluster.utils.nodetool.Printer.msgPrintln;
-
-import io.airlift.airline.Command;
-import java.util.List;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitorMBean;
+
+import io.airlift.airline.Command;
+
+import java.util.List;
+
+import static org.apache.iotdb.cluster.utils.nodetool.Printer.msgPrintln;
 
 @Command(name = "ring", description = "Print information about the hash ring of nodes")
 public class Ring extends NodeToolCmd {
@@ -36,7 +38,8 @@ public class Ring extends NodeToolCmd {
     } else {
       msgPrintln(String.format("%-20s  %30s", "Node Identifier", "Node"));
       allNodes.forEach(
-          node -> msgPrintln(String.format("%-20d->%30s", node.nodeIdentifier, nodeToString(node))));
+          node ->
+              msgPrintln(String.format("%-20d->%30s", node.nodeIdentifier, nodeToString(node))));
     }
   }
 }

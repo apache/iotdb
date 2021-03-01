@@ -19,12 +19,15 @@
 package org.apache.iotdb.db.utils;
 
 import io.netty.util.internal.PlatformDependent;
+
 import java.nio.MappedByteBuffer;
 
 public class MmapUtil {
 
   public static void clean(MappedByteBuffer mappedByteBuffer) {
-    if (mappedByteBuffer == null || !mappedByteBuffer.isDirect() || mappedByteBuffer.capacity()== 0) {
+    if (mappedByteBuffer == null
+        || !mappedByteBuffer.isDirect()
+        || mappedByteBuffer.capacity() == 0) {
       return;
     }
     PlatformDependent.freeDirectBuffer(mappedByteBuffer);

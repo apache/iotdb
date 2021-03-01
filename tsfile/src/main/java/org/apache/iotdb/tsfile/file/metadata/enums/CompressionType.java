@@ -19,44 +19,28 @@
 package org.apache.iotdb.tsfile.file.metadata.enums;
 
 public enum CompressionType {
-  /**
-   * Do not comprocess
-   */
+  /** Do not comprocess */
   UNCOMPRESSED("", (byte) 0),
 
-  /**
-   * SNAPPY
-   */
+  /** SNAPPY */
   SNAPPY(".snappy", (byte) 1),
 
-  /**
-   * GZIP
-   */
+  /** GZIP */
   GZIP(".gzip", (byte) 2),
 
-  /**
-   * LZO
-   */
+  /** LZO */
   LZO(".lzo", (byte) 3),
 
-  /**
-   * SDT
-   */
+  /** SDT */
   SDT(".sdt", (byte) 4),
 
-  /**
-   * PAA
-   */
+  /** PAA */
   PAA(".paa", (byte) 5),
 
-  /**
-   * PLA
-   */
+  /** PLA */
   PLA(".pla", (byte) 6),
 
-  /**
-   * LZ4
-   */
+  /** LZ4 */
   LZ4(".lz4", (byte) 7);
 
   private final String extensionName;
@@ -86,9 +70,7 @@ public enum CompressionType {
     return Byte.BYTES;
   }
 
-  /**
-   * @return byte number
-   */
+  /** @return byte number */
   public byte serialize() {
     return this.index;
   }
@@ -101,5 +83,4 @@ public enum CompressionType {
   public String getExtension() {
     return extensionName;
   }
-
 }

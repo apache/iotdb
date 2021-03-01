@@ -18,11 +18,24 @@
  */
 package org.apache.iotdb.jdbc;
 
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
+import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
+import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
+import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
+import org.apache.iotdb.service.rpc.thrift.TSIService;
+import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -36,87 +49,69 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
-import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
-import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
-import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
-import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
-import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
-import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /*
-    This class is designed to test the function of TsfileQueryResultSet.
-    This class also sheds light on the complete execution process of a query sql from the jdbc perspective.
+   This class is designed to test the function of TsfileQueryResultSet.
+   This class also sheds light on the complete execution process of a query sql from the jdbc perspective.
 
-    The test utilizes the mockito framework to mock responses from an IoTDB server.
-    The status of the IoTDB server mocked here is determined by the following sql commands:
+   The test utilizes the mockito framework to mock responses from an IoTDB server.
+   The status of the IoTDB server mocked here is determined by the following sql commands:
 
-    "SET STORAGE GROUP TO root.vehicle",
-    "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
-    "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
-    "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
-    "insert into root.vehicle.d0(timestamp,s0) values(1,101)",
-    "insert into root.vehicle.d0(timestamp,s0) values(2,198)",
-    "insert into root.vehicle.d0(timestamp,s0) values(100,99)",
-    "insert into root.vehicle.d0(timestamp,s0) values(101,99)",
-    "insert into root.vehicle.d0(timestamp,s0) values(102,80)",
-    "insert into root.vehicle.d0(timestamp,s0) values(103,99)",
-    "insert into root.vehicle.d0(timestamp,s0) values(104,90)",
-    "insert into root.vehicle.d0(timestamp,s0) values(105,99)",
-    "insert into root.vehicle.d0(timestamp,s0) values(106,99)",
-    "insert into root.vehicle.d0(timestamp,s0) values(2,10000)",
-    "insert into root.vehicle.d0(timestamp,s0) values(50,10000)",
-    "insert into root.vehicle.d0(timestamp,s0) values(1000,22222)",
-    "DELETE FROM root.vehicle.d0.s0 WHERE time < 104",
-    "UPDATE root.vehicle.d0 SET s0 = 33333 WHERE time < 106 and time > 103",
-    "insert into root.vehicle.d0(timestamp,s1) values(1,1101)",
-    "insert into root.vehicle.d0(timestamp,s1) values(2,198)",
-    "insert into root.vehicle.d0(timestamp,s1) values(100,199)",
-    "insert into root.vehicle.d0(timestamp,s1) values(101,199)",
-    "insert into root.vehicle.d0(timestamp,s1) values(102,180)",
-    "insert into root.vehicle.d0(timestamp,s1) values(103,199)",
-    "insert into root.vehicle.d0(timestamp,s1) values(104,190)",
-    "insert into root.vehicle.d0(timestamp,s1) values(105,199)",
-    "insert into root.vehicle.d0(timestamp,s1) values(2,40000)",
-    "insert into root.vehicle.d0(timestamp,s1) values(50,50000)",
-    "insert into root.vehicle.d0(timestamp,s1) values(1000,55555)",
-    "insert into root.vehicle.d0(timestamp,s2) values(1000,55555)",
-    "insert into root.vehicle.d0(timestamp,s2) values(2,2.22)",
-    "insert into root.vehicle.d0(timestamp,s2) values(3,3.33)",
-    "insert into root.vehicle.d0(timestamp,s2) values(4,4.44)",
-    "insert into root.vehicle.d0(timestamp,s2) values(102,10.00)",
-    "insert into root.vehicle.d0(timestamp,s2) values(105,11.11)",
-    "insert into root.vehicle.d0(timestamp,s2) values(1000,1000.11)",
-    "insert into root.vehicle.d0(timestamp,s1) values(2000-01-01T08:00:00+08:00, 100)",
- */
+   "SET STORAGE GROUP TO root.vehicle",
+   "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
+   "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
+   "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
+   "insert into root.vehicle.d0(timestamp,s0) values(1,101)",
+   "insert into root.vehicle.d0(timestamp,s0) values(2,198)",
+   "insert into root.vehicle.d0(timestamp,s0) values(100,99)",
+   "insert into root.vehicle.d0(timestamp,s0) values(101,99)",
+   "insert into root.vehicle.d0(timestamp,s0) values(102,80)",
+   "insert into root.vehicle.d0(timestamp,s0) values(103,99)",
+   "insert into root.vehicle.d0(timestamp,s0) values(104,90)",
+   "insert into root.vehicle.d0(timestamp,s0) values(105,99)",
+   "insert into root.vehicle.d0(timestamp,s0) values(106,99)",
+   "insert into root.vehicle.d0(timestamp,s0) values(2,10000)",
+   "insert into root.vehicle.d0(timestamp,s0) values(50,10000)",
+   "insert into root.vehicle.d0(timestamp,s0) values(1000,22222)",
+   "DELETE FROM root.vehicle.d0.s0 WHERE time < 104",
+   "UPDATE root.vehicle.d0 SET s0 = 33333 WHERE time < 106 and time > 103",
+   "insert into root.vehicle.d0(timestamp,s1) values(1,1101)",
+   "insert into root.vehicle.d0(timestamp,s1) values(2,198)",
+   "insert into root.vehicle.d0(timestamp,s1) values(100,199)",
+   "insert into root.vehicle.d0(timestamp,s1) values(101,199)",
+   "insert into root.vehicle.d0(timestamp,s1) values(102,180)",
+   "insert into root.vehicle.d0(timestamp,s1) values(103,199)",
+   "insert into root.vehicle.d0(timestamp,s1) values(104,190)",
+   "insert into root.vehicle.d0(timestamp,s1) values(105,199)",
+   "insert into root.vehicle.d0(timestamp,s1) values(2,40000)",
+   "insert into root.vehicle.d0(timestamp,s1) values(50,50000)",
+   "insert into root.vehicle.d0(timestamp,s1) values(1000,55555)",
+   "insert into root.vehicle.d0(timestamp,s2) values(1000,55555)",
+   "insert into root.vehicle.d0(timestamp,s2) values(2,2.22)",
+   "insert into root.vehicle.d0(timestamp,s2) values(3,3.33)",
+   "insert into root.vehicle.d0(timestamp,s2) values(4,4.44)",
+   "insert into root.vehicle.d0(timestamp,s2) values(102,10.00)",
+   "insert into root.vehicle.d0(timestamp,s2) values(105,11.11)",
+   "insert into root.vehicle.d0(timestamp,s2) values(1000,1000.11)",
+   "insert into root.vehicle.d0(timestamp,s1) values(2000-01-01T08:00:00+08:00, 100)",
+*/
 
 public class IoTDBJDBCResultSetTest {
 
-  @Mock
-  TSExecuteStatementResp execResp;
+  @Mock TSExecuteStatementResp execResp;
   private long queryId;
   private long sessionId;
-  @Mock
-  private IoTDBConnection connection;
-  @Mock
-  private TSIService.Iface client;
-  @Mock
-  private Statement statement;
-  @Mock
-  private TSFetchMetadataResp fetchMetadataResp;
-  @Mock
-  private TSFetchResultsResp fetchResultsResp;
+  @Mock private IoTDBConnection connection;
+  @Mock private TSIService.Iface client;
+  @Mock private Statement statement;
+  @Mock private TSFetchMetadataResp fetchMetadataResp;
+  @Mock private TSFetchResultsResp fetchResultsResp;
 
   private TSStatus successStatus = RpcUtils.SUCCESS_STATUS;
   private ZoneId zoneID = ZoneId.systemDefault();
@@ -148,8 +143,9 @@ public class IoTDBJDBCResultSetTest {
   @Test
   public void testQuery() throws Exception {
 
-    String testSql = "select *,s1,s0,s2 from root.vehicle.d0 where s1 > 190 or s2 < 10.0 "
-        + "limit 20 slimit 4 soffset 2";
+    String testSql =
+        "select *,s1,s0,s2 from root.vehicle.d0 where s1 > 190 or s2 < 10.0 "
+            + "limit 20 slimit 4 soffset 2";
 
     /*
      * step 1: execute statement
@@ -174,7 +170,11 @@ public class IoTDBJDBCResultSetTest {
     when(execResp.getOperationType()).thenReturn("QUERY");
     when(execResp.isSetQueryId()).thenReturn(true);
     when(execResp.getQueryId()).thenReturn(queryId);
-    doReturn("FLOAT").doReturn("INT64").doReturn("INT32").doReturn("FLOAT").when(fetchMetadataResp)
+    doReturn("FLOAT")
+        .doReturn("INT64")
+        .doReturn("INT32")
+        .doReturn("FLOAT")
+        .when(fetchMetadataResp)
         .getDataType();
 
     boolean hasResultSet = statement.execute(testSql);
@@ -247,19 +247,39 @@ public class IoTDBJDBCResultSetTest {
     tsDataTypeList.add(TSDataType.INT32); // root.vehicle.d0.s0
 
     Object[][] input = {
-        {2L, 2.22F, 40000L, null,},
-        {3L, 3.33F, null, null,},
-        {4L, 4.44F, null, null,},
-        {50L, null, 50000L, null,},
-        {100L, null, 199L, null,},
-        {101L, null, 199L, null,},
-        {103L, null, 199L, null,},
-        {105L, 11.11F, 199L, 33333,},
-        {1000L, 1000.11F, 55555L, 22222,}};
+      {
+        2L, 2.22F, 40000L, null,
+      },
+      {
+        3L, 3.33F, null, null,
+      },
+      {
+        4L, 4.44F, null, null,
+      },
+      {
+        50L, null, 50000L, null,
+      },
+      {
+        100L, null, 199L, null,
+      },
+      {
+        101L, null, 199L, null,
+      },
+      {
+        103L, null, 199L, null,
+      },
+      {
+        105L, 11.11F, 199L, 33333,
+      },
+      {
+        1000L, 1000.11F, 55555L, 22222,
+      }
+    };
 
     int columnNum = tsDataTypeList.size();
     TSQueryDataSet tsQueryDataSet = new TSQueryDataSet();
-    // one time column and each value column has a actual value buffer and a bitmap value to indicate whether it is a null
+    // one time column and each value column has a actual value buffer and a bitmap value to
+    // indicate whether it is a null
     int columnNumWithTime = columnNum * 2 + 1;
     DataOutputStream[] dataOutputStreams = new DataOutputStream[columnNumWithTime];
     ByteArrayOutputStream[] byteArrayOutputStreams = new ByteArrayOutputStream[columnNumWithTime];

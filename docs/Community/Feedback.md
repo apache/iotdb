@@ -37,6 +37,8 @@ As an Apache project, we are using mailing list, JIRA, and Github Issues to obta
 
 * Twitter: https://twitter.com/apacheiotdb
 
+* For Chinese users, we have a QQ Group: 659990460.
+  
 * We look forward to you sharing the experience of using IoTDB: [Survey](https://github.com/apache/iotdb/issues/748)
 
 * For Chinese users, we have a Wechat Public Account. For more details, read [交流](../zh/Community/Feedback.md)

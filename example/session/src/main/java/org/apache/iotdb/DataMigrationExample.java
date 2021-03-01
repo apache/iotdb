@@ -18,13 +18,6 @@
  */
 package org.apache.iotdb;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.SessionDataSet.DataIterator;
@@ -36,13 +29,20 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 /**
  * Migrate all data belongs to a path from one IoTDB to another IoTDB Each thread migrate one
  * series, the concurrent thread can be configured by concurrency
  *
- * This example is migrating all timeseries from a local IoTDB with 6667 port to a local IoTDB with
- * 6668 port
+ * <p>This example is migrating all timeseries from a local IoTDB with 6667 port to a local IoTDB
+ * with 6668 port
  */
 public class DataMigrationExample {
 
@@ -54,7 +54,8 @@ public class DataMigrationExample {
   private static int concurrency = 5;
 
   public static void main(String[] args)
-      throws IoTDBConnectionException, StatementExecutionException, ExecutionException, InterruptedException {
+      throws IoTDBConnectionException, StatementExecutionException, ExecutionException,
+          InterruptedException {
 
     ExecutorService executorService = Executors.newFixedThreadPool(2 * concurrency + 1);
 
@@ -67,8 +68,8 @@ public class DataMigrationExample {
     readerPool = new SessionPool("127.0.0.1", 6667, "root", "root", concurrency);
     writerPool = new SessionPool("127.0.0.1", 6668, "root", "root", concurrency);
 
-    SessionDataSetWrapper schemaDataSet = readerPool
-        .executeQueryStatement("count timeseries " + path);
+    SessionDataSetWrapper schemaDataSet =
+        readerPool.executeQueryStatement("count timeseries " + path);
     DataIterator schemaIter = schemaDataSet.iterator();
     int total;
     if (schemaIter.next()) {
@@ -80,17 +81,18 @@ public class DataMigrationExample {
     }
     readerPool.closeResultSet(schemaDataSet);
 
-    schemaDataSet = readerPool
-        .executeQueryStatement("show timeseries " + path);
+    schemaDataSet = readerPool.executeQueryStatement("show timeseries " + path);
     schemaIter = schemaDataSet.iterator();
 
     List<Future> futureList = new ArrayList<>();
     int count = 0;
     while (schemaIter.next()) {
-      count ++;
+      count++;
       Path currentPath = new Path(schemaIter.getString("timeseries"));
-      Future future = executorService.submit(
-          new LoadThread(count, currentPath, TSDataType.valueOf(schemaIter.getString("dataType"))));
+      Future future =
+          executorService.submit(
+              new LoadThread(
+                  count, currentPath, TSDataType.valueOf(schemaIter.getString("dataType"))));
       futureList.add(future);
     }
     readerPool.closeResultSet(schemaDataSet);
@@ -103,7 +105,6 @@ public class DataMigrationExample {
     readerPool.close();
     writerPool.close();
   }
-
 
   static class LoadThread implements Callable<Void> {
 
@@ -132,8 +133,9 @@ public class DataMigrationExample {
 
       try {
 
-        dataSet = readerPool
-            .executeQueryStatement(String.format("select %s from %s", measurement, device));
+        dataSet =
+            readerPool.executeQueryStatement(
+                String.format("select %s from %s", measurement, device));
 
         DataIterator dataIter = dataSet.iterator();
         while (dataIter.next()) {
@@ -180,6 +182,5 @@ public class DataMigrationExample {
       System.out.println("Loading the " + i + "-th timeseries: " + series + " success");
       return null;
     }
-
   }
 }

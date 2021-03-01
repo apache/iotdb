@@ -19,13 +19,14 @@
 
 package org.apache.iotdb.tsfile.file.header;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 
 public class PageHeader {
 
@@ -40,18 +41,16 @@ public class PageHeader {
     this.statistics = statistics;
   }
 
-  /**
-   * max page header size without statistics
-   */
+  /** max page header size without statistics */
   public static int estimateMaxPageHeaderSizeWithoutStatistics() {
     // uncompressedSize, compressedSize
     // because we use unsigned varInt to encode these two integer,
-    //each unsigned arInt will cost at most 5 bytes
+    // each unsigned arInt will cost at most 5 bytes
     return 2 * (Integer.BYTES + 1);
   }
 
-  public static PageHeader deserializeFrom(InputStream inputStream, TSDataType dataType,
-      boolean hasStatistic) throws IOException {
+  public static PageHeader deserializeFrom(
+      InputStream inputStream, TSDataType dataType, boolean hasStatistic) throws IOException {
     int uncompressedSize = ReadWriteForEncodingUtils.readUnsignedVarInt(inputStream);
     int compressedSize = ReadWriteForEncodingUtils.readUnsignedVarInt(inputStream);
     Statistics statistics = null;
@@ -114,8 +113,14 @@ public class PageHeader {
 
   @Override
   public String toString() {
-    return "PageHeader{" + "uncompressedSize=" + uncompressedSize + ", compressedSize="
-        + compressedSize + ", statistics=" + statistics + "}";
+    return "PageHeader{"
+        + "uncompressedSize="
+        + uncompressedSize
+        + ", compressedSize="
+        + compressedSize
+        + ", statistics="
+        + statistics
+        + "}";
   }
 
   public boolean isModified() {
@@ -126,9 +131,7 @@ public class PageHeader {
     this.modified = modified;
   }
 
-  /**
-   * max page header size without statistics
-   */
+  /** max page header size without statistics */
   public int getSerializedPageSize() {
     return ReadWriteForEncodingUtils.uVarIntSize(uncompressedSize)
         + ReadWriteForEncodingUtils.uVarIntSize(compressedSize)

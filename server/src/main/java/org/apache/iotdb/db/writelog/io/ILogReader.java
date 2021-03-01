@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.db.writelog.io;
 
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
 /**
  * ILogReader is an iterator of PhysicalPlan but throws IOException and provide a close() method.
@@ -28,13 +29,12 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
  */
 public interface ILogReader {
 
-  /**
-   * release resources occupied by this object, like file streams.
-   */
+  /** release resources occupied by this object, like file streams. */
   void close();
 
   /**
    * return whether there exists next log to be read.
+   *
    * @return whether there exists next log to be read.
    * @throws IOException
    */
@@ -42,6 +42,7 @@ public interface ILogReader {
 
   /**
    * return the next log read from media like a WAL file and covert it to a PhysicalPlan.
+   *
    * @return the next log as a PhysicalPlan
    * @throws java.util.NoSuchElementException when there are no more logs
    */

@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -16,15 +18,13 @@
 # under the License.
 #
 
-PROJECT(SessionExample)
-CMAKE_MINIMUM_REQUIRED(VERSION 3.7)
+for file in ../*/target/*.exec
+do
+   cp $file ./target/
+done
 
-SET(CMAKE_CXX_STANDARD 11)
-SET(CMAKE_CXX_STANDARD_REQUIRED ON)
-SET(CMAKE_POSITION_INDEPENDENT_CODE ON)
-
-INCLUDE_DIRECTORIES(client/include)
-LINK_DIRECTORIES(client/lib)
-
-ADD_EXECUTABLE(SessionExample SessionExample.cpp)
-TARGET_LINK_LIBRARIES(SessionExample iotdb_session)
+for file in ../*/target/classes
+do
+   echo "copy from" ${file}
+   cp -r $file ./target/
+done

@@ -19,17 +19,19 @@
 
 package org.apache.iotdb.tsfile.encoding.encoder;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.math.BigDecimal;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.encoding.TsFileEncodingException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.math.BigDecimal;
 
 public class PlainEncoder extends Encoder {
 
@@ -92,7 +94,8 @@ public class PlainEncoder extends Encoder {
       // write value
       out.write(value.getValues());
     } catch (IOException e) {
-      logger.error("tsfile-encoding PlainEncoder: error occurs when encode Binary value {}", value, e);
+      logger.error(
+          "tsfile-encoding PlainEncoder: error occurs when encode Binary value {}", value, e);
     }
   }
 
@@ -104,21 +107,21 @@ public class PlainEncoder extends Encoder {
   @Override
   public int getOneItemMaxSize() {
     switch (dataType) {
-    case BOOLEAN:
-      return 1;
-    case INT32:
-      return 4;
-    case INT64:
-      return 8;
-    case FLOAT:
-      return 4;
-    case DOUBLE:
-      return 8;
-    case TEXT:
-      // refer to encode(Binary,ByteArrayOutputStream)
-      return 4 + TSFileConfig.BYTE_SIZE_PER_CHAR * maxStringLength;
-    default:
-      throw new UnsupportedOperationException(dataType.toString());
+      case BOOLEAN:
+        return 1;
+      case INT32:
+        return 4;
+      case INT64:
+        return 8;
+      case FLOAT:
+        return 4;
+      case DOUBLE:
+        return 8;
+      case TEXT:
+        // refer to encode(Binary,ByteArrayOutputStream)
+        return 4 + TSFileConfig.BYTE_SIZE_PER_CHAR * maxStringLength;
+      default:
+        throw new UnsupportedOperationException(dataType.toString());
     }
   }
 

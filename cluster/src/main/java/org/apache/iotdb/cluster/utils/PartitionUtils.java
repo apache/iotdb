@@ -19,11 +19,6 @@
 
 package org.apache.iotdb.cluster.utils;
 
-import static org.apache.iotdb.cluster.config.ClusterConstant.HASH_SALT;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -58,6 +53,12 @@ import org.apache.iotdb.tsfile.read.filter.operator.NotFilter;
 import org.apache.iotdb.tsfile.read.filter.operator.OrFilter;
 import org.apache.iotdb.tsfile.utils.Murmur128Hash;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+
+import static org.apache.iotdb.cluster.config.ClusterConstant.HASH_SALT;
+
 public class PartitionUtils {
 
   private PartitionUtils() {
@@ -74,9 +75,9 @@ public class PartitionUtils {
     return plan instanceof LoadDataPlan
         || plan instanceof OperateFilePlan
         || (plan instanceof LoadConfigurationPlan
-        && ((LoadConfigurationPlan) plan).getLoadConfigurationPlanType().equals(
-        LoadConfigurationPlanType.LOCAL))
-        ;
+            && ((LoadConfigurationPlan) plan)
+                .getLoadConfigurationPlanType()
+                .equals(LoadConfigurationPlanType.LOCAL));
   }
 
   /**
@@ -89,13 +90,14 @@ public class PartitionUtils {
     return plan instanceof SetStorageGroupPlan
         || plan instanceof SetTTLPlan
         || plan instanceof ShowTTLPlan
-        || (plan instanceof LoadConfigurationPlan && ((LoadConfigurationPlan) plan)
-        .getLoadConfigurationPlanType().equals(LoadConfigurationPlanType.GLOBAL))
+        || (plan instanceof LoadConfigurationPlan
+            && ((LoadConfigurationPlan) plan)
+                .getLoadConfigurationPlanType()
+                .equals(LoadConfigurationPlanType.GLOBAL))
         || plan instanceof AuthorPlan
         || plan instanceof DeleteStorageGroupPlan
         // DataAuthPlan is global because all nodes must have all user info
-        || plan instanceof DataAuthPlan
-        ;
+        || plan instanceof DataAuthPlan;
   }
 
   /**
@@ -106,32 +108,30 @@ public class PartitionUtils {
    */
   public static boolean isGlobalDataPlan(PhysicalPlan plan) {
     return
-        // because deletePlan has an infinite time range.
-        plan instanceof DeletePlan
-            || plan instanceof DeleteTimeSeriesPlan
-            || plan instanceof MergePlan
-            || plan instanceof FlushPlan;
+    // because deletePlan has an infinite time range.
+    plan instanceof DeletePlan
+        || plan instanceof DeleteTimeSeriesPlan
+        || plan instanceof MergePlan
+        || plan instanceof FlushPlan;
   }
 
-  public static int calculateStorageGroupSlotByTime(String storageGroupName, long timestamp,
-      int slotNum) {
+  public static int calculateStorageGroupSlotByTime(
+      String storageGroupName, long timestamp, int slotNum) {
     long partitionNum = StorageEngine.getTimePartition(timestamp);
     return calculateStorageGroupSlotByPartition(storageGroupName, partitionNum, slotNum);
   }
 
-  private static int calculateStorageGroupSlotByPartition(String storageGroupName,
-      long partitionNum,
-      int slotNum) {
+  private static int calculateStorageGroupSlotByPartition(
+      String storageGroupName, long partitionNum, int slotNum) {
     int hash = Murmur128Hash.hash(storageGroupName, partitionNum, HASH_SALT);
     return Math.abs(hash % slotNum);
   }
 
-
   public static InsertTabletPlan copy(InsertTabletPlan plan, long[] times, Object[] values) {
     InsertTabletPlan newPlan = new InsertTabletPlan(plan.getDeviceId(), plan.getMeasurements());
     newPlan.setDataTypes(plan.getDataTypes());
-    //according to TSServiceImpl.insertBatch(), only the deviceId, measurements, dataTypes,
-    //times, columns, and rowCount are need to be maintained.
+    // according to TSServiceImpl.insertBatch(), only the deviceId, measurements, dataTypes,
+    // times, columns, and rowCount are need to be maintained.
     newPlan.setColumns(values);
     newPlan.setTimes(times);
     newPlan.setRowCount(times.length);
@@ -206,13 +206,10 @@ public class PartitionUtils {
     return Intervals.ALL_INTERVAL;
   }
 
-  /**
-   * All intervals are closed.
-   */
+  /** All intervals are closed. */
   public static class Intervals extends ArrayList<Long> {
 
-    static final Intervals ALL_INTERVAL = new Intervals(Long.MIN_VALUE,
-        Long.MAX_VALUE);
+    static final Intervals ALL_INTERVAL = new Intervals(Long.MIN_VALUE, Long.MAX_VALUE);
 
     public Intervals() {
       super();
@@ -310,8 +307,8 @@ public class PartitionUtils {
       return result;
     }
 
-    private void mergeRemainingIntervals(int remainingIndex, Intervals remainingIntervals,
-        Intervals result) {
+    private void mergeRemainingIntervals(
+        int remainingIndex, Intervals remainingIntervals, Intervals result) {
       for (int i = remainingIndex; i < remainingIntervals.getIntervalSize(); i++) {
         long lb = remainingIntervals.getLowerBound(i);
         long ub = remainingIntervals.getUpperBound(i);
@@ -387,9 +384,12 @@ public class PartitionUtils {
    * @param partitionTable
    * @param result
    */
-  public static void getIntervalHeaders(String storageGroupName, long timeLowerBound,
+  public static void getIntervalHeaders(
+      String storageGroupName,
+      long timeLowerBound,
       long timeUpperBound,
-      PartitionTable partitionTable, Set<Node> result) {
+      PartitionTable partitionTable,
+      Set<Node> result) {
     long partitionInterval = StorageEngine.getTimePartitionInterval();
     long currPartitionStart = timeLowerBound / partitionInterval * partitionInterval;
     while (currPartitionStart <= timeUpperBound) {
@@ -397,5 +397,4 @@ public class PartitionUtils {
       currPartitionStart += partitionInterval;
     }
   }
-
 }

@@ -90,7 +90,7 @@ if (Boolean.FALSE.equals(isCalculatedList.get(i))) {
 在使用 `overlapedPageData` 进行更新时，由于获得每一个聚合函数结果都会遍历这个 batchData，因此需要调用 `resetBatchData()` 方法将指针指向其开始位置，使得下一个函数可以遍历。
 
 ## 带值过滤条件的聚合查询
-对于带值过滤条件的聚合查询，通过 `executeWithoutValueFilter()` 方法获得结果并构建 dataSet。首先根据表达式创建 `timestampGenerator`，然后为每一个时间序列创建一个 `SeriesReaderByTimestamp`，放到 `readersOfSelectedSeries`列表中；为每一个查询创建一个创建一个聚合结果 `AggregateResult`，放到 `aggregateResults`列表中。
+对于带值过滤条件的聚合查询，通过 `executeWithoutValueFilter()` 方法获得结果并构建 dataSet。首先根据表达式创建 `timestampGenerator`，然后为每一个时间序列创建一个 `SeriesReaderByTimestamp`，放到 `readersOfSelectedSeries`列表中；为每一个查询创建一个聚合结果 `AggregateResult`，放到 `aggregateResults`列表中。
 
 初始化完成后，调用 `aggregateWithValueFilter()` 方法更新结果：
 ```

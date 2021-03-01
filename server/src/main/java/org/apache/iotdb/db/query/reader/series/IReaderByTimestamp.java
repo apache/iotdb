@@ -25,20 +25,21 @@ public interface IReaderByTimestamp {
   /**
    * Returns the corresponding value under this timestamp. Returns null if no value under this
    * timestamp.
-   * <p>
-   * Note that calling this method will change the status of this reader irreversibly just like
-   * <code>next</code>. The difference is that <code>next</code> moves one step forward while
-   * <code>getValueInTimestamp</code> advances towards the given timestamp.
-   * <p>
-   * Attention: DO call this method with monotonically increasing timestamps. There is no guarantee
-   * of correctness with any other way of calling. For example, DO NOT call this method twice with
-   * the same timestamp.
+   *
+   * <p>Note that calling this method will change the status of this reader irreversibly just like
+   * <code>next</code>. The difference is that <code>next</code> moves one step forward while <code>
+   * getValueInTimestamp</code> advances towards the given timestamp.
+   *
+   * <p>Attention: DO call this method with monotonically increasing timestamps. There is no
+   * guarantee of correctness with any other way of calling. For example, DO NOT call this method
+   * twice with the same timestamp.
    */
   Object getValueInTimestamp(long timestamp) throws IOException;
 
   /**
    * Returns whether there is no more data in reader.
-   * <p>True means no more data. False means you can still get more data</p>
+   *
+   * <p>True means no more data. False means you can still get more data
    */
   default boolean readerIsEmpty() throws IOException {
     return false;

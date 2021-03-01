@@ -19,7 +19,6 @@
 package org.apache.iotdb.tsfile.file.metadata.enums;
 
 public enum TSEncoding {
-
   PLAIN((byte) 0),
   PLAIN_DICTIONARY((byte) 1),
   RLE((byte) 2),
@@ -27,7 +26,7 @@ public enum TSEncoding {
   TS_2DIFF((byte) 4),
   BITMAP((byte) 5),
   GORILLA_V1((byte) 6),
-  REGULAR( (byte) 7),
+  REGULAR((byte) 7),
   GORILLA((byte) 8);
 
   private final byte type;
@@ -45,7 +44,6 @@ public enum TSEncoding {
   public static TSEncoding deserialize(byte encoding) {
     return getTsEncoding(encoding);
   }
-
 
   private static TSEncoding getTsEncoding(byte encoding) {
     for (TSEncoding tsEncoding : TSEncoding.values()) {

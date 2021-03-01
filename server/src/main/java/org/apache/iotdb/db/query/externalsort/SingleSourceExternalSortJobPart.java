@@ -18,22 +18,22 @@
  */
 package org.apache.iotdb.db.query.externalsort;
 
-import java.io.IOException;
 import org.apache.iotdb.db.query.reader.chunk.ChunkReaderWrap;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
+import java.io.IOException;
 
 public class SingleSourceExternalSortJobPart extends ExternalSortJobPart {
 
- private ChunkReaderWrap chunkReaderWrap;
+  private ChunkReaderWrap chunkReaderWrap;
 
- public SingleSourceExternalSortJobPart(ChunkReaderWrap chunkReaderWrap) {
-   super(ExternalSortJobPartType.SINGLE_SOURCE);
-   this.chunkReaderWrap = chunkReaderWrap;
- }
+  public SingleSourceExternalSortJobPart(ChunkReaderWrap chunkReaderWrap) {
+    super(ExternalSortJobPartType.SINGLE_SOURCE);
+    this.chunkReaderWrap = chunkReaderWrap;
+  }
 
- @Override
- public IPointReader executeForIPointReader() throws IOException {
-   return chunkReaderWrap.getIPointReader();
- }
+  @Override
+  public IPointReader executeForIPointReader() throws IOException {
+    return chunkReaderWrap.getIPointReader();
+  }
 }

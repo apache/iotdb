@@ -18,10 +18,6 @@
  */
 package org.apache.iotdb.db.query.reader.series;
 
-import java.io.IOException;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -31,6 +27,11 @@ import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+
+import java.io.IOException;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public class SeriesRawDataBatchReader implements ManagedSeriesReader {
 
@@ -42,27 +43,57 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
   private BatchData batchData;
   private boolean hasCachedBatchData = false;
 
-
   public SeriesRawDataBatchReader(SeriesReader seriesReader) {
     this.seriesReader = seriesReader;
   }
 
-  public SeriesRawDataBatchReader(PartialPath seriesPath, Set<String> allSensors, TSDataType dataType,
-      QueryContext context, QueryDataSource dataSource, Filter timeFilter, Filter valueFilter,
-      TsFileFilter fileFilter, boolean ascending) {
-    this.seriesReader = new SeriesReader(seriesPath, allSensors, dataType, context, dataSource,
-        timeFilter, valueFilter, fileFilter, ascending);
+  public SeriesRawDataBatchReader(
+      PartialPath seriesPath,
+      Set<String> allSensors,
+      TSDataType dataType,
+      QueryContext context,
+      QueryDataSource dataSource,
+      Filter timeFilter,
+      Filter valueFilter,
+      TsFileFilter fileFilter,
+      boolean ascending) {
+    this.seriesReader =
+        new SeriesReader(
+            seriesPath,
+            allSensors,
+            dataType,
+            context,
+            dataSource,
+            timeFilter,
+            valueFilter,
+            fileFilter,
+            ascending);
   }
 
   @TestOnly
   @SuppressWarnings("squid:S107")
-  public SeriesRawDataBatchReader(PartialPath seriesPath, TSDataType dataType, QueryContext context,
-      List<TsFileResource> seqFileResource, List<TsFileResource> unseqFileResource,
-      Filter timeFilter, Filter valueFilter, boolean ascending) {
+  public SeriesRawDataBatchReader(
+      PartialPath seriesPath,
+      TSDataType dataType,
+      QueryContext context,
+      List<TsFileResource> seqFileResource,
+      List<TsFileResource> unseqFileResource,
+      Filter timeFilter,
+      Filter valueFilter,
+      boolean ascending) {
     Set<String> allSensors = new HashSet<>();
     allSensors.add(seriesPath.getMeasurement());
-    this.seriesReader = new SeriesReader(seriesPath, allSensors, dataType, context,
-        seqFileResource, unseqFileResource, timeFilter, valueFilter, ascending);
+    this.seriesReader =
+        new SeriesReader(
+            seriesPath,
+            allSensors,
+            dataType,
+            context,
+            seqFileResource,
+            unseqFileResource,
+            timeFilter,
+            valueFilter,
+            ascending);
   }
 
   /**
@@ -104,7 +135,6 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
     return hasCachedBatchData;
   }
 
-
   @Override
   public BatchData nextBatch() throws IOException {
     if (hasCachedBatchData || hasNextBatch()) {
@@ -116,7 +146,7 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
 
   @Override
   public void close() throws IOException {
-    //no resources need to close
+    // no resources need to close
   }
 
   @Override

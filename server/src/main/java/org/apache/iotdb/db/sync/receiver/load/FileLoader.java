@@ -18,12 +18,6 @@
  */
 package org.apache.iotdb.db.sync.receiver.load;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
-import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.LoadFileException;
@@ -32,8 +26,16 @@ import org.apache.iotdb.db.exception.SyncDeviceOwnerConflictException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
+
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 public class FileLoader implements IFileLoader {
 
@@ -67,32 +69,32 @@ public class FileLoader implements IFileLoader {
     return fileLoader;
   }
 
-  public static FileLoader createFileLoader(File syncFolder)
-      throws IOException {
+  public static FileLoader createFileLoader(File syncFolder) throws IOException {
     return createFileLoader(syncFolder.getName(), syncFolder.getAbsolutePath());
   }
 
-  private Runnable loadTaskRunner = () -> {
-    try {
-      while (true) {
-        if (queue.isEmpty() && endSync) {
-          cleanUp();
-          break;
-        }
-        LoadTask loadTask = queue.poll(WAIT_TIME, TimeUnit.MILLISECONDS);
-        if (loadTask != null) {
-          try {
-            handleLoadTask(loadTask);
-          } catch (Exception e) {
-            LOGGER.error("Can not load task {}", loadTask, e);
+  private Runnable loadTaskRunner =
+      () -> {
+        try {
+          while (true) {
+            if (queue.isEmpty() && endSync) {
+              cleanUp();
+              break;
+            }
+            LoadTask loadTask = queue.poll(WAIT_TIME, TimeUnit.MILLISECONDS);
+            if (loadTask != null) {
+              try {
+                handleLoadTask(loadTask);
+              } catch (Exception e) {
+                LOGGER.error("Can not load task {}", loadTask, e);
+              }
+            }
           }
+        } catch (InterruptedException e) {
+          LOGGER.error("Can not handle load task", e);
+          Thread.currentThread().interrupt();
         }
-      }
-    } catch (InterruptedException e) {
-      LOGGER.error("Can not handle load task", e);
-      Thread.currentThread().interrupt();
-    }
-  };
+      };
 
   @Override
   public void addDeletedFileName(File deletedFile) {
@@ -142,7 +144,8 @@ public class FileLoader implements IFileLoader {
     } catch (SyncDeviceOwnerConflictException e) {
       LOGGER.error("Device owner has conflicts, so skip the loading file", e);
     } catch (LoadFileException | StorageEngineException | IllegalPathException e) {
-      throw new IOException(String.format("Can not load new tsfile %s", newTsFile.getAbsolutePath()), e);
+      throw new IOException(
+          String.format("Can not load new tsfile %s", newTsFile.getAbsolutePath()), e);
     }
     loadLog.finishLoadTsfile(newTsFile);
   }
@@ -157,11 +160,11 @@ public class FileLoader implements IFileLoader {
         LOGGER.info("The file {} to be deleted doesn't exist.", deletedTsFile.getAbsolutePath());
       }
     } catch (StorageEngineException | IllegalPathException e) {
-      throw new IOException(String.format("Can not load deleted tsfile %s", deletedTsFile.getAbsolutePath()), e);
+      throw new IOException(
+          String.format("Can not load deleted tsfile %s", deletedTsFile.getAbsolutePath()), e);
     }
     loadLog.finishLoadDeletedFile(deletedTsFile);
   }
-
 
   @Override
   public void cleanUp() {
@@ -194,10 +197,7 @@ public class FileLoader implements IFileLoader {
 
     @Override
     public String toString() {
-      return "LoadTask{" +
-          "file=" + file.getAbsolutePath() +
-          ", type=" + type +
-          '}';
+      return "LoadTask{" + "file=" + file.getAbsolutePath() + ", type=" + type + '}';
     }
   }
 }
