@@ -30,8 +30,8 @@ public class MetricName {
   public static final String SEPARATOR = ".";
   public static final Map<String, String> EMPTY_TAGS = Collections.emptyMap();
 
-  public String name;
-  public Map<String, String> tags;
+  private String name;
+  private Map<String, String> tags;
 
   public MetricName(String name, String... tags) {
     this.name = name;

@@ -37,15 +37,14 @@ public class MicrometerHistogramSnapshot implements HistogramSnapshot {
   @Override
   public double getValue(double quantile) {
     int prevIndex = 0;
-    int i = 0;
-    for (i = 0; i < this.histogramSnapshot.percentileValues().length; i++) {
-      if (this.histogramSnapshot.percentileValues()[i].percentile() == quantile) {
+    for (int i = 0; i < this.histogramSnapshot.percentileValues().length; i++) {
+      if (this.histogramSnapshot.percentileValues()[i].percentile() <= quantile) {
         prevIndex = i;
-        break;
-      } else if (this.histogramSnapshot.percentileValues()[i].percentile() > quantile) {
+      }
+      if (this.histogramSnapshot.percentileValues()[i].percentile() >= quantile) {
+        //Find the value of the first matching or most suitable insertion position
         break;
       }
-      prevIndex = i;
     }
 
     return this.histogramSnapshot.percentileValues()[prevIndex].value();

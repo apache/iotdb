@@ -19,9 +19,8 @@
 
 package org.apache.iotdb.metrics.dropwizard.type;
 
-import org.apache.iotdb.metrics.type.Rate;
-
 import com.codahale.metrics.Meter;
+import org.apache.iotdb.metrics.type.Rate;
 
 public class DropwizardRate implements Rate {
 

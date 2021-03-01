@@ -19,6 +19,12 @@
 
 package org.apache.iotdb.metrics.dropwizard;
 
+import com.codahale.metrics.JvmAttributeGaugeSet;
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.jvm.BufferPoolMetricSet;
+import com.codahale.metrics.jvm.CachedThreadStatesGaugeSet;
+import com.codahale.metrics.jvm.ClassLoadingGaugeSet;
+import com.codahale.metrics.jvm.GarbageCollectorMetricSet;
 import org.apache.iotdb.metrics.KnownMetric;
 import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.config.MetricConfig;
@@ -28,19 +34,13 @@ import org.apache.iotdb.metrics.dropwizard.type.DropwizardGauge;
 import org.apache.iotdb.metrics.dropwizard.type.DropwizardHistogram;
 import org.apache.iotdb.metrics.dropwizard.type.DropwizardRate;
 import org.apache.iotdb.metrics.dropwizard.type.DropwizardTimer;
+import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.metrics.type.IMetric;
 import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.type.Timer;
-
-import com.codahale.metrics.JvmAttributeGaugeSet;
-import com.codahale.metrics.MetricRegistry;
-import com.codahale.metrics.jvm.BufferPoolMetricSet;
-import com.codahale.metrics.jvm.CachedThreadStatesGaugeSet;
-import com.codahale.metrics.jvm.ClassLoadingGaugeSet;
-import com.codahale.metrics.jvm.GarbageCollectorMetricSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,7 +72,7 @@ public class DropwizardMetricManager implements MetricManager {
   @Override
   public Counter counter(String metric, String... tags) {
     if (!isEnable) {
-      return null;
+      return DoNothingMetricManager.doNothingCounter;
     }
     MetricName name = new MetricName(metric, tags);
     return (Counter)
@@ -83,7 +83,7 @@ public class DropwizardMetricManager implements MetricManager {
   @Override
   public Gauge gauge(String metric, String... tags) {
     if (!isEnable) {
-      return null;
+      return DoNothingMetricManager.doNothingGauge;
     }
     MetricName name = new MetricName(metric, tags);
     return (Gauge)
@@ -100,7 +100,7 @@ public class DropwizardMetricManager implements MetricManager {
   @Override
   public Histogram histogram(String metric, String... tags) {
     if (!isEnable) {
-      return null;
+      return DoNothingMetricManager.doNothingHistogram;
     }
     MetricName name = new MetricName(metric, tags);
     return (Histogram)
@@ -111,7 +111,7 @@ public class DropwizardMetricManager implements MetricManager {
   @Override
   public Rate rate(String metric, String... tags) {
     if (!isEnable) {
-      return null;
+      return DoNothingMetricManager.doNothingRate;
     }
     MetricName name = new MetricName(metric, tags);
     return (Rate)
@@ -122,7 +122,7 @@ public class DropwizardMetricManager implements MetricManager {
   @Override
   public Timer timer(String metric, String... tags) {
     if (!isEnable) {
-      return null;
+      return DoNothingMetricManager.doNothingTimer;
     }
     MetricName name = new MetricName(metric, tags);
     return (Timer)

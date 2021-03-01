@@ -19,23 +19,6 @@
 
 package org.apache.iotdb.metrics.micrometer;
 
-import org.apache.iotdb.metrics.KnownMetric;
-import org.apache.iotdb.metrics.MetricManager;
-import org.apache.iotdb.metrics.config.MetricConfig;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.micrometer.type.MicrometerCounter;
-import org.apache.iotdb.metrics.micrometer.type.MicrometerGauge;
-import org.apache.iotdb.metrics.micrometer.type.MicrometerHistogram;
-import org.apache.iotdb.metrics.micrometer.type.MicrometerRate;
-import org.apache.iotdb.metrics.micrometer.type.MicrometerTimer;
-import org.apache.iotdb.metrics.type.Counter;
-import org.apache.iotdb.metrics.type.Gauge;
-import org.apache.iotdb.metrics.type.Histogram;
-import org.apache.iotdb.metrics.type.IMetric;
-import org.apache.iotdb.metrics.type.Rate;
-import org.apache.iotdb.metrics.type.Timer;
-import org.apache.iotdb.metrics.utils.ReporterType;
-
 import io.micrometer.core.instrument.Clock;
 import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -52,11 +35,27 @@ import io.micrometer.jmx.JmxConfig;
 import io.micrometer.jmx.JmxMeterRegistry;
 import io.micrometer.prometheus.PrometheusConfig;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
+import org.apache.iotdb.metrics.KnownMetric;
+import org.apache.iotdb.metrics.MetricManager;
+import org.apache.iotdb.metrics.config.MetricConfig;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
+import org.apache.iotdb.metrics.micrometer.type.MicrometerCounter;
+import org.apache.iotdb.metrics.micrometer.type.MicrometerGauge;
+import org.apache.iotdb.metrics.micrometer.type.MicrometerHistogram;
+import org.apache.iotdb.metrics.micrometer.type.MicrometerRate;
+import org.apache.iotdb.metrics.micrometer.type.MicrometerTimer;
+import org.apache.iotdb.metrics.type.Counter;
+import org.apache.iotdb.metrics.type.Gauge;
+import org.apache.iotdb.metrics.type.Histogram;
+import org.apache.iotdb.metrics.type.IMetric;
+import org.apache.iotdb.metrics.type.Rate;
+import org.apache.iotdb.metrics.type.Timer;
+import org.apache.iotdb.metrics.utils.ReporterType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -129,7 +128,7 @@ public class MicrometerMetricManager implements MetricManager {
   @Override
   public Counter counter(String metric, String... tags) {
     if (!isEnable) {
-      return null;
+      return DoNothingMetricManager.doNothingCounter;
     }
     io.micrometer.core.instrument.Counter innerCounter = meterRegistry.counter(metric, tags);
     return (Counter)
@@ -152,7 +151,7 @@ public class MicrometerMetricManager implements MetricManager {
   @Override
   public Gauge gauge(String metric, String... tags) {
     if (!isEnable) {
-      return null;
+      return DoNothingMetricManager.doNothingGauge;
     }
     Meter.Id id = MeterIdUtils.fromMetricName(metric, Meter.Type.GAUGE, tags);
     return (Gauge)
@@ -162,7 +161,7 @@ public class MicrometerMetricManager implements MetricManager {
   @Override
   public Histogram histogram(String metric, String... tags) {
     if (!isEnable) {
-      return null;
+      return DoNothingMetricManager.doNothingHistogram;
     }
     Meter.Id id = MeterIdUtils.fromMetricName(metric, Meter.Type.DISTRIBUTION_SUMMARY, tags);
     return (Histogram)
@@ -189,7 +188,7 @@ public class MicrometerMetricManager implements MetricManager {
   @Deprecated
   public Rate rate(String metric, String... tags) {
     if (!isEnable) {
-      return null;
+      return DoNothingMetricManager.doNothingRate;
     }
     Meter.Id id = MeterIdUtils.fromMetricName(metric, Meter.Type.GAUGE, tags);
     return (Rate)
@@ -202,9 +201,8 @@ public class MicrometerMetricManager implements MetricManager {
   @Override
   public Timer timer(String metric, String... tags) {
     if (!isEnable) {
-      return null;
+      return DoNothingMetricManager.doNothingTimer;
     }
-    logger.info(metric + Arrays.toString(tags));
     Meter.Id id = MeterIdUtils.fromMetricName(metric, Meter.Type.TIMER, tags);
     return (Timer)
         currentMeters.computeIfAbsent(

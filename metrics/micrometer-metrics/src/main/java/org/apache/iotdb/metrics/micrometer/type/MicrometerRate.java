@@ -19,9 +19,8 @@
 
 package org.apache.iotdb.metrics.micrometer.type;
 
-import org.apache.iotdb.metrics.type.Rate;
-
 import com.codahale.metrics.Meter;
+import org.apache.iotdb.metrics.type.Rate;
 
 import java.util.concurrent.atomic.AtomicLong;
 

@@ -33,11 +33,11 @@ import java.util.concurrent.TimeUnit;
 
 public class DoNothingMetricManager implements MetricManager {
 
-  private final DoNothingCounter doNothingCounter = new DoNothingCounter();
-  private final DoNothingHistogram doNothingHistogram = new DoNothingHistogram();
-  private final DoNothingGauge doNothingGauge = new DoNothingGauge();
-  private final DoNothingRate doNothingRate = new DoNothingRate();
-  private final DoNothingTimer doNothingTimer = new DoNothingTimer();
+  public static final DoNothingCounter doNothingCounter = new DoNothingCounter();
+  public static final DoNothingHistogram doNothingHistogram = new DoNothingHistogram();
+  public static final DoNothingGauge doNothingGauge = new DoNothingGauge();
+  public static final DoNothingRate doNothingRate = new DoNothingRate();
+  public static final DoNothingTimer doNothingTimer = new DoNothingTimer();
 
   @Override
   public Counter counter(String metric, String... tags) {
@@ -65,31 +65,49 @@ public class DoNothingMetricManager implements MetricManager {
   }
 
   @Override
-  public void count(int delta, String metric, String... tags) {}
+  public void count(int delta, String metric, String... tags) {
+    // do nothing
+  }
 
   @Override
-  public void count(long delta, String metric, String... tags) {}
+  public void count(long delta, String metric, String... tags) {
+    // do nothing
+  }
 
   @Override
-  public void histogram(int value, String metric, String... tags) {}
+  public void histogram(int value, String metric, String... tags) {
+    // do nothing
+  }
 
   @Override
-  public void histogram(long value, String metric, String... tags) {}
+  public void histogram(long value, String metric, String... tags) {
+    // do nothing
+  }
 
   @Override
-  public void gauge(int value, String metric, String... tags) {}
+  public void gauge(int value, String metric, String... tags) {
+    // do nothing
+  }
 
   @Override
-  public void gauge(long value, String metric, String... tags) {}
+  public void gauge(long value, String metric, String... tags) {
+    // do nothing
+  }
 
   @Override
-  public void rate(int value, String metric, String... tags) {}
+  public void rate(int value, String metric, String... tags) {
+    // do nothing
+  }
 
   @Override
-  public void rate(long value, String metric, String... tags) {}
+  public void rate(long value, String metric, String... tags) {
+    // do nothing
+  }
 
   @Override
-  public void timer(long delta, TimeUnit timeUnit, String metric, String... tags) {}
+  public void timer(long delta, TimeUnit timeUnit, String metric, String... tags) {
+    // do nothing
+  }
 
   @Override
   public List<String[]> getAllMetricKeys() {
@@ -127,7 +145,9 @@ public class DoNothingMetricManager implements MetricManager {
   }
 
   @Override
-  public void enableKnownMetric(KnownMetric metric) {}
+  public void enableKnownMetric(KnownMetric metric) {
+    // do nothing
+  }
 
   @Override
   public boolean init() {

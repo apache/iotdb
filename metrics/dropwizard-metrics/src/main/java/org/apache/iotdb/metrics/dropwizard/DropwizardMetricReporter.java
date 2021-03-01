@@ -19,22 +19,21 @@
 
 package org.apache.iotdb.metrics.dropwizard;
 
+import com.codahale.metrics.JmxReporter;
 import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.MetricReporter;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.ReporterType;
-
-import com.codahale.metrics.JmxReporter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
 public class DropwizardMetricReporter implements MetricReporter {
-  private static Logger logger = LoggerFactory.getLogger(DropwizardMetricReporter.class);
+  private static final Logger logger = LoggerFactory.getLogger(DropwizardMetricReporter.class);
   private MetricManager dropwizardMetricManager;
-  private MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
+  private final MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
 
   private JmxReporter jmxReporter;
 
@@ -44,13 +43,7 @@ public class DropwizardMetricReporter implements MetricReporter {
     for (String reporter : reporters) {
       switch (ReporterType.get(reporter)) {
         case JMX:
-          {
-            jmxReporter =
-                JmxReporter.forRegistry(
-                        ((DropwizardMetricManager) dropwizardMetricManager).getMetricRegistry())
-                    .build();
-            startJmxReporter(jmxReporter);
-          }
+          startJmxReporter();
           break;
         case IOTDB:
           break;
@@ -63,7 +56,11 @@ public class DropwizardMetricReporter implements MetricReporter {
     return false;
   }
 
-  private void startJmxReporter(JmxReporter jmxReporter) {
+  private void startJmxReporter() {
+    jmxReporter =
+        JmxReporter.forRegistry(
+          ((DropwizardMetricManager) dropwizardMetricManager).getMetricRegistry())
+          .build();
     jmxReporter.start();
   }
 
