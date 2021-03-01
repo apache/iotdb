@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.engine.compaction.level;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.cache.ChunkCache;
+import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.TsFileManagement;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionLogAnalyzer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionLogger;
@@ -153,6 +155,8 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   private void deleteLevelFile(TsFileResource seqFile) {
     seqFile.writeLock();
     try {
+      ChunkCache.getInstance().clear();
+      TimeSeriesMetadataCache.getInstance().clear();
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
       seqFile.setDeleted(true);
       seqFile.delete();

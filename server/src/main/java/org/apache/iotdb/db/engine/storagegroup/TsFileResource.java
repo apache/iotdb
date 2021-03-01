@@ -365,6 +365,7 @@ public class TsFileResource {
     return timeIndex.getStartTime(deviceId);
   }
 
+  /** open file's end time is Long.MIN_VALUE */
   public long getEndTime(String deviceId) {
     return timeIndex.getEndTime(deviceId);
   }
@@ -738,5 +739,9 @@ public class TsFileResource {
 
   public long getVersion() {
     return version;
+  }
+
+  public void setTimeIndex(ITimeIndex timeIndex) {
+    this.timeIndex = timeIndex;
   }
 }

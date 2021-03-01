@@ -324,7 +324,7 @@ class MergeFileTask {
     seqFile.writeLock();
     try {
       resource.removeFileReader(seqFile);
-
+      FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
       File newMergeFile = seqFile.getTsFile();
       newMergeFile.delete();
       fsFactory.moveFile(fileWriter.getFile(), newMergeFile);
@@ -336,7 +336,6 @@ class MergeFileTask {
       if (IoTDBDescriptor.getInstance().getConfig().isMetaDataCacheEnable()) {
         ChunkCache.getInstance().clear();
         TimeSeriesMetadataCache.getInstance().clear();
-        FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
       }
       seqFile.writeUnlock();
     }
