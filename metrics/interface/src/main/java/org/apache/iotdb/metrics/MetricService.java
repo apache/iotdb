@@ -33,7 +33,7 @@ public class MetricService {
 
   private static final Logger logger = LoggerFactory.getLogger(MetricService.class);
   private static final MetricConfig metricConfig =
-    MetricConfigDescriptor.getInstance().getMetricConfig();
+      MetricConfigDescriptor.getInstance().getMetricConfig();
 
   static {
     init();
