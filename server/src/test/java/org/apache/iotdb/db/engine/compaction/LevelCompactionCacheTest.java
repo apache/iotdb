@@ -87,7 +87,7 @@ public class LevelCompactionCacheTest extends LevelCompactionTest {
             paths.get(0).getMeasurement());
 
     // add cache
-    ChunkCache.getInstance().get(firstChunkMetadata, reader);
+    ChunkCache.getInstance().get(firstChunkMetadata);
     TimeSeriesMetadataCache.getInstance().get(firstTimeSeriesMetadataCacheKey, allSensors);
 
     levelCompactionTsFileManagement.addAll(seqResources, true);
@@ -103,7 +103,7 @@ public class LevelCompactionCacheTest extends LevelCompactionTest {
     }
 
     try {
-      ChunkCache.getInstance().get(firstChunkMetadata, null);
+      ChunkCache.getInstance().get(firstChunkMetadata);
       fail();
     } catch (NullPointerException e) {
       assertTrue(true);
