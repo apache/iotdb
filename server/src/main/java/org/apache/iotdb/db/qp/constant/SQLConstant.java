@@ -170,13 +170,13 @@ public class SQLConstant {
   public static final int TOK_QUERY_PROCESSLIST = 97;
   public static final int TOK_KILL_QUERY = 98;
 
-  public static final int TOK_TRIGGER_CREATE = 99;
-  public static final int TOK_TRIGGER_DROP = 100;
-  public static final int TOK_TRIGGER_START = 101;
-  public static final int TOK_TRIGGER_STOP = 102;
-  public static final int TOK_SHOW_TRIGGERS = 103;
+  public static final int TOK_CHILD_NODES = 99;
 
-  public static final int TOK_CHILD_NODES = 104;
+  public static final int TOK_TRIGGER_CREATE = 100;
+  public static final int TOK_TRIGGER_DROP = 101;
+  public static final int TOK_TRIGGER_START = 102;
+  public static final int TOK_TRIGGER_STOP = 103;
+  public static final int TOK_SHOW_TRIGGERS = 104;
 
   public static final Map<Integer, String> tokenSymbol = new HashMap<>();
   public static final Map<Integer, String> tokenNames = new HashMap<>();
