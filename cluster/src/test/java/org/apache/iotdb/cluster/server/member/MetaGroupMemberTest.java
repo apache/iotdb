@@ -1010,9 +1010,6 @@ public class MetaGroupMemberTest extends MemberTest {
     MetaGroupMember metaGroupMember = getMetaGroupMember(TestUtils.getNode(9));
     metaGroupMember.start();
     metaGroupMember.onElectionWins();
-    System.out.println(metaGroupMember.getAllNodes().size() + "," + metaGroupMember.getAllNodes());
-    System.out.println(
-        metaGroupMember.idNodeMap.size() + ", " + metaGroupMember.idNodeMap.toString());
     try {
       for (int i = 0; i < 10; i++) {
         HeartBeatResponse response = new HeartBeatResponse();

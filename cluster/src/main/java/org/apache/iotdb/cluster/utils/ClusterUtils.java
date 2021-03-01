@@ -75,7 +75,7 @@ public class ClusterUtils {
    */
   public static final int META_HEARTBEAT_PORT_OFFSET = 1;
 
-  public static String UNKNOWN_CLIENT_IP = "UNKNOWN_IP";
+  public static final String UNKNOWN_CLIENT_IP = "UNKNOWN_IP";
 
   private ClusterUtils() {
     // util class

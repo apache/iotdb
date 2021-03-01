@@ -188,8 +188,7 @@ public class MetaGroupMember extends RaftMember {
    * the identifier and its belonging node, for conflict detection, may be used in more places in
    * the future
    */
-  // todo qhl
-  public Map<Integer, Node> idNodeMap = null;
+  private Map<Integer, Node> idNodeMap = null;
 
   /** nodes in the cluster and data partitioning */
   private PartitionTable partitionTable;
@@ -698,7 +697,6 @@ public class MetaGroupMember extends RaftMember {
       registerNodeIdentifier(response.getFollower(), response.getFollowerIdentifier());
       // if all nodes' ids are known, we can build the partition table
       if (allNodesIdKnown()) {
-        System.out.println("qhl=111111");
         // When the meta raft group is established, the follower reports its node information to the
         // leader through the first heartbeat. After the leader knows the node information of all
         // nodes, it can replace the incomplete node information previously saved locally, and build
@@ -751,7 +749,6 @@ public class MetaGroupMember extends RaftMember {
       }
       node.setNodeIdentifier(identifier);
       logger.info("Node {} registered with id {}", node, identifier);
-      System.out.println("qhl======" + node);
       idNodeMap.put(identifier, node);
       idConflictNodes.remove(node);
     }
@@ -768,7 +765,6 @@ public class MetaGroupMember extends RaftMember {
 
   /** @return Whether all nodes' identifier is known. */
   private boolean allNodesIdKnown() {
-    System.out.println("qhl=33333, " + idNodeMap.size() + "," + allNodes.size());
     return idNodeMap != null && idNodeMap.size() == allNodes.size();
   }
 

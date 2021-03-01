@@ -56,12 +56,12 @@ public class ClusterDescriptor {
     // if open the server rpc port, we will enable the rpc service and change the server's rpc port
     // to rpc_port + 1
     if (config.isOpenServerRpcPort()) {
-      IoTDBDescriptor.getInstance().getConfig().setEnableRPCService(true);
+      IoTDBDescriptor.getInstance().getConfig().setEnableRpcService(true);
       IoTDBDescriptor.getInstance()
           .getConfig()
           .setRpcPort(IoTDBDescriptor.getInstance().getConfig().getRpcPort() + 1);
     } else {
-      IoTDBDescriptor.getInstance().getConfig().setEnableRPCService(false);
+      IoTDBDescriptor.getInstance().getConfig().setEnableRpcService(false);
     }
   }
 

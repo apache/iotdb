@@ -115,7 +115,7 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(UDFRegistrationService.getInstance());
 
     // in cluster mode, RPC service is not enabled.
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableRPCService()) {
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableRpcService()) {
       registerManager.register(RPCService.getInstance());
     }
 

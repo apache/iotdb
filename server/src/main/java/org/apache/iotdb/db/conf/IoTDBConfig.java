@@ -18,6 +18,11 @@
  */
 package org.apache.iotdb.db.conf;
 
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
+
+import java.io.File;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
@@ -31,15 +36,8 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 public class IoTDBConfig {
 
@@ -634,7 +632,7 @@ public class IoTDBConfig {
    * whether enable the rpc service. This parameter has no a corresponding field in the
    * iotdb-engine.properties
    */
-  private boolean enableRPCService = true;
+  private boolean enableRpcService = true;
 
   /** the size of ioTaskQueue */
   private int ioTaskQueueSizeForFlushing = 10;
@@ -2057,12 +2055,12 @@ public class IoTDBConfig {
     this.mlogBufferSize = mlogBufferSize;
   }
 
-  public boolean isEnableRPCService() {
-    return enableRPCService;
+  public boolean isEnableRpcService() {
+    return enableRpcService;
   }
 
-  public void setEnableRPCService(boolean enableRPCService) {
-    this.enableRPCService = enableRPCService;
+  public void setEnableRpcService(boolean enableRpcService) {
+    this.enableRpcService = enableRpcService;
   }
 
   public int getIoTaskQueueSizeForFlushing() {

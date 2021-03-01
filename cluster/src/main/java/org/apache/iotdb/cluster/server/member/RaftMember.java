@@ -667,7 +667,7 @@ public abstract class RaftMember {
   /**
    * Update the followers' log by sending logs whose index >= followerLastMatchedLogIndex to the
    * follower. If some of the required logs are removed, also send the snapshot. <br>
-   * notice that if a part of data is in the snapshot, then it is not in the logs</>
+   * notice that if a part of data is in the snapshot, then it is not in the logs.
    */
   public void catchUp(Node follower, long lastLogIdx) {
     // for one follower, there is at most one ongoing catch-up, so the same data will not be sent
