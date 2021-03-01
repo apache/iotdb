@@ -254,11 +254,6 @@ public class StorageGroupProcessor {
   private static final int WAL_BUFFER_SIZE =
       IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2;
 
-  private static final int MAX_WAL_BYTEBUFFER_NUM =
-      IoTDBDescriptor.getInstance().getConfig().getConcurrentWritingTimePartition() * 4;
-
-  private static final long DEFAULT_POOL_TRIM_INTERVAL_MILLIS = 10_000;
-
   private final Deque<ByteBuffer> walByteBufferPool = new LinkedList<>();
 
   private int currentWalPoolSize = 0;
@@ -277,6 +272,10 @@ public class StorageGroupProcessor {
   public ByteBuffer[] getWalDirectByteBuffer() {
     ByteBuffer[] res = new ByteBuffer[2];
     synchronized (walByteBufferPool) {
+      long startTime = System.nanoTime();
+      int MAX_WAL_BYTEBUFFER_NUM =
+          config.getConcurrentWritingTimePartition()
+              * config.getMaxWalBytebufferNumForEachPartition();
       while (walByteBufferPool.isEmpty() && currentWalPoolSize + 2 > MAX_WAL_BYTEBUFFER_NUM) {
         try {
           walByteBufferPool.wait();
@@ -288,6 +287,9 @@ public class StorageGroupProcessor {
               virtualStorageGroupId,
               e);
         }
+        logger.info(
+            "Waiting {} ms for wal direct byte buffer.",
+            (System.nanoTime() - startTime) / 1_000_000);
       }
       // If the queue is not empty, it must have at least two.
       if (!walByteBufferPool.isEmpty()) {
@@ -337,7 +339,7 @@ public class StorageGroupProcessor {
       // we will trim the size to expectedSize until the pool is empty
       while (expectedSize < currentWalPoolSize
           && !walByteBufferPool.isEmpty()
-          && poolNotEmptyIntervalInMS >= DEFAULT_POOL_TRIM_INTERVAL_MILLIS) {
+          && poolNotEmptyIntervalInMS >= config.getWalPoolTrimIntervalInMS()) {
         MmapUtil.clean((MappedByteBuffer) walByteBufferPool.removeLast());
         MmapUtil.clean((MappedByteBuffer) walByteBufferPool.removeLast());
         currentWalPoolSize -= 2;
@@ -380,8 +382,8 @@ public class StorageGroupProcessor {
     ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
     executorService.scheduleWithFixedDelay(
         this::trimTask,
-        DEFAULT_POOL_TRIM_INTERVAL_MILLIS,
-        DEFAULT_POOL_TRIM_INTERVAL_MILLIS,
+        config.getWalPoolTrimIntervalInMS(),
+        config.getWalPoolTrimIntervalInMS(),
         TimeUnit.MILLISECONDS);
     recover();
   }
