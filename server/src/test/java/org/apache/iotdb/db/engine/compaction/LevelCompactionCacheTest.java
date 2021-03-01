@@ -19,6 +19,15 @@
 
 package org.apache.iotdb.db.engine.compaction;
 
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
@@ -33,20 +42,9 @@ import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
-
-import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.List;
-import java.util.Set;
-import java.util.TreeSet;
-
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 public class LevelCompactionCacheTest extends LevelCompactionTest {
 
@@ -87,7 +85,7 @@ public class LevelCompactionCacheTest extends LevelCompactionTest {
             paths.get(0).getMeasurement());
 
     // add cache
-    ChunkCache.getInstance().get(firstChunkMetadata, reader);
+    ChunkCache.getInstance().get(firstChunkMetadata);
     TimeSeriesMetadataCache.getInstance().get(firstTimeSeriesMetadataCacheKey, allSensors);
 
     levelCompactionTsFileManagement.addAll(seqResources, true);
@@ -103,7 +101,7 @@ public class LevelCompactionCacheTest extends LevelCompactionTest {
     }
 
     try {
-      ChunkCache.getInstance().get(firstChunkMetadata, null);
+      ChunkCache.getInstance().get(firstChunkMetadata);
       fail();
     } catch (NullPointerException e) {
       assertTrue(true);
