@@ -752,72 +752,63 @@ public class SessionCacheLeaderUT {
 
     @Override
     public SessionConnection constructSessionConnection(
-        Session session, EndPoint endpoint, ZoneId zoneId) throws IoTDBConnectionException {
+        Session session, EndPoint endpoint, ZoneId zoneId) {
       return new MockSessionConnection(session, endpoint, zoneId);
     }
   }
 
   static class MockSessionConnection extends SessionConnection {
 
-    public MockSessionConnection(Session session, EndPoint endPoint, ZoneId zoneId)
-        throws IoTDBConnectionException {
+    public MockSessionConnection(Session session, EndPoint endPoint, ZoneId zoneId) {
       super();
     }
 
     @Override
-    public void close() throws IoTDBConnectionException {}
+    public void close() {}
 
     @Override
-    protected void setStorageGroup(String storageGroup)
-        throws IoTDBConnectionException, StatementExecutionException, RedirectException {
+    protected void setStorageGroup(String storageGroup) throws RedirectException {
       throw new RedirectException(endpoints.get(1));
     }
 
     @Override
-    protected void deleteStorageGroups(List<String> storageGroups)
-        throws IoTDBConnectionException, StatementExecutionException, RedirectException {
+    protected void deleteStorageGroups(List<String> storageGroups) throws RedirectException {
       throw new RedirectException(endpoints.get(1));
     }
 
     @Override
-    protected void insertRecord(TSInsertRecordReq request)
-        throws IoTDBConnectionException, StatementExecutionException, RedirectException {
+    protected void insertRecord(TSInsertRecordReq request) throws RedirectException {
       throw new RedirectException(getDeviceIdBelongedEndpoint(request.deviceId));
     }
 
     @Override
-    protected void insertRecord(TSInsertStringRecordReq request)
-        throws IoTDBConnectionException, StatementExecutionException, RedirectException {
+    protected void insertRecord(TSInsertStringRecordReq request) throws RedirectException {
       throw new RedirectException(getDeviceIdBelongedEndpoint(request.deviceId));
     }
 
     @Override
-    protected void insertRecords(TSInsertRecordsReq request)
-        throws IoTDBConnectionException, StatementExecutionException, RedirectException {
+    protected void insertRecords(TSInsertRecordsReq request) throws RedirectException {
       throw new RedirectException(getDeviceIdBelongedEndpoint(request.deviceIds.get(0)));
     }
 
     @Override
-    protected void insertRecords(TSInsertStringRecordsReq request)
-        throws IoTDBConnectionException, StatementExecutionException, RedirectException {
+    protected void insertRecords(TSInsertStringRecordsReq request) throws RedirectException {
       throw new RedirectException(getDeviceIdBelongedEndpoint(request.deviceIds.get(0)));
     }
 
     @Override
     protected void insertRecordsOfOneDevice(TSInsertRecordsOfOneDeviceReq request)
-        throws IoTDBConnectionException, StatementExecutionException, RedirectException {
+        throws RedirectException {
       throw new RedirectException(getDeviceIdBelongedEndpoint(request.deviceId));
     }
 
     @Override
-    protected void insertTablet(TSInsertTabletReq request)
-        throws IoTDBConnectionException, StatementExecutionException, RedirectException {
+    protected void insertTablet(TSInsertTabletReq request) throws RedirectException {
       throw new RedirectException(getDeviceIdBelongedEndpoint(request.deviceId));
     }
 
     @Override
-    protected void insertTablets(TSInsertTabletsReq request)
-        throws IoTDBConnectionException, StatementExecutionException, RedirectException {
+    protected void insertTablets(TSInsertTabletsReq request) throws RedirectException {
       Map<String, EndPoint> deviceEndPointMap = new HashMap<>();
       for (int i = 0; i < request.getDeviceIds().size(); i++) {
         deviceEndPointMap.put(

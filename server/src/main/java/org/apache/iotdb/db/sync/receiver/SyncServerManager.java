@@ -66,8 +66,7 @@ public class SyncServerManager extends ThriftService implements SyncServerManage
   }
 
   @Override
-  public void initThriftServiceThread()
-      throws IllegalAccessException, InstantiationException, ClassNotFoundException {
+  public void initThriftServiceThread() {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     thriftServiceThread =
         new ThriftServiceThread(

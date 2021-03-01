@@ -240,9 +240,8 @@ public class LogReplayerTest {
    *
    * @return
    * @throws IllegalPathException
-   * @throws IOException
    */
-  public InsertTabletPlan insertTablePlan() throws IllegalPathException, IOException {
+  public InsertTabletPlan insertTablePlan() throws IllegalPathException {
     String[] measurements = new String[2];
     measurements[0] = "sensor0";
     measurements[1] = "sensor1";

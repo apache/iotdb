@@ -21,8 +21,6 @@ package org.apache.iotdb.tsfile.read.reader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
-import java.io.IOException;
-
 public class BatchDataIterator implements IPointReader {
 
   private BatchData batchData;
@@ -50,7 +48,7 @@ public class BatchDataIterator implements IPointReader {
   }
 
   @Override
-  public void close() throws IOException {
+  public void close() {
     batchData = null;
   }
 }

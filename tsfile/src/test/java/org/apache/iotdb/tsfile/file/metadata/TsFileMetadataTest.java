@@ -50,7 +50,7 @@ public class TsFileMetadataTest {
   }
 
   @Test
-  public void testWriteFileMetaData() throws IOException {
+  public void testWriteFileMetaData() {
     TsFileMetadata tsfMetaData = TestHelper.createSimpleFileMetaData();
     serialized(tsfMetaData);
     TsFileMetadata readMetaData = deSerialized();

@@ -66,6 +66,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryIndexPlan;
@@ -221,6 +222,9 @@ public class PlanExecutor implements IPlanExecutor {
         return true;
       case BATCH_INSERT_ONE_DEVICE:
         insert((InsertRowsOfOneDevicePlan) plan);
+        return true;
+      case BATCH_INSERT_ROWS:
+        insert((InsertRowsPlan) plan);
         return true;
       case BATCHINSERT:
         insertTablet((InsertTabletPlan) plan);
@@ -982,7 +986,7 @@ public class PlanExecutor implements IPlanExecutor {
     try {
       IoTDB.metaManager.setTTL(plan.getStorageGroup(), plan.getDataTTL());
       StorageEngine.getInstance().setTTL(plan.getStorageGroup(), plan.getDataTTL());
-    } catch (MetadataException | StorageEngineException e) {
+    } catch (MetadataException e) {
       throw new QueryProcessException(e);
     } catch (IOException e) {
       throw new QueryProcessException(e.getMessage());
@@ -1091,6 +1095,27 @@ public class PlanExecutor implements IPlanExecutor {
 
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
+    }
+  }
+
+  @Override
+  public void insert(InsertRowsPlan plan) throws QueryProcessException {
+    boolean allSuccess = true;
+    for (int i = 0; i < plan.getInsertRowPlanList().size(); i++) {
+      if (plan.getResults().containsKey(i)) {
+        allSuccess = false;
+        continue;
+      }
+      try {
+        insert(plan.getInsertRowPlanList().get(i));
+        plan.getResults().put(i, RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+      } catch (QueryProcessException e) {
+        plan.getResults().put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+        allSuccess = false;
+      }
+      if (!allSuccess) {
+        throw new BatchProcessException(plan.getResults().values().toArray(new TSStatus[0]));
+      }
     }
   }
 
@@ -1253,13 +1278,12 @@ public class PlanExecutor implements IPlanExecutor {
               multiPlan.getAlias() == null ? null : multiPlan.getAlias().get(i));
       try {
         createTimeSeries(plan);
-        multiPlan.getResults().put(i, RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
       } catch (QueryProcessException e) {
         multiPlan.getResults().put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
       }
     }
     if (!multiPlan.getResults().isEmpty()) {
-      throw new BatchProcessException(multiPlan.getResults().values().toArray(new TSStatus[0]));
+      throw new BatchProcessException(multiPlan.getFailingStatus());
     }
     return true;
   }
