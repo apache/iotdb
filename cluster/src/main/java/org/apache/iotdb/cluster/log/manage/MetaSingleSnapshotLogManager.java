@@ -94,7 +94,7 @@ public class MetaSingleSnapshotLogManager extends RaftLogManager {
         continue;
       }
       try {
-        ((MetaLogApplier)logApplier).apply(entry, metaGroupMember.getCharacter() == NodeCharacter.LEADER);
+        logApplier.apply(entry);
       } catch (Exception e) {
         logger.error("Can not apply log {}", entry, e);
         entry.setException(e);

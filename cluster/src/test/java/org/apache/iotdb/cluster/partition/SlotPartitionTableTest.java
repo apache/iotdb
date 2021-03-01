@@ -506,10 +506,6 @@ public class SlotPartitionTableTest {
     for (int i = 0; i < 5; i++) {
       assertTrue(removedGroup.contains(getNode(i)));
     }
-    PartitionGroup newGroup = nodeRemovalResult.getNewGroup(0);
-    for (int i : new int[]{18, 19, 1, 2, 3}) {
-      assertTrue(newGroup.contains(getNode(i)));
-    }
     // the slots owned by the removed one should be redistributed to other nodes
     Map<RaftNode, List<Integer>> newSlotOwners = ((SlotNodeRemovalResult) nodeRemovalResult)
         .getNewSlotOwners();

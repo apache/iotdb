@@ -58,6 +58,7 @@ import org.apache.iotdb.cluster.common.TestSnapshot;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.coordinator.Coordinator;
+import org.apache.iotdb.cluster.exception.ChangeMembershipException;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
 import org.apache.iotdb.cluster.exception.EmptyIntervalException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
@@ -1180,7 +1181,7 @@ public class MetaGroupMemberTest extends MemberTest {
     try {
       testMetaMember.removeNode(TestUtils.getNode(0));
       fail("Expect PartitionTableUnavailableException");
-    } catch (PartitionTableUnavailableException e) {
+    } catch (PartitionTableUnavailableException | ChangeMembershipException | InterruptedException | UnsupportedPlanException e) {
       // ignore
     }
   }

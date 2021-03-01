@@ -65,6 +65,7 @@ import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.exception.AddSelfException;
+import org.apache.iotdb.cluster.exception.ChangeMembershipException;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
 import org.apache.iotdb.cluster.exception.EmptyIntervalException;
@@ -74,9 +75,11 @@ import org.apache.iotdb.cluster.exception.SnapshotInstallationException;
 import org.apache.iotdb.cluster.exception.StartUpCheckFailureException;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
+import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.applier.MetaLogApplier;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
+import org.apache.iotdb.cluster.log.logtypes.EmptyContentLog;
 import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.log.manage.MetaSingleSnapshotLogManager;
 import org.apache.iotdb.cluster.log.snapshot.MetaSimpleSnapshot;
@@ -137,6 +140,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.LogPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -437,7 +441,7 @@ public class MetaGroupMember extends RaftMember {
 
     Node newNode = addNodeLog.getNewNode();
     synchronized (allNodes) {
-      if (partitionTable.deserialize(addNodeLog.getPartitionTable())) {
+      if (partitionTable.checkChangeMembershipValidity(addNodeLog.getPartitionTable().getLong())) {
         logger.debug("Adding a new node {} into {}", newNode, allNodes);
 
         if (!allNodes.contains(newNode)) {
@@ -843,7 +847,7 @@ public class MetaGroupMember extends RaftMember {
    * @param node cannot be the local node
    */
   public AddNodeResponse addNode(Node node, StartUpStatus startUpStatus)
-      throws AddSelfException, LogExecutionException {
+      throws AddSelfException, LogExecutionException, ChangeMembershipException, InterruptedException, UnsupportedPlanException {
     AddNodeResponse response = new AddNodeResponse();
     if (partitionTable == null) {
       logger.info("Cannot add node now because the partition table is not set");
@@ -876,7 +880,8 @@ public class MetaGroupMember extends RaftMember {
    * @return true if the process is over, false if the request should be forwarded
    */
   private boolean processAddNodeLocally(Node newNode, StartUpStatus startUpStatus,
-      AddNodeResponse response) throws LogExecutionException {
+      AddNodeResponse response)
+      throws LogExecutionException, ChangeMembershipException, InterruptedException, UnsupportedPlanException {
     if (character != NodeCharacter.LEADER) {
       return false;
     }
@@ -938,6 +943,7 @@ public class MetaGroupMember extends RaftMember {
         AppendLogResult result = sendLogToFollowers(addNodeLog);
         switch (result) {
           case OK:
+            sendLogToAllDataGroups(addNodeLog);
             commitLog(addNodeLog);
             logger.info("Join request of {} is accepted", newNode);
 
@@ -954,6 +960,42 @@ public class MetaGroupMember extends RaftMember {
           case LEADERSHIP_STALE:
           default:
             return false;
+        }
+      }
+    }
+  }
+
+  /**
+   * Process empty log for leader to commit all previous log.
+   */
+  public void processEmptyContentLog() {
+    if (character != NodeCharacter.LEADER) {
+      return;
+    }
+
+    Log log = new EmptyContentLog();
+    log.setCurrLogTerm(getTerm().get());
+    log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
+
+    synchronized (logManager) {
+
+      logManager.append(log);
+
+      while (true) {
+        AppendLogResult result = sendLogToFollowers(log);
+        switch (result) {
+          case OK:
+            try {
+              commitLog(log);
+            } catch (LogExecutionException e) {
+              logger.error("Fail to execute empty content log", e);
+            }
+            return;
+          case TIME_OUT:
+            continue;
+          case LEADERSHIP_STALE:
+          default:
+            return;
         }
       }
     }
@@ -1880,7 +1922,7 @@ public class MetaGroupMember extends RaftMember {
    * @param node the node to be removed.
    */
   public long removeNode(Node node)
-      throws PartitionTableUnavailableException, LogExecutionException {
+      throws PartitionTableUnavailableException, LogExecutionException, ChangeMembershipException, InterruptedException, UnsupportedPlanException {
     if (partitionTable == null) {
       logger.info("Cannot add node now because the partition table is not set");
       throw new PartitionTableUnavailableException(thisNode);
@@ -1901,7 +1943,7 @@ public class MetaGroupMember extends RaftMember {
    * @return Long.MIN_VALUE if further forwarding is required, or the execution result
    */
   private long processRemoveNodeLocally(Node node)
-      throws LogExecutionException {
+      throws LogExecutionException, ChangeMembershipException, InterruptedException, UnsupportedPlanException {
     if (character != NodeCharacter.LEADER) {
       return Response.RESPONSE_NULL;
     }
@@ -1954,6 +1996,7 @@ public class MetaGroupMember extends RaftMember {
         AppendLogResult result = sendLogToFollowers(removeNodeLog);
         switch (result) {
           case OK:
+            sendLogToAllDataGroups(removeNodeLog);
             commitLog(removeNodeLog);
             logger.info("Removal request of {} is accepted", target);
             return Response.RESPONSE_AGREE;
@@ -1969,6 +2012,25 @@ public class MetaGroupMember extends RaftMember {
     }
   }
 
+  private void sendLogToAllDataGroups(Log log)
+      throws ChangeMembershipException, UnsupportedPlanException, InterruptedException {
+    int retryTime = 0;
+    TSStatus status = null;
+    while(retryTime++ <= 5) {
+      logger.debug("Send log {} to all data groups, retry time: {}", log, retryTime);
+      LogPlan plan = new LogPlan(log.serialize());
+      status = processPartitionedPlan(plan);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        break;
+      }
+      Thread.sleep(100);
+    }
+    if (status == null || status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new ChangeMembershipException(String.format("apply %s failed with status {%s}", log, status));
+    }
+    logger.debug("Send log {} to all data groups: end", log);
+  }
+
   /**
    * Remove a node from the node list, partition table and update DataGroupMembers. If the removed
    * node is the local node, also stop heartbeat and catch-up service of metadata, but the heartbeat
@@ -1980,7 +2042,7 @@ public class MetaGroupMember extends RaftMember {
 
     Node oldNode = removeNodeLog.getRemovedNode();
     synchronized (allNodes) {
-      if (partitionTable.deserialize(removeNodeLog.getPartitionTable())) {
+      if (partitionTable.checkChangeMembershipValidity(removeNodeLog.getPartitionTable().getLong())) {
         logger.debug("Removing a node {} from {}", oldNode, allNodes);
 
         if (allNodes.contains(oldNode)) {
@@ -2019,6 +2081,7 @@ public class MetaGroupMember extends RaftMember {
   }
 
   private void exileNode(RemoveNodeLog removeNodeLog) {
+    logger.debug("Exile node {}: start.", removeNodeLog.getRemovedNode());
     Node node = removeNodeLog.getRemovedNode();
     if (config.isUseAsyncServer()) {
       AsyncMetaClient asyncMetaClient = (AsyncMetaClient) getAsyncClient(node);

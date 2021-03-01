@@ -52,7 +52,7 @@ public class SlotNodeRemovalResult extends NodeRemovalResult {
     dataOutputStream.writeInt(newSlotOwners.size());
     for (Map.Entry<RaftNode, List<Integer>> entry: newSlotOwners.entrySet()) {
       RaftNode raftNode = entry.getKey();
-      dataOutputStream.writeInt(raftNode.getNode().nodeIdentifier);
+      SerializeUtils.serialize(raftNode.getNode(), dataOutputStream);
       dataOutputStream.writeInt(raftNode.getRaftId());
       dataOutputStream.writeInt(entry.getValue().size());
       for (Integer slot: entry.getValue()) {

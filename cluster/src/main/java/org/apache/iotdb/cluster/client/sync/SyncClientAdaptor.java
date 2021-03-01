@@ -94,7 +94,7 @@ public class SyncClientAdaptor {
     asyncMetaClient.removeNode(nodeToRemove, handler);
     synchronized (responseRef) {
       if (responseRef.get() == null) {
-        responseRef.wait(RaftServer.getConnectionTimeoutInMS());
+        responseRef.wait(60 * 1000L);
       }
     }
     return responseRef.get();

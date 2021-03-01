@@ -879,7 +879,7 @@ public abstract class RaftMember {
     }
 
     logger.debug("{}: Processing plan {}", name, plan);
-    if (readOnly) {
+    if (readOnly && !(plan instanceof LogPlan)) {
       return StatusUtils.NODE_READ_ONLY;
     }
     long startTime = Timer.Statistic.RAFT_SENDER_APPEND_LOG.getOperationStartTime();
@@ -1083,6 +1083,10 @@ public abstract class RaftMember {
 
   public ExecutorService getSerialToParallelPool() {
     return serialToParallelPool;
+  }
+
+  public ExecutorService getAppendLogThreadPool() {
+    return appendLogThreadPool;
   }
 
   public Object getSyncLock() {
@@ -1457,6 +1461,7 @@ public abstract class RaftMember {
         logger.info("{} has update it's term to {}", getName(), newTerm);
         term.set(newTerm);
         setVoteFor(null);
+        setCharacter(NodeCharacter.ELECTOR);
         setLeader(ClusterConstant.EMPTY_NODE);
         updateHardState(newTerm, getVoteFor());
       }

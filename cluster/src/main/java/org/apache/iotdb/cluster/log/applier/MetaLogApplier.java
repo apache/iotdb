@@ -19,19 +19,15 @@
 
 package org.apache.iotdb.cluster.log.applier;
 
-import org.apache.iotdb.cluster.exception.ChangeMembershipException;
-import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
+import org.apache.iotdb.cluster.log.logtypes.EmptyContentLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.physical.sys.LogPlan;
-import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,41 +46,24 @@ public class MetaLogApplier extends BaseApplier {
 
   @Override
   public void apply(Log log) {
-    apply(log, false);
-  }
-
-  public void apply(Log log, boolean isLeader) {
     try {
       logger.debug("MetaMember [{}] starts applying Log {}", metaGroupMember.getName(), log);
       if (log instanceof AddNodeLog) {
-        if (isLeader) {
-          sendLogToAllDataGroups(log);
-        }
         member.applyAddNode((AddNodeLog) log);
       } else if (log instanceof PhysicalPlanLog) {
         applyPhysicalPlan(((PhysicalPlanLog) log).getPlan(), null);
       } else if (log instanceof RemoveNodeLog) {
-        if (isLeader) {
-          sendLogToAllDataGroups(log);
-        }
         member.applyRemoveNode(((RemoveNodeLog) log));
+      } else if (log instanceof EmptyContentLog) {
+        // Do nothing
       } else {
         logger.error("Unsupported log: {} {}", log.getClass().getName(), log);
       }
-    } catch (StorageEngineException | StorageGroupNotSetException | QueryProcessException | ChangeMembershipException | UnsupportedPlanException e) {
+    } catch (StorageEngineException | StorageGroupNotSetException | QueryProcessException e) {
       logger.debug("Exception occurred when executing {}", log, e);
       log.setException(e);
     } finally {
       log.setApplied(true);
-    }
-  }
-
-  private void sendLogToAllDataGroups(Log log)
-      throws ChangeMembershipException, UnsupportedPlanException {
-    LogPlan plan = new LogPlan(log.serialize());
-    TSStatus status = member.processPartitionedPlan(plan);
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new ChangeMembershipException(String.format("apply %s failed with status {%s}", log, status));
     }
   }
 }

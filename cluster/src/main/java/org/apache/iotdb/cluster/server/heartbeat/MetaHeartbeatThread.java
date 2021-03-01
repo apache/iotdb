@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.server.heartbeat;
 
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,5 +69,12 @@ public class MetaHeartbeatThread extends HeartbeatThread {
     super.sendHeartbeatAsync(node);
     // erase the sent partition table so it will not be sent in the next heartbeat
     request.unsetPartitionTableBytes();
+  }
+
+
+  @Override
+  void startElection() {
+    super.startElection();
+    localMetaMember.getAppendLogThreadPool().submit(() -> localMetaMember.processEmptyContentLog());
   }
 }

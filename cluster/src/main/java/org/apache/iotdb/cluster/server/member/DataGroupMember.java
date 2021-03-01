@@ -749,7 +749,7 @@ public class DataGroupMember extends RaftMember {
 
   public void preRemoveNode(Node removedNode) {
     synchronized (allNodes) {
-      if (allNodes.contains(removedNode)) {
+      if (allNodes.contains(removedNode) && allNodes.size() == config.getReplicationNum()) {
         // update the group if the deleted node was in it
         PartitionGroup newGroup = metaGroupMember.getPartitionTable().getHeaderGroup(new RaftNode(getHeader(), getRaftGroupId()));
         if (newGroup == null) {
@@ -772,7 +772,7 @@ public class DataGroupMember extends RaftMember {
     syncLeader();
 
     synchronized (allNodes) {
-      if (allNodes.contains(removedNode)) {
+      if (allNodes.contains(removedNode) && allNodes.size() > config.getReplicationNum()) {
         // update the group if the deleted node was in it
         allNodes.remove(removedNode);
         peerMap.remove(removedNode);
@@ -783,15 +783,15 @@ public class DataGroupMember extends RaftMember {
             setLastHeartbeatReceivedTime(Long.MIN_VALUE);
           }
         }
-      }
-      List<Integer> slotsToPull = ((SlotNodeRemovalResult) removalResult).getNewSlotOwners()
-          .get(new RaftNode(getHeader(), getRaftGroupId()));
-      if (slotsToPull != null) {
-        // pull the slots that should be taken over
-        PullSnapshotTaskDescriptor taskDescriptor = new PullSnapshotTaskDescriptor(
-            removalResult.getRemovedGroup(getRaftGroupId()),
-            slotsToPull, true);
-        pullFileSnapshot(taskDescriptor, null);
+        List<Integer> slotsToPull = ((SlotNodeRemovalResult) removalResult).getNewSlotOwners()
+            .get(new RaftNode(getHeader(), getRaftGroupId()));
+        if (slotsToPull != null) {
+          // pull the slots that should be taken over
+          PullSnapshotTaskDescriptor taskDescriptor = new PullSnapshotTaskDescriptor(
+              removalResult.getRemovedGroup(getRaftGroupId()),
+              slotsToPull, true);
+          pullFileSnapshot(taskDescriptor, null);
+        }
       }
     }
   }
@@ -802,6 +802,9 @@ public class DataGroupMember extends RaftMember {
     }
     for (Map.Entry<Node, Peer> entry: peerMap.entrySet()) {
       Node node = entry.getKey();
+      if (node.equals(thisNode)) {
+        continue;
+      }
       Peer peer = entry.getValue();
       while (peer.getMatchIndex() < logManager.getCommitLogIndex()) {
         try {

@@ -82,7 +82,7 @@ public class SlotPartitionTable implements PartitionTable {
   // find the data source
   private Map<RaftNode, Map<Integer, PartitionGroup>> previousNodeMap = new ConcurrentHashMap<>();
 
-  private NodeRemovalResult nodeRemovalResult = new NodeRemovalResult();
+  private NodeRemovalResult nodeRemovalResult = new SlotNodeRemovalResult();
 
   //the filed is used for determining which nodes need to be a group.
   // the data groups which this node belongs to.
@@ -414,7 +414,7 @@ public class SlotPartitionTable implements PartitionTable {
       previousNodeMap.put(raftNode, prevHolders);
     }
 
-    nodeRemovalResult = new NodeRemovalResult();
+    nodeRemovalResult = new SlotNodeRemovalResult();
     nodeRemovalResult.deserialize(buffer);
 
     nodeRing.clear();
@@ -428,6 +428,11 @@ public class SlotPartitionTable implements PartitionTable {
 
     localGroups = getPartitionGroups(thisNode);
     return true;
+  }
+
+  @Override
+  public boolean checkChangeMembershipValidity(long targetLogIndex) {
+    return lastLogIndex == targetLogIndex;
   }
 
   @Override
@@ -526,7 +531,6 @@ public class SlotPartitionTable implements PartitionTable {
         Node header = nodeRing.get(headerNodeIdx);
         PartitionGroup newGrp = getHeaderGroup(new RaftNode(header, raftId));
         localGroups.add(newGrp);
-        result.addNewGroup(newGrp);
       }
 
       globalGroups = calculateGlobalGroups(nodeRing);

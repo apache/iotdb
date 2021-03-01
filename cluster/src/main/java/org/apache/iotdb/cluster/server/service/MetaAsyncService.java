@@ -21,9 +21,11 @@ package org.apache.iotdb.cluster.server.service;
 
 import java.nio.ByteBuffer;
 import org.apache.iotdb.cluster.exception.AddSelfException;
+import org.apache.iotdb.cluster.exception.ChangeMembershipException;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
+import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
 import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
@@ -71,7 +73,7 @@ public class MetaAsyncService extends BaseAsyncService implements TSMetaService.
     AddNodeResponse addNodeResponse = null;
     try {
       addNodeResponse = metaGroupMember.addNode(node, startUpStatus);
-    } catch (AddSelfException | LogExecutionException e) {
+    } catch (AddSelfException | LogExecutionException | ChangeMembershipException | InterruptedException | UnsupportedPlanException e) {
       resultHandler.onError(e);
     }
     if (addNodeResponse != null) {
@@ -148,8 +150,10 @@ public class MetaAsyncService extends BaseAsyncService implements TSMetaService.
     long result = Response.RESPONSE_NULL;
     try {
       result = metaGroupMember.removeNode(node);
-    } catch (PartitionTableUnavailableException | LogExecutionException e) {
+    } catch (PartitionTableUnavailableException | LogExecutionException | ChangeMembershipException | InterruptedException | UnsupportedPlanException e) {
+      logger.error("Can not remove node {}", node, e);
       resultHandler.onError(e);
+      return;
     }
 
     if (result != Response.RESPONSE_NULL) {
@@ -198,6 +202,8 @@ public class MetaAsyncService extends BaseAsyncService implements TSMetaService.
    */
   @Override
   public void exile(ByteBuffer removeNodeLogBuffer, AsyncMethodCallback<Void> resultHandler) {
+    logger.info("Start to exile.");
+    removeNodeLogBuffer.get();
     RemoveNodeLog removeNodeLog = new RemoveNodeLog();
     removeNodeLog.deserialize(removeNodeLogBuffer);
     metaGroupMember.applyRemoveNode(removeNodeLog);
