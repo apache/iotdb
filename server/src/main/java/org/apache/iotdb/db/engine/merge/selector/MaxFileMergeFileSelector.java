@@ -211,7 +211,6 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
   }
 
   private void selectOverlappedSeqFiles(TsFileResource unseqFile) {
-
     int tmpSelectedNum = 0;
     for (Entry<String, Integer> deviceStartTimeEntry : unseqFile.getDeviceToIndexMap().entrySet()) {
       String deviceId = deviceStartTimeEntry.getKey();
@@ -225,7 +224,8 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
         if (seqSelected[i] || !seqFile.getDeviceToIndexMap().containsKey(deviceId)) {
           continue;
         }
-        long seqEndTime = seqFile.getEndTime(deviceId);
+        // the open file's endTime is Long.MIN_VALUE, this will make the file be filtered below
+        long seqEndTime = seqFile.isClosed() ? seqFile.getEndTime(deviceId) : Long.MAX_VALUE;
         if (unseqEndTime <= seqEndTime) {
           // the unseqFile overlaps current seqFile
           tmpSelectedSeqFiles.add(i);

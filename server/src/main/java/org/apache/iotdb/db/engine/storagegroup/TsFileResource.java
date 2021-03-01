@@ -400,6 +400,7 @@ public class TsFileResource {
     return startTimes[index];
   }
 
+  /** open file's end time is Long.MIN_VALUE */
   public long getEndTime(String deviceId) {
     if (!deviceToIndex.containsKey(deviceId)) {
       return Long.MIN_VALUE;
@@ -891,5 +892,9 @@ public class TsFileResource {
   public boolean isPlanIndexOverlap(TsFileResource another) {
     return another.maxPlanIndex >= this.minPlanIndex &&
            another.minPlanIndex <= this.maxPlanIndex;
+  }
+
+  public void setTimeIndex(ITimeIndex timeIndex) {
+    this.timeIndex = timeIndex;
   }
 }

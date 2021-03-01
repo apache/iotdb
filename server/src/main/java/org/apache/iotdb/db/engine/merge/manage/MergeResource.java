@@ -74,8 +74,11 @@ public class MergeResource {
         .collect(Collectors.toList());
   }
 
+  /** If returns true, it means to participate in the merge */
   private boolean filterResource(TsFileResource res) {
-    return res.getTsFile().exists() && !res.isDeleted() && res.stillLives(timeLowerBound);
+    return res.getTsFile().exists()
+        && !res.isDeleted()
+        && (!res.isClosed() || res.stillLives(timeLowerBound));
   }
 
   public MergeResource(Collection<TsFileResource> seqFiles, List<TsFileResource> unseqFiles,
