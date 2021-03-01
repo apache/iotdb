@@ -554,6 +554,8 @@ var config = {
 							['Operation Manual/DDL Data Definition Language','DDL (Data Definition Language)'],
 							['Operation Manual/DML Data Manipulation Language','DML (Data Manipulation Language)'],
 							['Operation Manual/UDF User Defined Function','UDF (User Defined Function)'],
+							// The trigger module has not been implemented yet,
+							// so the website should not show users how to use it to avoid misleading.
               // ['Operation Manual/Triggers','Triggers'],
 							['Operation Manual/Kill Query','Kill Query'],
 							['Operation Manual/Administration','Administration'],
@@ -1177,6 +1179,8 @@ var config = {
 							['Operation Manual/DDL Data Definition Language','DDL (数据定义语言)'],
 							['Operation Manual/DML Data Manipulation Language','DML (数据操作语言)'],
               ['Operation Manual/UDF User Defined Function','UDF（用户自定义函数）'],
+							// The trigger module has not been implemented yet,
+							// so the website should not show users how to use it to avoid misleading.
               // ['Operation Manual/Triggers','触发器'],
 							['Operation Manual/Kill Query','中止查询'],
 							['Operation Manual/Administration','权限管理语句'],
