@@ -65,7 +65,7 @@ public class MetricService {
     }
 
     // if no more implementations, we use nothingManager.
-    if (size == 0) {
+    if (size == 0 || metricManager == null) {
       metricManager = nothingManager;
     } else if (size > 1) {
       logger.warn(
@@ -85,7 +85,7 @@ public class MetricService {
     }
 
     // if no more implementations, we use nothingReporter.
-    if (size == 0) {
+    if (size == 0 || metricReporter == null) {
       metricReporter = new DoNothingMetricReporter();
     } else if (size > 1) {
       logger.warn(

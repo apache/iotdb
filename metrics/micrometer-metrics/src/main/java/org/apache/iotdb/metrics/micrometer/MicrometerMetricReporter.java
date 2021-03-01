@@ -102,14 +102,40 @@ public class MicrometerMetricReporter implements MetricReporter {
 
   @Override
   public boolean stop() {
+    List<String> reporters = metricConfig.getMetricReporterList();
+    for (String reporter : reporters) {
+      switch (ReporterType.get(reporter)) {
+        case JMX:
+          stopJmxReporter(
+              ((MicrometerMetricManager) micrometerMetricManager).getJmxMeterRegistry());
+          break;
+        case IOTDB:
+          break;
+        case PROMETHEUS:
+          stopPrometheusReporter();
+          break;
+        default:
+          logger.warn("Dropwizard don't support reporter type {}", reporter);
+      }
+    }
+    return true;
+  }
+
+  private void stopPrometheusReporter() {
     try {
-      runThread.join();
+      // stop prometheus reporter
+      if (runThread != null) {
+        runThread.join();
+      }
     } catch (InterruptedException e) {
       logger.warn("Failed to stop prometheus reporter", e);
     }
+  }
 
-    ((MicrometerMetricManager) micrometerMetricManager).getJmxMeterRegistry().stop();
-    return true;
+  private void stopJmxReporter(JmxMeterRegistry jmxMeterRegistry) {
+    if (jmxMeterRegistry != null) {
+      jmxMeterRegistry.stop();
+    }
   }
 
   @Override

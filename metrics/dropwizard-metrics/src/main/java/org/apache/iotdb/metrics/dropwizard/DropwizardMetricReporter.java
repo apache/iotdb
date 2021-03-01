@@ -78,7 +78,7 @@ public class DropwizardMetricReporter implements MetricReporter {
     for (String reporter : reporters) {
       switch (ReporterType.get(reporter)) {
         case JMX:
-          jmxReporter.stop();
+          stopJmxReporter(jmxReporter);
           break;
         case IOTDB:
           break;
@@ -89,6 +89,12 @@ public class DropwizardMetricReporter implements MetricReporter {
       }
     }
     return true;
+  }
+
+  private void stopJmxReporter(JmxReporter jmxReporter) {
+    if (jmxReporter != null) {
+      jmxReporter.stop();
+    }
   }
 
   @Override
