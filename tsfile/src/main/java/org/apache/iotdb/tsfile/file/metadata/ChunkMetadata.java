@@ -69,6 +69,8 @@ public class ChunkMetadata implements Accountable {
 
   // used for SeriesReader to indicate whether it is a seq/unseq timeseries metadata
   private boolean isSeq = true;
+  private boolean isClosed;
+  private String filePath;
 
   private ChunkMetadata() {}
 
@@ -287,5 +289,21 @@ public class ChunkMetadata implements Accountable {
 
   public boolean isSeq() {
     return isSeq;
+  }
+
+  public boolean isClosed() {
+    return isClosed;
+  }
+
+  public void setClosed(boolean closed) {
+    isClosed = closed;
+  }
+
+  public String getFilePath() {
+    return filePath;
+  }
+
+  public void setFilePath(String filePath) {
+    this.filePath = filePath;
   }
 }

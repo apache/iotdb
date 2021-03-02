@@ -119,7 +119,6 @@ public class CompactionChunkTest extends LevelCompactionTest {
       for (Entry<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> entry :
           measurementChunkMetadataMap.entrySet()) {
         CompactionUtils.writeByAppendMerge(
-            0,
             device,
             compactionWriteRateLimiter,
             entry,
@@ -203,7 +202,6 @@ public class CompactionChunkTest extends LevelCompactionTest {
       for (Entry<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> entry :
           measurementChunkMetadataMap.entrySet()) {
         CompactionUtils.writeByDeserializeMerge(
-            0,
             device,
             compactionWriteRateLimiter,
             entry,

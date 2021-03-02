@@ -39,9 +39,9 @@ import java.sql.Statement;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-public class IoTDBMergeTest {
+public class IoTDBMergeIT {
 
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBMergeTest.class);
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBMergeIT.class);
   private long prevPartitionInterval;
   private CompactionStrategy prevTsFileManagementStrategy;
 
@@ -380,7 +380,7 @@ public class IoTDBMergeTest {
       }
       // it is uncertain whether the sub tasks are created at this time point, and we are only
       // sure that the main task is created
-      assertEquals(5, cnt);
+      assertEquals(4, cnt);
     }
   }
 }

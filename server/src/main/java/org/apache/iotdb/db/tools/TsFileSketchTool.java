@@ -138,22 +138,22 @@ public class TsFileSketchTool {
 
         Map<String, List<TimeseriesMetadata>> allTimeseriesMetadata =
             reader.getAllTimeseriesMetadata();
-        Map<Long, Pair<Path, TimeseriesMetadata>> timeseriesMetadataMap = new TreeMap<>();
+        Map<String, Pair<Path, TimeseriesMetadata>> timeseriesMetadataMap = new TreeMap<>();
 
         for (Map.Entry<String, List<TimeseriesMetadata>> entry : allTimeseriesMetadata.entrySet()) {
           String device = entry.getKey();
           List<TimeseriesMetadata> seriesMetadataList = entry.getValue();
           for (TimeseriesMetadata seriesMetadata : seriesMetadataList) {
             timeseriesMetadataMap.put(
-                seriesMetadata.getOffsetOfChunkMetaDataList(),
+                seriesMetadata.getMeasurementId(),
                 new Pair<>(new Path(device, seriesMetadata.getMeasurementId()), seriesMetadata));
           }
         }
-        for (Map.Entry<Long, Pair<Path, TimeseriesMetadata>> entry :
+        for (Map.Entry<String, Pair<Path, TimeseriesMetadata>> entry :
             timeseriesMetadataMap.entrySet()) {
           printlnBoth(
               pw,
-              String.format("%20s", entry.getKey())
+              entry.getKey()
                   + "|\t[ChunkMetadataList] of "
                   + entry.getValue().left
                   + ", tsDataType:"

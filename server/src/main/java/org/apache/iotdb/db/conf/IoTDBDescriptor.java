@@ -260,13 +260,6 @@ public class IoTDBDescriptor {
 
       conf.setWalDir(properties.getProperty("wal_dir", conf.getWalDir()));
 
-      int walBufferSize =
-          Integer.parseInt(
-              properties.getProperty("wal_buffer_size", Integer.toString(conf.getWalBufferSize())));
-      if (walBufferSize > 0) {
-        conf.setWalBufferSize(walBufferSize);
-      }
-
       int mlogBufferSize =
           Integer.parseInt(
               properties.getProperty(
@@ -819,6 +812,30 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "enable_discard_out_of_order_data",
                 Boolean.toString(conf.isEnableDiscardOutOfOrderData()))));
+
+    int walBufferSize =
+        Integer.parseInt(
+            properties.getProperty("wal_buffer_size", Integer.toString(conf.getWalBufferSize())));
+    if (walBufferSize > 0) {
+      conf.setWalBufferSize(walBufferSize);
+    }
+
+    int maxWalBytebufferNumForEachPartition =
+        Integer.parseInt(
+            properties.getProperty(
+                "max_wal_bytebuffer_num_for_each_partition",
+                Integer.toString(conf.getMaxWalBytebufferNumForEachPartition())));
+    if (maxWalBytebufferNumForEachPartition > 0) {
+      conf.setMaxWalBytebufferNumForEachPartition(maxWalBytebufferNumForEachPartition);
+    }
+
+    long poolTrimIntervalInMS =
+        Integer.parseInt(
+            properties.getProperty(
+                "wal_pool_trim_interval_ms", Long.toString(conf.getWalPoolTrimIntervalInMS())));
+    if (poolTrimIntervalInMS > 0) {
+      conf.setWalPoolTrimIntervalInMS(poolTrimIntervalInMS);
+    }
   }
 
   private void loadAutoCreateSchemaProps(Properties properties) {
@@ -1071,7 +1088,7 @@ public class IoTDBDescriptor {
     }
 
     String queryMemoryAllocateProportion =
-        properties.getProperty("chunkmeta_chunk_timeseriesmeta_free_memory_proportion");
+        properties.getProperty("chunk_timeseriesmeta_free_memory_proportion");
     if (queryMemoryAllocateProportion != null) {
       String[] proportions = queryMemoryAllocateProportion.split(":");
       int proportionSum = 0;
@@ -1081,14 +1098,12 @@ public class IoTDBDescriptor {
       long maxMemoryAvailable = conf.getAllocateMemoryForRead();
       if (proportionSum != 0) {
         try {
-          conf.setAllocateMemoryForChunkMetaDataCache(
-              maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
           conf.setAllocateMemoryForChunkCache(
-              maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
+              maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
           conf.setAllocateMemoryForTimeSeriesMetaDataCache(
-              maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
+              maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
           conf.setAllocateMemoryForReadWithoutCache(
-              maxMemoryAvailable * Integer.parseInt(proportions[3].trim()) / proportionSum);
+              maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
         } catch (Exception e) {
           throw new RuntimeException(
               "Each subsection of configuration item chunkmeta_chunk_timeseriesmeta_free_memory_proportion"

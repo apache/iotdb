@@ -120,6 +120,10 @@ INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
 |REVOKE\_ROLE\_PRIVILEGE|撤销角色权限。路径无关|
 |CREATE_FUNCTION|注册UDF。路径无关|
 |DROP_FUNCTION|卸载UDF。路径无关|
+|CREATE_TRIGGER|创建触发器。路径无关|
+|DROP_TRIGGER|卸载触发器。路径无关|
+|START_TRIGGER|启动触发器。路径无关|
+|STOP_TRIGGER|停止触发器。路径无关|
 </center>
 
 ### 用户名限制

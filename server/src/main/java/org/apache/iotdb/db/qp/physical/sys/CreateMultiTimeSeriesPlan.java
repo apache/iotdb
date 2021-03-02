@@ -22,7 +22,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.db.utils.StatusUtils;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -33,7 +33,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -141,15 +140,7 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
   }
 
   public TSStatus[] getFailingStatus() {
-    if (results.isEmpty()) {
-      return new TSStatus[0];
-    }
-    TSStatus[] failingStatus = new TSStatus[paths.size()];
-    Arrays.fill(failingStatus, RpcUtils.SUCCESS_STATUS);
-    for (Map.Entry<Integer, TSStatus> status : results.entrySet()) {
-      failingStatus[status.getKey()] = status.getValue();
-    }
-    return failingStatus;
+    return StatusUtils.getFailingStatus(results, paths.size());
   }
 
   public void setResults(Map<Integer, TSStatus> results) {
