@@ -20,16 +20,6 @@ package org.apache.iotdb.db.engine.cache;
 
 public interface CacheHitRatioMonitorMXBean {
 
-  double getChunkMetaDataHitRatio();
-
-  long getChunkMetaDataCacheUsedMemory();
-
-  long getChunkMetaDataCacheMaxMemory();
-
-  double getChunkMetaDataCacheUsedMemoryProportion();
-
-  long getChunkMetaDataCacheAverageSize();
-
   double getChunkHitRatio();
 
   long getChunkCacheUsedMemory();
