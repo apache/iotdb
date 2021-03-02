@@ -77,7 +77,7 @@ public abstract class HeartbeatServer {
 
   HeartbeatServer() {
     thisNode = new Node();
-    thisNode.setIp(config.getInternalIp());
+    thisNode.setInternalIp(config.getInternalIp());
     thisNode.setMetaPort(config.getInternalMetaPort());
     thisNode.setDataPort(config.getInternalDataPort());
     thisNode.setClientIp(IoTDBDescriptor.getInstance().getConfig().getRpcAddress());

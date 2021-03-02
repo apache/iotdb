@@ -121,7 +121,7 @@ public class SerializeUtils {
 
   public static void serialize(Node node, DataOutputStream dataOutputStream) {
     try {
-      byte[] internalIpBytes = node.ip.getBytes();
+      byte[] internalIpBytes = node.internalIp.getBytes();
       dataOutputStream.writeInt(internalIpBytes.length);
       dataOutputStream.write(internalIpBytes);
       dataOutputStream.writeInt(node.metaPort);
@@ -140,7 +140,7 @@ public class SerializeUtils {
     int internalIpLength = buffer.getInt();
     byte[] internalIpBytes = new byte[internalIpLength];
     buffer.get(internalIpBytes);
-    node.setIp(new String(internalIpBytes));
+    node.setInternalIp(new String(internalIpBytes));
     node.setMetaPort(buffer.getInt());
     node.setNodeIdentifier(buffer.getInt());
     node.setDataPort(buffer.getInt());
@@ -161,7 +161,7 @@ public class SerializeUtils {
               "No sufficient bytes read when deserializing the ip of a node: %d/%d",
               readIpSize, ipLength));
     }
-    node.setIp(new String(ipBytes));
+    node.setInternalIp(new String(ipBytes));
     node.setMetaPort(stream.readInt());
     node.setNodeIdentifier(stream.readInt());
     node.setDataPort(stream.readInt());

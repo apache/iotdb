@@ -35,7 +35,7 @@ public class AsyncDataClientTest {
             new Factory(),
             new TAsyncClientManager(),
             new TNonblockingSocket(
-                node.getIp(), node.getDataPort(), RaftServer.getConnectionTimeoutInMS()));
+                node.getInternalIp(), node.getDataPort(), RaftServer.getConnectionTimeoutInMS()));
     assertTrue(client.isReady());
 
     client = (AsyncDataClient) asyncClientPool.getClient(TestUtils.getNode(0));
@@ -64,7 +64,7 @@ public class AsyncDataClientTest {
     assertFalse(client.isReady());
 
     assertEquals(
-        "DataClient{node=ClusterNode{ ip='192.168.0.0', metaPort=9003, nodeIdentifier=0, dataPort=40010, clientPort=6667, clientIp='0.0.0.0'}}",
+        "DataClient{node=ClusterNode{ internalIp='192.168.0.0', metaPort=9003, nodeIdentifier=0, dataPort=40010, clientPort=6667, clientIp='0.0.0.0'}}",
         client.toString());
   }
 }

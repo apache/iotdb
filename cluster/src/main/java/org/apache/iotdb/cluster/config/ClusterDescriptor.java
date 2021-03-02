@@ -46,11 +46,8 @@ public class ClusterDescriptor {
   private final ClusterConfig config = new ClusterConfig();
 
   private ClusterDescriptor() {
-    // copy needed configurations from the server's config to the cluster.
-    config.setClusterRpcPort(IoTDBDescriptor.getInstance().getConfig().getRpcPort());
-
-    // then load settings from cluster's file.
-    // so, iotdb-cluster.properties can overwrite iotdb-properties.
+    // load settings from cluster's file.
+    // so, iotdb-cluster.properties can overwrite iotdb-engine.properties.
     loadProps();
 
     // if open the server rpc port, we will enable the rpc service and change the server's rpc port

@@ -342,7 +342,7 @@ public class MetaGroupMemberTest extends MemberTest {
             for (String seedUrl : seedUrls) {
               Node node = ClusterUtils.parseNode(seedUrl);
               if (node != null
-                  && (!node.getIp().equals(thisNode.ip)
+                  && (!node.getInternalIp().equals(thisNode.internalIp)
                       || node.getMetaPort() != thisNode.getMetaPort())
                   && !allNodes.contains(node)) {
                 // do not add the local node since it is added in `setThisNode()`

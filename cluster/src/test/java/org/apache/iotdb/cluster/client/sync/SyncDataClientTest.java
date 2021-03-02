@@ -25,7 +25,7 @@ public class SyncDataClientTest {
   @Test
   public void test() throws IOException, InterruptedException {
     Node node = new Node();
-    node.setDataPort(40010).setIp("localhost").setClientIp("localhost");
+    node.setDataPort(40010).setInternalIp("localhost").setClientIp("localhost");
     ServerSocket serverSocket = new ServerSocket(node.getDataPort());
     Thread listenThread =
         new Thread(
@@ -56,12 +56,13 @@ public class SyncDataClientTest {
       assertTrue(client.getInputProtocol().getTransport().isOpen());
 
       assertEquals(
-          "DataClient{node=ClusterNode{ ip='localhost', metaPort=0, nodeIdentifier=0,"
+          "DataClient{node=ClusterNode{ internalIp='localhost', metaPort=0, nodeIdentifier=0,"
               + " dataPort=40010, clientPort=0, clientIp='localhost'}}",
           client.toString());
 
       client =
-          new SyncDataClient(new TBinaryProtocol(new TSocket(node.getIp(), node.getDataPort())));
+          new SyncDataClient(
+              new TBinaryProtocol(new TSocket(node.getInternalIp(), node.getDataPort())));
       // client without a belong pool will be closed after putBack()
       client.putBack();
       assertFalse(client.getInputProtocol().getTransport().isOpen());

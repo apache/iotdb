@@ -162,7 +162,7 @@ public class ClusterUtils {
   }
 
   private static int compareSeedNode(Node thisSeedNode, Node thatSeedNode) {
-    int ipCompare = thisSeedNode.getIp().compareTo(thatSeedNode.getIp());
+    int ipCompare = thisSeedNode.getInternalIp().compareTo(thatSeedNode.getInternalIp());
     if (ipCompare != 0) {
       return ipCompare;
     } else {
@@ -297,7 +297,7 @@ public class ClusterUtils {
    */
   public static Node stringToNode(String str) {
 
-    int ipFirstPos = str.indexOf("ip:") + "ip:".length();
+    int ipFirstPos = str.indexOf("internalIp:") + "internalIp:".length();
     int ipLastPos = str.indexOf(',', ipFirstPos);
     int metaPortFirstPos = str.indexOf("metaPort:", ipLastPos) + "metaPort:".length();
     int metaPortLastPos = str.indexOf(',', metaPortFirstPos);
@@ -329,7 +329,7 @@ public class ClusterUtils {
     String ip = split[0];
     try {
       int metaPort = Integer.parseInt(split[1]);
-      result.setIp(ip).setMetaPort(metaPort).setClientIp(UNKNOWN_CLIENT_IP);
+      result.setInternalIp(ip).setMetaPort(metaPort).setClientIp(UNKNOWN_CLIENT_IP);
     } catch (NumberFormatException e) {
       logger.warn("Bad seed url: {}", nodeUrl);
     }

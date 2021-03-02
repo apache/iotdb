@@ -32,8 +32,13 @@ public class ClusterNode extends Node {
   public ClusterNode() {}
 
   public ClusterNode(
-      String ip, int metaPort, int nodeIdentifier, int dataPort, int clientPort, String clientIp) {
-    super(ip, metaPort, nodeIdentifier, dataPort, clientPort, clientIp);
+      String internalIp,
+      int metaPort,
+      int nodeIdentifier,
+      int dataPort,
+      int clientPort,
+      String clientIp) {
+    super(internalIp, metaPort, nodeIdentifier, dataPort, clientPort, clientIp);
   }
 
   public ClusterNode(Node other) {
@@ -49,7 +54,7 @@ public class ClusterNode extends Node {
   }
 
   public boolean equals(ClusterNode that) {
-    return Objects.equals(this.ip, that.ip)
+    return Objects.equals(this.internalIp, that.internalIp)
         && this.dataPort == that.dataPort
         && this.metaPort == that.metaPort
         && this.clientPort == that.clientPort
@@ -58,14 +63,14 @@ public class ClusterNode extends Node {
 
   @Override
   public int hashCode() {
-    return Objects.hash(ip, metaPort, dataPort, clientPort, clientIp);
+    return Objects.hash(internalIp, metaPort, dataPort, clientPort, clientIp);
   }
 
   @Override
   public String toString() {
     return "ClusterNode{"
-        + " ip='"
-        + ip
+        + " internalIp='"
+        + internalIp
         + '\''
         + ", metaPort="
         + metaPort

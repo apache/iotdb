@@ -19,6 +19,7 @@
 package org.apache.iotdb.cluster.config;
 
 import org.apache.iotdb.cluster.utils.ClusterConsistent;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import java.util.Arrays;
 import java.util.List;
@@ -31,7 +32,7 @@ public class ClusterConfig {
   private String internalIp = "127.0.0.1";
   private int internalMetaPort = 9003;
   private int internalDataPort = 40010;
-  private int clusterRpcPort = 6667;
+  private int clusterRpcPort = IoTDBDescriptor.getInstance().getConfig().getRpcPort();
 
   /** each one is a {internalIp | domain name}:{meta port} string tuple */
   private List<String> seedNodeUrls =

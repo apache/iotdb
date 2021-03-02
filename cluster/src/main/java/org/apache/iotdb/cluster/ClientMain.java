@@ -203,7 +203,7 @@ public class ClientMain {
         queryPorts = parseIntArray(commandLine.getOptionValue(PARAM_QUERY_PORTS));
       }
       if (queryPorts == null) {
-        queryPorts = new int[] {port, port + 2, port + 4};
+        queryPorts = new int[] {port, port + 1, port + 2};
       }
       for (int queryPort : queryPorts) {
         System.out.println("Test port: " + queryPort);

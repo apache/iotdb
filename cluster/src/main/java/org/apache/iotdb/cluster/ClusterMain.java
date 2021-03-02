@@ -180,7 +180,7 @@ public class ClusterMain {
     // assert this node is in seed nodes list
     Node localNode = new Node();
     localNode
-        .setIp(config.getInternalIp())
+        .setInternalIp(config.getInternalIp())
         .setMetaPort(config.getInternalMetaPort())
         .setDataPort(config.getInternalDataPort())
         .setClientPort(config.getClusterRpcPort())
@@ -205,7 +205,7 @@ public class ClusterMain {
     TProtocolFactory factory =
         config.isRpcThriftCompressionEnabled() ? new TCompactProtocol.Factory() : new Factory();
     Node nodeToRemove = new Node();
-    nodeToRemove.setIp(ip).setMetaPort(metaPort);
+    nodeToRemove.setInternalIp(ip).setMetaPort(metaPort);
     // try sending the request to each seed node
     for (String url : config.getSeedNodeUrls()) {
       Node node = ClusterUtils.parseNode(url);

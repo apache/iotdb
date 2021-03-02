@@ -398,7 +398,8 @@ public class MetaGroupMember extends RaftMember {
     for (String seedUrl : seedUrls) {
       Node node = ClusterUtils.parseNode(seedUrl);
       if (node != null
-          && (!node.getIp().equals(thisNode.ip) || node.getMetaPort() != thisNode.getMetaPort())
+          && (!node.getInternalIp().equals(thisNode.internalIp)
+              || node.getMetaPort() != thisNode.getMetaPort())
           && !allNodes.contains(node)) {
         // do not add the local node since it is added in the constructor
         allNodes.add(node);
@@ -1324,7 +1325,8 @@ public class MetaGroupMember extends RaftMember {
    * @return a new identifier
    */
   private int genNodeIdentifier() {
-    return Objects.hash(thisNode.getIp(), thisNode.getMetaPort(), System.currentTimeMillis());
+    return Objects.hash(
+        thisNode.getInternalIp(), thisNode.getMetaPort(), System.currentTimeMillis());
   }
 
   /** Set the node's identifier to "identifier", also save it to a local file in text format. */
@@ -1577,7 +1579,7 @@ public class MetaGroupMember extends RaftMember {
     Node target = null;
     synchronized (allNodes) {
       for (Node n : allNodes) {
-        if (n.ip.equals(node.ip) && n.metaPort == node.metaPort) {
+        if (n.internalIp.equals(node.internalIp) && n.metaPort == node.metaPort) {
           target = n;
           break;
         }

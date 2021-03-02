@@ -160,7 +160,7 @@ public class DataGroupMember extends RaftMember {
       Node thisNode,
       MetaGroupMember metaGroupMember) {
     super(
-        "Data(" + nodes.getHeader().getIp() + ":" + nodes.getHeader().getMetaPort() + ")",
+        "Data(" + nodes.getHeader().getInternalIp() + ":" + nodes.getHeader().getMetaPort() + ")",
         new AsyncClientPool(new AsyncDataClient.FactoryAsync(factory)),
         new SyncClientPool(new SyncDataClient.FactorySync(factory)),
         new AsyncClientPool(new AsyncDataHeartbeatClient.FactoryAsync(factory)),

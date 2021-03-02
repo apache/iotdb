@@ -55,7 +55,9 @@ public class SyncDataClient extends Client {
         protocolFactory.getProtocol(
             RpcTransportFactory.INSTANCE.getTransport(
                 new TSocket(
-                    node.getIp(), node.getDataPort(), RaftServer.getConnectionTimeoutInMS()))));
+                    node.getInternalIp(),
+                    node.getDataPort(),
+                    RaftServer.getConnectionTimeoutInMS()))));
     this.node = node;
     this.pool = pool;
     getInputProtocol().getTransport().open();
