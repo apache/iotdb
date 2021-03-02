@@ -24,6 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -88,25 +89,24 @@ public class QueryTimeManager implements IService {
     queryInfoMap.computeIfPresent(
         queryId,
         (k, v) -> {
-          successRemoved.set(true);
-          return null;
-        });
-    queryScheduledTaskMap.computeIfPresent(
-        queryId,
-        (k, v) -> {
-          queryScheduledTaskMap.get(queryId).cancel(false);
-          return null;
+          if (v.isInterrupted()) {
+            successRemoved.set(true);
+            ScheduledFuture<?> scheduledFuture = queryScheduledTaskMap.remove(queryId);
+            if (scheduledFuture != null) {
+              scheduledFuture.cancel(false);
+            }
+            return null;
+          } else {
+            return v;
+          }
         });
     return successRemoved;
   }
 
   public static void checkQueryAlive(long queryId) {
-    QueryInfo queryInfo = getInstance().queryInfoMap.get(queryId);
-    if (queryInfo != null && queryInfo.isInterrupted()) {
-      if (getInstance().unRegisterQuery(queryId).get()) {
-        throw new QueryTimeoutRuntimeException(
-            QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
-      }
+    if (getInstance().unRegisterQuery(queryId).get()) {
+      throw new QueryTimeoutRuntimeException(
+          QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
     }
   }
 
