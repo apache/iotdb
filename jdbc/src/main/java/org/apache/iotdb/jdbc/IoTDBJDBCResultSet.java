@@ -87,6 +87,15 @@ public class IoTDBJDBCResultSet extends AbstractIoTDBJDBCResultSet {
     }
   }
 
+  @Override
+  protected Object getObjectByName(String columnName) throws SQLException {
+    try {
+      return ioTDBRpcDataSet.getObjectByName(columnName);
+    } catch (StatementExecutionException e) {
+      throw new SQLException(e.getMessage());
+    }
+  }
+
   public boolean isIgnoreTimeStamp() {
     return ioTDBRpcDataSet.ignoreTimeStamp;
   }
