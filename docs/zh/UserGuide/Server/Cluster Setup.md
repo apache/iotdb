@@ -34,22 +34,18 @@ __集群模式目前是测试版！请谨慎在生产环境中使用。__
 > nohup sbin/start-node.sh [printgc] [<conf_path>] >/dev/null 2>&1 &
 
 # Windows
-> sbin\start-node.bat
+> sbin\start-node.bat [printgc] [<conf_path>] 
 ```
 `printgc`表示在启动的时候，会开启GC日志。
 `<conf_path>`使用`conf_path`文件夹里面的配置文件覆盖默认配置文件。
 
 ## 3节点3副本伪分布式搭建示例
-```bash
-> mvn clean package -pl cluster -am -Dmaven.test.skip=true
-> cp -rf ./cluster/target/cluster-0.12.0-SNAPSHOT ./cluster/target/cluster-0.12.0-SNAPSHOT1
-> cp -rf ./cluster/target/cluster-0.12.0-SNAPSHOT ./cluster/target/cluster-0.12.0-SNAPSHOT2
-
-> chmod -R 777 ./cluster/target/
-
-> nohup ./cluster/target/cluster-0.12.0-SNAPSHOT/sbin/start-node.sh  ./cluster/target/test-classes/node1conf/ >/dev/null 2>&1 &
-> nohup ./cluster/target/cluster-0.12.0-SNAPSHOT1/sbin/start-node.sh ./cluster/target/test-classes/node2conf/ >/dev/null 2>&1 &
-> nohup ./cluster/target/cluster-0.12.0-SNAPSHOT2/sbin/start-node.sh ./cluster/target/test-classes/node3conf/ >/dev/null 2>&1 &
+```
+mvn clean package -pl cluster -am -Dmaven.test.skip=true
+chmod -R 777 ./cluster/target/
+nohup ./cluster/target/cluster-0.12.0-SNAPSHOT/sbin/start-node.sh  ./cluster/target/test-classes/node1conf/ >/dev/null 2>&1 &
+nohup ./cluster/target/cluster-0.12.0-SNAPSHOT/sbin/start-node.sh ./cluster/target/test-classes/node2conf/ >/dev/null 2>&1 &
+nohup ./cluster/target/cluster-0.12.0-SNAPSHOT/sbin/start-node.sh ./cluster/target/test-classes/node3conf/ >/dev/null 2>&1 &
 ```
 
 ## 被覆盖的单机版选项
