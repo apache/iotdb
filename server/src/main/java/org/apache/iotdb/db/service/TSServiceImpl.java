@@ -432,7 +432,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   private boolean executeInsertRowsPlan(InsertRowsPlan insertRowsPlan, List<TSStatus> result) {
-    long t2 = System.currentTimeMillis();
+    long t1 = System.currentTimeMillis();
     TSStatus tsStatus = executeNonQueryPlan(insertRowsPlan);
     Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_ROWS_PLAN_IN_BATCH, t2);
     int startIndex = result.size();
