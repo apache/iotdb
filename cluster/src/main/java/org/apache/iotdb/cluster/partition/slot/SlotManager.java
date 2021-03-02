@@ -145,10 +145,17 @@ public class SlotManager {
    * @param source
    */
   public void setToPulling(int slotId, Node source) {
-    SlotDescriptor slotDescriptor = idSlotMap.get(slotId);
+    setToPulling(slotId, source, true);
+  }
+
+  public void setToPulling(int slotId, Node source, boolean needSave) {
+      SlotDescriptor slotDescriptor = idSlotMap.get(slotId);
     synchronized (slotDescriptor) {
       slotDescriptor.slotStatus = SlotStatus.PULLING;
       slotDescriptor.source = source;
+    }
+    if (needSave) {
+      save();
     }
   }
 
@@ -157,12 +164,18 @@ public class SlotManager {
    * @param slotId
    */
   public void setToPullingWritable(int slotId) {
+    setToPullingWritable(slotId, true);
+  }
+
+  public void setToPullingWritable(int slotId, boolean needSave) {
     SlotDescriptor slotDescriptor = idSlotMap.get(slotId);
     synchronized (slotDescriptor) {
       slotDescriptor.slotStatus = SlotStatus.PULLING_WRITABLE;
       slotDescriptor.notifyAll();
     }
-    save();
+    if (needSave) {
+      save();
+    }
   }
 
   /**
@@ -170,16 +183,26 @@ public class SlotManager {
    * @param slotId
    */
   public void setToNull(int slotId) {
+    setToNull(slotId, true);
+  }
+
+  public void setToNull(int slotId, boolean needSave) {
     SlotDescriptor slotDescriptor = idSlotMap.get(slotId);
     synchronized (slotDescriptor) {
       slotDescriptor.slotStatus = SlotStatus.NULL;
       slotDescriptor.source = null;
       slotDescriptor.notifyAll();
     }
-    save();
+    if (needSave) {
+      save();
+    }
   }
 
   public void setToSending(int slotId) {
+    setToSending(slotId, true);
+  }
+
+  public void setToSending(int slotId, boolean needSave) {
     // only NULL slots can be set to SENDING
     waitSlot(slotId);
     SlotDescriptor slotDescriptor = idSlotMap.get(slotId);
@@ -187,7 +210,9 @@ public class SlotManager {
       slotDescriptor.slotStatus = SlotStatus.SENDING;
       slotDescriptor.snapshotReceivedCount = 0;
     }
-    save();
+    if (needSave) {
+      save();
+    }
   }
 
   private void setToSent(int slotId) {
@@ -195,7 +220,6 @@ public class SlotManager {
     synchronized (slotDescriptor) {
       slotDescriptor.slotStatus = SlotStatus.SENT;
     }
-    save();
   }
 
   /**
@@ -206,13 +230,19 @@ public class SlotManager {
    * invocation).
    */
   public int sentOneReplication(int slotId) {
+    return sentOneReplication(slotId, true);
+  }
+
+  public int sentOneReplication(int slotId, boolean needSave) {
     SlotDescriptor slotDescriptor = idSlotMap.get(slotId);
     synchronized (slotDescriptor) {
       int sentReplicaNum = ++slotDescriptor.snapshotReceivedCount;
       if (sentReplicaNum >= ClusterDescriptor.getInstance().getConfig().getReplicationNum()) {
         setToSent(slotId);
       }
-      save();
+      if (needSave) {
+        save();
+      }
       return sentReplicaNum;
     }
   }
@@ -243,7 +273,7 @@ public class SlotManager {
     }
   }
 
-  private synchronized void save() {
+  public synchronized void save() {
     if (slotFilePath == null) {
       return;
     }

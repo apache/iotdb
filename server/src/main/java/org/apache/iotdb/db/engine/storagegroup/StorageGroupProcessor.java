@@ -2620,12 +2620,12 @@ public class StorageGroupProcessor {
       // abort ongoing merges
       MergeManager.getINSTANCE().abortMerge(logicalStorageGroupName);
       // close all working files that should be removed
-      removePartitions(filter, workSequenceTsFileProcessors.entrySet());
-      removePartitions(filter, workUnsequenceTsFileProcessors.entrySet());
+      removePartitions(filter, workSequenceTsFileProcessors.entrySet(), true);
+      removePartitions(filter, workUnsequenceTsFileProcessors.entrySet(), false);
 
       // remove data files
-      removePartitions(filter, tsFileManagement.getIterator(true));
-      removePartitions(filter, tsFileManagement.getIterator(false));
+      removePartitions(filter, tsFileManagement.getIterator(true), true);
+      removePartitions(filter, tsFileManagement.getIterator(false), false);
 
     } finally {
       insertLock.writeLock().unlock();
@@ -2635,7 +2635,7 @@ public class StorageGroupProcessor {
 
   //may remove the processorEntrys
   private void removePartitions(TimePartitionFilter filter,
-      Set<Entry<Long, TsFileProcessor>> processorEntrys) {
+      Set<Entry<Long, TsFileProcessor>> processorEntrys, boolean sequence) {
     for (Iterator<Entry<Long, TsFileProcessor>> iterator = processorEntrys.iterator();
         iterator.hasNext(); ) {
       Entry<Long, TsFileProcessor> longTsFileProcessorEntry = iterator.next();
@@ -2644,6 +2644,7 @@ public class StorageGroupProcessor {
       if (filter.satisfy(logicalStorageGroupName, partitionId)) {
         processor.syncClose();
         iterator.remove();
+        tsFileManagement.remove(processor.getTsFileResource(), sequence);
         updateLatestFlushTimeToPartition(partitionId, Long.MIN_VALUE);
         logger.debug("{} is removed during deleting partitions",
             processor.getTsFileResource().getTsFilePath());
@@ -2652,12 +2653,13 @@ public class StorageGroupProcessor {
   }
 
   //may remove the iterator's data
-  private void removePartitions(TimePartitionFilter filter, Iterator<TsFileResource> iterator) {
+  private void removePartitions(TimePartitionFilter filter, Iterator<TsFileResource> iterator, boolean sequence) {
     while (iterator.hasNext()) {
       TsFileResource tsFileResource = iterator.next();
       if (filter.satisfy(logicalStorageGroupName, tsFileResource.getTimePartition())) {
         tsFileResource.remove();
         iterator.remove();
+        tsFileManagement.remove(tsFileResource, sequence);
         updateLatestFlushTimeToPartition(tsFileResource.getTimePartition(), Long.MIN_VALUE);
         logger.debug("{} is removed during deleting partitions", tsFileResource.getTsFilePath());
       }

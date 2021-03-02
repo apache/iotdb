@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.cluster.log.manage;
 
+import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.manage.serializable.SyncLogDequeSerializer;
@@ -68,6 +70,8 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
     this.dataGroupMember = dataGroupMember;
   }
 
+  public void takeSnapshotForSpecificSlots(List<Integer> requiredSlots) throws IOException {}
+
   @Override
   public Snapshot getSnapshot(long minIndex) {
     // copy snapshots
@@ -83,14 +87,17 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
     }
   }
 
-  void collectTimeseriesSchemas() {
+  void collectTimeseriesSchemas(List<Integer> requiredSlots) {
     slotTimeseries.clear();
     List<StorageGroupMNode> allSgNodes = IoTDB.metaManager.getAllStorageGroupNodes();
     for (MNode sgNode : allSgNodes) {
       String storageGroupName = sgNode.getFullPath();
       int slot = SlotPartitionTable.getSlotStrategy().calculateSlotByTime(storageGroupName, 0,
-          ((SlotPartitionTable) partitionTable).getTotalSlotNumbers());
+          ClusterConstant.SLOT_NUM);
 
+      if (!requiredSlots.contains(slot)) {
+        continue;
+      }
       Collection<TimeseriesSchema> schemas = slotTimeseries.computeIfAbsent(slot,
           s -> new HashSet<>());
       IoTDB.metaManager.collectTimeseriesSchema(sgNode, schemas);

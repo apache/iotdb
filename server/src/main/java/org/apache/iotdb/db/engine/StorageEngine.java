@@ -861,7 +861,9 @@ public class StorageEngine implements IService {
 
   public void removePartitions(PartialPath storageGroupPath, TimePartitionFilter filter)
       throws StorageEngineException {
-    processorMap.get(storageGroupPath).removePartitions(filter);
+    if (processorMap.get(storageGroupPath) != null) {
+      processorMap.get(storageGroupPath).removePartitions(filter);
+    }
   }
 
   public Map<PartialPath, VirtualStorageGroupManager> getProcessorMap() {

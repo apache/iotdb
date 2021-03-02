@@ -52,7 +52,7 @@ public class PullSnapshotHintService {
 
   public void start() {
     this.service = Executors.newScheduledThreadPool(1);
-    this.service.scheduleAtFixedRate(this::sendHints, 0, 1, TimeUnit.MINUTES);
+    this.service.scheduleAtFixedRate(this::sendHints, 0, 10, TimeUnit.MILLISECONDS);
   }
 
   public void stop() {

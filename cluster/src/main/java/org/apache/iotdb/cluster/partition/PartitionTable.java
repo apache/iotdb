@@ -113,6 +113,11 @@ public interface PartitionTable {
   boolean judgeHoldSlot(Node node, int slot);
 
   /**
+   * get the last meta log index that modifies the partition table
+   */
+  long getLastMetaLogIndex();
+
+  /**
    * @param path      can be an incomplete path (but should contain a storage group name) e.g., if
    *                  "root.sg" is a storage group, then path can not be "root".
    * @param timestamp

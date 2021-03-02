@@ -235,10 +235,11 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
         SlotStatus status = slotManager.getStatus(slot);
         if (status == SlotStatus.PULLING) {
           // as schemas are set, writes can proceed
-          slotManager.setToPullingWritable(slot);
+          slotManager.setToPullingWritable(slot, false);
           logger.debug("{}: slot {} is now pulling writable", name, slot);
         }
       }
+      slotManager.save();
 
       for (Entry<Integer, FileSnapshot> integerSnapshotEntry : snapshotMap.entrySet()) {
         Integer slot = integerSnapshotEntry.getKey();
@@ -249,6 +250,7 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
           throw new SnapshotInstallationException(e);
         }
       }
+      slotManager.save();
     }
 
     private void installFileSnapshotSchema(FileSnapshot snapshot) {
@@ -280,7 +282,7 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
         }
       }
       // all files are loaded, the slot can be queried without accessing the previous holder
-      slotManager.setToNull(slot);
+      slotManager.setToNull(slot, false);
       logger.info("{}: slot {} is ready", name, slot);
     }
 

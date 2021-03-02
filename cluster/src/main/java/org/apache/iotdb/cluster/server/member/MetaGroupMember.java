@@ -678,8 +678,8 @@ public class MetaGroupMember extends RaftMember {
     newTable.deserialize(partitionTableBuffer);
     // avoid overwriting current partition table with a previous one
     if (partitionTable != null) {
-      long currIndex = ((SlotPartitionTable) partitionTable).getLastLogIndex();
-      long incomingIndex = newTable.getLastLogIndex();
+      long currIndex = ((SlotPartitionTable) partitionTable).getLastMetaLogIndex();
+      long incomingIndex = newTable.getLastMetaLogIndex();
       logger.info("Current partition table index {}, new partition table index {}", currIndex,
           incomingIndex);
       if (currIndex >= incomingIndex) {
@@ -924,7 +924,7 @@ public class MetaGroupMember extends RaftMember {
     synchronized (logManager) {
       // update partition table
       partitionTable.addNode(newNode);
-      ((SlotPartitionTable) partitionTable).setLastLogIndex(logManager.getLastLogIndex() + 1);
+      ((SlotPartitionTable) partitionTable).setLastMetaLogIndex(logManager.getLastLogIndex() + 1);
 
       AddNodeLog addNodeLog = new AddNodeLog();
       addNodeLog.setPartitionTable(partitionTable.serialize());
@@ -1977,7 +1977,7 @@ public class MetaGroupMember extends RaftMember {
     synchronized (logManager) {
       // update partition table
       partitionTable.removeNode(target);
-      ((SlotPartitionTable) partitionTable).setLastLogIndex(logManager.getLastLogIndex() + 1);
+      ((SlotPartitionTable) partitionTable).setLastMetaLogIndex(logManager.getLastLogIndex() + 1);
 
       RemoveNodeLog removeNodeLog = new RemoveNodeLog();
       removeNodeLog.setPartitionTable(partitionTable.serialize());

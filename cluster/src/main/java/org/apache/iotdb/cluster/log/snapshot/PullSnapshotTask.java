@@ -100,10 +100,11 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Void> {
       List<Integer> noSnapshotSlots = new ArrayList<>();
       for (Integer slot : descriptor.getSlots()) {
         if (!result.containsKey(slot)) {
-          newMember.getSlotManager().setToNull(slot);
+          newMember.getSlotManager().setToNull(slot, false);
           noSnapshotSlots.add(slot);
         }
       }
+      newMember.getSlotManager().save();
       if (!noSnapshotSlots.isEmpty() && logger.isInfoEnabled()) {
         logger.info("{}: {} and other {} slots do not have snapshot", newMember.getName(),
             noSnapshotSlots.get(0), noSnapshotSlots.size() - 1);
@@ -164,40 +165,31 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Void> {
 
   @Override
   public Void call() {
-    // If this node is the member of previous holder, it's unnecessary to pull data again
-    if (descriptor.getPreviousHolders().contains(newMember.getThisNode())) {
-      for (Integer slot: descriptor.getSlots()) {
-        newMember.getSlotManager().setToNull(slot);
-      }
-      // inform the previous holders that one member has successfully pulled snapshot directly
-      newMember.registerPullSnapshotHint(descriptor);
-    } else {
-      request = new PullSnapshotRequest();
-      request.setHeader(descriptor.getPreviousHolders().getHeader());
-      request.setRaftId(descriptor.getPreviousHolders().getId());
-      request.setRequiredSlots(descriptor.getSlots());
-      request.setRequireReadOnly(descriptor.isRequireReadOnly());
+    request = new PullSnapshotRequest();
+    request.setHeader(descriptor.getPreviousHolders().getHeader());
+    request.setRaftId(descriptor.getPreviousHolders().getId());
+    request.setRequiredSlots(descriptor.getSlots());
+    request.setRequireReadOnly(descriptor.isRequireReadOnly());
 
-      boolean finished = false;
-      int nodeIndex = ((PartitionGroup) newMember.getAllNodes()).indexOf(newMember.getThisNode()) - 1;
-      while (!finished) {
-        try {
-          // sequentially pick up a node that may have this slot
-          nodeIndex = (nodeIndex + 1) % descriptor.getPreviousHolders().size();
-          finished = pullSnapshot(nodeIndex);
-          if (!finished) {
-            Thread
-                .sleep(
-                    ClusterDescriptor.getInstance().getConfig().getPullSnapshotRetryIntervalMs());
-          }
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          finished = true;
-        } catch (TException e) {
-          if (logger.isDebugEnabled()) {
-            logger.debug("Cannot pull slot {} from {}, retry", descriptor.getSlots(),
-                descriptor.getPreviousHolders().get(nodeIndex), e);
-          }
+    boolean finished = false;
+    int nodeIndex = ((PartitionGroup) newMember.getAllNodes()).indexOf(newMember.getThisNode()) - 1;
+    while (!finished) {
+      try {
+        // sequentially pick up a node that may have this slot
+        nodeIndex = (nodeIndex + 1) % descriptor.getPreviousHolders().size();
+        finished = pullSnapshot(nodeIndex);
+        if (!finished) {
+          Thread
+              .sleep(
+                  ClusterDescriptor.getInstance().getConfig().getPullSnapshotRetryIntervalMs());
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        finished = true;
+      } catch (TException e) {
+        if (logger.isDebugEnabled()) {
+          logger.debug("Cannot pull slot {} from {}, retry", descriptor.getSlots(),
+              descriptor.getPreviousHolders().get(nodeIndex), e);
         }
       }
     }

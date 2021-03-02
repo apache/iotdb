@@ -883,21 +883,22 @@ public abstract class RaftMember {
       return StatusUtils.NODE_READ_ONLY;
     }
     long startTime = Timer.Statistic.RAFT_SENDER_APPEND_LOG.getOperationStartTime();
+
     Log log;
-    if (plan instanceof LogPlan) {
-      try {
-        log = LogParser.getINSTANCE().parse(((LogPlan) plan).getLog());
-      } catch (UnknownLogTypeException e) {
-        logger.error("Can not parse LogPlan {}", plan, e);
-        return StatusUtils.PARSE_LOG_ERROR;
-      }
-    } else {
-      log = new PhysicalPlanLog();
-      ((PhysicalPlanLog)log).setPlan(plan);
-      plan.setIndex(log.getCurrLogIndex());
-    }
     // assign term and index to the new log and append it
     synchronized (logManager) {
+      if (plan instanceof LogPlan) {
+        try {
+          log = LogParser.getINSTANCE().parse(((LogPlan) plan).getLog());
+        } catch (UnknownLogTypeException e) {
+          logger.error("Can not parse LogPlan {}", plan, e);
+          return StatusUtils.PARSE_LOG_ERROR;
+        }
+      } else {
+        log = new PhysicalPlanLog();
+        ((PhysicalPlanLog) log).setPlan(plan);
+        plan.setIndex(logManager.getLastLogIndex() + 1);
+      }
       log.setCurrLogTerm(getTerm().get());
       log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
 
@@ -920,20 +921,30 @@ public abstract class RaftMember {
     if (readOnly) {
       return StatusUtils.NODE_READ_ONLY;
     }
-    PhysicalPlanLog log = new PhysicalPlanLog();
     // assign term and index to the new log and append it
     SendLogRequest sendLogRequest;
 
     long startTime = Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2
         .getOperationStartTime();
+    Log log;
     synchronized (logManager) {
       Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2
           .calOperationCostTimeFromStart(startTime);
 
+      if (plan instanceof LogPlan) {
+        try {
+          log = LogParser.getINSTANCE().parse(((LogPlan) plan).getLog());
+        } catch (UnknownLogTypeException e) {
+          logger.error("Can not parse LogPlan {}", plan, e);
+          return StatusUtils.PARSE_LOG_ERROR;
+        }
+      } else {
+        log = new PhysicalPlanLog();
+        ((PhysicalPlanLog) log).setPlan(plan);
+        plan.setIndex(logManager.getLastLogIndex() + 1);
+      }
       log.setCurrLogTerm(getTerm().get());
       log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
-      log.setPlan(plan);
-      plan.setIndex(log.getCurrLogIndex());
 
       startTime = Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.getOperationStartTime();
       logManager.append(log);

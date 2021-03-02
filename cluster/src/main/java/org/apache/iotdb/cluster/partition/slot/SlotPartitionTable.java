@@ -79,7 +79,6 @@ public class SlotPartitionTable implements PartitionTable {
   private RaftNode[] slotNodes = new RaftNode[ClusterConstant.SLOT_NUM];
   // the nodes that each slot belongs to before a new node is added, used for the new node to
   // find the data source
-  // find the data source
   private Map<RaftNode, Map<Integer, PartitionGroup>> previousNodeMap = new ConcurrentHashMap<>();
 
   private NodeRemovalResult nodeRemovalResult = new SlotNodeRemovalResult();
@@ -92,8 +91,8 @@ public class SlotPartitionTable implements PartitionTable {
 
   private List<PartitionGroup> globalGroups;
 
-  // last log index that modifies the partition table
-  private long lastLogIndex = -1;
+  // the last meta log index that modifies the partition table
+  private long lastMetaLogIndex = -1;
 
   private SlotBalancer slotBalancer = new DefaultSlotBalancer(this);
 
@@ -178,6 +177,10 @@ public class SlotPartitionTable implements PartitionTable {
     List<PartitionGroup> ret = new ArrayList<>();
 
     int nodeIndex = nodeRing.indexOf(node);
+    if (nodeIndex == -1) {
+      logger.info("PartitionGroups is empty due to this node has been removed from the cluster!");
+      return ret;
+    }
     for (int i = 0; i < replicationNum; i++) {
       // the previous replicationNum nodes (including the node itself) are the headers of the
       // groups the node is in
@@ -312,6 +315,7 @@ public class SlotPartitionTable implements PartitionTable {
     // the slots movement is only done logically, the new node itself will pull data from the
     // old node
     slotBalancer.moveSlotsToNew(node, oldRing);
+    this.nodeRemovalResult = new SlotNodeRemovalResult();
 
   }
 
@@ -343,7 +347,7 @@ public class SlotPartitionTable implements PartitionTable {
     DataOutputStream dataOutputStream = new DataOutputStream(outputStream);
 
     try {
-      dataOutputStream.writeLong(lastLogIndex);
+      dataOutputStream.writeLong(lastMetaLogIndex);
       dataOutputStream.writeInt(totalSlotNumbers);
       dataOutputStream.writeInt(nodeSlotMap.size());
       for (Entry<RaftNode, List<Integer>> entry : nodeSlotMap.entrySet()) {
@@ -376,10 +380,10 @@ public class SlotPartitionTable implements PartitionTable {
     long newLastLogIndex = buffer.getLong();
 
     // judge whether the partition table of byte buffer is out of date
-    if (lastLogIndex != -1 && lastLogIndex >= newLastLogIndex) {
-      return lastLogIndex <= newLastLogIndex;
+    if (lastMetaLogIndex != -1 && lastMetaLogIndex >= newLastLogIndex) {
+      return lastMetaLogIndex <= newLastLogIndex;
     }
-    lastLogIndex = newLastLogIndex;
+    lastMetaLogIndex = newLastLogIndex;
     logger.info("Initializing the partition table from buffer");
     totalSlotNumbers = buffer.getInt();
     int size = buffer.getInt();
@@ -432,7 +436,7 @@ public class SlotPartitionTable implements PartitionTable {
 
   @Override
   public boolean checkChangeMembershipValidity(long targetLogIndex) {
-    return lastLogIndex == targetLogIndex;
+    return lastMetaLogIndex == targetLogIndex;
   }
 
   @Override
@@ -478,7 +482,7 @@ public class SlotPartitionTable implements PartitionTable {
         Objects.equals(nodeSlotMap, that.nodeSlotMap) &&
         Arrays.equals(slotNodes, that.slotNodes) &&
         Objects.equals(previousNodeMap, that.previousNodeMap) &&
-        lastLogIndex == that.lastLogIndex;
+        lastMetaLogIndex == that.lastMetaLogIndex;
   }
 
   @Override
@@ -575,12 +579,13 @@ public class SlotPartitionTable implements PartitionTable {
     return result;
   }
 
-  public synchronized long getLastLogIndex() {
-    return lastLogIndex;
+  @Override
+  public synchronized long getLastMetaLogIndex() {
+    return lastMetaLogIndex;
   }
 
-  public synchronized void setLastLogIndex(long lastLogIndex) {
-    this.lastLogIndex = Math.max(this.lastLogIndex, lastLogIndex);
+  public synchronized void setLastMetaLogIndex(long lastMetaLogIndex) {
+    this.lastMetaLogIndex = Math.max(this.lastMetaLogIndex, lastMetaLogIndex);
   }
 
   public RaftNode[] getSlotNodes() {

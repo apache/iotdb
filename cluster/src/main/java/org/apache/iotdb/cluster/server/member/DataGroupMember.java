@@ -70,7 +70,6 @@ import org.apache.iotdb.cluster.partition.slot.SlotNodeRemovalResult;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.query.LocalQueryExecutor;
 import org.apache.iotdb.cluster.query.manage.ClusterQueryManager;
-import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
@@ -78,14 +77,14 @@ import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.server.NodeCharacter;
+import org.apache.iotdb.cluster.server.PullSnapshotHintService;
+import org.apache.iotdb.cluster.server.Response;
+import org.apache.iotdb.cluster.server.heartbeat.DataHeartbeatThread;
 import org.apache.iotdb.cluster.server.monitor.NodeReport.DataMemberReport;
 import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
 import org.apache.iotdb.cluster.server.monitor.Peer;
-import org.apache.iotdb.cluster.server.PullSnapshotHintService;
-import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
-import org.apache.iotdb.cluster.server.heartbeat.DataHeartbeatThread;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -197,6 +196,7 @@ public class DataGroupMember extends RaftMember {
     heartBeatService.submit(new DataHeartbeatThread(this));
     pullSnapshotService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
     pullSnapshotHintService = new PullSnapshotHintService(this);
+    pullSnapshotHintService.start();
     resumePullSnapshotTasks();
   }
 
@@ -461,7 +461,7 @@ public class DataGroupMember extends RaftMember {
     synchronized (logManager) {
       PullSnapshotResp resp = new PullSnapshotResp();
       Map<Integer, ByteBuffer> resultMap = new HashMap<>();
-      logManager.takeSnapshot();
+      ((PartitionedSnapshotLogManager)logManager).takeSnapshotForSpecificSlots(requiredSlots);
 
       PartitionedSnapshot<Snapshot> allSnapshot = (PartitionedSnapshot) logManager.getSnapshot();
       for (int requiredSlot : requiredSlots) {
@@ -521,6 +521,12 @@ public class DataGroupMember extends RaftMember {
    *                     ot null otherwise
    */
   private void pullFileSnapshot(PullSnapshotTaskDescriptor descriptor, File snapshotSave) {
+    // If this node is the member of previous holder, it's unnecessary to pull data again
+    if (descriptor.getPreviousHolders().contains(thisNode)) {
+      // inform the previous holders that one member has successfully pulled snapshot directly
+      registerPullSnapshotHint(descriptor);
+      return;
+    }
     Iterator<Integer> iterator = descriptor.getSlots().iterator();
     while (iterator.hasNext()) {
       Integer nodeSlot = iterator.next();
@@ -530,9 +536,10 @@ public class DataGroupMember extends RaftMember {
         iterator.remove();
       } else {
         // mark the slot as pulling to control reads and writes of the pulling slot
-        slotManager.setToPulling(nodeSlot, descriptor.getPreviousHolders().getHeader());
+        slotManager.setToPulling(nodeSlot, descriptor.getPreviousHolders().getHeader(), false);
       }
     }
+    slotManager.save();
 
     if (descriptor.getSlots().isEmpty()) {
       return;
@@ -629,7 +636,7 @@ public class DataGroupMember extends RaftMember {
   }
 
   public boolean flushFileWhenDoSnapshot(
-      Map<String, List<Pair<Long, Boolean>>> storageGroupPartitions) {
+      Map<String, List<Pair<Long, Boolean>>> storageGroupPartitions, List<Integer> requiredSlots) {
     if (character != NodeCharacter.LEADER) {
       return false;
     }
@@ -641,11 +648,11 @@ public class DataGroupMember extends RaftMember {
       String storageGroupName = entry.getKey();
       List<Pair<Long, Boolean>> tmpPairList = entry.getValue();
       for (Pair<Long, Boolean> pair : tmpPairList) {
-        long partitionId = pair.left;
-        RaftNode raftNode = metaGroupMember.getPartitionTable().routeToHeaderByTime(storageGroupName,
-            partitionId * StorageEngine.getTimePartitionInterval());
-        DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(raftNode);
-        if (localDataMember.getHeader().equals(thisNode)) {
+        long timestamp = pair.left * StorageEngine.getTimePartitionInterval();
+        int slotId = SlotPartitionTable.getSlotStrategy()
+            .calculateSlotByTime(storageGroupName, timestamp,
+                ClusterConstant.SLOT_NUM);
+        if (requiredSlots.contains(slotId)) {
           localListPair.add(pair);
         }
       }
@@ -669,7 +676,6 @@ public class DataGroupMember extends RaftMember {
     }
     return false;
   }
-
 
   /**
    * Execute a non-query plan. If the member is a leader, a log for the plan will be created and
@@ -727,6 +733,12 @@ public class DataGroupMember extends RaftMember {
       int slot = SlotPartitionTable
           .getSlotStrategy().calculateSlotByPartitionNum(storageGroupName, timePartitionId,
               ClusterConstant.SLOT_NUM);
+      /**
+       * If this slot is just held by different raft groups in the same node, it should keep the data of slot.
+       */
+      if (metaGroupMember.getPartitionTable().judgeHoldSlot(thisNode, slot)) {
+        return false;
+      }
       return slotSet.contains(slot);
     };
     for (PartialPath sg : allStorageGroupNames) {
@@ -738,8 +750,9 @@ public class DataGroupMember extends RaftMember {
       }
     }
     for (Integer slot : slots) {
-      slotManager.setToNull(slot);
+      slotManager.setToNull(slot, false);
     }
+    slotManager.save();
 
     if (logger.isInfoEnabled()) {
       logger.info("{}: data of {} and other {} slots are removed", name, slots.get(0),
@@ -783,15 +796,16 @@ public class DataGroupMember extends RaftMember {
             setLastHeartbeatReceivedTime(Long.MIN_VALUE);
           }
         }
-        List<Integer> slotsToPull = ((SlotNodeRemovalResult) removalResult).getNewSlotOwners()
-            .get(new RaftNode(getHeader(), getRaftGroupId()));
-        if (slotsToPull != null) {
-          // pull the slots that should be taken over
-          PullSnapshotTaskDescriptor taskDescriptor = new PullSnapshotTaskDescriptor(
-              removalResult.getRemovedGroup(getRaftGroupId()),
-              slotsToPull, true);
-          pullFileSnapshot(taskDescriptor, null);
-        }
+      }
+
+      List<Integer> slotsToPull = ((SlotNodeRemovalResult) removalResult).getNewSlotOwners()
+          .get(new RaftNode(getHeader(), getRaftGroupId()));
+      if (slotsToPull != null) {
+        // pull the slots that should be taken over
+        PullSnapshotTaskDescriptor taskDescriptor = new PullSnapshotTaskDescriptor(
+            removalResult.getRemovedGroup(getRaftGroupId()),
+            slotsToPull, true);
+        pullFileSnapshot(taskDescriptor, null);
       }
     }
   }
@@ -860,17 +874,12 @@ public class DataGroupMember extends RaftMember {
   public boolean onSnapshotInstalled(List<Integer> slots) {
     List<Integer> removableSlots = new ArrayList<>();
     for (Integer slot : slots) {
-      /**
-       * If this slot is just held by different raft groups in the same node, it should keep the data of slot.
-       */
-      if (metaGroupMember.getPartitionTable().judgeHoldSlot(thisNode, slot)) {
-        continue;
-      }
-      int sentReplicaNum = slotManager.sentOneReplication(slot);
+      int sentReplicaNum = slotManager.sentOneReplication(slot, false);
       if (sentReplicaNum >= config.getReplicationNum()) {
         removableSlots.add(slot);
       }
     }
+    slotManager.save();
     removeLocalData(removableSlots);
     return true;
   }

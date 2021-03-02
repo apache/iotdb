@@ -26,7 +26,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.exception.EntryCompactedException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
@@ -37,6 +37,7 @@ import org.apache.iotdb.cluster.log.snapshot.FileSnapshot.Factory;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -64,7 +65,7 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
   /**
    * send FlushPlan to all nodes in one dataGroup
    */
-  private void syncFlushAllProcessor() {
+  private void syncFlushAllProcessor(List<Integer> requiredSlots) {
     logger.info("{}: Start flush all storage group processor in one data group", getName());
     Map<String, List<Pair<Long, Boolean>>> storageGroupPartitions = StorageEngine.getInstance()
         .getWorkingStorageGroupPartitions();
@@ -72,12 +73,18 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
       logger.info("{}: no need to flush processor", getName());
       return;
     }
-    dataGroupMember.flushFileWhenDoSnapshot(storageGroupPartitions);
+    dataGroupMember.flushFileWhenDoSnapshot(storageGroupPartitions, requiredSlots);
   }
 
   @Override
   @SuppressWarnings("java:S1135") // ignore todos
   public void takeSnapshot() throws IOException {
+    takeSnapshotForSpecificSlots(((SlotPartitionTable) partitionTable)
+        .getNodeSlots(new RaftNode(dataGroupMember.getHeader(), dataGroupMember.getRaftGroupId())));
+  }
+
+  @Override
+  public void takeSnapshotForSpecificSlots(List<Integer> requiredSlots) throws IOException {
     try {
       logger.info("{}: Taking snapshots, flushing IoTDB", getName());
       // record current commit index and prevent further logs from being applied, so the
@@ -86,14 +93,14 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
       // wait until all logs before BlockAppliedCommitIndex are applied
       super.takeSnapshot();
       // flush data to disk so that the disk files will represent a complete state
-      syncFlushAllProcessor();
+      syncFlushAllProcessor(requiredSlots);
       logger.info("{}: Taking snapshots, IoTDB is flushed", getName());
       // TODO-cluster https://issues.apache.org/jira/browse/IOTDB-820
       synchronized (this) {
-        collectTimeseriesSchemas();
+        collectTimeseriesSchemas(requiredSlots);
         snapshotLastLogIndex = getBlockAppliedCommitIndex();
         snapshotLastLogTerm = getTerm(snapshotLastLogIndex);
-        collectTsFilesAndFillTimeseriesSchemas();
+        collectTsFilesAndFillTimeseriesSchemas(requiredSlots);
         logger.info("{}: Snapshot is taken", getName());
       }
     } catch (EntryCompactedException e) {
@@ -112,9 +119,9 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
    *
    * @throws IOException
    */
-  private void collectTsFilesAndFillTimeseriesSchemas() throws IOException {
+  private void collectTsFilesAndFillTimeseriesSchemas(List<Integer> requiredSlots) throws IOException {
     // 1.collect tsfile
-    collectTsFiles();
+    collectTsFiles(requiredSlots);
 
     // 2.register the measurement
     for (Map.Entry<Integer, Collection<TimeseriesSchema>> entry : slotTimeseries.entrySet()) {
@@ -127,7 +134,7 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
     }
   }
 
-  private void collectTsFiles() throws IOException {
+  private void collectTsFiles(List<Integer> requiredSlots) throws IOException {
     slotSnapshots.clear();
     Map<PartialPath, Map<Long, List<TsFileResource>>> allClosedStorageGroupTsFile = StorageEngine
         .getInstance().getAllClosedStorageGroupTsFile();
@@ -140,13 +147,13 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
       for (Entry<Long, List<TsFileResource>> storageGroupFiles : storageGroupsFiles.entrySet()) {
         Long partitionNum = storageGroupFiles.getKey();
         List<TsFileResource> resourceList = storageGroupFiles.getValue();
-        if (!collectTsFiles(partitionNum, resourceList, storageGroupName, createdHardlinks)) {
+        if (!collectTsFiles(partitionNum, resourceList, storageGroupName, createdHardlinks, requiredSlots)) {
           // some file is deleted during the collecting, clean created hardlinks and restart
           // from the beginning
           for (TsFileResource createdHardlink : createdHardlinks) {
             createdHardlink.remove();
           }
-          collectTsFiles();
+          collectTsFiles(requiredSlots);
           return;
         }
       }
@@ -165,9 +172,12 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
    * @throws IOException
    */
   private boolean collectTsFiles(Long partitionNum, List<TsFileResource> resourceList,
-      PartialPath storageGroupName, List<TsFileResource> createdHardlinks) throws IOException {
+      PartialPath storageGroupName, List<TsFileResource> createdHardlinks, List<Integer> requiredSlots) throws IOException {
     int slotNum = SlotPartitionTable.getSlotStrategy().calculateSlotByPartitionNum(storageGroupName.getFullPath(),
-        partitionNum, ((SlotPartitionTable) partitionTable).getTotalSlotNumbers());
+        partitionNum, ClusterConstant.SLOT_NUM);
+    if (!requiredSlots.contains(slotNum)) {
+      return true;
+    }
     FileSnapshot snapshot = slotSnapshots.computeIfAbsent(slotNum,
         s -> new FileSnapshot());
     for (TsFileResource tsFileResource : resourceList) {

@@ -131,6 +131,11 @@ public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
     public boolean judgeHoldSlot(Node node, int slot) {
       return false;
     }
+
+    @Override
+    public long getLastMetaLogIndex() {
+      return 0;
+    }
   };
 
   @Override

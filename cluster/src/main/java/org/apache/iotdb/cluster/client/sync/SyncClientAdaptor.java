@@ -425,7 +425,7 @@ public class SyncClientAdaptor {
         client.getNode(), slots, factory));
     synchronized (snapshotRef) {
       if (snapshotRef.get() == null) {
-        snapshotRef.wait(RaftServer.getReadOperationTimeoutMS());
+        snapshotRef.wait();
       }
     }
     return snapshotRef.get();
@@ -447,10 +447,16 @@ public class SyncClientAdaptor {
 
   public static boolean onSnapshotApplied(AsyncDataClient client, Node header, int raftId, List<Integer> slots)
       throws TException, InterruptedException {
-    AtomicReference<Boolean> result = new AtomicReference<>(false);
+    AtomicReference<Boolean> result = new AtomicReference<>();
     GenericHandler<Boolean> handler = new GenericHandler<>(client.getNode(), result);
 
     client.onSnapshotApplied(header, raftId, slots, handler);
-    return handler.getResult(RaftServer.getWriteOperationTimeoutMS());
+
+    synchronized (result) {
+      if (result.get() == null) {
+        result.wait();
+      }
+    }
+    return result.get();
   }
 }
