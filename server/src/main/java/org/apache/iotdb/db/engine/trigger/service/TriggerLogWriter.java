@@ -19,8 +19,43 @@
 
 package org.apache.iotdb.db.engine.trigger.service;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.writelog.io.ILogWriter;
+import org.apache.iotdb.db.writelog.io.LogWriter;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.BufferOverflowException;
+import java.nio.ByteBuffer;
+
 public class TriggerLogWriter implements AutoCloseable {
 
+  private final ByteBuffer logBuffer;
+  private final ILogWriter logWriter;
+
+  public TriggerLogWriter(String logFilePath) throws IOException {
+    logBuffer = ByteBuffer.allocate(IoTDBDescriptor.getInstance().getConfig().getMlogBufferSize());
+    File logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
+    logWriter = new LogWriter(logFile, false);
+  }
+
+  public synchronized void write(PhysicalPlan plan) throws IOException {
+    try {
+      plan.serialize(logBuffer);
+      logWriter.write(logBuffer);
+    } catch (BufferOverflowException e) {
+      throw new IOException(
+          "Current trigger management operation plan is too large to write into buffer, please increase tlog_buffer_size.",
+          e);
+    } finally {
+      logBuffer.clear();
+    }
+  }
+
   @Override
-  public void close() throws Exception {}
+  public void close() throws IOException {
+    logWriter.close();
+  }
 }

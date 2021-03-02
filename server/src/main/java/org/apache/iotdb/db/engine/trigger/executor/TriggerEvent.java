@@ -32,4 +32,15 @@ public enum TriggerEvent {
   public byte getId() {
     return id;
   }
+
+  public static TriggerEvent construct(byte id) {
+    switch (id) {
+      case 0:
+        return BEFORE_INSERT;
+      case 1:
+        return AFTER_INSERT;
+      default:
+        throw new IllegalArgumentException(String.format("No such trigger event (id: %d)", id));
+    }
+  }
 }
