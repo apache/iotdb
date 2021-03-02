@@ -89,24 +89,23 @@ public class QueryTimeManager implements IService {
     queryInfoMap.computeIfPresent(
         queryId,
         (k, v) -> {
-          if (v.isInterrupted()) {
-            successRemoved.set(true);
-            ScheduledFuture<?> scheduledFuture = queryScheduledTaskMap.remove(queryId);
-            if (scheduledFuture != null) {
-              scheduledFuture.cancel(false);
-            }
-            return null;
-          } else {
-            return v;
+          successRemoved.set(true);
+          ScheduledFuture<?> scheduledFuture = queryScheduledTaskMap.remove(queryId);
+          if (scheduledFuture != null) {
+            scheduledFuture.cancel(false);
           }
+          return null;
         });
     return successRemoved;
   }
 
   public static void checkQueryAlive(long queryId) {
-    if (getInstance().unRegisterQuery(queryId).get()) {
-      throw new QueryTimeoutRuntimeException(
-          QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
+    QueryInfo queryInfo = getInstance().queryInfoMap.get(queryId);
+    if (queryInfo != null && queryInfo.isInterrupted()) {
+      if (getInstance().unRegisterQuery(queryId).get()) {
+        throw new QueryTimeoutRuntimeException(
+            QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
+      }
     }
   }
 
