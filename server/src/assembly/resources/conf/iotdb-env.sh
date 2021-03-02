@@ -169,7 +169,7 @@ calculate_heap_sizes
 #MAX_HEAP_SIZE="2G"
 # Minimum heap size
 #HEAP_NEWSIZE="2G"
-# maximum direct memroy size
+# maximum direct memory size
 MAX_DIRECT_MEMORY_SIZE=${MAX_HEAP_SIZE}
 
 #true or false
