@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.metrics.micrometer.type;
 
-import io.micrometer.core.instrument.Tags;
 import org.apache.iotdb.metrics.type.Gauge;
+
+import io.micrometer.core.instrument.Tags;
 
 import java.util.concurrent.atomic.AtomicLong;
 

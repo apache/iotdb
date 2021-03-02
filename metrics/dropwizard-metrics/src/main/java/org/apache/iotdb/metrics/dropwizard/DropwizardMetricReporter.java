@@ -19,12 +19,13 @@
 
 package org.apache.iotdb.metrics.dropwizard;
 
-import com.codahale.metrics.JmxReporter;
 import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.MetricReporter;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.ReporterType;
+
+import com.codahale.metrics.JmxReporter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,8 +60,8 @@ public class DropwizardMetricReporter implements MetricReporter {
   private void startJmxReporter() {
     jmxReporter =
         JmxReporter.forRegistry(
-          ((DropwizardMetricManager) dropwizardMetricManager).getMetricRegistry())
-          .build();
+                ((DropwizardMetricManager) dropwizardMetricManager).getMetricRegistry())
+            .build();
     jmxReporter.start();
   }
 

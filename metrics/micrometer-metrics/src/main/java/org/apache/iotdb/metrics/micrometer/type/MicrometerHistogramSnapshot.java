@@ -42,7 +42,7 @@ public class MicrometerHistogramSnapshot implements HistogramSnapshot {
         prevIndex = i;
       }
       if (this.histogramSnapshot.percentileValues()[i].percentile() >= quantile) {
-        //Find the value of the first matching or most suitable insertion position
+        // Find the value of the first matching or most suitable insertion position
         break;
       }
     }
