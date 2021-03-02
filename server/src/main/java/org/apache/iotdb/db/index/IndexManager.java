@@ -87,7 +87,8 @@ public class IndexManager implements IndexManagerMBean, IService {
     indexDataDirPath = indexRootDirPath + File.separator + INDEX_DATA_DIR_NAME;
     createIndexProcessorFunc =
         (indexSeries, indexInfoMap) ->
-            new IndexProcessor(indexSeries, indexDataDirPath + File.separator + indexSeries);
+            new IndexProcessor(indexSeries,
+                    IndexUtils.removeIllegalStarInDir(indexDataDirPath + File.separator + indexSeries));
     router = IIndexRouter.Factory.getIndexRouter(indexRouterDir);
   }
 
@@ -99,7 +100,7 @@ public class IndexManager implements IndexManagerMBean, IService {
    * @return the feature directory path for this index.
    */
   private String getFeatureFileDirectory(PartialPath path, IndexType indexType) {
-    return indexDataDirPath + File.separator + path.getFullPath() + File.separator + indexType;
+    return IndexUtils.removeIllegalStarInDir(indexDataDirPath + File.separator + path.getFullPath() + File.separator + indexType);
   }
 
   /**
@@ -142,25 +143,29 @@ public class IndexManager implements IndexManagerMBean, IService {
   }
 
   /**
-   * 当存储组刷新时，构造 {@link IndexMemTableFlushTask} 用于写入。
+   * When the storage group flushes，we construct {@link IndexMemTableFlushTask} for index insertion。
    *
-   * <p>目前仅当IoTDB执行flush操作时才触发"索引写入"。一个存储组中有多条序列，每条序列上可能创建了子序列索引或全序列索引。 因此，每个存储组可能对应多个{@link
-   * IndexProcessor}。存储组中的序列需要寻找它所属的IndexProcessor。这一过程由一个路由器（{@code sgRouter}）完成。
+   * So far, the index insertion is triggered only when Memtables flush. A storage group contains several series and each of these series may create several indexes.
+   * In other words, one storage group may correspond to several {@linkplain IndexProcessor}.
    *
-   * <p>本方法将sgRouter和其他信息构成 {@link IndexMemTableFlushTask}，返回给{@link IndexMemTableFlushTask }使用。
+   * This method return a router to find all {@linkplain IndexProcessor} related to this storage group.
    *
-   * @param storageGroupPath 存储组路径。
-   * @param sequence 是否是顺序数据。当前实现中，顺序数据则更新索引，乱序数据则仅更新索引对应的可用区间管理器。
+   * @param storageGroupPath the path of the storage group
+   * @param sequence true if it's sequence data, otherwise it's unsequence data
+   * @return a router to find all {@linkplain IndexProcessor} related to this storage group, and other informations
    * @see IndexMemTableFlushTask
    */
   public IndexMemTableFlushTask getIndexMemFlushTask(String storageGroupPath, boolean sequence) {
-    String realStorageGroupPath = storageGroupPath.split(File.separator)[0];
+    // StorageGroupPath may contain file separator, we put a temp patch here.
+    storageGroupPath = storageGroupPath.replace(File.separatorChar, '/');
+    String realStorageGroupPath = storageGroupPath.split("/")[0];
     IIndexRouter sgRouter = router.getRouterByStorageGroup(realStorageGroupPath);
     return new IndexMemTableFlushTask(sgRouter, sequence);
   }
 
   /**
    * Index query.
+   *
    *
    * <p>The initial idea is that index instances only process the "pruning phase" to prune some
    * negative items and return a candidate list, the framework finishes the rest (so-called

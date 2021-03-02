@@ -97,4 +97,13 @@ public class IndexUtils {
         throw new NotImplementedException(srcData.getDataType().toString());
     }
   }
+
+  /**
+   * "*" is illegal in Windows directory path. Replace it with "#"
+   * @param previousDir path which may contains "*"
+   * @return path replacing "*" with "#"
+   */
+  public static String removeIllegalStarInDir(String previousDir) {
+    return previousDir.replace('*', '#');
+  }
 }
