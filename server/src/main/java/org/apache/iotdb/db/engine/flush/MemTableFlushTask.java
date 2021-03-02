@@ -24,6 +24,9 @@ import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.exception.runtime.FlushRunTimeException;
+import org.apache.iotdb.db.index.IndexManager;
+import org.apache.iotdb.db.index.IndexMemTableFlushTask;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -58,7 +61,9 @@ public class MemTableFlushTask {
           ? new LinkedBlockingQueue<>(config.getIoTaskQueueSizeForFlushing())
           : new LinkedBlockingQueue<>();
 
+  private final boolean enabledIndex;
   private String storageGroup;
+  private final boolean sequence;
 
   private IMemTable memTable;
 
@@ -71,7 +76,7 @@ public class MemTableFlushTask {
    * @param storageGroup current storage group
    */
   public MemTableFlushTask(
-      IMemTable memTable, RestorableTsFileIOWriter writer, String storageGroup) {
+      IMemTable memTable, RestorableTsFileIOWriter writer, String storageGroup, boolean sequence) {
     this.memTable = memTable;
     this.writer = writer;
     this.storageGroup = storageGroup;
@@ -81,6 +86,8 @@ public class MemTableFlushTask {
         "flush task of Storage group {} memtable is created, flushing to file {}.",
         storageGroup,
         writer.getFile().getName());
+    this.enabledIndex = IoTDBDescriptor.getInstance().getConfig().isEnableIndex();
+    this.sequence = sequence;
   }
 
   /** the function for flushing memtable. */
@@ -100,6 +107,14 @@ public class MemTableFlushTask {
     }
     long start = System.currentTimeMillis();
     long sortTime = 0;
+    IndexMemTableFlushTask indexFlushTask = null;
+    if (enabledIndex) {
+      try {
+        indexFlushTask = IndexManager.getInstance().getIndexMemFlushTask(storageGroup, sequence);
+      } catch (Exception e) {
+        LOGGER.error("meet Exception in getIndexMemFlushTask, not affect the memtable flushing", e);
+      }
+    }
 
     // for map do not use get(key) to iteratate
     for (Map.Entry<String, Map<String, IWritableMemChunk>> memTableEntry :
@@ -114,6 +129,16 @@ public class MemTableFlushTask {
         TVList tvList = series.getSortedTVListForFlush();
         sortTime += System.currentTimeMillis() - startTime;
         encodingTaskQueue.put(new Pair<>(tvList, desc));
+        if (enabledIndex && indexFlushTask != null) {
+          try {
+            String deviceId = memTableEntry.getKey();
+            String measurementId = iWritableMemChunkEntry.getKey();
+            indexFlushTask.buildIndexForOneSeries(new PartialPath(deviceId, measurementId), tvList);
+          } catch (Exception e) {
+            LOGGER.error(
+                "meet Exception in buildIndexForOneSeries, not affect the memtable flushing", e);
+          }
+        }
       }
 
       encodingTaskQueue.put(new EndChunkGroupIoTask());
@@ -133,6 +158,13 @@ public class MemTableFlushTask {
     }
 
     ioTaskFuture.get();
+    if (enabledIndex && indexFlushTask != null) {
+      try {
+        indexFlushTask.endFlush();
+      } catch (Exception e) {
+        LOGGER.error("meet Exception in endFlush, not affect the memtable flushing", e);
+      }
+    }
 
     try {
       writer.writePlanIndices();
