@@ -764,6 +764,7 @@ public abstract class RaftMember {
 
   /** call back after syncLeader */
   public interface CheckConsistency {
+
     /**
      * deal leaderCommitId and localAppliedId after syncLeader
      *
@@ -800,10 +801,10 @@ public abstract class RaftMember {
    * Request and check the leader's commitId to see whether this node has caught up. If not, wait
    * until this node catches up.
    *
+   * @param checkConsistency check after syncleader
    * @return true if the node has caught up, false otherwise
    * @throws CheckConsistencyException if leaderCommitId bigger than localAppliedId a threshold
    *     value after timeout
-   * @param checkConsistency
    */
   public boolean syncLeader(CheckConsistency checkConsistency) throws CheckConsistencyException {
     if (character == NodeCharacter.LEADER) {
