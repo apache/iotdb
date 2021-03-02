@@ -278,7 +278,7 @@ public abstract class RaftMember {
         Executors.newFixedThreadPool(
             Runtime.getRuntime().availableProcessors() * 10,
             new ThreadFactoryBuilder().setNameFormat(getName() + "-AppendLog%d").build());
-    if (!ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+    if (!config.isUseAsyncServer()) {
       serialToParallelPool =
           new ThreadPoolExecutor(
               allNodes.size(),
@@ -730,33 +730,12 @@ public abstract class RaftMember {
   public void syncLeaderWithConsistencyCheck(boolean isWriteRequest)
       throws CheckConsistencyException {
     if (isWriteRequest) {
-      if (!syncLeader(
-          new CheckConsistency() {
-            @Override
-            public void postCheckConsistency(long leaderCommitId, long localAppliedId)
-                throws CheckConsistencyException {
-              if (leaderCommitId > localAppliedId) {
-                throw CheckConsistencyException.CHECK_STRONG_CONSISTENCY_EXCEPTION;
-              }
-            }
-          })) {
-        throw CheckConsistencyException.CHECK_STRONG_CONSISTENCY_EXCEPTION;
-      }
+      syncLeader(new StrongCheckConsistency());
     } else {
-      switch (ClusterDescriptor.getInstance().getConfig().getConsistencyLevel()) {
+      switch (config.getConsistencyLevel()) {
         case STRONG_CONSISTENCY:
-          syncLeader(
-              new CheckConsistency() {
-
-                @Override
-                public void postCheckConsistency(long leaderCommitId, long localAppliedId)
-                    throws CheckConsistencyException {
-                  if (leaderCommitId > localAppliedId) {
-                    throw CheckConsistencyException.CHECK_STRONG_CONSISTENCY_EXCEPTION;
-                  }
-                }
-              });
-          break;
+          syncLeader(new StrongCheckConsistency());
+          return;
         case MID_CONSISTENCY:
           // do not care success or not
           syncLeader(
@@ -764,7 +743,9 @@ public abstract class RaftMember {
                 @Override
                 public void postCheckConsistency(long leaderCommitId, long localAppliedId)
                     throws CheckConsistencyException {
-                  if (leaderCommitId - localAppliedId > config.getMaxReadLogLag()) {
+                  if (leaderCommitId == Long.MAX_VALUE
+                      || leaderCommitId == 0
+                      || leaderCommitId - localAppliedId > config.getMaxReadLogLag()) {
                     throw CheckConsistencyException.CHECK_MID_CONSISTENCY_EXCEPTION;
                   }
                 }
@@ -776,15 +757,43 @@ public abstract class RaftMember {
         default:
           // this should not happen in theory
           throw new CheckConsistencyException(
-              "unknown consistency="
-                  + ClusterDescriptor.getInstance().getConfig().getConsistencyLevel().name());
+              "unknown consistency=" + config.getConsistencyLevel().name());
       }
     }
   }
 
+  /** call back after syncLeader */
   public interface CheckConsistency {
+    /**
+     * deal leaderCommitId and localAppliedId after syncLeader
+     *
+     * @param leaderCommitId leader commit id
+     * @param localAppliedId local applied id
+     * @throws CheckConsistencyException maybe throw CheckConsistencyException, which is defined in
+     *     implements.
+     */
     void postCheckConsistency(long leaderCommitId, long localAppliedId)
         throws CheckConsistencyException;
+  }
+
+  public class StrongCheckConsistency implements CheckConsistency {
+
+    /**
+     * if leaderCommitId > localAppliedId, will throw CHECK_STRONG_CONSISTENCY_EXCEPTION
+     *
+     * @param leaderCommitId leader commit id
+     * @param localAppliedId local applied id
+     * @throws CheckConsistencyException
+     */
+    @Override
+    public void postCheckConsistency(long leaderCommitId, long localAppliedId)
+        throws CheckConsistencyException {
+      if (leaderCommitId > localAppliedId
+          || leaderCommitId == Long.MAX_VALUE
+          || leaderCommitId == 0) {
+        throw CheckConsistencyException.CHECK_STRONG_CONSISTENCY_EXCEPTION;
+      }
+    }
   }
 
   /**
@@ -842,33 +851,22 @@ public abstract class RaftMember {
    * @throws CheckConsistencyException if leaderCommitId bigger than localAppliedId a threshold
    *     value after timeout
    */
-  private boolean waitUntilCatchUp(CheckConsistency checkConsistency)
+  protected boolean waitUntilCatchUp(CheckConsistency checkConsistency)
       throws CheckConsistencyException {
-    long leaderCommitId;
+    long leaderCommitId = 0L;
     try {
-      leaderCommitId =
-          ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()
-              ? requestCommitIdAsync()
-              : requestCommitIdSync();
-      if (leaderCommitId == Long.MAX_VALUE) {
-        // Long.MAX_VALUE representing there is a network issue
-        return false;
-      }
+      leaderCommitId = config.isUseAsyncServer() ? requestCommitIdAsync() : requestCommitIdSync();
+      return syncLocalApply(leaderCommitId);
     } catch (TException e) {
       logger.error(MSG_NO_LEADER_COMMIT_INDEX, name, leader.get(), e);
-      return false;
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.error(MSG_NO_LEADER_COMMIT_INDEX, name, leader.get(), e);
-      return false;
-    }
-
-    if (syncLocalApply(leaderCommitId)) {
-      return true;
-    }
-    if (checkConsistency != null) {
-      checkConsistency.postCheckConsistency(
-          leaderCommitId, logManager.getMaxHaveAppliedCommitIndex());
+    } finally {
+      if (checkConsistency != null) {
+        checkConsistency.postCheckConsistency(
+            leaderCommitId, logManager.getMaxHaveAppliedCommitIndex());
+      }
     }
     return false;
   }
@@ -1039,7 +1037,7 @@ public abstract class RaftMember {
   }
 
   @SuppressWarnings("java:S2274") // enable timeout
-  private long requestCommitIdAsync() throws TException, InterruptedException {
+  protected long requestCommitIdAsync() throws TException, InterruptedException {
     // use Long.MAX_VALUE to indicate a timeout
     AtomicReference<Long> commitIdResult = new AtomicReference<>(Long.MAX_VALUE);
     AsyncClient client = getAsyncClient(leader.get());
@@ -1207,7 +1205,7 @@ public abstract class RaftMember {
     logger.debug("{}: Forward {} to node {}", name, plan, node);
 
     TSStatus status;
-    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+    if (config.isUseAsyncServer()) {
       status = forwardPlanAsync(plan, node, header);
     } else {
       status = forwardPlanSync(plan, node, header);
@@ -1696,7 +1694,7 @@ public abstract class RaftMember {
       return;
     }
 
-    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+    if (config.isUseAsyncServer()) {
       sendLogAsync(log, voteCounter, node, leaderShipStale, newLeaderTerm, request, peer);
     } else {
       sendLogSync(log, voteCounter, node, leaderShipStale, newLeaderTerm, request, peer);
@@ -1709,7 +1707,7 @@ public abstract class RaftMember {
    */
   @SuppressWarnings("java:S2445") // safe synchronized
   public boolean waitForPrevLog(Peer peer, Log log) {
-    final int maxLogDiff = ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem();
+    final int maxLogDiff = config.getMaxNumOfLogsInMem();
     long waitStart = System.currentTimeMillis();
     long alreadyWait = 0;
     // if the peer falls behind too much, wait until it catches up, otherwise there may be too
