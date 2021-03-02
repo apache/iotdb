@@ -1100,7 +1100,7 @@ public class IoTDBDescriptor {
     }
 
     String queryMemoryAllocateProportion =
-        properties.getProperty("chunkmeta_chunk_timeseriesmeta_free_memory_proportion");
+        properties.getProperty("chunk_timeseriesmeta_free_memory_proportion");
     if (queryMemoryAllocateProportion != null) {
       String[] proportions = queryMemoryAllocateProportion.split(":");
       int proportionSum = 0;
@@ -1110,14 +1110,12 @@ public class IoTDBDescriptor {
       long maxMemoryAvailable = conf.getAllocateMemoryForRead();
       if (proportionSum != 0) {
         try {
-          conf.setAllocateMemoryForChunkMetaDataCache(
-              maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
           conf.setAllocateMemoryForChunkCache(
-              maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
+              maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
           conf.setAllocateMemoryForTimeSeriesMetaDataCache(
-              maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
+              maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
           conf.setAllocateMemoryForReadWithoutCache(
-              maxMemoryAvailable * Integer.parseInt(proportions[3].trim()) / proportionSum);
+              maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
         } catch (Exception e) {
           throw new RuntimeException(
               "Each subsection of configuration item chunkmeta_chunk_timeseriesmeta_free_memory_proportion"

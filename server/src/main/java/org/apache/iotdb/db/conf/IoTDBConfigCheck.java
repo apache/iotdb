@@ -40,6 +40,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -222,9 +223,9 @@ public class IoTDBConfigCheck {
       moveTsFileV2();
       moveVersionFile();
       logger.info("checking files successful");
+      logger.info("Start upgrading files...");
       MLogWriter.upgradeMLog();
       logger.info("Mlog upgraded!");
-      logger.info("Start upgrading Version-2 TsFiles...");
       upgradePropertiesFile();
     }
     checkProperties();
@@ -334,8 +335,10 @@ public class IoTDBConfigCheck {
     if (SystemFileFactory.INSTANCE.getFile(WAL_DIR).isDirectory()
         && SystemFileFactory.INSTANCE.getFile(WAL_DIR).list().length != 0) {
       logger.error(
-          "Unclosed Version-2 TsFile detected, please stop insertion, then run 'flush' "
-              + "on v0.10 or v0.11 IoTDB before upgrading to v0.12");
+          "WAL detected, please stop insertion, then run 'flush' "
+              + "on IoTDB {} before upgrading to {}",
+          properties.getProperty(IOTDB_VERSION_STRING),
+          IoTDBConstant.VERSION);
       System.exit(-1);
     }
     checkUnClosedTsFileV2InFolders(DirectoryManager.getInstance().getAllSequenceFileFolders());
@@ -366,11 +369,14 @@ public class IoTDBConfigCheck {
                     partitionDir.toString(), "0" + TsFileConstant.TSFILE_SUFFIX);
             File[] zeroLevelResources =
                 fsFactory.listFilesBySuffix(
-                    partitionDir.toString(), "0" + TsFileResource.RESOURCE_SUFFIX);
+                    partitionDir.toString(),
+                    "0" + TsFileConstant.TSFILE_SUFFIX + TsFileResource.RESOURCE_SUFFIX);
             if (zeroLevelTsFiles.length != zeroLevelResources.length) {
               logger.error(
                   "Unclosed Version-2 TsFile detected, please stop insertion, then run 'flush' "
-                      + "on v0.11 IoTDB before upgrading to v0.12");
+                      + "on IoTDB {} before upgrading to {}",
+                  properties.getProperty(IOTDB_VERSION_STRING),
+                  IoTDBConstant.VERSION);
               System.exit(-1);
             }
           }
@@ -383,21 +389,26 @@ public class IoTDBConfigCheck {
    * If upgrading from v0.11.2 to v0.12, there may be some unsealed merging files. We have to delete
    * these files before upgrading.
    */
-  private void deleteMergingTsFiles(File[] tsfiles, File[] resources) {
+  private File[] deleteMergingTsFiles(File[] tsfiles, File[] resources) {
     Set<String> resourcesSet = new HashSet<>();
     for (File resource : resources) {
       resourcesSet.add(resource.getName());
     }
+    List<File> tsfileList = new ArrayList<>();
     for (File tsfile : tsfiles) {
       if (!resourcesSet.contains(tsfile.getName() + TsFileResource.RESOURCE_SUFFIX)) {
         try {
+          logger.info("Delete merging TsFile {}", tsfile);
           Files.delete(tsfile.toPath());
         } catch (Exception e) {
           logger.error("Failed to delete merging tsfile {} ", tsfile, e);
           System.exit(-1);
         }
+      } else {
+        tsfileList.add(tsfile);
       }
     }
+    return tsfileList.toArray(new File[tsfileList.size()]);
   }
 
   private void moveTsFileV2() {
@@ -430,7 +441,7 @@ public class IoTDBConfigCheck {
           File[] oldModificationFileArray =
               fsFactory.listFilesBySuffix(
                   partitionDir.getAbsolutePath(), ModificationFile.FILE_SUFFIX);
-          deleteMergingTsFiles(oldTsfileArray, oldResourceFileArray);
+          oldTsfileArray = deleteMergingTsFiles(oldTsfileArray, oldResourceFileArray);
           // move the old files to upgrade folder if exists
           if (oldTsfileArray.length + oldResourceFileArray.length + oldModificationFileArray.length
               != 0) {

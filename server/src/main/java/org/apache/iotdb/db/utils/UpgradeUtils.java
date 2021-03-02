@@ -141,6 +141,10 @@ public class UpgradeUtils {
             == UpgradeCheckStatus.AFTER_UPGRADE_FILE.getCheckStatusCode();
   }
 
+  public static void clearUpgradeRecoverMap() {
+    upgradeRecoverMap = null;
+  }
+
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static void recoverUpgrade() {
     if (FSFactoryProducer.getFSFactory().getFile(UpgradeLog.getUpgradeLogPath()).exists()) {
@@ -150,36 +154,12 @@ public class UpgradeUtils {
                   FSFactoryProducer.getFSFactory().getFile(UpgradeLog.getUpgradeLogPath())))) {
         String line = null;
         while ((line = upgradeLogReader.readLine()) != null) {
-          String oldFileName = line.split(COMMA_SEPERATOR)[0];
+          String oldFilePath = line.split(COMMA_SEPERATOR)[0];
+          String oldFileName = new File(oldFilePath).getName();
           if (upgradeRecoverMap.containsKey(oldFileName)) {
             upgradeRecoverMap.put(oldFileName, upgradeRecoverMap.get(oldFileName) + 1);
           } else {
             upgradeRecoverMap.put(oldFileName, 1);
-          }
-        }
-        for (String key : upgradeRecoverMap.keySet()) {
-          if (upgradeRecoverMap.get(key)
-              == UpgradeCheckStatus.BEGIN_UPGRADE_FILE.getCheckStatusCode()) {
-            // delete generated TsFiles and partition directories
-            File upgradeDir = FSFactoryProducer.getFSFactory().getFile(key).getParentFile();
-            File[] partitionDirs = upgradeDir.listFiles();
-            if (partitionDirs == null) {
-              return;
-            }
-            for (File partitionDir : partitionDirs) {
-              if (partitionDir.isDirectory()) {
-                File[] generatedFiles = partitionDir.listFiles();
-                for (File generatedFile : generatedFiles) {
-                  if (generatedFile
-                      .getName()
-                      .equals(FSFactoryProducer.getFSFactory().getFile(key).getName())) {
-                    Files.delete(generatedFile.toPath());
-                    Files.deleteIfExists(
-                        new File(generatedFile + ModificationFile.FILE_SUFFIX).toPath());
-                  }
-                }
-              }
-            }
           }
         }
       } catch (IOException e) {
