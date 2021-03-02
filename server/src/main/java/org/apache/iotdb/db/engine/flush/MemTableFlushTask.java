@@ -23,7 +23,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.runtime.FlushRunTimeException;
 import org.apache.iotdb.db.index.IndexManager;
 import org.apache.iotdb.db.index.IndexMemTableFlushTask;
@@ -110,7 +109,11 @@ public class MemTableFlushTask {
     long sortTime = 0;
     IndexMemTableFlushTask indexFlushTask = null;
     if (enabledIndex) {
-      indexFlushTask = IndexManager.getInstance().getIndexMemFlushTask(storageGroup, sequence);
+      try {
+        indexFlushTask = IndexManager.getInstance().getIndexMemFlushTask(storageGroup, sequence);
+      } catch (Exception e) {
+        LOGGER.error("meet Exception in getIndexMemFlushTask, not affect the memtable flushing", e);
+      }
     }
 
     // for map do not use get(key) to iteratate
@@ -126,13 +129,14 @@ public class MemTableFlushTask {
         TVList tvList = series.getSortedTVListForFlush();
         sortTime += System.currentTimeMillis() - startTime;
         encodingTaskQueue.put(new Pair<>(tvList, desc));
-        if (enabledIndex) {
+        if (enabledIndex && indexFlushTask != null) {
           try {
             String deviceId = memTableEntry.getKey();
             String measurementId = iWritableMemChunkEntry.getKey();
             indexFlushTask.buildIndexForOneSeries(new PartialPath(deviceId, measurementId), tvList);
-          } catch (IllegalPathException e) {
-            LOGGER.warn("parsing path meets errors, give up to build the index");
+          } catch (Exception e) {
+            LOGGER.error(
+                "meet Exception in buildIndexForOneSeries, not affect the memtable flushing", e);
           }
         }
       }
@@ -154,8 +158,12 @@ public class MemTableFlushTask {
     }
 
     ioTaskFuture.get();
-    if (enabledIndex) {
-      indexFlushTask.endFlush();
+    if (enabledIndex && indexFlushTask != null) {
+      try {
+        indexFlushTask.endFlush();
+      } catch (Exception e) {
+        LOGGER.error("meet Exception in endFlush, not affect the memtable flushing", e);
+      }
     }
 
     try {

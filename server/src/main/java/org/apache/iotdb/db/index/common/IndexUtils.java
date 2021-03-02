@@ -100,6 +100,7 @@ public class IndexUtils {
 
   /**
    * "*" is illegal in Windows directory path. Replace it with "#"
+   *
    * @param previousDir path which may contains "*"
    * @return path replacing "*" with "#"
    */

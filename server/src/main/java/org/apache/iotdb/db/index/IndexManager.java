@@ -87,8 +87,9 @@ public class IndexManager implements IndexManagerMBean, IService {
     indexDataDirPath = indexRootDirPath + File.separator + INDEX_DATA_DIR_NAME;
     createIndexProcessorFunc =
         (indexSeries, indexInfoMap) ->
-            new IndexProcessor(indexSeries,
-                    IndexUtils.removeIllegalStarInDir(indexDataDirPath + File.separator + indexSeries));
+            new IndexProcessor(
+                indexSeries,
+                IndexUtils.removeIllegalStarInDir(indexDataDirPath + File.separator + indexSeries));
     router = IIndexRouter.Factory.getIndexRouter(indexRouterDir);
   }
 
@@ -100,7 +101,8 @@ public class IndexManager implements IndexManagerMBean, IService {
    * @return the feature directory path for this index.
    */
   private String getFeatureFileDirectory(PartialPath path, IndexType indexType) {
-    return IndexUtils.removeIllegalStarInDir(indexDataDirPath + File.separator + path.getFullPath() + File.separator + indexType);
+    return IndexUtils.removeIllegalStarInDir(
+        indexDataDirPath + File.separator + path.getFullPath() + File.separator + indexType);
   }
 
   /**
@@ -145,14 +147,17 @@ public class IndexManager implements IndexManagerMBean, IService {
   /**
    * When the storage group flushes，we construct {@link IndexMemTableFlushTask} for index insertion。
    *
-   * So far, the index insertion is triggered only when Memtables flush. A storage group contains several series and each of these series may create several indexes.
-   * In other words, one storage group may correspond to several {@linkplain IndexProcessor}.
+   * <p>So far, the index insertion is triggered only when Memtables flush. A storage group contains
+   * several series and each of these series may create several indexes. In other words, one storage
+   * group may correspond to several {@linkplain IndexProcessor}.
    *
-   * This method return a router to find all {@linkplain IndexProcessor} related to this storage group.
+   * <p>This method return a router to find all {@linkplain IndexProcessor} related to this storage
+   * group.
    *
    * @param storageGroupPath the path of the storage group
    * @param sequence true if it's sequence data, otherwise it's unsequence data
-   * @return a router to find all {@linkplain IndexProcessor} related to this storage group, and other informations
+   * @return a router to find all {@linkplain IndexProcessor} related to this storage group, and
+   *     other informations
    * @see IndexMemTableFlushTask
    */
   public IndexMemTableFlushTask getIndexMemFlushTask(String storageGroupPath, boolean sequence) {
@@ -165,7 +170,6 @@ public class IndexManager implements IndexManagerMBean, IService {
 
   /**
    * Index query.
-   *
    *
    * <p>The initial idea is that index instances only process the "pruning phase" to prune some
    * negative items and return a candidate list, the framework finishes the rest (so-called
