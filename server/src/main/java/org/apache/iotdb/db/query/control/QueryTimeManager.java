@@ -24,7 +24,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -102,8 +101,8 @@ public class QueryTimeManager implements IService {
   }
 
   public static void checkQueryAlive(long queryId) {
-    if (getInstance().queryInfoMap.get(queryId) != null
-        && getInstance().queryInfoMap.get(queryId).isInterrupted()) {
+    QueryInfo queryInfo = getInstance().queryInfoMap.get(queryId);
+    if (queryInfo != null && queryInfo.isInterrupted()) {
       if (getInstance().unRegisterQuery(queryId).get()) {
         throw new QueryTimeoutRuntimeException(
             QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
