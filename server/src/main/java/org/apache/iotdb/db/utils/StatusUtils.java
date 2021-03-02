@@ -26,6 +26,12 @@ import java.util.Arrays;
 import java.util.Map;
 
 public class StatusUtils {
+  private StatusUtils() {}
+
+  /**
+   * @param statusMap index -> status
+   * @param size the total number of status to generate
+   */
   public static TSStatus[] getFailingStatus(Map<Integer, TSStatus> statusMap, int size) {
     if (statusMap == null || statusMap.isEmpty()) {
       return new TSStatus[0];
