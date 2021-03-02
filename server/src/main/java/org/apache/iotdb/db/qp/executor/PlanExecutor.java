@@ -29,7 +29,6 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
-import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
@@ -122,7 +121,6 @@ import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
@@ -380,7 +378,6 @@ public class PlanExecutor implements IPlanExecutor {
 
   private void operateClearCache() {
     ChunkCache.getInstance().clear();
-    ChunkMetadataCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
   }
 
@@ -1181,21 +1178,17 @@ public class PlanExecutor implements IPlanExecutor {
 
   @Override
   public void insert(InsertRowsPlan plan) throws QueryProcessException {
-    boolean allSuccess = true;
     for (int i = 0; i < plan.getInsertRowPlanList().size(); i++) {
       if (plan.getResults().containsKey(i)) {
-        allSuccess = false;
         continue;
       }
       try {
         insert(plan.getInsertRowPlanList().get(i));
-        plan.getResults().put(i, RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
       } catch (QueryProcessException e) {
         plan.getResults().put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
-        allSuccess = false;
       }
-      if (!allSuccess) {
-        throw new BatchProcessException(plan.getResults().values().toArray(new TSStatus[0]));
+      if (!plan.getResults().isEmpty()) {
+        throw new BatchProcessException(plan.getFailingStatus());
       }
     }
   }

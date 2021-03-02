@@ -73,9 +73,4 @@ public class MemChunkMetadataLoader implements IChunkMetadataLoader {
     }
     return chunkMetadataList;
   }
-
-  @Override
-  public void setDiskChunkLoader(List<ChunkMetadata> chunkMetadataList) {
-    // DO NOTHING
-  }
 }

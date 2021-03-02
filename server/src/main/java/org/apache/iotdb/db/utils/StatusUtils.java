@@ -16,27 +16,31 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.cache;
 
-public interface CacheHitRatioMonitorMXBean {
+package org.apache.iotdb.db.utils;
 
-  double getChunkHitRatio();
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
-  long getChunkCacheUsedMemory();
+import java.util.Arrays;
+import java.util.Map;
 
-  long getChunkCacheMaxMemory();
+public class StatusUtils {
+  private StatusUtils() {}
 
-  double getChunkCacheUsedMemoryProportion();
-
-  long getChunkCacheAverageSize();
-
-  double getTimeSeriesMetadataHitRatio();
-
-  long getTimeSeriesMetadataCacheUsedMemory();
-
-  long getTimeSeriesMetadataCacheMaxMemory();
-
-  double getTimeSeriesCacheUsedMemoryProportion();
-
-  long getTimeSeriesMetaDataCacheAverageSize();
+  /**
+   * @param statusMap index -> status
+   * @param size the total number of status to generate
+   */
+  public static TSStatus[] getFailingStatus(Map<Integer, TSStatus> statusMap, int size) {
+    if (statusMap == null || statusMap.isEmpty()) {
+      return new TSStatus[0];
+    }
+    TSStatus[] failingStatus = new TSStatus[size];
+    Arrays.fill(failingStatus, RpcUtils.SUCCESS_STATUS);
+    for (Map.Entry<Integer, TSStatus> status : statusMap.entrySet()) {
+      failingStatus[status.getKey()] = status.getValue();
+    }
+    return failingStatus;
+  }
 }

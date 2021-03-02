@@ -27,7 +27,6 @@ import org.apache.iotdb.db.engine.compaction.TsFileManagement.CompactionMergeTas
 import org.apache.iotdb.db.engine.compaction.level.LevelCompactionTsFileManagement;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -69,7 +68,7 @@ public class LevelCompactionCacheTest extends LevelCompactionTest {
   }
 
   @Test
-  public void testCompactionChunkCache() throws IllegalPathException, IOException {
+  public void testCompactionChunkCache() throws IOException {
     LevelCompactionTsFileManagement levelCompactionTsFileManagement =
         new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
     TsFileResource tsFileResource = seqResources.get(1);
@@ -80,6 +79,7 @@ public class LevelCompactionCacheTest extends LevelCompactionTest {
       allSensors.add(path.getMeasurement());
     }
     ChunkMetadata firstChunkMetadata = reader.getChunkMetadataList(paths.get(0)).get(0);
+    firstChunkMetadata.setFilePath(tsFileResource.getTsFilePath());
     TimeSeriesMetadataCacheKey firstTimeSeriesMetadataCacheKey =
         new TimeSeriesMetadataCacheKey(
             seqResources.get(1).getTsFilePath(),
@@ -87,7 +87,7 @@ public class LevelCompactionCacheTest extends LevelCompactionTest {
             paths.get(0).getMeasurement());
 
     // add cache
-    ChunkCache.getInstance().get(firstChunkMetadata, reader);
+    ChunkCache.getInstance().get(firstChunkMetadata);
     TimeSeriesMetadataCache.getInstance().get(firstTimeSeriesMetadataCacheKey, allSensors);
 
     levelCompactionTsFileManagement.addAll(seqResources, true);
@@ -102,8 +102,9 @@ public class LevelCompactionCacheTest extends LevelCompactionTest {
       // wait
     }
 
+    firstChunkMetadata.setFilePath(null);
     try {
-      ChunkCache.getInstance().get(firstChunkMetadata, null);
+      ChunkCache.getInstance().get(firstChunkMetadata);
       fail();
     } catch (NullPointerException e) {
       assertTrue(true);
