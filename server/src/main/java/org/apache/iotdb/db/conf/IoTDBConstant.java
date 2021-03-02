@@ -126,6 +126,7 @@ public class IoTDBConstant {
   public static final String TRACING_LOG = "tracing.txt";
   public static final String EXT_FOLDER_NAME = "ext";
   public static final String UDF_FOLDER_NAME = "udf";
+  public static final String TRIGGER_FOLDER_NAME = "trigger";
 
   // mqtt
   public static final String ENABLE_MQTT = "enable_mqtt_service";
