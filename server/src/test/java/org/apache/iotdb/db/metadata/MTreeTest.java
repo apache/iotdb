@@ -59,6 +59,32 @@ public class MTreeTest {
   }
 
   @Test
+  public void testSetStorageGroupExceptionMessage() throws IllegalPathException {
+    MTree root = new MTree();
+    try {
+      root.setStorageGroup(new PartialPath("root.edge1.access"));
+      root.setStorageGroup(new PartialPath("root.edge1"));
+      fail("Expected exception");
+    } catch (MetadataException e) {
+      assertEquals(
+          "some children of root.edge1 have already been set to storage group", e.getMessage());
+    }
+    try {
+      root.setStorageGroup(new PartialPath("root.edge2"));
+      root.setStorageGroup(new PartialPath("root.edge2.access"));
+      fail("Expected exception");
+    } catch (MetadataException e) {
+      assertEquals("root.edge2 has already been set to storage group", e.getMessage());
+    }
+    try {
+      root.setStorageGroup(new PartialPath("root.edge1.access"));
+      fail("Expected exception");
+    } catch (MetadataException e) {
+      assertEquals("root.edge1.access has already been set to storage group", e.getMessage());
+    }
+  }
+
+  @Test
   public void testAddLeftNodePathWithAlias() throws MetadataException {
     MTree root = new MTree();
     root.setStorageGroup(new PartialPath("root.laptop"));
@@ -446,7 +472,8 @@ public class MTreeTest {
     try {
       root.setStorageGroup(new PartialPath("root.laptop"));
     } catch (MetadataException e) {
-      Assert.assertEquals("root.laptop has already been set to storage group", e.getMessage());
+      Assert.assertEquals(
+          "some children of root.laptop have already been set to storage group", e.getMessage());
     }
     // check timeseries
     assertFalse(root.isPathExist(new PartialPath("root.laptop.d1.s0")));

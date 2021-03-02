@@ -79,9 +79,6 @@ public class MergeOverLapTest extends MergeTest {
           new File(
               TestConstant.BASE_OUTPUT_PATH.concat(
                   i
-                      + "seq"
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + i
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + i
                       + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -98,12 +95,9 @@ public class MergeOverLapTest extends MergeTest {
       File file =
           new File(
               TestConstant.BASE_OUTPUT_PATH.concat(
-                  i
-                      + "unseq"
+                  (10000 + i)
                       + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + i
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + i
+                      + (10000 + i)
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + 0
                       + ".tsfile"));
@@ -118,9 +112,6 @@ public class MergeOverLapTest extends MergeTest {
         new File(
             TestConstant.BASE_OUTPUT_PATH.concat(
                 unseqFileNum
-                    + "unseq"
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + unseqFileNum
                     + IoTDBConstant.FILE_NAME_SEPARATOR
                     + unseqFileNum
                     + IoTDBConstant.FILE_NAME_SEPARATOR
