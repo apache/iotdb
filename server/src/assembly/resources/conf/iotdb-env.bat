@@ -103,14 +103,16 @@ for /f "tokens=1-3" %%j in ('java -version 2^>^&1') do (
 	@rem echo %%l
 	set BIT_VERSION=%%l
 )
-echo Maximum memory allocation pool = %MAX_HEAP_SIZE%, initial memory allocation pool = %HEAP_NEWSIZE%
-set IOTDB_HEAP_OPTS=-Xmx%MAX_HEAP_SIZE% -Xms%HEAP_NEWSIZE% -Xloggc:"%IOTDB_HOME%\gc.log" -XX:+PrintGCDateStamps -XX:+PrintGCDetails
-
-@REM You can put your env variable here
-@REM set JAVA_HOME=%JAVA_HOME%
 
 @REM maximum direct memory size
 set MAX_DIRECT_MEMORY_SIZE=%MAX_HEAP_SIZE%
+
+echo Maximum memory allocation pool = %MAX_HEAP_SIZE%, initial memory allocation pool = %HEAP_NEWSIZE%
+set IOTDB_HEAP_OPTS=-Xmx%MAX_HEAP_SIZE% -Xms%HEAP_NEWSIZE% -Xloggc:"%IOTDB_HOME%\gc.log" -XX:+PrintGCDateStamps -XX:+PrintGCDetails
+set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:MaxDirectMemorySize=%MAX_DIRECT_MEMORY_SIZE%
+
+@REM You can put your env variable here
+@REM set JAVA_HOME=%JAVA_HOME%
 
 :end_config_setting
 @REM set gc log.
@@ -122,7 +124,6 @@ IF "%1" equ "printgc" (
 		md %IOTDB_HOME%\logs
 		set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS%  -Xlog:gc=info,heap*=trace,age*=debug,safepoint=info,promotion*=trace:file="%IOTDB_HOME%\logs\gc.log":time,uptime,pid,tid,level:filecount=10,filesize=10485760
 	)
-	set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:MaxDirectMemorySize=%MAX_DIRECT_MEMORY_SIZE%
 )
 echo If you want to change this configuration, please check conf/iotdb-env.sh(Unix or OS X, if you use Windows, check conf/iotdb-env.bat).
 
