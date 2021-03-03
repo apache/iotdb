@@ -291,10 +291,10 @@ public class ClusterDescriptor {
   }
 
   /**
-   * Split the seed urls as one list
+   * Split the seed urls as one list.
    *
-   * @param seedUrls the seed urls
-   * @return the seed urls as a list
+   * @param seedUrls the seed urls.
+   * @return the seed urls as a list.
    */
   public static List<String> getSeedUrlList(String seedUrls) {
     if (seedUrls == null) {
