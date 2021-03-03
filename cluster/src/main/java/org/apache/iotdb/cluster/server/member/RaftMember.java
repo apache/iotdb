@@ -737,7 +737,8 @@ public abstract class RaftMember {
           syncLeader(new StrongCheckConsistency());
           return;
         case MID_CONSISTENCY:
-          // do not care success or not
+          // if leaderCommitId bigger than localAppliedId a value,
+          // will throw CHECK_MID_CONSISTENCY_EXCEPTION
           syncLeader(
               new CheckConsistency() {
                 @Override
