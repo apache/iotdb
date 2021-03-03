@@ -147,7 +147,7 @@ public class ClusterConfig {
    */
   private boolean waitForSlowNode = true;
 
-  /** when consistency level set to mid, query failed if the log lag exceeds maxReadLogLog. */
+  /** when consistency level set to mid, query failed if the log lag exceeds maxReadLogLag. */
   private long maxReadLogLag = 1000L;
 
   public int getSelectorNumOfClientPool() {
