@@ -91,16 +91,16 @@ public interface MetricManager {
   boolean isEnable();
 
   /**
-   * enable pre-defined metric set
+   * enable pre-defined metric set.
    *
    * @param metric which metric set we want to collect
    */
   void enableKnownMetric(KnownMetric metric);
 
   /**
-   * init something
+   * init something.
    *
-   * @return
+   * @return whether success
    */
   boolean init();
 

@@ -38,7 +38,7 @@ public class MetricConfig {
   private List<String> metricReporterList = Arrays.asList("jmx");
 
   private PrometheusReporterConfig prometheusReporterConfig;
-  private IotdbReporterConfig ioTDBReporterConfig;
+  private IotdbReporterConfig iotdbReporterConfig;
 
   public Boolean getEnableMetric() {
     return enableMetric;
@@ -88,12 +88,12 @@ public class MetricConfig {
     this.prometheusReporterConfig = prometheusReporterConfig;
   }
 
-  public IotdbReporterConfig getIoTDBReporterConfig() {
-    return ioTDBReporterConfig;
+  public IotdbReporterConfig getIotdbReporterConfig() {
+    return iotdbReporterConfig;
   }
 
-  public void setIoTDBReporterConfig(IotdbReporterConfig ioTDBReporterConfig) {
-    this.ioTDBReporterConfig = ioTDBReporterConfig;
+  public void setIotdbReporterConfig(IotdbReporterConfig iotdbReporterConfig) {
+    this.iotdbReporterConfig = iotdbReporterConfig;
   }
 
   /** the following is prometheus related config. */

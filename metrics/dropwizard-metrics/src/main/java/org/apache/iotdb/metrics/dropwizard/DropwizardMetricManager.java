@@ -68,6 +68,7 @@ public class DropwizardMetricManager implements MetricManager {
   com.codahale.metrics.MetricRegistry metricRegistry;
   MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
 
+  /** init the field with dropwizard library. */
   public DropwizardMetricManager() {
     metricRegistry = new MetricRegistry();
     isEnable = metricConfig.getEnableMetric();

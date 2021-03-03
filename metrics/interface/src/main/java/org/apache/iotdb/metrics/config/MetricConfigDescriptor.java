@@ -29,7 +29,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
-/** the utils class to load configure */
+/** the utils class to load configure. */
 public class MetricConfigDescriptor {
   private static final Logger logger = LoggerFactory.getLogger(MetricConfigDescriptor.class);
   private MetricConfig metricConfig = new MetricConfig();
@@ -46,6 +46,11 @@ public class MetricConfigDescriptor {
     return MetricConfigDescriptorHolder.INSTANCE;
   }
 
+  /**
+   * find the config file path
+   *
+   * @return the file path
+   */
   public String getPropsUrl() {
     String url = System.getProperty(MetricConstant.METRIC_CONF, null);
     if (url == null) {

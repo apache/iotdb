@@ -76,6 +76,7 @@ public class MicrometerMetricManager implements MetricManager {
   io.micrometer.core.instrument.MeterRegistry meterRegistry;
   MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
 
+  /** init the field with micrometer library. */
   public MicrometerMetricManager() {
     meterRegistry = Metrics.globalRegistry;
     currentMeters = new ConcurrentHashMap<>();

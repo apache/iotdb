@@ -22,6 +22,7 @@ package org.apache.iotdb.metric.micrometer;
 import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.MetricService;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.concurrent.TimeUnit;
@@ -33,6 +34,6 @@ public class MicrometerMetricManagerTest {
   @Test
   public void testRegister() {
     metricManager.getOrCreateTimer("timer1", "sg", "root").update(12, TimeUnit.MILLISECONDS);
-    ;
+    Assert.assertEquals(metricManager.getAllTimers().size(), 1);
   }
 }

@@ -51,7 +51,7 @@ public class MetricName {
    * convert the metric name to flat string, like name.tagkey1.tagvalue1.tagkey2.tagvalue2.... and
    * replace the space with _
    *
-   * @return the flat string,
+   * @return the flat string
    */
   public String toFlatString() {
     StringBuilder stringBuilder = new StringBuilder(name);
@@ -60,7 +60,7 @@ public class MetricName {
   }
 
   /**
-   * convert the metric name to string array
+   * convert the metric name to string array.
    *
    * @return
    */
