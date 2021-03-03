@@ -19,13 +19,13 @@
 
 -->
 
-# 监控与日志工具
+## 监控工具
 
-## 系统监控
+### 系统监控
 
 当前用户可以使用Java的JConsole工具对正在运行的IoTDB进程进行系统状态监控，或使用IoTDB为用户开放的接口查看数据统计量。
 
-### 系统状态监控
+#### 系统状态监控
 
 进入Jconsole监控页面后，首先看到的是IoTDB各类运行情况的概览。在这里，您可以看到[堆内存信息、线程信息、类信息以及服务器的CPU使用情况](https://docs.oracle.com/javase/7/docs/technotes/guides/management/jconsole.html)。
 
@@ -38,7 +38,7 @@
 
 Monitor下有几个属性，包括数据文件目录，写入数据统计信息以及某些系统参数的值。 通过双击与属性对应的值，它还可以显示该属性的折线图。有关Monitor属性的具体介绍，请参见以下部分。
 
-##### MBean监视器属性列表
+ * MBean监视器属性列表
 
 - SystemDirectory
 
@@ -80,7 +80,7 @@ Monitor下有几个属性，包括数据文件目录，写入数据统计信息�
 
 用户可以选择开启或关闭数据统计监控功能（您可以设定配置文件中的`enable_stat_monitor`项，详细信息参见[第3.4节](../Server/Config%20Manual.md)）。
 
-#### 统计数据存储
+### 统计数据存储
 
 默认情况下，统计数据只储存在内存中，可以使用 Jconsole 进行访问。
 
@@ -147,15 +147,15 @@ flush
 select last TOTAL_POINTS from root.stats."global"
 ```
 
-## 性能监控
+### 性能监控
 
-### 介绍
+#### 介绍
 
 性能监控模块用来监控IOTDB每一个操作的耗时，以便用户更好的了解数据库的整体性能。此模块会统计每一种操作的平均耗时，以及耗时在一定时间区间内（1ms，4ms，16ms，64ms，256ms，1024ms，以上）的操作的比例。输出文件在log_measure.log中。输出样例如下：
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/60937461-14296f80-a303-11e9-9602-a7bed624bfb3.png">
 
-### 配置参数
+#### 配置参数
 
 配置文件位置：conf/iotdb-engine.properties
 
@@ -168,7 +168,7 @@ select last TOTAL_POINTS from root.stats."global"
 |performance_stat_memory_in_kb|20|性能监控模块使用的内存阈值，单位为KB|
 </center>
 
-### 利用JMX MBean动态调节参数
+#### 利用JMX MBean动态调节参数
 
 通过端口31999连接jconsole，并在上方菜单项中选择‘MBean’. 展开侧边框并选择 'org.apache.iotdb.db.cost.statistic'. 将会得到如下图所示结果：
 
@@ -204,9 +204,9 @@ select last TOTAL_POINTS from root.stats."global"
 
     Measurement.INSTANCE.addOperationLatency(Operation, t0);
 
-## cache命中率统计
+### cache命中率统计
 
-### 概述
+#### 概述
 
 为了提高查询性能，IOTDB对ChunkMetaData和TsFileMetaData进行了缓存。用户可以通过debug级别的日志以及MXBean两种方式来查看缓存的命中率，并根据缓存命中率以及系统内存来调节缓存所使用的内存大小。使用MXBean查看缓存命中率的方法为：
 1. 通过端口31999连接jconsole，并在上方菜单项中选择‘MBean’. 

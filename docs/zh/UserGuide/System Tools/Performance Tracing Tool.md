@@ -18,7 +18,7 @@
     under the License.
 
 -->
-# 性能追踪工具
+## 查询性能追踪
 
 IoTDB 支持使用 `TRACING` 语句来启用/禁用对查询语句的性能追踪，默认处于禁用状态。用户可以使用性能追踪工具来分析某些查询中存在的潜在性能问题。性能分析的日志文件默认存储在 `./data/tracing` 目录下。
 
@@ -43,7 +43,7 @@ IoTDB 支持使用 `TRACING` 语句来启用/禁用对查询语句的性能追�
 - Average size of chunks
 - Total cost time
 
-## Example
+### 例子
 
 例如执行 `select * from root`，则 tracing 日志文件的内容会包括以下内容：
 

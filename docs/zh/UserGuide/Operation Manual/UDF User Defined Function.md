@@ -61,6 +61,7 @@ IoTDB 支持两种类型的 UDF 函数，如下表所示。
 
 下表是所有可供用户实现的接口说明。
 
+
 | 接口定义                                                     | 描述                                                         | 是否必须           |
 | :----------------------------------------------------------- | :----------------------------------------------------------- | ------------------ |
 | `void validate(UDFParameterValidator validator) throws Exception` | 在初始化方法`beforeStart`调用前执行，用于检测`UDFParameters`中用户输入的参数是否合法。 | 否                 |
@@ -84,23 +85,23 @@ IoTDB 支持两种类型的 UDF 函数，如下表所示。
 
 
 
-### void validate(UDFParameterValidator validator) throws Exception
+ * void validate(UDFParameterValidator validator) throws Exception
 
-`validate`方法能够对用户输入的参数进行验证。
+ `validate`方法能够对用户输入的参数进行验证。
 
-您可以在该方法中限制输入序列的数量和类型，检查用户输入的属性或者进行自定义逻辑的验证。
+ 您可以在该方法中限制输入序列的数量和类型，检查用户输入的属性或者进行自定义逻辑的验证。
 
-`UDFParameterValidator`的使用方法请见Javadoc。
+ `UDFParameterValidator`的使用方法请见Javadoc。
 
 
 
-### void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) throws Exception
+ *  void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) throws Exception
 
-`beforeStart`方法有两个作用：
+ `beforeStart`方法有两个作用：
 
-1. 帮助用户解析SQL语句中的UDF参数
-2. 配置UDF运行时必要的信息，即指定UDF访问原始数据时采取的策略和输出结果序列的类型
-3. 创建资源，比如建立外部链接，打开文件等。
+  1. 帮助用户解析SQL语句中的UDF参数
+  2. 配置UDF运行时必要的信息，即指定UDF访问原始数据时采取的策略和输出结果序列的类型
+  3. 创建资源，比如建立外部链接，打开文件等。
 
 
 
@@ -158,7 +159,7 @@ void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) th
 
 
 
-##### setAccessStrategy
+ * setAccessStrategy
 
 注意，您在此处设定的原始数据访问策略决定了框架会调用哪一种`transform`方法 ，请实现与原始数据访问策略对应的`transform`方法。当然，您也可以根据`UDFParameters`解析出来的属性参数，动态决定设定哪一种策略，因此，实现两种`transform`方法也是被允许的。
 
@@ -205,7 +206,7 @@ void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) th
 
 
 
-##### setOutputDataType
+ * setOutputDataType
 
 注意，您在此处设定的输出结果序列的类型，决定了`transform`方法中`PointCollector`实际能够接收的数据类型。`setOutputDataType`中设定的输出类型和`PointCollector`实际能够接收的数据输出类型关系如下：
 
@@ -273,7 +274,7 @@ public class Adder implements UDTF {
 
 
 
-### void transform(RowWindow rowWindow, PointCollector collector) throws Exception
+ * void transform(RowWindow rowWindow, PointCollector collector) throws Exception
 
 当您在`beforeStart`方法中指定UDF读取原始数据的策略为 `SlidingTimeWindowAccessStrategy`或者`SlidingSizeWindowAccessStrategy`时，您就需要实现该方法，在该方法中增加对原始数据处理的逻辑。
 
@@ -315,7 +316,7 @@ public class Counter implements UDTF {
 
 
 
-### void terminate(PointCollector collector) throws Exception
+ * void terminate(PointCollector collector) throws Exception
 
 在一些场景下，UDF需要遍历完所有的原始数据后才能得到最后的输出结果。`terminate`接口为这类UDF提供了支持。
 
@@ -367,7 +368,7 @@ public class Max implements UDTF {
 
 
 
-### void beforeDestroy()
+ * void beforeDestroy()
 
 UDTF的结束方法，您可以在此方法中进行一些资源释放等的操作。
 

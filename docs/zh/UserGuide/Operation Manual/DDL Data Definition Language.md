@@ -19,9 +19,13 @@
 
 -->
 
-# DDL (数据定义语言)
+# IoTDB-SQL 语言
 
-## 创建存储组
+## 数据定义语言（DDL）
+
+### 存储组管理
+
+#### 创建存储组
 
 我们可以根据存储模型建立相应的存储组。创建存储组的SQL语句如下所示：
 
@@ -42,7 +46,7 @@ Msg: org.apache.iotdb.exception.MetadataException: org.apache.iotdb.exception.Me
 
 还需注意，如果在Windows系统上部署，存储组名是大小写不敏感的。例如同时创建`root.ln` 和 `root.LN` 是不被允许的。
 
-## 查看存储组
+#### 查看存储组
 
 在存储组创建后，我们可以使用[SHOW STORAGE GROUP](../Operation%20Manual/SQL%20Reference.md)语句和[SHOW STORAGE GROUP \<PrefixPath>](../Operation%20Manual/SQL%20Reference.md)来查看存储组，SQL语句如下所示：
 
@@ -64,7 +68,7 @@ Total line number = 2
 It costs 0.060s
 ```
 
-## 删除存储组
+#### 删除存储组
 
 用户可以使用`DELETE STORAGE GROUP <PrefixPath>`语句删除该前缀路径下所有的存储组。在删除的过程中，需要注意的是存储组的数据也会被删除。
 
@@ -74,8 +78,9 @@ IoTDB > DELETE STORAGE GROUP root.sgcc
 // 删除所有数据，时间序列以及存储组
 IoTDB > DELETE STORAGE GROUP root.*
 ```
+### 时间序列管理
 
-## 创建时间序列
+#### 创建时间序列
 
 根据建立的数据模型，我们可以分别在两个存储组中创建相应的时间序列。创建时间序列的SQL语句如下所示：
 
@@ -96,54 +101,17 @@ error: encoding TS_2DIFF does not support BOOLEAN
 
 详细的数据类型与编码方式的对应列表请参见[编码方式](../Concept/Encoding.md)。
 
+#### 删除时间序列
 
-### 标签点管理
+我们可以使用`DELETE TimeSeries <PrefixPath>`语句来删除我们之前创建的时间序列。SQL语句如下所示：
 
-我们可以在创建时间序列的时候，为它添加别名和额外的标签和属性信息。
-所用到的扩展的创建时间序列的SQL语句如下所示：
 ```
-create timeseries root.turbine.d1.s1(temprature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)
-```
-
-括号里的`temprature`是`s1`这个传感器的别名。
-我们可以在任何用到`s1`的地方，将其用`temprature`代替，这两者是等价的。
-
-> IoTDB 同时支持在查询语句中[使用AS函数](../Operation%20Manual/DML%20Data%20Manipulation%20Language.md)设置别名。二者的区别在于：AS 函数设置的别名用于替代整条时间序列名，且是临时的，不与时间序列绑定；而上文中的别名只作为传感器的别名，与其绑定且可与原传感器名等价使用。
-
-标签和属性的唯一差别在于，我们为标签信息在内存中维护了一个倒排索引，所以可以在`show timeseries`的条件语句中使用标签作为查询条件，你将会在下一节看到具体查询内容。
-
-> 注意：额外的标签和属性信息总的大小不能超过`tag_attribute_total_size`.
-
-## 标签点属性更新
-创建时间序列后，我们也可以对其原有的标签点属性进行更新，主要有以下五种更新方式：
-
-* 重命名标签或属性
-```
-ALTER timeseries root.turbine.d1.s1 RENAME tag1 TO newTag1
-```
-* 重新设置标签或属性的值
-```
-ALTER timeseries root.turbine.d1.s1 SET newTag1=newV1, attr1=newV1
-```
-* 删除已经存在的标签或属性
-```
-ALTER timeseries root.turbine.d1.s1 DROP tag1, tag2
-```
-* 添加新的标签
-```
-ALTER timeseries root.turbine.d1.s1 ADD TAGS tag3=v3, tag4=v4
-```
-* 添加新的属性
-```
-ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES attr3=v3, attr4=v4
-```
-* 更新插入别名，标签和属性
-> 如果该别名，标签或属性原来不存在，则插入，否则，用新值更新原来的旧值
-```
-ALTER timeseries root.turbine.d1.s1 UPSERT ALIAS=newAlias TAGS(tag2=newV2, tag3=v3) ATTRIBUTES(attr3=v3, attr4=v4)
+IoTDB> delete timeseries root.ln.wf01.wt01.status
+IoTDB> delete timeseries root.ln.wf01.wt01.temperature, root.ln.wf02.wt02.hardware
+IoTDB> delete timeseries root.ln.wf02.*
 ```
 
-## 查看时间序列
+#### 查看时间序列
 
 * SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause?
 
@@ -238,71 +206,7 @@ It costs 0.004s
   
 需要注意的是，当查询路径不存在时，系统会返回0条时间序列。
 
-
-## 查看子路径
-
-```
-SHOW CHILD PATHS prefixPath
-```
-
-可以查看此前缀路径的下一层的所有路径，前缀路径允许使用 * 通配符。
-
-示例：
-
-* 查询 root.ln 的下一层：show child paths root.ln
-
-```
-+------------+
-| child paths|
-+------------+
-|root.ln.wf01|
-|root.ln.wf02|
-+------------+
-```
-
-* 查询形如 root.xx.xx.xx 的路径：show child paths root.\*.\*
-
-```
-+---------------+
-|    child paths|
-+---------------+
-|root.ln.wf01.s1|
-|root.ln.wf02.s2|
-+---------------+
-```
-
-## 查看子节点
-
-```
-SHOW CHILD NODES prefixPath
-```
-
-可以查看此前缀路径的下一层的所有节点。
-
-示例：
-
-* 查询 root 的下一层：show child paths root
-
-```
-+------------+
-| child nodes|
-+------------+
-|          ln|
-+------------+
-```
-
-* 查询 root.vehicle的下一层 ：show child paths root.ln
-
-```
-+------------+
-| child nodes|
-+------------+
-|        wf01|
-|        wf02|
-+------------+
-```
-
-## 统计时间序列总数
+#### 统计时间序列总数
 
 IoTDB支持使用`COUNT TIMESERIES<Path>`来统计一条路径中的时间序列个数。SQL语句如下所示：
 ```
@@ -349,7 +253,118 @@ IoTDB > COUNT TIMESERIES root.ln.wf01 GROUP BY LEVEL=2
 
 > 注意：时间序列的路径只是过滤条件，与level的定义无关。
 
-## 统计节点数
+#### 标签点管理
+
+我们可以在创建时间序列的时候，为它添加别名和额外的标签和属性信息。
+所用到的扩展的创建时间序列的SQL语句如下所示：
+```
+create timeseries root.turbine.d1.s1(temprature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)
+```
+
+括号里的`temprature`是`s1`这个传感器的别名。
+我们可以在任何用到`s1`的地方，将其用`temprature`代替，这两者是等价的。
+
+> IoTDB 同时支持在查询语句中[使用AS函数](../Operation%20Manual/DML%20Data%20Manipulation%20Language.md)设置别名。二者的区别在于：AS 函数设置的别名用于替代整条时间序列名，且是临时的，不与时间序列绑定；而上文中的别名只作为传感器的别名，与其绑定且可与原传感器名等价使用。
+
+标签和属性的唯一差别在于，我们为标签信息在内存中维护了一个倒排索引，所以可以在`show timeseries`的条件语句中使用标签作为查询条件，你将会在下一节看到具体查询内容。
+
+> 注意：额外的标签和属性信息总的大小不能超过`tag_attribute_total_size`.
+
+ * 标签点属性更新
+创建时间序列后，我们也可以对其原有的标签点属性进行更新，主要有以下五种更新方式：
+
+* 重命名标签或属性
+```
+ALTER timeseries root.turbine.d1.s1 RENAME tag1 TO newTag1
+```
+* 重新设置标签或属性的值
+```
+ALTER timeseries root.turbine.d1.s1 SET newTag1=newV1, attr1=newV1
+```
+* 删除已经存在的标签或属性
+```
+ALTER timeseries root.turbine.d1.s1 DROP tag1, tag2
+```
+* 添加新的标签
+```
+ALTER timeseries root.turbine.d1.s1 ADD TAGS tag3=v3, tag4=v4
+```
+* 添加新的属性
+```
+ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES attr3=v3, attr4=v4
+```
+* 更新插入别名，标签和属性
+> 如果该别名，标签或属性原来不存在，则插入，否则，用新值更新原来的旧值
+```
+ALTER timeseries root.turbine.d1.s1 UPSERT ALIAS=newAlias TAGS(tag2=newV2, tag3=v3) ATTRIBUTES(attr3=v3, attr4=v4)
+```
+
+### 节点管理
+
+#### 查看子路径
+
+```
+SHOW CHILD PATHS prefixPath
+```
+
+可以查看此前缀路径的下一层的所有路径，前缀路径允许使用 * 通配符。
+
+示例：
+
+* 查询 root.ln 的下一层：show child paths root.ln
+
+```
++------------+
+| child paths|
++------------+
+|root.ln.wf01|
+|root.ln.wf02|
++------------+
+```
+
+* 查询形如 root.xx.xx.xx 的路径：show child paths root.\*.\*
+
+```
++---------------+
+|    child paths|
++---------------+
+|root.ln.wf01.s1|
+|root.ln.wf02.s2|
++---------------+
+```
+
+#### 查看子节点
+
+```
+SHOW CHILD NODES prefixPath
+```
+
+可以查看此前缀路径的下一层的所有节点。
+
+示例：
+
+* 查询 root 的下一层：show child paths root
+
+```
++------------+
+| child nodes|
++------------+
+|          ln|
++------------+
+```
+
+* 查询 root.vehicle的下一层 ：show child paths root.ln
+
+```
++------------+
+| child nodes|
++------------+
+|        wf01|
+|        wf02|
++------------+
+```
+
+#### 统计节点数
 
 IoTDB支持使用`COUNT NODES <PrefixPath> LEVEL=<INTEGER>`来统计当前Metadata树下指定层级的节点个数，这条语句可以用来统计设备数。例如：
 
@@ -390,17 +405,8 @@ It costs 0.002s
 > 注意：时间序列的路径只是过滤条件，与level的定义无关。
 其中`PrefixPath`可以包含`*`，但是`*`及其后的所有节点将被忽略，仅在`*`前的前缀路径有效。
 
-## 删除时间序列
 
-我们可以使用`DELETE TimeSeries <PrefixPath>`语句来删除我们之前创建的时间序列。SQL语句如下所示：
-
-```
-IoTDB> delete timeseries root.ln.wf01.wt01.status
-IoTDB> delete timeseries root.ln.wf01.wt01.temperature, root.ln.wf02.wt02.hardware
-IoTDB> delete timeseries root.ln.wf02.*
-```
-
-## 查看设备
+#### 查看设备
 
 * SHOW DEVICES prefixPath? (WITH STORAGE GROUP)? limitClause? #showDevices
 
@@ -476,13 +482,13 @@ Total line number = 2
 It costs 0.001s
 ```
 
-# TTL
+### 数据存活时间（TTL）
 
 IoTDB支持对存储组级别设置数据存活时间（TTL），这使得IoTDB可以定期、自动地删除一定时间之前的数据。合理使用TTL
 可以帮助您控制IoTDB占用的总磁盘空间以避免出现磁盘写满等异常。并且，随着文件数量的增多，查询性能往往随之下降,
 内存占用也会有所提高。及时地删除一些较老的文件有助于使查询性能维持在一个较高的水平和减少内存资源的占用。
 
-## 设置 TTL
+#### 设置 TTL
 
 设置TTL的SQL语句如下所示：
 ```
@@ -490,7 +496,7 @@ IoTDB> set ttl to root.ln 3600000
 ```
 这个例子表示在`root.ln`存储组中，只有最近一个小时的数据将会保存，旧数据会被移除或不可见。
 
-## 取消 TTL
+#### 取消 TTL
 
 取消TTL的SQL语句如下所示：
 
@@ -500,7 +506,7 @@ IoTDB> unset ttl to root.ln
 
 取消设置TTL后，存储组`root.ln`中所有的数据都会被保存。
 
-## 显示 TTL
+#### 显示 TTL
 
 显示TTL的SQL语句如下所示：
 
@@ -513,39 +519,4 @@ SHOW ALL TTL这个例子会给出所有存储组的TTL。
 SHOW TTL ON root.group1,root.group2,root.group3这个例子会显示指定的三个存储组的TTL。
 注意: 没有设置TTL的存储组的TTL将显示为null。
 
-## FLUSH
-
-将指定存储组的内存缓存区Memory Table的数据持久化到磁盘上，并将数据文件封口。
-
-```
-IoTDB> FLUSH 
-IoTDB> FLUSH root.ln
-IoTDB> FLUSH root.sg1,root.sg2
-```
-
-## MERGE
-
-合并顺序和乱序数据。当前IoTDB支持使用如下两种SQL手动触发数据文件的合并：
-
-* `MERGE` 仅重写重复的Chunk，整理速度快，但是最终磁盘会存在多余数据。
-* `FULL MERGE` 将需要合并的顺序和乱序文件的所有数据都重新写一份，整理速度慢，最终磁盘将不存在无用的数据。
-
-```
-IoTDB> MERGE
-IoTDB> FULL MERGE
-```
-
-## CLEAR CACHE
-
-手动清除chunk, chunk metadata和timeseries metadata的缓存，在内存资源紧张时，可以通过此命令，释放查询时缓存所占的内存空间。
-```
-IoTDB> CLEAR CACHE
-```
-
-## 为 SCHEMA 创建快照
-
-为了加快 IoTDB 重启速度，用户可以手动触发创建 schema 的快照，从而避免服务器从 mlog 文件中恢复。
-```
-IoTDB> CREATE SNAPSHOT FOR SCHEMA
-```
 

@@ -19,13 +19,13 @@
 
 -->
 
-# CSV 工具
+## 导入导出 CSV
 
 Csv工具是您可以导入csv文件到IoTDB或从IoTDB导出csv文件。
 
-## 使用 import-csv.sh
+### 使用 import-csv.sh
 
-### 创建元数据（可选）
+#### 创建元数据（可选）
 
 ```
 SET STORAGE GROUP TO root.fit.d1;
@@ -39,7 +39,7 @@ CREATE TIMESERIES root.fit.p.s1 WITH DATATYPE=INT32,ENCODING=RLE;
 ```
 IoTDB具有类型推断的能力，因此在数据导入前创建元数据不是必须的。但我们仍然推荐在使用CSV导入工具导入数据前创建元数据，因为这可以避免不必要的类型转换错误。
 
-### 从 csv 文件导入数据的示例
+#### 从 csv 文件导入数据的示例
 
 ```
 Time,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2.s1,root.fit.d2.s3,root.fit.p.s1
@@ -54,7 +54,8 @@ Time,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2.s1,root.fit.d2.s3,root.fit.p.s1
 > 3. `'` : "字段中的`'`需要被替换成转义字符`\'`或者用`\"`将字段括起来。
 > 4. 你可以输入时间格式像yyyy-MM-dd'T'HH:mm:ss, yyy-MM-dd HH:mm:ss, 或者yyyy-MM-dd'T'HH:mm:ss.SSSZ.
 
-### 运行 import shell
+#### 运行 import shell
+
 ```
 # Unix/OS X
 > tools/import-csv.sh -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv>
@@ -63,9 +64,9 @@ Time,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2.s1,root.fit.d2.s3,root.fit.p.s1
 > tools\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv>
 ```
 
-## 使用 export-csv.sh
+### 使用 export-csv.sh
 
-### 运行 export shell
+#### 运行 export shell
 
 ```
 # Unix/OS X

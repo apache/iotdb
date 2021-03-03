@@ -19,7 +19,7 @@
 
 -->
 
-# 工具说明
+## Mlog解析工具
 
 0.12.x版本之后，IoTDB将元数据文件编码成二进制。
 
@@ -27,7 +27,7 @@
 
 该工具可以同时解析snapshot文件和mlog文件。
 
-# 使用方式
+### 使用方式
 
 Linux/MacOS
 > ./mLogParser.sh -f /your path/mlog.bin -o /your path/mlog.txt

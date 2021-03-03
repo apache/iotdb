@@ -21,25 +21,8 @@
 
 <!-- TOC -->
 
-# 快速入门
+# 快速上手
 
-## 概览 
-
-- 快速入门
-- 安装环境
-- IoTDB安装
-  - 从源代码生成
-    - 配置文件	
-- IoTDB试用
-  - 启动IoTDB
-  - 操作IoTDB
-    - 使用Cli工具
-    - IoTDB的基本操作
-  - 停止IoTDB
-- 单独打包服务器
-- 单独打包客户端
-
-<!-- /TOC -->
 
 本文将介绍关于IoTDB使用的基本流程，如果需要更多信息，请浏览我们官网的[指引](../Overview/What%20is%20IoTDB.md).
 
@@ -49,30 +32,21 @@
 
 设置最大文件打开数为65535。
 
-## IoTDB安装
+## 安装步骤
 
 IoTDB支持多种安装途径。用户可以使用三种方式对IoTDB进行安装——下载二进制可运行程序、使用源码、使用docker镜像。
 
 * 使用源码：您可以从代码仓库下载源码并编译，具体编译方法见下方。
 
-* 二进制可运行程序：请从Download页面下载最新的安装包，解压后即完成安装。
+* 二进制可运行程序：请从[下载](/Download/)页面下载最新的安装包，解压后即完成安装。
 
 * 使用Docker镜像：dockerfile 文件位于 https://github.com/apache/iotdb/blob/master/docker/src/main
 
-### IoTDB下载
 
-您可以从这里下载程序：[下载](/Download/)
+## 软件目录结构
 
-### 配置文件
-
-配置文件在"conf"文件夹下，包括：
-
-  * 环境配置模块 (`iotdb-env.bat`, `iotdb-env.sh`), 
-  * 系统配置模块 (`iotdb-engine.properties`)
-  * 日志配置模块 (`logback.xml`). 
-
-想要了解更多，请浏览[Chapter3: Server](../Server/Download.md)
-​	
+ * sbin
+ * conf
 
 ## IoTDB试用
 
@@ -102,9 +76,8 @@ Windows系统启动命令如下：
 - 如果两个选项同时指定，那么*rpc_port*将会覆盖*conf_path*下面的配置。
 
 
-### 操作IoTDB
 
-#### 使用Cli工具
+### 使用Cli工具
 
 IoTDB为用户提供多种与服务器交互的方式，在此我们介绍使用Cli工具进行写入、查询数据的基本步骤。
 
@@ -139,7 +112,7 @@ IoTDB> login successfully
 IoTDB>
 ```
 
-#### IoTDB的基本操作
+### IoTDB的基本操作
 
 在这里，我们首先介绍一下使用Cli工具创建时间序列、插入数据并查看数据的方法。
 
@@ -288,7 +261,7 @@ Windows系统停止命令如下：
 > $sbin\stop-server.bat
 ```
 
-## 只建立客户端
+### 只建立客户端
 
 在iotdb的根路径下：
 
@@ -297,3 +270,13 @@ Windows系统停止命令如下：
 ```
 
 构建后，IoTDB客户端将位于文件夹“ cli / target / iotdb-cli- {project.version}”下。
+
+## 基础配置
+
+配置文件在"conf"文件夹下，包括：
+
+  * 环境配置模块 (`iotdb-env.bat`, `iotdb-env.sh`), 
+  * 系统配置模块 (`iotdb-engine.properties`)
+  * 日志配置模块 (`logback.xml`). 
+
+想要了解更多，请浏览[Server](../Server/Download.md)

@@ -19,19 +19,19 @@
 
 -->
 
-# 使用HDFS存储数据
+## HDFS集成
 
-## 存储共享架构
+### 存储共享架构
 
 当前，TSFile（包括TSFile文件和相关的数据文件）支持存储在本地文件系统和Hadoop分布式文件系统（HDFS）。配置使用HDFS存储TSFile十分容易。
 
-### 系统架构
+#### 系统架构
 
 当你配置使用HDFS存储TSFile之后，你的数据文件将会被分布式存储。系统架构如下：
 
 <img style="width:100%; max-width:700px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/66922722-35180400-f05a-11e9-8ff0-7dd51716e4a8.png">
 
-### Config and usage
+#### Config and usage
 
 如果你希望将TSFile存储在HDFS上，可以遵循以下步骤：
 
@@ -155,7 +155,7 @@
 
 如果你想要恢复将TSFile存储到本地文件系统，只需编辑配置项`tsfile_storage_fs`为`LOCAL`。在这种情况下，如果你已经在HDFS上存储了一些数据文件，你需要将它们下载到本地，并移动到你所配置的数据文件文件夹（默认为`../server/target/iotdb-server-0.10.0/data/data`）， 或者重新开始你的整个导入数据过程。
 
-### 常见问题
+#### 常见问题
 
 1. 这个功能支持哪些Hadoop版本?
 

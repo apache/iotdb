@@ -23,25 +23,12 @@
 
 # 常见问题
 
-## 概览
-
-- 常见问题
-  - 如何查询我的 IoTDB 版本？
-  - 在哪里可以找到 IoTDB 的日志？
-  - 在哪里可以找到 IoTDB 的数据文件？
-  - 如何知道 IoTDB 中存储了多少时间序列？
-  - 可以使用 Hadoop 和 Spark 读取 IoTDB 中的 TsFile 吗？
-  - IoTDB 如何处理重复的数据点？
-  - 我如何知道具体的 timeseries 的类型？
-  - 如何更改 IoTDB 的客户端时间显示格式？
-
-<!-- /TOC -->
 
 ## 如何查询我的 IoTDB 版本？
 
 有几种方法可以识别您使用的 IoTDB 版本:
 
-*启动 IoTDB 的命令行界面:
+* 启动 IoTDB 的命令行界面:
 
 ```
 > ./start-cli.sh -p 6667 -pw root -u root -h localhost

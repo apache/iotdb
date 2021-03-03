@@ -19,24 +19,12 @@
 
 -->
 
-# 同步工具
-<!-- TOC -->
+# 端云协同 
 
-- [第8章: 系统工具](#第8章-系统工具)
-- [同步工具](#同步工具)
-- [介绍](#介绍)
-- [应用场景](#应用场景)
-- [配置参数](#配置参数)
-    - [同步工具接收端](#同步工具接收端)
-    - [同步工具发送端](#同步工具发送端)
-- [使用方式](#使用方式)
-    - [启动同步功能接收端](#启动同步功能接收端)
-    - [关闭同步功能接收端](#关闭同步功能接收端)
-    - [启动同步功能发送端](#启动同步功能发送端)
-    - [关闭同步功能发送端](#关闭同步功能发送端)
+## TsFile 同步工具
 
-<!-- /TOC -->
-# 介绍
+### 介绍
+
 同步工具是定期将本地磁盘中和新增的已持久化的tsfile文件上传至云端并加载到IoTDB的套件工具。
 
 在同步工具的发送端，同步模块是一个独立的进程，独立于本地的IoTDB。通过独立的脚本进行启动和关闭(详见章节`使用方式`)，同步的频率周期可由用户设置。
@@ -46,15 +34,19 @@
 同步工具具有多对一的发送-接受模式，即一个同步接收端可以同时接受多个同步发送端传输的数据，一个同步发送端只能向一个同步接收端发送数据
 
 > 注意：在使用同步工具前，同步工具的接收端和发送端需要单独配置。
-# 应用场景
+
+### 应用场景
+
 以一个工厂应用为例，通常有多个分厂和多个总厂，每个分厂中使用一个IoTDB实例收集数据，然后将数据定时汇总到总厂中进行备份或者分析等，一个总厂可以接收来自多个分厂的数据，一个分厂也可以给多个总厂同步数据，在这种场景下每个IoTDB实例所管理的设备各不相同。
 
 在sync模块中，每个分厂是发送端，总厂是接收端，发送端定时将数据同步给接收端，在上述应用场景下一个设备的数据只能由一个发送端来收集，因此多个发送端同步的数据之间必须是没有设备重叠的，否则不符合sync功能的应用场景。
 
 当出现异常场景时，即两个或两个以上的发送端向同一个接收端同步相同设备(其存储组设为root.sg)的数据时，后被接收端收到的含有该设备数据的发送端的root.sg数据将会被拒绝接收。示例：发动端1向接收端同步存储组root.sg1和root.sg2, 发动端2向接收端同步存储组root.sg2和root.sg3, 
 均包括时间序列root.sg2.d0.s0, 若接收端先接收到发送端1的root.sg2.d0.s0的数据，那么接收端将拒绝发送端2的root.sg2同步的数据。
-# 配置参数
-## 同步工具接收端
+
+### 配置参数
+
+#### 同步工具接收端
 同步工具接收端的参数配置位于IoTDB的配置文件iotdb-engine.properties中，其安装目录为$IOTDB_HOME/conf/iotdb-engine.properties。在该配置文件中，有四个参数和同步接收端有关，配置说明如下:
 
 <table>
@@ -123,7 +115,7 @@
    </tr>
 </table>
 
-## 同步工具发送端
+#### 同步工具发送端
 同步功能发送端的参数配置在一个单独的配置文件中，其安装目录为```$IOTDB_HOME/conf/iotdb-sync-client.properties```。在该配置文件中，有五个参数和同步发送端有关，配置说明如下：
 <table>
    <tr>
@@ -235,17 +227,20 @@
    </tr>
 </table>
 
-# 使用方式
-## 启动同步功能接收端
+### 使用方式
+
+#### 启动同步功能接收端
+
 1. 配置接收端的参数，例如：
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/26211279/64172919-a32cb100-ce88-11e9-821c-33369bff6d34.png">
 2. 启动IoTDB引擎，同步功能接收端会同时启动，启动时LOG日志会出现`IoTDB: start SYNC ServerService successfully`字样，表示同步接收端启动成功，如图所示：
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/26211279/59494513-df6ef780-8ebf-11e9-83e1-ee8ae64b76d0.png">
 
-## 关闭同步功能接收端
+#### 关闭同步功能接收端
+
 关闭IoTDB，同步功能接收端会同时关闭。
 
-## 启动同步功能发送端
+#### 启动同步功能发送端
 1. 配置发送端的参数， 如图所示:
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/26211279/64172668-15e95c80-ce88-11e9-9700-dff7daf06bb7.png">
 2. 启动同步功能发送端
@@ -261,7 +256,7 @@ Windows系统启动命令如下：
 ```
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/26211279/59494951-dc283b80-8ec0-11e9-9575-5d8578c08ceb.png">
 
-## 关闭同步功能发送端
+#### 关闭同步功能发送端
 
 用户可以使用```$IOTDB_HOME/bin```文件夹下的脚本关闭同步功能的发送端。
 Linux系统与MacOS系统停止命令如下：

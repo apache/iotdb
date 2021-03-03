@@ -19,9 +19,9 @@
 
 -->
 
-# TsFile的Spark连接器
+## Spark-TsFile
 
-## 1. About TsFile-Spark-Connector
+### 1. About TsFile-Spark-Connector
 
 TsFile-Spark-Connector对Tsfile类型的外部数据源实现Spark的支持。 这使用户可以通过Spark读取，写入和查询Tsfile。
 
@@ -31,7 +31,7 @@ TsFile-Spark-Connector对Tsfile类型的外部数据源实现Spark的支持。 �
 - 将本地文件系统或hdfs中特定目录中的所有文件加载到Spark中
 - 将数据从Spark写入TsFile
 
-## 2. System Requirements
+### 2. System Requirements
 
 | Spark Version | Scala Version | Java Version | TsFile   |
 | ------------- | ------------- | ------------ | -------- |
@@ -39,9 +39,9 @@ TsFile-Spark-Connector对Tsfile类型的外部数据源实现Spark的支持。 �
 
 > 注意：有关如何下载和使用TsFile的更多信息，请参见以下链接：https://github.com/apache/iotdb/tree/master/tsfile
 
-## 3. 快速开始
+### 3. 快速开始
 
-### 本地模式
+#### 本地模式
 
 在本地模式下使用TsFile-Spark-Connector启动Spark：
 
@@ -53,7 +53,7 @@ TsFile-Spark-Connector对Tsfile类型的外部数据源实现Spark的支持。 �
 - 多个jar包用逗号分隔，没有任何空格。
 - 有关如何获取TsFile的信息，请参见https://github.com/apache/iotdb/tree/master/tsfile。
 
-### 分布式模式
+#### 分布式模式
 
 在分布式模式下使用TsFile-Spark-Connector启动Spark（即，Spark集群通过spark-shell连接）：
 
@@ -67,7 +67,7 @@ TsFile-Spark-Connector对Tsfile类型的外部数据源实现Spark的支持。 �
 - 多个jar包用逗号分隔，没有任何空格。
 - 有关如何获取TsFile的信息，请参见https://github.com/apache/iotdb/tree/master/tsfile。
 
-## 4. 数据类型对应
+### 4. 数据类型对应
 
 | TsFile数据类型 | SparkSQL数据类型 |
 | -------------- | ---------------- |
@@ -78,7 +78,7 @@ TsFile-Spark-Connector对Tsfile类型的外部数据源实现Spark的支持。 �
 | DOUBLE         | DoubleType       |
 | TEXT           | StringType       |
 
-## 5. 模式推断
+### 5. 模式推断
 
 显示TsFile的方式取决于架构。 以以下TsFile结构为例：TsFile模式中有三个度量：状态，温度和硬件。 这三种测量的基本信息如下：
 
@@ -129,12 +129,11 @@ TsFile中的现有数据如下：
 | 6    | root.ln.wf02.wt02 | null   | ccc      | null        |
 
 
-
-## 6. Scala API
+### 6. Scala API
 
 注意：请记住预先分配必要的读写权限。
 
-### 示例1：从本地文件系统读取
+ * 示例1：从本地文件系统读取
 
 ```scala
 import org.apache.iotdb.spark.tsfile._
@@ -145,7 +144,7 @@ val narrow_df = spark.read.tsfile("test.tsfile", true)
 narrow_df.show
 ```
 
-### 示例2：从hadoop文件系统读取
+ * 示例2：从hadoop文件系统读取
 
 ```scala
 import org.apache.iotdb.spark.tsfile._
@@ -156,7 +155,7 @@ val narrow_df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile", true)
 narrow_df.show
 ```
 
-### 示例3：从特定目录读取
+ * 示例3：从特定目录读取
 
 ```scala
 import org.apache.iotdb.spark.tsfile._
@@ -168,7 +167,7 @@ df.show
 
 注2：具有相同名称的度量应具有相同的架构。
 
-### 示例4：广泛形式的查询
+ * 示例4：广泛形式的查询
 
 ```scala
 import org.apache.iotdb.spark.tsfile._
@@ -186,7 +185,7 @@ val newDf = spark.sql("select count(*) from tsfile_table")
 newDf.show
 ```
 
-### 示例5：缩小形式的查询
+ * 示例5：缩小形式的查询
 
 ```scala
 import org.apache.iotdb.spark.tsfile._
@@ -204,7 +203,7 @@ val newDf = spark.sql("select count(*) from tsfile_table")
 newDf.show
 ```
 
-### 例6：写宽格式
+ * 例6：写宽格式
 
 ```scala
 // we only support wide_form table to write
@@ -218,7 +217,7 @@ val newDf = spark.read.tsfile("hdfs://localhost:9000/output")
 newDf.show
 ```
 
-## 例6：写窄格式
+ * 例7：写窄格式
 
 ```scala
 // we only support wide_form table to write
@@ -232,7 +231,7 @@ val newDf = spark.read.tsfile("hdfs://localhost:9000/output", true)
 newDf.show
 ```
 
-## 附录A：模式推断的旧设计
+附录A：模式推断的旧设计
 
 显示TsFile的方式与TsFile Schema有关。 以以下TsFile结构为例：TsFile架构中有三个度量：状态，温度和硬件。 这三个度量的基本信息如下：
 
@@ -263,7 +262,7 @@ newDf.show
 
 有两种显示方法：
 
-#### 默认方式
+ * 默认方式
 
 将创建两列来存储设备的完整路径：time（LongType）和delta_object（StringType）。
 
@@ -299,7 +298,7 @@ newDf.show
 
 
 
-#### 展开delta_object列
+ * 展开delta_object列
 
 通过“。”将设备列展开为多个列，忽略根目录“root”。方便进行更丰富的聚合操作。如果用户想使用这种显示方式，需要在表创建语句中设置参数“delta\_object\_name”(参考本手册5.1节中的示例5)，在本例中，将参数“delta\_object\_name”设置为“root.device.turbine”。路径层的数量必须是一对一的。此时，除了“根”层之外，为设备路径的每一层创建一列。列名是参数中的名称，值是设备相应层的名称。接下来，将为每个度量创建一个列来存储特定的数据。
 
@@ -339,6 +338,6 @@ TsFile-Spark-Connector可以通过SparkSQL在SparkSQL中以表的形式显示一
 
 写入过程是将数据aframe写入一个或多个tsfile。默认情况下，需要包含两个列:time和delta_object。其余的列用作测量。如果用户希望将第二个表结构写回TsFile，可以设置“delta\_object\_name”参数(请参阅本手册5.1节的5.1节)。
 
-## 附录B：旧注
+附录B：旧注
 
 注意：检查Spark根目录中的jar软件包，并将libthrift-0.9.2.jar和libfb303-0.9.2.jar分别替换为libthrift-0.9.1.jar和libfb303-0.9.1.jar。

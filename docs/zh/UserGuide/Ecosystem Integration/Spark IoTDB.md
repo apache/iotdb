@@ -19,9 +19,9 @@
 
 -->
 
-# Spark IoTDB连接器
+## Spark-IoTDB
 
-## 版本
+### 版本
 
 Spark和Java所需的版本如下：
 
@@ -29,11 +29,11 @@ Spark和Java所需的版本如下：
 | ------------- | ------------- | ------------ | -------- |
 | `2.4.3`       | `2.11`        | `1.8`        | `0.10.0` |
 
-## 安装
+### 安装
 
 mvn clean scala:compile compile install
 
-# 1. Maven依赖
+#### 1. Maven依赖
 
 ```
     <dependency>
@@ -43,7 +43,7 @@ mvn clean scala:compile compile install
     </dependency>
 ```
 
-# 2. Spark-shell用户指南
+#### 2. Spark-shell用户指南
 
 ```
 spark-shell --jars spark-iotdb-connector-0.10.0.jar,iotdb-jdbc-0.10.0-jar-with-dependencies.jar
@@ -57,7 +57,7 @@ df.printSchema()
 df.show()
 ```
 
-### 如果要对rdd进行分区，可以执行以下操作
+如果要对rdd进行分区，可以执行以下操作
 
 ```
 spark-shell --jars spark-iotdb-connector-0.10.0.jar,iotdb-jdbc-0.10.0-jar-with-dependencies.jar
@@ -73,7 +73,7 @@ df.printSchema()
 df.show()
 ```
 
-# 3. 模式推断
+#### 3. 模式推断
 
 以下TsFile结构为例：TsFile模式中有三个度量：状态，温度和硬件。 这三种测量的基本信息如下：
 
@@ -124,9 +124,9 @@ TsFile中的现有数据如下：
 | 5    | root.ln.wf02.wt01 | false | null | null |
 | 6    | root.ln.wf02.wt02 | null  | ccc  | null |
 
-# 4. 在宽和窄表之间转换
+#### 4. 在宽和窄表之间转换
 
-## 从宽到窄
+   * 从宽到窄
 
 ```
 import org.apache.iotdb.spark.db._
@@ -135,7 +135,7 @@ val wide_df = spark.read.format("org.apache.iotdb.spark.db").option("url", "jdbc
 val narrow_df = Transformer.toNarrowForm(spark, wide_df)
 ```
 
-## 从窄到宽
+   * 从窄到宽
 
 ```
 import org.apache.iotdb.spark.db._
@@ -143,7 +143,7 @@ import org.apache.iotdb.spark.db._
 val wide_df = Transformer.toWideForm(spark, narrow_df)
 ```
 
-# 5. Java用户指南
+ * 5. Java用户指南
 
 ```
 import org.apache.spark.sql.Dataset;

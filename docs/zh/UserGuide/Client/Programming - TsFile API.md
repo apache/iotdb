@@ -19,11 +19,11 @@
 
 -->
 
-# TsFile API 
+## TsFile API 
 
 TsFile 是在 IoTDB 中使用的时间序列的文件格式。在这个章节中，我们将介绍这种文件格式的用法。 
 
-## 安装 TsFile libaray
+### 安装 TsFile libaray
 
 
 在您自己的项目中有两种方法使用 TsFile .
@@ -97,10 +97,10 @@ TsFile 是在 IoTDB 中使用的时间序列的文件格式。在这个章节中
   	 </dependency>
     ```
 
-## TSFile 的使用
+### TsFile 的使用
 本章节演示TsFile的详细用法。
 
-### 时序数据(Time-series Data)
+时序数据(Time-series Data)
 一个时序是由4个序列组成，分别是 device, measurement, time, value。
 
 * **measurement**: 时间序列描述的是一个物理或者形式的测量(measurement)，比如：城市的温度，一些商品的销售数量或者是火车在不同时间的速度。
@@ -144,9 +144,8 @@ device_1, 1490860659000, m1, 10, m2, 12.12
 ```
 
 
-### 写入 TsFile
+#### 写入 TsFile
 
-#### 生成一个 TsFile 文件
 TsFile可以通过以下三个步骤生成，完整的代码参见"写入 TsFile 示例"章节。
 
 * 首先，构造一个`TsFileWriter`实例。
@@ -168,11 +167,13 @@ TsFile可以通过以下三个步骤生成，完整的代码参见"写入 TsFile
     ```
     
     如果你想自己设置一些 TSFile 的配置，你可以使用`config`参数。比如:
+    
     ```
     TSFileConfig conf = new TSFileConfig();
     conf.setTSFileStorageFs("HDFS");
     TsFileWriter tsFileWriter = new TsFileWriter(file, schema, conf);
     ```
+ 
     在上面的例子中，数据文件将存储在 HDFS 中，而不是本地文件系统中。如果你想在本地文件系统中存储数据文件，你可以使用`conf.setTSFileStorageFs("LOCAL")`，这也是默认的配置。
     
     您还可以通过`config.setHdfsIp(...)`和`config.setHdfsPort(...)`来配置 HDFS 的 IP 和端口。默认的 IP是`localhost`，默认的`RPC`端口是`9000`.
@@ -297,9 +298,9 @@ mvn clean install -pl tsfile -am -DskipTests
 
 在已关闭的TsFile 文件中写入新数据的详细例子可以在`/example/tsfile/src/main/java/org/apache/iotdb/tsfile/TsFileForceAppendWrite.java`中查看
 
-### 读取 TsFile 接口
+#### 读取 TsFile 接口
 
-#### 开始之前
+ * 开始之前
 
 "时序数据"章节中的数据集在本章节做具体的介绍。下表中显示的集合包含一个名为"device\_1"的 deltaObject，包含了 3 个名为"sensor\_1","sensor\_2"和"sensor\_3"的测量(measurement)。
 测量值被简化成一个简单的例子，每条数据只包含 4 条时间和值的对应数据。
@@ -318,7 +319,7 @@ mvn clean install -pl tsfile -am -DskipTests
 </center>
 
 
-#### 路径的定义
+ * 路径的定义
 
 路径是一个点(.)分隔的字符串，它唯一地标识 TsFile 中的时间序列，例如："root.area_1.device_1.sensor_1"。
 最后一部分"sensor_1"称为"measurementId"，其余部分"root.area_1.device_1"称为deviceId。
@@ -342,12 +343,12 @@ paths.add(new Path("device_1.sensor_3"));
 > **注意:** 在构造路径时，参数的格式应该是一个点(.)分隔的字符串，最后一部分是measurement，其余部分确认为deviceId。
 
 
-#### 定义 Filter
+ * 定义 Filter
 
-##### 使用条件过滤
+   * 使用条件过滤
 在 TsFile 读取过程中使用 Filter 来选择满足一个或多个给定条件的数据。
 
-#### IExpression
+   * IExpression
 `IExpression`是一个过滤器表达式接口，它将被传递给系统查询时调用。
 我们创建一个或多个筛选器表达式，并且可以使用`Binary Filter Operators`将它们连接形成最终表达式。
 
@@ -388,7 +389,7 @@ paths.add(new Path("device_1.sensor_3"));
      * BinaryExpression.or(Expression, Expression): 选择满足任意一个表达式值的数据。
     
 
-##### Filter Expression 示例
+Filter Expression 示例
 
 * **TimeFilterExpression 示例**
 
@@ -420,6 +421,7 @@ paths.add(new Path("device_1.sensor_3"));
     IExpression timeFilterExpr = BinaryExpression.or(new GlobalTimeExpression(TimeFilter.gtEq(15L)),
                                              new GlobalTimeExpression(TimeFilter.lt(25L))); // series time >= 15 or series time < 25
     ```
+
 #### 读取接口
 
 首先，我们打开 TsFile 并从文件路径`path`中获取一个`ReadOnlyTsFile`实例。
@@ -458,7 +460,7 @@ ReadOnlyTsFile类有两个`query`方法来执行查询。
         >
         > 在一些分布式文件系统中(比如：HDFS), 文件被分成几个部分，这些部分被称为"Blocks"并存储在不同的节点中。在涉及的每个节点上并行执行查询可以提高效率。因此需要部分查询(Partial Query)。部分查询(Partial Query)仅支持查询 TsFile 中被```QueryConstant.PARTITION_START_OFFSET```和```QueryConstant.PARTITION_END_OFFSET```分割的部分。
 
-### QueryDataset 接口
+#### QueryDataset 接口
 
 上面执行的查询将返回一个`QueryDataset`对象。
 
@@ -563,7 +565,7 @@ public class TsFileRead {
 
 ```
 
-## 修改 TsFile 配置项
+### 修改 TsFile 配置项
 
 ```
 TSFileConfig config = TSFileDescriptor.getInstance().getConfig();

@@ -19,19 +19,19 @@
 
 -->
 
-# 编程 - 原生接口
+## Java 原生接口
 
-## 依赖
+### 依赖
 
 * JDK >= 1.8
 * Maven >= 3.6
 
-## 安装到本地 maven 库
+### 安装到本地 maven 库
 
 在根目录下运行:
 > mvn clean install -pl session -am -Dmaven.test.skip=true
 
-## 在 maven 中使用原生接口
+### 在 maven 中使用原生接口
 
 ```
 <dependencies>
@@ -43,7 +43,7 @@
 </dependencies>
 ```
 
-## 原生接口使用示例
+### 原生接口使用示例
 
 下面将给出Session对应的接口的简要介绍和对应参数：
 
@@ -173,7 +173,7 @@
   void executeNonQueryStatement(String sql)
   ```
 
-## 测试客户端逻辑+网络传输代价的接口
+### 测试客户端逻辑+网络传输代价的接口
 
 * 测试 testInsertRecords，不实际写入数据，只将数据传输到 server 即返回。
 
@@ -215,13 +215,13 @@
   ```
   
   
-## 示例代码
+### 示例代码
 
 浏览上述接口的详细信息，请参阅代码 ```session/src/main/java/org/apache/iotdb/session/Session.java```
 
 使用上述接口的示例代码在 ```example/session/src/main/java/org/apache/iotdb/SessionExample.java```
 
-## 针对原生接口的连接池
+### 针对原生接口的连接池
 
 我们提供了一个针对原生接口的连接池(`SessionPool`)，使用该接口时，你只需要指定连接池的大小，就可以在使用时从池中获取连接。
 如果超过60s都没得到一个连接的话，那么会打印一条警告日志，但是程序仍将继续等待。
@@ -239,183 +239,3 @@
 使用示例可以参见 ```session/src/test/java/org/apache/iotdb/session/pool/SessionPoolTest.java```
 
 或 `example/session/src/main/java/org/apache/iotdb/SessionPoolExample.java`
-
-## 0.9-0.10 版本IoTDB Session 接口更新
-
-从0.9到0.10版本的IoTDB session接口有了较大改变。一部分接口名称和参数类型发生了变化，另外新增了大量可用接口。所有session接口抛出的异常类型 *IoTDBSessionExeception* 更改为 *IoTDBConnectionException* 和 *StatementExecutionExeception* 。下面详细介绍具体接口的变化。
-
-### 接口名称更改
-
-#### insert()
-
-用于插入一行数据，需提供数据点的deviceId, time, 所有measurement和相应的value值。
-
-```
-void insert(String deviceId, long time, List<String> measurements, List<String> values)
-```
-
-
-该方法在0.10版本中方法名发生变化
-
-```
-void insertRecord(String deviceId, long time, List<String> measurements, List<String> values)
-```
-
-#### insertRowInBatch()
-
-用于插入多行数据，需提供各行数据的deviceId, time, 所有measurement名称和相应的value值。
-
-```
-void insertRowInBatch(List<String> deviceIds, List<Long> times, List<List<String>> measurementsList,   
-                      List<List<String>> valuesList)
-```
-
-
-该方法在0.10版本中方法名发生变化
-
-```
-void insertRecords(List<String> deviceIds, List<Long> times, List<List<String>> measurementsList, 
-                   List<List<String>> valuesList)
-```
-
-#### insertBatch()
-
-在0.9版本中用于以"RowBatch"结构为单位插入数据
-
-```
-void insertBatch(RowBatch rowBatch)
-```
-
-在0.10版本中"RowBatch"类型更改为"Tablet"类型，因此方法名也随之改变。
-
-```
-void insertTablet(Tablet tablet)
-```
-
-#### testInsertRow()
-
-用于测试插入一行接口的响应
-
-```
-void testInsertRow(String deviceId, long time, List<String> measurements, List<String> values)
-```
-
-在0.10版本中方法名改为testInsertRecord。
-
-```
-void testInsertRecord(String deviceId, long time, List<String> measurements, List<String> values)
-```
-
-#### testInsertRowInBatch()
-
-用于测试插入多行数据接口的响应
-
-```
-void testInsertRowInBatch(List<String> deviceIds, List<Long> times, List<List<String>> measurementsList, 
-                          List<List<String>> valuesList)
-```
-
-在0.10版本中方法名改为testInsertRecords
-
-```
-void testInsertRecords(List<String> deviceIds, List<Long> times, List<List<String>> measurementsList, 
-                       List<List<String>> valuesList)
-```
-
-#### testInsertBatch
-
-用于测试以RowBatch结构为单位插入数据的响应
-
-```
-void testInsertBatch(RowBatch rowBatch)
-```
-
-在0.10版本中RowBatch类型更改为Tabet类型，因此方法名也随之改变为testInsertTablet
-
-```
-void testInsertTablet(Tablet tablet)
-```
-
-
-
-### 新增接口
-
-```
-void open(boolean enableRPCCompression)
-```
-
-开启一个session，并指定是否启用RPC压缩。注意客户端开启PRC压缩的状态需与服务端保持一致。
-
-```
-void insertRecord(String deviceId, long time, List<String> measurements,
-      List<TSDataType> types, List<Object> values)
-```
-
-插入一行数据，该方法和已有的insertRecord()方法不同在于需额外提供每个measurement的类型信息types，且参数values以原始类型的方式提供。写入速度相对于参数为String格式的insertRecord接口要快一些。
-
-```
-void insertRecords(List<String> deviceIds, List<Long> times, List<List<String>> measurementsList, 
-                   List<List<TSDataType>> typesList, List<List<Object>> valuesList)
-```
-
-插入多行数据，该方法和已有的insertRecords()方法不同在于需额外提供每个measurement的类型信息typesList，且参数valuesList以原始类型的方式提供。写入速度相对于参数为String格式的insertRecords接口要快一些。
-
-```
-void insertTablet(Tablet tablet, boolean sorted)
-```
-
-提供额外的sorted参数，表示tablet是否内部已排好序，如sorted为真则会省去排序的过程从而提升处理速度。
-
-```
-void insertTablets(Map<String, Tablet> tablets)
-```
-
-新增insertTablets接口用于写入多个tablet结构，tablets参数为Map<device名, tablet数据>
-
-```
-void insertTablets(Map<String, Tablet> tablets, boolean sorted)
-```
-
-带额外sorted参数的insertTablets接口
-
-```
-void testInsertRecord(String deviceId, long time, List<String> measurements, List<TSDataType> types, 
-                      List<Object> values)
-void testInsertRecords(List<String> deviceIds, List<Long> times, List<List<String>> measurementsList, 
-                      List<List<TSDataType>> typesList, List<List<Object>> valuesList)
-void testInsertTablet(Tablet tablet, boolean sorted)
-void testInsertTablets(Map<String, Tablet> tablets)
-void testInsertTablets(Map<String, Tablet> tablets, boolean sorted)
-```
-
-以上接口均为新增的测试rpc响应的方法，用于测试新增的写入接口
-
-```
-void createTimeseries(String path, TSDataType dataType, TSEncoding encoding, CompressionType compressor, 	
-                      Map<String, String> props, Map<String, String> tags, Map<String, String> attributes, 
-                      String measurementAlias)
-```
-
-在原来createTimeseries接口的基础上，创建时间序列可以额外指定时间序列的props, tags, attributes和measurementAlias。如果不需要指定以上额外参数可以将参数设为null。
-
-```
-void createMultiTimeseries(List<String> paths, List<TSDataType> dataTypes, List<TSEncoding> encodings, 
-                           List<CompressionType> compressors, List<Map<String, String>> propsList, 
-                           List<Map<String, String>> tagsList, List<Map<String, String>> attributesList, 
-                           List<String> measurementAliasList)
-```
-
-一次性创建多个时间序列，同时也可以指定多个时间序列的props, tags, attributes和measurementAlias。
-
-```
-boolean checkTimeseriesExists(String path)
-```
-
-用于检测时间序列是否存在
-
-```
-public Session(String host, int rpcPort, String username, String password,
-      boolean isEnableCacheLeader)
-```
-
-开启一个session，并指定是否启用leader缓存。注意此接口对于分布式写入能够提高性能，但对于单机版写入反而会给客户端增加较少的消耗。
