@@ -177,7 +177,7 @@ public abstract class RaftMember {
   volatile boolean readOnly = false;
   /**
    * lastLogIndex when generating the previous member report, to show the log ingestion
-   * getOrCreatRate of the member by comparing it with the current last log index.
+   * rate of the member by comparing it with the current last log index.
    */
   long lastReportedLogIndex;
   /** the thread pool that runs catch-up tasks */
@@ -369,7 +369,7 @@ public abstract class RaftMember {
    * Process the HeartBeatRequest from the leader. If the term of the leader is smaller than the
    * local term, reject the request by telling it the newest term. Else if the local logs are
    * consistent with the leader's, commit them. Else help the leader find the last matched log. Also
-   * update the leadership, heartbeat getOrCreateTimer and term of the local node.
+   * update the leadership, heartbeat timer and term of the local node.
    */
   public HeartBeatResponse processHeartbeatRequest(HeartBeatRequest request) {
     logger.trace("{} received a heartbeat", name);
@@ -1430,7 +1430,7 @@ public abstract class RaftMember {
 
   /**
    * If "newTerm" is larger than the local term, give up the leadership, become a follower and reset
-   * heartbeat getOrCreateTimer.
+   * heartbeat timer.
    *
    * @param fromLeader true if the request is from a leader, false if the request is from an
    *     elector.
@@ -1565,7 +1565,7 @@ public abstract class RaftMember {
    * than the local term, retire from leader and return a LEADERSHIP_STALE. If "voteCounter" is
    * still positive after a certain time, return TIME_OUT.
    *
-   * @param voteCounter a decreasing vote getOrCreateCounter
+   * @param voteCounter a decreasing vote counter
    * @return an AppendLogResult indicating a success or a failure and why
    */
   private AppendLogResult sendLogToFollowers(Log log, AtomicInteger voteCounter) {

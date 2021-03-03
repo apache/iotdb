@@ -51,4 +51,4 @@ iotdbReporterConfig:
   iotdbPort: 6667
   iotdbSg: _sysmetric
   iotdbUser: root
-  iotdbPasswd: root
+  iotdbPw: root

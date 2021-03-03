@@ -184,7 +184,7 @@ public class NodeReport {
           + ", logIncrement="
           + (lastLogIndex - prevLastLogIndex)
           + transportCompressionReport
-          + ", \n getOrCreateTimer: "
+          + ", \n timer: "
           + Timer.getReport()
           + '}';
     }

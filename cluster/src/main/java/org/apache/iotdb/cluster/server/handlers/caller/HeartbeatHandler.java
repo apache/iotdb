@@ -109,7 +109,7 @@ public class HeartbeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
       // only start a catch up when the follower's lastLogIndex remains stall and unchanged for 5
       // heartbeats
       if (lastLogIdx == peer.getLastHeartBeatIndex()) {
-        // the follower's lastLogIndex is unchanged, increase inconsistent getOrCreateCounter
+        // the follower's lastLogIndex is unchanged, increase inconsistent counter
         int inconsistentNum = peer.incInconsistentHeartbeatNum();
         if (inconsistentNum >= 5) {
           logger.info(
@@ -125,7 +125,7 @@ public class HeartbeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
         }
       } else {
         // the follower's lastLogIndex is changed, which means the follower is not down yet, we
-        // reset the getOrCreateCounter to see if it can eventually catch up by itself
+        // reset the counter to see if it can eventually catch up by itself
         peer.resetInconsistentHeartbeatNum();
       }
     } else {

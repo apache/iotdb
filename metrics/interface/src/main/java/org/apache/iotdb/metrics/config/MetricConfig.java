@@ -114,7 +114,7 @@ public class MetricConfig {
   public static class IotdbReporterConfig {
     private String iotdbSg = "_sysmetric";
     private String iotdbUser = "root";
-    private String iotdbPasswd = "root";
+    private String iotdbPw = "root";
     private String iotdbIp = "127.0.0.1";
     private String iotdbPort = "6667";
 
@@ -134,12 +134,12 @@ public class MetricConfig {
       this.iotdbUser = iotdbUser;
     }
 
-    public String getIotdbPasswd() {
-      return iotdbPasswd;
+    public String getIotdbPw() {
+      return iotdbPw;
     }
 
-    public void setIotdbPasswd(String iotdbPasswd) {
-      this.iotdbPasswd = iotdbPasswd;
+    public void setIotdbPw(String iotdbPw) {
+      this.iotdbPw = iotdbPw;
     }
 
     public String getIotdbIp() {

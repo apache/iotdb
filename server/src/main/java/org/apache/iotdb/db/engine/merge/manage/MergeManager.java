@@ -94,7 +94,7 @@ public class MergeManager implements IService, MergeManagerMBean {
 
   private void setWriteMergeRate(final double throughoutMbPerSec) {
     double throughout = throughoutMbPerSec * 1024.0 * 1024.0;
-    // if throughout = 0, disable getOrCreatRate limiting
+    // if throughout = 0, disable rate limiting
     if (throughout == 0) {
       throughout = Double.MAX_VALUE;
     }

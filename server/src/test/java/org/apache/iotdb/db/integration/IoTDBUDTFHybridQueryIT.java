@@ -108,7 +108,7 @@ public class IoTDBUDTFHybridQueryIT {
   public void testUserDefinedBuiltInHybridAggregationQuery() {
     String sql =
         String.format(
-            "select count(*), getOrCreateCounter(s1, \"%s\"=\"%s\") from root.vehicle.d1",
+            "select count(*), counter(s1, \"%s\"=\"%s\") from root.vehicle.d1",
             ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_ROW_BY_ROW);
 
     try (Statement statement =
@@ -128,7 +128,7 @@ public class IoTDBUDTFHybridQueryIT {
   public void testUserDefinedFunctionFillFunctionHybridQuery() {
     String sql =
         String.format(
-            "select temperature, getOrCreateCounter(temperature, \"%s\"=\"%s\") from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(float [linear, 1m, 1m])",
+            "select temperature, counter(temperature, \"%s\"=\"%s\") from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(float [linear, 1m, 1m])",
             ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_ROW_BY_ROW);
 
     try (Statement statement =
@@ -146,7 +146,7 @@ public class IoTDBUDTFHybridQueryIT {
   public void testLastUserDefinedFunctionQuery() {
     String sql =
         String.format(
-            "select last getOrCreateCounter(temperature, \"%s\"=\"%s\") from root.sgcc.wf03.wt01",
+            "select last counter(temperature, \"%s\"=\"%s\") from root.sgcc.wf03.wt01",
             ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_ROW_BY_ROW);
 
     try (Statement statement =
@@ -163,7 +163,7 @@ public class IoTDBUDTFHybridQueryIT {
   public void testUserDefinedFunctionAlignByDeviceQuery() {
     String sql =
         String.format(
-            "select adder(temperature), getOrCreateCounter(temperature, \"%s\"=\"%s\") from root.sgcc.wf03.wt01 align by device",
+            "select adder(temperature), counter(temperature, \"%s\"=\"%s\") from root.sgcc.wf03.wt01 align by device",
             ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_ROW_BY_ROW);
 
     try (Statement statement =
