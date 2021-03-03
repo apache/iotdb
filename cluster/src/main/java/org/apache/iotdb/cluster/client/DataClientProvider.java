@@ -30,8 +30,6 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocolFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
