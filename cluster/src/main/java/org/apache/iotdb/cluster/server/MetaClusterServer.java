@@ -146,7 +146,7 @@ public class MetaClusterServer extends RaftServer
    * MetaClusterServer uses the meta port to create the socket.
    *
    * @return the TServerTransport
-   * @throws TTransportException
+   * @throws TTransportException if create the socket fails
    */
   @Override
   TServerTransport getServerSocket() throws TTransportException {

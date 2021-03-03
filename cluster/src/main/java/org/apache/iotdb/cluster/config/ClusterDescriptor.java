@@ -291,6 +291,8 @@ public class ClusterDescriptor {
   }
 
   /**
+   * Split the seed urls as one list
+   *
    * @param seedUrls the seed urls
    * @return the seed urls as a list
    */

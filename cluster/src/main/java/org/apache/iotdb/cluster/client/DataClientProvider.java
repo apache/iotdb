@@ -37,7 +37,6 @@ import java.io.IOException;
 
 public class DataClientProvider {
 
-  private static final Logger logger = LoggerFactory.getLogger(DataClientProvider.class);
   /**
    * dataClientPool provides reusable thrift clients to connect to the DataGroupMembers of other
    * nodes

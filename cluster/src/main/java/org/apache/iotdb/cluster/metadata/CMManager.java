@@ -1745,13 +1745,13 @@ public class CMManager extends MManager {
       resultBinary = SyncClientAdaptor.getDevices(client, group.getHeader(), plan);
     } else {
       SyncDataClient syncDataClient = null;
-      try {
+      try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+          DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
         syncDataClient =
             metaGroupMember
                 .getClientProvider()
                 .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+
         plan.serialize(dataOutputStream);
         resultBinary =
             syncDataClient.getDevices(
