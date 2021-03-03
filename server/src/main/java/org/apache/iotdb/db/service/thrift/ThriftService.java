@@ -45,11 +45,6 @@ public abstract class ThriftService implements IService {
 
   private CountDownLatch stopLatch;
 
-  // whether enable the service. By default it is true.
-  // If we just want to create an IoTDB instance without RPC service, set this false before call
-  // IoTDB.active()
-  private boolean enable = true;
-
   public String getRPCServiceStatus() {
     if (thriftServiceThread == null) {
       logger.debug("Start latch is null when getting status");
@@ -100,10 +95,6 @@ public abstract class ThriftService implements IService {
 
   @SuppressWarnings("squid:S2276")
   public void startService() throws StartupException {
-    if (!enable) {
-      logger.info("{}: {} is disabled", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
-      return;
-    }
     if (STATUS_UP.equals(getRPCServiceStatus())) {
       logger.info(
           "{}: {} has been already running now",
@@ -150,7 +141,7 @@ public abstract class ThriftService implements IService {
   }
 
   public void stopService() {
-    if (!enable || STATUS_DOWN.equals(getRPCServiceStatus())) {
+    if (STATUS_DOWN.equals(getRPCServiceStatus())) {
       logger.info("{}: {} isn't running now", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
       return;
     }
@@ -168,13 +159,5 @@ public abstract class ThriftService implements IService {
           "{}: close {} failed because: ", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName(), e);
       Thread.currentThread().interrupt();
     }
-  }
-
-  public boolean isEnable() {
-    return enable;
-  }
-
-  public void setEnable(boolean enable) {
-    this.enable = enable;
   }
 }
