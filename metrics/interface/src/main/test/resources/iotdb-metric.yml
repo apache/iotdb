@@ -47,7 +47,7 @@ prometheusReporterConfig:
 # then the following must be set                       #
 #                                                      #
 ########################################################
-ioTDBReporterConfig:
+iotdbReporterConfig:
   iotdbIp: 0.0.0.0
   iotdbPort: 6667
   iotdbSg: _sysmetric

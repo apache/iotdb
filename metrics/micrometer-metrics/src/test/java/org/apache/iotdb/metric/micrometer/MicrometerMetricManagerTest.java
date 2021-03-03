@@ -32,7 +32,7 @@ public class MicrometerMetricManagerTest {
 
   @Test
   public void testRegister() {
-    metricManager.timer("timer1", "sg", "root").update(12, TimeUnit.MILLISECONDS);
+    metricManager.getOrCreateTimer("timer1", "sg", "root").update(12, TimeUnit.MILLISECONDS);
     ;
   }
 }

@@ -37,10 +37,10 @@ import java.util.Locale;
  * task of closing a file ends, the compression ratio of the file is calculated based on the total
  * MemTable size and the total size of the tsfile on disk. {@code compressionRatioSum} records the
  * sum of these compression ratios, and {@Code calcTimes} records the number of closed file tasks.
- * When the compression rate of the current system is obtained, the average compression ratio is
- * returned as the result, that is {@code compressionRatioSum}/{@Code calcTimes}. At the same time,
- * each time the compression ratio statistics are updated, these two parameters are persisted on
- * disk for system recovery.
+ * When the compression getOrCreatRate of the current system is obtained, the average compression
+ * ratio is returned as the result, that is {@code compressionRatioSum}/{@Code calcTimes}. At the
+ * same time, each time the compression ratio statistics are updated, these two parameters are
+ * persisted on disk for system recovery.
  */
 public class CompressionRatio {
 

@@ -54,6 +54,10 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Metric manager based on dropwizard metrics. More details in https://metrics.dropwizard.io/4.1.2/.
+ */
+@SuppressWarnings("common-java:DuplicatedBlocks")
 public class DropwizardMetricManager implements MetricManager {
 
   private static final Logger logger = LoggerFactory.getLogger(DropwizardMetricManager.class);
@@ -71,7 +75,7 @@ public class DropwizardMetricManager implements MetricManager {
   }
 
   @Override
-  public Counter counter(String metric, String... tags) {
+  public Counter getOrCreateCounter(String metric, String... tags) {
     if (!isEnable) {
       return DoNothingMetricManager.doNothingCounter;
     }
@@ -82,7 +86,7 @@ public class DropwizardMetricManager implements MetricManager {
   }
 
   @Override
-  public Gauge gauge(String metric, String... tags) {
+  public Gauge getOrCreatGauge(String metric, String... tags) {
     if (!isEnable) {
       return DoNothingMetricManager.doNothingGauge;
     }
@@ -99,18 +103,7 @@ public class DropwizardMetricManager implements MetricManager {
   }
 
   @Override
-  public Histogram histogram(String metric, String... tags) {
-    if (!isEnable) {
-      return DoNothingMetricManager.doNothingHistogram;
-    }
-    MetricName name = new MetricName(metric, tags);
-    return (Histogram)
-        currentMeters.computeIfAbsent(
-            name, key -> new DropwizardHistogram(metricRegistry.histogram(name.toFlatString())));
-  }
-
-  @Override
-  public Rate rate(String metric, String... tags) {
+  public Rate getOrCreatRate(String metric, String... tags) {
     if (!isEnable) {
       return DoNothingMetricManager.doNothingRate;
     }
@@ -121,7 +114,18 @@ public class DropwizardMetricManager implements MetricManager {
   }
 
   @Override
-  public Timer timer(String metric, String... tags) {
+  public Histogram getOrCreateHistogram(String metric, String... tags) {
+    if (!isEnable) {
+      return DoNothingMetricManager.doNothingHistogram;
+    }
+    MetricName name = new MetricName(metric, tags);
+    return (Histogram)
+        currentMeters.computeIfAbsent(
+            name, key -> new DropwizardHistogram(metricRegistry.histogram(name.toFlatString())));
+  }
+
+  @Override
+  public Timer getOrCreateTimer(String metric, String... tags) {
     if (!isEnable) {
       return DoNothingMetricManager.doNothingTimer;
     }
@@ -153,32 +157,6 @@ public class DropwizardMetricManager implements MetricManager {
             currentMeters.computeIfAbsent(
                 name, key -> new DropwizardCounter(metricRegistry.counter(name.toFlatString()))))
         .inc(delta);
-  }
-
-  @Override
-  public void histogram(int value, String metric, String... tags) {
-    if (!isEnable) {
-      return;
-    }
-    MetricName name = new MetricName(metric, tags);
-    ((Histogram)
-            currentMeters.computeIfAbsent(
-                name,
-                key -> new DropwizardHistogram(metricRegistry.histogram(name.toFlatString()))))
-        .update(value);
-  }
-
-  @Override
-  public void histogram(long value, String metric, String... tags) {
-    if (!isEnable) {
-      return;
-    }
-    MetricName name = new MetricName(metric, tags);
-    ((Histogram)
-            currentMeters.computeIfAbsent(
-                name,
-                key -> new DropwizardHistogram(metricRegistry.histogram(name.toFlatString()))))
-        .update(value);
   }
 
   @Override
@@ -239,6 +217,32 @@ public class DropwizardMetricManager implements MetricManager {
             currentMeters.computeIfAbsent(
                 name, key -> new DropwizardRate(metricRegistry.meter(name.toFlatString()))))
         .mark(value);
+  }
+
+  @Override
+  public void histogram(int value, String metric, String... tags) {
+    if (!isEnable) {
+      return;
+    }
+    MetricName name = new MetricName(metric, tags);
+    ((Histogram)
+            currentMeters.computeIfAbsent(
+                name,
+                key -> new DropwizardHistogram(metricRegistry.histogram(name.toFlatString()))))
+        .update(value);
+  }
+
+  @Override
+  public void histogram(long value, String metric, String... tags) {
+    if (!isEnable) {
+      return;
+    }
+    MetricName name = new MetricName(metric, tags);
+    ((Histogram)
+            currentMeters.computeIfAbsent(
+                name,
+                key -> new DropwizardHistogram(metricRegistry.histogram(name.toFlatString()))))
+        .update(value);
   }
 
   @Override
@@ -330,14 +334,14 @@ public class DropwizardMetricManager implements MetricManager {
     }
     switch (metric) {
       case JVM:
-        enableJVMMetrics();
+        enableJvmMetrics();
         break;
       case SYSTEM:
         break;
       case THREAD:
         break;
       default:
-        // ignore;
+        logger.warn("Unsupported metric type {}", metric);
     }
   }
 
@@ -345,7 +349,7 @@ public class DropwizardMetricManager implements MetricManager {
     return metricRegistry;
   }
 
-  private void enableJVMMetrics() {
+  private void enableJvmMetrics() {
     if (!isEnable) {
       return;
     }

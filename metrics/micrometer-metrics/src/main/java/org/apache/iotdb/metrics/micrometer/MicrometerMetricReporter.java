@@ -25,15 +25,14 @@ import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
-import com.sun.net.httpserver.HttpServer;
 import io.micrometer.jmx.JmxMeterRegistry;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.publisher.Mono;
+import reactor.netty.DisposableServer;
+import reactor.netty.http.server.HttpServer;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.net.InetSocketAddress;
 import java.util.List;
 
 public class MicrometerMetricReporter implements MetricReporter {
@@ -67,32 +66,25 @@ public class MicrometerMetricReporter implements MetricReporter {
   }
 
   private void startPrometheusReporter(PrometheusMeterRegistry prometheusMeterRegistry) {
-    try {
-      HttpServer server =
-          HttpServer.create(
-              new InetSocketAddress(
-                  Integer.parseInt(
-                      metricConfig.getPrometheusReporterConfig().getPrometheusExporterPort())),
-              0);
-      server.createContext(
-          "/prometheus",
-          httpExchange -> {
-            String response = prometheusMeterRegistry.scrape();
-            httpExchange.sendResponseHeaders(200, response.getBytes().length);
-            try (OutputStream os = httpExchange.getResponseBody()) {
-              os.write(response.getBytes());
-            }
-          });
+    DisposableServer server =
+        HttpServer.create()
+            .port(
+                Integer.parseInt(
+                    metricConfig.getPrometheusReporterConfig().getPrometheusExporterPort()))
+            .route(
+                routes ->
+                    routes.get(
+                        "/prometheus",
+                        (request, response) ->
+                            response.sendString(Mono.just(prometheusMeterRegistry.scrape()))))
+            .bindNow();
 
-      runThread = new Thread(server::start);
-      runThread.start();
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+    runThread = new Thread(server::onDispose);
+    runThread.start();
   }
 
   private void startJmxReporter(JmxMeterRegistry jmxMeterRegistry) {
-    logger.info("start jmx reporter from micrometer");
+    logger.info("start jmx reporter from micrometer {}", jmxMeterRegistry);
   }
 
   @Override

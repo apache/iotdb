@@ -39,9 +39,9 @@ public interface Timer extends IMetric {
   HistogramSnapshot takeSnapshot();
 
   /**
-   * It's not safe to use the update interface
+   * It's not safe to use the update interface.
    *
-   * @return the rate related with the timer
+   * @return the getOrCreatRate related with the getOrCreateTimer
    */
   Rate getImmutableRate();
 }

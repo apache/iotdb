@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+/** the unique identifier of a metric, include a name and some tags. */
 public class MetricName {
   public static final String SEPARATOR = ".";
   public static final Map<String, String> EMPTY_TAGS = Collections.emptyMap();
@@ -36,9 +37,8 @@ public class MetricName {
   public MetricName(String name, String... tags) {
     this.name = name;
     this.tags = new HashMap<>();
-    for (int i = 0; i < tags.length; i++) {
+    for (int i = 0; i < tags.length; i += 2) {
       this.tags.put(tags[i], tags[i + 1]);
-      i += 2;
     }
   }
 
@@ -47,12 +47,23 @@ public class MetricName {
     this.tags = tags;
   }
 
+  /**
+   * convert the metric name to flat string, like name.tagkey1.tagvalue1.tagkey2.tagvalue2.... and
+   * replace the space with _
+   *
+   * @return the flat string,
+   */
   public String toFlatString() {
     StringBuilder stringBuilder = new StringBuilder(name);
     tags.forEach((k, v) -> stringBuilder.append(k).append(SEPARATOR).append(v));
     return stringBuilder.toString().replace(" ", "_");
   }
 
+  /**
+   * convert the metric name to string array
+   *
+   * @return
+   */
   public String[] toStringArray() {
     List<String> allNames = new ArrayList<>();
     allNames.add(name);

@@ -224,7 +224,7 @@ public class TimeSeriesMetadataCache {
       return;
     }
     logger.debug(
-        "[TimeSeriesMetadata cache {}hit] The number of requests for cache is {}, hit rate is {}.",
+        "[TimeSeriesMetadata cache {}hit] The number of requests for cache is {}, hit getOrCreatRate is {}.",
         isHit ? "" : "didn't ",
         cacheRequestNum.get(),
         cacheHitNum.get() * 1.0 / cacheRequestNum.get());

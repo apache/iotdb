@@ -49,5 +49,10 @@
             <artifactId>metrics-core</artifactId>
             <version>4.1.2</version>
         </dependency>
+        <dependency>
+            <groupId>io.projectreactor.netty</groupId>
+            <artifactId>reactor-netty-http</artifactId>
+            <version>1.0.4</version>
+        </dependency>
     </dependencies>
 </project>

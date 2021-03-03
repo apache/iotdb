@@ -192,7 +192,8 @@ public class SyncClient implements ISyncClient {
   @Override
   public void init() {
     if (executorService == null) {
-      executorService = IoTDBThreadPoolFactory.newScheduledThreadPool(2, "sync-client-timer");
+      executorService =
+          IoTDBThreadPoolFactory.newScheduledThreadPool(2, "sync-client-getOrCreateTimer");
     }
   }
 

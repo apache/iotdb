@@ -104,7 +104,7 @@ public class TSFileConfig implements Serializable {
   private double plaMaxError = 100;
   /** Default SDT max error is 100. */
   private double sdtMaxError = 100;
-  /** Default DFT satisfy rate is 0.1 */
+  /** Default DFT satisfy getOrCreatRate is 0.1 */
   private double dftSatisfyRate = 0.1;
   /** Data compression method, TsFile supports UNCOMPRESSED, SNAPPY or LZ4. */
   private CompressionType compressor = CompressionType.SNAPPY;
@@ -140,7 +140,7 @@ public class TSFileConfig implements Serializable {
   private String kerberosKeytabFilePath = "/path";
   /** kerberos pricipal */
   private String kerberosPrincipal = "principal";
-  /** The acceptable error rate of bloom filter */
+  /** The acceptable error getOrCreatRate of bloom filter */
   private double bloomFilterErrorRate = 0.05;
   /** The amount of data iterate each time */
   private int batchSize = 1000;

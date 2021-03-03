@@ -19,20 +19,16 @@
 
 package org.apache.iotdb.metrics.config;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.Arrays;
 import java.util.List;
 
 public class MetricConfig {
-  private static final Logger logger = LoggerFactory.getLogger(MetricConfig.class);
   static final String CONFIG_NAME = "iotdb-metric.yml";
 
-  /** enable publishing data */
+  /** enable publishing data. */
   private Boolean enableMetric = true;
 
-  /** The period of data pushed by the reporter to the remote monitoring system */
+  /** The period of data pushed by the reporter to the remote monitoring system. */
   private Integer pushPeriodInSecond = 5;
 
   private String metricManagerType = "MicrometerMetricManager";
@@ -42,7 +38,7 @@ public class MetricConfig {
   private List<String> metricReporterList = Arrays.asList("jmx");
 
   private PrometheusReporterConfig prometheusReporterConfig;
-  private IoTDBReporterConfig ioTDBReporterConfig;
+  private IotdbReporterConfig ioTDBReporterConfig;
 
   public Boolean getEnableMetric() {
     return enableMetric;
@@ -92,17 +88,17 @@ public class MetricConfig {
     this.prometheusReporterConfig = prometheusReporterConfig;
   }
 
-  public IoTDBReporterConfig getIoTDBReporterConfig() {
+  public IotdbReporterConfig getIoTDBReporterConfig() {
     return ioTDBReporterConfig;
   }
 
-  public void setIoTDBReporterConfig(IoTDBReporterConfig ioTDBReporterConfig) {
+  public void setIoTDBReporterConfig(IotdbReporterConfig ioTDBReporterConfig) {
     this.ioTDBReporterConfig = ioTDBReporterConfig;
   }
 
-  /** the following is prometheus related config */
+  /** the following is prometheus related config. */
   public static class PrometheusReporterConfig {
-    /** the http server's port for prometheus exporter to get metric data */
+    /** the http server's port for prometheus exporter to get metric data. */
     private String prometheusExporterPort = "8090";
 
     public String getPrometheusExporterPort() {
@@ -114,8 +110,8 @@ public class MetricConfig {
     }
   }
 
-  /** the following is iotdb related config */
-  public static class IoTDBReporterConfig {
+  /** the following is iotdb related config. */
+  public static class IotdbReporterConfig {
     private String iotdbSg = "_sysmetric";
     private String iotdbUser = "root";
     private String iotdbPasswd = "root";

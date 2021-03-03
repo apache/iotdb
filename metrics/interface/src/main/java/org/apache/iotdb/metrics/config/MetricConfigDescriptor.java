@@ -29,6 +29,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
+/** the utils class to load configure */
 public class MetricConfigDescriptor {
   private static final Logger logger = LoggerFactory.getLogger(MetricConfigDescriptor.class);
   private MetricConfig metricConfig = new MetricConfig();

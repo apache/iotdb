@@ -29,7 +29,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ServiceLoader;
 
-/** MetricService is the entry to manage all Metric system */
+/** MetricService is the entry to manage all Metric system. */
 public class MetricService {
 
   private static final Logger logger = LoggerFactory.getLogger(MetricService.class);
@@ -45,7 +45,7 @@ public class MetricService {
   private static MetricManager metricManager;
   private static MetricReporter metricReporter;
 
-  public static MetricService getINSTANCE() {
+  public static MetricService getInstance() {
     return INSTANCE;
   }
 
@@ -99,6 +99,7 @@ public class MetricService {
     }
   }
 
+  /** stop metric service */
   public static void stop() {
     if (!isEnable()) {
       return;

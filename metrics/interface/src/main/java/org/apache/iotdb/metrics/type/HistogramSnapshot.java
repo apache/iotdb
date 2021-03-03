@@ -21,7 +21,7 @@ package org.apache.iotdb.metrics.type;
 
 import java.io.OutputStream;
 
-/** used by Timer and Histogram */
+/** used by Timer and Histogram. */
 public interface HistogramSnapshot {
 
   public abstract double getValue(double quantile);

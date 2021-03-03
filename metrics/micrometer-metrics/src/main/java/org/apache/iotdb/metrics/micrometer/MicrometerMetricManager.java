@@ -65,6 +65,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
+/** Metric manager based on micrometer. More details in https://micrometer.io/. */
+@SuppressWarnings("common-java:DuplicatedBlocks")
 public class MicrometerMetricManager implements MetricManager {
   private static final Logger logger = LoggerFactory.getLogger(MicrometerMetricManager.class);
 
@@ -106,6 +108,7 @@ public class MicrometerMetricManager implements MetricManager {
     return meterRegistry;
   }
 
+  /** @return prometheus registry to reporter to get */
   public PrometheusMeterRegistry getPrometheusMeterRegistry() {
     Set<MeterRegistry> meterRegistrySet = Metrics.globalRegistry.getRegistries();
     for (MeterRegistry childMeterRegistry : meterRegistrySet) {
@@ -116,6 +119,7 @@ public class MicrometerMetricManager implements MetricManager {
     return null;
   }
 
+  /** @return jmxMeterRegistry for reporter */
   public JmxMeterRegistry getJmxMeterRegistry() {
     Set<MeterRegistry> meterRegistrySet = Metrics.globalRegistry.getRegistries();
     for (MeterRegistry childMeterRegistry : meterRegistrySet) {
@@ -127,7 +131,7 @@ public class MicrometerMetricManager implements MetricManager {
   }
 
   @Override
-  public Counter counter(String metric, String... tags) {
+  public Counter getOrCreateCounter(String metric, String... tags) {
     if (!isEnable) {
       return DoNothingMetricManager.doNothingCounter;
     }
@@ -150,7 +154,7 @@ public class MicrometerMetricManager implements MetricManager {
   }
 
   @Override
-  public Gauge gauge(String metric, String... tags) {
+  public Gauge getOrCreatGauge(String metric, String... tags) {
     if (!isEnable) {
       return DoNothingMetricManager.doNothingGauge;
     }
@@ -160,7 +164,7 @@ public class MicrometerMetricManager implements MetricManager {
   }
 
   @Override
-  public Histogram histogram(String metric, String... tags) {
+  public Histogram getOrCreateHistogram(String metric, String... tags) {
     if (!isEnable) {
       return DoNothingMetricManager.doNothingHistogram;
     }
@@ -179,15 +183,14 @@ public class MicrometerMetricManager implements MetricManager {
 
   /**
    * We only create a gauge(AtomicLong) to record the raw value, because we assume that the backend
-   * metrics system has the ability to calculate rate
+   * metrics system has the ability to calculate getOrCreatRate.
    *
-   * @param metric
-   * @param tags
-   * @return
+   * @param metric the name
+   * @param tags tags to describe some attribute
+   * @return Rate instance
    */
   @Override
-  @Deprecated
-  public Rate rate(String metric, String... tags) {
+  public Rate getOrCreatRate(String metric, String... tags) {
     if (!isEnable) {
       return DoNothingMetricManager.doNothingRate;
     }
@@ -200,7 +203,7 @@ public class MicrometerMetricManager implements MetricManager {
   }
 
   @Override
-  public Timer timer(String metric, String... tags) {
+  public Timer getOrCreateTimer(String metric, String... tags) {
     if (!isEnable) {
       return DoNothingMetricManager.doNothingTimer;
     }
@@ -213,7 +216,7 @@ public class MicrometerMetricManager implements MetricManager {
                   io.micrometer.core.instrument.Timer.builder(metric)
                       .tags(tags)
                       .register(meterRegistry);
-              logger.info("create timer {}", metric);
+              logger.info("create getOrCreateTimer {}", metric);
               return new MicrometerTimer(timer);
             });
   }
@@ -412,18 +415,18 @@ public class MicrometerMetricManager implements MetricManager {
     }
     switch (metric) {
       case JVM:
-        enableJVMMetrics();
+        enableJvmMetrics();
         break;
       case SYSTEM:
         break;
       case THREAD:
         break;
       default:
-        // ignore;
+        logger.warn("Unsupported metric type {}", metric);
     }
   }
 
-  private void enableJVMMetrics() {
+  private void enableJvmMetrics() {
     if (!isEnable) {
       return;
     }

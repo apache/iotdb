@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.metrics.impl;
 
 import org.apache.iotdb.metrics.KnownMetric;
@@ -40,27 +41,27 @@ public class DoNothingMetricManager implements MetricManager {
   public static final DoNothingTimer doNothingTimer = new DoNothingTimer();
 
   @Override
-  public Counter counter(String metric, String... tags) {
+  public Counter getOrCreateCounter(String metric, String... tags) {
     return doNothingCounter;
   }
 
   @Override
-  public Gauge gauge(String metric, String... tags) {
+  public Gauge getOrCreatGauge(String metric, String... tags) {
     return doNothingGauge;
   }
 
   @Override
-  public Histogram histogram(String metric, String... tags) {
+  public Histogram getOrCreateHistogram(String metric, String... tags) {
     return doNothingHistogram;
   }
 
   @Override
-  public Rate rate(String metric, String... tags) {
+  public Rate getOrCreatRate(String metric, String... tags) {
     return doNothingRate;
   }
 
   @Override
-  public Timer timer(String metric, String... tags) {
+  public Timer getOrCreateTimer(String metric, String... tags) {
     return doNothingTimer;
   }
 

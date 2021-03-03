@@ -33,33 +33,31 @@ public interface MetricManager {
   /*
    * The following functions will create or get a exist Metric
    * @param metric: the metric name
-   * @param tags: string appear in pairs, like sg="ln",user="user1" will be "sg", "ln", "user", "user1"
+   * @param tags:
+   *    string appear in pairs, like sg="ln",user="user1" will be "sg", "ln", "user", "user1"
    * @return Metric Instance
    */
-  Counter counter(String metric, String... tags);
+  Counter getOrCreateCounter(String metric, String... tags);
 
-  Gauge gauge(String metric, String... tags);
+  Gauge getOrCreatGauge(String metric, String... tags);
 
-  Histogram histogram(String metric, String... tags);
+  Rate getOrCreatRate(String metric, String... tags);
 
-  Rate rate(String metric, String... tags);
+  Histogram getOrCreateHistogram(String metric, String... tags);
 
-  Timer timer(String metric, String... tags);
+  Timer getOrCreateTimer(String metric, String... tags);
 
   /*
    * The following functions just update the current record value
    * @param the delta value will be recorded
    * @param metric the metric name
-   * @param tags string appear in pairs, like sg="ln",user="user1" will be "sg", "ln", "user", "user1"
+   * @param tags
+   *    string appear in pairs, like sg="ln",user="user1" will be "sg", "ln", "user", "user1"
    */
 
   void count(int delta, String metric, String... tags);
 
   void count(long delta, String metric, String... tags);
-
-  void histogram(int value, String metric, String... tags);
-
-  void histogram(long value, String metric, String... tags);
 
   void gauge(int value, String metric, String... tags);
 
@@ -68,6 +66,10 @@ public interface MetricManager {
   void rate(int value, String metric, String... tags);
 
   void rate(long value, String metric, String... tags);
+
+  void histogram(int value, String metric, String... tags);
+
+  void histogram(long value, String metric, String... tags);
 
   void timer(long delta, TimeUnit timeUnit, String metric, String... tags);
 

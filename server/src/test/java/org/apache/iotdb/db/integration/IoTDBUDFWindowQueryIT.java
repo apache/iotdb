@@ -133,7 +133,7 @@ public class IoTDBUDFWindowQueryIT {
   public void testRowByRow() {
     String sql =
         String.format(
-            "select counter(s1, \"%s\"=\"%s\") from root.vehicle.d1",
+            "select getOrCreateCounter(s1, \"%s\"=\"%s\") from root.vehicle.d1",
             ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_ROW_BY_ROW);
 
     try (Statement statement =

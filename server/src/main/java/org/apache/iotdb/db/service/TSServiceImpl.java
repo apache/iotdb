@@ -700,10 +700,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
 
       LOGGER.info(
-          "{}, {}, {}",
-          plan.getOperatorType().name(),
-          plan.getLoginUserName(),
-          config.getRpcAddress());
+          "{}, {}, {}", plan.getOperatorType(), plan.getLoginUserName(), config.getRpcAddress());
 
       return resp;
     } catch (Exception e) {

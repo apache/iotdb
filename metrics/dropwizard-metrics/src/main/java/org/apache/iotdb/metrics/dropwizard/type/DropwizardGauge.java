@@ -56,7 +56,7 @@ public class DropwizardGauge implements Gauge {
     atomicLong.set(value);
   }
 
-  public com.codahale.metrics.Gauge getDropwizardCachedGauge() {
+  public com.codahale.metrics.Gauge<Long> getDropwizardCachedGauge() {
     return dropwizardCachedGauge;
   }
 }
