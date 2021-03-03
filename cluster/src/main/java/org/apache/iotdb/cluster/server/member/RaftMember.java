@@ -176,8 +176,8 @@ public abstract class RaftMember {
    */
   volatile boolean readOnly = false;
   /**
-   * lastLogIndex when generating the previous member report, to show the log ingestion
-   * rate of the member by comparing it with the current last log index.
+   * lastLogIndex when generating the previous member report, to show the log ingestion rate of the
+   * member by comparing it with the current last log index.
    */
   long lastReportedLogIndex;
   /** the thread pool that runs catch-up tasks */

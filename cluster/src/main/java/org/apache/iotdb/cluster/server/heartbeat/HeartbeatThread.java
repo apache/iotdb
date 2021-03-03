@@ -333,9 +333,9 @@ public class HeartbeatThread implements Runnable {
   }
 
   /**
-   * Request a vote from each of the "nodes". Each for vote will decrease the counter
-   * "quorum" and when it reaches 0, the flag "electionValid" and "electionTerminated" will be set
-   * to true. Any against vote will set the flag "electionTerminated" to true and ends the election.
+   * Request a vote from each of the "nodes". Each for vote will decrease the counter "quorum" and
+   * when it reaches 0, the flag "electionValid" and "electionTerminated" will be set to true. Any
+   * against vote will set the flag "electionTerminated" to true and ends the election.
    *
    * @param nodes
    * @param request

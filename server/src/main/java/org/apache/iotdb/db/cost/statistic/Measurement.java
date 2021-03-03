@@ -43,10 +43,10 @@ import java.util.concurrent.locks.ReentrantLock;
 /**
  * Measurement is used to record execution time of operations defined in enum class Operation. It
  * can display average time of each operation, and proportion of operation whose execution time fall
- * into time range defined in BUCKET_IN_MS. If you want to change abscissa of histogram,
- * just change the BUCKET_IN_MS array. For recording a operation, you should: 1) add a item in enum
- * class Operation. 2) call <code>startTimeInNano = System.nanoTime()</code> to recode startTime of
- * that operation. 3) call <code>
+ * into time range defined in BUCKET_IN_MS. If you want to change abscissa of histogram, just change
+ * the BUCKET_IN_MS array. For recording a operation, you should: 1) add a item in enum class
+ * Operation. 2) call <code>startTimeInNano = System.nanoTime()</code> to recode startTime of that
+ * operation. 3) call <code>
  * Measurement.INSTANCE.addOperationLatency(operation, startTimeInNano)
  * </code> at the end of that operation;
  *
