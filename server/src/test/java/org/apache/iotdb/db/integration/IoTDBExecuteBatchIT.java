@@ -22,6 +22,7 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -53,18 +54,18 @@ public class IoTDBExecuteBatchIT {
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
       statement.addBatch(
-          "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465600000,25.957603)");
+          "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465600000,1.2)");
       statement.addBatch(
-          "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465600001,25.957603)");
+          "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465600001,2.3)");
       statement.addBatch("delete timeseries root.ln.wf01.wt01");
       statement.addBatch(
-          "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465600002,25.957603)");
+          "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465600002,3.4)");
       statement.executeBatch();
       ResultSet resultSet = statement.executeQuery("select * from root.ln.wf01.wt01");
       int count = 0;
 
       String[] timestamps = {"1509465600002"};
-      String[] values = {"25.957603"};
+      String[] values = {"3.4"};
 
       while (resultSet.next()) {
         assertEquals(timestamps[count], resultSet.getString("Time"));
@@ -72,7 +73,7 @@ public class IoTDBExecuteBatchIT {
         count++;
       }
     } catch (SQLException e) {
-      e.printStackTrace();
+      Assert.fail(e.getMessage());
     }
   }
 }
