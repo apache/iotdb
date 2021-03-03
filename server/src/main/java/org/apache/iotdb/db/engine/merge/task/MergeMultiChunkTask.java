@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.merge.task;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.TsFileManagement;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
@@ -46,11 +47,16 @@ import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.PriorityQueue;
+import java.util.TreeMap;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -83,6 +89,20 @@ public class MergeMultiChunkTask {
 
   private int concurrentMergeSeriesNum;
   private List<PartialPath> currMergingPaths = new ArrayList<>();
+  // need to be cleared every device
+  private final Map<TsFileSequenceReader, Iterator<Map<String, List<ChunkMetadata>>>>
+      measurementChunkMetadataListMapIteratorCache =
+          new TreeMap<>(
+              (o1, o2) ->
+                  TsFileManagement.compareFileName(
+                      new File(o1.getFileName()), new File(o2.getFileName())));
+  // need to be cleared every device
+  private final Map<TsFileSequenceReader, Map<String, List<ChunkMetadata>>>
+      chunkMetadataListCacheForMerge =
+          new TreeMap<>(
+              (o1, o2) ->
+                  TsFileManagement.compareFileName(
+                      new File(o1.getFileName()), new File(o2.getFileName())));
 
   private String storageGroupName;
 
@@ -130,6 +150,8 @@ public class MergeMultiChunkTask {
         mergedSeriesCnt += currMergingPaths.size();
         logMergeProgress();
       }
+      measurementChunkMetadataListMapIteratorCache.clear();
+      chunkMetadataListCacheForMerge.clear();
     }
     if (logger.isInfoEnabled()) {
       logger.info(
@@ -198,18 +220,77 @@ public class MergeMultiChunkTask {
     TsFileSequenceReader fileSequenceReader = resource.getFileReader(currTsFile);
     List<Modification>[] modifications = new List[currMergingPaths.size()];
     List<ChunkMetadata>[] seqChunkMeta = new List[currMergingPaths.size()];
-    for (int i = 0; i < currMergingPaths.size(); i++) {
-      modifications[i] = resource.getModifications(currTsFile, currMergingPaths.get(i));
-      seqChunkMeta[i] = resource.queryChunkMetadata(currMergingPaths.get(i), currTsFile);
-      modifyChunkMetaData(seqChunkMeta[i], modifications[i]);
-
-      if (Thread.interrupted()) {
-        Thread.currentThread().interrupt();
-        return;
-      }
+    Iterator<Map<String, List<ChunkMetadata>>> measurementChunkMetadataListMapIterator =
+        measurementChunkMetadataListMapIteratorCache.computeIfAbsent(
+            fileSequenceReader,
+            (tsFileSequenceReader -> {
+              try {
+                return tsFileSequenceReader.getMeasurementChunkMetadataListMapIterator(deviceId);
+              } catch (IOException e) {
+                logger.error(
+                    "unseq compaction task {}, getMeasurementChunkMetadataListMapIterator meets error. iterator create failed.",
+                    taskName,
+                    e);
+                return null;
+              }
+            }));
+    if (measurementChunkMetadataListMapIterator == null) {
+      return;
     }
 
+    String lastSensor = currMergingPaths.get(currMergingPaths.size() - 1).getMeasurement();
+    String currSensor = null;
+    Map<String, List<ChunkMetadata>> measurementChunkMetadataListMap = new TreeMap<>();
+    // find all sensor to merge in order, if exceed, then break
+    while (currSensor == null || currSensor.compareTo(lastSensor) < 0) {
+      measurementChunkMetadataListMap =
+          chunkMetadataListCacheForMerge.computeIfAbsent(
+              fileSequenceReader, tsFileSequenceReader -> new TreeMap<>());
+      // if empty, get measurementChunkMetadataList block to use later
+      if (measurementChunkMetadataListMap.isEmpty()) {
+        // if do not have more sensor, just break
+        if (measurementChunkMetadataListMapIterator.hasNext()) {
+          measurementChunkMetadataListMap.putAll(measurementChunkMetadataListMapIterator.next());
+        } else {
+          break;
+        }
+      }
+
+      Iterator<Entry<String, List<ChunkMetadata>>> measurementChunkMetadataListEntryIterator =
+          measurementChunkMetadataListMap.entrySet().iterator();
+      while (measurementChunkMetadataListEntryIterator.hasNext()) {
+        Entry<String, List<ChunkMetadata>> measurementChunkMetadataListEntry =
+            measurementChunkMetadataListEntryIterator.next();
+        currSensor = measurementChunkMetadataListEntry.getKey();
+
+        // fill modifications and seqChunkMetas to be used later
+        for (int i = 0; i < currMergingPaths.size(); i++) {
+          if (currMergingPaths.get(i).getMeasurement().equals(currSensor)) {
+            modifications[i] = resource.getModifications(currTsFile, currMergingPaths.get(i));
+            seqChunkMeta[i] = measurementChunkMetadataListEntry.getValue();
+            modifyChunkMetaData(seqChunkMeta[i], modifications[i]);
+
+            if (Thread.interrupted()) {
+              Thread.currentThread().interrupt();
+              return;
+            }
+            break;
+          }
+        }
+
+        // current sensor larger than last needed sensor, just break out to outer loop
+        if (currSensor.compareTo(lastSensor) > 0) {
+          break;
+        } else {
+          measurementChunkMetadataListEntryIterator.remove();
+        }
+      }
+    }
+    // update measurementChunkMetadataListMap
+    chunkMetadataListCacheForMerge.put(fileSequenceReader, measurementChunkMetadataListMap);
+
     List<Integer> unskippedPathIndices = filterNoDataPaths(seqChunkMeta, seqFileIdx);
+
     if (unskippedPathIndices.isEmpty()) {
       return;
     }
@@ -241,8 +322,10 @@ public class MergeMultiChunkTask {
     // series should also be written into a new chunk
     List<Integer> ret = new ArrayList<>();
     for (int i = 0; i < currMergingPaths.size(); i++) {
-      if (seqChunkMeta[i].isEmpty()
-          && !(seqFileIdx + 1 == resource.getSeqFiles().size() && currTimeValuePairs[i] != null)) {
+      if (seqChunkMeta[i] == null
+          || seqChunkMeta[i].isEmpty()
+              && !(seqFileIdx + 1 == resource.getSeqFiles().size()
+                  && currTimeValuePairs[i] != null)) {
         continue;
       }
       ret.add(i);
@@ -264,13 +347,20 @@ public class MergeMultiChunkTask {
         IoTDBDescriptor.getInstance().getConfig().getMergeChunkSubThreadNum();
     MetaListEntry[] metaListEntries = new MetaListEntry[currMergingPaths.size()];
     PriorityQueue<Integer>[] chunkIdxHeaps = new PriorityQueue[mergeChunkSubTaskNum];
+
+    // if merge path is smaller than mergeChunkSubTaskNum, will use merge path number.
+    // so thread are not wasted.
+    if (currMergingPaths.size() < mergeChunkSubTaskNum) {
+      mergeChunkSubTaskNum = currMergingPaths.size();
+    }
+
     for (int i = 0; i < mergeChunkSubTaskNum; i++) {
       chunkIdxHeaps[i] = new PriorityQueue<>();
     }
     int idx = 0;
     for (int i = 0; i < currMergingPaths.size(); i++) {
       chunkIdxHeaps[idx % mergeChunkSubTaskNum].add(i);
-      if (seqChunkMeta[i].isEmpty()) {
+      if (seqChunkMeta[i] == null || seqChunkMeta[i].isEmpty()) {
         continue;
       }
 

@@ -374,7 +374,11 @@ public class MTree implements Serializable {
     }
     if (cur.hasChild(nodeNames[i])) {
       // node b has child sg
-      throw new StorageGroupAlreadySetException(path.getFullPath());
+      if (cur.getChild(nodeNames[i]) instanceof StorageGroupMNode) {
+        throw new StorageGroupAlreadySetException(path.getFullPath());
+      } else {
+        throw new StorageGroupAlreadySetException(path.getFullPath(), true);
+      }
     } else {
       StorageGroupMNode storageGroupMNode =
           new StorageGroupMNode(

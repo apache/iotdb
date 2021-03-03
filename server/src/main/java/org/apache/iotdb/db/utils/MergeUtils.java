@@ -241,7 +241,7 @@ public class MergeUtils {
     if (paths.isEmpty()) {
       return Collections.emptyList();
     }
-    paths.sort(Comparator.comparing(PartialPath::getDevice));
+    paths.sort(Comparator.comparing(PartialPath::getFullPath));
 
     String currDevice = null;
     List<PartialPath> currList = null;

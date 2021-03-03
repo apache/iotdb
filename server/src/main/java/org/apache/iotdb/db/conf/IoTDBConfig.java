@@ -167,6 +167,10 @@ public class IoTDBConfig {
    */
   private int walBufferSize = 16 * 1024 * 1024;
 
+  private int maxWalBytebufferNumForEachPartition = 6;
+
+  private long walPoolTrimIntervalInMS = 10_000;
+
   private int estimatedSeriesSize = 300;
 
   /**
@@ -316,10 +320,7 @@ public class IoTDBConfig {
   private boolean metaDataCacheEnable = true;
 
   /** Memory allocated for timeSeriesMetaData cache in read process */
-  private long allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForRead / 10;
-
-  /** Memory allocated for chunkMetaData cache in read process */
-  private long allocateMemoryForChunkMetaDataCache = allocateMemoryForRead / 10;
+  private long allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForRead / 5;
 
   /** Memory allocated for chunk cache in read process */
   private long allocateMemoryForChunkCache = allocateMemoryForRead / 10;
@@ -1150,6 +1151,22 @@ public class IoTDBConfig {
     this.walBufferSize = walBufferSize;
   }
 
+  public int getMaxWalBytebufferNumForEachPartition() {
+    return maxWalBytebufferNumForEachPartition;
+  }
+
+  public void setMaxWalBytebufferNumForEachPartition(int maxWalBytebufferNumForEachPartition) {
+    this.maxWalBytebufferNumForEachPartition = maxWalBytebufferNumForEachPartition;
+  }
+
+  public long getWalPoolTrimIntervalInMS() {
+    return walPoolTrimIntervalInMS;
+  }
+
+  public void setWalPoolTrimIntervalInMS(long walPoolTrimIntervalInMS) {
+    this.walPoolTrimIntervalInMS = walPoolTrimIntervalInMS;
+  }
+
   public int getEstimatedSeriesSize() {
     return estimatedSeriesSize;
   }
@@ -1477,14 +1494,6 @@ public class IoTDBConfig {
   public void setAllocateMemoryForTimeSeriesMetaDataCache(
       long allocateMemoryForTimeSeriesMetaDataCache) {
     this.allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForTimeSeriesMetaDataCache;
-  }
-
-  public long getAllocateMemoryForChunkMetaDataCache() {
-    return allocateMemoryForChunkMetaDataCache;
-  }
-
-  public void setAllocateMemoryForChunkMetaDataCache(long allocateMemoryForChunkMetaDataCache) {
-    this.allocateMemoryForChunkMetaDataCache = allocateMemoryForChunkMetaDataCache;
   }
 
   public long getAllocateMemoryForChunkCache() {

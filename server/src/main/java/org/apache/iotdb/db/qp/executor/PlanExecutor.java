@@ -29,7 +29,6 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
-import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
@@ -79,10 +78,12 @@ import org.apache.iotdb.db.qp.physical.sys.CountPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropFunctionPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.KillQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
@@ -98,6 +99,9 @@ import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTriggersPlan;
+import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
+import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
@@ -117,7 +121,6 @@ import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
@@ -165,6 +168,12 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PROGRESS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ROLE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TASK_NAME;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_ATTRIBUTES;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_CLASS;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_EVENT;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_NAME;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_PATH;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_STATUS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
@@ -307,6 +316,14 @@ public class PlanExecutor implements IPlanExecutor {
         return operateCreateFunction((CreateFunctionPlan) plan);
       case DROP_FUNCTION:
         return operateDropFunction((DropFunctionPlan) plan);
+      case CREATE_TRIGGER:
+        return operateCreateTrigger((CreateTriggerPlan) plan);
+      case DROP_TRIGGER:
+        return operateDropTrigger((DropTriggerPlan) plan);
+      case START_TRIGGER:
+        return operateStartTrigger((StartTriggerPlan) plan);
+      case STOP_TRIGGER:
+        return operateStopTrigger((StopTriggerPlan) plan);
       case CREATE_INDEX:
         throw new QueryProcessException("Create index hasn't been supported yet");
       case DROP_INDEX:
@@ -335,6 +352,22 @@ public class PlanExecutor implements IPlanExecutor {
     return true;
   }
 
+  private boolean operateCreateTrigger(CreateTriggerPlan plan) {
+    return false;
+  }
+
+  private boolean operateDropTrigger(DropTriggerPlan plan) {
+    return false;
+  }
+
+  private boolean operateStartTrigger(StartTriggerPlan plan) {
+    return false;
+  }
+
+  private boolean operateStopTrigger(StopTriggerPlan plan) {
+    return false;
+  }
+
   private void operateMerge(MergePlan plan) throws StorageEngineException {
     if (plan.getOperatorType() == OperatorType.FULL_MERGE) {
       StorageEngine.getInstance().mergeAll(true);
@@ -345,7 +378,6 @@ public class PlanExecutor implements IPlanExecutor {
 
   private void operateClearCache() {
     ChunkCache.getInstance().clear();
-    ChunkMetadataCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
   }
 
@@ -505,6 +537,8 @@ public class PlanExecutor implements IPlanExecutor {
         return processShowQueryProcesslist();
       case FUNCTIONS:
         return processShowFunctions((ShowFunctionsPlan) showPlan);
+      case TRIGGERS:
+        return processShowTriggers((ShowTriggersPlan) showPlan);
       default:
         throw new QueryProcessException(String.format("Unrecognized show plan %s", showPlan));
     }
@@ -841,6 +875,24 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
+  private QueryDataSet processShowTriggers(ShowTriggersPlan showPlan) {
+    return new ListDataSet(
+        Arrays.asList(
+            new PartialPath(COLUMN_TRIGGER_NAME, false),
+            new PartialPath(COLUMN_TRIGGER_STATUS, false),
+            new PartialPath(COLUMN_TRIGGER_EVENT, false),
+            new PartialPath(COLUMN_TRIGGER_PATH, false),
+            new PartialPath(COLUMN_TRIGGER_CLASS, false),
+            new PartialPath(COLUMN_TRIGGER_ATTRIBUTES, false)),
+        Arrays.asList(
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT,
+            TSDataType.TEXT));
+  }
+
   private void addRowRecordForShowQuery(
       ListDataSet listDataSet, int timestamp, String item, String value) {
     RowRecord rowRecord = new RowRecord(timestamp);
@@ -1126,21 +1178,17 @@ public class PlanExecutor implements IPlanExecutor {
 
   @Override
   public void insert(InsertRowsPlan plan) throws QueryProcessException {
-    boolean allSuccess = true;
     for (int i = 0; i < plan.getInsertRowPlanList().size(); i++) {
       if (plan.getResults().containsKey(i)) {
-        allSuccess = false;
         continue;
       }
       try {
         insert(plan.getInsertRowPlanList().get(i));
-        plan.getResults().put(i, RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
       } catch (QueryProcessException e) {
         plan.getResults().put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
-        allSuccess = false;
       }
-      if (!allSuccess) {
-        throw new BatchProcessException(plan.getResults().values().toArray(new TSStatus[0]));
+      if (!plan.getResults().isEmpty()) {
+        throw new BatchProcessException(plan.getFailingStatus());
       }
     }
   }
