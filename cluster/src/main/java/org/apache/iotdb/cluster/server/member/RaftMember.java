@@ -745,7 +745,7 @@ public abstract class RaftMember {
                 public void postCheckConsistency(long leaderCommitId, long localAppliedId)
                     throws CheckConsistencyException {
                   if (leaderCommitId == Long.MAX_VALUE
-                      || leaderCommitId == 0
+                      || leaderCommitId == Long.MIN_VALUE
                       || leaderCommitId - localAppliedId > config.getMaxReadLogLag()) {
                     throw CheckConsistencyException.CHECK_MID_CONSISTENCY_EXCEPTION;
                   }
@@ -792,7 +792,7 @@ public abstract class RaftMember {
         throws CheckConsistencyException {
       if (leaderCommitId > localAppliedId
           || leaderCommitId == Long.MAX_VALUE
-          || leaderCommitId == 0) {
+          || leaderCommitId == Long.MIN_VALUE) {
         throw CheckConsistencyException.CHECK_STRONG_CONSISTENCY_EXCEPTION;
       }
     }
@@ -855,7 +855,7 @@ public abstract class RaftMember {
    */
   protected boolean waitUntilCatchUp(CheckConsistency checkConsistency)
       throws CheckConsistencyException {
-    long leaderCommitId = 0L;
+    long leaderCommitId = Long.MIN_VALUE;
     try {
       leaderCommitId = config.isUseAsyncServer() ? requestCommitIdAsync() : requestCommitIdSync();
       return syncLocalApply(leaderCommitId);
