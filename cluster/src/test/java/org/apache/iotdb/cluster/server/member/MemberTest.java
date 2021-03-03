@@ -330,7 +330,7 @@ public class MemberTest {
 
           @Override
           protected long requestCommitIdAsync() {
-            return 0;
+            return 5;
           }
 
           @Override
@@ -408,7 +408,7 @@ public class MemberTest {
             public void postCheckConsistency(long leaderCommitId, long localAppliedId)
                 throws CheckConsistencyException {
               if (leaderCommitId == Long.MAX_VALUE
-                  || leaderCommitId == 0
+                  || leaderCommitId == Long.MIN_VALUE
                   || leaderCommitId > localAppliedId) {
                 throw CheckConsistencyException.CHECK_STRONG_CONSISTENCY_EXCEPTION;
               }
@@ -441,7 +441,7 @@ public class MemberTest {
             public void postCheckConsistency(long leaderCommitId, long localAppliedId)
                 throws CheckConsistencyException {
               if (leaderCommitId == Long.MAX_VALUE
-                  || leaderCommitId == 0
+                  || leaderCommitId == Long.MIN_VALUE
                   || leaderCommitId > localAppliedId) {
                 throw CheckConsistencyException.CHECK_STRONG_CONSISTENCY_EXCEPTION;
               }
@@ -474,7 +474,7 @@ public class MemberTest {
             public void postCheckConsistency(long leaderCommitId, long localAppliedId)
                 throws CheckConsistencyException {
               if (leaderCommitId == Long.MAX_VALUE
-                  || leaderCommitId == 0
+                  || leaderCommitId == Long.MIN_VALUE
                   || leaderCommitId - localAppliedId
                       > ClusterDescriptor.getInstance().getConfig().getMaxReadLogLag()) {
                 throw CheckConsistencyException.CHECK_MID_CONSISTENCY_EXCEPTION;
@@ -508,7 +508,7 @@ public class MemberTest {
             public void postCheckConsistency(long leaderCommitId, long localAppliedId)
                 throws CheckConsistencyException {
               if (leaderCommitId == Long.MAX_VALUE
-                  || leaderCommitId == 0
+                  || leaderCommitId == Long.MIN_VALUE
                   || leaderCommitId - localAppliedId
                       > ClusterDescriptor.getInstance().getConfig().getMaxReadLogLag()) {
                 throw CheckConsistencyException.CHECK_MID_CONSISTENCY_EXCEPTION;
@@ -527,7 +527,7 @@ public class MemberTest {
         newDataGroupMemberWithSyncLeaderFalse(TestUtils.getNode(0), false);
     ClusterDescriptor.getInstance()
         .getConfig()
-        .setConsistencyLevel(ConsistencyLevel.MID_CONSISTENCY);
+        .setConsistencyLevel(ConsistencyLevel.WEAK_CONSISTENCY);
     ClusterDescriptor.getInstance().getConfig().setMaxReadLogLag(1);
     try {
 
@@ -549,7 +549,7 @@ public class MemberTest {
         newDataGroupMemberWithSyncLeaderTrue(TestUtils.getNode(0), false);
     ClusterDescriptor.getInstance()
         .getConfig()
-        .setConsistencyLevel(ConsistencyLevel.MID_CONSISTENCY);
+        .setConsistencyLevel(ConsistencyLevel.WEAK_CONSISTENCY);
     ClusterDescriptor.getInstance().getConfig().setMaxReadLogLag(500);
     try {
 
