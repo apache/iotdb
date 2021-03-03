@@ -355,46 +355,46 @@ public class MicrometerMetricManager implements MetricManager {
 
   @Override
   public Map<String[], Counter> getAllCounters() {
-    Map<String[], IMetric> iMetricMap = getMetricByType(Meter.Type.COUNTER);
+    Map<String[], IMetric> metricMap = getMetricByType(Meter.Type.COUNTER);
     Map<String[], Counter> counterMap = new HashMap<>();
-    iMetricMap.forEach((k, v) -> counterMap.put(k, (Counter) v));
+    metricMap.forEach((k, v) -> counterMap.put(k, (Counter) v));
     return counterMap;
   }
 
   @Override
   public Map<String[], Gauge> getAllGauges() {
-    Map<String[], IMetric> iMetricMap = getMetricByType(Meter.Type.GAUGE);
+    Map<String[], IMetric> metricMap = getMetricByType(Meter.Type.GAUGE);
     Map<String[], Gauge> gaugeMap = new HashMap<>();
-    iMetricMap.forEach((k, v) -> gaugeMap.put(k, (Gauge) v));
+    metricMap.forEach((k, v) -> gaugeMap.put(k, (Gauge) v));
     return gaugeMap;
   }
 
   @Override
   public Map<String[], Rate> getAllRates() {
-    Map<String[], IMetric> iMetricMap = getMetricByType(Meter.Type.OTHER);
+    Map<String[], IMetric> metricMap = getMetricByType(Meter.Type.OTHER);
     Map<String[], Rate> rateMap = new HashMap<>();
-    iMetricMap.forEach((k, v) -> rateMap.put(k, (Rate) v));
+    metricMap.forEach((k, v) -> rateMap.put(k, (Rate) v));
     return rateMap;
   }
 
   @Override
   public Map<String[], Histogram> getAllHistograms() {
-    Map<String[], IMetric> iMetricMap = getMetricByType(Meter.Type.DISTRIBUTION_SUMMARY);
+    Map<String[], IMetric> metricMap = getMetricByType(Meter.Type.DISTRIBUTION_SUMMARY);
     Map<String[], Histogram> histogramMap = new HashMap<>();
-    iMetricMap.forEach((k, v) -> histogramMap.put(k, (Histogram) v));
+    metricMap.forEach((k, v) -> histogramMap.put(k, (Histogram) v));
     return histogramMap;
   }
 
   @Override
   public Map<String[], Timer> getAllTimers() {
-    Map<String[], IMetric> iMetricMap = getMetricByType(Meter.Type.TIMER);
+    Map<String[], IMetric> metricMap = getMetricByType(Meter.Type.TIMER);
     Map<String[], Timer> timerMap = new HashMap<>();
-    iMetricMap.forEach((k, v) -> timerMap.put(k, (Timer) v));
+    metricMap.forEach((k, v) -> timerMap.put(k, (Timer) v));
     return timerMap;
   }
 
   private Map<String[], IMetric> getMetricByType(Meter.Type type) {
-    Map<String[], IMetric> iMetricMap = new HashMap<>();
+    Map<String[], IMetric> metricMap = new HashMap<>();
     for (Map.Entry<Meter.Id, IMetric> entry : currentMeters.entrySet()) {
       if (entry.getKey().getType() == type) {
         List<String> tags = new ArrayList<>(entry.getKey().getTags().size() * 2);
@@ -403,10 +403,10 @@ public class MicrometerMetricManager implements MetricManager {
           tags.add(tag.getKey());
           tags.add(tag.getValue());
         }
-        iMetricMap.put(tags.toArray(new String[0]), entry.getValue());
+        metricMap.put(tags.toArray(new String[0]), entry.getValue());
       }
     }
-    return iMetricMap;
+    return metricMap;
   }
 
   @Override
