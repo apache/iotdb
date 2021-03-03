@@ -111,8 +111,8 @@ public class MemberTest {
     IoTDBDescriptor.getInstance().getConfig().setEnableWal(false);
     RaftMember.setWaitLeaderTimeMs(10);
 
-    RaftServer.setSyncLeaderMaxWaitMs(1);
-    RaftServer.setHeartBeatIntervalMs(1);
+    RaftServer.setSyncLeaderMaxWaitMs(100);
+    RaftServer.setHeartBeatIntervalMs(100);
 
     allNodes = new PartitionGroup();
     for (int i = 0; i < 100; i += 10) {
