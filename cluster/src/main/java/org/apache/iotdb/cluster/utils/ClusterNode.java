@@ -71,7 +71,7 @@ public class ClusterNode extends Node {
     return "ClusterNode{"
         + " internalIp='"
         + internalIp
-        + ", metaPort="
+        + "', metaPort="
         + metaPort
         + ", nodeIdentifier="
         + nodeIdentifier
@@ -81,6 +81,6 @@ public class ClusterNode extends Node {
         + clientPort
         + ", clientIp='"
         + clientIp
-        + "}";
+        + "'}";
   }
 }
