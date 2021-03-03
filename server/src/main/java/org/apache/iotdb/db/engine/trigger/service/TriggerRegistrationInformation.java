@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.trigger.service;
 
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEvent;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
 
 import java.util.Map;
 
@@ -51,6 +52,10 @@ public class TriggerRegistrationInformation {
     this.attributes = attributes;
     this.triggerClass = triggerClass;
     this.isStopped = isStopped;
+  }
+
+  public CreateTriggerPlan convertToCreateTriggerPlan() {
+    return new CreateTriggerPlan(triggerName, event, fullPath, className, attributes);
   }
 
   public void updateTriggerClass(Class<?> triggerClass) {

@@ -39,6 +39,7 @@ import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.QueryIdNotExsitException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.TriggerManagementException;
 import org.apache.iotdb.db.exception.UDFRegistrationException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -100,7 +101,6 @@ import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowTriggersPlan;
 import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
@@ -347,22 +347,22 @@ public class PlanExecutor implements IPlanExecutor {
     return true;
   }
 
-  private boolean operateCreateTrigger(CreateTriggerPlan plan) {
+  private boolean operateCreateTrigger(CreateTriggerPlan plan) throws TriggerManagementException {
     TriggerRegistrationService.getInstance().register(plan);
     return true;
   }
 
-  private boolean operateDropTrigger(DropTriggerPlan plan) {
+  private boolean operateDropTrigger(DropTriggerPlan plan) throws TriggerManagementException {
     TriggerRegistrationService.getInstance().deregister(plan);
     return true;
   }
 
-  private boolean operateStartTrigger(StartTriggerPlan plan) {
+  private boolean operateStartTrigger(StartTriggerPlan plan) throws TriggerManagementException {
     TriggerRegistrationService.getInstance().activate(plan);
     return true;
   }
 
-  private boolean operateStopTrigger(StopTriggerPlan plan) {
+  private boolean operateStopTrigger(StopTriggerPlan plan) throws TriggerManagementException {
     TriggerRegistrationService.getInstance().inactivate(plan);
     return true;
   }
@@ -537,7 +537,7 @@ public class PlanExecutor implements IPlanExecutor {
       case FUNCTIONS:
         return processShowFunctions((ShowFunctionsPlan) showPlan);
       case TRIGGERS:
-        return processShowTriggers((ShowTriggersPlan) showPlan);
+        return processShowTriggers();
       default:
         throw new QueryProcessException(String.format("Unrecognized show plan %s", showPlan));
     }
@@ -874,8 +874,8 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  private QueryDataSet processShowTriggers(ShowTriggersPlan showPlan) {
-    return TriggerRegistrationService.getInstance().show(showPlan);
+  private QueryDataSet processShowTriggers() {
+    return TriggerRegistrationService.getInstance().show();
   }
 
   private void addRowRecordForShowQuery(

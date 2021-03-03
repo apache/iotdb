@@ -25,6 +25,8 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.writelog.io.ILogWriter;
 import org.apache.iotdb.db.writelog.io.LogWriter;
 
+import org.apache.commons.io.FileUtils;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.BufferOverflowException;
@@ -33,11 +35,12 @@ import java.nio.ByteBuffer;
 public class TriggerLogWriter implements AutoCloseable {
 
   private final ByteBuffer logBuffer;
+  private final File logFile;
   private final ILogWriter logWriter;
 
   public TriggerLogWriter(String logFilePath) throws IOException {
     logBuffer = ByteBuffer.allocate(IoTDBDescriptor.getInstance().getConfig().getMlogBufferSize());
-    File logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
+    logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
     logWriter = new LogWriter(logFile, false);
   }
 
@@ -57,5 +60,9 @@ public class TriggerLogWriter implements AutoCloseable {
   @Override
   public void close() throws IOException {
     logWriter.close();
+  }
+
+  public void deleteLogFile() throws IOException {
+    FileUtils.forceDelete(logFile);
   }
 }

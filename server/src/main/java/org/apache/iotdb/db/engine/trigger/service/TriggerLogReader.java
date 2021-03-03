@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.engine.trigger.service;
 
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.writelog.io.SingleFileLogReader;
 
@@ -30,8 +29,7 @@ public class TriggerLogReader implements AutoCloseable {
 
   private final SingleFileLogReader logReader;
 
-  public TriggerLogReader(String logFilePath) throws IOException {
-    File logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
+  public TriggerLogReader(File logFile) throws IOException {
     logReader = new SingleFileLogReader(logFile);
   }
 

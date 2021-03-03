@@ -17,37 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.trigger.executor;
+package org.apache.iotdb.db.exception;
 
-public enum TriggerEvent {
-  BEFORE_INSERT((byte) 0, "before insert"),
-  AFTER_INSERT((byte) 1, "after insert");
+public class TriggerManagementException extends StorageEngineException {
 
-  private final byte id;
-  private final String event;
-
-  TriggerEvent(byte id, String event) {
-    this.id = id;
-    this.event = event;
+  public TriggerManagementException(String message, Throwable cause) {
+    super(message);
+    this.initCause(cause);
   }
 
-  public byte getId() {
-    return id;
-  }
-
-  @Override
-  public String toString() {
-    return event;
-  }
-
-  public static TriggerEvent construct(byte id) {
-    switch (id) {
-      case 0:
-        return BEFORE_INSERT;
-      case 1:
-        return AFTER_INSERT;
-      default:
-        throw new IllegalArgumentException(String.format("No such trigger event (id: %d)", id));
-    }
+  public TriggerManagementException(String message) {
+    super(message);
   }
 }

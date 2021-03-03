@@ -108,6 +108,9 @@ public class IoTDBConstant {
   public static final String COLUMN_TRIGGER_CLASS = "class name";
   public static final String COLUMN_TRIGGER_ATTRIBUTES = "attributes";
 
+  public static final String COLUMN_TRIGGER_STATUS_STARTED = "started";
+  public static final String COLUMN_TRIGGER_STATUS_STOPPED = "stopped";
+
   public static final String PATH_WILDCARD = "*";
   public static final String TIME = "time";
 

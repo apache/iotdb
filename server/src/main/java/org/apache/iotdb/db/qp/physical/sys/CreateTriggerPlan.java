@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEvent;
+import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
@@ -41,6 +42,17 @@ public class CreateTriggerPlan extends PhysicalPlan {
   private PartialPath fullPath;
   private String className;
   private Map<String, String> attributes;
+
+  /**
+   * This field is mainly used for the stage of recovering trigger registration information, so it
+   * will never be serialized into a log file.
+   *
+   * <p>Note that the status of triggers registered by executing SQL statements is STARTED by
+   * default, so this field should be {@code false} by default.
+   *
+   * @see TriggerRegistrationService
+   */
+  private boolean isStopped = false;
 
   public CreateTriggerPlan() {
     super(false, OperatorType.CREATE_TRIGGER);
@@ -80,6 +92,18 @@ public class CreateTriggerPlan extends PhysicalPlan {
 
   public Map<String, String> getAttributes() {
     return attributes;
+  }
+
+  public boolean isStopped() {
+    return isStopped;
+  }
+
+  public void markAsStarted() {
+    isStopped = false;
+  }
+
+  public void markAsStopped() {
+    isStopped = true;
   }
 
   @Override
