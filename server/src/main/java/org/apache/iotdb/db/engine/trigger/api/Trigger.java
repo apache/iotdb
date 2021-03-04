@@ -23,7 +23,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 public interface Trigger {
 
-  default void onStart() {}
+  default void onStart(TriggerAttributes attributes) {}
 
   default void onStop() {}
 
