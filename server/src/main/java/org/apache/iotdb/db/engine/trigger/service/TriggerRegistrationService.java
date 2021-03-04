@@ -74,6 +74,8 @@ public class TriggerRegistrationService implements IService {
 
   private final ConcurrentHashMap<String, TriggerRegistrationInformation> registrationInformation;
 
+  private TriggerClassLoader classLoader;
+
   private TriggerLogWriter logWriter;
 
   public TriggerRegistrationService() {
@@ -285,6 +287,8 @@ public class TriggerRegistrationService implements IService {
   @Override
   public void start() throws StartupException {
     try {
+      classLoader = new TriggerClassLoader();
+
       makeDirIfNecessary();
       doRecovery();
       logWriter = new TriggerLogWriter(LOG_FILE_NAME);
