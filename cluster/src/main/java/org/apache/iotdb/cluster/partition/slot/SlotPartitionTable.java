@@ -381,7 +381,7 @@ public class SlotPartitionTable implements PartitionTable {
 
     // judge whether the partition table of byte buffer is out of date
     if (lastMetaLogIndex != -1 && lastMetaLogIndex >= newLastLogIndex) {
-      return lastMetaLogIndex <= newLastLogIndex;
+      return lastMetaLogIndex == newLastLogIndex;
     }
     lastMetaLogIndex = newLastLogIndex;
     logger.info("Initializing the partition table from buffer");
@@ -432,11 +432,6 @@ public class SlotPartitionTable implements PartitionTable {
 
     localGroups = getPartitionGroups(thisNode);
     return true;
-  }
-
-  @Override
-  public boolean checkChangeMembershipValidity(long targetLogIndex) {
-    return lastMetaLogIndex == targetLogIndex;
   }
 
   @Override

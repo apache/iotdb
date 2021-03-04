@@ -21,17 +21,31 @@ package org.apache.iotdb.cluster.utils.nodetool;
 import java.util.List;
 import java.util.Map;
 import org.apache.commons.collections4.map.MultiKeyMap;
+import org.apache.iotdb.cluster.exception.LeaderUnknownException;
+import org.apache.iotdb.cluster.exception.RedirectMetaLeaderException;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.server.NodeCharacter;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 public interface ClusterMonitorMBean {
 
   /**
-   * Get physical hash ring
-   *
-   * @return Node list
+   * Show the character of meta raft group.
    */
-  List<Node> getRing();
+  List<Pair<Node, NodeCharacter>> getMetaGroup();
+
+  /**
+   * Show the character of target data raft group whose header is this node.
+   */
+  List<Pair<Node, NodeCharacter>> getDataGroup(int raftId) throws Exception;
+
+  /**
+   * Query how many slots are still PULLING or PULLING_WRITABLE, it means whether user can add/remove a node.
+   * @return key: group, value: slot num that still in the process of data migration
+   */
+  Map<PartitionGroup, Integer> getSlotNumInDataMigration()
+      throws RedirectMetaLeaderException, LeaderUnknownException;
 
   /**
    * Get data partition information of input path and time range.
@@ -48,13 +62,6 @@ public interface ClusterMonitorMBean {
    * @return metadata partition information
    */
   PartitionGroup getMetaPartition(String path);
-
-  /**
-   * Get data partition groups that input node belongs to and the slot number in each partition group.
-   *
-   * @return key: the partition group, value: the slot number
-   */
-  Map<PartitionGroup, Integer> getSlotNumOfCurNode();
 
   /**
    * Get all data partition groups and the slot number in each partition group.

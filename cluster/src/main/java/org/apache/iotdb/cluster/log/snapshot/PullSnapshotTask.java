@@ -112,7 +112,7 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Void> {
       }
 
       if (logger.isInfoEnabled()) {
-        logger.info("Received a snapshot {} from {}", result,
+        logger.info("{}: Received a snapshot {} from {}", newMember.getName(), result,
             descriptor.getPreviousHolders().get(nodeIndex));
       }
       try {

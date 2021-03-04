@@ -65,7 +65,7 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
   /**
    * send FlushPlan to all nodes in one dataGroup
    */
-  private void syncFlushAllProcessor(List<Integer> requiredSlots) {
+  private void syncFlushAllProcessor(List<Integer> requiredSlots, boolean needLeader) {
     logger.info("{}: Start flush all storage group processor in one data group", getName());
     Map<String, List<Pair<Long, Boolean>>> storageGroupPartitions = StorageEngine.getInstance()
         .getWorkingStorageGroupPartitions();
@@ -73,18 +73,20 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
       logger.info("{}: no need to flush processor", getName());
       return;
     }
-    dataGroupMember.flushFileWhenDoSnapshot(storageGroupPartitions, requiredSlots);
+    dataGroupMember.flushFileWhenDoSnapshot(storageGroupPartitions, requiredSlots, needLeader);
   }
 
   @Override
   @SuppressWarnings("java:S1135") // ignore todos
   public void takeSnapshot() throws IOException {
     takeSnapshotForSpecificSlots(((SlotPartitionTable) partitionTable)
-        .getNodeSlots(new RaftNode(dataGroupMember.getHeader(), dataGroupMember.getRaftGroupId())));
+            .getNodeSlots(new RaftNode(dataGroupMember.getHeader(), dataGroupMember.getRaftGroupId())),
+        true);
   }
 
   @Override
-  public void takeSnapshotForSpecificSlots(List<Integer> requiredSlots) throws IOException {
+  public void takeSnapshotForSpecificSlots(List<Integer> requiredSlots, boolean needLeader)
+      throws IOException {
     try {
       logger.info("{}: Taking snapshots, flushing IoTDB", getName());
       // record current commit index and prevent further logs from being applied, so the
@@ -93,7 +95,7 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
       // wait until all logs before BlockAppliedCommitIndex are applied
       super.takeSnapshot();
       // flush data to disk so that the disk files will represent a complete state
-      syncFlushAllProcessor(requiredSlots);
+      syncFlushAllProcessor(requiredSlots, needLeader);
       logger.info("{}: Taking snapshots, IoTDB is flushed", getName());
       // TODO-cluster https://issues.apache.org/jira/browse/IOTDB-820
       synchronized (this) {
@@ -214,14 +216,5 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
       }
     }
     return true;
-  }
-
-  @Override
-  public long append(Log entry) {
-    long lastLogIndex = super.append(entry);
-    if (lastLogIndex != -1 && (entry instanceof AddNodeLog || entry instanceof RemoveNodeLog)) {
-      logApplier.apply(entry);
-    }
-    return lastLogIndex;
   }
 }

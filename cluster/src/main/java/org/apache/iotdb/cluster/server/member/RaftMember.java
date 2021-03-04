@@ -61,7 +61,9 @@ import org.apache.iotdb.cluster.log.LogDispatcher;
 import org.apache.iotdb.cluster.log.LogDispatcher.SendLogRequest;
 import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.log.catchup.CatchUpTask;
+import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
+import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
@@ -74,13 +76,13 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.server.NodeCharacter;
-import org.apache.iotdb.cluster.server.monitor.Peer;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
-import org.apache.iotdb.cluster.server.monitor.Timer;
-import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendNodeEntryHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
+import org.apache.iotdb.cluster.server.monitor.Peer;
+import org.apache.iotdb.cluster.server.monitor.Timer;
+import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.cluster.utils.PlanSerializer;
@@ -388,8 +390,8 @@ public abstract class RaftMember {
         // a leader with a term lower than this node is invalid, send it the local term to inform
         // it to resign
         response.setTerm(thisTerm);
-        if (logger.isTraceEnabled()) {
-          logger.trace("{} received a heartbeat from a stale leader {}", name, request.getLeader());
+        if (logger.isDebugEnabled()) {
+          logger.debug("{} received a heartbeat from a stale leader {}", name, request.getLeader());
         }
       } else {
         // try updating local term
@@ -406,11 +408,13 @@ public abstract class RaftMember {
         response.setTerm(Response.RESPONSE_AGREE);
         // tell the leader who I am in case of catch-up
         response.setFollower(thisNode);
+        // tell the leader the local log progress so it may decide whether to perform a catch up
+        response.setLastLogIndex(logManager.getLastLogIndex());
+        response.setLastLogTerm(logManager.getLastLogTerm());
 
-        synchronized (logManager) {
-          // tell the leader the local log progress so it may decide whether to perform a catch up
-          response.setLastLogIndex(logManager.getLastLogIndex());
-          response.setLastLogTerm(logManager.getLastLogTerm());
+        if (logger.isDebugEnabled()) {
+          logger.debug("{}: log commit log index = {}, max have applied commit index = {}", name,
+              logManager.getCommitLogIndex(), logManager.getMaxHaveAppliedCommitIndex());
         }
 
         if (logManager.getCommitLogIndex() < request.getCommitLogIndex()) {
@@ -433,8 +437,8 @@ public abstract class RaftMember {
                   logManager.getLastLogIndex(), logManager.getLastLogTerm());
         }
 
-        if (logger.isTraceEnabled()) {
-          logger.trace("{} received heartbeat from a valid leader {}", name, request.getLeader());
+        if (logger.isDebugEnabled()) {
+          logger.debug("{} received heartbeat from a valid leader {}", name, request.getLeader());
         }
       }
       return response;
@@ -1537,7 +1541,7 @@ public abstract class RaftMember {
       long startTime = Timer.Statistic.RAFT_SENDER_SEND_LOG_TO_FOLLOWERS.getOperationStartTime();
       logger.debug("{}: Send log {} to other nodes, retry times: {}", name, log, retryTime);
       if (character != NodeCharacter.LEADER) {
-        logger.debug("Has lose leadership, so need not to send log");
+        logger.debug("{}: Has lose leadership, so need not to send log", name);
         return false;
       }
       AppendLogResult result = sendLogToFollowers(log);
@@ -1750,7 +1754,7 @@ public abstract class RaftMember {
    * @return Response.RESPONSE_AGREE when the log is successfully appended or Response
    * .RESPONSE_LOG_MISMATCH if the previous log of "log" is not found.
    */
-  private long appendEntry(long prevLogIndex, long prevLogTerm, long leaderCommit, Log log) {
+  protected long appendEntry(long prevLogIndex, long prevLogTerm, long leaderCommit, Log log) {
     long resp = checkPrevLogIndex(prevLogIndex);
     if (resp != Response.RESPONSE_AGREE) {
       return resp;

@@ -98,8 +98,6 @@ public interface PartitionTable {
    */
   boolean deserialize(ByteBuffer buffer);
 
-  boolean checkChangeMembershipValidity(long targetLogIndex);
-
   List<Node> getAllNodes();
 
   List<PartitionGroup> getGlobalGroups();

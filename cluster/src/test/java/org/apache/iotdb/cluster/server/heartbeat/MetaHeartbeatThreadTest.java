@@ -108,11 +108,6 @@ public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
     }
 
     @Override
-    public boolean checkChangeMembershipValidity(long targetLogIndex) {
-      return true;
-    }
-
-    @Override
     public List<Node> getAllNodes() {
       return null;
     }

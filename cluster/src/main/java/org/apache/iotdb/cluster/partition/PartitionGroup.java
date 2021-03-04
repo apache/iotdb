@@ -99,9 +99,4 @@ public class PartitionGroup extends ArrayList<Node> {
   public int getId() {
     return id;
   }
-
-//  @Override
-//  public String toString() {
-//    return String.format("PartitionGroup{id=%d, header=%s}", id, get(0));
-//  }
 }

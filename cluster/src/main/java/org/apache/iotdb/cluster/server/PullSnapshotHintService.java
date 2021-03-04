@@ -72,7 +72,8 @@ public class PullSnapshotHintService {
 
   public void registerHint(PullSnapshotTaskDescriptor descriptor) {
     PullSnapshotHint hint = new PullSnapshotHint();
-    hint.receivers = new PartitionGroup(descriptor.getPreviousHolders());
+    hint.partitionGroup = descriptor.getPreviousHolders();
+    hint.receivers = new PartitionGroup(hint.partitionGroup);
     hint.slots = descriptor.getSlots();
     hints.add(hint);
   }
@@ -86,7 +87,7 @@ public class PullSnapshotHintService {
           if (logger.isDebugEnabled()) {
             logger.debug(
                 "{}: start to send hint to target group {}, receiver {}, slot is {} and other {}",
-                member.getName(), hint.receivers, receiver, hint.slots.get(0),
+                member.getName(), hint.partitionGroup, receiver, hint.slots.get(0),
                 hint.slots.size() - 1);
           }
           boolean result = sendHint(receiver, hint);
@@ -139,10 +140,12 @@ public class PullSnapshotHintService {
      */
     private PartitionGroup receivers;
 
+    private PartitionGroup partitionGroup;
+
     private List<Integer> slots;
 
     public Node getHeader() {
-      return receivers.getHeader();
+      return partitionGroup.getHeader();
     }
 
     public int getRaftId() {

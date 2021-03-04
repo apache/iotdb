@@ -193,6 +193,8 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
    */
   @Override
   public void exile(ByteBuffer removeNodeLogBuffer) {
+    logger.info("{}: start to exile.", name);
+    removeNodeLogBuffer.get();
     RemoveNodeLog removeNodeLog = new RemoveNodeLog();
     removeNodeLog.deserialize(removeNodeLogBuffer);
     metaGroupMember.applyRemoveNode(removeNodeLog);

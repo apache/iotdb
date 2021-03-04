@@ -21,27 +21,36 @@ package org.apache.iotdb.cluster.utils.nodetool.function;
 import static org.apache.iotdb.cluster.utils.nodetool.Printer.msgPrintln;
 
 import io.airlift.airline.Command;
+import io.airlift.airline.Option;
 import java.util.List;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitorMBean;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-@Command(name = "ring", description = "Print information about the meta raft group")
-public class Ring extends NodeToolCmd {
+@Command(name = "header", description = "Print information about data group whose header is this node")
+public class Header extends NodeToolCmd {
+
+  @Option(title = "raft id", name = {"-id",
+      "--raftid"}, description = "Specify the raft id of data group whose header is this node, default value is 0")
+  private int id = 0;
 
   @Override
   public void execute(ClusterMonitorMBean proxy) {
-    List<Pair<Node, NodeCharacter>> allNodes = proxy.getMetaGroup();
-    if (allNodes == null) {
-      msgPrintln(BUILDING_CLUSTER_INFO);
-    } else {
+    try {
+      List<Pair<Node, NodeCharacter>> allNodes = proxy.getDataGroup(id);
+      if (allNodes == null) {
+        msgPrintln(BUILDING_CLUSTER_INFO);
+        return;
+      }
       msgPrintln(String.format("%-20s  %30s", "Node Identifier", "Node"));
       for (Pair<Node, NodeCharacter> pair : allNodes) {
         Node node = pair.left;
         msgPrintln(String
             .format("%-20d->%30s", node.nodeIdentifier, nodeCharacterToString(node, pair.right)));
       }
+    } catch (Exception e) {
+      msgPrintln(e.getMessage());
     }
   }
 }

@@ -439,10 +439,13 @@ public class MetaGroupMember extends RaftMember {
    */
   public void applyAddNode(AddNodeLog addNodeLog) {
 
+    long startTime = System.currentTimeMillis();
     Node newNode = addNodeLog.getNewNode();
     synchronized (allNodes) {
-      if (partitionTable.checkChangeMembershipValidity(addNodeLog.getPartitionTable().getLong())) {
-        logger.debug("Adding a new node {} into {}", newNode, allNodes);
+      if (partitionTable.deserialize(addNodeLog.getPartitionTable())) {
+        if (logger.isDebugEnabled()) {
+          logger.debug("{}: adding a new node {} into {}", name, newNode, allNodes);
+        }
 
         if (!allNodes.contains(newNode)) {
           registerNodeIdentifier(newNode, newNode.getNodeIdentifier());
@@ -455,8 +458,13 @@ public class MetaGroupMember extends RaftMember {
         // update local data members
         NodeAdditionResult result = partitionTable.getNodeAdditionResult(newNode);
         getDataClusterServer().addNode(newNode, result);
+        if (logger.isDebugEnabled()) {
+          logger.debug("{}: success to add a new node {} into {}", name, newNode, allNodes);
+        }
       }
     }
+    logger.info("{}: execute adding node {} cost {} ms", name, newNode,
+        (System.currentTimeMillis()) - startTime);
   }
 
   /**
@@ -920,13 +928,13 @@ public class MetaGroupMember extends RaftMember {
       return true;
     }
 
+    AddNodeLog addNodeLog = new AddNodeLog();
     // node adding is serialized to reduce potential concurrency problem
     synchronized (logManager) {
       // update partition table
       partitionTable.addNode(newNode);
       ((SlotPartitionTable) partitionTable).setLastMetaLogIndex(logManager.getLastLogIndex() + 1);
 
-      AddNodeLog addNodeLog = new AddNodeLog();
       addNodeLog.setPartitionTable(partitionTable.serialize());
       addNodeLog.setCurrLogTerm(getTerm().get());
       addNodeLog.setCurrLogIndex(logManager.getLastLogIndex() + 1);
@@ -935,32 +943,32 @@ public class MetaGroupMember extends RaftMember {
       addNodeLog.setNewNode(newNode);
 
       logManager.append(addNodeLog);
+    }
 
-      int retryTime = 1;
-      while (true) {
-        logger
-            .info("Send the join request of {} to other nodes, retry time: {}", newNode, retryTime);
-        AppendLogResult result = sendLogToFollowers(addNodeLog);
-        switch (result) {
-          case OK:
-            sendLogToAllDataGroups(addNodeLog);
-            commitLog(addNodeLog);
-            logger.info("Join request of {} is accepted", newNode);
+    int retryTime = 0;
+    while (true) {
+      logger
+          .info("{}: Send the join request of {} to other nodes, retry time: {}", name, newNode, retryTime);
+      AppendLogResult result = sendLogToFollowers(addNodeLog);
+      switch (result) {
+        case OK:
+          sendLogToAllDataGroups(addNodeLog);
+          commitLog(addNodeLog);
+          logger.info("{}: Join request of {} is accepted", name, newNode);
 
-            synchronized (partitionTable) {
-              response.setPartitionTableBytes(partitionTable.serialize());
-            }
-            response.setRespNum((int) Response.RESPONSE_AGREE);
-            logger.info("Sending join response of {}", newNode);
-            return true;
-          case TIME_OUT:
-            logger.info("Join request of {} timed out", newNode);
-            retryTime++;
-            continue;
-          case LEADERSHIP_STALE:
-          default:
-            return false;
-        }
+          synchronized (partitionTable) {
+            response.setPartitionTableBytes(partitionTable.serialize());
+          }
+          response.setRespNum((int) Response.RESPONSE_AGREE);
+          logger.info("{}: Sending join response of {}", name, newNode);
+          return true;
+        case TIME_OUT:
+          logger.info("{}: Join request of {} timed out", name, newNode);
+          retryTime++;
+          break;
+        case LEADERSHIP_STALE:
+        default:
+          return false;
       }
     }
   }
@@ -978,25 +986,28 @@ public class MetaGroupMember extends RaftMember {
     log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
 
     synchronized (logManager) {
-
       logManager.append(log);
+    }
 
-      while (true) {
-        AppendLogResult result = sendLogToFollowers(log);
-        switch (result) {
-          case OK:
-            try {
-              commitLog(log);
-            } catch (LogExecutionException e) {
-              logger.error("Fail to execute empty content log", e);
-            }
-            return;
-          case TIME_OUT:
-            continue;
-          case LEADERSHIP_STALE:
-          default:
-            return;
-        }
+    int retryTime = 0;
+    while (true) {
+      logger.info("{} Send empty content log to other nodes, retry time: {}", name, retryTime);
+      AppendLogResult result = sendLogToFollowers(log);
+      switch (result) {
+        case OK:
+          try {
+            commitLog(log);
+          } catch (LogExecutionException e) {
+            logger.error("{}: Fail to execute empty content log", name, e);
+          }
+          return;
+        case TIME_OUT:
+          logger.info("{}: add empty content log timed out", name);
+          retryTime++;
+          break;
+        case LEADERSHIP_STALE:
+        default:
+          return;
       }
     }
   }
@@ -1969,17 +1980,18 @@ public class MetaGroupMember extends RaftMember {
       return Response.RESPONSE_REJECT;
     }
 
-    if (partitionTable.getAllNodes().contains(target) && partitionTable.getAllNodes().size() != allNodes.size()) {
+    if (partitionTable.getAllNodes().contains(target)
+        && partitionTable.getAllNodes().size() != allNodes.size()) {
       return Response.RESPONSE_CHANGE_MEMBERSHIP_CONFLICT;
     }
 
+    RemoveNodeLog removeNodeLog = new RemoveNodeLog();
     // node removal must be serialized to reduce potential concurrency problem
     synchronized (logManager) {
       // update partition table
       partitionTable.removeNode(target);
       ((SlotPartitionTable) partitionTable).setLastMetaLogIndex(logManager.getLastLogIndex() + 1);
 
-      RemoveNodeLog removeNodeLog = new RemoveNodeLog();
       removeNodeLog.setPartitionTable(partitionTable.serialize());
       removeNodeLog.setCurrLogTerm(getTerm().get());
       removeNodeLog.setCurrLogIndex(logManager.getLastLogIndex() + 1);
@@ -1988,26 +2000,27 @@ public class MetaGroupMember extends RaftMember {
       removeNodeLog.setRemovedNode(target);
 
       logManager.append(removeNodeLog);
+    }
 
-      int retryTime = 1;
-      while (true) {
-        logger.info("Send the node removal request of {} to other nodes, retry time: {}", target,
-            retryTime);
-        AppendLogResult result = sendLogToFollowers(removeNodeLog);
-        switch (result) {
-          case OK:
-            sendLogToAllDataGroups(removeNodeLog);
-            commitLog(removeNodeLog);
-            logger.info("Removal request of {} is accepted", target);
-            return Response.RESPONSE_AGREE;
-          case TIME_OUT:
-            logger.info("Removal request of {} timed out", target);
-            break;
-          // retry
-          case LEADERSHIP_STALE:
-          default:
-            return Response.RESPONSE_NULL;
-        }
+    int retryTime = 0;
+    while (true) {
+      logger.info("{}: Send the node removal request of {} to other nodes, retry time: {}", name, target,
+          retryTime);
+      AppendLogResult result = sendLogToFollowers(removeNodeLog);
+      switch (result) {
+        case OK:
+          sendLogToAllDataGroups(removeNodeLog);
+          commitLog(removeNodeLog);
+          logger.info("{}: Removal request of {} is accepted", name, target);
+          return Response.RESPONSE_AGREE;
+        case TIME_OUT:
+          logger.info("{}: Removal request of {} timed out", name, target);
+          retryTime++;
+          break;
+        // retry
+        case LEADERSHIP_STALE:
+        default:
+          return Response.RESPONSE_NULL;
       }
     }
   }
@@ -2040,10 +2053,13 @@ public class MetaGroupMember extends RaftMember {
    */
   public void applyRemoveNode(RemoveNodeLog removeNodeLog) {
 
+    long startTime = System.currentTimeMillis();
     Node oldNode = removeNodeLog.getRemovedNode();
     synchronized (allNodes) {
-      if (partitionTable.checkChangeMembershipValidity(removeNodeLog.getPartitionTable().getLong())) {
-        logger.debug("Removing a node {} from {}", oldNode, allNodes);
+      if (partitionTable.deserialize(removeNodeLog.getPartitionTable())) {
+        if (logger.isDebugEnabled()) {
+          logger.debug("{}: Removing a node {} from {}", name, oldNode, allNodes);
+        }
 
         if (allNodes.contains(oldNode)) {
           allNodes.remove(oldNode);
@@ -2071,12 +2087,20 @@ public class MetaGroupMember extends RaftMember {
           if (clientServer != null) {
             clientServer.stop();
           }
+          logger.info("{} has been removed from the cluster", name);
         } else if (thisNode.equals(leader.get())) {
           // as the old node is removed, it cannot know this by heartbeat or log, so it should be
           // directly kicked out of the cluster
           exileNode(removeNodeLog);
         }
+
+        if (logger.isDebugEnabled()) {
+          logger.debug("{}: Success to remove a node {} from {}", name, oldNode, allNodes);
+        }
       }
+
+      logger.info("{}: execute removing node {} cost {} ms", name, oldNode,
+          (System.currentTimeMillis()) - startTime);
     }
   }
 

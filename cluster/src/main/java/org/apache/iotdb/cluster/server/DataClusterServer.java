@@ -528,7 +528,6 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
       return;
     }
 
-    logger.debug("Pre add a new node {} to cluster", log.getNewNode());
     targetDataGroupMember.preAddNode(log.getNewNode());
   }
 
@@ -559,6 +558,9 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
         }
       }
 
+      if (logger.isDebugEnabled()) {
+        logger.debug("Data cluster server: start to handle new groups when adding new node {}", node);
+      }
       for (PartitionGroup newGroup: result.getNewGroupList()) {
         if (newGroup.contains(thisNode)) {
           logger.info("Adding this node into a new group {}", newGroup);
@@ -642,7 +644,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
       return;
     }
 
-    logger.debug("Removing a node {} from {}", log.getRemovedNode(), targetDataGroupMember.getAllNodes());
+    logger.debug("Pre removing a node {} from {}", log.getRemovedNode(), targetDataGroupMember.getAllNodes());
     targetDataGroupMember.preRemoveNode(log.getRemovedNode());
   }
 
@@ -670,14 +672,19 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
         }
       }
 
+      if (logger.isDebugEnabled()) {
+        logger.debug("Data cluster server: start to handle new groups when removing node {}", node);
+      }
       // if the removed group contains the local node, the local node should join a new group to
       // preserve the replication number
       for (PartitionGroup group : partitionTable.getLocalGroups()) {
-        if (!headerGroupMap.containsKey(new RaftNode(group.getHeader(), group.getId()))) {
+        RaftNode header = new RaftNode(group.getHeader(), group.getId());
+        if (!headerGroupMap.containsKey(header)) {
           logger.info("{} should join a new group {}", thisNode, group);
           DataGroupMember dataGroupMember = dataMemberFactory.create(group, thisNode);
           addDataGroupMember(dataGroupMember);
         }
+        headerGroupMap.get(header).pullSlots(removalResult);
       }
     }
   }
@@ -725,6 +732,10 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
     for (DataGroupMember member : headerGroupMap.values()) {
       member.closeLogManager();
     }
+  }
+
+  public Map<RaftNode, DataGroupMember> getHeaderGroupMap() {
+    return headerGroupMap;
   }
 
   @Override

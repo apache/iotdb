@@ -202,7 +202,7 @@ public class MetaAsyncService extends BaseAsyncService implements TSMetaService.
    */
   @Override
   public void exile(ByteBuffer removeNodeLogBuffer, AsyncMethodCallback<Void> resultHandler) {
-    logger.info("Start to exile.");
+    logger.info("{}: start to exile.", name);
     removeNodeLogBuffer.get();
     RemoveNodeLog removeNodeLog = new RemoveNodeLog();
     removeNodeLog.deserialize(removeNodeLogBuffer);

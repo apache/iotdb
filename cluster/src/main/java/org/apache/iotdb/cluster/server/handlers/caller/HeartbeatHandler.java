@@ -78,9 +78,11 @@ public class HeartbeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
     long lastLogTerm = resp.getLastLogTerm();
     long localLastLogIdx = localMember.getLogManager().getLastLogIndex();
     long localLastLogTerm = localMember.getLogManager().getLastLogTerm();
-    logger.trace("{}: Node {} is still alive, log index: {}/{}, log term: {}/{}",
-        memberName, follower, lastLogIdx
-        , localLastLogIdx, lastLogTerm, localLastLogTerm);
+    if (logger.isDebugEnabled()) {
+      logger.debug("{}: Node {} is still alive, log index: {}/{}, log term: {}/{}",
+          memberName, follower, lastLogIdx
+          , localLastLogIdx, lastLogTerm, localLastLogTerm);
+    }
 
     Peer peer = localMember.getPeerMap()
         .computeIfAbsent(follower, k -> new Peer(localMember.getLogManager().getLastLogIndex()));
@@ -94,12 +96,12 @@ public class HeartbeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
         peer.setMatchIndex(-1);
       }
 
-      // only start a catch up when the follower's lastLogIndex remains stall and unchanged for 5
+      // only start a catch up when the follower's lastLogIndex remains stall and unchanged for 3
       // heartbeats
       if (lastLogIdx == peer.getLastHeartBeatIndex()) {
         // the follower's lastLogIndex is unchanged, increase inconsistent counter
         int inconsistentNum = peer.incInconsistentHeartbeatNum();
-        if (inconsistentNum >= 5) {
+        if (inconsistentNum >= 3) {
           logger.info("{}: catching up node {}, index-term: {}-{}/{}-{}, peer match index {}",
               memberName, follower,
               lastLogIdx, lastLogTerm,

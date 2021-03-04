@@ -27,22 +27,14 @@ import java.util.Map.Entry;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitorMBean;
 
-@Command(name = "host", description = "Print partitions information which a specific host belongs to")
-public class Host extends NodeToolCmd {
-
-  @Option(title = "all nodes", name = {"-a", "--all"}, description = "Show all nodes partition info")
-  private boolean showAll = false;
+@Command(name = "slot", description = "Print slot information of all data groups")
+public class Slot extends NodeToolCmd {
 
   @Override
   public void execute(ClusterMonitorMBean proxy) {
-    Map<PartitionGroup, Integer> raftGroupMapSlotNum;
-    if (showAll) {
-      raftGroupMapSlotNum = proxy.getSlotNumOfAllNode();
-    } else {
-      raftGroupMapSlotNum = proxy.getSlotNumOfCurNode();
-    }
+    Map<PartitionGroup, Integer> raftGroupMapSlotNum = proxy.getSlotNumOfAllNode();
     if (raftGroupMapSlotNum == null) {
-      msgPrintln("The cluster is being created.");
+      msgPrintln(BUILDING_CLUSTER_INFO);
       return;
     }
     showInfo(raftGroupMapSlotNum);

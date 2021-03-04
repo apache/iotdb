@@ -70,7 +70,9 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
     this.dataGroupMember = dataGroupMember;
   }
 
-  public void takeSnapshotForSpecificSlots(List<Integer> requiredSlots) throws IOException {}
+  public void takeSnapshotForSpecificSlots(List<Integer> requiredSlots, boolean needLeader)
+      throws IOException {
+  }
 
   @Override
   public Snapshot getSnapshot(long minIndex) {

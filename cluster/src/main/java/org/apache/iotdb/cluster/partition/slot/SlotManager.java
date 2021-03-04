@@ -76,6 +76,7 @@ public class SlotManager {
    */
   public void waitSlot(int slotId) {
     SlotDescriptor slotDescriptor = idSlotMap.get(slotId);
+    long startTime = System.currentTimeMillis();
     while (true) {
       synchronized (slotDescriptor) {
         if (slotDescriptor.slotStatus == SlotStatus.PULLING
@@ -87,6 +88,10 @@ public class SlotManager {
             logger.error("Unexpected interruption when waiting for slot {}", slotId, e);
           }
         } else {
+          long cost = System.currentTimeMillis() - startTime;
+          if (cost > 1000) {
+            logger.info("Wait slot {} cost {}ms", slotId, cost);
+          }
           return;
         }
       }
@@ -324,7 +329,7 @@ public class SlotManager {
   }
 
   private static class SlotDescriptor {
-    private SlotStatus slotStatus;
+    private volatile SlotStatus slotStatus;
     private Node source;
     // in LOSING status, how many members in the new owner have pulled data
     private volatile int snapshotReceivedCount;

@@ -22,10 +22,12 @@ package org.apache.iotdb.cluster.utils.nodetool;
 import com.google.common.collect.Lists;
 import io.airlift.airline.Help;
 import java.util.List;
-import org.apache.iotdb.cluster.utils.nodetool.function.Host;
+import org.apache.iotdb.cluster.utils.nodetool.function.Header;
+import org.apache.iotdb.cluster.utils.nodetool.function.Slot;
 import org.apache.iotdb.cluster.utils.nodetool.function.LogView;
 import org.apache.iotdb.cluster.utils.nodetool.function.Partition;
 import org.apache.iotdb.cluster.utils.nodetool.function.Ring;
+import org.apache.iotdb.cluster.utils.nodetool.function.Migration;
 import org.apache.iotdb.cluster.utils.nodetool.function.Status;
 import org.apache.iotdb.db.utils.CommonUtils;
 
@@ -36,9 +38,11 @@ public class NodeTool {
         Help.class,
         Ring.class,
         Partition.class,
-        Host.class,
+        Slot.class,
         Status.class,
-        LogView.class
+        LogView.class,
+        Migration.class,
+        Header.class
     );
 
     int status = CommonUtils.runCli(commands, args, "nodetool", "Manage your IoTDB cluster");
