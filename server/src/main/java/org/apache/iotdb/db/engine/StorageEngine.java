@@ -32,6 +32,7 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.virtualSg.VirtualStorageGroupManager;
+import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.ShutdownException;
@@ -506,6 +507,7 @@ public class StorageEngine implements IService {
    * @param insertRowPlan physical plan of insertion
    */
   public void insert(InsertRowPlan insertRowPlan) throws StorageEngineException {
+    TriggerEngine.fireBeforeInsert(insertRowPlan);
 
     StorageGroupProcessor storageGroupProcessor = getProcessor(insertRowPlan.getDeviceId());
 
@@ -524,10 +526,14 @@ public class StorageEngine implements IService {
     } catch (WriteProcessException e) {
       throw new StorageEngineException(e);
     }
+
+    TriggerEngine.fireAfterInsert(insertRowPlan);
   }
 
   public void insert(InsertRowsOfOneDevicePlan insertRowsOfOneDevicePlan)
       throws StorageEngineException {
+    TriggerEngine.fireBeforeInsert(insertRowsOfOneDevicePlan);
+
     StorageGroupProcessor storageGroupProcessor =
         getProcessor(insertRowsOfOneDevicePlan.getDeviceId());
 
@@ -537,11 +543,15 @@ public class StorageEngine implements IService {
     } catch (WriteProcessException e) {
       throw new StorageEngineException(e);
     }
+
+    TriggerEngine.fireAfterInsert(insertRowsOfOneDevicePlan);
   }
 
   /** insert a InsertTabletPlan to a storage group */
   public void insertTablet(InsertTabletPlan insertTabletPlan)
       throws StorageEngineException, BatchProcessException {
+    TriggerEngine.fireBeforeInsert(insertTabletPlan);
+
     StorageGroupProcessor storageGroupProcessor;
     try {
       storageGroupProcessor = getProcessor(insertTabletPlan.getDeviceId());
@@ -563,6 +573,8 @@ public class StorageEngine implements IService {
         logger.error("failed to record status", e);
       }
     }
+
+    TriggerEngine.fireAfterInsert(insertTabletPlan);
   }
 
   private void updateMonitorStatistics(
