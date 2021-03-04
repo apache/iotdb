@@ -23,8 +23,10 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.TriggerManagementException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
@@ -84,6 +86,7 @@ public class TriggerRegistrationService implements IService {
 
   public synchronized void register(CreateTriggerPlan plan) throws TriggerManagementException {
     checkIfRegistered(plan);
+    updateClassLoader();
     doRegister(plan);
     tryAppendRegistrationLog(plan);
   }
@@ -110,19 +113,53 @@ public class TriggerRegistrationService implements IService {
     throw new TriggerManagementException(errorMessage);
   }
 
-  private void doRegister(CreateTriggerPlan plan) {
-    // TODO:
-    // 1. update class loader and related classes
-    // 2. try to construct instance
-    // 3. create and put the trigger executor to MTree
-    // 4. put the registration information into registrationInformation
+  private void updateClassLoader() throws TriggerManagementException {
+    TriggerClassLoader newClassLoader;
+
+    // 1. construct a new trigger class loader
+    try {
+      newClassLoader = new TriggerClassLoader();
+    } catch (IOException e) {
+      throw new TriggerManagementException("Failed to construct a new trigger class loader.", e);
+    }
+
+    // 2. update instances of registered triggers using the new trigger class loader
+    Collection<TriggerExecutor> executorCollection = executors.values();
+    try {
+      for (TriggerExecutor executor : executorCollection) {
+        executor.prepareTriggerUpdate(newClassLoader);
+      }
+    } catch (Exception e) {
+      for (TriggerExecutor executor : executorCollection) {
+        executor.abortTriggerUpdate();
+      }
+      throw new TriggerManagementException("Failed to update trigger instances.", e);
+    }
+    for (TriggerExecutor executor : executorCollection) {
+      executor.commitTriggerUpdate(newClassLoader);
+    }
+
+    // 3. close and replace old trigger class loader
+    try {
+      classLoader.close();
+    } catch (IOException e) {
+      LOGGER.warn("Failed to close old trigger classloader.", e);
+    }
+    classLoader = newClassLoader;
+  }
+
+  private void doRegister(CreateTriggerPlan plan) throws TriggerManagementException {
+    // 0. try to get the MNode
+    MNode metaNode;
+    // 1. try to construct new trigger and its executor // todo: use plan.isStopped();
+    // 2. put the trigger executor to MTree
   }
 
   private void tryAppendRegistrationLog(CreateTriggerPlan plan) throws TriggerManagementException {
     try {
       logWriter.write(plan);
     } catch (IOException e) {
-      executors.remove(plan.getTriggerName());
+      executors.remove(plan.getTriggerName()); // todo: check. is it enough?
       String errorMessage =
           String.format(
               "Failed to append trigger management operation log when registering trigger %s(%s), because %s",
@@ -154,6 +191,7 @@ public class TriggerRegistrationService implements IService {
   private void doDeregister(DropTriggerPlan plan, TriggerExecutor executor)
       throws TriggerManagementException {
     try {
+      // todo: stop the trigger
       // TODO: remove the trigger executor from MTree
     } catch (Exception e) {
       executors.put(plan.getTriggerName(), executor);
@@ -171,7 +209,7 @@ public class TriggerRegistrationService implements IService {
     try {
       logWriter.write(plan);
     } catch (IOException e) {
-      executors.put(plan.getTriggerName(), executor);
+      executors.put(plan.getTriggerName(), executor); // todo: check. is it right or enough?
       String errorMessage =
           String.format(
               "Failed to append trigger management operation log when deregistering trigger %s, because %s",
@@ -181,10 +219,11 @@ public class TriggerRegistrationService implements IService {
     }
   }
 
-  public void activate(StartTriggerPlan plan) throws TriggerManagementException {
-    TriggerRegistrationInformation information = getRegistrationInformation(plan.getTriggerName());
+  public void activate(StartTriggerPlan plan)
+      throws TriggerManagementException, TriggerExecutionException {
+    TriggerExecutor executor = executors.get(plan.getTriggerName());
 
-    if (!information.isStopped()) {
+    if (!executor.getRegistrationInformation().isStopped()) {
       String errorMessage =
           String.format("Trigger %s has already been started.", plan.getTriggerName());
       LOGGER.warn(errorMessage);
@@ -202,13 +241,20 @@ public class TriggerRegistrationService implements IService {
       throw new TriggerManagementException(errorMessage, e);
     }
 
-    information.markAsStarted();
+    executor.onStart(); // todo: check if failed? tlog?
   }
 
-  public void inactivate(StopTriggerPlan plan) throws TriggerManagementException {
-    TriggerRegistrationInformation information = getRegistrationInformation(plan.getTriggerName());
+  public void inactivate(StopTriggerPlan plan)
+      throws TriggerManagementException, TriggerExecutionException {
+    TriggerExecutor executor = executors.get(plan.getTriggerName());
 
-    if (information.isStopped()) {
+    if (executor == null) {
+      String errorMessage = String.format("Trigger %s does not exist.", plan.getTriggerName());
+      LOGGER.warn(errorMessage);
+      throw new TriggerManagementException(errorMessage);
+    }
+
+    if (executor.getRegistrationInformation().isStopped()) {
       String errorMessage =
           String.format("Trigger %s has already been stopped.", plan.getTriggerName());
       LOGGER.warn(errorMessage);
@@ -226,18 +272,7 @@ public class TriggerRegistrationService implements IService {
       throw new TriggerManagementException(errorMessage, e);
     }
 
-    information.markAsStopped();
-  }
-
-  private TriggerRegistrationInformation getRegistrationInformation(String triggerName)
-      throws TriggerManagementException {
-    TriggerExecutor executor = executors.get(triggerName);
-    if (executor == null) {
-      String errorMessage = String.format("Trigger %s does not exist.", triggerName);
-      LOGGER.warn(errorMessage);
-      throw new TriggerManagementException(errorMessage);
-    }
-    return executor.getRegistrationInformation();
+    executor.onStop(); // todo: check if failed? tlog?
   }
 
   public QueryDataSet show() {
@@ -262,8 +297,9 @@ public class TriggerRegistrationService implements IService {
   }
 
   private void putTriggerRecords(ListDataSet dataSet) {
-    for (TriggerExecutor executor : getExecutors()) {
+    for (TriggerExecutor executor : executors.values().toArray(new TriggerExecutor[0])) {
       TriggerRegistrationInformation information = executor.getRegistrationInformation();
+
       RowRecord rowRecord = new RowRecord(0); // ignore timestamp
       rowRecord.addField(Binary.valueOf(information.getTriggerName()), TSDataType.TEXT);
       rowRecord.addField(
@@ -278,10 +314,6 @@ public class TriggerRegistrationService implements IService {
       rowRecord.addField(Binary.valueOf(information.getAttributes().toString()), TSDataType.TEXT);
       dataSet.putRecord(rowRecord);
     }
-  }
-
-  private TriggerExecutor[] getExecutors() {
-    return executors.values().toArray(new TriggerExecutor[0]);
   }
 
   @Override
@@ -324,7 +356,7 @@ public class TriggerRegistrationService implements IService {
 
   private void doRecoveryFromLogFile(File logFile) throws IOException, TriggerManagementException {
     for (CreateTriggerPlan createTriggerPlan : recoverCreateTriggerPlans(logFile)) {
-      doRegister(createTriggerPlan); // trigger status is also be recovered
+      doRegister(createTriggerPlan); // trigger status is also be recovered, todo: check
     }
   }
 
