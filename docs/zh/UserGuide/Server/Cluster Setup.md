@@ -19,15 +19,15 @@
 
 -->
 
-## 集群搭建
+# 集群搭建
 __集群模式目前是测试版！请谨慎在生产环境中使用。__
 
 安装环境请参考[安装环境](../Get%20Started/QuickStart.md)
 
-### 前提条件
+## 前提条件
 如果您在使用Windows系统，请安装MinGW，WSL或者git bash。
 
-### 集群环境搭建
+## 集群环境搭建
 您可以搭建伪分布式模式或是分布式模式的集群，伪分布式模式和分布式模式的主要区别是配置文件中`seed_nodes`的不同，配置项含义请参考[配置项](#配置项)。
 启动其中一个节点的服务，需要执行如下命令：
 
@@ -47,7 +47,7 @@ or
 目前支持的启动覆盖原有配置的配置项有：
 `internal_meta_port、internal_data_port、cluster_rpc_port、seed_nodes`。当配置文件和配置项都被指定的时候，指定配置项的配置会覆盖配置文件中的配置。
 
-### 3节点2副本伪分布式搭建示例
+## 3节点2副本伪分布式搭建示例
 ```bash
 # 第一步 (注意以下路径在 Windows MinGW 中并不适用)
 > mvn clean package -pl cluster -am -Dmaven.test.skip=true
@@ -72,7 +72,7 @@ or
 > nohup cluster\target\cluster-0.11.0-SNAPSHOT2\sbin\start-node.bat  -internal_meta_port 9007 -internal_data_port 40014 -cluster_rpc_port 55562
 ```
 
-### 被覆盖的单机版选项
+## 被覆盖的单机版选项
 
 iotdb-engines.properties配置文件中的部分内容会不再生效：
 
@@ -83,7 +83,7 @@ iotdb-engines.properties配置文件中的部分内容会不再生效：
 * `is_sync_enable` 不再生效，并被视为 `false`.
 
 
-### 配置项
+## 配置项
 
 为方便IoTDB Server的配置与管理，IoTDB Server为用户提供三种配置项，使得您可以在启动服务器或服务器运行时对其进行配置。
 
@@ -245,7 +245,7 @@ iotdb-engines.properties配置文件中的部分内容会不再生效：
 |默认值|true|
 |改后生效方式|重启服务器生效|
 
-### 开启GC日志
+## 开启GC日志
 GC日志默认是关闭的。为了性能调优，用户可能会需要收集GC信息。
 若要打开GC日志，则需要在启动IoTDB Server的时候加上`printgc`参数：
 
