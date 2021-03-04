@@ -147,7 +147,8 @@ public class HeartbeatThread implements Runnable {
   @SuppressWarnings("java:S2445")
   private void sendHeartbeats(Collection<Node> nodes) {
     if (logger.isDebugEnabled()) {
-      logger.debug("{}: Send heartbeat to {} followers", memberName, nodes.size() - 1);
+      logger.debug("{}: Send heartbeat to {} followers, commit log index = {}", memberName,
+          nodes.size() - 1, request.getCommitLogIndex());
     }
     synchronized (nodes) {
       // avoid concurrent modification

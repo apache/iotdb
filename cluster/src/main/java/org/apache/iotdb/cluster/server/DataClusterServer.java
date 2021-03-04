@@ -554,8 +554,8 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
         boolean shouldLeave = dataGroupMember.addNode(node, result);
         if (shouldLeave) {
           logger.info("This node does not belong to {} any more", dataGroupMember.getAllNodes());
+          removeMember(entry.getKey(), entry.getValue(), false);
           entryIterator.remove();
-          removeMember(entry.getKey(), entry.getValue());
         }
       }
 
@@ -576,11 +576,16 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
    * @param header
    * @param dataGroupMember
    */
-  private void removeMember(RaftNode header, DataGroupMember dataGroupMember) {
-    dataGroupMember.getStopStatus().setSyncSuccess(dataGroupMember.syncLeader());
+  private void removeMember(RaftNode header, DataGroupMember dataGroupMember, boolean waitFollowersToSync) {
+    if (dataGroupMember.syncLeader()) {
+      dataGroupMember.setHasSyncedLeaderBeforeRemoved(true);
+    }
     dataGroupMember.setReadOnly();
-    dataGroupMember.waitFollowersToSync();
-    dataGroupMember.stop();
+    if (waitFollowersToSync && dataGroupMember.getCharacter() == NodeCharacter.LEADER) {
+      dataGroupMember.getAppendLogThreadPool().submit(() -> dataGroupMember.waitFollowersToSync());
+    } else {
+      dataGroupMember.stop();
+    }
     stoppedMemberManager.put(header, dataGroupMember);
     logger.info("Data group member has removed, header {}, group is {}.", header,
         dataGroupMember.getAllNodes());
@@ -658,7 +663,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
         DataGroupMember dataGroupMember = entry.getValue();
         if (dataGroupMember.getHeader().equals(node) || node.equals(thisNode)) {
           entryIterator.remove();
-          removeMember(entry.getKey(), dataGroupMember);
+          removeMember(entry.getKey(), dataGroupMember, dataGroupMember.getHeader().equals(node));
         } else {
           // the group should be updated and pull new slots from the removed node
           dataGroupMember.removeNode(node, removalResult);

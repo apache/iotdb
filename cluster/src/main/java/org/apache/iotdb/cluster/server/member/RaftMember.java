@@ -85,7 +85,6 @@ import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.cluster.utils.PlanSerializer;
 import org.apache.iotdb.cluster.utils.StatusUtils;
-import org.apache.iotdb.cluster.utils.nodetool.function.Status;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.IoTDBException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -233,6 +232,7 @@ public abstract class RaftMember {
    * a thread pool that is used to do commit log tasks asynchronous in heartbeat thread
    */
   private ExecutorService commitLogPool;
+
   /**
    * logDispatcher buff the logs orderly according to their log indexes and send them sequentially,
    * which avoids the followers receiving out-of-order logs, forcing them to wait for previous
@@ -240,7 +240,7 @@ public abstract class RaftMember {
    */
   private LogDispatcher logDispatcher;
 
-  protected StopStatus stopStatus;
+  private boolean hasSyncedLeaderBeforeRemoved = false;
 
   protected RaftMember() {
   }
@@ -253,7 +253,6 @@ public abstract class RaftMember {
     this.asyncHeartbeatClientPool = asyncHeartbeatPool;
     this.syncHeartbeatClientPool = syncHeartbeatPool;
     this.asyncSendLogClientPool = asyncClientPool;
-    this.stopStatus = new StopStatus();
   }
 
   protected RaftMember(String name, AsyncClientPool asyncPool, SyncClientPool syncPool,
@@ -265,7 +264,6 @@ public abstract class RaftMember {
     this.asyncHeartbeatClientPool = asyncHeartbeatPool;
     this.syncHeartbeatClientPool = syncHeartbeatPool;
     this.asyncSendLogClientPool = asyncSendLogClientPool;
-    this.stopStatus = new StopStatus();
   }
 
   /**
@@ -364,7 +362,6 @@ public abstract class RaftMember {
     catchUpService = null;
     heartBeatService = null;
     appendLogThreadPool = null;
-    stopStatus.setStop(true);
     logger.info("Member {} stopped", name);
   }
 
@@ -783,7 +780,7 @@ public abstract class RaftMember {
    * Wait until the leader of this node becomes known or time out.
    */
   public void waitLeader() {
-    if (stopStatus.isStop()) {
+    if (hasSyncedLeaderBeforeRemoved) {
       return;
     }
     long startTime = System.currentTimeMillis();
@@ -1023,7 +1020,7 @@ public abstract class RaftMember {
     }
     synchronized (commitIdResult) {
       client.requestCommitIndex(getHeader(), getRaftGroupId(), new GenericHandler<>(leader.get(), commitIdResult));
-      commitIdResult.wait(RaftServer.getSyncLeaderMaxWaitMs());
+      commitIdResult.wait(RaftServer.getReadOperationTimeoutMS());
     }
     return commitIdResult.get();
   }
@@ -1576,8 +1573,6 @@ public abstract class RaftMember {
    * Send the given log to all the followers and decide the result by how many followers return a
    * success.
    *
-   * @param requiredQuorum the number of votes needed to make the log valid, when requiredQuorum <=
-   *                       0, half of the cluster size will be used.
    * @return an AppendLogResult
    */
   protected AppendLogResult sendLogToFollowers(Log log) {
@@ -1899,31 +1894,11 @@ public abstract class RaftMember {
     OK, TIME_OUT, LEADERSHIP_STALE
   }
 
-  public class StopStatus {
-
-    boolean stop;
-
-    boolean syncSuccess;
-
-    public boolean isStop() {
-      return stop;
-    }
-
-    public void setStop(boolean stop) {
-      this.stop = stop;
-    }
-
-    public boolean isSyncSuccess() {
-      return syncSuccess;
-    }
-
-    public void setSyncSuccess(boolean syncSuccess) {
-      this.syncSuccess = syncSuccess;
-    }
+  public boolean isHasSyncedLeaderBeforeRemoved() {
+    return hasSyncedLeaderBeforeRemoved;
   }
 
-  public StopStatus getStopStatus() {
-    return stopStatus;
+  public void setHasSyncedLeaderBeforeRemoved(boolean hasSyncedLeaderAfterRemoved) {
+    this.hasSyncedLeaderBeforeRemoved = hasSyncedLeaderAfterRemoved;
   }
-
 }

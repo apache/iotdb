@@ -83,6 +83,12 @@ public class PullSnapshotHintService {
       for (Iterator<Node> iter = hint.receivers.iterator(); iter.hasNext(); ) {
         Node receiver = iter.next();
         try {
+          if (logger.isDebugEnabled()) {
+            logger.debug(
+                "{}: start to send hint to target group {}, receiver {}, slot is {} and other {}",
+                member.getName(), hint.receivers, receiver, hint.slots.get(0),
+                hint.slots.size() - 1);
+          }
           boolean result = sendHint(receiver, hint);
           if (result) {
             iter.remove();

@@ -307,15 +307,16 @@ public class DataGroupMember extends RaftMember {
     Set<Integer> lostSlots = ((SlotNodeAdditionResult) result).getLostSlots()
         .getOrDefault(new RaftNode(getHeader(), getRaftGroupId()), Collections.emptySet());
     for (Integer lostSlot : lostSlots) {
-      slotManager.setToSending(lostSlot);
+      slotManager.setToSending(lostSlot, false);
     }
+    slotManager.save();
 
     synchronized (allNodes) {
       if (allNodes.contains(node) && allNodes.size() > config.getReplicationNum()) {
         // remove the last node because the group size is fixed to replication number
         Node removedNode = allNodes.remove(allNodes.size() - 1);
         peerMap.remove(removedNode);
-        if (removedNode.equals(leader.get())) {
+        if (removedNode.equals(leader.get()) && !removedNode.equals(thisNode)) {
           // if the leader is removed, also start an election immediately
           synchronized (term) {
             setCharacter(NodeCharacter.ELECTOR);
@@ -420,11 +421,11 @@ public class DataGroupMember extends RaftMember {
     boolean canGetSnapshot;
     /**
      * There are two conditions that can get snapshot:
-     * 1. The raft member is stopped and sync status is successful which means it has synced leader successfully before stop.
+     * 1. The raft member is stopped and it has synced leader successfully before stop.
      * 2. The raft member is not stopped and syncing leader is successful.
      */
-    if (stopStatus.stop) {
-      canGetSnapshot = stopStatus.syncSuccess;
+    if (isHasSyncedLeaderBeforeRemoved()) {
+      canGetSnapshot = true;
     } else {
       canGetSnapshot = syncLeader();
     }
@@ -523,6 +524,8 @@ public class DataGroupMember extends RaftMember {
   private void pullFileSnapshot(PullSnapshotTaskDescriptor descriptor, File snapshotSave) {
     // If this node is the member of previous holder, it's unnecessary to pull data again
     if (descriptor.getPreviousHolders().contains(thisNode)) {
+      logger.info("{}: {} and other {} don't need to pull because there already has such data locally", name,
+          descriptor.getSlots().get(0), descriptor.getSlots().size() - 1);
       // inform the previous holders that one member has successfully pulled snapshot directly
       registerPullSnapshotHint(descriptor);
       return;
@@ -785,7 +788,7 @@ public class DataGroupMember extends RaftMember {
     syncLeader();
 
     synchronized (allNodes) {
-      if (allNodes.contains(removedNode) && allNodes.size() > config.getReplicationNum()) {
+      if (allNodes.contains(removedNode)) {
         // update the group if the deleted node was in it
         allNodes.remove(removedNode);
         peerMap.remove(removedNode);
@@ -810,27 +813,36 @@ public class DataGroupMember extends RaftMember {
     }
   }
 
+  /**
+   * When the header of a partition group is removed, it needs to wait all followers to sync data because
+   * there has no new leader.
+   */
   public void waitFollowersToSync() {
-    if (character != NodeCharacter.LEADER) {
-      return;
-    }
-    for (Map.Entry<Node, Peer> entry: peerMap.entrySet()) {
-      Node node = entry.getKey();
-      if (node.equals(thisNode)) {
-        continue;
-      }
-      Peer peer = entry.getValue();
-      while (peer.getMatchIndex() < logManager.getCommitLogIndex()) {
-        try {
-          Thread.sleep(10);
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          logger.warn("{}: Unexpected interruption when waiting follower {} to sync, raft id is {}",
-              name, node, getRaftGroupId());
+    try {
+      for (Map.Entry<Node, Peer> entry : peerMap.entrySet()) {
+        Node node = entry.getKey();
+        if (node.equals(thisNode)) {
+          continue;
         }
+        Peer peer = entry.getValue();
+        while (peer.getMatchIndex() < logManager.getCommitLogIndex()) {
+          try {
+            Thread.sleep(10);
+            if (character != NodeCharacter.LEADER) {
+              return;
+            }
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logger
+                .warn("{}: Unexpected interruption when waiting follower {} to sync, raft id is {}",
+                    name, node, getRaftGroupId());
+          }
+        }
+        logger.info("{}: Follower {} has synced with leader, raft id is {}", name, node,
+            getRaftGroupId());
       }
-      logger.info("{}: Follower {} has synced with leader, raft id is {}", name, node,
-          getRaftGroupId());
+    } finally {
+      stop();
     }
   }
 
@@ -872,6 +884,13 @@ public class DataGroupMember extends RaftMember {
   }
 
   public boolean onSnapshotInstalled(List<Integer> slots) {
+    if (!isHasSyncedLeaderBeforeRemoved()) {
+      getMetaGroupMember().waitUtil(getMetaGroupMember().getPartitionTable().getLastMetaLogIndex());
+    }
+    if (logger.isDebugEnabled()) {
+      logger.debug("{} received one replication snapshot installed of slot {} and other {} slots",
+          name, slots.get(0), slots.size() - 1);
+    }
     List<Integer> removableSlots = new ArrayList<>();
     for (Integer slot : slots) {
       int sentReplicaNum = slotManager.sentOneReplication(slot, false);

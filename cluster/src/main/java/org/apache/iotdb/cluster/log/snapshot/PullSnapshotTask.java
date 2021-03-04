@@ -89,8 +89,9 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Void> {
       throws InterruptedException, TException {
     Node node = descriptor.getPreviousHolders().get(nodeIndex);
     if (logger.isDebugEnabled()) {
-      logger.debug("Pulling {} snapshots from {} of {}", descriptor.getSlots().size(), node,
-          descriptor.getPreviousHolders().getHeader());
+      logger.debug("Pulling slot {} and other {} snapshots from {} of {} for {}",
+          descriptor.getSlots().get(0), descriptor.getSlots().size() - 1, node,
+          descriptor.getPreviousHolders().getHeader(), newMember.getName());
     }
 
     Map<Integer, T> result = pullSnapshot(node);
@@ -115,9 +116,11 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Void> {
             descriptor.getPreviousHolders().get(nodeIndex));
       }
       try {
-        Snapshot snapshot = result.values().iterator().next();
-        SnapshotInstaller installer = snapshot.getDefaultInstaller(newMember);
-        installer.install(result);
+        if (result.size() > 0) {
+          Snapshot snapshot = result.values().iterator().next();
+          SnapshotInstaller installer = snapshot.getDefaultInstaller(newMember);
+          installer.install(result);
+        }
         // inform the previous holders that one member has successfully pulled snapshot
         newMember.registerPullSnapshotHint(descriptor);
         return true;
@@ -179,6 +182,10 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Void> {
         nodeIndex = (nodeIndex + 1) % descriptor.getPreviousHolders().size();
         finished = pullSnapshot(nodeIndex);
         if (!finished) {
+          if (logger.isDebugEnabled()) {
+            logger.debug("Cannot pull slot {} from {}, retry", descriptor.getSlots(),
+                descriptor.getPreviousHolders().get(nodeIndex));
+          }
           Thread
               .sleep(
                   ClusterDescriptor.getInstance().getConfig().getPullSnapshotRetryIntervalMs());
