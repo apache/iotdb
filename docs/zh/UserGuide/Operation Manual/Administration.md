@@ -60,9 +60,24 @@ CREATE USER sgcc_write_user 'write_pwd'
 ```
 LIST USER
 ```
-我们可以看到这两个已经被创建的用户，结果如图：
+我们可以看到这两个已经被创建的用户，结果如下：
 
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51578263-e2a91d00-1ef7-11e9-94e8-28819b6fea87.jpg"></center>
+```
+IoTDB> CREATE USER ln_write_user 'write_pwd'
+Msg: The statement is executed successfully.
+IoTDB> CREATE USER sgcc_write_user 'write_pwd'
+Msg: The statement is executed successfully.
+IoTDB> LIST USER
++---------------+
+|           user|
++---------------+
+|  ln_write_user|
+|           root|
+|sgcc_write_user|
++---------------+
+Total line number = 3
+It costs 0.157s
+```
 
 ### 赋予用户权限
 
@@ -71,8 +86,14 @@ LIST USER
 ```
 INSERT INTO root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)
 ```
-此时，系统不允许用户进行此操作，会提示错误，如图：
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51597609-9af5b600-1f36-11e9-9460-8ab185eb4735.png"></center>
+此时，系统不允许用户进行此操作，会提示错误：
+
+```
+IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)
+INSERT INTO root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)
+Msg: 602: No permissions for this operation INSERT
+```
+
 
 现在，我们分别赋予他们向对应存储组数据的写入权限，并再次尝试向对应的存储组进行数据写入。SQL语句为：
 ```
@@ -80,8 +101,16 @@ GRANT USER ln_write_user PRIVILEGES 'INSERT_TIMESERIES' on root.ln
 GRANT USER sgcc_write_user PRIVILEGES 'INSERT_TIMESERIES' on root.sgcc
 INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
 ```
-执行状态如图所示：
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51578942-33ba1080-1efa-11e9-891c-09d69791aff1.jpg"></center>
+执行状态如下所示：
+
+```
+IoTDB> GRANT USER ln_write_user PRIVILEGES 'INSERT_TIMESERIES' on root.ln
+Msg: The statement is executed successfully.
+IoTDB> GRANT USER sgcc_write_user PRIVILEGES 'INSERT_TIMESERIES' on root.sgcc
+Msg: The statement is executed successfully.
+IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
+Msg: The statement is executed successfully.
+```
 
 ## 其他说明
 

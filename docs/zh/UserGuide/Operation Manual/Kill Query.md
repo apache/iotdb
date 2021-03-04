@@ -64,9 +64,12 @@ IoTDB> CREATE SNAPSHOT FOR SCHEMA
 
 #### 查询超时
 
-对于执行时间过长的查询，IoTDB 将强行中断该查询，并抛出超时异常，如图所示：
+对于执行时间过长的查询，IoTDB 将强行中断该查询，并抛出超时异常，如下所示：
 
-![image](https://user-images.githubusercontent.com/34242296/104586593-a224aa00-56a0-11eb-9c52-241dcdb68ecb.png)
+```
+IoTDB> select * from root;
+Msg: 701 Current query is time out, please check your statement or modify timeout parameter.
+```
 
 系统默认的超时时间为 60000 ms，可以在配置文件中通过 `query_time_threshold` 参数进行自定义配置。
 

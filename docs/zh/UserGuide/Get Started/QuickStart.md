@@ -131,12 +131,12 @@ IoTDB> SHOW STORAGE GROUP
 执行结果为：
 
 ```
-+-----------------------------------+
-|                      Storage Group|
-+-----------------------------------+
-|                            root.ln|
-+-----------------------------------+
-storage group number = 1
++-------------+
+|storage group|
++-------------+
+|      root.ln|
++-------------+
+Total line number = 1
 ```
 
 存储组设定后，使用CREATE TIMESERIES语句可以创建新的时间序列，创建时间序列时需要定义数据的类型和编码方式。此处我们创建两个时间序列，SQL语句如下：
@@ -279,4 +279,3 @@ Windows系统停止命令如下：
   * 系统配置模块 (`iotdb-engine.properties`)
   * 日志配置模块 (`logback.xml`). 
 
-想要了解更多，请浏览[Server](../Server/Download.md)

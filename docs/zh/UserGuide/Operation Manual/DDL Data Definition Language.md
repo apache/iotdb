@@ -249,7 +249,35 @@ IoTDB > COUNT TIMESERIES root.ln.wf01 GROUP BY LEVEL=2
 ```
 
 你将得到以下结果：
-<center><img style="width:100%; max-width:800px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/69792071-cb664a80-1200-11ea-8386-02dd12046c4b.png"></center>
+
+```
+IoTDB> COUNT TIMESERIES root GROUP BY LEVEL=1
++---------+-----+
+|   column|count|
++---------+-----+
+|  root.ln|    4|
+|root.sgcc|    2|
++---------+-----+
+Total line number = 2
+It costs 0.103s
+IoTDB > COUNT TIMESERIES root.ln GROUP BY LEVEL=2
++--------------+-----+
+|        column|count|
++--------------+-----+
+|  root.ln.wf02|    1|
+|  root.ln.wf01|    3|
++--------------+-----+
+Total line number = 2
+It costs 0.003s
+IoTDB > COUNT TIMESERIES root.ln.wf01 GROUP BY LEVEL=2
++--------------+-----+
+|        column|count|
++--------------+-----+
+|  root.ln.wf01|    4|
++--------------+-----+
+Total line number = 1
+It costs 0.001s
+```
 
 > 注意：时间序列的路径只是过滤条件，与level的定义无关。
 

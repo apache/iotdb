@@ -649,7 +649,9 @@ select last <Path> [COMMA <Path>]* from < PrefixPath > [COMMA < PrefixPath >]* <
 结果集为三列的结构
 
 ```
-| Time | Path | Value |
++----+----------+-----+
+|Time|timeseries|value|
++----+----------+-----+
 ```
 
 示例 1：查询 root.ln.wf01.wt01.status 的最新数据点
