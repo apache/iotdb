@@ -236,7 +236,7 @@ void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) th
 
 
 
-### void transform(Row row, PointCollector collector) throws Exception
+* void transform(Row row, PointCollector collector) throws Exception
 
 当您在`beforeStart`方法中指定UDF读取原始数据的策略为 `RowByRowAccessStrategy`，您就需要实现该方法，在该方法中增加对原始数据处理的逻辑。
 

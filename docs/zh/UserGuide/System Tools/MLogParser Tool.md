@@ -35,3 +35,4 @@ Linux/MacOS
 Windows
 
 > .\mLogParser.bat -f \your path\mlog.bin -o \your path\mlog.txt
+

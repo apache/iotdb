@@ -109,22 +109,6 @@ TsFile 是在 IoTDB 中使用的时间序列的文件格式。在这个章节中
 * **device**: 一个设备指的是一个正在进行多次测量(产生多个时间序列)的实体，例如，
   ​    ​    ​    一列正在运行的火车监控它的速度、油表、它已经运行的英里数，当前的乘客每个都被传送到一个时间序列。
 
-表1描述了一组时间序列数据。下表中显示的集合包含一个名为 "device\_1" 的设备，它有三个测量值(measurement)分别是
-"sensor\_1", "sensor\_2" 和 "sensor\_3". 
-
-<center>
-<table style="text-align:center">
-    <tr><th colspan="6">device_1</th></tr>
-    <tr><th colspan="2">sensor_1</th><th colspan="2">sensor_2</th><th colspan="2">sensor_3</th></tr>
-    <tr><th>time</th><th>value</th><th>time</th><th>value</th><th>time</th><th>value</th></tr>
-    <tr><td>1</td><td>1.2</td><td>1</td><td>20</td><td>2</td><td>50</td></tr>
-    <tr><td>3</td><td>1.4</td><td>2</td><td>20</td><td>4</td><td>51</td></tr>
-    <tr><td>5</td><td>1.1</td><td>3</td><td>21</td><td>6</td><td>52</td></tr>
-    <tr><td>7</td><td>1.8</td><td>4</td><td>20</td><td>8</td><td>53</td></tr>
-</table>
-<span>一组时间序列数据</span>
-</center>
-
 
 **单行数据**: 在许多工业应用程序中，一个设备通常包含多个传感器，这些传感器可能同时具有多个值，这称为一行数据。
 
@@ -227,7 +211,7 @@ TsFile可以通过以下三个步骤生成，完整的代码参见"写入 TsFile
       
     * type: 数据类型，现在支持六种类型: `BOOLEAN`, `INT32`, `INT64`, `FLOAT`, `DOUBLE`, `TEXT`;
     
-    * encoding: 编码类型. 参见 [Chapter 2-3](../Concept/Encoding.md).
+    * encoding: 编码类型. 
     
     * compression: 压缩方式. 现在支持 `UNCOMPRESSED` 和 `SNAPPY`.
     
@@ -294,29 +278,19 @@ mvn clean install -pl tsfile -am -DskipTests
 
 如果所有时序数据都是**对齐**的，您可以通过构造**Tablet**来写入数据。
 
-更详细的例子可以在`/example/tsfile/src/main/java/org/apache/iotdb/tsfile/TsFileWriteWithTablet.java`中查看
+更详细的例子可以在
+```
+/example/tsfile/src/main/java/org/apache/iotdb/tsfile/TsFileWriteWithTablet.java
+```
+中查看
 
-在已关闭的TsFile 文件中写入新数据的详细例子可以在`/example/tsfile/src/main/java/org/apache/iotdb/tsfile/TsFileForceAppendWrite.java`中查看
+在已关闭的TsFile 文件中写入新数据的详细例子可以在
+```
+/example/tsfile/src/main/java/org/apache/iotdb/tsfile/TsFileForceAppendWrite.java
+```
+中查看
 
 #### 读取 TsFile 接口
-
- * 开始之前
-
-"时序数据"章节中的数据集在本章节做具体的介绍。下表中显示的集合包含一个名为"device\_1"的 deltaObject，包含了 3 个名为"sensor\_1","sensor\_2"和"sensor\_3"的测量(measurement)。
-测量值被简化成一个简单的例子，每条数据只包含 4 条时间和值的对应数据。
-
-<center>
-<table style="text-align:center">
-    <tr><th colspan="6">device_1</th></tr>
-    <tr><th colspan="2">sensor_1</th><th colspan="2">sensor_2</th><th colspan="2">sensor_3</th></tr>
-    <tr><th>time</th><th>value</th><th>time</th><th>value</th><th>time</th><th>value</th></tr>
-    <tr><td>1</td><td>1.2</td><td>1</td><td>20</td><td>2</td><td>50</td></tr>
-    <tr><td>3</td><td>1.4</td><td>2</td><td>20</td><td>4</td><td>51</td></tr>
-    <tr><td>5</td><td>1.1</td><td>3</td><td>21</td><td>6</td><td>52</td></tr>
-    <tr><td>7</td><td>1.8</td><td>4</td><td>20</td><td>8</td><td>53</td></tr>
-</table>
-<span>一组时间序列数据</span>
-</center>
 
 
  * 路径的定义
@@ -360,19 +334,18 @@ paths.add(new Path("device_1.sensor_3"));
         ```
         IExpression timeFilterExpr = new GlobalTimeExpression(TimeFilter);
         ```
-          使用以下关系获得一个`TimeFilter`对象(值是一个 long 型变量)。
-        <center>
-        <table style="text-align:center">
-            <tr><th>Relationship</th><th>Description</th></tr>
-            <tr><td>TimeFilter.eq(value)</td><td>选择时间等于值的数据</td></tr>
-            <tr><td>TimeFilter.lt(value)</td><td>选择时间小于值的数据</td></tr>
-            <tr><td>TimeFilter.gt(value)</td><td>选择时间大于值的数据</td></tr>
-            <tr><td>TimeFilter.ltEq(value)</td><td>选择时间小于等于值的数据</td></tr>
-            <tr><td>TimeFilter.gtEq(value)</td><td>选择时间大于等于值的数据</td></tr>
-            <tr><td>TimeFilter.notEq(value)</td><td>选择时间不等于值的数据</td></tr>
-            <tr><td>TimeFilter.not(TimeFilter)</td><td>选择时间不满足另一个时间过滤器的数据</td></tr>
-        </table>
-        </center>
+使用以下关系获得一个`TimeFilter`对象(值是一个 long 型变量)。
+
+       |Relationship|Description|
+       |----|----|
+       |TimeFilter.eq(value)|选择时间等于值的数据|
+       |TimeFilter.lt(value)|选择时间小于值的数据|
+       |TimeFilter.gt(value)|选择时间大于值的数据|
+       |TimeFilter.ltEq(value)|选择时间小于等于值的数据|
+       |TimeFilter.gtEq(value)|选择时间大于等于值的数据|
+       |TimeFilter.notEq(value)|选择时间不等于值的数据|
+       |TimeFilter.not(TimeFilter)|选择时间不满足另一个时间过滤器的数据|
+
         
      * ValueFilter: 使用时序数据中的`value`过滤。
        
@@ -438,6 +411,7 @@ QueryExpression queryExpression = QueryExpression.create(paths, statement);
 ```
 
 ReadOnlyTsFile类有两个`query`方法来执行查询。
+
 * **Method 1**
 
     ```
