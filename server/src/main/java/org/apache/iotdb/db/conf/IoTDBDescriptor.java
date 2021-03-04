@@ -27,12 +27,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.DefaultParser;
-import org.apache.commons.cli.Option;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
+import com.google.common.net.InetAddresses;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,14 +35,16 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.UnknownHostException;
 import java.util.Properties;
 
 public class IoTDBDescriptor {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBDescriptor.class);
-  private static CommandLine commandLine;
+
   private IoTDBConfig conf = new IoTDBConfig();
 
   protected IoTDBDescriptor() {
@@ -60,35 +57,6 @@ public class IoTDBDescriptor {
 
   public IoTDBConfig getConfig() {
     return conf;
-  }
-
-  public void replaceProps(String[] params) {
-    Options options = new Options();
-    final String RPC_PORT = "rpc_port";
-    Option rpcPort = new Option(RPC_PORT, RPC_PORT, true, "The jdbc service listens on the port");
-    rpcPort.setRequired(false);
-    options.addOption(rpcPort);
-
-    boolean ok = parseCommandLine(options, params);
-    if (!ok) {
-      logger.error("replaces properties failed, use default conf params");
-    } else {
-      if (commandLine.hasOption(RPC_PORT)) {
-        conf.setRpcPort(Integer.parseInt(commandLine.getOptionValue(RPC_PORT)));
-        logger.debug("replace rpc port with={}", conf.getRpcPort());
-      }
-    }
-  }
-
-  private boolean parseCommandLine(Options options, String[] params) {
-    try {
-      CommandLineParser parser = new DefaultParser();
-      commandLine = parser.parse(options, params);
-    } catch (ParseException e) {
-      logger.error("parse conf params failed, {}", e.toString());
-      return false;
-    }
-    return true;
   }
 
   /**
@@ -178,6 +146,7 @@ public class IoTDBDescriptor {
                   Integer.toString(conf.getQueryCacheSizeInMetric()))));
 
       conf.setRpcAddress(properties.getProperty("rpc_address", conf.getRpcAddress()));
+      replaceHostnameWithIP();
 
       conf.setRpcThriftCompressionEnable(
           Boolean.parseBoolean(
@@ -793,6 +762,16 @@ public class IoTDBDescriptor {
       // update all data seriesPath
       conf.updatePath();
     }
+  }
+
+  // to keep consistent with the cluster module.
+  private void replaceHostnameWithIP() throws UnknownHostException {
+    boolean isInvalidRpcIp = InetAddresses.isInetAddress(conf.getRpcAddress());
+    if (!isInvalidRpcIp) {
+      InetAddress address = InetAddress.getByName(getConfig().getRpcAddress());
+      getConfig().setRpcAddress(address.getHostAddress());
+    }
+    logger.debug("after replace, the rpc_address={},", conf.getRpcAddress());
   }
 
   private void loadWALProps(Properties properties) {

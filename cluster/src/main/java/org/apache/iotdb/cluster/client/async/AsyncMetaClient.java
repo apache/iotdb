@@ -65,7 +65,7 @@ public class AsyncMetaClient extends AsyncClient {
         protocolFactory,
         clientManager,
         new TNonblockingSocket(
-            node.getIp(), node.getMetaPort(), RaftServer.getConnectionTimeoutInMS()));
+            node.getInternalIp(), node.getMetaPort(), RaftServer.getConnectionTimeoutInMS()));
     this.node = node;
     this.pool = pool;
   }
