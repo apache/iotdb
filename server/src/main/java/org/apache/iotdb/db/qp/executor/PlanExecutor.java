@@ -39,6 +39,7 @@ import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.QueryIdNotExsitException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.TriggerManagementException;
 import org.apache.iotdb.db.exception.UDFRegistrationException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -356,12 +357,14 @@ public class PlanExecutor implements IPlanExecutor {
     return true;
   }
 
-  private boolean operateStartTrigger(StartTriggerPlan plan) throws TriggerManagementException {
+  private boolean operateStartTrigger(StartTriggerPlan plan)
+      throws TriggerManagementException, TriggerExecutionException {
     TriggerRegistrationService.getInstance().activate(plan);
     return true;
   }
 
-  private boolean operateStopTrigger(StopTriggerPlan plan) throws TriggerManagementException {
+  private boolean operateStopTrigger(StopTriggerPlan plan)
+      throws TriggerManagementException, TriggerExecutionException {
     TriggerRegistrationService.getInstance().inactivate(plan);
     return true;
   }
