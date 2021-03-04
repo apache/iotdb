@@ -29,7 +29,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
-/** the utils class to load configure. */
+/** The utils class to load configure. Read from yaml file. */
 public class MetricConfigDescriptor {
   private static final Logger logger = LoggerFactory.getLogger(MetricConfigDescriptor.class);
   private MetricConfig metricConfig = new MetricConfig();
@@ -47,7 +47,7 @@ public class MetricConfigDescriptor {
   }
 
   /**
-   * find the config file path
+   * find the config file path.
    *
    * @return the file path
    */
@@ -71,7 +71,7 @@ public class MetricConfigDescriptor {
     return url;
   }
 
-  /** load an property file and set TsfileDBConfig variables. */
+  /** Load an property file and set MetricConfig variables. If not found file, use default value. */
   private void loadProps() {
 
     String url = getPropsUrl();

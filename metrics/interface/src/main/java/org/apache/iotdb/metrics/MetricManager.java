@@ -73,7 +73,11 @@ public interface MetricManager {
 
   void timer(long delta, TimeUnit timeUnit, String metric, String... tags);
 
-  /** @return all MetricKeys, key is metric name, value is tags, which is a string array */
+  /**
+   * get all metric keys.
+   *
+   * @return all MetricKeys, key is metric name, value is tags, which is a string array.
+   */
   List<String[]> getAllMetricKeys();
 
   // key is name + tags, value
@@ -87,7 +91,6 @@ public interface MetricManager {
 
   Map<String[], Timer> getAllTimers();
 
-  /** @return whether enable metricService */
   boolean isEnable();
 
   /**

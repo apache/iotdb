@@ -29,7 +29,9 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ServiceLoader;
 
-/** MetricService is the entry to manage all Metric system. */
+/**
+ * MetricService is the entry to manage all Metric system, include MetricManager and MetricReporter.
+ */
 public class MetricService {
 
   private static final Logger logger = LoggerFactory.getLogger(MetricService.class);
@@ -99,7 +101,7 @@ public class MetricService {
     }
   }
 
-  /** stop metric service */
+  /** Stop metric service. If disable, do nothing. */
   public static void stop() {
     if (!isEnable()) {
       return;

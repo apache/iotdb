@@ -34,6 +34,6 @@ public class MicrometerMetricManagerTest {
   @Test
   public void testRegister() {
     metricManager.getOrCreateTimer("timer1", "sg", "root").update(12, TimeUnit.MILLISECONDS);
-    Assert.assertEquals(metricManager.getAllTimers().size(), 1);
+    Assert.assertEquals(1, metricManager.getAllTimers().size());
   }
 }

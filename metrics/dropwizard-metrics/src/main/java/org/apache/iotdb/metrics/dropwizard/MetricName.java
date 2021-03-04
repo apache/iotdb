@@ -34,6 +34,11 @@ public class MetricName {
   private String name;
   private Map<String, String> tags;
 
+  /**
+   * @param name metric name
+   * @param tags string appear in pairs, like sg="ln",user="user1" will be "sg", "ln", "user",
+   *     "user1"
+   */
   public MetricName(String name, String... tags) {
     this.name = name;
     this.tags = new HashMap<>();

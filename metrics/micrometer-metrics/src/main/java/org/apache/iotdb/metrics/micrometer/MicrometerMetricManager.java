@@ -109,7 +109,11 @@ public class MicrometerMetricManager implements MetricManager {
     return meterRegistry;
   }
 
-  /** @return prometheus registry to reporter to get */
+  /**
+   * Reporter use it to get metrics to expose data to prometheus.
+   *
+   * @return prometheus registry
+   */
   public PrometheusMeterRegistry getPrometheusMeterRegistry() {
     Set<MeterRegistry> meterRegistrySet = Metrics.globalRegistry.getRegistries();
     for (MeterRegistry childMeterRegistry : meterRegistrySet) {
@@ -120,7 +124,11 @@ public class MicrometerMetricManager implements MetricManager {
     return null;
   }
 
-  /** @return jmxMeterRegistry for reporter */
+  /**
+   * Reporter use it to get metrics to expose data to jmx.
+   *
+   * @return jmxMeterRegistry
+   */
   public JmxMeterRegistry getJmxMeterRegistry() {
     Set<MeterRegistry> meterRegistrySet = Metrics.globalRegistry.getRegistries();
     for (MeterRegistry childMeterRegistry : meterRegistrySet) {
