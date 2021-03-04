@@ -57,7 +57,7 @@ public class ClusterUtils {
 
   public static final int WAIT_START_UP_CHECK_TIME_SEC = 5;
 
-  public static final long START_UP_TIME_THRESHOLD_MS = 60 * 1000L;
+  public static final long START_UP_TIME_THRESHOLD_MS = 5 * 60 * 1000L;
 
   public static final long START_UP_CHECK_TIME_INTERVAL_MS = 3 * 1000L;
 
@@ -74,6 +74,8 @@ public class ClusterUtils {
    * + META_HEARTBEAT_OFFSET.
    */
   public static final int META_HEARTBEAT_PORT_OFFSET = 1;
+
+  public static final String UNKNOWN_CLIENT_IP = "UNKNOWN_IP";
 
   private ClusterUtils() {
     // util class
@@ -160,7 +162,7 @@ public class ClusterUtils {
   }
 
   private static int compareSeedNode(Node thisSeedNode, Node thatSeedNode) {
-    int ipCompare = thisSeedNode.getIp().compareTo(thatSeedNode.getIp());
+    int ipCompare = thisSeedNode.getInternalIp().compareTo(thatSeedNode.getInternalIp());
     if (ipCompare != 0) {
       return ipCompare;
     } else {
@@ -295,7 +297,7 @@ public class ClusterUtils {
    */
   public static Node stringToNode(String str) {
 
-    int ipFirstPos = str.indexOf("ip:") + "ip:".length();
+    int ipFirstPos = str.indexOf("internalIp:") + "internalIp:".length();
     int ipLastPos = str.indexOf(',', ipFirstPos);
     int metaPortFirstPos = str.indexOf("metaPort:", ipLastPos) + "metaPort:".length();
     int metaPortLastPos = str.indexOf(',', metaPortFirstPos);
@@ -303,33 +305,31 @@ public class ClusterUtils {
     int idLastPos = str.indexOf(',', idFirstPos);
     int dataPortFirstPos = str.indexOf("dataPort:", idLastPos) + "dataPort:".length();
     int dataPortLastPos = str.indexOf(',', dataPortFirstPos);
-    int clientPortFirstPos = str.indexOf("clientPort:", idLastPos) + "clientPort:".length();
-    int clientPortLastPos = str.indexOf(')', clientPortFirstPos);
+    int clientPortFirstPos = str.indexOf("clientPort:", dataPortLastPos) + "clientPort:".length();
+    int clientPortLastPos = str.indexOf(',', clientPortFirstPos);
+    int clientIpFirstPos = str.indexOf("clientIp:", clientPortLastPos) + "clientIp:".length();
+    int clientIpLastPos = str.indexOf(')', clientIpFirstPos);
 
     String ip = str.substring(ipFirstPos, ipLastPos);
     int metaPort = Integer.parseInt(str.substring(metaPortFirstPos, metaPortLastPos));
     int id = Integer.parseInt(str.substring(idFirstPos, idLastPos));
     int dataPort = Integer.parseInt(str.substring(dataPortFirstPos, dataPortLastPos));
     int clientPort = Integer.parseInt(str.substring(clientPortFirstPos, clientPortLastPos));
-    return new Node(ip, metaPort, id, dataPort, clientPort);
+    String clientIp = str.substring(clientIpFirstPos, clientIpLastPos);
+    return new Node(ip, metaPort, id, dataPort, clientPort, clientIp);
   }
 
   public static Node parseNode(String nodeUrl) {
     Node result = new Node();
     String[] split = nodeUrl.split(":");
-    if (split.length != 4) {
+    if (split.length != 2) {
       logger.warn("Bad seed url: {}", nodeUrl);
       return null;
     }
     String ip = split[0];
     try {
       int metaPort = Integer.parseInt(split[1]);
-      int dataPort = Integer.parseInt(split[2]);
-      int clientPort = Integer.parseInt(split[3]);
-      result.setIp(ip);
-      result.setMetaPort(metaPort);
-      result.setDataPort(dataPort);
-      result.setClientPort(clientPort);
+      result.setInternalIp(ip).setMetaPort(metaPort).setClientIp(UNKNOWN_CLIENT_IP);
     } catch (NumberFormatException e) {
       logger.warn("Bad seed url: {}", nodeUrl);
     }

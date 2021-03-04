@@ -42,8 +42,6 @@ public class ClusterConstant {
     // constant class
   }
 
-  static final String CLUSTER_CONF = "CLUSTER_CONF";
-
   /**
    * a failed election will restart in 2s~5s, this should be at least as long as a heartbeat
    * interval, or a stale node may frequently issue elections and thus makes the leader step down

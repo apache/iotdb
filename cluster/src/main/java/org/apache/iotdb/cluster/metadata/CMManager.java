@@ -107,6 +107,7 @@ import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.cluster.query.ClusterPlanExecutor.LOG_FAIL_CONNECT;
@@ -206,13 +207,11 @@ public class CMManager extends MManager {
   }
 
   /**
-   * the org.apache.iotdb.db.writelog.recover.logReplayer will call this to get schema after restart
-   * we should retry to get schema util we get the schema
+   * the {@link org.apache.iotdb.db.writelog.recover.LogReplayer#replayLogs(Supplier)} will call
+   * this to get schema after restart we should retry to get schema util we get the schema.
    *
-   * @param deviceId
-   * @param measurements
-   * @return
-   * @throws MetadataException
+   * @param deviceId the device id.
+   * @param measurements the measurements.
    */
   @Override
   public MeasurementMNode[] getMNodes(PartialPath deviceId, String[] measurements)
@@ -1745,13 +1744,13 @@ public class CMManager extends MManager {
       resultBinary = SyncClientAdaptor.getDevices(client, group.getHeader(), plan);
     } else {
       SyncDataClient syncDataClient = null;
-      try {
+      try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+          DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
         syncDataClient =
             metaGroupMember
                 .getClientProvider()
                 .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+
         plan.serialize(dataOutputStream);
         resultBinary =
             syncDataClient.getDevices(
