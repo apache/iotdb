@@ -45,8 +45,10 @@ IoTDB支持多种安装途径。用户可以使用三种方式对IoTDB进行安�
 
 ## 软件目录结构
 
- * sbin
- * conf
+* sbin 启动和停止脚本目录
+* conf 配置文件目录
+*  tools 系统工具目录
+*  lib 依赖包目录
 
 ## IoTDB试用
 

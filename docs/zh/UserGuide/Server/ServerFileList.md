@@ -45,7 +45,7 @@
 > 在basedir/system/schema目录下
 
 #### 元数据
-1. mlog.txt
+1. mlog.bin
     + 记录的是元数据操作
 2. mtree-1.snapshot
     + 元数据快照
@@ -69,9 +69,7 @@
 > 在basedir/data/sequence or unsequence/{StorageGroupName}/{TimePartitionId}/目录下
 1. {time}-{version}-{mergeCnt}.tsfile
     + 数据文件
-2. {TsFileName}-{level}-{time}.vm
-    + 虚拟合并数据文件，用于优化查询，详细请看https://issues.apache.org/jira/browse/IOTDB-706
-3. {TsFileName}.tsfile.mod
+2. {TsFileName}.tsfile.mod
     + 更新文件，主要记录删除操作
 
 #### TsFileResource
