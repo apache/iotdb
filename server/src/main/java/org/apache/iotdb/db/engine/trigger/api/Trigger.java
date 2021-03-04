@@ -23,19 +23,39 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 public interface Trigger {
 
-  default void onStart(TriggerAttributes attributes) {}
+  @SuppressWarnings("squid:S112")
+  default void onStart(TriggerAttributes attributes) throws Exception {}
 
-  default void onStop() {}
+  @SuppressWarnings("squid:S112")
+  default void onStop() throws Exception {}
 
-  default void fire(long time, Integer value) {}
+  @SuppressWarnings("squid:S112")
+  default Integer fire(long time, Integer value) throws Exception {
+    return value;
+  }
 
-  default void fire(long time, Long value) {}
+  @SuppressWarnings("squid:S112")
+  default Long fire(long time, Long value) throws Exception {
+    return value;
+  }
 
-  default void fire(long time, Float value) {}
+  @SuppressWarnings("squid:S112")
+  default Float fire(long time, Float value) throws Exception {
+    return value;
+  }
 
-  default void fire(long time, Double value) {}
+  @SuppressWarnings("squid:S112")
+  default Double fire(long time, Double value) throws Exception {
+    return value;
+  }
 
-  default void fire(long time, Boolean value) {}
+  @SuppressWarnings("squid:S112")
+  default Boolean fire(long time, Boolean value) throws Exception {
+    return value;
+  }
 
-  default void fire(long time, Binary value) {}
+  @SuppressWarnings("squid:S112")
+  default Binary fire(long time, Binary value) throws Exception {
+    return value;
+  }
 }

@@ -33,8 +33,6 @@ public class TriggerRegistrationInformation {
   private final String className;
   private final Map<String, String> attributes;
 
-  private Class<?> triggerClass;
-
   private volatile boolean isStopped;
 
   public TriggerRegistrationInformation(
@@ -43,23 +41,17 @@ public class TriggerRegistrationInformation {
       PartialPath fullPath,
       String className,
       Map<String, String> attributes,
-      Class<?> triggerClass,
       boolean isStopped) {
     this.triggerName = triggerName;
     this.event = event;
     this.fullPath = fullPath;
     this.className = className;
     this.attributes = attributes;
-    this.triggerClass = triggerClass;
     this.isStopped = isStopped;
   }
 
   public CreateTriggerPlan convertToCreateTriggerPlan() {
     return new CreateTriggerPlan(triggerName, event, fullPath, className, attributes);
-  }
-
-  public void updateTriggerClass(Class<?> triggerClass) {
-    this.triggerClass = triggerClass;
   }
 
   public void markAsStarted() {
@@ -88,10 +80,6 @@ public class TriggerRegistrationInformation {
 
   public Map<String, String> getAttributes() {
     return attributes;
-  }
-
-  public Class<?> getTriggerClass() {
-    return triggerClass;
   }
 
   public boolean isStopped() {
