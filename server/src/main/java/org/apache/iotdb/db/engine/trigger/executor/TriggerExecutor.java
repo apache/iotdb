@@ -130,4 +130,8 @@ public class TriggerExecutor {
                 methodName, System.lineSeparator())
             + e);
   }
+
+  public TriggerRegistrationInformation getRegistrationInformation() {
+    return registrationInformation;
+  }
 }

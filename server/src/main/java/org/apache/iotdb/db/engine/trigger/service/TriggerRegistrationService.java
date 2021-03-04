@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.trigger.service;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.engine.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.TriggerManagementException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -62,7 +63,6 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_STATUS_STOPP
 public class TriggerRegistrationService implements IService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TriggerRegistrationService.class);
-  private static final String LOGGER_MESSAGE_TRIGGER_NOT_EXISTED = "Trigger %s does not exist.";
 
   private static final String LOG_FILE_DIR =
       IoTDBDescriptor.getInstance().getConfig().getSystemDir()
@@ -72,14 +72,14 @@ public class TriggerRegistrationService implements IService {
   private static final String LOG_FILE_NAME = LOG_FILE_DIR + "tlog.bin";
   private static final String TEMPORARY_LOG_FILE_NAME = LOG_FILE_NAME + ".tmp";
 
-  private final ConcurrentHashMap<String, TriggerRegistrationInformation> registrationInformation;
+  private final ConcurrentHashMap<String, TriggerExecutor> executors;
 
   private TriggerClassLoader classLoader;
 
   private TriggerLogWriter logWriter;
 
   public TriggerRegistrationService() {
-    registrationInformation = new ConcurrentHashMap<>();
+    executors = new ConcurrentHashMap<>();
   }
 
   public synchronized void register(CreateTriggerPlan plan) throws TriggerManagementException {
@@ -89,11 +89,12 @@ public class TriggerRegistrationService implements IService {
   }
 
   private void checkIfRegistered(CreateTriggerPlan plan) throws TriggerManagementException {
-    TriggerRegistrationInformation information = registrationInformation.get(plan.getTriggerName());
-    if (information == null) {
+    TriggerExecutor executor = executors.get(plan.getTriggerName());
+    if (executor == null) {
       return;
     }
 
+    TriggerRegistrationInformation information = executor.getRegistrationInformation();
     String errorMessage =
         information.getClassName().equals(plan.getClassName())
             ? String.format(
@@ -121,7 +122,7 @@ public class TriggerRegistrationService implements IService {
     try {
       logWriter.write(plan);
     } catch (IOException e) {
-      registrationInformation.remove(plan.getTriggerName());
+      executors.remove(plan.getTriggerName());
       String errorMessage =
           String.format(
               "Failed to append trigger management operation log when registering trigger %s(%s), because %s",
@@ -132,32 +133,30 @@ public class TriggerRegistrationService implements IService {
   }
 
   public synchronized void deregister(DropTriggerPlan plan) throws TriggerManagementException {
-    TriggerRegistrationInformation information = tryRemoveRegistrationInformation(plan);
-    doDeregister(plan, information);
-    tryAppendDeregistrationLog(plan, information);
+    TriggerExecutor executor = tryRemoveExecutor(plan);
+    doDeregister(plan, executor);
+    tryAppendDeregistrationLog(plan, executor);
   }
 
-  private TriggerRegistrationInformation tryRemoveRegistrationInformation(DropTriggerPlan plan)
+  private TriggerExecutor tryRemoveExecutor(DropTriggerPlan plan)
       throws TriggerManagementException {
-    TriggerRegistrationInformation information =
-        registrationInformation.remove(plan.getTriggerName());
+    TriggerExecutor executor = executors.remove(plan.getTriggerName());
 
-    if (information == null) {
-      String errorMessage =
-          String.format(LOGGER_MESSAGE_TRIGGER_NOT_EXISTED, plan.getTriggerName());
+    if (executor == null) {
+      String errorMessage = String.format("Trigger %s does not exist.", plan.getTriggerName());
       LOGGER.warn(errorMessage);
       throw new TriggerManagementException(errorMessage);
     }
 
-    return information;
+    return executor;
   }
 
-  private void doDeregister(DropTriggerPlan plan, TriggerRegistrationInformation information)
+  private void doDeregister(DropTriggerPlan plan, TriggerExecutor executor)
       throws TriggerManagementException {
     try {
       // TODO: remove the trigger executor from MTree
     } catch (Exception e) {
-      registrationInformation.put(plan.getTriggerName(), information);
+      executors.put(plan.getTriggerName(), executor);
       String errorMessage =
           String.format(
               "Failed to remove the trigger executor from MTree when deregistering trigger %s, because %s",
@@ -167,13 +166,12 @@ public class TriggerRegistrationService implements IService {
     }
   }
 
-  private void tryAppendDeregistrationLog(
-      DropTriggerPlan plan, TriggerRegistrationInformation information)
+  private void tryAppendDeregistrationLog(DropTriggerPlan plan, TriggerExecutor executor)
       throws TriggerManagementException {
     try {
       logWriter.write(plan);
     } catch (IOException e) {
-      registrationInformation.put(plan.getTriggerName(), information);
+      executors.put(plan.getTriggerName(), executor);
       String errorMessage =
           String.format(
               "Failed to append trigger management operation log when deregistering trigger %s, because %s",
@@ -184,13 +182,7 @@ public class TriggerRegistrationService implements IService {
   }
 
   public void activate(StartTriggerPlan plan) throws TriggerManagementException {
-    TriggerRegistrationInformation information = registrationInformation.get(plan.getTriggerName());
-    if (information == null) {
-      String errorMessage =
-          String.format(LOGGER_MESSAGE_TRIGGER_NOT_EXISTED, plan.getTriggerName());
-      LOGGER.warn(errorMessage);
-      throw new TriggerManagementException(errorMessage);
-    }
+    TriggerRegistrationInformation information = getRegistrationInformation(plan.getTriggerName());
 
     if (!information.isStopped()) {
       String errorMessage =
@@ -214,13 +206,7 @@ public class TriggerRegistrationService implements IService {
   }
 
   public void inactivate(StopTriggerPlan plan) throws TriggerManagementException {
-    TriggerRegistrationInformation information = registrationInformation.get(plan.getTriggerName());
-    if (information == null) {
-      String errorMessage =
-          String.format(LOGGER_MESSAGE_TRIGGER_NOT_EXISTED, plan.getTriggerName());
-      LOGGER.warn(errorMessage);
-      throw new TriggerManagementException(errorMessage);
-    }
+    TriggerRegistrationInformation information = getRegistrationInformation(plan.getTriggerName());
 
     if (information.isStopped()) {
       String errorMessage =
@@ -241,6 +227,17 @@ public class TriggerRegistrationService implements IService {
     }
 
     information.markAsStopped();
+  }
+
+  private TriggerRegistrationInformation getRegistrationInformation(String triggerName)
+      throws TriggerManagementException {
+    TriggerExecutor executor = executors.get(triggerName);
+    if (executor == null) {
+      String errorMessage = String.format("Trigger %s does not exist.", triggerName);
+      LOGGER.warn(errorMessage);
+      throw new TriggerManagementException(errorMessage);
+    }
+    return executor.getRegistrationInformation();
   }
 
   public QueryDataSet show() {
@@ -265,23 +262,26 @@ public class TriggerRegistrationService implements IService {
   }
 
   private void putTriggerRecords(ListDataSet dataSet) {
-    for (TriggerRegistrationInformation info : getRegistrationInformation()) {
+    for (TriggerExecutor executor : getExecutors()) {
+      TriggerRegistrationInformation information = executor.getRegistrationInformation();
       RowRecord rowRecord = new RowRecord(0); // ignore timestamp
-      rowRecord.addField(Binary.valueOf(info.getTriggerName()), TSDataType.TEXT);
+      rowRecord.addField(Binary.valueOf(information.getTriggerName()), TSDataType.TEXT);
       rowRecord.addField(
           Binary.valueOf(
-              info.isStopped() ? COLUMN_TRIGGER_STATUS_STOPPED : COLUMN_TRIGGER_STATUS_STARTED),
+              information.isStopped()
+                  ? COLUMN_TRIGGER_STATUS_STOPPED
+                  : COLUMN_TRIGGER_STATUS_STARTED),
           TSDataType.TEXT);
-      rowRecord.addField(Binary.valueOf(info.getEvent().toString()), TSDataType.TEXT);
-      rowRecord.addField(Binary.valueOf(info.getFullPath().getFullPath()), TSDataType.TEXT);
-      rowRecord.addField(Binary.valueOf(info.getClassName()), TSDataType.TEXT);
-      rowRecord.addField(Binary.valueOf(info.getAttributes().toString()), TSDataType.TEXT);
+      rowRecord.addField(Binary.valueOf(information.getEvent().toString()), TSDataType.TEXT);
+      rowRecord.addField(Binary.valueOf(information.getFullPath().getFullPath()), TSDataType.TEXT);
+      rowRecord.addField(Binary.valueOf(information.getClassName()), TSDataType.TEXT);
+      rowRecord.addField(Binary.valueOf(information.getAttributes().toString()), TSDataType.TEXT);
       dataSet.putRecord(rowRecord);
     }
   }
 
-  private TriggerRegistrationInformation[] getRegistrationInformation() {
-    return registrationInformation.values().toArray(new TriggerRegistrationInformation[0]);
+  private TriggerExecutor[] getExecutors() {
+    return executors.values().toArray(new TriggerExecutor[0]);
   }
 
   @Override
@@ -386,7 +386,8 @@ public class TriggerRegistrationService implements IService {
 
   private void writeTemporaryLogFile() throws IOException {
     try (TriggerLogWriter temporaryLogWriter = new TriggerLogWriter(TEMPORARY_LOG_FILE_NAME)) {
-      for (TriggerRegistrationInformation information : registrationInformation.values()) {
+      for (TriggerExecutor executor : executors.values()) {
+        TriggerRegistrationInformation information = executor.getRegistrationInformation();
         temporaryLogWriter.write(information.convertToCreateTriggerPlan());
         if (information.isStopped()) {
           temporaryLogWriter.write(new StopTriggerPlan(information.getTriggerName()));
