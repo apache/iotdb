@@ -19,4 +19,23 @@
 
 package org.apache.iotdb.db.engine.trigger.api;
 
-public interface Trigger {}
+import org.apache.iotdb.tsfile.utils.Binary;
+
+public interface Trigger {
+
+  default void onStart() {}
+
+  default void onStop() {}
+
+  default void fire(long time, Integer value) {}
+
+  default void fire(long time, Long value) {}
+
+  default void fire(long time, Float value) {}
+
+  default void fire(long time, Double value) {}
+
+  default void fire(long time, Boolean value) {}
+
+  default void fire(long time, Binary value) {}
+}
