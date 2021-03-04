@@ -43,7 +43,7 @@ IoTDB 支持使用 `TRACING` 语句来启用/禁用对查询语句的性能追�
 - Average size of chunks
 - Total cost time
 
-### 例子
+### 示例
 
 例如执行 `select * from root`，则 tracing 日志文件的内容会包括以下内容：
 

@@ -19,7 +19,7 @@
 
 -->
 
-# SQL 参考文档
+# 附录2: SQL 参考文档
 
 ## 显示版本号
 
@@ -104,6 +104,7 @@ Eg: IoTDB > DELETE TIMESERIES root.ln.wf01.wt01.*
 ```
 
 * 修改时间序列标签属性语句
+
 ```
 ALTER TIMESERIES fullPath alterClause
 alterClause
@@ -149,6 +150,7 @@ Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
 * 显示满足条件的时间序列语句
+
 ```
 SHOW TIMESERIES prefixPath? showWhereClause?
 showWhereClause
@@ -285,6 +287,7 @@ Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
 * 为 schema 创建快照
+
 ```
 CREATE SNAPSHOT FOR SCHEMA
 ```
@@ -859,6 +862,7 @@ Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <T
 
 * FIRST_VALUE
 原有的 `FIRST` 方法在 `v0.10.0` 版本更名为 `FIRST_VALUE`。
+
 ```
 SELECT FIRST_VALUE (Path) (COMMA FIRST_VALUE (Path))* FROM <FromClause> [WHERE <WhereClause>]?
 Eg. SELECT FIRST_VALUE (status), FIRST_VALUE (temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
@@ -891,6 +895,7 @@ Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <T
 
 * AVG
 原有的 `MEAN` 方法在 `v0.9.0` 版本更名为 `AVG`。
+
 ```
 SELECT AVG (Path) (COMMA AVG (Path))* FROM <FromClause> [WHERE <WhereClause>]?
 Eg. SELECT AVG (temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
@@ -939,6 +944,7 @@ IoTDB支持对存储组级别设置数据存活时间（TTL），这使得IoTDB�
 IoTDB中的TTL操作通可以由以下的语句进行实现：
 
 * 设置 TTL
+
 ```
 SET TTL TO StorageGroupName TTLTime
 Eg. SET TTL TO root.group1 3600000
@@ -947,6 +953,7 @@ Eg. SET TTL TO root.group1 3600000
 ```
 
 * 取消 TTL
+
 ```
 UNSET TTL TO StorageGroupName
 Eg. UNSET TTL TO root.group1
@@ -954,6 +961,7 @@ Eg. UNSET TTL TO root.group1
 ```
 
 * 显示 TTL
+
 ```
 SHOW ALL TTL
 SHOW TTL ON StorageGroupNames
@@ -970,6 +978,7 @@ Eg.2 SHOW TTL ON root.group1,root.group2,root.group3
 对应的数据。因此我们不推荐您频繁修改TTL，除非您能接受该操作带来的一定程度的不可预知性。
 
 * 删除时间分区 (实验性功能)
+
 ```
 DELETE PARTITION StorageGroupName INT(COMMA INT)*
 Eg DELETE PARTITION root.sg1 0,1,2
@@ -995,15 +1004,15 @@ SHOW QUERY PROCESSLIST
 ```
 
 - 中止查询
+
 ```
 KILL QUERY INT?
 E.g. KILL QUERY
 E.g. KILL QUERY 2
 ```
 
-# 参考
 
-## 标识符
+## 标识符列表
 
 ```
 QUOTE := '\'';
@@ -1058,7 +1067,7 @@ eg. _abc123
 
 ```
 
-## 常量
+## 常量列表
 
 
 ```

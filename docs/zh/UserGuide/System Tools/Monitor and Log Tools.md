@@ -27,7 +27,7 @@
 
 #### 系统状态监控
 
-进入Jconsole监控页面后，首先看到的是IoTDB各类运行情况的概览。在这里，您可以看到[堆内存信息、线程信息、类信息以及服务器的CPU使用情况](https://docs.oracle.com/javase/7/docs/technotes/guides/management/jconsole.html)。
+进入Jconsole监控页面后，首先看到的是IoTDB各类运行情况的概览。在这里，您可以看到堆内存信息、线程信息、类信息以及服务器的CPU使用情况。
 
 #### JMX MBean监控
 
@@ -125,7 +125,7 @@ Monitor下有几个属性，包括数据文件目录，写入数据统计信息�
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/34242296/92922942-34a20c00-f469-11ea-8dc2-8229d454583c.png"> <br>
 
-##### 例子
+#### 示例
 
 下面为您展示两个具体的例子。用户可以通过`SELECT`语句查询自己所需要的写入数据统计项。（查询方法与普通的时间序列查询方式一致）
 
@@ -142,6 +142,7 @@ select TOTAL_POINTS from root.stats."root.ln"
 ```
 
 若您需要查询当前系统的最新信息，您可以使用最新数据查询，SQL语句如下：
+
 ```sql
 flush
 select last TOTAL_POINTS from root.stats."global"
@@ -170,7 +171,7 @@ select last TOTAL_POINTS from root.stats."global"
 
 #### 利用JMX MBean动态调节参数
 
-通过端口31999连接jconsole，并在上方菜单项中选择‘MBean’. 展开侧边框并选择 'org.apache.iotdb.db.cost.statistic'. 将会得到如下图所示结果：
+通过端口31999连接jconsole，并在上方菜单项中选择`MBean`. 展开侧边框并选择 `org.apache.iotdb.db.cost.statistic`. 将会得到如下图所示结果：
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/60937484-30c5a780-a303-11e9-8e92-04c413df2088.png">
 

@@ -23,26 +23,19 @@
 
 ## JDBC
 
-### 依赖项
+### 依赖
 
 * JDK >= 1.8
 * Maven >= 3.6
 
-### 只打包 JDBC 工程
-
-在根目录下执行下面的命令:
-```
-mvn clean package -pl jdbc -am -Dmaven.test.skip=true
-```
-
-### 如何到本地 MAVEN 仓库
+### 安装方法
 
 在根目录下执行下面的命令:
 ```
 mvn clean install -pl jdbc -am -Dmaven.test.skip=true
 ```
 
-### 如何在 MAVEN 中使用 IoTDB JDBC
+### 在MAVEN中使用 IoTDB JDBC
 
 ```
 <dependencies>
@@ -54,7 +47,7 @@ mvn clean install -pl jdbc -am -Dmaven.test.skip=true
 </dependencies>
 ```
 
-### 示例
+### 示例代码
 
 本章提供了如何建立数据库连接、执行 SQL 和显示查询结果的示例。
 

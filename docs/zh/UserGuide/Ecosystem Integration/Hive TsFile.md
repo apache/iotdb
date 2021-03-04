@@ -39,7 +39,6 @@ TsFile的Hive连接器实现了对Hive读取外部Tsfile类型的文件格式的
 |-------------  |------------ | ------------ |------------ |
 | `2.7.3` or `3.2.1`       |    `2.3.6` or `3.1.2`  | `1.8`        | `0.10.0`|
 
-> 注意：关于如何下载和使用Tsfile, 请参考以下链接: <https://github.com/apache/iotdb/tree/master/tsfile>。
 
 ### 数据类型对应关系
 
@@ -172,9 +171,6 @@ OK
 Time taken: 11.334 seconds, Fetched: 1 row(s)
 ```
 
-### 后续工作
-
-我们现在仅支持查询操作，写操作的支持还在开发中...
 
 
 ## Flink-TsFile

@@ -21,7 +21,7 @@
 
 
 
-# UDF (用户定义函数)
+# 用户定义函数(UDF)
 
 UDF（User Defined Function）即用户自定义函数。IoTDB提供多种内建函数来满足您的计算需求，同时您还可以通过创建自定义函数来满足更多的计算需求。
 
@@ -29,7 +29,7 @@ UDF（User Defined Function）即用户自定义函数。IoTDB提供多种内建
 
 
 
-## UDF分类
+## UDF类型
 
 IoTDB 支持两种类型的 UDF 函数，如下表所示。
 
@@ -189,7 +189,7 @@ void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) th
 
 3类参数的关系可见下图。策略的构造方法详见Javadoc。
 
-<div style="text-align: center;"><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/30497621/99787878-47b51480-2b5b-11eb-8ed3-84088c5c30f7.png"></div>
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/30497621/99787878-47b51480-2b5b-11eb-8ed3-84088c5c30f7.png">
 
 注意，最后的一些时间窗口的实际时间间隔可能小于规定的时间间隔参数。另外，可能存在某些时间窗口内数据行数量为0的情况，这种情况框架也会为该窗口调用一次`transform`方法。
 

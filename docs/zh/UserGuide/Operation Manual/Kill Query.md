@@ -49,7 +49,7 @@ IoTDB> FULL MERGE
 IoTDB> CLEAR CACHE
 ```
 
-### 为 SCHEMA 创建快照
+### SCHEMA SNAPSHOT
 
 为了加快 IoTDB 重启速度，用户可以手动触发创建 schema 的快照，从而避免服务器从 mlog 文件中恢复。
 ```

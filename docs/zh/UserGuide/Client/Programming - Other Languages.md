@@ -22,10 +22,6 @@
 
 ## Python 原生接口
 
-### 介绍
-
-这是一个如何使用thrift rpc接口通过python连接到IoTDB的示例。 在Linux或Windows上情况会有所不同，我们将介绍如何分别在两个系统上进行操作。
-
 ### 依赖
 
 首选python3.7或更高版本。
@@ -38,7 +34,7 @@
 http://thrift.apache.org/docs/install/
 ```
 
-### 如何获取Python库
+### 安装方法
 
  * 方案1: pip install
 
@@ -62,15 +58,12 @@ pip install apache-iotdb
 
 ### 示例代码
 
-我们在`client-py / src/ client_example.py`中提供了一个示例，说明如何使用Thrift库连接到IoTDB，请先仔细阅读，然后再编写自己的代码。
+我们在`client-py/src/client_example.py`中提供了一个示例，说明如何使用Thrift库连接到IoTDB，请先仔细阅读，然后再编写自己的代码。
 
 
 ## C++ 原生接口
 
-编译C++客户端之前首先需要本地编译Thrift库，compile-tools模块负责编译Thrift，之后再编译client-cpp。
-
-### Thrift编译依赖
-
+### 依赖
 - Java 8+
 - Maven 3.5+
 - Flex
@@ -78,9 +71,13 @@ pip install apache-iotdb
 - Boost
 - OpenSSL 1.0+
 
+编译C++客户端之前首先需要本地编译Thrift库，compile-tools模块负责编译Thrift，之后再编译client-cpp。
 
+### 安装方法
 
-#### Mac
+编译C++客户端之前首先需要本地编译Thrift库，compile-tools模块负责编译Thrift，之后再编译client-cpp。
+
+#### 在Mac上编译Thrift
 
 - Bison
 
@@ -122,7 +119,7 @@ brew link boost
 
 
 
-#### Linux
+#### 在Linux上编译Thrift
 
 Linux下需要确保g++已被安装。
 
@@ -142,7 +139,7 @@ yum install gcc g++ bison flex boost-devel
 
 
 
-#### Windows
+#### 在Windows上编译Thrift
 
 保证你的Windows系统已经搭建好了完整的C/C++的编译构建环境。可以是MSVC，MinGW等。
 
@@ -214,14 +211,14 @@ CMake需要根据不同编译平台使用不同的生成器。CMake支持的生�
 
 
 
-### 编译C++ 客户端
+#### 编译C++ 客户端
 
 
 
 Maven 命令中添加"-P client-cpp" 选项编译client-cpp模块。client-cpp需要依赖编译好的thrift，即compile-tools模块。
 
 
-#### 编译及测试:
+#### 编译及测试
 
 完整的C++客户端命令如下：
 
@@ -264,15 +261,15 @@ mvn integration-test -P client-cpp -pl client-cpp,server,example/client-cpp-exam
 
 
 
-### FAQ
+### Q&A
 
-#### Mac
+#### Mac相关问题
 
 本地Maven编译Thrift时如出现以下链接的问题，可以尝试将xcode-commandline版本从12降低到11.5
 
 https://stackoverflow.com/questions/63592445/ld-unsupported-tapi-file-type-tapi-tbd-in-yaml-file/65518087#65518087
 
-#### Windows
+#### Windows相关问题
 
 Maven编译Thrift时需要使用wget下载远端文件，可能出现以下报错：
 
@@ -289,23 +286,19 @@ Failed to delete cached file C:\Users\Administrator\.m2\repository\.cache\downlo
 
 ## Go 原生接口
 
-### 环境准备
-
-#### 操作系统
-
- * Linux、Macos或其他类unix系统
- * Windows+bash(WSL、cygwin、Git Bash)
-
-#### 命令行工具
+### 依赖
 
  * golang >= 1.13
  * make   >= 3.0
  * curl   >= 7.1.1
  * thrift 0.13.x
+ * Linux、Macos或其他类unix系统
+ * Windows+bash(WSL、cygwin、Git Bash)
 
-### 如何使用 (快速上手)
 
-使用go mod
+### 安装方法
+
+ * 通过go mod
 
 ```sh
 export GO111MODULE=on
@@ -319,7 +312,7 @@ go mod init session_example
 go run session_example.go
 ```
 
-不使用go mod，采用GOPATH
+* 通过GOPATH
 
 ```sh
 # get thrift 0.13.0

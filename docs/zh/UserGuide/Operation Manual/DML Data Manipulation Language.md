@@ -321,14 +321,13 @@ GROUP BY语句为用户提供三类指定参数：
 * 参数2：划分时间轴的时间间隔参数（必须为正数）
 * 参数3：滑动步长（可选参数，默认值与时间间隔相同，自定义的值必须大于等于时间间隔）
 
-三类参数的实际含义已经在图5.2中指出，这三类参数里，第三个参数是可选的。
+三类参数的实际含义已经在下图中指出，这三类参数里，第三个参数是可选的。
 接下来，我们将给出三种典型的降频聚合查询的例子：
 滑动步长未指定，
 指定滑动步长，
 带值过滤条件。
 
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/16079446/69109512-f808bc80-0ab2-11ea-9e4d-b2b2f58fb474.png">
-**图 5.2 三类参数的实际含义**</center>
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/16079446/69109512-f808bc80-0ab2-11ea-9e4d-b2b2f58fb474.png">
 
  * 未指定滑动步长的降频聚合查询
 

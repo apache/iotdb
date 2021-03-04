@@ -76,32 +76,31 @@ MQTT主题与IoTDB时间序列相对应。
 | mqtt_payload_formatter | mqtt消息有效负载格式化程序 |    json |
 | mqtt_max_message_size | mqtt消息最大长度（字节）|   1048576 |
 
-### 例子
+### 示例代码
 以下是mqtt客户端将消息发送到IoTDB服务器的示例。
 
  ```java
-        MQTT mqtt = new MQTT();
-        mqtt.setHost("127.0.0.1", 1883);
-        mqtt.setUserName("root");
-        mqtt.setPassword("root");
+MQTT mqtt = new MQTT();
+mqtt.setHost("127.0.0.1", 1883);
+mqtt.setUserName("root");
+mqtt.setPassword("root");
 
-        BlockingConnection connection = mqtt.blockingConnection();
-        connection.connect();
+BlockingConnection connection = mqtt.blockingConnection();
+connection.connect();
 
-        Random random = new Random();
-        for (int i = 0; i < 10; i++) {
-            String payload = String.format("{\n" +
-                    "\"device\":\"root.sg.d1\",\n" +
-                    "\"timestamp\":%d,\n" +
-                    "\"measurements\":[\"s1\"],\n" +
-                    "\"values\":[%f]\n" +
-                    "}", System.currentTimeMillis(), random.nextDouble());
+Random random = new Random();
+for (int i = 0; i < 10; i++) {
+    String payload = String.format("{\n" +
+            "\"device\":\"root.sg.d1\",\n" +
+            "\"timestamp\":%d,\n" +
+            "\"measurements\":[\"s1\"],\n" +
+            "\"values\":[%f]\n" +
+            "}", System.currentTimeMillis(), random.nextDouble());
 
-            connection.publish("root.sg.d1.s1", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
-        }
+    connection.publish("root.sg.d1.s1", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
+}
 
-        connection.disconnect();
-    }
+connection.disconnect();
  ```
 
 ## Rest 

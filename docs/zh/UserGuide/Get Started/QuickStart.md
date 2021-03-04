@@ -19,8 +19,6 @@
 
 -->
 
-<!-- TOC -->
-
 # 快速上手
 
 
@@ -262,16 +260,6 @@ Windows系统停止命令如下：
 ```
 > $sbin\stop-server.bat
 ```
-
-### 只建立客户端
-
-在iotdb的根路径下：
-
-```
-> mvn clean package -pl cli -am -DskipTests
-```
-
-构建后，IoTDB客户端将位于文件夹“ cli / target / iotdb-cli- {project.version}”下。
 
 ## 基础配置
 
