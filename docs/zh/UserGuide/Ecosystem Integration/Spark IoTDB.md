@@ -33,7 +33,7 @@ Spark和Java所需的版本如下：
 
 mvn clean scala:compile compile install
 
-#### 1. Maven依赖
+#### Maven依赖
 
 ```
     <dependency>
@@ -43,7 +43,7 @@ mvn clean scala:compile compile install
     </dependency>
 ```
 
-#### 2. Spark-shell用户指南
+#### Spark-shell用户指南
 
 ```
 spark-shell --jars spark-iotdb-connector-0.10.0.jar,iotdb-jdbc-0.10.0-jar-with-dependencies.jar
@@ -73,31 +73,26 @@ df.printSchema()
 df.show()
 ```
 
-#### 3. 模式推断
+#### 模式推断
 
 以下TsFile结构为例：TsFile模式中有三个度量：状态，温度和硬件。 这三种测量的基本信息如下：
 
-<center>
-<table style="text-align:center">
-	<tr><th colspan="2">名称</th><th colspan="2">类型</th><th colspan="2">编码</th></tr>
-	<tr><td colspan="2">状态</td><td colspan="2">Boolean</td><td colspan="2">PLAIN</td></tr>
-	<tr><td colspan="2">温度</td><td colspan="2">Float</td><td colspan="2">RLE</td></tr>
-	<tr><td colspan="2">硬件</td><td colspan="2">Text</td><td colspan="2">PLAIN</td></tr>
-</table>
-</center>
+|名称|类型|编码|
+|--- |--- |--- |
+|状态|Boolean|PLAIN|
+|温度|Float|RLE|
+|硬件|Text|PLAIN|
 
 TsFile中的现有数据如下：
 
-<center>
-<table style="text-align:center">
-	<tr><th colspan="4">device:root.ln.wf01.wt01</th><th colspan="4">device:root.ln.wf02.wt02</th></tr>
-	<tr><th colspan="2">状态</th><th colspan="2">温度</th><th colspan="2">硬件</th><th colspan="2">状态</th></tr>
-	<tr><th>时间</th><th>值</td><th>时间</th><th>值</th><th>时间</th><th>值</th><th>时间</th><th>值</th></tr>
-	<tr><td>1</td><td>True</td><td>1</td><td>2.2</td><td>2</td><td>"aaa"</td><td>1</td><td>True</td></tr>
-	<tr><td>3</td><td>True</td><td>2</td><td>2.2</td><td>4</td><td>"bbb"</td><td>2</td><td>False</td></tr>
-	<tr><td>5</td><td> False </td><td>3</td><td>2.1</td><td>6</td><td>"ccc"</td><td>4</td><td>True</td></tr>
-</table>
-</center>
+ * d1:root.ln.wf01.wt01
+ * d2:root.ln.wf02.wt02
+
+time|d1.status|time|d1.temperature |time	| d2.hardware	|time|d2.status
+---- | ---- | ---- | ---- | ---- | ----  | ---- | ---- | ---- 
+1|True	|1|2.2|2|"aaa"|1|True
+3|True	|2|2.2|4|"bbb"|2|False
+5|False|3	|2.1|6	|"ccc"|4|True
 
 
 宽（默认）表形式如下：
@@ -124,7 +119,7 @@ TsFile中的现有数据如下：
 | 5    | root.ln.wf02.wt01 | false | null | null |
 | 6    | root.ln.wf02.wt02 | null  | ccc  | null |
 
-#### 4. 在宽和窄表之间转换
+#### 在宽和窄表之间转换
 
    * 从宽到窄
 
@@ -143,7 +138,7 @@ import org.apache.iotdb.spark.db._
 val wide_df = Transformer.toWideForm(spark, narrow_df)
 ```
 
- * 5. Java用户指南
+#### Java用户指南
 
 ```
 import org.apache.spark.sql.Dataset;

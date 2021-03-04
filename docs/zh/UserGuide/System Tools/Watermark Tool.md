@@ -21,9 +21,9 @@ under the License.
 
 这个工具提供了 1）IoTDB查询结果水印嵌入功能，2）可疑数据的水印检测功能。
 
-### 1. 水印嵌入
+### 水印嵌入
 
-#### 1.1 配置
+#### 配置
 
 IoTDB默认关闭水印嵌入功能。为了使用这个功能，第一步要做的事情是修改配置文件`iotdb-engine.properties`中的以下各项：
 
@@ -45,7 +45,7 @@ IoTDB默认关闭水印嵌入功能。为了使用这个功能，第一步要做
   - GroupBasedLSBMethod使用LSB嵌入。`embed_lsb_num`控制了允许嵌入水印的最低有效位的数量。`embed_lsb_num`越大，数值的可变化范围就越大。
 - `watermark_secret_key`, `watermark_bit_string`和`watermark_method`都不应该被攻击者获得。您需要自己负责配置文件`iotdb-engine.properties`的安全管理。
 
-#### 1.2 使用示例
+#### 使用示例
 
  * 第一步：创建一个新用户Alice，授予读权限，然后查询
 
@@ -161,7 +161,7 @@ sql用法：`revoke watermark_embedding from Alice`
 
 只有root用户有权限运行该指令。在root撤销Alice的水印嵌入之后，Alice的所有查询结果就又是数据库中的原始数据了。
 
-### 2. 水印检测
+### 水印检测
 
 `detect-watermark.sh` 和 `detect-watermark.bat` 是给不同平台提供的功能相同的工具脚本。
 
@@ -184,10 +184,10 @@ sql用法：`revoke watermark_embedding from Alice`
 
 - `filePath`: 您可以使用export-csv工具来生成这样的数据文件。第一行是表头， 第一列是时间列。文件中的数据示例如下：
 
-  | Time                          | root.vehicle.d0.s1 | root.vehicle.d0.s1 |
-  | ----------------------------- | ------------------ | ------------------ |
-  | 1970-01-01T08:00:00.001+08:00 | 100                | null               |
-  | ...                           | ...                | ...                |
+| Time                          | root.vehicle.d0.s1 | root.vehicle.d0.s1 |
+| ----------------------------- | ------------------ | ------------------ |
+| 1970-01-01T08:00:00.001+08:00 | 100                | null               |
+| ...                           | ...                | ...                |
 
 - `watermark_secret_key`, `watermark_bit_string`, `embed_row_cycle`和`embed_lsb_num`应该和水印嵌入过程使用的值保持一致。
 

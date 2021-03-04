@@ -21,7 +21,7 @@
 
 ## Spark-TsFile
 
-### 1. About TsFile-Spark-Connector
+### About TsFile-Spark-Connector
 
 TsFile-Spark-Connector对Tsfile类型的外部数据源实现Spark的支持。 这使用户可以通过Spark读取，写入和查询Tsfile。
 
@@ -31,7 +31,7 @@ TsFile-Spark-Connector对Tsfile类型的外部数据源实现Spark的支持。 �
 - 将本地文件系统或hdfs中特定目录中的所有文件加载到Spark中
 - 将数据从Spark写入TsFile
 
-### 2. System Requirements
+### System Requirements
 
 | Spark Version | Scala Version | Java Version | TsFile   |
 | ------------- | ------------- | ------------ | -------- |
@@ -39,7 +39,7 @@ TsFile-Spark-Connector对Tsfile类型的外部数据源实现Spark的支持。 �
 
 > 注意：有关如何下载和使用TsFile的更多信息，请参见以下链接：https://github.com/apache/iotdb/tree/master/tsfile
 
-### 3. 快速开始
+### 快速开始
 
 #### 本地模式
 
@@ -67,7 +67,7 @@ TsFile-Spark-Connector对Tsfile类型的外部数据源实现Spark的支持。 �
 - 多个jar包用逗号分隔，没有任何空格。
 - 有关如何获取TsFile的信息，请参见https://github.com/apache/iotdb/tree/master/tsfile。
 
-### 4. 数据类型对应
+### 数据类型对应
 
 | TsFile数据类型 | SparkSQL数据类型 |
 | -------------- | ---------------- |
@@ -78,31 +78,27 @@ TsFile-Spark-Connector对Tsfile类型的外部数据源实现Spark的支持。 �
 | DOUBLE         | DoubleType       |
 | TEXT           | StringType       |
 
-### 5. 模式推断
+### 模式推断
 
 显示TsFile的方式取决于架构。 以以下TsFile结构为例：TsFile模式中有三个度量：状态，温度和硬件。 这三种测量的基本信息如下：
 
-<center>
-<table style="text-align:center">
-	<tr><th colspan="2">名称</th><th colspan="2">类型</th><th colspan="2">编码</th></tr>
-	<tr><td colspan="2">状态</td><td colspan="2">Boolean</td><td colspan="2">PLAIN</td></tr>
-	<tr><td colspan="2">温度</td><td colspan="2">Float</td><td colspan="2">RLE</td></tr>
-	<tr><td colspan="2">硬件</td><td colspan="2">Text</td><td colspan="2">PLAIN</td></tr>
-</table>
-</center>
+|名称 | 类型 | 编码 |
+| ---- | ---- | ---- | 
+|状态 | Boolean|PLAIN|
+|温度 | Float|RLE|
+|硬件|Text|PLAIN|
+
 
 TsFile中的现有数据如下：
 
-<center>
-<table style="text-align:center">
-	<tr><th colspan="4">device:root.ln.wf01.wt01</th><th colspan="4">device:root.ln.wf02.wt02</th></tr>
-	<tr><th colspan="2">status</th><th colspan="2">temperature</th><th colspan="2">hardware</th><th colspan="2">status</th></tr>
-	<tr><th>time</th><th>value</th><th>time</th><th>value</th><th>time</th><th>value</th><th>time</th><th>value</th></tr>
-	<tr><td>1</td><td>True</td><td>1</td><td>2.2</td><td>2</td><td>"aaa"</td><td>1</td><td>True</td></tr>
-	<tr><td>3</td><td>True</td><td>2</td><td>2.2</td><td>4</td><td>"bbb"</td><td>2</td><td>False</td></tr>
-	<tr><td>5</td><td> False </td><td>3</td><td>2.1</td><td>6</td><td>"ccc"</td><td>4</td><td>True</td></tr>
-</table>
-</center>
+ * d1:root.ln.wf01.wt01
+ * d2:root.ln.wf02.wt02
+
+time|d1.status|time|d1.temperature |time	| d2.hardware	|time|d2.status
+---- | ---- | ---- | ---- | ---- | ----  | ---- | ---- | ---- 
+1|True	|1|2.2|2|"aaa"|1|True
+3|True	|2|2.2|4|"bbb"|2|False
+5|False|3	|2.1|6	|"ccc"|4|True
 
 相应的SparkSQL表如下：
 
@@ -129,7 +125,7 @@ TsFile中的现有数据如下：
 | 6    | root.ln.wf02.wt02 | null   | ccc      | null        |
 
 
-### 6. Scala API
+### Scala API
 
 注意：请记住预先分配必要的读写权限。
 
@@ -235,30 +231,24 @@ newDf.show
 
 显示TsFile的方式与TsFile Schema有关。 以以下TsFile结构为例：TsFile架构中有三个度量：状态，温度和硬件。 这三个度量的基本信息如下：
 
-<center>
-<table style="text-align:center">
-	<tr><th colspan="2">名称</th><th colspan="2">类型</th><th colspan="2">编码</th></tr>
-	<tr><td colspan="2">状态</td><td colspan="2">Boolean</td><td colspan="2">PLAIN</td></tr>
-	<tr><td colspan="2">温度</td><td colspan="2">Float</td><td colspan="2">RLE</td></tr>
-	<tr><td colspan="2">硬件</td><td colspan="2">Text</td><td colspan="2">PLAIN</td></tr>
-</table>
-<span>测量的基本信息</span>
-</center>
+|名称 | 类型 | 编码 |
+| ---- | ---- | ---- | 
+|状态 | Boolean|PLAIN|
+|温度 | Float|RLE|
+|硬件|Text|PLAIN|
 
 文件中的现有数据如下：
 
-<center>
-<table style="text-align:center">
-	<tr><th colspan="4">delta\_object:root.ln.wf01.wt01</th><th colspan="4">delta\_object:root.ln.wf02.wt02</th><th colspan="4">delta\_object:root.sgcc.wf03.wt01</th></tr>
-	<tr><th colspan="2">status</th><th colspan="2">temperature</th><th colspan="2">hardware</th><th colspan="2">status</th><th colspan="2">status</th><th colspan="2">temperature</th></tr>
-	<tr><th>time</th><th>value</td><th>time</th><th>value</td><th>time</th><th>value</th><th>time</th><th>value</td><th>time</th><th>value</td><th>time</th><th>value</th></tr>
-	<tr><td>1</td><td>True</td><td>1</td><td>2.2</td><td>2</td><td>"aaa"</td><td>1</td><td>True</td><td>2</td><td>True</td><td>3</td><td>3.3</td></tr>
-	<tr><td>3</td><td>True</td><td>2</td><td>2.2</td><td>4</td><td>"bbb"</td><td>2</td><td>False</td><td>3</td><td>True</td><td>6</td><td>6.6</td></tr>
-	<tr><td>5</td><td> False </td><td>3</td><td>2.1</td><td>6</td><td>"ccc"</td><td>4</td><td>True</td><td>4</td><td>True</td><td>8</td><td>8.8</td></tr>
-	<tr><td>7</td><td> True </td><td>4</td><td>2.0</td><td>8</td><td>"ddd"</td><td>5</td><td>False</td><td>6</td><td>True</td><td>9</td><td>9.9</td></tr>
-</table>
-<span>一组时间序列数据</span>
-</center>
+ * delta_object1: root.ln.wf01.wt01
+ * delta_object2: root.ln.wf02.wt02
+ * delta_object3: :root.sgcc.wf03.wt01
+
+time|delta_object1.status|time|delta_object1.temperature |time	| delta_object2.hardware	|time|delta_object2.status |time|delta_object3.status|time|delta_object3.temperature 
+---- | ---- | ---- | ---- | ---- | ----  | ---- | ---- | ---- | ----  | ---- | ---- | ---- 
+1|True	|1|2.2|2|"aaa"|1|True|2|True|3|3.3
+3|True	|2|2.2|4|"bbb"|2|False|3|True|6|6.6
+5|False|3	|2.1|6	|"ccc"|4|True|4|True|8|8.8
+7|True|4|2.0|8|"ddd"|5|False|6|True|9|9.9
 
 有两种显示方法：
 
@@ -271,30 +261,27 @@ newDf.show
 
 接下来，为每个度量创建一列以存储特定数据。 SparkSQL表结构如下：
 
-<center>
-	<table style="text-align:center">
-	<tr><th>time(LongType)</th><th> delta\_object(StringType)</th><th>status(BooleanType)</th><th>temperature(FloatType)</th><th>hardware(StringType)</th></tr>
-	<tr><td>1</td><td> root.ln.wf01.wt01 </td><td>True</td><td>2.2</td><td>null</td></tr>
-	<tr><td>1</td><td> root.ln.wf02.wt02 </td><td>True</td><td>null</td><td>null</td></tr>
-	<tr><td>2</td><td> root.ln.wf01.wt01 </td><td>null</td><td>2.2</td><td>null</td></tr>
-	<tr><td>2</td><td> root.ln.wf02.wt02 </td><td>False</td><td>null</td><td>"aaa"</td></tr>
-	<tr><td>2</td><td> root.sgcc.wf03.wt01 </td><td>True</td><td>null</td><td>null</td></tr>
-	<tr><td>3</td><td> root.ln.wf01.wt01 </td><td>True</td><td>2.1</td><td>null</td></tr>
-	<tr><td>3</td><td> root.sgcc.wf03.wt01 </td><td>True</td><td>3.3</td><td>null</td></tr>
-	<tr><td>4</td><td> root.ln.wf01.wt01 </td><td>null</td><td>2.0</td><td>null</td></tr>
-	<tr><td>4</td><td> root.ln.wf02.wt02 </td><td>True</td><td>null</td><td>"bbb"</td></tr>
-	<tr><td>4</td><td> root.sgcc.wf03.wt01 </td><td>True</td><td>null</td><td>null</td></tr>
-	<tr><td>5</td><td> root.ln.wf01.wt01 </td><td>False</td><td>null</td><td>null</td></tr>
-	<tr><td>5</td><td> root.ln.wf02.wt02 </td><td>False</td><td>null</td><td>null</td></tr>
-	<tr><td>5</td><td> root.sgcc.wf03.wt01 </td><td>True</td><td>null</td><td>null</td></tr>
-	<tr><td>6</td><td> root.ln.wf02.wt02 </td><td>null</td><td>null</td><td>"ccc"</td></tr>
-	<tr><td>6</td><td> root.sgcc.wf03.wt01 </td><td>null</td><td>6.6</td><td>null</td></tr>
-	<tr><td>7</td><td> root.ln.wf01.wt01 </td><td>True</td><td>null</td><td>null</td></tr>
-	<tr><td>8</td><td> root.ln.wf02.wt02 </td><td>null</td><td>null</td><td>"ddd"</td></tr>
-	<tr><td>8</td><td> root.sgcc.wf03.wt01 </td><td>null</td><td>8.8</td><td>null</td></tr>
-	<tr><td>9</td><td> root.sgcc.wf03.wt01 </td><td>null</td><td>9.9</td><td>null</td></tr>
-	</table>
-</center>
+|time(LongType)|delta\_object(StringType)|status(BooleanType)|temperature(FloatType)|hardware(StringType)|
+|--- |--- |--- |--- |--- |
+|1|root.ln.wf01.wt01|True|2.2|null|
+|1|root.ln.wf02.wt02|True|null|null|
+|2|root.ln.wf01.wt01|null|2.2|null|
+|2|root.ln.wf02.wt02|False|null|"aaa"|
+|2|root.sgcc.wf03.wt01|True|null|null|
+|3|root.ln.wf01.wt01|True|2.1|null|
+|3|root.sgcc.wf03.wt01|True|3.3|null|
+|4|root.ln.wf01.wt01|null|2.0|null|
+|4|root.ln.wf02.wt02|True|null|"bbb"|
+|4|root.sgcc.wf03.wt01|True|null|null|
+|5|root.ln.wf01.wt01|False|null|null|
+|5|root.ln.wf02.wt02|False|null|null|
+|5|root.sgcc.wf03.wt01|True|null|null|
+|6|root.ln.wf02.wt02|null|null|"ccc"|
+|6|root.sgcc.wf03.wt01|null|6.6|null|
+|7|root.ln.wf01.wt01|True|null|null|
+|8|root.ln.wf02.wt02|null|null|"ddd"|
+|8|root.sgcc.wf03.wt01|null|8.8|null|
+|9|root.sgcc.wf03.wt01|null|9.9|null|
 
 
 
@@ -306,31 +293,27 @@ newDf.show
 
 那么SparkSQL表结构如下:
 
-<center>
-	<table style="text-align:center">
-	<tr><th>time(LongType)</th><th> group(StringType)</th><th> field(StringType)</th><th> device(StringType)</th><th>status(BooleanType)</th><th>temperature(FloatType)</th><th>hardware(StringType)</th></tr>
-	<tr><td>1</td><td> ln </td><td> wf01 </td><td> wt01 </td><td>True</td><td>2.2</td><td>null</td></tr>
-	<tr><td>1</td><td> ln </td><td> wf02 </td><td> wt02 </td><td>True</td><td>null</td><td>null</td></tr>
-	<tr><td>2</td><td> ln </td><td> wf01 </td><td> wt01 </td><td>null</td><td>2.2</td><td>null</td></tr>
-	<tr><td>2</td><td> ln </td><td> wf02 </td><td> wt02 </td><td>False</td><td>null</td><td>"aaa"</td></tr>
-	<tr><td>2</td><td> sgcc </td><td> wf03 </td><td> wt01 </td><td>True</td><td>null</td><td>null</td></tr>
-	<tr><td>3</td><td> ln </td><td> wf01 </td><td> wt01 </td><td>True</td><td>2.1</td><td>null</td></tr>
-	<tr><td>3</td><td> sgcc </td><td> wf03 </td><td> wt01 </td><td>True</td><td>3.3</td><td>null</td></tr>
-	<tr><td>4</td><td> ln </td><td> wf01 </td><td> wt01 </td><td>null</td><td>2.0</td><td>null</td></tr>
-	<tr><td>4</td><td> ln </td><td> wf02 </td><td> wt02 </td><td>True</td><td>null</td><td>"bbb"</td></tr>
-	<tr><td>4</td><td> sgcc </td><td> wf03 </td><td> wt01 </td><td>True</td><td>null</td><td>null</td></tr>
-	<tr><td>5</td><td> ln </td><td> wf01 </td><td> wt01 </td><td>False</td><td>null</td><td>null</td></tr>
-	<tr><td>5</td><td> ln </td><td> wf02 </td><td> wt02 </td><td>False</td><td>null</td><td>null</td></tr>
-	<tr><td>5</td><td> sgcc </td><td> wf03 </td><td> wt01 </td><td>True</td><td>null</td><td>null</td></tr>
-	<tr><td>6</td><td> ln </td><td> wf02 </td><td> wt02 </td><td>null</td><td>null</td><td>"ccc"</td></tr>
-	<tr><td>6</td><td> sgcc </td><td> wf03 </td><td> wt01 </td><td>null</td><td>6.6</td><td>null</td></tr>
-	<tr><td>7</td><td> ln </td><td> wf01 </td><td> wt01 </td><td>True</td><td>null</td><td>null</td></tr>
-	<tr><td>8</td><td> ln </td><td> wf02 </td><td> wt02 </td><td>null</td><td>null</td><td>"ddd"</td></tr>
-	<tr><td>8</td><td> sgcc </td><td> wf03 </td><td> wt01 </td><td>null</td><td>8.8</td><td>null</td></tr>
-	<tr><td>9</td><td> sgcc </td><td> wf03 </td><td> wt01 </td><td>null</td><td>9.9</td><td>null</td></tr>
-	</table>
-
-</center>
+|time(LongType)|group(StringType)|field(StringType)|device(StringType)|status(BooleanType)|temperature(FloatType)|hardware(StringType)|
+|--- |--- |--- |--- |--- |--- |--- |
+|1|ln|wf01|wt01|True|2.2|null|
+|1|ln|wf02|wt02|True|null|null|
+|2|ln|wf01|wt01|null|2.2|null|
+|2|ln|wf02|wt02|False|null|"aaa"|
+|2|sgcc|wf03|wt01|True|null|null|
+|3|ln|wf01|wt01|True|2.1|null|
+|3|sgcc|wf03|wt01|True|3.3|null|
+|4|ln|wf01|wt01|null|2.0|null|
+|4|ln|wf02|wt02|True|null|"bbb"|
+|4|sgcc|wf03|wt01|True|null|null|
+|5|ln|wf01|wt01|False|null|null|
+|5|ln|wf02|wt02|False|null|null|
+|5|sgcc|wf03|wt01|True|null|null|
+|6|ln|wf02|wt02|null|null|"ccc"|
+|6|sgcc|wf03|wt01|null|6.6|null|
+|7|ln|wf01|wt01|True|null|null|
+|8|ln|wf02|wt02|null|null|"ddd"|
+|8|sgcc|wf03|wt01|null|8.8|null|
+|9|sgcc|wf03|wt01|null|9.9|null|
 
 TsFile-Spark-Connector可以通过SparkSQL在SparkSQL中以表的形式显示一个或多个tsfile。它还允许用户指定一个目录或使用通配符来匹配多个目录。如果有多个tsfile，那么所有tsfile中的度量值的并集将保留在表中，并且具有相同名称的度量值在默认情况下具有相同的数据类型。注意，如果存在名称相同但数据类型不同的情况，TsFile-Spark-Connector将不能保证结果的正确性。
 

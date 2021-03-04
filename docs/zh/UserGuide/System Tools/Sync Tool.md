@@ -49,200 +49,118 @@
 #### 同步工具接收端
 同步工具接收端的参数配置位于IoTDB的配置文件iotdb-engine.properties中，其安装目录为$IOTDB_HOME/conf/iotdb-engine.properties。在该配置文件中，有四个参数和同步接收端有关，配置说明如下:
 
-<table>
-   <tr>
-      <td colspan="2">参数名: is_sync_enable</td>
-   </tr>
-   <tr>
-      <td width="20%">描述</td>
-      <td>同步功能开关，配置为true表示接收端允许接收同步的数据并加载，设置为false的时候表示接收端不允许接收同步的数据</td>
-   </tr>
-   <tr>
-      <td>类型</td>
-      <td>Boolean</td>
-   </tr>
-   <tr>
-      <td>默认值</td>
-      <td>false</td>
-   </tr>
-   <tr>
-      <td>改后生效方式</td>
-      <td>重启服务器生效</td>
-   </tr>
-</table>
 
-<table>
-   <tr>
-      <td colspan="2">参数名: IP_white_list</td>
-   </tr>
-   <tr>
-      <td width="20%">描述</td>
-      <td>设置同步功能发送端IP地址的白名单，以网段的形式表示，多个网段之间用逗号分隔。发送端向接收端同步数据时，只有当该发送端IP地址处于该白名单设置的网段范围内，接收端才允许同步操作。如果白名单为空，则接收端不允许任何发送端同步数据。默认接收端接受全部IP的同步请求。</td>
-   </tr>
-   <tr>
-      <td>类型</td>
-      <td>String</td>
-   </tr>
-   <tr>
-      <td>默认值</td>
-      <td>0.0.0.0/0</td>
-   </tr>
-   <tr>
-      <td>改后生效方式</td>
-      <td>重启服务器生效</td>
-   </tr>
-</table>
+|参数名|is_sync_enable|
+|--- |--- |
+|描述|同步功能开关，配置为true表示接收端允许接收同步的数据并加载，设置为false的时候表示接收端不允许接收同步的数据|
+|类型|Boolean|
+|默认值|false|
+|改后生效方式|重启服务器生效|
 
-<table>
-   <tr>
-      <td colspan="2">参数名: sync_server_port</td>
-   </tr>
-   <tr>
-      <td width="20%">描述</td>
-      <td>同步接收端服务器监听接口，请确认该端口不是系统保留端口并且未被占用。参数is_sync_enable设置为true时有效，参数is_sync_enable设置为false时无效</td>
-   </tr>
-   <tr>
-      <td>类型</td>
-      <td>Short Int : [0,65535]</td>
-   </tr>
-   <tr>
-      <td>默认值</td>
-      <td>5555</td>
-   </tr>
-   <tr>
-      <td>改后生效方式</td>
-      <td>重启服务器生效</td>
-   </tr>
-</table>
+|参数名|IP_white_list|
+|--- |--- |
+|描述|设置同步功能发送端IP地址的白名单，以网段的形式表示，多个网段之间用逗号分隔。发送端向接收端同步数据时，只有当该发送端IP地址处于该白名单设置的网段范围内，接收端才允许同步操作。如果白名单为空，则接收端不允许任何发送端同步数据。默认接收端接受全部IP的同步请求。|
+|类型|String|
+|默认值|0.0.0.0/0|
+|改后生效方式|重启服务器生效|
+
+|参数名|sync_server_port|
+|--- |--- |
+|描述|同步接收端服务器监听接口，请确认该端口不是系统保留端口并且未被占用。参数is_sync_enable设置为true时有效，参数is_sync_enable设置为false时无效|
+|类型|Short Int : [0,65535]|
+|默认值|5555|
+|改后生效方式|重启服务器生效|
 
 #### 同步工具发送端
 同步功能发送端的参数配置在一个单独的配置文件中，其安装目录为```$IOTDB_HOME/conf/iotdb-sync-client.properties```。在该配置文件中，有五个参数和同步发送端有关，配置说明如下：
-<table>
-   <tr>
-      <td colspan="2">参数名: server_ip</td>
-   </tr>
-   <tr>
-      <td width="20%">描述</td>
-      <td>同步接收端的IP地址</td>
-   </tr>
-   <tr>
-      <td>类型</td>
-      <td>String</td>
-   </tr>
-   <tr>
-      <td>默认值</td>
-      <td>127.0.0.1</td>
-   </tr>
-   <tr>
-      <td>改后生效方式</td>
-      <td>重启同步功能发送端生效</td>
-   </tr>
-</table>
 
-<table>
-   <tr>
-      <td colspan="2">参数名: server_port</td>
-   </tr>
-   <tr>
-      <td width="20%">描述</td>
-      <td>同步接收端服务器监听端口，需要保证该端口和同步接收端配置的监听端口一致</td>
-   </tr>
-   <tr>
-      <td>类型</td>
-      <td>Short Int : [0,65535]</td>
-   </tr>
-   <tr>
-      <td>默认值</td>
-      <td>5555</td>
-   </tr>
-   <tr>
-      <td>改后生效方式</td>
-      <td>重启同步功能发送端生效</td>
-   </tr>
-</table>
+|参数名|server_ip|
+|--- |--- |
+|描述|同步接收端的IP地址|
+|类型|String|
+|默认值|127.0.0.1|
+|改后生效方式|重启同步功能发送端生效|
 
-<table>
-   <tr>
-      <td colspan="2">参数名: sync_period_in_second</td>
-   </tr>
-   <tr>
-      <td width="20%">描述</td>
-      <td>同步周期，两次同步任务开始时间的间隔，单位为秒(s)</td>
-   </tr>
-   <tr>
-      <td>类型</td>
-      <td>Int : [0,2147483647]</td>
-   </tr>
-   <tr>
-      <td>默认值</td>
-      <td>600</td>
-   </tr>
-   <tr>
-      <td>改后生效方式</td>
-      <td>重启同步功能发送端生效</td>
-   </tr>
-</table>
+|参数名|server_port|
+|--- |--- |
+|描述|同步接收端服务器监听端口，需要保证该端口和同步接收端配置的监听端口一致|
+|类型|Short Int : [0,65535]|
+|默认值|5555|
+|改后生效方式|重启同步功能发送端生效|
 
-<table>
-   <tr>
-      <td colspan="2">参数名: sync_storage_groups</td>
-   </tr>
-   <tr>
-      <td width="20%">描述</td>
-      <td>进行同步的存储组列表，存储组间用逗号分隔；若列表设置为空表示同步所有存储组，默认为空</td>
-   </tr>
-   <tr>
-      <td>类型</td>
-      <td>String</td>
-   </tr>
-   <tr>
-      <td>示例</td>
-      <td>root.sg1, root.sg2</td>
-   </tr>
-   <tr>
-      <td>改后生效方式</td>
-      <td>重启同步功能发送端生效</td>
-   </tr>
-</table>
+|参数名|sync_period_in_second|
+|--- |--- |
+|描述|同步周期，两次同步任务开始时间的间隔，单位为秒(s)|
+|类型|Int : [0,2147483647]|
+|默认值|600|
+|改后生效方式|重启同步功能发送端生效|
 
-<table>
-   <tr>
-      <td colspan="2">参数名: max_number_of_sync_file_retry</td>
-   </tr>
-   <tr>
-      <td width="20%">描述</td>
-      <td>发送端同步文件到接收端失败时的最大重试次数</td>
-   </tr>
-   <tr>
-      <td>类型</td>
-      <td>Int : [0,2147483647]</td>
-   </tr>
-   <tr>
-      <td>示例</td>
-      <td>5</td>
-   </tr>
-   <tr>
-      <td>改后生效方式</td>
-      <td>重启同步功能发送端生效</td>
-   </tr>
-</table>
+|参数名|sync_storage_groups|
+|--- |--- |
+|描述|进行同步的存储组列表，存储组间用逗号分隔；若列表设置为空表示同步所有存储组，默认为空|
+|类型|String|
+|示例|root.sg1, root.sg2|
+|改后生效方式|重启同步功能发送端生效|
+
+|参数名|max_number_of_sync_file_retry|
+|--- |--- |
+|描述|发送端同步文件到接收端失败时的最大重试次数|
+|类型|Int : [0,2147483647]|
+|示例|5|
+|改后生效方式|重启同步功能发送端生效|
 
 ### 使用方式
 
 #### 启动同步功能接收端
 
 1. 配置接收端的参数，例如：
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/26211279/64172919-a32cb100-ce88-11e9-821c-33369bff6d34.png">
-2. 启动IoTDB引擎，同步功能接收端会同时启动，启动时LOG日志会出现`IoTDB: start SYNC ServerService successfully`字样，表示同步接收端启动成功，如图所示：
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/26211279/59494513-df6ef780-8ebf-11e9-83e1-ee8ae64b76d0.png">
+
+```
+	####################
+	### Sync Server Configuration
+	####################
+
+	# Whether to open the sync_server_port for receiving data from sync client, the default is closed
+	is_sync_enable=false
+
+	# Sync server port to listen
+	sync_server_port=5555
+
+	# White IP list of Sync client.
+	# Please use the form of network segment to present the range of IP, for example: 192.168.0.0/16
+	# If there are more than one IP segment, please separate them by commas
+	# The default is to allow all IP to sync
+	ip_white_list=0.0.0.0/0
+```
+
+2. 启动IoTDB引擎，同步功能接收端会同时启动，启动时LOG日志会出现`IoTDB: start SYNC ServerService successfully`字样，表示同步接收端启动成功.
 
 #### 关闭同步功能接收端
 
 关闭IoTDB，同步功能接收端会同时关闭。
 
 #### 启动同步功能发送端
-1. 配置发送端的参数， 如图所示:
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/26211279/64172668-15e95c80-ce88-11e9-9700-dff7daf06bb7.png">
+1. 配置发送端的参数
+
+```
+	# Sync receiver server address
+	server_ip=127.0.0.1
+
+	# Sync receiver server port
+	server_port=5555
+
+	# The period time of sync process, the time unit is second.
+	sync_period_in_second=600
+
+	# This parameter represents storage groups that participate in the synchronization task, which distinguishes each storage group by comma.
+	# If the list is empty, it means that all storage groups participate in synchronization.
+	# By default, it is empty list.
+	# sync_storage_groups = root.sg1, root.sg2
+
+	# The maximum number of retry when syncing a file to receiver fails.
+	max_number_of_sync_file_retry=5
+
+```
 2. 启动同步功能发送端
 
 用户可以使用```$IOTDB_HOME/bin```文件夹下的脚本启动同步功能的发送端
