@@ -19,7 +19,14 @@ public class Replica {
     this.deviceId = deviceId;
     this.measurements = new ArrayList<>(MeasurementOrderOptimizer.getInstance()
             .getMeasurementsOrder(deviceId));
-    this.chunkSize = MeasurementOrderOptimizer.getInstance().getChunkSize(deviceId);
+    this.chunkSize = new ArrayList<>(MeasurementOrderOptimizer.getInstance().getChunkSize(deviceId));
+  }
+
+  public Replica(String deviceId, List<String> measurements) {
+    this.deviceId = deviceId;
+    this.averageChunkSize = averageChunkSize;
+    this.measurements = new ArrayList<>(measurements);
+    chunkSize = new ArrayList<>(MeasurementOrderOptimizer.getInstance().getChunkSize(deviceId));
   }
 
   public Replica(String deviceId, List<String> measurements, long averageChunkSize) {
