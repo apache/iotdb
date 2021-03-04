@@ -66,9 +66,9 @@ calculate_heap_sizes()
     fi
 
     # set max heap size based on the following
-    # max(min(1/2 ram, 1024MB), min(1/4 ram, 8GB))
+    # max(min(1/2 ram, 1024MB), min(1/4 ram, 64GB))
     # calculate 1/2 ram and cap to 1024MB
-    # calculate 1/4 ram and cap to 8192MB
+    # calculate 1/4 ram and cap to 65536MB
     # pick the max
     half_system_memory_in_mb=`expr $system_memory_in_mb / 2`
     quarter_system_memory_in_mb=`expr $half_system_memory_in_mb / 2`
@@ -76,9 +76,9 @@ calculate_heap_sizes()
     then
         half_system_memory_in_mb="1024"
     fi
-    if [ "$quarter_system_memory_in_mb" -gt "8192" ]
+    if [ "$quarter_system_memory_in_mb" -gt "65536" ]
     then
-        quarter_system_memory_in_mb="8192"
+        quarter_system_memory_in_mb="65536"
     fi
     if [ "$half_system_memory_in_mb" -gt "$quarter_system_memory_in_mb" ]
     then
