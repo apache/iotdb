@@ -128,17 +128,6 @@ public class TsFileSequenceRead {
 				}
 			}
 			System.out.println("[Metadata]");
-/*			for (String device : reader.getAllDevices()) {
-				Map<String, List<ChunkMetadata>> seriesMetaData = reader.readChunkMetadataInDevice(device);
-				System.out.printf(
-								"\t[Device]Device %s, Number of Measurements %d%n", device, seriesMetaData.size());
-				for (Map.Entry<String, List<ChunkMetadata>> serie : seriesMetaData.entrySet()) {
-					System.out.println("\t\tMeasurement:" + serie.getKey());
-					for (ChunkMetadata chunkMetadata : serie.getValue()) {
-						System.out.println("\t\tFile offset:" + chunkMetadata.getOffsetOfChunkHeader());
-					}
-				}
-			}*/
 			Map<String, List<TimeseriesMetadata>> timeseriesMetadataMap = reader.getAllTimeseriesMetadata();
 			for (String device : timeseriesMetadataMap.keySet()) {
 				List<TimeseriesMetadata> timeseriesMetadataList = timeseriesMetadataMap.get(device);
