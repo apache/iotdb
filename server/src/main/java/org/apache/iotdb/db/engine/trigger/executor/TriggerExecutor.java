@@ -28,41 +28,80 @@ import org.apache.iotdb.db.exception.TriggerManagementException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.lang.reflect.InvocationTargetException;
 
 public class TriggerExecutor {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(TriggerExecutor.class);
 
   private final TSDataType seriesDataType;
   private final TriggerRegistrationInformation registrationInformation;
   private final TriggerAttributes attributes;
 
-  private Trigger trigger;
+  private TriggerClassLoader triggerClassLoader;
+
+  private Trigger preparedTrigger;
+  private Trigger committedTrigger;
 
   public TriggerExecutor(
       TSDataType seriesDataType,
       TriggerRegistrationInformation registrationInformation,
-      TriggerClassLoader classLoader)
+      TriggerClassLoader triggerClassLoader)
       throws TriggerManagementException {
     this.seriesDataType = seriesDataType;
     this.registrationInformation = registrationInformation;
     attributes = new TriggerAttributes(registrationInformation.getAttributes());
-    constructTriggerInstance(classLoader);
+
+    this.triggerClassLoader = triggerClassLoader;
+
+    preparedTrigger = null;
+    committedTrigger = constructTriggerInstance(triggerClassLoader);
   }
 
-  public synchronized void updateClass(TriggerClassLoader classLoader)
+  public void prepareTriggerUpdate(TriggerClassLoader newClassLoader)
       throws TriggerExecutionException, TriggerManagementException {
-    onStop();
-    constructTriggerInstance(classLoader);
-    onStart();
+    preparedTrigger = constructTriggerInstance(newClassLoader);
+    onStart(preparedTrigger, newClassLoader);
   }
 
-  /** Note: make sure that the classloader of current thread has been set to {@code classLoader}. */
-  private void constructTriggerInstance(TriggerClassLoader classLoader)
+  public void abortTriggerUpdate() {
+    preparedTrigger = null;
+  }
+
+  /**
+   * The execution of {@link TriggerExecutor#fire(long, Object)} should be blocked when the trigger
+   * class is updating.
+   */
+  public synchronized void commitTriggerUpdate(TriggerClassLoader newClassLoader) {
+    if (preparedTrigger == null) {
+      LOGGER.warn(
+          "Trigger {}({}) update is not prepared.",
+          registrationInformation.getTriggerName(),
+          registrationInformation.getClassName());
+      return;
+    }
+
+    try {
+      onStop(committedTrigger, triggerClassLoader);
+    } catch (TriggerExecutionException e) {
+      LOGGER.warn("Error occurred when updating trigger instance.", e);
+    }
+
+    triggerClassLoader = newClassLoader;
+
+    committedTrigger = preparedTrigger;
+    preparedTrigger = null;
+  }
+
+  private Trigger constructTriggerInstance(TriggerClassLoader classLoader)
       throws TriggerManagementException {
     try {
       Class<?> triggerClass =
           Class.forName(registrationInformation.getClassName(), true, classLoader);
-      trigger = (Trigger) triggerClass.getDeclaredConstructor().newInstance();
+      return (Trigger) triggerClass.getDeclaredConstructor().newInstance();
     } catch (InstantiationException
         | InvocationTargetException
         | NoSuchMethodException
@@ -76,6 +115,15 @@ public class TriggerExecutor {
   }
 
   public void onStart() throws TriggerExecutionException {
+    // The execution order of statement here cannot be swapped!
+    onStart(committedTrigger, triggerClassLoader);
+    registrationInformation.markAsStarted();
+  }
+
+  private synchronized void onStart(Trigger trigger, TriggerClassLoader classLoader)
+      throws TriggerExecutionException {
+    Thread.currentThread().setContextClassLoader(classLoader);
+
     try {
       trigger.onStart(attributes);
     } catch (Exception e) {
@@ -84,6 +132,15 @@ public class TriggerExecutor {
   }
 
   public void onStop() throws TriggerExecutionException {
+    // The execution order of statement here cannot be swapped!
+    registrationInformation.markAsStopped();
+    onStop(committedTrigger, triggerClassLoader);
+  }
+
+  private synchronized void onStop(Trigger trigger, TriggerClassLoader classLoader)
+      throws TriggerExecutionException {
+    Thread.currentThread().setContextClassLoader(classLoader);
+
     try {
       trigger.onStop();
     } catch (Exception e) {
@@ -91,26 +148,34 @@ public class TriggerExecutor {
     }
   }
 
-  public synchronized void fire(long time, Object value) throws TriggerExecutionException {
+  public void fireIfActivated(long time, Object value) throws TriggerExecutionException {
+    if (!registrationInformation.isStopped()) {
+      fire(time, value);
+    }
+  }
+
+  private synchronized void fire(long time, Object value) throws TriggerExecutionException {
+    Thread.currentThread().setContextClassLoader(triggerClassLoader);
+
     try {
       switch (seriesDataType) {
         case INT32:
-          trigger.fire(time, (Integer) value);
+          committedTrigger.fire(time, (Integer) value);
           break;
         case INT64:
-          trigger.fire(time, (Long) value);
+          committedTrigger.fire(time, (Long) value);
           break;
         case FLOAT:
-          trigger.fire(time, (Float) value);
+          committedTrigger.fire(time, (Float) value);
           break;
         case DOUBLE:
-          trigger.fire(time, (Double) value);
+          committedTrigger.fire(time, (Double) value);
           break;
         case BOOLEAN:
-          trigger.fire(time, (Boolean) value);
+          committedTrigger.fire(time, (Boolean) value);
           break;
         case TEXT:
-          trigger.fire(time, (Binary) value);
+          committedTrigger.fire(time, (Binary) value);
           break;
         default:
           throw new TriggerExecutionException("Unsupported series data type.");
