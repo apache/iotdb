@@ -18,27 +18,36 @@
  */
 package org.apache.iotdb.db.query.dataset;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+
+import org.junit.Assert;
+import org.junit.Test;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.Map;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.junit.Assert;
-import org.junit.Test;
 
 public class ShowTimeSeriesResultTest {
 
   @Test
   public void serializeTest() throws IOException {
     Map<String, String> tag = Collections.singletonMap("tag1", "this is the first tag");
-    Map<String, String> attribute = Collections
-        .singletonMap("attribute1", "this is the first attribute");
-    ShowTimeSeriesResult showTimeSeriesResult = new ShowTimeSeriesResult("root.sg1.d1.s1",
-        "temperature", "root.sg1", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY,
-        tag, attribute);
+    Map<String, String> attribute =
+        Collections.singletonMap("attribute1", "this is the first attribute");
+    ShowTimeSeriesResult showTimeSeriesResult =
+        new ShowTimeSeriesResult(
+            "root.sg1.d1.s1",
+            "temperature",
+            "root.sg1",
+            TSDataType.DOUBLE,
+            TSEncoding.GORILLA,
+            CompressionType.SNAPPY,
+            tag,
+            attribute);
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     showTimeSeriesResult.serialize(outputStream);

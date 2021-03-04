@@ -37,22 +37,19 @@ import org.apache.iotdb.db.query.aggregation.impl.MinValueAggrResult;
 import org.apache.iotdb.db.query.aggregation.impl.SumAggrResult;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-/**
- * Easy factory pattern to build AggregateFunction.
- */
+/** Easy factory pattern to build AggregateFunction. */
 public class AggregateResultFactory {
 
-  private AggregateResultFactory() {
-  }
+  private AggregateResultFactory() {}
 
   /**
    * construct AggregateFunction using factory pattern.
    *
    * @param aggrFuncName function name.
-   * @param dataType     data type.
+   * @param dataType data type.
    */
-  public static AggregateResult getAggrResultByName(String aggrFuncName, TSDataType dataType,
-      boolean ascending) {
+  public static AggregateResult getAggrResultByName(
+      String aggrFuncName, TSDataType dataType, boolean ascending) {
     if (aggrFuncName == null) {
       throw new IllegalArgumentException("AggregateFunction Name must not be null");
     }
@@ -71,12 +68,14 @@ public class AggregateResultFactory {
       case SQLConstant.AVG:
         return new AvgAggrResult(dataType);
       case SQLConstant.FIRST_VALUE:
-        return !ascending ? new FirstValueDescAggrResult(dataType)
+        return !ascending
+            ? new FirstValueDescAggrResult(dataType)
             : new FirstValueAggrResult(dataType);
       case SQLConstant.SUM:
         return new SumAggrResult(dataType);
       case SQLConstant.LAST_VALUE:
-        return !ascending ? new LastValueDescAggrResult(dataType)
+        return !ascending
+            ? new LastValueDescAggrResult(dataType)
             : new LastValueAggrResult(dataType);
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);
@@ -112,8 +111,8 @@ public class AggregateResultFactory {
     }
   }
 
-  public static AggregateResult getAggrResultByType(AggregationType aggregationType,
-      TSDataType dataType, boolean ascending) {
+  public static AggregateResult getAggrResultByType(
+      AggregationType aggregationType, TSDataType dataType, boolean ascending) {
     switch (aggregationType) {
       case AVG:
         return new AvgAggrResult(dataType);
@@ -122,10 +121,12 @@ public class AggregateResultFactory {
       case SUM:
         return new SumAggrResult(dataType);
       case FIRST_VALUE:
-        return !ascending ? new FirstValueDescAggrResult(dataType)
+        return !ascending
+            ? new FirstValueDescAggrResult(dataType)
             : new FirstValueAggrResult(dataType);
       case LAST_VALUE:
-        return !ascending ? new LastValueDescAggrResult(dataType)
+        return !ascending
+            ? new LastValueDescAggrResult(dataType)
             : new LastValueAggrResult(dataType);
       case MAX_TIME:
         return !ascending ? new MaxTimeDescAggrResult() : new MaxTimeAggrResult();

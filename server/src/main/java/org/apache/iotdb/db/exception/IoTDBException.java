@@ -25,8 +25,8 @@ public class IoTDBException extends Exception {
   private static final long serialVersionUID = 8480450962311247736L;
   protected int errorCode;
   /**
-   * This kind of exception is caused by users' wrong sql, and there is no need for server
-   * to print the full stack of the exception
+   * This kind of exception is caused by users' wrong sql, and there is no need for server to print
+   * the full stack of the exception
    */
   protected boolean isUserException = false;
 

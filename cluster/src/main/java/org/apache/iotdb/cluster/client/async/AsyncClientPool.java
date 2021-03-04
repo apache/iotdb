@@ -19,19 +19,21 @@
 
 package org.apache.iotdb.cluster.client.async;
 
-import java.io.IOException;
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
 import org.apache.iotdb.cluster.utils.ClusterNode;
+
 import org.apache.thrift.async.TAsyncMethodCall;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class AsyncClientPool {
 
@@ -50,6 +52,7 @@ public class AsyncClientPool {
 
   /**
    * See getClient(Node node, boolean activatedOnly)
+   *
    * @param node
    * @return
    * @throws IOException
@@ -60,14 +63,13 @@ public class AsyncClientPool {
 
   /**
    * Get a client of the given node from the cache if one is available, or create a new one.
-   * <p>
-   * IMPORTANT!!! The caller should check whether the return value is null or not!
+   *
+   * <p>IMPORTANT!!! The caller should check whether the return value is null or not!
    *
    * @param node the node want to connect
    * @param activatedOnly if true, only return a client if the node's NodeStatus.isActivated ==
-   *                      true, which avoid unnecessary wait for already down nodes, but
-   *                      heartbeat attempts should always try to connect so the node can be
-   *                      reactivated ASAP
+   *     true, which avoid unnecessary wait for already down nodes, but heartbeat attempts should
+   *     always try to connect so the node can be reactivated ASAP
    * @return if the node can connect, return the client, otherwise null
    * @throws IOException if the node can not be connected
    */
@@ -78,9 +80,9 @@ public class AsyncClientPool {
     }
 
     AsyncClient client;
-    //As clientCaches is ConcurrentHashMap, computeIfAbsent is thread safety.
-    Deque<AsyncClient> clientStack = clientCaches.computeIfAbsent(clusterNode,
-        n -> new ArrayDeque<>());
+    // As clientCaches is ConcurrentHashMap, computeIfAbsent is thread safety.
+    Deque<AsyncClient> clientStack =
+        clientCaches.computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
     synchronized (this) {
       if (clientStack.isEmpty()) {
         int nodeClientNum = nodeClientNumMap.getOrDefault(clusterNode, 0);
@@ -109,9 +111,8 @@ public class AsyncClientPool {
    * @throws IOException
    */
   @SuppressWarnings({"squid:S2273"}) // synchronized outside
-  private AsyncClient waitForClient(Deque<AsyncClient> clientStack, ClusterNode node,
-      int nodeClientNum)
-      throws IOException {
+  private AsyncClient waitForClient(
+      Deque<AsyncClient> clientStack, ClusterNode node, int nodeClientNum) throws IOException {
     // wait for an available client
     long waitStart = System.currentTimeMillis();
     while (clientStack.isEmpty()) {
@@ -121,7 +122,9 @@ public class AsyncClientPool {
             && System.currentTimeMillis() - waitStart >= WAIT_CLIENT_TIMEOUT_MS) {
           logger.warn(
               "Cannot get an available client after {}ms, create a new one, factory {} now is {}",
-              WAIT_CLIENT_TIMEOUT_MS, asyncClientFactory, nodeClientNum);
+              WAIT_CLIENT_TIMEOUT_MS,
+              asyncClientFactory,
+              nodeClientNum);
           nodeClientNumMap.put(node, nodeClientNum + 1);
           return asyncClientFactory.getAsyncClient(node, this);
         }
@@ -152,9 +155,9 @@ public class AsyncClientPool {
       logger.warn("A using client {} is put back while running {}", client.hashCode(), call);
     }
     synchronized (this) {
-      //As clientCaches is ConcurrentHashMap, computeIfAbsent is thread safety.
-      Deque<AsyncClient> clientStack = clientCaches
-          .computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
+      // As clientCaches is ConcurrentHashMap, computeIfAbsent is thread safety.
+      Deque<AsyncClient> clientStack =
+          clientCaches.computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
       clientStack.push(client);
       this.notifyAll();
     }
@@ -164,8 +167,8 @@ public class AsyncClientPool {
     ClusterNode clusterNode = new ClusterNode(node);
     // clean all cached clients when network fails
     synchronized (this) {
-      Deque<AsyncClient> clientStack = clientCaches
-          .computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
+      Deque<AsyncClient> clientStack =
+          clientCaches.computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
       while (!clientStack.isEmpty()) {
         AsyncClient client = clientStack.pop();
         if (client instanceof AsyncDataClient) {
@@ -188,8 +191,8 @@ public class AsyncClientPool {
   void recreateClient(Node node) {
     ClusterNode clusterNode = new ClusterNode(node);
     synchronized (this) {
-      Deque<AsyncClient> clientStack = clientCaches
-          .computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
+      Deque<AsyncClient> clientStack =
+          clientCaches.computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
       try {
         AsyncClient asyncClient = asyncClientFactory.getAsyncClient(node, this);
         clientStack.push(asyncClient);

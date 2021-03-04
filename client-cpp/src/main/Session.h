@@ -25,6 +25,7 @@
 #include <map>
 #include <utility>
 #include <memory>
+#include <new>
 #include <thread>
 #include <mutex>
 #include <stdexcept>
@@ -514,6 +515,8 @@ private:
     int rowsIndex = 0; // used to record the row index in current TSQueryDataSet
     std::shared_ptr<TSQueryDataSet> tsQueryDataSet;
     MyStringBuffer tsQueryDataSetTimeBuffer;
+    std::vector<std::unique_ptr<MyStringBuffer>> valueBuffers;
+    std::vector<std::unique_ptr<MyStringBuffer>> bitmapBuffers;
     RowRecord rowRecord;
     char* currentBitmap; // used to cache the current bitmap for every column
     static const int flag = 0x80; // used to do `or` operation with bitmap to judge whether the value is null
@@ -540,6 +543,8 @@ public:
                 this->columnMap[name] = i;
                 this->columnTypeDeduplicatedList.push_back(columnTypeList[i]);
             }
+            this->valueBuffers.push_back(std::unique_ptr<MyStringBuffer>(new MyStringBuffer(queryDataSet->valueList[i])));
+            this->bitmapBuffers.push_back(std::unique_ptr<MyStringBuffer>(new MyStringBuffer(queryDataSet->bitmapList[i])));
         }
         this->tsQueryDataSet = queryDataSet;
     }
@@ -554,6 +559,14 @@ public:
     void closeOperationHandle();
 };
 
+template<typename T>
+std::vector<T> sortList(std::vector<T>& valueList, int* index, int indexLength) {
+    std::vector<T> sortedValues(valueList.size());
+    for (int i = 0; i < indexLength; i++) {
+        sortedValues[i] = valueList[index[i]];
+    }
+    return sortedValues;
+}
 
 class Session
 {
@@ -574,11 +587,14 @@ class Session
         const static int DEFAULT_TIMEOUT_MS = 0;
 
         bool checkSorted(Tablet& tablet);
+        bool checkSorted(std::vector<int64_t>& times);
         void sortTablet(Tablet& tablet);
-        std::vector<std::string> sortList(std::vector<std::string>& valueList, int* index, int indexLength);
         void sortIndexByTimestamp(int* index, int64_t* timestamps, int length);
         std::string getTimeZone();
         void setTimeZone(std::string zoneId);
+        void appendValues(std::string &buffer, char* value, int size);
+        void putValuesIntoBuffer(std::vector<TSDataType::TSDataType>& types, std::vector<char*>& values, std::string& buf);
+        int8_t getDataTypeNumber(TSDataType::TSDataType type);
     public:
         Session(std::string host, int rpcPort) : username("user"), password("password") {
             this->host = host;
@@ -618,8 +634,11 @@ class Session
         void open(bool enableRPCCompression, int connectionTimeoutInMs);
         void close();
         void insertRecord(std::string deviceId, int64_t time, std::vector<std::string>& measurements, std::vector<std::string>& values);
-        //void insertRecord(std::string deviceId, int64_t time, std::vector<std::string>& measurements, std::vector<TSDataType::Type>& types, )
+        void insertRecord(std::string deviceId, int64_t time, std::vector<std::string>& measurements, std::vector<TSDataType::TSDataType>& types, std::vector<char*>& values);
         void insertRecords(std::vector<std::string>& deviceIds, std::vector<int64_t>& times, std::vector<std::vector<std::string>>& measurementsList, std::vector<std::vector<std::string>>& valuesList);
+        void insertRecords(std::vector<std::string>& deviceIds, std::vector<int64_t>& times, std::vector<std::vector<std::string>>& measurementsList, std::vector<std::vector<TSDataType::TSDataType>> typesList, std::vector<std::vector<char*>>& valuesList);
+        void insertRecordsOfOneDevice(std::string deviceId, std::vector<int64_t>& times, std::vector<std::vector<std::string>> measurementsList, std::vector<std::vector<TSDataType::TSDataType>> typesList, std::vector<std::vector<char*>>& valuesList);
+        void insertRecordsOfOneDevice(std::string deviceId, std::vector<int64_t>& times, std::vector<std::vector<std::string>> measurementsList, std::vector<std::vector<TSDataType::TSDataType>> typesList, std::vector<std::vector<char*>>& valuesList, bool sorted);
         void insertTablet(Tablet& tablet);
         void insertTablet(Tablet& tablet, bool sorted);
         void insertTablets(std::map<std::string, Tablet*>& tablets);

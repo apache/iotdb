@@ -18,14 +18,16 @@
  */
 package org.apache.iotdb.db.service;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import org.apache.iotdb.db.exception.ShutdownException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.utils.TestOnly;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public class RegisterManager {
 
@@ -37,9 +39,7 @@ public class RegisterManager {
     iServices = new ArrayList<>();
   }
 
-  /**
-   * register service.
-   */
+  /** register service. */
   public void register(IService service) throws StartupException {
     for (IService s : iServices) {
       if (s.getID() == service.getID()) {
@@ -51,11 +51,9 @@ public class RegisterManager {
     service.start();
   }
 
-  /**
-   * stop all service and clear iService list.
-   */
+  /** stop all service and clear iService list. */
   public void deregisterAll() {
-    //we stop JMXServer at last
+    // we stop JMXServer at last
     Collections.reverse(iServices);
     for (IService service : iServices) {
       try {
@@ -69,11 +67,9 @@ public class RegisterManager {
     logger.info("deregister all service.");
   }
 
-  /**
-   * stop all service and clear iService list.
-   */
+  /** stop all service and clear iService list. */
   public void shutdownAll() throws ShutdownException {
-    //we stop JMXServer at last
+    // we stop JMXServer at last
     Collections.reverse(iServices);
     for (IService service : iServices) {
       service.shutdown(deregisterTimeOut);

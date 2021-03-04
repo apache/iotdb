@@ -19,14 +19,16 @@
 
 package org.apache.iotdb.db.query.udf.service;
 
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+
+import org.apache.commons.io.FileUtils;
+
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.HashSet;
 import java.util.concurrent.atomic.AtomicLong;
-import org.apache.commons.io.FileUtils;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 
 public class UDFClassLoader extends URLClassLoader {
 
@@ -53,8 +55,8 @@ public class UDFClassLoader extends URLClassLoader {
   }
 
   private void addURLs() throws IOException {
-    HashSet<File> fileSet = new HashSet<>(
-        FileUtils.listFiles(SystemFileFactory.INSTANCE.getFile(libRoot), null, true));
+    HashSet<File> fileSet =
+        new HashSet<>(FileUtils.listFiles(SystemFileFactory.INSTANCE.getFile(libRoot), null, true));
     URL[] urls = FileUtils.toURLs(fileSet.toArray(new File[0]));
     for (URL url : urls) {
       super.addURL(url);

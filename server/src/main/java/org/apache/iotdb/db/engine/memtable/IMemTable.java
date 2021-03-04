@@ -18,9 +18,6 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -33,44 +30,46 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+
 /**
  * IMemTable is designed to store data points which are not flushed into TsFile yet. An instance of
- * IMemTable maintains all series belonging to one StorageGroup,
- * corresponding to one StorageGroupProcessor.<br> The concurrent control of IMemTable
- * is based on the concurrent control of StorageGroupProcessor, i.e., Writing and
- * querying operations must already have gotten writeLock and readLock respectively.<br>
+ * IMemTable maintains all series belonging to one StorageGroup, corresponding to one
+ * StorageGroupProcessor.<br>
+ * The concurrent control of IMemTable is based on the concurrent control of StorageGroupProcessor,
+ * i.e., Writing and querying operations must already have gotten writeLock and readLock
+ * respectively.<br>
  */
 public interface IMemTable {
 
   Map<String, Map<String, IWritableMemChunk>> getMemTableMap();
 
-  void write(String deviceId, String measurement, MeasurementSchema schema,
-      long insertTime, Object objectValue);
+  void write(
+      String deviceId,
+      String measurement,
+      MeasurementSchema schema,
+      long insertTime,
+      Object objectValue);
 
   void write(InsertTabletPlan insertTabletPlan, int start, int end);
 
-  /**
-   * @return the number of points
-   */
+  /** @return the number of points */
   long size();
 
-  /**
-   * @return memory usage
-   */
+  /** @return memory usage */
   long memSize();
 
-  /**
-   * only used when mem control enabled
-   */
+  /** only used when mem control enabled */
   void addTVListRamCost(long cost);
 
-  /**
-   * only used when mem control enabled
-   */
+  /** only used when mem control enabled */
   long getTVListsRamCost();
 
   /**
    * only used when mem control enabled
+   *
    * @return whether the average number of points in each WritableChunk reaches the threshold
    */
   boolean reachTotalPointNumThreshold();
@@ -79,29 +78,30 @@ public interface IMemTable {
 
   long getTotalPointsNum();
 
-
   void insert(InsertRowPlan insertRowPlan);
 
-  /**
-   * [start, end)
-   */
+  /** [start, end) */
   void insertTablet(InsertTabletPlan insertTabletPlan, int start, int end)
       throws WriteProcessException;
 
-  ReadOnlyMemChunk query(String deviceId, String measurement, TSDataType dataType,
-      TSEncoding encoding, Map<String, String> props, long timeLowerBound, List<TimeRange> deletionList)
+  ReadOnlyMemChunk query(
+      String deviceId,
+      String measurement,
+      TSDataType dataType,
+      TSEncoding encoding,
+      Map<String, String> props,
+      long timeLowerBound,
+      List<TimeRange> deletionList)
       throws IOException, QueryProcessException, MetadataException;
 
-  /**
-   * putBack all the memory resources.
-   */
+  /** putBack all the memory resources. */
   void clear();
 
   boolean isEmpty();
 
   /**
-   * Delete data in it whose timestamp <= 'timestamp' and belonging to timeseries
-   * path. Only called for non-flushing MemTable.
+   * Delete data in it whose timestamp <= 'timestamp' and belonging to timeseries path. Only called
+   * for non-flushing MemTable.
    *
    * @param path the PartialPath the timeseries to be deleted.
    * @param devicePath the device path of the timeseries to be deleted.
@@ -121,20 +121,13 @@ public interface IMemTable {
 
   void release();
 
-  /**
-   * must guarantee the device exists in the work memtable
-   * only used when mem control enabled
-   */
+  /** must guarantee the device exists in the work memtable only used when mem control enabled */
   boolean checkIfChunkDoesNotExist(String deviceId, String measurement);
 
-  /**
-   * only used when mem control enabled
-   */
+  /** only used when mem control enabled */
   int getCurrentChunkPointNum(String deviceId, String measurement);
 
-  /**
-   * only used when mem control enabled
-   */
+  /** only used when mem control enabled */
   void addTextDataSize(long textDataIncrement);
 
   long getMaxPlanIndex();

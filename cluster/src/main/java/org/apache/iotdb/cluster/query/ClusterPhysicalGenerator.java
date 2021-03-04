@@ -19,14 +19,6 @@
 
 package org.apache.iotdb.cluster.query;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URL;
-import java.util.List;
-import java.util.Properties;
-import java.util.Set;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -41,8 +33,18 @@ import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
+import java.util.List;
+import java.util.Properties;
+import java.util.Set;
 
 public class ClusterPhysicalGenerator extends PhysicalGenerator {
 
@@ -53,8 +55,8 @@ public class ClusterPhysicalGenerator extends PhysicalGenerator {
   }
 
   @Override
-  protected Pair<List<TSDataType>, List<TSDataType>> getSeriesTypes(List<PartialPath> paths,
-      String aggregation) throws MetadataException {
+  protected Pair<List<TSDataType>, List<TSDataType>> getSeriesTypes(
+      List<PartialPath> paths, String aggregation) throws MetadataException {
     return getCMManager().getSeriesTypesByPaths(paths, aggregation);
   }
 
@@ -73,7 +75,6 @@ public class ClusterPhysicalGenerator extends PhysicalGenerator {
     return ((CMManager) IoTDB.metaManager).getMatchedDevices(path);
   }
 
-
   @Override
   protected PhysicalPlan generateLoadConfigurationPlan(LoadConfigurationOperatorType type)
       throws QueryProcessException {
@@ -81,19 +82,23 @@ public class ClusterPhysicalGenerator extends PhysicalGenerator {
       Properties[] properties = new Properties[2];
       properties[0] = new Properties();
       URL iotdbEnginePropertiesUrl = IoTDBDescriptor.getInstance().getPropsUrl();
-      try (InputStream inputStream = new FileInputStream(new File(iotdbEnginePropertiesUrl.toString()))) {
+      if (iotdbEnginePropertiesUrl == null) {
+        logger.error("Fail to find the engine config file");
+        throw new QueryProcessException("Fail to find config file");
+      }
+      try (InputStream inputStream = iotdbEnginePropertiesUrl.openStream()) {
         properties[0].load(inputStream);
       } catch (IOException e) {
-        logger.warn("Fail to find config file {}", iotdbEnginePropertiesUrl, e);
-        throw new QueryProcessException("Fail to find iotdb-engine config file.");
+        logger.error("Fail to read iotdb-engine config file {}", iotdbEnginePropertiesUrl, e);
+        throw new QueryProcessException("Fail to read iotdb-engine config file.");
       }
       String clusterPropertiesUrl = ClusterDescriptor.getInstance().getPropsUrl();
       properties[1] = new Properties();
       try (InputStream inputStream = new FileInputStream(new File(clusterPropertiesUrl))) {
         properties[1].load(inputStream);
       } catch (IOException e) {
-        logger.warn("Fail to find config file {}", clusterPropertiesUrl, e);
-        throw new QueryProcessException("Fail to find cluster config file.");
+        logger.error("Fail to read iotdb-cluster config file {}", clusterPropertiesUrl, e);
+        throw new QueryProcessException("Fail to read iotdb-cluster config file.");
       }
 
       return new LoadConfigurationPlan(LoadConfigurationPlanType.GLOBAL, properties);

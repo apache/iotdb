@@ -18,22 +18,24 @@
  */
 package org.apache.iotdb.db.auth.authorizer;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Set;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Set;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class LocalFileAuthorizerTest {
 
@@ -101,7 +103,8 @@ public class LocalFileAuthorizerTest {
     try {
       authorizer.grantPrivilegeToUser("root", nodeName, 1);
     } catch (AuthException e) {
-      Assert.assertEquals("Invalid operation, administrator already has all privileges", e.getMessage());
+      Assert.assertEquals(
+          "Invalid operation, administrator already has all privileges", e.getMessage());
     }
 
     try {
@@ -119,7 +122,7 @@ public class LocalFileAuthorizerTest {
 
     try {
       authorizer.revokePrivilegeFromUser(user.getName(), nodeName, 100);
-    } catch(AuthException e) {
+    } catch (AuthException e) {
       assertEquals("Invalid privilegeId 100", e.getMessage());
     }
 
@@ -133,7 +136,8 @@ public class LocalFileAuthorizerTest {
     try {
       authorizer.revokePrivilegeFromUser("root", "root", 1);
     } catch (AuthException e) {
-      Assert.assertEquals("Invalid operation, administrator must have all privileges", e.getMessage());
+      Assert.assertEquals(
+          "Invalid operation, administrator must have all privileges", e.getMessage());
     }
   }
 
@@ -200,7 +204,7 @@ public class LocalFileAuthorizerTest {
 
     try {
       authorizer.grantRoleToUser(roleName, user.getName());
-    } catch(AuthException e) {
+    } catch (AuthException e) {
       Assert.assertEquals("User user already has role role", e.getMessage());
     }
     // revoke a role from a user, the user will lose all role's permission
@@ -210,7 +214,7 @@ public class LocalFileAuthorizerTest {
     assertTrue(revokeRolePermissions.contains(1));
     assertFalse(revokeRolePermissions.contains(2));
 
-    //check the users' permission again
+    // check the users' permission again
     Assert.assertTrue(authorizer.checkUserPrivileges(user.getName(), nodeName, 1));
     Assert.assertFalse(authorizer.checkUserPrivileges(user.getName(), nodeName, 2));
 
@@ -219,7 +223,6 @@ public class LocalFileAuthorizerTest {
     } catch (AuthException e) {
       Assert.assertEquals("No such role : role1", e.getMessage());
     }
-
   }
 
   @Test

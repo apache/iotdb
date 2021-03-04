@@ -18,10 +18,12 @@
  */
 package org.apache.iotdb.cluster.log.manage.serializable;
 
-import java.nio.ByteBuffer;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.nio.ByteBuffer;
 
 public class LogManagerMeta {
 
@@ -66,11 +68,16 @@ public class LogManagerMeta {
   @Override
   public String toString() {
     return "LogManagerMeta{"
-        + " commitLogTerm=" + commitLogTerm
-        + ", commitLogIndex=" + commitLogIndex
-        + ", lastLogIndex=" + lastLogIndex
-        + ", lastLogTerm=" + lastLogTerm
-        + ", maxHaveAppliedCommitIndex=" + maxHaveAppliedCommitIndex
+        + " commitLogTerm="
+        + commitLogTerm
+        + ", commitLogIndex="
+        + commitLogIndex
+        + ", lastLogIndex="
+        + lastLogIndex
+        + ", lastLogTerm="
+        + lastLogTerm
+        + ", maxHaveAppliedCommitIndex="
+        + maxHaveAppliedCommitIndex
         + "}";
   }
 

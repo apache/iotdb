@@ -24,7 +24,7 @@
 ## Dependencies
 
 * JDK >= 1.8
-* Maven >= 3.1
+* Maven >= 3.6
 
 ## How to install in local maven repository
 
@@ -425,4 +425,12 @@ Create multiple timeseries with a single method. Users can provide props, tags, 
 ```
 boolean checkTimeseriesExists(String path)
 ```
+
 Add a method to check whether the specific timeseries exists.
+
+```
+public Session(String host, int rpcPort, String username, String password,
+      boolean isEnableCacheLeader)
+```
+
+Open a session and specifies whether the Leader cache is enabled. Note that this interface improves performance for distributed IoTDB, but adds less cost to the client for stand-alone IoTDB.

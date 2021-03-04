@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.query.udf.api.customizer.config;
 
-import java.time.ZoneId;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.Row;
@@ -28,9 +27,11 @@ import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.AccessStrategy;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import java.time.ZoneId;
 
 /**
  * Used in {@link UDTF#beforeStart(UDFParameters, UDTFConfigurations)}.
@@ -79,7 +80,7 @@ public class UDTFConfigurations extends UDFConfigurations {
    * Used to specify the strategy for accessing raw query data in UDTF.
    *
    * @param accessStrategy the specified access strategy. it should be an instance of {@link
-   *                       AccessStrategy}.
+   *     AccessStrategy}.
    * @return this
    * @see RowByRowAccessStrategy
    * @see SlidingTimeWindowAccessStrategy

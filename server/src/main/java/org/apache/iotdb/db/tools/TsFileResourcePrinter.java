@@ -19,18 +19,19 @@
 
 package org.apache.iotdb.db.tools;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Comparator;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Comparator;
+
 /**
- * This tool can analyze the tsfile.resource files from a folder, 
- * or analyze a single tsfile.resource file.
+ * This tool can analyze the tsfile.resource files from a folder, or analyze a single
+ * tsfile.resource file.
  */
 public class TsFileResourcePrinter {
 
@@ -44,15 +45,16 @@ public class TsFileResourcePrinter {
     File folderFile = SystemFileFactory.INSTANCE.getFile(folder);
     if (folderFile.isDirectory()) {
       // analyze the tsfile.resource files from a folder
-      File[] files = FSFactoryProducer.getFSFactory().listFilesBySuffix(folderFile.getAbsolutePath(), ".tsfile.resource");
+      File[] files =
+          FSFactoryProducer.getFSFactory()
+              .listFilesBySuffix(folderFile.getAbsolutePath(), ".tsfile.resource");
       Arrays.sort(files, Comparator.comparingLong(x -> Long.valueOf(x.getName().split("-")[0])));
 
       for (File file : files) {
         printResource(file.getAbsolutePath());
       }
       System.out.println("Analyzing the resource file folder " + folder + " finished.");
-    }
-    else {
+    } else {
       // analyze a tsfile.resource file
       printResource(folderFile.getAbsolutePath());
       System.out.println("Analyzing the resource file " + folder + " finished.");
@@ -67,13 +69,15 @@ public class TsFileResourcePrinter {
     System.out.println();
     resource.deserialize();
 
-    System.out.printf("Resource plan index range [%d, %d]%n", resource.getMinPlanIndex(),
-        resource.getMaxPlanIndex());
+    System.out.printf(
+        "Resource plan index range [%d, %d]%n",
+        resource.getMinPlanIndex(), resource.getMaxPlanIndex());
 
     for (String device : resource.getDevices()) {
       System.out.printf(
           "device %s, start time %d (%s), end time %d (%s)%n",
-          device, resource.getStartTime(device),
+          device,
+          resource.getStartTime(device),
           DatetimeUtils.convertMillsecondToZonedDateTime(resource.getStartTime(device)),
           resource.getEndTime(device),
           DatetimeUtils.convertMillsecondToZonedDateTime(resource.getEndTime(device)));

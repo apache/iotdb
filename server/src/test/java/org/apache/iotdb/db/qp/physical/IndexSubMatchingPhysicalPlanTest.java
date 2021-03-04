@@ -18,16 +18,6 @@
  */
 package org.apache.iotdb.db.qp.physical;
 
-import static org.apache.iotdb.db.index.common.IndexConstant.PATTERN;
-import static org.apache.iotdb.db.index.common.IndexConstant.THRESHOLD;
-import static org.junit.Assert.assertEquals;
-
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.Arrays;
-import java.util.List;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -43,14 +33,24 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-/**
- * refer to org.apache.iotdb.db.qp.plan.PhysicalPlanTest
- */
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.List;
+
+import static org.apache.iotdb.db.index.common.IndexConstant.PATTERN;
+import static org.apache.iotdb.db.index.common.IndexConstant.THRESHOLD;
+import static org.junit.Assert.assertEquals;
+
+/** refer to org.apache.iotdb.db.qp.plan.PhysicalPlanTest */
 public class IndexSubMatchingPhysicalPlanTest {
 
   private Planner processor = new Planner();
@@ -60,8 +60,12 @@ public class IndexSubMatchingPhysicalPlanTest {
     MManager.getInstance().init();
     MManager.getInstance().setStorageGroup(new PartialPath("root.Wind"));
     MManager.getInstance()
-        .createTimeseries(new PartialPath("root.Wind.AZQ02.Speed"), TSDataType.FLOAT,
-            TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null);
+        .createTimeseries(
+            new PartialPath("root.Wind.AZQ02.Speed"),
+            TSDataType.FLOAT,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            null);
   }
 
   @After
@@ -92,10 +96,11 @@ public class IndexSubMatchingPhysicalPlanTest {
 
   @Test
   public void testQueryIndex() throws QueryProcessException {
-    String sqlStr = "SELECT Speed.* FROM root.Wind.AZQ02 WHERE Speed "
-        + "CONTAIN (15, 14, 12, 12, 12, 11) WITH TOLERANCE 1 "
-        + "CONCAT (10, 20, 25, 24, 14, 8) WITH TOLERANCE 2 "
-        + "CONCAT  (8, 9, 10, 14, 15, 15) WITH TOLERANCE 1";
+    String sqlStr =
+        "SELECT Speed.* FROM root.Wind.AZQ02 WHERE Speed "
+            + "CONTAIN (15, 14, 12, 12, 12, 11) WITH TOLERANCE 1 "
+            + "CONCAT (10, 20, 25, 24, 14, 8) WITH TOLERANCE 2 "
+            + "CONCAT  (8, 9, 10, 14, 15, 15) WITH TOLERANCE 1";
 
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     Assert.assertEquals(QueryIndexPlan.class, plan.getClass());
@@ -108,12 +113,12 @@ public class IndexSubMatchingPhysicalPlanTest {
     Assert.assertEquals("[1.0, 2.0, 1.0]", queryIndexPlan.getProps().get(THRESHOLD).toString());
     Assert.assertTrue(queryIndexPlan.getProps().get(PATTERN) instanceof List);
     List pattern = (List) queryIndexPlan.getProps().get(PATTERN);
-    Assert.assertEquals("[15.0, 14.0, 12.0, 12.0, 12.0, 11.0]",
-        Arrays.toString((double[]) pattern.get(0)));
-    Assert.assertEquals("[10.0, 20.0, 25.0, 24.0, 14.0, 8.0]",
-        Arrays.toString((double[]) pattern.get(1)));
-    Assert.assertEquals("[8.0, 9.0, 10.0, 14.0, 15.0, 15.0]",
-        Arrays.toString((double[]) pattern.get(2)));
+    Assert.assertEquals(
+        "[15.0, 14.0, 12.0, 12.0, 12.0, 11.0]", Arrays.toString((double[]) pattern.get(0)));
+    Assert.assertEquals(
+        "[10.0, 20.0, 25.0, 24.0, 14.0, 8.0]", Arrays.toString((double[]) pattern.get(1)));
+    Assert.assertEquals(
+        "[8.0, 9.0, 10.0, 14.0, 15.0, 15.0]", Arrays.toString((double[]) pattern.get(2)));
   }
 
   @Test
@@ -155,5 +160,4 @@ public class IndexSubMatchingPhysicalPlanTest {
     PhysicalPlan planB = PhysicalPlan.Factory.create(buffer);
     assertEquals(plan, planB);
   }
-
 }

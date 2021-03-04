@@ -25,5 +25,4 @@ public interface Sink {
   void stop();
 
   void report();
-
 }

@@ -19,11 +19,6 @@
 
 package org.apache.iotdb.cluster.query.reader;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
-import java.io.IOException;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.query.BaseQueryTest;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
@@ -38,7 +33,14 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
+
 import org.junit.Test;
+
+import java.io.IOException;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class ClusterTimeGeneratorTest extends BaseQueryTest {
 
@@ -51,16 +53,16 @@ public class ClusterTimeGeneratorTest extends BaseQueryTest {
     try {
       IExpression expression =
           BinaryExpression.and(
-              new SingleSeriesExpression(new PartialPath(TestUtils.getTestSeries(0, 0)),
-                  ValueFilter.gtEq(3.0)),
-              new SingleSeriesExpression(new PartialPath(TestUtils.getTestSeries(1, 1)),
-                  ValueFilter.ltEq(8.0)));
+              new SingleSeriesExpression(
+                  new PartialPath(TestUtils.getTestSeries(0, 0)), ValueFilter.gtEq(3.0)),
+              new SingleSeriesExpression(
+                  new PartialPath(TestUtils.getTestSeries(1, 1)), ValueFilter.ltEq(8.0)));
       dataQueryPlan.setExpression(expression);
       dataQueryPlan.addDeduplicatedPaths(new PartialPath(TestUtils.getTestSeries(0, 0)));
       dataQueryPlan.addDeduplicatedPaths(new PartialPath(TestUtils.getTestSeries(1, 1)));
 
-      ClusterTimeGenerator timeGenerator = new ClusterTimeGenerator(expression, context,
-          testMetaMember, dataQueryPlan);
+      ClusterTimeGenerator timeGenerator =
+          new ClusterTimeGenerator(expression, context, testMetaMember, dataQueryPlan);
       for (int i = 3; i <= 8; i++) {
         assertTrue(timeGenerator.hasNext());
         assertEquals(i, timeGenerator.next());
@@ -70,5 +72,4 @@ public class ClusterTimeGeneratorTest extends BaseQueryTest {
       QueryResourceManager.getInstance().endQuery(context.getQueryId());
     }
   }
-
 }

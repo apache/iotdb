@@ -18,18 +18,19 @@
  */
 package org.apache.iotdb.db.service;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.upgrade.UpgradeLog;
 import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
-import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.utils.UpgradeUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class UpgradeSevice implements IService {
 
@@ -40,22 +41,21 @@ public class UpgradeSevice implements IService {
   private AtomicInteger threadCnt = new AtomicInteger();
   private static int cntUpgradeFileNum;
 
-
-  private UpgradeSevice() {
-  }
+  private UpgradeSevice() {}
 
   public static UpgradeSevice getINSTANCE() {
     return INSTANCE;
   }
 
   @Override
-  public void start() throws StartupException {
+  public void start() {
     int updateThreadNum = IoTDBDescriptor.getInstance().getConfig().getUpgradeThreadNum();
     if (updateThreadNum <= 0) {
       updateThreadNum = 1;
     }
-    upgradeThreadPool = Executors.newFixedThreadPool(updateThreadNum,
-        r -> new Thread(r, "UpgradeThread-" + threadCnt.getAndIncrement()));
+    upgradeThreadPool =
+        Executors.newFixedThreadPool(
+            updateThreadNum, r -> new Thread(r, "UpgradeThread-" + threadCnt.getAndIncrement()));
     UpgradeLog.createUpgradeLog();
     countUpgradeFiles();
     if (cntUpgradeFileNum == 0) {
@@ -68,12 +68,10 @@ public class UpgradeSevice implements IService {
   @Override
   public void stop() {
     UpgradeLog.closeLogWriter();
+    UpgradeUtils.clearUpgradeRecoverMap();
     if (upgradeThreadPool != null) {
       upgradeThreadPool.shutdownNow();
       logger.info("Waiting for upgrade task pool to shut down");
-      while (!upgradeThreadPool.isTerminated()) {
-        // wait
-      }
       upgradeThreadPool = null;
       logger.info("Upgrade service stopped");
     }
@@ -83,7 +81,6 @@ public class UpgradeSevice implements IService {
   public ServiceType getID() {
     return ServiceType.UPGRADE_SERVICE;
   }
-
 
   public static void setCntUpgradeFileNum(int cntUpgradeFileNum) {
     UpgradeUtils.getCntUpgradeFileLock().writeLock().lock();

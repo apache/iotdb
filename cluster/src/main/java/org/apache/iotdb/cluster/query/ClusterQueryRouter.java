@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.cluster.query;
 
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.cluster.query.aggregate.ClusterAggregateExecutor;
 import org.apache.iotdb.cluster.query.fill.ClusterFillExecutor;
 import org.apache.iotdb.cluster.query.groupby.ClusterGroupByNoVFilterDataSet;
@@ -45,6 +43,9 @@ import org.apache.iotdb.db.query.executor.RawDataQueryExecutor;
 import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import java.util.List;
+import java.util.Map;
+
 public class ClusterQueryRouter extends QueryRouter {
 
   private MetaGroupMember metaGroupMember;
@@ -54,20 +55,25 @@ public class ClusterQueryRouter extends QueryRouter {
   }
 
   @Override
-  protected FillQueryExecutor getFillExecutor(List<PartialPath> fillPaths, List<TSDataType> dataTypes,
-      long queryTime, Map<TSDataType, IFill> fillType) {
+  protected FillQueryExecutor getFillExecutor(
+      List<PartialPath> fillPaths,
+      List<TSDataType> dataTypes,
+      long queryTime,
+      Map<TSDataType, IFill> fillType) {
     return new ClusterFillExecutor(fillPaths, dataTypes, queryTime, fillType, metaGroupMember);
   }
 
   @Override
   protected GroupByWithoutValueFilterDataSet getGroupByWithoutValueFilterDataSet(
-      QueryContext context, GroupByTimePlan plan) throws StorageEngineException, QueryProcessException {
+      QueryContext context, GroupByTimePlan plan)
+      throws StorageEngineException, QueryProcessException {
     return new ClusterGroupByNoVFilterDataSet(context, plan, metaGroupMember);
   }
 
   @Override
-  protected GroupByWithValueFilterDataSet getGroupByWithValueFilterDataSet(QueryContext context,
-      GroupByTimePlan plan) throws StorageEngineException, QueryProcessException {
+  protected GroupByWithValueFilterDataSet getGroupByWithValueFilterDataSet(
+      QueryContext context, GroupByTimePlan plan)
+      throws StorageEngineException, QueryProcessException {
     return new ClusterGroupByVFilterDataSet(context, plan, metaGroupMember);
   }
 

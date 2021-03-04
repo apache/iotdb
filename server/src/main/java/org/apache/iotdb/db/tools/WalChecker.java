@@ -18,29 +18,27 @@
  */
 package org.apache.iotdb.db.tools;
 
-import static org.apache.iotdb.db.writelog.node.ExclusiveWriteLogNode.WAL_FILE_NAME;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.exception.SystemCheckException;
+import org.apache.iotdb.db.writelog.io.SingleFileLogReader;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.exception.SystemCheckException;
-import org.apache.iotdb.db.writelog.io.SingleFileLogReader;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-/**
- * WalChecker verifies that whether all insert ahead logs in the WAL folder are recognizable.
- */
+import static org.apache.iotdb.db.writelog.node.ExclusiveWriteLogNode.WAL_FILE_NAME;
+
+/** WalChecker verifies that whether all insert ahead logs in the WAL folder are recognizable. */
 public class WalChecker {
 
   private static final Logger logger = LoggerFactory.getLogger(WalChecker.class);
 
-  /**
-   * the root dir of wals, which should have wal directories of storage groups as its children.
-   */
+  /** the root dir of wals, which should have wal directories of storage groups as its children. */
   private String walFolder;
 
   public WalChecker(String walFolder) {
@@ -49,13 +47,14 @@ public class WalChecker {
 
   /**
    * check the root wal dir and find the damaged files
+   *
    * @return a list of damaged files.
    * @throws SystemCheckException if the root wal dir does not exist.
    */
   public List<File> doCheck() throws SystemCheckException {
     File walFolderFile = SystemFileFactory.INSTANCE.getFile(walFolder);
     logger.info("Checking folder: {}", walFolderFile.getAbsolutePath());
-    if(!walFolderFile.exists() || !walFolderFile.isDirectory()) {
+    if (!walFolderFile.exists() || !walFolderFile.isDirectory()) {
       throw new SystemCheckException(walFolder);
     }
 
@@ -85,8 +84,10 @@ public class WalChecker {
 
     if (walFile.length() > 0 && walFile.length() < SingleFileLogReader.LEAST_LOG_SIZE) {
       // contains only one damaged log
-      logger.error("{} fails the check because it is non-empty but does not contain enough bytes "
-          + "even for one log.", walFile.getAbsoluteFile());
+      logger.error(
+          "{} fails the check because it is non-empty but does not contain enough bytes "
+              + "even for one log.",
+          walFile.getAbsoluteFile());
       return false;
     }
 
@@ -103,13 +104,12 @@ public class WalChecker {
       logger.error("{} fails the check because", walFile.getAbsoluteFile(), e);
       return false;
     } finally {
-      if( logReader != null) {
+      if (logReader != null) {
         logReader.close();
       }
     }
     return true;
   }
-
 
   // a temporary method which should be in the integrated self-check module in the future
   public static void report(List<File> failedFiles) {
@@ -120,10 +120,7 @@ public class WalChecker {
     }
   }
 
-  /**
-   *
-   * @param args walRootDirectory
-   */
+  /** @param args walRootDirectory */
   public static void main(String[] args) throws SystemCheckException {
     if (args.length < 1) {
       logger.error("No enough args: require the walRootDirectory");

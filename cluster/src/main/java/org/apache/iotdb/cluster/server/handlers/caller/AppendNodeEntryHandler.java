@@ -18,22 +18,24 @@
  */
 package org.apache.iotdb.cluster.server.handlers.caller;
 
-import static org.apache.iotdb.cluster.server.Response.RESPONSE_AGREE;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.apache.iotdb.cluster.server.monitor.Peer;
+import org.apache.iotdb.cluster.server.monitor.Timer;
+import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
+
+import org.apache.thrift.async.AsyncMethodCallback;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.ConnectException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.log.Log;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.server.monitor.Peer;
-import org.apache.iotdb.cluster.server.monitor.Timer;
-import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
-import org.apache.iotdb.cluster.server.member.RaftMember;
-import org.apache.thrift.async.AsyncMethodCallback;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import static org.apache.iotdb.cluster.server.Response.RESPONSE_AGREE;
 
 /**
  * AppendNodeEntryHandler checks if the log is successfully appended by the quorum or some node has
@@ -59,10 +61,9 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
   // nano start time when the send begins
   private long sendStart = Long.MIN_VALUE;
 
-
   public AppendNodeEntryHandler() {
-    if (Timer.ENABLE_INSTRUMENTING && ClusterDescriptor.getInstance().getConfig()
-        .isUseAsyncServer()) {
+    if (Timer.ENABLE_INSTRUMENTING
+        && ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       sendStart = System.nanoTime();
     }
   }
@@ -85,11 +86,18 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
     synchronized (voteCounter) {
       if (resp == RESPONSE_AGREE) {
         int remaining = voteCounter.decrementAndGet();
-        logger.debug("{}: Received an agreement from {} for {}, remaining votes to succeed: {}",
-            member.getName(), receiver, log, remaining);
+        logger.debug(
+            "{}: Received an agreement from {} for {}, remaining votes to succeed: {}",
+            member.getName(),
+            receiver,
+            log,
+            remaining);
         if (remaining == 0) {
-          logger.debug("{}: Log [{}] {} is accepted by the quorum", member.getName(),
-              log.getCurrLogIndex(), log);
+          logger.debug(
+              "{}: Log [{}] {} is accepted by the quorum",
+              member.getName(),
+              log.getCurrLogIndex(),
+              log);
           voteCounter.notifyAll();
         }
         peer.setMatchIndex(Math.max(log.getCurrLogIndex(), peer.getMatchIndex()));
@@ -97,18 +105,21 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
         // a response > 0 is the follower's term
         // the leader ship is stale, wait for the new leader's heartbeat
         long prevReceiverTerm = receiverTerm.get();
-        logger.debug("{}: Received a rejection from {} because term is stale: {}/{}",
-            member.getName(), receiver,
-            prevReceiverTerm, resp);
+        logger.debug(
+            "{}: Received a rejection from {} because term is stale: {}/{}",
+            member.getName(),
+            receiver,
+            prevReceiverTerm,
+            resp);
         if (resp > prevReceiverTerm) {
           receiverTerm.set(resp);
         }
         leaderShipStale.set(true);
         voteCounter.notifyAll();
       } else {
-        //e.g., Response.RESPONSE_LOG_MISMATCH
-        logger.debug("{}: The log {} is rejected by {} because: {}", member.getName(), log,
-            receiver, resp);
+        // e.g., Response.RESPONSE_LOG_MISMATCH
+        logger.debug(
+            "{}: The log {} is rejected by {} because: {}", member.getName(), log, receiver, resp);
         onFail();
       }
       // rejected because the receiver's logs are stale or the receiver has no cluster info, just
@@ -119,9 +130,12 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
   @Override
   public void onError(Exception exception) {
     if (exception instanceof ConnectException) {
-      logger
-          .warn("{}: Cannot append log {}: cannot connect to {}: {}", member.getName(), log,
-              receiver, exception.getMessage());
+      logger.warn(
+          "{}: Cannot append log {}: cannot connect to {}: {}",
+          member.getName(),
+          log,
+          receiver,
+          exception.getMessage());
     } else {
       logger.warn("{}: Cannot append log {} to {}", member.getName(), log, receiver, exception);
     }

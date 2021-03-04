@@ -19,30 +19,34 @@
 
 package org.apache.iotdb.db.query.udf.datastructure;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
-import java.io.IOException;
-import java.util.Random;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.db.query.udf.datastructure.tv.ElasticSerializableTVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.IOException;
+import java.util.Random;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class ElasticSerializableTVListTest extends SerializableListTest {
 
   private ElasticSerializableTVList tvList;
 
+  @Override
   @Before
   public void setUp() throws Exception {
     super.setUp();
   }
 
+  @Override
   @After
   public void tearDown() {
     super.tearDown();
@@ -88,8 +92,9 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
 
   private void initESTVList(TSDataType dataType) {
     try {
-      tvList = ElasticSerializableTVList
-          .newElasticSerializableTVList(dataType, QUERY_ID, MEMORY_USAGE_LIMIT_IN_MB, CACHE_SIZE);
+      tvList =
+          ElasticSerializableTVList.newElasticSerializableTVList(
+              dataType, QUERY_ID, MEMORY_USAGE_LIMIT_IN_MB, CACHE_SIZE);
     } catch (QueryProcessException e) {
       fail(e.toString());
     }
@@ -191,8 +196,11 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
 
     try {
       for (int i = 0; i < ITERATION_TIMES; ++i) {
-        tvList.putBinary(i, Binary.valueOf(
-            generateRandomString(byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin))));
+        tvList.putBinary(
+            i,
+            Binary.valueOf(
+                generateRandomString(
+                    byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin))));
       }
       LayerPointReader reader = tvList.getPointReaderUsingEvictionStrategy();
       while (reader.next()) {
@@ -204,8 +212,11 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
       byteLengthMin = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 16;
       byteLengthMax = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 32;
       for (int i = 0; i < ITERATION_TIMES; ++i) {
-        tvList.putBinary(i, Binary.valueOf(
-            generateRandomString(byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin))));
+        tvList.putBinary(
+            i,
+            Binary.valueOf(
+                generateRandomString(
+                    byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin))));
       }
       while (reader.next()) {
         int length = reader.currentBinary().getLength();
@@ -216,8 +227,11 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
       byteLengthMin = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 256;
       byteLengthMax = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 512;
       for (int i = 0; i < ITERATION_TIMES; ++i) {
-        tvList.putBinary(i, Binary.valueOf(
-            generateRandomString(byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin))));
+        tvList.putBinary(
+            i,
+            Binary.valueOf(
+                generateRandomString(
+                    byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin))));
       }
       while (reader.next()) {
         int length = reader.currentBinary().getLength();
@@ -226,8 +240,11 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
       }
 
       for (int i = 0; i < 2 * ITERATION_TIMES; ++i) {
-        tvList.putBinary(i, Binary.valueOf(
-            generateRandomString(byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin))));
+        tvList.putBinary(
+            i,
+            Binary.valueOf(
+                generateRandomString(
+                    byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin))));
         reader.next();
         int length = reader.currentBinary().getLength();
         assertTrue(byteLengthMin <= length && length < byteLengthMax);

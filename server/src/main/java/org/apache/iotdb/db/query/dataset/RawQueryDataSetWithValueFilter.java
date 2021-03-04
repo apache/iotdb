@@ -18,9 +18,6 @@
  */
 package org.apache.iotdb.db.query.dataset;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -28,26 +25,36 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 
-public class RawQueryDataSetWithValueFilter extends QueryDataSet {
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
-  private TimeGenerator timeGenerator;
-  private List<IReaderByTimestamp> seriesReaderByTimestampList;
-  private boolean hasCachedRowRecord;
+public class RawQueryDataSetWithValueFilter extends QueryDataSet implements UDFInputDataSet {
+
+  private final TimeGenerator timeGenerator;
+  private final List<IReaderByTimestamp> seriesReaderByTimestampList;
+  private final List<Boolean> cached;
+
+  private boolean hasCachedRow;
   private RowRecord cachedRowRecord;
-  private List<Boolean> cached;
+  private Object[] cachedRowInObjects;
 
   /**
    * constructor of EngineDataSetWithValueFilter.
    *
-   * @param paths         paths in List structure
-   * @param dataTypes     time series data type
+   * @param paths paths in List structure
+   * @param dataTypes time series data type
    * @param timeGenerator EngineTimeGenerator object
-   * @param readers       readers in List(IReaderByTimeStamp) structure
-   * @param ascending     specifies how the data should be sorted,'True' means read in ascending
-   *                      time order, and 'false' means read in descending time order
+   * @param readers readers in List(IReaderByTimeStamp) structure
+   * @param ascending specifies how the data should be sorted,'True' means read in ascending time
+   *     order, and 'false' means read in descending time order
    */
-  public RawQueryDataSetWithValueFilter(List<PartialPath> paths, List<TSDataType> dataTypes,
-      TimeGenerator timeGenerator, List<IReaderByTimestamp> readers, List<Boolean> cached,
+  public RawQueryDataSetWithValueFilter(
+      List<PartialPath> paths,
+      List<TSDataType> dataTypes,
+      TimeGenerator timeGenerator,
+      List<IReaderByTimestamp> readers,
+      List<Boolean> cached,
       boolean ascending) {
     super(new ArrayList<>(paths), dataTypes, ascending);
     this.timeGenerator = timeGenerator;
@@ -57,7 +64,7 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet {
 
   @Override
   public boolean hasNextWithoutConstraint() throws IOException {
-    if (hasCachedRowRecord) {
+    if (hasCachedRow) {
       return true;
     }
     return cacheRowRecord();
@@ -65,10 +72,10 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet {
 
   @Override
   public RowRecord nextWithoutConstraint() throws IOException {
-    if (!hasCachedRowRecord && !cacheRowRecord()) {
+    if (!hasCachedRow && !cacheRowRecord()) {
       return null;
     }
-    hasCachedRowRecord = false;
+    hasCachedRow = false;
     return cachedRowRecord;
   }
 
@@ -101,11 +108,58 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet {
         }
       }
       if (hasField) {
-        hasCachedRowRecord = true;
+        hasCachedRow = true;
         cachedRowRecord = rowRecord;
         break;
       }
     }
-    return hasCachedRowRecord;
+    return hasCachedRow;
+  }
+
+  @Override
+  public boolean hasNextRowInObjects() throws IOException {
+    if (hasCachedRow) {
+      return true;
+    }
+    return cacheRowInObjects();
+  }
+
+  @Override
+  public Object[] nextRowInObjects() throws IOException {
+    if (!hasCachedRow && !cacheRowInObjects()) {
+      // values + timestamp
+      return new Object[seriesReaderByTimestampList.size() + 1];
+    }
+    hasCachedRow = false;
+    return cachedRowInObjects;
+  }
+
+  private boolean cacheRowInObjects() throws IOException {
+    int seriesNumber = seriesReaderByTimestampList.size();
+    while (timeGenerator.hasNext()) {
+      boolean hasField = false;
+
+      Object[] rowInObjects = new Object[seriesNumber + 1];
+      long timestamp = timeGenerator.next();
+      rowInObjects[seriesNumber] = timestamp;
+
+      for (int i = 0; i < seriesNumber; i++) {
+        Object value =
+            cached.get(i)
+                ? timeGenerator.getValue(paths.get(i), timestamp)
+                : seriesReaderByTimestampList.get(i).getValueInTimestamp(timestamp);
+        if (value != null) {
+          hasField = true;
+          rowInObjects[i] = value;
+        }
+      }
+
+      if (hasField) {
+        hasCachedRow = true;
+        cachedRowInObjects = rowInObjects;
+        break;
+      }
+    }
+    return hasCachedRow;
   }
 }

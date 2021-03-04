@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.utils;
 
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
@@ -27,8 +25,12 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.*;
+
 import org.junit.Assert;
 import org.junit.Test;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class MemUtilsTest {
 
@@ -61,9 +63,7 @@ public class MemUtilsTest {
     Assert.assertEquals(sizeSum, MemUtils.getRecordSize(insertPlan, 0, 1, false));
   }
 
-  /**
-   * This method tests MemUtils.getStringMem() and MemUtils.getDataPointMem()
-   */
+  /** This method tests MemUtils.getStringMem() and MemUtils.getDataPointMem() */
   @Test
   public void getMemSizeTest() {
     int totalSize = 0;
@@ -110,5 +110,4 @@ public class MemUtilsTest {
     String r = "4 GB 877 MB 539 KB 903 B";
     Assert.assertEquals(r, MemUtils.bytesCntToStr(5215121287L));
   }
-
 }

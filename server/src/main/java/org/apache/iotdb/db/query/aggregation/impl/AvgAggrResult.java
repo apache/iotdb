@@ -19,18 +19,21 @@
 
 package org.apache.iotdb.db.query.aggregation.impl;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.BooleanStatistics;
+import org.apache.iotdb.tsfile.file.metadata.statistics.IntegerStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 
 public class AvgAggrResult extends AggregateResult {
 
@@ -69,8 +72,15 @@ public class AvgAggrResult extends AggregateResult {
       throw new StatisticsClassException("Binary statistics does not support: avg");
     }
     cnt += statistics.getCount();
-    avg = avg * ((double) preCnt / cnt) + ((double) statistics.getCount() / cnt)
-        * statistics.getSumValue() / statistics.getCount();
+    double sum;
+    if (statistics instanceof IntegerStatistics || statistics instanceof BooleanStatistics) {
+      sum = statistics.getSumLongValue();
+    } else {
+      sum = statistics.getSumDoubleValue();
+    }
+    avg =
+        avg * ((double) preCnt / cnt)
+            + ((double) statistics.getCount() / cnt) * sum / statistics.getCount();
   }
 
   @Override
@@ -90,8 +100,8 @@ public class AvgAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultUsingTimestamps(long[] timestamps, int length,
-      IReaderByTimestamp dataReader) throws IOException {
+  public void updateResultUsingTimestamps(
+      long[] timestamps, int length, IReaderByTimestamp dataReader) throws IOException {
     for (int i = 0; i < length; i++) {
       Object value = dataReader.getValueInTimestamp(timestamps[i]);
       if (value != null) {
@@ -125,6 +135,23 @@ public class AvgAggrResult extends AggregateResult {
     cnt++;
   }
 
+  public void setAvgResult(TSDataType type, Object val) throws UnSupportedDataTypeException {
+    cnt = 1;
+    switch (type) {
+      case INT32:
+      case INT64:
+      case FLOAT:
+      case DOUBLE:
+        avg = (double) val;
+        break;
+      case TEXT:
+      case BOOLEAN:
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Unsupported data type in aggregation AVG : %s", type));
+    }
+  }
+
   @Override
   public boolean hasFinalResult() {
     return false;
@@ -137,14 +164,15 @@ public class AvgAggrResult extends AggregateResult {
       // avoid two empty results producing an NaN
       return;
     }
-    avg = avg * ((double) cnt / (cnt + anotherAvg.cnt)) +
-        anotherAvg.avg * ((double) anotherAvg.cnt / (cnt + anotherAvg.cnt));
+    avg =
+        avg * ((double) cnt / (cnt + anotherAvg.cnt))
+            + anotherAvg.avg * ((double) anotherAvg.cnt / (cnt + anotherAvg.cnt));
     cnt += anotherAvg.cnt;
   }
 
   @Override
   protected void deserializeSpecificFields(ByteBuffer buffer) {
-    this.seriesDataType = TSDataType.deserialize(buffer.getShort());
+    this.seriesDataType = TSDataType.deserialize(buffer.get());
     this.avg = buffer.getDouble();
     this.cnt = buffer.getLong();
   }

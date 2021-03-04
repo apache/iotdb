@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,19 +18,26 @@
  */
 package org.apache.iotdb.cluster.utils.nodetool.function;
 
-import static org.apache.iotdb.cluster.utils.nodetool.Printer.msgPrintln;
-
-import io.airlift.airline.Command;
-import io.airlift.airline.Option;
-import java.util.Map;
-import java.util.Map.Entry;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitorMBean;
 
-@Command(name = "host", description = "Print partitions information which a specific host belongs to")
+import io.airlift.airline.Command;
+import io.airlift.airline.Option;
+
+import java.util.Map;
+import java.util.Map.Entry;
+
+import static org.apache.iotdb.cluster.utils.nodetool.Printer.msgPrintln;
+
+@Command(
+    name = "host",
+    description = "Print partitions information which a specific host belongs to")
 public class Host extends NodeToolCmd {
 
-  @Option(title = "all nodes", name = {"-a", "--all"}, description = "Show all nodes partition info")
+  @Option(
+      title = "all nodes",
+      name = {"-a", "--all"},
+      description = "Show all nodes partition info")
   private boolean showAll = false;
 
   @Override
@@ -64,7 +71,7 @@ public class Host extends NodeToolCmd {
         builder.append(", ").append(nodeToString(raftGroup.get(i)));
       }
       builder.append(')');
-      msgPrintln(String.format("%-50s->%20s", builder.toString(), slotNum));
+      msgPrintln(String.format("%-50s->%20s", builder, slotNum));
     }
   }
 }

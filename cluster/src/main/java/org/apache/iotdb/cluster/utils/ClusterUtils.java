@@ -19,14 +19,6 @@
 
 package org.apache.iotdb.cluster.utils;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
-import java.util.concurrent.SynchronousQueue;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
@@ -41,6 +33,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.rpc.RpcTransportFactory;
+
 import org.apache.thrift.TProcessor;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.server.TServer;
@@ -49,34 +42,47 @@ import org.apache.thrift.transport.TServerTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+
 public class ClusterUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(ClusterUtils.class);
 
   public static final int WAIT_START_UP_CHECK_TIME_SEC = 5;
 
-  public static final long START_UP_TIME_THRESHOLD_MS = 60 * 1000L;
+  public static final long START_UP_TIME_THRESHOLD_MS = 5 * 60 * 1000L;
 
   public static final long START_UP_CHECK_TIME_INTERVAL_MS = 3 * 1000L;
 
   /**
-   * the data group member's heartbeat offset relative to the {@link ClusterConfig#getInternalDataPort()},
-   * which means the dataHeartbeatPort = getInternalDataPort() + DATA_HEARTBEAT_OFFSET.
+   * the data group member's heartbeat offset relative to the {@link
+   * ClusterConfig#getInternalDataPort()}, which means the dataHeartbeatPort = getInternalDataPort()
+   * + DATA_HEARTBEAT_OFFSET.
    */
   public static final int DATA_HEARTBEAT_PORT_OFFSET = 1;
 
   /**
-   * the meta group member's heartbeat offset relative to the {@link ClusterConfig#getInternalMetaPort()},
-   * which means the metaHeartbeatPort = getInternalMetaPort() + META_HEARTBEAT_OFFSET.
+   * the meta group member's heartbeat offset relative to the {@link
+   * ClusterConfig#getInternalMetaPort()}, which means the metaHeartbeatPort = getInternalMetaPort()
+   * + META_HEARTBEAT_OFFSET.
    */
   public static final int META_HEARTBEAT_PORT_OFFSET = 1;
+
+  public static final String UNKNOWN_CLIENT_IP = "UNKNOWN_IP";
 
   private ClusterUtils() {
     // util class
   }
 
-  public static CheckStatusResponse checkStatus(StartUpStatus remoteStartUpStatus,
-      StartUpStatus localStartUpStatus) {
+  public static CheckStatusResponse checkStatus(
+      StartUpStatus remoteStartUpStatus, StartUpStatus localStartUpStatus) {
     boolean partitionIntervalEquals = true;
     boolean hashSaltEquals = true;
     boolean replicationNumEquals = true;
@@ -85,42 +91,56 @@ public class ClusterUtils {
 
     if (localStartUpStatus.getPartitionInterval() != remoteStartUpStatus.getPartitionInterval()) {
       partitionIntervalEquals = false;
-      logger.error("Remote partition interval conflicts with local. local: {}, remote: {}",
-          localStartUpStatus.getPartitionInterval(), remoteStartUpStatus.getPartitionInterval());
+      logger.error(
+          "Remote partition interval conflicts with local. local: {}, remote: {}",
+          localStartUpStatus.getPartitionInterval(),
+          remoteStartUpStatus.getPartitionInterval());
     }
     if (localStartUpStatus.getHashSalt() != remoteStartUpStatus.getHashSalt()) {
       hashSaltEquals = false;
-      logger.error("Remote hash salt conflicts with local. local: {}, remote: {}",
-          localStartUpStatus.getHashSalt(), remoteStartUpStatus.getHashSalt());
+      logger.error(
+          "Remote hash salt conflicts with local. local: {}, remote: {}",
+          localStartUpStatus.getHashSalt(),
+          remoteStartUpStatus.getHashSalt());
     }
     if (localStartUpStatus.getReplicationNumber() != remoteStartUpStatus.getReplicationNumber()) {
       replicationNumEquals = false;
-      logger.error("Remote replication number conflicts with local. local: {}, remote: {}",
-          localStartUpStatus.getReplicationNumber(), remoteStartUpStatus.getReplicationNumber());
+      logger.error(
+          "Remote replication number conflicts with local. local: {}, remote: {}",
+          localStartUpStatus.getReplicationNumber(),
+          remoteStartUpStatus.getReplicationNumber());
     }
-    if (!Objects
-        .equals(localStartUpStatus.getClusterName(), remoteStartUpStatus.getClusterName())) {
+    if (!Objects.equals(
+        localStartUpStatus.getClusterName(), remoteStartUpStatus.getClusterName())) {
       clusterNameEqual = false;
-      logger.error("Remote cluster name conflicts with local. local: {}, remote: {}",
-          localStartUpStatus.getClusterName(), remoteStartUpStatus.getClusterName());
+      logger.error(
+          "Remote cluster name conflicts with local. local: {}, remote: {}",
+          localStartUpStatus.getClusterName(),
+          remoteStartUpStatus.getClusterName());
     }
-    if (!ClusterUtils
-        .checkSeedNodes(false, localStartUpStatus.getSeedNodeList(),
-            remoteStartUpStatus.getSeedNodeList())) {
+    if (!ClusterUtils.checkSeedNodes(
+        false, localStartUpStatus.getSeedNodeList(), remoteStartUpStatus.getSeedNodeList())) {
       seedNodeListEquals = false;
       if (logger.isErrorEnabled()) {
-        logger.error("Remote seed node list conflicts with local. local: {}, remote: {}",
-            localStartUpStatus.getSeedNodeList(), remoteStartUpStatus.getSeedNodeList());
+        logger.error(
+            "Remote seed node list conflicts with local. local: {}, remote: {}",
+            localStartUpStatus.getSeedNodeList(),
+            remoteStartUpStatus.getSeedNodeList());
       }
     }
 
-    return new CheckStatusResponse(partitionIntervalEquals, hashSaltEquals,
-        replicationNumEquals, seedNodeListEquals, clusterNameEqual);
+    return new CheckStatusResponse(
+        partitionIntervalEquals,
+        hashSaltEquals,
+        replicationNumEquals,
+        seedNodeListEquals,
+        clusterNameEqual);
   }
 
-  public static boolean checkSeedNodes(boolean isClusterEstablished, List<Node> localSeedNodes,
-      List<Node> remoteSeedNodes) {
-    return isClusterEstablished ? seedNodesContains(localSeedNodes, remoteSeedNodes)
+  public static boolean checkSeedNodes(
+      boolean isClusterEstablished, List<Node> localSeedNodes, List<Node> remoteSeedNodes) {
+    return isClusterEstablished
+        ? seedNodesContains(localSeedNodes, remoteSeedNodes)
         : seedNodesEquals(localSeedNodes, remoteSeedNodes);
   }
 
@@ -142,7 +162,7 @@ public class ClusterUtils {
   }
 
   private static int compareSeedNode(Node thisSeedNode, Node thatSeedNode) {
-    int ipCompare = thisSeedNode.getIp().compareTo(thatSeedNode.getIp());
+    int ipCompare = thisSeedNode.getInternalIp().compareTo(thatSeedNode.getInternalIp());
     if (ipCompare != 0) {
       return ipCompare;
     } else {
@@ -180,24 +200,24 @@ public class ClusterUtils {
     return j == subSeedNodeList.size();
   }
 
-  public static void examineCheckStatusResponse(CheckStatusResponse response,
-      AtomicInteger consistentNum, AtomicInteger inconsistentNum, Node seedNode) {
+  public static void examineCheckStatusResponse(
+      CheckStatusResponse response,
+      AtomicInteger consistentNum,
+      AtomicInteger inconsistentNum,
+      Node seedNode) {
     boolean partitionIntervalEquals = response.partitionalIntervalEquals;
     boolean hashSaltEquals = response.hashSaltEquals;
     boolean replicationNumEquals = response.replicationNumEquals;
     boolean seedNodeListEquals = response.seedNodeEquals;
     boolean clusterNameEqual = response.clusterNameEquals;
     if (!partitionIntervalEquals) {
-      logger.error(
-          "Local partition interval conflicts with seed node[{}].", seedNode);
+      logger.error("Local partition interval conflicts with seed node[{}].", seedNode);
     }
     if (!hashSaltEquals) {
-      logger
-          .error("Local hash salt conflicts with seed node[{}]", seedNode);
+      logger.error("Local hash salt conflicts with seed node[{}]", seedNode);
     }
     if (!replicationNumEquals) {
-      logger.error(
-          "Local replication number conflicts with seed node[{}]", seedNode);
+      logger.error("Local replication number conflicts with seed node[{}]", seedNode);
     }
     if (!seedNodeListEquals) {
       logger.error("Local seed node list conflicts with seed node[{}]", seedNode);
@@ -216,8 +236,8 @@ public class ClusterUtils {
     }
   }
 
-  public static boolean analyseStartUpCheckResult(int consistentNum, int inconsistentNum,
-      int totalSeedNum) throws ConfigInconsistentException {
+  public static boolean analyseStartUpCheckResult(
+      int consistentNum, int inconsistentNum, int totalSeedNum) throws ConfigInconsistentException {
     if (consistentNum == totalSeedNum) {
       // break the loop and establish the cluster
       return true;
@@ -225,31 +245,41 @@ public class ClusterUtils {
       // find config InConsistence, stop building cluster
       throw new ConfigInconsistentException();
     } else {
-      // The status of some nodes was not obtained, possibly because those node did not start successfully,
+      // The status of some nodes was not obtained, possibly because those node did not start
+      // successfully,
       // this node can't connect to those nodes, try in next turn
       return false;
     }
   }
 
-  public static TServer createTThreadPoolServer(TServerTransport socket,
-      String clientThreadPrefix, TProcessor processor, TProtocolFactory protocolFactory) {
+  public static TServer createTThreadPoolServer(
+      TServerTransport socket,
+      String clientThreadPrefix,
+      TProcessor processor,
+      TProtocolFactory protocolFactory) {
     ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
-    int maxConcurrentClientNum = Math.max(CommonUtils.getCpuCores(),
-        config.getMaxConcurrentClientNum());
+    int maxConcurrentClientNum =
+        Math.max(CommonUtils.getCpuCores(), config.getMaxConcurrentClientNum());
     TThreadPoolServer.Args poolArgs =
-        new TThreadPoolServer.Args(socket).maxWorkerThreads(maxConcurrentClientNum)
+        new TThreadPoolServer.Args(socket)
+            .maxWorkerThreads(maxConcurrentClientNum)
             .minWorkerThreads(CommonUtils.getCpuCores());
 
-    poolArgs.executorService(new ThreadPoolExecutor(poolArgs.minWorkerThreads,
-        poolArgs.maxWorkerThreads, poolArgs.stopTimeoutVal, poolArgs.stopTimeoutUnit,
-        new SynchronousQueue<>(), new ThreadFactory() {
-      private AtomicLong threadIndex = new AtomicLong(0);
+    poolArgs.executorService(
+        new ThreadPoolExecutor(
+            poolArgs.minWorkerThreads,
+            poolArgs.maxWorkerThreads,
+            poolArgs.stopTimeoutVal,
+            poolArgs.stopTimeoutUnit,
+            new SynchronousQueue<>(),
+            new ThreadFactory() {
+              private AtomicLong threadIndex = new AtomicLong(0);
 
-      @Override
-      public Thread newThread(Runnable r) {
-        return new Thread(r, clientThreadPrefix + threadIndex.incrementAndGet());
-      }
-    }));
+              @Override
+              public Thread newThread(Runnable r) {
+                return new Thread(r, clientThreadPrefix + threadIndex.incrementAndGet());
+              }
+            }));
     poolArgs.processor(processor);
     poolArgs.protocolFactory(protocolFactory);
     // async service requires FramedTransport
@@ -267,7 +297,7 @@ public class ClusterUtils {
    */
   public static Node stringToNode(String str) {
 
-    int ipFirstPos = str.indexOf("ip:") + "ip:".length();
+    int ipFirstPos = str.indexOf("internalIp:") + "internalIp:".length();
     int ipLastPos = str.indexOf(',', ipFirstPos);
     int metaPortFirstPos = str.indexOf("metaPort:", ipLastPos) + "metaPort:".length();
     int metaPortLastPos = str.indexOf(',', metaPortFirstPos);
@@ -275,41 +305,39 @@ public class ClusterUtils {
     int idLastPos = str.indexOf(',', idFirstPos);
     int dataPortFirstPos = str.indexOf("dataPort:", idLastPos) + "dataPort:".length();
     int dataPortLastPos = str.indexOf(',', dataPortFirstPos);
-    int clientPortFirstPos = str.indexOf("clientPort:", idLastPos) + "clientPort:".length();
-    int clientPortLastPos = str.indexOf(')', clientPortFirstPos);
+    int clientPortFirstPos = str.indexOf("clientPort:", dataPortLastPos) + "clientPort:".length();
+    int clientPortLastPos = str.indexOf(',', clientPortFirstPos);
+    int clientIpFirstPos = str.indexOf("clientIp:", clientPortLastPos) + "clientIp:".length();
+    int clientIpLastPos = str.indexOf(')', clientIpFirstPos);
 
     String ip = str.substring(ipFirstPos, ipLastPos);
     int metaPort = Integer.parseInt(str.substring(metaPortFirstPos, metaPortLastPos));
     int id = Integer.parseInt(str.substring(idFirstPos, idLastPos));
     int dataPort = Integer.parseInt(str.substring(dataPortFirstPos, dataPortLastPos));
     int clientPort = Integer.parseInt(str.substring(clientPortFirstPos, clientPortLastPos));
-    return new Node(ip, metaPort, id, dataPort, clientPort);
+    String clientIp = str.substring(clientIpFirstPos, clientIpLastPos);
+    return new Node(ip, metaPort, id, dataPort, clientPort, clientIp);
   }
 
   public static Node parseNode(String nodeUrl) {
     Node result = new Node();
     String[] split = nodeUrl.split(":");
-    if (split.length != 4) {
+    if (split.length != 2) {
       logger.warn("Bad seed url: {}", nodeUrl);
       return null;
     }
     String ip = split[0];
     try {
       int metaPort = Integer.parseInt(split[1]);
-      int dataPort = Integer.parseInt(split[2]);
-      int clientPort = Integer.parseInt(split[3]);
-      result.setIp(ip);
-      result.setMetaPort(metaPort);
-      result.setDataPort(dataPort);
-      result.setClientPort(clientPort);
+      result.setInternalIp(ip).setMetaPort(metaPort).setClientIp(UNKNOWN_CLIENT_IP);
     } catch (NumberFormatException e) {
       logger.warn("Bad seed url: {}", nodeUrl);
     }
     return result;
   }
 
-  public static PartitionGroup partitionByPathTimeWithSync(PartialPath prefixPath,
-      MetaGroupMember metaGroupMember) throws MetadataException {
+  public static PartitionGroup partitionByPathTimeWithSync(
+      PartialPath prefixPath, MetaGroupMember metaGroupMember) throws MetadataException {
     PartitionGroup partitionGroup;
     try {
       partitionGroup = metaGroupMember.getPartitionTable().partitionByPathTime(prefixPath, 0);
@@ -325,5 +353,4 @@ public class ClusterUtils {
     }
     return partitionGroup;
   }
-
 }

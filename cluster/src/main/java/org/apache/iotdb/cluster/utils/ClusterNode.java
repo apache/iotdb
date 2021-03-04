@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.cluster.utils;
 
-import java.util.Objects;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+
+import java.util.Objects;
 
 /**
  * ClusterNode overrides hashcode() and equals() in Node to avoid duplicates in hash data structures
@@ -28,11 +29,16 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
  */
 public class ClusterNode extends Node {
 
-  public ClusterNode() {
-  }
+  public ClusterNode() {}
 
-  public ClusterNode(String ip, int metaPort, int nodeIdentifier, int dataPort, int clientPort) {
-    super(ip, metaPort, nodeIdentifier, dataPort, clientPort);
+  public ClusterNode(
+      String internalIp,
+      int metaPort,
+      int nodeIdentifier,
+      int dataPort,
+      int clientPort,
+      String clientIp) {
+    super(internalIp, metaPort, nodeIdentifier, dataPort, clientPort, clientIp);
   }
 
   public ClusterNode(Node other) {
@@ -48,24 +54,33 @@ public class ClusterNode extends Node {
   }
 
   public boolean equals(ClusterNode that) {
-    return Objects.equals(this.ip, that.ip) && this.dataPort == that.dataPort
-        && this.metaPort == that.metaPort && this.clientPort == that.clientPort;
+    return Objects.equals(this.internalIp, that.internalIp)
+        && this.dataPort == that.dataPort
+        && this.metaPort == that.metaPort
+        && this.clientPort == that.clientPort
+        && this.clientIp.equals(that.clientIp);
   }
-
 
   @Override
   public int hashCode() {
-    return Objects.hash(ip, metaPort, dataPort, clientPort);
+    return Objects.hash(internalIp, metaPort, dataPort, clientPort, clientIp);
   }
 
   @Override
   public String toString() {
     return "ClusterNode{"
-        + " ip='" + ip + '\''
-        + ", metaPort=" + metaPort
-        + ", nodeIdentifier=" + nodeIdentifier
-        + ", dataPort=" + dataPort
-        + ", clientPort=" + clientPort
-        + "}";
+        + " internalIp='"
+        + internalIp
+        + "', metaPort="
+        + metaPort
+        + ", nodeIdentifier="
+        + nodeIdentifier
+        + ", dataPort="
+        + dataPort
+        + ", clientPort="
+        + clientPort
+        + ", clientIp='"
+        + clientIp
+        + "'}";
   }
 }

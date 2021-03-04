@@ -28,12 +28,11 @@ import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * MetaLogApplier applies logs like node addition and storage group creation to IoTDB.
- */
+/** MetaLogApplier applies logs like node addition and storage group creation to IoTDB. */
 public class MetaLogApplier extends BaseApplier {
 
   private static final Logger logger = LoggerFactory.getLogger(MetaLogApplier.class);

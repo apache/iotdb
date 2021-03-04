@@ -23,6 +23,7 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.Client;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.rpc.RpcTransportFactory;
+
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TSocket;
@@ -45,8 +46,13 @@ public class SyncMetaClient extends Client {
 
   public SyncMetaClient(TProtocolFactory protocolFactory, Node node, SyncClientPool pool)
       throws TTransportException {
-    super(protocolFactory.getProtocol(RpcTransportFactory.INSTANCE.getTransport(
-        new TSocket(node.getIp(), node.getMetaPort(), RaftServer.getConnectionTimeoutInMS()))));
+    super(
+        protocolFactory.getProtocol(
+            RpcTransportFactory.INSTANCE.getTransport(
+                new TSocket(
+                    node.getInternalIp(),
+                    node.getMetaPort(),
+                    RaftServer.getConnectionTimeoutInMS()))));
     this.node = node;
     this.pool = pool;
     getInputProtocol().getTransport().open();
@@ -76,5 +82,10 @@ public class SyncMetaClient extends Client {
 
   public Node getNode() {
     return node;
+  }
+
+  @Override
+  public String toString() {
+    return "SyncMetaClient{" + " node=" + node + ", pool=" + pool + "}";
   }
 }

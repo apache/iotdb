@@ -26,6 +26,7 @@ import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -78,14 +79,14 @@ public class GroupByLevelDataSetTest {
     "insert into root.test.d0(timestamp,s0,s1) values(700,1307,'1038')",
     "insert into root.test.d0(timestamp,s1) values(3000,'1309')",
     "insert into root.test.d0(timestamp,s3) values(10,'100')",
-    "insert into root.test.d1(timestamp, \"s3.xy\") values(10, 'text')"};
+    "insert into root.test.d1(timestamp, \"s3.xy\") values(10, 'text')"
+  };
 
   static {
     IoTDB.metaManager.init();
   }
 
-  public GroupByLevelDataSetTest() throws QueryProcessException {
-  }
+  public GroupByLevelDataSetTest() throws QueryProcessException {}
 
   @Before
   public void setUp() throws Exception {
@@ -102,43 +103,49 @@ public class GroupByLevelDataSetTest {
 
   @Test
   public void testGroupByLevel() throws Exception {
-    QueryPlan queryPlan = (QueryPlan) processor
-      .parseSQLToPhysicalPlan("select count(s1) from root.test.* group by level=1");
-    QueryDataSet dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    QueryPlan queryPlan =
+        (QueryPlan)
+            processor.parseSQLToPhysicalPlan("select count(s1) from root.test.* group by level=1");
+    QueryDataSet dataSet =
+        queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
 
     assertTrue(dataSet.hasNext());
     assertEquals("0\t12", dataSet.next().toString());
 
-    queryPlan = (QueryPlan) processor
-      .parseSQLToPhysicalPlan("select count(s1) from root.test.* group by level=0");
+    queryPlan =
+        (QueryPlan)
+            processor.parseSQLToPhysicalPlan("select count(s1) from root.test.* group by level=0");
     dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
 
     assertTrue(dataSet.hasNext());
     assertEquals("0\t12", dataSet.next().toString());
 
-    queryPlan = (QueryPlan) processor
-      .parseSQLToPhysicalPlan("select count(s1) from root.test.* group by level=6");
+    queryPlan =
+        (QueryPlan)
+            processor.parseSQLToPhysicalPlan("select count(s1) from root.test.* group by level=6");
     dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
 
     assertTrue(dataSet.hasNext());
     assertEquals("0\t12", dataSet.next().toString());
 
     // multi paths
-    queryPlan = (QueryPlan) processor
-      .parseSQLToPhysicalPlan("select count(s1) from root.test.*,root.vehicle.* group by level=1");
+    queryPlan =
+        (QueryPlan)
+            processor.parseSQLToPhysicalPlan(
+                "select count(s1) from root.test.*,root.vehicle.* group by level=1");
     dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
 
     assertTrue(dataSet.hasNext());
     assertEquals("0\t12\t10", dataSet.next().toString());
-    
 
     // with double quotation mark
-    queryPlan = (QueryPlan) processor
-      .parseSQLToPhysicalPlan("select count(\"s3.xy\") from root.test.* group by level=2");
+    queryPlan =
+        (QueryPlan)
+            processor.parseSQLToPhysicalPlan(
+                "select count(\"s3.xy\") from root.test.* group by level=2");
     dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
 
     assertTrue(dataSet.hasNext());
     assertEquals("0\t1", dataSet.next().toString());
-
   }
 }

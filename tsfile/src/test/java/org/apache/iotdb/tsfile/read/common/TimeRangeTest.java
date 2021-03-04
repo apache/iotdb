@@ -18,16 +18,14 @@
  */
 package org.apache.iotdb.tsfile.read.common;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
-import java.util.ArrayList;
-
 import org.junit.Assert;
 import org.junit.Test;
 
-import org.apache.iotdb.tsfile.read.common.TimeRange;
+import java.util.ArrayList;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class TimeRangeTest {
 
@@ -431,5 +429,4 @@ public class TimeRangeTest {
     assertEquals(remainRanges.get(0).getLeftClose(), true);
     assertEquals(remainRanges.get(0).getRightClose(), true);
   }
-
 }

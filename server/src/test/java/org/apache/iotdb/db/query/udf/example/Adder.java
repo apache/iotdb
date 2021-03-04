@@ -28,6 +28,7 @@ import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,10 +42,10 @@ public class Adder implements UDTF {
   public void validate(UDFParameterValidator validator) throws Exception {
     validator
         .validateInputSeriesNumber(2)
-        .validateInputSeriesDataType(0, TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT,
-            TSDataType.DOUBLE)
-        .validateInputSeriesDataType(1, TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT,
-            TSDataType.DOUBLE);
+        .validateInputSeriesDataType(
+            0, TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE)
+        .validateInputSeriesDataType(
+            1, TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE);
   }
 
   @Override
@@ -61,8 +62,8 @@ public class Adder implements UDTF {
     if (row.isNull(0) || row.isNull(1)) {
       return;
     }
-    collector.putLong(row.getTime(),
-        (long) (extractDoubleValue(row, 0) + extractDoubleValue(row, 1) + addend));
+    collector.putLong(
+        row.getTime(), (long) (extractDoubleValue(row, 0) + extractDoubleValue(row, 1) + addend));
   }
 
   private double extractDoubleValue(Row row, int index) {

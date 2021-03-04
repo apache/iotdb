@@ -19,13 +19,6 @@
 
 package org.apache.iotdb.cluster.metadata;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
@@ -36,22 +29,31 @@ import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public class MetaPuller {
 
   private static final Logger logger = LoggerFactory.getLogger(MetaPuller.class);
   private MetaGroupMember metaGroupMember;
 
-  private MetaPuller() {
-  }
+  private MetaPuller() {}
 
   private static class MetaPullerHolder {
 
@@ -81,27 +83,34 @@ public class MetaPuller {
     // split the paths by the data groups that will hold them
     Map<PartitionGroup, List<PartialPath>> partitionGroupPathMap = new HashMap<>();
     for (PartialPath prefixPath : prefixPaths) {
-      PartitionGroup partitionGroup = ClusterUtils
-          .partitionByPathTimeWithSync(prefixPath, metaGroupMember);
+      PartitionGroup partitionGroup =
+          ClusterUtils.partitionByPathTimeWithSync(prefixPath, metaGroupMember);
       partitionGroupPathMap.computeIfAbsent(partitionGroup, g -> new ArrayList<>()).add(prefixPath);
     }
 
     List<MeasurementSchema> schemas = new ArrayList<>();
     // pull timeseries schema from every group involved
     if (logger.isDebugEnabled()) {
-      logger.debug("{}: pulling schemas of {} and other {} paths from {} groups",
-          metaGroupMember.getName(), prefixPaths.get(0), prefixPaths.size() - 1,
+      logger.debug(
+          "{}: pulling schemas of {} and other {} paths from {} groups",
+          metaGroupMember.getName(),
+          prefixPaths.get(0),
+          prefixPaths.size() - 1,
           partitionGroupPathMap.size());
     }
-    for (Map.Entry<PartitionGroup, List<PartialPath>> partitionGroupListEntry : partitionGroupPathMap
-        .entrySet()) {
+    for (Map.Entry<PartitionGroup, List<PartialPath>> partitionGroupListEntry :
+        partitionGroupPathMap.entrySet()) {
       PartitionGroup partitionGroup = partitionGroupListEntry.getKey();
       List<PartialPath> paths = partitionGroupListEntry.getValue();
       pullMeasurementSchemas(partitionGroup, paths, schemas);
     }
     if (logger.isDebugEnabled()) {
-      logger.debug("{}: pulled {} schemas for {} and other {} paths", metaGroupMember.getName(),
-          schemas.size(), prefixPaths.get(0), prefixPaths.size() - 1);
+      logger.debug(
+          "{}: pulled {} schemas for {} and other {} paths",
+          metaGroupMember.getName(),
+          schemas.size(),
+          prefixPaths.get(0),
+          prefixPaths.size() - 1);
     }
     return schemas;
   }
@@ -115,19 +124,25 @@ public class MetaPuller {
    * @param prefixPaths
    * @param results
    */
-  private void pullMeasurementSchemas(PartitionGroup partitionGroup,
-      List<PartialPath> prefixPaths, List<MeasurementSchema> results) {
+  private void pullMeasurementSchemas(
+      PartitionGroup partitionGroup,
+      List<PartialPath> prefixPaths,
+      List<MeasurementSchema> results) {
     if (partitionGroup.contains(metaGroupMember.getThisNode())) {
       // the node is in the target group, synchronize with leader should be enough
-      metaGroupMember.getLocalDataMember(partitionGroup.getHeader(),
-          "Pull timeseries of " + prefixPaths).syncLeader();
+      metaGroupMember
+          .getLocalDataMember(partitionGroup.getHeader(), "Pull timeseries of " + prefixPaths)
+          .syncLeader();
       int preSize = results.size();
       for (PartialPath prefixPath : prefixPaths) {
         IoTDB.metaManager.collectSeries(prefixPath, results);
       }
       if (logger.isDebugEnabled()) {
-        logger.debug("{}: Pulled {} timeseries schemas of {} and other {} paths from local",
-            metaGroupMember.getName(), results.size() - preSize, prefixPaths.get(0),
+        logger.debug(
+            "{}: Pulled {} timeseries schemas of {} and other {} paths from local",
+            metaGroupMember.getName(),
+            results.size() - preSize,
+            prefixPaths.get(0),
             prefixPaths.size() - 1);
       }
       return;
@@ -136,8 +151,8 @@ public class MetaPuller {
     // pull schemas from a remote node
     PullSchemaRequest pullSchemaRequest = new PullSchemaRequest();
     pullSchemaRequest.setHeader(partitionGroup.getHeader());
-    pullSchemaRequest.setPrefixPaths(prefixPaths.stream().map(PartialPath::getFullPath).collect(
-        Collectors.toList()));
+    pullSchemaRequest.setPrefixPaths(
+        prefixPaths.stream().map(PartialPath::getFullPath).collect(Collectors.toList()));
 
     for (Node node : partitionGroup) {
       if (pullMeasurementSchemas(node, pullSchemaRequest, results)) {
@@ -146,35 +161,49 @@ public class MetaPuller {
     }
   }
 
-  private boolean pullMeasurementSchemas(Node node,
-      PullSchemaRequest request, List<MeasurementSchema> results) {
+  private boolean pullMeasurementSchemas(
+      Node node, PullSchemaRequest request, List<MeasurementSchema> results) {
     if (logger.isDebugEnabled()) {
-      logger.debug("{}: Pulling timeseries schemas of {} and other {} paths from {}",
-          metaGroupMember.getName(), request.getPrefixPaths().get(0),
-          request.getPrefixPaths().size() - 1, node);
+      logger.debug(
+          "{}: Pulling timeseries schemas of {} and other {} paths from {}",
+          metaGroupMember.getName(),
+          request.getPrefixPaths().get(0),
+          request.getPrefixPaths().size() - 1,
+          node);
     }
 
     List<MeasurementSchema> schemas = null;
     try {
       schemas = pullMeasurementSchemas(node, request);
     } catch (IOException | TException e) {
-      logger
-          .error("{}: Cannot pull timeseries schemas of {} and other {} paths from {}",
-              metaGroupMember.getName(), request.getPrefixPaths().get(0),
-              request.getPrefixPaths().size() - 1, node, e);
+      logger.error(
+          "{}: Cannot pull timeseries schemas of {} and other {} paths from {}",
+          metaGroupMember.getName(),
+          request.getPrefixPaths().get(0),
+          request.getPrefixPaths().size() - 1,
+          node,
+          e);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      logger
-          .error("{}: Cannot pull timeseries schemas of {} and other {} paths from {}",
-              metaGroupMember.getName(), request.getPrefixPaths().get(0),
-              request.getPrefixPaths().size() - 1, node, e);
+      logger.error(
+          "{}: Cannot pull timeseries schemas of {} and other {} paths from {}",
+          metaGroupMember.getName(),
+          request.getPrefixPaths().get(0),
+          request.getPrefixPaths().size() - 1,
+          node,
+          e);
     }
 
     if (schemas != null) {
       if (logger.isDebugEnabled()) {
-        logger.debug("{}: Pulled {} timeseries schemas of {} and other {} paths from {} of {}",
-            metaGroupMember.getName(), schemas.size(), request.getPrefixPaths().get(0),
-            request.getPrefixPaths().size() - 1, node, request.getHeader());
+        logger.debug(
+            "{}: Pulled {} timeseries schemas of {} and other {} paths from {} of {}",
+            metaGroupMember.getName(),
+            schemas.size(),
+            request.getPrefixPaths().get(0),
+            request.getPrefixPaths().size() - 1,
+            node,
+            request.getHeader());
       }
       results.addAll(schemas);
       return true;
@@ -182,22 +211,31 @@ public class MetaPuller {
     return false;
   }
 
-  private List<MeasurementSchema> pullMeasurementSchemas(Node node,
-      PullSchemaRequest request) throws TException, InterruptedException, IOException {
+  private List<MeasurementSchema> pullMeasurementSchemas(Node node, PullSchemaRequest request)
+      throws TException, InterruptedException, IOException {
     List<MeasurementSchema> schemas;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      AsyncDataClient client = metaGroupMember
-          .getClientProvider().getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+      AsyncDataClient client =
+          metaGroupMember
+              .getClientProvider()
+              .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       schemas = SyncClientAdaptor.pullMeasurementSchema(client, request);
     } else {
-      SyncDataClient syncDataClient = metaGroupMember
-          .getClientProvider().getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-      PullSchemaResp pullSchemaResp = syncDataClient.pullTimeSeriesSchema(request);
-      ByteBuffer buffer = pullSchemaResp.schemaBytes;
-      int size = buffer.getInt();
-      schemas = new ArrayList<>(size);
-      for (int i = 0; i < size; i++) {
-        schemas.add(MeasurementSchema.deserializeFrom(buffer));
+      SyncDataClient syncDataClient = null;
+      try {
+        syncDataClient =
+            metaGroupMember
+                .getClientProvider()
+                .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+        PullSchemaResp pullSchemaResp = syncDataClient.pullTimeSeriesSchema(request);
+        ByteBuffer buffer = pullSchemaResp.schemaBytes;
+        int size = buffer.getInt();
+        schemas = new ArrayList<>(size);
+        for (int i = 0; i < size; i++) {
+          schemas.add(MeasurementSchema.deserializeFrom(buffer));
+        }
+      } finally {
+        ClientUtils.putBackSyncClient(syncDataClient);
       }
     }
 

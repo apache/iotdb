@@ -19,17 +19,6 @@
 
 package org.apache.iotdb.cluster.log.applier;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
-import java.util.concurrent.SynchronousQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
@@ -42,10 +31,24 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.service.IoTDB;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 public class AsyncDataLogApplier implements LogApplier {
 
@@ -65,8 +68,13 @@ public class AsyncDataLogApplier implements LogApplier {
   public AsyncDataLogApplier(LogApplier embeddedApplier, String name) {
     this.embeddedApplier = embeddedApplier;
     consumerMap = new HashMap<>();
-    consumerPool = new ThreadPoolExecutor(CONCURRENT_CONSUMER_NUM,
-        Integer.MAX_VALUE, 0, TimeUnit.SECONDS, new SynchronousQueue<>());
+    consumerPool =
+        new ThreadPoolExecutor(
+            CONCURRENT_CONSUMER_NUM,
+            Integer.MAX_VALUE,
+            0,
+            TimeUnit.SECONDS,
+            new SynchronousQueue<>());
     this.name = name;
   }
 
@@ -131,8 +139,13 @@ public class AsyncDataLogApplier implements LogApplier {
   }
 
   /**
-   * We can sure that the storage group of all InsertTabletPlans in InsertMultiTabletPlan are the same. this is
-   * done in {@link org.apache.iotdb.cluster.query.ClusterPlanRouter#splitAndRoutePlan(InsertMultiTabletPlan)}
+   * We can sure that the storage group of all InsertTabletPlans in InsertMultiTabletPlan are the
+   * same. this is done in {@link
+   * org.apache.iotdb.cluster.query.ClusterPlanRouter#splitAndRoutePlan(InsertMultiTabletPlan)}
+   *
+   * <p>We can also sure that the storage group of all InsertRowPlans in InsertRowsPlan are the
+   * same. this is done in {@link
+   * org.apache.iotdb.cluster.query.ClusterPlanRouter#splitAndRoutePlan(InsertRowsPlan)}
    *
    * @return the sg that the plan belongs to
    * @throws StorageGroupNotSetException if no sg found
@@ -142,6 +155,9 @@ public class AsyncDataLogApplier implements LogApplier {
     if (plan instanceof InsertMultiTabletPlan) {
       PartialPath deviceId = ((InsertMultiTabletPlan) plan).getFirstDeviceId();
       sgPath = IoTDB.metaManager.getStorageGroupPath(deviceId);
+    } else if (plan instanceof InsertRowsPlan) {
+      PartialPath path = ((InsertRowsPlan) plan).getFirstDeviceId();
+      sgPath = IoTDB.metaManager.getStorageGroupPath(path);
     } else if (plan instanceof InsertPlan) {
       PartialPath deviceId = ((InsertPlan) plan).getDeviceId();
       sgPath = IoTDB.metaManager.getStorageGroupPath(deviceId);
@@ -270,12 +286,17 @@ public class AsyncDataLogApplier implements LogApplier {
 
     @Override
     public String toString() {
-      return "DataLogConsumer{" +
-          "logQueue=" + logQueue.size() +
-          ", lastLogIndex=" + lastLogIndex +
-          ", lastAppliedLogIndex=" + lastAppliedLogIndex +
-          ", name='" + name + '\'' +
-          '}';
+      return "DataLogConsumer{"
+          + "logQueue="
+          + logQueue.size()
+          + ", lastLogIndex="
+          + lastLogIndex
+          + ", lastAppliedLogIndex="
+          + lastAppliedLogIndex
+          + ", name='"
+          + name
+          + '\''
+          + '}';
     }
   }
 }

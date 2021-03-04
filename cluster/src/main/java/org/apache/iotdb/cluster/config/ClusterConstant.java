@@ -27,6 +27,7 @@ public class ClusterConstant {
    * We only change the two values in tests to reduce test time, so they are essentially constant.
    */
   private static long electionLeastTimeOutMs = 2 * 1000L;
+
   private static long electionRandomTimeOutMs = 3 * 1000L;
 
   public static final int SLOT_NUM = 10000;
@@ -40,8 +41,6 @@ public class ClusterConstant {
   private ClusterConstant() {
     // constant class
   }
-
-  static final String CLUSTER_CONF = "CLUSTER_CONF";
 
   /**
    * a failed election will restart in 2s~5s, this should be at least as long as a heartbeat

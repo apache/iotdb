@@ -61,6 +61,8 @@ Once a prefix path is set as a storage group, the storage group settings cannot 
 
 After a storage group is set, all parent and child layers of the corresponding prefix path are not allowed to be set up again (for example, after `root.ln` is set as the storage group, the root layer and `root.ln.wf01` are not allowed to be set as storage groups).
 
+The Layer Name of storage group can only consist of characters, numbers and underscores, like `root.storagegroup_1`.
+
 * Path
 
 In IoTDB, a path is an expression that conforms to the following constraints:
@@ -78,7 +80,18 @@ It is worth noting that in the path, root is a reserved character, which is only
 
 Single quotes are not allowed in the path. If you want to use special characters such as "." in LayerName, use double quotes. For example, `root.sg."d.1"."s.1"`. 
 
-> Note: the LayerName of storage group can only be characters, numbers and underscores.
+The characters supported in LayerName without double quotes are as below:
+
+* Chinese characters '\u2E80' to '\u9FFF'
+* '+', '&', '%', '$', '#', '@', '/', '_', '-', ':'
+* 'A' to 'Z', 'a' to 'z', '0' to '9'
+* '[', ']' (eg. 's[1', 's[1]', s[ab]')
+
+'-' and ':' cannot be the first character. '+' cannot use alone.
+
+> Note: the LayerName of storage group can only be characters, numbers and underscores. 
+> 
+> Besides, if deploy on Windows system, the LayerName is case-insensitive, which means it's not allowed to set storage groups `root.ln` and `root.LN` at the same time.
 
 * Timeseries Path
 

@@ -18,13 +18,14 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+
+import org.junit.Test;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
-
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.junit.Test;
 
 public class StringContainerTest {
 
@@ -147,7 +148,6 @@ public class StringContainerTest {
     StringContainer copyC = c.clone();
     assertTrue(c.equals(copyC));
     assertFalse(c == copyC);
-
   }
 
   @Test
@@ -171,7 +171,5 @@ public class StringContainerTest {
     StringContainer c4 = new StringContainer(",");
     c4.addTail("a", "b", "c123");
     assertNotEquals(c1.hashCode(), c4.hashCode());
-
   }
-
 }

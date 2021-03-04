@@ -19,12 +19,11 @@
 
 package org.apache.iotdb.db.engine.modification;
 
-import java.util.Objects;
 import org.apache.iotdb.db.metadata.PartialPath;
 
-/**
- * Modification represents an UPDATE or DELETE operation on a certain timeseries.
- */
+import java.util.Objects;
+
+/** Modification represents an UPDATE or DELETE operation on a certain timeseries. */
 public abstract class Modification {
 
   protected Type type;
@@ -80,14 +79,15 @@ public abstract class Modification {
   @Override
   public boolean equals(Object obj) {
     if (this == obj) {
-       return true;
+      return true;
     }
     if (!(obj instanceof Modification)) {
       return false;
     }
     Modification mod = (Modification) obj;
-    return mod.type.equals(this.type) && mod.path.equals(this.path)
-            && mod.fileOffset == this.fileOffset;
+    return mod.type.equals(this.type)
+        && mod.path.equals(this.path)
+        && mod.fileOffset == this.fileOffset;
   }
 
   @Override

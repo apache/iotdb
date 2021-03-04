@@ -25,13 +25,12 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 public class StatusUtils {
 
-
   private StatusUtils() {
     // util class
   }
 
-  public static final TSStatus PARTITION_TABLE_NOT_READY = getStatus(
-      TSStatusCode.PARTITION_NOT_READY);
+  public static final TSStatus PARTITION_TABLE_NOT_READY =
+      getStatus(TSStatusCode.PARTITION_NOT_READY);
   public static final TSStatus OK = getStatus(TSStatusCode.SUCCESS_STATUS);
   public static final TSStatus TIME_OUT = getStatus(TSStatusCode.TIME_OUT);
   public static final TSStatus NO_LEADER = getStatus(TSStatusCode.NO_LEADER);
@@ -43,9 +42,9 @@ public class StatusUtils {
   public static final TSStatus NO_STORAGE_GROUP = getStatus(TSStatusCode.STORAGE_GROUP_ERROR);
   public static final TSStatus NODE_READ_ONLY = getStatus(TSStatusCode.NODE_READ_ONLY);
   public static final TSStatus CONSISTENCY_FAILURE = getStatus(TSStatusCode.CONSISTENCY_FAILURE);
-  public static final TSStatus TIMESERIES_NOT_EXIST_ERROR = getStatus(TSStatusCode.TIMESERIES_NOT_EXIST);
+  public static final TSStatus TIMESERIES_NOT_EXIST_ERROR =
+      getStatus(TSStatusCode.TIMESERIES_NOT_EXIST);
   public static final TSStatus NO_CONNECTION = getStatus(TSStatusCode.NO_CONNECTION);
-
 
   private static TSStatus getStatus(TSStatusCode statusCode) {
     TSStatus status = new TSStatus();
@@ -64,8 +63,8 @@ public class StatusUtils {
         status.setMessage("Partition table is not ready. ");
         break;
       case NODE_READ_ONLY:
-        status
-            .setMessage("Current node is read-only, please retry to find another available node. ");
+        status.setMessage(
+            "Current node is read-only, please retry to find another available node. ");
         break;
       case INCOMPATIBLE_VERSION:
         status.setMessage("Incompatible version. ");
@@ -215,5 +214,4 @@ public class StatusUtils {
     newStatus.setRedirectNode(redirectedNode);
     return newStatus;
   }
-
 }

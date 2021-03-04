@@ -19,6 +19,17 @@
 
 -->
 
+# 0.11.x -> 0.12.x
+
+Last updated on 2021-1-15 by Haonan Hou.
+## Update：
+| Latest Changes                     |
+| ---------------------------------- |
+| Remove versionInfo in Tsfile and get rid of versions in memtable |
+| Change version in mods file to TsFile offset |
+
+No change
+
 # 0.10.x -> 0.11.x
 
 Last updated on 2020-11-25 by Haonan Hou.

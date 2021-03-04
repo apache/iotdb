@@ -24,11 +24,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-/**
- * Configurations using this annotation should be the same across all nodes in a cluster.
- *
- */
+/** Configurations using this annotation should be the same across all nodes in a cluster. */
 @Target({ElementType.FIELD})
 @Retention(RetentionPolicy.SOURCE)
-public @interface ClusterConsistent {
-}
+public @interface ClusterConsistent {}

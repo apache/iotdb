@@ -20,7 +20,8 @@
 package org.apache.iotdb.db.engine.storagegroup.timeindex;
 
 public enum TimeIndexLevel {
-  FILE_TIME_INDEX, DEVICE_TIME_INDEX;
+  FILE_TIME_INDEX,
+  DEVICE_TIME_INDEX;
 
   public ITimeIndex getTimeIndex() {
     switch (this) {

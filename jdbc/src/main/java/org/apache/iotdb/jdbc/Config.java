@@ -20,23 +20,16 @@ package org.apache.iotdb.jdbc;
 
 public class Config {
 
-  private Config() {
-  }
+  private Config() {}
 
-  /**
-   * The required prefix for the connection URL.
-   */
+  /** The required prefix for the connection URL. */
   public static final String IOTDB_URL_PREFIX = "jdbc:iotdb://";
 
   static final String IOTDB_DEFAULT_HOST = "localhost";
-  /**
-   * If host is provided, without a port.
-   */
+  /** If host is provided, without a port. */
   static final int IOTDB_DEFAULT_PORT = 6667;
 
-  /**
-   * tsfile's default series name.
-   */
+  /** tsfile's default series name. */
   static final String DEFAULT_SERIES_NAME = "default";
 
   static final String AUTH_USER = "user";
@@ -48,23 +41,19 @@ public class Config {
   static final int RETRY_NUM = 3;
   static final long RETRY_INTERVAL_MS = 1000;
 
-  static int fetchSize = 10000;
-  static int connectionTimeoutInMs = 0;
+  public static final int DEFAULT_FETCH_SIZE = 5000;
+  static final int DEFAULT_CONNECTION_TIMEOUT_MS = 0;
 
   public static final String JDBC_DRIVER_NAME = "org.apache.iotdb.jdbc.IoTDBDriver";
 
   public static boolean rpcThriftCompressionEnable = false;
 
-  /**
-   * thrift init buffer size, 1KB by default
-   */
+  /** thrift init buffer size, 1KB by default */
   public static final int DEFAULT_INITIAL_BUFFER_CAPACITY = 1024;
 
   public static final String INITIAL_BUFFER_CAPACITY = "initial_buffer_capacity";
 
-  /**
-   * thrift max frame size (16384000 bytes by default), we change it to 64MB
-   */
+  /** thrift max frame size (16384000 bytes by default), we change it to 64MB */
   public static final int DEFAULT_MAX_FRAME_SIZE = 67108864;
 
   public static final String MAX_FRAME_SIZE = "max_frame_size";

@@ -77,7 +77,8 @@ statement
     | SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause? #showTimeseries
     | SHOW STORAGE GROUP prefixPath? #showStorageGroup
     | SHOW CHILD PATHS prefixPath? #showChildPaths
-    | SHOW DEVICES prefixPath? limitClause? #showDevices
+    | SHOW CHILD NODES prefixPath? #showChildNodes
+    | SHOW DEVICES prefixPath? (WITH STORAGE GROUP)? limitClause? #showDevices
     | SHOW MERGE #showMergeStatus
     | SHOW QUERY PROCESSLIST #showQueryProcesslist
     | KILL QUERY INT? #killQuery
@@ -96,6 +97,12 @@ statement
     | CREATE TEMPORARY? FUNCTION udfName=ID AS className=stringLiteral #createFunction
     | DROP FUNCTION udfName=ID #dropFunction
     | SHOW TEMPORARY? FUNCTIONS #showFunctions
+    | CREATE TRIGGER triggerName=ID triggerEventClause ON fullPath
+      AS className=stringLiteral triggerAttributeClause? #createTrigger
+    | DROP TRIGGER triggerName=ID #dropTrigger
+    | START TRIGGER triggerName=ID #startTrigger
+    | STOP TRIGGER triggerName=ID #stopTrigger
+    | SHOW TRIGGERS (ON fullPath)? #showTriggers
     | SELECT topClause? selectElements
     fromClause
     whereClause?
@@ -191,6 +198,7 @@ compressor
     : UNCOMPRESSED
     | SNAPPY
     | LZ4
+    | GZIP
     ;
 
 attributeClause
@@ -521,7 +529,7 @@ nodeName
     | SCHEMA
     | TRACING
     | OFF
-    | (ID | OPERATOR_IN)? LS_BRACKET ID? RS_BRACKET? ID?
+    | (ID | OPERATOR_IN)? LS_BRACKET INT? ID? RS_BRACKET? ID?
     | compressor
     | GLOBAL
     | PARTITION
@@ -632,7 +640,7 @@ nodeNameWithoutStar
     | SCHEMA
     | TRACING
     | OFF
-    | (ID | OPERATOR_IN)? LS_BRACKET ID? RS_BRACKET? ID?
+    | (ID | OPERATOR_IN)? LS_BRACKET INT? ID? RS_BRACKET? ID?
     | compressor
     | GLOBAL
     | PARTITION
@@ -684,6 +692,18 @@ property
 autoCreateSchema
     : booleanClause
     | booleanClause INT
+    ;
+
+triggerEventClause
+    : (BEFORE | AFTER) INSERT
+    ;
+
+triggerAttributeClause
+    : WITH LR_BRACKET triggerAttribute (COMMA triggerAttribute)* RR_BRACKET
+    ;
+
+triggerAttribute
+    : key=stringLiteral OPERATOR_EQ value=stringLiteral
     ;
 
 //============================
@@ -1213,6 +1233,30 @@ FUNCTIONS
 
 AS
     : A S
+    ;
+
+TRIGGER
+    : T R I G G E R
+    ;
+
+TRIGGERS
+    : T R I G G E R S
+    ;
+
+BEFORE
+    : B E F O R E
+    ;
+
+AFTER
+    : A F T E R
+    ;
+
+START
+    : S T A R T
+    ;
+
+STOP
+    : S T O P
     ;
 
 DESC

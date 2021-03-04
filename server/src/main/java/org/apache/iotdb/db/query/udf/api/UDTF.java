@@ -31,27 +31,28 @@ import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingTimeWindowAc
 
 /**
  * User-defined Time-series Generating Function (UDTF)
- * <p>
- * New UDTF classes need to inherit from this UDTF class.
- * <p>
- * Generates a variable number of output data points for a single input row or a single input window
- * (time-based or size-based).
- * <p>
- * A complete UDTF needs to override at least the following methods:
+ *
+ * <p>New UDTF classes need to inherit from this UDTF class.
+ *
+ * <p>Generates a variable number of output data points for a single input row or a single input
+ * window (time-based or size-based).
+ *
+ * <p>A complete UDTF needs to override at least the following methods:
+ *
  * <ul>
- * <li>{@link UDTF#beforeStart(UDFParameters, UDTFConfigurations)}
- * <li>{@link UDTF#transform(RowWindow, PointCollector)} or {@link UDTF#transform(Row,
- * PointCollector)}
+ *   <li>{@link UDTF#beforeStart(UDFParameters, UDTFConfigurations)}
+ *   <li>{@link UDTF#transform(RowWindow, PointCollector)} or {@link UDTF#transform(Row,
+ *       PointCollector)}
  * </ul>
+ *
  * In the life cycle of a UDTF instance, the calling sequence of each method is as follows:
- * <p>
- * 1. {@link UDTF#validate(UDFParameterValidator)}
- * 2. {@link UDTF#beforeStart(UDFParameters, UDTFConfigurations)}
- * 3. {@link UDTF#transform(RowWindow, PointCollector)} or {@link UDTF#transform(Row, PointCollector)}
- * 4. {@link UDTF#terminate(PointCollector)}
- * 5. {@link UDTF#beforeDestroy()}
- * <p>
- * The query engine will instantiate an independent UDTF instance for each udf query column, and
+ *
+ * <p>1. {@link UDTF#validate(UDFParameterValidator)} 2. {@link UDTF#beforeStart(UDFParameters,
+ * UDTFConfigurations)} 3. {@link UDTF#transform(RowWindow, PointCollector)} or {@link
+ * UDTF#transform(Row, PointCollector)} 4. {@link UDTF#terminate(PointCollector)} 5. {@link
+ * UDTF#beforeDestroy()}
+ *
+ * <p>The query engine will instantiate an independent UDTF instance for each udf query column, and
  * different UDTF instances will not affect each other.
  */
 public interface UDTF extends UDF {
@@ -59,18 +60,19 @@ public interface UDTF extends UDF {
   /**
    * This method is mainly used to customize UDTF. In this method, the user can do the following
    * things:
+   *
    * <ul>
-   * <li> Use UDFParameters to get the time series paths and parse key-value pair attributes entered
-   * by the user.
-   * <li> Set the strategy to access the original data and set the output data type in
-   * UDTFConfigurations.
-   * <li> Create resources, such as establishing external connections, opening files, etc.
+   *   <li>Use UDFParameters to get the time series paths and parse key-value pair attributes
+   *       entered by the user.
+   *   <li>Set the strategy to access the original data and set the output data type in
+   *       UDTFConfigurations.
+   *   <li>Create resources, such as establishing external connections, opening files, etc.
    * </ul>
-   * <p>
-   * This method is called after the UDTF is instantiated and before the beginning of the
+   *
+   * <p>This method is called after the UDTF is instantiated and before the beginning of the
    * transformation process.
    *
-   * @param parameters     used to parse the input parameters entered by the user
+   * @param parameters used to parse the input parameters entered by the user
    * @param configurations used to set the required properties in the UDTF
    * @throws Exception the user can throw errors if necessary
    */
@@ -82,14 +84,13 @@ public interface UDTF extends UDF {
    * UDTFConfigurations}, this method will be called to process the transformation. In a single UDF
    * query, this method may be called multiple times.
    *
-   * @param row       original input data row (aligned by time)
+   * @param row original input data row (aligned by time)
    * @param collector used to collect output data points
    * @throws Exception the user can throw errors if necessary
    * @see RowByRowAccessStrategy
    */
   @SuppressWarnings("squid:S112")
-  default void transform(Row row, PointCollector collector) throws Exception {
-  }
+  default void transform(Row row, PointCollector collector) throws Exception {}
 
   /**
    * When the user specifies {@link SlidingSizeWindowAccessStrategy} or {@link
@@ -104,8 +105,7 @@ public interface UDTF extends UDF {
    * @see SlidingTimeWindowAccessStrategy
    */
   @SuppressWarnings("squid:S112")
-  default void transform(RowWindow rowWindow, PointCollector collector) throws Exception {
-  }
+  default void transform(RowWindow rowWindow, PointCollector collector) throws Exception {}
 
   /**
    * This method will be called once after all {@link UDTF#transform(Row, PointCollector) calls or
@@ -116,6 +116,5 @@ public interface UDTF extends UDF {
    * @throws Exception the user can throw errors if necessary
    */
   @SuppressWarnings("squid:S112")
-  default void terminate(PointCollector collector) throws Exception {
-  }
+  default void terminate(PointCollector collector) throws Exception {}
 }

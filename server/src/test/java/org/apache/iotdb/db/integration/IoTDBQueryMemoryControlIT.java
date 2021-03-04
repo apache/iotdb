@@ -19,52 +19,52 @@
 
 package org.apache.iotdb.db.integration;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.jdbc.Config;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.jdbc.Config;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class IoTDBQueryMemoryControlIT {
 
   private int defaultMaxQueryDeduplicatedPathNum;
 
-  private static final String[] sqls = new String[]{
-      "set storage group to root.ln",
-
-      "create timeseries root.ln.wf01.wt01 with datatype=BOOLEAN,encoding=PLAIN",
-      "create timeseries root.ln.wf01.wt02 with datatype=BOOLEAN,encoding=PLAIN",
-      "create timeseries root.ln.wf01.wt03 with datatype=BOOLEAN,encoding=PLAIN",
-      "create timeseries root.ln.wf01.wt04 with datatype=BOOLEAN,encoding=PLAIN",
-      "create timeseries root.ln.wf01.wt05 with datatype=BOOLEAN,encoding=PLAIN",
-
-      "create timeseries root.ln.wf02.wt01 with datatype=FLOAT,encoding=RLE",
-      "create timeseries root.ln.wf02.wt02 with datatype=FLOAT,encoding=RLE",
-      "create timeseries root.ln.wf02.wt03 with datatype=FLOAT,encoding=RLE",
-      "create timeseries root.ln.wf02.wt04 with datatype=FLOAT,encoding=RLE",
-      "create timeseries root.ln.wf02.wt05 with datatype=FLOAT,encoding=RLE",
-
-      "create timeseries root.ln.wf03.wt01 with datatype=TEXT,encoding=PLAIN",
-      "create timeseries root.ln.wf03.wt02 with datatype=TEXT,encoding=PLAIN",
-      "create timeseries root.ln.wf03.wt03 with datatype=TEXT,encoding=PLAIN",
-      "create timeseries root.ln.wf03.wt04 with datatype=TEXT,encoding=PLAIN",
-      "create timeseries root.ln.wf03.wt05 with datatype=TEXT,encoding=PLAIN",
-  };
+  private static final String[] sqls =
+      new String[] {
+        "set storage group to root.ln",
+        "create timeseries root.ln.wf01.wt01 with datatype=BOOLEAN,encoding=PLAIN",
+        "create timeseries root.ln.wf01.wt02 with datatype=BOOLEAN,encoding=PLAIN",
+        "create timeseries root.ln.wf01.wt03 with datatype=BOOLEAN,encoding=PLAIN",
+        "create timeseries root.ln.wf01.wt04 with datatype=BOOLEAN,encoding=PLAIN",
+        "create timeseries root.ln.wf01.wt05 with datatype=BOOLEAN,encoding=PLAIN",
+        "create timeseries root.ln.wf02.wt01 with datatype=FLOAT,encoding=RLE",
+        "create timeseries root.ln.wf02.wt02 with datatype=FLOAT,encoding=RLE",
+        "create timeseries root.ln.wf02.wt03 with datatype=FLOAT,encoding=RLE",
+        "create timeseries root.ln.wf02.wt04 with datatype=FLOAT,encoding=RLE",
+        "create timeseries root.ln.wf02.wt05 with datatype=FLOAT,encoding=RLE",
+        "create timeseries root.ln.wf03.wt01 with datatype=TEXT,encoding=PLAIN",
+        "create timeseries root.ln.wf03.wt02 with datatype=TEXT,encoding=PLAIN",
+        "create timeseries root.ln.wf03.wt03 with datatype=TEXT,encoding=PLAIN",
+        "create timeseries root.ln.wf03.wt04 with datatype=TEXT,encoding=PLAIN",
+        "create timeseries root.ln.wf03.wt05 with datatype=TEXT,encoding=PLAIN",
+      };
 
   @Before
   public void setUp() throws Exception {
-    defaultMaxQueryDeduplicatedPathNum = IoTDBDescriptor.getInstance().getConfig()
-        .getMaxQueryDeduplicatedPathNum();
+    defaultMaxQueryDeduplicatedPathNum =
+        IoTDBDescriptor.getInstance().getConfig().getMaxQueryDeduplicatedPathNum();
     IoTDBDescriptor.getInstance().getConfig().setMaxQueryDeduplicatedPathNum(10);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -72,8 +72,9 @@ public class IoTDBQueryMemoryControlIT {
   }
 
   private static void createTimeSeries() {
-    try (Statement statement = DriverManager.getConnection(
-        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root").createStatement()) {
+    try (Statement statement =
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
+            .createStatement()) {
       for (String sql : sqls) {
         statement.execute(sql);
       }
@@ -86,14 +87,16 @@ public class IoTDBQueryMemoryControlIT {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance().getConfig()
+    IoTDBDescriptor.getInstance()
+        .getConfig()
         .setMaxQueryDeduplicatedPathNum(defaultMaxQueryDeduplicatedPathNum);
   }
 
   @Test
   public void selectWildcard() {
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       try {
         statement.execute("select * from root");
@@ -114,8 +117,9 @@ public class IoTDBQueryMemoryControlIT {
 
   @Test
   public void selectWildcardSlimit10() {
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute("select * from root slimit 10");
       statement.execute("select count(*) from root slimit 10");
@@ -127,8 +131,9 @@ public class IoTDBQueryMemoryControlIT {
 
   @Test
   public void selectWildcardSlimit11() {
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       try {
         statement.execute("select * from root slimit 11");
@@ -149,8 +154,9 @@ public class IoTDBQueryMemoryControlIT {
 
   @Test
   public void selectWildcardWildcardWildcardSlimit5Soffset7() {
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute("select wf01.*, wf02.*, wf03.* from root.ln slimit 5 soffset 7");
       ResultSetMetaData resultSetMetaData = statement.getResultSet().getMetaData();
@@ -180,8 +186,9 @@ public class IoTDBQueryMemoryControlIT {
 
   @Test
   public void selectWildcardWildcardWildcardSlimit5Soffset5() {
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute("select wf01.*, wf02.*, wf03.* from root.ln slimit 5 soffset 5");
       ResultSetMetaData resultSetMetaData = statement.getResultSet().getMetaData();
@@ -205,8 +212,9 @@ public class IoTDBQueryMemoryControlIT {
 
   @Test
   public void selectWildcardWildcardWildcardSlimit15Soffset5() {
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute("select wf01.*, wf03.*, wf02.* from root.ln slimit 15 soffset 5");
       ResultSetMetaData resultSetMetaData = statement.getResultSet().getMetaData();
@@ -236,8 +244,9 @@ public class IoTDBQueryMemoryControlIT {
 
   @Test
   public void selectWildcardWildcardWildcardSlimit15Soffset4() {
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       try {
         statement.execute("select wf01.*, wf02.*, wf03.* from root.ln slimit 15 soffset 4");
@@ -258,8 +267,9 @@ public class IoTDBQueryMemoryControlIT {
 
   @Test
   public void selectWildcardWildcardWildcardSlimit3Soffset4() {
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute("select wf01.*, wf02.*, wf03.* from root.ln slimit 3 soffset 4");
       ResultSetMetaData resultSetMetaData = statement.getResultSet().getMetaData();

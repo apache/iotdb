@@ -18,6 +18,15 @@
  */
 package org.apache.iotdb.db.metadata;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -25,22 +34,17 @@ import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 import java.util.Collections;
 import java.util.Map;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class TagLogFile implements AutoCloseable {
 
   private static final Logger logger = LoggerFactory.getLogger(TagLogFile.class);
   private FileChannel fileChannel;
-  private static final String LENGTH_EXCEED_MSG = "Tag/Attribute exceeds the max length limit. "
-      + "Please enlarge tag_attribute_total_size in iotdb-engine.properties";
+  private static final String LENGTH_EXCEED_MSG =
+      "Tag/Attribute exceeds the max length limit. "
+          + "Please enlarge tag_attribute_total_size in iotdb-engine.properties";
 
-  private static final int MAX_LENGTH = IoTDBDescriptor.getInstance().getConfig().getTagAttributeTotalSize();
+  private static final int MAX_LENGTH =
+      IoTDBDescriptor.getInstance().getConfig().getTagAttributeTotalSize();
 
   private static final byte FILL_BYTE = 0;
 
@@ -57,15 +61,20 @@ public class TagLogFile implements AutoCloseable {
 
     File logFile = SystemFileFactory.INSTANCE.getFile(schemaDir + File.separator + logFileName);
 
-    this.fileChannel = FileChannel.open(logFile.toPath(), StandardOpenOption.READ, StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.DSYNC);
+    this.fileChannel =
+        FileChannel.open(
+            logFile.toPath(),
+            StandardOpenOption.READ,
+            StandardOpenOption.WRITE,
+            StandardOpenOption.CREATE,
+            StandardOpenOption.DSYNC);
     // move the current position to the tail of the file
     this.fileChannel.position(fileChannel.size());
   }
 
-  /**
-   * @return tags map, attributes map
-   */
-  public Pair<Map<String, String>, Map<String, String>> read(int size, long position) throws IOException {
+  /** @return tags map, attributes map */
+  public Pair<Map<String, String>, Map<String, String>> read(int size, long position)
+      throws IOException {
     if (position < 0) {
       return new Pair<>(Collections.emptyMap(), Collections.emptyMap());
     }
@@ -82,22 +91,23 @@ public class TagLogFile implements AutoCloseable {
     return ReadWriteIOUtils.readMap(byteBuffer);
   }
 
-  public long write(Map<String, String> tagMap, Map<String, String> attributeMap) throws IOException, MetadataException {
+  public long write(Map<String, String> tagMap, Map<String, String> attributeMap)
+      throws IOException, MetadataException {
     long offset = fileChannel.position();
     ByteBuffer byteBuffer = convertMapToByteBuffer(tagMap, attributeMap);
     fileChannel.write(byteBuffer);
     return offset;
   }
 
-  /**
-   * This method does not modify this file's current position.
-   */
-  public void write(Map<String, String> tagMap, Map<String, String> attributeMap, long position) throws IOException, MetadataException {
+  /** This method does not modify this file's current position. */
+  public void write(Map<String, String> tagMap, Map<String, String> attributeMap, long position)
+      throws IOException, MetadataException {
     ByteBuffer byteBuffer = convertMapToByteBuffer(tagMap, attributeMap);
     fileChannel.write(byteBuffer, position);
   }
 
-  private ByteBuffer convertMapToByteBuffer(Map<String, String> tagMap, Map<String, String> attributeMap) throws MetadataException {
+  private ByteBuffer convertMapToByteBuffer(
+      Map<String, String> tagMap, Map<String, String> attributeMap) throws MetadataException {
     ByteBuffer byteBuffer = ByteBuffer.allocate(MAX_LENGTH);
     int length = serializeMap(tagMap, byteBuffer, 0);
     length = serializeMap(attributeMap, byteBuffer, length);
@@ -112,7 +122,8 @@ public class TagLogFile implements AutoCloseable {
     return byteBuffer;
   }
 
-  private int serializeMap(Map<String, String> map, ByteBuffer byteBuffer, int length) throws MetadataException {
+  private int serializeMap(Map<String, String> map, ByteBuffer byteBuffer, int length)
+      throws MetadataException {
     if (map == null) {
       length += Integer.BYTES;
       if (length > MAX_LENGTH) {

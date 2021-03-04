@@ -22,12 +22,10 @@ import org.apache.iotdb.db.exception.index.UnsupportedIndexTypeException;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
 public enum IndexType {
-
   NO_INDEX,
   RTREE_PAA,
   ELB_INDEX,
-  KV_INDEX
-  ;
+  KV_INDEX;
 
   /**
    * judge the index type.
@@ -81,7 +79,6 @@ public enum IndexType {
       return IndexType.valueOf(normalized);
     } catch (IllegalArgumentException e) {
       throw new UnsupportedIndexTypeException(indexTypeString);
-
     }
   }
 }

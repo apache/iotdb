@@ -22,9 +22,9 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.RandomNum;
@@ -40,9 +40,7 @@ import java.util.Collections;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
 
-/**
- * Bench The storage group manager with mul-thread and get its performance.
- */
+/** Bench The storage group manager with mul-thread and get its performance. */
 public class FileNodeManagerBenchmark {
 
   private static int numOfWorker = 10;
@@ -68,15 +66,17 @@ public class FileNodeManagerBenchmark {
     }
   }
 
-  private static void prepare()
-      throws MetadataException {
+  private static void prepare() throws MetadataException {
     MManager manager = IoTDB.metaManager;
     manager.setStorageGroup(new PartialPath(prefix));
     for (String device : devices) {
       for (String measurement : measurements) {
-        manager.createTimeseries(new PartialPath(device + "." + measurement), TSDataType.INT64,
-            TSEncoding.PLAIN, TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections
-                .emptyMap());
+        manager.createTimeseries(
+            new PartialPath(device + "." + measurement),
+            TSDataType.INT64,
+            TSEncoding.PLAIN,
+            TSFileDescriptor.getInstance().getConfig().getCompressor(),
+            Collections.emptyMap());
       }
     }
   }
@@ -86,8 +86,7 @@ public class FileNodeManagerBenchmark {
   }
 
   public static void main(String[] args)
-      throws InterruptedException, IOException,
-      MetadataException, StorageEngineException {
+      throws InterruptedException, IOException, MetadataException, StorageEngineException {
     tearDown();
     prepare();
     long startTime = System.currentTimeMillis();

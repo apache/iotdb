@@ -17,42 +17,45 @@
  * under the License.
  */
 
-
 package org.apache.iotdb.cluster.client.sync;
 
-import java.io.IOException;
-import java.net.ServerSocket;
 import org.apache.iotdb.cluster.client.sync.SyncDataHeartbeatClient.FactorySync;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.apache.thrift.transport.TTransportException;
 import org.junit.Assert;
 import org.junit.Test;
+
+import java.io.IOException;
+import java.net.ServerSocket;
 
 public class SyncDataHeartbeatClientTest {
 
   @Test
   public void test() throws IOException, TTransportException, InterruptedException {
     Node node = new Node();
-    node.setDataPort(40010).setIp("localhost");
+    node.setDataPort(40010).setInternalIp("localhost").setClientIp("localhost");
     ServerSocket serverSocket = new ServerSocket(node.getDataPort() + 1);
-    Thread listenThread = new Thread(() -> {
-      while (!Thread.interrupted()) {
-        try {
-          serverSocket.accept();
-        } catch (IOException e) {
-          return;
-        }
-      }
-    });
+    Thread listenThread =
+        new Thread(
+            () -> {
+              while (!Thread.interrupted()) {
+                try {
+                  serverSocket.accept();
+                } catch (IOException e) {
+                  return;
+                }
+              }
+            });
     listenThread.start();
 
     try {
       FactorySync factoryAsync = new FactorySync(new Factory());
       SyncDataHeartbeatClient syncClient = factoryAsync.getSyncClient(node, null);
       Assert.assertEquals(
-          "SyncHeartbeatDataClient{node=Node(ip:localhost, metaPort:0, nodeIdentifier:0,"
-              + " dataPort:40010, clientPort:0),dataHeartbeatPort=40011}",
+          "SyncHeartbeatDataClient{node=Node(internalIp:localhost, metaPort:0, nodeIdentifier:0,"
+              + " dataPort:40010, clientPort:0, clientIp:localhost),dataHeartbeatPort=40011}",
           syncClient.toString());
     } finally {
       serverSocket.close();

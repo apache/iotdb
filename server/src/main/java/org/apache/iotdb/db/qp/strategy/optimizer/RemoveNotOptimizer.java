@@ -18,16 +18,17 @@
  */
 package org.apache.iotdb.db.qp.strategy.optimizer;
 
-import static org.apache.iotdb.db.qp.constant.SQLConstant.KW_AND;
-import static org.apache.iotdb.db.qp.constant.SQLConstant.KW_NOT;
-import static org.apache.iotdb.db.qp.constant.SQLConstant.KW_OR;
-
-import java.util.List;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.FunctionOperator;
+
+import java.util.List;
+
+import static org.apache.iotdb.db.qp.constant.SQLConstant.KW_AND;
+import static org.apache.iotdb.db.qp.constant.SQLConstant.KW_NOT;
+import static org.apache.iotdb.db.qp.constant.SQLConstant.KW_OR;
 
 public class RemoveNotOptimizer implements IFilterOptimizer {
 
@@ -53,15 +54,17 @@ public class RemoveNotOptimizer implements IFilterOptimizer {
       case KW_OR:
         // replace children in-place for efficiency
         List<FilterOperator> children = filter.getChildren();
-        if(children.size() < 2){
-         throw new LogicalOptimizeException("Filter has some time series don't correspond to any known time series");
+        if (children.size() < 2) {
+          throw new LogicalOptimizeException(
+              "Filter has some time series don't correspond to any known time series");
         }
         children.set(0, removeNot(children.get(0)));
         children.set(1, removeNot(children.get(1)));
         return filter;
       case KW_NOT:
-        if(filter.getChildren().size() < 1){
-          throw new LogicalOptimizeException("Filter has some time series don't correspond to any known time series");
+        if (filter.getChildren().size() < 1) {
+          throw new LogicalOptimizeException(
+              "Filter has some time series don't correspond to any known time series");
         }
         return reverseFilter(filter.getChildren().get(0));
       default:
@@ -79,7 +82,7 @@ public class RemoveNotOptimizer implements IFilterOptimizer {
   private FilterOperator reverseFilter(FilterOperator filter) throws LogicalOperatorException {
     int tokenInt = filter.getTokenIntType();
     if (filter.isLeaf()) {
-      ((FunctionOperator)filter).reverseFunc();
+      ((FunctionOperator) filter).reverseFunc();
       return filter;
     }
     switch (tokenInt) {
@@ -96,5 +99,4 @@ public class RemoveNotOptimizer implements IFilterOptimizer {
         throw new LogicalOptimizeException("reverseFilter", tokenInt);
     }
   }
-
 }

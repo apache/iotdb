@@ -18,14 +18,6 @@
  */
 package org.apache.iotdb.cluster.log.snapshot;
 
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.HashMap;
-import java.util.Map;
 import org.apache.iotdb.cluster.common.IoTDBTest;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
@@ -41,10 +33,19 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.HashMap;
+import java.util.Map;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class MetaSimpleSnapshotTest extends IoTDBTest {
 
@@ -54,15 +55,17 @@ public class MetaSimpleSnapshotTest extends IoTDBTest {
   @Override
   @Before
   public void setUp()
-      throws org.apache.iotdb.db.exception.StartupException, org.apache.iotdb.db.exception.query.QueryProcessException, IllegalPathException {
+      throws org.apache.iotdb.db.exception.StartupException,
+          org.apache.iotdb.db.exception.query.QueryProcessException, IllegalPathException {
     super.setUp();
     subServerInitialized = false;
-    metaGroupMember = new TestMetaGroupMember() {
-      @Override
-      protected void startSubServers() {
-        subServerInitialized = true;
-      }
-    };
+    metaGroupMember =
+        new TestMetaGroupMember() {
+          @Override
+          protected void startSubServers() {
+            subServerInitialized = true;
+          }
+        };
     metaGroupMember.setCoordinator(new Coordinator());
   }
 
@@ -101,8 +104,8 @@ public class MetaSimpleSnapshotTest extends IoTDBTest {
         roleMap.put(roleName, role);
       }
 
-      MetaSimpleSnapshot metaSimpleSnapshot = new MetaSimpleSnapshot(storageGroupTTLMap, userMap,
-          roleMap, partitionTable.serialize());
+      MetaSimpleSnapshot metaSimpleSnapshot =
+          new MetaSimpleSnapshot(storageGroupTTLMap, userMap, roleMap, partitionTable.serialize());
 
       metaSimpleSnapshot.setLastLogIndex(lastLogIndex);
       metaSimpleSnapshot.setLastLogTerm(lastLogTerm);
@@ -154,8 +157,8 @@ public class MetaSimpleSnapshotTest extends IoTDBTest {
       roleMap.put(roleName, role);
     }
 
-    MetaSimpleSnapshot metaSimpleSnapshot = new MetaSimpleSnapshot(storageGroupTTLMap, userMap,
-        roleMap, partitionTable.serialize());
+    MetaSimpleSnapshot metaSimpleSnapshot =
+        new MetaSimpleSnapshot(storageGroupTTLMap, userMap, roleMap, partitionTable.serialize());
     metaSimpleSnapshot.setLastLogIndex(lastLogIndex);
     metaSimpleSnapshot.setLastLogTerm(lastLogTerm);
 
@@ -186,4 +189,3 @@ public class MetaSimpleSnapshotTest extends IoTDBTest {
     assertTrue(subServerInitialized);
   }
 }
-

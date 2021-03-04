@@ -23,11 +23,11 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class CacheHitRatioMonitor implements CacheHitRatioMonitorMXBean, IService {
-
 
   private static Logger logger = LoggerFactory.getLogger(CacheHitRatioMonitor.class);
   static final CacheHitRatioMonitor instance = AsyncCacheHitRatioHolder.DISPLAYER;
@@ -50,31 +50,6 @@ public class CacheHitRatioMonitor implements CacheHitRatioMonitorMXBean, IServic
   @Override
   public ServiceType getID() {
     return ServiceType.CACHE_HIT_RATIO_DISPLAY_SERVICE;
-  }
-
-  @Override
-  public double getChunkMetaDataHitRatio() {
-    return ChunkMetadataCache.getInstance().calculateChunkMetaDataHitRatio();
-  }
-
-  @Override
-  public long getChunkMetaDataCacheUsedMemory() {
-    return ChunkMetadataCache.getInstance().getUsedMemory();
-  }
-
-  @Override
-  public long getChunkMetaDataCacheMaxMemory() {
-    return ChunkMetadataCache.getInstance().getMaxMemory();
-  }
-
-  @Override
-  public double getChunkMetaDataCacheUsedMemoryProportion() {
-    return ChunkMetadataCache.getInstance().getUsedMemoryProportion();
-  }
-
-  @Override
-  public long getChunkMetaDataCacheAverageSize() {
-    return ChunkMetadataCache.getInstance().getAverageSize();
   }
 
   @Override
@@ -135,7 +110,6 @@ public class CacheHitRatioMonitor implements CacheHitRatioMonitorMXBean, IServic
 
     private static final CacheHitRatioMonitor DISPLAYER = new CacheHitRatioMonitor();
 
-    private AsyncCacheHitRatioHolder() {
-    }
+    private AsyncCacheHitRatioHolder() {}
   }
 }

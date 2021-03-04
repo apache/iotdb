@@ -26,6 +26,7 @@ public class ShowDevicesOperator extends ShowOperator {
   private PartialPath path;
   private int limit = 0;
   private int offset = 0;
+  private boolean hasSgCol;
 
   public ShowDevicesOperator(int tokenIntType, PartialPath path) {
     super(tokenIntType);
@@ -50,5 +51,13 @@ public class ShowDevicesOperator extends ShowOperator {
 
   public void setOffset(int offset) {
     this.offset = offset;
+  }
+
+  public void setSgCol(boolean hasSgCol) {
+    this.hasSgCol = hasSgCol;
+  }
+
+  public boolean hasSgCol() {
+    return hasSgCol;
   }
 }

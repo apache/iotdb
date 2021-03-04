@@ -28,9 +28,7 @@ public class MaxDiskUsableSpaceFirstStrategy extends DirectoryStrategy {
     return getMaxSpaceFolder();
   }
 
-  /**
-   * get max space folder.
-   */
+  /** get max space folder. */
   public int getMaxSpaceFolder() throws DiskSpaceInsufficientException {
     int maxIndex = -1;
     long maxSpace = 0;

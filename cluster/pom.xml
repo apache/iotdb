@@ -107,6 +107,22 @@
             <version>4.0.2</version>
             <scope>test</scope>
         </dependency>
+        <!-- for mocked test-->
+        <dependency>
+            <groupId>org.powermock</groupId>
+            <artifactId>powermock-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.powermock</groupId>
+            <artifactId>powermock-module-junit4</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.powermock</groupId>
+            <artifactId>powermock-api-mockito2</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
     <profiles>
         <profile>
@@ -133,6 +149,20 @@
             </activation>
             <properties>
                 <cluster.ut.skip>true</cluster.ut.skip>
+            </properties>
+        </profile>
+        <profile>
+            <id>only_test_Cluster</id>
+            <activation>
+                <property>
+                    <name>cluster.test.only</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <properties>
+                <cluster.test.skip>false</cluster.test.skip>
+                <cluster.ut.skip>false</cluster.ut.skip>
+                <cluster.it.skip>false</cluster.it.skip>
             </properties>
         </profile>
     </profiles>

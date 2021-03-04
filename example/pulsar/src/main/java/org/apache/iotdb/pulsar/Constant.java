@@ -20,8 +20,8 @@ package org.apache.iotdb.pulsar;
 
 @SuppressWarnings("squid:S2068")
 public class Constant {
-  private Constant() {
-  }
+  private Constant() {}
+
   public static final String TOPIC_NAME = "persistent://public/default/regions-partitioned";
   public static final String IOTDB_CONNECTION_URL = "jdbc:iotdb://localhost:6667/";
   public static final String IOTDB_CONNECTION_USER = "root";

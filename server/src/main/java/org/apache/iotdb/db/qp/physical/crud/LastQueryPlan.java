@@ -34,6 +34,7 @@ public class LastQueryPlan extends RawDataQueryPlan {
     setOperatorType(Operator.OperatorType.LAST);
   }
 
+  @Override
   public void setExpression(IExpression expression) throws QueryProcessException {
     if (isValidExpression(expression)) {
       super.setExpression(expression);

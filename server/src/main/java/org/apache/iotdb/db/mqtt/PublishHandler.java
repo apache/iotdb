@@ -17,11 +17,6 @@
  */
 package org.apache.iotdb.db.mqtt;
 
-import io.moquette.interception.AbstractInterceptHandler;
-import io.moquette.interception.messages.InterceptPublishMessage;
-import io.netty.buffer.ByteBuf;
-import io.netty.handler.codec.mqtt.MqttQoS;
-import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -33,12 +28,17 @@ import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import io.moquette.interception.AbstractInterceptHandler;
+import io.moquette.interception.messages.InterceptPublishMessage;
+import io.netty.buffer.ByteBuf;
+import io.netty.handler.codec.mqtt.MqttQoS;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * PublishHandler handle the messages from MQTT clients.
- */
+import java.util.List;
+
+/** PublishHandler handle the messages from MQTT clients. */
 public class PublishHandler extends AbstractInterceptHandler {
 
   private static final Logger LOG = LoggerFactory.getLogger(PublishHandler.class);
@@ -75,14 +75,19 @@ public class PublishHandler extends AbstractInterceptHandler {
 
     LOG.debug(
         "Receive publish message. clientId: {}, username: {}, qos: {}, topic: {}, payload: {}",
-        clientId, username, qos, topic, payload);
+        clientId,
+        username,
+        qos,
+        topic,
+        payload);
 
     List<Message> events = payloadFormat.format(payload);
     if (events == null) {
       return;
     }
 
-    // since device ids from messages maybe different, so we use the InsertPlan not InsertTabletPlan.
+    // since device ids from messages maybe different, so we use the InsertPlan not
+    // InsertTabletPlan.
     for (Message event : events) {
       if (event == null) {
         continue;
@@ -102,7 +107,10 @@ public class PublishHandler extends AbstractInterceptHandler {
       } catch (Exception e) {
         LOG.warn(
             "meet error when inserting device {}, measurements {}, at time {}, because ",
-            event.getDevice(), event.getMeasurements(), event.getTimestamp(), e);
+            event.getDevice(),
+            event.getMeasurements(),
+            event.getTimestamp(),
+            e);
       }
 
       LOG.debug("event process result: {}", status);

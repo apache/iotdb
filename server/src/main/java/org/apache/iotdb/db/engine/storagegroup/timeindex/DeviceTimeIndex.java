@@ -19,6 +19,14 @@
 
 package org.apache.iotdb.db.engine.storagegroup.timeindex;
 
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.exception.PartitionViolationException;
+import org.apache.iotdb.db.rescon.CachedStringPool;
+import org.apache.iotdb.db.utils.FilePathUtils;
+import org.apache.iotdb.db.utils.SerializeUtils;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -28,24 +36,15 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.exception.PartitionViolationException;
-import org.apache.iotdb.db.rescon.CachedStringPool;
-import org.apache.iotdb.db.utils.FilePathUtils;
-import org.apache.iotdb.db.utils.SerializeUtils;
-import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class DeviceTimeIndex implements ITimeIndex {
 
   public static final int INIT_ARRAY_SIZE = 64;
 
-  protected static final Map<String, String> cachedDevicePool = CachedStringPool.getInstance()
-      .getCachedPool();
+  protected static final Map<String, String> cachedDevicePool =
+      CachedStringPool.getInstance().getCachedPool();
 
-  /**
-   * start times array.
-   */
+  /** start times array. */
   protected long[] startTimes;
 
   /**
@@ -54,9 +53,7 @@ public class DeviceTimeIndex implements ITimeIndex {
    */
   protected long[] endTimes;
 
-  /**
-   * device -> index of start times array and end times array
-   */
+  /** device -> index of start times array and end times array */
   protected Map<String, Integer> deviceToIndex;
 
   public DeviceTimeIndex() {
@@ -182,8 +179,9 @@ public class DeviceTimeIndex implements ITimeIndex {
 
   @Override
   public long calculateRamSize() {
-    return RamUsageEstimator.sizeOf(deviceToIndex) + RamUsageEstimator.sizeOf(startTimes) +
-        RamUsageEstimator.sizeOf(endTimes);
+    return RamUsageEstimator.sizeOf(deviceToIndex)
+        + RamUsageEstimator.sizeOf(startTimes)
+        + RamUsageEstimator.sizeOf(endTimes);
   }
 
   @Override

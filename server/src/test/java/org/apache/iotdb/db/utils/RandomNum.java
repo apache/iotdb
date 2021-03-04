@@ -36,17 +36,13 @@ public class RandomNum {
     return (random.nextInt(10000) % (max - min) + min);
   }
 
-  /**
-   * get random float between min and max.
-   */
+  /** get random float between min and max. */
   public static float getRandomFloat(float min, float max) {
 
     return (random.nextFloat() * (max - min) + min);
   }
 
-  /**
-   * get random int between 0 and frequency.
-   */
+  /** get random int between 0 and frequency. */
   public static int getAbnormalData(int frequency) {
     return random.nextInt() % frequency;
   }
@@ -65,6 +61,5 @@ public class RandomNum {
       st = st.append(base.charAt(number));
     }
     return st.toString();
-
   }
 }

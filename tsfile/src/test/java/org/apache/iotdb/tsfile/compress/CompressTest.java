@@ -18,29 +18,30 @@
  */
 package org.apache.iotdb.tsfile.compress;
 
-import static org.junit.Assert.assertEquals;
-
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.xerial.snappy.Snappy;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+
+import static org.junit.Assert.assertEquals;
+
 public class CompressTest {
 
-  private final String inputString = "Hello snappy-java! Snappy-java is a JNI-based wrapper of "
-      + "Snappy, a fast compressor/decompressor.";
+  private final String inputString =
+      "Hello snappy-java! Snappy-java is a JNI-based wrapper of "
+          + "Snappy, a fast compressor/decompressor.";
 
   @Before
-  public void setUp() {
-  }
+  public void setUp() {}
 
   @After
-  public void tearDown() {
-  }
+  public void tearDown() {}
 
   @Test
   public void snappyCompressorTest1() throws IOException {
@@ -76,7 +77,6 @@ public class CompressTest {
     String result = new String(uncompressed, StandardCharsets.UTF_8);
     assertEquals(inputString, result);
   }
-
 
   @Test
   public void lz4CompressorTest1() throws IOException {

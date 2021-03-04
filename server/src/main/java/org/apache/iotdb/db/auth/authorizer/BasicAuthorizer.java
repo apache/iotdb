@@ -18,11 +18,6 @@
  */
 package org.apache.iotdb.db.auth.authorizer;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.entity.PrivilegeType;
 import org.apache.iotdb.db.auth.entity.Role;
@@ -35,8 +30,15 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.AuthUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
@@ -67,9 +69,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     logger.info("Initialization of Authorizer completes");
   }
 
-  /**
-   * function for getting the instance of the local file authorizer.
-   */
+  /** function for getting the instance of the local file authorizer. */
   public static IAuthorizer getInstance() throws AuthException {
     if (InstanceHolder.instance == null) {
       throw new AuthException("Authorizer uninitialized");
@@ -81,20 +81,22 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     private static IAuthorizer instance;
 
     static {
-        Class<BasicAuthorizer> c;
-        try {
-          c = (Class<BasicAuthorizer>) Class.forName(IoTDBDescriptor.getInstance().getConfig().getAuthorizerProvider());
-          logger.info("Authorizer provider class: {}", IoTDBDescriptor.getInstance().getConfig().getAuthorizerProvider());
-          instance = c.getDeclaredConstructor().newInstance();
-        } catch (Exception e) {
-          instance = null;
-          //startup failed.
-          throw new IllegalStateException("Authorizer could not be initialized!", e);
-        }
+      Class<BasicAuthorizer> c;
+      try {
+        c =
+            (Class<BasicAuthorizer>)
+                Class.forName(IoTDBDescriptor.getInstance().getConfig().getAuthorizerProvider());
+        logger.info(
+            "Authorizer provider class: {}",
+            IoTDBDescriptor.getInstance().getConfig().getAuthorizerProvider());
+        instance = c.getDeclaredConstructor().newInstance();
+      } catch (Exception e) {
+        instance = null;
+        // startup failed.
+        throw new IllegalStateException("Authorizer could not be initialized!", e);
+      }
     }
   }
-
-
 
   /** Checks if a user has admin privileges */
   abstract boolean isAdmin(String username);
@@ -102,7 +104,9 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public boolean login(String username, String password) throws AuthException {
     User user = userManager.getUser(username);
-    return user != null && password != null && user.getPassword().equals(AuthUtils.encryptPassword(password));
+    return user != null
+        && password != null
+        && user.getPassword().equals(AuthUtils.encryptPassword(password));
   }
 
   @Override
@@ -133,8 +137,9 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       newPath = IoTDBConstant.PATH_ROOT;
     }
     if (!userManager.grantPrivilegeToUser(username, newPath, privilegeId)) {
-      throw new AuthException(String.format(
-          "User %s already has %s on %s", username, PrivilegeType.values()[privilegeId], path));
+      throw new AuthException(
+          String.format(
+              "User %s already has %s on %s", username, PrivilegeType.values()[privilegeId], path));
     }
   }
 
@@ -149,8 +154,10 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       p = IoTDBConstant.PATH_ROOT;
     }
     if (!userManager.revokePrivilegeFromUser(username, p, privilegeId)) {
-      throw new AuthException(String.format("User %s does not have %s on %s", username,
-          PrivilegeType.values()[privilegeId], path));
+      throw new AuthException(
+          String.format(
+              "User %s does not have %s on %s",
+              username, PrivilegeType.values()[privilegeId], path));
     }
   }
 
@@ -175,7 +182,9 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
         } catch (AuthException e) {
           logger.warn(
               "Error encountered when revoking a role {} from user {} after deletion, because {}",
-              roleName, user, e);
+              roleName,
+              user,
+              e);
         }
       }
     }
@@ -189,8 +198,9 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       p = IoTDBConstant.PATH_ROOT;
     }
     if (!roleManager.grantPrivilegeToRole(roleName, p, privilegeId)) {
-      throw new AuthException(String.format("Role %s already has %s on %s", roleName,
-          PrivilegeType.values()[privilegeId], path));
+      throw new AuthException(
+          String.format(
+              "Role %s already has %s on %s", roleName, PrivilegeType.values()[privilegeId], path));
     }
   }
 
@@ -202,8 +212,10 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       p = IoTDBConstant.PATH_ROOT;
     }
     if (!roleManager.revokePrivilegeFromRole(roleName, p, privilegeId)) {
-      throw new AuthException(String.format("Role %s does not have %s on %s", roleName,
-          PrivilegeType.values()[privilegeId], path));
+      throw new AuthException(
+          String.format(
+              "Role %s does not have %s on %s",
+              roleName, PrivilegeType.values()[privilegeId], path));
     }
   }
 
@@ -221,8 +233,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
         throw new AuthException(String.format(NO_SUCH_ROLE_EXCEPTION, roleName));
       }
     } else {
-      throw new AuthException(String.format("User %s already has role %s",
-          username, roleName));
+      throw new AuthException(String.format("User %s already has role %s", username, roleName));
     }
   }
 
@@ -233,8 +244,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       throw new AuthException(String.format(NO_SUCH_ROLE_EXCEPTION, roleName));
     }
     if (!userManager.revokeRoleFromUser(roleName, username)) {
-      throw new AuthException(String.format("User %s does not have role %s", username,
-          roleName));
+      throw new AuthException(String.format("User %s does not have role %s", username, roleName));
     }
   }
 
@@ -318,7 +328,6 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     return allUsers;
   }
 
-
   @Override
   public Map<String, Role> getAllRoles() {
     Map<String, Role> allRoles = new HashMap<>();
@@ -332,7 +341,6 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     }
     return allRoles;
   }
-
 
   @Override
   public void reset() throws AuthException {
@@ -349,9 +357,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   }
 
   @Override
-  public void stop() {
-
-  }
+  public void stop() {}
 
   @Override
   public ServiceType getID() {

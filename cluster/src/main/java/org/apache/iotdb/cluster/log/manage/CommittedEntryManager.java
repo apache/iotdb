@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.cluster.log.manage;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import org.apache.iotdb.cluster.exception.EntryCompactedException;
 import org.apache.iotdb.cluster.exception.EntryUnavailableException;
 import org.apache.iotdb.cluster.exception.TruncateCommittedEntryException;
@@ -29,8 +26,13 @@ import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.logtypes.EmptyContentLog;
 import org.apache.iotdb.db.utils.TestOnly;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public class CommittedEntryManager {
 
@@ -109,7 +111,7 @@ public class CommittedEntryManager {
    *
    * @param index request entry index
    * @return -1 if index > entries[entries.size()-1].index, throw EntryCompactedException if index <
-   * dummyIndex, or return the entry's term for given index
+   *     dummyIndex, or return the entry's term for given index
    * @throws EntryCompactedException
    */
   public long maybeTerm(long index) throws EntryCompactedException {
@@ -124,7 +126,7 @@ public class CommittedEntryManager {
    * Pack entries from low through high - 1, just like slice (entries[low:high]). dummyIndex < low
    * <= high. Note that caller must ensure low <= high.
    *
-   * @param low  request index low bound
+   * @param low request index low bound
    * @param high request index upper bound
    */
   public List<Log> getEntries(long low, long high) {
@@ -136,14 +138,18 @@ public class CommittedEntryManager {
     if (low <= dummyIndex) {
       logger.debug(
           "entries low ({}) is out of bound dummyIndex ({}), adjust parameter 'low' to {}",
-          low, dummyIndex, dummyIndex);
+          low,
+          dummyIndex,
+          dummyIndex);
       low = dummyIndex + 1;
     }
     long lastIndex = getLastIndex();
     if (high > lastIndex + 1) {
       logger.debug(
           "entries high ({}) is out of bound lastIndex ({}), adjust parameter 'high' to {}",
-          high, lastIndex, lastIndex);
+          high,
+          lastIndex,
+          lastIndex);
       high = lastIndex + 1;
     }
     return entries.subList((int) (low - dummyIndex), (int) (high - dummyIndex));
@@ -155,7 +161,7 @@ public class CommittedEntryManager {
    *
    * @param index request entry index
    * @return null if index > entries[entries.size()-1].index, throw EntryCompactedException if index
-   * < dummyIndex, or return the entry's log for given index
+   *     < dummyIndex, or return the entry's log for given index
    * @throws EntryCompactedException
    */
   Log getEntry(long index) throws EntryCompactedException {
@@ -163,14 +169,16 @@ public class CommittedEntryManager {
     if (index < dummyIndex) {
       logger.debug(
           "invalid committedEntryManager getEntry: parameter: index({}) < compactIndex({})",
-          index, dummyIndex);
+          index,
+          dummyIndex);
       throw new EntryCompactedException(index, dummyIndex);
     }
     if ((int) (index - dummyIndex) >= entries.size()) {
       if (logger.isDebugEnabled()) {
         logger.debug(
             "invalid committedEntryManager getEntry : parameter: index({}) > lastIndex({})",
-            index, getLastIndex());
+            index,
+            getLastIndex());
       }
       return null;
     }
@@ -188,17 +196,19 @@ public class CommittedEntryManager {
     if (compactIndex < dummyIndex) {
       logger.info(
           "entries before request index ({}) have been compacted, and the compactIndex is ({})",
-          compactIndex, dummyIndex);
+          compactIndex,
+          dummyIndex);
       return;
     }
     if (compactIndex > getLastIndex()) {
-      logger
-          .info("compact ({}) is out of bound lastIndex ({})", compactIndex, getLastIndex());
+      logger.info("compact ({}) is out of bound lastIndex ({})", compactIndex, getLastIndex());
       throw new EntryUnavailableException(compactIndex, getLastIndex());
     }
     int index = (int) (compactIndex - dummyIndex);
-    entries.set(0, new EmptyContentLog(entries.get(index).getCurrLogIndex(),
-        entries.get(index).getCurrLogTerm()));
+    entries.set(
+        0,
+        new EmptyContentLog(
+            entries.get(index).getCurrLogIndex(), entries.get(index).getCurrLogTerm()));
     entries.subList(1, index + 1).clear();
   }
 
@@ -217,10 +227,12 @@ public class CommittedEntryManager {
     if (entries.size() - offset == 0) {
       entries.addAll(appendingEntries);
     } else if (entries.size() - offset > 0) {
-      throw new TruncateCommittedEntryException(appendingEntries.get(0).getCurrLogIndex(),
-          getLastIndex());
+      throw new TruncateCommittedEntryException(
+          appendingEntries.get(0).getCurrLogIndex(), getLastIndex());
     } else {
-      logger.error("missing log entry [last: {}, append at: {}]", getLastIndex(),
+      logger.error(
+          "missing log entry [last: {}, append at: {}]",
+          getLastIndex(),
           appendingEntries.get(0).getCurrLogIndex());
     }
   }
