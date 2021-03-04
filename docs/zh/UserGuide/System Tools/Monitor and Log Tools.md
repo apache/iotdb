@@ -213,6 +213,7 @@ select last TOTAL_POINTS from root.stats."global"
 2. 展开侧边框并选择 'org.apache.iotdb.db.service'. 将会得到如下图所示结果：
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/65687623-404fc380-e09c-11e9-83c3-3c7c63a5b0be.jpeg">
+
 ## 系统日志
 
 IoTDB支持用户通过修改日志配置文件的方式对IoTDB系统日志（如日志输出级别等）进行配置，系统日志配置文件默认位置在$IOTDB_HOME/conf文件夹下，默认的日志配置文件名为logback.xml。用户可以通过增加或更改其中的xml树型节点参数对系统运行日志的相关配置进行修改。详细配置说明参看本文日志文件配置说明。
