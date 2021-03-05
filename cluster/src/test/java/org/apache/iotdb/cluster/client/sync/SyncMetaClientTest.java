@@ -25,7 +25,7 @@ public class SyncMetaClientTest {
   @Test
   public void test() throws IOException, InterruptedException {
     Node node = new Node();
-    node.setMetaPort(9003).setIp("localhost");
+    node.setMetaPort(9003).setInternalIp("localhost").setClientIp("localhost");
     ServerSocket serverSocket = new ServerSocket(node.getMetaPort());
     Thread listenThread =
         new Thread(
@@ -53,7 +53,8 @@ public class SyncMetaClientTest {
       assertTrue(client.getInputProtocol().getTransport().isOpen());
 
       client =
-          new SyncMetaClient(new TBinaryProtocol(new TSocket(node.getIp(), node.getDataPort())));
+          new SyncMetaClient(
+              new TBinaryProtocol(new TSocket(node.getInternalIp(), node.getDataPort())));
       // client without a belong pool will be closed after putBack()
       client.putBack();
       assertFalse(client.getInputProtocol().getTransport().isOpen());

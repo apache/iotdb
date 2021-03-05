@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.cache;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -87,8 +88,11 @@ public class ChunkCache {
     return ChunkCacheHolder.INSTANCE;
   }
 
-  public Chunk get(ChunkMetadata chunkMetaData, TsFileSequenceReader reader) throws IOException {
+  public Chunk get(ChunkMetadata chunkMetaData) throws IOException {
     if (!CACHE_ENABLE) {
+      TsFileSequenceReader reader =
+          FileReaderManager.getInstance()
+              .get(chunkMetaData.getFilePath(), chunkMetaData.isClosed());
       Chunk chunk = reader.readMemChunk(chunkMetaData);
       return new Chunk(
           chunk.getHeader(),
@@ -111,6 +115,9 @@ public class ChunkCache {
       printCacheLog(true);
     } else {
       printCacheLog(false);
+      TsFileSequenceReader reader =
+          FileReaderManager.getInstance()
+              .get(chunkMetaData.getFilePath(), chunkMetaData.isClosed());
       try {
         chunk = reader.readMemChunk(chunkMetaData);
       } catch (IOException e) {
@@ -119,7 +126,9 @@ public class ChunkCache {
       }
       lock.writeLock().lock();
       try {
-        lruCache.put(chunkMetaData, chunk);
+        if (!lruCache.containsKey(chunkMetaData)) {
+          lruCache.put(chunkMetaData, chunk);
+        }
       } finally {
         lock.writeLock().unlock();
       }

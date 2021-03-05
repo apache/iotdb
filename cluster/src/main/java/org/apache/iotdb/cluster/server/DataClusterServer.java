@@ -492,13 +492,18 @@ public class DataClusterServer extends RaftServer
 
   @Override
   TServerTransport getServerSocket() throws TTransportException {
+    logger.info(
+        "[{}] Cluster node will listen {}:{}",
+        getServerClientName(),
+        config.getInternalIp(),
+        config.getInternalDataPort());
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       return new TNonblockingServerSocket(
-          new InetSocketAddress(config.getClusterRpcIp(), thisNode.getDataPort()),
+          new InetSocketAddress(config.getInternalIp(), thisNode.getDataPort()),
           getConnectionTimeoutInMS());
     } else {
       return new TServerSocket(
-          new InetSocketAddress(config.getClusterRpcIp(), thisNode.getDataPort()));
+          new InetSocketAddress(config.getInternalIp(), thisNode.getDataPort()));
     }
   }
 

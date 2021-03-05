@@ -59,9 +59,6 @@ public class IoTDB implements IoTDBMBean {
   }
 
   public static void main(String[] args) {
-    if (args.length > 0) {
-      IoTDBDescriptor.getInstance().replaceProps(args);
-    }
     try {
       IoTDBConfigCheck.getInstance().checkConfig();
     } catch (IOException e) {
@@ -117,7 +114,11 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(UDFClassLoaderManager.getInstance());
     registerManager.register(UDFRegistrationService.getInstance());
 
-    registerManager.register(RPCService.getInstance());
+    // in cluster mode, RPC service is not enabled.
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableRpcService()) {
+      registerManager.register(RPCService.getInstance());
+    }
+
     if (IoTDBDescriptor.getInstance().getConfig().isEnableMetricService()) {
       registerManager.register(MetricsService.getInstance());
     }

@@ -52,6 +52,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -164,7 +165,8 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
             List<PageHeader> pageHeadersInChunk = new ArrayList<>();
             List<ByteBuffer> dataInChunk = new ArrayList<>();
             List<Boolean> needToDecodeInfo = new ArrayList<>();
-            for (int j = 0; j < header.getNumOfPages(); j++) {
+            int dataSize = header.getDataSize();
+            while (dataSize > 0) {
               // a new Page
               PageHeader pageHeader = reader.readPageHeader(dataType);
               boolean needToDecode = checkIfNeedToDecode(dataType, encoding, pageHeader);
@@ -175,6 +177,16 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
                       : reader.readPage(pageHeader, header.getCompressionType());
               pageHeadersInChunk.add(pageHeader);
               dataInChunk.add(pageData);
+              dataSize -=
+                  (Integer.BYTES * 2 // the bytes size of uncompressedSize and compressedSize
+                      // count, startTime, endTime bytes size in old statistics
+                      + 24
+                      // statistics bytes size
+                      // new boolean StatsSize is 8 bytes larger than old one
+                      + (pageHeader.getStatistics().getStatsSize()
+                          - (dataType == TSDataType.BOOLEAN ? 8 : 0))
+                      // page data bytes
+                      + pageHeader.getCompressedSize());
             }
             pageHeadersInChunkGroup.add(pageHeadersInChunk);
             pageDataInChunkGroup.add(dataInChunk);
@@ -341,9 +353,12 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
               FSFactoryProducer.getFSFactory()
                   .getFile(partitionDir + File.separator + oldTsFile.getName());
           try {
+            if (newFile.exists()) {
+              logger.debug("delete uncomplated file {}", newFile);
+              Files.delete(newFile.toPath());
+            }
             if (!newFile.createNewFile()) {
-              logger.error("The TsFile {} has been created ", newFile);
-              return null;
+              logger.error("Create new TsFile {} failed because it exists", newFile);
             }
             TsFileIOWriter writer = new TsFileIOWriter(newFile);
             if (oldModification != null) {
@@ -352,7 +367,7 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
             }
             return writer;
           } catch (IOException e) {
-            logger.error("Create new TsFile {} failed ", newFile);
+            logger.error("Create new TsFile {} failed ", newFile, e);
             return null;
           }
         });

@@ -63,7 +63,7 @@ You can know each node in the cluster by command `ring`, which prints node ring 
 
 3.Examples
 
-> Suppose that the current cluster runs on three nodes: 127.0.0.1:9003:40010:55560, 127.0.0.1:9005:40012:55561, and 127.0.0.1:9007:40014:55562.
+> Suppose that the current cluster runs on three nodes: 127.0.0.1:9003:40010:6667, 127.0.0.1:9005:40012:6668, and 127.0.0.1:9007:40014:6669.
 
 Examples of input instructions for different systems are as follows:
 
@@ -84,9 +84,9 @@ Press enter to execute the command.
 The output of the example instruction is as follows:
 ```
 Node Identifier                                 Node 
-330411070           ->          127.0.0.1:9003:40010:55560 
-330454032           ->          127.0.0.1:9005:40012:55561 
-330496472           ->          127.0.0.1:9007:40014:55562
+330411070           ->          127.0.0.1:9003:40010:6667
+330454032           ->          127.0.0.1:9005:40012:6668 
+330496472           ->          127.0.0.1:9007:40014:6669
 ```
  
 The above output shows that there are three nodes in the current cluster,
@@ -126,7 +126,7 @@ Through this instruction, the user can know the metadata of a certain path,
 
 3.Examples
 
-> Suppose that the current cluster runs on three nodes: 127.0.0.1:9003:40010:55560, 127.0.0.1:9005:40012:55561, and 127.0.0.1:9007:40014:55562.
+> Suppose that the current cluster runs on three nodes: 127.0.0.1:9003:40010:6667, 127.0.0.1:9005:40012:6668, and 127.0.0.1:9007:40014:6669.
 > 
 > The number of copies is 2 and there are 3 storage groups:{ root.beijing , root.shanghai , root.guangzhou}.
 
@@ -145,7 +145,7 @@ Press enter to execute the command.
 
 The output of the example instruction is as follows:
 ```
-DATA<root.guangzhou.d1, 1576723735188, 1576723735188>	->	[127.0.0.1:9003:40010:55560, 127.0.0.1:9005:40012:55561]
+DATA<root.guangzhou.d1, 1576723735188, 1576723735188>	->	[127.0.0.1:9003:40010:6667, 127.0.0.1:9005:40012:6668]
 ```
 
 + Partition of query data (specified time range, time partition interval is one day)
@@ -164,9 +164,9 @@ Press enter to execute the command.
 
 The output of the example instruction is as follows:
 ```
-DATA<root.guangzhou.d1, 1576627200000, 1576713599999>	->	[127.0.0.1:9007:40014:55562, 127.0.0.1:9003:40010:55560] 
-DATA<root.guangzhou.d1, 1576713600000, 1576724778159>	->	[127.0.0.1:9003:40010:55560, 127.0.0.1:9005:40012:55561] 
-DATA<root.guangzhou.d1, 1576624778159, 1576627199999>	->	[127.0.0.1:9005:40012:55561, 127.0.0.1:9007:40014:55562]
+DATA<root.guangzhou.d1, 1576627200000, 1576713599999>	->	[127.0.0.1:9007:40014:6669, 127.0.0.1:9003:40010:6667] 
+DATA<root.guangzhou.d1, 1576713600000, 1576724778159>	->	[127.0.0.1:9003:40010:6667, 127.0.0.1:9005:40012:6668] 
+DATA<root.guangzhou.d1, 1576624778159, 1576627199999>	->	[127.0.0.1:9005:40012:6668, 127.0.0.1:9007:40014:6669]
 ```
 
 + Query metadata partition
@@ -212,7 +212,7 @@ Through this instruction, you can know the number of slots managed by each data 
 
 3.Examples
 
-> Suppose that the current cluster runs on three nodes: 127.0.0.1:9003:40010:55560, 127.0.0.1:9005:40012:55561, and 127.0.0.1:9007:40014:55562,
+> Suppose that the current cluster runs on three nodes: 127.0.0.1:9003:40010:6667, 127.0.0.1:9005:40012:6668, and 127.0.0.1:9007:40014:6669,
 > and the number of copies is 2.
 
 + Default Partition Group
@@ -233,8 +233,8 @@ Press enter to execute the command.
 The output of the example instruction is as follows:
 ```
 Raft group                                                 Slot Number
-(127.0.0.1:9003:40010:55560, 127.0.0.1:9005:40012:55561)      ->                3333
-(127.0.0.1:9007:40014:55562, 127.0.0.1:9003:40010:55560)      ->                3334
+(127.0.0.1:9003:40010:6667, 127.0.0.1:9005:40012:6668)      ->                3333
+(127.0.0.1:9007:40014:6669, 127.0.0.1:9003:40010:6667)      ->                3334
 ```
 + All Partition Groups
 
@@ -252,9 +252,9 @@ Press enter to execute the command.
 The output of the example instruction is as follows:
 ```
 Raft group                                                 Slot Number
-(127.0.0.1:9003:40010:55560, 127.0.0.1:9005:40012:55561)      ->                3333
-(127.0.0.1:9005:40012:55561, 127.0.0.1:9007:40014:55562)      ->                3333
-(127.0.0.1:9007:40014:55562, 127.0.0.1:9003:40010:55560)      ->                3334 
+(127.0.0.1:9003:40010:6667, 127.0.0.1:9005:40012:6668)      ->                3333
+(127.0.0.1:9005:40012:6668, 127.0.0.1:9007:40014:6669)      ->                3333
+(127.0.0.1:9007:40014:6669, 127.0.0.1:9003:40010:6667)      ->                3334 
 ```
 
 ### Query node status
@@ -271,7 +271,7 @@ Through this instruction, you can know the current status of all nodes in the cl
 > the value indicates the status of the node, "on" is normal, "off" is abnormal, and the format is \< key -> value>.
 
 3.Examples
-> Suppose that the current cluster runs on three nodes: 127.0.0.1:9003:40010:55560, 127.0.0.1:9005:40012:55561, and 127.0.0.1:9007:40014:55562,
+> Suppose that the current cluster runs on three nodes: 127.0.0.1:9003:40010:6667, 127.0.0.1:9005:40012:6668, and 127.0.0.1:9007:40014:6669,
 > and the number of copies is 2.
 
 Linux and MacOS：
@@ -288,10 +288,10 @@ Press enter to execute the command.
 The output of the example instruction is as follows:
 ```
 Node                                Status 
-127.0.0.1:9003:40010:55560          ->        on 
-127.0.0.1:9005:40012:55561          ->        off
-127.0.0.1:9007:40014:55562          ->        on 
+127.0.0.1:9003:40010:6667          ->        on 
+127.0.0.1:9005:40012:6668          ->        off
+127.0.0.1:9007:40014:6669          ->        on 
 
 ```
-The above output indicates that 127.0.0.1:9003:40010:55560 nodes and 127.0.0.1:9007:40014:55562 nodes are in normal state,
-and 127.0.0.1:9005:40012:55561 nodes cannot provide services.
+The above output indicates that 127.0.0.1:9003:40010:6667 nodes and 127.0.0.1:9007:40014:6669 nodes are in normal state,
+and 127.0.0.1:9005:40012:6668 nodes cannot provide services.

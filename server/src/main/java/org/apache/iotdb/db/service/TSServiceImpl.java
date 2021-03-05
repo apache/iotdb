@@ -28,7 +28,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.cost.statistic.Measurement;
 import org.apache.iotdb.db.cost.statistic.Operation;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
-import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.IoTDBException;
@@ -431,61 +430,85 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return IoTDB.metaManager.getAllTimeseriesPath(path);
   }
 
+  private boolean executeInsertRowsPlan(InsertRowsPlan insertRowsPlan, List<TSStatus> result) {
+    long t1 = System.currentTimeMillis();
+    TSStatus tsStatus = executeNonQueryPlan(insertRowsPlan);
+    Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_ROWS_PLAN_IN_BATCH, t1);
+    int startIndex = result.size();
+    if (startIndex > 0) {
+      startIndex = startIndex - 1;
+    }
+    for (int i = 0; i < insertRowsPlan.getRowCount(); i++) {
+      result.add(RpcUtils.SUCCESS_STATUS);
+    }
+    if (tsStatus.subStatus != null) {
+      for (Entry<Integer, TSStatus> entry : insertRowsPlan.getResults().entrySet()) {
+        result.set(startIndex + entry.getKey(), entry.getValue());
+      }
+    }
+    return tsStatus.equals(RpcUtils.SUCCESS_STATUS);
+  }
+
   @Override
   public TSStatus executeBatchStatement(TSExecuteBatchStatementReq req) {
     long t1 = System.currentTimeMillis();
-    try {
-      if (!checkLogin(req.getSessionId())) {
-        return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
-      }
-
-      List<TSStatus> result = new ArrayList<>();
-      boolean isAllSuccessful = true;
-      for (String statement : req.getStatements()) {
-        long t2 = System.currentTimeMillis();
-        isAllSuccessful =
-            executeStatementInBatch(statement, result, req.getSessionId()) && isAllSuccessful;
-        Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_ONE_SQL_IN_BATCH, t2);
-      }
-      return isAllSuccessful
-          ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute batch statements successfully")
-          : RpcUtils.getStatus(result);
-    } catch (Exception e) {
-      return onNPEOrUnexpectedException(
-          e, "executing executeBatchStatement", TSStatusCode.INTERNAL_SERVER_ERROR);
-    } finally {
-      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_JDBC_BATCH, t1);
+    List<TSStatus> result = new ArrayList<>();
+    boolean isAllSuccessful = true;
+    if (!checkLogin(req.getSessionId())) {
+      return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
     }
-  }
 
-  // execute one statement of a batch. Currently, query is not allowed in a batch statement and
-  // on finding queries in a batch, such query will be ignored and an error will be generated
-  private boolean executeStatementInBatch(String statement, List<TSStatus> result, long sessionId) {
-    try {
-      PhysicalPlan physicalPlan =
-          processor.parseSQLToPhysicalPlan(
-              statement, sessionIdZoneIdMap.get(sessionId), DEFAULT_FETCH_SIZE);
-      if (physicalPlan.isQuery()) {
-        throw new QueryInBatchStatementException(statement);
+    InsertRowsPlan insertRowsPlan = new InsertRowsPlan();
+    int index = 0;
+    for (int i = 0; i < req.getStatements().size(); i++) {
+      String statement = req.getStatements().get(i);
+      try {
+        PhysicalPlan physicalPlan =
+            processor.parseSQLToPhysicalPlan(
+                statement, sessionIdZoneIdMap.get(req.getSessionId()), DEFAULT_FETCH_SIZE);
+        if (physicalPlan.isQuery()) {
+          throw new QueryInBatchStatementException(statement);
+        }
+
+        if (physicalPlan.getOperatorType().equals(OperatorType.INSERT)) {
+          insertRowsPlan.addOneInsertRowPlan((InsertRowPlan) physicalPlan, index);
+          index++;
+          if (i == req.getStatements().size() - 1
+              && !executeInsertRowsPlan(insertRowsPlan, result)) {
+            isAllSuccessful = false;
+          }
+        } else {
+          if (insertRowsPlan.getRowCount() > 0) {
+            if (!executeInsertRowsPlan(insertRowsPlan, result)) {
+              isAllSuccessful = false;
+            }
+            index = 0;
+            insertRowsPlan = new InsertRowsPlan();
+          }
+          long t2 = System.currentTimeMillis();
+          TSExecuteStatementResp resp = executeUpdateStatement(physicalPlan, req.getSessionId());
+          Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_ONE_SQL_IN_BATCH, t2);
+          result.add(resp.status);
+          if (resp.getStatus().code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            isAllSuccessful = false;
+          }
+        }
+      } catch (Exception e) {
+        TSStatus status = tryCatchQueryException(e);
+        if (status != null) {
+          result.add(status);
+          isAllSuccessful = false;
+        } else {
+          result.add(
+              onNPEOrUnexpectedException(
+                  e, "executing " + statement, TSStatusCode.INTERNAL_SERVER_ERROR));
+        }
       }
-      TSExecuteStatementResp resp = executeUpdateStatement(physicalPlan, sessionId);
-      if (resp.getStatus().code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        result.add(resp.status);
-      } else {
-        result.add(resp.status);
-        return false;
-      }
-    } catch (Exception e) {
-      TSStatus status = tryCatchQueryException(e);
-      if (status != null) {
-        result.add(status);
-        return false;
-      }
-      result.add(
-          onNPEOrUnexpectedException(
-              e, "executing " + statement, TSStatusCode.INTERNAL_SERVER_ERROR));
     }
-    return true;
+    Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_JDBC_BATCH, t1);
+    return isAllSuccessful
+        ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute batch statements successfully")
+        : RpcUtils.getStatus(result);
   }
 
   @Override
@@ -707,10 +730,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
       if (config.isDebugOn()) {
         SLOW_SQL_LOGGER.info(
-            "ChunkCache used memory proportion: {}\nChunkMetadataCache used memory proportion: {}\n"
+            "ChunkCache used memory proportion: {}\n"
                 + "TimeSeriesMetadataCache used memory proportion: {}",
             ChunkCache.getInstance().getUsedMemoryProportion(),
-            ChunkMetadataCache.getInstance().getUsedMemoryProportion(),
             TimeSeriesMetadataCache.getInstance().getUsedMemoryProportion());
       }
     }
@@ -1143,7 +1165,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           req.deviceIds.get(0),
           req.getTimestamps().get(0));
     }
-    boolean allSuccess = true;
+    boolean allCheckSuccess = true;
     InsertRowsPlan insertRowsPlan = new InsertRowsPlan();
     for (int i = 0; i < req.deviceIds.size(); i++) {
       try {
@@ -1156,11 +1178,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         TSStatus status = checkAuthority(plan, req.getSessionId());
         if (status != null) {
           insertRowsPlan.getResults().put(i, status);
-          allSuccess = false;
+          allCheckSuccess = false;
         }
         insertRowsPlan.addOneInsertRowPlan(plan, i);
       } catch (Exception e) {
-        allSuccess = false;
+        allCheckSuccess = false;
         insertRowsPlan
             .getResults()
             .put(
@@ -1172,16 +1194,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     TSStatus tsStatus = executeNonQueryPlan(insertRowsPlan);
 
     return judgeFinalTsStatus(
-        allSuccess, tsStatus, insertRowsPlan.getResults(), req.deviceIds.size());
+        allCheckSuccess, tsStatus, insertRowsPlan.getResults(), req.deviceIds.size());
   }
 
   private TSStatus judgeFinalTsStatus(
-      boolean allSuccess,
+      boolean allCheckSuccess,
       TSStatus executeTsStatus,
       Map<Integer, TSStatus> checkTsStatus,
       int totalRowCount) {
 
-    if (allSuccess) {
+    if (allCheckSuccess) {
       return executeTsStatus;
     }
 
@@ -1252,7 +1274,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           req.getTimestamps().get(0));
     }
 
-    boolean allSuccess = true;
+    boolean allCheckSuccess = true;
     InsertRowsPlan insertRowsPlan = new InsertRowsPlan();
     for (int i = 0; i < req.deviceIds.size(); i++) {
       InsertRowPlan plan = new InsertRowPlan();
@@ -1266,6 +1288,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         TSStatus status = checkAuthority(plan, req.getSessionId());
         if (status != null) {
           insertRowsPlan.getResults().put(i, status);
+          allCheckSuccess = false;
         }
         insertRowsPlan.addOneInsertRowPlan(plan, i);
       } catch (Exception e) {
@@ -1275,13 +1298,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
                 i,
                 onNPEOrUnexpectedException(
                     e, "inserting string records", TSStatusCode.INTERNAL_SERVER_ERROR));
-        allSuccess = false;
+        allCheckSuccess = false;
       }
     }
     TSStatus tsStatus = executeNonQueryPlan(insertRowsPlan);
 
     return judgeFinalTsStatus(
-        allSuccess, tsStatus, insertRowsPlan.getResults(), req.deviceIds.size());
+        allCheckSuccess, tsStatus, insertRowsPlan.getResults(), req.deviceIds.size());
   }
 
   @Override
