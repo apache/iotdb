@@ -60,7 +60,7 @@ public class TsFileSketchTool {
       try (TsFileSequenceReader reader = new TsFileSequenceReader(filename)) {
         TsFileMetadata tsFileMetaData = reader.readFileMetadata();
         List<ChunkGroupMetadata> allChunkGroupMetadata = new ArrayList<>();
-        reader.selfCheck(null, allChunkGroupMetadata, false);
+        reader.selfCheck(null, allChunkGroupMetadata, true);
 
         // begin print
         StringBuilder str1 = new StringBuilder();
