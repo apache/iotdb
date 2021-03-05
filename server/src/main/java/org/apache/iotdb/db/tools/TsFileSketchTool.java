@@ -60,7 +60,7 @@ public class TsFileSketchTool {
       try (TsFileSequenceReader reader = new TsFileSequenceReader(filename)) {
         TsFileMetadata tsFileMetaData = reader.readFileMetadata();
         List<ChunkGroupMetadata> allChunkGroupMetadata = new ArrayList<>();
-        reader.selfCheck(null, allChunkGroupMetadata, true);
+        reader.selfCheck(null, allChunkGroupMetadata, false);
 
         // begin print
         StringBuilder str1 = new StringBuilder();
@@ -92,7 +92,7 @@ public class TsFileSketchTool {
           printlnBoth(
               pw, String.format("%20s", nextChunkGroupHeaderPos) + "|\t[Chunk Group Header]");
           ChunkGroupHeader chunkGroupHeader =
-              reader.readChunkGroupHeader(nextChunkGroupHeaderPos, true);
+              reader.readChunkGroupHeader(nextChunkGroupHeaderPos, false);
           printlnBoth(pw, String.format("%20s", "") + "|\t\t[marker] 0");
           printlnBoth(
               pw, String.format("%20s", "") + "|\t\t[deviceID] " + chunkGroupHeader.getDeviceID());
