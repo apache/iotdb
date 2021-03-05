@@ -50,7 +50,9 @@ public class SyncMetaClient extends Client {
         protocolFactory.getProtocol(
             RpcTransportFactory.INSTANCE.getTransport(
                 new TSocket(
-                    node.getIp(), node.getMetaPort(), RaftServer.getConnectionTimeoutInMS()))));
+                    node.getInternalIp(),
+                    node.getMetaPort(),
+                    RaftServer.getConnectionTimeoutInMS()))));
     this.node = node;
     this.pool = pool;
     getInputProtocol().getTransport().open();
@@ -80,5 +82,10 @@ public class SyncMetaClient extends Client {
 
   public Node getNode() {
     return node;
+  }
+
+  @Override
+  public String toString() {
+    return "SyncMetaClient{" + " node=" + node + ", pool=" + pool + "}";
   }
 }

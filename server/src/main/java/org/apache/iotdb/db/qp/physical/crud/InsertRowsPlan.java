@@ -22,6 +22,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.utils.StatusUtils;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import java.io.DataOutputStream;
@@ -208,12 +209,16 @@ public class InsertRowsPlan extends InsertPlan {
   @Override
   public String toString() {
     return "InsertRowsPlan{"
-        + " insertRowPlanIndexList="
-        + insertRowPlanIndexList
-        + ", insertRowPlanList="
-        + insertRowPlanList
+        + " insertRowPlanIndexList's size="
+        + insertRowPlanIndexList.size()
+        + ", insertRowPlanList's size="
+        + insertRowPlanList.size()
         + ", results="
         + results
         + "}";
+  }
+
+  public TSStatus[] getFailingStatus() {
+    return StatusUtils.getFailingStatus(results, insertRowPlanList.size());
   }
 }

@@ -68,6 +68,7 @@ public class IoTDBConstant {
   public static final String COLUMN_TIMESERIES_ENCODING = "encoding";
   public static final String COLUMN_TIMESERIES_COMPRESSION = "compression";
   public static final String COLUMN_CHILD_PATHS = "child paths";
+  public static final String COLUMN_CHILD_NODES = "child nodes";
   public static final String COLUMN_DEVICES = "devices";
   public static final String COLUMN_COLUMN = "column";
   public static final String COLUMN_COUNT = "count";
@@ -99,6 +100,13 @@ public class IoTDBConstant {
   public static final String FUNCTION_TYPE_BUILTIN_UDTF = "built-in UDTF";
   public static final String FUNCTION_TYPE_EXTERNAL_UDAF = "external UDAF";
   public static final String FUNCTION_TYPE_EXTERNAL_UDTF = "external UDTF";
+
+  public static final String COLUMN_TRIGGER_NAME = "trigger name";
+  public static final String COLUMN_TRIGGER_STATUS = "status";
+  public static final String COLUMN_TRIGGER_EVENT = "event";
+  public static final String COLUMN_TRIGGER_PATH = "path";
+  public static final String COLUMN_TRIGGER_CLASS = "class name";
+  public static final String COLUMN_TRIGGER_ATTRIBUTES = "attributes";
 
   public static final String PATH_WILDCARD = "*";
   public static final String TIME = "time";

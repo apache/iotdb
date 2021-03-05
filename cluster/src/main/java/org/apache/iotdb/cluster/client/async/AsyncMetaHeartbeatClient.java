@@ -46,7 +46,7 @@ public class AsyncMetaHeartbeatClient extends AsyncMetaClient {
         protocolFactory,
         clientManager,
         new TNonblockingSocket(
-            node.getIp(),
+            node.getInternalIp(),
             node.getMetaPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET,
             RaftServer.getConnectionTimeoutInMS()));
     this.node = node;

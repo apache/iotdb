@@ -177,6 +177,10 @@ public class Planner {
       case KILL:
       case CREATE_FUNCTION:
       case DROP_FUNCTION:
+      case CREATE_TRIGGER:
+      case DROP_TRIGGER:
+      case START_TRIGGER:
+      case STOP_TRIGGER:
         return operator;
       case QUERY:
       case DELETE:

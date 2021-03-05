@@ -271,6 +271,37 @@ SHOW CHILD PATHS prefixPath
 +---------------+
 ```
 
+## 查看子节点
+
+```
+SHOW CHILD NODES prefixPath
+```
+
+可以查看此前缀路径的下一层的所有节点。
+
+示例：
+
+* 查询 root 的下一层：show child paths root
+
+```
++------------+
+| child nodes|
++------------+
+|          ln|
++------------+
+```
+
+* 查询 root.vehicle的下一层 ：show child paths root.ln
+
+```
++------------+
+| child nodes|
++------------+
+|        wf01|
+|        wf02|
++------------+
+```
+
 ## 统计时间序列总数
 
 IoTDB支持使用`COUNT TIMESERIES<Path>`来统计一条路径中的时间序列个数。SQL语句如下所示：

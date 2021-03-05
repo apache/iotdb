@@ -145,7 +145,9 @@ public class ClientServer extends TSServiceImpl {
     }
     serverTransport =
         new TServerSocket(
-            new InetSocketAddress(config.getClusterRpcIp(), config.getClusterRpcPort()));
+            new InetSocketAddress(
+                IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
+                config.getClusterRpcPort()));
     // async service also requires nonblocking server, and HsHaServer is basically more efficient a
     // nonblocking server
     int maxConcurrentClientNum =
