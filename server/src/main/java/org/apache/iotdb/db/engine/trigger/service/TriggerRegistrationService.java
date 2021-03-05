@@ -235,7 +235,7 @@ public class TriggerRegistrationService implements IService {
 
         throw new TriggerManagementException(
             String.format(
-                "Failed to restart the trigger %s(%s) executor while logging the DropTriggerPlan failed, because %s",
+                "Trigger %s(%s) is stopped. Failed to restart the trigger executor while logging the DropTriggerPlan failed, because %s",
                 executor.getRegistrationInformation().getTriggerName(),
                 executor.getRegistrationInformation().getClassName(),
                 e));
@@ -243,8 +243,10 @@ public class TriggerRegistrationService implements IService {
 
       throw new TriggerManagementException(
           String.format(
-              "Failed to append trigger management operation log when deregistering trigger %s, because %s",
-              plan.getTriggerName(), e));
+              "Trigger %s(%s) is not stopped. Failed to append trigger management operation log when deregistering the trigger, because %s",
+              executor.getRegistrationInformation().getTriggerName(),
+              executor.getRegistrationInformation().getClassName(),
+              e));
     }
   }
 
