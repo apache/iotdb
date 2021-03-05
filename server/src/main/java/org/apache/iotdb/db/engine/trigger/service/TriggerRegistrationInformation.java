@@ -35,19 +35,13 @@ public class TriggerRegistrationInformation {
 
   private volatile boolean isStopped;
 
-  public TriggerRegistrationInformation(
-      String triggerName,
-      TriggerEvent event,
-      PartialPath fullPath,
-      String className,
-      Map<String, String> attributes,
-      boolean isStopped) {
-    this.triggerName = triggerName;
-    this.event = event;
-    this.fullPath = fullPath;
-    this.className = className;
-    this.attributes = attributes;
-    this.isStopped = isStopped;
+  public TriggerRegistrationInformation(CreateTriggerPlan plan) {
+    this.triggerName = plan.getTriggerName();
+    this.event = plan.getEvent();
+    this.fullPath = plan.getFullPath();
+    this.className = plan.getClassName();
+    this.attributes = plan.getAttributes();
+    this.isStopped = plan.isStopped();
   }
 
   public CreateTriggerPlan convertToCreateTriggerPlan() {
