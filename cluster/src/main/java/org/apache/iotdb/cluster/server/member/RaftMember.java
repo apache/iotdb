@@ -778,7 +778,7 @@ public abstract class RaftMember {
         throws CheckConsistencyException;
   }
 
-  public class StrongCheckConsistency implements CheckConsistency {
+  public static class StrongCheckConsistency implements CheckConsistency {
 
     /**
      * if leaderCommitId > localAppliedId, will throw CHECK_STRONG_CONSISTENCY_EXCEPTION

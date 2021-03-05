@@ -97,6 +97,9 @@ public class MemberTest {
   private boolean prevUseAsyncApplier;
   private boolean prevEnableWAL;
 
+  private int syncLeaderMaxWait;
+  private long heartBeatInterval;
+
   @Before
   public void setUp() throws Exception {
     prevUseAsyncApplier = ClusterDescriptor.getInstance().getConfig().isUseAsyncApplier();
@@ -110,6 +113,9 @@ public class MemberTest {
     prevEnableWAL = IoTDBDescriptor.getInstance().getConfig().isEnableWal();
     IoTDBDescriptor.getInstance().getConfig().setEnableWal(false);
     RaftMember.setWaitLeaderTimeMs(10);
+
+    syncLeaderMaxWait = RaftServer.getSyncLeaderMaxWaitMs();
+    heartBeatInterval = RaftServer.getHeartBeatIntervalMs();
 
     RaftServer.setSyncLeaderMaxWaitMs(100);
     RaftServer.setHeartBeatIntervalMs(100);
@@ -196,8 +202,8 @@ public class MemberTest {
     ClusterDescriptor.getInstance().getConfig().setUseAsyncApplier(prevUseAsyncApplier);
     IoTDBDescriptor.getInstance().getConfig().setEnableWal(prevEnableWAL);
 
-    RaftServer.setSyncLeaderMaxWaitMs(20 * 1000);
-    RaftServer.setHeartBeatIntervalMs(1000L);
+    RaftServer.setSyncLeaderMaxWaitMs(syncLeaderMaxWait);
+    RaftServer.setHeartBeatIntervalMs(heartBeatInterval);
   }
 
   DataGroupMember getDataGroupMember(Node node) {
@@ -403,17 +409,7 @@ public class MemberTest {
         .setConsistencyLevel(ConsistencyLevel.STRONG_CONSISTENCY);
     try {
       dataGroupMemberWithWriteStrongConsistencyFalse.waitUntilCatchUp(
-          new RaftMember.CheckConsistency() {
-            @Override
-            public void postCheckConsistency(long leaderCommitId, long localAppliedId)
-                throws CheckConsistencyException {
-              if (leaderCommitId == Long.MAX_VALUE
-                  || leaderCommitId == Long.MIN_VALUE
-                  || leaderCommitId > localAppliedId) {
-                throw CheckConsistencyException.CHECK_STRONG_CONSISTENCY_EXCEPTION;
-              }
-            }
-          });
+          new RaftMember.StrongCheckConsistency());
     } catch (CheckConsistencyException e) {
       Assert.assertNotNull(e);
       Assert.assertEquals(CheckConsistencyException.CHECK_STRONG_CONSISTENCY_EXCEPTION, e);
@@ -436,17 +432,7 @@ public class MemberTest {
       dataGroupMemberWithWriteStrongConsistencyTrue.setLogManager(partitionedSnapshotLogManager);
 
       dataGroupMemberWithWriteStrongConsistencyTrue.waitUntilCatchUp(
-          new RaftMember.CheckConsistency() {
-            @Override
-            public void postCheckConsistency(long leaderCommitId, long localAppliedId)
-                throws CheckConsistencyException {
-              if (leaderCommitId == Long.MAX_VALUE
-                  || leaderCommitId == Long.MIN_VALUE
-                  || leaderCommitId > localAppliedId) {
-                throw CheckConsistencyException.CHECK_STRONG_CONSISTENCY_EXCEPTION;
-              }
-            }
-          });
+          new RaftMember.StrongCheckConsistency());
     } catch (CheckConsistencyException e) {
       Assert.fail();
     }
