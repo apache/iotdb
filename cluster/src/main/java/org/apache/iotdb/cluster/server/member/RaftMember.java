@@ -739,18 +739,7 @@ public abstract class RaftMember {
         case MID_CONSISTENCY:
           // if leaderCommitId bigger than localAppliedId a value,
           // will throw CHECK_MID_CONSISTENCY_EXCEPTION
-          syncLeader(
-              new CheckConsistency() {
-                @Override
-                public void postCheckConsistency(long leaderCommitId, long localAppliedId)
-                    throws CheckConsistencyException {
-                  if (leaderCommitId == Long.MAX_VALUE
-                      || leaderCommitId == Long.MIN_VALUE
-                      || leaderCommitId - localAppliedId > config.getMaxReadLogLag()) {
-                    throw CheckConsistencyException.CHECK_MID_CONSISTENCY_EXCEPTION;
-                  }
-                }
-              });
+          syncLeader(new MidCheckConsistency());
           return;
         case WEAK_CONSISTENCY:
           // do nothing
@@ -776,6 +765,28 @@ public abstract class RaftMember {
      */
     void postCheckConsistency(long leaderCommitId, long localAppliedId)
         throws CheckConsistencyException;
+  }
+
+  public static class MidCheckConsistency implements CheckConsistency {
+
+    /**
+     * if leaderCommitId - localAppliedId > MaxReadLogLag, will throw
+     * CHECK_MID_CONSISTENCY_EXCEPTION
+     *
+     * @param leaderCommitId leader commit id
+     * @param localAppliedId local applied id
+     * @throws CheckConsistencyException
+     */
+    @Override
+    public void postCheckConsistency(long leaderCommitId, long localAppliedId)
+        throws CheckConsistencyException {
+      if (leaderCommitId == Long.MAX_VALUE
+          || leaderCommitId == Long.MIN_VALUE
+          || leaderCommitId - localAppliedId
+              > ClusterDescriptor.getInstance().getConfig().getMaxReadLogLag()) {
+        throw CheckConsistencyException.CHECK_MID_CONSISTENCY_EXCEPTION;
+      }
+    }
   }
 
   public static class StrongCheckConsistency implements CheckConsistency {

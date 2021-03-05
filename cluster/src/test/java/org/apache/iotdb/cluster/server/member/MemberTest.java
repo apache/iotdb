@@ -448,18 +448,7 @@ public class MemberTest {
       dataGroupMemberWithWriteStrongConsistencyFalse.setLogManager(partitionedSnapshotLogManager);
 
       dataGroupMemberWithWriteStrongConsistencyFalse.waitUntilCatchUp(
-          new RaftMember.CheckConsistency() {
-            @Override
-            public void postCheckConsistency(long leaderCommitId, long localAppliedId)
-                throws CheckConsistencyException {
-              if (leaderCommitId == Long.MAX_VALUE
-                  || leaderCommitId == Long.MIN_VALUE
-                  || leaderCommitId - localAppliedId
-                      > ClusterDescriptor.getInstance().getConfig().getMaxReadLogLag()) {
-                throw CheckConsistencyException.CHECK_MID_CONSISTENCY_EXCEPTION;
-              }
-            }
-          });
+          new RaftMember.MidCheckConsistency());
     } catch (CheckConsistencyException e) {
       Assert.assertEquals(CheckConsistencyException.CHECK_MID_CONSISTENCY_EXCEPTION, e);
     }
@@ -482,18 +471,7 @@ public class MemberTest {
       dataGroupMemberWithWriteStrongConsistencyTrue.setLogManager(partitionedSnapshotLogManager);
 
       dataGroupMemberWithWriteStrongConsistencyTrue.waitUntilCatchUp(
-          new RaftMember.CheckConsistency() {
-            @Override
-            public void postCheckConsistency(long leaderCommitId, long localAppliedId)
-                throws CheckConsistencyException {
-              if (leaderCommitId == Long.MAX_VALUE
-                  || leaderCommitId == Long.MIN_VALUE
-                  || leaderCommitId - localAppliedId
-                      > ClusterDescriptor.getInstance().getConfig().getMaxReadLogLag()) {
-                throw CheckConsistencyException.CHECK_MID_CONSISTENCY_EXCEPTION;
-              }
-            }
-          });
+          new RaftMember.MidCheckConsistency());
     } catch (CheckConsistencyException e) {
       Assert.fail();
     }
