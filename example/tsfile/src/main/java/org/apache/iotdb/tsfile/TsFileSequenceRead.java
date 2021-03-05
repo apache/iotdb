@@ -26,7 +26,6 @@ import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -54,8 +53,7 @@ public class TsFileSequenceRead {
 			System.out.println(
 							"file length: " + FSFactoryProducer.getFSFactory().getFile(filename).length());
 			System.out.println("file magic head: " + reader.readHeadMagic());
-			System.out.println("file version number:" + reader.readVersionNumber());
-
+			System.out.println("file magic tail: " + reader.readTailMagic());
 			System.out.println("Level 1 metadata position: " + reader.getFileMetadataPos());
 			System.out.println("Level 1 metadata size: " + reader.getFileMetadataSize());
 			// Sequential reading of one ChunkGroup now follows this order:
@@ -128,21 +126,17 @@ public class TsFileSequenceRead {
 				}
 			}
 			System.out.println("[Metadata]");
-			Map<String, List<TimeseriesMetadata>> timeseriesMetadataMap = reader.getAllTimeseriesMetadata();
-			for (String device : timeseriesMetadataMap.keySet()) {
-				List<TimeseriesMetadata> timeseriesMetadataList = timeseriesMetadataMap.get(device);
+			for (String device : reader.getAllDevices()) {
 				Map<String, List<ChunkMetadata>> seriesMetaData = reader.readChunkMetadataInDevice(device);
-				for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataList) {
-					System.out.println("\tTimeSeries: " + device + "." + timeseriesMetadata.getMeasurementId());
-					System.out.println("\t\tTimeSeries type: " + timeseriesMetadata.getTimeSeriesMetadataType());
-					List<ChunkMetadata> chunkMetadataList = seriesMetaData.get(timeseriesMetadata.getMeasurementId());
-					for (int i = 0; i < chunkMetadataList.size(); ++i) {
-						System.out.printf("\t\t\tChunk %d\n" +
-										"\t\t\t\tChunk type:%d\n\t\t\t\tFile offset: %d\n", i + 1, chunkMetadataList.get(i).getVersion(), chunkMetadataList.get(i).getOffsetOfChunkHeader());
+				System.out.printf(
+								"\t[Device]Device %s, Number of Measurements %d%n", device, seriesMetaData.size());
+				for (Map.Entry<String, List<ChunkMetadata>> serie : seriesMetaData.entrySet()) {
+					System.out.println("\t\tMeasurement:" + serie.getKey());
+					for (ChunkMetadata chunkMetadata : serie.getValue()) {
+						System.out.println("\t\tFile offset:" + chunkMetadata.getOffsetOfChunkHeader());
 					}
 				}
 			}
-			System.out.println("file magic tail: " + reader.readTailMagic());
 		}
 	}
 }
