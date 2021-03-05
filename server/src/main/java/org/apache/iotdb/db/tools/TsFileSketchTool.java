@@ -116,7 +116,9 @@ public class TsFileSketchTool {
                     + String.format("%20s", "")
                     + " \t"
                     + chunkMetadata.getStatistics());
-            printlnBoth(pw, String.format("%20s", "") + "|\t\t[marker] " + chunk.getHeader().getChunkType());
+            printlnBoth(
+                pw,
+                String.format("%20s", "") + "|\t\t[marker] " + chunk.getHeader().getChunkType());
             nextChunkGroupHeaderPos =
                 chunkMetadata.getOffsetOfChunkHeader()
                     + chunk.getHeader().getSerializedSize()
