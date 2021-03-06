@@ -83,22 +83,27 @@ public class PullSnapshotHintService {
       PullSnapshotHint hint = iterator.next();
       for (Iterator<Node> iter = hint.receivers.iterator(); iter.hasNext(); ) {
         Node receiver = iter.next();
-        try {
-          if (logger.isDebugEnabled()) {
-            logger.debug(
-                "{}: start to send hint to target group {}, receiver {}, slot is {} and other {}",
-                member.getName(), hint.partitionGroup, receiver, hint.slots.get(0),
-                hint.slots.size() - 1);
+        // If the receiver is the removed node, ignore the hint
+        if (!member.getMetaGroupMember().getPartitionTable().getAllNodes().contains(receiver)) {
+          iter.remove();
+        } else {
+          try {
+            if (logger.isDebugEnabled()) {
+              logger.debug(
+                  "{}: start to send hint to target group {}, receiver {}, slot is {} and other {}",
+                  member.getName(), hint.partitionGroup, receiver, hint.slots.get(0),
+                  hint.slots.size() - 1);
+            }
+            boolean result = sendHint(receiver, hint);
+            if (result) {
+              iter.remove();
+            }
+          } catch (TException e) {
+            logger.warn("Cannot send pull snapshot hint to {}", receiver);
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logger.warn("Sending hint to {} interrupted", receiver);
           }
-          boolean result = sendHint(receiver, hint);
-          if (result) {
-            iter.remove();
-          }
-        } catch (TException e) {
-          logger.warn("Cannot send pull snapshot hint to {}", receiver);
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          logger.warn("Sending hint to {} interrupted", receiver);
         }
       }
       // all nodes in remote group know the hint, the hint can be removed
