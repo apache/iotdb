@@ -147,7 +147,9 @@ public class ClusterConfig {
    */
   private boolean waitForSlowNode = true;
 
-  /** when consistency level set to mid, query failed if the log lag exceeds maxReadLogLag. */
+  /**
+   * When consistency level is set to mid, query will fail if the log lag exceeds max_read_log_lag.
+   */
   private long maxReadLogLag = 1000L;
 
   private boolean openServerRpcPort = false;
