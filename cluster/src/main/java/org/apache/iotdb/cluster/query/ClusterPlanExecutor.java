@@ -502,7 +502,11 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
   @Override
   protected List<StorageGroupMNode> getAllStorageGroupNodes() {
-    metaGroupMember.syncLeader();
+    try {
+      metaGroupMember.syncLeader(null);
+    } catch (CheckConsistencyException e) {
+      logger.warn("Failed to check consistency.", e);
+    }
     return IoTDB.metaManager.getAllStorageGroupNodes();
   }
 

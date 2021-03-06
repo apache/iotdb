@@ -552,7 +552,11 @@ public class DataClusterServer extends RaftServer
   }
 
   private void removeMember(Node header, DataGroupMember dataGroupMember) {
-    dataGroupMember.syncLeader();
+    try {
+      dataGroupMember.syncLeader(null);
+    } catch (CheckConsistencyException e) {
+      logger.warn("Failed to check consistency.", e);
+    }
     dataGroupMember.setReadOnly();
     dataGroupMember.stop();
     stoppedMemberManager.put(header, dataGroupMember);

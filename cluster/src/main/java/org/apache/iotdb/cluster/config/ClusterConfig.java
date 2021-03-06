@@ -147,14 +147,15 @@ public class ClusterConfig {
    */
   private boolean waitForSlowNode = true;
 
+  /**
+   * When consistency level is set to mid, query will fail if the log lag exceeds max_read_log_lag.
+   */
+  private long maxReadLogLag = 1000L;
+
   private boolean openServerRpcPort = false;
 
   public int getSelectorNumOfClientPool() {
     return selectorNumOfClientPool;
-  }
-
-  public void setSelectorNumOfClientPool(int selectorNumOfClientPool) {
-    this.selectorNumOfClientPool = selectorNumOfClientPool;
   }
 
   public int getMaxClientPerNodePerMember() {
@@ -417,8 +418,12 @@ public class ClusterConfig {
     return waitForSlowNode;
   }
 
-  public void setWaitForSlowNode(boolean waitForSlowNode) {
-    this.waitForSlowNode = waitForSlowNode;
+  public long getMaxReadLogLag() {
+    return maxReadLogLag;
+  }
+
+  public void setMaxReadLogLag(long maxReadLogLag) {
+    this.maxReadLogLag = maxReadLogLag;
   }
 
   public String getInternalIp() {
