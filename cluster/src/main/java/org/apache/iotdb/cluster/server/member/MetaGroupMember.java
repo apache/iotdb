@@ -53,6 +53,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.DataClientProvider;
 import org.apache.iotdb.cluster.client.async.AsyncClientPool;
 import org.apache.iotdb.cluster.client.async.AsyncMetaClient;
@@ -619,6 +620,9 @@ public class MetaGroupMember extends RaftMember {
     } else if (resp.getRespNum() == Response.RESPONSE_CHANGE_MEMBERSHIP_CONFLICT) {
       logger.warn(
           "The cluster is performing other change membership operations. Change membership operations should be performed one by one. Please try again later");
+    } else if (resp.getRespNum() == Response.RESPONSE_DATA_MIGRATION_NOT_FINISH) {
+      logger.warn(
+          "The data migration of the previous membership change operation is not finished. Please try again later");
     } else {
       logger
           .warn("Joining the cluster is rejected by {} for response {}", node, resp.getRespNum());
@@ -686,7 +690,7 @@ public class MetaGroupMember extends RaftMember {
     newTable.deserialize(partitionTableBuffer);
     // avoid overwriting current partition table with a previous one
     if (partitionTable != null) {
-      long currIndex = ((SlotPartitionTable) partitionTable).getLastMetaLogIndex();
+      long currIndex = partitionTable.getLastMetaLogIndex();
       long incomingIndex = newTable.getLastMetaLogIndex();
       logger.info("Current partition table index {}, new partition table index {}", currIndex,
           incomingIndex);
@@ -893,6 +897,12 @@ public class MetaGroupMember extends RaftMember {
     if (character != NodeCharacter.LEADER) {
       return false;
     }
+
+    if (!waitDataMigrationEnd()) {
+      response.setRespNum((int)Response.RESPONSE_DATA_MIGRATION_NOT_FINISH);
+      return true;
+    }
+
     boolean nodeExistInPartitionTable = false;
     for (Node node : partitionTable.getAllNodes()) {
       if (node.ip.equals(newNode.ip) && newNode.dataPort == node.dataPort
@@ -971,6 +981,25 @@ public class MetaGroupMember extends RaftMember {
           return false;
       }
     }
+  }
+
+  /**
+   * Check if there has data migration due to previous change membership operation.
+   */
+  private boolean waitDataMigrationEnd() throws InterruptedException {
+    // try 5 time
+    int retryTime = 0;
+    while(true) {
+      Map<PartitionGroup, Integer> res = collectAllPartitionMigrationStatus();
+      if (res != null && res.isEmpty()) {
+        return true;
+      }
+      if (++retryTime == 5) {
+        break;
+      }
+      Thread.sleep(20);
+    }
+    return false;
   }
 
   /**
@@ -1912,6 +1941,45 @@ public class MetaGroupMember extends RaftMember {
     }
   }
 
+
+  public Map<PartitionGroup, Integer> collectMigrationStatus(Node node) {
+    try {
+      if (config.isUseAsyncServer()) {
+        return collectMigrationStatusAsync(node);
+      } else {
+        return collectMigrationStatusSync(node);
+      }
+    } catch (TException | InterruptedException e) {
+      logger.warn("Cannot get the status of all nodes", e);
+    }
+    return null;
+  }
+
+  private Map<PartitionGroup, Integer> collectMigrationStatusAsync(Node node)
+      throws TException, InterruptedException {
+    AtomicReference<ByteBuffer> resultRef = new AtomicReference<>();
+    GenericHandler<ByteBuffer> migrationStatusHandler = new GenericHandler<>(node, resultRef);
+    AsyncMetaClient client = (AsyncMetaClient) getAsyncClient(node);
+    if (client == null) {
+      return null;
+    }
+    client.collectMigrationStatus(migrationStatusHandler);
+    synchronized (resultRef) {
+      if (resultRef.get() == null) {
+        resultRef.wait(RaftServer.getConnectionTimeoutInMS());
+      }
+    }
+    return ClusterUtils.deserializeMigrationStatus(resultRef.get());
+  }
+
+  private Map<PartitionGroup, Integer> collectMigrationStatusSync(Node node) throws TException {
+    SyncMetaClient client = (SyncMetaClient) getSyncClient(node);
+    if (client == null) {
+      return null;
+    }
+    return ClusterUtils.deserializeMigrationStatus(client.collectMigrationStatus());
+  }
+
   @TestOnly
   public void setPartitionTable(PartitionTable partitionTable) {
     this.partitionTable = partitionTable;
@@ -1962,6 +2030,10 @@ public class MetaGroupMember extends RaftMember {
     // if we cannot have enough replica after the removal, reject it
     if (allNodes.size() <= config.getReplicationNum()) {
       return Response.RESPONSE_CLUSTER_TOO_SMALL;
+    }
+
+    if (!waitDataMigrationEnd()) {
+      return Response.RESPONSE_DATA_MIGRATION_NOT_FINISH;
     }
 
     // find the node to be removed in the node list
@@ -2077,6 +2149,7 @@ public class MetaGroupMember extends RaftMember {
         // the leader is removed, start the next election ASAP
         if (oldNode.equals(leader.get())) {
           setCharacter(NodeCharacter.ELECTOR);
+          setLeader(ClusterConstant.EMPTY_NODE);
           lastHeartbeatReceivedTime = Long.MIN_VALUE;
         }
 
@@ -2154,6 +2227,48 @@ public class MetaGroupMember extends RaftMember {
     report.setMetaMemberReport(genMemberReport());
     report.setDataMemberReportList(dataClusterServer.genMemberReports());
     return report;
+  }
+
+  /**
+   * Collect data migration status of data group in all cluster nodes.
+   * @return key: data group; value: slot num in data migration
+   */
+  public Map<PartitionGroup, Integer> collectAllPartitionMigrationStatus() {
+    Map<PartitionGroup, Integer> res = new HashMap<>();
+    for (Node node: allNodes) {
+      Map<PartitionGroup, Integer> oneNodeRes;
+      if (node.equals(thisNode)) {
+        oneNodeRes = collectMigrationStatus();
+      } else {
+        oneNodeRes = collectMigrationStatus(node);
+      }
+      if (oneNodeRes == null) {
+        return null;
+      }
+      for (Entry<PartitionGroup, Integer> entry: oneNodeRes.entrySet()) {
+        res.put(entry.getKey(), Math.max(res.getOrDefault(entry.getKey(), 0), entry.getValue()));
+      }
+    }
+    return res;
+  }
+
+  /**
+   * Collect data migration status of data group in all cluster nodes.
+   * @return key: data group; value: slot num in data migration
+   */
+  public Map<PartitionGroup, Integer> collectMigrationStatus() {
+    Map<PartitionGroup, Integer> groupSlotMap = new HashMap<>();
+    Map<RaftNode, DataGroupMember> headerMap = getDataClusterServer().getHeaderGroupMap();
+    waitUtil(getPartitionTable().getLastMetaLogIndex());
+    synchronized (headerMap) {
+      for (DataGroupMember dataMember : headerMap.values()) {
+        int num = dataMember.getSlotManager().getSloNumInDataMigration();
+        if (num > 0) {
+          groupSlotMap.put(dataMember.getPartitionGroup(), num);
+        }
+      }
+    }
+    return groupSlotMap;
   }
 
   @Override

@@ -105,7 +105,6 @@ import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.thrift.protocol.TProtocolFactory;
-import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -171,7 +170,7 @@ public class DataGroupMember extends RaftMember {
     this.metaGroupMember = metaGroupMember;
     allNodes = nodes;
     setQueryManager(new ClusterQueryManager());
-    slotManager = new SlotManager(ClusterConstant.SLOT_NUM, getMemberDir());
+    slotManager = new SlotManager(ClusterConstant.SLOT_NUM, getMemberDir(), getName());
     LogApplier applier = new DataLogApplier(metaGroupMember, this);
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncApplier()) {
       applier = new AsyncDataLogApplier(applier, name);
@@ -187,8 +186,6 @@ public class DataGroupMember extends RaftMember {
   /**
    * Start heartbeat, catch-up, pull snapshot services and start all unfinished pull-snapshot-tasks.
    * Calling the method twice does not induce side effects.
-   *
-   * @throws TTransportException
    */
   @Override
   public void start() {
@@ -269,10 +266,10 @@ public class DataGroupMember extends RaftMember {
     if (logger.isDebugEnabled()) {
       logger.debug("{}: start to pre adding node {}", name, node);
     }
-    if (allNodes.contains(node)) {
-      return false;
-    }
     synchronized (allNodes) {
+      if (allNodes.contains(node)) {
+        return false;
+      }
       int insertIndex = -1;
       // find the position to insert the new node, the nodes are ordered by their identifiers
       for (int i = 0; i < allNodes.size() - 1; i++) {
@@ -302,7 +299,6 @@ public class DataGroupMember extends RaftMember {
   /**
    * Try to add a Node into the group to which the member belongs.
    *
-   * @param node
    * @return true if this node should leave the group because of the addition of the node, false
    * otherwise
    */
@@ -310,7 +306,6 @@ public class DataGroupMember extends RaftMember {
     if (logger.isDebugEnabled()) {
       logger.debug("{}: start to add node {}", name, node);
     }
-    syncLeader();
 
     // mark slots that do not belong to this group any more
     Set<Integer> lostSlots = ((SlotNodeAdditionResult) result).getLostSlots()
@@ -321,6 +316,7 @@ public class DataGroupMember extends RaftMember {
     slotManager.save();
 
     synchronized (allNodes) {
+      preAddNode(node);
       if (allNodes.contains(node) && allNodes.size() > config.getReplicationNum()) {
         // remove the last node because the group size is fixed to replication number
         Node removedNode = allNodes.remove(allNodes.size() - 1);
@@ -344,7 +340,6 @@ public class DataGroupMember extends RaftMember {
    * member, a node must have both meta and data logs no older than then local member, or it will be
    * turned down.
    *
-   * @param electionRequest
    * @return Response.RESPONSE_META_LOG_STALE if the meta logs of the elector fall behind
    * Response.RESPONSE_LOG_MISMATCH if the data logs of the elector fall behind Response.SUCCESS if
    * the vote is given to the elector the term of local member if the elector's term is no bigger
@@ -400,8 +395,6 @@ public class DataGroupMember extends RaftMember {
   /**
    * Deserialize and install a snapshot sent by the leader. The type of the snapshot must be
    * currently PartitionedSnapshot with FileSnapshot inside.
-   *
-   * @param request
    */
   public void receiveSnapshot(SendSnapshotRequest request) throws SnapshotInstallationException {
     logger.info("{}: received a snapshot from {} with size {}", name, request.getHeader(),
@@ -418,8 +411,6 @@ public class DataGroupMember extends RaftMember {
 
   /**
    * Send the requested snapshots to the applier node.
-   *
-   * @param request
    */
   public PullSnapshotResp getSnapshot(PullSnapshotRequest request) throws IOException {
     // if the requester pulls the snapshots because the header of the group is removed, then the
@@ -472,7 +463,8 @@ public class DataGroupMember extends RaftMember {
     synchronized (logManager) {
       PullSnapshotResp resp = new PullSnapshotResp();
       Map<Integer, ByteBuffer> resultMap = new HashMap<>();
-      ((PartitionedSnapshotLogManager)logManager).takeSnapshotForSpecificSlots(requiredSlots, false);
+      ((PartitionedSnapshotLogManager) logManager)
+          .takeSnapshotForSpecificSlots(requiredSlots, false);
 
       PartitionedSnapshot<Snapshot> allSnapshot = (PartitionedSnapshot) logManager.getSnapshot();
       for (int requiredSlot : requiredSlots) {
@@ -490,9 +482,6 @@ public class DataGroupMember extends RaftMember {
 
   /**
    * Pull snapshots from the previous holders after newNode joins the cluster.
-   *
-   * @param slots
-   * @param newNode
    */
   public void pullNodeAdditionSnapshots(List<Integer> slots, Node newNode) {
     // group the slots by their owners
@@ -528,14 +517,14 @@ public class DataGroupMember extends RaftMember {
    * Pull FileSnapshots (timeseries schemas and lists of TsFiles) of "nodeSlots" from one of the
    * "prevHolders". The actual pulling will be performed in a separate thread.
    *
-   * @param descriptor
-   * @param snapshotSave set to the corresponding disk file if the task is resumed from disk, or set
-   *                     ot null otherwise
+   * @param snapshotSave set to the corresponding disk file if the task is resumed from disk, or set to null otherwise
    */
   private void pullFileSnapshot(PullSnapshotTaskDescriptor descriptor, File snapshotSave) {
     // If this node is the member of previous holder, it's unnecessary to pull data again
     if (descriptor.getPreviousHolders().contains(thisNode)) {
-      logger.info("{}: {} and other {} don't need to pull because there already has such data locally", name,
+      logger.info(
+          "{}: {} and other {} don't need to pull because there already has such data locally",
+          name,
           descriptor.getSlots().get(0), descriptor.getSlots().size() - 1);
       // inform the previous holders that one member has successfully pulled snapshot directly
       registerPullSnapshotHint(descriptor);
@@ -623,10 +612,6 @@ public class DataGroupMember extends RaftMember {
   /**
    * If the member is the leader, let all members in the group close the specified partition of a
    * storage group, else just return false.
-   *
-   * @param storageGroupName
-   * @param partitionId
-   * @param isSeq
    */
   boolean closePartition(String storageGroupName, long partitionId, boolean isSeq) {
     if (character != NodeCharacter.LEADER) {
@@ -697,7 +682,6 @@ public class DataGroupMember extends RaftMember {
    * process through the raft procedure, otherwise the plan will be forwarded to the leader.
    *
    * @param plan a non-query plan.
-   * @return
    */
   @Override
   public TSStatus executeNonQueryPlan(PhysicalPlan plan) {
@@ -782,7 +766,8 @@ public class DataGroupMember extends RaftMember {
     synchronized (allNodes) {
       if (allNodes.contains(removedNode) && allNodes.size() == config.getReplicationNum()) {
         // update the group if the deleted node was in it
-        PartitionGroup newGroup = metaGroupMember.getPartitionTable().getHeaderGroup(new RaftNode(getHeader(), getRaftGroupId()));
+        PartitionGroup newGroup = metaGroupMember.getPartitionTable()
+            .getHeaderGroup(new RaftNode(getHeader(), getRaftGroupId()));
         if (newGroup == null) {
           return;
         }
@@ -799,13 +784,13 @@ public class DataGroupMember extends RaftMember {
    * group.
    */
   @SuppressWarnings("java:S2445") // the reference of allNodes is unchanged
-  public void removeNode(Node removedNode, NodeRemovalResult removalResult) {
+  public void removeNode(Node removedNode) {
     if (logger.isDebugEnabled()) {
       logger.debug("{}: start to remove node {}", name, removedNode);
     }
-    syncLeader();
 
     synchronized (allNodes) {
+      preRemoveNode(removedNode);
       if (allNodes.contains(removedNode)) {
         // update the group if the deleted node was in it
         allNodes.remove(removedNode);
@@ -819,8 +804,6 @@ public class DataGroupMember extends RaftMember {
         }
       }
     }
-
-    pullSlots(removalResult);
   }
 
   public void pullSlots(NodeRemovalResult removalResult) {
@@ -841,7 +824,8 @@ public class DataGroupMember extends RaftMember {
   @Override
   protected long appendEntry(long prevLogIndex, long prevLogTerm, long leaderCommit, Log log) {
     long resp = super.appendEntry(prevLogIndex, prevLogTerm, leaderCommit, log);
-    if (resp == Response.RESPONSE_AGREE && (log instanceof AddNodeLog || log instanceof RemoveNodeLog)) {
+    if (resp == Response.RESPONSE_AGREE && (log instanceof AddNodeLog
+        || log instanceof RemoveNodeLog)) {
       try {
         commitLog(log);
       } catch (LogExecutionException e) {
@@ -852,8 +836,8 @@ public class DataGroupMember extends RaftMember {
   }
 
   /**
-   * When the header of a partition group is removed, it needs to wait all followers to sync data because
-   * there has no new leader.
+   * When the header of a partition group is removed, it needs to wait all followers to sync data
+   * because there has no new leader.
    */
   public void waitFollowersToSync() {
     try {
@@ -887,8 +871,6 @@ public class DataGroupMember extends RaftMember {
   /**
    * Generate a report containing the character, leader, term, last log term, last log index, header
    * and readOnly or not of this member.
-   *
-   * @return
    */
   public DataMemberReport genReport() {
     long prevLastLogIndex = lastReportedLogIndex;
@@ -944,6 +926,23 @@ public class DataGroupMember extends RaftMember {
   public void registerPullSnapshotHint(PullSnapshotTaskDescriptor descriptor) {
     pullSnapshotHintService.registerHint(descriptor);
   }
+
+  public Map<PartitionGroup, Set<Integer>> getPreviousHolderSlotMap() {
+    Map<PartitionGroup, Set<Integer>> holderSlotMap = new HashMap<>();
+    RaftNode raftNode = new RaftNode(getHeader(), getRaftGroupId());
+    Map<RaftNode, Map<Integer, PartitionGroup>> previousHolderMap = ((SlotPartitionTable)getMetaGroupMember().getPartitionTable()).getPreviousNodeMap();
+    if (previousHolderMap.containsKey(raftNode)) {
+      for (Entry<Integer, PartitionGroup> entry: previousHolderMap.get(raftNode).entrySet()) {
+        int slot = entry.getKey();
+        PartitionGroup holder = entry.getValue();
+        if (slotManager.checkSlotInDataMigrationStatus(slot)) {
+          holderSlotMap.computeIfAbsent(holder, n -> new HashSet<>()).add(slot);
+        }
+      }
+    }
+    return holderSlotMap;
+  }
+
 
   public LocalQueryExecutor getLocalQueryExecutor() {
     return localQueryExecutor;

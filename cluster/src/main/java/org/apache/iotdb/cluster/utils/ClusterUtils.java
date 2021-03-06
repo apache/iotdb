@@ -19,8 +19,15 @@
 
 package org.apache.iotdb.cluster.utils;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadFactory;
@@ -330,6 +337,31 @@ public class ClusterUtils {
       partitionGroup = metaGroupMember.getPartitionTable().partitionByPathTime(prefixPath, 0);
     }
     return partitionGroup;
+  }
+
+  public static ByteBuffer serializeMigrationStatus(Map<PartitionGroup, Integer> migrationStatus) {
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    try (DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
+      dataOutputStream.writeInt(migrationStatus.size());
+      for (Entry<PartitionGroup, Integer> entry: migrationStatus.entrySet()) {
+        entry.getKey().serialize(dataOutputStream);
+        dataOutputStream.writeInt(entry.getValue());
+      }
+    } catch (IOException e) {
+      // ignored
+    }
+    return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+  }
+
+  public static Map<PartitionGroup, Integer> deserializeMigrationStatus(ByteBuffer buffer) {
+    Map<PartitionGroup, Integer> migrationStatus = new HashMap<>();
+    int size = buffer.getInt();
+    while (size-- > 0) {
+      PartitionGroup partitionGroup = new PartitionGroup();
+      partitionGroup.deserialize(buffer);
+      migrationStatus.put(partitionGroup, buffer.getInt());
+    }
+    return migrationStatus;
   }
 
 }

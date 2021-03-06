@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.server.service;
 
 import java.nio.ByteBuffer;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.exception.AddSelfException;
 import org.apache.iotdb.cluster.exception.ChangeMembershipException;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
@@ -81,7 +82,8 @@ public class MetaAsyncService extends BaseAsyncService implements TSMetaService.
       return;
     }
 
-    if (member.getCharacter() == NodeCharacter.FOLLOWER && member.getLeader() != null) {
+    if (member.getCharacter() == NodeCharacter.FOLLOWER && member.getLeader() != null
+        && !ClusterConstant.EMPTY_NODE.equals(member.getLeader())) {
       logger.info("Forward the join request of {} to leader {}", node, member.getLeader());
       if (forwardAddNode(node, startUpStatus, resultHandler)) {
         return;
@@ -143,6 +145,11 @@ public class MetaAsyncService extends BaseAsyncService implements TSMetaService.
   @Override
   public void checkAlive(AsyncMethodCallback<Node> resultHandler) {
     resultHandler.onComplete(metaGroupMember.getThisNode());
+  }
+
+  @Override
+  public void collectMigrationStatus(AsyncMethodCallback<ByteBuffer> resultHandler) {
+    resultHandler.onComplete(ClusterUtils.serializeMigrationStatus(metaGroupMember.collectMigrationStatus()));
   }
 
   @Override

@@ -141,7 +141,6 @@ public class PartitionedSnapshot<T extends Snapshot> extends Snapshot {
     }
 
     @Override
-
     public void install(PartitionedSnapshot snapshot, int slot)
         throws SnapshotInstallationException {
       installPartitionedSnapshot(snapshot);

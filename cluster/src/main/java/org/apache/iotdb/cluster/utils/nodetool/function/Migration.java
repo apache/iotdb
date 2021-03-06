@@ -24,7 +24,6 @@ import io.airlift.airline.Command;
 import java.util.Map;
 import java.util.Map.Entry;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
-import org.apache.iotdb.cluster.exception.RedirectMetaLeaderException;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitorMBean;
 
@@ -36,7 +35,7 @@ public class Migration extends NodeToolCmd {
     try {
       Map<PartitionGroup, Integer> groupSlotsMap = proxy.getSlotNumInDataMigration();
       if (groupSlotsMap == null) {
-        msgPrintln(BUILDING_CLUSTER_INFO);
+        msgPrintln(FAIL_TO_GET_ALL_SLOT_STATUS_INFO);
         return;
       }
       if (groupSlotsMap.isEmpty()) {
@@ -48,13 +47,13 @@ public class Migration extends NodeToolCmd {
         for (Entry<PartitionGroup, Integer> entry : groupSlotsMap.entrySet()) {
           PartitionGroup group = entry.getKey();
           msgPrintln(String
-              .format("%-20d->%30s", entry.getValue(), group));
+              .format("%-20d->%30s", entry.getValue(), partitionGroupToString(group)));
         }
       }
-    } catch (RedirectMetaLeaderException e) {
-      msgPrintln(redirectToQueryMetaLeader(e.getMetaLeader()));
     } catch (LeaderUnknownException e) {
       msgPrintln(META_LEADER_UNKNOWN_INFO);
+    } catch (Exception e) {
+      msgPrintln(e.getMessage());
     }
   }
 }

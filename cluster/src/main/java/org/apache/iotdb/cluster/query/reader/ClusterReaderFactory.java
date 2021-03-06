@@ -23,7 +23,10 @@ package org.apache.iotdb.cluster.query.reader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
@@ -55,6 +58,7 @@ import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
+import org.apache.iotdb.db.query.externalsort.adapter.ByTimestampReaderAdapter;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
@@ -89,7 +93,7 @@ public class ClusterReaderFactory {
    * cluster. This will query every group and merge the result from them.
    */
   public IReaderByTimestamp getReaderByTimestamp(PartialPath path,
-      Set<String> deviceMeasurements, TSDataType dataType, QueryContext context, boolean ascending)
+      Set<String> deviceMeasurements, TSDataType dataType, QueryContext context, boolean ascending, Set<Integer> requiredSlots)
       throws StorageEngineException, QueryProcessException {
     // make sure the partition table is new
     try {
@@ -111,7 +115,7 @@ public class ClusterReaderFactory {
     for (PartitionGroup partitionGroup : partitionGroups) {
       // query each group to get a reader in that group
       readers.add(getSeriesReaderByTime(partitionGroup, path, deviceMeasurements, context,
-          dataType, ascending));
+          dataType, ascending, requiredSlots));
     }
     // merge the readers
     return new MergedReaderByTime(readers);
@@ -123,7 +127,7 @@ public class ClusterReaderFactory {
    * to one node in that group.
    */
   private IReaderByTimestamp getSeriesReaderByTime(PartitionGroup partitionGroup, PartialPath path,
-      Set<String> deviceMeasurements, QueryContext context, TSDataType dataType, boolean ascending)
+      Set<String> deviceMeasurements, QueryContext context, TSDataType dataType, boolean ascending, Set<Integer> requiredSlots)
       throws StorageEngineException, QueryProcessException {
     if (partitionGroup.contains(metaGroupMember.getThisNode())) {
       // the target storage group contains this node, perform a local query
@@ -135,10 +139,10 @@ public class ClusterReaderFactory {
             context.getQueryId());
       }
       return getReaderByTimestamp(path, deviceMeasurements, dataType, context, dataGroupMember,
-          ascending);
+          ascending, requiredSlots);
     } else {
       return getRemoteReaderByTimestamp(path, deviceMeasurements, dataType, partitionGroup,
-          context, ascending);
+          context, ascending, requiredSlots);
     }
   }
 
@@ -150,9 +154,9 @@ public class ClusterReaderFactory {
   private IReaderByTimestamp getRemoteReaderByTimestamp(
       Path path, Set<String> deviceMeasurements, TSDataType dataType,
       PartitionGroup partitionGroup,
-      QueryContext context, boolean ascending) throws StorageEngineException {
+      QueryContext context, boolean ascending, Set<Integer> requiredSlots) throws StorageEngineException {
     SingleSeriesQueryRequest request = constructSingleQueryRequest(null,
-        null, dataType, path, deviceMeasurements, partitionGroup, context, ascending);
+        null, dataType, path, deviceMeasurements, partitionGroup, context, ascending, requiredSlots);
 
     // reorder the nodes by their communication delays
     List<Node> reorderedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
@@ -182,7 +186,7 @@ public class ClusterReaderFactory {
    */
   public ManagedSeriesReader getSeriesReader(PartialPath path,
       Set<String> deviceMeasurements, TSDataType dataType,
-      Filter timeFilter, Filter valueFilter, QueryContext context, boolean ascending)
+      Filter timeFilter, Filter valueFilter, QueryContext context, boolean ascending, Set<Integer> requiredSlots)
       throws StorageEngineException, EmptyIntervalException {
     // make sure the partition table is new
     try {
@@ -199,7 +203,7 @@ public class ClusterReaderFactory {
       // build a reader for each group and merge them
       for (PartitionGroup partitionGroup : partitionGroups) {
         IPointReader seriesReader = getSeriesReader(partitionGroup, path,
-            deviceMeasurements, timeFilter, valueFilter, context, dataType, ascending);
+            deviceMeasurements, timeFilter, valueFilter, context, dataType, ascending, requiredSlots);
         mergeReader.addReader(seriesReader, 0);
       }
     } catch (IOException | QueryProcessException e) {
@@ -218,7 +222,7 @@ public class ClusterReaderFactory {
    */
   private IPointReader getSeriesReader(PartitionGroup partitionGroup, PartialPath path,
       Set<String> deviceMeasurements, Filter timeFilter, Filter valueFilter,
-      QueryContext context, TSDataType dataType, boolean ascending)
+      QueryContext context, TSDataType dataType, boolean ascending, Set<Integer> requiredSlots)
       throws IOException,
       StorageEngineException, QueryProcessException {
     if (partitionGroup.contains(metaGroupMember.getThisNode())) {
@@ -229,7 +233,7 @@ public class ClusterReaderFactory {
                   context.getQueryId()));
       IPointReader seriesPointReader = getSeriesPointReader(path, deviceMeasurements, dataType,
           timeFilter, valueFilter,
-          context, dataGroupMember, ascending);
+          context, dataGroupMember, ascending, requiredSlots);
       if (logger.isDebugEnabled()) {
         logger.debug("{}: creating a local reader for {}#{} of {}, empty: {}",
             metaGroupMember.getName(),
@@ -240,7 +244,7 @@ public class ClusterReaderFactory {
       return seriesPointReader;
     } else {
       return getRemoteSeriesPointReader(timeFilter, valueFilter, dataType, path,
-          deviceMeasurements, partitionGroup, context, ascending);
+          deviceMeasurements, partitionGroup, context, ascending, requiredSlots);
     }
   }
 
@@ -258,7 +262,7 @@ public class ClusterReaderFactory {
    */
   public IPointReader getSeriesPointReader(PartialPath path, Set<String> allSensors,
       TSDataType dataType, Filter timeFilter, Filter valueFilter, QueryContext context,
-      DataGroupMember dataGroupMember, boolean ascending)
+      DataGroupMember dataGroupMember, boolean ascending, Set<Integer> requiredSlots)
       throws StorageEngineException, QueryProcessException {
     // pull the newest data
     try {
@@ -268,7 +272,7 @@ public class ClusterReaderFactory {
     }
     return new SeriesRawDataPointReader(
         getSeriesReader(path, allSensors, dataType, timeFilter,
-            valueFilter, context, dataGroupMember.getHeader(), dataGroupMember.getRaftGroupId(), ascending));
+            valueFilter, context, dataGroupMember.getHeader(), dataGroupMember.getRaftGroupId(), ascending, requiredSlots));
 
   }
 
@@ -287,15 +291,18 @@ public class ClusterReaderFactory {
   private SeriesReader getSeriesReader(PartialPath path, Set<String> allSensors, TSDataType
       dataType,
       Filter timeFilter,
-      Filter valueFilter, QueryContext context, Node header, int raftId, boolean ascending)
+      Filter valueFilter, QueryContext context, Node header, int raftId, boolean ascending, Set<Integer> requiredSlots)
       throws StorageEngineException, QueryProcessException {
     ClusterQueryUtils.checkPathExistence(path);
-    List<Integer> nodeSlots =
-        ((SlotPartitionTable) metaGroupMember.getPartitionTable()).getNodeSlots(header, raftId);
+    if (requiredSlots == null) {
+      List<Integer> nodeSlots =
+          ((SlotPartitionTable) metaGroupMember.getPartitionTable()).getNodeSlots(header, raftId);
+      requiredSlots = new HashSet<>(nodeSlots);
+    }
     QueryDataSource queryDataSource =
         QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter);
     return new SeriesReader(path, allSensors, dataType, context, queryDataSource,
-        timeFilter, valueFilter, new SlotTsFileFilter(nodeSlots), ascending);
+        timeFilter, valueFilter, new SlotTsFileFilter(requiredSlots), ascending);
   }
 
   /**
@@ -310,12 +317,12 @@ public class ClusterReaderFactory {
   private IPointReader getRemoteSeriesPointReader(Filter timeFilter,
       Filter valueFilter, TSDataType dataType, Path path,
       Set<String> deviceMeasurements, PartitionGroup partitionGroup,
-      QueryContext context, boolean ascending)
+      QueryContext context, boolean ascending, Set<Integer> requiredSlots)
       throws StorageEngineException {
     SingleSeriesQueryRequest request = constructSingleQueryRequest(timeFilter, valueFilter,
-        dataType, path, deviceMeasurements, partitionGroup, context, ascending);
+        dataType, path, deviceMeasurements, partitionGroup, context, ascending, requiredSlots);
 
-    // reorder the nodes such that the nodes that suit the query best (have lowest latenct or
+    // reorder the nodes such that the nodes that suit the query best (have lowest latency or
     // highest throughput) will be put to the front
     List<Node> orderedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
 
@@ -337,7 +344,7 @@ public class ClusterReaderFactory {
   private SingleSeriesQueryRequest constructSingleQueryRequest(Filter timeFilter,
       Filter valueFilter, TSDataType dataType, Path path,
       Set<String> deviceMeasurements, PartitionGroup partitionGroup,
-      QueryContext context, boolean ascending) {
+      QueryContext context, boolean ascending, Set<Integer> requiredSlots) {
     SingleSeriesQueryRequest request = new SingleSeriesQueryRequest();
     request.setRaftId(partitionGroup.getId());
     if (timeFilter != null) {
@@ -353,6 +360,7 @@ public class ClusterReaderFactory {
     request.setDataTypeOrdinal(dataType.ordinal());
     request.setDeviceMeasurements(deviceMeasurements);
     request.setAscending(ascending);
+    request.setRequiredSlots(requiredSlots);
     return request;
   }
 
@@ -522,7 +530,7 @@ public class ClusterReaderFactory {
    */
   public IBatchReader getSeriesBatchReader(PartialPath path, Set<String> allSensors,
       TSDataType dataType, Filter timeFilter,
-      Filter valueFilter, QueryContext context, DataGroupMember dataGroupMember, boolean ascending)
+      Filter valueFilter, QueryContext context, DataGroupMember dataGroupMember, boolean ascending, Set<Integer> requiredSlots)
       throws StorageEngineException, QueryProcessException, IOException {
     // pull the newest data
     try {
@@ -531,12 +539,40 @@ public class ClusterReaderFactory {
       throw new StorageEngineException(e);
     }
 
-    SeriesReader seriesReader = getSeriesReader(path, allSensors, dataType, timeFilter,
-        valueFilter, context, dataGroupMember.getHeader(), dataGroupMember.getRaftGroupId(), ascending);
-    if (seriesReader.isEmpty()) {
-      return null;
+    // find the groups that should be queried due to data migration.
+    // when a slot is in the status of PULLING or PULLING_WRITABLE, the read of it should merge result to guarantee integrity.
+    Map<PartitionGroup, Set<Integer>> holderSlotMap = dataGroupMember.getPreviousHolderSlotMap();
+
+    // If requiredSlots is not null, it means that this data group is the previous holder of required slots, which is no need to merge other resource,
+    if (requiredSlots == null && !holderSlotMap.isEmpty()) {
+      // merge remote reader and local reader
+      ManagedMergeReader mergeReader = new ManagedMergeReader(dataType);
+
+      // add local reader
+      IPointReader seriesPointReader = getSeriesPointReader(path, allSensors, dataType, timeFilter,
+          valueFilter, context, dataGroupMember, ascending, requiredSlots);
+      mergeReader.addReader(seriesPointReader, 0);
+
+      // add previous holder reader due to in the stage of data migration
+      logger.debug("{}: Sending data query of {} to {} groups due to data is in the state of data migration", metaGroupMember.getName(), path,
+          holderSlotMap.size());
+      for (Entry<PartitionGroup, Set<Integer>> entry : holderSlotMap.entrySet()) {
+        IPointReader seriesReader = getSeriesReader(entry.getKey(), path,
+            allSensors, timeFilter, valueFilter, context, dataType, ascending, entry.getValue());
+        mergeReader.addReader(seriesReader, 0);
+      }
+
+      return mergeReader;
+    } else {
+      // just local reader is enough
+      SeriesReader seriesReader = getSeriesReader(path, allSensors, dataType, timeFilter,
+          valueFilter, context, dataGroupMember.getHeader(), dataGroupMember.getRaftGroupId(),
+          ascending, requiredSlots);
+      if (seriesReader.isEmpty()) {
+        return null;
+      }
+      return new SeriesRawDataBatchReader(seriesReader);
     }
-    return new SeriesRawDataBatchReader(seriesReader);
   }
 
   /**
@@ -550,24 +586,56 @@ public class ClusterReaderFactory {
    * @throws StorageEngineException
    */
   public IReaderByTimestamp getReaderByTimestamp(PartialPath path, Set<String> allSensors,
-      TSDataType dataType, QueryContext context, DataGroupMember dataGroupMember, boolean ascending)
+      TSDataType dataType, QueryContext context, DataGroupMember dataGroupMember, boolean ascending, Set<Integer> requiredSlots)
       throws StorageEngineException, QueryProcessException {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
     } catch (CheckConsistencyException e) {
       throw new StorageEngineException(e);
     }
-    SeriesReader seriesReader = getSeriesReader(path, allSensors, dataType,
-        TimeFilter.gtEq(Long.MIN_VALUE), null, context, dataGroupMember.getHeader(),
-        dataGroupMember.getRaftGroupId(), ascending);
+
+    // find the groups that should be queried due to data migration.
+    // when a slot is in the status of PULLING or PULLING_WRITABLE, the read of it should merge result to guarantee integrity.
+    Map<PartitionGroup, Set<Integer>> holderSlotMap = dataGroupMember.getPreviousHolderSlotMap();
     try {
-      if (seriesReader.isEmpty()) {
-        return null;
+      // If requiredSlots is not null, it means that this data group is the previous holder of required slots, which is no need to merge other resource,
+      if (requiredSlots == null && !holderSlotMap.isEmpty()) {
+        // merge remote reader and local reader
+        ManagedMergeReader mergeReader = new ManagedMergeReader(dataType);
+
+        // add local reader
+        IPointReader seriesPointReader = getSeriesPointReader(path, allSensors, dataType,
+            TimeFilter.gtEq(Long.MIN_VALUE), null, context, dataGroupMember, ascending,
+            requiredSlots);
+        mergeReader.addReader(seriesPointReader, 0);
+
+        // add previous holder reader due to in the stage of data migration
+        logger.debug(
+            "{}: Sending data query of {} to {} groups due to data is in the state of data migration",
+            metaGroupMember.getName(), path,
+            holderSlotMap.size());
+        for (Entry<PartitionGroup, Set<Integer>> entry : holderSlotMap.entrySet()) {
+          IPointReader seriesReader = getSeriesReader(entry.getKey(), path,
+              allSensors, TimeFilter.gtEq(Long.MIN_VALUE), null, context, dataType, ascending,
+              entry.getValue());
+          mergeReader.addReader(seriesReader, 0);
+        }
+
+        return new ByTimestampReaderAdapter(mergeReader);
+      } else {
+        // just local reader is enough
+        SeriesReader seriesReader = getSeriesReader(path, allSensors, dataType,
+            TimeFilter.gtEq(Long.MIN_VALUE), null, context, dataGroupMember.getHeader(),
+            dataGroupMember.getRaftGroupId(), ascending, requiredSlots);
+
+        if (seriesReader.isEmpty()) {
+          return null;
+        }
+
+        return new SeriesReaderByTimestamp(seriesReader, ascending);
       }
     } catch (IOException e) {
       throw new QueryProcessException(e, TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
-    return new SeriesReaderByTimestamp(seriesReader, ascending);
-
   }
 }

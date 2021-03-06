@@ -21,8 +21,6 @@ package org.apache.iotdb.cluster.utils.nodetool;
 import java.util.List;
 import java.util.Map;
 import org.apache.commons.collections4.map.MultiKeyMap;
-import org.apache.iotdb.cluster.exception.LeaderUnknownException;
-import org.apache.iotdb.cluster.exception.RedirectMetaLeaderException;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.NodeCharacter;
@@ -44,8 +42,7 @@ public interface ClusterMonitorMBean {
    * Query how many slots are still PULLING or PULLING_WRITABLE, it means whether user can add/remove a node.
    * @return key: group, value: slot num that still in the process of data migration
    */
-  Map<PartitionGroup, Integer> getSlotNumInDataMigration()
-      throws RedirectMetaLeaderException, LeaderUnknownException;
+  Map<PartitionGroup, Integer> getSlotNumInDataMigration() throws Exception;
 
   /**
    * Get data partition information of input path and time range.

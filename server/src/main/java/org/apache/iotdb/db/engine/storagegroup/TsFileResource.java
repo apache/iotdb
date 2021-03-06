@@ -747,12 +747,12 @@ public class TsFileResource {
   }
 
   public boolean isPlanIndexOverlap(TsFileResource another) {
-    return another.maxPlanIndex >= this.minPlanIndex &&
-        another.minPlanIndex <= this.maxPlanIndex;
+    return another.maxPlanIndex > this.minPlanIndex &&
+        another.minPlanIndex < this.maxPlanIndex;
   }
 
   public boolean isPlanRangeCovers(TsFileResource another) {
-    return this.minPlanIndex <= another.minPlanIndex && another.maxPlanIndex <= this.maxPlanIndex;
+    return this.minPlanIndex < another.minPlanIndex && another.maxPlanIndex < this.maxPlanIndex;
   }
 
   public void setMaxPlanIndex(long maxPlanIndex) {

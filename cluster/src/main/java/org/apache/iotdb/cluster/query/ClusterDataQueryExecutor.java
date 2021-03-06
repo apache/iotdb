@@ -72,7 +72,7 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
       try {
         reader = readerFactory.getSeriesReader(path,
             queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, timeFilter,
-            null, context, queryPlan.isAscending());
+            null, context, queryPlan.isAscending(), null);
       } catch (EmptyIntervalException e) {
         logger.info(e.getMessage());
         return Collections.emptyList();
@@ -92,7 +92,7 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
       QueryContext context)
       throws StorageEngineException, QueryProcessException {
     return readerFactory.getReaderByTimestamp(path, deviceMeasurements, dataType, context,
-        queryPlan.isAscending());
+        queryPlan.isAscending(), null);
   }
 
   @Override

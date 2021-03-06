@@ -28,5 +28,6 @@ public interface SnapshotInstaller<T extends Snapshot> {
 
   void install(T snapshot, int slot) throws SnapshotInstallationException;
 
+  // for data migration
   void install(Map<Integer, T> snapshotMap) throws SnapshotInstallationException;
 }

@@ -24,6 +24,7 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Set;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.ReaderNotFoundException;
@@ -92,7 +93,7 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
       AsyncMethodCallback<PullSnapshotResp> resultHandler) {
     // if this node has been set readOnly, then it must have been synchronized with the leader
     // otherwise forward the request to the leader
-    if (dataGroupMember.getLeader() != null) {
+    if (dataGroupMember.getLeader() != null && !ClusterConstant.EMPTY_NODE.equals(dataGroupMember.getLeader())) {
       logger.debug("{} forwarding a pull snapshot request to the leader {}", name,
           dataGroupMember.getLeader());
       AsyncDataClient client = (AsyncDataClient) dataGroupMember

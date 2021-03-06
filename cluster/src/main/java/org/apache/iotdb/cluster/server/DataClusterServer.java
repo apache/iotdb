@@ -667,13 +667,13 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
           entryIterator.remove();
           removeMember(entry.getKey(), dataGroupMember, dataGroupMember.getHeader().equals(node));
         } else {
-          // the group should be updated and pull new slots from the removed node
-          dataGroupMember.removeNode(node, removalResult);
+          // the group should be updated
+          dataGroupMember.removeNode(node);
         }
       }
 
       if (logger.isDebugEnabled()) {
-        logger.debug("Data cluster server: start to handle new groups when removing node {}", node);
+        logger.debug("Data cluster server: start to handle new groups and pulling data when removing node {}", node);
       }
       // if the removed group contains the local node, the local node should join a new group to
       // preserve the replication number
@@ -684,6 +684,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
           DataGroupMember dataGroupMember = dataMemberFactory.create(group, thisNode);
           addDataGroupMember(dataGroupMember);
         }
+        // pull new slots from the removed node
         headerGroupMap.get(header).pullSlots(removalResult);
       }
     }

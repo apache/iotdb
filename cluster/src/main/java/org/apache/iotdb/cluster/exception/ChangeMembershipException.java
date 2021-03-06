@@ -25,6 +25,6 @@ package org.apache.iotdb.cluster.exception;
 public class ChangeMembershipException extends Exception {
 
   public ChangeMembershipException(String errMsg) {
-    super(String.format("change membership fail, error message=%s ", errMsg));
+    super(String.format("Change membership fails, error message=%s ", errMsg));
   }
 }

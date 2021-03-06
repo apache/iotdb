@@ -934,7 +934,7 @@ public class DataGroupMemberTest extends MemberTest {
 
     try {
       dataGroupMember.preRemoveNode(nodeToRemove);
-      dataGroupMember.removeNode(nodeToRemove, nodeRemovalResult);
+      dataGroupMember.removeNode(nodeToRemove);
 
       assertEquals(NodeCharacter.ELECTOR, dataGroupMember.getCharacter());
       assertEquals(Long.MIN_VALUE, dataGroupMember.getLastHeartbeatReceivedTime());
@@ -965,7 +965,7 @@ public class DataGroupMemberTest extends MemberTest {
 
     try {
       dataGroupMember.preRemoveNode(nodeToRemove);
-      dataGroupMember.removeNode(nodeToRemove, nodeRemovalResult);
+      dataGroupMember.removeNode(nodeToRemove);
 
       assertEquals(0, dataGroupMember.getLastHeartbeatReceivedTime());
       assertTrue(dataGroupMember.getAllNodes().contains(TestUtils.getNode(30)));

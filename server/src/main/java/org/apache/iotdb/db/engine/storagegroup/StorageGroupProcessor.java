@@ -2580,7 +2580,7 @@ public class StorageGroupProcessor {
       Collection<TsFileResource> existingFiles) {
     for (TsFileResource resource : existingFiles) {
       if (resource.getTimePartition() == partitionNum
-          && resource.getMaxPlanIndex() >= tsFileResource.getMaxPlanIndex()) {
+          && resource.getMaxPlanIndex() > tsFileResource.getMaxPlanIndex()) {
         logger.info("{} is covered by a closed file {}: [{}, {}] [{}, {}]", tsFileResource,
             resource, tsFileResource.minPlanIndex, tsFileResource.maxPlanIndex,
             resource.minPlanIndex, resource.maxPlanIndex);
@@ -2596,7 +2596,7 @@ public class StorageGroupProcessor {
       if (workingProcesssor.getTimeRangeId() == partitionNum) {
         TsFileResource workResource = workingProcesssor.getTsFileResource();
         boolean isCovered =
-            workResource.getMaxPlanIndex() >= tsFileResource
+            workResource.getMaxPlanIndex() > tsFileResource
                 .getMaxPlanIndex();
         if (isCovered) {
           logger.info("{} is covered by a working file {}: [{}, {}] [{}, {}]", tsFileResource,

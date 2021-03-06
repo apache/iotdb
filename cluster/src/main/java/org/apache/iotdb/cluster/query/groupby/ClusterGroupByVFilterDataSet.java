@@ -69,6 +69,6 @@ public class ClusterGroupByVFilterDataSet extends GroupByWithValueFilterDataSet 
       TsFileFilter fileFilter) throws StorageEngineException, QueryProcessException {
     return readerFactory.getReaderByTimestamp(path,
         dataQueryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, context,
-        dataQueryPlan.isAscending());
+        dataQueryPlan.isAscending(), null);
   }
 }

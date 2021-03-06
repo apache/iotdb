@@ -51,6 +51,8 @@ public class Response {
   public static final long RESPONSE_NEW_NODE_PARAMETER_CONFLICT = -10;
   // add/remove node operations should one by one
   public static final long RESPONSE_CHANGE_MEMBERSHIP_CONFLICT = -11;
+  // the data migration of previous add/remove node operations is not finished.
+  public static final long RESPONSE_DATA_MIGRATION_NOT_FINISH = -12;
   // the request is not executed locally anc should be forwarded
   public static final long RESPONSE_NULL = Long.MIN_VALUE;
 

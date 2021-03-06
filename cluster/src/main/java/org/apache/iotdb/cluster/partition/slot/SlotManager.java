@@ -54,10 +54,13 @@ public class SlotManager {
    */
   private Map<Integer, SlotDescriptor> idSlotMap;
 
-  public SlotManager(long totalSlotNumber, String memberDir) {
+  private String memberName;
+
+  public SlotManager(long totalSlotNumber, String memberDir, String memberName) {
     if (memberDir != null) {
       this.slotFilePath = memberDir + File.separator + SLOT_FILE_NAME;
     }
+    this.memberName = memberName;
     if (!load()) {
       init(totalSlotNumber);
     }
@@ -104,16 +107,15 @@ public class SlotManager {
    */
   public void waitSlotForWrite(int slotId) throws StorageEngineException {
     SlotDescriptor slotDescriptor = idSlotMap.get(slotId);
+    long startTime = System.currentTimeMillis();
     while (true) {
       synchronized (slotDescriptor) {
-        if (slotDescriptor.slotStatus == SlotStatus.SENDING
-            || slotDescriptor.slotStatus == SlotStatus.SENT) {
-          throw new StorageEngineException(String.format("Slot %d no longer belongs to the node",
-              slotId));
-        }
-        if (slotDescriptor.slotStatus != SlotStatus.NULL &&
-            slotDescriptor.slotStatus != SlotStatus.PULLING_WRITABLE) {
+        if (slotDescriptor.slotStatus == SlotStatus.PULLING) {
           try {
+            if ((System.currentTimeMillis() - startTime) >= 5000) {
+              throw new StorageEngineException(String.format("The status of slot %d is still PULLING after 5s.",
+                  slotId));
+            }
             slotDescriptor.wait(SLOT_WAIT_INTERVAL_MS);
           } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -124,6 +126,14 @@ public class SlotManager {
         }
       }
     }
+  }
+
+  /**
+   * If a slot in the status of PULLING or PULLING_WRITABLE, reads of it should merge the source
+   */
+  public boolean checkSlotInDataMigrationStatus(int slotId) {
+    SlotDescriptor slotDescriptor = idSlotMap.get(slotId);
+    return slotDescriptor.slotStatus == SlotStatus.PULLING || slotDescriptor.slotStatus == SlotStatus.PULLING_WRITABLE;
   }
 
   /**
@@ -293,6 +303,18 @@ public class SlotManager {
     } catch (IOException e) {
       logger.warn("SlotManager in {} cannot be saved", slotFilePath, e);
     }
+  }
+
+  public int getSloNumInDataMigration() {
+    int res = 0;
+    for (Entry<Integer, SlotDescriptor> entry: idSlotMap.entrySet()) {
+      SlotDescriptor descriptor = entry.getValue();
+      if (descriptor.slotStatus == SlotStatus.PULLING || descriptor.slotStatus == SlotStatus.PULLING_WRITABLE) {
+        logger.info("{}: slot {} is in data migration, status is {}",memberName, entry.getKey(), descriptor.slotStatus);
+        res++;
+      }
+    }
+    return res;
   }
 
   private void serialize(DataOutputStream outputStream) throws IOException {

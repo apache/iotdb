@@ -196,6 +196,7 @@ struct SingleSeriesQueryRequest {
   10: required bool ascending
   11: required int fetchSize
   12: required int deduplicatedPathNum
+  13: required set<int> requiredSlots
 }
 
 struct PreviousFillRequest {
@@ -471,7 +472,15 @@ service TSMetaService extends RaftService {
 
   TNodeStatus queryNodeStatus()
 
+  /**
+  * Check whether this node is alive.
+  **/
   Node checkAlive()
+
+  /**
+  * Collect the info of data migration, which will decide that if users can change membership.
+  **/
+  binary collectMigrationStatus()
 
   /**
   * When a node starts, it send handshakes to all other nodes so they know the node is alive
@@ -479,5 +488,5 @@ service TSMetaService extends RaftService {
   * cannot know when another node resumes, and handshakes are mainly used to update node status
   * on coordinator side.
   **/
-  void handshake(Node sender);
+  void handshake(Node sender)
 }

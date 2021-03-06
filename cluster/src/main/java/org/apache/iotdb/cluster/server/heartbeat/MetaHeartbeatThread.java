@@ -20,7 +20,6 @@
 package org.apache.iotdb.cluster.server.heartbeat;
 
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -642,6 +642,10 @@ public abstract class RaftMember {
     return allNodes;
   }
 
+  public PartitionGroup getPartitionGroup() {
+    return allNodes;
+  }
+
   public void setAllNodes(PartitionGroup allNodes) {
     this.allNodes = allNodes;
   }

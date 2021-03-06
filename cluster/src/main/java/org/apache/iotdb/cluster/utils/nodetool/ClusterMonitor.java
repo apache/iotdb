@@ -18,16 +18,17 @@
  */
 package org.apache.iotdb.cluster.utils.nodetool;
 
+import static org.apache.iotdb.cluster.utils.nodetool.function.NodeToolCmd.BUILDING_CLUSTER_INFO;
+import static org.apache.iotdb.cluster.utils.nodetool.function.NodeToolCmd.META_LEADER_UNKNOWN_INFO;
+
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.commons.collections4.map.MultiKeyMap;
 import org.apache.iotdb.cluster.ClusterMain;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.exception.LeaderUnknownException;
-import org.apache.iotdb.cluster.exception.RedirectMetaLeaderException;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
@@ -38,6 +39,7 @@ import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.cluster.utils.nodetool.function.NodeToolCmd;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -112,17 +114,19 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
 
   @Override
   public Map<PartitionGroup, Integer> getSlotNumInDataMigration()
-      throws RedirectMetaLeaderException, LeaderUnknownException {
+      throws Exception {
     MetaGroupMember member = getMetaGroupMember();
-    if (member.getCharacter() != NodeCharacter.LEADER) {
-      if (member.getCharacter() == null) {
-        throw new LeaderUnknownException(member.getAllNodes());
-      } else {
-        throw new RedirectMetaLeaderException(member.getLeader());
-      }
-    } else {
-      return Collections.EMPTY_MAP;
+    if (member.getPartitionTable() == null) {
+      throw new Exception(BUILDING_CLUSTER_INFO);
     }
+    if (member.getCharacter() != NodeCharacter.LEADER) {
+      if (member.getLeader() == null || member.getLeader().equals(ClusterConstant.EMPTY_NODE)) {
+        throw new Exception(META_LEADER_UNKNOWN_INFO);
+      } else {
+        throw new Exception(NodeToolCmd.redirectToQueryMetaLeader(member.getLeader()));
+      }
+    }
+    return member.collectAllPartitionMigrationStatus();
   }
 
   @Override

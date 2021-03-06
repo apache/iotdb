@@ -227,6 +227,11 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   }
 
   @Override
+  public void collectMigrationStatus(AsyncMethodCallback<ByteBuffer> resultHandler) {
+    asyncService.collectMigrationStatus(resultHandler);
+  }
+
+  @Override
   public void readFile(String filePath, long offset, int length, int raftId,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
     asyncService.readFile(filePath, offset, length, raftId, resultHandler);
@@ -291,6 +296,11 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   @Override
   public Node checkAlive() {
     return syncService.checkAlive();
+  }
+
+  @Override
+  public ByteBuffer collectMigrationStatus() {
+    return syncService.collectMigrationStatus();
   }
 
   @Override

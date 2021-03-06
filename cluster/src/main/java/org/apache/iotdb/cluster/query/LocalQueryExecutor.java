@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
+import org.apache.iotdb.cluster.exception.EmptyIntervalException;
 import org.apache.iotdb.cluster.exception.ReaderNotFoundException;
 import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
@@ -186,7 +187,7 @@ public class LocalQueryExecutor {
     logger.debug("{}: local queryId for {}#{} is {}", name, request.getQueryId(),
         request.getPath(), queryContext.getQueryId());
     IBatchReader batchReader = readerFactory.getSeriesBatchReader(path, deviceMeasurements,
-        dataType, timeFilter, valueFilter, queryContext, dataGroupMember, request.ascending);
+        dataType, timeFilter, valueFilter, queryContext, dataGroupMember, request.ascending, request.requiredSlots);
 
     // if the reader contains no data, send a special id of -1 to prevent the requester from
     // meaninglessly fetching data
@@ -317,7 +318,7 @@ public class LocalQueryExecutor {
     logger.debug("{}: local queryId for {}#{} is {}", name, request.getQueryId(),
         request.getPath(), queryContext.getQueryId());
     IReaderByTimestamp readerByTimestamp = readerFactory.getReaderByTimestamp(path,
-        deviceMeasurements, dataType, queryContext, dataGroupMember, request.ascending);
+        deviceMeasurements, dataType, queryContext, dataGroupMember, request.ascending, request.requiredSlots);
     if (readerByTimestamp != null) {
       long readerId = queryManager.registerReaderByTime(readerByTimestamp);
       queryContext.registerLocalReader(readerId);
