@@ -30,32 +30,80 @@ public interface Trigger {
   default void onStop() throws Exception {}
 
   @SuppressWarnings("squid:S112")
-  default Integer fire(long time, Integer value) throws Exception {
+  default Integer fire(long timestamp, Integer value) throws Exception {
     return value;
   }
 
-  @SuppressWarnings("squid:S112")
-  default Long fire(long time, Long value) throws Exception {
-    return value;
+  default int[] fire(long[] timestamps, int[] values) throws Exception {
+    int size = timestamps.length;
+    for (int i = 0; i < size; ++i) {
+      fire(timestamps[i], values[i]);
+    }
+    return values;
   }
 
   @SuppressWarnings("squid:S112")
-  default Float fire(long time, Float value) throws Exception {
+  default Long fire(long timestamp, Long value) throws Exception {
     return value;
   }
 
-  @SuppressWarnings("squid:S112")
-  default Double fire(long time, Double value) throws Exception {
-    return value;
+  default long[] fire(long[] timestamps, long[] values) throws Exception {
+    int size = timestamps.length;
+    for (int i = 0; i < size; ++i) {
+      fire(timestamps[i], values[i]);
+    }
+    return values;
   }
 
   @SuppressWarnings("squid:S112")
-  default Boolean fire(long time, Boolean value) throws Exception {
+  default Float fire(long timestamp, Float value) throws Exception {
     return value;
   }
 
+  default float[] fire(long[] timestamps, float[] values) throws Exception {
+    int size = timestamps.length;
+    for (int i = 0; i < size; ++i) {
+      fire(timestamps[i], values[i]);
+    }
+    return values;
+  }
+
   @SuppressWarnings("squid:S112")
-  default Binary fire(long time, Binary value) throws Exception {
+  default Double fire(long timestamp, Double value) throws Exception {
     return value;
+  }
+
+  default double[] fire(long[] timestamps, double[] values) throws Exception {
+    int size = timestamps.length;
+    for (int i = 0; i < size; ++i) {
+      fire(timestamps[i], values[i]);
+    }
+    return values;
+  }
+
+  @SuppressWarnings("squid:S112")
+  default Boolean fire(long timestamp, Boolean value) throws Exception {
+    return value;
+  }
+
+  default boolean[] fire(long[] timestamps, boolean[] values) throws Exception {
+    int size = timestamps.length;
+    for (int i = 0; i < size; ++i) {
+      fire(timestamps[i], values[i]);
+    }
+    return values;
+  }
+
+  @SuppressWarnings("squid:S112")
+  default Binary fire(long timestamp, Binary value) throws Exception {
+    return value;
+  }
+
+  default Binary[] fire(long[] timestamps, Binary[] values) throws Exception {
+    int size = timestamps.length;
+    for (int i = 0; i < size; ++i) {
+      fire(timestamps[i], values[i]);
+    }
+    return values;
   }
 }
