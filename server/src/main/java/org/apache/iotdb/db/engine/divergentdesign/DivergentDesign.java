@@ -20,7 +20,7 @@ public class DivergentDesign {
   private Replica[] replicas;
   private int replicaNum = 3;
   private int balanceFactor = 1;
-  private int maxIter = 10;
+  private int maxIter = 6;
   private float breakPoint = 1e-2f;
   private List<QueryRecord> queryRecords;
   private String deviceID;
