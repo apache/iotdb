@@ -347,7 +347,8 @@ public class PlanExecutor implements IPlanExecutor {
     return true;
   }
 
-  private boolean operateCreateTrigger(CreateTriggerPlan plan) throws TriggerManagementException {
+  private boolean operateCreateTrigger(CreateTriggerPlan plan)
+      throws TriggerManagementException, TriggerExecutionException {
     TriggerRegistrationService.getInstance().register(plan);
     return true;
   }
