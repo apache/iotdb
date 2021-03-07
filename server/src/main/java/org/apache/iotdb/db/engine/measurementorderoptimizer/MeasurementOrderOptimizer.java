@@ -34,7 +34,7 @@ public class MeasurementOrderOptimizer {
   final float CHUNK_SIZE_UPPER_BOUND = 2.0f;
   final float CHUNK_SIZE_LOWER_BOUND = 0.5f;
   long averageChunkSize;
-  public static final int SA_MAX_ITERATION = 9000;
+  public static final int SA_MAX_ITERATION = 18000;
   public static final float SA_INIT_TEMPERATURE = 2.0f;
   public static final float SA_COOLING_RATE = 0.02f;
   private static final Logger LOGGER = LoggerFactory.getLogger(MeasurementOrderOptimizer.class);
