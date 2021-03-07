@@ -31,8 +31,10 @@ public class MeasurementOrderOptimizer {
   // DeviceId -> ChunkGroupCount
   Map<String, Integer> chunkGroupCountMap = new HashMap<>();
   List<QueryRecord> queryRecords = new ArrayList<>();
+  final float CHUNK_SIZE_UPPER_BOUND = 2.0f;
+  final float CHUNK_SIZE_LOWER_BOUND = 0.5f;
   long averageChunkSize;
-  public static final int SA_MAX_ITERATION = 200000;
+  public static final int SA_MAX_ITERATION = 18000;
   public static final float SA_INIT_TEMPERATURE = 2.0f;
   public static final float SA_COOLING_RATE = 0.02f;
   private static final Logger LOGGER = LoggerFactory.getLogger(MeasurementOrderOptimizer.class);
@@ -475,6 +477,82 @@ public class MeasurementOrderOptimizer {
       totalChunkSize = totalChunkSize.add(new BigInteger(String.valueOf(chunkSize.get(i))));
     }
     long averageChunkSize = totalChunkSize.divide(new BigInteger(String.valueOf(chunkSize.size()))).longValue();
+    Replica optimizedReplica = new Replica(deviceID, curMeasurementOrder, averageChunkSize);
+    return optimizedReplica;
+  }
+
+  public Replica getOptimalReplicaWithChunkSizeAdjustment(Workload workload, String deviceID) {
+    List<QueryRecord> queryRecordsForCurDevice = workload.getRecords();
+    List<String> curMeasurementOrder = new ArrayList<>(measurementsMap.get(deviceID));
+
+    // Collect the chunksize for current device
+    List<Long> chunkSize = new ArrayList<>();
+    Map<String, Long> chunkSizeMapForCurDevice = chunkMap.get(deviceID);
+    for (String measurement : curMeasurementOrder) {
+      chunkSize.add(chunkSizeMapForCurDevice.get(measurement));
+    }
+    BigInteger totalCost = new BigInteger("0");
+    for(int i = 0; i < chunkSize.size(); ++i) {
+      totalCost = totalCost.add(new BigInteger(String.valueOf(chunkSize.get(i))));
+    }
+    long averageChunkSize = totalCost.divide(new BigInteger(String.valueOf(chunkSize.size()))).longValue();
+    float curCost = CostModel.
+            approximateAggregationQueryCostWithTimeRange(queryRecordsForCurDevice, curMeasurementOrder, averageChunkSize);
+    float temperature = SA_INIT_TEMPERATURE;
+    Random r = new Random();
+    long chunkSizeUpperBound = (long) (averageChunkSize * CHUNK_SIZE_UPPER_BOUND);
+    long chunkSizeLowerBound = (long) (averageChunkSize * CHUNK_SIZE_LOWER_BOUND);
+
+    // Run the main loop of Simulated Annealing
+    for (int k = 0; k < SA_MAX_ITERATION; ++k) {
+      temperature = updateTemperature(temperature);
+
+      // Generate a neighbor state
+      int op = r.nextInt(2);
+      if (op == 0) {
+        int swapPosFirst = 0;
+        int swapPosSecond = 0;
+        while (swapPosSecond == swapPosFirst) {
+          swapPosFirst = r.nextInt();
+          swapPosFirst = swapPosFirst < 0 ? -swapPosFirst : swapPosFirst;
+          swapPosFirst %= curMeasurementOrder.size();
+          swapPosSecond = r.nextInt();
+          swapPosSecond = swapPosSecond < 0 ? -swapPosSecond : swapPosSecond;
+          swapPosSecond %= curMeasurementOrder.size();
+        }
+        swap(curMeasurementOrder, swapPosFirst, swapPosSecond);
+        swap(chunkSize, swapPosFirst, swapPosSecond);
+
+        float newCost = CostModel.
+                approximateAggregationQueryCostWithTimeRange(queryRecordsForCurDevice, curMeasurementOrder, averageChunkSize);
+        float probability = r.nextFloat();
+        probability = probability < 0 ? -probability : probability;
+        probability %= 1.0;
+        if (newCost < curCost ||
+                Math.exp((curCost - newCost) / temperature) > probability) {
+          // Accept the new status
+          curCost = newCost;
+        } else {
+          // Recover the origin status
+          swap(curMeasurementOrder, swapPosFirst, swapPosSecond);
+          swap(chunkSize, swapPosFirst, swapPosSecond);
+        }
+      } else {
+        long newChunkSize = Math.abs(r.nextLong());
+        newChunkSize = newChunkSize % (chunkSizeUpperBound - chunkSizeLowerBound) + chunkSizeLowerBound;
+        float newCost = CostModel.
+                approximateAggregationQueryCostWithTimeRange(queryRecordsForCurDevice, curMeasurementOrder, newChunkSize);
+        float probability = r.nextFloat();
+        probability = probability < 0 ? -probability : probability;
+        probability %= 1.0;
+        if (newCost < curCost ||
+                Math.exp((curCost - newCost) / temperature) > probability) {
+          // Accept the new status
+          curCost = newCost;
+          averageChunkSize = newChunkSize;
+        }
+      }
+    }
     Replica optimizedReplica = new Replica(deviceID, curMeasurementOrder, averageChunkSize);
     return optimizedReplica;
   }

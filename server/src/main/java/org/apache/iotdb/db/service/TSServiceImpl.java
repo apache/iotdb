@@ -1860,9 +1860,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-  public ReplicaSet multipleReplicaOptimizeWithChunkSize(String deviceID) throws TException {
+  public ReplicaSet multipleReplicaOptimizeWithChunkSize(String deviceID, String method) throws TException {
     MultiReplicaOrderOptimizer optimizer = new MultiReplicaOrderOptimizer(deviceID);
-    Pair<Replica[], Workload[]> result = optimizer.optimizeBySAWithChunkSizeAdjustment();
+    Pair<Replica[], Workload[]> result = null;
+    if (method.equals("sa")) {
+       result = optimizer.optimizeBySAWithChunkSizeAdjustment();
+    } else if (method.equalsIgnoreCase("ga")) {
+      result = optimizer.optimizeByGAWithChunkSizeAdjustment();
+    }
     ReplicaSet resultSet = new ReplicaSet();
     resultSet.measurementOrders = new ArrayList<>();
     resultSet.workloadPartition = new ArrayList<>();
@@ -1936,6 +1941,29 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     Pair<List<Long>, List<Double>> data = MultiReplicaOrderOptimizer.chunkSizeOptimize(record, measurementOrder);
     ChunkSizeOptimizationResult result = new ChunkSizeOptimizationResult(data.left, data.right);
     return result;
+  }
+
+  @Override
+  public ConvergenceTestResult convergenceTest(String deviceID) throws TException {
+//    MultiReplicaOrderOptimizer optimizer = new MultiReplicaOrderOptimizer(deviceID);
+//    Pair<List<Double>, List<Long>> convergenceResultOfOurMethod = optimizer.optimizeBySAWithChunkSizeAdjustmentAndCostRecord();
+    DivergentDesign divergentDesign = new DivergentDesign(deviceID);
+    Pair<List<Double>, List<Long>> convergenceResultOfOriDivergentDesign = divergentDesign.optimizeWithCostRecord();
+//    Pair<List<Double>, List<Long>> convergenceResultOfNewDivergentDesign = divergentDesign.optimizeWithChunkSizeAndCostRecord();
+    ConvergenceTestResult testResult = new ConvergenceTestResult();
+    testResult.method = new ArrayList<>();
+//    testResult.method.add("Our Method");
+    testResult.method.add("Ori DivergentDesign");
+//    testResult.method.add("New DivergentDesign");
+    testResult.lost = new ArrayList<>();
+//    testResult.lost.add(convergenceResultOfOurMethod.left);
+    testResult.lost.add(convergenceResultOfOriDivergentDesign.left);
+//    testResult.lost.add(convergenceResultOfNewDivergentDesign.left);
+    testResult.time = new ArrayList<>();
+//    testResult.time.add(convergenceResultOfOurMethod.right);
+    testResult.time.add(convergenceResultOfOriDivergentDesign.right);
+//    testResult.time.add(convergenceResultOfNewDivergentDesign.right);
+    return testResult;
   }
 
   private TSStatus checkAuthority(PhysicalPlan plan, long sessionId) {
