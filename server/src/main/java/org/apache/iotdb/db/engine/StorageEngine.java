@@ -507,7 +507,7 @@ public class StorageEngine implements IService {
    * @param insertRowPlan physical plan of insertion
    */
   public void insert(InsertRowPlan insertRowPlan) throws StorageEngineException {
-    TriggerEngine.fireBeforeInsert(insertRowPlan);
+    TriggerEngine.fire(insertRowPlan);
 
     StorageGroupProcessor storageGroupProcessor = getProcessor(insertRowPlan.getDeviceId());
 
@@ -527,12 +527,12 @@ public class StorageEngine implements IService {
       throw new StorageEngineException(e);
     }
 
-    TriggerEngine.fireAfterInsert(insertRowPlan);
+    TriggerEngine.fire(insertRowPlan);
   }
 
   public void insert(InsertRowsOfOneDevicePlan insertRowsOfOneDevicePlan)
       throws StorageEngineException {
-    TriggerEngine.fireBeforeInsert(insertRowsOfOneDevicePlan);
+    TriggerEngine.fire(insertRowsOfOneDevicePlan);
 
     StorageGroupProcessor storageGroupProcessor =
         getProcessor(insertRowsOfOneDevicePlan.getDeviceId());
@@ -544,13 +544,13 @@ public class StorageEngine implements IService {
       throw new StorageEngineException(e);
     }
 
-    TriggerEngine.fireAfterInsert(insertRowsOfOneDevicePlan);
+    TriggerEngine.fire(insertRowsOfOneDevicePlan);
   }
 
   /** insert a InsertTabletPlan to a storage group */
   public void insertTablet(InsertTabletPlan insertTabletPlan)
       throws StorageEngineException, BatchProcessException {
-    TriggerEngine.fireBeforeInsert(insertTabletPlan);
+    TriggerEngine.fire(insertTabletPlan);
 
     StorageGroupProcessor storageGroupProcessor;
     try {
@@ -574,7 +574,7 @@ public class StorageEngine implements IService {
       }
     }
 
-    TriggerEngine.fireAfterInsert(insertTabletPlan);
+    TriggerEngine.fire(insertTabletPlan);
   }
 
   private void updateMonitorStatistics(

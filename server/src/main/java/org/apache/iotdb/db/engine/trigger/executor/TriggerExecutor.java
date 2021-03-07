@@ -153,34 +153,34 @@ public class TriggerExecutor {
     }
   }
 
-  public void fireIfActivated(long time, Object value) throws TriggerExecutionException {
+  public void fireIfActivated(long timestamp, Object value) throws TriggerExecutionException {
     if (!registrationInformation.isStopped()) {
-      fire(time, value);
+      fire(timestamp, value);
     }
   }
 
-  private synchronized void fire(long time, Object value) throws TriggerExecutionException {
+  private synchronized void fire(long timestamp, Object value) throws TriggerExecutionException {
     Thread.currentThread().setContextClassLoader(triggerClassLoader);
 
     try {
       switch (seriesDataType) {
         case INT32:
-          committedTrigger.fire(time, (Integer) value);
+          committedTrigger.fire(timestamp, (Integer) value);
           break;
         case INT64:
-          committedTrigger.fire(time, (Long) value);
+          committedTrigger.fire(timestamp, (Long) value);
           break;
         case FLOAT:
-          committedTrigger.fire(time, (Float) value);
+          committedTrigger.fire(timestamp, (Float) value);
           break;
         case DOUBLE:
-          committedTrigger.fire(time, (Double) value);
+          committedTrigger.fire(timestamp, (Double) value);
           break;
         case BOOLEAN:
-          committedTrigger.fire(time, (Boolean) value);
+          committedTrigger.fire(timestamp, (Boolean) value);
           break;
         case TEXT:
-          committedTrigger.fire(time, (Binary) value);
+          committedTrigger.fire(timestamp, (Binary) value);
           break;
         default:
           throw new TriggerExecutionException("Unsupported series data type.");
@@ -189,6 +189,46 @@ public class TriggerExecutor {
       throw e;
     } catch (Exception e) {
       onTriggerExecutionError("fire(long, Object)", e);
+    }
+  }
+
+  public void fireIfActivated(long[] timestamps, Object values) throws TriggerExecutionException {
+    if (!registrationInformation.isStopped()) {
+      fire(timestamps, values);
+    }
+  }
+
+  private synchronized void fire(long[] timestamps, Object values)
+      throws TriggerExecutionException {
+    Thread.currentThread().setContextClassLoader(triggerClassLoader);
+
+    try {
+      switch (seriesDataType) {
+        case INT32:
+          committedTrigger.fire(timestamps, (int[]) values);
+          break;
+        case INT64:
+          committedTrigger.fire(timestamps, (long[]) values);
+          break;
+        case FLOAT:
+          committedTrigger.fire(timestamps, (float[]) values);
+          break;
+        case DOUBLE:
+          committedTrigger.fire(timestamps, (double[]) values);
+          break;
+        case BOOLEAN:
+          committedTrigger.fire(timestamps, (boolean[]) values);
+          break;
+        case TEXT:
+          committedTrigger.fire(timestamps, (Binary[]) values);
+          break;
+        default:
+          throw new TriggerExecutionException("Unsupported series data type.");
+      }
+    } catch (TriggerExecutionException e) {
+      throw e;
+    } catch (Exception e) {
+      onTriggerExecutionError("fire(long[], Object)", e);
     }
   }
 

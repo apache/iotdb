@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.engine.trigger.executor;
 
+import org.apache.iotdb.db.exception.TriggerExecutionException;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
@@ -29,17 +31,44 @@ public class TriggerEngine {
 
   public static void dropTrigger() {}
 
-  public static void fireBeforeInsert(InsertRowPlan insertRowPlan) {}
+  public static void fire(InsertRowPlan insertRowPlan) throws TriggerExecutionException {
+    MeasurementMNode[] mNodes = insertRowPlan.getMeasurementMNodes();
+    int size = mNodes.length;
 
-  public static void fireAfterInsert(InsertRowPlan insertRowPlan) {}
+    long timestamp = insertRowPlan.getTime();
+    Object[] values = insertRowPlan.getValues();
 
-  public static void fireBeforeInsert(InsertRowsOfOneDevicePlan insertRowsOfOneDevicePlan) {}
+    for (int i = 0; i < size; ++i) {
+      TriggerExecutor executor = mNodes[i].getTriggerExecutor();
+      if (executor == null) {
+        continue;
+      }
+      executor.fireIfActivated(timestamp, values[i]);
+    }
+  }
 
-  public static void fireAfterInsert(InsertRowsOfOneDevicePlan insertRowsOfOneDevicePlan) {}
+  public static void fire(InsertRowsOfOneDevicePlan insertRowsOfOneDevicePlan)
+      throws TriggerExecutionException {
+    for (InsertRowPlan insertRowPlan : insertRowsOfOneDevicePlan.getRowPlans()) {
+      fire(insertRowPlan);
+    }
+  }
 
-  public static void fireBeforeInsert(InsertTabletPlan insertTabletPlan) {}
+  public static void fire(InsertTabletPlan insertTabletPlan) throws TriggerExecutionException {
+    MeasurementMNode[] mNodes = insertTabletPlan.getMeasurementMNodes();
+    int size = mNodes.length;
 
-  public static void fireAfterInsert(InsertTabletPlan insertTabletPlan) {}
+    long[] timestamps = insertTabletPlan.getTimes();
+    Object[] columns = insertTabletPlan.getColumns();
+
+    for (int i = 0; i < size; ++i) {
+      TriggerExecutor executor = mNodes[i].getTriggerExecutor();
+      if (executor == null) {
+        continue;
+      }
+      executor.fireIfActivated(timestamps, columns[i]);
+    }
+  }
 
   public static void deleteTimeseries() {} // todo: delete sg?
 
