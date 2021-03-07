@@ -19,17 +19,24 @@
 
 package org.apache.iotdb.db.engine.trigger.executor;
 
+import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationInformation;
+import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.TriggerExecutionException;
+import org.apache.iotdb.db.exception.TriggerManagementException;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.List;
 
 public class TriggerEngine {
 
-  public static void createTrigger() {}
-
-  public static void dropTrigger() {}
+  private static final Logger LOGGER = LoggerFactory.getLogger(TriggerEngine.class);
 
   public static void fire(InsertRowPlan insertRowPlan) throws TriggerExecutionException {
     MeasurementMNode[] mNodes = insertRowPlan.getMeasurementMNodes();
@@ -70,7 +77,31 @@ public class TriggerEngine {
     }
   }
 
-  public static void deleteTimeseries() {} // todo: delete sg?
+  public static void drop(MeasurementMNode measurementMNode) {
+    TriggerExecutor executor = measurementMNode.getTriggerExecutor();
+    if (executor == null) {
+      return;
+    }
+
+    TriggerRegistrationInformation information = executor.getRegistrationInformation();
+    try {
+      TriggerRegistrationService.getInstance()
+          .deregister(new DropTriggerPlan(information.getTriggerName()));
+    } catch (TriggerManagementException e) {
+      LOGGER.warn(
+          "Failed to deregister trigger {}({}) when deleting timeseries ({}).",
+          information.getTriggerName(),
+          information.getClassName(),
+          measurementMNode.getPartialPath().getFullPath(),
+          e);
+    }
+  }
+
+  public static void drop(List<MeasurementMNode> measurementMNodes) {
+    for (MeasurementMNode measurementMNode : measurementMNodes) {
+      drop(measurementMNode);
+    }
+  }
 
   private TriggerEngine() {}
 }

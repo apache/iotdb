@@ -364,8 +364,7 @@ public class PlanExecutor implements IPlanExecutor {
     return true;
   }
 
-  private boolean operateStopTrigger(StopTriggerPlan plan)
-      throws TriggerManagementException, TriggerExecutionException {
+  private boolean operateStopTrigger(StopTriggerPlan plan) throws TriggerManagementException {
     TriggerRegistrationService.getInstance().inactivate(plan);
     return true;
   }
