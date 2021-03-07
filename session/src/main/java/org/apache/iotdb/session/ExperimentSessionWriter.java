@@ -24,7 +24,7 @@ public class ExperimentSessionWriter {
   // private static final Session session = new Session("127.0.0.1", 6667, "root", "root");
   private static final int TIMESERIES_NUM = 1000;
   private static int DATA_NUM = 10000;
-  private static final File COST_LOG_FILE = new File("E:\\Thing\\Workspace\\IoTDB\\res\\SA_2R.cost");
+  private static final File COST_LOG_FILE = new File("E:\\Thing\\Workspace\\IoTDB\\res\\SA_C_3R.cost");
   private static final File CHUNK_SIZE_OPT_LOG_FILE = new File("E:\\Thing\\Workspace\\IoTDB\\res\\ChunkSizeOpt.txt");
   private static OutputStream COST_LOG_STREAM;
   public static void main(String[] args) throws Exception{
@@ -41,8 +41,8 @@ public class ExperimentSessionWriter {
 //    createTimeseries();
     //testDivergentDesign(5);
     //testMultipleReplicaSA(5);
-//    testMultipleReplicaSAWithChunkSize(5);
-    testRainbow(1);
+    testMultipleReplicaSAWithChunkSize(3);
+    //testRainbow(1);
     session.close();
     // 1 -> 3
     // 2 -> 4
@@ -174,6 +174,13 @@ public class ExperimentSessionWriter {
     try {
       long startTime = System.currentTimeMillis();
       ReplicaSet replicaSet = session.runMultiReplicaOptimizeWithChunkSize("root.test.device", replicaNum);
+      StringBuilder sb = new StringBuilder();
+      for(double cost : replicaSet.costList) {
+        sb.append(cost);
+        sb.append("\n");
+      }
+      COST_LOG_STREAM.write(sb.toString().getBytes());
+      COST_LOG_STREAM.close();
       long lastTime = System.currentTimeMillis() - startTime;
       System.out.println(lastTime / 1000l + " s");
     } catch (Exception e) {
