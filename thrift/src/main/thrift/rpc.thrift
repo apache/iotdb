@@ -307,6 +307,12 @@ struct ChunkSizeOptimizationResult {
     2: required list<double> cost;
 }
 
+struct ConvergenceTestResult {
+    1: required list<string> method;
+    2: required list<list<double>> lost;
+    3: required list<list<i64>> time;
+}
+
 service TSIService {
 	TSOpenSessionResp openSession(1:TSOpenSessionReq req);
 
@@ -392,7 +398,7 @@ service TSIService {
 
   ReplicaSet multipleReplicaOptimizeWithReplicaNum(1:string deviceID, 2:i32 replicaNum);
 
-  ReplicaSet multipleReplicaOptimizeWithChunkSize(1:string deviceID);
+  ReplicaSet multipleReplicaOptimizeWithChunkSize(1:string deviceID, 2:string method);
 
   ReplicaSet multipleReplicaOptimizeWithChunkSizeAndReplicaNum(1:string deviceID, 2:i32 replicaNum);
 
@@ -401,5 +407,7 @@ service TSIService {
   ReplicaSet runRainbowWithReplicaNum(1:string deviceID, 2:i32 replicaNum);
 
   ChunkSizeOptimizationResult testChunkSizeOptimize(1: list<string> measurements, list<string> ops, i64 startTime, i64 endTime, list<string> measurementOrder);
+
+  ConvergenceTestResult convergenceTest(1: string deviceID);
 
 }

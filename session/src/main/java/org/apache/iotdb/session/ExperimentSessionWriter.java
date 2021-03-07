@@ -2,10 +2,7 @@ package org.apache.iotdb.session;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.service.rpc.thrift.ChunkSizeOptimizationResult;
-import org.apache.iotdb.service.rpc.thrift.MeasurementOrder;
-import org.apache.iotdb.service.rpc.thrift.MeasurementOrderSet;
-import org.apache.iotdb.service.rpc.thrift.ReplicaSet;
+import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -15,16 +12,17 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
 public class ExperimentSessionWriter {
-  private static final Session session = new Session("192.168.130.38", 6667, "root", "root");
-  // private static final Session session = new Session("127.0.0.1", 6667, "root", "root");
-  private static final int TIMESERIES_NUM = 1000;
+  // private static final Session session = new Session("192.168.130.38", 6667, "root", "root");
+  private static final Session session = new Session("127.0.0.1", 6667, "root", "root");
+  private static final int TIMESERIES_NUM = 400;
   private static int DATA_NUM = 10000;
-  private static final File COST_LOG_FILE = new File("E:\\Thing\\Workspace\\IoTDB\\res\\SA_2R.cost");
+  private static final File COST_LOG_FILE = new File(".\\convergence_result.txt");
   private static final File CHUNK_SIZE_OPT_LOG_FILE = new File("E:\\Thing\\Workspace\\IoTDB\\res\\ChunkSizeOpt.txt");
   private static OutputStream COST_LOG_STREAM;
   public static void main(String[] args) throws Exception{
@@ -37,12 +35,15 @@ public class ExperimentSessionWriter {
     session.readRecordFromFile();
     session.readMetadataFromFile();
     // session.deleteStorageGroup("root.test");
-//    session.setStorageGroup("root.test");
-//    createTimeseries();
+    //session.setStorageGroup("root.test");
+    //createTimeseries();
     //testDivergentDesign(5);
     //testMultipleReplicaSA(5);
 //    testMultipleReplicaSAWithChunkSize(5);
-    testRainbow(1);
+//    testRainbow(1);
+//    testMultipleReplicaGAWithChunkSize(3);
+    testConvergence();
+
     session.close();
     // 1 -> 3
     // 2 -> 4
@@ -129,7 +130,7 @@ public class ExperimentSessionWriter {
     }
   }
 
-  static void testChunkSizeOptimze() {
+  static void testChunkSizeOptimize() {
     List<String> measurements = new ArrayList<>();
     List<String> ops = new ArrayList<>();
     measurements.add("s500");
@@ -181,6 +182,17 @@ public class ExperimentSessionWriter {
     }
   }
 
+  static void testMultipleReplicaGAWithChunkSize(int replicaNum) {
+    try {
+      long startTime = System.currentTimeMillis();
+      ReplicaSet replicaSet = session.runMultiReplicaOptimizeWithChunkSize("root.test.device", "ga");
+      long lastTime = System.currentTimeMillis() - startTime;
+      System.out.println(lastTime / 1000l + "s");
+    } catch (IoTDBConnectionException e) {
+      e.printStackTrace();
+    }
+  }
+
   static void testDivergentDesign(int replicaNum) {
     try {
       long startTime = System.currentTimeMillis();
@@ -214,4 +226,26 @@ public class ExperimentSessionWriter {
       e.printStackTrace();
     }
   }
+
+  static void testConvergence() {
+    try {
+      long startTime = System.currentTimeMillis();
+      ConvergenceTestResult testResult = session.runConvergenceTest("root.test.device");
+      StringBuilder sb = new StringBuilder();
+      for(int i = 0; i < testResult.method.size(); ++i) {
+        sb.append(testResult.method.get(i) + "\n");
+        for(int j = 0; j < testResult.time.get(i).size(); ++j) {
+          sb.append(String.format("%s %.2f\n", String.valueOf(testResult.time.get(i).get(j)), testResult.lost.get(i).get(j)));
+        }
+        sb.append("\n");
+      }
+      COST_LOG_STREAM.write(sb.toString().getBytes(StandardCharsets.UTF_8));
+      COST_LOG_STREAM.close();
+      long lastTime = System.currentTimeMillis() - startTime;
+      System.out.println(lastTime / 1000l + " s");
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+
 }

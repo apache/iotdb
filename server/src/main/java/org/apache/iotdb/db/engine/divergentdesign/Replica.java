@@ -5,6 +5,7 @@ import org.apache.iotdb.db.engine.measurementorderoptimizer.costmodel.CostModel;
 import org.apache.iotdb.db.query.workloadmanager.queryrecord.AggregationQueryRecord;
 import org.apache.iotdb.db.query.workloadmanager.queryrecord.QueryRecord;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -15,6 +16,14 @@ public class Replica {
   private int totalChunkGroupNum;
   private long averageChunkSize;
 
+  public Replica(Replica replica) {
+    this.deviceId = replica.deviceId;
+    this.measurements = new ArrayList<>(replica.measurements);
+    this.chunkSize = new ArrayList<>(replica.chunkSize);
+    this.totalChunkGroupNum = replica.totalChunkGroupNum;
+    this.averageChunkSize = replica.averageChunkSize;
+  }
+
   public Replica(String deviceId) {
     this.deviceId = deviceId;
     this.measurements = new ArrayList<>(MeasurementOrderOptimizer.getInstance()
@@ -24,9 +33,13 @@ public class Replica {
 
   public Replica(String deviceId, List<String> measurements) {
     this.deviceId = deviceId;
-    this.averageChunkSize = averageChunkSize;
     this.measurements = new ArrayList<>(measurements);
     chunkSize = new ArrayList<>(MeasurementOrderOptimizer.getInstance().getChunkSize(deviceId));
+    BigInteger totalChunkSize = new BigInteger("0");
+    for(int i = 0; i < chunkSize.size(); ++i) {
+      totalChunkSize = totalChunkSize.add(new BigInteger(String.valueOf(chunkSize.get(i))));
+    }
+    averageChunkSize = totalChunkSize.divide(new BigInteger(String.valueOf(chunkSize.size()))).longValue();
   }
 
   public Replica(String deviceId, List<String> measurements, long averageChunkSize) {

@@ -99,10 +99,110 @@ public class DivergentDesign {
       ++i;
       nextCost = totalCost(nextWorkloadPartition, nextReplica);
       LOGGER.info(String.format("Epoch%d Cur cost: %.3f, New cost: %.3f", i, curCost, nextCost));
-    } while (i < maxIter && Math.abs(curCost - nextCost) > breakPoint && System.currentTimeMillis() - startTime < 45l * 60l * 1000l);
+    } while (i < maxIter && Math.abs(curCost - nextCost) > breakPoint && System.currentTimeMillis() - startTime < 60l * 60l * 1000l);
     curWorkloadPartition = nextWorkloadPartition;
 
     return new Pair<>(nextReplica, curWorkloadPartition);
+  }
+
+  public Pair<List<Double>, List<Long>> optimizeWithChunkSizeAndCostRecord() {
+    if (queryRecords.size() == 0) {
+      getQueryOrderFromManager();
+    }
+    if (queryRecords.size() == 0) {
+      return null;
+    }
+
+    Workload[] curWorkloadPartition = null;
+    Workload[] nextWorkloadPartition = getRandomWorkloadPartition();
+    Replica[] curReplica = null;
+    Replica[] nextReplica = new Replica[replicaNum];
+    for(int k = 0; k < replicaNum; ++k) {
+      nextReplica[k] = databaseAdvisorWithChunkSize(nextWorkloadPartition[k]);
+    }
+    double curCost = 0.0f;
+    double nextCost = totalCost(nextWorkloadPartition, nextReplica);
+    List<Double> costList = new ArrayList<>();
+    List<Long> timeList = new ArrayList<>();
+    long startTime = System.currentTimeMillis();
+    int i = 0;
+    do {
+      curCost = nextCost;
+      costList.add(curCost);
+      timeList.add(System.currentTimeMillis() - startTime);
+      curWorkloadPartition = nextWorkloadPartition;
+      curReplica = nextReplica;
+      nextWorkloadPartition = new Workload[replicaNum];
+      for (int j = 0; j < replicaNum; ++j) {
+        nextWorkloadPartition[j] = new Workload();
+      }
+      for (QueryRecord record : queryRecords) {
+        int[] indexes = getCostPermutation(record, curReplica);
+        for (int j = 0; j < balanceFactor; ++j) {
+          nextWorkloadPartition[indexes[j]].addRecord(record);
+        }
+      }
+      nextReplica = new Replica[replicaNum];
+      for(int j = 0; j < replicaNum; ++j) {
+        nextReplica[j] = databaseAdvisorWithChunkSize(nextWorkloadPartition[j]);
+      }
+      ++i;
+      nextCost = totalCost(nextWorkloadPartition, nextReplica);
+      LOGGER.info(String.format("Epoch%d Cur cost: %.3f, New cost: %.3f", i, curCost, nextCost));
+    } while (i < maxIter && Math.abs(curCost - nextCost) > breakPoint && System.currentTimeMillis() - startTime < 60l * 60l * 1000l);
+    curWorkloadPartition = nextWorkloadPartition;
+
+    return new Pair<>(costList, timeList);
+  }
+
+  public Pair<List<Double>, List<Long>> optimizeWithCostRecord() {
+    if (queryRecords.size() == 0) {
+      getQueryOrderFromManager();
+    }
+    if (queryRecords.size() == 0) {
+      return null;
+    }
+
+    Workload[] curWorkloadPartition = null;
+    Workload[] nextWorkloadPartition = getRandomWorkloadPartition();
+    Replica[] curReplica = null;
+    Replica[] nextReplica = new Replica[replicaNum];
+    for(int k = 0; k < replicaNum; ++k) {
+      nextReplica[k] = databaseAdvisor(nextWorkloadPartition[k]);
+    }
+    double curCost = 0.0f;
+    double nextCost = totalCost(nextWorkloadPartition, nextReplica);
+    long startTime = System.currentTimeMillis();
+    List<Double> costList = new ArrayList<>();
+    List<Long> timeList = new ArrayList<>();
+    int i = 0;
+    do {
+      curCost = nextCost;
+      costList.add(curCost);
+      timeList.add(System.currentTimeMillis() - startTime);
+      curWorkloadPartition = nextWorkloadPartition;
+      curReplica = nextReplica;
+      nextWorkloadPartition = new Workload[replicaNum];
+      for (int j = 0; j < replicaNum; ++j) {
+        nextWorkloadPartition[j] = new Workload();
+      }
+      for (QueryRecord record : queryRecords) {
+        int[] indexes = getCostPermutation(record, curReplica);
+        for (int j = 0; j < balanceFactor; ++j) {
+          nextWorkloadPartition[indexes[j]].addRecord(record);
+        }
+      }
+      nextReplica = new Replica[replicaNum];
+      for(int j = 0; j < replicaNum; ++j) {
+        nextReplica[j] = databaseAdvisor(nextWorkloadPartition[j]);
+      }
+      ++i;
+      nextCost = totalCost(nextWorkloadPartition, nextReplica);
+      LOGGER.info(String.format("Epoch%d Cur cost: %.3f, New cost: %.3f", i, curCost, nextCost));
+    } while (i < maxIter && Math.abs(curCost - nextCost) > breakPoint && System.currentTimeMillis() - startTime < 60l * 60l * 1000l);
+    curWorkloadPartition = nextWorkloadPartition;
+
+    return new Pair<>(costList, timeList);
   }
 
   /**
@@ -136,6 +236,10 @@ public class DivergentDesign {
    */
   private Replica databaseAdvisor(Workload workload) {
     return MeasurementOrderOptimizer.getInstance().getOptimalReplica(workload, deviceID);
+  }
+
+  private Replica databaseAdvisorWithChunkSize(Workload workload) {
+    return MeasurementOrderOptimizer.getInstance().getOptimalReplicaWithChunkSizeAdjustment(workload, deviceID);
   }
 
   /**

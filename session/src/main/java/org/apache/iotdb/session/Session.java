@@ -1413,16 +1413,36 @@ public class Session {
     }
   }
 
-  public ReplicaSet runMultiReplicaOptimizeWithChunkSize(String deviceID) throws IoTDBConnectionException {
+  public ReplicaSet runMultiReplicaOptimizeWithChunkSize(String deviceID, String method) throws IoTDBConnectionException {
     ReplicaSet replicaSet = null;
     try {
-      replicaSet = client.multipleReplicaOptimizeWithChunkSize(deviceID);
+      replicaSet = client.multipleReplicaOptimizeWithChunkSize(deviceID, method);
       return replicaSet;
     } catch (TException e) {
       if (reconnect()) {
         try {
-          replicaSet = client.multipleReplicaOptimizeWithChunkSize(deviceID);
+          replicaSet = client.multipleReplicaOptimizeWithChunkSize(deviceID, method);
           return replicaSet;
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(
+                "Fail to reconnect to server. Please check server status");
+      }
+    }
+  }
+
+  public ConvergenceTestResult runConvergenceTest(String deviceID) throws IoTDBConnectionException {
+    ConvergenceTestResult testResult = null;
+    try {
+      testResult = client.convergenceTest(deviceID);
+      return testResult;
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          testResult = client.convergenceTest(deviceID);
+          return testResult;
         } catch (TException tException) {
           throw new IoTDBConnectionException(tException);
         }
