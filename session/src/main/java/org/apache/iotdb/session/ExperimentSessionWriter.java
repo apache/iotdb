@@ -22,11 +22,7 @@ public class ExperimentSessionWriter {
   //private static final Session session = new Session("127.0.0.1", 6667, "root", "root");
   private static final int TIMESERIES_NUM = 400;
   private static int DATA_NUM = 10000;
-<<<<<<< HEAD
-  private static final File COST_LOG_FILE = new File("E:\\Thing\\Workspace\\IoTDB\\res\\SA_C_3R.cost");
-=======
   private static final File COST_LOG_FILE = new File(".\\convergence_result.txt");
->>>>>>> 90098c4924826088090a8974cc310dbab54d34e0
   private static final File CHUNK_SIZE_OPT_LOG_FILE = new File("E:\\Thing\\Workspace\\IoTDB\\res\\ChunkSizeOpt.txt");
   private static OutputStream COST_LOG_STREAM;
   public static void main(String[] args) throws Exception{
