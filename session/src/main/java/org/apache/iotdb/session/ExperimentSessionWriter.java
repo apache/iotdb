@@ -18,8 +18,8 @@ import java.util.List;
 import java.util.Random;
 
 public class ExperimentSessionWriter {
-  // private static final Session session = new Session("192.168.130.38", 6667, "root", "root");
-  private static final Session session = new Session("127.0.0.1", 6667, "root", "root");
+  private static final Session session = new Session("192.168.130.38", 6667, "root", "root");
+  //private static final Session session = new Session("127.0.0.1", 6667, "root", "root");
   private static final int TIMESERIES_NUM = 400;
   private static int DATA_NUM = 10000;
   private static final File COST_LOG_FILE = new File(".\\convergence_result.txt");
@@ -35,8 +35,8 @@ public class ExperimentSessionWriter {
     session.readRecordFromFile();
     session.readMetadataFromFile();
     // session.deleteStorageGroup("root.test");
-    //session.setStorageGroup("root.test");
-    //createTimeseries();
+    session.setStorageGroup("root.test");
+    createTimeseries();
     //testDivergentDesign(5);
     //testMultipleReplicaSA(5);
 //    testMultipleReplicaSAWithChunkSize(5);
