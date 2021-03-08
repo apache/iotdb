@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.query.aggregation;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
@@ -28,10 +31,6 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
 
 public abstract class AggregateResult {
 
@@ -93,6 +92,13 @@ public abstract class AggregateResult {
    */
   public abstract void updateResultUsingTimestamps(
       long[] timestamps, int length, IReaderByTimestamp dataReader) throws IOException;
+
+  /**
+   * This method calculates the aggregation using common timestamps of the cross series filter.
+   *
+   * @throws IOException TsFile data read error
+   */
+  public abstract void updateResultUsingTimestamps(long time, Object value);
 
   /**
    * Judge if aggregation results have been calculated. In other words, if the aggregated result

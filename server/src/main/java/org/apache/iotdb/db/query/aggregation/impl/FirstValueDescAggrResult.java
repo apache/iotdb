@@ -19,12 +19,11 @@
 
 package org.apache.iotdb.db.query.aggregation.impl;
 
+import java.io.IOException;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-
-import java.io.IOException;
 
 public class FirstValueDescAggrResult extends FirstValueAggrResult {
 
@@ -60,6 +59,12 @@ public class FirstValueDescAggrResult extends FirstValueAggrResult {
         timestamp = timestamps[i];
       }
     }
+  }
+
+  @Override
+  public void updateResultUsingTimestamps(long time, Object value) {
+    setValue(value);
+    timestamp = time;
   }
 
   @Override

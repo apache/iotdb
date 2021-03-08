@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.query.aggregation.impl;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
@@ -30,10 +33,6 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.IntegerStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
 
 public class AvgAggrResult extends AggregateResult {
 
@@ -108,6 +107,11 @@ public class AvgAggrResult extends AggregateResult {
         updateAvg(seriesDataType, value);
       }
     }
+  }
+
+  @Override
+  public void updateResultUsingTimestamps(long time, Object value) {
+    updateAvg(seriesDataType, value);
   }
 
   private void updateAvg(TSDataType type, Object sumVal) throws UnSupportedDataTypeException {

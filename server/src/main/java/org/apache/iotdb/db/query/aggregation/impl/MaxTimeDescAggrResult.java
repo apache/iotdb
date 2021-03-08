@@ -18,11 +18,10 @@
  */
 package org.apache.iotdb.db.query.aggregation.impl;
 
+import java.io.IOException;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-
-import java.io.IOException;
 
 public class MaxTimeDescAggrResult extends MaxTimeAggrResult {
 
@@ -64,6 +63,15 @@ public class MaxTimeDescAggrResult extends MaxTimeAggrResult {
     if (time != -1) {
       updateMaxTimeResult(time);
     }
+  }
+
+  @Override
+  public void updateResultUsingTimestamps(long timestamp, Object value) {
+    if (hasFinalResult()) {
+      return;
+    }
+
+    updateMaxTimeResult(timestamp);
   }
 
   @Override

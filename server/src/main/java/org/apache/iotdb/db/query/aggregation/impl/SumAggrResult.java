@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.query.aggregation.impl;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
@@ -29,10 +32,6 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.IntegerStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
 
 public class SumAggrResult extends AggregateResult {
 
@@ -86,6 +85,11 @@ public class SumAggrResult extends AggregateResult {
         updateSum(value);
       }
     }
+  }
+
+  @Override
+  public void updateResultUsingTimestamps(long time, Object value) {
+    updateSum(value);
   }
 
   private void updateSum(Object sumVal) throws UnSupportedDataTypeException {

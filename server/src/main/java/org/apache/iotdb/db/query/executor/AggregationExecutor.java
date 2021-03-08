@@ -19,6 +19,13 @@
 
 package org.apache.iotdb.db.query.executor;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -51,14 +58,6 @@ import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 @SuppressWarnings("java:S1135") // ignore todos
 public class AggregationExecutor {
@@ -350,26 +349,36 @@ public class AggregationExecutor {
     }
     TimeGenerator timestampGenerator = getTimeGenerator(context, queryPlan);
     List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
+    // group by path name
+    Map<PartialPath, List<Integer>> pathToAggrIndexesMap =
+        groupAggregationsBySeries(selectedSeries);
+    List<AggregateResult> aggregateResults = new ArrayList<>();
+    // series id -> list of result
+    Map<Integer, List<Integer>> readerIdToAggrIndexesMap = new HashMap<>();
+
     List<StorageGroupProcessor> list = StorageEngine.getInstance().mergeLock(selectedSeries);
     try {
       for (int i = 0; i < selectedSeries.size(); i++) {
-        PartialPath path = selectedSeries.get(i);
-        IReaderByTimestamp seriesReaderByTimestamp =
-            getReaderByTime(path, queryPlan, dataTypes.get(i), context);
-        readersOfSelectedSeries.add(seriesReaderByTimestamp);
+        List<Integer> indexes = pathToAggrIndexesMap.remove(selectedSeries.get(i));
+        if (indexes != null) {
+          readerIdToAggrIndexesMap.put(readersOfSelectedSeries.size(), indexes);
+          IReaderByTimestamp seriesReaderByTimestamp =
+              getReaderByTime(selectedSeries.get(i), queryPlan, dataTypes.get(i), context);
+          readersOfSelectedSeries.add(seriesReaderByTimestamp);
+        }
       }
     } finally {
       StorageEngine.getInstance().mergeUnLock(list);
     }
 
-    List<AggregateResult> aggregateResults = new ArrayList<>();
     for (int i = 0; i < selectedSeries.size(); i++) {
       TSDataType type = dataTypes.get(i);
       AggregateResult result =
           AggregateResultFactory.getAggrResultByName(aggregations.get(i), type, ascending);
       aggregateResults.add(result);
     }
-    aggregateWithValueFilter(aggregateResults, timestampGenerator, readersOfSelectedSeries);
+    aggregateWithValueFilter(
+        aggregateResults, timestampGenerator, readersOfSelectedSeries, readerIdToAggrIndexesMap);
     return constructDataSet(aggregateResults, queryPlan);
   }
 
@@ -395,7 +404,8 @@ public class AggregationExecutor {
   private void aggregateWithValueFilter(
       List<AggregateResult> aggregateResults,
       TimeGenerator timestampGenerator,
-      List<IReaderByTimestamp> readersOfSelectedSeries)
+      List<IReaderByTimestamp> readersOfSelectedSeries,
+      Map<Integer, List<Integer>> readerIdToAggrIndexesMap)
       throws IOException {
 
     while (timestampGenerator.hasNext()) {
@@ -412,10 +422,14 @@ public class AggregationExecutor {
 
       // cal part of aggregate result
       for (int i = 0; i < readersOfSelectedSeries.size(); i++) {
-        aggregateResults
-            .get(i)
-            .updateResultUsingTimestamps(
-                timeArray, timeArrayLength, readersOfSelectedSeries.get(i));
+        for (int j = 0; j < timeArrayLength; j++) {
+          Object value = readersOfSelectedSeries.get(i).getValueInTimestamp(timeArray[j]);
+          if (value != null) {
+            for (int resultIndex : readerIdToAggrIndexesMap.get(i)) {
+              aggregateResults.get(resultIndex).updateResultUsingTimestamps(timeArray[j], value);
+            }
+          }
+        }
       }
     }
   }

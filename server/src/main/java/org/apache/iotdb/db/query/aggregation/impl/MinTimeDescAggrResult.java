@@ -18,11 +18,10 @@
  */
 package org.apache.iotdb.db.query.aggregation.impl;
 
+import java.io.IOException;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-
-import java.io.IOException;
 
 public class MinTimeDescAggrResult extends MinTimeAggrResult {
 
@@ -49,6 +48,11 @@ public class MinTimeDescAggrResult extends MinTimeAggrResult {
         setLongValue(timestamps[i]);
       }
     }
+  }
+
+  @Override
+  public void updateResultUsingTimestamps(long time, Object value) {
+    setLongValue(time);
   }
 
   @Override
