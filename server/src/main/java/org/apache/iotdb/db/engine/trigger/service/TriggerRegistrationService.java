@@ -128,8 +128,7 @@ public class TriggerRegistrationService implements IService {
     } catch (MetadataException e) {
       throw new TriggerManagementException(e.getMessage(), e);
     } catch (ClassCastException e) {
-      throw new TriggerManagementException(
-          "Triggers can only be registered on MeasurementMNode.", e);
+      throw new TriggerManagementException("Triggers can only be registered on MeasurementMNode.");
     }
   }
 
@@ -269,6 +268,11 @@ public class TriggerRegistrationService implements IService {
       throws TriggerManagementException, TriggerExecutionException {
     TriggerExecutor executor = executors.get(plan.getTriggerName());
 
+    if (executor == null) {
+      throw new TriggerManagementException(
+          String.format("Trigger %s does not exist.", plan.getTriggerName()));
+    }
+
     if (!executor.getRegistrationInformation().isStopped()) {
       throw new TriggerManagementException(
           String.format("Trigger %s has already been started.", plan.getTriggerName()));
@@ -403,6 +407,9 @@ public class TriggerRegistrationService implements IService {
     for (CreateTriggerPlan createTriggerPlan : recoverCreateTriggerPlans(logFile)) {
       try {
         doRegister(createTriggerPlan, tryGetMeasurementMNode(createTriggerPlan));
+        if (createTriggerPlan.isStopped()) {
+          executors.get(createTriggerPlan.getTriggerName()).onStop();
+        }
       } catch (TriggerExecutionException | TriggerManagementException e) {
         LOGGER.error(
             "Failed to register the trigger {}({}) during recovering.",
@@ -495,6 +502,17 @@ public class TriggerRegistrationService implements IService {
           String.format("Trigger %s is not registered.", triggerName));
     }
     return executor.getTrigger();
+  }
+
+  @TestOnly
+  public TriggerRegistrationInformation getRegistrationInformation(String triggerName)
+      throws TriggerManagementException {
+    TriggerExecutor executor = executors.get(triggerName);
+    if (executor == null) {
+      throw new TriggerManagementException(
+          String.format("Trigger %s is not registered.", triggerName));
+    }
+    return executor.getRegistrationInformation();
   }
 
   @Override

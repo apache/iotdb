@@ -33,17 +33,20 @@ public class Accumulator implements Trigger {
 
   private double accumulator = BASE;
   private boolean isStopped = true;
+  private int migrationTimes = 0;
 
   @Override
   public void onStart(TriggerAttributes attributes) {
     accumulator = attributes.getDoubleOrDefault("base", BASE);
     isStopped = false;
+    migrationTimes = 0;
   }
 
   @Override
   public void onStop() {
     accumulator = BASE;
     isStopped = true;
+    migrationTimes = 0;
   }
 
   @Override
@@ -51,6 +54,7 @@ public class Accumulator implements Trigger {
     Map<String, Object> objects = new HashMap<>();
     objects.put("accumulator", accumulator);
     objects.put("isStopped", isStopped);
+    objects.put("migrationTimes", migrationTimes);
     return objects;
   }
 
@@ -58,6 +62,7 @@ public class Accumulator implements Trigger {
   public void migrateFromOld(Map<String, Object> objects) {
     accumulator = (double) objects.get("accumulator");
     isStopped = (boolean) objects.get("isStopped");
+    migrationTimes = (int) objects.get("migrationTimes") + 1;
   }
 
   @Override
@@ -94,11 +99,19 @@ public class Accumulator implements Trigger {
     throw new NotImplementedException();
   }
 
+  public void setAccumulator(double accumulator) {
+    this.accumulator = accumulator;
+  }
+
   public double getAccumulator() {
     return accumulator;
   }
 
   public boolean isStopped() {
     return isStopped;
+  }
+
+  public int getMigrationTimes() {
+    return migrationTimes;
   }
 }

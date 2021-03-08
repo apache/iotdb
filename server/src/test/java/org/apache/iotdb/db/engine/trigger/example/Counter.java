@@ -32,17 +32,20 @@ public class Counter implements Trigger {
 
   private int counter = BASE;
   private boolean isStopped = true;
+  private int migrationTimes = 0;
 
   @Override
   public void onStart(TriggerAttributes attributes) {
     counter = attributes.getIntOrDefault("base", BASE);
     isStopped = false;
+    migrationTimes = 0;
   }
 
   @Override
   public void onStop() {
     counter = BASE;
     isStopped = true;
+    migrationTimes = 0;
   }
 
   @Override
@@ -50,6 +53,7 @@ public class Counter implements Trigger {
     Map<String, Object> objects = new HashMap<>();
     objects.put("counter", counter);
     objects.put("isStopped", isStopped);
+    objects.put("migrationTimes", migrationTimes);
     return objects;
   }
 
@@ -57,6 +61,7 @@ public class Counter implements Trigger {
   public void migrateFromOld(Map<String, Object> objects) {
     counter = (int) objects.get("counter");
     isStopped = (boolean) objects.get("isStopped");
+    migrationTimes = (int) objects.get("migrationTimes") + 1;
   }
 
   @Override
@@ -95,11 +100,19 @@ public class Counter implements Trigger {
     return value;
   }
 
+  public void setCounter(int counter) {
+    this.counter = counter;
+  }
+
   public int getCounter() {
     return counter;
   }
 
   public boolean isStopped() {
     return isStopped;
+  }
+
+  public int getMigrationTimes() {
+    return migrationTimes;
   }
 }
