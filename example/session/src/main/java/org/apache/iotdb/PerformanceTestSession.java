@@ -10,9 +10,9 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import java.util.*;
 
 public class PerformanceTestSession {
-	static Session session = new Session("127.0.0.1", 6667, "root", "root");
-	static final int DEVICE_NUM = 100;
-	static final int TIMESERIES_NUM = 1000;
+	static Session session = new Session("192.168.130.38", 6667, "root", "root");
+	static final int DEVICE_NUM = 10;
+	static final int TIMESERIES_NUM = 10000;
 	static final int DATA_NUM = 1000;
 	public static void main(String[] args) throws Exception{
 		session.open(false);
