@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.trigger.service;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.engine.trigger.api.Trigger;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.TriggerExecutionException;
@@ -132,7 +133,7 @@ public class TriggerRegistrationService implements IService {
     }
   }
 
-  private void updateClassLoader() throws TriggerManagementException {
+  private void updateClassLoader() throws TriggerManagementException, TriggerExecutionException {
     TriggerClassLoader newClassLoader;
 
     // 1. construct a new trigger class loader
@@ -154,8 +155,19 @@ public class TriggerRegistrationService implements IService {
       }
       throw new TriggerManagementException("Failed to update trigger instances.", e);
     }
+
+    TriggerExecutionException firstException = null;
     for (TriggerExecutor executor : executorCollection) {
-      executor.commitTriggerUpdate(newClassLoader);
+      try {
+        executor.commitTriggerUpdate(newClassLoader);
+      } catch (TriggerExecutionException e) {
+        if (firstException == null) {
+          firstException = e;
+        }
+      }
+    }
+    if (firstException != null) {
+      throw firstException;
     }
 
     // 3. close and replace old trigger class loader
@@ -473,6 +485,16 @@ public class TriggerRegistrationService implements IService {
     for (TriggerExecutor executor : executors.values()) {
       deregister(new DropTriggerPlan(executor.getRegistrationInformation().getTriggerName()));
     }
+  }
+
+  @TestOnly
+  public Trigger getTriggerInstance(String triggerName) throws TriggerManagementException {
+    TriggerExecutor executor = executors.get(triggerName);
+    if (executor == null) {
+      throw new TriggerManagementException(
+          String.format("Trigger %s is not registered.", triggerName));
+    }
+    return executor.getTrigger();
   }
 
   @Override

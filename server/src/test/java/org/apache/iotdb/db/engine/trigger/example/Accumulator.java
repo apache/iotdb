@@ -24,52 +24,81 @@ import org.apache.iotdb.db.engine.trigger.api.TriggerAttributes;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.utils.Binary;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class Accumulator implements Trigger {
 
   public static int BASE = 7713;
 
-  private double accumulator;
+  private double accumulator = BASE;
+  private boolean isStopped = true;
 
   @Override
-  public void onStart(TriggerAttributes attributes) throws Exception {
+  public void onStart(TriggerAttributes attributes) {
     accumulator = attributes.getDoubleOrDefault("base", BASE);
+    isStopped = false;
   }
 
   @Override
-  public Integer fire(long timestamp, Integer value) throws Exception {
+  public void onStop() {
+    accumulator = BASE;
+    isStopped = true;
+  }
+
+  @Override
+  public Map<String, Object> migrateToNew() {
+    Map<String, Object> objects = new HashMap<>();
+    objects.put("accumulator", accumulator);
+    objects.put("isStopped", isStopped);
+    return objects;
+  }
+
+  @Override
+  public void migrateFromOld(Map<String, Object> objects) {
+    accumulator = (double) objects.get("accumulator");
+    isStopped = (boolean) objects.get("isStopped");
+  }
+
+  @Override
+  public Integer fire(long timestamp, Integer value) {
     accumulator += value;
     return value;
   }
 
   @Override
-  public Long fire(long timestamp, Long value) throws Exception {
+  public Long fire(long timestamp, Long value) {
     accumulator += value;
     return value;
   }
 
   @Override
-  public Float fire(long timestamp, Float value) throws Exception {
+  public Float fire(long timestamp, Float value) {
     accumulator += value;
     return value;
   }
 
   @Override
-  public Double fire(long timestamp, Double value) throws Exception {
+  public Double fire(long timestamp, Double value) {
     accumulator += value;
     return value;
   }
 
   @Override
-  public Boolean fire(long timestamp, Boolean value) throws Exception {
+  public Boolean fire(long timestamp, Boolean value) {
     throw new NotImplementedException();
   }
 
   @Override
-  public Binary fire(long timestamp, Binary value) throws Exception {
+  public Binary fire(long timestamp, Binary value) {
     throw new NotImplementedException();
   }
 
   public double getAccumulator() {
     return accumulator;
+  }
+
+  public boolean isStopped() {
+    return isStopped;
   }
 }

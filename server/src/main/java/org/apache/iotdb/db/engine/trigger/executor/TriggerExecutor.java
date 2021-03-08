@@ -29,14 +29,10 @@ import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.lang.reflect.InvocationTargetException;
+import java.util.Map;
 
 public class TriggerExecutor {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(TriggerExecutor.class);
 
   private final TriggerRegistrationInformation registrationInformation;
   private final TriggerAttributes attributes;
@@ -67,9 +63,8 @@ public class TriggerExecutor {
   }
 
   public void prepareTriggerUpdate(TriggerClassLoader newClassLoader)
-      throws TriggerExecutionException, TriggerManagementException {
+      throws TriggerManagementException {
     preparedTrigger = constructTriggerInstance(newClassLoader);
-    onStart(preparedTrigger, newClassLoader);
   }
 
   public void abortTriggerUpdate() {
@@ -77,28 +72,27 @@ public class TriggerExecutor {
   }
 
   /**
-   * The execution of {@link TriggerExecutor#fire(long, Object)} should be blocked when the trigger
-   * class is updating.
+   * The execution of {@link TriggerExecutor#fire(long, Object)} and {@link
+   * TriggerExecutor#fire(long[], Object)} should be blocked when the trigger class is updating.
    */
-  public synchronized void commitTriggerUpdate(TriggerClassLoader newClassLoader) {
-    if (preparedTrigger == null) {
-      LOGGER.warn(
-          "Trigger {}({}) update is not prepared.",
-          registrationInformation.getTriggerName(),
-          registrationInformation.getClassName());
-      return;
-    }
-
+  public synchronized void commitTriggerUpdate(TriggerClassLoader newClassLoader)
+      throws TriggerExecutionException {
     try {
-      onStop(committedTrigger, triggerClassLoader);
-    } catch (TriggerExecutionException e) {
-      LOGGER.warn("Error occurred when updating trigger instance.", e);
+      Thread.currentThread().setContextClassLoader(triggerClassLoader);
+      Map<String, Object> migratedObjects = committedTrigger.migrateToNew();
+
+      Thread.currentThread().setContextClassLoader(newClassLoader);
+      preparedTrigger.migrateFromOld(migratedObjects);
+    } catch (Exception e) {
+      registrationInformation.markAsStopped();
+      throw new TriggerExecutionException(
+          "Failed to migrate data from the old trigger instance to the new.", e);
+    } finally {
+      triggerClassLoader = newClassLoader;
+
+      committedTrigger = preparedTrigger;
+      preparedTrigger = null;
     }
-
-    triggerClassLoader = newClassLoader;
-
-    committedTrigger = preparedTrigger;
-    preparedTrigger = null;
   }
 
   private Trigger constructTriggerInstance(TriggerClassLoader classLoader)
@@ -121,16 +115,15 @@ public class TriggerExecutor {
 
   public void onStart() throws TriggerExecutionException {
     // The execution order of statement here cannot be swapped!
-    onStart(committedTrigger, triggerClassLoader);
+    invokeOnStart();
     registrationInformation.markAsStarted();
   }
 
-  private synchronized void onStart(Trigger trigger, TriggerClassLoader classLoader)
-      throws TriggerExecutionException {
-    Thread.currentThread().setContextClassLoader(classLoader);
+  private synchronized void invokeOnStart() throws TriggerExecutionException {
+    Thread.currentThread().setContextClassLoader(triggerClassLoader);
 
     try {
-      trigger.onStart(attributes);
+      committedTrigger.onStart(attributes);
     } catch (Exception e) {
       onTriggerExecutionError("onStart(TriggerAttributes)", e);
     }
@@ -139,15 +132,14 @@ public class TriggerExecutor {
   public void onStop() throws TriggerExecutionException {
     // The execution order of statement here cannot be swapped!
     registrationInformation.markAsStopped();
-    onStop(committedTrigger, triggerClassLoader);
+    invokeOnStop();
   }
 
-  private synchronized void onStop(Trigger trigger, TriggerClassLoader classLoader)
-      throws TriggerExecutionException {
-    Thread.currentThread().setContextClassLoader(classLoader);
+  private synchronized void invokeOnStop() throws TriggerExecutionException {
+    Thread.currentThread().setContextClassLoader(triggerClassLoader);
 
     try {
-      trigger.onStop();
+      committedTrigger.onStop();
     } catch (Exception e) {
       onTriggerExecutionError("onStop()", e);
     }
@@ -160,6 +152,11 @@ public class TriggerExecutor {
   }
 
   private synchronized void fire(long timestamp, Object value) throws TriggerExecutionException {
+    // double check on purpose: the running status may be changed by the method commitTriggerUpdate.
+    if (registrationInformation.isStopped()) {
+      return;
+    }
+
     Thread.currentThread().setContextClassLoader(triggerClassLoader);
 
     try {
@@ -200,6 +197,11 @@ public class TriggerExecutor {
 
   private synchronized void fire(long[] timestamps, Object values)
       throws TriggerExecutionException {
+    // double check on purpose: the running status may be changed by the method commitTriggerUpdate.
+    if (registrationInformation.isStopped()) {
+      return;
+    }
+
     Thread.currentThread().setContextClassLoader(triggerClassLoader);
 
     try {
@@ -247,5 +249,9 @@ public class TriggerExecutor {
 
   public MeasurementMNode getMeasurementMNode() {
     return measurementMNode;
+  }
+
+  public Trigger getTrigger() {
+    return committedTrigger;
   }
 }
