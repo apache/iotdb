@@ -37,6 +37,7 @@ import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -461,6 +462,13 @@ public class TriggerRegistrationService implements IService {
           temporaryLogWriter.write(new StopTriggerPlan(information.getTriggerName()));
         }
       }
+    }
+  }
+
+  @TestOnly
+  public void deregisterAll() throws TriggerManagementException {
+    for (TriggerExecutor executor : executors.values()) {
+      deregister(new DropTriggerPlan(executor.getRegistrationInformation().getTriggerName()));
     }
   }
 
