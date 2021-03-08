@@ -43,7 +43,6 @@ public class ExperimentSessionWriter {
 //    testRainbow(1);
 //    testMultipleReplicaGAWithChunkSize(3);
     testConvergence();
-
     session.close();
     // 1 -> 3
     // 2 -> 4
@@ -175,6 +174,13 @@ public class ExperimentSessionWriter {
     try {
       long startTime = System.currentTimeMillis();
       ReplicaSet replicaSet = session.runMultiReplicaOptimizeWithChunkSize("root.test.device", replicaNum);
+      StringBuilder sb = new StringBuilder();
+      for(double cost : replicaSet.costList) {
+        sb.append(cost);
+        sb.append("\n");
+      }
+      COST_LOG_STREAM.write(sb.toString().getBytes());
+      COST_LOG_STREAM.close();
       long lastTime = System.currentTimeMillis() - startTime;
       System.out.println(lastTime / 1000l + " s");
     } catch (Exception e) {
