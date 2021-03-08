@@ -38,6 +38,7 @@ import org.apache.iotdb.tsfile.write.writer.ForceAppendTsFileWriter;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,6 +48,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+
+import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.modifyTsFileNameUnseqMergCnt;
 
 /**
  * MergeFileTask merges the merge temporary files with the seqFiles, either move the merged chunks
@@ -92,7 +95,6 @@ class MergeFileTask {
       TsFileResource seqFile = unmergedFiles.get(i);
       currentMergeIndex = i;
       currMergeFile = seqFile.getTsFilePath();
-
       int mergedChunkNum = context.getMergedChunkCnt().getOrDefault(seqFile, 0);
       int unmergedChunkNum = context.getUnmergedChunkCnt().getOrDefault(seqFile, 0);
       if (mergedChunkNum >= unmergedChunkNum) {
@@ -197,6 +199,8 @@ class MergeFileTask {
       oldFileWriter.endFile();
 
       updatePlanIndexes(seqFile);
+      FileUtils.moveFile(seqFile.getTsFile(), modifyTsFileNameUnseqMergCnt(seqFile.getTsFile()));
+      seqFile.setFile(modifyTsFileNameUnseqMergCnt(seqFile.getTsFile()));
       seqFile.serialize();
       mergeLogger.logFileMergeEnd();
       logger.debug("{} moved merged chunks of {} to the old file", taskName, seqFile);
@@ -317,7 +321,7 @@ class MergeFileTask {
     fileWriter.endFile();
 
     updatePlanIndexes(seqFile);
-    seqFile.serialize();
+    //    seqFile.serialize();
     mergeLogger.logFileMergeEnd();
     logger.debug("{} moved unmerged chunks of {} to the new file", taskName, seqFile);
 
@@ -325,10 +329,12 @@ class MergeFileTask {
     try {
       resource.removeFileReader(seqFile);
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
-      File newMergeFile = seqFile.getTsFile();
+      File newMergeFile = modifyTsFileNameUnseqMergCnt(seqFile.getTsFile());
+
       newMergeFile.delete();
       fsFactory.moveFile(fileWriter.getFile(), newMergeFile);
       seqFile.setFile(newMergeFile);
+      seqFile.serialize();
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
     } finally {
