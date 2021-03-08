@@ -79,6 +79,8 @@ public class TriggerRegistrationService implements IService {
   private static final String LOG_FILE_NAME = LOG_FILE_DIR + "tlog.bin";
   private static final String TEMPORARY_LOG_FILE_NAME = LOG_FILE_NAME + ".tmp";
 
+  private static final String LIB_ROOT = IoTDBDescriptor.getInstance().getConfig().getTriggerDir();
+
   private final ConcurrentHashMap<String, TriggerExecutor> executors;
 
   private TriggerClassLoader classLoader;
@@ -135,7 +137,7 @@ public class TriggerRegistrationService implements IService {
 
     // 1. construct a new trigger class loader
     try {
-      newClassLoader = new TriggerClassLoader();
+      newClassLoader = new TriggerClassLoader(LIB_ROOT);
     } catch (IOException e) {
       throw new TriggerManagementException("Failed to construct a new trigger class loader.", e);
     }
@@ -349,9 +351,10 @@ public class TriggerRegistrationService implements IService {
   @Override
   public void start() throws StartupException {
     try {
-      classLoader = new TriggerClassLoader();
+      makeDirIfNecessary(LIB_ROOT);
+      classLoader = new TriggerClassLoader(LIB_ROOT);
 
-      makeDirIfNecessary();
+      makeDirIfNecessary(LOG_FILE_DIR);
       doRecovery();
       logWriter = new TriggerLogWriter(LOG_FILE_NAME);
     } catch (Exception e) {
@@ -359,8 +362,8 @@ public class TriggerRegistrationService implements IService {
     }
   }
 
-  private void makeDirIfNecessary() throws IOException {
-    File file = SystemFileFactory.INSTANCE.getFile(LOG_FILE_DIR);
+  private static void makeDirIfNecessary(String dir) throws IOException {
+    File file = SystemFileFactory.INSTANCE.getFile(dir);
     if (file.exists() && file.isDirectory()) {
       return;
     }

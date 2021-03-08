@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.engine.trigger.service;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 
 import org.apache.commons.io.FileUtils;
@@ -38,9 +37,9 @@ public class TriggerClassLoader extends URLClassLoader {
 
   private final String libRoot;
 
-  TriggerClassLoader() throws IOException {
+  TriggerClassLoader(String libRoot) throws IOException {
     super(new URL[0]);
-    this.libRoot = IoTDBDescriptor.getInstance().getConfig().getTriggerDir();
+    this.libRoot = libRoot;
     LOGGER.info("Trigger lib root: {}", libRoot);
     addURLs();
   }
