@@ -34,14 +34,9 @@ public class ExperimentSessionWriter {
     session.open(false);
     session.readRecordFromFile();
     session.readMetadataFromFile();
-    // session.deleteStorageGroup("root.test");
+    session.deleteStorageGroup("root.test");
     session.setStorageGroup("root.test");
     createTimeseries();
-    //testDivergentDesign(5);
-    //testMultipleReplicaSA(5);
-//    testMultipleReplicaSAWithChunkSize(5);
-//    testRainbow(1);
-//    testMultipleReplicaGAWithChunkSize(3);
     testConvergence();
     session.close();
     // 1 -> 3

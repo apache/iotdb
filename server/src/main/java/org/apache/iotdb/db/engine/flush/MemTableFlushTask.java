@@ -94,7 +94,7 @@ public class MemTableFlushTask {
     for(String deviceId : memTable.getMemTableMap().keySet()) {
       encodingTaskQueue.put(new StartFlushGroupIOTask(deviceId));
       List<String> measurements = MeasurementOrderOptimizer.getInstance().getMeasurementsOrder(deviceId);
-      logger.info(String.format("Flush {} in order: {}",deviceId, measurements.toString()));
+      // logger.info(String.format("Flush {} in order: {}",deviceId, measurements.toString()));
       int flushCount = 0;
       int totalFlushNum = memTable.getMemTableMap().get(deviceId).keySet().size();
       for(String measurementId : measurements) {
@@ -211,7 +211,7 @@ public class MemTableFlushTask {
           Pair<TVList, MeasurementSchema> encodingMessage = (Pair<TVList, MeasurementSchema>) task;
           IChunkWriter seriesWriter = new ChunkWriterImpl(encodingMessage.right);
           writeOneSeries(encodingMessage.left, seriesWriter, encodingMessage.right.getType());
-          logger.info("encoding " + encodingMessage.right.getMeasurementId());
+          // logger.info("encoding " + encodingMessage.right.getMeasurementId());
           seriesWriter.sealCurrentPage();
           seriesWriter.clearPageWriter();
           try {
