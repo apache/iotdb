@@ -85,6 +85,10 @@ public class ClusterReaderFactory {
     this.metaGroupMember = metaGroupMember;
   }
 
+  public void syncMetaGroup() throws CheckConsistencyException {
+    metaGroupMember.syncLeaderWithConsistencyCheck(false);
+  }
+
   /**
    * Create an IReaderByTimestamp that can read the data of "path" by timestamp in the whole
    * cluster. This will query every group and merge the result from them.
@@ -216,12 +220,6 @@ public class ClusterReaderFactory {
       QueryContext context,
       boolean ascending)
       throws StorageEngineException, EmptyIntervalException {
-    // make sure the partition table is new
-    try {
-      metaGroupMember.syncLeaderWithConsistencyCheck(false);
-    } catch (CheckConsistencyException e) {
-      throw new StorageEngineException(e);
-    }
     // find the groups that should be queried using the timeFilter
     List<PartitionGroup> partitionGroups = metaGroupMember.routeFilter(timeFilter, path);
     logger.debug(
