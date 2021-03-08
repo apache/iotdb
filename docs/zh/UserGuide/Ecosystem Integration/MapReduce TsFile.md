@@ -200,3 +200,4 @@ public static class TSReducer extends Reducer<Text, MapWritable, NullWritable, H
 }
 ```
 > 注意: 完整的代码示例可以在如下链接中找到：https://github.com/apache/iotdb/blob/master/example/hadoop/src/main/java/org/apache/iotdb/hadoop/tsfile/TSMRWriteExample.java
+
