@@ -114,6 +114,16 @@ public class TriggerExecutor {
     }
   }
 
+  public void onConfig() throws TriggerExecutionException {
+    Thread.currentThread().setContextClassLoader(triggerClassLoader);
+
+    try {
+      committedTrigger.onConfig(attributes);
+    } catch (Exception e) {
+      onTriggerExecutionError("onConfig(TriggerAttributes)", e);
+    }
+  }
+
   public void onStart() throws TriggerExecutionException {
     // The execution order of statement here cannot be swapped!
     invokeOnStart();
@@ -124,9 +134,9 @@ public class TriggerExecutor {
     Thread.currentThread().setContextClassLoader(triggerClassLoader);
 
     try {
-      committedTrigger.onStart(attributes);
+      committedTrigger.onStart();
     } catch (Exception e) {
-      onTriggerExecutionError("onStart(TriggerAttributes)", e);
+      onTriggerExecutionError("onStart()", e);
     }
   }
 

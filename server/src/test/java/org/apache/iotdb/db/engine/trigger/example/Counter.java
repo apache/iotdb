@@ -28,24 +28,25 @@ import java.util.Map;
 
 public class Counter implements Trigger {
 
-  public static int BASE = 1377;
+  public static final int BASE = 1377;
 
   private int counter = BASE;
   private boolean isStopped = true;
   private int migrationTimes = 0;
 
   @Override
-  public void onStart(TriggerAttributes attributes) {
-    counter = attributes.getIntOrDefault("base", BASE);
-    isStopped = false;
+  public void onConfig(TriggerAttributes attributes) {
     migrationTimes = 0;
   }
 
   @Override
+  public void onStart() {
+    isStopped = false;
+  }
+
+  @Override
   public void onStop() {
-    counter = BASE;
     isStopped = true;
-    migrationTimes = 0;
   }
 
   @Override

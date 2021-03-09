@@ -27,7 +27,10 @@ import java.util.Map;
 public interface Trigger {
 
   @SuppressWarnings("squid:S112")
-  default void onStart(TriggerAttributes attributes) throws Exception {}
+  default void onConfig(TriggerAttributes attributes) throws Exception {}
+
+  @SuppressWarnings("squid:S112")
+  default void onStart() throws Exception {}
 
   @SuppressWarnings("squid:S112")
   default void onStop() throws Exception {}

@@ -29,24 +29,25 @@ import java.util.Map;
 
 public class Accumulator implements Trigger {
 
-  public static int BASE = 7713;
+  public static final int BASE = 7713;
 
   private double accumulator = BASE;
   private boolean isStopped = true;
   private int migrationTimes = 0;
 
   @Override
-  public void onStart(TriggerAttributes attributes) {
-    accumulator = attributes.getDoubleOrDefault("base", BASE);
-    isStopped = false;
+  public void onConfig(TriggerAttributes attributes) {
     migrationTimes = 0;
   }
 
   @Override
+  public void onStart() {
+    isStopped = false;
+  }
+
+  @Override
   public void onStop() {
-    accumulator = BASE;
     isStopped = true;
-    migrationTimes = 0;
   }
 
   @Override

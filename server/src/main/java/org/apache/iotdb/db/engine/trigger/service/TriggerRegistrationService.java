@@ -71,6 +71,7 @@ public class TriggerRegistrationService implements IService {
   private static final Logger LOGGER = LoggerFactory.getLogger(TriggerRegistrationService.class);
   private static final String LOGGER_MESSAGE_FAILED_TO_STOP =
       "Failed to stop the executor of trigger {}({})";
+  private static final String LOGGER_MESSAGE_TRIGGER_NOT_EXISTED = "Trigger %s does not exist.";
 
   private static final String LOG_FILE_DIR =
       IoTDBDescriptor.getInstance().getConfig().getSystemDir()
@@ -182,6 +183,7 @@ public class TriggerRegistrationService implements IService {
       throws TriggerManagementException, TriggerExecutionException {
     TriggerRegistrationInformation information = new TriggerRegistrationInformation(plan);
     TriggerExecutor executor = new TriggerExecutor(information, measurementMNode, classLoader);
+    executor.onConfig();
     executor.onStart();
 
     executors.put(plan.getTriggerName(), executor);
@@ -220,7 +222,7 @@ public class TriggerRegistrationService implements IService {
 
     if (executor == null) {
       throw new TriggerManagementException(
-          String.format("Trigger %s does not exist.", plan.getTriggerName()));
+          String.format(LOGGER_MESSAGE_TRIGGER_NOT_EXISTED, plan.getTriggerName()));
     }
 
     try {
@@ -270,7 +272,7 @@ public class TriggerRegistrationService implements IService {
 
     if (executor == null) {
       throw new TriggerManagementException(
-          String.format("Trigger %s does not exist.", plan.getTriggerName()));
+          String.format(LOGGER_MESSAGE_TRIGGER_NOT_EXISTED, plan.getTriggerName()));
     }
 
     if (!executor.getRegistrationInformation().isStopped()) {
@@ -295,7 +297,7 @@ public class TriggerRegistrationService implements IService {
 
     if (executor == null) {
       throw new TriggerManagementException(
-          String.format("Trigger %s does not exist.", plan.getTriggerName()));
+          String.format(LOGGER_MESSAGE_TRIGGER_NOT_EXISTED, plan.getTriggerName()));
     }
 
     if (executor.getRegistrationInformation().isStopped()) {
@@ -499,7 +501,7 @@ public class TriggerRegistrationService implements IService {
     TriggerExecutor executor = executors.get(triggerName);
     if (executor == null) {
       throw new TriggerManagementException(
-          String.format("Trigger %s is not registered.", triggerName));
+          String.format(LOGGER_MESSAGE_TRIGGER_NOT_EXISTED, triggerName));
     }
     return executor.getTrigger();
   }
@@ -510,7 +512,7 @@ public class TriggerRegistrationService implements IService {
     TriggerExecutor executor = executors.get(triggerName);
     if (executor == null) {
       throw new TriggerManagementException(
-          String.format("Trigger %s is not registered.", triggerName));
+          String.format(LOGGER_MESSAGE_TRIGGER_NOT_EXISTED, triggerName));
     }
     return executor.getRegistrationInformation();
   }
