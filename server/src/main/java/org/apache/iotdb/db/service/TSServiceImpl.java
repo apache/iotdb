@@ -1945,24 +1945,25 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public ConvergenceTestResult convergenceTest(String deviceID) throws TException {
-//    MultiReplicaOrderOptimizer optimizer = new MultiReplicaOrderOptimizer(deviceID);
-//    Pair<List<Double>, List<Long>> convergenceResultOfOurMethod = optimizer.optimizeBySAWithChunkSizeAdjustmentAndCostRecord();
+    MultiReplicaOrderOptimizer optimizer = new MultiReplicaOrderOptimizer(deviceID);
+    Pair<List<Double>, List<Long>> convergenceResultOfOurMethod = optimizer.optimizeBySAWithChunkSizeAdjustmentSeparately();
     DivergentDesign divergentDesign = new DivergentDesign(deviceID);
 //    Pair<List<Double>, List<Long>> convergenceResultOfOriDivergentDesign = divergentDesign.optimizeWithCostRecord();
-    Pair<List<Double>, List<Long>> convergenceResultOfNewDivergentDesign = divergentDesign.optimizeWithChunkSizeAndCostRecord();
+//    Pair<List<Double>, List<Long>> convergenceResultOfNewDivergentDesign = divergentDesign.optimizeWithChunkSizeAndCostRecord();
     ConvergenceTestResult testResult = new ConvergenceTestResult();
     testResult.method = new ArrayList<>();
 //    testResult.method.add("Our Method");
 //    testResult.method.add("Ori DivergentDesign");
-    testResult.method.add("New DivergentDesign");
+//    testResult.method.add("New DivergentDesign");
+    testResult.method.add("Out separate method(Permutation first)");
     testResult.lost = new ArrayList<>();
-//    testResult.lost.add(convergenceResultOfOurMethod.left);
+    testResult.lost.add(convergenceResultOfOurMethod.left);
 //    testResult.lost.add(convergenceResultOfOriDivergentDesign.left);
-    testResult.lost.add(convergenceResultOfNewDivergentDesign.left);
+//    testResult.lost.add(convergenceResultOfNewDivergentDesign.left);
     testResult.time = new ArrayList<>();
-//    testResult.time.add(convergenceResultOfOurMethod.right);
+    testResult.time.add(convergenceResultOfOurMethod.right);
 //    testResult.time.add(convergenceResultOfOriDivergentDesign.right);
-    testResult.time.add(convergenceResultOfNewDivergentDesign.right);
+//    testResult.time.add(convergenceResultOfNewDivergentDesign.right);
     return testResult;
   }
 
