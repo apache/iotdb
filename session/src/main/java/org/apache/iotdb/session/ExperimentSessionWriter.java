@@ -18,18 +18,19 @@ import java.util.List;
 import java.util.Random;
 
 public class ExperimentSessionWriter {
-  private static final Session session = new Session("192.168.130.38", 6667, "root", "root");
+  private static final Session session = new Session("127.0.0.1", 6667, "root", "root");
   //private static final Session session = new Session("127.0.0.1", 6667, "root", "root");
   private static final int TIMESERIES_NUM = 400;
   private static int DATA_NUM = 10000;
-  private static final File COST_LOG_FILE = new File(".\\convergence_result.txt");
-  private static final File CHUNK_SIZE_OPT_LOG_FILE = new File("E:\\Thing\\Workspace\\IoTDB\\res\\ChunkSizeOpt.txt");
+//  private static final File COST_LOG_FILE = new File(".\\convergence_result.txt");
+//  private static final File CHUNK_SIZE_OPT_LOG_FILE = new File("E:\\Thing\\Workspace\\IoTDB\\res\\ChunkSizeOpt.txt");
+  private static final File REPLICA_DEAD_FILE = new File(".\\replica_dead.txt");
   private static OutputStream COST_LOG_STREAM;
   public static void main(String[] args) throws Exception{
-    if (!COST_LOG_FILE.exists()) {
-      COST_LOG_FILE.createNewFile();
-    }
-    COST_LOG_STREAM = new FileOutputStream(COST_LOG_FILE);
+//    if (!COST_LOG_FILE.exists()) {
+//      COST_LOG_FILE.createNewFile();
+//    }
+//    COST_LOG_STREAM = new FileOutputStream(COST_LOG_FILE);
 
     session.open(false);
     session.readRecordFromFile();
@@ -141,10 +142,10 @@ public class ExperimentSessionWriter {
     long endTime = 3400l;
     try {
       ChunkSizeOptimizationResult result = session.runOptimizeChunkSize(measurements, ops, startTime, endTime, measurementOrders);
-      if (!CHUNK_SIZE_OPT_LOG_FILE.exists()) {
-        CHUNK_SIZE_OPT_LOG_FILE.createNewFile();
-      }
-      OutputStream os = new FileOutputStream(CHUNK_SIZE_OPT_LOG_FILE);
+//      if (!CHUNK_SIZE_OPT_LOG_FILE.exists()) {
+//        CHUNK_SIZE_OPT_LOG_FILE.createNewFile();
+//      }
+//      OutputStream os = new FileOutputStream(CHUNK_SIZE_OPT_LOG_FILE);
       StringBuilder builder = new StringBuilder();
       for(int i = 0; i < result.chunkSize.size(); ++i) {
         builder.append(result.chunkSize.get(i));
@@ -152,7 +153,7 @@ public class ExperimentSessionWriter {
         builder.append(result.cost.get(i));
         builder.append('\n');
       }
-      os.write(builder.toString().getBytes());
+//      os.write(builder.toString().getBytes());
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -236,18 +237,44 @@ public class ExperimentSessionWriter {
     try {
       long startTime = System.currentTimeMillis();
       ConvergenceTestResult testResult = session.runConvergenceTest("root.test.device");
-      StringBuilder sb = new StringBuilder();
-      for(int i = 0; i < testResult.method.size(); ++i) {
-        sb.append(testResult.method.get(i) + "\n");
-        for(int j = 0; j < testResult.time.get(i).size(); ++j) {
-          sb.append(String.format("%s %.2f\n", String.valueOf(testResult.time.get(i).get(j)), testResult.lost.get(i).get(j)));
-        }
-        sb.append("\n");
-      }
-      COST_LOG_STREAM.write(sb.toString().getBytes(StandardCharsets.UTF_8));
-      COST_LOG_STREAM.close();
+//      StringBuilder sb = new StringBuilder();
+//      for(int i = 0; i < testResult.method.size(); ++i) {
+//        sb.append(testResult.method.get(i) + "\n");
+//        for(int j = 0; j < testResult.time.get(i).size(); ++j) {
+//          sb.append(String.format("%s %.2f\n", String.valueOf(testResult.time.get(i).get(j)), testResult.lost.get(i).get(j)));
+//        }
+//        sb.append("\n");
+//      }
+//      COST_LOG_STREAM.write(sb.toString().getBytes(StandardCharsets.UTF_8));
+//      COST_LOG_STREAM.close();
       long lastTime = System.currentTimeMillis() - startTime;
       System.out.println(lastTime / 1000l + " s");
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+
+  static void testReplicaDead() {
+    try {
+      long startTime = System.currentTimeMillis();
+      QueryCost costList = session.testReplicaDisable("root.test.device");
+      if (!REPLICA_DEAD_FILE.exists()) {
+        REPLICA_DEAD_FILE.createNewFile();
+      }
+      OutputStream os = new FileOutputStream(REPLICA_DEAD_FILE);
+      StringBuilder sb = new StringBuilder();
+      sb.append("OriCost\n");
+      for(int i = 0; i < costList.oriCost.size(); ++i) {
+        sb.append(costList.oriCost.get(i));
+        sb.append('\n');
+      }
+      sb.append("deadCost\n");
+      for(int i = 0; i < costList.disableCost.size(); ++i) {
+        sb.append(costList.disableCost.get(i));
+        if (i != costList.disableCost.size() - 1) sb.append('\n');
+      }
+      os.write(sb.toString().getBytes(StandardCharsets.UTF_8));
+      os.close();
     } catch (Exception e) {
       e.printStackTrace();
     }

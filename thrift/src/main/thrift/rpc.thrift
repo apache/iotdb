@@ -307,6 +307,11 @@ struct ChunkSizeOptimizationResult {
     2: required list<double> cost;
 }
 
+struct QueryCost {
+    1: required list<double> oriCost;
+    2: required list<double> disableCost;
+}
+
 struct ConvergenceTestResult {
     1: required list<string> method;
     2: required list<list<double>> lost;
@@ -409,5 +414,7 @@ service TSIService {
   ChunkSizeOptimizationResult testChunkSizeOptimize(1: list<string> measurements, list<string> ops, i64 startTime, i64 endTime, list<string> measurementOrder);
 
   ConvergenceTestResult convergenceTest(1: string deviceID);
+
+  QueryCost testReplicaDead(1:string deviceID);
 
 }
