@@ -107,7 +107,7 @@ public class SyncClientPool {
           logger.warn(
               "Cannot get an available client after {}ms, create a new one",
               WAIT_CLIENT_TIMEOUT_MS);
-          nodeClientNumMap.put(node, nodeClientNum + 1);
+          nodeClientNumMap.computeIfPresent(node, (n, oldValue) -> oldValue + 1);
           return createClient(node, nodeClientNum);
         }
       } catch (InterruptedException e) {
