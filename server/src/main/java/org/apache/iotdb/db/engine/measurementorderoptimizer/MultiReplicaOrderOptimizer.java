@@ -589,7 +589,7 @@ public class MultiReplicaOrderOptimizer {
 		LinkedList<Double> recentCost;
 		List<Long> timeList;
 		boolean initMinMax;
-		final int RECENT_RANGE = 2000;
+		final int RECENT_RANGE = 300;
 		double maxCost;
 		double minCost;
 		CostRecorder() {
