@@ -14,7 +14,7 @@ import java.util.*;
 
 public class MultiReplicaOrderOptimizer {
 	private int replicaNum = 3;
-	private int maxIter = 5000000;
+	private int maxIter = 500000;
 	private float breakPoint = 1e-2f;
 	private static final Logger LOGGER = LoggerFactory.getLogger(MultiReplicaOrderOptimizer.class);
 	private String deviceID;
@@ -624,16 +624,8 @@ public class MultiReplicaOrderOptimizer {
 			}
 			double first = recentCost.pop();
 			recentCost.add(newCost);
-			if (newCost > maxCost) {
-				maxCost = newCost;
-			} else if (first >= maxCost) {
-				updateMax();
-			}
-			if (newCost < minCost) {
-				minCost = newCost;
-			} else if (first <= minCost) {
-				updateMin();
-			}
+			updateMax();
+			updateMin();
 		}
 
 		private void updateMax() {

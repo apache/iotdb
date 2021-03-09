@@ -1995,6 +1995,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
                   CostModel.approximateAggregationQueryCostWithTimeRange(tmpList, replicas[k].getMeasurements(),
                           replicas[k].getAverageChunkSize()));
         }
+        if (oriCost > afterCost) {
+          System.out.println(String.format("Replica %d, sql:%s", i, records.get(j).getSql()));
+        }
         oriCostList.add((double) oriCost);
         afterCostList.add((double) afterCost);
       }
