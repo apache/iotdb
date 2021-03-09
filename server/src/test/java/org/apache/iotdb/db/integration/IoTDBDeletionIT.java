@@ -313,6 +313,31 @@ public class IoTDBDeletionIT {
     }
   }
 
+  @Test
+  public void testDeletionWithNullSeries() throws SQLException {
+    try (Connection connection = DriverManager
+            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
+                    "root");
+         Statement statement = connection.createStatement()) {
+      statement.execute("SET STORAGE GROUP TO root.sg");
+      statement.execute("CREATE TIMESERIES root.sg.d1.s0 WITH DATATYPE=INT32,"
+              + " ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d2.s0 WITH DATATYPE=INT32,"
+              + " ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d3.s0 WITH DATATYPE=INT32,"
+              + " ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d4.s0 WITH DATATYPE=INT32,"
+              + " ENCODING=PLAIN");
+      statement.execute("INSERT INTO root.sg.d2(timestamp,s0) VALUES(100, 32)");
+
+      statement.execute("delete from root.sg.d2 where time <= 300");
+      try (ResultSet resultSet = statement.executeQuery("select * from root.sg.d2")) {
+        // Delete successful
+        assertFalse(resultSet.next());
+      }
+    }
+  }
+
   private static void prepareSeries() {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",

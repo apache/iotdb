@@ -1504,7 +1504,7 @@ public class StorageGroupProcessor {
    * Delete data whose timestamp <= 'timestamp' and belongs to the time series
    * deviceId.measurementId.
    *
-   * @param path the timeseries path of the to be deleted.
+   * @param path the timeseries path to be deleted.
    * @param startTime the startTime of delete range.
    * @param endTime the endTime of delete range.
    */
@@ -1522,18 +1522,6 @@ public class StorageGroupProcessor {
     try {
       Set<PartialPath> devicePaths = IoTDB.metaManager.getDevices(path.getDevicePath());
       for (PartialPath device : devicePaths) {
-        Long lastUpdateTime = null;
-        for (Map<String, Long> latestTimeMap : latestTimeForEachDevice.values()) {
-          Long curTime = latestTimeMap.get(device.getFullPath());
-          if (curTime != null && (lastUpdateTime == null || lastUpdateTime < curTime)) {
-            lastUpdateTime = curTime;
-          }
-        }
-        // There is no tsfile data, the delete operation is invalid
-        if (lastUpdateTime == null) {
-          logger.debug("No device {} in SG {}, deletion invalid", device, storageGroupName);
-          return;
-        }
         // delete Last cache record if necessary
         tryToDeleteLastCache(device, path, startTime, endTime);
       }
