@@ -31,11 +31,11 @@ import java.util.List;
 
 public class RawQueryDataSetWithValueFilter extends QueryDataSet implements UDFInputDataSet {
 
-  private final TimeGenerator timeGenerator;
-  private final List<IReaderByTimestamp> seriesReaderByTimestampList;
-  private final List<Boolean> cached;
+  protected final TimeGenerator timeGenerator;
+  protected final List<IReaderByTimestamp> seriesReaderByTimestampList;
+  protected final List<Boolean> cached;
 
-  private boolean hasCachedRow;
+  protected boolean hasCachedRow;
   private RowRecord cachedRowRecord;
   private Object[] cachedRowInObjects;
 

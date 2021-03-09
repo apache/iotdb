@@ -37,6 +37,12 @@ public interface IReaderByTimestamp {
   Object getValueInTimestamp(long timestamp) throws IOException;
 
   /**
+   * Returns all the corresponding values under the array of timestamp. Returns null if no value
+   * under one timestamp.
+   */
+  Object[] getValueInTimestamps(long[] timestamps) throws IOException;
+
+  /**
    * Returns whether there is no more data in reader.
    *
    * <p>True means no more data. False means you can still get more data

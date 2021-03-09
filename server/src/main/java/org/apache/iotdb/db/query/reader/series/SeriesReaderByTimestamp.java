@@ -77,6 +77,22 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
   }
 
   @Override
+  public Object[] getValueInTimestamps(long[] timestamp) throws IOException {
+    seriesReader.setTimeFilter(timestamp[0]);
+    Object[] results = new Object[timestamp.length];
+    for (int i = 0; i < timestamp.length; i++) {
+      if ((batchData == null || !hasAvailableData(batchData, timestamp[i]))
+          && !hasNext(timestamp[i])) {
+        // there is no more data
+        break;
+      }
+      results[i] = batchData.getValueInTimestamp(timestamp[i]);
+    }
+
+    return results;
+  }
+
+  @Override
   public boolean readerIsEmpty() throws IOException {
     return seriesReader.isEmpty() && isEmpty(batchData);
   }
