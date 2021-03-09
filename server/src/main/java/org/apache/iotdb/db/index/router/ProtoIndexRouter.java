@@ -290,9 +290,9 @@ public class ProtoIndexRouter implements IIndexRouter {
           indexSeriesSet = preSet;
         }
         indexSeriesSet.add(partialPath);
-        if (doSerialize) {
-          serialize(false);
-        }
+      }
+      if (doSerialize) {
+        serialize(false);
       }
     } finally {
       lock.writeLock().unlock();
