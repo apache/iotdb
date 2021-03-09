@@ -256,10 +256,10 @@ public class MultiReplicaOrderOptimizer {
 		List<Long> timeList = new ArrayList<>();
 		long startTime = System.currentTimeMillis();
 		boolean adjustChunkSize = false;
-		for (; k < maxIter && System.currentTimeMillis() - optimizeStartTime < 60l * 60l * 1000l; ++k) {
+		for (; k < maxIter && System.currentTimeMillis() - optimizeStartTime < 20l * 60l * 1000l; ++k) {
 			temperature = temperature * COOLING_RATE;
 			int selectedReplica = r.nextInt(replicaNum);
-			if (k < maxIter / 2 && System.currentTimeMillis() - optimizeStartTime < 30l * 60l * 1000l) {
+			if (k < maxIter / 2 && System.currentTimeMillis() - optimizeStartTime > 10l * 60l * 1000l) {
 				// Swap chunk order
 				if (k % 500 == 0) {
 					LOGGER.info("Adjusting column order");
