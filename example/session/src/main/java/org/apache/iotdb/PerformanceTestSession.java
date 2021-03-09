@@ -20,7 +20,7 @@ public class PerformanceTestSession {
 			session.deleteStorageGroup("root.test");
 		} catch (Exception e) {
 			e.printStackTrace();
-			
+
 		}
 		session.setStorageGroup("root.test");
 		createTimeseries();
