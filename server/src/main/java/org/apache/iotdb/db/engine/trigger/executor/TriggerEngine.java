@@ -25,13 +25,13 @@ import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.TriggerManagementException;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
 import java.util.List;
 
 public class TriggerEngine {
@@ -54,19 +54,17 @@ public class TriggerEngine {
     }
   }
 
-  public static void fire(InsertRowsOfOneDevicePlan insertRowsOfOneDevicePlan)
+  public static void fire(InsertTabletPlan insertTabletPlan, int firePosition)
       throws TriggerExecutionException {
-    for (InsertRowPlan insertRowPlan : insertRowsOfOneDevicePlan.getRowPlans()) {
-      fire(insertRowPlan);
-    }
-  }
-
-  public static void fire(InsertTabletPlan insertTabletPlan) throws TriggerExecutionException {
     MeasurementMNode[] mNodes = insertTabletPlan.getMeasurementMNodes();
     int size = mNodes.length;
 
     long[] timestamps = insertTabletPlan.getTimes();
     Object[] columns = insertTabletPlan.getColumns();
+    if (firePosition != 0) {
+      timestamps = Arrays.copyOfRange(timestamps, firePosition, timestamps.length);
+      columns = Arrays.copyOfRange(columns, firePosition, columns.length);
+    }
 
     for (int i = 0; i < size; ++i) {
       TriggerExecutor executor = mNodes[i].getTriggerExecutor();
