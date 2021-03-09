@@ -106,7 +106,7 @@ public class MemTableFlushTask {
         }
         flushCount++;
         // print log to show the order of measurements
-        // logger.info(String.format("Flush %s.%s", deviceId, measurementId));
+        logger.info(String.format("Flush %s.%s", deviceId, measurementId));
         long startTime = System.currentTimeMillis();
         IWritableMemChunk series = memTable.getMemTableMap().get(deviceId).get(measurementId);
         MeasurementSchema desc = series.getSchema();
