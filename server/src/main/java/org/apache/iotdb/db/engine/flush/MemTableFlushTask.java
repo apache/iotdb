@@ -19,7 +19,10 @@
 package org.apache.iotdb.db.engine.flush;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -88,9 +91,22 @@ public class MemTableFlushTask {
     long start = System.currentTimeMillis();
     long sortTime = 0;
 
-    for (String deviceId : memTable.getMemTableMap().keySet()) {
+    for(String deviceId : memTable.getMemTableMap().keySet()) {
       encodingTaskQueue.put(new StartFlushGroupIOTask(deviceId));
-      for (String measurementId : memTable.getMemTableMap().get(deviceId).keySet()) {
+      List<String> measurements = MeasurementOrderOptimizer.getInstance().getMeasurementsOrder(deviceId);
+      // logger.info(String.format("Flush {} in order: {}",deviceId, measurements.toString()));
+      int flushCount = 0;
+      int totalFlushNum = memTable.getMemTableMap().get(deviceId).keySet().size();
+      for(String measurementId : measurements) {
+        if (flushCount >= totalFlushNum) {
+          break;
+        }
+        if (!memTable.getMemTableMap().get(deviceId).containsKey(measurementId)) {
+          continue;
+        }
+        flushCount++;
+        // print log to show the order of measurements
+        logger.info(String.format("Flush %s.%s", deviceId, measurementId));
         long startTime = System.currentTimeMillis();
         IWritableMemChunk series = memTable.getMemTableMap().get(deviceId).get(measurementId);
         MeasurementSchema desc = series.getSchema();
