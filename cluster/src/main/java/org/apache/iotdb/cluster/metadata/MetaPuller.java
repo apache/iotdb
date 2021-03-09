@@ -30,7 +30,6 @@ import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -226,12 +225,11 @@ public class MetaPuller {
               .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       schemas = SyncClientAdaptor.pullMeasurementSchema(client, request);
     } else {
-      SyncDataClient syncDataClient = null;
-      try {
-        syncDataClient =
-            metaGroupMember
-                .getClientProvider()
-                .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+      try (SyncDataClient syncDataClient =
+          metaGroupMember
+              .getClientProvider()
+              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
+
         PullSchemaResp pullSchemaResp = syncDataClient.pullTimeSeriesSchema(request);
         ByteBuffer buffer = pullSchemaResp.schemaBytes;
         int size = buffer.getInt();
@@ -239,8 +237,6 @@ public class MetaPuller {
         for (int i = 0; i < size; i++) {
           schemas.add(MeasurementSchema.deserializeFrom(buffer));
         }
-      } finally {
-        ClientUtils.putBackSyncClient(syncDataClient);
       }
     }
 
