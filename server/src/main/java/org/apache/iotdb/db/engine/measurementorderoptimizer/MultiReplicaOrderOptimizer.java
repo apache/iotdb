@@ -23,7 +23,7 @@ public class MultiReplicaOrderOptimizer {
 	private List<QueryRecord> records;
 	private List<Long> chunkSize;
 	private final float SA_INIT_TEMPERATURE = 100.0f;
-	private final float COOLING_RATE = 0.99997f;
+	private final float COOLING_RATE = 0.999f;
 	private List<Double> costList = new LinkedList<>();
 	private static long CHUNK_SIZE_STEP_NUM = 70000l;
 	private final float CHUNK_SIZE_LOWER_BOUND = 0.8f;
@@ -255,11 +255,15 @@ public class MultiReplicaOrderOptimizer {
 		List<Double> costList = new ArrayList<>();
 		List<Long> timeList = new ArrayList<>();
 		long startTime = System.currentTimeMillis();
+		boolean adjustChunkSize = false;
 		for (; k < maxIter && System.currentTimeMillis() - optimizeStartTime < 60l * 60l * 1000l; ++k) {
 			temperature = temperature * COOLING_RATE;
 			int selectedReplica = r.nextInt(replicaNum);
 			if (k < maxIter / 2 && System.currentTimeMillis() - optimizeStartTime < 30l * 60l * 1000l) {
 				// Swap chunk order
+				if (k % 500 == 0) {
+					LOGGER.info("Adjusting column order");
+				}
 				int swapLeft = r.nextInt(measurementOrder.size());
 				int swapRight = r.nextInt(measurementOrder.size());
 				while (swapLeft == swapRight) {
@@ -281,6 +285,13 @@ public class MultiReplicaOrderOptimizer {
 				}
 			} else {
 				// Change chunk size
+				if (!adjustChunkSize) {
+					adjustChunkSize = true;
+					temperature = SA_INIT_TEMPERATURE;
+				}
+				if (k % 500 == 0) {
+					LOGGER.info("Adjusting chunk size");
+				}
 				long newChunkSize = Math.abs(r.nextLong());
 				newChunkSize = newChunkSize % (chunkUpperBound - chunkLowerBound) + chunkLowerBound;
 				long curChunkSize = replicas[selectedReplica].getAverageChunkSize();

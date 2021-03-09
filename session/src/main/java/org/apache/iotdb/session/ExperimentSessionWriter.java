@@ -34,7 +34,11 @@ public class ExperimentSessionWriter {
     session.open(false);
     session.readRecordFromFile();
     session.readMetadataFromFile();
-    session.deleteStorageGroup("root.test");
+    try {
+      session.deleteStorageGroup("root.test");
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
     session.setStorageGroup("root.test");
     createTimeseries();
     testConvergence();
