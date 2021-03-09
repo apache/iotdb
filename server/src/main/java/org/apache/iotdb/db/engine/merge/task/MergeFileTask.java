@@ -192,8 +192,8 @@ class MergeFileTask {
             return;
           }
         }
-        updateStartTimeAndEndTime(seqFile, newFileReader);
       }
+      updateStartTimeAndEndTime(seqFile, (RestorableTsFileIOWriter) oldFileWriter);
       oldFileWriter.endFile();
 
       updatePlanIndexes(seqFile);
@@ -208,23 +208,23 @@ class MergeFileTask {
     }
   }
 
-  private void updateStartTimeAndEndTime(TsFileResource seqFile, TsFileSequenceReader fileReader)
-      throws IOException {
+  private void updateStartTimeAndEndTime(
+      TsFileResource seqFile, RestorableTsFileIOWriter fileWriter) {
     // TODO change to get one timeseries block each time
-    List<String> devices = fileReader.getAllDevices();
-    for (String device : devices) {
-      Map<String, List<ChunkMetadata>> chunkMetadataListMap =
-          fileReader.readChunkMetadataInDevice(device);
+    fileWriter.makeMetadataVisible();
+    Map<String, List<ChunkMetadata>> deviceChunkMetadataListMap =
+        fileWriter.getDeviceChunkMetadataMap();
+    for (Entry<String, List<ChunkMetadata>> deviceChunkMetadataListEntry :
+        deviceChunkMetadataListMap.entrySet()) {
+      String device = deviceChunkMetadataListEntry.getKey();
       long minStartTime = Long.MAX_VALUE;
       long maxEndTime = Long.MIN_VALUE;
-      for (List<ChunkMetadata> chunkMetadataList : chunkMetadataListMap.values()) {
-        for (ChunkMetadata chunkMetadata : chunkMetadataList) {
-          if (chunkMetadata.getStartTime() < minStartTime) {
-            minStartTime = chunkMetadata.getStartTime();
-          }
-          if (chunkMetadata.getEndTime() > maxEndTime) {
-            maxEndTime = chunkMetadata.getEndTime();
-          }
+      for (ChunkMetadata chunkMetadata : deviceChunkMetadataListEntry.getValue()) {
+        if (chunkMetadata.getStartTime() < minStartTime) {
+          minStartTime = chunkMetadata.getStartTime();
+        }
+        if (chunkMetadata.getEndTime() > maxEndTime) {
+          maxEndTime = chunkMetadata.getEndTime();
         }
       }
       seqFile.putStartTime(device, minStartTime);
@@ -325,8 +325,8 @@ class MergeFileTask {
         fileWriter.endChunkGroup();
       }
     }
+    updateStartTimeAndEndTime(seqFile, fileWriter);
     resource.removeFileReader(seqFile);
-    updateStartTimeAndEndTime(seqFile, resource.getFileReader(seqFile));
     fileWriter.endFile();
 
     updatePlanIndexes(seqFile);
