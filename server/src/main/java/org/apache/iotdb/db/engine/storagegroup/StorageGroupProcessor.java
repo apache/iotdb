@@ -341,13 +341,13 @@ public class StorageGroupProcessor {
         long partitionNum = resource.getTimePartition();
         partitionDirectFileVersions.computeIfAbsent(partitionNum, p -> new HashSet<>())
             .addAll(resource.getHistoricalVersions());
-        updatePartitionFileVersion(partitionNum, Collections.max(resource.getHistoricalVersions()));
+        updatePartitionFileVersion(partitionNum, resource.getMaxVersion());
       }
       for (TsFileResource resource : tsFileManagement.getTsFileList(false)) {
         long partitionNum = resource.getTimePartition();
         partitionDirectFileVersions.computeIfAbsent(partitionNum, p -> new HashSet<>())
             .addAll(resource.getHistoricalVersions());
-        updatePartitionFileVersion(partitionNum, Collections.max(resource.getHistoricalVersions()));
+        updatePartitionFileVersion(partitionNum, resource.getMaxVersion());
       }
       updateLatestFlushedTime();
     } catch (IOException | MetadataException e) {
@@ -1960,7 +1960,7 @@ public class StorageGroupProcessor {
       partitionDirectFileVersions.computeIfAbsent(partitionNum, p -> new HashSet<>())
           .addAll(newTsFileResource.getHistoricalVersions());
       updatePartitionFileVersion(partitionNum,
-          Collections.max(newTsFileResource.getHistoricalVersions()));
+          newTsFileResource.getMaxVersion());
     } catch (DiskSpaceInsufficientException e) {
       logger.error(
           "Failed to append the tsfile {} to storage group processor {} because the disk space is insufficient.",
@@ -2303,7 +2303,7 @@ public class StorageGroupProcessor {
         p -> new HashSet<>()).addAll(tsFileResource.getHistoricalVersions());
     if (!tsFileResource.getHistoricalVersions().isEmpty()) {
       updatePartitionFileVersion(filePartitionId,
-          Collections.max(tsFileResource.getHistoricalVersions()));
+          tsFileResource.getMaxVersion());
     }
     return true;
   }
