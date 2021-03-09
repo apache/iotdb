@@ -1983,7 +1983,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       Replica replica = replicas[i];
       for(int j = 0; j < records.size(); ++j) {
         List<QueryRecord> tmpList = new ArrayList<>();
-        tmpList.add(records.get(i));
+        tmpList.add(records.get(j));
         float oriCost = CostModel.approximateAggregationQueryCostWithTimeRange(tmpList,
                 replica.getMeasurements(), replica.getAverageChunkSize());
         float afterCost = Float.MAX_VALUE;
