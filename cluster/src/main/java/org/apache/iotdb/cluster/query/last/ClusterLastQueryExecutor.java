@@ -30,7 +30,6 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.cluster.utils.ClusterQueryUtils;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -258,12 +257,11 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
     }
 
     private ByteBuffer lastSync(Node node, QueryContext context) throws TException {
-      SyncDataClient syncDataClient = null;
-      try {
-        syncDataClient =
-            metaGroupMember
-                .getClientProvider()
-                .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+      try (SyncDataClient syncDataClient =
+          metaGroupMember
+              .getClientProvider()
+              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
+
         return syncDataClient.last(
             new LastQueryRequest(
                 PartialPath.toStringList(seriesPaths),
@@ -272,8 +270,6 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
                 queryPlan.getDeviceToMeasurements(),
                 group.getHeader(),
                 syncDataClient.getNode()));
-      } finally {
-        ClientUtils.putBackSyncClient(syncDataClient);
       }
     }
   }

@@ -31,7 +31,6 @@ import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -315,14 +314,10 @@ public class ClientServer extends TSServiceImpl {
                       queriedNode, RaftServer.getReadOperationTimeoutMS());
               client.endQuery(header, coordinator.getThisNode(), queryId, handler);
             } else {
-              SyncDataClient syncDataClient = null;
-              try {
-                syncDataClient =
-                    coordinator.getSyncDataClient(
-                        queriedNode, RaftServer.getReadOperationTimeoutMS());
+              try (SyncDataClient syncDataClient =
+                  coordinator.getSyncDataClient(
+                      queriedNode, RaftServer.getReadOperationTimeoutMS())) {
                 syncDataClient.endQuery(header, coordinator.getThisNode(), queryId);
-              } finally {
-                ClientUtils.putBackSyncClient(syncDataClient);
               }
             }
           } catch (IOException | TException e) {
