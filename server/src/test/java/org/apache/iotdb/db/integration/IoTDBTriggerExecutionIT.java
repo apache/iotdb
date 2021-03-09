@@ -199,8 +199,13 @@ public class IoTDBTriggerExecutionIT {
           "create trigger trigger-3 before insert on root.vehicle.d1.s3 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
 
       Thread.sleep(500);
+
       int[] counters1 = getCounters(3);
       LOGGER.info(Arrays.toString(counters1));
+      for (int i = 0; i < 3; ++i) {
+        assertTrue(Counter.BASE < counters1[i]);
+      }
+
       Thread.sleep(500);
 
       statement.execute(
@@ -212,7 +217,6 @@ public class IoTDBTriggerExecutionIT {
 
       int[] counters2 = getCounters(3);
       LOGGER.info(Arrays.toString(counters2));
-
       for (int i = 0; i < 3; ++i) {
         assertTrue(counters1[i] < counters2[i]);
       }
@@ -247,19 +251,22 @@ public class IoTDBTriggerExecutionIT {
           "create trigger trigger-6 after insert on root.vehicle.d1.s6 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
 
       Thread.sleep(500);
+
       statement.execute("stop trigger trigger-1");
       statement.execute("stop trigger trigger-2");
       statement.execute("stop trigger trigger-3");
+
       int[] counters1 = getCounters(6);
       LOGGER.info(Arrays.toString(counters1));
 
       Thread.sleep(500);
+
       statement.execute("stop trigger trigger-4");
       statement.execute("stop trigger trigger-5");
       statement.execute("stop trigger trigger-6");
+
       int[] counters2 = getCounters(6);
       LOGGER.info(Arrays.toString(counters2));
-
       for (int i = 0; i < 3; ++i) {
         assertEquals(counters1[i], counters2[i]);
       }
@@ -272,9 +279,9 @@ public class IoTDBTriggerExecutionIT {
       statement.execute("start trigger trigger-3");
 
       Thread.sleep(500);
+
       int[] counters3 = getCounters(6);
       LOGGER.info(Arrays.toString(counters3));
-
       for (int i = 0; i < 3; ++i) {
         assertTrue(counters2[i] < counters3[i]);
       }
@@ -287,9 +294,9 @@ public class IoTDBTriggerExecutionIT {
       statement.execute("start trigger trigger-6");
 
       Thread.sleep(500);
+
       int[] counters4 = getCounters(6);
       LOGGER.info(Arrays.toString(counters4));
-
       for (int i = 0; i < 6; ++i) {
         assertTrue(counters3[i] < counters4[i]);
       }
@@ -305,7 +312,6 @@ public class IoTDBTriggerExecutionIT {
       int[] counters5 = getCounters(6);
       Thread.sleep(500);
       int[] counters6 = getCounters(6);
-
       assertEquals(Arrays.toString(counters5), Arrays.toString(counters6));
     } catch (SQLException | TriggerManagementException e) {
       fail(e.getMessage());
