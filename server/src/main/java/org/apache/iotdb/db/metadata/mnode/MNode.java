@@ -50,6 +50,12 @@ public class MNode implements Serializable {
   /** from root to this node, only be set when used once for InternalMNode */
   protected String fullPath;
 
+  /** whether be loaded from file */
+  protected boolean isLoaded;
+
+  /** offset in metafile */
+  protected long position;
+
   /**
    * use in Measurement Node so it's protected suppress warnings reason: volatile for double
    * synchronized check
@@ -271,5 +277,21 @@ public class MNode implements Serializable {
 
     this.deleteChild(measurement);
     this.addChild(newChildNode.getName(), newChildNode);
+  }
+
+  public boolean isLoaded() {
+    return isLoaded;
+  }
+
+  public void setLoaded(boolean loaded) {
+    isLoaded = loaded;
+  }
+
+  public long getPosition() {
+    return position;
+  }
+
+  public void setPosition(long position) {
+    this.position = position;
   }
 }
