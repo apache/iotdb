@@ -102,8 +102,13 @@ for /f "tokens=1-3" %%j in ('java -version 2^>^&1') do (
 	@rem echo %%l
 	set BIT_VERSION=%%l
 )
+
+@REM maximum direct memory size
+set MAX_DIRECT_MEMORY_SIZE=%MAX_HEAP_SIZE%
+
 echo Maximum memory allocation pool = %MAX_HEAP_SIZE%, initial memory allocation pool = %HEAP_NEWSIZE%
 set IOTDB_HEAP_OPTS=-Xmx%MAX_HEAP_SIZE% -Xms%HEAP_NEWSIZE% -Xloggc:"%IOTDB_HOME%\gc.log" -XX:+PrintGCDateStamps -XX:+PrintGCDetails
+set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:MaxDirectMemorySize=%MAX_DIRECT_MEMORY_SIZE%
 
 @REM You can put your env variable here
 @REM set JAVA_HOME=%JAVA_HOME%
