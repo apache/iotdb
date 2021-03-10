@@ -38,7 +38,8 @@ public class TriggerEngine {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TriggerEngine.class);
 
-  public static void fire(InsertRowPlan insertRowPlan) throws TriggerExecutionException {
+  public static void fire(TriggerEvent event, InsertRowPlan insertRowPlan)
+      throws TriggerExecutionException {
     MeasurementMNode[] mNodes = insertRowPlan.getMeasurementMNodes();
     int size = mNodes.length;
 
@@ -50,11 +51,11 @@ public class TriggerEngine {
       if (executor == null) {
         continue;
       }
-      executor.fireIfActivated(timestamp, values[i]);
+      executor.fireIfActivated(event, timestamp, values[i]);
     }
   }
 
-  public static void fire(InsertTabletPlan insertTabletPlan, int firePosition)
+  public static void fire(TriggerEvent event, InsertTabletPlan insertTabletPlan, int firePosition)
       throws TriggerExecutionException {
     MeasurementMNode[] mNodes = insertTabletPlan.getMeasurementMNodes();
     int size = mNodes.length;
@@ -71,7 +72,7 @@ public class TriggerEngine {
       if (executor == null) {
         continue;
       }
-      executor.fireIfActivated(timestamps, columns[i]);
+      executor.fireIfActivated(event, timestamps, columns[i]);
     }
   }
 

@@ -37,6 +37,7 @@ import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
+import org.apache.iotdb.db.engine.trigger.executor.TriggerEvent;
 import org.apache.iotdb.db.engine.upgrade.UpgradeCheckStatus;
 import org.apache.iotdb.db.engine.upgrade.UpgradeLog;
 import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
@@ -814,11 +815,11 @@ public class StorageGroupProcessor {
       latestTimeForEachDevice.computeIfAbsent(timePartitionId, l -> new HashMap<>());
 
       // fire trigger before insertion
-      TriggerEngine.fire(insertRowPlan);
+      TriggerEngine.fire(TriggerEvent.BEFORE_INSERT, insertRowPlan);
       // insert to sequence or unSequence file
       insertToTsFileProcessor(insertRowPlan, isSequence, timePartitionId);
       // fire trigger after insertion
-      TriggerEngine.fire(insertRowPlan);
+      TriggerEngine.fire(TriggerEvent.AFTER_INSERT, insertRowPlan);
     } finally {
       writeUnlock();
     }
@@ -873,7 +874,7 @@ public class StorageGroupProcessor {
 
       // fire trigger before insertion
       final int firePosition = loc;
-      TriggerEngine.fire(insertTabletPlan, firePosition);
+      TriggerEngine.fire(TriggerEvent.BEFORE_INSERT, insertTabletPlan, firePosition);
 
       // before is first start point
       int before = loc;
@@ -947,7 +948,7 @@ public class StorageGroupProcessor {
       }
 
       // fire trigger after insertion
-      TriggerEngine.fire(insertTabletPlan, firePosition);
+      TriggerEngine.fire(TriggerEvent.AFTER_INSERT, insertTabletPlan, firePosition);
     } finally {
       writeUnlock();
     }
@@ -2909,11 +2910,11 @@ public class StorageGroupProcessor {
         latestTimeForEachDevice.computeIfAbsent(timePartitionId, l -> new HashMap<>());
 
         // fire trigger before insertion
-        TriggerEngine.fire(plan);
+        TriggerEngine.fire(TriggerEvent.BEFORE_INSERT, plan);
         // insert to sequence or unSequence file
         insertToTsFileProcessor(plan, isSequence, timePartitionId);
         // fire trigger before insertion
-        TriggerEngine.fire(plan);
+        TriggerEngine.fire(TriggerEvent.AFTER_INSERT, plan);
       }
     } finally {
       writeUnlock();

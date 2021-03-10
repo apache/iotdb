@@ -133,8 +133,9 @@ public class TriggerExecutor {
     }
   }
 
-  public void fireIfActivated(long timestamp, Object value) throws TriggerExecutionException {
-    if (!registrationInformation.isStopped()) {
+  public void fireIfActivated(TriggerEvent event, long timestamp, Object value)
+      throws TriggerExecutionException {
+    if (!registrationInformation.isStopped() && event.equals(registrationInformation.getEvent())) {
       fire(timestamp, value);
     }
   }
@@ -172,8 +173,9 @@ public class TriggerExecutor {
     }
   }
 
-  public void fireIfActivated(long[] timestamps, Object values) throws TriggerExecutionException {
-    if (!registrationInformation.isStopped()) {
+  public void fireIfActivated(TriggerEvent event, long[] timestamps, Object values)
+      throws TriggerExecutionException {
+    if (!registrationInformation.isStopped() && event.equals(registrationInformation.getEvent())) {
       fire(timestamps, values);
     }
   }
