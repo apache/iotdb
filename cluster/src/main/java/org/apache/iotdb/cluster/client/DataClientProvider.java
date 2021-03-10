@@ -30,14 +30,11 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocolFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
 public class DataClientProvider {
 
-  private static final Logger logger = LoggerFactory.getLogger(DataClientProvider.class);
   /**
    * dataClientPool provides reusable thrift clients to connect to the DataGroupMembers of other
    * nodes
@@ -54,11 +51,11 @@ public class DataClientProvider {
     }
   }
 
-  private AsyncClientPool getDataAsyncClientPool() {
+  AsyncClientPool getDataAsyncClientPool() {
     return dataAsyncClientPool;
   }
 
-  private SyncClientPool getDataSyncClientPool() {
+  SyncClientPool getDataSyncClientPool() {
     return dataSyncClientPool;
   }
 

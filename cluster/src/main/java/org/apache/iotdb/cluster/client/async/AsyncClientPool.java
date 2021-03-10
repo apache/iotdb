@@ -24,6 +24,7 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
 import org.apache.iotdb.cluster.utils.ClusterNode;
+import org.apache.iotdb.db.utils.TestOnly;
 
 import org.apache.thrift.async.TAsyncMethodCall;
 import org.slf4j.Logger;
@@ -87,10 +88,15 @@ public class AsyncClientPool {
       if (clientStack.isEmpty()) {
         int nodeClientNum = nodeClientNumMap.getOrDefault(clusterNode, 0);
         if (nodeClientNum >= maxConnectionForEachNode) {
-          client = waitForClient(clientStack, clusterNode, nodeClientNum);
+          client = waitForClient(clientStack, clusterNode);
         } else {
-          nodeClientNumMap.put(clusterNode, nodeClientNum + 1);
           client = asyncClientFactory.getAsyncClient(clusterNode, this);
+          nodeClientNumMap.compute(
+              clusterNode,
+              (n, oldValue) -> {
+                if (oldValue == null) return 1;
+                return oldValue + 1;
+              });
         }
       } else {
         client = clientStack.pop();
@@ -105,14 +111,13 @@ public class AsyncClientPool {
    * synchronize on the pool.
    *
    * @param clientStack
-   * @param node
-   * @param nodeClientNum
+   * @param clusterNode
    * @return
    * @throws IOException
    */
   @SuppressWarnings({"squid:S2273"}) // synchronized outside
-  private AsyncClient waitForClient(
-      Deque<AsyncClient> clientStack, ClusterNode node, int nodeClientNum) throws IOException {
+  private AsyncClient waitForClient(Deque<AsyncClient> clientStack, ClusterNode clusterNode)
+      throws IOException {
     // wait for an available client
     long waitStart = System.currentTimeMillis();
     while (clientStack.isEmpty()) {
@@ -121,16 +126,16 @@ public class AsyncClientPool {
         if (clientStack.isEmpty()
             && System.currentTimeMillis() - waitStart >= WAIT_CLIENT_TIMEOUT_MS) {
           logger.warn(
-              "Cannot get an available client after {}ms, create a new one, factory {} now is {}",
+              "Cannot get an available client after {}ms, create a new one.",
               WAIT_CLIENT_TIMEOUT_MS,
-              asyncClientFactory,
-              nodeClientNum);
-          nodeClientNumMap.put(node, nodeClientNum + 1);
-          return asyncClientFactory.getAsyncClient(node, this);
+              asyncClientFactory);
+          AsyncClient asyncClient = asyncClientFactory.getAsyncClient(clusterNode, this);
+          nodeClientNumMap.computeIfPresent(clusterNode, (n, oldValue) -> oldValue + 1);
+          return asyncClient;
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        logger.warn("Interrupted when waiting for an available client of {}", node);
+        logger.warn("Interrupted when waiting for an available client of {}", clusterNode);
         return null;
       }
     }
@@ -202,5 +207,10 @@ public class AsyncClientPool {
       }
       this.notifyAll();
     }
+  }
+
+  @TestOnly
+  public Map<ClusterNode, Integer> getNodeClientNumMap() {
+    return nodeClientNumMap;
   }
 }

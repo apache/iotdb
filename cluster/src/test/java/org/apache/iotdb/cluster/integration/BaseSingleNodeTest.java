@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.integration;
 
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.server.MetaClusterServer;
+import org.apache.iotdb.cluster.utils.Constants;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.session.Session;
@@ -63,7 +64,9 @@ public abstract class BaseSingleNodeTest {
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(true);
     ClusterDescriptor.getInstance()
         .getConfig()
-        .setSeedNodeUrls(Collections.singletonList("127.0.0.1:9003:40011:55560"));
+        .setSeedNodeUrls(
+            Collections.singletonList(
+                String.format("127.0.0.1:9003:40011:%d", Constants.RPC_PORT)));
     ClusterDescriptor.getInstance().getConfig().setReplicationNum(1);
     ClusterDescriptor.getInstance().getConfig().setEnableAutoCreateSchema(true);
   }
@@ -76,7 +79,7 @@ public abstract class BaseSingleNodeTest {
   }
 
   public Session openSession() throws IoTDBConnectionException {
-    Session session = new Session("127.0.0.1", 55560);
+    Session session = new Session("127.0.0.1", Constants.RPC_PORT);
     session.open();
     return session;
   }

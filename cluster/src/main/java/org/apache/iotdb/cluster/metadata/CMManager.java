@@ -35,7 +35,6 @@ import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -107,6 +106,7 @@ import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.cluster.query.ClusterPlanExecutor.LOG_FAIL_CONNECT;
@@ -206,13 +206,11 @@ public class CMManager extends MManager {
   }
 
   /**
-   * the org.apache.iotdb.db.writelog.recover.logReplayer will call this to get schema after restart
-   * we should retry to get schema util we get the schema
+   * the {@link org.apache.iotdb.db.writelog.recover.LogReplayer#replayLogs(Supplier)} will call
+   * this to get schema after restart we should retry to get schema util we get the schema.
    *
-   * @param deviceId
-   * @param measurements
-   * @return
-   * @throws MetadataException
+   * @param deviceId the device id.
+   * @param measurements the measurements.
    */
   @Override
   public MeasurementMNode[] getMNodes(PartialPath deviceId, String[] measurements)
@@ -721,16 +719,12 @@ public class CMManager extends MManager {
               SyncClientAdaptor.getUnregisteredMeasurements(
                   client, partitionGroup.getHeader(), seriesList);
         } else {
-          SyncDataClient syncDataClient = null;
-          try {
-            syncDataClient =
-                metaGroupMember
-                    .getClientProvider()
-                    .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+          try (SyncDataClient syncDataClient =
+              metaGroupMember
+                  .getClientProvider()
+                  .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
             result =
                 syncDataClient.getUnregisteredTimeseries(partitionGroup.getHeader(), seriesList);
-          } finally {
-            ClientUtils.putBackSyncClient(syncDataClient);
           }
         }
         if (result != null) {
@@ -814,9 +808,13 @@ public class CMManager extends MManager {
   private void pullTimeSeriesSchemas(PartitionGroup partitionGroup, List<String> prefixPaths) {
     if (partitionGroup.contains(metaGroupMember.getThisNode())) {
       // the node is in the target group, synchronize with leader should be enough
-      metaGroupMember
-          .getLocalDataMember(partitionGroup.getHeader(), "Pull timeseries of " + prefixPaths)
-          .syncLeader();
+      try {
+        metaGroupMember
+            .getLocalDataMember(partitionGroup.getHeader(), "Pull timeseries of " + prefixPaths)
+            .syncLeader(null);
+      } catch (CheckConsistencyException e) {
+        logger.warn("Failed to check consistency.", e);
+      }
       return;
     }
 
@@ -905,12 +903,11 @@ public class CMManager extends MManager {
               .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       schemas = SyncClientAdaptor.pullTimeseriesSchema(client, request);
     } else {
-      SyncDataClient syncDataClient = null;
-      try {
-        syncDataClient =
-            metaGroupMember
-                .getClientProvider()
-                .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+      try (SyncDataClient syncDataClient =
+          metaGroupMember
+              .getClientProvider()
+              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
+
         PullSchemaResp pullSchemaResp = syncDataClient.pullTimeSeriesSchema(request);
         ByteBuffer buffer = pullSchemaResp.schemaBytes;
         int size = buffer.getInt();
@@ -918,8 +915,6 @@ public class CMManager extends MManager {
         for (int i = 0; i < size; i++) {
           schemas.add(TimeseriesSchema.deserializeFrom(buffer));
         }
-      } finally {
-        ClientUtils.putBackSyncClient(syncDataClient);
       }
     }
 
@@ -1063,7 +1058,11 @@ public class CMManager extends MManager {
       if (partitionGroup.contains(metaGroupMember.getThisNode())) {
         // this node is a member of the group, perform a local query after synchronizing with the
         // leader
-        metaGroupMember.getLocalDataMember(partitionGroup.getHeader()).syncLeader();
+        try {
+          metaGroupMember.getLocalDataMember(partitionGroup.getHeader()).syncLeader(null);
+        } catch (CheckConsistencyException e) {
+          logger.warn("Failed to check consistency.", e);
+        }
         List<PartialPath> allTimeseriesName = getMatchedPathsLocally(pathUnderSG, withAlias);
         logger.debug(
             "{}: get matched paths of {} locally, result {}",
@@ -1144,15 +1143,12 @@ public class CMManager extends MManager {
               .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       result = SyncClientAdaptor.getAllPaths(client, header, pathsToQuery, withAlias);
     } else {
-      SyncDataClient syncDataClient = null;
-      try {
-        syncDataClient =
-            metaGroupMember
-                .getClientProvider()
-                .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+      try (SyncDataClient syncDataClient =
+          metaGroupMember
+              .getClientProvider()
+              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
+
         result = syncDataClient.getAllPaths(header, pathsToQuery, withAlias);
-      } finally {
-        ClientUtils.putBackSyncClient(syncDataClient);
       }
     }
 
@@ -1199,7 +1195,11 @@ public class CMManager extends MManager {
       if (partitionGroup.contains(metaGroupMember.getThisNode())) {
         // this node is a member of the group, perform a local query after synchronizing with the
         // leader
-        metaGroupMember.getLocalDataMember(partitionGroup.getHeader()).syncLeader();
+        try {
+          metaGroupMember.getLocalDataMember(partitionGroup.getHeader()).syncLeader(null);
+        } catch (CheckConsistencyException e) {
+          logger.warn("Failed to check consistency.", e);
+        }
         Set<PartialPath> allDevices = getDevices(pathUnderSG);
         logger.debug(
             "{}: get matched paths of {} locally, result {}",
@@ -1268,15 +1268,12 @@ public class CMManager extends MManager {
               .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       paths = SyncClientAdaptor.getAllDevices(client, header, pathsToQuery);
     } else {
-      SyncDataClient syncDataClient = null;
-      try {
-        syncDataClient =
-            metaGroupMember
-                .getClientProvider()
-                .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+      try (SyncDataClient syncDataClient =
+          metaGroupMember
+              .getClientProvider()
+              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
+
         paths = syncDataClient.getAllDevices(header, pathsToQuery);
-      } finally {
-        ClientUtils.putBackSyncClient(syncDataClient);
       }
     }
     return paths;
@@ -1716,19 +1713,16 @@ public class CMManager extends MManager {
               .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       resultBinary = SyncClientAdaptor.getAllMeasurementSchema(client, group.getHeader(), plan);
     } else {
-      SyncDataClient syncDataClient = null;
       try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-          DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
-        syncDataClient =
-            metaGroupMember
-                .getClientProvider()
-                .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+          DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+          SyncDataClient syncDataClient =
+              metaGroupMember
+                  .getClientProvider()
+                  .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
         plan.serialize(dataOutputStream);
         resultBinary =
             syncDataClient.getAllMeasurementSchema(
                 group.getHeader(), ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
-      } finally {
-        ClientUtils.putBackSyncClient(syncDataClient);
       }
     }
     return resultBinary;
@@ -1744,20 +1738,17 @@ public class CMManager extends MManager {
               .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       resultBinary = SyncClientAdaptor.getDevices(client, group.getHeader(), plan);
     } else {
-      SyncDataClient syncDataClient = null;
-      try {
-        syncDataClient =
-            metaGroupMember
-                .getClientProvider()
-                .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+      try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+          DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+          SyncDataClient syncDataClient =
+              metaGroupMember
+                  .getClientProvider()
+                  .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
+
         plan.serialize(dataOutputStream);
         resultBinary =
             syncDataClient.getDevices(
                 group.getHeader(), ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
-      } finally {
-        ClientUtils.putBackSyncClient(syncDataClient);
       }
     }
     return resultBinary;
@@ -1795,7 +1786,11 @@ public class CMManager extends MManager {
     try {
       return super.getStorageGroupPath(path);
     } catch (StorageGroupNotSetException e) {
-      metaGroupMember.syncLeader();
+      try {
+        metaGroupMember.syncLeader(null);
+      } catch (CheckConsistencyException ex) {
+        logger.warn("Failed to check consistency.", e);
+      }
       return super.getStorageGroupPath(path);
     }
   }

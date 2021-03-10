@@ -109,11 +109,15 @@ struct AddNodeResponse {
 }
 
 struct Node {
-  1: required string ip
+  // Used for communication between cluster nodes, eg heartbeat、raft logs and snapshots etc.
+  1: required string internalIp
   2: required int metaPort
   3: required int nodeIdentifier
   4: required int dataPort
   5: required int clientPort
+  // Used for communication between client and server, when the cluster is set up for the first time,
+  // the clientIp of other nodes is unknown
+  6: required string clientIp
 }
 
 // leader -> follower
