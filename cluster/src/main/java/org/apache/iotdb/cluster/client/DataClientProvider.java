@@ -51,11 +51,11 @@ public class DataClientProvider {
     }
   }
 
-  private AsyncClientPool getDataAsyncClientPool() {
+  AsyncClientPool getDataAsyncClientPool() {
     return dataAsyncClientPool;
   }
 
-  private SyncClientPool getDataSyncClientPool() {
+  SyncClientPool getDataSyncClientPool() {
     return dataSyncClientPool;
   }
 
