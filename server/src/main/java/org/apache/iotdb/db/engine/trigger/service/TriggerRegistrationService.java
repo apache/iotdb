@@ -69,9 +69,6 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_STATUS_STOPP
 public class TriggerRegistrationService implements IService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TriggerRegistrationService.class);
-  private static final String LOGGER_MESSAGE_FAILED_TO_STOP =
-      "Failed to stop the executor of trigger {}({})";
-  private static final String LOGGER_MESSAGE_TRIGGER_NOT_EXISTED = "Trigger %s does not exist.";
 
   private static final String LOG_FILE_DIR =
       IoTDBDescriptor.getInstance().getConfig().getSystemDir()
@@ -85,11 +82,9 @@ public class TriggerRegistrationService implements IService {
 
   private final ConcurrentHashMap<String, TriggerExecutor> executors;
 
-  private TriggerClassLoader classLoader;
-
   private TriggerLogWriter logWriter;
 
-  public TriggerRegistrationService() {
+  private TriggerRegistrationService() {
     executors = new ConcurrentHashMap<>();
   }
 
@@ -97,7 +92,6 @@ public class TriggerRegistrationService implements IService {
       throws TriggerManagementException, TriggerExecutionException {
     checkIfRegistered(plan);
     MeasurementMNode measurementMNode = tryGetMeasurementMNode(plan);
-    updateClassLoader();
     doRegister(plan, measurementMNode);
     tryAppendRegistrationLog(plan, measurementMNode);
   }
@@ -133,58 +127,14 @@ public class TriggerRegistrationService implements IService {
     }
   }
 
-  private void updateClassLoader() throws TriggerManagementException, TriggerExecutionException {
-    TriggerClassLoader newClassLoader;
-
-    // 1. construct a new trigger class loader
-    try {
-      newClassLoader = new TriggerClassLoader(LIB_ROOT);
-    } catch (IOException e) {
-      throw new TriggerManagementException("Failed to construct a new trigger class loader.", e);
-    }
-
-    // 2. update instances of registered triggers using the new trigger class loader
-    Collection<TriggerExecutor> executorCollection = executors.values();
-    try {
-      for (TriggerExecutor executor : executorCollection) {
-        executor.prepareTriggerUpdate(newClassLoader);
-      }
-    } catch (Exception e) {
-      for (TriggerExecutor executor : executorCollection) {
-        executor.abortTriggerUpdate();
-      }
-      throw new TriggerManagementException("Failed to update trigger instances.", e);
-    }
-
-    TriggerExecutionException firstException = null;
-    for (TriggerExecutor executor : executorCollection) {
-      try {
-        executor.commitTriggerUpdate(newClassLoader);
-      } catch (TriggerExecutionException e) {
-        if (firstException == null) {
-          firstException = e;
-        }
-      }
-    }
-    if (firstException != null) {
-      throw firstException;
-    }
-
-    // 3. close and replace old trigger class loader
-    try {
-      classLoader.close();
-    } catch (IOException e) {
-      LOGGER.warn("Failed to close old trigger classloader.", e);
-    }
-    classLoader = newClassLoader;
-  }
-
   private void doRegister(CreateTriggerPlan plan, MeasurementMNode measurementMNode)
       throws TriggerManagementException, TriggerExecutionException {
     TriggerRegistrationInformation information = new TriggerRegistrationInformation(plan);
-    TriggerExecutor executor = new TriggerExecutor(information, measurementMNode, classLoader);
-    executor.onConfig();
-    executor.onStart();
+    TriggerClassLoader classLoader =
+        TriggerClassLoaderManager.getInstance().register(plan.getClassName());
+    TriggerExecutor executor = new TriggerExecutor(information, classLoader, measurementMNode);
+
+    executor.onCreate();
 
     executors.put(plan.getTriggerName(), executor);
     measurementMNode.setTriggerExecutor(executor);
@@ -198,10 +148,11 @@ public class TriggerRegistrationService implements IService {
       measurementMNode.setTriggerExecutor(null);
       TriggerExecutor executor = executors.remove(plan.getTriggerName());
       try {
-        executor.onStop();
+        executor.onDrop();
       } catch (TriggerExecutionException triggerExecutionException) {
-        LOGGER.warn(LOGGER_MESSAGE_FAILED_TO_STOP, plan.getTriggerName(), plan.getClassName(), e);
+        LOGGER.warn(e.getMessage(), e);
       }
+      TriggerClassLoaderManager.getInstance().deregister(plan.getClassName());
 
       throw new TriggerManagementException(
           String.format(
@@ -211,69 +162,51 @@ public class TriggerRegistrationService implements IService {
   }
 
   public synchronized void deregister(DropTriggerPlan plan) throws TriggerManagementException {
-    TriggerExecutor executor = tryRemoveAndStopExecutor(plan);
-    tryAppendDeregistrationLog(plan, executor);
-    executor.getMeasurementMNode().setTriggerExecutor(null);
+    getTriggerExecutorWithExistenceCheck(plan.getTriggerName());
+    tryAppendDeregistrationLog(plan);
+    doDeregister(plan);
   }
 
-  private TriggerExecutor tryRemoveAndStopExecutor(DropTriggerPlan plan)
+  private TriggerExecutor getTriggerExecutorWithExistenceCheck(String triggerName)
       throws TriggerManagementException {
-    TriggerExecutor executor = executors.remove(plan.getTriggerName());
+    TriggerExecutor executor = executors.get(triggerName);
 
     if (executor == null) {
       throw new TriggerManagementException(
-          String.format(LOGGER_MESSAGE_TRIGGER_NOT_EXISTED, plan.getTriggerName()));
-    }
-
-    try {
-      executor.onStop();
-    } catch (TriggerExecutionException e) {
-      LOGGER.warn(
-          LOGGER_MESSAGE_FAILED_TO_STOP,
-          executor.getRegistrationInformation().getTriggerName(),
-          executor.getRegistrationInformation().getClassName(),
-          e);
+          String.format("Trigger %s does not exist.", triggerName));
     }
 
     return executor;
   }
 
-  private void tryAppendDeregistrationLog(DropTriggerPlan plan, TriggerExecutor executor)
-      throws TriggerManagementException {
+  private void tryAppendDeregistrationLog(DropTriggerPlan plan) throws TriggerManagementException {
     try {
       logWriter.write(plan);
     } catch (IOException e) {
-      try {
-        executor.onStart();
-        executors.put(plan.getTriggerName(), executor);
-      } catch (TriggerExecutionException triggerExecutionException) {
-        executor.getMeasurementMNode().setTriggerExecutor(null);
-
-        throw new TriggerManagementException(
-            String.format(
-                "Trigger %s(%s) is stopped but the operation plan was failed to log, because %s",
-                executor.getRegistrationInformation().getTriggerName(),
-                executor.getRegistrationInformation().getClassName(),
-                e));
-      }
-
       throw new TriggerManagementException(
           String.format(
-              "Failed to stop trigger %s(%s) because the operation plan was failed to log: %s",
-              executor.getRegistrationInformation().getTriggerName(),
-              executor.getRegistrationInformation().getClassName(),
-              e));
+              "Failed to drop trigger %s because the operation plan was failed to log: %s",
+              plan.getTriggerName(), e));
     }
+  }
+
+  private void doDeregister(DropTriggerPlan plan) {
+    TriggerExecutor executor = executors.remove(plan.getTriggerName());
+    executor.getMeasurementMNode().setTriggerExecutor(null);
+
+    try {
+      executor.onDrop();
+    } catch (TriggerExecutionException e) {
+      LOGGER.warn(e.getMessage(), e);
+    }
+
+    TriggerClassLoaderManager.getInstance()
+        .deregister(executor.getRegistrationInformation().getClassName());
   }
 
   public void activate(StartTriggerPlan plan)
       throws TriggerManagementException, TriggerExecutionException {
-    TriggerExecutor executor = executors.get(plan.getTriggerName());
-
-    if (executor == null) {
-      throw new TriggerManagementException(
-          String.format(LOGGER_MESSAGE_TRIGGER_NOT_EXISTED, plan.getTriggerName()));
-    }
+    TriggerExecutor executor = getTriggerExecutorWithExistenceCheck(plan.getTriggerName());
 
     if (!executor.getRegistrationInformation().isStopped()) {
       throw new TriggerManagementException(
@@ -293,12 +226,7 @@ public class TriggerRegistrationService implements IService {
   }
 
   public void inactivate(StopTriggerPlan plan) throws TriggerManagementException {
-    TriggerExecutor executor = executors.get(plan.getTriggerName());
-
-    if (executor == null) {
-      throw new TriggerManagementException(
-          String.format(LOGGER_MESSAGE_TRIGGER_NOT_EXISTED, plan.getTriggerName()));
-    }
+    TriggerExecutor executor = getTriggerExecutorWithExistenceCheck(plan.getTriggerName());
 
     if (executor.getRegistrationInformation().isStopped()) {
       throw new TriggerManagementException(
@@ -318,7 +246,7 @@ public class TriggerRegistrationService implements IService {
       executor.onStop();
     } catch (TriggerExecutionException e) {
       LOGGER.warn(
-          LOGGER_MESSAGE_FAILED_TO_STOP,
+          "Failed to stop the executor of trigger {}({})",
           executor.getRegistrationInformation().getTriggerName(),
           executor.getRegistrationInformation().getClassName(),
           e);
@@ -370,8 +298,6 @@ public class TriggerRegistrationService implements IService {
   public void start() throws StartupException {
     try {
       makeDirIfNecessary(LIB_ROOT);
-      classLoader = new TriggerClassLoader(LIB_ROOT);
-
       makeDirIfNecessary(LOG_FILE_DIR);
       doRecovery();
       logWriter = new TriggerLogWriter(LOG_FILE_NAME);
@@ -498,23 +424,13 @@ public class TriggerRegistrationService implements IService {
 
   @TestOnly
   public Trigger getTriggerInstance(String triggerName) throws TriggerManagementException {
-    TriggerExecutor executor = executors.get(triggerName);
-    if (executor == null) {
-      throw new TriggerManagementException(
-          String.format(LOGGER_MESSAGE_TRIGGER_NOT_EXISTED, triggerName));
-    }
-    return executor.getTrigger();
+    return getTriggerExecutorWithExistenceCheck(triggerName).getTrigger();
   }
 
   @TestOnly
   public TriggerRegistrationInformation getRegistrationInformation(String triggerName)
       throws TriggerManagementException {
-    TriggerExecutor executor = executors.get(triggerName);
-    if (executor == null) {
-      throw new TriggerManagementException(
-          String.format(LOGGER_MESSAGE_TRIGGER_NOT_EXISTED, triggerName));
-    }
-    return executor.getRegistrationInformation();
+    return getTriggerExecutorWithExistenceCheck(triggerName).getRegistrationInformation();
   }
 
   @Override

@@ -23,20 +23,17 @@ import org.apache.iotdb.db.engine.trigger.api.Trigger;
 import org.apache.iotdb.db.engine.trigger.api.TriggerAttributes;
 import org.apache.iotdb.tsfile.utils.Binary;
 
-import java.util.HashMap;
-import java.util.Map;
-
 public class Counter implements Trigger {
 
   public static final int BASE = 1377;
 
-  private int counter = BASE;
+  private int counter = 0;
   private boolean isStopped = true;
-  private int migrationTimes = 0;
 
   @Override
-  public void onConfig(TriggerAttributes attributes) {
-    migrationTimes = 0;
+  public void onCreate(TriggerAttributes attributes) {
+    counter = BASE;
+    isStopped = false;
   }
 
   @Override
@@ -47,22 +44,6 @@ public class Counter implements Trigger {
   @Override
   public void onStop() {
     isStopped = true;
-  }
-
-  @Override
-  public Map<String, Object> migrateToNew() {
-    Map<String, Object> objects = new HashMap<>();
-    objects.put("counter", counter);
-    objects.put("isStopped", isStopped);
-    objects.put("migrationTimes", migrationTimes);
-    return objects;
-  }
-
-  @Override
-  public void migrateFromOld(Map<String, Object> objects) {
-    counter = (int) objects.get("counter");
-    isStopped = (boolean) objects.get("isStopped");
-    migrationTimes = (int) objects.get("migrationTimes") + 1;
   }
 
   @Override
@@ -111,9 +92,5 @@ public class Counter implements Trigger {
 
   public boolean isStopped() {
     return isStopped;
-  }
-
-  public int getMigrationTimes() {
-    return migrationTimes;
   }
 }

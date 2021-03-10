@@ -24,20 +24,17 @@ import org.apache.iotdb.db.engine.trigger.api.TriggerAttributes;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.utils.Binary;
 
-import java.util.HashMap;
-import java.util.Map;
-
 public class Accumulator implements Trigger {
 
   public static final int BASE = 7713;
 
-  private double accumulator = BASE;
+  private double accumulator = 0;
   private boolean isStopped = true;
-  private int migrationTimes = 0;
 
   @Override
-  public void onConfig(TriggerAttributes attributes) {
-    migrationTimes = 0;
+  public void onCreate(TriggerAttributes attributes) {
+    accumulator = BASE;
+    isStopped = false;
   }
 
   @Override
@@ -48,22 +45,6 @@ public class Accumulator implements Trigger {
   @Override
   public void onStop() {
     isStopped = true;
-  }
-
-  @Override
-  public Map<String, Object> migrateToNew() {
-    Map<String, Object> objects = new HashMap<>();
-    objects.put("accumulator", accumulator);
-    objects.put("isStopped", isStopped);
-    objects.put("migrationTimes", migrationTimes);
-    return objects;
-  }
-
-  @Override
-  public void migrateFromOld(Map<String, Object> objects) {
-    accumulator = (double) objects.get("accumulator");
-    isStopped = (boolean) objects.get("isStopped");
-    migrationTimes = (int) objects.get("migrationTimes") + 1;
   }
 
   @Override
@@ -110,9 +91,5 @@ public class Accumulator implements Trigger {
 
   public boolean isStopped() {
     return isStopped;
-  }
-
-  public int getMigrationTimes() {
-    return migrationTimes;
   }
 }

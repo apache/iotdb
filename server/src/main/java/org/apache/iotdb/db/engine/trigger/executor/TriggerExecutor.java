@@ -31,73 +31,36 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.lang.reflect.InvocationTargetException;
-import java.util.Map;
 
 public class TriggerExecutor {
 
   private final TriggerRegistrationInformation registrationInformation;
   private final TriggerAttributes attributes;
 
+  private final TriggerClassLoader classLoader;
+
   private final MeasurementMNode measurementMNode;
   private final TSDataType seriesDataType;
 
-  private TriggerClassLoader triggerClassLoader;
-
-  private Trigger preparedTrigger;
-  private Trigger committedTrigger;
+  private Trigger trigger;
 
   public TriggerExecutor(
       TriggerRegistrationInformation registrationInformation,
-      MeasurementMNode measurementMNode,
-      TriggerClassLoader triggerClassLoader)
+      TriggerClassLoader classLoader,
+      MeasurementMNode measurementMNode)
       throws TriggerManagementException {
     this.registrationInformation = registrationInformation;
     attributes = new TriggerAttributes(registrationInformation.getAttributes());
 
+    this.classLoader = classLoader;
+
     this.measurementMNode = measurementMNode;
     seriesDataType = measurementMNode.getSchema().getType();
 
-    this.triggerClassLoader = triggerClassLoader;
-
-    preparedTrigger = null;
-    committedTrigger = constructTriggerInstance(triggerClassLoader);
+    trigger = constructTriggerInstance();
   }
 
-  public void prepareTriggerUpdate(TriggerClassLoader newClassLoader)
-      throws TriggerManagementException {
-    preparedTrigger = constructTriggerInstance(newClassLoader);
-  }
-
-  public void abortTriggerUpdate() {
-    preparedTrigger = null;
-  }
-
-  /**
-   * The execution of {@link TriggerExecutor#fire(long, Object)} and {@link
-   * TriggerExecutor#fire(long[], Object)} should be blocked when the trigger class is updating.
-   */
-  public synchronized void commitTriggerUpdate(TriggerClassLoader newClassLoader)
-      throws TriggerExecutionException {
-    try {
-      Thread.currentThread().setContextClassLoader(triggerClassLoader);
-      Map<String, Object> migratedObjects = committedTrigger.migrateToNew();
-
-      Thread.currentThread().setContextClassLoader(newClassLoader);
-      preparedTrigger.migrateFromOld(migratedObjects);
-    } catch (Exception e) {
-      registrationInformation.markAsStopped();
-      throw new TriggerExecutionException(
-          "Failed to migrate data from the old trigger instance to the new.", e);
-    } finally {
-      triggerClassLoader = newClassLoader;
-
-      committedTrigger = preparedTrigger;
-      preparedTrigger = null;
-    }
-  }
-
-  private Trigger constructTriggerInstance(TriggerClassLoader classLoader)
-      throws TriggerManagementException {
+  private Trigger constructTriggerInstance() throws TriggerManagementException {
     try {
       Class<?> triggerClass =
           Class.forName(registrationInformation.getClassName(), true, classLoader);
@@ -114,11 +77,25 @@ public class TriggerExecutor {
     }
   }
 
-  public void onConfig() throws TriggerExecutionException {
-    Thread.currentThread().setContextClassLoader(triggerClassLoader);
+  public void onCreate() throws TriggerExecutionException {
+    Thread.currentThread().setContextClassLoader(classLoader);
 
     try {
-      committedTrigger.onConfig(attributes);
+      trigger.onCreate(attributes);
+    } catch (Exception e) {
+      onTriggerExecutionError("onConfig(TriggerAttributes)", e);
+    }
+
+    registrationInformation.markAsStarted();
+  }
+
+  public void onDrop() throws TriggerExecutionException {
+    Thread.currentThread().setContextClassLoader(classLoader);
+
+    registrationInformation.markAsStopped();
+
+    try {
+      trigger.onDrop();
     } catch (Exception e) {
       onTriggerExecutionError("onConfig(TriggerAttributes)", e);
     }
@@ -131,10 +108,10 @@ public class TriggerExecutor {
   }
 
   private synchronized void invokeOnStart() throws TriggerExecutionException {
-    Thread.currentThread().setContextClassLoader(triggerClassLoader);
+    Thread.currentThread().setContextClassLoader(classLoader);
 
     try {
-      committedTrigger.onStart();
+      trigger.onStart();
     } catch (Exception e) {
       onTriggerExecutionError("onStart()", e);
     }
@@ -147,10 +124,10 @@ public class TriggerExecutor {
   }
 
   private synchronized void invokeOnStop() throws TriggerExecutionException {
-    Thread.currentThread().setContextClassLoader(triggerClassLoader);
+    Thread.currentThread().setContextClassLoader(classLoader);
 
     try {
-      committedTrigger.onStop();
+      trigger.onStop();
     } catch (Exception e) {
       onTriggerExecutionError("onStop()", e);
     }
@@ -163,32 +140,27 @@ public class TriggerExecutor {
   }
 
   private synchronized void fire(long timestamp, Object value) throws TriggerExecutionException {
-    // double check on purpose: the running status may be changed by the method commitTriggerUpdate.
-    if (registrationInformation.isStopped()) {
-      return;
-    }
-
-    Thread.currentThread().setContextClassLoader(triggerClassLoader);
+    Thread.currentThread().setContextClassLoader(classLoader);
 
     try {
       switch (seriesDataType) {
         case INT32:
-          committedTrigger.fire(timestamp, (Integer) value);
+          trigger.fire(timestamp, (Integer) value);
           break;
         case INT64:
-          committedTrigger.fire(timestamp, (Long) value);
+          trigger.fire(timestamp, (Long) value);
           break;
         case FLOAT:
-          committedTrigger.fire(timestamp, (Float) value);
+          trigger.fire(timestamp, (Float) value);
           break;
         case DOUBLE:
-          committedTrigger.fire(timestamp, (Double) value);
+          trigger.fire(timestamp, (Double) value);
           break;
         case BOOLEAN:
-          committedTrigger.fire(timestamp, (Boolean) value);
+          trigger.fire(timestamp, (Boolean) value);
           break;
         case TEXT:
-          committedTrigger.fire(timestamp, (Binary) value);
+          trigger.fire(timestamp, (Binary) value);
           break;
         default:
           throw new TriggerExecutionException("Unsupported series data type.");
@@ -208,32 +180,27 @@ public class TriggerExecutor {
 
   private synchronized void fire(long[] timestamps, Object values)
       throws TriggerExecutionException {
-    // double check on purpose: the running status may be changed by the method commitTriggerUpdate.
-    if (registrationInformation.isStopped()) {
-      return;
-    }
-
-    Thread.currentThread().setContextClassLoader(triggerClassLoader);
+    Thread.currentThread().setContextClassLoader(classLoader);
 
     try {
       switch (seriesDataType) {
         case INT32:
-          committedTrigger.fire(timestamps, (int[]) values);
+          trigger.fire(timestamps, (int[]) values);
           break;
         case INT64:
-          committedTrigger.fire(timestamps, (long[]) values);
+          trigger.fire(timestamps, (long[]) values);
           break;
         case FLOAT:
-          committedTrigger.fire(timestamps, (float[]) values);
+          trigger.fire(timestamps, (float[]) values);
           break;
         case DOUBLE:
-          committedTrigger.fire(timestamps, (double[]) values);
+          trigger.fire(timestamps, (double[]) values);
           break;
         case BOOLEAN:
-          committedTrigger.fire(timestamps, (boolean[]) values);
+          trigger.fire(timestamps, (boolean[]) values);
           break;
         case TEXT:
-          committedTrigger.fire(timestamps, (Binary[]) values);
+          trigger.fire(timestamps, (Binary[]) values);
           break;
         default:
           throw new TriggerExecutionException("Unsupported series data type.");
@@ -264,6 +231,6 @@ public class TriggerExecutor {
 
   @TestOnly
   public Trigger getTrigger() {
-    return committedTrigger;
+    return trigger;
   }
 }

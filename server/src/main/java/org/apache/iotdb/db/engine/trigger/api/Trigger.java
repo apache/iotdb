@@ -21,25 +21,19 @@ package org.apache.iotdb.db.engine.trigger.api;
 
 import org.apache.iotdb.tsfile.utils.Binary;
 
-import java.util.Collections;
-import java.util.Map;
-
 public interface Trigger {
 
   @SuppressWarnings("squid:S112")
-  default void onConfig(TriggerAttributes attributes) throws Exception {}
+  default void onCreate(TriggerAttributes attributes) throws Exception {}
+
+  @SuppressWarnings("squid:S112")
+  default void onDrop() throws Exception {}
 
   @SuppressWarnings("squid:S112")
   default void onStart() throws Exception {}
 
   @SuppressWarnings("squid:S112")
   default void onStop() throws Exception {}
-
-  default Map<String, Object> migrateToNew() {
-    return Collections.emptyMap();
-  }
-
-  default void migrateFromOld(Map<String, Object> objects) {}
 
   @SuppressWarnings("squid:S112")
   default Integer fire(long timestamp, Integer value) throws Exception {

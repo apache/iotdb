@@ -282,10 +282,6 @@ public class IoTDBTriggerManagementIT {
           "create trigger trigger-4 after insert on root.vehicle.d1.s4 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
 
       assertEquals(
-          3,
-          ((Accumulator) TriggerRegistrationService.getInstance().getTriggerInstance("trigger-1"))
-              .getMigrationTimes());
-      assertEquals(
           1234,
           ((Accumulator) TriggerRegistrationService.getInstance().getTriggerInstance("trigger-1"))
               .getAccumulator(),
