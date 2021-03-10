@@ -62,4 +62,9 @@ public class ByTimestampReaderAdapter implements IReaderByTimestamp {
 
     return null;
   }
+
+  @Override
+  public Object[] getValueInTimestamps(long[] timestamps) throws IOException {
+    return null;
+  }
 }

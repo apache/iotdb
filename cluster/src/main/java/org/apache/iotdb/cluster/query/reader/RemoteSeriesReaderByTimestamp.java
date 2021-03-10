@@ -107,4 +107,18 @@ public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
       }
     }
   }
+
+  @Override
+  public Object[] getValueInTimestamps(long[] timestamps) throws IOException {
+    return null;
+  }
+
+  @SuppressWarnings("java:S2274") // enable timeout
+  private ByteBuffer fetchResultAsync(long[] timestamps) throws IOException {
+    return null;
+  }
+
+  private ByteBuffer fetchResultSync(long[] timestamps) throws IOException {
+    return null;
+  }
 }
