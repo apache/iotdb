@@ -127,7 +127,6 @@ public class SyncClientPool {
         logger.warn("Interrupted when waiting for an available client of {}", clusterNode);
         return null;
       } catch (TTransportException e) {
-        nodeClientNumMap.computeIfPresent(clusterNode, (n, oldValue) -> oldValue - 1);
         logger.error("Cannot open transport for client {}", clusterNode, e);
         return null;
       }

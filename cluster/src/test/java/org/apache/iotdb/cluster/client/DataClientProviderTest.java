@@ -19,13 +19,11 @@
 
 package org.apache.iotdb.cluster.client;
 
-import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.ClientUtils;
-import org.apache.iotdb.cluster.utils.ClusterNode;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
@@ -34,8 +32,6 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.net.ServerSocket;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import static org.junit.Assert.assertNotNull;
 
@@ -83,138 +79,6 @@ public class DataClientProviderTest {
       }
       assertNotNull(client);
       ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(useAsyncServer);
-    } finally {
-      serverSocket.close();
-      listenThread.interrupt();
-      listenThread.join();
-    }
-  }
-
-  @Test
-  public void testSyncConcurrency() throws IOException, InterruptedException {
-    Node node = new ClusterNode();
-    node.setDataPort(9003).setInternalIp("localhost").setClientIp("localhost");
-    ServerSocket serverSocket = new ServerSocket(node.getDataPort());
-    Thread listenThread =
-        new Thread(
-            () -> {
-              while (!Thread.interrupted()) {
-                try {
-                  serverSocket.accept();
-                } catch (IOException e) {
-                  return;
-                }
-              }
-            });
-    listenThread.start();
-
-    try {
-      boolean useAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
-      ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(false);
-      ClusterDescriptor.getInstance().getConfig().setMaxClientPerNodePerMember(2);
-      DataClientProvider provider = new DataClientProvider(new Factory());
-      SyncDataClient client = null;
-      try {
-        client = provider.getSyncDataClient(node, 100);
-      } catch (TException e) {
-        Assert.fail(e.getMessage());
-      }
-      assertNotNull(client);
-
-      // now try to test multi thread
-      ExecutorService service = Executors.newFixedThreadPool(10);
-      for (int i = 0; i < 5; i++) {
-        service.submit(() -> provider.getSyncDataClient(node, 100));
-      }
-
-      // wait time should be great then 5000ms
-      Thread.currentThread().sleep(6000);
-      int totalNumber = provider.getDataSyncClientPool().getNodeClientNumMap().get(node);
-      Assert.assertEquals(5, totalNumber);
-
-      for (int i = 0; i < 4; i++) {
-        service.submit(() -> provider.getSyncDataClient(node, 100));
-      }
-
-      Thread.currentThread().sleep(1000);
-      // return one client to pool
-      provider.getDataSyncClientPool().putClient(node, client);
-      // wait all finish
-      Thread.currentThread().sleep(6000);
-      totalNumber = provider.getDataSyncClientPool().getNodeClientNumMap().get(node);
-
-      // 5 + 4 - 1
-      Assert.assertEquals(8, totalNumber);
-
-      ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(useAsyncServer);
-    } catch (Exception e) {
-      Assert.fail(e.getMessage());
-    } finally {
-      serverSocket.close();
-      listenThread.interrupt();
-      listenThread.join();
-    }
-  }
-
-  @Test
-  public void testAsyncConcurrency() throws IOException, InterruptedException {
-    Node node = new ClusterNode();
-    node.setDataPort(9003).setInternalIp("localhost").setClientIp("localhost");
-    ServerSocket serverSocket = new ServerSocket(node.getDataPort());
-    Thread listenThread =
-        new Thread(
-            () -> {
-              while (!Thread.interrupted()) {
-                try {
-                  serverSocket.accept();
-                } catch (IOException e) {
-                  return;
-                }
-              }
-            });
-    listenThread.start();
-
-    try {
-      boolean useAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
-      ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(true);
-      ClusterDescriptor.getInstance().getConfig().setMaxClientPerNodePerMember(2);
-      DataClientProvider provider = new DataClientProvider(new Factory());
-      AsyncDataClient client = null;
-      try {
-        client = provider.getAsyncDataClient(node, 100);
-      } catch (IOException e) {
-        Assert.fail(e.getMessage());
-      }
-      assertNotNull(client);
-
-      // now try to test multi thread
-      ExecutorService service = Executors.newFixedThreadPool(10);
-      for (int i = 0; i < 5; i++) {
-        service.submit(() -> provider.getAsyncDataClient(node, 100));
-      }
-
-      // wait time should be great then 5000ms
-      Thread.currentThread().sleep(6000);
-      int totalNumber = provider.getDataAsyncClientPool().getNodeClientNumMap().get(node);
-      Assert.assertEquals(5, totalNumber);
-
-      for (int i = 0; i < 4; i++) {
-        service.submit(() -> provider.getAsyncDataClient(node, 100));
-      }
-
-      Thread.currentThread().sleep(1000);
-      // return one client to pool
-      provider.getDataAsyncClientPool().putClient(node, client);
-      // wait all finish
-      Thread.currentThread().sleep(6000);
-      totalNumber = provider.getDataAsyncClientPool().getNodeClientNumMap().get(node);
-
-      // 5 + 4 - 1
-      Assert.assertEquals(8, totalNumber);
-
-      ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(useAsyncServer);
-    } catch (Exception e) {
-      Assert.fail(e.getMessage());
     } finally {
       serverSocket.close();
       listenThread.interrupt();
