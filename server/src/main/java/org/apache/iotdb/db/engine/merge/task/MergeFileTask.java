@@ -218,18 +218,10 @@ class MergeFileTask {
     for (Entry<String, List<ChunkMetadata>> deviceChunkMetadataListEntry :
         deviceChunkMetadataListMap.entrySet()) {
       String device = deviceChunkMetadataListEntry.getKey();
-      long minStartTime = Long.MAX_VALUE;
-      long maxEndTime = Long.MIN_VALUE;
       for (ChunkMetadata chunkMetadata : deviceChunkMetadataListEntry.getValue()) {
-        if (chunkMetadata.getStartTime() < minStartTime) {
-          minStartTime = chunkMetadata.getStartTime();
-        }
-        if (chunkMetadata.getEndTime() > maxEndTime) {
-          maxEndTime = chunkMetadata.getEndTime();
-        }
+        resource.updateStartTime(seqFile, device, chunkMetadata.getStartTime());
+        resource.updateEndTime(seqFile, device, chunkMetadata.getEndTime());
       }
-      seqFile.putStartTime(device, minStartTime);
-      seqFile.putEndTime(device, maxEndTime);
     }
     // update all device start time and end time of the resource
     Map<String, Pair<Long, Long>> deviceStartEndTimePairMap = resource.getStartEndTime(seqFile);
