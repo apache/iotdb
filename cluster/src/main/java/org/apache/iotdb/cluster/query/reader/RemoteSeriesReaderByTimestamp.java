@@ -109,7 +109,7 @@ public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
   }
 
   @Override
-  public Object[] getValueInTimestamps(long[] timestamps) throws IOException {
+  public Object[] getValuesInTimestamps(long[] timestamps) throws IOException {
     return null;
   }
 

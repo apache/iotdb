@@ -217,7 +217,6 @@ public class ClusterReaderFactory {
       boolean ascending)
       throws StorageEngineException, EmptyIntervalException {
     // make sure the partition table is new
-    // TODO: don't need to sync metadata for every reader
     try {
       metaGroupMember.syncLeaderWithConsistencyCheck(false);
     } catch (CheckConsistencyException e) {

@@ -34,13 +34,7 @@ public interface IReaderByTimestamp {
    * guarantee of correctness with any other way of calling. For example, DO NOT call this method
    * twice with the same timestamp.
    */
-  Object getValueInTimestamp(long timestamp) throws IOException;
-
-  /**
-   * Returns all the corresponding values under the array of timestamp. Returns null if no value
-   * under one timestamp.
-   */
-  Object[] getValueInTimestamps(long[] timestamps) throws IOException;
+  Object[] getValuesInTimestamps(long[] timestamps, int length) throws IOException;
 
   /**
    * Returns whether there is no more data in reader.

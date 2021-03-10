@@ -67,20 +67,10 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
   }
 
   @Override
-  public Object getValueInTimestamp(long timestamp) throws IOException {
-    seriesReader.setTimeFilter(timestamp);
-    if ((batchData == null || !hasAvailableData(batchData, timestamp)) && !hasNext(timestamp)) {
-      return null;
-    }
-
-    return batchData.getValueInTimestamp(timestamp);
-  }
-
-  @Override
-  public Object[] getValueInTimestamps(long[] timestamp) throws IOException {
-    seriesReader.setTimeFilter(timestamp[0]);
-    Object[] results = new Object[timestamp.length];
-    for (int i = 0; i < timestamp.length; i++) {
+  public Object[] getValuesInTimestamps(long[] timestamp, int length) throws IOException {
+    Object[] results = new Object[length];
+    for (int i = 0; i < length; i++) {
+      seriesReader.setTimeFilter(timestamp[0]);
       if ((batchData == null || !hasAvailableData(batchData, timestamp[i]))
           && !hasNext(timestamp[i])) {
         // there is no more data

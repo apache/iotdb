@@ -110,7 +110,10 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet implements UDFI
       if (cached.get(i)) {
         results = timeGenerator.getValues(paths.get(i));
       } else {
-        results = seriesReaderByTimestampList.get(i).getValueInTimestamps(cachedTimeArray);
+        results =
+            seriesReaderByTimestampList
+                .get(i)
+                .getValuesInTimestamps(cachedTimeArray, cachedTimeCnt);
       }
 
       // 3. use values in results to fill row record
@@ -136,7 +139,7 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet implements UDFI
 
   @Override
   public boolean hasNextRowInObjects() throws IOException {
-    if (!cachedRowRecords.isEmpty()) {
+    if (!cachedRowInObjects.isEmpty()) {
       return true;
     }
     return cacheRowInObjects();
@@ -144,7 +147,7 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet implements UDFI
 
   @Override
   public Object[] nextRowInObjects() throws IOException {
-    if (cachedRowRecords.isEmpty() && !cacheRowInObjects()) {
+    if (cachedRowInObjects.isEmpty() && !cacheRowInObjects()) {
       // values + timestamp
       return new Object[seriesReaderByTimestampList.size() + 1];
     }
@@ -161,6 +164,10 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet implements UDFI
     while (timeGenerator.hasNext() && cachedTimeCnt < fetchSize) {
       cachedTimeArray[cachedTimeCnt++] = timeGenerator.next();
     }
+    if (cachedTimeCnt == 0) {
+      return false;
+    }
+
     Object[][] rowsInObject = new Object[cachedTimeCnt][seriesReaderByTimestampList.size() + 1];
     for (int i = 0; i < cachedTimeCnt; i++) {
       rowsInObject[i][seriesReaderByTimestampList.size()] = cachedTimeArray[i];
@@ -174,13 +181,18 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet implements UDFI
       if (cached.get(i)) {
         results = timeGenerator.getValues(paths.get(i));
       } else {
-        results = seriesReaderByTimestampList.get(i).getValueInTimestamps(cachedTimeArray);
+        results =
+            seriesReaderByTimestampList
+                .get(i)
+                .getValuesInTimestamps(cachedTimeArray, cachedTimeCnt);
       }
 
       // 3. use values in results to fill row record
       for (int j = 0; j < cachedTimeCnt; j++) {
-        if (results[j] != null) hasField[i] = true;
-        rowsInObject[j][i] = results[j];
+        if (results[j] != null) {
+          hasField[j] = true;
+          rowsInObject[j][i] = results[j];
+        }
       }
     }
     // 4. remove rowRecord if all values in one timestamp are null
@@ -191,6 +203,6 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet implements UDFI
     }
 
     // 5. check whether there is next row record
-    return !cachedRowRecords.isEmpty();
+    return !cachedRowInObjects.isEmpty();
   }
 }

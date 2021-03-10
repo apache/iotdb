@@ -160,7 +160,7 @@ public class EmptyReader extends BaseManagedSeriesReader
   }
 
   @Override
-  public Object[] getValueInTimestamps(long[] timestamps) {
+  public Object[] getValuesInTimestamps(long[] timestamps) {
     return null;
   }
 

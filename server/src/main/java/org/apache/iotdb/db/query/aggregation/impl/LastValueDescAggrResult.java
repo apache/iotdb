@@ -70,11 +70,11 @@ public class LastValueDescAggrResult extends LastValueAggrResult {
     }
     long time = Long.MIN_VALUE;
     Object lastVal = null;
+    Object[] values = dataReader.getValuesInTimestamps(timestamps, length);
     for (int i = 0; i < length; i++) {
-      Object value = dataReader.getValueInTimestamp(timestamps[i]);
-      if (value != null) {
+      if (values[i] != null) {
         time = timestamps[i];
-        lastVal = value;
+        lastVal = values[i];
         break;
       }
     }

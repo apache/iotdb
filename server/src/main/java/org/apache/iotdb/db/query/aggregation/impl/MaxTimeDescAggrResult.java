@@ -53,9 +53,9 @@ public class MaxTimeDescAggrResult extends MaxTimeAggrResult {
       return;
     }
     long time = -1;
+    Object[] values = dataReader.getValuesInTimestamps(timestamps, length);
     for (int i = 0; i < length; i++) {
-      Object value = dataReader.getValueInTimestamp(timestamps[i]);
-      if (value != null) {
+      if (values[i] != null) {
         time = timestamps[i];
         break;
       }
