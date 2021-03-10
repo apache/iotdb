@@ -42,6 +42,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
+import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -409,6 +410,79 @@ public class IoTDBTriggerExecutionIT {
       LOGGER.info(Arrays.toString(counters2));
       for (int i = 0; i < 6; ++i) {
         assertEquals(Counter.BASE, counters2[2]);
+      }
+    } catch (SQLException | TriggerManagementException | MetadataException e) {
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testInsertAndRemoveStorageGroupWithTriggers() throws InterruptedException {
+    startDataGenerator();
+
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "create trigger trigger-1 before insert on root.vehicle.d1.s1 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+      statement.execute(
+          "create trigger trigger-2 after insert on root.vehicle.d1.s2 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+      statement.execute(
+          "create trigger trigger-3 before insert on root.vehicle.d1.s3 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+      statement.execute(
+          "create trigger trigger-4 after insert on root.vehicle.d1.s4 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+      statement.execute(
+          "create trigger trigger-5 before insert on root.vehicle.d1.s5 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+      statement.execute(
+          "create trigger trigger-6 after insert on root.vehicle.d1.s6 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+
+      Thread.sleep(500);
+
+      stopDataGenerator();
+
+      IoTDB.metaManager.deleteStorageGroups(
+          Collections.singletonList(new PartialPath("root.vehicle")));
+
+      for (int i = 0; i < 6; ++i) {
+        try {
+          TriggerRegistrationService.getInstance().getTriggerInstance("trigger-" + i);
+          fail();
+        } catch (TriggerManagementException e) {
+          assertTrue(e.getMessage().contains("does not exist"));
+        }
+      }
+
+      createTimeseries();
+
+      for (int i = 0; i < 6; ++i) {
+        try {
+          TriggerRegistrationService.getInstance().getTriggerInstance("trigger-" + i);
+          fail();
+        } catch (TriggerManagementException e) {
+          assertTrue(e.getMessage().contains("does not exist"));
+        }
+      }
+
+      statement.execute(
+          "create trigger trigger-1 before insert on root.vehicle.d1.s1 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+      statement.execute(
+          "create trigger trigger-2 after insert on root.vehicle.d1.s2 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+      statement.execute(
+          "create trigger trigger-3 before insert on root.vehicle.d1.s3 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+      statement.execute(
+          "create trigger trigger-4 after insert on root.vehicle.d1.s4 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+      statement.execute(
+          "create trigger trigger-5 before insert on root.vehicle.d1.s5 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+      statement.execute(
+          "create trigger trigger-6 after insert on root.vehicle.d1.s6 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+
+      Thread.sleep(500);
+
+      int[] counters1 = getCounters(6);
+      LOGGER.info(Arrays.toString(counters1));
+      for (int i = 0; i < 6; ++i) {
+        assertEquals(Counter.BASE, counters1[2]);
       }
     } catch (SQLException | TriggerManagementException | MetadataException e) {
       fail(e.getMessage());
