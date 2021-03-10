@@ -42,7 +42,7 @@ public class TriggerExecutor {
   private final MeasurementMNode measurementMNode;
   private final TSDataType seriesDataType;
 
-  private Trigger trigger;
+  private final Trigger trigger;
 
   public TriggerExecutor(
       TriggerRegistrationInformation registrationInformation,
@@ -89,7 +89,7 @@ public class TriggerExecutor {
     registrationInformation.markAsStarted();
   }
 
-  public void onDrop() throws TriggerExecutionException {
+  public synchronized void onDrop() throws TriggerExecutionException {
     Thread.currentThread().setContextClassLoader(classLoader);
 
     registrationInformation.markAsStopped();
@@ -101,13 +101,13 @@ public class TriggerExecutor {
     }
   }
 
-  public void onStart() throws TriggerExecutionException {
+  public synchronized void onStart() throws TriggerExecutionException {
     // The execution order of statement here cannot be swapped!
     invokeOnStart();
     registrationInformation.markAsStarted();
   }
 
-  private synchronized void invokeOnStart() throws TriggerExecutionException {
+  private void invokeOnStart() throws TriggerExecutionException {
     Thread.currentThread().setContextClassLoader(classLoader);
 
     try {
@@ -117,13 +117,13 @@ public class TriggerExecutor {
     }
   }
 
-  public void onStop() throws TriggerExecutionException {
+  public synchronized void onStop() throws TriggerExecutionException {
     // The execution order of statement here cannot be swapped!
     registrationInformation.markAsStopped();
     invokeOnStop();
   }
 
-  private synchronized void invokeOnStop() throws TriggerExecutionException {
+  private void invokeOnStop() throws TriggerExecutionException {
     Thread.currentThread().setContextClassLoader(classLoader);
 
     try {

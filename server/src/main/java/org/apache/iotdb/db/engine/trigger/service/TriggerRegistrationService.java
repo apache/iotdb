@@ -92,8 +92,8 @@ public class TriggerRegistrationService implements IService {
       throws TriggerManagementException, TriggerExecutionException {
     checkIfRegistered(plan);
     MeasurementMNode measurementMNode = tryGetMeasurementMNode(plan);
+    tryAppendRegistrationLog(plan);
     doRegister(plan, measurementMNode);
-    tryAppendRegistrationLog(plan, measurementMNode);
   }
 
   private void checkIfRegistered(CreateTriggerPlan plan) throws TriggerManagementException {
@@ -127,38 +127,34 @@ public class TriggerRegistrationService implements IService {
     }
   }
 
-  private void doRegister(CreateTriggerPlan plan, MeasurementMNode measurementMNode)
-      throws TriggerManagementException, TriggerExecutionException {
-    TriggerRegistrationInformation information = new TriggerRegistrationInformation(plan);
-    TriggerClassLoader classLoader =
-        TriggerClassLoaderManager.getInstance().register(plan.getClassName());
-    TriggerExecutor executor = new TriggerExecutor(information, classLoader, measurementMNode);
-
-    executor.onCreate();
-
-    executors.put(plan.getTriggerName(), executor);
-    measurementMNode.setTriggerExecutor(executor);
-  }
-
-  private void tryAppendRegistrationLog(CreateTriggerPlan plan, MeasurementMNode measurementMNode)
-      throws TriggerManagementException {
+  private void tryAppendRegistrationLog(CreateTriggerPlan plan) throws TriggerManagementException {
     try {
       logWriter.write(plan);
     } catch (IOException e) {
-      measurementMNode.setTriggerExecutor(null);
-      TriggerExecutor executor = executors.remove(plan.getTriggerName());
-      try {
-        executor.onDrop();
-      } catch (TriggerExecutionException triggerExecutionException) {
-        LOGGER.warn(e.getMessage(), e);
-      }
-      TriggerClassLoaderManager.getInstance().deregister(plan.getClassName());
-
       throw new TriggerManagementException(
           String.format(
               "Failed to append trigger management operation log when registering trigger %s(%s), because %s",
               plan.getTriggerName(), plan.getClassName(), e));
     }
+  }
+
+  private void doRegister(CreateTriggerPlan plan, MeasurementMNode measurementMNode)
+      throws TriggerManagementException, TriggerExecutionException {
+    TriggerRegistrationInformation information = new TriggerRegistrationInformation(plan);
+    TriggerClassLoader classLoader =
+        TriggerClassLoaderManager.getInstance().register(plan.getClassName());
+
+    TriggerExecutor executor;
+    try {
+      executor = new TriggerExecutor(information, classLoader, measurementMNode);
+      executor.onCreate();
+    } catch (TriggerManagementException | TriggerExecutionException e) {
+      TriggerClassLoaderManager.getInstance().deregister(plan.getClassName());
+      throw e;
+    }
+
+    executors.put(plan.getTriggerName(), executor);
+    measurementMNode.setTriggerExecutor(executor);
   }
 
   public synchronized void deregister(DropTriggerPlan plan) throws TriggerManagementException {
