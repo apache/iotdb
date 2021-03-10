@@ -35,6 +35,8 @@ public class MetricName {
   private Map<String, String> tags;
 
   /**
+   * the unique identifier of a metric, include a name and some tags.
+   *
    * @param name metric name
    * @param tags string appear in pairs, like sg="ln",user="user1" will be "sg", "ln", "user",
    *     "user1"
