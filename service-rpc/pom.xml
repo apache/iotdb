@@ -40,6 +40,13 @@
             <groupId>org.apache.iotdb</groupId>
             <artifactId>tsfile</artifactId>
             <version>${project.version}</version>
+            <!-- we want to reduce the size of JDBC -->
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
