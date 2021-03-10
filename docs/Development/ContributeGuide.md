@@ -96,6 +96,17 @@ plugin](https://github.com/diffplug/spotless/tree/main/plugin-maven) together wi
 5. Install the [Save Actions
    plugin](https://plugins.jetbrains.com/plugin/7642-save-actions) , and enable the plugin, along with "Optimize imports" and "Reformat file"
 6. In the "Save Actions" settings page, setup a "File Path Inclusion" for `.*\.java`. Otherwise you will get unintended reformatting in other files you edit.
+7. Fix the issues of reordering the import packages: in IDEA: choose: Preferences | Editor | Code Style | Java | imports. At the tail of the panel, there is "Import Layout", change it to:
+```shell
+   import org.apache.iotdb.*
+   <blank line>
+   import all other imports
+   <blank line>
+   import java.*
+   <blank line>
+   import static all other imports
+```
+
 
 ## Contributing code
 
