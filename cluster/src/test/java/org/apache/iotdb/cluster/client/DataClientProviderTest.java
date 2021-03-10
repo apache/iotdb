@@ -130,7 +130,7 @@ public class DataClientProviderTest {
       // wait time should be great then 5000ms
       Thread.currentThread().sleep(6000);
       int totalNumber = provider.getDataSyncClientPool().getNodeClientNumMap().get(node);
-      Assert.assertEquals(5, totalNumber);
+      Assert.assertEquals(6, totalNumber);
 
       for (int i = 0; i < 4; i++) {
         service.submit(() -> provider.getSyncDataClient(node, 100));
@@ -143,8 +143,8 @@ public class DataClientProviderTest {
       Thread.currentThread().sleep(6000);
       totalNumber = provider.getDataSyncClientPool().getNodeClientNumMap().get(node);
 
-      // 5 + 4 - 1
-      Assert.assertEquals(8, totalNumber);
+      // 6 + 4 - 1
+      Assert.assertEquals(9, totalNumber);
 
       ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(useAsyncServer);
     } catch (Exception e) {
@@ -196,7 +196,7 @@ public class DataClientProviderTest {
       // wait time should be great then 5000ms
       Thread.currentThread().sleep(6000);
       int totalNumber = provider.getDataAsyncClientPool().getNodeClientNumMap().get(node);
-      Assert.assertEquals(5, totalNumber);
+      Assert.assertEquals(6, totalNumber);
 
       for (int i = 0; i < 4; i++) {
         service.submit(() -> provider.getAsyncDataClient(node, 100));
@@ -209,8 +209,8 @@ public class DataClientProviderTest {
       Thread.currentThread().sleep(6000);
       totalNumber = provider.getDataAsyncClientPool().getNodeClientNumMap().get(node);
 
-      // 5 + 4 - 1
-      Assert.assertEquals(8, totalNumber);
+      // 6 + 4 - 1
+      Assert.assertEquals(9, totalNumber);
 
       ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(useAsyncServer);
     } catch (Exception e) {

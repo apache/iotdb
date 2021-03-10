@@ -11,6 +11,7 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
@@ -34,6 +35,7 @@ public class SyncClientPoolTest {
     testSyncClientFactory = new TestSyncClientFactory();
   }
 
+  @After
   public void tearDown() {
     testSyncClientFactory = null;
   }
