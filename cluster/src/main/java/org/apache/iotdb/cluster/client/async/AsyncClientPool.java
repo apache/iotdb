@@ -94,7 +94,7 @@ public class AsyncClientPool {
           nodeClientNumMap.compute(
               clusterNode,
               (n, oldValue) -> {
-                if (oldValue == null) return 0;
+                if (oldValue == null) return 1;
                 return oldValue + 1;
               });
         }
