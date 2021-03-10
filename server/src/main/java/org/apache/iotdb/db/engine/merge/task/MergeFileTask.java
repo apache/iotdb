@@ -34,6 +34,7 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.writer.ForceAppendTsFileWriter;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
@@ -229,6 +230,15 @@ class MergeFileTask {
       }
       seqFile.putStartTime(device, minStartTime);
       seqFile.putEndTime(device, maxEndTime);
+    }
+    // update all device start time and end time of the resource
+    Map<String, Pair<Long, Long>> deviceStartEndTimePairMap = resource.getStartEndTime(seqFile);
+    for (Entry<String, Pair<Long, Long>> deviceStartEndTimePairEntry :
+        deviceStartEndTimePairMap.entrySet()) {
+      String device = deviceStartEndTimePairEntry.getKey();
+      Pair<Long, Long> startEndTimePair = deviceStartEndTimePairEntry.getValue();
+      seqFile.putStartTime(device, startEndTimePair.left);
+      seqFile.putEndTime(device, startEndTimePair.right);
     }
   }
 
