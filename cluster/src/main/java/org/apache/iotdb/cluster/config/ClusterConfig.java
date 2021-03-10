@@ -71,7 +71,11 @@ public class ClusterConfig {
   /** max number of clients in a ClientPool of a member for one node. */
   private int maxClientPerNodePerMember = 1000;
 
-  /** Wait for some timeout, if the old client is not released A new client is created */
+  /**
+   * If the number of connections created for a node exceeds `max_client_pernode_permember_number`,
+   * we need to wait so much time for other connections to be released until timeout, or a new
+   * connection will be created.
+   */
   private long waitClientTimeoutMS = 5 * 1000L;
 
   /**
