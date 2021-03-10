@@ -37,6 +37,12 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: ${{ matrix.java }}
+      - name: Cache Maven packages
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
       - name: Compile IoTDB Server
         run: mvn -B package -Dmaven.test.skip=true  -am -pl server
       - name: Integration test
