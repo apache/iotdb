@@ -1,9 +1,10 @@
 package org.apache.iotdb.tsfile.write.writer;
 
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 public class TestTsFileOutput implements TsFileOutput {
 
@@ -42,7 +43,6 @@ public class TestTsFileOutput implements TsFileOutput {
   @Override
   public void flush() throws IOException {
     publicBAOS.flush();
-
   }
 
   @Override

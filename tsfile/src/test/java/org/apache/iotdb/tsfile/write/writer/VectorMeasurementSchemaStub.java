@@ -18,14 +18,15 @@
  */
 package org.apache.iotdb.tsfile.write.writer;
 
-import java.util.Arrays;
-import java.util.List;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.encoding.encoder.PlainEncoder;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+
+import java.util.Arrays;
+import java.util.List;
 
 public class VectorMeasurementSchemaStub implements IMeasurementSchema {
 
@@ -71,8 +72,9 @@ public class VectorMeasurementSchemaStub implements IMeasurementSchema {
 
   @Override
   public List<Encoder> getValueEncoderList() {
-    return Arrays
-        .asList(new PlainEncoder(TSDataType.FLOAT, 0), new PlainEncoder(TSDataType.INT32, 0),
-            new PlainEncoder(TSDataType.DOUBLE, 0));
+    return Arrays.asList(
+        new PlainEncoder(TSDataType.FLOAT, 0),
+        new PlainEncoder(TSDataType.INT32, 0),
+        new PlainEncoder(TSDataType.DOUBLE, 0));
   }
 }

@@ -18,12 +18,6 @@
  */
 package org.apache.iotdb.tsfile.write.writer;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.fail;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.encoding.encoder.PlainEncoder;
 import org.apache.iotdb.tsfile.file.MetaMarker;
@@ -34,22 +28,30 @@ import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.chunk.TimeChunkWriter;
+
 import org.junit.Test;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.fail;
 
 public class TimeChunkWriterTest {
 
   @Test
   public void testWrite1() {
     Encoder timeEncoder = new PlainEncoder(TSDataType.INT64, 0);
-    TimeChunkWriter chunkWriter = new TimeChunkWriter("c1", CompressionType.UNCOMPRESSED,
-        TSEncoding.PLAIN, timeEncoder);
-   for (long time = 1; time <= 10; time++) {
-     chunkWriter.write(time);
-   }
-   assertFalse(chunkWriter.checkPageSizeAndMayOpenANewPage());
-   chunkWriter.sealCurrentPage();
-   // page without statistics size: 82 + chunk header size: 8
-   assertEquals(90L, chunkWriter.getCurrentChunkSize());
+    TimeChunkWriter chunkWriter =
+        new TimeChunkWriter("c1", CompressionType.UNCOMPRESSED, TSEncoding.PLAIN, timeEncoder);
+    for (long time = 1; time <= 10; time++) {
+      chunkWriter.write(time);
+    }
+    assertFalse(chunkWriter.checkPageSizeAndMayOpenANewPage());
+    chunkWriter.sealCurrentPage();
+    // page without statistics size: 82 + chunk header size: 8
+    assertEquals(90L, chunkWriter.getCurrentChunkSize());
 
     try {
       TestTsFileOutput testTsFileOutput = new TestTsFileOutput();
@@ -57,7 +59,8 @@ public class TimeChunkWriterTest {
       chunkWriter.writeAllPagesOfChunkToTsFile(writer);
       PublicBAOS publicBAOS = testTsFileOutput.publicBAOS;
       ByteBuffer buffer = ByteBuffer.wrap(publicBAOS.getBuf(), 0, publicBAOS.size());
-      assertEquals((byte) (0x80 | MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER), ReadWriteIOUtils.readByte(buffer));
+      assertEquals(
+          (byte) (0x80 | MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER), ReadWriteIOUtils.readByte(buffer));
       assertEquals("c1", ReadWriteIOUtils.readVarIntString(buffer));
       assertEquals(82, ReadWriteForEncodingUtils.readUnsignedVarInt(buffer));
       assertEquals(TSDataType.Vector.serialize(), ReadWriteIOUtils.readByte(buffer));
@@ -73,8 +76,8 @@ public class TimeChunkWriterTest {
   @Test
   public void testWrite2() {
     Encoder timeEncoder = new PlainEncoder(TSDataType.INT64, 0);
-    TimeChunkWriter chunkWriter = new TimeChunkWriter("c1", CompressionType.UNCOMPRESSED,
-        TSEncoding.PLAIN, timeEncoder);
+    TimeChunkWriter chunkWriter =
+        new TimeChunkWriter("c1", CompressionType.UNCOMPRESSED, TSEncoding.PLAIN, timeEncoder);
     for (long time = 1; time <= 10; time++) {
       chunkWriter.write(time);
     }

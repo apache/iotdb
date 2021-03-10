@@ -18,11 +18,12 @@
  */
 package org.apache.iotdb.tsfile.write.schema;
 
-import java.util.List;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+
+import java.util.List;
 
 public interface IMeasurementSchema {
 

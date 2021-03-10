@@ -481,7 +481,6 @@ public abstract class TsPrimitiveType implements Serializable {
       this.value = value;
     }
 
-
     @Override
     public TsPrimitiveType[] getVector() {
       return value;

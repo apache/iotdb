@@ -18,11 +18,6 @@
  */
 package org.apache.iotdb.tsfile.write.writer;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.compress.ICompressor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
 import org.apache.iotdb.tsfile.encoding.decoder.PlainDecoder;
@@ -35,10 +30,16 @@ import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.page.TimePageWriter;
+
 import org.junit.Test;
 
-public class TimePageWriterTest {
+import java.io.IOException;
+import java.nio.ByteBuffer;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
+public class TimePageWriterTest {
 
   @Test
   public void testWrite() {
@@ -62,7 +63,6 @@ public class TimePageWriterTest {
       fail();
     }
   }
-
 
   @Test
   public void testWritePageHeaderAndDataIntoBuffWithoutCompress1() {
@@ -118,8 +118,8 @@ public class TimePageWriterTest {
       assertEquals(24, ReadWriteForEncodingUtils.readUnsignedVarInt(buffer));
       // compressedSize
       assertEquals(24, ReadWriteForEncodingUtils.readUnsignedVarInt(buffer));
-      TimeStatistics testStatistics = (TimeStatistics) TimeStatistics
-          .deserialize(buffer, TSDataType.Vector);
+      TimeStatistics testStatistics =
+          (TimeStatistics) TimeStatistics.deserialize(buffer, TSDataType.Vector);
       assertEquals(1L, testStatistics.getStartTime());
       assertEquals(3L, testStatistics.getEndTime());
       assertEquals(3, testStatistics.getCount());
@@ -130,7 +130,6 @@ public class TimePageWriterTest {
       fail();
     }
   }
-
 
   @Test
   public void testWritePageHeaderAndDataIntoBuffWithSnappy() {

@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.tsfile.write.chunk;
 
-import java.io.IOException;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.compress.ICompressor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
@@ -32,8 +31,11 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.TimeStatistics;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.write.page.TimePageWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
 
 public class TimeChunkWriter {
 
@@ -45,47 +47,38 @@ public class TimeChunkWriter {
 
   private final CompressionType compressionType;
 
-  /**
-   * all pages of this chunk.
-   */
+  /** all pages of this chunk. */
   private final PublicBAOS pageBuffer;
 
   private int numOfPages;
 
-  /**
-   * write data into current page
-   */
+  /** write data into current page */
   private TimePageWriter pageWriter;
 
-  /**
-   * page size threshold.
-   */
+  /** page size threshold. */
   private final long pageSizeThreshold;
 
   private final int maxNumberOfPointsInPage;
 
-  /**
-   * value count in current page.
-   */
+  /** value count in current page. */
   private int valueCountInOnePageForNextCheck;
 
   // initial value for valueCountInOnePageForNextCheck
   private static final int MINIMUM_RECORD_COUNT_FOR_CHECK = 1500;
 
-  /**
-   * statistic of this chunk.
-   */
+  /** statistic of this chunk. */
   private TimeStatistics statistics;
 
-  /**
-   * first page info
-   */
+  /** first page info */
   private int sizeWithoutStatistic;
 
   private Statistics<?> firstPageStatistics;
 
-  public TimeChunkWriter(String measurementId, CompressionType compressionType,
-      TSEncoding encodingType, Encoder timeEncoder) {
+  public TimeChunkWriter(
+      String measurementId,
+      CompressionType compressionType,
+      TSEncoding encodingType,
+      Encoder timeEncoder) {
     this.measurementId = measurementId;
     this.encodingType = encodingType;
     this.compressionType = compressionType;
@@ -101,7 +94,6 @@ public class TimeChunkWriter {
     this.statistics = new TimeStatistics();
 
     this.pageWriter = new TimePageWriter(timeEncoder, ICompressor.getCompressor(compressionType));
-
   }
 
   public void write(long time) {
@@ -182,14 +174,12 @@ public class TimeChunkWriter {
     this.statistics = new TimeStatistics();
   }
 
-
   public long estimateMaxSeriesMemSize() {
     return pageBuffer.size()
         + pageWriter.estimateMaxMemSize()
         + PageHeader.estimateMaxPageHeaderSizeWithoutStatistics()
         + pageWriter.getStatistics().getSerializedSize();
   }
-
 
   public long getCurrentChunkSize() {
     if (pageBuffer.size() == 0) {
@@ -199,7 +189,6 @@ public class TimeChunkWriter {
     return ChunkHeader.getSerializedSize(measurementId, pageBuffer.size())
         + (long) pageBuffer.size();
   }
-
 
   public void sealCurrentPage() {
     if (pageWriter != null && pageWriter.getPointNumber() > 0) {
@@ -222,11 +211,10 @@ public class TimeChunkWriter {
   /**
    * write the page to specified IOWriter.
    *
-   * @param writer     the specified IOWriter
+   * @param writer the specified IOWriter
    * @throws IOException exception in IO
    */
-  public void writeAllPagesOfChunkToTsFile(TsFileIOWriter writer)
-      throws IOException {
+  public void writeAllPagesOfChunkToTsFile(TsFileIOWriter writer) throws IOException {
     if (statistics.getCount() == 0) {
       return;
     }
@@ -260,9 +248,7 @@ public class TimeChunkWriter {
     writer.endCurrentChunk();
   }
 
-  /**
-   * only used for test
-   */
+  /** only used for test */
   public PublicBAOS getPageBuffer() {
     return pageBuffer;
   }

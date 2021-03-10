@@ -53,13 +53,16 @@ public class MergeUtils {
   public static void writeTVPair(TimeValuePair timeValuePair, IChunkWriter chunkWriter) {
     switch (chunkWriter.getDataType()) {
       case TEXT:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBinary(), false);
+        chunkWriter.write(
+            timeValuePair.getTimestamp(), timeValuePair.getValue().getBinary(), false);
         break;
       case DOUBLE:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getDouble(), false);
+        chunkWriter.write(
+            timeValuePair.getTimestamp(), timeValuePair.getValue().getDouble(), false);
         break;
       case BOOLEAN:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBoolean(), false);
+        chunkWriter.write(
+            timeValuePair.getTimestamp(), timeValuePair.getValue().getBoolean(), false);
         break;
       case INT64:
         chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getLong(), false);

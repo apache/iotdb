@@ -18,15 +18,6 @@
  */
 package org.apache.iotdb.tsfile.write.writer;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.MetaMarker;
@@ -48,8 +39,19 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 /**
  * TsFileIOWriter is used to construct metadata and write data stored in memory to output stream.
@@ -89,11 +91,8 @@ public class TsFileIOWriter {
   private long minPlanIndex;
   private long maxPlanIndex;
 
-  /**
-   * empty construct function.
-   */
-  protected TsFileIOWriter() {
-  }
+  /** empty construct function. */
+  protected TsFileIOWriter() {}
 
   /**
    * for writing a new tsfile.
@@ -120,9 +119,7 @@ public class TsFileIOWriter {
     startFile();
   }
 
-  /**
-   * for test only
-   */
+  /** for test only */
   public TsFileIOWriter(TsFileOutput output, boolean test) {
     this.out = output;
   }
@@ -170,12 +167,12 @@ public class TsFileIOWriter {
   /**
    * start a {@linkplain ChunkMetadata ChunkMetaData}.
    *
-   * @param measurementId        - measurementId of this time series
+   * @param measurementId - measurementId of this time series
    * @param compressionCodecName - compression name of this time series
-   * @param tsDataType           - data type
-   * @param statistics           - Chunk statistics
-   * @param dataSize             - the serialized size of all pages
-   * @param mask                 - 0x80 for time chunk, 0x40 for value chunk, 0x00 for common chunk
+   * @param tsDataType - data type
+   * @param statistics - Chunk statistics
+   * @param dataSize - the serialized size of all pages
+   * @param mask - 0x80 for time chunk, 0x40 for value chunk, 0x00 for common chunk
    * @throws IOException if I/O error occurs
    */
   public void startFlushChunk(
@@ -190,8 +187,7 @@ public class TsFileIOWriter {
       throws IOException {
 
     currentChunkMetadata =
-        new ChunkMetadata(
-            measurementId, tsDataType, out.getPosition(), statistics);
+        new ChunkMetadata(measurementId, tsDataType, out.getPosition(), statistics);
 
     ChunkHeader header =
         new ChunkHeader(
@@ -205,9 +201,7 @@ public class TsFileIOWriter {
     header.serializeTo(out.wrapAsStream());
   }
 
-  /**
-   * Write a whole chunk in another file into this file. Providing fast merge for IoTDB.
-   */
+  /** Write a whole chunk in another file into this file. Providing fast merge for IoTDB. */
   public void writeChunk(Chunk chunk, ChunkMetadata chunkMetadata) throws IOException {
     ChunkHeader chunkHeader = chunk.getHeader();
     currentChunkMetadata =
@@ -227,9 +221,7 @@ public class TsFileIOWriter {
     }
   }
 
-  /**
-   * end chunk and write some log.
-   */
+  /** end chunk and write some log. */
   public void endCurrentChunk() {
     chunkMetadataList.add(currentChunkMetadata);
     currentChunkMetadata = null;
@@ -382,11 +374,11 @@ public class TsFileIOWriter {
   }
 
   void writeSeparatorMaskForTest() throws IOException {
-    out.write(new byte[]{MetaMarker.SEPARATOR});
+    out.write(new byte[] {MetaMarker.SEPARATOR});
   }
 
   void writeChunkMaskForTest() throws IOException {
-    out.write(new byte[]{MetaMarker.CHUNK_HEADER});
+    out.write(new byte[] {MetaMarker.CHUNK_HEADER});
   }
 
   public File getFile() {
@@ -397,9 +389,7 @@ public class TsFileIOWriter {
     this.file = file;
   }
 
-  /**
-   * Remove such ChunkMetadata that its startTime is not in chunkStartTimes
-   */
+  /** Remove such ChunkMetadata that its startTime is not in chunkStartTimes */
   public void filterChunks(Map<Path, List<Long>> chunkStartTimes) {
     Map<Path, Integer> startTimeIdxes = new HashMap<>();
     chunkStartTimes.forEach((p, t) -> startTimeIdxes.put(p, 0));

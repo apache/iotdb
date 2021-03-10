@@ -18,12 +18,13 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
+import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class TimeStatistics extends Statistics {
 
@@ -95,9 +96,7 @@ public class TimeStatistics extends Statistics {
   }
 
   @Override
-  protected void mergeStatisticsValue(Statistics stats) {
-
-  }
+  protected void mergeStatisticsValue(Statistics stats) {}
 
   @Override
   public byte[] getMinValueBytes() {
@@ -155,10 +154,8 @@ public class TimeStatistics extends Statistics {
   }
 
   @Override
-  public void deserialize(InputStream inputStream) throws IOException {
-  }
+  public void deserialize(InputStream inputStream) throws IOException {}
 
   @Override
-  public void deserialize(ByteBuffer byteBuffer) {
-  }
+  public void deserialize(ByteBuffer byteBuffer) {}
 }

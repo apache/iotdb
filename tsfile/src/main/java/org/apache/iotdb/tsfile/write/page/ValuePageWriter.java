@@ -18,10 +18,6 @@
  */
 package org.apache.iotdb.tsfile.write.page;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.Channels;
-import java.nio.channels.WritableByteChannel;
 import org.apache.iotdb.tsfile.compress.ICompressor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -30,11 +26,18 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.Channels;
+import java.nio.channels.WritableByteChannel;
+
 /**
- * This writer is used to write value into a page. It consists of a value encoder and respective OutputStream.
+ * This writer is used to write value into a page. It consists of a value encoder and respective
+ * OutputStream.
  */
 public class ValuePageWriter {
   private static final Logger logger = LoggerFactory.getLogger(ValuePageWriter.class);

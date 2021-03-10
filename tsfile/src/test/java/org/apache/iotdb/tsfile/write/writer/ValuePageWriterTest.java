@@ -18,11 +18,6 @@
  */
 package org.apache.iotdb.tsfile.write.writer;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.compress.ICompressor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
 import org.apache.iotdb.tsfile.encoding.decoder.PlainDecoder;
@@ -36,7 +31,14 @@ import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.page.ValuePageWriter;
+
 import org.junit.Test;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class ValuePageWriterTest {
 
@@ -203,8 +205,8 @@ public class ValuePageWriterTest {
       assertEquals(67, ReadWriteForEncodingUtils.readUnsignedVarInt(buffer));
 
       // Statistics
-      FloatStatistics testStatistics = (FloatStatistics) FloatStatistics
-          .deserialize(buffer, TSDataType.FLOAT);
+      FloatStatistics testStatistics =
+          (FloatStatistics) FloatStatistics.deserialize(buffer, TSDataType.FLOAT);
       assertEquals(1L, testStatistics.getStartTime());
       assertEquals(19L, testStatistics.getEndTime());
       assertEquals(15, testStatistics.getCount());
@@ -219,7 +221,6 @@ public class ValuePageWriterTest {
       assertEquals(((byte) (0xEE)), ReadWriteIOUtils.readByte(buffer));
       assertEquals(((byte) (0xEE)), ReadWriteIOUtils.readByte(buffer));
       assertEquals(((byte) (0xE0)), ReadWriteIOUtils.readByte(buffer));
-
 
       for (int value = 1; value <= 20; value++) {
         if (value % 4 != 0) {

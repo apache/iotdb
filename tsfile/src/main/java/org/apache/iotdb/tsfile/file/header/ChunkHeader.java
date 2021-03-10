@@ -70,7 +70,9 @@ public class ChunkHeader {
       int numOfPages,
       int mask) {
     this(
-        (byte) ((numOfPages <= 1 ? MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER : MetaMarker.CHUNK_HEADER) | mask),
+        (byte)
+            ((numOfPages <= 1 ? MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER : MetaMarker.CHUNK_HEADER)
+                | mask),
         measurementID,
         dataSize,
         getSerializedSize(measurementID, dataSize),

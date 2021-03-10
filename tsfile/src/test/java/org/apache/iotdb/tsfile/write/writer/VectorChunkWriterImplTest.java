@@ -18,11 +18,6 @@
  */
 package org.apache.iotdb.tsfile.write.writer;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -31,7 +26,14 @@ import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.chunk.VectorChunkWriterImpl;
+
 import org.junit.Test;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class VectorChunkWriterImplTest {
 
@@ -48,7 +50,8 @@ public class VectorChunkWriterImplTest {
     }
 
     chunkWriter.sealCurrentPage();
-    // time chunk: 14 + 4 + 160; value chunk 1: 8 + 2 + 4 + 3 + 80; value chunk 2: 8 + 2 + 4 + 3 + 20; value chunk 3: 9 + 4 + 7 + 20 * 8;
+    // time chunk: 14 + 4 + 160; value chunk 1: 8 + 2 + 4 + 3 + 80; value chunk 2: 8 + 2 + 4 + 3 +
+    // 20; value chunk 3: 9 + 4 + 7 + 20 * 8;
     assertEquals(492L, chunkWriter.getCurrentChunkSize());
 
     try {
@@ -58,8 +61,8 @@ public class VectorChunkWriterImplTest {
       PublicBAOS publicBAOS = testTsFileOutput.publicBAOS;
       ByteBuffer buffer = ByteBuffer.wrap(publicBAOS.getBuf(), 0, publicBAOS.size());
       // time chunk
-      assertEquals((byte) (0x80 | MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER),
-          ReadWriteIOUtils.readByte(buffer));
+      assertEquals(
+          (byte) (0x80 | MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER), ReadWriteIOUtils.readByte(buffer));
       assertEquals("s1.time", ReadWriteIOUtils.readVarIntString(buffer));
       assertEquals(164, ReadWriteForEncodingUtils.readUnsignedVarInt(buffer));
       assertEquals(TSDataType.Vector.serialize(), ReadWriteIOUtils.readByte(buffer));
@@ -132,8 +135,7 @@ public class VectorChunkWriterImplTest {
       PublicBAOS publicBAOS = testTsFileOutput.publicBAOS;
       ByteBuffer buffer = ByteBuffer.wrap(publicBAOS.getBuf(), 0, publicBAOS.size());
       // time chunk
-      assertEquals((byte) (0x80 | MetaMarker.CHUNK_HEADER),
-          ReadWriteIOUtils.readByte(buffer));
+      assertEquals((byte) (0x80 | MetaMarker.CHUNK_HEADER), ReadWriteIOUtils.readByte(buffer));
       assertEquals("s1.time", ReadWriteIOUtils.readVarIntString(buffer));
       assertEquals(362, ReadWriteForEncodingUtils.readUnsignedVarInt(buffer));
       assertEquals(TSDataType.Vector.serialize(), ReadWriteIOUtils.readByte(buffer));

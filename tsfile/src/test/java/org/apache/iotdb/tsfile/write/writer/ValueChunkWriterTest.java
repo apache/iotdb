@@ -18,11 +18,6 @@
  */
 package org.apache.iotdb.tsfile.write.writer;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.encoding.encoder.PlainEncoder;
 import org.apache.iotdb.tsfile.file.MetaMarker;
@@ -33,15 +28,23 @@ import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.chunk.ValueChunkWriter;
+
 import org.junit.Test;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class ValueChunkWriterTest {
 
   @Test
   public void testWrite1() {
     Encoder valueEncoder = new PlainEncoder(TSDataType.FLOAT, 0);
-    ValueChunkWriter chunkWriter = new ValueChunkWriter("s1", CompressionType.UNCOMPRESSED,
-        TSDataType.FLOAT, TSEncoding.PLAIN, valueEncoder);
+    ValueChunkWriter chunkWriter =
+        new ValueChunkWriter(
+            "s1", CompressionType.UNCOMPRESSED, TSDataType.FLOAT, TSEncoding.PLAIN, valueEncoder);
     for (int time = 1; time <= 20; time++) {
       chunkWriter.write(time, (float) time, time % 4 == 0);
     }
@@ -71,8 +74,9 @@ public class ValueChunkWriterTest {
   @Test
   public void testWrite2() {
     Encoder valueEncoder = new PlainEncoder(TSDataType.FLOAT, 0);
-    ValueChunkWriter chunkWriter = new ValueChunkWriter("s1", CompressionType.UNCOMPRESSED,
-        TSDataType.FLOAT, TSEncoding.PLAIN, valueEncoder);
+    ValueChunkWriter chunkWriter =
+        new ValueChunkWriter(
+            "s1", CompressionType.UNCOMPRESSED, TSDataType.FLOAT, TSEncoding.PLAIN, valueEncoder);
     for (int time = 1; time <= 20; time++) {
       chunkWriter.write(time, (float) time, time % 4 == 0);
     }

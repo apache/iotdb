@@ -18,21 +18,24 @@
  */
 package org.apache.iotdb.tsfile.write.page;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.Channels;
-import java.nio.channels.WritableByteChannel;
 import org.apache.iotdb.tsfile.compress.ICompressor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.TimeStatistics;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.Channels;
+import java.nio.channels.WritableByteChannel;
+
 /**
- * This writer is used to write time into a page. It consists of a time encoder and respective OutputStream.
+ * This writer is used to write time into a page. It consists of a time encoder and respective
+ * OutputStream.
  */
 public class TimePageWriter {
 
@@ -126,7 +129,8 @@ public class TimePageWriter {
     }
 
     // write page content to temp PBAOS
-    logger.trace("start to flush a time page data into buffer, buffer position {} ", pageBuffer.size());
+    logger.trace(
+        "start to flush a time page data into buffer, buffer position {} ", pageBuffer.size());
     if (compressor.getType().equals(CompressionType.UNCOMPRESSED)) {
       try (WritableByteChannel channel = Channels.newChannel(pageBuffer)) {
         channel.write(pageData);
@@ -134,7 +138,8 @@ public class TimePageWriter {
     } else {
       pageBuffer.write(compressedBytes, 0, compressedSize);
     }
-    logger.trace("finish flushing a time page data into buffer, buffer position {} ", pageBuffer.size());
+    logger.trace(
+        "finish flushing a time page data into buffer, buffer position {} ", pageBuffer.size());
     return sizeWithoutStatistic;
   }
 

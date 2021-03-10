@@ -18,9 +18,6 @@
  */
 package org.apache.iotdb.tsfile.write.chunk;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -28,19 +25,24 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
-public class VectorChunkWriterImpl implements IChunkWriter {
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
+public class VectorChunkWriterImpl implements IChunkWriter {
 
   private final TimeChunkWriter timeChunkWriter;
   private final List<ValueChunkWriter> valueChunkWriterList;
   private int valueIndex;
 
-  /**
-   * @param schema schema of this measurement
-   */
+  /** @param schema schema of this measurement */
   public VectorChunkWriterImpl(IMeasurementSchema schema) {
-    timeChunkWriter = new TimeChunkWriter(schema.getMeasurementId(), schema.getCompressor(),
-        schema.getTimeTSEncoding(), schema.getTimeEncoder());
+    timeChunkWriter =
+        new TimeChunkWriter(
+            schema.getMeasurementId(),
+            schema.getCompressor(),
+            schema.getTimeTSEncoding(),
+            schema.getTimeEncoder());
 
     List<String> valueMeasurementIdList = schema.getValueMeasurementIdList();
     List<TSDataType> valueTSDataTypeList = schema.getValueTSDataTypeList();
@@ -48,10 +50,14 @@ public class VectorChunkWriterImpl implements IChunkWriter {
     List<Encoder> valueEncoderList = schema.getValueEncoderList();
 
     valueChunkWriterList = new ArrayList<>(valueMeasurementIdList.size());
-    for (int i= 0; i < valueMeasurementIdList.size(); i++) {
-      valueChunkWriterList.add(new ValueChunkWriter(valueMeasurementIdList.get(i),
-          schema.getCompressor(),
-          valueTSDataTypeList.get(i), valueTSEncodingList.get(i), valueEncoderList.get(i)));
+    for (int i = 0; i < valueMeasurementIdList.size(); i++) {
+      valueChunkWriterList.add(
+          new ValueChunkWriter(
+              valueMeasurementIdList.get(i),
+              schema.getCompressor(),
+              valueTSDataTypeList.get(i),
+              valueTSEncodingList.get(i),
+              valueEncoderList.get(i)));
     }
 
     this.valueIndex = 0;
@@ -110,19 +116,16 @@ public class VectorChunkWriterImpl implements IChunkWriter {
   @Override
   public void write(long[] timestamps, boolean[] values, int batchSize) {
     throw new UnsupportedOperationException();
-
   }
 
   @Override
   public void write(long[] timestamps, float[] values, int batchSize) {
     throw new UnsupportedOperationException();
-
   }
 
   @Override
   public void write(long[] timestamps, double[] values, int batchSize) {
     throw new UnsupportedOperationException();
-
   }
 
   @Override
