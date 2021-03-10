@@ -173,22 +173,22 @@ public class MemTableFlushTask {
 
             switch (dataType) {
               case BOOLEAN:
-                seriesWriterImpl.write(time, tvPairs.getBoolean(i));
+                seriesWriterImpl.write(time, tvPairs.getBoolean(i), false);
                 break;
               case INT32:
-                seriesWriterImpl.write(time, tvPairs.getInt(i));
+                seriesWriterImpl.write(time, tvPairs.getInt(i), false);
                 break;
               case INT64:
-                seriesWriterImpl.write(time, tvPairs.getLong(i));
+                seriesWriterImpl.write(time, tvPairs.getLong(i), false);
                 break;
               case FLOAT:
-                seriesWriterImpl.write(time, tvPairs.getFloat(i));
+                seriesWriterImpl.write(time, tvPairs.getFloat(i), false);
                 break;
               case DOUBLE:
-                seriesWriterImpl.write(time, tvPairs.getDouble(i));
+                seriesWriterImpl.write(time, tvPairs.getDouble(i), false);
                 break;
               case TEXT:
-                seriesWriterImpl.write(time, tvPairs.getBinary(i));
+                seriesWriterImpl.write(time, tvPairs.getBinary(i), false);
                 break;
               default:
                 LOGGER.error(

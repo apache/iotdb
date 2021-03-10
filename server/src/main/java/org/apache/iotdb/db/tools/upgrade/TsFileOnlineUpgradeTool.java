@@ -412,22 +412,22 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
       getOrDefaultTsFileIOWriter(oldTsFile, partitionId);
       switch (schema.getType()) {
         case INT32:
-          chunkWriter.write(time, (int) value);
+          chunkWriter.write(time, (int) value, false);
           break;
         case INT64:
-          chunkWriter.write(time, (long) value);
+          chunkWriter.write(time, (long) value, false);
           break;
         case FLOAT:
-          chunkWriter.write(time, (float) value);
+          chunkWriter.write(time, (float) value, false);
           break;
         case DOUBLE:
-          chunkWriter.write(time, (double) value);
+          chunkWriter.write(time, (double) value, false);
           break;
         case BOOLEAN:
-          chunkWriter.write(time, (boolean) value);
+          chunkWriter.write(time, (boolean) value, false);
           break;
         case TEXT:
-          chunkWriter.write(time, (Binary) value);
+          chunkWriter.write(time, (Binary) value, false);
           break;
         default:
           throw new UnSupportedDataTypeException(
