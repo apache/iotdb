@@ -153,6 +153,11 @@ public class CMManager extends MManager {
     return CMManager.MManagerHolder.INSTANCE;
   }
 
+  /**
+   * sync meta leader to get the newest partition table and storage groups.
+   *
+   * @throws MetadataException throws MetadataException if necessary
+   */
   public void syncMetaLeader() throws MetadataException {
     try {
       metaGroupMember.syncLeaderWithConsistencyCheck(false);
