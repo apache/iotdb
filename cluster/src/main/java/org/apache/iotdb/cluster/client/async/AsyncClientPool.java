@@ -39,7 +39,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class AsyncClientPool {
 
   private static final Logger logger = LoggerFactory.getLogger(AsyncClientPool.class);
-  private static final long WAIT_CLIENT_TIMEOUT_MS = 5 * 1000L;
+  private long waitClientTimeutMS;
   private int maxConnectionForEachNode;
   private Map<ClusterNode, Deque<AsyncClient>> clientCaches = new ConcurrentHashMap<>();
   private Map<ClusterNode, Integer> nodeClientNumMap = new ConcurrentHashMap<>();
@@ -47,6 +47,7 @@ public class AsyncClientPool {
 
   public AsyncClientPool(AsyncClientFactory asyncClientFactory) {
     this.asyncClientFactory = asyncClientFactory;
+    this.waitClientTimeutMS = ClusterDescriptor.getInstance().getConfig().getWaitClientTimeoutMS();
     this.maxConnectionForEachNode =
         ClusterDescriptor.getInstance().getConfig().getMaxClientPerNodePerMember();
   }
@@ -122,12 +123,11 @@ public class AsyncClientPool {
     long waitStart = System.currentTimeMillis();
     while (clientStack.isEmpty()) {
       try {
-        this.wait(WAIT_CLIENT_TIMEOUT_MS);
-        if (clientStack.isEmpty()
-            && System.currentTimeMillis() - waitStart >= WAIT_CLIENT_TIMEOUT_MS) {
+        this.wait(waitClientTimeutMS);
+        if (clientStack.isEmpty() && System.currentTimeMillis() - waitStart >= waitClientTimeutMS) {
           logger.warn(
               "Cannot get an available client after {}ms, create a new one.",
-              WAIT_CLIENT_TIMEOUT_MS,
+              waitClientTimeutMS,
               asyncClientFactory);
           AsyncClient asyncClient = asyncClientFactory.getAsyncClient(clusterNode, this);
           nodeClientNumMap.computeIfPresent(clusterNode, (n, oldValue) -> oldValue + 1);

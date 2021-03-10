@@ -71,6 +71,9 @@ public class ClusterConfig {
   /** max number of clients in a ClientPool of a member for one node. */
   private int maxClientPerNodePerMember = 1000;
 
+  /** Wait for some timeout, if the old client is not released A new client is created */
+  private long waitClientTimeoutMS = 5 * 1000L;
+
   /**
    * ClientPool will have so many selector threads (TAsyncClientManager) to distribute to its
    * clients.
@@ -440,5 +443,13 @@ public class ClusterConfig {
 
   public void setOpenServerRpcPort(boolean openServerRpcPort) {
     this.openServerRpcPort = openServerRpcPort;
+  }
+
+  public long getWaitClientTimeoutMS() {
+    return waitClientTimeoutMS;
+  }
+
+  public void setWaitClientTimeoutMS(long waitClientTimeoutMS) {
+    this.waitClientTimeoutMS = waitClientTimeoutMS;
   }
 }
