@@ -19,14 +19,6 @@
 
 package org.apache.iotdb.db.engine.storagegroup.timeindex;
 
-import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.exception.PartitionViolationException;
-import org.apache.iotdb.db.rescon.CachedStringPool;
-import org.apache.iotdb.db.utils.FilePathUtils;
-import org.apache.iotdb.db.utils.SerializeUtils;
-import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -36,6 +28,13 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.exception.PartitionViolationException;
+import org.apache.iotdb.db.rescon.CachedStringPool;
+import org.apache.iotdb.db.utils.FilePathUtils;
+import org.apache.iotdb.db.utils.SerializeUtils;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class DeviceTimeIndex implements ITimeIndex {
 
@@ -244,8 +243,8 @@ public class DeviceTimeIndex implements ITimeIndex {
   @Override
   public long getTimePartitionWithCheck(String tsfilePath) throws PartitionViolationException {
     long partitionId = -1;
-    for (Long startTime : startTimes) {
-      long p = StorageEngine.getTimePartition(startTime);
+    for (int index : deviceToIndex.values()) {
+      long p = StorageEngine.getTimePartition(startTimes[index]);
       if (partitionId == -1) {
         partitionId = p;
       } else {
@@ -253,15 +252,10 @@ public class DeviceTimeIndex implements ITimeIndex {
           throw new PartitionViolationException(tsfilePath);
         }
       }
-    }
-    for (Long endTime : endTimes) {
-      long p = StorageEngine.getTimePartition(endTime);
-      if (partitionId == -1) {
-        partitionId = p;
-      } else {
-        if (partitionId != p) {
-          throw new PartitionViolationException(tsfilePath);
-        }
+
+      p = StorageEngine.getTimePartition(endTimes[index]);
+      if (partitionId != p) {
+        throw new PartitionViolationException(tsfilePath);
       }
     }
     if (partitionId == -1) {
