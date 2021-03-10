@@ -114,7 +114,7 @@ public enum IndexType {
 
   private static Map<String, String> uppercaseStringProps(Map<String, String> props) {
     Map<String, String> uppercase = new HashMap<>(props.size());
-    props.forEach((k, v) -> uppercase.put(k.toUpperCase(), v.toUpperCase()));
+    props.forEach((k, v) -> uppercase.put(k.toUpperCase(), v));
     return uppercase;
   }
 }
