@@ -52,16 +52,6 @@ public abstract class TsPrimitiveType implements Serializable {
     }
   }
 
-  public void setVector(TsPrimitiveType[] val) {
-    // TODO Auto-generated method stub
-
-  }
-
-  public TsPrimitiveType[] getVector() {
-    // TODO Auto-generated method stub
-    return null;
-  }
-
   public boolean getBoolean() {
     throw new UnsupportedOperationException("getBoolean() is not supported for current sub-class");
   }
@@ -86,6 +76,10 @@ public abstract class TsPrimitiveType implements Serializable {
     throw new UnsupportedOperationException("getBinary() is not supported for current sub-class");
   }
 
+  public TsPrimitiveType[] getVector() {
+    throw new UnsupportedOperationException("setDouble() is not supported for current sub-class");
+  }
+
   public void setBoolean(boolean val) {
     throw new UnsupportedOperationException("setBoolean() is not supported for current sub-class");
   }
@@ -108,6 +102,10 @@ public abstract class TsPrimitiveType implements Serializable {
 
   public void setBinary(Binary val) {
     throw new UnsupportedOperationException("setBinary() is not supported for current sub-class");
+  }
+
+  public void setVector(TsPrimitiveType[] val) {
+    throw new UnsupportedOperationException("setDouble() is not supported for current sub-class");
   }
 
   /**

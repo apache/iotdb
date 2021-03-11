@@ -86,4 +86,8 @@ public class PublicBAOS extends ByteArrayOutputStream {
   public int size() {
     return count;
   }
+
+  public void truncate(int size) {
+    count = size;
+  }
 }

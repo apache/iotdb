@@ -16,15 +16,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.tsfile.write.schema;
 
-package org.apache.iotdb.cluster.exception;
+import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
-public class BadSeedUrlFormatException extends Exception {
+import java.util.List;
 
-  public BadSeedUrlFormatException(String seedUrl) {
-    super(
-        String.format(
-            "Seed url %s has bad format, which should be " + "{IP/DomainName}:{metaPort}",
-            seedUrl));
-  }
+public interface IMeasurementSchema {
+
+  String getMeasurementId();
+
+  CompressionType getCompressor();
+
+  TSDataType getType();
+
+  TSEncoding getTimeTSEncoding();
+
+  Encoder getTimeEncoder();
+
+  List<String> getValueMeasurementIdList();
+
+  List<TSDataType> getValueTSDataTypeList();
+
+  List<TSEncoding> getValueTSEncodingList();
+
+  List<Encoder> getValueEncoderList();
 }

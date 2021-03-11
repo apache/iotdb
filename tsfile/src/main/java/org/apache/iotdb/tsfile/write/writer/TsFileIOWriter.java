@@ -39,7 +39,6 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -120,6 +119,11 @@ public class TsFileIOWriter {
     startFile();
   }
 
+  /** for test only */
+  public TsFileIOWriter(TsFileOutput output, boolean test) {
+    this.out = output;
+  }
+
   /**
    * Writes given bytes to output stream. This method is called when total memory size exceeds the
    * chunk group size threshold.
@@ -163,35 +167,37 @@ public class TsFileIOWriter {
   /**
    * start a {@linkplain ChunkMetadata ChunkMetaData}.
    *
-   * @param measurementSchema - schema of this time series
+   * @param measurementId - measurementId of this time series
    * @param compressionCodecName - compression name of this time series
    * @param tsDataType - data type
    * @param statistics - Chunk statistics
    * @param dataSize - the serialized size of all pages
+   * @param mask - 0x80 for time chunk, 0x40 for value chunk, 0x00 for common chunk
    * @throws IOException if I/O error occurs
    */
   public void startFlushChunk(
-      MeasurementSchema measurementSchema,
+      String measurementId,
       CompressionType compressionCodecName,
       TSDataType tsDataType,
       TSEncoding encodingType,
       Statistics<?> statistics,
       int dataSize,
-      int numOfPages)
+      int numOfPages,
+      int mask)
       throws IOException {
 
     currentChunkMetadata =
-        new ChunkMetadata(
-            measurementSchema.getMeasurementId(), tsDataType, out.getPosition(), statistics);
+        new ChunkMetadata(measurementId, tsDataType, out.getPosition(), statistics);
 
     ChunkHeader header =
         new ChunkHeader(
-            measurementSchema.getMeasurementId(),
+            measurementId,
             dataSize,
             tsDataType,
             compressionCodecName,
             encodingType,
-            numOfPages);
+            numOfPages,
+            mask);
     header.serializeTo(out.wrapAsStream());
   }
 
