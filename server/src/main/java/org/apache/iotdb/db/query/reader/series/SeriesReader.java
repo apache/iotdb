@@ -18,6 +18,16 @@
  */
 package org.apache.iotdb.db.query.reader.series;
 
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.Comparator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Objects;
+import java.util.PriorityQueue;
+import java.util.Set;
+import java.util.function.ToLongFunction;
+import java.util.stream.Collectors;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -32,7 +42,8 @@ import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader.MergeReade
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.TestOnly;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -42,17 +53,6 @@ import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
-
-import java.io.IOException;
-import java.io.Serializable;
-import java.util.Comparator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Objects;
-import java.util.PriorityQueue;
-import java.util.Set;
-import java.util.function.ToLongFunction;
-import java.util.stream.Collectors;
 
 public class SeriesReader {
 
@@ -84,15 +84,15 @@ public class SeriesReader {
   /*
    * TimeSeriesMetadata cache
    */
-  private TimeseriesMetadata firstTimeSeriesMetadata;
-  private final List<TimeseriesMetadata> seqTimeSeriesMetadata = new LinkedList<>();
-  private final PriorityQueue<TimeseriesMetadata> unSeqTimeSeriesMetadata;
+  private ITimeSeriesMetadata firstTimeSeriesMetadata;
+  private final List<ITimeSeriesMetadata> seqTimeSeriesMetadata = new LinkedList<>();
+  private final PriorityQueue<ITimeSeriesMetadata> unSeqTimeSeriesMetadata;
 
   /*
    * chunk cache
    */
-  private ChunkMetadata firstChunkMetadata;
-  private final PriorityQueue<ChunkMetadata> cachedChunkMetadata;
+  private IChunkMetadata firstChunkMetadata;
+  private final PriorityQueue<IChunkMetadata> cachedChunkMetadata;
 
   /*
    * page cache
@@ -328,9 +328,9 @@ public class SeriesReader {
     }
   }
 
-  private void unpackOneTimeSeriesMetadata(TimeseriesMetadata timeSeriesMetadata)
+  private void unpackOneTimeSeriesMetadata(ITimeSeriesMetadata timeSeriesMetadata)
       throws IOException {
-    List<ChunkMetadata> chunkMetadataList =
+    List<IChunkMetadata> chunkMetadataList =
         FileLoaderUtils.loadChunkMetadataList(timeSeriesMetadata);
     chunkMetadataList.forEach(chunkMetadata -> chunkMetadata.setSeq(timeSeriesMetadata.isSeq()));
 
@@ -508,7 +508,7 @@ public class SeriesReader {
     }
   }
 
-  private void unpackOneChunkMetaData(ChunkMetadata chunkMetaData) throws IOException {
+  private void unpackOneChunkMetaData(IChunkMetadata chunkMetaData) throws IOException {
     FileLoaderUtils.loadPageReaderList(chunkMetaData, timeFilter)
         .forEach(
             pageReader -> {

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.file.metadata;
 
+import java.util.ArrayList;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 
 import java.io.IOException;
@@ -25,8 +26,16 @@ import java.util.List;
 
 public class VectorTimeSeriesMetadata implements ITimeSeriesMetadata {
 
-  private TimeseriesMetadata timeseriesMetadata;
-  private List<TimeseriesMetadata> valueTimeseriesMetadataList;
+  private final TimeseriesMetadata timeseriesMetadata;
+  private final List<TimeseriesMetadata> valueTimeseriesMetadataList;
+
+
+  public VectorTimeSeriesMetadata(
+      TimeseriesMetadata timeseriesMetadata,
+      List<TimeseriesMetadata> valueTimeseriesMetadataList) {
+    this.timeseriesMetadata = timeseriesMetadata;
+    this.valueTimeseriesMetadataList = valueTimeseriesMetadataList;
+  }
 
   @Override
   public Statistics getStatistics() {
@@ -55,7 +64,27 @@ public class VectorTimeSeriesMetadata implements ITimeSeriesMetadata {
 
   @Override
   public List<IChunkMetadata> loadChunkMetadataList() throws IOException {
-    List<ChunkMetadata> timeChunkMetadata = timeseriesMetadata.loadChunkMetadataList();
+    List<IChunkMetadata> timeChunkMetadata = timeseriesMetadata.loadChunkMetadataList();
+    List<List<IChunkMetadata>> valueChunkMetadataList = new ArrayList<>();
+    for (TimeseriesMetadata metadata : valueTimeseriesMetadataList) {
+      valueChunkMetadataList.add(metadata.loadChunkMetadataList());
+    }
+
+    List<IChunkMetadata> res = new ArrayList<>();
+
+    for (int i = 0; i < timeChunkMetadata.size(); i++) {
+      List<IChunkMetadata> chunkMetadataList = new ArrayList<>();
+      for (List<IChunkMetadata> chunkMetadata : valueChunkMetadataList) {
+        chunkMetadataList.add(chunkMetadata.get(i));
+      }
+      res.add(new VectorChunkMetadata(timeChunkMetadata.get(i), chunkMetadataList));
+    }
+
+    return res;
+  }
+
+  @Override
+  public List<IChunkMetadata> getChunkMetadataList() {
     return null;
   }
 }

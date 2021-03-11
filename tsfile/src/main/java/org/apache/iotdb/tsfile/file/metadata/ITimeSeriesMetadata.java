@@ -36,4 +36,6 @@ public interface ITimeSeriesMetadata {
   void setSeq(boolean seq);
 
   List<IChunkMetadata> loadChunkMetadataList() throws IOException;
+
+  List<IChunkMetadata> getChunkMetadataList();
 }

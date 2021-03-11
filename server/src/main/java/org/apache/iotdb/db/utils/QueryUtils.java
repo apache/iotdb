@@ -19,15 +19,14 @@
 
 package org.apache.iotdb.db.utils;
 
+import java.util.List;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
-
-import java.util.List;
 
 public class QueryUtils {
 
@@ -46,9 +45,9 @@ public class QueryUtils {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static void modifyChunkMetaData(
-      List<ChunkMetadata> chunkMetaData, List<Modification> modifications) {
+      List<IChunkMetadata> chunkMetaData, List<Modification> modifications) {
     for (int metaIndex = 0; metaIndex < chunkMetaData.size(); metaIndex++) {
-      ChunkMetadata metaData = chunkMetaData.get(metaIndex);
+      IChunkMetadata metaData = chunkMetaData.get(metaIndex);
       for (Modification modification : modifications) {
         // When the chunkMetadata come from an old TsFile, the method modification.getFileOffset()
         // is gerVersionNum actually. In this case, we compare the versions of modification and
@@ -86,7 +85,7 @@ public class QueryUtils {
         });
   }
 
-  private static void doModifyChunkMetaData(Modification modification, ChunkMetadata metaData) {
+  private static void doModifyChunkMetaData(Modification modification, IChunkMetadata metaData) {
     if (modification instanceof Deletion) {
       Deletion deletion = (Deletion) modification;
       metaData.insertIntoSortedDeletions(deletion.getStartTime(), deletion.getEndTime());

@@ -34,7 +34,7 @@ import java.util.List;
 import java.util.Objects;
 
 /** Metadata of one chunk. */
-public class ChunkMetadata implements Accountable {
+public class ChunkMetadata implements Accountable, IChunkMetadata {
 
   private String measurementUid;
 
@@ -106,6 +106,7 @@ public class ChunkMetadata implements Accountable {
    *
    * @return Byte offset of header of this chunk (includes the marker)
    */
+  @Override
   public long getOffsetOfChunkHeader() {
     return offsetOfChunkHeader;
   }
@@ -114,6 +115,7 @@ public class ChunkMetadata implements Accountable {
     return measurementUid;
   }
 
+  @Override
   public Statistics getStatistics() {
     return statistics;
   }
@@ -171,10 +173,12 @@ public class ChunkMetadata implements Accountable {
     return chunkMetaData;
   }
 
+  @Override
   public long getVersion() {
     return version;
   }
 
+  @Override
   public void setVersion(long version) {
     this.version = version;
   }
@@ -239,10 +243,12 @@ public class ChunkMetadata implements Accountable {
         measurementUid, deleteIntervalList, tsDataType, statistics, version, offsetOfChunkHeader);
   }
 
+  @Override
   public boolean isModified() {
     return modified;
   }
 
+  @Override
   public void setModified(boolean modified) {
     this.modified = modified;
   }
@@ -283,10 +289,12 @@ public class ChunkMetadata implements Accountable {
     this.ramSize = calculateRamSize();
   }
 
+  @Override
   public void setSeq(boolean seq) {
     isSeq = seq;
   }
 
+  @Override
   public boolean isSeq() {
     return isSeq;
   }

@@ -18,41 +18,139 @@
  */
 package org.apache.iotdb.tsfile.file.metadata;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 
 public class VectorChunkMetadata implements IChunkMetadata {
 
+  private final IChunkMetadata timeChunkMetadata;
+  private final List<IChunkMetadata> valueChunkMetadataList;
+
+  public VectorChunkMetadata(IChunkMetadata timeChunkMetadata,
+      List<IChunkMetadata> valueChunkMetadataList) {
+    this.timeChunkMetadata = timeChunkMetadata;
+    this.valueChunkMetadataList = valueChunkMetadataList;
+  }
+
   @Override
   public Statistics getStatistics() {
-    return null;
+    return timeChunkMetadata.getStatistics();
   }
 
   @Override
   public boolean isModified() {
-    return false;
+    return timeChunkMetadata.isModified();
   }
 
   @Override
-  public void setModified(boolean modified) {}
+  public void setModified(boolean modified) {
+    timeChunkMetadata.setModified(modified);
+  }
 
   @Override
   public boolean isSeq() {
+    return timeChunkMetadata.isSeq();
+  }
+
+  @Override
+  public void setSeq(boolean seq) {
+    timeChunkMetadata.setSeq(seq);
+  }
+
+  @Override
+  public long getVersion() {
+    return timeChunkMetadata.getVersion();
+  }
+
+  @Override
+  public void setVersion(long version) {
+    timeChunkMetadata.setVersion(version);
+  }
+
+  @Override
+  public long getOffsetOfChunkHeader() {
+    return timeChunkMetadata.getOffsetOfChunkHeader();
+  }
+
+  @Override
+  public long getStartTime() {
+    return timeChunkMetadata.getStartTime();
+  }
+
+  @Override
+  public long getEndTime() {
+    return timeChunkMetadata.getEndTime();
+  }
+
+  @Override
+  public boolean isFromOldTsFile() {
     return false;
   }
 
   @Override
-  public void setSeq(boolean seq) {}
-
-  @Override
-  public long getVersion() {
-    return 0;
+  public IChunkLoader getChunkLoader() {
+    return timeChunkMetadata.getChunkLoader();
   }
 
   @Override
-  public void setVersion(long version) {}
+  public void setChunkLoader(IChunkLoader chunkLoader) {
+    timeChunkMetadata.setChunkLoader(chunkLoader);
+    for (IChunkMetadata chunkMetadata : valueChunkMetadataList) {
+      chunkMetadata.setChunkLoader(chunkLoader);
+    }
+  }
 
   @Override
-  public long getOffsetOfChunkHeader() {
-    return 0;
+  public void setFilePath(String filePath) {
+    timeChunkMetadata.setFilePath(filePath);
+    for (IChunkMetadata chunkMetadata : valueChunkMetadataList) {
+      chunkMetadata.setFilePath(filePath);
+    }
+  }
+
+  @Override
+  public void setClosed(boolean closed) {
+    timeChunkMetadata.setClosed(closed);
+    for (IChunkMetadata chunkMetadata : valueChunkMetadataList) {
+      chunkMetadata.setClosed(closed);
+    }
+  }
+
+  @Override
+  public TSDataType getDataType() {
+    return timeChunkMetadata.getDataType();
+  }
+
+  @Override
+  public String getMeasurementUid() {
+    return timeChunkMetadata.getMeasurementUid();
+  }
+
+  @Override
+  public void insertIntoSortedDeletions(long startTime, long endTime) {
+    timeChunkMetadata.insertIntoSortedDeletions(startTime, endTime);
+  }
+
+  @Override
+  public List<TimeRange> getDeleteIntervalList() {
+    return timeChunkMetadata.getDeleteIntervalList();
+  }
+
+  public Chunk getTimeChunk() throws IOException {
+    return timeChunkMetadata.getChunkLoader().loadChunk((ChunkMetadata) timeChunkMetadata);
+  }
+
+  public List<Chunk> getValueChunkList() throws IOException {
+    List<Chunk> valueChunkList = new ArrayList<>();
+    for (IChunkMetadata chunkMetadata : valueChunkMetadataList) {
+      valueChunkList.add(chunkMetadata.getChunkLoader().loadChunk((ChunkMetadata) chunkMetadata));
+    }
+    return valueChunkList;
   }
 }

@@ -18,7 +18,11 @@
  */
 package org.apache.iotdb.tsfile.file.metadata;
 
+import java.util.List;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 
 public interface IChunkMetadata {
 
@@ -37,4 +41,26 @@ public interface IChunkMetadata {
   void setVersion(long version);
 
   long getOffsetOfChunkHeader();
+
+  long getStartTime();
+
+  long getEndTime();
+
+  boolean isFromOldTsFile();
+
+  IChunkLoader getChunkLoader();
+
+  void setChunkLoader(IChunkLoader chunkLoader);
+
+  void setFilePath(String filePath);
+
+  void setClosed(boolean closed);
+
+  TSDataType getDataType();
+
+  String getMeasurementUid();
+
+  void insertIntoSortedDeletions(long startTime, long endTime);
+
+  List<TimeRange> getDeleteIntervalList();
 }

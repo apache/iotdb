@@ -18,41 +18,6 @@
  */
 package org.apache.iotdb.tsfile.read;
 
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.compress.IUnCompressor;
-import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
-import org.apache.iotdb.tsfile.exception.TsFileRuntimeException;
-import org.apache.iotdb.tsfile.file.MetaMarker;
-import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
-import org.apache.iotdb.tsfile.file.header.ChunkHeader;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
-import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
-import org.apache.iotdb.tsfile.read.reader.TsFileInput;
-import org.apache.iotdb.tsfile.read.reader.page.PageReader;
-import org.apache.iotdb.tsfile.utils.BloomFilter;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.BufferOverflowException;
@@ -74,6 +39,40 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.compress.IUnCompressor;
+import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
+import org.apache.iotdb.tsfile.exception.TsFileRuntimeException;
+import org.apache.iotdb.tsfile.file.MetaMarker;
+import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
+import org.apache.iotdb.tsfile.file.header.ChunkHeader;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
+import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
+import org.apache.iotdb.tsfile.read.reader.TsFileInput;
+import org.apache.iotdb.tsfile.read.reader.page.PageReader;
+import org.apache.iotdb.tsfile.utils.BloomFilter;
+import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TsFileSequenceReader implements AutoCloseable {
 
@@ -539,14 +538,14 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @return measurement -> ChunkMetadata list
    * @throws IOException io error
    */
-  public Map<String, List<ChunkMetadata>> readChunkMetadataInDevice(String device)
+  public Map<String, List<IChunkMetadata>> readChunkMetadataInDevice(String device)
       throws IOException {
     readFileMetadata();
     List<TimeseriesMetadata> timeseriesMetadataMap = getDeviceTimeseriesMetadata(device);
     if (timeseriesMetadataMap.isEmpty()) {
       return new HashMap<>();
     }
-    Map<String, List<ChunkMetadata>> seriesMetadata = new HashMap<>();
+    Map<String, List<IChunkMetadata>> seriesMetadata = new HashMap<>();
     for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataMap) {
       seriesMetadata.put(
           timeseriesMetadata.getMeasurementId(), timeseriesMetadata.getChunkMetadataList());
@@ -1144,13 +1143,13 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @param path timeseries path
    * @return List of ChunkMetaData
    */
-  public List<ChunkMetadata> getChunkMetadataList(Path path) throws IOException {
+  public List<IChunkMetadata> getChunkMetadataList(Path path) throws IOException {
     TimeseriesMetadata timeseriesMetaData = readTimeseriesMetadata(path);
     if (timeseriesMetaData == null) {
       return Collections.emptyList();
     }
-    List<ChunkMetadata> chunkMetadataList = readChunkMetaDataList(timeseriesMetaData);
-    chunkMetadataList.sort(Comparator.comparingLong(ChunkMetadata::getStartTime));
+    List<IChunkMetadata> chunkMetadataList = readChunkMetaDataList(timeseriesMetaData);
+    chunkMetadataList.sort(Comparator.comparingLong(IChunkMetadata::getStartTime));
     return chunkMetadataList;
   }
 
@@ -1159,7 +1158,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    *
    * @return List of ChunkMetaData
    */
-  public List<ChunkMetadata> readChunkMetaDataList(TimeseriesMetadata timeseriesMetaData)
+  public List<IChunkMetadata> readChunkMetaDataList(TimeseriesMetadata timeseriesMetaData)
       throws IOException {
     return timeseriesMetaData.getChunkMetadataList();
   }
@@ -1203,7 +1202,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   public List<String> getDeviceNameInRange(long start, long end) throws IOException {
     List<String> res = new ArrayList<>();
     for (String device : getAllDevices()) {
-      Map<String, List<ChunkMetadata>> seriesMetadataMap = readChunkMetadataInDevice(device);
+      Map<String, List<IChunkMetadata>> seriesMetadataMap = readChunkMetadataInDevice(device);
       if (hasDataInPartition(seriesMetadataMap, start, end)) {
         res.add(device);
       }
@@ -1219,9 +1218,9 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @param end the end position of the space partition
    */
   private boolean hasDataInPartition(
-      Map<String, List<ChunkMetadata>> seriesMetadataMap, long start, long end) {
-    for (List<ChunkMetadata> chunkMetadataList : seriesMetadataMap.values()) {
-      for (ChunkMetadata chunkMetadata : chunkMetadataList) {
+      Map<String, List<IChunkMetadata>> seriesMetadataMap, long start, long end) {
+    for (List<IChunkMetadata> chunkMetadataList : seriesMetadataMap.values()) {
+      for (IChunkMetadata chunkMetadata : chunkMetadataList) {
         LocateStatus location =
             MetadataQuerierByFileImpl.checkLocateStatus(chunkMetadata, start, end);
         if (location == LocateStatus.in) {
@@ -1254,7 +1253,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     return maxPlanIndex;
   }
 
-  public Iterator<Map<String, List<ChunkMetadata>>> getMeasurementChunkMetadataListMapIterator(
+  public Iterator<Map<String, List<IChunkMetadata>>> getMeasurementChunkMetadataListMapIterator(
       String device) throws IOException {
     readFileMetadata();
 
@@ -1263,7 +1262,7 @@ public class TsFileSequenceReader implements AutoCloseable {
         getMetadataAndEndOffset(metadataIndexNode, device, true, true);
 
     if (metadataIndexPair == null) {
-      return new Iterator<Map<String, List<ChunkMetadata>>>() {
+      return new Iterator<Map<String, List<IChunkMetadata>>>() {
 
         @Override
         public boolean hasNext() {
@@ -1271,7 +1270,7 @@ public class TsFileSequenceReader implements AutoCloseable {
         }
 
         @Override
-        public Map<String, List<ChunkMetadata>> next() {
+        public Map<String, List<IChunkMetadata>> next() {
           throw new NoSuchElementException();
         }
       };
@@ -1281,7 +1280,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
     collectEachLeafMeasurementNodeOffsetRange(buffer, queue);
 
-    return new Iterator<Map<String, List<ChunkMetadata>>>() {
+    return new Iterator<Map<String, List<IChunkMetadata>>>() {
 
       @Override
       public boolean hasNext() {
@@ -1289,12 +1288,12 @@ public class TsFileSequenceReader implements AutoCloseable {
       }
 
       @Override
-      public Map<String, List<ChunkMetadata>> next() {
+      public Map<String, List<IChunkMetadata>> next() {
         if (!hasNext()) {
           throw new NoSuchElementException();
         }
         Pair<Long, Long> startEndPair = queue.remove();
-        Map<String, List<ChunkMetadata>> measurementChunkMetadataList = new HashMap<>();
+        Map<String, List<IChunkMetadata>> measurementChunkMetadataList = new HashMap<>();
         try {
           List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
           ByteBuffer nextBuffer = readData(startEndPair.left, startEndPair.right);
