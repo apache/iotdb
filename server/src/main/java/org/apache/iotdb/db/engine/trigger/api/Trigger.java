@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.trigger.api;
 
 import org.apache.iotdb.tsfile.utils.Binary;
 
+/** User Guide: docs/UserGuide/Operation Manual/Triggers.md */
 public interface Trigger {
 
   @SuppressWarnings("squid:S112")
