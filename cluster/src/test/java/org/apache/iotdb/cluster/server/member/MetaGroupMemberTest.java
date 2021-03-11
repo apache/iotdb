@@ -881,6 +881,10 @@ public class MetaGroupMemberTest extends MemberTest {
 
     try {
       ClusterReaderFactory readerFactory = new ClusterReaderFactory(testMetaMember);
+      long[] times = new long[10];
+      for (int i = 0; i < 10; i++) {
+        times[i] = i;
+      }
       for (int i = 0; i < 10; i++) {
         IReaderByTimestamp readerByTimestamp =
             readerFactory.getReaderByTimestamp(
@@ -889,8 +893,10 @@ public class MetaGroupMemberTest extends MemberTest {
                 TSDataType.DOUBLE,
                 context,
                 true);
+
+        Object[] values = readerByTimestamp.getValuesInTimestamps(times, 10);
         for (int j = 0; j < 10; j++) {
-          assertEquals(j * 1.0, (double) readerByTimestamp.getValueInTimestamp(j), 0.00001);
+          assertEquals(j * 1.0, (double) values[j], 0.00001);
         }
       }
     } finally {

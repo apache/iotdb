@@ -57,17 +57,24 @@ public class TestManagedSeriesReader implements ManagedSeriesReader, IReaderByTi
   }
 
   @Override
-  public Object getValueInTimestamp(long timestamp) {
-    while (batchData.hasCurrent()) {
-      long currTime = batchData.currentTime();
-      if (currTime == timestamp) {
-        return batchData.currentValue();
-      } else if (currTime > timestamp) {
-        break;
+  public Object[] getValuesInTimestamps(long[] timestamps, int length) {
+    Object[] results = new Object[length];
+    boolean hasValue = false;
+    for (int i = 0; i < length; i++) {
+      while (batchData.hasCurrent()) {
+        long currTime = batchData.currentTime();
+        if (currTime == timestamps[i]) {
+          hasValue = true;
+          results[i] = batchData.currentValue();
+          break;
+        } else if (currTime > timestamps[i]) {
+          results[i] = null;
+          break;
+        }
+        batchData.next();
       }
-      batchData.next();
     }
-    return null;
+    return hasValue ? results : null;
   }
 
   @Override
