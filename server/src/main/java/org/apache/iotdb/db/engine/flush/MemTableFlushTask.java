@@ -30,7 +30,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.slf4j.Logger;
@@ -110,7 +110,7 @@ public class MemTableFlushTask {
       for (Map.Entry<String, IWritableMemChunk> iWritableMemChunkEntry : value.entrySet()) {
         long startTime = System.currentTimeMillis();
         IWritableMemChunk series = iWritableMemChunkEntry.getValue();
-        MeasurementSchema desc = series.getSchema();
+        IMeasurementSchema desc = series.getSchema();
         TVList tvList = series.getSortedTVListForFlush();
         sortTime += System.currentTimeMillis() - startTime;
         encodingTaskQueue.put(new Pair<>(tvList, desc));
@@ -233,8 +233,8 @@ public class MemTableFlushTask {
               break;
             } else {
               long starTime = System.currentTimeMillis();
-              Pair<TVList, MeasurementSchema> encodingMessage =
-                  (Pair<TVList, MeasurementSchema>) task;
+              Pair<TVList, IMeasurementSchema> encodingMessage =
+                  (Pair<TVList, IMeasurementSchema>) task;
               IChunkWriter seriesWriter = new ChunkWriterImpl(encodingMessage.right);
               writeOneSeries(encodingMessage.left, seriesWriter, encodingMessage.right.getType());
               seriesWriter.sealCurrentPage();
