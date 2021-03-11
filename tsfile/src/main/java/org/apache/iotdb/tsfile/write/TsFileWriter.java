@@ -28,7 +28,7 @@ import org.apache.iotdb.tsfile.write.chunk.IChunkGroupWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
@@ -150,7 +150,8 @@ public class TsFileWriter implements AutoCloseable {
     }
   }
 
-  public void registerDeviceTemplate(String templateName, Map<String, MeasurementSchema> template) {
+  public void registerDeviceTemplate(
+      String templateName, Map<String, IMeasurementSchema> template) {
     schema.registerDeviceTemplate(templateName, template);
   }
 
@@ -158,7 +159,7 @@ public class TsFileWriter implements AutoCloseable {
     schema.registerDevice(deviceId, templateName);
   }
 
-  public void registerTimeseries(Path path, MeasurementSchema measurementSchema)
+  public void registerTimeseries(Path path, IMeasurementSchema measurementSchema)
       throws WriteProcessException {
     if (schema.containsTimeseries(path)) {
       throw new WriteProcessException("given timeseries has exists! " + path);
@@ -190,7 +191,7 @@ public class TsFileWriter implements AutoCloseable {
         groupWriter.tryToAddSeriesWriter(schema.getSeriesSchema(path), pageSize);
       } else if (schema.getDeviceTemplates() != null && schema.getDeviceTemplates().size() == 1) {
         // use the default template without needing to register device
-        Map<String, MeasurementSchema> template =
+        Map<String, IMeasurementSchema> template =
             schema.getDeviceTemplates().entrySet().iterator().next().getValue();
         if (template.containsKey(path.getMeasurement())) {
           groupWriter.tryToAddSeriesWriter(template.get(path.getMeasurement()), pageSize);
@@ -220,14 +221,14 @@ public class TsFileWriter implements AutoCloseable {
     String deviceId = tablet.deviceId;
 
     // add all SeriesWriter of measurements in this Tablet to this ChunkGroupWriter
-    for (MeasurementSchema timeseries : tablet.getSchemas()) {
+    for (IMeasurementSchema timeseries : tablet.getSchemas()) {
       String measurementId = timeseries.getMeasurementId();
       Path path = new Path(deviceId, measurementId);
       if (schema.containsTimeseries(path)) {
         groupWriter.tryToAddSeriesWriter(schema.getSeriesSchema(path), pageSize);
       } else if (schema.getDeviceTemplates() != null && schema.getDeviceTemplates().size() == 1) {
         // use the default template without needing to register device
-        Map<String, MeasurementSchema> template =
+        Map<String, IMeasurementSchema> template =
             schema.getDeviceTemplates().entrySet().iterator().next().getValue();
         if (template.containsKey(path.getMeasurement())) {
           groupWriter.tryToAddSeriesWriter(template.get(path.getMeasurement()), pageSize);
