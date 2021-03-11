@@ -23,10 +23,9 @@ import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.statistics.TimeStatistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 
-import com.sun.tools.javac.util.List;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 
 public class TimePageReader {
 

@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexConstructor;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -239,9 +240,9 @@ public class TsFileIOWriter {
     ReadWriteIOUtils.write(MetaMarker.SEPARATOR, out.wrapAsStream());
 
     // group ChunkMetadata by series
-    Map<Path, List<ChunkMetadata>> chunkMetadataListMap = new TreeMap<>();
+    Map<Path, List<IChunkMetadata>> chunkMetadataListMap = new TreeMap<>();
     for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
-      for (ChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
+      for (IChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
         Path series = new Path(chunkGroupMetadata.getDevice(), chunkMetadata.getMeasurementUid());
         chunkMetadataListMap.computeIfAbsent(series, k -> new ArrayList<>()).add(chunkMetadata);
       }
@@ -288,13 +289,13 @@ public class TsFileIOWriter {
    *
    * @return MetadataIndexEntry list in TsFileMetadata
    */
-  private MetadataIndexNode flushMetadataIndex(Map<Path, List<ChunkMetadata>> chunkMetadataListMap)
+  private MetadataIndexNode flushMetadataIndex(Map<Path, List<IChunkMetadata>> chunkMetadataListMap)
       throws IOException {
 
     // convert ChunkMetadataList to this field
     deviceTimeseriesMetadataMap = new LinkedHashMap<>();
     // create device -> TimeseriesMetaDataList Map
-    for (Map.Entry<Path, List<ChunkMetadata>> entry : chunkMetadataListMap.entrySet()) {
+    for (Map.Entry<Path, List<IChunkMetadata>> entry : chunkMetadataListMap.entrySet()) {
       Path path = entry.getKey();
       String device = path.getDevice();
 
@@ -306,7 +307,7 @@ public class TsFileIOWriter {
       int chunkMetadataListLength = 0;
       boolean serializeStatistic = (entry.getValue().size() > 1);
       // flush chunkMetadataList one by one
-      for (ChunkMetadata chunkMetadata : entry.getValue()) {
+      for (IChunkMetadata chunkMetadata : entry.getValue()) {
         if (!chunkMetadata.getDataType().equals(dataType)) {
           continue;
         }
@@ -341,8 +342,8 @@ public class TsFileIOWriter {
   }
 
   // device -> ChunkMetadataList
-  public Map<String, List<ChunkMetadata>> getDeviceChunkMetadataMap() {
-    Map<String, List<ChunkMetadata>> deviceChunkMetadataMap = new HashMap<>();
+  public Map<String, List<IChunkMetadata>> getDeviceChunkMetadataMap() {
+    Map<String, List<IChunkMetadata>> deviceChunkMetadataMap = new HashMap<>();
 
     for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
       deviceChunkMetadataMap
@@ -402,7 +403,7 @@ public class TsFileIOWriter {
       Iterator<ChunkMetadata> chunkMetaDataIterator =
           chunkGroupMetaData.getChunkMetadataList().iterator();
       while (chunkMetaDataIterator.hasNext()) {
-        ChunkMetadata chunkMetaData = chunkMetaDataIterator.next();
+        IChunkMetadata chunkMetaData = chunkMetaDataIterator.next();
         Path path = new Path(deviceId, chunkMetaData.getMeasurementUid());
         int startTimeIdx = startTimeIdxes.get(path);
 

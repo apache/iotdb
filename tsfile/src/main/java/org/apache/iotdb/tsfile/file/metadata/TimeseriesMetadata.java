@@ -234,7 +234,7 @@ public class TimeseriesMetadata implements Accountable, ITimeSeriesMetadata {
   }
 
   // For reading version-2 only
-  public void setChunkMetadataList(ArrayList<IChunkMetadata> chunkMetadataList) {
-    this.chunkMetadataList = chunkMetadataList;
+  public void setChunkMetadataList(ArrayList<ChunkMetadata> chunkMetadataList) {
+    this.chunkMetadataList = new ArrayList<>(chunkMetadataList);
   }
 }

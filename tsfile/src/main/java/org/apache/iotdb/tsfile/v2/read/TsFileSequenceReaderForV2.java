@@ -23,7 +23,6 @@ import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -183,7 +182,7 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
     buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
     while (buffer.hasRemaining()) {
       TimeseriesMetadata timeseriesMetadata = TimeseriesMetadataV2.deserializeFrom(buffer);
-      ArrayList<IChunkMetadata> chunkMetadataList = readChunkMetaDataList(timeseriesMetadata);
+      ArrayList<ChunkMetadata> chunkMetadataList = readChunkMetaDataList(timeseriesMetadata);
       timeseriesMetadata.setChunkMetadataList(chunkMetadataList);
       timeseriesMetadataList.add(timeseriesMetadata);
     }
@@ -223,7 +222,7 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
     while (buffer.hasRemaining()) {
       TimeseriesMetadata timeseriesMetadata;
       timeseriesMetadata = TimeseriesMetadataV2.deserializeFrom(buffer);
-      ArrayList<IChunkMetadata> chunkMetadataList = readChunkMetaDataList(timeseriesMetadata);
+      ArrayList<ChunkMetadata> chunkMetadataList = readChunkMetaDataList(timeseriesMetadata);
       timeseriesMetadata.setChunkMetadataList(chunkMetadataList);
       if (allSensors.contains(timeseriesMetadata.getMeasurementId())) {
         timeseriesMetadataList.add(timeseriesMetadata);
@@ -272,7 +271,7 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
               measurementMetadataIndexPair.left.getOffset(), measurementMetadataIndexPair.right);
       while (buffer.hasRemaining()) {
         TimeseriesMetadata timeseriesMetadata = TimeseriesMetadataV2.deserializeFrom(buffer);
-        ArrayList<IChunkMetadata> chunkMetadataList = readChunkMetaDataList(timeseriesMetadata);
+        ArrayList<ChunkMetadata> chunkMetadataList = readChunkMetaDataList(timeseriesMetadata);
         timeseriesMetadata.setChunkMetadataList(chunkMetadataList);
         timeseriesMetadataList.add(timeseriesMetadata);
       }
@@ -339,7 +338,7 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
    * @throws IOException io error
    */
   @Override
-  public Map<String, List<IChunkMetadata>> readChunkMetadataInDevice(String device)
+  public Map<String, List<ChunkMetadata>> readChunkMetadataInDevice(String device)
       throws IOException {
     if (tsFileMetaData == null) {
       readFileMetadata();
@@ -356,7 +355,7 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
     }
     // read buffer of all ChunkMetadatas of this device
     ByteBuffer buffer = readData(start, size);
-    Map<String, List<IChunkMetadata>> seriesMetadata = new HashMap<>();
+    Map<String, List<ChunkMetadata>> seriesMetadata = new HashMap<>();
     while (buffer.hasRemaining()) {
       ChunkMetadata chunkMetadata = ChunkMetadataV2.deserializeFrom(buffer);
       seriesMetadata
@@ -364,7 +363,7 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
           .add(chunkMetadata);
     }
     // set version in ChunkMetadata
-    for (Entry<String, List<IChunkMetadata>> entry : seriesMetadata.entrySet()) {
+    for (Entry<String, List<ChunkMetadata>> entry : seriesMetadata.entrySet()) {
       applyVersion(entry.getValue());
     }
     return seriesMetadata;
@@ -411,7 +410,7 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
         List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
         while (buffer.hasRemaining()) {
           TimeseriesMetadata timeseriesMetadata = TimeseriesMetadataV2.deserializeFrom(buffer);
-          ArrayList<IChunkMetadata> chunkMetadataList = readChunkMetaDataList(timeseriesMetadata);
+          ArrayList<ChunkMetadata> chunkMetadataList = readChunkMetaDataList(timeseriesMetadata);
           timeseriesMetadata.setChunkMetadataList(chunkMetadataList);
           timeseriesMetadataList.add(timeseriesMetadata);
         }
@@ -585,10 +584,10 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
    *
    * @return List of ChunkMetaData
    */
-  public ArrayList<IChunkMetadata> readChunkMetaDataList(TimeseriesMetadata timeseriesMetaData)
+  public ArrayList<ChunkMetadata> readChunkMetaDataList(TimeseriesMetadata timeseriesMetaData)
       throws IOException {
     readFileMetadata();
-    ArrayList<IChunkMetadata> chunkMetadataList = new ArrayList<>();
+    ArrayList<ChunkMetadata> chunkMetadataList = new ArrayList<>();
     long startOffsetOfChunkMetadataList = timeseriesMetaData.getOffsetOfChunkMetaDataList();
     int dataSizeOfChunkMetadataList = timeseriesMetaData.getDataSizeOfChunkMetaDataList();
 
@@ -603,12 +602,12 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
     return chunkMetadataList;
   }
 
-  private void applyVersion(List<IChunkMetadata> chunkMetadataList) {
+  private void applyVersion(List<ChunkMetadata> chunkMetadataList) {
     if (versionInfo == null || versionInfo.isEmpty()) {
       return;
     }
     int versionIndex = 0;
-    for (IChunkMetadata chunkMetadata : chunkMetadataList) {
+    for (ChunkMetadata chunkMetadata : chunkMetadataList) {
 
       while (chunkMetadata.getOffsetOfChunkHeader() >= versionInfo.get(versionIndex).left) {
         versionIndex++;

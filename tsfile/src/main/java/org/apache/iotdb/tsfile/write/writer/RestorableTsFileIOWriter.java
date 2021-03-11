@@ -22,6 +22,7 @@ package org.apache.iotdb.tsfile.write.writer;
 import org.apache.iotdb.tsfile.exception.NotCompatibleTsFileException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileCheckStatus;
@@ -166,12 +167,12 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     List<ChunkMetadata> chunkMetadataList = new ArrayList<>();
     if (metadatasForQuery.containsKey(deviceId)
         && metadatasForQuery.get(deviceId).containsKey(measurementId)) {
-      for (ChunkMetadata chunkMetaData : metadatasForQuery.get(deviceId).get(measurementId)) {
+      for (IChunkMetadata chunkMetaData : metadatasForQuery.get(deviceId).get(measurementId)) {
         // filter: if a device'measurement is defined as float type, and data has been persistent.
         // Then someone deletes the timeseries and recreate it with Int type. We have to ignore
         // all the stale data.
         if (dataType == null || dataType.equals(chunkMetaData.getDataType())) {
-          chunkMetadataList.add(chunkMetaData);
+          chunkMetadataList.add((ChunkMetadata) chunkMetaData);
         }
       }
     }
@@ -193,7 +194,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
         List<ChunkMetadata> rowMetaDataList = chunkGroupMetadata.getChunkMetadataList();
 
         String device = chunkGroupMetadata.getDevice();
-        for (ChunkMetadata chunkMetaData : rowMetaDataList) {
+        for (IChunkMetadata chunkMetaData : rowMetaDataList) {
           String measurementId = chunkMetaData.getMeasurementUid();
           if (!metadatasForQuery.containsKey(device)) {
             metadatasForQuery.put(device, new HashMap<>());
@@ -201,7 +202,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
           if (!metadatasForQuery.get(device).containsKey(measurementId)) {
             metadatasForQuery.get(device).put(measurementId, new ArrayList<>());
           }
-          metadatasForQuery.get(device).get(measurementId).add(chunkMetaData);
+          metadatasForQuery.get(device).get(measurementId).add((ChunkMetadata) chunkMetaData);
         }
       }
     }

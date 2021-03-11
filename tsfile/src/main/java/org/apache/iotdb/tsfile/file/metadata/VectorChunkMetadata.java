@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -141,6 +142,11 @@ public class VectorChunkMetadata implements IChunkMetadata {
   @Override
   public List<TimeRange> getDeleteIntervalList() {
     return timeChunkMetadata.getDeleteIntervalList();
+  }
+
+  @Override
+  public int serializeTo(OutputStream outputStream, boolean serializeStatistic) {
+    throw new UnsupportedOperationException("VectorChunkMetadata doesn't support serial method");
   }
 
   public Chunk getTimeChunk() throws IOException {

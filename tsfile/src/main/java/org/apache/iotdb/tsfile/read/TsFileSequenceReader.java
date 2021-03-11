@@ -540,17 +540,20 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @return measurement -> ChunkMetadata list
    * @throws IOException io error
    */
-  public Map<String, List<IChunkMetadata>> readChunkMetadataInDevice(String device)
+  public Map<String, List<ChunkMetadata>> readChunkMetadataInDevice(String device)
       throws IOException {
     readFileMetadata();
     List<TimeseriesMetadata> timeseriesMetadataMap = getDeviceTimeseriesMetadata(device);
     if (timeseriesMetadataMap.isEmpty()) {
       return new HashMap<>();
     }
-    Map<String, List<IChunkMetadata>> seriesMetadata = new HashMap<>();
+    Map<String, List<ChunkMetadata>> seriesMetadata = new HashMap<>();
     for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataMap) {
       seriesMetadata.put(
-          timeseriesMetadata.getMeasurementId(), timeseriesMetadata.getChunkMetadataList());
+          timeseriesMetadata.getMeasurementId(),
+          timeseriesMetadata.getChunkMetadataList().stream()
+              .map(chunkMetadata -> ((ChunkMetadata) chunkMetadata))
+              .collect(Collectors.toList()));
     }
     return seriesMetadata;
   }
@@ -1145,12 +1148,12 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @param path timeseries path
    * @return List of ChunkMetaData
    */
-  public List<IChunkMetadata> getChunkMetadataList(Path path) throws IOException {
+  public List<ChunkMetadata> getChunkMetadataList(Path path) throws IOException {
     TimeseriesMetadata timeseriesMetaData = readTimeseriesMetadata(path);
     if (timeseriesMetaData == null) {
       return Collections.emptyList();
     }
-    List<IChunkMetadata> chunkMetadataList = readChunkMetaDataList(timeseriesMetaData);
+    List<ChunkMetadata> chunkMetadataList = readChunkMetaDataList(timeseriesMetaData);
     chunkMetadataList.sort(Comparator.comparingLong(IChunkMetadata::getStartTime));
     return chunkMetadataList;
   }
@@ -1160,9 +1163,11 @@ public class TsFileSequenceReader implements AutoCloseable {
    *
    * @return List of ChunkMetaData
    */
-  public List<IChunkMetadata> readChunkMetaDataList(TimeseriesMetadata timeseriesMetaData)
+  public List<ChunkMetadata> readChunkMetaDataList(TimeseriesMetadata timeseriesMetaData)
       throws IOException {
-    return timeseriesMetaData.getChunkMetadataList();
+    return timeseriesMetaData.getChunkMetadataList().stream()
+        .map(chunkMetadata -> (ChunkMetadata) chunkMetadata)
+        .collect(Collectors.toList());
   }
 
   /**
@@ -1204,7 +1209,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   public List<String> getDeviceNameInRange(long start, long end) throws IOException {
     List<String> res = new ArrayList<>();
     for (String device : getAllDevices()) {
-      Map<String, List<IChunkMetadata>> seriesMetadataMap = readChunkMetadataInDevice(device);
+      Map<String, List<ChunkMetadata>> seriesMetadataMap = readChunkMetadataInDevice(device);
       if (hasDataInPartition(seriesMetadataMap, start, end)) {
         res.add(device);
       }
@@ -1220,9 +1225,9 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @param end the end position of the space partition
    */
   private boolean hasDataInPartition(
-      Map<String, List<IChunkMetadata>> seriesMetadataMap, long start, long end) {
-    for (List<IChunkMetadata> chunkMetadataList : seriesMetadataMap.values()) {
-      for (IChunkMetadata chunkMetadata : chunkMetadataList) {
+      Map<String, List<ChunkMetadata>> seriesMetadataMap, long start, long end) {
+    for (List<ChunkMetadata> chunkMetadataList : seriesMetadataMap.values()) {
+      for (ChunkMetadata chunkMetadata : chunkMetadataList) {
         LocateStatus location =
             MetadataQuerierByFileImpl.checkLocateStatus(chunkMetadata, start, end);
         if (location == LocateStatus.in) {

@@ -19,6 +19,7 @@
 package org.apache.iotdb.tsfile.read.controller;
 
 import org.apache.iotdb.tsfile.common.cache.LRUCache;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
@@ -47,7 +48,7 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
 
   private TsFileMetadata fileMetaData;
 
-  private LRUCache<Path, List<IChunkMetadata>> chunkMetaDataCache;
+  private LRUCache<Path, List<ChunkMetadata>> chunkMetaDataCache;
 
   private TsFileSequenceReader tsFileReader;
 
@@ -56,9 +57,9 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
     this.tsFileReader = tsFileReader;
     this.fileMetaData = tsFileReader.readFileMetadata();
     chunkMetaDataCache =
-        new LRUCache<Path, List<IChunkMetadata>>(CACHED_ENTRY_NUMBER) {
+        new LRUCache<Path, List<ChunkMetadata>>(CACHED_ENTRY_NUMBER) {
           @Override
-          public List<IChunkMetadata> loadObjectByKey(Path key) throws IOException {
+          public List<ChunkMetadata> loadObjectByKey(Path key) throws IOException {
             return loadChunkMetadata(key);
           }
         };
@@ -66,7 +67,7 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
 
   @Override
   public List<IChunkMetadata> getChunkMetaDataList(Path path) throws IOException {
-    return chunkMetaDataCache.get(path);
+    return new ArrayList<>(chunkMetaDataCache.get(path));
   }
 
   @Override
@@ -98,7 +99,7 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
       deviceMeasurementsMap.get(path.getDevice()).add(path.getMeasurement());
     }
 
-    Map<Path, List<IChunkMetadata>> tempChunkMetaDatas = new HashMap<>();
+    Map<Path, List<ChunkMetadata>> tempChunkMetaDatas = new HashMap<>();
 
     int count = 0;
     boolean enough = false;
@@ -118,12 +119,12 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
 
       List<TimeseriesMetadata> timeseriesMetaDataList =
           tsFileReader.readTimeseriesMetadata(selectedDevice, selectedMeasurements);
-      List<IChunkMetadata> chunkMetadataList = new ArrayList<>();
+      List<ChunkMetadata> chunkMetadataList = new ArrayList<>();
       for (TimeseriesMetadata timeseriesMetadata : timeseriesMetaDataList) {
         chunkMetadataList.addAll(tsFileReader.readChunkMetaDataList(timeseriesMetadata));
       }
       // d1
-      for (IChunkMetadata chunkMetaData : chunkMetadataList) {
+      for (ChunkMetadata chunkMetaData : chunkMetadataList) {
         String currentMeasurement = chunkMetaData.getMeasurementUid();
 
         // s1
@@ -148,7 +149,7 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
       }
     }
 
-    for (Map.Entry<Path, List<IChunkMetadata>> entry : tempChunkMetaDatas.entrySet()) {
+    for (Map.Entry<Path, List<ChunkMetadata>> entry : tempChunkMetaDatas.entrySet()) {
       chunkMetaDataCache.put(entry.getKey(), entry.getValue());
     }
   }
@@ -162,7 +163,7 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
     return tsFileReader.getChunkMetadataList(path).get(0).getDataType();
   }
 
-  private List<IChunkMetadata> loadChunkMetadata(Path path) throws IOException {
+  private List<ChunkMetadata> loadChunkMetadata(Path path) throws IOException {
     return tsFileReader.getChunkMetadataList(path);
   }
 
@@ -193,10 +194,10 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
       Set<String> selectedMeasurements = deviceMeasurements.getValue();
 
       // measurement -> ChunkMetadata list
-      Map<String, List<IChunkMetadata>> seriesMetadatas =
+      Map<String, List<ChunkMetadata>> seriesMetadatas =
           tsFileReader.readChunkMetadataInDevice(selectedDevice);
 
-      for (Entry<String, List<IChunkMetadata>> seriesMetadata : seriesMetadatas.entrySet()) {
+      for (Entry<String, List<ChunkMetadata>> seriesMetadata : seriesMetadatas.entrySet()) {
 
         if (!selectedMeasurements.contains(seriesMetadata.getKey())) {
           continue;
