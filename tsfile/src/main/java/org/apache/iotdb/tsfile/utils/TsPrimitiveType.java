@@ -45,9 +45,21 @@ public abstract class TsPrimitiveType implements Serializable {
         return new TsPrimitiveType.TsDouble((double) v);
       case TEXT:
         return new TsPrimitiveType.TsBinary((Binary) v);
+      case VECTOR:
+        return new TsPrimitiveType.TsVector((TsPrimitiveType[]) v);
       default:
         throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
     }
+  }
+
+  public void setVector(TsPrimitiveType[] val) {
+    // TODO Auto-generated method stub
+
+  }
+
+  public TsPrimitiveType[] getVector() {
+    // TODO Auto-generated method stub
+    return null;
   }
 
   public boolean getBoolean() {
@@ -460,6 +472,56 @@ public abstract class TsPrimitiveType implements Serializable {
         return value.equals(anotherTs.value);
       }
       return false;
+    }
+  }
+
+  public static class TsVector extends TsPrimitiveType {
+
+    private TsPrimitiveType[] value;
+
+    public TsVector(TsPrimitiveType[] value) {
+      this.value = value;
+    }
+
+    @Override
+    public TsPrimitiveType[] getVector() {
+      return value;
+    }
+
+    @Override
+    public void setVector(TsPrimitiveType[] val) {
+      this.value = val;
+    }
+
+    @Override
+    public int getSize() {
+      int size = 0;
+      for (TsPrimitiveType type : value) {
+        size += type.getSize();
+      }
+      // object header + array object header
+      return 4 + 4 + size;
+    }
+
+    @Override
+    public Object getValue() {
+      return getVector();
+    }
+
+    @Override
+    public String getStringValue() {
+      StringBuilder builder = new StringBuilder("[");
+      builder.append(value[0].getStringValue());
+      for (TsPrimitiveType type : value) {
+        builder.append(", ").append(type.getStringValue());
+      }
+      builder.append("]");
+      return builder.toString();
+    }
+
+    @Override
+    public TSDataType getDataType() {
+      return TSDataType.VECTOR;
     }
   }
 }
