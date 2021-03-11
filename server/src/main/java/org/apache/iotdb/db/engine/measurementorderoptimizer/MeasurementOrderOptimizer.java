@@ -324,9 +324,9 @@ public class MeasurementOrderOptimizer {
             approximateAggregationQueryCostWithTimeRange(queryRecordsForCurDevice, curMeasurementOrder, chunkSize);
     float temperature = SA_INIT_TEMPERATURE;
     Random r = new Random();
-
+    long startTime = System.currentTimeMillis();
     // Run the main loop of Simulated Annealing
-    for (int k = 0; k < SA_MAX_ITERATION; ++k) {
+    for (int k = 0; k < SA_MAX_ITERATION && System.currentTimeMillis() - startTime < 30l * 60l * 1000l; ++k) {
       temperature = updateTemperature(temperature);
 
       // Generate a neighbor state
