@@ -19,18 +19,6 @@
 
 -->
 
-# IoTDB-Flink-Connector Example
-
-## Function
-```
-The example is to show how to send data to a IoTDB server from a Flink job.
-```
-
-## Usage
-
-* Launch the IoTDB server.
-* Run `org.apache.iotdb.flink.FlinkIoTDBSink.java` to run the flink job on local mini cluster.
-
 # TsFile-Flink-Connector Example
 
 ## Usage
