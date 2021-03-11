@@ -105,7 +105,7 @@ public class DivergentDesign {
     return new Pair<>(nextReplica, curWorkloadPartition);
   }
 
-  public Pair<List<Double>, List<Long>> optimizeWithChunkSizeAndCostRecord() {
+  public Pair<Replica[], Workload[]> optimizeWithChunkSizeAndCostRecord() {
     if (queryRecords.size() == 0) {
       getQueryOrderFromManager();
     }
@@ -152,7 +152,7 @@ public class DivergentDesign {
     } while (i < maxIter && Math.abs(curCost - nextCost) > breakPoint && System.currentTimeMillis() - startTime < 60l * 60l * 1000l);
     curWorkloadPartition = nextWorkloadPartition;
 
-    return new Pair<>(costList, timeList);
+    return new Pair<>(nextReplica, curWorkloadPartition);
   }
 
   public Pair<List<Double>, List<Long>> optimizeWithCostRecord() {

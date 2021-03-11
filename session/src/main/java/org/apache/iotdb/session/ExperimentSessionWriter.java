@@ -42,7 +42,7 @@ public class ExperimentSessionWriter {
     }
     session.setStorageGroup("root.test");
     createTimeseries();
-    testReplicaDead();
+    testDivergentDesign(1);
     session.close();
     // 1 -> 3
     // 2 -> 4
