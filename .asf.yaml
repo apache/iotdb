@@ -28,3 +28,5 @@ github:
     - big-data
     - java
     - tsdb
+notifications:
+  jira_options: link label
