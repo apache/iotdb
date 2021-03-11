@@ -18,22 +18,23 @@
  */
 package org.apache.iotdb.tsfile.file.metadata;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
 public class VectorChunkMetadata implements IChunkMetadata {
 
   private final IChunkMetadata timeChunkMetadata;
   private final List<IChunkMetadata> valueChunkMetadataList;
 
-  public VectorChunkMetadata(IChunkMetadata timeChunkMetadata,
-      List<IChunkMetadata> valueChunkMetadataList) {
+  public VectorChunkMetadata(
+      IChunkMetadata timeChunkMetadata, List<IChunkMetadata> valueChunkMetadataList) {
     this.timeChunkMetadata = timeChunkMetadata;
     this.valueChunkMetadataList = valueChunkMetadataList;
   }

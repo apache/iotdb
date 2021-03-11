@@ -18,11 +18,12 @@
  */
 package org.apache.iotdb.tsfile.file.metadata;
 
-import java.util.List;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
+
+import java.util.List;
 
 public interface IChunkMetadata {
 

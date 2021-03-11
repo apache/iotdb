@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.tsfile.file.metadata;
 
-import java.util.ArrayList;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 public class VectorTimeSeriesMetadata implements ITimeSeriesMetadata {
@@ -29,10 +29,8 @@ public class VectorTimeSeriesMetadata implements ITimeSeriesMetadata {
   private final TimeseriesMetadata timeseriesMetadata;
   private final List<TimeseriesMetadata> valueTimeseriesMetadataList;
 
-
   public VectorTimeSeriesMetadata(
-      TimeseriesMetadata timeseriesMetadata,
-      List<TimeseriesMetadata> valueTimeseriesMetadataList) {
+      TimeseriesMetadata timeseriesMetadata, List<TimeseriesMetadata> valueTimeseriesMetadataList) {
     this.timeseriesMetadata = timeseriesMetadata;
     this.valueTimeseriesMetadataList = valueTimeseriesMetadataList;
   }

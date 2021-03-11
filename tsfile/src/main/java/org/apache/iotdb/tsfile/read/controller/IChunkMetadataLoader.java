@@ -18,10 +18,11 @@
  */
 package org.apache.iotdb.tsfile.read.controller;
 
-import java.io.IOException;
-import java.util.List;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
+
+import java.io.IOException;
+import java.util.List;
 
 public interface IChunkMetadataLoader {
 

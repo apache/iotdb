@@ -18,10 +18,6 @@
  */
 package org.apache.iotdb.db.utils;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.Map.Entry;
-import java.util.Set;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -46,6 +42,11 @@ import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.VectorChunkReader;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Map.Entry;
+import java.util.Set;
 
 public class FileLoaderUtils {
 
@@ -153,8 +154,8 @@ public class FileLoaderUtils {
    * @param chunkMetaData the corresponding chunk metadata
    * @param timeFilter it should be a TimeFilter instead of a ValueFilter
    */
-  public static List<IPageReader> loadPageReaderList(IChunkMetadata chunkMetaData, Filter timeFilter)
-      throws IOException {
+  public static List<IPageReader> loadPageReaderList(
+      IChunkMetadata chunkMetaData, Filter timeFilter) throws IOException {
     // TODO memory Vector chunk metadata
     if (chunkMetaData == null) {
       throw new IOException("Can't init null chunkMeta");

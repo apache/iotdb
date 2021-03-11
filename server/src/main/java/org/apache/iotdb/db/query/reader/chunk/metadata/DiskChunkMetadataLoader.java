@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.query.reader.chunk.metadata;
 
-import java.util.List;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -29,6 +28,8 @@ import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+
+import java.util.List;
 
 public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
 
