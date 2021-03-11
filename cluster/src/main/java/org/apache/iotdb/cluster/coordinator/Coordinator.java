@@ -159,31 +159,32 @@ public class Coordinator {
    * nodes.
    */
   private TSStatus processNonPartitionedDataPlan(PhysicalPlan plan) {
-    if (plan instanceof DeleteTimeSeriesPlan || plan instanceof DeletePlan) {
-      try {
+    try {
+      if (plan instanceof DeleteTimeSeriesPlan || plan instanceof DeletePlan) {
         // as delete related plans may have abstract paths (paths with wildcards), we convert
         // them to full paths so the executor nodes will not need to query the metadata holders,
         // eliminating the risk that when they are querying the metadata holders, the timeseries
         // has already been deleted
         ((CMManager) IoTDB.metaManager).convertToFullPaths(plan);
-      } catch (PathNotExistException e) {
-        if (plan.getPaths().isEmpty()) {
-          // only reports an error when there is no matching path
-          return StatusUtils.getStatus(StatusUtils.TIMESERIES_NOT_EXIST_ERROR, e.getMessage());
-        }
+      } else {
+        // function convertToFullPaths has already sync leader
+        metaGroupMember.syncLeaderWithConsistencyCheck(true);
       }
-    }
-    try {
-      metaGroupMember.syncLeaderWithConsistencyCheck(true);
-      List<PartitionGroup> globalGroups = metaGroupMember.getPartitionTable().getGlobalGroups();
-      logger.debug("Forwarding global data plan {} to {} groups", plan, globalGroups.size());
-      return forwardPlan(globalGroups, plan);
+    } catch (PathNotExistException e) {
+      if (plan.getPaths().isEmpty()) {
+        // only reports an error when there is no matching path
+        return StatusUtils.getStatus(StatusUtils.TIMESERIES_NOT_EXIST_ERROR, e.getMessage());
+      }
     } catch (CheckConsistencyException e) {
       logger.debug(
           "Forwarding global data plan {} to meta leader {}", plan, metaGroupMember.getLeader());
       metaGroupMember.waitLeader();
       return metaGroupMember.forwardPlan(plan, metaGroupMember.getLeader(), null);
     }
+
+    List<PartitionGroup> globalGroups = metaGroupMember.getPartitionTable().getGlobalGroups();
+    logger.debug("Forwarding global data plan {} to {} groups", plan, globalGroups.size());
+    return forwardPlan(globalGroups, plan);
   }
 
   /**
