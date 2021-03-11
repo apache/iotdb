@@ -76,7 +76,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import org.apache.thrift.TException;
@@ -189,10 +189,10 @@ public class CMManager extends MManager {
       seriesType = super.getSeriesType(path);
     } catch (PathNotExistException e) {
       // pull from remote node
-      List<MeasurementSchema> schemas =
+      List<IMeasurementSchema> schemas =
           metaPuller.pullMeasurementSchemas(Collections.singletonList(path));
       if (!schemas.isEmpty()) {
-        MeasurementSchema measurementSchema = schemas.get(0);
+        IMeasurementSchema measurementSchema = schemas.get(0);
         MeasurementMNode measurementMNode =
             new MeasurementMNode(
                 null, measurementSchema.getMeasurementId(), measurementSchema, null);
@@ -269,8 +269,8 @@ public class CMManager extends MManager {
     for (String s : measurementList) {
       schemasToPull.add(deviceId.concatNode(s));
     }
-    List<MeasurementSchema> schemas = metaPuller.pullMeasurementSchemas(schemasToPull);
-    for (MeasurementSchema schema : schemas) {
+    List<IMeasurementSchema> schemas = metaPuller.pullMeasurementSchemas(schemasToPull);
+    for (IMeasurementSchema schema : schemas) {
       // TODO-Cluster: also pull alias?
       MeasurementMNode measurementMNode =
           new MeasurementMNode(null, schema.getMeasurementId(), schema, null);
@@ -337,10 +337,10 @@ public class CMManager extends MManager {
   }
 
   @Override
-  public MeasurementSchema getSeriesSchema(PartialPath device, String measurement)
+  public IMeasurementSchema getSeriesSchema(PartialPath device, String measurement)
       throws MetadataException {
     try {
-      MeasurementSchema measurementSchema = super.getSeriesSchema(device, measurement);
+      IMeasurementSchema measurementSchema = super.getSeriesSchema(device, measurement);
       if (measurementSchema != null) {
         return measurementSchema;
       }

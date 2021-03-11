@@ -18,11 +18,17 @@
  */
 package org.apache.iotdb.tsfile.write.schema;
 
+
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.util.List;
+import java.util.Map;
 import java.util.List;
 
 public interface IMeasurementSchema {
@@ -31,11 +37,17 @@ public interface IMeasurementSchema {
 
   CompressionType getCompressor();
 
+  TSEncoding getEncodingType();
+
   TSDataType getType();
 
   TSEncoding getTimeTSEncoding();
 
   Encoder getTimeEncoder();
+
+  Encoder getValueEncoder();
+
+  Map<String, String> getProps();
 
   List<String> getValueMeasurementIdList();
 
@@ -44,4 +56,8 @@ public interface IMeasurementSchema {
   List<TSEncoding> getValueTSEncodingList();
 
   List<Encoder> getValueEncoderList();
+
+  int serializeTo(ByteBuffer buffer);
+
+  int serializeTo(OutputStream outputStream) throws IOException;
 }

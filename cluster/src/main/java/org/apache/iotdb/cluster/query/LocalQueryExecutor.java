@@ -67,7 +67,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import org.slf4j.Logger;
@@ -302,7 +302,7 @@ public class LocalQueryExecutor {
     // collect local timeseries schemas and send to the requester
     // the measurements in them are the full paths.
     List<String> prefixPaths = request.getPrefixPaths();
-    List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+    List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
     for (String prefixPath : prefixPaths) {
       getCMManager().collectSeries(new PartialPath(prefixPath), measurementSchemas);
     }
@@ -321,7 +321,7 @@ public class LocalQueryExecutor {
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     try {
       dataOutputStream.writeInt(measurementSchemas.size());
-      for (MeasurementSchema timeseriesSchema : measurementSchemas) {
+      for (IMeasurementSchema timeseriesSchema : measurementSchemas) {
         timeseriesSchema.serializeTo(dataOutputStream);
       }
     } catch (IOException ignored) {

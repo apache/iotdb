@@ -28,7 +28,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.IOException;
 import java.util.List;
@@ -49,7 +49,7 @@ public interface IMemTable {
   void write(
       String deviceId,
       String measurement,
-      MeasurementSchema schema,
+      IMeasurementSchema schema,
       long insertTime,
       Object objectValue);
 

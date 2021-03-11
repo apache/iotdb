@@ -75,7 +75,7 @@ import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.apache.commons.io.FileUtils;
@@ -1609,7 +1609,7 @@ public class StorageGroupProcessor {
           (timeFilter == null ? "null" : timeFilter));
     }
 
-    MeasurementSchema schema = IoTDB.metaManager.getSeriesSchema(deviceId, measurementId);
+    IMeasurementSchema schema = IoTDB.metaManager.getSeriesSchema(deviceId, measurementId);
 
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     long timeLowerBound =

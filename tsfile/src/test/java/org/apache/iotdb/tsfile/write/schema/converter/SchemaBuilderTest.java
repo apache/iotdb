@@ -23,6 +23,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 
@@ -51,12 +52,12 @@ public class SchemaBuilderTest {
         new MeasurementSchema(
             "s5", TSDataType.INT32, TSEncoding.TS_2DIFF, CompressionType.UNCOMPRESSED, null));
 
-    Collection<MeasurementSchema> timeseries = schema.getRegisteredTimeseriesMap().values();
+    Collection<IMeasurementSchema> timeseries = schema.getRegisteredTimeseriesMap().values();
     String[] tsDesStrings = {
       "[s4,DOUBLE,RLE,{max_point_number=3},SNAPPY]", "[s5,INT32,TS_2DIFF,,UNCOMPRESSED]"
     };
     int i = 0;
-    for (MeasurementSchema desc : timeseries) {
+    for (IMeasurementSchema desc : timeseries) {
       assertEquals(tsDesStrings[i++], desc.toString());
     }
   }
@@ -67,7 +68,7 @@ public class SchemaBuilderTest {
     Map<String, String> props = new HashMap<>();
     props.put(JsonFormatConstant.MAX_POINT_NUMBER, "3");
     Schema schema = new Schema();
-    Map<String, MeasurementSchema> template = new HashMap<>();
+    Map<String, IMeasurementSchema> template = new HashMap<>();
     template.put(
         "s4",
         new MeasurementSchema(
@@ -79,12 +80,12 @@ public class SchemaBuilderTest {
     schema.registerDeviceTemplate("template1", template);
     schema.registerDevice("d1", "template1");
 
-    Collection<MeasurementSchema> timeseries = schema.getRegisteredTimeseriesMap().values();
+    Collection<IMeasurementSchema> timeseries = schema.getRegisteredTimeseriesMap().values();
     String[] tsDesStrings = {
       "[s4,DOUBLE,RLE,{max_point_number=3},SNAPPY]", "[s5,INT32,TS_2DIFF,,UNCOMPRESSED]"
     };
     int i = 0;
-    for (MeasurementSchema desc : timeseries) {
+    for (IMeasurementSchema desc : timeseries) {
       assertEquals(tsDesStrings[i++], desc.toString());
     }
   }
@@ -95,7 +96,7 @@ public class SchemaBuilderTest {
     Map<String, String> props = new HashMap<>();
     props.put(JsonFormatConstant.MAX_POINT_NUMBER, "3");
     Schema schema = new Schema();
-    Map<String, MeasurementSchema> template = new HashMap<>();
+    Map<String, IMeasurementSchema> template = new HashMap<>();
     template.put(
         "s4",
         new MeasurementSchema(
@@ -113,14 +114,14 @@ public class SchemaBuilderTest {
 
     schema.registerDevice("d1", "template1");
 
-    Collection<MeasurementSchema> timeseries = schema.getRegisteredTimeseriesMap().values();
+    Collection<IMeasurementSchema> timeseries = schema.getRegisteredTimeseriesMap().values();
     String[] tsDesStrings = {
       "[s4,DOUBLE,RLE,{max_point_number=3},SNAPPY]",
       "[s5,INT32,TS_2DIFF,,UNCOMPRESSED]",
       "[s6,INT64,RLE,{max_point_number=3},SNAPPY]"
     };
     int i = 0;
-    for (MeasurementSchema desc : timeseries) {
+    for (IMeasurementSchema desc : timeseries) {
       assertEquals(tsDesStrings[i++], desc.toString());
     }
   }

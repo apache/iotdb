@@ -42,7 +42,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -1008,7 +1008,7 @@ public class Session {
 
     TSInsertTabletReq request = new TSInsertTabletReq();
     request.setDeviceId(tablet.deviceId);
-    for (MeasurementSchema measurementSchema : tablet.getSchemas()) {
+    for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
       request.addToMeasurements(measurementSchema.getMeasurementId());
       request.addToTypes(measurementSchema.getType().ordinal());
     }
@@ -1109,7 +1109,7 @@ public class Session {
     request.addToDeviceIds(tablet.deviceId);
     List<String> measurements = new ArrayList<>();
     List<Integer> dataTypes = new ArrayList<>();
-    for (MeasurementSchema measurementSchema : tablet.getSchemas()) {
+    for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
       measurements.add(measurementSchema.getMeasurementId());
       dataTypes.add(measurementSchema.getType().ordinal());
     }
