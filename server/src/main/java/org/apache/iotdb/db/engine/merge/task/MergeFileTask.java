@@ -194,7 +194,7 @@ class MergeFileTask {
           }
         }
       }
-      updateStartTimeAndEndTime(seqFile, (RestorableTsFileIOWriter) oldFileWriter);
+      updateStartTimeAndEndTime(seqFile, oldFileWriter);
       oldFileWriter.endFile();
 
       updatePlanIndexes(seqFile);
@@ -209,10 +209,8 @@ class MergeFileTask {
     }
   }
 
-  private void updateStartTimeAndEndTime(
-      TsFileResource seqFile, RestorableTsFileIOWriter fileWriter) {
+  private void updateStartTimeAndEndTime(TsFileResource seqFile, TsFileIOWriter fileWriter) {
     // TODO change to get one timeseries block each time
-    fileWriter.makeMetadataVisible();
     Map<String, List<ChunkMetadata>> deviceChunkMetadataListMap =
         fileWriter.getDeviceChunkMetadataMap();
     for (Entry<String, List<ChunkMetadata>> deviceChunkMetadataListEntry :
