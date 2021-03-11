@@ -42,7 +42,7 @@ public class VectorMeasurementSchemaStub implements IMeasurementSchema {
 
   @Override
   public TSDataType getType() {
-    return TSDataType.Vector;
+    return TSDataType.VECTOR;
   }
 
   @Override

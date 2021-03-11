@@ -63,7 +63,7 @@ public class TimeChunkWriterTest {
           (byte) (0x80 | MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER), ReadWriteIOUtils.readByte(buffer));
       assertEquals("c1", ReadWriteIOUtils.readVarIntString(buffer));
       assertEquals(82, ReadWriteForEncodingUtils.readUnsignedVarInt(buffer));
-      assertEquals(TSDataType.Vector.serialize(), ReadWriteIOUtils.readByte(buffer));
+      assertEquals(TSDataType.VECTOR.serialize(), ReadWriteIOUtils.readByte(buffer));
       assertEquals(CompressionType.UNCOMPRESSED.serialize(), ReadWriteIOUtils.readByte(buffer));
       assertEquals(TSEncoding.PLAIN.serialize(), ReadWriteIOUtils.readByte(buffer));
       assertEquals(82, buffer.remaining());
@@ -99,7 +99,7 @@ public class TimeChunkWriterTest {
       assertEquals((byte) (0x80 | MetaMarker.CHUNK_HEADER), ReadWriteIOUtils.readByte(buffer));
       assertEquals("c1", ReadWriteIOUtils.readVarIntString(buffer));
       assertEquals(198, ReadWriteForEncodingUtils.readUnsignedVarInt(buffer));
-      assertEquals(TSDataType.Vector.serialize(), ReadWriteIOUtils.readByte(buffer));
+      assertEquals(TSDataType.VECTOR.serialize(), ReadWriteIOUtils.readByte(buffer));
       assertEquals(CompressionType.UNCOMPRESSED.serialize(), ReadWriteIOUtils.readByte(buffer));
       assertEquals(TSEncoding.PLAIN.serialize(), ReadWriteIOUtils.readByte(buffer));
       assertEquals(198, buffer.remaining());

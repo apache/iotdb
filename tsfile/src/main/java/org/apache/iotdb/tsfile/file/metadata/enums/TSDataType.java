@@ -44,7 +44,7 @@ public enum TSDataType {
   TEXT((byte) 5),
 
   /** Vector */
-  Vector((byte) 6);
+  VECTOR((byte) 6);
 
   private final byte type;
 

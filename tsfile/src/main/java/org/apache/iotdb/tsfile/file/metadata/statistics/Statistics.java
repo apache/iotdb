@@ -77,7 +77,7 @@ public abstract class Statistics<T> {
         return new DoubleStatistics();
       case FLOAT:
         return new FloatStatistics();
-      case Vector:
+      case VECTOR:
         return new TimeStatistics();
       default:
         throw new UnknownColumnTypeException(type.toString());

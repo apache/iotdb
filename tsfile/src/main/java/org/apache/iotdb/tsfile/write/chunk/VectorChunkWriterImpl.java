@@ -197,6 +197,6 @@ public class VectorChunkWriterImpl implements IChunkWriter {
 
   @Override
   public TSDataType getDataType() {
-    return TSDataType.Vector;
+    return TSDataType.VECTOR;
   }
 }

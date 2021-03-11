@@ -205,7 +205,7 @@ public class TimeChunkWriter {
   }
 
   public TSDataType getDataType() {
-    return TSDataType.Vector;
+    return TSDataType.VECTOR;
   }
 
   /**
@@ -223,7 +223,7 @@ public class TimeChunkWriter {
     writer.startFlushChunk(
         measurementId,
         compressionType,
-        TSDataType.Vector,
+        TSDataType.VECTOR,
         encodingType,
         statistics,
         pageBuffer.size(),
