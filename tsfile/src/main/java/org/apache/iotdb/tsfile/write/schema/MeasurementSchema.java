@@ -33,6 +33,7 @@ import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -42,7 +43,8 @@ import java.util.Objects;
  * MeasurementSchema maintains respective TSEncodingBuilder; For TSDataType, only ENUM has
  * TSDataTypeConverter up to now.
  */
-public class MeasurementSchema implements Comparable<MeasurementSchema>, Serializable {
+public class MeasurementSchema implements Comparable<MeasurementSchema>,
+    Serializable, IMeasurementSchema {
 
   public static final MeasurementSchema TIME_SCHEMA =
       new MeasurementSchema(
@@ -322,5 +324,35 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
 
   public void setType(TSDataType type) {
     this.type = type.serialize();
+  }
+
+  @Override
+  public TSEncoding getTimeTSEncoding() {
+    // TODO Auto-generated method stub
+    return null;
+  }
+
+  @Override
+  public List<String> getValueMeasurementIdList() {
+    // TODO Auto-generated method stub
+    return null;
+  }
+
+  @Override
+  public List<TSDataType> getValueTSDataTypeList() {
+    // TODO Auto-generated method stub
+    return null;
+  }
+
+  @Override
+  public List<TSEncoding> getValueTSEncodingList() {
+    // TODO Auto-generated method stub
+    return null;
+  }
+
+  @Override
+  public List<Encoder> getValueEncoderList() {
+    // TODO Auto-generated method stub
+    return null;
   }
 }
