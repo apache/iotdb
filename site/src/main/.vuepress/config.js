@@ -585,7 +585,8 @@ var config = {
 							['Ecosystem Integration/Spark TsFile','Spark TsFile'],
 							['Ecosystem Integration/Spark IoTDB','Spark IoTDB'],
 							['Ecosystem Integration/Hive TsFile','Hive TsFile'],
-							['Ecosystem Integration/Zeppelin-IoTDB','Zeppelin-IoTDB']
+							['Ecosystem Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
+							['Ecosystem Integration/Flink-IoTDB','Flink-IoTDB']
 						]
 					},
 					{
@@ -1210,7 +1211,8 @@ var config = {
 							['Ecosystem Integration/Spark TsFile','Spark TsFile'],
 							['Ecosystem Integration/Spark IoTDB','Spark IoTDB'],
 							['Ecosystem Integration/Hive TsFile','Hive TsFile'],
-							['Ecosystem Integration/Zeppelin-IoTDB','Zeppelin-IoTDB']
+							['Ecosystem Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
+							['Ecosystem Integration/Flink-IoTDB','Flink-IoTDB']
 						]
 					},
 					{
