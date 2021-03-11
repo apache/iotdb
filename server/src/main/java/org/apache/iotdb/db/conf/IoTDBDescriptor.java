@@ -250,6 +250,16 @@ public class IoTDBDescriptor {
                   "enable_mem_control", Boolean.toString(conf.isEnableMemControl())))));
       logger.info("IoTDB enable memory control: {}", conf.isEnableMemControl());
 
+      long tsfileSizeThreshold =
+          Long.parseLong(
+              properties
+                  .getProperty(
+                      "tsfile_size_threshold", Long.toString(conf.getTsFileSizeThreshold()))
+                  .trim());
+      if (tsfileSizeThreshold >= 0) {
+        conf.setTsFileSizeThreshold(tsfileSizeThreshold);
+      }
+
       long memTableSizeThreshold =
           Long.parseLong(
               properties
