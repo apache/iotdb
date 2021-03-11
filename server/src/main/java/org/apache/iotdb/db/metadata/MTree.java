@@ -41,7 +41,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -496,7 +496,7 @@ public class MTree implements Serializable {
   /**
    * Get measurement schema for a given path. Path must be a complete Path from root to leaf node.
    */
-  MeasurementSchema getSchema(PartialPath path) throws MetadataException {
+  IMeasurementSchema getSchema(PartialPath path) throws MetadataException {
     MeasurementMNode node = (MeasurementMNode) getNodeByPath(path);
     return node.getSchema();
   }
@@ -1082,7 +1082,7 @@ public class MTree implements Serializable {
       PartialPath nodePath = node.getPartialPath();
       String[] tsRow = new String[7];
       tsRow[0] = ((MeasurementMNode) node).getAlias();
-      MeasurementSchema measurementSchema = ((MeasurementMNode) node).getSchema();
+      IMeasurementSchema measurementSchema = ((MeasurementMNode) node).getSchema();
       tsRow[1] = getStorageGroupPath(nodePath).getFullPath();
       tsRow[2] = measurementSchema.getType().toString();
       tsRow[3] = measurementSchema.getEncodingType().toString();
@@ -1193,7 +1193,7 @@ public class MTree implements Serializable {
    * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1.d1
    * return [s1, s2]
    *
-   * @param partial Path
+   * @param path Path
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
   Set<String> getChildNodeInNextLevel(PartialPath path) throws MetadataException {

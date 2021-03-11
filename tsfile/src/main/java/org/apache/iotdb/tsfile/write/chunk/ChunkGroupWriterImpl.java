@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
@@ -51,7 +52,7 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
   }
 
   @Override
-  public void tryToAddSeriesWriter(MeasurementSchema schema, int pageSizeThreshold) {
+  public void tryToAddSeriesWriter(IMeasurementSchema schema, int pageSizeThreshold) {
     if (!chunkWriters.containsKey(schema.getMeasurementId())) {
       IChunkWriter seriesWriter = new ChunkWriterImpl(schema);
       this.chunkWriters.put(schema.getMeasurementId(), seriesWriter);

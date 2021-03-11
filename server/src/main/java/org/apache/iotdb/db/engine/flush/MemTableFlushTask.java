@@ -31,7 +31,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.slf4j.Logger;
@@ -240,8 +239,8 @@ public class MemTableFlushTask {
               break;
             } else {
               long starTime = System.currentTimeMillis();
-              Pair<TVList, MeasurementSchema> encodingMessage =
-                  (Pair<TVList, MeasurementSchema>) task;
+              Pair<TVList, IMeasurementSchema> encodingMessage =
+                  (Pair<TVList, IMeasurementSchema>) task;
               IChunkWriter seriesWriter = new ChunkWriterImpl(encodingMessage.right);
               writeOneSeries(encodingMessage.left, seriesWriter, encodingMessage.right.getType());
               seriesWriter.sealCurrentPage();

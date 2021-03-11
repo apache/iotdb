@@ -69,6 +69,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
@@ -908,7 +909,7 @@ public class MManager {
         try {
           Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
               tagLogFile.read(config.getTagAttributeTotalSize(), leaf.getOffset());
-          MeasurementSchema measurementSchema = leaf.getSchema();
+          IMeasurementSchema measurementSchema = leaf.getSchema();
           res.add(
               new ShowTimeSeriesResult(
                   leaf.getFullPath(),
@@ -996,7 +997,7 @@ public class MManager {
     return res;
   }
 
-  public MeasurementSchema getSeriesSchema(PartialPath device, String measurement)
+  public IMeasurementSchema getSeriesSchema(PartialPath device, String measurement)
       throws MetadataException {
     MNode node = mtree.getNodeByPath(device);
     MNode leaf = node.getChild(measurement);
@@ -1654,7 +1655,7 @@ public class MManager {
     while (!nodeDeque.isEmpty()) {
       MNode node = nodeDeque.removeFirst();
       if (node instanceof MeasurementMNode) {
-        MeasurementSchema nodeSchema = ((MeasurementMNode) node).getSchema();
+        IMeasurementSchema nodeSchema = ((MeasurementMNode) node).getSchema();
         timeseriesSchemas.add(
             new TimeseriesSchema(
                 node.getFullPath(),
@@ -1673,13 +1674,13 @@ public class MManager {
   }
 
   public void collectMeasurementSchema(
-      MNode startingNode, Collection<MeasurementSchema> measurementSchemas) {
+      MNode startingNode, Collection<IMeasurementSchema> measurementSchemas) {
     Deque<MNode> nodeDeque = new ArrayDeque<>();
     nodeDeque.addLast(startingNode);
     while (!nodeDeque.isEmpty()) {
       MNode node = nodeDeque.removeFirst();
       if (node instanceof MeasurementMNode) {
-        MeasurementSchema nodeSchema = ((MeasurementMNode) node).getSchema();
+        IMeasurementSchema nodeSchema = ((MeasurementMNode) node).getSchema();
         measurementSchemas.add(
             new MeasurementSchema(
                 node.getName(),
@@ -1693,7 +1694,7 @@ public class MManager {
   }
 
   /** Collect the timeseries schemas under "startingPath". */
-  public void collectSeries(PartialPath startingPath, List<MeasurementSchema> measurementSchemas) {
+  public void collectSeries(PartialPath startingPath, List<IMeasurementSchema> measurementSchemas) {
     MNode mNode;
     try {
       mNode = getNodeByPath(startingPath);
