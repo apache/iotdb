@@ -38,14 +38,14 @@ import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
-
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
+
+import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 
 public class MemTableFlushTask {
 
@@ -229,22 +229,28 @@ public class MemTableFlushTask {
               int elementIndex = valueIndex % ARRAY_SIZE;
               switch (dataTypes.get(i)) {
                 case TEXT:
-                  seriesWriterImpl.write(time, ((Binary[]) columnValues.get(arrayIndex))[elementIndex], false);
+                  seriesWriterImpl.write(
+                      time, ((Binary[]) columnValues.get(arrayIndex))[elementIndex], false);
                   break;
                 case FLOAT:
-                  seriesWriterImpl.write(time, ((float[]) columnValues.get(arrayIndex))[elementIndex], false);
+                  seriesWriterImpl.write(
+                      time, ((float[]) columnValues.get(arrayIndex))[elementIndex], false);
                   break;
                 case INT32:
-                  seriesWriterImpl.write(time, ((int[]) columnValues.get(arrayIndex))[elementIndex], false);
+                  seriesWriterImpl.write(
+                      time, ((int[]) columnValues.get(arrayIndex))[elementIndex], false);
                   break;
                 case INT64:
-                  seriesWriterImpl.write(time, ((long[]) columnValues.get(arrayIndex))[elementIndex], false);
+                  seriesWriterImpl.write(
+                      time, ((long[]) columnValues.get(arrayIndex))[elementIndex], false);
                   break;
                 case DOUBLE:
-                  seriesWriterImpl.write(time, ((double[]) columnValues.get(arrayIndex))[elementIndex], false);
+                  seriesWriterImpl.write(
+                      time, ((double[]) columnValues.get(arrayIndex))[elementIndex], false);
                   break;
                 case BOOLEAN:
-                  seriesWriterImpl.write(time, ((boolean[]) columnValues.get(arrayIndex))[elementIndex], false);
+                  seriesWriterImpl.write(
+                      time, ((boolean[]) columnValues.get(arrayIndex))[elementIndex], false);
                   break;
                 default:
                   break;
