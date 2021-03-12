@@ -16,42 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.tsfile.read.reader.page;
 
-package org.apache.iotdb.tsfile.read.reader.series;
-
-import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
-import org.apache.iotdb.tsfile.read.common.BatchData;
-
-/** this is for those series which has no data points */
-public class EmptyFileSeriesReader extends AbstractFileSeriesReader {
-  BatchData data = new BatchData();
-
-  public EmptyFileSeriesReader() {
-    super(null, null, null);
-  }
-
-  @Override
-  protected void initChunkReader(IChunkMetadata chunkMetaData) {
-    // do nothing
-  }
-
-  @Override
-  protected boolean chunkSatisfied(IChunkMetadata chunkMetaData) {
-    return false;
-  }
-
-  @Override
-  public boolean hasNextBatch() {
-    return false;
-  }
-
-  @Override
-  public BatchData nextBatch() {
-    return data;
-  }
-
-  @Override
-  public void close() {
-    data = null;
-  }
-}
+public class VectorChunkReader {}

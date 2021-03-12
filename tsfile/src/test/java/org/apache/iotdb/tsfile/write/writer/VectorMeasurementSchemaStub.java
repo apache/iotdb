@@ -18,6 +18,10 @@
  */
 package org.apache.iotdb.tsfile.write.writer;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.util.Map;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.encoding.encoder.PlainEncoder;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -41,8 +45,13 @@ public class VectorMeasurementSchemaStub implements IMeasurementSchema {
   }
 
   @Override
+  public TSEncoding getEncodingType() {
+    return null;
+  }
+
+  @Override
   public TSDataType getType() {
-    return TSDataType.Vector;
+    return TSDataType.VECTOR;
   }
 
   @Override
@@ -53,6 +62,16 @@ public class VectorMeasurementSchemaStub implements IMeasurementSchema {
   @Override
   public Encoder getTimeEncoder() {
     return new PlainEncoder(TSDataType.INT64, 0);
+  }
+
+  @Override
+  public Encoder getValueEncoder() {
+    return null;
+  }
+
+  @Override
+  public Map<String, String> getProps() {
+    return null;
   }
 
   @Override
@@ -76,5 +95,15 @@ public class VectorMeasurementSchemaStub implements IMeasurementSchema {
         new PlainEncoder(TSDataType.FLOAT, 0),
         new PlainEncoder(TSDataType.INT32, 0),
         new PlainEncoder(TSDataType.DOUBLE, 0));
+  }
+
+  @Override
+  public int serializeTo(ByteBuffer buffer) {
+    return 0;
+  }
+
+  @Override
+  public int serializeTo(OutputStream outputStream) throws IOException {
+    return 0;
   }
 }

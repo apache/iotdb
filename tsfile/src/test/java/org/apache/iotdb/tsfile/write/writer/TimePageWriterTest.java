@@ -119,7 +119,7 @@ public class TimePageWriterTest {
       // compressedSize
       assertEquals(24, ReadWriteForEncodingUtils.readUnsignedVarInt(buffer));
       TimeStatistics testStatistics =
-          (TimeStatistics) TimeStatistics.deserialize(buffer, TSDataType.Vector);
+          (TimeStatistics) TimeStatistics.deserialize(buffer, TSDataType.VECTOR);
       assertEquals(1L, testStatistics.getStartTime());
       assertEquals(3L, testStatistics.getEndTime());
       assertEquals(3, testStatistics.getCount());

@@ -45,7 +45,7 @@ public abstract class TsPrimitiveType implements Serializable {
         return new TsPrimitiveType.TsDouble((double) v);
       case TEXT:
         return new TsPrimitiveType.TsBinary((Binary) v);
-      case Vector:
+      case VECTOR:
         return new TsPrimitiveType.TsVector((TsPrimitiveType[]) v);
       default:
         throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
@@ -519,7 +519,7 @@ public abstract class TsPrimitiveType implements Serializable {
 
     @Override
     public TSDataType getDataType() {
-      return TSDataType.Vector;
+      return TSDataType.VECTOR;
     }
   }
 }

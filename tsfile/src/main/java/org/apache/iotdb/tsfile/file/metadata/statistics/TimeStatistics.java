@@ -32,7 +32,7 @@ public class TimeStatistics extends Statistics {
 
   @Override
   public TSDataType getType() {
-    return TSDataType.Vector;
+    return TSDataType.VECTOR;
   }
 
   @Override
