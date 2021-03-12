@@ -471,6 +471,9 @@ public class MeasurementOrderOptimizer {
         swap(curMeasurementOrder, swapPosFirst, swapPosSecond);
         swap(chunkSize, swapPosFirst, swapPosSecond);
       }
+      if (k % 500 == 0) {
+        LOGGER.info(String.format("Epoch %d: Cur cost %.3f", k, curCost));
+      }
     }
     BigInteger totalChunkSize = new BigInteger(String.valueOf(0));
     for(int i = 0; i < chunkSize.size(); ++i) {
