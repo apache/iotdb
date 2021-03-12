@@ -342,8 +342,8 @@ public class TsFileIOWriter {
   }
 
   // device -> ChunkMetadataList
-  public Map<String, List<IChunkMetadata>> getDeviceChunkMetadataMap() {
-    Map<String, List<IChunkMetadata>> deviceChunkMetadataMap = new HashMap<>();
+  public Map<String, List<ChunkMetadata>> getDeviceChunkMetadataMap() {
+    Map<String, List<ChunkMetadata>> deviceChunkMetadataMap = new HashMap<>();
 
     for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
       deviceChunkMetadataMap

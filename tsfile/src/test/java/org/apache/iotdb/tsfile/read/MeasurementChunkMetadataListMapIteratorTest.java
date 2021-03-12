@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.read;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.FileGenerator;
@@ -121,11 +122,11 @@ public class MeasurementChunkMetadataListMapIteratorTest {
             expectedDeviceMeasurementChunkMetadataListMap.get(device);
 
         Map<String, List<IChunkMetadata>> actual = new HashMap<>();
-        Iterator<Map<String, List<IChunkMetadata>>> iterator =
+        Iterator<Map<String, List<ChunkMetadata>>> iterator =
             fileReader.getMeasurementChunkMetadataListMapIterator(device);
         while (iterator.hasNext()) {
-          Map<String, List<IChunkMetadata>> next = iterator.next();
-          for (Entry<String, List<IChunkMetadata>> entry : next.entrySet()) {
+          Map<String, List<ChunkMetadata>> next = iterator.next();
+          for (Entry<String, List<ChunkMetadata>> entry : next.entrySet()) {
             actual.computeIfAbsent(entry.getKey(), m -> new ArrayList<>()).addAll(entry.getValue());
           }
         }

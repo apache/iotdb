@@ -44,6 +44,7 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.VectorChunkReader;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -184,6 +185,6 @@ public class FileLoaderUtils {
   public static List<IChunkMetadata> getChunkMetadataList(Path path, String filePath)
       throws IOException {
     TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(filePath, true);
-    return tsFileReader.getChunkMetadataList(path);
+    return new ArrayList<>(tsFileReader.getChunkMetadataList(path));
   }
 }

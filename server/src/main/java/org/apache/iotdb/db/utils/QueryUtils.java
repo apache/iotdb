@@ -46,7 +46,7 @@ public class QueryUtils {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static void modifyChunkMetaData(
-      List<IChunkMetadata> chunkMetaData, List<Modification> modifications) {
+      List<? extends IChunkMetadata> chunkMetaData, List<Modification> modifications) {
     for (int metaIndex = 0; metaIndex < chunkMetaData.size(); metaIndex++) {
       IChunkMetadata metaData = chunkMetaData.get(metaIndex);
       for (Modification modification : modifications) {

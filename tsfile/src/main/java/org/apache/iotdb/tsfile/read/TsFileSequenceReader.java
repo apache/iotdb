@@ -1260,7 +1260,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     return maxPlanIndex;
   }
 
-  public Iterator<Map<String, List<IChunkMetadata>>> getMeasurementChunkMetadataListMapIterator(
+  public Iterator<Map<String, List<ChunkMetadata>>> getMeasurementChunkMetadataListMapIterator(
       String device) throws IOException {
     readFileMetadata();
 
@@ -1269,7 +1269,7 @@ public class TsFileSequenceReader implements AutoCloseable {
         getMetadataAndEndOffset(metadataIndexNode, device, true, true);
 
     if (metadataIndexPair == null) {
-      return new Iterator<Map<String, List<IChunkMetadata>>>() {
+      return new Iterator<Map<String, List<ChunkMetadata>>>() {
 
         @Override
         public boolean hasNext() {
@@ -1277,7 +1277,7 @@ public class TsFileSequenceReader implements AutoCloseable {
         }
 
         @Override
-        public Map<String, List<IChunkMetadata>> next() {
+        public Map<String, List<ChunkMetadata>> next() {
           throw new NoSuchElementException();
         }
       };
@@ -1287,7 +1287,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
     collectEachLeafMeasurementNodeOffsetRange(buffer, queue);
 
-    return new Iterator<Map<String, List<IChunkMetadata>>>() {
+    return new Iterator<Map<String, List<ChunkMetadata>>>() {
 
       @Override
       public boolean hasNext() {
@@ -1295,12 +1295,12 @@ public class TsFileSequenceReader implements AutoCloseable {
       }
 
       @Override
-      public Map<String, List<IChunkMetadata>> next() {
+      public Map<String, List<ChunkMetadata>> next() {
         if (!hasNext()) {
           throw new NoSuchElementException();
         }
         Pair<Long, Long> startEndPair = queue.remove();
-        Map<String, List<IChunkMetadata>> measurementChunkMetadataList = new HashMap<>();
+        Map<String, List<ChunkMetadata>> measurementChunkMetadataList = new HashMap<>();
         try {
           List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
           ByteBuffer nextBuffer = readData(startEndPair.left, startEndPair.right);
@@ -1308,9 +1308,12 @@ public class TsFileSequenceReader implements AutoCloseable {
             timeseriesMetadataList.add(TimeseriesMetadata.deserializeFrom(nextBuffer, true));
           }
           for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataList) {
-            measurementChunkMetadataList
-                .computeIfAbsent(timeseriesMetadata.getMeasurementId(), m -> new ArrayList<>())
-                .addAll(timeseriesMetadata.getChunkMetadataList());
+            List<ChunkMetadata> list =
+                measurementChunkMetadataList.computeIfAbsent(
+                    timeseriesMetadata.getMeasurementId(), m -> new ArrayList<>());
+            for (IChunkMetadata chunkMetadata : timeseriesMetadata.getChunkMetadataList()) {
+              list.add((ChunkMetadata) chunkMetadata);
+            }
           }
           return measurementChunkMetadataList;
         } catch (IOException e) {

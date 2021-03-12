@@ -24,6 +24,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -113,9 +114,9 @@ public class LastPointReader {
               timeseriesMetadata.getStatistics().getLastValue(),
               dataType);
         } else {
-          List<ChunkMetadata> seqChunkMetadataList = timeseriesMetadata.loadChunkMetadataList();
+          List<IChunkMetadata> seqChunkMetadataList = timeseriesMetadata.loadChunkMetadataList();
           for (int i = seqChunkMetadataList.size() - 1; i >= 0; i--) {
-            lastPoint = getChunkLastPoint(seqChunkMetadataList.get(i));
+            lastPoint = getChunkLastPoint((ChunkMetadata) seqChunkMetadataList.get(i));
             // last point of this sequence chunk is valid, quit the loop
             if (lastPoint.getValue() != null) {
               return lastPoint;
@@ -203,7 +204,7 @@ public class LastPointReader {
     return unseqTsFilesSet;
   }
 
-  private PriorityQueue<ChunkMetadata> sortUnseqChunkMetadatasByEndtime() throws IOException {
+  private PriorityQueue<ChunkMetadata> sortUnseqChunkMetadatasByEndtime() {
     PriorityQueue<ChunkMetadata> chunkMetadataList =
         new PriorityQueue<>(
             (o1, o2) -> {
@@ -223,7 +224,9 @@ public class LastPointReader {
             });
     for (TimeseriesMetadata timeseriesMetadata : unseqTimeseriesMetadataList) {
       if (timeseriesMetadata != null) {
-        chunkMetadataList.addAll(timeseriesMetadata.loadChunkMetadataList());
+        for (IChunkMetadata chunkMetadata : timeseriesMetadata.getChunkMetadataList()) {
+          chunkMetadataList.add((ChunkMetadata) chunkMetadata);
+        }
       }
     }
     return chunkMetadataList;
