@@ -34,7 +34,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -142,7 +141,7 @@ public class MeasurementChunkMetadataListMapIteratorTest {
             expectedDeviceMeasurementChunkMetadataListMap.get(device);
 
         Map<String, List<ChunkMetadata>> actual = new HashMap<>();
-        Iterator<LinkedHashMap<String, List<ChunkMetadata>>> iterator =
+        Iterator<Map<String, List<ChunkMetadata>>> iterator =
             fileReader.getMeasurementChunkMetadataListMapIterator(device);
         while (iterator.hasNext()) {
           Map<String, List<ChunkMetadata>> next = iterator.next();
@@ -178,7 +177,7 @@ public class MeasurementChunkMetadataListMapIteratorTest {
 
     try (TsFileSequenceReader fileReader = new TsFileSequenceReader(FILE_PATH)) {
       for (String device : fileReader.getAllDevices()) {
-        Iterator<LinkedHashMap<String, List<ChunkMetadata>>> iterator =
+        Iterator<Map<String, List<ChunkMetadata>>> iterator =
             fileReader.getMeasurementChunkMetadataListMapIterator(device);
 
         String lastMeasurement = null;

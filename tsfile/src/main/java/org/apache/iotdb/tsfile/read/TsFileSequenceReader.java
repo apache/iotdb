@@ -1262,8 +1262,8 @@ public class TsFileSequenceReader implements AutoCloseable {
    *     always larger than the last measurement of the linked hashmap of the previous iteration in
    *     lexicographic order.
    */
-  public Iterator<LinkedHashMap<String, List<ChunkMetadata>>>
-      getMeasurementChunkMetadataListMapIterator(String device) throws IOException {
+  public Iterator<Map<String, List<ChunkMetadata>>> getMeasurementChunkMetadataListMapIterator(
+      String device) throws IOException {
     readFileMetadata();
 
     MetadataIndexNode metadataIndexNode = tsFileMetaData.getMetadataIndex();
@@ -1271,7 +1271,7 @@ public class TsFileSequenceReader implements AutoCloseable {
         getMetadataAndEndOffset(metadataIndexNode, device, true, true);
 
     if (metadataIndexPair == null) {
-      return new Iterator<LinkedHashMap<String, List<ChunkMetadata>>>() {
+      return new Iterator<Map<String, List<ChunkMetadata>>>() {
 
         @Override
         public boolean hasNext() {
@@ -1289,7 +1289,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
     collectEachLeafMeasurementNodeOffsetRange(buffer, queue);
 
-    return new Iterator<LinkedHashMap<String, List<ChunkMetadata>>>() {
+    return new Iterator<Map<String, List<ChunkMetadata>>>() {
 
       @Override
       public boolean hasNext() {
