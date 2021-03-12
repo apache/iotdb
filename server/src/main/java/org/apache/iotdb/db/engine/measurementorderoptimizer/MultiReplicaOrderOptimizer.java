@@ -191,10 +191,10 @@ public class MultiReplicaOrderOptimizer {
 		int k = 0;
 		CostRecorder costRecorder = new CostRecorder();
 		long startTime = System.currentTimeMillis();
-		for (; k < maxIter && System.currentTimeMillis() - optimizeStartTime < 10l * 60l * 1000l; ++k) {
+		for (; k < maxIter && System.currentTimeMillis() - optimizeStartTime < 5l * 60l * 1000l; ++k) {
 			temperature = temperature * COOLING_RATE;
 			int selectedReplica = r.nextInt(replicaNum);
-			int operation = 1;
+			int operation = 0;
 			if (operation == 0) {
 				// Swap chunk order
 				int swapLeft = r.nextInt(measurementOrder.size());
