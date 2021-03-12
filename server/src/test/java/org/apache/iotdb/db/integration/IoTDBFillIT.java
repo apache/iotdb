@@ -579,7 +579,7 @@ public class IoTDBFillIT {
   public void PreviousFillMultiUnseqFileWithSameLastTest() {
     String[] retArray =
         new String[] {
-            "59,82.1,true", "52,82.1,true",
+          "59,82.1,true", "52,82.1,true",
         };
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");

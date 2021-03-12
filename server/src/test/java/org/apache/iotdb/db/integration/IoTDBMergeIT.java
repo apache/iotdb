@@ -135,12 +135,13 @@ public class IoTDBMergeIT {
 
       for (int i = 0; i < 10; i++) {
         logger.info("Running the {} round merge", i);
-//        for (int j = i * 10 + 1; j <= (i + 1) * 10; j++) {
-//          statement.execute(
-//              String.format(
-//                  "INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-//                  j, j + 1, j + 2, j + 3));
-//        }
+        //        for (int j = i * 10 + 1; j <= (i + 1) * 10; j++) {
+        //          statement.execute(
+        //              String.format(
+        //                  "INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d," +
+        // "%d,%d)",
+        //                  j, j + 1, j + 2, j + 3));
+        //        }
         statement.execute("FLUSH");
         for (int j = i * 10 + 1; j <= (i + 1) * 10; j++) {
           statement.execute(
@@ -197,13 +198,13 @@ public class IoTDBMergeIT {
         }
       }
 
-//      for (int j = 10; j < 20; j++) {
-//        statement.execute(
-//            String.format(
-//                "INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-//                j, j + 1, j + 2, j + 3));
-//      }
-//      statement.execute("FLUSH");
+      //      for (int j = 10; j < 20; j++) {
+      //        statement.execute(
+      //            String.format(
+      //                "INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+      //                j, j + 1, j + 2, j + 3));
+      //      }
+      //      statement.execute("FLUSH");
       for (int j = 20; j < 30; j++) {
         statement.execute(
             String.format(
@@ -281,13 +282,14 @@ public class IoTDBMergeIT {
         // partition num
         for (int i = 0; i < 10; i++) {
           // sequence files
-//          for (int j = i * 1000 + 300 + k * 100; j <= i * 1000 + 399 + k * 100; j++) {
-//            statement.execute(
-//                String.format(
-//                    "INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-//                    j, j + 1, j + 2, j + 3));
-//          }
-//          statement.execute("FLUSH");
+          //          for (int j = i * 1000 + 300 + k * 100; j <= i * 1000 + 399 + k * 100; j++) {
+          //            statement.execute(
+          //                String.format(
+          //                    "INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d," +
+          // "%d,%d)",
+          //                    j, j + 1, j + 2, j + 3));
+          //          }
+          //          statement.execute("FLUSH");
           // unsequence files
           for (int j = i * 1000 + k * 100; j <= i * 1000 + 99 + k * 100; j++) {
             statement.execute(
@@ -309,24 +311,24 @@ public class IoTDBMergeIT {
           long s1 = resultSet.getLong("root.mergeTest.s1");
           long s2 = resultSet.getLong("root.mergeTest.s2");
           long s3 = resultSet.getLong("root.mergeTest.s3");
-//          assertEquals(cnt, time);
-          System.out.println(cnt+ "---->" + time);
+          //          assertEquals(cnt, time);
+          System.out.println(cnt + "---->" + time);
           assertEquals(time + 10, s1);
           assertEquals(time + 20, s2);
           assertEquals(time + 30, s3);
-//          if (time % 1000 < 700) {
-//            assertEquals(time + 10, s1);
-//            assertEquals(time + 20, s2);
-//            assertEquals(time + 30, s3);
-//          } else {
-//            assertEquals(time + 1, s1);
-//            assertEquals(time + 2, s2);
-//            assertEquals(time + 3, s3);
-//          }
+          //          if (time % 1000 < 700) {
+          //            assertEquals(time + 10, s1);
+          //            assertEquals(time + 20, s2);
+          //            assertEquals(time + 30, s3);
+          //          } else {
+          //            assertEquals(time + 1, s1);
+          //            assertEquals(time + 2, s2);
+          //            assertEquals(time + 3, s3);
+          //          }
           cnt++;
         }
       }
-      //change 10000 to 7000
+      // change 10000 to 7000
       assertEquals(7000, cnt);
     }
   }
