@@ -426,8 +426,7 @@ public class IoTDBTriggerManagementIT {
       fail(e.getMessage());
     }
 
-    IoTDB.getInstance().shutdown();
-    IoTDB.getInstance().active();
+    EnvironmentUtils.restartDaemon();
 
     try (Connection connection =
             DriverManager.getConnection(
@@ -467,8 +466,7 @@ public class IoTDBTriggerManagementIT {
       fail(e.getMessage());
     }
 
-    IoTDB.getInstance().shutdown();
-    IoTDB.getInstance().active();
+    EnvironmentUtils.restartDaemon();
 
     TriggerRegistrationInformation trigger1Info =
         TriggerRegistrationService.getInstance().getRegistrationInformation("trigger-1");
