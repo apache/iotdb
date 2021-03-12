@@ -38,6 +38,7 @@ import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
@@ -158,6 +159,19 @@ public class PhysicalPlanTest {
     CreateTimeSeriesPlan plan = (CreateTimeSeriesPlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
         "seriesPath: root.vehicle.d1.s2, resultDataType: INT32, encoding: RLE, compression: SNAPPY, tagOffset: -1",
+        plan.toString());
+  }
+
+  @Test
+  public void testMetadata4() throws QueryProcessException {
+    // TODO @Steve SU
+    String metadata =
+        "create aligned timeseries root.vehicle.d1.(s1 INT32, s2 FLOAT) with encoding=(RLE, RLE) compression=SNAPPY";
+    Planner processor = new Planner();
+    CreateAlignedTimeSeriesPlan plan =
+        (CreateAlignedTimeSeriesPlan) processor.parseSQLToPhysicalPlan(metadata);
+    assertEquals(
+        "devicePath: root.vehicle.d1, measurements: [s1, s2], dataTypes: [INT32, FLOAT], encoding: [RLE, RLE], compression: SNAPPY",
         plan.toString());
   }
 
