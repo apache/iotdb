@@ -63,6 +63,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -1254,6 +1255,13 @@ public class TsFileSequenceReader implements AutoCloseable {
     return maxPlanIndex;
   }
 
+  /**
+   * @return An iterator of linked hashmaps ( measurement -> chunk metadata list ). When traversing
+   *     the linked hashmap, you will get chunk metadata lists according to the lexicographic order
+   *     of the measurements. The first measurement of the linked hashmap of each iteration is
+   *     always larger than the last measurement of the linked hashmap of the previous iteration in
+   *     lexicographic order.
+   */
   public Iterator<Map<String, List<ChunkMetadata>>> getMeasurementChunkMetadataListMapIterator(
       String device) throws IOException {
     readFileMetadata();
@@ -1271,7 +1279,7 @@ public class TsFileSequenceReader implements AutoCloseable {
         }
 
         @Override
-        public Map<String, List<ChunkMetadata>> next() {
+        public LinkedHashMap<String, List<ChunkMetadata>> next() {
           throw new NoSuchElementException();
         }
       };
@@ -1289,12 +1297,13 @@ public class TsFileSequenceReader implements AutoCloseable {
       }
 
       @Override
-      public Map<String, List<ChunkMetadata>> next() {
+      public LinkedHashMap<String, List<ChunkMetadata>> next() {
         if (!hasNext()) {
           throw new NoSuchElementException();
         }
         Pair<Long, Long> startEndPair = queue.remove();
-        Map<String, List<ChunkMetadata>> measurementChunkMetadataList = new HashMap<>();
+        LinkedHashMap<String, List<ChunkMetadata>> measurementChunkMetadataList =
+            new LinkedHashMap<>();
         try {
           List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
           ByteBuffer nextBuffer = readData(startEndPair.left, startEndPair.right);
