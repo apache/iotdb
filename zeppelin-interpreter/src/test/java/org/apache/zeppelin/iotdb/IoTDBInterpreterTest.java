@@ -226,7 +226,7 @@ public class IoTDBInterpreterTest {
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.ERROR, actual.code());
     Assert.assertEquals(
-        "SQLException: 401: Error occurred while parsing SQL to physical plan: line 1:19 extraneous input 'a' expecting <EOF>",
+        "SQLException: 401: Error occurred while parsing SQL to physical plan: line 1:19 extraneous input 'a' expecting {<EOF>, ';'}",
         actual.message().get(0).getData());
   }
 

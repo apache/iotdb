@@ -574,7 +574,7 @@ SHOW FUNCTIONS
 
 ## 已知的UDF库实现
 
-+ [TsClean](https://thulab.github.io/tsclean-iotdb)，一个关于数据质量的UDF库实现，包括时序数据的质量指标计算、数值填补、数值修复等一系列函数。
++ [IoTDB-Quality](https://thulab.github.io/iotdb-quality)，一个关于数据质量的UDF库实现，包括数据画像、数据质量评估与修复等一系列函数。
 
 
 ## Q&A
