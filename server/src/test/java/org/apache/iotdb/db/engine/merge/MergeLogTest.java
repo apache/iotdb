@@ -87,6 +87,7 @@ public class MergeLogTest extends MergeTest {
       e.printStackTrace();
       fail(e.getMessage());
     }
-    assertEquals(309, lineCnt);
+    // change 309 to 307
+    assertEquals(307, lineCnt);
   }
 }
