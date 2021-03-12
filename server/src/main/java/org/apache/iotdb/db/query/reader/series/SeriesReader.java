@@ -32,7 +32,8 @@ import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader.MergeReade
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.TestOnly;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -84,15 +85,15 @@ public class SeriesReader {
   /*
    * TimeSeriesMetadata cache
    */
-  private TimeseriesMetadata firstTimeSeriesMetadata;
-  private final List<TimeseriesMetadata> seqTimeSeriesMetadata = new LinkedList<>();
-  private final PriorityQueue<TimeseriesMetadata> unSeqTimeSeriesMetadata;
+  private ITimeSeriesMetadata firstTimeSeriesMetadata;
+  private final List<ITimeSeriesMetadata> seqTimeSeriesMetadata = new LinkedList<>();
+  private final PriorityQueue<ITimeSeriesMetadata> unSeqTimeSeriesMetadata;
 
   /*
    * chunk cache
    */
-  private ChunkMetadata firstChunkMetadata;
-  private final PriorityQueue<ChunkMetadata> cachedChunkMetadata;
+  private IChunkMetadata firstChunkMetadata;
+  private final PriorityQueue<IChunkMetadata> cachedChunkMetadata;
 
   /*
    * page cache
@@ -328,9 +329,9 @@ public class SeriesReader {
     }
   }
 
-  private void unpackOneTimeSeriesMetadata(TimeseriesMetadata timeSeriesMetadata)
+  private void unpackOneTimeSeriesMetadata(ITimeSeriesMetadata timeSeriesMetadata)
       throws IOException {
-    List<ChunkMetadata> chunkMetadataList =
+    List<IChunkMetadata> chunkMetadataList =
         FileLoaderUtils.loadChunkMetadataList(timeSeriesMetadata);
     chunkMetadataList.forEach(chunkMetadata -> chunkMetadata.setSeq(timeSeriesMetadata.isSeq()));
 
@@ -508,7 +509,7 @@ public class SeriesReader {
     }
   }
 
-  private void unpackOneChunkMetaData(ChunkMetadata chunkMetaData) throws IOException {
+  private void unpackOneChunkMetaData(IChunkMetadata chunkMetaData) throws IOException {
     FileLoaderUtils.loadPageReaderList(chunkMetaData, timeFilter)
         .forEach(
             pageReader -> {

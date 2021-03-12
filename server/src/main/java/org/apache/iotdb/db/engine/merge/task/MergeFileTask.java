@@ -30,6 +30,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -213,7 +214,7 @@ class MergeFileTask {
     for (Entry<String, List<ChunkMetadata>> deviceChunkMetadataEntry :
         fileWriter.getDeviceChunkMetadataMap().entrySet()) {
       String device = deviceChunkMetadataEntry.getKey();
-      for (ChunkMetadata chunkMetadata : deviceChunkMetadataEntry.getValue()) {
+      for (IChunkMetadata chunkMetadata : deviceChunkMetadataEntry.getValue()) {
         seqFile.updateStartTime(device, chunkMetadata.getStartTime());
         seqFile.updateEndTime(device, chunkMetadata.getEndTime());
       }

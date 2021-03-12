@@ -16,42 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.tsfile.file.metadata;
 
-package org.apache.iotdb.tsfile.read.reader.series;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 
-import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
-import org.apache.iotdb.tsfile.read.common.BatchData;
+import java.io.IOException;
+import java.util.List;
 
-/** this is for those series which has no data points */
-public class EmptyFileSeriesReader extends AbstractFileSeriesReader {
-  BatchData data = new BatchData();
+public interface ITimeSeriesMetadata {
 
-  public EmptyFileSeriesReader() {
-    super(null, null, null);
-  }
+  Statistics getStatistics();
 
-  @Override
-  protected void initChunkReader(IChunkMetadata chunkMetaData) {
-    // do nothing
-  }
+  boolean isModified();
 
-  @Override
-  protected boolean chunkSatisfied(IChunkMetadata chunkMetaData) {
-    return false;
-  }
+  void setModified(boolean modified);
 
-  @Override
-  public boolean hasNextBatch() {
-    return false;
-  }
+  boolean isSeq();
 
-  @Override
-  public BatchData nextBatch() {
-    return data;
-  }
+  void setSeq(boolean seq);
 
-  @Override
-  public void close() {
-    data = null;
-  }
+  List<IChunkMetadata> loadChunkMetadataList() throws IOException;
+
+  List<IChunkMetadata> getChunkMetadataList();
 }

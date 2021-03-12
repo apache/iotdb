@@ -118,11 +118,11 @@ public class ChunkReader implements IChunkReader {
     return pageReaderList.remove(0).getAllSatisfiedPageData();
   }
 
-  private void skipBytesInStreamByLength(long length) {
-    chunkDataBuffer.position(chunkDataBuffer.position() + (int) length);
+  private void skipBytesInStreamByLength(int length) {
+    chunkDataBuffer.position(chunkDataBuffer.position() + length);
   }
 
-  public boolean pageSatisfied(PageHeader pageHeader) {
+  protected boolean pageSatisfied(PageHeader pageHeader) {
     if (deleteIntervalList != null) {
       for (TimeRange range : deleteIntervalList) {
         if (range.contains(pageHeader.getStartTime(), pageHeader.getEndTime())) {

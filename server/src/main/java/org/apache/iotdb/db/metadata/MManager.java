@@ -46,6 +46,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
@@ -342,6 +343,10 @@ public class MManager {
         CreateTimeSeriesPlan createTimeSeriesPlan = (CreateTimeSeriesPlan) plan;
         createTimeseries(createTimeSeriesPlan, createTimeSeriesPlan.getTagOffset());
         break;
+      case CREATE_ALIGNED_TIMESERIES:
+        CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
+            (CreateAlignedTimeSeriesPlan) plan;
+        createAlignedTimeSeries(createAlignedTimeSeriesPlan);
       case DELETE_TIMESERIES:
         DeleteTimeSeriesPlan deleteTimeSeriesPlan = (DeleteTimeSeriesPlan) plan;
         // cause we only has one path for one DeleteTimeSeriesPlan
@@ -479,6 +484,9 @@ public class MManager {
       }
     }
   }
+
+  // TODO
+  public void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan) throws MetadataException {}
 
   /**
    * Delete all timeseries under the given path, may cross different storage group

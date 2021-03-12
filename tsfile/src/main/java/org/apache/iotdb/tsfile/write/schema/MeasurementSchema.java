@@ -32,7 +32,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -199,7 +198,7 @@ public class MeasurementSchema
 
   @Override
   public TSEncoding getTimeTSEncoding() {
-    return getEncodingType();
+    return TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
   }
 
   public void setProps(Map<String, String> props) {
@@ -218,22 +217,22 @@ public class MeasurementSchema
 
   @Override
   public List<String> getValueMeasurementIdList() {
-    return Collections.emptyList();
+    throw new UnsupportedOperationException("unsupported method for MeasurementSchema");
   }
 
   @Override
   public List<TSDataType> getValueTSDataTypeList() {
-    return Collections.emptyList();
+    throw new UnsupportedOperationException("unsupported method for MeasurementSchema");
   }
 
   @Override
   public List<TSEncoding> getValueTSEncodingList() {
-    return Collections.emptyList();
+    throw new UnsupportedOperationException("unsupported method for MeasurementSchema");
   }
 
   @Override
   public List<Encoder> getValueEncoderList() {
-    return Collections.emptyList();
+    throw new UnsupportedOperationException("unsupported method for MeasurementSchema");
   }
 
   /**

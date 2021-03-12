@@ -33,7 +33,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-public class TimeseriesMetadata implements Accountable {
+public class TimeseriesMetadata implements Accountable, ITimeSeriesMetadata {
 
   /** used for old version tsfile */
   private long startOffsetOfChunkMetaDataList;
@@ -64,7 +64,7 @@ public class TimeseriesMetadata implements Accountable {
   // used to save chunk metadata list while serializing
   private PublicBAOS chunkMetadataListBuffer;
 
-  private ArrayList<ChunkMetadata> chunkMetadataList;
+  private ArrayList<IChunkMetadata> chunkMetadataList;
 
   public TimeseriesMetadata() {}
 
@@ -176,6 +176,7 @@ public class TimeseriesMetadata implements Accountable {
     this.dataType = tsDataType;
   }
 
+  @Override
   public Statistics getStatistics() {
     return statistics;
   }
@@ -188,18 +189,21 @@ public class TimeseriesMetadata implements Accountable {
     this.chunkMetadataLoader = chunkMetadataLoader;
   }
 
-  public List<ChunkMetadata> loadChunkMetadataList() throws IOException {
+  @Override
+  public List<IChunkMetadata> loadChunkMetadataList() throws IOException {
     return chunkMetadataLoader.loadChunkMetadataList(this);
   }
 
-  public List<ChunkMetadata> getChunkMetadataList() {
+  public List<IChunkMetadata> getChunkMetadataList() {
     return chunkMetadataList;
   }
 
+  @Override
   public boolean isModified() {
     return modified;
   }
 
+  @Override
   public void setModified(boolean modified) {
     this.modified = modified;
   }
@@ -214,10 +218,12 @@ public class TimeseriesMetadata implements Accountable {
     return ramSize;
   }
 
+  @Override
   public void setSeq(boolean seq) {
     isSeq = seq;
   }
 
+  @Override
   public boolean isSeq() {
     return isSeq;
   }
@@ -229,6 +235,6 @@ public class TimeseriesMetadata implements Accountable {
 
   // For reading version-2 only
   public void setChunkMetadataList(ArrayList<ChunkMetadata> chunkMetadataList) {
-    this.chunkMetadataList = chunkMetadataList;
+    this.chunkMetadataList = new ArrayList<>(chunkMetadataList);
   }
 }

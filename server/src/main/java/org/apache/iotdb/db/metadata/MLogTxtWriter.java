@@ -19,10 +19,13 @@
 package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
@@ -41,6 +44,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -115,6 +119,34 @@ public class MLogTxtWriter implements AutoCloseable {
     if (offset >= 0) {
       buf.append(offset);
     }
+    buf.append(LINE_SEPARATOR);
+    channel.write(ByteBuffer.wrap(buf.toString().getBytes()));
+    lineNumber.incrementAndGet();
+  }
+
+  public void createAlignedTimeseries(CreateAlignedTimeSeriesPlan plan) throws IOException {
+    StringBuilder buf = new StringBuilder();
+    buf.append(
+        String.format(
+            "%s,%s,%s,%s,%s,%s",
+            MetadataOperationType.CREATE_TIMESERIES,
+            plan.getDevicePath().getFullPath(),
+            plan.getMeasurements(),
+            plan.getDataTypes().stream().map(TSDataType::serialize),
+            plan.getEncodings().stream().map(TSEncoding::serialize),
+            plan.getCompressor().serialize()));
+
+    buf.append(",[");
+    if (plan.getAliasList() != null) {
+      List<String> aliasList = plan.getAliasList();
+      for (int i = 0; i < aliasList.size(); i++) {
+        buf.append(aliasList.get(i));
+        if (i != aliasList.size() - 1) {
+          buf.append(",");
+        }
+      }
+    }
+    buf.append("]");
     buf.append(LINE_SEPARATOR);
     channel.write(ByteBuffer.wrap(buf.toString().getBytes()));
     lineNumber.incrementAndGet();

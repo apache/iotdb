@@ -45,6 +45,11 @@ public class VectorMeasurementSchemaStub implements IMeasurementSchema {
   }
 
   @Override
+  public TSEncoding getEncodingType() {
+    return null;
+  }
+
+  @Override
   public TSDataType getType() {
     return TSDataType.VECTOR;
   }
@@ -57,6 +62,16 @@ public class VectorMeasurementSchemaStub implements IMeasurementSchema {
   @Override
   public Encoder getTimeEncoder() {
     return new PlainEncoder(TSDataType.INT64, 0);
+  }
+
+  @Override
+  public Encoder getValueEncoder() {
+    return null;
+  }
+
+  @Override
+  public Map<String, String> getProps() {
+    return null;
   }
 
   @Override
@@ -83,32 +98,12 @@ public class VectorMeasurementSchemaStub implements IMeasurementSchema {
   }
 
   @Override
-  public TSEncoding getEncodingType() {
-    // TODO Auto-generated method stub
-    return null;
-  }
-
-  @Override
-  public Encoder getValueEncoder() {
-    // TODO Auto-generated method stub
-    return null;
-  }
-
-  @Override
-  public Map<String, String> getProps() {
-    // TODO Auto-generated method stub
-    return null;
-  }
-
-  @Override
   public int serializeTo(ByteBuffer buffer) {
-    // TODO Auto-generated method stub
     return 0;
   }
 
   @Override
   public int serializeTo(OutputStream outputStream) throws IOException {
-    // TODO Auto-generated method stub
     return 0;
   }
 }
