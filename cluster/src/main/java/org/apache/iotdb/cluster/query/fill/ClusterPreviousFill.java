@@ -32,7 +32,6 @@ import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.PreviousFillHandler;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.cluster.utils.PartitionUtils.Intervals;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -241,12 +240,11 @@ public class ClusterPreviousFill extends PreviousFill {
   private ByteBuffer remoteSyncPreviousFill(
       Node node, PreviousFillRequest request, PreviousFillArguments arguments) {
     ByteBuffer byteBuffer = null;
-    SyncDataClient syncDataClient = null;
-    try {
-      syncDataClient =
-          metaGroupMember
-              .getClientProvider()
-              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+    try (SyncDataClient syncDataClient =
+        metaGroupMember
+            .getClientProvider()
+            .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
+
       byteBuffer = syncDataClient.previousFill(request);
     } catch (Exception e) {
       logger.error(
@@ -255,8 +253,6 @@ public class ClusterPreviousFill extends PreviousFill {
           arguments.getPath(),
           node,
           e);
-    } finally {
-      ClientUtils.putBackSyncClient(syncDataClient);
     }
     return byteBuffer;
   }

@@ -22,14 +22,14 @@ import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 public class WritableMemChunk implements IWritableMemChunk {
 
-  private MeasurementSchema schema;
+  private IMeasurementSchema schema;
   private TVList list;
 
-  public WritableMemChunk(MeasurementSchema schema, TVList list) {
+  public WritableMemChunk(IMeasurementSchema schema, TVList list) {
     this.schema = schema;
     this.list = list;
   }
@@ -188,7 +188,7 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public MeasurementSchema getSchema() {
+  public IMeasurementSchema getSchema() {
     return schema;
   }
 

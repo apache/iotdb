@@ -134,7 +134,7 @@ import org.apache.iotdb.tsfile.read.query.dataset.EmptyDataSet;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import java.io.File;
@@ -955,7 +955,7 @@ public class PlanExecutor implements IPlanExecutor {
             String.format(
                 "Cannot load file %s because the file has crashed.", file.getAbsolutePath()));
       }
-      Map<Path, MeasurementSchema> schemaMap = new HashMap<>();
+      Map<Path, IMeasurementSchema> schemaMap = new HashMap<>();
 
       List<ChunkGroupMetadata> chunkGroupMetadataList = new ArrayList<>();
       try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), false)) {
@@ -985,7 +985,7 @@ public class PlanExecutor implements IPlanExecutor {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void createSchemaAutomatically(
       List<ChunkGroupMetadata> chunkGroupMetadataList,
-      Map<Path, MeasurementSchema> knownSchemas,
+      Map<Path, IMeasurementSchema> knownSchemas,
       int sgLevel)
       throws QueryProcessException, MetadataException {
     if (chunkGroupMetadataList.isEmpty()) {
@@ -1005,7 +1005,7 @@ public class PlanExecutor implements IPlanExecutor {
                     + chunkMetadata.getMeasurementUid());
         if (!registeredSeries.contains(series)) {
           registeredSeries.add(series);
-          MeasurementSchema schema =
+          IMeasurementSchema schema =
               knownSchemas.get(new Path(series.getDevice(), series.getMeasurement()));
           if (schema == null) {
             throw new MetadataException(

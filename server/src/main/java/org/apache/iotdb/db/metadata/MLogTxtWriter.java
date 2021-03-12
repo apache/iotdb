@@ -24,7 +24,7 @@ import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -228,7 +228,7 @@ public class MLogTxtWriter implements AutoCloseable {
     if (plan.getAlias() != null) {
       s.append(plan.getAlias());
     }
-    MeasurementSchema schema = plan.getSchema();
+    IMeasurementSchema schema = plan.getSchema();
     s.append(",").append(schema.getType().ordinal()).append(",");
     s.append(schema.getEncodingType().ordinal()).append(",");
     s.append(schema.getCompressor().ordinal()).append(",");

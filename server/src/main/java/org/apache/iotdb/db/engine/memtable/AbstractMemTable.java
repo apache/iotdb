@@ -33,7 +33,7 @@ import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -93,7 +93,7 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   private IWritableMemChunk createIfNotExistAndGet(
-      String deviceId, String measurement, MeasurementSchema schema) {
+      String deviceId, String measurement, IMeasurementSchema schema) {
     Map<String, IWritableMemChunk> memSeries =
         memTableMap.computeIfAbsent(deviceId, k -> new HashMap<>());
 
@@ -106,7 +106,7 @@ public abstract class AbstractMemTable implements IMemTable {
         });
   }
 
-  protected abstract IWritableMemChunk genMemSeries(MeasurementSchema schema);
+  protected abstract IWritableMemChunk genMemSeries(IMeasurementSchema schema);
 
   @Override
   public void insert(InsertRowPlan insertRowPlan) {
@@ -157,7 +157,7 @@ public abstract class AbstractMemTable implements IMemTable {
   public void write(
       String deviceId,
       String measurement,
-      MeasurementSchema schema,
+      IMeasurementSchema schema,
       long insertTime,
       Object objectValue) {
     IWritableMemChunk memSeries = createIfNotExistAndGet(deviceId, measurement, schema);

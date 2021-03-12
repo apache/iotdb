@@ -260,7 +260,7 @@ public class ClusterMain {
           @Override
           public int calculateSlotByTime(String storageGroupName, long timestamp, int maxSlotNum) {
             int sgSerialNum = extractSerialNumInSGName(storageGroupName) % k;
-            if (sgSerialNum > 0) {
+            if (sgSerialNum >= 0) {
               return maxSlotNum / k * sgSerialNum;
             } else {
               return defaultStrategy.calculateSlotByTime(storageGroupName, timestamp, maxSlotNum);
@@ -271,7 +271,7 @@ public class ClusterMain {
           public int calculateSlotByPartitionNum(
               String storageGroupName, long partitionId, int maxSlotNum) {
             int sgSerialNum = extractSerialNumInSGName(storageGroupName) % k;
-            if (sgSerialNum > 0) {
+            if (sgSerialNum >= 0) {
               return maxSlotNum / k * sgSerialNum;
             } else {
               return defaultStrategy.calculateSlotByPartitionNum(

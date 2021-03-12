@@ -30,7 +30,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.write.page.PageWriter;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import org.slf4j.Logger;
@@ -45,7 +45,7 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   private static final Logger logger = LoggerFactory.getLogger(ChunkWriterImpl.class);
 
-  private MeasurementSchema measurementSchema;
+  private IMeasurementSchema measurementSchema;
 
   private ICompressor compressor;
 
@@ -92,7 +92,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   private Statistics<?> firstPageStatistics;
 
   /** @param schema schema of this measurement */
-  public ChunkWriterImpl(MeasurementSchema schema) {
+  public ChunkWriterImpl(IMeasurementSchema schema) {
     this.measurementSchema = schema;
     this.compressor = ICompressor.getCompressor(schema.getCompressor());
     this.pageBuffer = new PublicBAOS();
@@ -115,7 +115,7 @@ public class ChunkWriterImpl implements IChunkWriter {
     checkSdtEncoding();
   }
 
-  public ChunkWriterImpl(MeasurementSchema schema, boolean isMerging) {
+  public ChunkWriterImpl(IMeasurementSchema schema, boolean isMerging) {
     this(schema);
     this.isMerging = isMerging;
   }

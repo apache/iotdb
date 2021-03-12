@@ -39,7 +39,6 @@ import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.cluster.utils.ClusterQueryUtils;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -83,6 +82,10 @@ public class ClusterReaderFactory {
 
   public ClusterReaderFactory(MetaGroupMember metaGroupMember) {
     this.metaGroupMember = metaGroupMember;
+  }
+
+  public void syncMetaGroup() throws CheckConsistencyException {
+    metaGroupMember.syncLeaderWithConsistencyCheck(false);
   }
 
   /**
@@ -216,12 +219,6 @@ public class ClusterReaderFactory {
       QueryContext context,
       boolean ascending)
       throws StorageEngineException, EmptyIntervalException {
-    // make sure the partition table is new
-    try {
-      metaGroupMember.syncLeaderWithConsistencyCheck(false);
-    } catch (CheckConsistencyException e) {
-      throw new StorageEngineException(e);
-    }
     // find the groups that should be queried using the timeFilter
     List<PartitionGroup> partitionGroups = metaGroupMember.routeFilter(timeFilter, path);
     logger.debug(
@@ -657,15 +654,12 @@ public class ClusterReaderFactory {
               .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       executorId = SyncClientAdaptor.getGroupByExecutor(client, request);
     } else {
-      SyncDataClient syncDataClient = null;
-      try {
-        syncDataClient =
-            metaGroupMember
-                .getClientProvider()
-                .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+      try (SyncDataClient syncDataClient =
+          metaGroupMember
+              .getClientProvider()
+              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
+
         executorId = syncDataClient.getGroupByExecutor(request);
-      } finally {
-        ClientUtils.putBackSyncClient(syncDataClient);
       }
     }
     return executorId;
