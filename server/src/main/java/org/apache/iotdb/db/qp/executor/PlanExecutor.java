@@ -75,6 +75,7 @@ import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CountPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -263,6 +264,8 @@ public class PlanExecutor implements IPlanExecutor {
         return deleteTimeSeries((DeleteTimeSeriesPlan) plan);
       case CREATE_TIMESERIES:
         return createTimeSeries((CreateTimeSeriesPlan) plan);
+      case CREATE_ALIGNED_TIMESERIES:
+        return createAlignedTimeSeries((CreateAlignedTimeSeriesPlan) plan);
       case CREATE_MULTI_TIMESERIES:
         return createMultiTimeSeries((CreateMultiTimeSeriesPlan) plan);
       case ALTER_TIMESERIES:
@@ -1328,6 +1331,16 @@ public class PlanExecutor implements IPlanExecutor {
       throws QueryProcessException {
     try {
       IoTDB.metaManager.createTimeseries(createTimeSeriesPlan);
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
+    }
+    return true;
+  }
+
+  private boolean createAlignedTimeSeries(CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan)
+      throws QueryProcessException {
+    try {
+      IoTDB.metaManager.createAlignedTimeSeries(createAlignedTimeSeriesPlan);
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }

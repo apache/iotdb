@@ -26,6 +26,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
+import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
@@ -222,6 +223,25 @@ public class SessionConnection {
         try {
           request.setSessionId(sessionId);
           RpcUtils.verifySuccess(client.createTimeseries(request));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+      }
+    }
+  }
+
+  protected void createAlignedTimeseries(TSCreateAlignedTimeseriesReq request)
+      throws IoTDBConnectionException, StatementExecutionException {
+    request.setSessionId(sessionId);
+    try {
+      RpcUtils.verifySuccess(client.createAlignedTimeseries(request));
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          request.setSessionId(sessionId);
+          RpcUtils.verifySuccess(client.createAlignedTimeseries(request));
         } catch (TException tException) {
           throw new IoTDBConnectionException(tException);
         }

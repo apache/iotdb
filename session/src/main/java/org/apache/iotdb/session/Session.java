@@ -23,6 +23,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
+import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
@@ -58,6 +59,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 @SuppressWarnings({"java:S107", "java:S1135"}) // need enough parameters, ignore todos
 public class Session {
@@ -363,6 +365,37 @@ public class Session {
     request.setTags(tags);
     request.setAttributes(attributes);
     request.setMeasurementAlias(measurementAlias);
+    return request;
+  }
+
+  public void createAlignedTimeseries(
+      String devicePath,
+      List<String> measurements,
+      List<TSDataType> dataTypes,
+      List<TSEncoding> encodings,
+      CompressionType compressor,
+      List<String> measurementAliasList)
+      throws IoTDBConnectionException, StatementExecutionException {
+    TSCreateAlignedTimeseriesReq request =
+        getTSCreateAlignedTimeseriesReq(
+            devicePath, measurements, dataTypes, encodings, compressor, measurementAliasList);
+    defaultSessionConnection.createAlignedTimeseries(request);
+  }
+
+  private TSCreateAlignedTimeseriesReq getTSCreateAlignedTimeseriesReq(
+      String devicePath,
+      List<String> measurements,
+      List<TSDataType> dataTypes,
+      List<TSEncoding> encodings,
+      CompressionType compressor,
+      List<String> measurementAliasList) {
+    TSCreateAlignedTimeseriesReq request = new TSCreateAlignedTimeseriesReq();
+    request.setDevicePath(devicePath);
+    request.setMeasurements(measurements);
+    request.setDataTypes(dataTypes.stream().map(TSDataType::ordinal).collect(Collectors.toList()));
+    request.setEncodings(encodings.stream().map(TSEncoding::ordinal).collect(Collectors.toList()));
+    request.setCompressor(compressor.ordinal());
+    request.setMeasurementAlias(measurementAliasList);
     return request;
   }
 

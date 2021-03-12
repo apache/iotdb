@@ -29,6 +29,7 @@ import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan.Factory;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
@@ -50,8 +51,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.Properties;
 
 public class PhysicalPlanSerializeTest {
@@ -187,6 +190,35 @@ public class PhysicalPlanSerializeTest {
 
     Assert.assertEquals(OperatorType.CREATE_TIMESERIES, result.getOperatorType());
     Assert.assertEquals(createTimeSeriesPlan, result);
+  }
+
+  @Test
+  public void createAlignedTimeSeriesPlanSerializeTest() throws IOException, IllegalPathException {
+    List<String> measurements = new ArrayList<>();
+    measurements.add("s1");
+    measurements.add("s2");
+
+    List<TSDataType> dataTypes = new ArrayList<>();
+    dataTypes.add(TSDataType.DOUBLE);
+    dataTypes.add(TSDataType.INT32);
+
+    List<TSEncoding> encodings = new ArrayList<>();
+    encodings.add(TSEncoding.RLE);
+    encodings.add(TSEncoding.RLE);
+
+    CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
+        new CreateAlignedTimeSeriesPlan(
+            new PartialPath("root.sg.d1"),
+            measurements,
+            dataTypes,
+            encodings,
+            CompressionType.SNAPPY,
+            null);
+
+    PhysicalPlan result = testTwoSerializeMethodAndDeserialize(createAlignedTimeSeriesPlan);
+
+    Assert.assertEquals(OperatorType.CREATE_ALIGNED_TIMESERIES, result.getOperatorType());
+    Assert.assertEquals(createAlignedTimeSeriesPlan, result);
   }
 
   @Test
