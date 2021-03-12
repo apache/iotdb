@@ -25,8 +25,12 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 public class VectorMeasurementSchemaStub implements IMeasurementSchema {
 
@@ -76,5 +80,35 @@ public class VectorMeasurementSchemaStub implements IMeasurementSchema {
         new PlainEncoder(TSDataType.FLOAT, 0),
         new PlainEncoder(TSDataType.INT32, 0),
         new PlainEncoder(TSDataType.DOUBLE, 0));
+  }
+
+  @Override
+  public TSEncoding getEncodingType() {
+    // TODO Auto-generated method stub
+    return null;
+  }
+
+  @Override
+  public Encoder getValueEncoder() {
+    // TODO Auto-generated method stub
+    return null;
+  }
+
+  @Override
+  public Map<String, String> getProps() {
+    // TODO Auto-generated method stub
+    return null;
+  }
+
+  @Override
+  public int serializeTo(ByteBuffer buffer) {
+    // TODO Auto-generated method stub
+    return 0;
+  }
+
+  @Override
+  public int serializeTo(OutputStream outputStream) throws IOException {
+    // TODO Auto-generated method stub
+    return 0;
   }
 }

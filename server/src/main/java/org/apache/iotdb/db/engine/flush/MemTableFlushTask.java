@@ -101,7 +101,7 @@ public class MemTableFlushTask {
     long start = System.currentTimeMillis();
     long sortTime = 0;
 
-    // for map do not use get(key) to iteratate
+    // for map do not use get(key) to iterate
     for (Map.Entry<String, Map<String, IWritableMemChunk>> memTableEntry :
         memTable.getMemTableMap().entrySet()) {
       encodingTaskQueue.put(new StartFlushGroupIOTask(memTableEntry.getKey()));

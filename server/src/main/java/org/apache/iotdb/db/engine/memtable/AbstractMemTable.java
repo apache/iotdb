@@ -137,33 +137,33 @@ public abstract class AbstractMemTable implements IMemTable {
         insertRowPlan.getMeasurements().length - insertRowPlan.getFailedMeasurementNumber();
   }
 
-  @Override
-  public void insert(InsertVectorPlan insertVectorPlan) {
-    updatePlanIndexes(insertVectorPlan.getIndex());
-    Object[] values = insertVectorPlan.getValues();
-
-    MeasurementMNode[] measurementMNodes = insertVectorPlan.getMeasurementMNodes();
-    String[] measurements = insertVectorPlan.getMeasurements();
-    IMeasurementSchema vmSchema = (IMeasurementSchema) measurementMNodes[0].getSchema();
-    for (int i = 0; i < values.length; i++) {
-      Object value = values[i];
-      if (value == null) {
-        continue;
-      }
-
-      memSize +=
-          MemUtils.getRecordSize(
-              vmSchema.getValueTSDataTypeList().get(i), value, disableMemControl);
-    }
-    write(
-        insertVectorPlan.getDeviceId().getFullPath(),
-        vmSchema,
-        insertVectorPlan.getTime(),
-        values);
-
-    totalPointsNum +=
-        insertVectorPlan.getMeasurements().length - insertVectorPlan.getFailedMeasurementNumber();
-  }
+//  @Override
+//  public void insert(InsertVectorPlan insertVectorPlan) {
+//    updatePlanIndexes(insertVectorPlan.getIndex());
+//    Object[] values = insertVectorPlan.getValues();
+//
+//    MeasurementMNode[] measurementMNodes = insertVectorPlan.getMeasurementMNodes();
+//    String[] measurements = insertVectorPlan.getMeasurements();
+//    IMeasurementSchema vmSchema = (IMeasurementSchema) measurementMNodes[0].getSchema();
+//    for (int i = 0; i < values.length; i++) {
+//      Object value = values[i];
+//      if (value == null) {
+//        continue;
+//      }
+//
+//      memSize +=
+//          MemUtils.getRecordSize(
+//              vmSchema.getValueTSDataTypeList().get(i), value, disableMemControl);
+//    }
+//    write(
+//        insertVectorPlan.getDeviceId().getFullPath(),
+//        vmSchema,
+//        insertVectorPlan.getTime(),
+//        values);
+//
+//    totalPointsNum +=
+//        insertVectorPlan.getMeasurements().length - insertVectorPlan.getFailedMeasurementNumber();
+//  }
 
   @Override
   public void insertTablet(InsertTabletPlan insertTabletPlan, int start, int end)

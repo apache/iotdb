@@ -37,7 +37,7 @@ public interface IWritableMemChunk {
 
   void putBoolean(long t, boolean v);
   
-  void putVector(long t, byte[] v);
+  void putVector(long t, Object[] v);
 
   void putLongs(long[] t, long[] v, int start, int end);
 
@@ -50,6 +50,8 @@ public interface IWritableMemChunk {
   void putBinaries(long[] t, Binary[] v, int start, int end);
 
   void putBooleans(long[] t, boolean[] v, int start, int end);
+
+  void putVectors(long[] t, Object[][] v, int start, int end);
 
   void write(long insertTime, Object objectValue);
 

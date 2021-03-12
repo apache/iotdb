@@ -56,7 +56,7 @@ public class WritableMemChunk implements IWritableMemChunk {
         putBinary(insertTime, (Binary) objectValue);
         break;
       case VECTOR:
-        putVector(insertTime, (byte[]) objectValue);
+        putVector(insertTime, (Object[]) objectValue);
         break;
       default:
         throw new UnSupportedDataTypeException("Unsupported data type:" + schema.getType());
@@ -126,7 +126,7 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void putVector(long t, byte[] v) {
+  public void putVector(long t, Object[] v) {
     list.putVector(t, v);
   }
 
@@ -158,6 +158,11 @@ public class WritableMemChunk implements IWritableMemChunk {
   @Override
   public void putBooleans(long[] t, boolean[] v, int start, int end) {
     list.putBooleans(t, v, start, end);
+  }
+
+  @Override
+  public void putVectors(long[] t, Object[][] v, int start, int end) {
+    list.putVectors(t, v, start, end);
   }
 
   @Override

@@ -73,12 +73,14 @@ public abstract class TVList {
         return new DoubleTVList();
       case BOOLEAN:
         return new BooleanTVList();
-      case VECTOR:
-        return new VectorTVList();
       default:
         break;
     }
     return null;
+  }
+
+  public static TVList newVectorList(List<TSDataType> datatypes) {
+    return new VectorTVList(datatypes);
   }
 
   public static long tvListArrayMemSize(TSDataType type) {
@@ -139,7 +141,7 @@ public abstract class TVList {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public void putVector(long time, byte[] value) {
+  public void putVector(long time, Object[] value) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
@@ -167,7 +169,7 @@ public abstract class TVList {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public void putVectors(long[] time, byte[][] value, int start, int end) {
+  public void putVectors(long[] time, Object[] value, int start, int end) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
@@ -195,7 +197,7 @@ public abstract class TVList {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public byte[] getVector(int index) {
+  public Object getVector(int index) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 

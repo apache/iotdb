@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.utils.datastructure;
 
-import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -29,37 +29,74 @@ import java.util.List;
 public class VectorTVListTest {
 
   @Test
-  public void testVectorTVList() {
-    VectorTVList tvList = new VectorTVList();
+  public void testVectorTVList1() {
+    List<TSDataType> dataTypes = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      dataTypes.add(TSDataType.INT32);
+    }
+    VectorTVList tvList = new VectorTVList(dataTypes);
     for (int i = 0; i < 1000; i++) {
-      byte[] value = new byte[4 * 5];
-      byte[] bytes = new byte[4];
-      for (int j = 0; j < 20; j++) {
-        if (j % 4 == 0) {
-          bytes = BytesUtils.intToBytes(i);
-        }
-        value[j] = bytes[j % 4];
+      int[][] value = new int[5][1];
+      for (int j = 0; j < 5; j++) {
+        value[j][0] = i;
       }
       tvList.putVector(i, value);
     }
     for (int i = 0; i < tvList.size; i++) {
-      Assert.assertEquals(String.valueOf(i), tvList.getVector(i).toString());
+      StringBuilder builder = new StringBuilder("[");
+      builder.append(String.valueOf(i));
+      for (int j = 1; j < 5; j++) {
+        builder.append(", ").append(String.valueOf(i));
+      }
+      builder.append("]");
+      Assert.assertEquals(builder.toString(), tvList.getVector(i).toString());
+      Assert.assertEquals(i, tvList.getTime(i));
+    }
+  }
+
+  @Test
+  public void testVectorTVList2() {
+    List<TSDataType> dataTypes = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      dataTypes.add(TSDataType.INT32);
+    }
+    VectorTVList tvList = new VectorTVList(dataTypes);
+    for (int i = 1000; i >= 0; i--) {
+      int[][] value = new int[5][1];
+      for (int j = 0; j < 5; j++) {
+        value[j][0] = i;
+      }
+      tvList.putVector(i, value);
+    }
+    tvList.sort();
+    for (int i = 0; i < tvList.size; i++) {
+      StringBuilder builder = new StringBuilder("[");
+      builder.append(String.valueOf(i));
+      for (int j = 1; j < 5; j++) {
+        builder.append(", ").append(String.valueOf(i));
+      }
+      builder.append("]");
+      Assert.assertEquals(builder.toString(), tvList.getVector(i).toString());
       Assert.assertEquals(i, tvList.getTime(i));
     }
   }
 
   @Test
   public void testVectorTVLists() {
-    VectorTVList tvList = new VectorTVList();
-    byte[][] vectorList = new byte[1001][4 * 5];
+    List<TSDataType> dataTypes = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      dataTypes.add(TSDataType.INT64);
+    }
+    VectorTVList tvList = new VectorTVList(dataTypes);
+    long[][] vectorArray = new long[5][1001];
     List<Long> timeList = new ArrayList<>();
     for (int i = 1000; i >= 0; i--) {
       timeList.add((long) i);
       for (int j = 0; j < 5; j++) {
-        vectorList[i][j] = 0;
+        vectorArray[j][i] = (long) i;
       }
     }
-    tvList.putVectors(ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), vectorList, 0, 1000);
+    tvList.putVectors(ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), vectorArray, 0, 1000);
     for (long i = 0; i < tvList.size; i++) {
       Assert.assertEquals(tvList.size - i, tvList.getTime((int) i));
     }
