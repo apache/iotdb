@@ -160,6 +160,7 @@ public class MultiReplicaOrderOptimizer {
 				if (newCost < curCost ||
 								Math.exp((curCost - newCost) / temperature) > probability) {
 					curCost = newCost;
+					System.out.println(newChunkSize);
 				} else {
 					replicas[selectedReplica].setAverageChunkSize(curChunkSize);
 				}
@@ -168,7 +169,7 @@ public class MultiReplicaOrderOptimizer {
 				LOGGER.info("Break by cost recorder");
 				break;
 			}
-			if (k % 1000 == 0) {
+			if (k % 10 == 0) {
 				LOGGER.info(String.format("Epoch %d: curCost %.3f", k, curCost));
 			}
 		}
@@ -177,7 +178,7 @@ public class MultiReplicaOrderOptimizer {
 		return new Pair<>(replicas, workloadPartition);
 	}
 
-	public Pair<Replica[], Workload[]> optimizeBySAWithChunkSizeAdjustmentAndCostRecord() {
+	public Pair<List<Double>, List<Long>> optimizeBySAWithChunkSizeAdjustmentAndCostRecord() {
 		double curCost = getCostAndWorkloadPartitionForCurReplicas(records, replicas).left;
 		LOGGER.info("Ori cost: " + curCost);
 		Pair<Long, Long> chunkBound = getChunkSizeBound(records);
@@ -193,7 +194,7 @@ public class MultiReplicaOrderOptimizer {
 		for (; k < maxIter && System.currentTimeMillis() - optimizeStartTime < 50l * 60l * 1000l; ++k) {
 			temperature = temperature * COOLING_RATE;
 			int selectedReplica = r.nextInt(replicaNum);
-			int operation = r.nextInt(2);
+			int operation = 1;
 			if (operation == 0) {
 				// Swap chunk order
 				int swapLeft = r.nextInt(measurementOrder.size());
@@ -238,13 +239,13 @@ public class MultiReplicaOrderOptimizer {
 				LOGGER.info("Break by cost recorder");
 				break;
 			}
-			if (k % 1000 == 0) {
+			if (k % 10 == 0) {
 				LOGGER.info(String.format("Epoch %d: curCost %.3f", k, curCost));
 			}
 		}
 		LOGGER.info("Final cost: " + curCost);
 		LOGGER.info("Loop count: " + k);
-		return new Pair<>(replicas, workloadPartition);
+		return costRecorder.getLists();
 	}
 
 	public Pair<List<Double>, List<Long>> optimizeBySAWithChunkSizeAdjustmentSeparately() {
@@ -475,13 +476,13 @@ public class MultiReplicaOrderOptimizer {
 			tmpList.add(record);
 			float minCost = Float.MAX_VALUE;
 			int minIdx = 0;
-			// Collections.shuffle(indexes);
+			Collections.shuffle(indexes);
 			for (int i = 0; i < replicaNum; ++i) {
-				Replica replica = replicas[i];
+				Replica replica = replicas[indexes.get(i)];
 				float curCost = CostModel.approximateAggregationQueryCostWithTimeRange(tmpList, replica.getMeasurements(), replica.getAverageChunkSize());
 				if (curCost < minCost) {
 					minCost = curCost;
-					minIdx = i;
+					minIdx = indexes.get(i);
 				}
 			}
 			workloads[minIdx].addRecord(record);
@@ -589,7 +590,7 @@ public class MultiReplicaOrderOptimizer {
 		LinkedList<Double> recentCost;
 		List<Long> timeList;
 		boolean initMinMax;
-		final int RECENT_RANGE = 1000;
+		final int RECENT_RANGE = 500;
 		double maxCost;
 		double minCost;
 		CostRecorder() {
@@ -606,9 +607,9 @@ public class MultiReplicaOrderOptimizer {
 			costHistory.add(cost);
 			if (recentCost.size() >= RECENT_RANGE) {
 				update(cost);
-				if ((maxCost - minCost) < maxCost * 0.001) {
-					return false;
-				}
+//				if ((maxCost - minCost) < maxCost * 0.001) {
+//					return false;
+//				}
 				return true;
 			} else {
 				recentCost.addLast(cost);

@@ -34,7 +34,7 @@ public class MeasurementOrderOptimizer {
   final float CHUNK_SIZE_UPPER_BOUND = 2.0f;
   final float CHUNK_SIZE_LOWER_BOUND = 0.5f;
   long averageChunkSize;
-  public static final int SA_MAX_ITERATION = 100000;
+  public static final int SA_MAX_ITERATION = 15000;
   public static final float SA_INIT_TEMPERATURE = 2.0f;
   public static final float SA_COOLING_RATE = 0.02f;
   private static final Logger LOGGER = LoggerFactory.getLogger(MeasurementOrderOptimizer.class);
@@ -438,9 +438,9 @@ public class MeasurementOrderOptimizer {
             approximateAggregationQueryCostWithTimeRange(queryRecordsForCurDevice, curMeasurementOrder, chunkSize);
     float temperature = SA_INIT_TEMPERATURE;
     Random r = new Random();
-
+    long startTime = System.currentTimeMillis();
     // Run the main loop of Simulated Annealing
-    for (int k = 0; k < SA_MAX_ITERATION; ++k) {
+    for (int k = 0; k < SA_MAX_ITERATION && System.currentTimeMillis() - startTime < 30l * 60l * 1000l; ++k) {
       temperature = updateTemperature(temperature);
 
       // Generate a neighbor state
@@ -505,9 +505,10 @@ public class MeasurementOrderOptimizer {
     Random r = new Random();
     long chunkSizeUpperBound = (long) (averageChunkSize * CHUNK_SIZE_UPPER_BOUND);
     long chunkSizeLowerBound = (long) (averageChunkSize * CHUNK_SIZE_LOWER_BOUND);
+    long startTime = System.currentTimeMillis();
 
     // Run the main loop of Simulated Annealing
-    for (int k = 0; k < SA_MAX_ITERATION; ++k) {
+    for (int k = 0; k < SA_MAX_ITERATION && System.currentTimeMillis() - startTime < 30l * 60l * 1000l; ++k) {
       temperature = updateTemperature(temperature);
 
       // Generate a neighbor state
@@ -553,6 +554,9 @@ public class MeasurementOrderOptimizer {
           // Accept the new status
           curCost = newCost;
           averageChunkSize = newChunkSize;
+        }
+        if (k % 500 == 0) {
+          LOGGER.info(String.format("epoch%d cuCost: %.3f", k, curCost));
         }
       }
     }

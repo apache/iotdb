@@ -18,31 +18,31 @@ import java.util.List;
 import java.util.Random;
 
 public class ExperimentSessionWriter {
-  private static final Session session = new Session("192.168.130.38", 6667, "root", "root");
+  private static final Session session = new Session("127.0.0.1", 6667, "root", "root");
   //private static final Session session = new Session("127.0.0.1", 6667, "root", "root");
   private static final int TIMESERIES_NUM = 4000;
   private static int DATA_NUM = 10000;
-//  private static final File COST_LOG_FILE = new File(".\\convergence_result.txt");
+  private static final File COST_LOG_FILE = new File(".\\convergence_result.txt");
 //  private static final File CHUNK_SIZE_OPT_LOG_FILE = new File("E:\\Thing\\Workspace\\IoTDB\\res\\ChunkSizeOpt.txt");
   private static final File REPLICA_DEAD_FILE = new File(".\\replica_dead.txt");
   private static OutputStream COST_LOG_STREAM;
   public static void main(String[] args) throws Exception{
-//    if (!COST_LOG_FILE.exists()) {
-//      COST_LOG_FILE.createNewFile();
-//    }
-//    COST_LOG_STREAM = new FileOutputStream(COST_LOG_FILE);
+    if (!COST_LOG_FILE.exists()) {
+      COST_LOG_FILE.createNewFile();
+    }
+    COST_LOG_STREAM = new FileOutputStream(COST_LOG_FILE);
 
     session.open(false);
     session.readRecordFromFile();
     session.readMetadataFromFile();
-    try {
-      session.deleteStorageGroup("root.test");
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
-    session.setStorageGroup("root.test");
-    createTimeseries();
-    testMultipleReplicaSAWithChunkSize(3);
+//    try {
+//      session.deleteStorageGroup("root.test");
+//    } catch (Exception e) {
+//      e.printStackTrace();
+//    }
+//    session.setStorageGroup("root.test");
+//    createTimeseries();
+    testConvergence();
     session.close();
     // 1 -> 3
     // 2 -> 4
@@ -237,16 +237,16 @@ public class ExperimentSessionWriter {
     try {
       long startTime = System.currentTimeMillis();
       ConvergenceTestResult testResult = session.runConvergenceTest("root.test.device");
-//      StringBuilder sb = new StringBuilder();
-//      for(int i = 0; i < testResult.method.size(); ++i) {
-//        sb.append(testResult.method.get(i) + "\n");
-//        for(int j = 0; j < testResult.time.get(i).size(); ++j) {
-//          sb.append(String.format("%s %.2f\n", String.valueOf(testResult.time.get(i).get(j)), testResult.lost.get(i).get(j)));
-//        }
-//        sb.append("\n");
-//      }
-//      COST_LOG_STREAM.write(sb.toString().getBytes(StandardCharsets.UTF_8));
-//      COST_LOG_STREAM.close();
+      StringBuilder sb = new StringBuilder();
+      for(int i = 0; i < testResult.method.size(); ++i) {
+        sb.append(testResult.method.get(i) + "\n");
+        for(int j = 0; j < testResult.time.get(i).size(); ++j) {
+          sb.append(String.format("%s %.2f\n", String.valueOf(testResult.time.get(i).get(j)), testResult.lost.get(i).get(j)));
+        }
+        sb.append("\n");
+      }
+      COST_LOG_STREAM.write(sb.toString().getBytes(StandardCharsets.UTF_8));
+      COST_LOG_STREAM.close();
       long lastTime = System.currentTimeMillis() - startTime;
       System.out.println(lastTime / 1000l + " s");
     } catch (Exception e) {
