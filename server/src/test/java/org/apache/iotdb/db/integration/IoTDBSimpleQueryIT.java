@@ -1044,7 +1044,7 @@ public class IoTDBSimpleQueryIT {
         }
       }
 
-      Assert.assertEquals(4, count);
+      Assert.assertEquals(5, count);
     }
   }
 
