@@ -150,6 +150,18 @@ public class VectorTVList extends TVList {
     return TsPrimitiveType.getByType(TSDataType.VECTOR, vector);
   }
 
+  public List<List<Object>> getValues() {
+    return values;
+  }
+
+  public List<TSDataType> getTsDataTypes() {
+    return dataTypes;
+  }
+
+  public List<int[]> getIndices() {
+    return indices;
+  }
+
   protected void set(int index, long timestamp, int valueIndex) {
     if (index >= size) {
       throw new ArrayIndexOutOfBoundsException(index);
@@ -299,7 +311,7 @@ public class VectorTVList extends TVList {
     pivotIndex = getValueIndex(pos);
   }
 
-  private int getValueIndex(int index) {
+  public int getValueIndex(int index) {
     if (index >= size) {
       throw new ArrayIndexOutOfBoundsException(index);
     }
