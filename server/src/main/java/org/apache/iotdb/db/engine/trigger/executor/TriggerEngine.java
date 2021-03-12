@@ -47,7 +47,11 @@ public class TriggerEngine {
     Object[] values = insertRowPlan.getValues();
 
     for (int i = 0; i < size; ++i) {
-      TriggerExecutor executor = mNodes[i].getTriggerExecutor();
+      MeasurementMNode mNode = mNodes[i];
+      if (mNode == null) {
+        continue;
+      }
+      TriggerExecutor executor = mNode.getTriggerExecutor();
       if (executor == null) {
         continue;
       }
@@ -68,7 +72,11 @@ public class TriggerEngine {
     }
 
     for (int i = 0; i < size; ++i) {
-      TriggerExecutor executor = mNodes[i].getTriggerExecutor();
+      MeasurementMNode mNode = mNodes[i];
+      if (mNode == null) {
+        continue;
+      }
+      TriggerExecutor executor = mNode.getTriggerExecutor();
       if (executor == null) {
         continue;
       }
