@@ -399,7 +399,7 @@ public class IoTDBTriggerManagementIT {
 
   @Test
   @SuppressWarnings("squid:S5961")
-  public void testRecovery() throws TriggerManagementException {
+  public void testRecovery() throws Exception {
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -426,7 +426,7 @@ public class IoTDBTriggerManagementIT {
       fail(e.getMessage());
     }
 
-    IoTDB.getInstance().stop();
+    IoTDB.getInstance().shutdown();
     IoTDB.getInstance().active();
 
     try (Connection connection =
@@ -467,7 +467,7 @@ public class IoTDBTriggerManagementIT {
       fail(e.getMessage());
     }
 
-    IoTDB.getInstance().stop();
+    IoTDB.getInstance().shutdown();
     IoTDB.getInstance().active();
 
     TriggerRegistrationInformation trigger1Info =

@@ -308,10 +308,6 @@ public class EnvironmentUtils {
     // create query
     createDir(config.getQueryDir());
     createDir(TestConstant.OUTPUT_DATA_DIR);
-    // create ulog dir
-    createDir(config.getUdfDir());
-    // create tlog dir
-    createDir(config.getTriggerDir());
     // create data
     for (String dataDir : config.getDataDirs()) {
       createDir(dataDir);
