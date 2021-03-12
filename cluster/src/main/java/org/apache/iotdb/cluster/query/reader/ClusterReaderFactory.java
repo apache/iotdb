@@ -55,6 +55,7 @@ import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataPointReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.series.SeriesReaderFactory;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -207,7 +208,7 @@ public class ClusterReaderFactory {
    * each group a series reader will be created, and finally all such readers will be merged into
    * one.
    *
-   * @param timeFilter nullable, when null, all data groups will be queried
+   * @param timeFilter  nullable, when null, all data groups will be queried
    * @param valueFilter nullable
    */
   public ManagedSeriesReader getSeriesReader(
@@ -253,7 +254,7 @@ public class ClusterReaderFactory {
    * "partitionGroup" contains the local node, a local reader will be returned. Otherwise a remote
    * reader will be returned.
    *
-   * @param timeFilter nullable
+   * @param timeFilter  nullable
    * @param valueFilter nullable
    */
   private IPointReader getSeriesReader(
@@ -313,7 +314,7 @@ public class ClusterReaderFactory {
    *
    * @param path
    * @param dataType
-   * @param timeFilter nullable
+   * @param timeFilter  nullable
    * @param valueFilter nullable
    * @param context
    * @return
@@ -353,7 +354,7 @@ public class ClusterReaderFactory {
    *
    * @param path
    * @param dataType
-   * @param timeFilter nullable
+   * @param timeFilter  nullable
    * @param valueFilter nullable
    * @param context
    * @return
@@ -374,16 +375,9 @@ public class ClusterReaderFactory {
         ((SlotPartitionTable) metaGroupMember.getPartitionTable()).getNodeSlots(header);
     QueryDataSource queryDataSource =
         QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter);
-    return new SeriesReader(
-        path,
-        allSensors,
-        dataType,
-        context,
-        queryDataSource,
-        timeFilter,
-        valueFilter,
-        new SlotTsFileFilter(nodeSlots),
-        ascending);
+    return SeriesReaderFactory
+        .createSeriesReader(path, allSensors, dataType, context, queryDataSource, timeFilter,
+            valueFilter, new SlotTsFileFilter(nodeSlots), ascending);
   }
 
   /**
@@ -392,7 +386,7 @@ public class ClusterReaderFactory {
    * the id of the reader will be returned so that we can fetch data from that node using the reader
    * id.
    *
-   * @param timeFilter nullable
+   * @param timeFilter  nullable
    * @param valueFilter nullable
    */
   private IPointReader getRemoteSeriesPointReader(
@@ -671,7 +665,7 @@ public class ClusterReaderFactory {
    *
    * @param path
    * @param dataType
-   * @param timeFilter nullable
+   * @param timeFilter  nullable
    * @param valueFilter nullable
    * @param context
    * @return an IBatchReader or null if there is no satisfying data
