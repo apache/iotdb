@@ -183,8 +183,7 @@ public class MeasurementChunkMetadataListMapIteratorTest {
 
         String lastMeasurement = null;
         while (iterator.hasNext()) {
-          LinkedHashMap<String, List<ChunkMetadata>> next = iterator.next();
-          for (String measurement : next.keySet()) {
+          for (String measurement : iterator.next().keySet()) {
             if (lastMeasurement != null) {
               Assert.assertTrue(lastMeasurement.compareTo(measurement) < 0);
             }
