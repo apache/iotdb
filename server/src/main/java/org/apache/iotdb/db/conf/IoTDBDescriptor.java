@@ -345,7 +345,7 @@ public class IoTDBDescriptor {
       conf.setQueryTimeThreshold(
           Integer.parseInt(
               properties.getProperty(
-                  "query_time_threshold", Integer.toString(conf.getQueryTimeThreshold()))));
+                  "query_timeout_threshold", Integer.toString(conf.getQueryTimeThreshold()))));
 
       conf.setSyncEnable(
           Boolean.parseBoolean(
