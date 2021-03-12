@@ -265,7 +265,6 @@ public class PageWriter {
   /** reset this page */
   public void reset(MeasurementSchema measurementSchema) {
     timeOut.reset();
-    timeEncoder = measurementSchema.getTimeEncoder();
     valueOut.reset();
     statistics = Statistics.getStatsByType(measurementSchema.getType());
   }

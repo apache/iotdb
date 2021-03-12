@@ -204,7 +204,7 @@ public class LastPointReader {
     return unseqTsFilesSet;
   }
 
-  private PriorityQueue<ChunkMetadata> sortUnseqChunkMetadatasByEndtime() {
+  private PriorityQueue<ChunkMetadata> sortUnseqChunkMetadatasByEndtime() throws IOException {
     PriorityQueue<ChunkMetadata> chunkMetadataList =
         new PriorityQueue<>(
             (o1, o2) -> {
@@ -224,7 +224,7 @@ public class LastPointReader {
             });
     for (TimeseriesMetadata timeseriesMetadata : unseqTimeseriesMetadataList) {
       if (timeseriesMetadata != null) {
-        for (IChunkMetadata chunkMetadata : timeseriesMetadata.getChunkMetadataList()) {
+        for (IChunkMetadata chunkMetadata : timeseriesMetadata.loadChunkMetadataList()) {
           chunkMetadataList.add((ChunkMetadata) chunkMetadata);
         }
       }
