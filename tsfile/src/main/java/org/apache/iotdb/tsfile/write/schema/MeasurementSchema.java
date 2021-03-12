@@ -358,5 +358,4 @@ public class MeasurementSchema
   public void setType(TSDataType type) {
     this.type = type.serialize();
   }
-
 }

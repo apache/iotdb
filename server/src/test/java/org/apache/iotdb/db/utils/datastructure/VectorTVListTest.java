@@ -18,8 +18,9 @@
  */
 package org.apache.iotdb.db.utils.datastructure;
 
-import org.apache.commons.lang3.ArrayUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import org.apache.commons.lang3.ArrayUtils;
 import org.junit.Assert;
 import org.junit.Test;
 

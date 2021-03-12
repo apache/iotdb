@@ -33,6 +33,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
+
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -292,10 +293,7 @@ public class PrimitiveMemTableTest {
         case VECTOR:
           TsPrimitiveType[] values = new TsPrimitiveType[1];
           values[0] = TsPrimitiveType.getByType(TSDataType.INT32, rand.nextInt());
-          ret[i] =
-              new TimeValuePair(
-                  rand.nextLong(),
-                  TsPrimitiveType.getByType(dataType, values));
+          ret[i] = new TimeValuePair(rand.nextLong(), TsPrimitiveType.getByType(dataType, values));
           break;
         default:
           throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);

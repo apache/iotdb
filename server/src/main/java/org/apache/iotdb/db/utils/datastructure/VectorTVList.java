@@ -47,7 +47,7 @@ public class VectorTVList extends TVList {
     indices = new ArrayList<>();
     dataTypes = types;
     values = new ArrayList<>();
-    for (int i = 0; i  < types.size(); i++) {
+    for (int i = 0; i < types.size(); i++) {
       values.add(new ArrayList<>());
     }
   }
@@ -114,22 +114,34 @@ public class VectorTVList extends TVList {
       List<Object> columnValues = values.get(i);
       switch (dataTypes.get(i)) {
         case TEXT:
-          vector[i] = TsPrimitiveType.getByType(dataTypes.get(i), ((Binary[]) columnValues.get(arrayIndex))[elementIndex]);
+          vector[i] =
+              TsPrimitiveType.getByType(
+                  dataTypes.get(i), ((Binary[]) columnValues.get(arrayIndex))[elementIndex]);
           break;
         case FLOAT:
-          vector[i] = TsPrimitiveType.getByType(dataTypes.get(i), ((float[]) columnValues.get(arrayIndex))[elementIndex]);
+          vector[i] =
+              TsPrimitiveType.getByType(
+                  dataTypes.get(i), ((float[]) columnValues.get(arrayIndex))[elementIndex]);
           break;
         case INT32:
-          vector[i] = TsPrimitiveType.getByType(dataTypes.get(i), ((int[]) columnValues.get(arrayIndex))[elementIndex]);
+          vector[i] =
+              TsPrimitiveType.getByType(
+                  dataTypes.get(i), ((int[]) columnValues.get(arrayIndex))[elementIndex]);
           break;
         case INT64:
-          vector[i] = TsPrimitiveType.getByType(dataTypes.get(i), ((long[]) columnValues.get(arrayIndex))[elementIndex]);
+          vector[i] =
+              TsPrimitiveType.getByType(
+                  dataTypes.get(i), ((long[]) columnValues.get(arrayIndex))[elementIndex]);
           break;
         case DOUBLE:
-          vector[i] = TsPrimitiveType.getByType(dataTypes.get(i), ((double[]) columnValues.get(arrayIndex))[elementIndex]);
+          vector[i] =
+              TsPrimitiveType.getByType(
+                  dataTypes.get(i), ((double[]) columnValues.get(arrayIndex))[elementIndex]);
           break;
         case BOOLEAN:
-          vector[i] = TsPrimitiveType.getByType(dataTypes.get(i), ((boolean[]) columnValues.get(arrayIndex))[elementIndex]);
+          vector[i] =
+              TsPrimitiveType.getByType(
+                  dataTypes.get(i), ((boolean[]) columnValues.get(arrayIndex))[elementIndex]);
           break;
         default:
           break;
@@ -170,7 +182,7 @@ public class VectorTVList extends TVList {
         return cloneT;
       case FLOAT:
         float[] valueF = (float[]) value;
-        float[] cloneF= new float[valueF.length];
+        float[] cloneF = new float[valueF.length];
         System.arraycopy(valueF, 0, cloneF, 0, valueF.length);
         return cloneF;
       case INT32:

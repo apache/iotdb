@@ -36,7 +36,7 @@ public interface IWritableMemChunk {
   void putBinary(long t, Binary v);
 
   void putBoolean(long t, boolean v);
-  
+
   void putVector(long t, Object[] v);
 
   void putLongs(long[] t, long[] v, int start, int end);

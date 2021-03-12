@@ -92,8 +92,7 @@ public abstract class AbstractMemTable implements IMemTable {
     return memTableMap.containsKey(deviceId) && memTableMap.get(deviceId).containsKey(measurement);
   }
 
-  private IWritableMemChunk createIfNotExistAndGet(
-      String deviceId, IMeasurementSchema schema) {
+  private IWritableMemChunk createIfNotExistAndGet(String deviceId, IMeasurementSchema schema) {
     Map<String, IWritableMemChunk> memSeries =
         memTableMap.computeIfAbsent(deviceId, k -> new HashMap<>());
 
@@ -137,33 +136,34 @@ public abstract class AbstractMemTable implements IMemTable {
         insertRowPlan.getMeasurements().length - insertRowPlan.getFailedMeasurementNumber();
   }
 
-//  @Override
-//  public void insert(InsertVectorPlan insertVectorPlan) {
-//    updatePlanIndexes(insertVectorPlan.getIndex());
-//    Object[] values = insertVectorPlan.getValues();
-//
-//    MeasurementMNode[] measurementMNodes = insertVectorPlan.getMeasurementMNodes();
-//    String[] measurements = insertVectorPlan.getMeasurements();
-//    IMeasurementSchema vmSchema = (IMeasurementSchema) measurementMNodes[0].getSchema();
-//    for (int i = 0; i < values.length; i++) {
-//      Object value = values[i];
-//      if (value == null) {
-//        continue;
-//      }
-//
-//      memSize +=
-//          MemUtils.getRecordSize(
-//              vmSchema.getValueTSDataTypeList().get(i), value, disableMemControl);
-//    }
-//    write(
-//        insertVectorPlan.getDeviceId().getFullPath(),
-//        vmSchema,
-//        insertVectorPlan.getTime(),
-//        values);
-//
-//    totalPointsNum +=
-//        insertVectorPlan.getMeasurements().length - insertVectorPlan.getFailedMeasurementNumber();
-//  }
+  //  @Override
+  //  public void insert(InsertVectorPlan insertVectorPlan) {
+  //    updatePlanIndexes(insertVectorPlan.getIndex());
+  //    Object[] values = insertVectorPlan.getValues();
+  //
+  //    MeasurementMNode[] measurementMNodes = insertVectorPlan.getMeasurementMNodes();
+  //    String[] measurements = insertVectorPlan.getMeasurements();
+  //    IMeasurementSchema vmSchema = (IMeasurementSchema) measurementMNodes[0].getSchema();
+  //    for (int i = 0; i < values.length; i++) {
+  //      Object value = values[i];
+  //      if (value == null) {
+  //        continue;
+  //      }
+  //
+  //      memSize +=
+  //          MemUtils.getRecordSize(
+  //              vmSchema.getValueTSDataTypeList().get(i), value, disableMemControl);
+  //    }
+  //    write(
+  //        insertVectorPlan.getDeviceId().getFullPath(),
+  //        vmSchema,
+  //        insertVectorPlan.getTime(),
+  //        values);
+  //
+  //    totalPointsNum +=
+  //        insertVectorPlan.getMeasurements().length -
+  // insertVectorPlan.getFailedMeasurementNumber();
+  //  }
 
   @Override
   public void insertTablet(InsertTabletPlan insertTabletPlan, int start, int end)
@@ -194,10 +194,7 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public void write(
-      String deviceId,
-      IMeasurementSchema schema,
-      long insertTime,
-      Object objectValue) {
+      String deviceId, IMeasurementSchema schema, long insertTime, Object objectValue) {
     IWritableMemChunk memSeries = createIfNotExistAndGet(deviceId, schema);
     memSeries.write(insertTime, objectValue);
   }

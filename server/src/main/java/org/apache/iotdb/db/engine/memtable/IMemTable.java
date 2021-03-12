@@ -53,11 +53,7 @@ public interface IMemTable {
       long insertTime,
       Object objectValue);
 
-  void write(
-      String deviceId,
-      IMeasurementSchema schema,
-      long insertTime,
-      Object objectValue);
+  void write(String deviceId, IMeasurementSchema schema, long insertTime, Object objectValue);
 
   void write(InsertTabletPlan insertTabletPlan, int start, int end);
 
