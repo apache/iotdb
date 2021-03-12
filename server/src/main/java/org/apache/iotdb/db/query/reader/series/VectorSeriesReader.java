@@ -18,11 +18,6 @@
  */
 package org.apache.iotdb.db.query.reader.series;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -36,70 +31,100 @@ import org.apache.iotdb.tsfile.file.metadata.VectorTimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+
 public class VectorSeriesReader extends SeriesReader {
 
   private final VectorPartialPath vectorPartialPath;
 
-  public VectorSeriesReader(PartialPath seriesPath,
+  public VectorSeriesReader(
+      PartialPath seriesPath,
       Set<String> allSensors,
       TSDataType dataType,
       QueryContext context,
       QueryDataSource dataSource,
       Filter timeFilter,
       Filter valueFilter,
-      TsFileFilter fileFilter, boolean ascending) {
-    super(seriesPath, allSensors, dataType, context, dataSource, timeFilter, valueFilter,
+      TsFileFilter fileFilter,
+      boolean ascending) {
+    super(
+        seriesPath,
+        allSensors,
+        dataType,
+        context,
+        dataSource,
+        timeFilter,
+        valueFilter,
         fileFilter,
         ascending);
     this.vectorPartialPath = (VectorPartialPath) seriesPath;
   }
 
   @TestOnly
-  VectorSeriesReader(PartialPath seriesPath, Set<String> allSensors,
-      TSDataType dataType, QueryContext context,
+  VectorSeriesReader(
+      PartialPath seriesPath,
+      Set<String> allSensors,
+      TSDataType dataType,
+      QueryContext context,
       List<TsFileResource> seqFileResource,
       List<TsFileResource> unseqFileResource,
-      Filter timeFilter, Filter valueFilter, boolean ascending) {
-    super(seriesPath, allSensors, dataType, context, seqFileResource, unseqFileResource, timeFilter,
-        valueFilter, ascending);
+      Filter timeFilter,
+      Filter valueFilter,
+      boolean ascending) {
+    super(
+        seriesPath,
+        allSensors,
+        dataType,
+        context,
+        seqFileResource,
+        unseqFileResource,
+        timeFilter,
+        valueFilter,
+        ascending);
     this.vectorPartialPath = (VectorPartialPath) seriesPath;
   }
 
   protected void unpackSeqTsFileResource() throws IOException {
     TsFileResource resource = orderUtils.getNextSeqFileResource(seqFileResource, true);
-    TimeseriesMetadata timeseriesMetadata = FileLoaderUtils
-        .loadTimeSeriesMetadata(resource, vectorPartialPath, context, getAnyFilter(), allSensors);
+    TimeseriesMetadata timeseriesMetadata =
+        FileLoaderUtils.loadTimeSeriesMetadata(
+            resource, vectorPartialPath, context, getAnyFilter(), allSensors);
     if (timeseriesMetadata != null) {
       timeseriesMetadata.setSeq(true);
       List<TimeseriesMetadata> valueTimeseriesMetadataList = new ArrayList<>();
       for (PartialPath subSensor : vectorPartialPath.getSubSensorsPathList()) {
-        TimeseriesMetadata valueTimeSeriesMetadata = FileLoaderUtils
-            .loadTimeSeriesMetadata(resource, subSensor, context, getAnyFilter(),
-                Collections.emptySet());
+        TimeseriesMetadata valueTimeSeriesMetadata =
+            FileLoaderUtils.loadTimeSeriesMetadata(
+                resource, subSensor, context, getAnyFilter(), Collections.emptySet());
         if (valueTimeSeriesMetadata == null) {
           throw new IOException("File contains value");
         }
         valueTimeSeriesMetadata.setSeq(true);
         valueTimeseriesMetadataList.add(valueTimeSeriesMetadata);
       }
-      VectorTimeSeriesMetadata vectorTimeSeriesMetadata = new VectorTimeSeriesMetadata(
-          timeseriesMetadata, valueTimeseriesMetadataList);
+      VectorTimeSeriesMetadata vectorTimeSeriesMetadata =
+          new VectorTimeSeriesMetadata(timeseriesMetadata, valueTimeseriesMetadataList);
       seqTimeSeriesMetadata.add(vectorTimeSeriesMetadata);
     }
   }
 
   protected void unpackUnseqTsFileResource() throws IOException {
     TsFileResource resource = unseqFileResource.remove(0);
-    TimeseriesMetadata timeseriesMetadata = FileLoaderUtils
-        .loadTimeSeriesMetadata(resource, vectorPartialPath, context, getAnyFilter(), allSensors);
+    TimeseriesMetadata timeseriesMetadata =
+        FileLoaderUtils.loadTimeSeriesMetadata(
+            resource, vectorPartialPath, context, getAnyFilter(), allSensors);
     if (timeseriesMetadata != null) {
       timeseriesMetadata.setModified(true);
       timeseriesMetadata.setSeq(false);
       List<TimeseriesMetadata> valueTimeseriesMetadataList = new ArrayList<>();
       for (PartialPath subSensor : vectorPartialPath.getSubSensorsPathList()) {
-        TimeseriesMetadata valueTimeSeriesMetadata = FileLoaderUtils
-            .loadTimeSeriesMetadata(resource, subSensor, context, getAnyFilter(),
-                Collections.emptySet());
+        TimeseriesMetadata valueTimeSeriesMetadata =
+            FileLoaderUtils.loadTimeSeriesMetadata(
+                resource, subSensor, context, getAnyFilter(), Collections.emptySet());
         if (valueTimeSeriesMetadata == null) {
           throw new IOException("File contains value");
         }
@@ -107,8 +132,8 @@ public class VectorSeriesReader extends SeriesReader {
         valueTimeSeriesMetadata.setSeq(false);
         valueTimeseriesMetadataList.add(valueTimeSeriesMetadata);
       }
-      VectorTimeSeriesMetadata vectorTimeSeriesMetadata = new VectorTimeSeriesMetadata(
-          timeseriesMetadata, valueTimeseriesMetadataList);
+      VectorTimeSeriesMetadata vectorTimeSeriesMetadata =
+          new VectorTimeSeriesMetadata(timeseriesMetadata, valueTimeseriesMetadataList);
       unSeqTimeSeriesMetadata.add(vectorTimeSeriesMetadata);
     }
   }

@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.query.reader.series;
 
-import java.util.List;
-import java.util.Set;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -29,25 +27,65 @@ import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
+import java.util.List;
+import java.util.Set;
+
 public class SeriesReaderFactory {
 
-  public static SeriesReader createSeriesReader(PartialPath seriesPath, Set<String> allSensors,
-      TSDataType dataType, QueryContext context, QueryDataSource dataSource, Filter timeFilter,
-      Filter valueFilter, TsFileFilter fileFilter, boolean ascending) {
+  public static SeriesReader createSeriesReader(
+      PartialPath seriesPath,
+      Set<String> allSensors,
+      TSDataType dataType,
+      QueryContext context,
+      QueryDataSource dataSource,
+      Filter timeFilter,
+      Filter valueFilter,
+      TsFileFilter fileFilter,
+      boolean ascending) {
     if (seriesPath instanceof VectorPartialPath) {
-      return new VectorSeriesReader(seriesPath, allSensors, dataType, context, dataSource,
-          timeFilter, valueFilter, fileFilter, ascending);
+      return new VectorSeriesReader(
+          seriesPath,
+          allSensors,
+          dataType,
+          context,
+          dataSource,
+          timeFilter,
+          valueFilter,
+          fileFilter,
+          ascending);
     } else {
-      return new SeriesReader(seriesPath, allSensors, dataType, context, dataSource, timeFilter,
-          valueFilter, fileFilter, ascending);
+      return new SeriesReader(
+          seriesPath,
+          allSensors,
+          dataType,
+          context,
+          dataSource,
+          timeFilter,
+          valueFilter,
+          fileFilter,
+          ascending);
     }
   }
 
-  public static SeriesReader createSeriesReader(PartialPath seriesPath, Set<String> allSensors,
-      TSDataType dataType, QueryContext context, List<TsFileResource> seqFileResource,
-      List<TsFileResource> unseqFileResource, Filter timeFilter, Filter valueFilter,
+  public static SeriesReader createSeriesReader(
+      PartialPath seriesPath,
+      Set<String> allSensors,
+      TSDataType dataType,
+      QueryContext context,
+      List<TsFileResource> seqFileResource,
+      List<TsFileResource> unseqFileResource,
+      Filter timeFilter,
+      Filter valueFilter,
       boolean ascending) {
-    return new SeriesReader(seriesPath, allSensors, dataType, context, seqFileResource,
-        unseqFileResource, timeFilter, valueFilter, ascending);
+    return new SeriesReader(
+        seriesPath,
+        allSensors,
+        dataType,
+        context,
+        seqFileResource,
+        unseqFileResource,
+        timeFilter,
+        valueFilter,
+        ascending);
   }
 }
