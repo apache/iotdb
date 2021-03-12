@@ -201,6 +201,12 @@ public class MemTableFlushTask {
               case TEXT:
                 seriesWriterImpl.write(time, tvPairs.getBinary(i), false);
                 break;
+              case VECTOR:
+                // TODO:
+                //                for ( : tvPairs.getVector(i)) {
+                //                  seriesWriterImpl.write(time, tvPairs.getVector(i)[], get);
+                //                }
+                break;
               default:
                 LOGGER.error(
                     "Storage group {} does not support data type: {}", storageGroup, dataType);
