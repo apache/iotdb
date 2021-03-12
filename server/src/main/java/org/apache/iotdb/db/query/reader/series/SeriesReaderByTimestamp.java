@@ -70,8 +70,8 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
   public Object[] getValuesInTimestamps(long[] timestamp, int length) throws IOException {
     Object[] results = new Object[length];
     int timeIndex;
+    seriesReader.setTimeFilter(timestamp[0]);
     for (timeIndex = 0; timeIndex < length; timeIndex++) {
-      seriesReader.setTimeFilter(timestamp[0]);
       if ((batchData == null || !hasAvailableData(batchData, timestamp[timeIndex]))
           && !hasNext(timestamp[timeIndex])) {
         // there is no more data
