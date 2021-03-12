@@ -84,7 +84,7 @@ public class AvgAggrResult extends AggregateResult {
     BigDecimal bPreCnt = new BigDecimal(Long.toString(preCnt));
     BigDecimal bSum = new BigDecimal(Double.toString(sum));
     BigDecimal bCnt = new BigDecimal(Long.toString(cnt));
-    avg = bAvg.multiply(bPreCnt).add(bSum).divide(bCnt).doubleValue();
+    avg = bAvg.multiply(bPreCnt).add(bSum).divide(bCnt, 5, BigDecimal.ROUND_HALF_UP).doubleValue();
   }
 
   @Override
@@ -140,7 +140,11 @@ public class AvgAggrResult extends AggregateResult {
     BigDecimal bCnt = new BigDecimal(Long.toString(cnt));
     BigDecimal bVal = new BigDecimal(Double.toString(val));
     BigDecimal bOne = new BigDecimal("1");
-    avg = bAvg.multiply(bCnt).add(bVal).divide(bCnt.add(bOne)).doubleValue();
+    avg =
+        bAvg.multiply(bCnt)
+            .add(bVal)
+            .divide(bCnt.add(bOne), 5, BigDecimal.ROUND_HALF_UP)
+            .doubleValue();
 
     cnt++;
   }
@@ -182,7 +186,7 @@ public class AvgAggrResult extends AggregateResult {
     avg =
         bAvg.multiply(bCnt)
             .add(bAnotherAvg.multiply(bAnotherCnt))
-            .divide(bCnt.add(bAnotherCnt))
+            .divide(bCnt.add(bAnotherCnt), 5, BigDecimal.ROUND_HALF_UP)
             .doubleValue();
 
     cnt += anotherAvg.cnt;
