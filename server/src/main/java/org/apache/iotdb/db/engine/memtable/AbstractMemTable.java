@@ -92,13 +92,12 @@ public abstract class AbstractMemTable implements IMemTable {
     return memTableMap.containsKey(deviceId) && memTableMap.get(deviceId).containsKey(measurement);
   }
 
-  private IWritableMemChunk createIfNotExistAndGet(
-      String deviceId, String measurement, IMeasurementSchema schema) {
+  private IWritableMemChunk createIfNotExistAndGet(String deviceId, IMeasurementSchema schema) {
     Map<String, IWritableMemChunk> memSeries =
         memTableMap.computeIfAbsent(deviceId, k -> new HashMap<>());
 
     return memSeries.computeIfAbsent(
-        measurement,
+        schema.getMeasurementId(),
         k -> {
           seriesNumber++;
           totalPointsNumThreshold += avgSeriesPointNumThreshold;
@@ -137,6 +136,35 @@ public abstract class AbstractMemTable implements IMemTable {
         insertRowPlan.getMeasurements().length - insertRowPlan.getFailedMeasurementNumber();
   }
 
+  //  @Override
+  //  public void insert(InsertVectorPlan insertVectorPlan) {
+  //    updatePlanIndexes(insertVectorPlan.getIndex());
+  //    Object[] values = insertVectorPlan.getValues();
+  //
+  //    MeasurementMNode[] measurementMNodes = insertVectorPlan.getMeasurementMNodes();
+  //    String[] measurements = insertVectorPlan.getMeasurements();
+  //    IMeasurementSchema vmSchema = (IMeasurementSchema) measurementMNodes[0].getSchema();
+  //    for (int i = 0; i < values.length; i++) {
+  //      Object value = values[i];
+  //      if (value == null) {
+  //        continue;
+  //      }
+  //
+  //      memSize +=
+  //          MemUtils.getRecordSize(
+  //              vmSchema.getValueTSDataTypeList().get(i), value, disableMemControl);
+  //    }
+  //    write(
+  //        insertVectorPlan.getDeviceId().getFullPath(),
+  //        vmSchema,
+  //        insertVectorPlan.getTime(),
+  //        values);
+  //
+  //    totalPointsNum +=
+  //        insertVectorPlan.getMeasurements().length -
+  // insertVectorPlan.getFailedMeasurementNumber();
+  //  }
+
   @Override
   public void insertTablet(InsertTabletPlan insertTabletPlan, int start, int end)
       throws WriteProcessException {
@@ -160,7 +188,14 @@ public abstract class AbstractMemTable implements IMemTable {
       IMeasurementSchema schema,
       long insertTime,
       Object objectValue) {
-    IWritableMemChunk memSeries = createIfNotExistAndGet(deviceId, measurement, schema);
+    IWritableMemChunk memSeries = createIfNotExistAndGet(deviceId, schema);
+    memSeries.write(insertTime, objectValue);
+  }
+
+  @Override
+  public void write(
+      String deviceId, IMeasurementSchema schema, long insertTime, Object objectValue) {
+    IWritableMemChunk memSeries = createIfNotExistAndGet(deviceId, schema);
     memSeries.write(insertTime, objectValue);
   }
 
@@ -174,7 +209,6 @@ public abstract class AbstractMemTable implements IMemTable {
       IWritableMemChunk memSeries =
           createIfNotExistAndGet(
               insertTabletPlan.getDeviceId().getFullPath(),
-              insertTabletPlan.getMeasurements()[i],
               insertTabletPlan.getMeasurementMNodes()[i].getSchema());
       memSeries.write(
           insertTabletPlan.getTimes(),

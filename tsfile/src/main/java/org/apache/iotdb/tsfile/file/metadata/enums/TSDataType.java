@@ -43,7 +43,7 @@ public enum TSDataType {
   /** TEXT */
   TEXT((byte) 5),
 
-  /** Vector */
+  /** VECTOR */
   VECTOR((byte) 6);
 
   private final byte type;
@@ -99,6 +99,7 @@ public enum TSDataType {
       case TEXT:
       case INT64:
       case DOUBLE:
+      case VECTOR:
         return 8;
       default:
         throw new UnSupportedDataTypeException(this.toString());
