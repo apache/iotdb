@@ -47,6 +47,7 @@ import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
 import org.apache.iotdb.db.qp.physical.sys.ShowTriggersPlan;
 import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
@@ -1209,10 +1210,10 @@ public class PhysicalPlanTest {
 
   @Test
   public void testShowTriggers() throws QueryProcessException {
-    String sql = "SHOW TRIGGERS ON root.sg1.d1.s1";
+    String sql = "SHOW TRIGGERS";
 
     ShowTriggersPlan plan = (ShowTriggersPlan) processor.parseSQLToPhysicalPlan(sql);
     Assert.assertTrue(plan.isQuery());
-    Assert.assertEquals("root.sg1.d1.s1", plan.getPath().getFullPath());
+    Assert.assertEquals(ShowContentType.TRIGGERS, plan.getShowContentType());
   }
 }
