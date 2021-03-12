@@ -215,10 +215,6 @@ public class EnvironmentUtils {
     cleanDir(config.getQueryDir());
     // delete tracing
     cleanDir(config.getTracingDir());
-    // delete ulog
-    cleanDir(config.getUdfDir());
-    // delete tlog
-    cleanDir(config.getTriggerDir());
     // delete data files
     for (String dataDir : config.getDataDirs()) {
       cleanDir(dataDir);
