@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.client;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.ClientUtils;
@@ -29,7 +30,9 @@ import org.apache.iotdb.cluster.utils.ClusterNode;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -40,6 +43,23 @@ import java.util.concurrent.Executors;
 import static org.junit.Assert.assertNotNull;
 
 public class DataClientProviderTest {
+  private ClusterConfig clusterConfig = ClusterDescriptor.getInstance().getConfig();
+  private int maxClientPerNodePerMember;
+  private long waitClientTimeoutMS;
+
+  @Before
+  public void setUp() {
+    maxClientPerNodePerMember = clusterConfig.getMaxClientPerNodePerMember();
+    waitClientTimeoutMS = clusterConfig.getWaitClientTimeoutMS();
+    clusterConfig.setMaxClientPerNodePerMember(2);
+    clusterConfig.setWaitClientTimeoutMS(1000L);
+  }
+
+  @After
+  public void tearDown() {
+    clusterConfig.setMaxClientPerNodePerMember(maxClientPerNodePerMember);
+    clusterConfig.setWaitClientTimeoutMS(waitClientTimeoutMS);
+  }
 
   @Test
   public void testAsync() throws IOException {
@@ -111,7 +131,6 @@ public class DataClientProviderTest {
     try {
       boolean useAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
       ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(false);
-      ClusterDescriptor.getInstance().getConfig().setMaxClientPerNodePerMember(2);
       DataClientProvider provider = new DataClientProvider(new Factory());
       SyncDataClient client = null;
       try {
@@ -177,7 +196,6 @@ public class DataClientProviderTest {
     try {
       boolean useAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
       ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(true);
-      ClusterDescriptor.getInstance().getConfig().setMaxClientPerNodePerMember(2);
       DataClientProvider provider = new DataClientProvider(new Factory());
       AsyncDataClient client = null;
       try {
