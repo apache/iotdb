@@ -582,7 +582,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
               req.statementId,
               physicalPlan,
               req.fetchSize,
-              config.getQueryTimeThreshold(),
+              config.getQueryTimeoutThreshold(),
               sessionIdUsernameMap.get(req.getSessionId()))
           : RpcUtils.getTSExecuteStatementResp(
               TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement.");
