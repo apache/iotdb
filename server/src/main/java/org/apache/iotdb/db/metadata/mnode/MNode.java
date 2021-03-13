@@ -105,9 +105,10 @@ public class MNode implements Serializable {
   /**
    * Add a child to the current mnode.
    *
-   * This method will not take the child's name as one of the inputs and will also make this Mnode be child node's parent.
-   * All is to reduce the probability of mistaken by users and be more convenient for users to use.
-   * And the return of this method is used to conveniently construct a chain of time series for users.
+   * <p>This method will not take the child's name as one of the inputs and will also make this
+   * Mnode be child node's parent. All is to reduce the probability of mistaken by users and be more
+   * convenient for users to use. And the return of this method is used to conveniently construct a
+   * chain of time series for users.
    *
    * @param child child's node
    * @return return the MNode already added
