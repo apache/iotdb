@@ -28,7 +28,6 @@ import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.db.utils.datastructure.VectorTVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
@@ -44,8 +43,6 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
-
-import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 
 public class MemTableFlushTask {
 
@@ -163,12 +160,6 @@ public class MemTableFlushTask {
       new Runnable() {
         private void writeOneSeries(
             TVList tvPairs, IChunkWriter seriesWriterImpl, TSDataType dataType) {
-
-          if (dataType == TSDataType.VECTOR) {
-            writeOneVectorSeries(tvPairs, seriesWriterImpl);
-            return;
-          }
-
           for (int i = 0; i < tvPairs.size(); i++) {
             long time = tvPairs.getTime(i);
 
@@ -202,65 +193,42 @@ public class MemTableFlushTask {
                 seriesWriterImpl.write(time, tvPairs.getBinary(i), false);
                 break;
               case VECTOR:
-                // TODO:
-                //                for ( : tvPairs.getVector(i)) {
-                //                  seriesWriterImpl.write(time, tvPairs.getVector(i)[], get);
-                //                }
+                VectorTVList vectorTVPairs = (VectorTVList) tvPairs;
+                List<TSDataType> dataTypes = vectorTVPairs.getTsDataTypes();
+                for (int j = 0; j < dataTypes.size(); j++) {
+                  switch (dataTypes.get(j)) {
+                    case BOOLEAN:
+                      seriesWriterImpl.write(time, vectorTVPairs.getBoolean(i, j), false);
+                      break;
+                    case INT32:
+                      seriesWriterImpl.write(time, vectorTVPairs.getInt(i, j), false);
+                      break;
+                    case INT64:
+                      seriesWriterImpl.write(time, vectorTVPairs.getLong(i, j), false);
+                      break;
+                    case FLOAT:
+                      seriesWriterImpl.write(time, vectorTVPairs.getFloat(i, j), false);
+                      break;
+                    case DOUBLE:
+                      seriesWriterImpl.write(time, vectorTVPairs.getDouble(i, j), false);
+                      break;
+                    case TEXT:
+                      seriesWriterImpl.write(time, vectorTVPairs.getBinary(i, j), false);
+                      break;
+                    default:
+                      LOGGER.error(
+                          "Storage group {} does not support data type: {}",
+                          storageGroup,
+                          dataType);
+                      break;
+                  }
+                }
+                seriesWriterImpl.write(time);
                 break;
               default:
                 LOGGER.error(
                     "Storage group {} does not support data type: {}", storageGroup, dataType);
                 break;
-            }
-          }
-        }
-
-        private void writeOneVectorSeries(TVList tvPairs, IChunkWriter seriesWriterImpl) {
-          VectorTVList tvList = (VectorTVList) tvPairs;
-          List<TSDataType> dataTypes = tvList.getTsDataTypes();
-          List<List<Object>> values = tvList.getValues();
-          for (int i = 0; i < dataTypes.size(); i++) {
-            List<Object> columnValues = values.get(i);
-            for (int j = 0; j < tvList.size(); j++) {
-              long time = tvList.getTime(j);
-              // skip duplicated data
-              if ((i + 1 < tvList.size() && (time == tvPairs.getTime(i + 1)))) {
-                continue;
-              }
-              int valueIndex = tvList.getValueIndex(j);
-              if (valueIndex >= tvList.size()) {
-                throw new ArrayIndexOutOfBoundsException(valueIndex);
-              }
-              int arrayIndex = valueIndex / ARRAY_SIZE;
-              int elementIndex = valueIndex % ARRAY_SIZE;
-              switch (dataTypes.get(i)) {
-                case TEXT:
-                  seriesWriterImpl.write(
-                      time, ((Binary[]) columnValues.get(arrayIndex))[elementIndex], false);
-                  break;
-                case FLOAT:
-                  seriesWriterImpl.write(
-                      time, ((float[]) columnValues.get(arrayIndex))[elementIndex], false);
-                  break;
-                case INT32:
-                  seriesWriterImpl.write(
-                      time, ((int[]) columnValues.get(arrayIndex))[elementIndex], false);
-                  break;
-                case INT64:
-                  seriesWriterImpl.write(
-                      time, ((long[]) columnValues.get(arrayIndex))[elementIndex], false);
-                  break;
-                case DOUBLE:
-                  seriesWriterImpl.write(
-                      time, ((double[]) columnValues.get(arrayIndex))[elementIndex], false);
-                  break;
-                case BOOLEAN:
-                  seriesWriterImpl.write(
-                      time, ((boolean[]) columnValues.get(arrayIndex))[elementIndex], false);
-                  break;
-                default:
-                  break;
-              }
             }
           }
         }

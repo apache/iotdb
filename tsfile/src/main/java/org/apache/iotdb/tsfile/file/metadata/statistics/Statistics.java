@@ -98,6 +98,8 @@ public abstract class Statistics<T> {
         return DoubleStatistics.DOUBLE_STATISTICS_FIXED_RAM_SIZE;
       case FLOAT:
         return FloatStatistics.FLOAT_STATISTICS_FIXED_RAM_SIZE;
+      case VECTOR:
+        return TimeStatistics.TIME_STATISTICS_FIXED_RAM_SIZE;
       default:
         throw new UnknownColumnTypeException(type.toString());
     }
