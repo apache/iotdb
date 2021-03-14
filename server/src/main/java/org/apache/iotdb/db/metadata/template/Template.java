@@ -18,4 +18,52 @@
  */
 package org.apache.iotdb.db.metadata.template;
 
-public class Template {}
+import java.util.HashMap;
+import java.util.Map;
+import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
+
+public class Template {
+  String name;
+  Map<String, IMeasurementSchema> schemaMap = new HashMap<>();
+
+  public Template(CreateTemplatePlan plan) {
+    name = plan.getName();
+
+    // put measurement into a map
+    for (int i = 0; i < plan.getMeasurements().size(); i++) {
+      IMeasurementSchema curSchema;
+      // vector
+      if (plan.getMeasurements().get(i).size() > 1) {
+        curSchema =
+            new VectorMeasurementSchema(
+                (String[]) plan.getMeasurements().get(i).toArray(),
+                (TSDataType[]) plan.getDataTypes().get(i).toArray(),
+                (TSEncoding[]) plan.getEncodings().get(i).toArray(),
+                plan.getCompressors().get(i));
+      }
+      // normal measurement
+      else {
+        curSchema =
+            new MeasurementSchema(
+                plan.getMeasurements().get(i).get(0),
+                plan.getDataTypes().get(i).get(0),
+                plan.getEncodings().get(i).get(0),
+                plan.getCompressors().get(i));
+      }
+
+      for (String path : plan.getMeasurements().get(i)) {
+        if (schemaMap.containsKey(path)) {
+          throw new IllegalArgumentException(
+              "Duplicate measurement name in create template plan. Name is :" + path);
+        }
+
+        schemaMap.put(path, curSchema);
+      }
+    }
+  }
+}
