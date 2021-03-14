@@ -74,9 +74,11 @@ public class MinTimeAggrResult extends AggregateResult {
     if (hasFinalResult()) {
       return;
     }
-    Object[] values = dataReader.getValuesInTimestamps(timestamps, length);
     for (int i = 0; i < length; i++) {
-      if (values[i] != null) {
+      long[] oneTimestamp = new long[1];
+      oneTimestamp[0] = timestamps[i];
+      Object[] values = dataReader.getValuesInTimestamps(oneTimestamp, 1);
+      if (values[0] != null) {
         setLongValue(timestamps[i]);
         return;
       }
