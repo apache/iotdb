@@ -92,6 +92,17 @@ public abstract class TVList {
     return size;
   }
 
+  public static long vectorTVListArrayMemSize(List<TSDataType> types) {
+    long size = 0;
+    // time size
+    size += (long) PrimitiveArrayManager.ARRAY_SIZE * 8L;
+    // value size
+    for (TSDataType type : types) {
+      size += (long) PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
+    }
+    return size;
+  }
+
   public boolean isSorted() {
     return sorted;
   }

@@ -185,17 +185,17 @@ public class PrimitiveMemTableTest {
       throws IOException, QueryProcessException, MetadataException {
     memTable.write(genInsertTablePlan(), 0, 100);
 
-//    IPointReader tvPair =
-//        memTable
-//            .query(
-//                deviceId,
-//                sensorIds[0],
-//                types[0],
-//                encodings[0],
-//                Collections.emptyMap(),
-//                Long.MIN_VALUE,
-//                null)
-//            .getPointReader();
+    IPointReader tvPair =
+        memTable
+            .query(
+                "root.sg.device5",
+                "sensor1",
+                TSDataType.INT64,
+                TSEncoding.GORILLA,
+                Collections.emptyMap(),
+                Long.MIN_VALUE,
+                null)
+            .getPointReader();
   }
 
   @Test
