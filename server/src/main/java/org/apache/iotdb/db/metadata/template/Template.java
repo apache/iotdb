@@ -30,6 +30,7 @@ import java.util.Map;
 
 public class Template {
   String name;
+
   Map<String, IMeasurementSchema> schemaMap = new HashMap<>();
 
   public Template(CreateTemplatePlan plan) {
@@ -39,13 +40,21 @@ public class Template {
     for (int i = 0; i < plan.getMeasurements().size(); i++) {
       IMeasurementSchema curSchema;
       // vector
-      if (plan.getMeasurements().get(i).size() > 1) {
+      int size = plan.getMeasurements().get(i).size();
+      if (size > 1) {
+        String[] measurementsArray = new String[size];
+        TSDataType[] typeArray = new TSDataType[size];
+        TSEncoding[] encodingArray = new TSEncoding[size];
+
+        for (int j = 0; j < size; j++) {
+          measurementsArray[j] = plan.getMeasurements().get(i).get(j);
+          typeArray[j] = plan.getDataTypes().get(i).get(j);
+          encodingArray[j] = plan.getEncodings().get(i).get(j);
+        }
+
         curSchema =
             new VectorMeasurementSchema(
-                (String[]) plan.getMeasurements().get(i).toArray(),
-                (TSDataType[]) plan.getDataTypes().get(i).toArray(),
-                (TSEncoding[]) plan.getEncodings().get(i).toArray(),
-                plan.getCompressors().get(i));
+                measurementsArray, typeArray, encodingArray, plan.getCompressors().get(i));
       }
       // normal measurement
       else {
@@ -66,5 +75,21 @@ public class Template {
         schemaMap.put(path, curSchema);
       }
     }
+  }
+
+  public String getName() {
+    return name;
+  }
+
+  public void setName(String name) {
+    this.name = name;
+  }
+
+  public Map<String, IMeasurementSchema> getSchemaMap() {
+    return schemaMap;
+  }
+
+  public void setSchemaMap(Map<String, IMeasurementSchema> schemaMap) {
+    this.schemaMap = schemaMap;
   }
 }

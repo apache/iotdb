@@ -1,13 +1,17 @@
 package org.apache.iotdb.db.qp.physical.crud;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-
-import java.util.List;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class CreateTemplatePlan extends PhysicalPlan {
 
@@ -57,6 +61,10 @@ public class CreateTemplatePlan extends PhysicalPlan {
     this.compressors = compressors;
   }
 
+  public CreateTemplatePlan() {
+    super(false, OperatorType.CREATE_TEMPLATE);
+  }
+
   public CreateTemplatePlan(
       String name,
       List<List<String>> measurements,
@@ -69,6 +77,140 @@ public class CreateTemplatePlan extends PhysicalPlan {
     this.dataTypes = dataTypes;
     this.encodings = encodings;
     this.compressors = compressors;
+  }
+
+  @Override
+  public void serialize(ByteBuffer buffer) {
+    buffer.put((byte) PhysicalPlanType.CREATE_TEMPLATE.ordinal());
+
+    ReadWriteIOUtils.write(name, buffer);
+
+    // measurements
+    ReadWriteIOUtils.write(measurements.size(), buffer);
+    for (List<String> measurementList : measurements) {
+      ReadWriteIOUtils.write(measurementList.size(), buffer);
+      for (String measurement : measurementList) {
+        ReadWriteIOUtils.write(measurement, buffer);
+      }
+    }
+
+    // datatype
+    ReadWriteIOUtils.write(dataTypes.size(), buffer);
+    for (List<TSDataType> dataTypesList : dataTypes) {
+      ReadWriteIOUtils.write(dataTypesList.size(), buffer);
+      for (TSDataType dataType : dataTypesList) {
+        ReadWriteIOUtils.write(dataType.ordinal(), buffer);
+      }
+    }
+
+    // encoding
+    ReadWriteIOUtils.write(encodings.size(), buffer);
+    for (List<TSEncoding> encodingList : encodings) {
+      ReadWriteIOUtils.write(encodingList.size(), buffer);
+      for (TSEncoding encoding : encodingList) {
+        ReadWriteIOUtils.write(encoding.ordinal(), buffer);
+      }
+    }
+
+    // compressor
+    ReadWriteIOUtils.write(compressors.size(), buffer);
+    for (CompressionType compressionType : compressors) {
+      ReadWriteIOUtils.write(compressionType.ordinal(), buffer);
+    }
+
+    buffer.putLong(index);
+  }
+
+  @Override
+  public void deserialize(ByteBuffer buffer) {
+    name = ReadWriteIOUtils.readString(buffer);
+
+    // measurements
+    int size = ReadWriteIOUtils.readInt(buffer);
+    measurements = new ArrayList<>(size);
+    for (int i = 0; i < size; i++) {
+      int listSize = ReadWriteIOUtils.readInt(buffer);
+      List<String> measurementsList = new ArrayList<>(listSize);
+      for (int j = 0; j < listSize; j++) {
+        measurementsList.add(ReadWriteIOUtils.readString(buffer));
+      }
+      measurements.add(measurementsList);
+    }
+
+    // datatypes
+    size = ReadWriteIOUtils.readInt(buffer);
+    dataTypes = new ArrayList<>(size);
+    for (int i = 0; i < size; i++) {
+      int listSize = ReadWriteIOUtils.readInt(buffer);
+      List<TSDataType> dataTypesList = new ArrayList<>(listSize);
+      for (int j = 0; j < listSize; j++) {
+        dataTypesList.add(TSDataType.values()[ReadWriteIOUtils.readInt(buffer)]);
+      }
+      dataTypes.add(dataTypesList);
+    }
+
+    // encodings
+    size = ReadWriteIOUtils.readInt(buffer);
+    encodings = new ArrayList<>(size);
+    for (int i = 0; i < size; i++) {
+      int listSize = ReadWriteIOUtils.readInt(buffer);
+      List<TSEncoding> encodingsList = new ArrayList<>(listSize);
+      for (int j = 0; j < listSize; j++) {
+        encodingsList.add(TSEncoding.values()[ReadWriteIOUtils.readInt(buffer)]);
+      }
+      encodings.add(encodingsList);
+    }
+
+    // compressor
+    size = ReadWriteIOUtils.readInt(buffer);
+    compressors = new ArrayList<>(size);
+    for (int i = 0; i < size; i++) {
+      compressors.add(CompressionType.values()[ReadWriteIOUtils.readInt(buffer)]);
+    }
+
+    this.index = buffer.getLong();
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    stream.writeByte((byte) PhysicalPlanType.CREATE_TEMPLATE.ordinal());
+
+    ReadWriteIOUtils.write(name, stream);
+
+    // measurements
+    ReadWriteIOUtils.write(measurements.size(), stream);
+    for (List<String> measurementList : measurements) {
+      ReadWriteIOUtils.write(measurementList.size(), stream);
+      for (String measurement : measurementList) {
+        ReadWriteIOUtils.write(measurement, stream);
+      }
+    }
+
+    // datatype
+    ReadWriteIOUtils.write(dataTypes.size(), stream);
+    for (List<TSDataType> dataTypesList : dataTypes) {
+      ReadWriteIOUtils.write(dataTypesList.size(), stream);
+      for (TSDataType dataType : dataTypesList) {
+        ReadWriteIOUtils.write(dataType.ordinal(), stream);
+      }
+    }
+
+    // encoding
+    ReadWriteIOUtils.write(encodings.size(), stream);
+    for (List<TSEncoding> encodingList : encodings) {
+      ReadWriteIOUtils.write(encodingList.size(), stream);
+      for (TSEncoding encoding : encodingList) {
+        ReadWriteIOUtils.write(encoding.ordinal(), stream);
+      }
+    }
+
+    // compressor
+    ReadWriteIOUtils.write(compressors.size(), stream);
+    for (CompressionType compressionType : compressors) {
+      ReadWriteIOUtils.write(compressionType.ordinal(), stream);
+    }
+
+    stream.writeLong(index);
   }
 
   @Override
