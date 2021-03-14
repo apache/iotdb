@@ -67,13 +67,21 @@ public abstract class TimeGenerator {
   }
 
   /** ATTENTION: this method should only be used when there is no `OR` node */
-  public Object[] getValues(Path path) {
-    return leafValuesCache.get(path) == null ? null : leafValuesCache.remove(path).toArray();
+  public Object[] getValues(Path path) throws IOException {
+    if (leafValuesCache.get(path) == null) {
+      throw new IOException(
+          "getValues() method should not be invoked by non-existent path in where clause");
+    }
+    return leafValuesCache.remove(path).toArray();
   }
 
   /** ATTENTION: this method should only be used when there is no `OR` node */
-  public Object getValue(Path path) {
-    return leafValuesCache.get(path) == null ? null : leafValuesCache.get(path).remove(0);
+  public Object getValue(Path path) throws IOException {
+    if (leafValuesCache.get(path) == null) {
+      throw new IOException(
+          "getValues() method should not be invoked by non-existent path in where clause");
+    }
+    return leafValuesCache.get(path).remove(0);
   }
 
   public void constructNode(IExpression expression) throws IOException {
