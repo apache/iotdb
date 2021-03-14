@@ -30,6 +30,7 @@ import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
@@ -119,6 +120,11 @@ public class MLogWriter implements AutoCloseable {
 
   public void createTimeseries(CreateTimeSeriesPlan createTimeSeriesPlan) throws IOException {
     putLog(createTimeSeriesPlan);
+  }
+
+  public void createAlignedTimeseries(CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan)
+      throws IOException {
+    putLog(createAlignedTimeSeriesPlan);
   }
 
   public void deleteTimeseries(DeleteTimeSeriesPlan deleteTimeSeriesPlan) throws IOException {
@@ -348,6 +354,8 @@ public class MLogWriter implements AutoCloseable {
         plan.setTagOffset(offset);
         createTimeseries(plan);
         break;
+      case MetadataOperationType.CREATE_ALIGNED_TIMESERIES:
+        throw new MetadataException("Impossible operation!");
       case MetadataOperationType.DELETE_TIMESERIES:
         if (args.length > 2) {
           StringBuilder tmp = new StringBuilder();

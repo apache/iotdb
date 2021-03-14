@@ -98,7 +98,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -277,7 +277,7 @@ public class MetaGroupMemberTest extends MemberTest {
   }
 
   private PullSchemaResp mockedPullTimeSeriesSchema(PullSchemaRequest request) {
-    List<MeasurementSchema> schemas = new ArrayList<>();
+    List<IMeasurementSchema> schemas = new ArrayList<>();
     List<String> prefixPaths = request.getPrefixPaths();
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -286,7 +286,7 @@ public class MetaGroupMemberTest extends MemberTest {
         if (!prefixPath.equals(TestUtils.getTestSeries(10, 0))) {
           IoTDB.metaManager.collectSeries(new PartialPath(prefixPath), schemas);
           dataOutputStream.writeInt(schemas.size());
-          for (MeasurementSchema schema : schemas) {
+          for (IMeasurementSchema schema : schemas) {
             schema.serializeTo(dataOutputStream);
           }
         } else {
@@ -856,7 +856,7 @@ public class MetaGroupMemberTest extends MemberTest {
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
     for (int i = 0; i < 10; i++) {
       insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(i)));
-      MeasurementSchema schema = TestUtils.getTestMeasurementSchema(0);
+      IMeasurementSchema schema = TestUtils.getTestMeasurementSchema(0);
       try {
         IoTDB.metaManager.createTimeseries(
             new PartialPath(schema.getMeasurementId()),
@@ -912,7 +912,7 @@ public class MetaGroupMemberTest extends MemberTest {
 
     for (int i = 0; i < 10; i++) {
       insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(i)));
-      MeasurementSchema schema = TestUtils.getTestMeasurementSchema(0);
+      IMeasurementSchema schema = TestUtils.getTestMeasurementSchema(0);
       try {
         IoTDB.metaManager.createTimeseries(
             new PartialPath(schema.getMeasurementId()),

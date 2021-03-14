@@ -33,6 +33,7 @@ import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -42,7 +43,8 @@ import java.util.Objects;
  * MeasurementSchema maintains respective TSEncodingBuilder; For TSDataType, only ENUM has
  * TSDataTypeConverter up to now.
  */
-public class MeasurementSchema implements Comparable<MeasurementSchema>, Serializable {
+public class MeasurementSchema
+    implements IMeasurementSchema, Comparable<MeasurementSchema>, Serializable {
 
   public static final MeasurementSchema TIME_SCHEMA =
       new MeasurementSchema(
@@ -170,6 +172,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
     return measurementSchema;
   }
 
+  @Override
   public String getMeasurementId() {
     return measurementId;
   }
@@ -178,16 +181,24 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
     this.measurementId = measurementId;
   }
 
+  @Override
   public Map<String, String> getProps() {
     return props;
   }
 
+  @Override
   public TSEncoding getEncodingType() {
     return TSEncoding.deserialize(encoding);
   }
 
+  @Override
   public TSDataType getType() {
     return TSDataType.deserialize(type);
+  }
+
+  @Override
+  public TSEncoding getTimeTSEncoding() {
+    return TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
   }
 
   public void setProps(Map<String, String> props) {
@@ -195,12 +206,33 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
   }
 
   /** function for getting time encoder. */
+  @Override
   public Encoder getTimeEncoder() {
     TSEncoding timeEncoding =
         TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
     TSDataType timeType =
         TSDataType.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeSeriesDataType());
     return TSEncodingBuilder.getEncodingBuilder(timeEncoding).getEncoder(timeType);
+  }
+
+  @Override
+  public List<String> getValueMeasurementIdList() {
+    throw new UnsupportedOperationException("unsupported method for MeasurementSchema");
+  }
+
+  @Override
+  public List<TSDataType> getValueTSDataTypeList() {
+    throw new UnsupportedOperationException("unsupported method for MeasurementSchema");
+  }
+
+  @Override
+  public List<TSEncoding> getValueTSEncodingList() {
+    throw new UnsupportedOperationException("unsupported method for MeasurementSchema");
+  }
+
+  @Override
+  public List<Encoder> getValueEncoderList() {
+    throw new UnsupportedOperationException("unsupported method for MeasurementSchema");
   }
 
   /**
@@ -218,11 +250,13 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
     return encodingConverter.getEncoder(TSDataType.deserialize(type));
   }
 
+  @Override
   public CompressionType getCompressor() {
     return CompressionType.deserialize(compressor);
   }
 
   /** function for serializing data to output stream. */
+  @Override
   public int serializeTo(OutputStream outputStream) throws IOException {
     int byteLen = 0;
 
@@ -248,6 +282,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
   }
 
   /** function for serializing data to byte buffer. */
+  @Override
   public int serializeTo(ByteBuffer buffer) {
     int byteLen = 0;
 

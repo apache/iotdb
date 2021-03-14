@@ -32,6 +32,7 @@ import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -173,6 +174,53 @@ public class PrimitiveMemTableTest {
     }
   }
 
+  private void writeVector(
+      IMemTable memTable,
+      String deviceId,
+      String[] sensorIds,
+      TSDataType[] types,
+      TSEncoding[] encodings,
+      int size)
+      throws IOException, QueryProcessException, MetadataException {
+    TimeValuePair[] ret = genTimeValuePair(size, TSDataType.VECTOR);
+
+    for (TimeValuePair aRet : ret) {
+      memTable.write(
+          deviceId,
+          sensorIds[0],
+          new VectorMeasurementSchema(sensorIds, types, encodings),
+          aRet.getTimestamp(),
+          aRet.getValue().getValue());
+    }
+    IPointReader tvPair =
+        memTable
+            .query(
+                deviceId,
+                sensorIds[0],
+                types[0],
+                encodings[0],
+                Collections.emptyMap(),
+                Long.MIN_VALUE,
+                null)
+            .getPointReader();
+    Arrays.sort(ret);
+    TimeValuePair last = null;
+    for (int i = 0; i < ret.length; i++) {
+      while (last != null && (i < ret.length && last.getTimestamp() == ret[i].getTimestamp())) {
+        i++;
+      }
+      if (i >= ret.length) {
+        break;
+      }
+      TimeValuePair pair = ret[i];
+      last = pair;
+      tvPair.hasNextTimeValuePair();
+      TimeValuePair next = tvPair.nextTimeValuePair();
+      Assert.assertEquals(pair.getTimestamp(), next.getTimestamp());
+      Assert.assertEquals(pair.getValue(), next.getValue());
+    }
+  }
+
   @Test
   public void testFloatType() throws IOException, QueryProcessException, MetadataException {
     IMemTable memTable = new PrimitiveMemTable();
@@ -199,6 +247,13 @@ public class PrimitiveMemTableTest {
     write(memTable, deviceId, measurementId[index++], TSDataType.FLOAT, TSEncoding.RLE, size);
     write(memTable, deviceId, measurementId[index++], TSDataType.DOUBLE, TSEncoding.RLE, size);
     write(memTable, deviceId, measurementId[index++], TSDataType.TEXT, TSEncoding.PLAIN, size);
+    writeVector(
+        memTable,
+        deviceId,
+        new String[] {measurementId[index++]},
+        new TSDataType[] {TSDataType.INT32},
+        new TSEncoding[] {TSEncoding.RLE},
+        size);
   }
 
   private TimeValuePair[] genTimeValuePair(int size, TSDataType dataType) {
@@ -234,6 +289,11 @@ public class PrimitiveMemTableTest {
               new TimeValuePair(
                   rand.nextLong(),
                   TsPrimitiveType.getByType(dataType, new Binary("a" + rand.nextDouble())));
+          break;
+        case VECTOR:
+          TsPrimitiveType[] values = new TsPrimitiveType[1];
+          values[0] = TsPrimitiveType.getByType(TSDataType.INT32, rand.nextInt());
+          ret[i] = new TimeValuePair(rand.nextLong(), TsPrimitiveType.getByType(dataType, values));
           break;
         default:
           throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);

@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
+import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -38,14 +39,18 @@ import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
@@ -69,8 +74,10 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -158,6 +165,9 @@ public class MManager {
   private boolean allowToCreateNewSeries = true;
 
   private static final int ESTIMATED_SERIES_SIZE = config.getEstimatedSeriesSize();
+
+  // template name -> template
+  private Map<String, Template> templateHashMap = new ConcurrentHashMap<>();
 
   private static class MManagerHolder {
 
@@ -341,6 +351,10 @@ public class MManager {
         CreateTimeSeriesPlan createTimeSeriesPlan = (CreateTimeSeriesPlan) plan;
         createTimeseries(createTimeSeriesPlan, createTimeSeriesPlan.getTagOffset());
         break;
+      case CREATE_ALIGNED_TIMESERIES:
+        CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
+            (CreateAlignedTimeSeriesPlan) plan;
+        createAlignedTimeSeries(createAlignedTimeSeriesPlan);
       case DELETE_TIMESERIES:
         DeleteTimeSeriesPlan deleteTimeSeriesPlan = (DeleteTimeSeriesPlan) plan;
         // cause we only has one path for one DeleteTimeSeriesPlan
@@ -479,6 +493,64 @@ public class MManager {
     }
   }
 
+  public void createAlignedTimeSeries(
+      PartialPath devicePath,
+      List<String> measurements,
+      List<TSDataType> dataTypes,
+      List<TSEncoding> encodings,
+      CompressionType compressor)
+      throws MetadataException {
+    createAlignedTimeSeries(
+        new CreateAlignedTimeSeriesPlan(
+            devicePath, measurements, dataTypes, encodings, compressor, null));
+  }
+
+  /**
+   * create aligned timeseries
+   *
+   * @param plan CreateAlignedTimeSeriesPlan
+   */
+  public void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan) throws MetadataException {
+    if (!allowToCreateNewSeries) {
+      throw new MetadataException(
+          "IoTDB system load is too large to create timeseries, "
+              + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
+    }
+    try {
+      PartialPath devicePath = plan.getDevicePath();
+      List<String> measurements = plan.getMeasurements();
+      int alignedSize = measurements.size();
+      List<TSDataType> dataTypes = plan.getDataTypes();
+      List<TSEncoding> encodings = plan.getEncodings();
+
+      for (int i = 0; i < alignedSize; i++) {
+        SchemaUtils.checkDataTypeWithEncoding(dataTypes.get(i), encodings.get(i));
+      }
+
+      ensureStorageGroup(devicePath);
+
+      // create time series in MTree
+      mtree.createAlignedTimeseries(
+          devicePath, measurements, plan.getDataTypes(), plan.getEncodings(), plan.getCompressor());
+
+      // update statistics and schemaDataTypeNumMap
+      totalSeriesNumber.addAndGet(measurements.size());
+      if (totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE >= MTREE_SIZE_THRESHOLD) {
+        logger.warn("Current series number {} is too large...", totalSeriesNumber);
+        allowToCreateNewSeries = false;
+      }
+      for (TSDataType type : dataTypes) {
+        updateSchemaDataTypeNumMap(type, 1);
+      }
+      // write log
+      if (!isRecovering) {
+        logWriter.createAlignedTimeseries(plan);
+      }
+    } catch (IOException e) {
+      throw new MetadataException(e);
+    }
+  }
+
   /**
    * Delete all timeseries under the given path, may cross different storage group
    *
@@ -491,9 +563,15 @@ public class MManager {
       mNodeCache.clear();
     }
     try {
-      List<PartialPath> allTimeseries = mtree.getAllTimeseriesPath(prefixPath);
+      List<String> measurements = MetaUtils.getMeasurementsInPartialPath(prefixPath);
+      PartialPath path = new PartialPath(prefixPath.getDevice(), measurements.get(0));
+
+      List<PartialPath> allTimeseries = mtree.getAllTimeseriesPath(path);
       if (allTimeseries.isEmpty()) {
         throw new PathNotExistException(prefixPath.getFullPath());
+      } else if (allTimeseries.size() != measurements.size()) {
+        throw new AlignedTimeseriesException(
+            "Not support deleting part of aligned timeseies!", prefixPath.getFullPath());
       }
       // Monitor storage group seriesPath is not allowed to be deleted
       allTimeseries.removeIf(p -> p.startsWith(MonitorConstants.STAT_STORAGE_GROUP_ARRAY));
@@ -577,15 +655,24 @@ public class MManager {
       throws MetadataException, IOException {
     Pair<PartialPath, MeasurementMNode> pair =
         mtree.deleteTimeseriesAndReturnEmptyStorageGroup(path);
-    removeFromTagInvertedIndex(pair.right);
+    // if one of the aligned timeseries is deleted, pair.right could be null
+    IMeasurementSchema schema = pair.right.getSchema();
+    int timeseriesNum = 0;
+    if (schema instanceof MeasurementSchema) {
+      removeFromTagInvertedIndex(pair.right);
+      updateSchemaDataTypeNumMap(schema.getType(), -1);
+      timeseriesNum = 1;
+    } else if (schema instanceof VectorMeasurementSchema) {
+      for (TSDataType dataType : schema.getValueTSDataTypeList()) {
+        updateSchemaDataTypeNumMap(dataType, -1);
+        timeseriesNum++;
+      }
+    }
     PartialPath storageGroupPath = pair.left;
-
-    // update statistics in schemaDataTypeNumMap
-    updateSchemaDataTypeNumMap(pair.right.getSchema().getType(), -1);
 
     // TODO: delete the path node and all its ancestors
     mNodeCache.clear();
-    totalSeriesNumber.addAndGet(-1);
+    totalSeriesNumber.addAndGet(-timeseriesNum);
     if (!allowToCreateNewSeries
         && totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE < MTREE_SIZE_THRESHOLD) {
       logger.info("Current series number {} come back to normal level", totalSeriesNumber);
@@ -908,7 +995,7 @@ public class MManager {
         try {
           Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
               tagLogFile.read(config.getTagAttributeTotalSize(), leaf.getOffset());
-          MeasurementSchema measurementSchema = leaf.getSchema();
+          IMeasurementSchema measurementSchema = leaf.getSchema();
           res.add(
               new ShowTimeSeriesResult(
                   leaf.getFullPath(),
@@ -996,7 +1083,7 @@ public class MManager {
     return res;
   }
 
-  public MeasurementSchema getSeriesSchema(PartialPath device, String measurement)
+  public IMeasurementSchema getSeriesSchema(PartialPath device, String measurement)
       throws MetadataException {
     MNode node = mtree.getNodeByPath(device);
     MNode leaf = node.getChild(measurement);
@@ -1654,7 +1741,7 @@ public class MManager {
     while (!nodeDeque.isEmpty()) {
       MNode node = nodeDeque.removeFirst();
       if (node instanceof MeasurementMNode) {
-        MeasurementSchema nodeSchema = ((MeasurementMNode) node).getSchema();
+        IMeasurementSchema nodeSchema = ((MeasurementMNode) node).getSchema();
         timeseriesSchemas.add(
             new TimeseriesSchema(
                 node.getFullPath(),
@@ -1673,13 +1760,13 @@ public class MManager {
   }
 
   public void collectMeasurementSchema(
-      MNode startingNode, Collection<MeasurementSchema> measurementSchemas) {
+      MNode startingNode, Collection<IMeasurementSchema> measurementSchemas) {
     Deque<MNode> nodeDeque = new ArrayDeque<>();
     nodeDeque.addLast(startingNode);
     while (!nodeDeque.isEmpty()) {
       MNode node = nodeDeque.removeFirst();
       if (node instanceof MeasurementMNode) {
-        MeasurementSchema nodeSchema = ((MeasurementMNode) node).getSchema();
+        IMeasurementSchema nodeSchema = ((MeasurementMNode) node).getSchema();
         measurementSchemas.add(
             new MeasurementSchema(
                 node.getName(),
@@ -1693,7 +1780,7 @@ public class MManager {
   }
 
   /** Collect the timeseries schemas under "startingPath". */
-  public void collectSeries(PartialPath startingPath, List<MeasurementSchema> measurementSchemas) {
+  public void collectSeries(PartialPath startingPath, List<IMeasurementSchema> measurementSchemas) {
     MNode mNode;
     try {
       mNode = getNodeByPath(startingPath);
@@ -1959,4 +2046,8 @@ public class MManager {
 
     boolean satisfy(String storageGroup);
   }
+
+  public void createDeviceTemplate(CreateTemplatePlan plan) throws MetadataException {}
+
+  public void setDeviceTemplate(SetDeviceTemplatePlan plan) throws MetadataException {}
 }

@@ -26,21 +26,26 @@ import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.exception.runtime.FlushRunTimeException;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.datastructure.TVList;
+import org.apache.iotdb.db.utils.datastructure.VectorTVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
+
+import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 
 public class MemTableFlushTask {
 
@@ -101,7 +106,7 @@ public class MemTableFlushTask {
     long start = System.currentTimeMillis();
     long sortTime = 0;
 
-    // for map do not use get(key) to iteratate
+    // for map do not use get(key) to iterate
     for (Map.Entry<String, Map<String, IWritableMemChunk>> memTableEntry :
         memTable.getMemTableMap().entrySet()) {
       encodingTaskQueue.put(new StartFlushGroupIOTask(memTableEntry.getKey()));
@@ -110,7 +115,7 @@ public class MemTableFlushTask {
       for (Map.Entry<String, IWritableMemChunk> iWritableMemChunkEntry : value.entrySet()) {
         long startTime = System.currentTimeMillis();
         IWritableMemChunk series = iWritableMemChunkEntry.getValue();
-        MeasurementSchema desc = series.getSchema();
+        IMeasurementSchema desc = series.getSchema();
         TVList tvList = series.getSortedTVListForFlush();
         sortTime += System.currentTimeMillis() - startTime;
         encodingTaskQueue.put(new Pair<>(tvList, desc));
@@ -158,6 +163,12 @@ public class MemTableFlushTask {
       new Runnable() {
         private void writeOneSeries(
             TVList tvPairs, IChunkWriter seriesWriterImpl, TSDataType dataType) {
+
+          if (dataType == TSDataType.VECTOR) {
+            writeOneVectorSeries(tvPairs, seriesWriterImpl);
+            return;
+          }
+
           for (int i = 0; i < tvPairs.size(); i++) {
             long time = tvPairs.getTime(i);
 
@@ -173,27 +184,83 @@ public class MemTableFlushTask {
 
             switch (dataType) {
               case BOOLEAN:
-                seriesWriterImpl.write(time, tvPairs.getBoolean(i));
+                seriesWriterImpl.write(time, tvPairs.getBoolean(i), false);
                 break;
               case INT32:
-                seriesWriterImpl.write(time, tvPairs.getInt(i));
+                seriesWriterImpl.write(time, tvPairs.getInt(i), false);
                 break;
               case INT64:
-                seriesWriterImpl.write(time, tvPairs.getLong(i));
+                seriesWriterImpl.write(time, tvPairs.getLong(i), false);
                 break;
               case FLOAT:
-                seriesWriterImpl.write(time, tvPairs.getFloat(i));
+                seriesWriterImpl.write(time, tvPairs.getFloat(i), false);
                 break;
               case DOUBLE:
-                seriesWriterImpl.write(time, tvPairs.getDouble(i));
+                seriesWriterImpl.write(time, tvPairs.getDouble(i), false);
                 break;
               case TEXT:
-                seriesWriterImpl.write(time, tvPairs.getBinary(i));
+                seriesWriterImpl.write(time, tvPairs.getBinary(i), false);
+                break;
+              case VECTOR:
+                // TODO:
+                //                for ( : tvPairs.getVector(i)) {
+                //                  seriesWriterImpl.write(time, tvPairs.getVector(i)[], get);
+                //                }
                 break;
               default:
                 LOGGER.error(
                     "Storage group {} does not support data type: {}", storageGroup, dataType);
                 break;
+            }
+          }
+        }
+
+        private void writeOneVectorSeries(TVList tvPairs, IChunkWriter seriesWriterImpl) {
+          VectorTVList tvList = (VectorTVList) tvPairs;
+          List<TSDataType> dataTypes = tvList.getTsDataTypes();
+          List<List<Object>> values = tvList.getValues();
+          for (int i = 0; i < dataTypes.size(); i++) {
+            List<Object> columnValues = values.get(i);
+            for (int j = 0; j < tvList.size(); j++) {
+              long time = tvList.getTime(j);
+              // skip duplicated data
+              if ((i + 1 < tvList.size() && (time == tvPairs.getTime(i + 1)))) {
+                continue;
+              }
+              int valueIndex = tvList.getValueIndex(j);
+              if (valueIndex >= tvList.size()) {
+                throw new ArrayIndexOutOfBoundsException(valueIndex);
+              }
+              int arrayIndex = valueIndex / ARRAY_SIZE;
+              int elementIndex = valueIndex % ARRAY_SIZE;
+              switch (dataTypes.get(i)) {
+                case TEXT:
+                  seriesWriterImpl.write(
+                      time, ((Binary[]) columnValues.get(arrayIndex))[elementIndex], false);
+                  break;
+                case FLOAT:
+                  seriesWriterImpl.write(
+                      time, ((float[]) columnValues.get(arrayIndex))[elementIndex], false);
+                  break;
+                case INT32:
+                  seriesWriterImpl.write(
+                      time, ((int[]) columnValues.get(arrayIndex))[elementIndex], false);
+                  break;
+                case INT64:
+                  seriesWriterImpl.write(
+                      time, ((long[]) columnValues.get(arrayIndex))[elementIndex], false);
+                  break;
+                case DOUBLE:
+                  seriesWriterImpl.write(
+                      time, ((double[]) columnValues.get(arrayIndex))[elementIndex], false);
+                  break;
+                case BOOLEAN:
+                  seriesWriterImpl.write(
+                      time, ((boolean[]) columnValues.get(arrayIndex))[elementIndex], false);
+                  break;
+                default:
+                  break;
+              }
             }
           }
         }
@@ -233,8 +300,8 @@ public class MemTableFlushTask {
               break;
             } else {
               long starTime = System.currentTimeMillis();
-              Pair<TVList, MeasurementSchema> encodingMessage =
-                  (Pair<TVList, MeasurementSchema>) task;
+              Pair<TVList, IMeasurementSchema> encodingMessage =
+                  (Pair<TVList, IMeasurementSchema>) task;
               IChunkWriter seriesWriter = new ChunkWriterImpl(encodingMessage.right);
               writeOneSeries(encodingMessage.left, seriesWriter, encodingMessage.right.getType());
               seriesWriter.sealCurrentPage();

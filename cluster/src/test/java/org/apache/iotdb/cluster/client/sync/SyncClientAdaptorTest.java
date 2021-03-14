@@ -50,6 +50,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
@@ -88,7 +89,7 @@ public class SyncClientAdaptorTest {
   private ByteBuffer peekNextNotNullValueResult;
   private Map<Integer, SimpleSnapshot> snapshotMap;
   private ByteBuffer lastResult;
-  private List<MeasurementSchema> measurementSchemas;
+  private List<IMeasurementSchema> measurementSchemas;
   private List<TimeseriesSchema> timeseriesSchemas;
   private List<String> paths;
 
@@ -196,7 +197,7 @@ public class SyncClientAdaptorTest {
               PullSchemaRequest request, AsyncMethodCallback<PullSchemaResp> resultHandler) {
             ByteBuffer byteBuffer = ByteBuffer.allocate(4096);
             byteBuffer.putInt(measurementSchemas.size());
-            for (MeasurementSchema schema : measurementSchemas) {
+            for (IMeasurementSchema schema : measurementSchemas) {
               schema.serializeTo(byteBuffer);
             }
             byteBuffer.flip();

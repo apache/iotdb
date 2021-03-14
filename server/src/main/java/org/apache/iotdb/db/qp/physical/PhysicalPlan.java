@@ -32,6 +32,7 @@ import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateIndexPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -238,6 +239,9 @@ public abstract class PhysicalPlan {
           plan = new CreateTimeSeriesPlan();
           plan.deserialize(buffer);
           break;
+        case CREATE_ALIGNED_TIMESERIES:
+          plan = new CreateAlignedTimeSeriesPlan();
+          plan.deserialize(buffer);
         case DELETE_TIMESERIES:
           plan = new DeleteTimeSeriesPlan();
           plan.deserialize(buffer);
@@ -371,6 +375,7 @@ public abstract class PhysicalPlan {
     BATCHINSERT,
     SET_STORAGE_GROUP,
     CREATE_TIMESERIES,
+    CREATE_ALIGNED_TIMESERIES,
     TTL,
     GRANT_WATERMARK_EMBEDDING,
     REVOKE_WATERMARK_EMBEDDING,

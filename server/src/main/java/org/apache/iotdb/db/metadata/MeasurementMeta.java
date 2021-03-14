@@ -19,34 +19,34 @@
 package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 public class MeasurementMeta {
-  private MeasurementSchema measurementSchema = null;
+  private IMeasurementSchema measurementSchema;
   private String alias = null; // TODO get schema by alias
   private TimeValuePair timeValuePair = null;
 
   public MeasurementMeta(
-      MeasurementSchema measurementSchema, String alias, TimeValuePair timeValuePair) {
+      IMeasurementSchema measurementSchema, String alias, TimeValuePair timeValuePair) {
     this.measurementSchema = measurementSchema;
     this.alias = alias;
     this.timeValuePair = timeValuePair;
   }
 
-  public MeasurementMeta(MeasurementSchema measurementSchema, String alias) {
+  public MeasurementMeta(IMeasurementSchema measurementSchema, String alias) {
     this.measurementSchema = measurementSchema;
     this.alias = alias;
   }
 
-  public MeasurementMeta(MeasurementSchema measurementSchema) {
+  public MeasurementMeta(IMeasurementSchema measurementSchema) {
     this.measurementSchema = measurementSchema;
   }
 
-  public MeasurementSchema getMeasurementSchema() {
+  public IMeasurementSchema getMeasurementSchema() {
     return measurementSchema;
   }
 
-  public void setMeasurementSchema(MeasurementSchema measurementSchema) {
+  public void setMeasurementSchema(IMeasurementSchema measurementSchema) {
     this.measurementSchema = measurementSchema;
   }
 

@@ -134,6 +134,7 @@ public abstract class Operator {
     UDTF,
     CREATE_FUNCTION,
     DROP_FUNCTION,
+    CREATE_ALIGNED_TIMESERIES,
     CREATE_MULTI_TIMESERIES,
     CREATE_INDEX,
     DROP_INDEX,
@@ -150,6 +151,8 @@ public abstract class Operator {
     CREATE_TRIGGER,
     DROP_TRIGGER,
     START_TRIGGER,
-    STOP_TRIGGER
+    STOP_TRIGGER,
+    CREATE_TEMPLATE,
+    SET_DEVICE_TEMPLATE,
   }
 }

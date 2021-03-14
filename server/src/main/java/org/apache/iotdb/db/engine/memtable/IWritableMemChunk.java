@@ -21,7 +21,7 @@ package org.apache.iotdb.db.engine.memtable;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 public interface IWritableMemChunk {
 
@@ -37,6 +37,8 @@ public interface IWritableMemChunk {
 
   void putBoolean(long t, boolean v);
 
+  void putVector(long t, Object[] v);
+
   void putLongs(long[] t, long[] v, int start, int end);
 
   void putInts(long[] t, int[] v, int start, int end);
@@ -49,6 +51,8 @@ public interface IWritableMemChunk {
 
   void putBooleans(long[] t, boolean[] v, int start, int end);
 
+  void putVectors(long[] t, Object[][] v, int start, int end);
+
   void write(long insertTime, Object objectValue);
 
   /** [start, end) */
@@ -56,7 +60,7 @@ public interface IWritableMemChunk {
 
   long count();
 
-  MeasurementSchema getSchema();
+  IMeasurementSchema getSchema();
 
   /**
    * served for query requests.

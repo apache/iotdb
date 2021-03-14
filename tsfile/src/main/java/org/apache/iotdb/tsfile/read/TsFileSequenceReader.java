@@ -29,6 +29,7 @@ import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -48,6 +49,7 @@ import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.slf4j.Logger;
@@ -550,7 +552,10 @@ public class TsFileSequenceReader implements AutoCloseable {
     Map<String, List<ChunkMetadata>> seriesMetadata = new HashMap<>();
     for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataMap) {
       seriesMetadata.put(
-          timeseriesMetadata.getMeasurementId(), timeseriesMetadata.getChunkMetadataList());
+          timeseriesMetadata.getMeasurementId(),
+          timeseriesMetadata.getChunkMetadataList().stream()
+              .map(chunkMetadata -> ((ChunkMetadata) chunkMetadata))
+              .collect(Collectors.toList()));
     }
     return seriesMetadata;
   }
@@ -945,7 +950,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public long selfCheck(
-      Map<Path, MeasurementSchema> newSchema,
+      Map<Path, IMeasurementSchema> newSchema,
       List<ChunkGroupMetadata> chunkGroupMetadataList,
       boolean fastFinish)
       throws IOException {
@@ -986,7 +991,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     long truncatedSize = headerLength;
     byte marker;
     String lastDeviceId = null;
-    List<MeasurementSchema> measurementSchemaList = new ArrayList<>();
+    List<IMeasurementSchema> measurementSchemaList = new ArrayList<>();
     try {
       while ((marker = this.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
@@ -998,7 +1003,7 @@ public class TsFileSequenceReader implements AutoCloseable {
             // insertion is not tolerable
             ChunkHeader chunkHeader = this.readChunkHeader(marker);
             measurementID = chunkHeader.getMeasurementID();
-            MeasurementSchema measurementSchema =
+            IMeasurementSchema measurementSchema =
                 new MeasurementSchema(
                     measurementID,
                     chunkHeader.getDataType(),
@@ -1077,7 +1082,7 @@ public class TsFileSequenceReader implements AutoCloseable {
             if (lastDeviceId != null) {
               // schema of last chunk group
               if (newSchema != null) {
-                for (MeasurementSchema tsSchema : measurementSchemaList) {
+                for (IMeasurementSchema tsSchema : measurementSchemaList) {
                   newSchema.putIfAbsent(
                       new Path(lastDeviceId, tsSchema.getMeasurementId()), tsSchema);
                 }
@@ -1096,7 +1101,7 @@ public class TsFileSequenceReader implements AutoCloseable {
             if (lastDeviceId != null) {
               // schema of last chunk group
               if (newSchema != null) {
-                for (MeasurementSchema tsSchema : measurementSchemaList) {
+                for (IMeasurementSchema tsSchema : measurementSchemaList) {
                   newSchema.putIfAbsent(
                       new Path(lastDeviceId, tsSchema.getMeasurementId()), tsSchema);
                 }
@@ -1119,7 +1124,7 @@ public class TsFileSequenceReader implements AutoCloseable {
       if (lastDeviceId != null) {
         // schema of last chunk group
         if (newSchema != null) {
-          for (MeasurementSchema tsSchema : measurementSchemaList) {
+          for (IMeasurementSchema tsSchema : measurementSchemaList) {
             newSchema.putIfAbsent(new Path(lastDeviceId, tsSchema.getMeasurementId()), tsSchema);
           }
         }
@@ -1151,7 +1156,7 @@ public class TsFileSequenceReader implements AutoCloseable {
       return Collections.emptyList();
     }
     List<ChunkMetadata> chunkMetadataList = readChunkMetaDataList(timeseriesMetaData);
-    chunkMetadataList.sort(Comparator.comparingLong(ChunkMetadata::getStartTime));
+    chunkMetadataList.sort(Comparator.comparingLong(IChunkMetadata::getStartTime));
     return chunkMetadataList;
   }
 
@@ -1162,7 +1167,9 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
   public List<ChunkMetadata> readChunkMetaDataList(TimeseriesMetadata timeseriesMetaData)
       throws IOException {
-    return timeseriesMetaData.getChunkMetadataList();
+    return timeseriesMetaData.getChunkMetadataList().stream()
+        .map(chunkMetadata -> (ChunkMetadata) chunkMetadata)
+        .collect(Collectors.toList());
   }
 
   /**
@@ -1311,9 +1318,12 @@ public class TsFileSequenceReader implements AutoCloseable {
             timeseriesMetadataList.add(TimeseriesMetadata.deserializeFrom(nextBuffer, true));
           }
           for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataList) {
-            measurementChunkMetadataList
-                .computeIfAbsent(timeseriesMetadata.getMeasurementId(), m -> new ArrayList<>())
-                .addAll(timeseriesMetadata.getChunkMetadataList());
+            List<ChunkMetadata> list =
+                measurementChunkMetadataList.computeIfAbsent(
+                    timeseriesMetadata.getMeasurementId(), m -> new ArrayList<>());
+            for (IChunkMetadata chunkMetadata : timeseriesMetadata.getChunkMetadataList()) {
+              list.add((ChunkMetadata) chunkMetadata);
+            }
           }
           return measurementChunkMetadataList;
         } catch (IOException e) {

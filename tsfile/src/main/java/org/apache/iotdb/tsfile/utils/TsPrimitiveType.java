@@ -45,6 +45,8 @@ public abstract class TsPrimitiveType implements Serializable {
         return new TsPrimitiveType.TsDouble((double) v);
       case TEXT:
         return new TsPrimitiveType.TsBinary((Binary) v);
+      case VECTOR:
+        return new TsPrimitiveType.TsVector((TsPrimitiveType[]) v);
       default:
         throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
     }
@@ -74,6 +76,10 @@ public abstract class TsPrimitiveType implements Serializable {
     throw new UnsupportedOperationException("getBinary() is not supported for current sub-class");
   }
 
+  public TsPrimitiveType[] getVector() {
+    throw new UnsupportedOperationException("setDouble() is not supported for current sub-class");
+  }
+
   public void setBoolean(boolean val) {
     throw new UnsupportedOperationException("setBoolean() is not supported for current sub-class");
   }
@@ -96,6 +102,10 @@ public abstract class TsPrimitiveType implements Serializable {
 
   public void setBinary(Binary val) {
     throw new UnsupportedOperationException("setBinary() is not supported for current sub-class");
+  }
+
+  public void setVector(TsPrimitiveType[] val) {
+    throw new UnsupportedOperationException("setDouble() is not supported for current sub-class");
   }
 
   /**
@@ -460,6 +470,56 @@ public abstract class TsPrimitiveType implements Serializable {
         return value.equals(anotherTs.value);
       }
       return false;
+    }
+  }
+
+  public static class TsVector extends TsPrimitiveType {
+
+    private TsPrimitiveType[] value;
+
+    public TsVector(TsPrimitiveType[] value) {
+      this.value = value;
+    }
+
+    @Override
+    public TsPrimitiveType[] getVector() {
+      return value;
+    }
+
+    @Override
+    public void setVector(TsPrimitiveType[] val) {
+      this.value = val;
+    }
+
+    @Override
+    public int getSize() {
+      int size = 0;
+      for (TsPrimitiveType type : value) {
+        size += type.getSize();
+      }
+      // object header + array object header
+      return 4 + 4 + size;
+    }
+
+    @Override
+    public Object getValue() {
+      return getVector();
+    }
+
+    @Override
+    public String getStringValue() {
+      StringBuilder builder = new StringBuilder("[");
+      builder.append(value[0].getStringValue());
+      for (int i = 1; i < value.length; i++) {
+        builder.append(", ").append(value[i].getStringValue());
+      }
+      builder.append("]");
+      return builder.toString();
+    }
+
+    @Override
+    public TSDataType getDataType() {
+      return TSDataType.VECTOR;
     }
   }
 }

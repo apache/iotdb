@@ -22,14 +22,14 @@ import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 public class WritableMemChunk implements IWritableMemChunk {
 
-  private MeasurementSchema schema;
+  private IMeasurementSchema schema;
   private TVList list;
 
-  public WritableMemChunk(MeasurementSchema schema, TVList list) {
+  public WritableMemChunk(IMeasurementSchema schema, TVList list) {
     this.schema = schema;
     this.list = list;
   }
@@ -54,6 +54,9 @@ public class WritableMemChunk implements IWritableMemChunk {
         break;
       case TEXT:
         putBinary(insertTime, (Binary) objectValue);
+        break;
+      case VECTOR:
+        putVector(insertTime, (Object[]) objectValue);
         break;
       default:
         throw new UnSupportedDataTypeException("Unsupported data type:" + schema.getType());
@@ -123,6 +126,11 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
+  public void putVector(long t, Object[] v) {
+    list.putVector(t, v);
+  }
+
+  @Override
   public void putLongs(long[] t, long[] v, int start, int end) {
     list.putLongs(t, v, start, end);
   }
@@ -150,6 +158,11 @@ public class WritableMemChunk implements IWritableMemChunk {
   @Override
   public void putBooleans(long[] t, boolean[] v, int start, int end) {
     list.putBooleans(t, v, start, end);
+  }
+
+  @Override
+  public void putVectors(long[] t, Object[][] v, int start, int end) {
+    list.putVectors(t, v, start, end);
   }
 
   @Override
@@ -188,7 +201,7 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public MeasurementSchema getSchema() {
+  public IMeasurementSchema getSchema() {
     return schema;
   }
 
