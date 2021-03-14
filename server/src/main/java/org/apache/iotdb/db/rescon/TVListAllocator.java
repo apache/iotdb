@@ -55,7 +55,7 @@ public class TVListAllocator implements TVListAllocatorMBean, IService {
   public synchronized TVList allocate(List<TSDataType> dataTypes) {
     return TVList.newVectorList(dataTypes);
   }
-  
+
   public synchronized void release(TSDataType dataType, TVList list) {
     list.clear();
     if (dataType != TSDataType.VECTOR) {

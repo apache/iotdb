@@ -52,7 +52,7 @@ import java.util.Random;
 
 public class PrimitiveMemTableTest {
 
-  double delta; 
+  double delta;
 
   @Before
   public void setUp() {
@@ -283,11 +283,11 @@ public class PrimitiveMemTableTest {
     TSEncoding[] encodings = new TSEncoding[2];
     encodings[0] = TSEncoding.PLAIN;
     encodings[1] = TSEncoding.GORILLA;
-    
+
     String deviceId = "root.sg.device5";
 
     MeasurementMNode[] mNodes = new MeasurementMNode[2];
-    IMeasurementSchema schema =  new VectorMeasurementSchema(measurements, dataTypes, encodings);
+    IMeasurementSchema schema = new VectorMeasurementSchema(measurements, dataTypes, encodings);
     mNodes[0] = new MeasurementMNode(null, "sensor0", schema, null);
     mNodes[1] = new MeasurementMNode(null, "sensor1", schema, null);
 

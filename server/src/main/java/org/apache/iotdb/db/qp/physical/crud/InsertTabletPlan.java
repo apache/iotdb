@@ -241,9 +241,9 @@ public class InsertTabletPlan extends InsertPlan {
   private void writeDataTypes(ByteBuffer buffer) {
     for (int i = 0, dataTypesLength = dataTypes.length; i < dataTypesLength; i++) {
       TSDataType dataType = dataTypes[i];
-//      if (measurements[i] != null) {
-        dataType.serializeTo(buffer);
-//      }
+      //      if (measurements[i] != null) {
+      dataType.serializeTo(buffer);
+      //      }
     }
   }
 
