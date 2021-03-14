@@ -328,24 +328,25 @@ public class TsFileProcessor {
     String deviceId = insertTabletPlan.getDeviceId().getFullPath();
     long unsealedResourceIncrement = tsFileResource.estimateRamIncrement(deviceId);
 
-    for (int i = 0; i < insertTabletPlan.getDataTypes().length; i++) {
+    int columnCount = 0;
+    for (int i = 0; i < insertTabletPlan.getMeasurementMNodes().length; i++) {
       // for aligned timeseries
       if (insertTabletPlan.getMeasurementMNodes()[i].getSchema().getType() == TSDataType.VECTOR) {
         VectorMeasurementSchema vectorSchema =
             (VectorMeasurementSchema) insertTabletPlan.getMeasurementMNodes()[i].getSchema();
         Object[] columns = new Object[vectorSchema.getValueMeasurementIdList().size()];
         for (int j = 0; j < vectorSchema.getValueMeasurementIdList().size(); j++) {
-          columns[j] = insertTabletPlan.getColumns()[i + j];
+          columns[j] = insertTabletPlan.getColumns()[columnCount++];
         }
         updateVectorMemCost(vectorSchema, deviceId, start, end, memIncrements, columns);
-        i += vectorSchema.getValueMeasurementIdList().size() - 1;
       }
       // for non aligned
       else {
         // skip failed Measurements
-        TSDataType dataType = insertTabletPlan.getDataTypes()[i];
+        TSDataType dataType = insertTabletPlan.getDataTypes()[columnCount];
         String measurement = insertTabletPlan.getMeasurements()[i];
-        Object column = insertTabletPlan.getColumns()[i];
+        Object column = insertTabletPlan.getColumns()[columnCount];
+        columnCount++;
         if (dataType == null || column == null || measurement == null) {
           continue;
         }

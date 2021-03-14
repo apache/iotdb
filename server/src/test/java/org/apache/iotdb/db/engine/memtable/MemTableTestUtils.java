@@ -95,7 +95,8 @@ public class MemTableTestUtils {
     mNodes[1] = new MeasurementMNode(null, "sensor1", schema, null);
 
     InsertTabletPlan insertTabletPlan =
-        new InsertTabletPlan(new PartialPath(deviceId0), measurements, dataTypesList);
+        new InsertTabletPlan(
+            new PartialPath(deviceId0), new String[] {"(sensor0,sensor1)"}, dataTypesList);
 
     long[] times = new long[100];
     Object[] columns = new Object[2];
