@@ -122,7 +122,7 @@ public class VectorMeasurementSchema
 
   @Override
   public TSDataType getType() {
-    throw new UnsupportedOperationException("unsupported method for VectorMeasurementSchema");
+    return TSDataType.VECTOR;
   }
 
   @Override
