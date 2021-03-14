@@ -86,6 +86,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -192,7 +194,7 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Create a timeseries with a full path from root to leaf node Before creating a timeseries, the
+   * Create a timeseries with a full path from root to leaf node. Before creating a timeseries, the
    * storage group should be set first, throw exception otherwise
    *
    * @param path timeseries path
@@ -268,6 +270,81 @@ public class MTree implements Serializable {
       }
 
       return measurementMNode;
+    }
+  }
+
+  /**
+   * Create aligned timeseries with full paths from root to one leaf node. Before creating
+   * timeseries, the * storage group should be set first, throw exception otherwise
+   *
+   * @param devicePath device path
+   * @param measurements measurements list
+   * @param dataTypes data types list
+   * @param encodings encodings list
+   * @param compressor compressor
+   */
+  void createAlignedTimeseries(
+      PartialPath devicePath,
+      List<String> measurements,
+      List<TSDataType> dataTypes,
+      List<TSEncoding> encodings,
+      CompressionType compressor)
+      throws MetadataException {
+    String[] deviceNodeNames = devicePath.getNodes();
+    if (deviceNodeNames.length <= 1 || !deviceNodeNames[0].equals(root.getName())) {
+      throw new IllegalPathException(devicePath.getFullPath());
+    }
+    checkTimeseries(devicePath.getFullPath());
+    for (String measurement : measurements) {
+      checkTimeseries(measurement);
+    }
+    MNode cur = root;
+    boolean hasSetStorageGroup = false;
+    // e.g, devicePath = root.sg.d1, create internal nodes and set cur to d1 node
+    for (int i = 1; i < deviceNodeNames.length; i++) {
+      String nodeName = deviceNodeNames[i];
+      if (cur instanceof StorageGroupMNode) {
+        hasSetStorageGroup = true;
+      }
+      if (!cur.hasChild(nodeName)) {
+        if (!hasSetStorageGroup) {
+          throw new StorageGroupNotSetException("Storage group should be created first");
+        }
+        cur.addChild(nodeName, new MNode(cur, nodeName));
+      }
+      cur = cur.getChild(nodeName);
+    }
+
+    String leafName = measurements.get(0) + ".align";
+
+    // synchronize check and add, we need addChild and add Alias become atomic operation
+    // only write on mtree will be synchronized
+    synchronized (this) {
+      MNode child = cur.getChild(leafName);
+      if (child instanceof MeasurementMNode || child instanceof StorageGroupMNode) {
+        throw new PathAlreadyExistException(devicePath.getFullPath() + "." + leafName);
+      }
+
+      int measurementsSize = measurements.size();
+
+      // this measurementMNode could be a leaf or not.
+      MeasurementMNode measurementMNode =
+          new MeasurementMNode(
+              cur,
+              leafName,
+              new VectorMeasurementSchema(
+                  measurements.toArray(new String[measurementsSize]),
+                  dataTypes.toArray(new TSDataType[measurementsSize]),
+                  encodings.toArray(new TSEncoding[measurementsSize]),
+                  compressor),
+              null);
+      for (String measurement : measurements) {
+        if (child != null) {
+          cur.replaceChild(measurementMNode.getName(), measurementMNode);
+        } else {
+          cur.addChild(measurement, measurementMNode);
+        }
+      }
     }
   }
 
@@ -504,9 +581,12 @@ public class MTree implements Serializable {
     if (nodes.length == 0 || !IoTDBConstant.PATH_ROOT.equals(nodes[0])) {
       throw new IllegalPathException(path.getFullPath());
     }
-    // delete the last node of path
-    curNode.getParent().deleteChild(curNode.getName());
+
     MeasurementMNode deletedNode = (MeasurementMNode) curNode;
+    IMeasurementSchema schema = deletedNode.getSchema();
+
+    // delete the last node of path
+    curNode.getParent().deleteChild(path.getMeasurement());
     if (deletedNode.getAlias() != null) {
       curNode.getParent().deleteAliasChild(((MeasurementMNode) curNode).getAlias());
     }
@@ -1114,21 +1194,43 @@ public class MTree implements Serializable {
           return;
         }
       }
-
-      PartialPath nodePath = node.getPartialPath();
-      String[] tsRow = new String[7];
-      tsRow[0] = ((MeasurementMNode) node).getAlias();
       IMeasurementSchema measurementSchema = ((MeasurementMNode) node).getSchema();
-      tsRow[1] = getStorageGroupPath(nodePath).getFullPath();
-      tsRow[2] = measurementSchema.getType().toString();
-      tsRow[3] = measurementSchema.getEncodingType().toString();
-      tsRow[4] = measurementSchema.getCompressor().toString();
-      tsRow[5] = String.valueOf(((MeasurementMNode) node).getOffset());
-      tsRow[6] =
-          needLast ? String.valueOf(getLastTimeStamp((MeasurementMNode) node, queryContext)) : null;
-      Pair<PartialPath, String[]> temp = new Pair<>(nodePath, tsRow);
-      timeseriesSchemaList.add(temp);
-
+      if (measurementSchema instanceof MeasurementSchema) {
+        PartialPath nodePath = node.getPartialPath();
+        String[] tsRow = new String[7];
+        tsRow[0] = ((MeasurementMNode) node).getAlias();
+        tsRow[1] = getStorageGroupPath(nodePath).getFullPath();
+        tsRow[2] = measurementSchema.getType().toString();
+        tsRow[3] = measurementSchema.getEncodingType().toString();
+        tsRow[4] = measurementSchema.getCompressor().toString();
+        tsRow[5] = String.valueOf(((MeasurementMNode) node).getOffset());
+        tsRow[6] =
+            needLast
+                ? String.valueOf(getLastTimeStamp((MeasurementMNode) node, queryContext))
+                : null;
+        Pair<PartialPath, String[]> temp = new Pair<>(nodePath, tsRow);
+        timeseriesSchemaList.add(temp);
+      } else if (measurementSchema instanceof VectorMeasurementSchema) {
+        List<String> measurements = measurementSchema.getValueMeasurementIdList();
+        int measurementSize = measurements.size();
+        for (int i = 0; i < measurementSize; i++) {
+          PartialPath devicePath = node.getPartialPath().getDevicePath();
+          String[] tsRow = new String[7];
+          tsRow[0] = null;
+          tsRow[1] = getStorageGroupPath(devicePath).getFullPath();
+          tsRow[2] = measurementSchema.getValueTSDataTypeList().get(i).toString();
+          tsRow[3] = measurementSchema.getValueTSEncodingList().get(i).toString();
+          tsRow[4] = measurementSchema.getCompressor().toString();
+          tsRow[5] = "0";
+          tsRow[6] =
+              needLast
+                  ? String.valueOf(getLastTimeStamp((MeasurementMNode) node, queryContext))
+                  : null;
+          Pair<PartialPath, String[]> temp =
+              new Pair<>(new PartialPath(devicePath.getFullPath(), measurements.get(i)), tsRow);
+          timeseriesSchemaList.add(temp);
+        }
+      }
       if (hasLimit) {
         count.set(count.get() + 1);
       }

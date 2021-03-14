@@ -18,14 +18,15 @@
  */
 package org.apache.iotdb.db.metadata.template;
 
-import java.util.HashMap;
-import java.util.Map;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class Template {
   String name;

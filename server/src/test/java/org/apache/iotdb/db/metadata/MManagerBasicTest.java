@@ -67,7 +67,6 @@ public class MManagerBasicTest {
 
   @Test
   public void testAddPathAndExist() throws IllegalPathException {
-
     MManager manager = IoTDB.metaManager;
     assertTrue(manager.isPathExist(new PartialPath("root")));
 
@@ -117,19 +116,19 @@ public class MManagerBasicTest {
           TSDataType.INT32,
           TSEncoding.RLE,
           TSFileDescriptor.getInstance().getConfig().getCompressor(),
-          Collections.EMPTY_MAP);
+          Collections.emptyMap());
       manager.createTimeseries(
           new PartialPath("root.laptop.d1.\"1.2.3\""),
           TSDataType.INT32,
           TSEncoding.RLE,
           TSFileDescriptor.getInstance().getConfig().getCompressor(),
-          Collections.EMPTY_MAP);
+          Collections.emptyMap());
       manager.createTimeseries(
           new PartialPath("root.1.2.3"),
           TSDataType.INT32,
           TSEncoding.RLE,
           TSFileDescriptor.getInstance().getConfig().getCompressor(),
-          Collections.EMPTY_MAP);
+          Collections.emptyMap());
 
       assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s1")));
       assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.1_2")));
@@ -231,6 +230,105 @@ public class MManagerBasicTest {
       fail(e.getMessage());
     }
     assertFalse(manager.isPathExist(new PartialPath("root.1")));
+  }
+
+  @Test
+  public void testCreateAlignedTimeseries() throws IllegalPathException {
+    MManager manager = IoTDB.metaManager;
+    try {
+      manager.setStorageGroup(new PartialPath("root.laptop"));
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    try {
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d1.s0"),
+          TSDataType.valueOf("INT32"),
+          TSEncoding.valueOf("RLE"),
+          compressionType,
+          Collections.emptyMap());
+      manager.createAlignedTimeSeries(
+          new PartialPath("root.laptop.d1"),
+          Arrays.asList("s1", "s2", "s3"),
+          Arrays.asList(
+              TSDataType.valueOf("INT32"),
+              TSDataType.valueOf("FLOAT"),
+              TSDataType.valueOf("INT32")),
+          Arrays.asList(
+              TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
+          compressionType);
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s0")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s1")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s2")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s3")));
+
+    try {
+      manager.deleteTimeseries(new PartialPath("root.laptop.d1.s2"));
+    } catch (MetadataException e) {
+      assertEquals(
+          "Not support deleting part of aligned timeseies! (Path: root.laptop.d1.s2)",
+          e.getMessage());
+    }
+
+    try {
+      manager.deleteTimeseries(new PartialPath("root.laptop.d1.(s2, s3)"));
+    } catch (MetadataException e) {
+      assertEquals(
+          "Not support deleting part of aligned timeseies! (Path: root.laptop.d1.(s2, s3))",
+          e.getMessage());
+    }
+
+    try {
+      manager.deleteTimeseries(new PartialPath("root.laptop.d1.(s1, s2, s3)"));
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s0")));
+    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.s1")));
+    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.s2")));
+    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.s3")));
+
+    try {
+      manager.deleteTimeseries(new PartialPath("root.laptop.d1.s0"));
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1")));
+    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.s0")));
+
+    try {
+      manager.createAlignedTimeSeries(
+          new PartialPath("root.laptop.d1"),
+          Arrays.asList("s0", "s2", "s4"),
+          Arrays.asList(
+              TSDataType.valueOf("INT32"),
+              TSDataType.valueOf("FLOAT"),
+              TSDataType.valueOf("INT32")),
+          Arrays.asList(
+              TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
+          compressionType);
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s0")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s2")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s4")));
   }
 
   @Test

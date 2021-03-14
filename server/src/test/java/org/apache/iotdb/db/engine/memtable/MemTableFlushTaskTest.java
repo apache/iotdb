@@ -21,8 +21,10 @@ package org.apache.iotdb.db.engine.memtable;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
@@ -98,6 +100,41 @@ public class MemTableFlushTaskTest {
     assertEquals(startTime, chunkMetaData.getStartTime());
     assertEquals(endTime, chunkMetaData.getEndTime());
     assertEquals(MemTableTestUtils.dataType0, chunkMetaData.getDataType());
+    assertEquals(endTime - startTime + 1, chunkMetaData.getNumOfPoints());
+  }
+
+  @Test
+  public void testFlushVectorMemTable() throws ExecutionException, InterruptedException, IllegalPathException {
+    MemTableTestUtils.produceVectorData(memTable);
+    MemTableFlushTask memTableFlushTask = new MemTableFlushTask(memTable, writer, storageGroup);
+    assertTrue(
+        writer
+            .getVisibleMetadataList(
+                MemTableTestUtils.deviceId0,
+                "sensor0",
+                TSDataType.BOOLEAN)
+            .isEmpty());
+    memTableFlushTask.syncFlushMemTable();
+    writer.makeMetadataVisible();
+    assertEquals(
+        false,
+        writer
+            .getVisibleMetadataList(
+                MemTableTestUtils.deviceId0,
+                "sensor0",
+                TSDataType.BOOLEAN)
+            .size());
+    ChunkMetadata chunkMetaData =
+        writer
+            .getVisibleMetadataList(
+                MemTableTestUtils.deviceId0,
+                "sensor0",
+                TSDataType.BOOLEAN)
+            .get(0);
+    assertEquals("sensor0", chunkMetaData.getMeasurementUid());
+    assertEquals(startTime, chunkMetaData.getStartTime());
+    assertEquals(endTime, chunkMetaData.getEndTime());
+    assertEquals(TSDataType.BOOLEAN, chunkMetaData.getDataType());
     assertEquals(endTime - startTime + 1, chunkMetaData.getNumOfPoints());
   }
 }

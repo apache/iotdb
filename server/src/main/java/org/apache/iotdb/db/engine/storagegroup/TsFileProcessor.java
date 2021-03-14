@@ -290,9 +290,14 @@ public class TsFileProcessor {
       }
       if (workMemTable.checkIfChunkDoesNotExist(deviceId, insertRowPlan.getMeasurements()[i])) {
         // ChunkMetadataIncrement
-        chunkMetadataIncrement +=
-            ChunkMetadata.calculateRamSize(
-                insertRowPlan.getMeasurements()[i], insertRowPlan.getDataTypes()[i]);
+        if (insertRowPlan.getDataTypes()[i] == TSDataType.VECTOR) {
+          // TODO: insertRowPlan
+          // chunkMetadataIncrement += VectorChunkMetadata.calculateRamSize(insertRowPlan....);
+        } else {
+          chunkMetadataIncrement +=
+              ChunkMetadata.calculateRamSize(
+                  insertRowPlan.getMeasurements()[i], insertRowPlan.getDataTypes()[i]);
+        }
         memTableIncrement += TVList.tvListArrayMemSize(insertRowPlan.getDataTypes()[i]);
       } else {
         // here currentChunkPointNum >= 1
