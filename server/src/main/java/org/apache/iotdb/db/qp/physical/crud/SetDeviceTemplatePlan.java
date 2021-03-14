@@ -23,6 +23,22 @@ public class SetDeviceTemplatePlan extends PhysicalPlan {
     this.prefixPath = prefixPath;
   }
 
+  public String getTemplateName() {
+    return templateName;
+  }
+
+  public void setTemplateName(String templateName) {
+    this.templateName = templateName;
+  }
+
+  public String getPrefixPath() {
+    return prefixPath;
+  }
+
+  public void setPrefixPath(String prefixPath) {
+    this.prefixPath = prefixPath;
+  }
+
   @Override
   public List<PartialPath> getPaths() {
     return null;

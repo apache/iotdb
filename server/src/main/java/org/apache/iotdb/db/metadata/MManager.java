@@ -18,6 +18,32 @@
  */
 package org.apache.iotdb.db.metadata;
 
+import static java.util.stream.Collectors.toList;
+import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -76,36 +102,8 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
-
-import static java.util.stream.Collectors.toList;
-import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 /**
  * This class takes the responsibility of serialization of all the metadata info and persistent it
@@ -141,7 +139,7 @@ public class MManager {
   private TagLogFile tagLogFile;
   private boolean isRecovering;
   // device -> DeviceMNode
-  private RandomDeleteCache<PartialPath, MNode> mNodeCache;
+  private RandomDeleteCache<PartialPath, Pair<MNode, Template>> mNodeCache;
   // tag key -> tag value -> LeafMNode
   private Map<String, Map<String, Set<MeasurementMNode>>> tagIndex = new ConcurrentHashMap<>();
 
@@ -165,7 +163,7 @@ public class MManager {
   private static final int ESTIMATED_SERIES_SIZE = config.getEstimatedSeriesSize();
 
   // template name -> template
-  private Map<String, Template> templateHashMap = new ConcurrentHashMap<>();
+  private Map<String, Template> templateMap = new ConcurrentHashMap<>();
 
   private static class MManagerHolder {
 
@@ -197,10 +195,10 @@ public class MManager {
 
     int cacheSize = config.getmManagerCacheSize();
     mNodeCache =
-        new RandomDeleteCache<PartialPath, MNode>(cacheSize) {
+        new RandomDeleteCache<PartialPath, Pair<MNode, Template>>(cacheSize) {
 
           @Override
-          public MNode loadObjectByKey(PartialPath key) throws CacheException {
+          public Pair<MNode, Template> loadObjectByKey(PartialPath key) throws CacheException {
             try {
               return mtree.getNodeByPathWithStorageGroupCheck(key);
             } catch (MetadataException e) {
@@ -1082,9 +1080,9 @@ public class MManager {
    *
    * @param path path
    */
-  public MNode getDeviceNodeWithAutoCreate(PartialPath path, boolean autoCreateSchema, int sgLevel)
-      throws MetadataException {
-    MNode node;
+  public Pair<MNode, Template> getDeviceNodeWithAutoCreate(
+      PartialPath path, boolean autoCreateSchema, int sgLevel) throws MetadataException {
+    Pair<MNode, Template> node;
     boolean shouldSetStorageGroup;
     try {
       node = mNodeCache.get(path);
@@ -1111,7 +1109,8 @@ public class MManager {
   }
 
   /** !!!!!!Attention!!!!! must call the return node's readUnlock() if you call this method. */
-  public MNode getDeviceNodeWithAutoCreate(PartialPath path) throws MetadataException {
+  public Pair<MNode, Template> getDeviceNodeWithAutoCreate(PartialPath path)
+      throws MetadataException {
     return getDeviceNodeWithAutoCreate(
         path, config.isAutoCreateSchemaEnabled(), config.getDefaultStorageGroupLevel());
   }
@@ -1119,7 +1118,7 @@ public class MManager {
   public MNode getDeviceNode(PartialPath path) throws MetadataException {
     MNode node;
     try {
-      node = mNodeCache.get(path);
+      node = mNodeCache.get(path).left;
       return node;
     } catch (CacheException e) {
       throw new PathNotExistException(path.getFullPath());
@@ -1854,7 +1853,7 @@ public class MManager {
     MeasurementMNode[] measurementMNodes = plan.getMeasurementMNodes();
 
     // 1. get device node
-    MNode deviceMNode = getDeviceNodeWithAutoCreate(deviceId);
+    Pair<MNode, Template> deviceMNode = getDeviceNodeWithAutoCreate(deviceId);
 
     // 2. get schema of each measurement
     // if do not has measurement
@@ -1862,7 +1861,7 @@ public class MManager {
     TSDataType dataType;
     for (int i = 0; i < measurementList.length; i++) {
       try {
-        MNode child = getMNode(deviceMNode, measurementList[i]);
+        MNode child = getMNode(deviceMNode.left, measurementList[i]);
         if (child instanceof MeasurementMNode) {
           measurementMNode = (MeasurementMNode) child;
         } else if (child instanceof StorageGroupMNode) {
@@ -1875,7 +1874,7 @@ public class MManager {
             dataType = getTypeInLoc(plan, i);
             // create it, may concurrent created by multiple thread
             internalCreateTimeseries(deviceId.concatNode(measurementList[i]), dataType);
-            measurementMNode = (MeasurementMNode) deviceMNode.getChild(measurementList[i]);
+            measurementMNode = (MeasurementMNode) deviceMNode.left.getChild(measurementList[i]);
           }
         }
 
@@ -1930,7 +1929,7 @@ public class MManager {
       }
     }
 
-    return deviceMNode;
+    return deviceMNode.left;
   }
 
   public MNode getMNode(MNode deviceMNode, String measurementName) {
@@ -1975,7 +1974,62 @@ public class MManager {
     boolean satisfy(String storageGroup);
   }
 
-  public void createDeviceTemplate(CreateTemplatePlan plan) throws MetadataException {}
+  public void createDeviceTemplate(CreateTemplatePlan plan) throws MetadataException {
+    try {
+      Template template = new Template(plan);
+      if (templateMap.putIfAbsent(plan.getName(), template) != null) {
+        // already have template
+        throw new MetadataException("Duplicated template name: " + plan.getName());
+      }
 
-  public void setDeviceTemplate(SetDeviceTemplatePlan plan) throws MetadataException {}
+      // write wal
+      if (!isRecovering) {
+        logWriter.createDeviceTemplate(plan);
+      }
+    } catch (IOException e) {
+      throw new MetadataException(e);
+    }
+  }
+
+  public void setDeviceTemplate(SetDeviceTemplatePlan plan) throws MetadataException {
+    try {
+      Template template = templateMap.get(plan.getTemplateName());
+
+      if (template == null) {
+        throw new MetadataException("Undefined template name: " + plan.getTemplateName());
+      }
+
+      // get mnode and update template should be atomic
+      synchronized (this) {
+        Pair<MNode, Template> node =
+            getDeviceNodeWithAutoCreate(new PartialPath(plan.getPrefixPath()));
+
+        if (node.left.getDeviceTemplate() != null) {
+          throw new MetadataException("Specified node already has template");
+        }
+
+        if (!isTemplateCompatible(node.right, template)) {
+          throw new MetadataException("Incompatible template");
+        }
+
+        node.left.setDeviceTemplate(template);
+      }
+
+      // write wal
+      if (!isRecovering) {
+        logWriter.setDeviceTemplate(plan);
+      }
+    } catch (IOException e) {
+      throw new MetadataException(e);
+    }
+  }
+
+  private boolean isTemplateCompatible(Template upper, Template current) {
+    if (upper == null) {
+      return true;
+    }
+
+    // todo add check logic
+    return true;
+  }
 }
