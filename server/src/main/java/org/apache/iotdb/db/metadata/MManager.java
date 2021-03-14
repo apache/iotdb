@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
+import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -556,9 +557,15 @@ public class MManager {
       mNodeCache.clear();
     }
     try {
-      List<PartialPath> allTimeseries = mtree.getAllTimeseriesPath(prefixPath);
+      List<String> measurements = MetaUtils.getMeasurementsInPartialPath(prefixPath);
+      PartialPath path = new PartialPath(prefixPath.getDevice(), measurements.get(0));
+
+      List<PartialPath> allTimeseries = mtree.getAllTimeseriesPath(path);
       if (allTimeseries.isEmpty()) {
         throw new PathNotExistException(prefixPath.getFullPath());
+      } else if (allTimeseries.size() != measurements.size()) {
+        throw new AlignedTimeseriesException(
+            "Not support deleting part of aligned timeseies!", prefixPath.getFullPath());
       }
       // Monitor storage group seriesPath is not allowed to be deleted
       allTimeseries.removeIf(p -> p.startsWith(MonitorConstants.STAT_STORAGE_GROUP_ARRAY));

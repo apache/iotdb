@@ -577,9 +577,12 @@ public class MTree implements Serializable {
     if (nodes.length == 0 || !IoTDBConstant.PATH_ROOT.equals(nodes[0])) {
       throw new IllegalPathException(path.getFullPath());
     }
+
+    MeasurementMNode deletedNode = (MeasurementMNode) curNode;
+    IMeasurementSchema schema = deletedNode.getSchema();
+
     // delete the last node of path
     curNode.getParent().deleteChild(path.getMeasurement());
-    MeasurementMNode deletedNode = (MeasurementMNode) curNode;
     if (deletedNode.getAlias() != null) {
       curNode.getParent().deleteAliasChild(((MeasurementMNode) curNode).getAlias());
     }
