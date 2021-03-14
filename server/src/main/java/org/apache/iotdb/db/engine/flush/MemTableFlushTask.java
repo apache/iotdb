@@ -28,7 +28,6 @@ import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.db.utils.datastructure.VectorTVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
@@ -44,8 +43,6 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
-
-import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 
 public class MemTableFlushTask {
 
@@ -221,7 +218,9 @@ public class MemTableFlushTask {
                       break;
                     default:
                       LOGGER.error(
-                          "Storage group {} does not support data type: {}", storageGroup, dataType);
+                          "Storage group {} does not support data type: {}",
+                          storageGroup,
+                          dataType);
                       break;
                   }
                 }

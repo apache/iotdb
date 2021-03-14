@@ -37,6 +37,7 @@ import org.junit.Test;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.assertArrayEquals;
@@ -198,5 +199,51 @@ public class SessionUT {
     Assert.assertEquals(20000, session.getTimeout());
     session.setTimeout(60000);
     Assert.assertEquals(60000, session.getTimeout());
+  }
+
+  @Test
+  public void setDeviceTemplate() throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root", ZoneId.of("+05:00"));
+    session.open();
+
+    session.setDeviceTemplate("template1", "root.sg.1");
+  }
+
+  @Test
+  public void createDeviceTemplate() throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root", ZoneId.of("+05:00"));
+    session.open();
+
+    List<List<String>> measurementList = new ArrayList<>();
+    measurementList.add(Collections.singletonList("s11"));
+    List<String> measurements = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      measurements.add("s" + i);
+    }
+    measurementList.add(measurements);
+
+    List<List<TSDataType>> dataTypeList = new ArrayList<>();
+    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
+    List<TSDataType> dataTypes = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      dataTypes.add(TSDataType.INT64);
+    }
+    dataTypeList.add(dataTypes);
+
+    List<List<TSEncoding>> encodingList = new ArrayList<>();
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+    List<TSEncoding> encodings = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      encodings.add(TSEncoding.RLE);
+    }
+    encodingList.add(encodings);
+
+    List<CompressionType> compressionTypes = new ArrayList<>();
+    for (int i = 0; i < 11; i++) {
+      compressionTypes.add(CompressionType.SNAPPY);
+    }
+
+    session.createDeviceTemplate(
+        "template1", measurementList, dataTypeList, encodingList, compressionTypes);
   }
 }

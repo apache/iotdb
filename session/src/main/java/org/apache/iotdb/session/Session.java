@@ -24,6 +24,7 @@ import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
+import org.apache.iotdb.service.rpc.thrift.TSCreateDeviceTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
@@ -35,6 +36,7 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
+import org.apache.iotdb.service.rpc.thrift.TSSetDeviceTemplateReq;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -1486,5 +1488,57 @@ public class Session {
       default:
         throw new UnSupportedDataTypeException(MSG_UNSUPPORTED_DATA_TYPE + dataType);
     }
+  }
+
+  public void setDeviceTemplate(String templateName, String prefixPath)
+      throws IoTDBConnectionException, StatementExecutionException {
+    TSSetDeviceTemplateReq request = getTSSetDeviceTemplateReq(templateName, prefixPath);
+    defaultSessionConnection.setDeviceTemplate(request);
+  }
+
+  public void createDeviceTemplate(
+      String name,
+      List<List<String>> measurements,
+      List<List<TSDataType>> dataTypes,
+      List<List<TSEncoding>> encodings,
+      List<CompressionType> compressors)
+      throws IoTDBConnectionException, StatementExecutionException {
+    TSCreateDeviceTemplateReq request =
+        getTSCreateDeviceTemplateReq(name, measurements, dataTypes, encodings, compressors);
+    defaultSessionConnection.createDeviceTemplate(request);
+  }
+
+  private TSSetDeviceTemplateReq getTSSetDeviceTemplateReq(String templateName, String prefixPath) {
+    TSSetDeviceTemplateReq request = new TSSetDeviceTemplateReq();
+    request.setTemplate(templateName);
+    request.setPrefixPath(prefixPath);
+    return request;
+  }
+
+  private TSCreateDeviceTemplateReq getTSCreateDeviceTemplateReq(
+      String name,
+      List<List<String>> measurements,
+      List<List<TSDataType>> dataTypes,
+      List<List<TSEncoding>> encodings,
+      List<CompressionType> compressors) {
+    TSCreateDeviceTemplateReq request = new TSCreateDeviceTemplateReq();
+    request.setName(name);
+    request.setMeasurements(measurements);
+
+    List<List<Integer>> requestType = new ArrayList<>();
+    for (List<TSDataType> typesList : dataTypes) {
+      requestType.add(typesList.stream().map(TSDataType::ordinal).collect(Collectors.toList()));
+    }
+    request.setDataTypes(requestType);
+
+    List<List<Integer>> requestEncoding = new ArrayList<>();
+    for (List<TSEncoding> encodingList : encodings) {
+      requestEncoding.add(
+          encodingList.stream().map(TSEncoding::ordinal).collect(Collectors.toList()));
+    }
+    request.setEncodings(requestEncoding);
+    request.setCompressors(
+        compressors.stream().map(CompressionType::ordinal).collect(Collectors.toList()));
+    return request;
   }
 }

@@ -151,6 +151,8 @@ public abstract class Operator {
     CREATE_TRIGGER,
     DROP_TRIGGER,
     START_TRIGGER,
-    STOP_TRIGGER
+    STOP_TRIGGER,
+    CREATE_TEMPLATE,
+    SET_DEVICE_TEMPLATE,
   }
 }

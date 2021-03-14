@@ -38,12 +38,15 @@ import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
@@ -160,6 +163,9 @@ public class MManager {
   private boolean allowToCreateNewSeries = true;
 
   private static final int ESTIMATED_SERIES_SIZE = config.getEstimatedSeriesSize();
+
+  // template name -> template
+  private Map<String, Template> templateHashMap = new ConcurrentHashMap<>();
 
   private static class MManagerHolder {
 
@@ -1968,4 +1974,8 @@ public class MManager {
 
     boolean satisfy(String storageGroup);
   }
+
+  public void createDeviceTemplate(CreateTemplatePlan plan) throws MetadataException {}
+
+  public void setDeviceTemplate(SetDeviceTemplatePlan plan) throws MetadataException {}
 }

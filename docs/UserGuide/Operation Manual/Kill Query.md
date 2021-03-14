@@ -30,7 +30,7 @@ For queries that take too long to execute, IoTDB will forcibly interrupt the que
 
 ![image](https://user-images.githubusercontent.com/34242296/104586593-a224aa00-56a0-11eb-9c52-241dcdb68ecb.png)
 
-The default timeout of the system is 60000 ms，which can be customized in the configuration file through the `query_time_threshold` parameter.
+The default timeout of the system is 60000 ms，which can be customized in the configuration file through the `query_timeout_threshold` parameter.
 
 If you use JDBC or Session, we also support setting a timeout for a single query（Unit: ms）：
 

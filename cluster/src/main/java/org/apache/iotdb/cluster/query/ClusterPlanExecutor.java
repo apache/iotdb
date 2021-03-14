@@ -54,6 +54,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
@@ -118,6 +119,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
+  @TestOnly
   protected List<PartialPath> getPathsName(PartialPath path) throws MetadataException {
     return ((CMManager) IoTDB.metaManager).getMatchedPaths(path);
   }
@@ -283,6 +285,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
   @Override
   protected Set<PartialPath> getDevices(PartialPath path) throws MetadataException {
+    // make sure this node knows all storage groups
+    ((CMManager) IoTDB.metaManager).syncMetaLeader();
     return ((CMManager) IoTDB.metaManager).getMatchedDevices(path);
   }
 
