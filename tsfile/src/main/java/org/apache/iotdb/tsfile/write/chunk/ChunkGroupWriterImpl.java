@@ -26,7 +26,6 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import org.slf4j.Logger;
@@ -73,7 +72,7 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
 
   @Override
   public void write(Tablet tablet) throws WriteProcessException {
-    List<MeasurementSchema> timeseries = tablet.getSchemas();
+    List<IMeasurementSchema> timeseries = tablet.getSchemas();
     for (int i = 0; i < timeseries.size(); i++) {
       String measurementId = timeseries.get(i).getMeasurementId();
       TSDataType dataType = timeseries.get(i).getType();

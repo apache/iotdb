@@ -21,8 +21,11 @@ package org.apache.iotdb.tsfile.write.record;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,7 +49,7 @@ public class Tablet {
   public String deviceId;
 
   /** the list of measurement schemas for creating the tablet */
-  private List<MeasurementSchema> schemas;
+  private List<IMeasurementSchema> schemas;
 
   /** measurementId->indexOf(measurementSchema) */
   private Map<String, Integer> measurementIndex;
@@ -72,6 +75,21 @@ public class Tablet {
     this(deviceId, schemas, DEFAULT_SIZE);
   }
 
+  public Tablet(String deviceId, List<VectorMeasurementSchema> vectorSchemas, boolean haha) {
+    this.deviceId = deviceId;
+    this.schemas = new ArrayList<>(vectorSchemas);
+    this.maxRowNumber = DEFAULT_SIZE;
+    measurementIndex = new HashMap<>();
+
+    for (int i = 0; i < schemas.size(); i++) {
+      measurementIndex.put(schemas.get(i).getMeasurementId(), i);
+    }
+
+    createColumns();
+
+    reset();
+  }
+
   /**
    * Return a tablet with the specified number of rows (maxBatchSize). Only call this constructor
    * directly for testing purposes. Tablet should normally always be default size.
@@ -83,7 +101,7 @@ public class Tablet {
    */
   public Tablet(String deviceId, List<MeasurementSchema> schemas, int maxRowNumber) {
     this.deviceId = deviceId;
-    this.schemas = schemas;
+    this.schemas = new ArrayList<>(schemas);
     this.maxRowNumber = maxRowNumber;
     measurementIndex = new HashMap<>();
 
@@ -102,7 +120,7 @@ public class Tablet {
 
   public void addValue(String measurementId, int rowIndex, Object value) {
     int indexOfValue = measurementIndex.get(measurementId);
-    MeasurementSchema measurementSchema = schemas.get(indexOfValue);
+    IMeasurementSchema measurementSchema = schemas.get(indexOfValue);
 
     switch (measurementSchema.getType()) {
       case TEXT:
@@ -147,7 +165,7 @@ public class Tablet {
     }
   }
 
-  public List<MeasurementSchema> getSchemas() {
+  public List<IMeasurementSchema> getSchemas() {
     return schemas;
   }
 
