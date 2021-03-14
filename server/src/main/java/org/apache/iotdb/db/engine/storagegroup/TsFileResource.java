@@ -18,33 +18,6 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.modification.ModificationFile;
-import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpgradeTsFileResourceCallBack;
-import org.apache.iotdb.db.engine.storagegroup.timeindex.DeviceTimeIndex;
-import org.apache.iotdb.db.engine.storagegroup.timeindex.ITimeIndex;
-import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
-import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
-import org.apache.iotdb.db.exception.PartitionViolationException;
-import org.apache.iotdb.db.service.UpgradeSevice;
-import org.apache.iotdb.db.utils.FilePathUtils;
-import org.apache.iotdb.db.utils.TestOnly;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -59,6 +32,30 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpgradeTsFileResourceCallBack;
+import org.apache.iotdb.db.engine.storagegroup.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.engine.storagegroup.timeindex.ITimeIndex;
+import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
+import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
+import org.apache.iotdb.db.exception.PartitionViolationException;
+import org.apache.iotdb.db.service.UpgradeSevice;
+import org.apache.iotdb.db.utils.FilePathUtils;
+import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @SuppressWarnings("java:S1135") // ignore todos
 public class TsFileResource {
@@ -103,7 +100,7 @@ public class TsFileResource {
    * Chunk metadata list of unsealed tsfile. Only be set in a temporal TsFileResource in a query
    * process.
    */
-  private List<ChunkMetadata> chunkMetadataList;
+  private List<IChunkMetadata> chunkMetadataList;
 
   /** Mem chunk data. Only be set in a temporal TsFileResource in a query process. */
   private List<ReadOnlyMemChunk> readOnlyMemChunk;
@@ -184,7 +181,7 @@ public class TsFileResource {
   /** unsealed TsFile */
   public TsFileResource(
       List<ReadOnlyMemChunk> readOnlyMemChunk,
-      List<ChunkMetadata> chunkMetadataList,
+      List<IChunkMetadata> chunkMetadataList,
       TsFileResource originTsFileResource)
       throws IOException {
     this.file = originTsFileResource.file;
@@ -206,7 +203,6 @@ public class TsFileResource {
   }
 
   private void generateTimeSeriesMetadata() throws IOException {
-    timeSeriesMetadata = new TimeseriesMetadata();
     timeSeriesMetadata.setOffsetOfChunkMetaDataList(-1);
     timeSeriesMetadata.setDataSizeOfChunkMetaDataList(-1);
 
@@ -223,7 +219,7 @@ public class TsFileResource {
       Statistics<?> seriesStatistics =
           Statistics.getStatsByType(timeSeriesMetadata.getTSDataType());
       // flush chunkMetadataList one by one
-      for (ChunkMetadata chunkMetadata : chunkMetadataList) {
+      for (IChunkMetadata chunkMetadata : chunkMetadataList) {
         seriesStatistics.mergeStatistics(chunkMetadata.getStatistics());
       }
 
@@ -234,7 +230,7 @@ public class TsFileResource {
       }
       timeSeriesMetadata.setStatistics(seriesStatistics);
     } else {
-      timeSeriesMetadata = null;
+      this.timeSeriesMetadata = null;
     }
   }
 

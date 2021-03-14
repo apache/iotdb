@@ -59,6 +59,7 @@ public class ReadOnlyMemChunk {
 
   private int chunkDataSize;
 
+  // TODO BY HAONAN HOU
   public ReadOnlyMemChunk(
       String measurementUid,
       TSDataType dataType,
@@ -124,6 +125,9 @@ public class ReadOnlyMemChunk {
           case DOUBLE:
             statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getDouble());
             break;
+          case VECTOR:
+            statsByType.update(timeValuePair.getTimestamp());
+            break;
           default:
             throw new QueryProcessException("Unsupported data type:" + dataType);
         }
@@ -143,6 +147,7 @@ public class ReadOnlyMemChunk {
     return !chunkPointReader.hasNextTimeValuePair();
   }
 
+  // TODO BY HAONAN HOU
   public ChunkMetadata getChunkMetaData() {
     return cachedMetaData;
   }

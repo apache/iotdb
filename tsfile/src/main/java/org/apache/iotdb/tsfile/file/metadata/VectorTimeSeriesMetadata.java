@@ -62,23 +62,26 @@ public class VectorTimeSeriesMetadata implements ITimeSeriesMetadata {
 
   @Override
   public List<IChunkMetadata> loadChunkMetadataList() throws IOException {
-    List<IChunkMetadata> timeChunkMetadata = timeseriesMetadata.loadChunkMetadataList();
-    List<List<IChunkMetadata>> valueChunkMetadataList = new ArrayList<>();
-    for (TimeseriesMetadata metadata : valueTimeseriesMetadataList) {
-      valueChunkMetadataList.add(metadata.loadChunkMetadataList());
-    }
-
-    List<IChunkMetadata> res = new ArrayList<>();
-
-    for (int i = 0; i < timeChunkMetadata.size(); i++) {
-      List<IChunkMetadata> chunkMetadataList = new ArrayList<>();
-      for (List<IChunkMetadata> chunkMetadata : valueChunkMetadataList) {
-        chunkMetadataList.add(chunkMetadata.get(i));
+    if (timeseriesMetadata.getChunkMetadataLoader().isMemChunkMetadataLoader()) {
+      return timeseriesMetadata.loadChunkMetadataList();
+    } else {
+      List<IChunkMetadata> timeChunkMetadata = timeseriesMetadata.loadChunkMetadataList();
+      List<List<IChunkMetadata>> valueChunkMetadataList = new ArrayList<>();
+      for (TimeseriesMetadata metadata : valueTimeseriesMetadataList) {
+        valueChunkMetadataList.add(metadata.loadChunkMetadataList());
       }
-      res.add(new VectorChunkMetadata(timeChunkMetadata.get(i), chunkMetadataList));
-    }
 
-    return res;
+      List<IChunkMetadata> res = new ArrayList<>();
+
+      for (int i = 0; i < timeChunkMetadata.size(); i++) {
+        List<IChunkMetadata> chunkMetadataList = new ArrayList<>();
+        for (List<IChunkMetadata> chunkMetadata : valueChunkMetadataList) {
+          chunkMetadataList.add(chunkMetadata.get(i));
+        }
+        res.add(new VectorChunkMetadata(timeChunkMetadata.get(i), chunkMetadataList));
+      }
+      return res;
+    }
   }
 
   @Override

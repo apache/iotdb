@@ -63,7 +63,6 @@ public class SeriesReaderByTimestampTest {
   public void test() throws IOException, IllegalPathException {
     QueryDataSource dataSource =
         new QueryDataSource(
-            new PartialPath(SERIES_READER_TEST_SG + ".device0.sensor0"),
             seqResources,
             unseqResources);
 

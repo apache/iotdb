@@ -274,7 +274,20 @@ public abstract class AbstractMemTable implements IMemTable {
         measurement, dataType, encoding, chunkCopy, props, curSize, deletionList);
   }
 
+
+  // TODO BY HAONAN HOU
   @Override
+  public ReadOnlyMemChunk query(
+      String deviceId,
+      String measurement,
+      IMeasurementSchema schema,
+      long timeLowerBound,
+      List<TimeRange> deletionList)
+      throws IOException, QueryProcessException, MetadataException {
+    return null;
+  }
+
+    @Override
   public void delete(
       PartialPath originalPath, PartialPath devicePath, long startTimestamp, long endTimestamp) {
     Map<String, IWritableMemChunk> deviceMap = memTableMap.get(devicePath.getFullPath());
