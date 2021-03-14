@@ -35,7 +35,6 @@ import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -151,6 +150,19 @@ public class CMManager extends MManager {
    */
   public static CMManager getInstance() {
     return CMManager.MManagerHolder.INSTANCE;
+  }
+
+  /**
+   * sync meta leader to get the newest partition table and storage groups.
+   *
+   * @throws MetadataException throws MetadataException if necessary
+   */
+  public void syncMetaLeader() throws MetadataException {
+    try {
+      metaGroupMember.syncLeaderWithConsistencyCheck(false);
+    } catch (CheckConsistencyException e) {
+      throw new MetadataException(e);
+    }
   }
 
   @Override
@@ -720,16 +732,12 @@ public class CMManager extends MManager {
               SyncClientAdaptor.getUnregisteredMeasurements(
                   client, partitionGroup.getHeader(), seriesList);
         } else {
-          SyncDataClient syncDataClient = null;
-          try {
-            syncDataClient =
-                metaGroupMember
-                    .getClientProvider()
-                    .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+          try (SyncDataClient syncDataClient =
+              metaGroupMember
+                  .getClientProvider()
+                  .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
             result =
                 syncDataClient.getUnregisteredTimeseries(partitionGroup.getHeader(), seriesList);
-          } finally {
-            ClientUtils.putBackSyncClient(syncDataClient);
           }
         }
         if (result != null) {
@@ -908,12 +916,11 @@ public class CMManager extends MManager {
               .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       schemas = SyncClientAdaptor.pullTimeseriesSchema(client, request);
     } else {
-      SyncDataClient syncDataClient = null;
-      try {
-        syncDataClient =
-            metaGroupMember
-                .getClientProvider()
-                .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+      try (SyncDataClient syncDataClient =
+          metaGroupMember
+              .getClientProvider()
+              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
+
         PullSchemaResp pullSchemaResp = syncDataClient.pullTimeSeriesSchema(request);
         ByteBuffer buffer = pullSchemaResp.schemaBytes;
         int size = buffer.getInt();
@@ -921,8 +928,6 @@ public class CMManager extends MManager {
         for (int i = 0; i < size; i++) {
           schemas.add(TimeseriesSchema.deserializeFrom(buffer));
         }
-      } finally {
-        ClientUtils.putBackSyncClient(syncDataClient);
       }
     }
 
@@ -1028,12 +1033,6 @@ public class CMManager extends MManager {
    * @return all paths after removing wildcards in the path
    */
   public Set<PartialPath> getMatchedDevices(PartialPath originPath) throws MetadataException {
-    // make sure this node knows all storage groups
-    try {
-      metaGroupMember.syncLeaderWithConsistencyCheck(false);
-    } catch (CheckConsistencyException e) {
-      throw new MetadataException(e);
-    }
     // get all storage groups this path may belong to
     // the key is the storage group name and the value is the path to be queried with storage group
     // added, e.g:
@@ -1151,15 +1150,12 @@ public class CMManager extends MManager {
               .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       result = SyncClientAdaptor.getAllPaths(client, header, pathsToQuery, withAlias);
     } else {
-      SyncDataClient syncDataClient = null;
-      try {
-        syncDataClient =
-            metaGroupMember
-                .getClientProvider()
-                .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+      try (SyncDataClient syncDataClient =
+          metaGroupMember
+              .getClientProvider()
+              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
+
         result = syncDataClient.getAllPaths(header, pathsToQuery, withAlias);
-      } finally {
-        ClientUtils.putBackSyncClient(syncDataClient);
       }
     }
 
@@ -1279,15 +1275,12 @@ public class CMManager extends MManager {
               .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       paths = SyncClientAdaptor.getAllDevices(client, header, pathsToQuery);
     } else {
-      SyncDataClient syncDataClient = null;
-      try {
-        syncDataClient =
-            metaGroupMember
-                .getClientProvider()
-                .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+      try (SyncDataClient syncDataClient =
+          metaGroupMember
+              .getClientProvider()
+              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
+
         paths = syncDataClient.getAllDevices(header, pathsToQuery);
-      } finally {
-        ClientUtils.putBackSyncClient(syncDataClient);
       }
     }
     return paths;
@@ -1297,12 +1290,7 @@ public class CMManager extends MManager {
   @Override
   public Pair<List<PartialPath>, Integer> getAllTimeseriesPathWithAlias(
       PartialPath prefixPath, int limit, int offset) throws MetadataException {
-    // make sure this node knows all storage groups
-    try {
-      metaGroupMember.syncLeaderWithConsistencyCheck(false);
-    } catch (CheckConsistencyException e) {
-      throw new MetadataException(e);
-    }
+
     // get all storage groups this path may belong to
     // the key is the storage group name and the value is the path to be queried with storage group
     // added, e.g:
@@ -1335,12 +1323,6 @@ public class CMManager extends MManager {
    * @return all paths after removing wildcards in the path
    */
   public List<PartialPath> getMatchedPaths(PartialPath originPath) throws MetadataException {
-    // make sure this node knows all storage groups
-    try {
-      metaGroupMember.syncLeaderWithConsistencyCheck(false);
-    } catch (CheckConsistencyException e) {
-      throw new MetadataException(e);
-    }
     // get all storage groups this path may belong to
     // the key is the storage group name and the value is the path to be queried with storage group
     // added, e.g:
@@ -1443,7 +1425,11 @@ public class CMManager extends MManager {
    * Replace partial paths (paths not containing measurements), and abstract paths (paths containing
    * wildcards) with full paths.
    */
-  public void convertToFullPaths(PhysicalPlan plan) throws PathNotExistException {
+  public void convertToFullPaths(PhysicalPlan plan)
+      throws PathNotExistException, CheckConsistencyException {
+    // make sure this node knows all storage groups
+    metaGroupMember.syncLeaderWithConsistencyCheck(false);
+
     Pair<List<PartialPath>, List<PartialPath>> getMatchedPathsRet =
         getMatchedPaths(plan.getPaths());
     List<PartialPath> fullPaths = getMatchedPathsRet.left;
@@ -1727,19 +1713,16 @@ public class CMManager extends MManager {
               .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       resultBinary = SyncClientAdaptor.getAllMeasurementSchema(client, group.getHeader(), plan);
     } else {
-      SyncDataClient syncDataClient = null;
       try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-          DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
-        syncDataClient =
-            metaGroupMember
-                .getClientProvider()
-                .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+          DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+          SyncDataClient syncDataClient =
+              metaGroupMember
+                  .getClientProvider()
+                  .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
         plan.serialize(dataOutputStream);
         resultBinary =
             syncDataClient.getAllMeasurementSchema(
                 group.getHeader(), ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
-      } finally {
-        ClientUtils.putBackSyncClient(syncDataClient);
       }
     }
     return resultBinary;
@@ -1755,20 +1738,17 @@ public class CMManager extends MManager {
               .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       resultBinary = SyncClientAdaptor.getDevices(client, group.getHeader(), plan);
     } else {
-      SyncDataClient syncDataClient = null;
       try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-          DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
-        syncDataClient =
-            metaGroupMember
-                .getClientProvider()
-                .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+          DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+          SyncDataClient syncDataClient =
+              metaGroupMember
+                  .getClientProvider()
+                  .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
 
         plan.serialize(dataOutputStream);
         resultBinary =
             syncDataClient.getDevices(
                 group.getHeader(), ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
-      } finally {
-        ClientUtils.putBackSyncClient(syncDataClient);
       }
     }
     return resultBinary;
@@ -1781,6 +1761,8 @@ public class CMManager extends MManager {
     if (withAlias) {
       alias = new ArrayList<>();
     }
+    // make sure this node knows all storage groups
+    syncMetaLeader();
 
     if (withAlias) {
       for (String path : paths) {

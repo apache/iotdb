@@ -38,6 +38,7 @@ import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
+import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -108,7 +109,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
         client.getInputProtocol().getTransport().close();
         throw e;
       } finally {
-        putBackSyncClient(client);
+        ClientUtils.putBackSyncClient(client);
       }
       return pullSnapshotResp;
     } else {
@@ -136,7 +137,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
         client.getInputProtocol().getTransport().close();
         throw te;
       } finally {
-        putBackSyncClient(client);
+        ClientUtils.putBackSyncClient(client);
       }
       return pullSchemaResp;
     } catch (MetadataException e) {
@@ -164,7 +165,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
         client.getInputProtocol().getTransport().close();
         throw te;
       } finally {
-        putBackSyncClient(client);
+        ClientUtils.putBackSyncClient(client);
       }
       return pullSchemaResp;
     } catch (IllegalPathException e) {
