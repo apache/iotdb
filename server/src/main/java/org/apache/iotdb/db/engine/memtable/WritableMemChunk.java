@@ -90,6 +90,10 @@ public class WritableMemChunk implements IWritableMemChunk {
         Binary[] binaryValues = (Binary[]) valueList;
         putBinaries(times, binaryValues, start, end);
         break;
+      case VECTOR:
+        Object[][] vectorValues = (Object[][]) valueList;
+        putVectors(times, vectorValues, start, end);
+        break;
       default:
         throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
     }

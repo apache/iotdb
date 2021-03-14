@@ -195,25 +195,32 @@ public class MemTableFlushTask {
               case VECTOR:
                 VectorTVList vectorTVPairs = (VectorTVList) tvPairs;
                 List<TSDataType> dataTypes = vectorTVPairs.getTsDataTypes();
+                int index = vectorTVPairs.getValueIndex(i);
                 for (int j = 0; j < dataTypes.size(); j++) {
                   switch (dataTypes.get(j)) {
                     case BOOLEAN:
-                      seriesWriterImpl.write(time, vectorTVPairs.getBoolean(i, j), false);
+                      seriesWriterImpl.write(
+                          time, vectorTVPairs.getBooleanByValueIndex(index, j), false);
                       break;
                     case INT32:
-                      seriesWriterImpl.write(time, vectorTVPairs.getInt(i, j), false);
+                      seriesWriterImpl.write(
+                          time, vectorTVPairs.getIntByValueIndex(index, j), false);
                       break;
                     case INT64:
-                      seriesWriterImpl.write(time, vectorTVPairs.getLong(i, j), false);
+                      seriesWriterImpl.write(
+                          time, vectorTVPairs.getLongByValueIndex(index, j), false);
                       break;
                     case FLOAT:
-                      seriesWriterImpl.write(time, vectorTVPairs.getFloat(i, j), false);
+                      seriesWriterImpl.write(
+                          time, vectorTVPairs.getFloatByValueIndex(index, j), false);
                       break;
                     case DOUBLE:
-                      seriesWriterImpl.write(time, vectorTVPairs.getDouble(i, j), false);
+                      seriesWriterImpl.write(
+                          time, vectorTVPairs.getDoubleByValueIndex(index, j), false);
                       break;
                     case TEXT:
-                      seriesWriterImpl.write(time, vectorTVPairs.getBinary(i, j), false);
+                      seriesWriterImpl.write(
+                          time, vectorTVPairs.getBinaryByValueIndex(index, j), false);
                       break;
                     default:
                       LOGGER.error(

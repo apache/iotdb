@@ -160,7 +160,7 @@ public class VectorTVList extends TVList {
     return getIntByValueIndex(valueIndex, column);
   }
 
-  private int getIntByValueIndex(int valueIndex, int column) {
+  public int getIntByValueIndex(int valueIndex, int column) {
     if (valueIndex >= size) {
       throw new ArrayIndexOutOfBoundsException(valueIndex);
     }
@@ -180,7 +180,7 @@ public class VectorTVList extends TVList {
     return getLongByValueIndex(valueIndex, column);
   }
 
-  private long getLongByValueIndex(int valueIndex, int column) {
+  public long getLongByValueIndex(int valueIndex, int column) {
     if (valueIndex >= size) {
       throw new ArrayIndexOutOfBoundsException(valueIndex);
     }
@@ -200,7 +200,7 @@ public class VectorTVList extends TVList {
     return getFloatByValueIndex(valueIndex, column);
   }
 
-  private float getFloatByValueIndex(int valueIndex, int column) {
+  public float getFloatByValueIndex(int valueIndex, int column) {
     if (valueIndex >= size) {
       throw new ArrayIndexOutOfBoundsException(valueIndex);
     }
@@ -220,7 +220,7 @@ public class VectorTVList extends TVList {
     return getDoubleByValueIndex(valueIndex, column);
   }
 
-  private double getDoubleByValueIndex(int valueIndex, int column) {
+  public double getDoubleByValueIndex(int valueIndex, int column) {
     if (valueIndex >= size) {
       throw new ArrayIndexOutOfBoundsException(valueIndex);
     }
@@ -240,7 +240,7 @@ public class VectorTVList extends TVList {
     return getBinaryByValueIndex(valueIndex, column);
   }
 
-  private Binary getBinaryByValueIndex(int valueIndex, int column) {
+  public Binary getBinaryByValueIndex(int valueIndex, int column) {
     if (valueIndex >= size) {
       throw new ArrayIndexOutOfBoundsException(valueIndex);
     }
@@ -260,7 +260,7 @@ public class VectorTVList extends TVList {
     return getBooleanByValueIndex(valueIndex, column);
   }
 
-  private boolean getBooleanByValueIndex(int valueIndex, int column) {
+  public boolean getBooleanByValueIndex(int valueIndex, int column) {
     if (valueIndex >= size) {
       throw new ArrayIndexOutOfBoundsException(valueIndex);
     }
