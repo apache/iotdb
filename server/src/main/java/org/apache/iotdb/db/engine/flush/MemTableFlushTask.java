@@ -281,8 +281,7 @@ public class MemTableFlushTask {
               IChunkWriter seriesWriter;
               if (encodingMessage.left.getDataType() == TSDataType.VECTOR) {
                 seriesWriter = new VectorChunkWriterImpl(encodingMessage.right);
-              }
-              else {
+              } else {
                 seriesWriter = new ChunkWriterImpl(encodingMessage.right);
               }
               writeOneSeries(encodingMessage.left, seriesWriter, encodingMessage.right.getType());

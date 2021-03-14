@@ -18,9 +18,6 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
@@ -32,6 +29,9 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class MemTableTestUtils {
 
@@ -68,8 +68,7 @@ public class MemTableTestUtils {
     }
   }
 
-  public static void produceVectorData(
-      IMemTable iMemTable) throws IllegalPathException {
+  public static void produceVectorData(IMemTable iMemTable) throws IllegalPathException {
     iMemTable.write(genInsertTablePlan(), 0, 100);
   }
 
@@ -90,12 +89,13 @@ public class MemTableTestUtils {
     encodings[1] = TSEncoding.GORILLA;
 
     MeasurementMNode[] mNodes = new MeasurementMNode[2];
-    IMeasurementSchema schema =  new VectorMeasurementSchema(measurements, dataTypes, encodings);
+    IMeasurementSchema schema = new VectorMeasurementSchema(measurements, dataTypes, encodings);
     mNodes[0] = new MeasurementMNode(null, "sensor0", schema, null);
     mNodes[1] = new MeasurementMNode(null, "sensor1", schema, null);
 
     InsertTabletPlan insertTabletPlan =
-        new InsertTabletPlan(new PartialPath(deviceId0), measurements, dataTypesList);
+        new InsertTabletPlan(
+            new PartialPath(deviceId0), new String[] {"(sensor0,sensor1)"}, dataTypesList);
 
     long[] times = new long[100];
     Object[] columns = new Object[2];

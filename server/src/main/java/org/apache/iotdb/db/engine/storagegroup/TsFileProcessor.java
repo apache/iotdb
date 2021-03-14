@@ -62,6 +62,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.slf4j.Logger;
@@ -327,15 +328,30 @@ public class TsFileProcessor {
     String deviceId = insertTabletPlan.getDeviceId().getFullPath();
     long unsealedResourceIncrement = tsFileResource.estimateRamIncrement(deviceId);
 
-    for (int i = 0; i < insertTabletPlan.getDataTypes().length; i++) {
-      // skip failed Measurements
-      TSDataType dataType = insertTabletPlan.getDataTypes()[i];
-      String measurement = insertTabletPlan.getMeasurements()[i];
-      Object column = insertTabletPlan.getColumns()[i];
-      if (dataType == null || column == null || measurement == null) {
-        continue;
+    int columnCount = 0;
+    for (int i = 0; i < insertTabletPlan.getMeasurementMNodes().length; i++) {
+      // for aligned timeseries
+      if (insertTabletPlan.getMeasurementMNodes()[i].getSchema().getType() == TSDataType.VECTOR) {
+        VectorMeasurementSchema vectorSchema =
+            (VectorMeasurementSchema) insertTabletPlan.getMeasurementMNodes()[i].getSchema();
+        Object[] columns = new Object[vectorSchema.getValueMeasurementIdList().size()];
+        for (int j = 0; j < vectorSchema.getValueMeasurementIdList().size(); j++) {
+          columns[j] = insertTabletPlan.getColumns()[columnCount++];
+        }
+        updateVectorMemCost(vectorSchema, deviceId, start, end, memIncrements, columns);
       }
-      updateMemCost(dataType, measurement, deviceId, start, end, memIncrements, column);
+      // for non aligned
+      else {
+        // skip failed Measurements
+        TSDataType dataType = insertTabletPlan.getDataTypes()[columnCount];
+        String measurement = insertTabletPlan.getMeasurements()[i];
+        Object column = insertTabletPlan.getColumns()[columnCount];
+        columnCount++;
+        if (dataType == null || column == null || measurement == null) {
+          continue;
+        }
+        updateMemCost(dataType, measurement, deviceId, start, end, memIncrements, column);
+      }
     }
     long memTableIncrement = memIncrements[0];
     long textDataIncrement = memIncrements[1];
@@ -378,6 +394,49 @@ public class TsFileProcessor {
     if (dataType == TSDataType.TEXT) {
       Binary[] binColumn = (Binary[]) column;
       memIncrements[1] += MemUtils.getBinaryColumnSize(binColumn, start, end);
+    }
+  }
+
+  private void updateVectorMemCost(
+      VectorMeasurementSchema vectorSchema,
+      String deviceId,
+      int start,
+      int end,
+      long[] memIncrements,
+      Object[] columns) {
+    // memIncrements = [memTable, text, chunk metadata] respectively
+
+    List<String> measurementIds = vectorSchema.getValueMeasurementIdList();
+    List<TSDataType> dataTypes = vectorSchema.getValueTSDataTypeList();
+    if (workMemTable.checkIfChunkDoesNotExist(deviceId, measurementIds.get(0))) {
+      // ChunkMetadataIncrement
+      memIncrements[2] +=
+          dataTypes.size()
+              * ChunkMetadata.calculateRamSize(measurementIds.get(0), dataTypes.get(0));
+      memIncrements[0] +=
+          ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
+              * TVList.vectorTVListArrayMemSize(dataTypes);
+    } else {
+      int currentChunkPointNum =
+          workMemTable.getCurrentChunkPointNum(deviceId, measurementIds.get(0));
+      if (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE == 0) {
+        memIncrements[0] +=
+            ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
+                * TVList.vectorTVListArrayMemSize(dataTypes);
+      } else {
+        int acquireArray =
+            (end - start - 1 + (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE))
+                / PrimitiveArrayManager.ARRAY_SIZE;
+        memIncrements[0] +=
+            acquireArray == 0 ? 0 : acquireArray * TVList.vectorTVListArrayMemSize(dataTypes);
+      }
+    }
+    // TEXT data size
+    for (int i = 0; i < dataTypes.size(); i++) {
+      if (dataTypes.get(i) == TSDataType.TEXT) {
+        Binary[] binColumn = (Binary[]) columns[i];
+        memIncrements[1] += MemUtils.getBinaryColumnSize(binColumn, start, end);
+      }
     }
   }
 

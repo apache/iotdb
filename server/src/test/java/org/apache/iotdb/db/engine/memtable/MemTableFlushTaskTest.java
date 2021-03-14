@@ -58,7 +58,7 @@ public class MemTableFlushTaskTest {
 
   @After
   public void tearDown() throws Exception {
-//    writer.close();
+    //    writer.close();
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.cleanDir(TestConstant.OUTPUT_DATA_DIR);
   }
@@ -105,32 +105,24 @@ public class MemTableFlushTaskTest {
   }
 
   @Test
-  public void testFlushVectorMemTable() throws ExecutionException, InterruptedException, IllegalPathException, IOException {
+  public void testFlushVectorMemTable()
+      throws ExecutionException, InterruptedException, IllegalPathException, IOException {
     MemTableTestUtils.produceVectorData(memTable);
     MemTableFlushTask memTableFlushTask = new MemTableFlushTask(memTable, writer, storageGroup);
     assertTrue(
         writer
-            .getVisibleMetadataList(
-                MemTableTestUtils.deviceId0,
-                "sensor0",
-                TSDataType.BOOLEAN)
+            .getVisibleMetadataList(MemTableTestUtils.deviceId0, "sensor0", TSDataType.BOOLEAN)
             .isEmpty());
     memTableFlushTask.syncFlushMemTable();
     writer.makeMetadataVisible();
     assertEquals(
         1,
         writer
-            .getVisibleMetadataList(
-                MemTableTestUtils.deviceId0,
-                "sensor0",
-                TSDataType.BOOLEAN)
+            .getVisibleMetadataList(MemTableTestUtils.deviceId0, "sensor0", TSDataType.BOOLEAN)
             .size());
     ChunkMetadata chunkMetaData =
         writer
-            .getVisibleMetadataList(
-                MemTableTestUtils.deviceId0,
-                "sensor0",
-                TSDataType.BOOLEAN)
+            .getVisibleMetadataList(MemTableTestUtils.deviceId0, "sensor0", TSDataType.BOOLEAN)
             .get(0);
     assertEquals("sensor0", chunkMetaData.getMeasurementUid());
     assertEquals(startTime, chunkMetaData.getStartTime());

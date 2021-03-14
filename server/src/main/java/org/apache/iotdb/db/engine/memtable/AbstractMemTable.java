@@ -173,6 +173,7 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public void write(InsertTabletPlan insertTabletPlan, int start, int end) {
+    int columnCount = 0;
     updatePlanIndexes(insertTabletPlan.getIndex());
     for (int i = 0; i < insertTabletPlan.getMeasurements().length; i++) {
       if (insertTabletPlan.getColumns()[i] == null) {
@@ -187,23 +188,17 @@ public abstract class AbstractMemTable implements IMemTable {
             (VectorMeasurementSchema) insertTabletPlan.getMeasurementMNodes()[i].getSchema();
         Object[] columns = new Object[vectorSchema.getValueMeasurementIdList().size()];
         for (int j = 0; j < vectorSchema.getValueMeasurementIdList().size(); j++) {
-          columns[j] = insertTabletPlan.getColumns()[i + j];
+          columns[j] = insertTabletPlan.getColumns()[columnCount++];
         }
+        memSeries.write(insertTabletPlan.getTimes(), columns, TSDataType.VECTOR, start, end);
+      } else {
         memSeries.write(
             insertTabletPlan.getTimes(),
-            columns,
-            TSDataType.VECTOR,
+            insertTabletPlan.getColumns()[columnCount],
+            insertTabletPlan.getDataTypes()[columnCount],
             start,
             end);
-        i += vectorSchema.getValueMeasurementIdList().size() - 1;
-      }
-      else {
-        memSeries.write(
-            insertTabletPlan.getTimes(),
-            insertTabletPlan.getColumns()[i],
-            insertTabletPlan.getDataTypes()[i],
-            start,
-            end);
+        columnCount++;
       }
     }
   }

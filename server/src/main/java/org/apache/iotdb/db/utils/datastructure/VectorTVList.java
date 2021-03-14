@@ -227,7 +227,7 @@ public class VectorTVList extends TVList {
     int arrayIndex = valueIndex / ARRAY_SIZE;
     int elementIndex = valueIndex % ARRAY_SIZE;
     List<Object> columnValues = values.get(column);
-    return ((Double[]) columnValues.get(arrayIndex))[elementIndex];
+    return ((double[]) columnValues.get(arrayIndex))[elementIndex];
   }
 
   public Binary getBinary(int index, int column) {
