@@ -185,8 +185,17 @@ public abstract class AbstractMemTable implements IMemTable {
       if (insertTabletPlan.getMeasurementMNodes()[i].getSchema().getType() == TSDataType.VECTOR) {
         VectorMeasurementSchema vectorSchema =
             (VectorMeasurementSchema) insertTabletPlan.getMeasurementMNodes()[i].getSchema();
+        Object[] columns = new Object[vectorSchema.getValueMeasurementIdList().size()];
+        for (int j = 0; j < vectorSchema.getValueMeasurementIdList().size(); j++) {
+          columns[j] = insertTabletPlan.getColumns()[i + j];
+        }
+        memSeries.write(
+            insertTabletPlan.getTimes(),
+            columns,
+            TSDataType.VECTOR,
+            start,
+            end);
         i += vectorSchema.getValueMeasurementIdList().size() - 1;
-        
       }
       else {
         memSeries.write(

@@ -32,6 +32,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 
 import static org.junit.Assert.assertEquals;
@@ -57,7 +58,7 @@ public class MemTableFlushTaskTest {
 
   @After
   public void tearDown() throws Exception {
-    writer.close();
+//    writer.close();
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.cleanDir(TestConstant.OUTPUT_DATA_DIR);
   }
@@ -104,7 +105,7 @@ public class MemTableFlushTaskTest {
   }
 
   @Test
-  public void testFlushVectorMemTable() throws ExecutionException, InterruptedException, IllegalPathException {
+  public void testFlushVectorMemTable() throws ExecutionException, InterruptedException, IllegalPathException, IOException {
     MemTableTestUtils.produceVectorData(memTable);
     MemTableFlushTask memTableFlushTask = new MemTableFlushTask(memTable, writer, storageGroup);
     assertTrue(
@@ -117,7 +118,7 @@ public class MemTableFlushTaskTest {
     memTableFlushTask.syncFlushMemTable();
     writer.makeMetadataVisible();
     assertEquals(
-        false,
+        1,
         writer
             .getVisibleMetadataList(
                 MemTableTestUtils.deviceId0,

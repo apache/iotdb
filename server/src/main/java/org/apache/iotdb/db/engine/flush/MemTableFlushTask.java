@@ -31,6 +31,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
+import org.apache.iotdb.tsfile.write.chunk.VectorChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
@@ -169,7 +170,7 @@ public class MemTableFlushTask {
             }
 
             // store last point for SDT
-            if (i + 1 == tvPairs.size()) {
+            if (dataType != TSDataType.VECTOR && i + 1 == tvPairs.size()) {
               ((ChunkWriterImpl) seriesWriterImpl).setLastPoint(true);
             }
 
@@ -277,7 +278,13 @@ public class MemTableFlushTask {
               long starTime = System.currentTimeMillis();
               Pair<TVList, IMeasurementSchema> encodingMessage =
                   (Pair<TVList, IMeasurementSchema>) task;
-              IChunkWriter seriesWriter = new ChunkWriterImpl(encodingMessage.right);
+              IChunkWriter seriesWriter;
+              if (encodingMessage.left.getDataType() == TSDataType.VECTOR) {
+                seriesWriter = new VectorChunkWriterImpl(encodingMessage.right);
+              }
+              else {
+                seriesWriter = new ChunkWriterImpl(encodingMessage.right);
+              }
               writeOneSeries(encodingMessage.left, seriesWriter, encodingMessage.right.getType());
               seriesWriter.sealCurrentPage();
               seriesWriter.clearPageWriter();
@@ -327,8 +334,11 @@ public class MemTableFlushTask {
               this.writer.startChunkGroup(((StartFlushGroupIOTask) ioMessage).deviceId);
             } else if (ioMessage instanceof TaskEnd) {
               break;
-            } else if (ioMessage instanceof IChunkWriter) {
+            } else if (ioMessage instanceof ChunkWriterImpl) {
               ChunkWriterImpl chunkWriter = (ChunkWriterImpl) ioMessage;
+              chunkWriter.writeToFileWriter(this.writer);
+            } else if (ioMessage instanceof VectorChunkWriterImpl) {
+              VectorChunkWriterImpl chunkWriter = (VectorChunkWriterImpl) ioMessage;
               chunkWriter.writeToFileWriter(this.writer);
             } else {
               this.writer.setMinPlanIndex(memTable.getMinPlanIndex());

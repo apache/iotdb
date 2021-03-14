@@ -261,11 +261,6 @@ public class PrimitiveMemTableTest {
                   rand.nextLong(),
                   TsPrimitiveType.getByType(dataType, new Binary("a" + rand.nextDouble())));
           break;
-        case VECTOR:
-          TsPrimitiveType[] values = new TsPrimitiveType[1];
-          values[0] = TsPrimitiveType.getByType(TSDataType.INT32, rand.nextInt());
-          ret[i] = new TimeValuePair(rand.nextLong(), TsPrimitiveType.getByType(dataType, values));
-          break;
         default:
           throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
       }
