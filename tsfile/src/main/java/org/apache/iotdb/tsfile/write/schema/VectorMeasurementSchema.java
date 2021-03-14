@@ -318,10 +318,7 @@ public class VectorMeasurementSchema
           TSDataType.deserialize(types[i]).toString(),
           ",",
           TSEncoding.deserialize(encodings[i]).toString());
-      sc.addTail("]");
-      if (i != measurements.length - 1) {
-        sc.addTail(", ");
-      }
+      sc.addTail("],");
     }
     sc.addTail(CompressionType.deserialize(compressor).toString());
     return sc.toString();
