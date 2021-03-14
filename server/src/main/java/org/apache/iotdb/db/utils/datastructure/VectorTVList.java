@@ -150,6 +150,126 @@ public class VectorTVList extends TVList {
     return TsPrimitiveType.getByType(TSDataType.VECTOR, vector);
   }
 
+  public int getInt(int index, int column) {
+    if (index >= size) {
+      throw new ArrayIndexOutOfBoundsException(index);
+    }
+    int arrayIndex = index / ARRAY_SIZE;
+    int elementIndex = index % ARRAY_SIZE;
+    int valueIndex = indices.get(arrayIndex)[elementIndex];
+    return getIntByValueIndex(valueIndex, column);
+  }
+
+  private int getIntByValueIndex(int valueIndex, int column) {
+    if (valueIndex >= size) {
+      throw new ArrayIndexOutOfBoundsException(valueIndex);
+    }
+    int arrayIndex = valueIndex / ARRAY_SIZE;
+    int elementIndex = valueIndex % ARRAY_SIZE;
+    List<Object> columnValues = values.get(column);
+    return ((int[]) columnValues.get(arrayIndex))[elementIndex];
+  }
+
+  public long getLong(int index, int column) {
+    if (index >= size) {
+      throw new ArrayIndexOutOfBoundsException(index);
+    }
+    int arrayIndex = index / ARRAY_SIZE;
+    int elementIndex = index % ARRAY_SIZE;
+    int valueIndex = indices.get(arrayIndex)[elementIndex];
+    return getLongByValueIndex(valueIndex, column);
+  }
+
+  private long getLongByValueIndex(int valueIndex, int column) {
+    if (valueIndex >= size) {
+      throw new ArrayIndexOutOfBoundsException(valueIndex);
+    }
+    int arrayIndex = valueIndex / ARRAY_SIZE;
+    int elementIndex = valueIndex % ARRAY_SIZE;
+    List<Object> columnValues = values.get(column);
+    return ((long[]) columnValues.get(arrayIndex))[elementIndex];
+  }
+
+  public float getFloat(int index, int column) {
+    if (index >= size) {
+      throw new ArrayIndexOutOfBoundsException(index);
+    }
+    int arrayIndex = index / ARRAY_SIZE;
+    int elementIndex = index % ARRAY_SIZE;
+    int valueIndex = indices.get(arrayIndex)[elementIndex];
+    return getFloatByValueIndex(valueIndex, column);
+  }
+
+  private float getFloatByValueIndex(int valueIndex, int column) {
+    if (valueIndex >= size) {
+      throw new ArrayIndexOutOfBoundsException(valueIndex);
+    }
+    int arrayIndex = valueIndex / ARRAY_SIZE;
+    int elementIndex = valueIndex % ARRAY_SIZE;
+    List<Object> columnValues = values.get(column);
+    return ((float[]) columnValues.get(arrayIndex))[elementIndex];
+  }
+
+  public double getDouble(int index, int column) {
+    if (index >= size) {
+      throw new ArrayIndexOutOfBoundsException(index);
+    }
+    int arrayIndex = index / ARRAY_SIZE;
+    int elementIndex = index % ARRAY_SIZE;
+    int valueIndex = indices.get(arrayIndex)[elementIndex];
+    return getDoubleByValueIndex(valueIndex, column);
+  }
+
+  private double getDoubleByValueIndex(int valueIndex, int column) {
+    if (valueIndex >= size) {
+      throw new ArrayIndexOutOfBoundsException(valueIndex);
+    }
+    int arrayIndex = valueIndex / ARRAY_SIZE;
+    int elementIndex = valueIndex % ARRAY_SIZE;
+    List<Object> columnValues = values.get(column);
+    return ((Double[]) columnValues.get(arrayIndex))[elementIndex];
+  }
+
+  public Binary getBinary(int index, int column) {
+    if (index >= size) {
+      throw new ArrayIndexOutOfBoundsException(index);
+    }
+    int arrayIndex = index / ARRAY_SIZE;
+    int elementIndex = index % ARRAY_SIZE;
+    int valueIndex = indices.get(arrayIndex)[elementIndex];
+    return getBinaryByValueIndex(valueIndex, column);
+  }
+
+  private Binary getBinaryByValueIndex(int valueIndex, int column) {
+    if (valueIndex >= size) {
+      throw new ArrayIndexOutOfBoundsException(valueIndex);
+    }
+    int arrayIndex = valueIndex / ARRAY_SIZE;
+    int elementIndex = valueIndex % ARRAY_SIZE;
+    List<Object> columnValues = values.get(column);
+    return ((Binary[]) columnValues.get(arrayIndex))[elementIndex];
+  }
+
+  public boolean getBoolean(int index, int column) {
+    if (index >= size) {
+      throw new ArrayIndexOutOfBoundsException(index);
+    }
+    int arrayIndex = index / ARRAY_SIZE;
+    int elementIndex = index % ARRAY_SIZE;
+    int valueIndex = indices.get(arrayIndex)[elementIndex];
+    return getBooleanByValueIndex(valueIndex, column);
+  }
+
+  private boolean getBooleanByValueIndex(int valueIndex, int column) {
+    if (valueIndex >= size) {
+      throw new ArrayIndexOutOfBoundsException(valueIndex);
+    }
+    int arrayIndex = valueIndex / ARRAY_SIZE;
+    int elementIndex = valueIndex % ARRAY_SIZE;
+    List<Object> columnValues = values.get(column);
+    return ((boolean[]) columnValues.get(arrayIndex))[elementIndex];
+  }
+
   public List<List<Object>> getValues() {
     return values;
   }
@@ -334,7 +454,7 @@ public class VectorTVList extends TVList {
   @Override
   protected TimeValuePair getTimeValuePair(
       int index, long time, Integer floatPrecision, TSEncoding encoding) {
-    return new TimeValuePair(time, TsPrimitiveType.getByType(TSDataType.VECTOR, getBinary(index)));
+    return new TimeValuePair(time, TsPrimitiveType.getByType(TSDataType.VECTOR, getVector(index)));
   }
 
   @Override
