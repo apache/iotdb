@@ -18,28 +18,6 @@
  */
 package org.apache.iotdb.db.service;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.sql.SQLException;
-import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Calendar;
-import java.util.Collections;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
-import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
@@ -87,6 +65,7 @@ import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.UDFPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
@@ -113,6 +92,7 @@ import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
+import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateDeviceTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
@@ -149,10 +129,34 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.thrift.TException;
 import org.apache.thrift.server.ServerContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.sql.SQLException;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 /** Thrift RPC implementation at server side. */
 public class TSServiceImpl implements TSIService.Iface, ServerContext {
@@ -582,7 +586,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
               req.statementId,
               physicalPlan,
               req.fetchSize,
-              config.getQueryTimeThreshold(),
+              config.getQueryTimeoutThreshold(),
               sessionIdUsernameMap.get(req.getSessionId()))
           : RpcUtils.getTSExecuteStatementResp(
               TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement.");
@@ -1578,6 +1582,58 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, "creating timeseries", TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    }
+  }
+
+  @Override
+  public TSStatus createAlignedTimeseries(TSCreateAlignedTimeseriesReq req) {
+    try {
+      if (!checkLogin(req.getSessionId())) {
+        return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
+      }
+
+      // if measurements.size() == 1, convert to create timeseries
+      if (req.measurements.size() == 1) {
+        return createTimeseries(
+            new TSCreateTimeseriesReq(
+                req.sessionId,
+                req.devicePath + "." + req.measurements.get(0),
+                req.dataTypes.get(0),
+                req.encodings.get(0),
+                req.compressor));
+      }
+
+      if (AUDIT_LOGGER.isDebugEnabled()) {
+        AUDIT_LOGGER.debug(
+            "Session-{} create aligned timeseries {}.{}",
+            currSessionId.get(),
+            req.getDevicePath(),
+            req.getMeasurements());
+      }
+
+      List<TSDataType> dataTypes = new ArrayList<>();
+      for (int dataType : req.dataTypes) {
+        dataTypes.add(TSDataType.values()[dataType]);
+      }
+      List<TSEncoding> encodings = new ArrayList<>();
+      for (int encoding : req.encodings) {
+        encodings.add(TSEncoding.values()[encoding]);
+      }
+
+      CreateAlignedTimeSeriesPlan plan =
+          new CreateAlignedTimeSeriesPlan(
+              new PartialPath(req.devicePath),
+              req.measurements,
+              dataTypes,
+              encodings,
+              CompressionType.values()[req.compressor],
+              req.measurementAlias);
+
+      TSStatus status = checkAuthority(plan, req.getSessionId());
+      return status != null ? status : executeNonQueryPlan(plan);
+    } catch (Exception e) {
+      return onNPEOrUnexpectedException(
+          e, "creating aligned timeseries", TSStatusCode.EXECUTE_STATEMENT_ERROR);
     }
   }
 

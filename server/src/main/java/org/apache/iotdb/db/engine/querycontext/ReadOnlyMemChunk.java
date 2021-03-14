@@ -124,6 +124,9 @@ public class ReadOnlyMemChunk {
           case DOUBLE:
             statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getDouble());
             break;
+          case VECTOR:
+            statsByType.update(timeValuePair.getTimestamp());
+            break;
           default:
             throw new QueryProcessException("Unsupported data type:" + dataType);
         }
