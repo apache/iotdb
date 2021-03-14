@@ -68,19 +68,13 @@ public class LastValueDescAggrResult extends LastValueAggrResult {
     if (hasFinalResult()) {
       return;
     }
-    long time = Long.MIN_VALUE;
-    Object lastVal = null;
     Object[] values = dataReader.getValuesInTimestamps(timestamps, length);
     for (int i = 0; i < length; i++) {
       if (values[i] != null) {
-        time = timestamps[i];
-        lastVal = values[i];
-        break;
+        timestamp = timestamps[i];
+        setValue(values[i]);
+        return;
       }
-    }
-    if (time != Long.MIN_VALUE) {
-      setValue(lastVal);
-      timestamp = time;
     }
   }
 

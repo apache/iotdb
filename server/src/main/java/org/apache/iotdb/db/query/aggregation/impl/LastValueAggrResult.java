@@ -85,18 +85,13 @@ public class LastValueAggrResult extends AggregateResult {
   @Override
   public void updateResultUsingTimestamps(
       long[] timestamps, int length, IReaderByTimestamp dataReader) throws IOException {
-    long time = Long.MIN_VALUE;
-    Object lastVal = null;
     Object[] values = dataReader.getValuesInTimestamps(timestamps, length);
-    for (int i = 0; i < length; i++) {
+    for (int i = length - 1; i >= 0; i--) {
       if (values[i] != null) {
-        time = timestamps[i];
-        lastVal = values[i];
+        timestamp = timestamps[i];
+        setValue(values[i]);
+        return;
       }
-    }
-    if (time != Long.MIN_VALUE) {
-      setValue(lastVal);
-      timestamp = time;
     }
   }
 

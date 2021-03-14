@@ -83,7 +83,6 @@ public class RemoteSeriesReaderByTimestampTest {
                           ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
                           DataOutputStream dataOutputStream =
                               new DataOutputStream(byteArrayOutputStream);
-                          boolean isNull = true;
                           Object[] results = new Object[timestamps.size()];
                           for (int i = 0; i < timestamps.size(); i++) {
                             while (batchData.hasCurrent()) {
@@ -91,7 +90,6 @@ public class RemoteSeriesReaderByTimestampTest {
                               if (currentTime == timestamps.get(i)) {
                                 results[i] = batchData.currentValue();
                                 batchData.next();
-                                isNull = false;
                                 break;
                               } else if (currentTime > timestamps.get(i)) {
                                 results[i] = null;
@@ -101,8 +99,7 @@ public class RemoteSeriesReaderByTimestampTest {
                               batchData.next();
                             }
                           }
-                          SerializeUtils.serializeObjects(
-                              isNull ? new Object[0] : results, dataOutputStream);
+                          SerializeUtils.serializeObjects(results, dataOutputStream);
 
                           resultHandler.onComplete(
                               ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
@@ -158,7 +155,7 @@ public class RemoteSeriesReaderByTimestampTest {
         assertEquals(i * 1.0, results[i]);
       }
       times[0] = 101;
-      assertEquals(0, reader.getValuesInTimestamps(times, 1).length);
+      assertEquals(null, reader.getValuesInTimestamps(times, 1)[0]);
     } finally {
       QueryResourceManager.getInstance().endQuery(context.getQueryId());
     }

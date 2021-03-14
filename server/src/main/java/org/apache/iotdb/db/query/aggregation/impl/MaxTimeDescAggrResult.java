@@ -52,17 +52,12 @@ public class MaxTimeDescAggrResult extends MaxTimeAggrResult {
     if (hasFinalResult()) {
       return;
     }
-    long time = -1;
     Object[] values = dataReader.getValuesInTimestamps(timestamps, length);
     for (int i = 0; i < length; i++) {
       if (values[i] != null) {
-        time = timestamps[i];
-        break;
+        updateMaxTimeResult(timestamps[i]);
+        return;
       }
-    }
-
-    if (time != -1) {
-      updateMaxTimeResult(time);
     }
   }
 

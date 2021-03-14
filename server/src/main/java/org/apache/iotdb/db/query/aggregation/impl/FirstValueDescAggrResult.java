@@ -54,10 +54,11 @@ public class FirstValueDescAggrResult extends FirstValueAggrResult {
   public void updateResultUsingTimestamps(
       long[] timestamps, int length, IReaderByTimestamp dataReader) throws IOException {
     Object[] values = dataReader.getValuesInTimestamps(timestamps, length);
-    for (int i = 0; i < length; i++) {
+    for (int i = length - 1; i >= 0; i--) {
       if (values[i] != null) {
         setValue(values[i]);
         timestamp = timestamps[i];
+        return;
       }
     }
   }
