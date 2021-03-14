@@ -18,32 +18,6 @@
  */
 package org.apache.iotdb.db.metadata;
 
-import static java.util.stream.Collectors.toList;
-import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -103,6 +77,7 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -1953,6 +1928,9 @@ public class MManager {
 
     // 1. get device node
     Pair<MNode, Template> deviceMNode = getDeviceNodeWithAutoCreate(deviceId);
+    if (deviceMNode.left.getDeviceTemplate() != null) {
+      deviceMNode.right = deviceMNode.left.getDeviceTemplate();
+    }
 
     // 2. get schema of each measurement
     // if do not have measurement
@@ -1966,6 +1944,8 @@ public class MManager {
           measurementMNode = (MeasurementMNode) child;
         } else if (child instanceof StorageGroupMNode) {
           throw new PathAlreadyExistException(deviceId + PATH_SEPARATOR + measurementList[i]);
+        } else if ((measurementMNode = findTemplate(deviceMNode, measurementList[i])) != null) {
+          // empty
         } else {
           if (!config.isAutoCreateSchemaEnabled()) {
             throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurementList[i]);
@@ -1986,12 +1966,14 @@ public class MManager {
                     deviceId.concatNode(measurementList[i]), plan.getDataTypes()[loc]);
                 measurementMNode = (MeasurementMNode) deviceMNode.left.getChild(measurementList[i]);
               } else {
+                int curLoc = loc;
                 for (int j = 0; j < measurements.size(); j++) {
-                  dataTypes.add(plan.getDataTypes()[loc]);
-                  loc++;
+                  dataTypes.add(plan.getDataTypes()[curLoc]);
+                  curLoc++;
                 }
                 internalAlignedCreateTimeseries(deviceId, measurements, dataTypes);
-                measurementMNode = (MeasurementMNode) deviceMNode.left.getChild(measurements.get(0));
+                measurementMNode =
+                    (MeasurementMNode) deviceMNode.left.getChild(measurements.get(0));
               }
             } else {
               throw new MetadataException(
@@ -2015,7 +1997,6 @@ public class MManager {
           mismatch = measurementMNode.getSchema().getType() != insertDataType;
         } else if (plan instanceof InsertTabletPlan) {
           int measurementSize = measurementList[i].split(",").length;
-          loc -= measurementSize;
           if (measurementSize == 1) {
             insertDataType = measurementMNode.getSchema().getType();
             mismatch = measurementMNode.getSchema().getType() != insertDataType;
@@ -2076,6 +2057,26 @@ public class MManager {
 
   public MNode getMNode(MNode deviceMNode, String measurementName) {
     return deviceMNode.getChild(measurementName);
+  }
+
+  private MeasurementMNode findTemplate(Pair<MNode, Template> deviceMNode, String measurement) {
+    if (deviceMNode.right != null) {
+      Map<String, IMeasurementSchema> templateMap = deviceMNode.right.getSchemaMap();
+      List<String> measurements =
+          Arrays.asList(measurement.replace("(", "").replace(")", "").split(","));
+
+      String firstMeasurement = measurements.get(0);
+      IMeasurementSchema schema = templateMap.get(firstMeasurement);
+      if (schema != null) {
+        if (schema instanceof MeasurementSchema) {
+          return new MeasurementMNode(deviceMNode.left, firstMeasurement, schema, null);
+        } else if (schema instanceof VectorMeasurementSchema) {
+          return new MeasurementMNode(deviceMNode.left, firstMeasurement + ".align", schema, null);
+        }
+      }
+      return null;
+    }
+    return null;
   }
 
   /** create timeseries ignoring PathAlreadyExistException */

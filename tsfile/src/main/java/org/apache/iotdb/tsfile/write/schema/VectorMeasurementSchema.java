@@ -107,7 +107,7 @@ public class VectorMeasurementSchema
 
   @Override
   public String getMeasurementId() {
-    return measurements[0];
+    return measurements[0] + ".align";
   }
 
   @Override
