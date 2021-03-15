@@ -84,6 +84,11 @@ public class ChunkCache {
   }
 
   public Chunk get(ChunkMetadata chunkMetaData, TsFileSequenceReader reader) throws IOException {
+    return get(chunkMetaData, reader, false);
+  }
+
+  public Chunk get(ChunkMetadata chunkMetaData, TsFileSequenceReader reader, boolean debug)
+      throws IOException {
     if (!CACHE_ENABLE) {
       Chunk chunk = reader.readMemChunk(chunkMetaData);
       return new Chunk(chunk.getHeader(), chunk.getData().duplicate(),
@@ -118,7 +123,7 @@ public class ChunkCache {
       }
     }
 
-    if (config.isDebugOn()) {
+    if (debug) {
       DEBUG_LOGGER.info("get chunk from cache whose meta data is: " + chunkMetaData);
     }
     return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeleteIntervalList());

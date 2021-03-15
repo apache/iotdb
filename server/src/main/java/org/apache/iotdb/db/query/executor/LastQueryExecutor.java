@@ -54,11 +54,15 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class LastQueryExecutor {
 
   private List<PartialPath> selectedSeries;
   private List<TSDataType> dataTypes;
   private IExpression expression;
+  private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
   private static final boolean lastCacheEnabled =
           IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled();
 
@@ -158,6 +162,7 @@ public class LastQueryExecutor {
           resultContainer.get(i).left = true;
           if (lastCacheEnabled) {
             cacheAccessors.get(i).write(resultContainer.get(i).right);
+            DEBUG_LOGGER.info("[LastQueryExecutor] Update last cache for path: " + seriesPaths + " with timestamp: " + resultContainer.get(i).right.getTimestamp());
           }
         }
       }

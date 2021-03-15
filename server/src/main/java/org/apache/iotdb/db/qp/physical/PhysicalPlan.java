@@ -63,6 +63,8 @@ public abstract class PhysicalPlan {
   // a bridge from a cluster raft log to a physical plan
   protected long index;
 
+  private boolean debug;
+
   /**
    * whether the plan can be split into more than one Plans. Only used in the cluster mode.
    */
@@ -169,6 +171,14 @@ public abstract class PhysicalPlan {
 
   public void setLoginUserName(String loginUserName) {
     this.loginUserName = loginUserName;
+  }
+
+  public boolean isDebug() {
+    return debug;
+  }
+
+  public void setDebug(boolean debug) {
+    this.debug = debug;
   }
 
   public static class Factory {

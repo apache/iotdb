@@ -20,7 +20,7 @@
 grammar SqlBase;
 
 singleStatement
-    : statement EOF
+    : EXPLAIN? statement EOF
     ;
 
 /*
@@ -1185,6 +1185,11 @@ DESC
 ASC
     : A S C
     ;
+
+EXPLAIN
+    : E X P L A I N
+    ;
+
 //============================
 // End of the keywords list
 //============================

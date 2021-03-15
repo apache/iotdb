@@ -74,7 +74,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   }
 
   public GroupByWithValueFilterDataSet(long queryId, GroupByTimePlan groupByTimePlan) {
-    super(new QueryContext(queryId), groupByTimePlan);
+    super(new QueryContext(queryId, groupByTimePlan.isDebug()), groupByTimePlan);
     this.allDataReaderList = new ArrayList<>();
     this.timeStampFetchSize = IoTDBDescriptor.getInstance().getConfig().getBatchSize();
   }

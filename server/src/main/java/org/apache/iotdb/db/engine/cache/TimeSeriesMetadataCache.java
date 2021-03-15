@@ -106,8 +106,13 @@ public class TimeSeriesMetadataCache {
     return TimeSeriesMetadataCache.TimeSeriesMetadataCacheHolder.INSTANCE;
   }
 
-  @SuppressWarnings("squid:S1860") // Suppress synchronize warning
   public TimeseriesMetadata get(TimeSeriesMetadataCacheKey key, Set<String> allSensors)
+      throws IOException {
+    return get(key, allSensors, false);
+  }
+
+  @SuppressWarnings("squid:S1860") // Suppress synchronize warning
+  public TimeseriesMetadata get(TimeSeriesMetadataCacheKey key, Set<String> allSensors, boolean debug)
       throws IOException {
     if (!CACHE_ENABLE) {
       // bloom filter part
@@ -134,7 +139,7 @@ public class TimeSeriesMetadataCache {
       cacheHitNum.incrementAndGet();
       printCacheLog(true);
     } else {
-      if (config.isDebugOn()) {
+      if (debug) {
         DEBUG_LOGGER.info(
             "Cache miss: " + key.device + "." + key.measurement + " metadata in file: "
                 + key.filePath);
@@ -159,7 +164,7 @@ public class TimeSeriesMetadataCache {
           TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
           BloomFilter bloomFilter = reader.readBloomFilter();
           if (bloomFilter != null && !bloomFilter.contains(path.getFullPath())) {
-            if (config.isDebugOn()) {
+            if (debug) {
               DEBUG_LOGGER.info("TimeSeries meta data {} is filter by bloomFilter!", key);
             }
             return null;
@@ -185,12 +190,12 @@ public class TimeSeriesMetadataCache {
       }
     }
     if (timeseriesMetadata == null) {
-      if (config.isDebugOn()) {
+      if (debug) {
         DEBUG_LOGGER.info("The file doesn't have this time series {}", key);
       }
       return null;
     } else {
-      if (config.isDebugOn()) {
+      if (debug) {
         DEBUG_LOGGER.info(
             "Get timeseries: {}. {} metadata in file: {} from cache: {}",
             key.device, key.measurement, key.filePath, timeseriesMetadata);

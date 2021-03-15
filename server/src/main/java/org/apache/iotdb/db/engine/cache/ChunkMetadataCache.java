@@ -102,11 +102,16 @@ public class ChunkMetadataCache {
     return ChunkMetadataCacheSingleton.INSTANCE;
   }
 
+  public List<ChunkMetadata> get(String filePath, Path seriesPath,
+      TimeseriesMetadata timeseriesMetadata) throws IOException {
+    return get(filePath, seriesPath, timeseriesMetadata, false);
+  }
+
   /**
    * get {@link ChunkMetadata}. THREAD SAFE.
    */
   public List<ChunkMetadata> get(String filePath, Path seriesPath,
-      TimeseriesMetadata timeseriesMetadata) throws IOException {
+      TimeseriesMetadata timeseriesMetadata, boolean debug) throws IOException {
     if (timeseriesMetadata == null) {
       return Collections.emptyList();
     }
@@ -144,7 +149,7 @@ public class ChunkMetadataCache {
         lock.writeLock().unlock();
       }
     }
-    if (config.isDebugOn()) {
+    if (debug) {
       DEBUG_LOGGER.info(
           "Chunk meta data list size: " + chunkMetadataList.size() + " key is: " + key.getString());
       chunkMetadataList.forEach(c -> DEBUG_LOGGER.info(c.toString()));

@@ -94,4 +94,13 @@ public abstract class Modification {
   public int hashCode() {
     return Objects.hash(type, path, versionNum);
   }
+
+  @Override
+  public String toString() {
+    return "Modification{" +
+        "type=" + type +
+        ", path=" + path +
+        ", versionNum=" + versionNum +
+        '}';
+  }
 }
