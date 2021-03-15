@@ -287,7 +287,7 @@ public abstract class AbstractMemTable implements IMemTable {
     return null;
   }
 
-    @Override
+  @Override
   public void delete(
       PartialPath originalPath, PartialPath devicePath, long startTimestamp, long endTimestamp) {
     Map<String, IWritableMemChunk> deviceMap = memTableMap.get(devicePath.getFullPath());
