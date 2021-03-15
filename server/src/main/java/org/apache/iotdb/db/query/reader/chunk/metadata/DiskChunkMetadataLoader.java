@@ -87,7 +87,7 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
         context.getPathModifications(resource.getModFile(), seriesPath);
 
     if (context.isDebug()) {
-      DEBUG_LOGGER.info("Modifications file Path: {} ", resource.getTsFilePath());
+      DEBUG_LOGGER.info("Modifications size is {} for file Path: {} ", pathModifications.size(), resource.getTsFilePath());
       pathModifications.forEach(c -> DEBUG_LOGGER.info(c.toString()));
     }
 
@@ -96,10 +96,8 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
     }
 
     if (context.isDebug()) {
-      if (context.isDebug()) {
-        DEBUG_LOGGER.info("After modification Chunk meta data list is: ");
-        chunkMetadataList.forEach(c -> DEBUG_LOGGER.info(c.toString()));
-      }
+      DEBUG_LOGGER.info("After modification Chunk meta data list is: ");
+      chunkMetadataList.forEach(c -> DEBUG_LOGGER.info(c.toString()));
     }
 
     for (ChunkMetadata data : chunkMetadataList) {

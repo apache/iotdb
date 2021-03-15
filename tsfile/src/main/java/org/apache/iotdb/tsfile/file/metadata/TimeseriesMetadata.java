@@ -169,4 +169,16 @@ public class TimeseriesMetadata implements Accountable {
   public boolean isSeq() {
     return isSeq;
   }
+
+  @Override
+  public String toString() {
+    return "TimeseriesMetadata{" +
+        "measurementId='" + measurementId + '\'' +
+        ", dataType=" + dataType +
+        ", statistics=" + statistics +
+        ", modified=" + modified +
+        ", ramSize=" + ramSize +
+        ", isSeq=" + isSeq +
+        '}';
+  }
 }
