@@ -1633,6 +1633,7 @@ public class StorageGroupProcessor {
           if (lastPair != null && startTime <= lastPair.getTimestamp()
               && lastPair.getTimestamp() <= endTime) {
             ((MeasurementMNode) measurementNode).resetCache();
+            logger.info("[tryToDeleteLastCache] Last cache for path: " + measurementNode.getFullPath() + " is set to null");
           }
         }
       }

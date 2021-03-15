@@ -29,8 +29,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Represents an MNode which has a Measurement or Sensor attached to it.
@@ -38,7 +36,6 @@ import org.slf4j.LoggerFactory;
 public class MeasurementMNode extends MNode {
 
   private static final long serialVersionUID = -1199657856921206435L;
-  private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
 
   /**
    * measurement's Schema for one timeseries represented by current leaf node
@@ -86,14 +83,12 @@ public class MeasurementMNode extends MNode {
       if (!highPriorityUpdate || latestFlushedTime <= timeValuePair.getTimestamp()) {
         cachedLastValuePair =
             new TimeValuePair(timeValuePair.getTimestamp(), timeValuePair.getValue());
-        DEBUG_LOGGER.info("[MeasurementMNode] Last cache for path: " + fullPath + " is set to: " + timeValuePair.getTimestamp());
       }
     } else if (timeValuePair.getTimestamp() > cachedLastValuePair.getTimestamp()
         || (timeValuePair.getTimestamp() == cachedLastValuePair.getTimestamp()
         && highPriorityUpdate)) {
       cachedLastValuePair.setTimestamp(timeValuePair.getTimestamp());
       cachedLastValuePair.setValue(timeValuePair.getValue());
-      DEBUG_LOGGER.info("[MeasurementMNode] Last cache for path: " + fullPath + " is set to: " + timeValuePair.getTimestamp());
     }
   }
 
@@ -104,7 +99,6 @@ public class MeasurementMNode extends MNode {
 
   public void resetCache() {
     cachedLastValuePair = null;
-    DEBUG_LOGGER.info("[MeasurementMNode] Last cache for path: " + fullPath + " is set to null");
   }
 
   public long getOffset() {
