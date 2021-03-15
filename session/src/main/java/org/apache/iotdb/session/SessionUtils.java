@@ -47,8 +47,8 @@ public class SessionUtils {
       if (schema instanceof MeasurementSchema) {
         getValueBufferOfDataType(schema.getType(), tablet, i, valueBuffer);
       } else {
-        for (TSDataType dataType : schema.getValueTSDataTypeList()) {
-          getValueBufferOfDataType(dataType, tablet, i, valueBuffer);
+        for (int j = 0; j < schema.getValueTSDataTypeList().size(); j++) {
+          getValueBufferOfDataType(schema.getValueTSDataTypeList().get(j), tablet, j, valueBuffer);
         }
       }
     }
