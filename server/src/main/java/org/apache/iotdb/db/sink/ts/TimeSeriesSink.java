@@ -66,7 +66,7 @@ public class TimeSeriesSink implements Sink<TimeSeriesEvent> {
       throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new QueryProcessException(
-          "Current system mode is read-only, does not support non-query operation.");
+          "Current system mode is read-only, non-query operation is not supported.");
     }
     executor.processNonQuery(plan);
   }
