@@ -17,15 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sink;
+package org.apache.iotdb.db.sink.api;
 
-import java.util.Map;
+import org.apache.iotdb.tsfile.utils.Binary;
 
-public interface Sink<E> {
+public interface BatchEventSink extends Sink {
 
-  void open(Map<String, String> configurations);
+  void onEvent(long[] timestamps, int[] values);
 
-  void close();
+  void onEvent(long[] timestamps, long[] values);
 
-  void onEvent(E event);
+  void onEvent(long[] timestamps, float[] values);
+
+  void onEvent(long[] timestamps, double[] values);
+
+  void onEvent(long[] timestamps, boolean[] values);
+
+  void onEvent(long[] timestamps, Binary[] values);
 }

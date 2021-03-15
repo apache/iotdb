@@ -17,6 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sink;
+package org.apache.iotdb.db.sink.api;
 
-public class IoTDBSink {}
+import java.util.Map;
+
+public interface Sink {
+
+  void open(Map<String, String> configurations);
+
+  void close();
+}
