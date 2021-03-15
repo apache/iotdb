@@ -96,6 +96,14 @@ public interface IMemTable {
       List<TimeRange> deletionList)
       throws IOException, QueryProcessException, MetadataException;
 
+  ReadOnlyMemChunk query(
+      String deviceId,
+      String measurement,
+      IMeasurementSchema schema,
+      long timeLowerBound,
+      List<TimeRange> deletionList)
+      throws IOException, QueryProcessException, MetadataException;
+
   /** putBack all the memory resources. */
   void clear();
 

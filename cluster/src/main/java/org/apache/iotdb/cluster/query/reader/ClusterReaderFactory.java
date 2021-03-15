@@ -55,6 +55,7 @@ import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataPointReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.series.SeriesReaderFactory;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -374,7 +375,7 @@ public class ClusterReaderFactory {
         ((SlotPartitionTable) metaGroupMember.getPartitionTable()).getNodeSlots(header);
     QueryDataSource queryDataSource =
         QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter);
-    return new SeriesReader(
+    return SeriesReaderFactory.createSeriesReader(
         path,
         allSensors,
         dataType,

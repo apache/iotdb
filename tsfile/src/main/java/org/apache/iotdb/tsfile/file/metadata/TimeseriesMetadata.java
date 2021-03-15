@@ -189,6 +189,10 @@ public class TimeseriesMetadata implements Accountable, ITimeSeriesMetadata {
     this.chunkMetadataLoader = chunkMetadataLoader;
   }
 
+  public IChunkMetadataLoader getChunkMetadataLoader() {
+    return chunkMetadataLoader;
+  }
+
   @Override
   public List<IChunkMetadata> loadChunkMetadataList() throws IOException {
     return chunkMetadataLoader.loadChunkMetadataList(this);

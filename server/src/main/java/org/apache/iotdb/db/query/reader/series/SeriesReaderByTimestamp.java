@@ -47,8 +47,8 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
       boolean ascending) {
     UnaryFilter timeFilter =
         ascending ? TimeFilter.gtEq(Long.MIN_VALUE) : TimeFilter.ltEq(Long.MAX_VALUE);
-    seriesReader =
-        new SeriesReader(
+    this.seriesReader =
+        SeriesReaderFactory.createSeriesReader(
             seriesPath,
             allSensors,
             dataType,
