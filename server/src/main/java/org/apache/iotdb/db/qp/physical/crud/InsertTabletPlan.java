@@ -607,7 +607,7 @@ public class InsertTabletPlan extends InsertPlan {
     if (columns == null) {
       throw new QueryProcessException("Values are null");
     }
-    if (measurements.length != columns.length) {
+    if (dataTypes.length != columns.length) {
       throw new QueryProcessException(
           String.format(
               "Measurements length [%d] does not match " + "columns length [%d]",

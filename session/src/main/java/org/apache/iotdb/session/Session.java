@@ -46,6 +46,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -1044,8 +1045,23 @@ public class Session {
     TSInsertTabletReq request = new TSInsertTabletReq();
     request.setDeviceId(tablet.deviceId);
     for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
-      request.addToMeasurements(measurementSchema.getMeasurementId());
-      request.addToTypes(measurementSchema.getType().ordinal());
+      if (measurementSchema instanceof MeasurementSchema) {
+        request.addToMeasurements(measurementSchema.getMeasurementId());
+        request.addToTypes(measurementSchema.getType().ordinal());
+      } else {
+        int measurementsSize = measurementSchema.getValueMeasurementIdList().size();
+        StringBuilder measurement = new StringBuilder("(");
+        for (int i = 0; i < measurementsSize; i++) {
+          measurement.append(measurementSchema.getValueMeasurementIdList().get(i));
+          if (i != measurementsSize - 1) {
+            measurement.append(",");
+          } else {
+            measurement.append(")");
+          }
+          request.addToTypes(measurementSchema.getValueTSDataTypeList().get(i).ordinal());
+        }
+        request.addToMeasurements(measurement.toString());
+      }
     }
     request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
     request.setValues(SessionUtils.getValueBuffer(tablet));
@@ -1428,8 +1444,20 @@ public class Session {
     }
     Arrays.sort(index, Comparator.comparingLong(o -> tablet.timestamps[o]));
     Arrays.sort(tablet.timestamps, 0, tablet.rowSize);
+    int columnIndex = 0;
     for (int i = 0; i < tablet.getSchemas().size(); i++) {
-      tablet.values[i] = sortList(tablet.values[i], tablet.getSchemas().get(i).getType(), index);
+      IMeasurementSchema schema = tablet.getSchemas().get(i);
+      if (schema instanceof MeasurementSchema) {
+        tablet.values[columnIndex] = sortList(tablet.values[columnIndex], schema.getType(), index);
+        columnIndex++;
+      } else {
+        int measurementSize = schema.getValueMeasurementIdList().size();
+        for (int j = 0; j < measurementSize; j++) {
+          tablet.values[columnIndex] =
+              sortList(tablet.values[columnIndex], schema.getValueTSDataTypeList().get(i), index);
+          columnIndex++;
+        }
+      }
     }
   }
 
