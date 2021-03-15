@@ -94,7 +94,7 @@ public class FileLoaderUtils {
       }
       timeSeriesMetadata = TimeSeriesMetadataCache.getInstance()
           .get(new TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey(resource.getTsFilePath(),
-              seriesPath.getDevice(), seriesPath.getMeasurement()), allSensors);
+              seriesPath.getDevice(), seriesPath.getMeasurement()), allSensors, context.isDebug());
       if (timeSeriesMetadata != null) {
         timeSeriesMetadata.setChunkMetadataLoader(
             new DiskChunkMetadataLoader(resource, seriesPath, context, filter));

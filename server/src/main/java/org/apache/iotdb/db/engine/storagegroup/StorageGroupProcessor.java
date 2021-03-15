@@ -1415,7 +1415,7 @@ public class StorageGroupProcessor {
       boolean isSeq)
       throws MetadataException {
 
-    if (config.isDebugOn()) {
+    if (context.isDebug()) {
       DEBUG_LOGGER
           .info("Path: {}.{}, get tsfile list: {} isSeq: {} timefilter: {}", deviceId.getFullPath(),
               measurementId, tsFileResources, isSeq, (timeFilter == null ? "null" : timeFilter));
@@ -1429,7 +1429,7 @@ public class StorageGroupProcessor {
     context.setQueryTimeLowerBound(timeLowerBound);
 
     for (TsFileResource tsFileResource : tsFileResources) {
-      if (!isTsFileResourceSatisfied(tsFileResource, deviceId.getFullPath(), timeFilter, isSeq)) {
+      if (!isTsFileResourceSatisfied(tsFileResource, deviceId.getFullPath(), timeFilter, isSeq, context.isDebug())) {
         continue;
       }
       closeQueryLock.readLock().lock();
@@ -1450,7 +1450,7 @@ public class StorageGroupProcessor {
     }
     // for upgrade files and old files must be closed
     for (TsFileResource tsFileResource : upgradeTsFileResources) {
-      if (!isTsFileResourceSatisfied(tsFileResource, deviceId.getFullPath(), timeFilter, isSeq)) {
+      if (!isTsFileResourceSatisfied(tsFileResource, deviceId.getFullPath(), timeFilter, isSeq, context.isDebug())) {
         continue;
       }
       closeQueryLock.readLock().lock();
@@ -1467,9 +1467,9 @@ public class StorageGroupProcessor {
    * @return true if the device is contained in the TsFile and it lives beyond TTL
    */
   private boolean isTsFileResourceSatisfied(TsFileResource tsFileResource, String deviceId,
-      Filter timeFilter, boolean isSeq) {
+      Filter timeFilter, boolean isSeq, boolean debug) {
     if (!tsFileResource.containsDevice(deviceId)) {
-      if (config.isDebugOn()) {
+      if (debug) {
         DEBUG_LOGGER.info("Path: {} file {} is not satisfied because of no device!", deviceId,
             tsFileResource);
       }
@@ -1482,7 +1482,7 @@ public class StorageGroupProcessor {
         : Long.MAX_VALUE;
 
     if (!isAlive(endTime)) {
-      if (config.isDebugOn()) {
+      if (debug) {
         DEBUG_LOGGER
             .info("Path: {} file {} is not satisfied because of ttl!", deviceId, tsFileResource);
       }
@@ -1491,7 +1491,7 @@ public class StorageGroupProcessor {
 
     if (timeFilter != null) {
       boolean res = timeFilter.satisfyStartEndTime(startTime, endTime);
-      if (config.isDebugOn() && !res) {
+      if (debug && !res) {
         DEBUG_LOGGER.info("Path: {} file {} is not satisfied because of time filter!", deviceId,
             tsFileResource);
       }

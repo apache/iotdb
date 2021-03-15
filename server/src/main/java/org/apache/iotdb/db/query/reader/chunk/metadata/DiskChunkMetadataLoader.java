@@ -31,8 +31,12 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
+
+  private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
 
   private TsFileResource resource;
   private PartialPath seriesPath;
@@ -51,8 +55,8 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
   @Override
   public List<ChunkMetadata> loadChunkMetadataList(TimeseriesMetadata timeseriesMetadata)
       throws IOException {
-    List<ChunkMetadata> chunkMetadataList = ChunkMetadataCache
-        .getInstance().get(resource.getTsFilePath(), seriesPath, timeseriesMetadata);
+    List<ChunkMetadata> chunkMetadataList = ChunkMetadataCache.getInstance()
+        .get(resource.getTsFilePath(), seriesPath, timeseriesMetadata, context.isDebug());
 
     setDiskChunkLoader(chunkMetadataList, resource, seriesPath, context);
 
@@ -82,8 +86,20 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
     List<Modification> pathModifications =
         context.getPathModifications(resource.getModFile(), seriesPath);
 
+    if (context.isDebug()) {
+      DEBUG_LOGGER.info("Modifications file Path: {} ", resource.getTsFilePath());
+      pathModifications.forEach(c -> DEBUG_LOGGER.info(c.toString()));
+    }
+
     if (!pathModifications.isEmpty()) {
       QueryUtils.modifyChunkMetaData(chunkMetadataList, pathModifications);
+    }
+
+    if (context.isDebug()) {
+      if (context.isDebug()) {
+        DEBUG_LOGGER.info("After modification Chunk meta data list is: ");
+        chunkMetadataList.forEach(c -> DEBUG_LOGGER.info(c.toString()));
+      }
     }
 
     for (ChunkMetadata data : chunkMetadataList) {
