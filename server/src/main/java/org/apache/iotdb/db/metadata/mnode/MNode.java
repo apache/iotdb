@@ -99,6 +99,7 @@ public class MNode implements Serializable {
       }
     }
 
+    child.parent = this;
     children.putIfAbsent(name, child);
   }
 
@@ -127,8 +128,8 @@ public class MNode implements Serializable {
       }
     }
 
-    children.putIfAbsent(child.getName(), child);
     child.parent = this;
+    children.putIfAbsent(child.getName(), child);
     return child;
   }
 
