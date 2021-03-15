@@ -170,11 +170,10 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   private void writeDataTypes(DataOutputStream stream) throws IOException {
-    for (int i = 0; i < dataTypes.length; i++) {
-      if (measurements[i] == null) {
-        continue;
-      }
-      TSDataType dataType = dataTypes[i];
+    for (TSDataType dataType : dataTypes) {
+//      if (measurements[i] == null) {
+//        continue;
+//      }
       stream.write(dataType.serialize());
     }
   }
