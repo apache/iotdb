@@ -1,0 +1,4 @@
+client-go
+gen-go/
+thrift/*.thrift
+thrift/gen-go
