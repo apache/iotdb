@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.db.sink.api;
 
-import java.util.Map;
+public interface Sink<E extends Event> {
 
-public interface Sink {
+  default void open() {}
 
-  void open(Map<String, String> configurations);
+  default void close() {}
 
-  void close();
+  @SuppressWarnings("squid:S112")
+  void onEvent(E event) throws Exception;
 }

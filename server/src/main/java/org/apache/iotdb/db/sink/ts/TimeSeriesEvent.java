@@ -17,21 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sink.api;
+package org.apache.iotdb.db.sink.ts;
 
-import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.db.sink.api.Event;
 
-public interface BatchEventSink extends Sink {
+public class TimeSeriesEvent implements Event {
 
-  void onEvent(long[] timestamps, int[] values);
+  private final long timestamp;
+  private final Object[] values;
 
-  void onEvent(long[] timestamps, long[] values);
+  public TimeSeriesEvent(long timestamp, Object... values) {
+    this.timestamp = timestamp;
+    this.values = values;
+  }
 
-  void onEvent(long[] timestamps, float[] values);
+  public long getTimestamp() {
+    return timestamp;
+  }
 
-  void onEvent(long[] timestamps, double[] values);
-
-  void onEvent(long[] timestamps, boolean[] values);
-
-  void onEvent(long[] timestamps, Binary[] values);
+  public Object[] getValues() {
+    return values;
+  }
 }
