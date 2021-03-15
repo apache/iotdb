@@ -179,6 +179,18 @@ public class FileTimeIndex implements ITimeIndex {
   }
 
   @Override
+  public void putStartTime(String deviceId, long time) {
+    devices.add(deviceId);
+    this.startTime = time;
+  }
+
+  @Override
+  public void putEndTime(String deviceId, long time) {
+    devices.add(deviceId);
+    this.endTime = time;
+  }
+
+  @Override
   public long getStartTime(String deviceId) {
     return startTime;
   }
