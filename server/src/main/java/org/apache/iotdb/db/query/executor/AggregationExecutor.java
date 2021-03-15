@@ -28,6 +28,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -60,6 +61,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+
+import static org.apache.iotdb.tsfile.read.query.executor.ExecutorWithTimeGenerator.markFilterdPaths;
 
 @SuppressWarnings("java:S1135") // ignore todos
 public class AggregationExecutor {
@@ -337,18 +340,8 @@ public class AggregationExecutor {
    */
   public QueryDataSet executeWithValueFilter(QueryContext context, AggregationPlan queryPlan)
       throws StorageEngineException, IOException, QueryProcessException {
-    int index = 0;
-    for (; index < aggregations.size(); index++) {
-      String aggregationFunc = aggregations.get(index);
-      if (!aggregationFunc.equals(IoTDBConstant.MAX_TIME)
-          && !aggregationFunc.equals(IoTDBConstant.LAST_VALUE)) {
-        break;
-      }
-    }
-    if (index >= aggregations.size()) {
-      queryPlan.setAscending(false);
-      this.ascending = false;
-    }
+    optimizeLastElementFunc(queryPlan);
+
     TimeGenerator timestampGenerator = getTimeGenerator(context, queryPlan);
     // group by path name
     Map<PartialPath, List<Integer>> pathToAggrIndexesMap =
@@ -371,13 +364,28 @@ public class AggregationExecutor {
 
     List<AggregateResult> aggregateResults = new ArrayList<>();
     for (int i = 0; i < selectedSeries.size(); i++) {
-      TSDataType type = dataTypes.get(i);
       AggregateResult result =
-          AggregateResultFactory.getAggrResultByName(aggregations.get(i), type, ascending);
+          AggregateResultFactory.getAggrResultByName(
+              aggregations.get(i), dataTypes.get(i), ascending);
       aggregateResults.add(result);
     }
     aggregateWithValueFilter(aggregateResults, timestampGenerator, readerToAggrIndexesMap);
     return constructDataSet(aggregateResults, queryPlan);
+  }
+
+  private void optimizeLastElementFunc(QueryPlan queryPlan) {
+    int index = 0;
+    for (; index < aggregations.size(); index++) {
+      String aggregationFunc = aggregations.get(index);
+      if (!aggregationFunc.equals(IoTDBConstant.MAX_TIME)
+          && !aggregationFunc.equals(IoTDBConstant.LAST_VALUE)) {
+        break;
+      }
+    }
+    if (index >= aggregations.size()) {
+      queryPlan.setAscending(false);
+      this.ascending = false;
+    }
   }
 
   protected TimeGenerator getTimeGenerator(QueryContext context, RawDataQueryPlan queryPlan)
@@ -404,6 +412,9 @@ public class AggregationExecutor {
       TimeGenerator timestampGenerator,
       Map<IReaderByTimestamp, List<Integer>> readerToAggrIndexesMap)
       throws IOException {
+    List<Boolean> cached =
+        markFilterdPaths(
+            expression, new ArrayList<>(selectedSeries), timestampGenerator.hasOrNode());
 
     while (timestampGenerator.hasNext()) {
 
@@ -419,14 +430,24 @@ public class AggregationExecutor {
 
       // cal part of aggregate result
       for (Entry<IReaderByTimestamp, List<Integer>> entry : readerToAggrIndexesMap.entrySet()) {
-        if (entry.getValue().size() == 1) {
-          aggregateResults
-              .get(entry.getValue().get(0))
-              .updateResultUsingTimestamps(timeArray, timeArrayLength, entry.getKey());
-        } else {
-          Object[] values = entry.getKey().getValuesInTimestamps(timeArray, timeArrayLength);
-          for (Integer i : entry.getValue())
+        int pathId = entry.getValue().get(0);
+        // cache in timeGenerator
+        if (cached.get(pathId)) {
+          Object[] values = timestampGenerator.getValues(selectedSeries.get(pathId));
+          for (Integer i : entry.getValue()) {
             aggregateResults.get(i).updateResultUsingValues(timeArray, timeArrayLength, values);
+          }
+        } else {
+          if (entry.getValue().size() == 1) {
+            aggregateResults
+                .get(entry.getValue().get(0))
+                .updateResultUsingTimestamps(timeArray, timeArrayLength, entry.getKey());
+          } else {
+            Object[] values = entry.getKey().getValuesInTimestamps(timeArray, timeArrayLength);
+            for (Integer i : entry.getValue()) {
+              aggregateResults.get(i).updateResultUsingValues(timeArray, timeArrayLength, values);
+            }
+          }
         }
       }
     }
