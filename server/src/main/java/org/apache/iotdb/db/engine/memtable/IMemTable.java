@@ -53,6 +53,8 @@ public interface IMemTable {
       long insertTime,
       Object objectValue);
 
+  void write(String deviceId, IMeasurementSchema schema, long insertTime, Object objectValue);
+
   void write(InsertTabletPlan insertTabletPlan, int start, int end);
 
   /** @return the number of points */
@@ -93,7 +95,6 @@ public interface IMemTable {
       long timeLowerBound,
       List<TimeRange> deletionList)
       throws IOException, QueryProcessException, MetadataException;
-
 
   ReadOnlyMemChunk query(
       String deviceId,

@@ -199,9 +199,6 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
 
   @Override
   public void deserialize(ByteBuffer buffer) throws IllegalPathException {
-    int length = buffer.getInt();
-    byte[] bytes = new byte[length];
-    buffer.get(bytes);
     devicePath = new PartialPath(ReadWriteIOUtils.readString(buffer));
     int size = ReadWriteIOUtils.readInt(buffer);
     dataTypes = new ArrayList<>();

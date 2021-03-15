@@ -107,7 +107,7 @@ public class VectorMeasurementSchema
 
   @Override
   public String getMeasurementId() {
-    return measurements[0];
+    return measurements[0] + ".align";
   }
 
   @Override
@@ -122,7 +122,7 @@ public class VectorMeasurementSchema
 
   @Override
   public TSDataType getType() {
-    throw new UnsupportedOperationException("unsupported method for VectorMeasurementSchema");
+    return TSDataType.VECTOR;
   }
 
   @Override
@@ -318,10 +318,7 @@ public class VectorMeasurementSchema
           TSDataType.deserialize(types[i]).toString(),
           ",",
           TSEncoding.deserialize(encodings[i]).toString());
-      sc.addTail("]");
-      if (i != measurements.length - 1) {
-        sc.addTail(", ");
-      }
+      sc.addTail("],");
     }
     sc.addTail(CompressionType.deserialize(compressor).toString());
     return sc.toString();

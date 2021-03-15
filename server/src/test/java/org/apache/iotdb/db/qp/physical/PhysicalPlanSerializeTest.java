@@ -51,10 +51,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
 import java.util.Properties;
 
 public class PhysicalPlanSerializeTest {
@@ -194,24 +192,12 @@ public class PhysicalPlanSerializeTest {
 
   @Test
   public void createAlignedTimeSeriesPlanSerializeTest() throws IOException, IllegalPathException {
-    List<String> measurements = new ArrayList<>();
-    measurements.add("s1");
-    measurements.add("s2");
-
-    List<TSDataType> dataTypes = new ArrayList<>();
-    dataTypes.add(TSDataType.DOUBLE);
-    dataTypes.add(TSDataType.INT32);
-
-    List<TSEncoding> encodings = new ArrayList<>();
-    encodings.add(TSEncoding.RLE);
-    encodings.add(TSEncoding.RLE);
-
     CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
         new CreateAlignedTimeSeriesPlan(
             new PartialPath("root.sg.d1"),
-            measurements,
-            dataTypes,
-            encodings,
+            Arrays.asList("s1", "s2"),
+            Arrays.asList(TSDataType.DOUBLE, TSDataType.INT32),
+            Arrays.asList(TSEncoding.RLE, TSEncoding.RLE),
             CompressionType.SNAPPY,
             null);
 

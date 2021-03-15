@@ -26,10 +26,12 @@ import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.exception.runtime.FlushRunTimeException;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.datastructure.TVList;
+import org.apache.iotdb.db.utils.datastructure.VectorTVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
+import org.apache.iotdb.tsfile.write.chunk.VectorChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
@@ -37,6 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -101,7 +104,7 @@ public class MemTableFlushTask {
     long start = System.currentTimeMillis();
     long sortTime = 0;
 
-    // for map do not use get(key) to iteratate
+    // for map do not use get(key) to iterate
     for (Map.Entry<String, Map<String, IWritableMemChunk>> memTableEntry :
         memTable.getMemTableMap().entrySet()) {
       encodingTaskQueue.put(new StartFlushGroupIOTask(memTableEntry.getKey()));
@@ -167,7 +170,7 @@ public class MemTableFlushTask {
             }
 
             // store last point for SDT
-            if (i + 1 == tvPairs.size()) {
+            if (dataType != TSDataType.VECTOR && i + 1 == tvPairs.size()) {
               ((ChunkWriterImpl) seriesWriterImpl).setLastPoint(true);
             }
 
@@ -189,6 +192,46 @@ public class MemTableFlushTask {
                 break;
               case TEXT:
                 seriesWriterImpl.write(time, tvPairs.getBinary(i), false);
+                break;
+              case VECTOR:
+                VectorTVList vectorTVPairs = (VectorTVList) tvPairs;
+                List<TSDataType> dataTypes = vectorTVPairs.getTsDataTypes();
+                int index = vectorTVPairs.getValueIndex(i);
+                for (int j = 0; j < dataTypes.size(); j++) {
+                  switch (dataTypes.get(j)) {
+                    case BOOLEAN:
+                      seriesWriterImpl.write(
+                          time, vectorTVPairs.getBooleanByValueIndex(index, j), false);
+                      break;
+                    case INT32:
+                      seriesWriterImpl.write(
+                          time, vectorTVPairs.getIntByValueIndex(index, j), false);
+                      break;
+                    case INT64:
+                      seriesWriterImpl.write(
+                          time, vectorTVPairs.getLongByValueIndex(index, j), false);
+                      break;
+                    case FLOAT:
+                      seriesWriterImpl.write(
+                          time, vectorTVPairs.getFloatByValueIndex(index, j), false);
+                      break;
+                    case DOUBLE:
+                      seriesWriterImpl.write(
+                          time, vectorTVPairs.getDoubleByValueIndex(index, j), false);
+                      break;
+                    case TEXT:
+                      seriesWriterImpl.write(
+                          time, vectorTVPairs.getBinaryByValueIndex(index, j), false);
+                      break;
+                    default:
+                      LOGGER.error(
+                          "Storage group {} does not support data type: {}",
+                          storageGroup,
+                          dataType);
+                      break;
+                  }
+                }
+                seriesWriterImpl.write(time);
                 break;
               default:
                 LOGGER.error(
@@ -235,7 +278,12 @@ public class MemTableFlushTask {
               long starTime = System.currentTimeMillis();
               Pair<TVList, IMeasurementSchema> encodingMessage =
                   (Pair<TVList, IMeasurementSchema>) task;
-              IChunkWriter seriesWriter = new ChunkWriterImpl(encodingMessage.right);
+              IChunkWriter seriesWriter;
+              if (encodingMessage.left.getDataType() == TSDataType.VECTOR) {
+                seriesWriter = new VectorChunkWriterImpl(encodingMessage.right);
+              } else {
+                seriesWriter = new ChunkWriterImpl(encodingMessage.right);
+              }
               writeOneSeries(encodingMessage.left, seriesWriter, encodingMessage.right.getType());
               seriesWriter.sealCurrentPage();
               seriesWriter.clearPageWriter();
@@ -285,8 +333,11 @@ public class MemTableFlushTask {
               this.writer.startChunkGroup(((StartFlushGroupIOTask) ioMessage).deviceId);
             } else if (ioMessage instanceof TaskEnd) {
               break;
-            } else if (ioMessage instanceof IChunkWriter) {
+            } else if (ioMessage instanceof ChunkWriterImpl) {
               ChunkWriterImpl chunkWriter = (ChunkWriterImpl) ioMessage;
+              chunkWriter.writeToFileWriter(this.writer);
+            } else if (ioMessage instanceof VectorChunkWriterImpl) {
+              VectorChunkWriterImpl chunkWriter = (VectorChunkWriterImpl) ioMessage;
               chunkWriter.writeToFileWriter(this.writer);
             } else {
               this.writer.setMinPlanIndex(memTable.getMinPlanIndex());

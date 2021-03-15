@@ -34,6 +34,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -92,13 +93,12 @@ public abstract class AbstractMemTable implements IMemTable {
     return memTableMap.containsKey(deviceId) && memTableMap.get(deviceId).containsKey(measurement);
   }
 
-  private IWritableMemChunk createIfNotExistAndGet(
-      String deviceId, String measurement, IMeasurementSchema schema) {
+  private IWritableMemChunk createIfNotExistAndGet(String deviceId, IMeasurementSchema schema) {
     Map<String, IWritableMemChunk> memSeries =
         memTableMap.computeIfAbsent(deviceId, k -> new HashMap<>());
 
     return memSeries.computeIfAbsent(
-        measurement,
+        schema.getMeasurementId(),
         k -> {
           seriesNumber++;
           totalPointsNumThreshold += avgSeriesPointNumThreshold;
@@ -160,12 +160,20 @@ public abstract class AbstractMemTable implements IMemTable {
       IMeasurementSchema schema,
       long insertTime,
       Object objectValue) {
-    IWritableMemChunk memSeries = createIfNotExistAndGet(deviceId, measurement, schema);
+    IWritableMemChunk memSeries = createIfNotExistAndGet(deviceId, schema);
+    memSeries.write(insertTime, objectValue);
+  }
+
+  @Override
+  public void write(
+      String deviceId, IMeasurementSchema schema, long insertTime, Object objectValue) {
+    IWritableMemChunk memSeries = createIfNotExistAndGet(deviceId, schema);
     memSeries.write(insertTime, objectValue);
   }
 
   @Override
   public void write(InsertTabletPlan insertTabletPlan, int start, int end) {
+    int columnCount = 0;
     updatePlanIndexes(insertTabletPlan.getIndex());
     for (int i = 0; i < insertTabletPlan.getMeasurements().length; i++) {
       if (insertTabletPlan.getColumns()[i] == null) {
@@ -174,14 +182,24 @@ public abstract class AbstractMemTable implements IMemTable {
       IWritableMemChunk memSeries =
           createIfNotExistAndGet(
               insertTabletPlan.getDeviceId().getFullPath(),
-              insertTabletPlan.getMeasurements()[i],
               insertTabletPlan.getMeasurementMNodes()[i].getSchema());
-      memSeries.write(
-          insertTabletPlan.getTimes(),
-          insertTabletPlan.getColumns()[i],
-          insertTabletPlan.getDataTypes()[i],
-          start,
-          end);
+      if (insertTabletPlan.getMeasurementMNodes()[i].getSchema().getType() == TSDataType.VECTOR) {
+        VectorMeasurementSchema vectorSchema =
+            (VectorMeasurementSchema) insertTabletPlan.getMeasurementMNodes()[i].getSchema();
+        Object[] columns = new Object[vectorSchema.getValueMeasurementIdList().size()];
+        for (int j = 0; j < vectorSchema.getValueMeasurementIdList().size(); j++) {
+          columns[j] = insertTabletPlan.getColumns()[columnCount++];
+        }
+        memSeries.write(insertTabletPlan.getTimes(), columns, TSDataType.VECTOR, start, end);
+      } else {
+        memSeries.write(
+            insertTabletPlan.getTimes(),
+            insertTabletPlan.getColumns()[columnCount],
+            insertTabletPlan.getDataTypes()[columnCount],
+            start,
+            end);
+        columnCount++;
+      }
     }
   }
 
@@ -273,7 +291,6 @@ public abstract class AbstractMemTable implements IMemTable {
     return new ReadOnlyMemChunk(
         measurement, dataType, encoding, chunkCopy, props, curSize, deletionList);
   }
-
 
   // TODO BY HAONAN HOU
   @Override

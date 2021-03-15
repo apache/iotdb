@@ -23,11 +23,13 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
@@ -362,6 +364,14 @@ public abstract class PhysicalPlan {
           plan = new InsertRowsPlan();
           plan.deserialize(buffer);
           break;
+        case CREATE_TEMPLATE:
+          plan = new CreateTemplatePlan();
+          plan.deserialize(buffer);
+          break;
+        case SET_DEVICE_TEMPLATE:
+          plan = new SetDeviceTemplatePlan();
+          plan.deserialize(buffer);
+          break;
         default:
           throw new IOException("unrecognized log type " + type);
       }
@@ -407,7 +417,9 @@ public abstract class PhysicalPlan {
     BATCH_INSERT_ONE_DEVICE,
     MULTI_BATCH_INSERT,
     BATCH_INSERT_ROWS,
-    SHOW_DEVICES
+    SHOW_DEVICES,
+    CREATE_TEMPLATE,
+    SET_DEVICE_TEMPLATE,
   }
 
   public long getIndex() {

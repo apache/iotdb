@@ -136,7 +136,7 @@ public class MManagerImproveTest {
   }
 
   private void doCacheTest(String deviceId, List<String> measurementList) throws MetadataException {
-    MNode node = mManager.getDeviceNodeWithAutoCreate(new PartialPath(deviceId));
+    MNode node = mManager.getDeviceNodeWithAutoCreate(new PartialPath(deviceId)).left;
     for (String s : measurementList) {
       assertTrue(node.hasChild(s));
       MeasurementMNode measurementNode = (MeasurementMNode) node.getChild(s);

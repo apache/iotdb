@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.db.engine.querycontext;
 
-import java.util.List;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
+
+import java.util.List;
 
 public class QueryDataSource {
   private List<TsFileResource> seqResources;
@@ -32,9 +33,7 @@ public class QueryDataSource {
   /** data older than currentTime - dataTTL should be ignored. */
   private long dataTTL = Long.MAX_VALUE;
 
-  public QueryDataSource(
-      List<TsFileResource> seqResources,
-      List<TsFileResource> unseqResources) {
+  public QueryDataSource(List<TsFileResource> seqResources, List<TsFileResource> unseqResources) {
     this.seqResources = seqResources;
     this.unseqResources = unseqResources;
   }

@@ -510,8 +510,8 @@ public abstract class TsPrimitiveType implements Serializable {
     public String getStringValue() {
       StringBuilder builder = new StringBuilder("[");
       builder.append(value[0].getStringValue());
-      for (TsPrimitiveType type : value) {
-        builder.append(", ").append(type.getStringValue());
+      for (int i = 1; i < value.length; i++) {
+        builder.append(", ").append(value[i].getStringValue());
       }
       builder.append("]");
       return builder.toString();

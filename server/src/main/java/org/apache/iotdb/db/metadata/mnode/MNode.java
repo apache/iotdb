@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata.mnode;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.rescon.CachedStringPool;
 
 import java.io.IOException;
@@ -66,6 +67,9 @@ public class MNode implements Serializable {
    */
   @SuppressWarnings("squid:S3077")
   private transient volatile Map<String, MNode> aliasChildren = null;
+
+  // device template
+  protected volatile Template deviceTemplate = null;
 
   /** Constructor of MNode. */
   public MNode(MNode parent, String name) {
@@ -114,6 +118,14 @@ public class MNode implements Serializable {
     if (aliasChildren != null) {
       aliasChildren.remove(alias);
     }
+  }
+
+  public Template getDeviceTemplate() {
+    return deviceTemplate;
+  }
+
+  public void setDeviceTemplate(Template deviceTemplate) {
+    this.deviceTemplate = deviceTemplate;
   }
 
   /** get the child with the name */

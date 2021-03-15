@@ -18,15 +18,6 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import static junit.framework.TestCase.assertTrue;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -48,11 +39,22 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+
+import static junit.framework.TestCase.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 public class TsFileProcessorTest {
 
@@ -104,7 +106,12 @@ public class TsFileProcessorTest {
     SystemInfo.getInstance().reportStorageGroupStatus(sgInfo);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     processor.query(
-        deviceId, measurementId, new MeasurementSchema(measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props), context, tsfileResourcesForQuery);
+        deviceId,
+        measurementId,
+        new MeasurementSchema(
+            measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props),
+        context,
+        tsfileResourcesForQuery);
     assertTrue(tsfileResourcesForQuery.isEmpty());
 
     for (int i = 1; i <= 100; i++) {
@@ -116,7 +123,12 @@ public class TsFileProcessorTest {
     // query data in memory
     tsfileResourcesForQuery.clear();
     processor.query(
-        deviceId, measurementId, new MeasurementSchema(measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props), context, tsfileResourcesForQuery);
+        deviceId,
+        measurementId,
+        new MeasurementSchema(
+            measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props),
+        context,
+        tsfileResourcesForQuery);
     assertFalse(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk().isEmpty());
     List<ReadOnlyMemChunk> memChunks = tsfileResourcesForQuery.get(0).getReadOnlyMemChunk();
     for (ReadOnlyMemChunk chunk : memChunks) {
@@ -134,7 +146,12 @@ public class TsFileProcessorTest {
 
     tsfileResourcesForQuery.clear();
     processor.query(
-        deviceId, measurementId, new MeasurementSchema(measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props), context, tsfileResourcesForQuery);
+        deviceId,
+        measurementId,
+        new MeasurementSchema(
+            measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props),
+        context,
+        tsfileResourcesForQuery);
     assertTrue(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk().isEmpty());
     assertEquals(1, tsfileResourcesForQuery.get(0).getChunkMetadataList().size());
     assertEquals(
@@ -166,7 +183,12 @@ public class TsFileProcessorTest {
     SystemInfo.getInstance().reportStorageGroupStatus(sgInfo);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     processor.query(
-        deviceId, measurementId, new MeasurementSchema(measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props), context, tsfileResourcesForQuery);
+        deviceId,
+        measurementId,
+        new MeasurementSchema(
+            measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props),
+        context,
+        tsfileResourcesForQuery);
     assertTrue(tsfileResourcesForQuery.isEmpty());
 
     for (int i = 1; i <= 100; i++) {
@@ -178,7 +200,12 @@ public class TsFileProcessorTest {
     // query data in memory
     tsfileResourcesForQuery.clear();
     processor.query(
-        deviceId, measurementId, new MeasurementSchema(measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props), context, tsfileResourcesForQuery);
+        deviceId,
+        measurementId,
+        new MeasurementSchema(
+            measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props),
+        context,
+        tsfileResourcesForQuery);
     assertFalse(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk().isEmpty());
     int num = 1;
     List<ReadOnlyMemChunk> memChunks = tsfileResourcesForQuery.get(0).getReadOnlyMemChunk();
@@ -197,7 +224,12 @@ public class TsFileProcessorTest {
 
     tsfileResourcesForQuery.clear();
     processor.query(
-        deviceId, measurementId, new MeasurementSchema(measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props), context, tsfileResourcesForQuery);
+        deviceId,
+        measurementId,
+        new MeasurementSchema(
+            measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props),
+        context,
+        tsfileResourcesForQuery);
     assertTrue(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk().isEmpty());
     assertEquals(1, tsfileResourcesForQuery.get(0).getChunkMetadataList().size());
     assertEquals(
@@ -254,7 +286,12 @@ public class TsFileProcessorTest {
     SystemInfo.getInstance().reportStorageGroupStatus(sgInfo);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     processor.query(
-        deviceId, measurementId, new MeasurementSchema(measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props), context, tsfileResourcesForQuery);
+        deviceId,
+        measurementId,
+        new MeasurementSchema(
+            measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props),
+        context,
+        tsfileResourcesForQuery);
     assertTrue(tsfileResourcesForQuery.isEmpty());
 
     for (int flushId = 0; flushId < 10; flushId++) {
@@ -269,7 +306,12 @@ public class TsFileProcessorTest {
 
     tsfileResourcesForQuery.clear();
     processor.query(
-        deviceId, measurementId, new MeasurementSchema(measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props), context, tsfileResourcesForQuery);
+        deviceId,
+        measurementId,
+        new MeasurementSchema(
+            measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props),
+        context,
+        tsfileResourcesForQuery);
     assertFalse(tsfileResourcesForQuery.isEmpty());
     assertTrue(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk().isEmpty());
     assertEquals(10, tsfileResourcesForQuery.get(0).getChunkMetadataList().size());
@@ -302,7 +344,12 @@ public class TsFileProcessorTest {
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
 
     processor.query(
-        deviceId, measurementId, new MeasurementSchema(measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props), context, tsfileResourcesForQuery);
+        deviceId,
+        measurementId,
+        new MeasurementSchema(
+            measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props),
+        context,
+        tsfileResourcesForQuery);
     assertTrue(tsfileResourcesForQuery.isEmpty());
 
     for (int i = 1; i <= 100; i++) {
@@ -314,7 +361,12 @@ public class TsFileProcessorTest {
     // query data in memory
     tsfileResourcesForQuery.clear();
     processor.query(
-        deviceId, measurementId, new MeasurementSchema(measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props), context, tsfileResourcesForQuery);
+        deviceId,
+        measurementId,
+        new MeasurementSchema(
+            measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props),
+        context,
+        tsfileResourcesForQuery);
     assertFalse(tsfileResourcesForQuery.isEmpty());
     assertFalse(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk().isEmpty());
     List<ReadOnlyMemChunk> memChunks = tsfileResourcesForQuery.get(0).getReadOnlyMemChunk();

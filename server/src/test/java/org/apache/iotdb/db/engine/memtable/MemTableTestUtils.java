@@ -18,11 +18,20 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class MemTableTestUtils {
 
@@ -57,6 +66,55 @@ public class MemTableTestUtils {
           l,
           (int) l);
     }
+  }
+
+  public static void produceVectorData(IMemTable iMemTable) throws IllegalPathException {
+    iMemTable.write(genInsertTablePlan(), 0, 100);
+  }
+
+  private static InsertTabletPlan genInsertTablePlan() throws IllegalPathException {
+    String[] measurements = new String[2];
+    measurements[0] = "sensor0";
+    measurements[1] = "sensor1";
+
+    List<Integer> dataTypesList = new ArrayList<>();
+    TSDataType[] dataTypes = new TSDataType[2];
+    dataTypesList.add(TSDataType.BOOLEAN.ordinal());
+    dataTypesList.add(TSDataType.INT64.ordinal());
+    dataTypes[0] = TSDataType.BOOLEAN;
+    dataTypes[1] = TSDataType.INT64;
+
+    TSEncoding[] encodings = new TSEncoding[2];
+    encodings[0] = TSEncoding.PLAIN;
+    encodings[1] = TSEncoding.GORILLA;
+
+    MeasurementMNode[] mNodes = new MeasurementMNode[2];
+    IMeasurementSchema schema = new VectorMeasurementSchema(measurements, dataTypes, encodings);
+    mNodes[0] = new MeasurementMNode(null, "sensor0", schema, null);
+    mNodes[1] = new MeasurementMNode(null, "sensor1", schema, null);
+
+    InsertTabletPlan insertTabletPlan =
+        new InsertTabletPlan(
+            new PartialPath(deviceId0), new String[] {"(sensor0,sensor1)"}, dataTypesList);
+
+    long[] times = new long[100];
+    Object[] columns = new Object[2];
+    columns[0] = new boolean[100];
+    columns[1] = new long[100];
+
+    for (long r = 0; r < 100; r++) {
+      times[(int) r] = r;
+      ((boolean[]) columns[0])[(int) r] = false;
+      ((long[]) columns[1])[(int) r] = r;
+    }
+    insertTabletPlan.setTimes(times);
+    insertTabletPlan.setColumns(columns);
+    insertTabletPlan.setRowCount(times.length);
+    insertTabletPlan.setMeasurementMNodes(mNodes);
+    insertTabletPlan.setStart(0);
+    insertTabletPlan.setEnd(100);
+
+    return insertTabletPlan;
   }
 
   public static Schema getSchema() {

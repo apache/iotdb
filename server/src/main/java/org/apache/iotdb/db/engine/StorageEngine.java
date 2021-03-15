@@ -666,7 +666,8 @@ public class StorageEngine implements IService {
     PartialPath fullPath = (PartialPath) seriesExpression.getSeriesPath();
     PartialPath deviceId = fullPath.getDevicePath();
     StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
-    return storageGroupProcessor.query(fullPath, context, filePathsManager, seriesExpression.getFilter());
+    return storageGroupProcessor.query(
+        fullPath, context, filePathsManager, seriesExpression.getFilter());
   }
 
   /**

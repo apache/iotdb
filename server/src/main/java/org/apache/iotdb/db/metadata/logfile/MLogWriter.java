@@ -28,6 +28,8 @@ import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
+import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
@@ -154,6 +156,14 @@ public class MLogWriter implements AutoCloseable {
 
   public void changeAlias(PartialPath path, String alias) throws IOException {
     ChangeAliasPlan plan = new ChangeAliasPlan(path, alias);
+    putLog(plan);
+  }
+
+  public void createDeviceTemplate(CreateTemplatePlan plan) throws IOException {
+    putLog(plan);
+  }
+
+  public void setDeviceTemplate(SetDeviceTemplatePlan plan) throws IOException {
     putLog(plan);
   }
 

@@ -20,7 +20,7 @@
 grammar SqlBase;
 
 singleStatement
-    : statement EOF
+    : statement (';')? EOF
     ;
 
 /*

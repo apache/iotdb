@@ -126,7 +126,12 @@ public class StorageGroupProcessorTest {
       tsfileProcessor.query(
           deviceId,
           measurementId,
-          new MeasurementSchema(measurementId, TSDataType.INT32, TSEncoding.RLE, CompressionType.UNCOMPRESSED, Collections.emptyMap()),
+          new MeasurementSchema(
+              measurementId,
+              TSDataType.INT32,
+              TSEncoding.RLE,
+              CompressionType.UNCOMPRESSED,
+              Collections.emptyMap()),
           new QueryContext(),
           tsfileResourcesForQuery);
     }
