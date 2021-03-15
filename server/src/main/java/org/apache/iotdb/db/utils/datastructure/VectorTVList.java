@@ -492,7 +492,7 @@ public class VectorTVList extends TVList {
         System.arraycopy(time, idx, timestamps.get(arrayIdx), elementIdx, inputRemaining);
         arrayCopy(value, idx, arrayIdx, elementIdx, inputRemaining);
         for (int i = 0; i < inputRemaining; i++) {
-          indices.get(arrayIdx)[elementIdx + 1] = size;
+          indices.get(arrayIdx)[elementIdx + i] = size;
           size++;
         }
         break;
