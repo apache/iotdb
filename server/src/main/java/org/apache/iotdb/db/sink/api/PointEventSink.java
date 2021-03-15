@@ -17,6 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sink;
+package org.apache.iotdb.db.sink.api;
 
-public class MQTTSink {}
+import org.apache.iotdb.tsfile.utils.Binary;
+
+public interface PointEventSink extends Sink {
+
+  void onEvent(long timestamp, Integer value);
+
+  void onEvent(long timestamp, Long value);
+
+  void onEvent(long timestamp, Float value);
+
+  void onEvent(long timestamp, Double value);
+
+  void onEvent(long timestamp, Boolean value);
+
+  void onEvent(long timestamp, Binary value);
+}
