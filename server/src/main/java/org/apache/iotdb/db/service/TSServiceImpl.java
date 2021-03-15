@@ -728,7 +728,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       if (costTime >= config.getSlowQueryThreshold()) {
         SLOW_SQL_LOGGER.info("Cost: {} ms, sql is {}", costTime, statement);
       }
-      if (config.isDebugOn()) {
+      if (plan.isDebug()) {
         SLOW_SQL_LOGGER.info(
             "ChunkCache used memory proportion: {}\n"
                 + "TimeSeriesMetadataCache used memory proportion: {}",
@@ -1029,14 +1029,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException,
           IOException, MetadataException, SQLException, TException, InterruptedException {
 
-    QueryContext context = genQueryContext(queryId);
+    QueryContext context = genQueryContext(queryId, physicalPlan.isDebug());
     QueryDataSet queryDataSet = executor.processQuery(physicalPlan, context);
     queryId2DataSet.put(queryId, queryDataSet);
     return queryDataSet;
   }
 
-  protected QueryContext genQueryContext(long queryId) {
-    return new QueryContext(queryId);
+  protected QueryContext genQueryContext(long queryId, boolean debug) {
+    return new QueryContext(queryId, debug);
   }
 
   @Override

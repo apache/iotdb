@@ -1599,7 +1599,7 @@ public class StorageGroupProcessor {
       boolean isSeq)
       throws MetadataException {
 
-    if (config.isDebugOn()) {
+    if (context.isDebug()) {
       DEBUG_LOGGER.info(
           "Path: {}.{}, get tsfile list: {} isSeq: {} timefilter: {}",
           deviceId.getFullPath(),
@@ -1618,7 +1618,8 @@ public class StorageGroupProcessor {
 
     // for upgrade files and old files must be closed
     for (TsFileResource tsFileResource : upgradeTsFileResources) {
-      if (!tsFileResource.isSatisfied(deviceId.getFullPath(), timeFilter, isSeq, dataTTL)) {
+      if (!tsFileResource.isSatisfied(
+          deviceId.getFullPath(), timeFilter, isSeq, dataTTL, context.isDebug())) {
         continue;
       }
       closeQueryLock.readLock().lock();
@@ -1630,7 +1631,8 @@ public class StorageGroupProcessor {
     }
 
     for (TsFileResource tsFileResource : tsFileResources) {
-      if (!tsFileResource.isSatisfied(deviceId.getFullPath(), timeFilter, isSeq, dataTTL)) {
+      if (!tsFileResource.isSatisfied(
+          deviceId.getFullPath(), timeFilter, isSeq, dataTTL, context.isDebug())) {
         continue;
       }
       closeQueryLock.readLock().lock();
