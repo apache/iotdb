@@ -31,7 +31,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 /** Represents an MNode which has a Measurement or Sensor attached to it. */
-
 public class MeasurementMNode extends MNode {
 
   private static final long serialVersionUID = -1199657856921206435L;

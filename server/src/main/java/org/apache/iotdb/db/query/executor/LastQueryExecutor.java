@@ -46,6 +46,9 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -55,8 +58,6 @@ import java.util.Set;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class LastQueryExecutor {
 
@@ -188,7 +189,11 @@ public class LastQueryExecutor {
           resultContainer.get(i).left = true;
           if (CACHE_ENABLED) {
             cacheAccessors.get(i).write(resultContainer.get(i).right);
-            DEBUG_LOGGER.info("[LastQueryExecutor] Update last cache for path: " + seriesPaths + " with timestamp: " + resultContainer.get(i).right.getTimestamp());
+            DEBUG_LOGGER.info(
+                "[LastQueryExecutor] Update last cache for path: "
+                    + seriesPaths
+                    + " with timestamp: "
+                    + resultContainer.get(i).right.getTimestamp());
           }
         }
       }
@@ -223,10 +228,18 @@ public class LastQueryExecutor {
         restDataType.add(dataTypes.get(i));
       } else if (!satisfyFilter(filter, tvPair)) {
         resultContainer.add(new Pair<>(true, null));
-        DEBUG_LOGGER.info("[LastQueryExecutor] Last cache hit for path: " + seriesPaths.get(i) + " with timestamp: " + tvPair.getTimestamp());
+        DEBUG_LOGGER.info(
+            "[LastQueryExecutor] Last cache hit for path: "
+                + seriesPaths.get(i)
+                + " with timestamp: "
+                + tvPair.getTimestamp());
       } else {
         resultContainer.add(new Pair<>(true, tvPair));
-        DEBUG_LOGGER.info("[LastQueryExecutor] Last cache hit for path: " + seriesPaths.get(i) + " with timestamp: " + tvPair.getTimestamp());
+        DEBUG_LOGGER.info(
+            "[LastQueryExecutor] Last cache hit for path: "
+                + seriesPaths.get(i)
+                + " with timestamp: "
+                + tvPair.getTimestamp());
       }
     }
     return resultContainer;
