@@ -358,4 +358,9 @@ public class MeasurementSchema
   public void setType(TSDataType type) {
     this.type = type.serialize();
   }
+
+  @Override
+  public int getMeasurementIdColumnIndex(String measurementId) {
+    return 0;
+  }
 }

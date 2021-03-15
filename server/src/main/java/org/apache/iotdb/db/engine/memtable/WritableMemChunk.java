@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.memtable;
 
 import org.apache.iotdb.db.utils.datastructure.TVList;
+import org.apache.iotdb.db.utils.datastructure.VectorTVList;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -174,6 +175,17 @@ public class WritableMemChunk implements IWritableMemChunk {
     sortTVList();
     // increase reference count
     list.increaseReferenceCount();
+    return list;
+  }
+
+  @Override
+  public synchronized TVList getSortedTVListForQuery(int columnIndex) {
+    sortTVList();
+    // increase reference count
+    list.increaseReferenceCount();
+    if (list instanceof VectorTVList) {
+      return list.getTVListByColumnIndex(columnIndex);
+    }
     return list;
   }
 

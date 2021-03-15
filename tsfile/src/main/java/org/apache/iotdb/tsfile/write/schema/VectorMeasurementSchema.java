@@ -189,6 +189,11 @@ public class VectorMeasurementSchema
   }
 
   @Override
+  public int getMeasurementIdColumnIndex(String measurementId) {
+    return getValueMeasurementIdList().indexOf(measurementId);
+  }
+
+  @Override
   public int serializeTo(ByteBuffer buffer) {
     int byteLen = 0;
     byteLen += ReadWriteIOUtils.write(measurements.length, buffer);

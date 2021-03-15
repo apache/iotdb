@@ -292,7 +292,6 @@ public abstract class AbstractMemTable implements IMemTable {
         measurement, dataType, encoding, chunkCopy, props, curSize, deletionList);
   }
 
-  // TODO BY HAONAN HOU
   @Override
   public ReadOnlyMemChunk query(
       String deviceId,
@@ -301,7 +300,41 @@ public abstract class AbstractMemTable implements IMemTable {
       long timeLowerBound,
       List<TimeRange> deletionList)
       throws IOException, QueryProcessException, MetadataException {
-    return null;
+    if (schema.getType() == TSDataType.VECTOR) {
+      int columnIndex = schema.getMeasurementIdColumnIndex(measurement);
+      // measurementColumnIndex == -1 if schema doesn't contain that measurement
+      if (!memTableMap.containsKey(deviceId) || columnIndex < 0) {
+        return null;
+      }
+      IWritableMemChunk memChunk = memTableMap.get(deviceId).get(schema.getMeasurementId());
+      // get sorted tv list is synchronized so different query can get right sorted list reference
+      TVList chunkCopy = memChunk.getSortedTVListForQuery(columnIndex);
+      int curSize = chunkCopy.size();
+      return new ReadOnlyMemChunk(
+          measurement,
+          schema.getType(),
+          schema.getValueTSEncodingList().get(columnIndex),
+          chunkCopy,
+          null,
+          curSize,
+          deletionList);
+    } else {
+      if (!checkPath(deviceId, measurement)) {
+        return null;
+      }
+      IWritableMemChunk memChunk = memTableMap.get(deviceId).get(schema.getMeasurementId());
+      // get sorted tv list is synchronized so different query can get right sorted list reference
+      TVList chunkCopy = memChunk.getSortedTVListForQuery();
+      int curSize = chunkCopy.size();
+      return new ReadOnlyMemChunk(
+          measurement,
+          schema.getType(),
+          schema.getEncodingType(),
+          chunkCopy,
+          schema.getProps(),
+          curSize,
+          deletionList);
+    }
   }
 
   @Override
