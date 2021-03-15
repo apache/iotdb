@@ -1782,6 +1782,8 @@ public class StorageGroupProcessor {
       tsFileResource.getModFile().write(deletion);
       // remember to close mod file
       tsFileResource.getModFile().close();
+      logger.info("[Deletion] Deletion with path:{}, time:{}-{} written into mods file.",
+              deletion.getPath(), deletion.getStartTime(), deletion.getEndTime());
 
       tsFileResource.updatePlanIndexes(planIndex);
 
@@ -1813,6 +1815,7 @@ public class StorageGroupProcessor {
               && startTime <= lastPair.getTimestamp()
               && lastPair.getTimestamp() <= endTime) {
             ((MeasurementMNode) measurementNode).resetCache();
+            logger.info("[tryToDeleteLastCache] Last cache for path: " + measurementNode.getFullPath() + " is set to null");
           }
         }
       }
@@ -2143,6 +2146,7 @@ public class StorageGroupProcessor {
       for (MNode measurementNode : node.getChildren().values()) {
         if (measurementNode != null) {
           ((MeasurementMNode) measurementNode).resetCache();
+          logger.info("[tryToDeleteLastCacheByDevice] Last cache for path: " + measurementNode.getFullPath() + " is set to null");
         }
       }
     } catch (MetadataException e) {
