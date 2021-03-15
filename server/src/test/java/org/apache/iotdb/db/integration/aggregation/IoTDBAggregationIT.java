@@ -695,7 +695,7 @@ public class IoTDBAggregationIT {
   @Test
   public void avgSumTest() {
     String[] retArray =
-        new String[] {"0,1.4508E7,7250.374812593703", "0,626750.0,1250.9980039920158"};
+        new String[] {"0,1.4508E7,7250.374812593703", "0,626750.0,1250.998003992016"};
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
@@ -838,7 +838,7 @@ public class IoTDBAggregationIT {
     String[] retArray =
         new String[] {
           "0,1.4508E7,7250.374812593703,7250.374812593703,1.4508E7",
-          "0,626750.0,1250.9980039920158,1250.9980039920158,626750.0",
+          "0,626750.0,1250.998003992016,1250.998003992016,626750.0",
           "0,1.4508E7,2001,7250.374812593702,7250.374812593702",
           "0,1.4508E7,2001,7250.374812593702,7250.374812593702,2001,1.4508E7"
         };
