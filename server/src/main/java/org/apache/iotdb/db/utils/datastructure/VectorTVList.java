@@ -161,6 +161,7 @@ public class VectorTVList extends TVList {
     vectorTVList.timestamps = this.timestamps;
     vectorTVList.indices = this.indices;
     vectorTVList.values = Collections.singletonList(this.values.get(column));
+    vectorTVList.size = this.size;
     return vectorTVList;
   }
 
