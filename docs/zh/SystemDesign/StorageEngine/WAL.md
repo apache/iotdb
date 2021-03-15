@@ -27,11 +27,10 @@
   * 对于每一个 Memtable，都会记录一个 WAL 文件，当 Memtable 被 flush 完成时，WAL 会被删掉。
 * WAL 记录细节
   * 在 org.apache.iotdb.db.writelog.manager 中，会不断在 nodeMap 中积累 WAL
-  * WAL 刷磁盘有两种方式（同时启用）
-    * 在 org.apache.iotdb.db.writelog.node.ExclusiveWriteLogNode 中会根据配置中的 wal_buffer_size 分配 WAL 的 buffer 大小，如在新增 WAL 过程中超过了该 buffer 大小则刷到磁盘中
+  * WAL 刷磁盘有三种方式（同时启用）
+    * 在 org.apache.iotdb.db.writelog.node.ExclusiveWriteLogNode 中会根据配置中的 wal_buffer_size 二分之一分配作为 WAL 的logBufferWorking 可写缓存，另外二分之一作为刷盘缓存区，如在新增 WAL 过程中超过了logBufferWorking 大小则刷到磁盘中
     * 在 org.apache.iotdb.db.writelog.node.ExclusiveWriteLogNode 中每次写入记录会判断当前 node 积累的 WAL 大小是否超过配置中的 flush_wal_threshold，如超过则刷到磁盘中
-    * 在 org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager 启动时会生成一个定时线程，根据 force_wal_period_in_ms 定时调用线程将内存中的 nodeMap 刷到磁盘中，调用示例如下
-      * 持久化(forceTask)-sleep({force_wal_period_in_ms})-持久化(forceTask)-sleep({force_wal_period_in_ms})
+    * 在 org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager 启动时会生成一个定时线程，每隔 force_wal_period_in_ms 时间间隔定时调用线程将内存中的 nodeMap 刷到磁盘中
 
 ## 测试结果
 
