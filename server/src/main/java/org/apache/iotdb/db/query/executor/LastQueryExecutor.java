@@ -55,6 +55,8 @@ import java.util.Set;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class LastQueryExecutor {
 
@@ -63,6 +65,7 @@ public class LastQueryExecutor {
   protected IExpression expression;
   private static final boolean CACHE_ENABLED =
       IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled();
+  private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
 
   public LastQueryExecutor(LastQueryPlan lastQueryPlan) {
     this.selectedSeries = lastQueryPlan.getDeduplicatedPaths();
@@ -185,6 +188,7 @@ public class LastQueryExecutor {
           resultContainer.get(i).left = true;
           if (CACHE_ENABLED) {
             cacheAccessors.get(i).write(resultContainer.get(i).right);
+            DEBUG_LOGGER.info("[LastQueryExecutor] Update last cache for path: " + seriesPaths + " with timestamp: " + resultContainer.get(i).right.getTimestamp());
           }
         }
       }
