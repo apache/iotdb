@@ -57,11 +57,13 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.VectorChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
@@ -74,7 +76,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -1109,16 +1110,12 @@ public class TsFileProcessor {
    *
    * @param deviceId device id
    * @param measurementId measurements id
-   * @param dataType data type
-   * @param encoding encoding
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void query(
       String deviceId,
       String measurementId,
-      TSDataType dataType,
-      TSEncoding encoding,
-      Map<String, String> props,
+      IMeasurementSchema schema,
       QueryContext context,
       List<TsFileResource> tsfileResourcesForQuery)
       throws IOException, MetadataException {
@@ -1140,13 +1137,7 @@ public class TsFileProcessor {
                 flushingMemTable, deviceId, measurementId, context.getQueryTimeLowerBound());
         ReadOnlyMemChunk memChunk =
             flushingMemTable.query(
-                deviceId,
-                measurementId,
-                dataType,
-                encoding,
-                props,
-                context.getQueryTimeLowerBound(),
-                deletionList);
+                deviceId, measurementId, schema, context.getQueryTimeLowerBound(), deletionList);
         if (memChunk != null) {
           readOnlyMemChunks.add(memChunk);
         }
@@ -1154,13 +1145,7 @@ public class TsFileProcessor {
       if (workMemTable != null) {
         ReadOnlyMemChunk memChunk =
             workMemTable.query(
-                deviceId,
-                measurementId,
-                dataType,
-                encoding,
-                props,
-                context.getQueryTimeLowerBound(),
-                null);
+                deviceId, measurementId, schema, context.getQueryTimeLowerBound(), null);
         if (memChunk != null) {
           readOnlyMemChunks.add(memChunk);
         }
@@ -1172,8 +1157,33 @@ public class TsFileProcessor {
               modificationFile,
               new PartialPath(deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId));
 
-      List<ChunkMetadata> chunkMetadataList =
-          writer.getVisibleMetadataList(deviceId, measurementId, dataType);
+      List<IChunkMetadata> chunkMetadataList = new ArrayList<>();
+      if (schema instanceof VectorMeasurementSchema) {
+        List<ChunkMetadata> timeChunkMetadataList =
+            writer.getVisibleMetadataList(deviceId, measurementId, schema.getType());
+        List<List<ChunkMetadata>> valueChunkMetadataList = new ArrayList<>();
+        List<String> valueMeasurementIdList = schema.getValueMeasurementIdList();
+        List<TSDataType> valueDataTypeList = schema.getValueTSDataTypeList();
+        for (int i = 0; i < valueMeasurementIdList.size(); i++) {
+          valueChunkMetadataList.add(
+              writer.getVisibleMetadataList(
+                  deviceId, valueMeasurementIdList.get(i), valueDataTypeList.get(i)));
+        }
+
+        for (int i = 0; i < timeChunkMetadataList.size(); i++) {
+          List<IChunkMetadata> valueChunkMetadata = new ArrayList<>();
+          for (List<ChunkMetadata> chunkMetadata : valueChunkMetadataList) {
+            valueChunkMetadata.add(chunkMetadata.get(i));
+          }
+          chunkMetadataList.add(
+              new VectorChunkMetadata(timeChunkMetadataList.get(i), valueChunkMetadata));
+        }
+      } else {
+        chunkMetadataList =
+            new ArrayList<>(
+                writer.getVisibleMetadataList(deviceId, measurementId, schema.getType()));
+      }
+
       QueryUtils.modifyChunkMetaData(chunkMetadataList, modifications);
       chunkMetadataList.removeIf(context::chunkNotSatisfy);
 

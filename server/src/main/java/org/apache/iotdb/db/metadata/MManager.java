@@ -1093,6 +1093,16 @@ public class MManager {
     return null;
   }
 
+  // TODO BY ZESONG SUN
+  public IMeasurementSchema getSeriesSchema(PartialPath fullPath) throws MetadataException {
+    MNode node = mtree.getNodeByPath(fullPath.getDevicePath());
+    MNode leaf = node.getChild(fullPath.getMeasurement());
+    if (leaf != null) {
+      return ((MeasurementMNode) leaf).getSchema();
+    }
+    return null;
+  }
+
   /**
    * Get child node path in the next level of the given path.
    *

@@ -72,6 +72,11 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
     return chunkMetadataList;
   }
 
+  @Override
+  public boolean isMemChunkMetadataLoader() {
+    return false;
+  }
+
   public static void setDiskChunkLoader(
       List<IChunkMetadata> chunkMetadataList,
       TsFileResource resource,

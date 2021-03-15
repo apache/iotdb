@@ -157,7 +157,6 @@ public class FileLoaderUtils {
    */
   public static List<IPageReader> loadPageReaderList(
       IChunkMetadata chunkMetaData, Filter timeFilter) throws IOException {
-    // TODO memory Vector chunk metadata
     if (chunkMetaData == null) {
       throw new IOException("Can't init null chunkMeta");
     }
