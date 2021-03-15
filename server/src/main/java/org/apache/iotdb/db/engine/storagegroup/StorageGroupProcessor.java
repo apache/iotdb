@@ -1524,7 +1524,6 @@ public class StorageGroupProcessor {
       for (PartialPath device : devicePaths) {
         // delete Last cache record if necessary
         tryToDeleteLastCache(device, path, startTime, endTime);
-        DEBUG_LOGGER.info("Delete last cache for path: " + path + " with deletion interval: " + startTime + " to " + endTime);
       }
 
       // write log to impacted working TsFileProcessors
