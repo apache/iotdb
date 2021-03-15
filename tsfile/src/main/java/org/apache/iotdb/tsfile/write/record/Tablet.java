@@ -122,7 +122,20 @@ public class Tablet {
     int indexOfValue = measurementIndex.get(measurementId);
     IMeasurementSchema measurementSchema = schemas.get(indexOfValue);
 
-    switch (measurementSchema.getType()) {
+    if (measurementSchema.getType().equals(TSDataType.VECTOR)) {
+      for (int i = 0; i < measurementSchema.getValueMeasurementIdList().size(); i++) {
+        TSDataType dataType = measurementSchema.getValueTSDataTypeList().get(i);
+        addValueOfDataType(dataType, rowIndex, measurementIndex.get(measurementId), value);
+      }
+    } else {
+      addValueOfDataType(
+          measurementSchema.getType(), rowIndex, measurementIndex.get(measurementId), value);
+    }
+  }
+
+  private void addValueOfDataType(
+      TSDataType dataType, int rowIndex, int indexOfValue, Object value) {
+    switch (dataType) {
       case TEXT:
         {
           Binary[] sensor = (Binary[]) values[indexOfValue];
@@ -160,8 +173,7 @@ public class Tablet {
           break;
         }
       default:
-        throw new UnSupportedDataTypeException(
-            String.format(NOT_SUPPORT_DATATYPE, measurementSchema.getType()));
+        throw new UnSupportedDataTypeException(String.format(NOT_SUPPORT_DATATYPE, dataType));
     }
   }
 
@@ -215,7 +227,7 @@ public class Tablet {
 
   private Object createValueColumnOfDataType(TSDataType dataType) {
 
-    Object valueColumn = null;
+    Object valueColumn;
     switch (dataType) {
       case INT32:
         valueColumn = new int[maxRowNumber];
