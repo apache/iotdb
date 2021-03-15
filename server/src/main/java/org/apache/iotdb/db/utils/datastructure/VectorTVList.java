@@ -26,6 +26,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
@@ -147,7 +148,20 @@ public class VectorTVList extends TVList {
           break;
       }
     }
+    // For query one column in vectorTVList
+    if (vector.length == 1) {
+      return vector[0];
+    }
     return TsPrimitiveType.getByType(TSDataType.VECTOR, vector);
+  }
+
+  @Override
+  public TVList getTVListByColumnIndex(int column) {
+    VectorTVList vectorTVList = new VectorTVList(Collections.singletonList(dataTypes.get(column)));
+    vectorTVList.timestamps = this.timestamps;
+    vectorTVList.indices = this.indices;
+    vectorTVList.values = Collections.singletonList(this.values.get(column));
+    return vectorTVList;
   }
 
   public int getInt(int index, int column) {
@@ -447,14 +461,13 @@ public class VectorTVList extends TVList {
 
   @Override
   public TimeValuePair getTimeValuePair(int index) {
-    return new TimeValuePair(
-        getTime(index), TsPrimitiveType.getByType(TSDataType.VECTOR, getVector(index)));
+    return new TimeValuePair(getTime(index), (TsPrimitiveType) getVector(index));
   }
 
   @Override
   protected TimeValuePair getTimeValuePair(
       int index, long time, Integer floatPrecision, TSEncoding encoding) {
-    return new TimeValuePair(time, TsPrimitiveType.getByType(TSDataType.VECTOR, getVector(index)));
+    return new TimeValuePair(getTime(index), (TsPrimitiveType) getVector(index));
   }
 
   @Override
@@ -479,7 +492,8 @@ public class VectorTVList extends TVList {
         System.arraycopy(time, idx, timestamps.get(arrayIdx), elementIdx, inputRemaining);
         arrayCopy(value, idx, arrayIdx, elementIdx, inputRemaining);
         for (int i = 0; i < inputRemaining; i++) {
-          indices.get(arrayIdx)[elementIdx] = size;
+          indices.get(arrayIdx)[elementIdx + 1] = size;
+          System.out.println("set index " + arrayIdx + " " + (elementIdx) + "value" + size);
           size++;
         }
         break;
@@ -490,7 +504,7 @@ public class VectorTVList extends TVList {
         arrayCopy(value, idx, arrayIdx, elementIdx, internalRemaining);
         idx += internalRemaining;
         for (int i = 0; i < internalRemaining; i++) {
-          indices.get(arrayIdx)[elementIdx] = size;
+          indices.get(arrayIdx)[elementIdx + i] = size;
           size++;
         }
         checkExpansion();
