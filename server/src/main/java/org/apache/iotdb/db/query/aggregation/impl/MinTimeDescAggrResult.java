@@ -53,6 +53,16 @@ public class MinTimeDescAggrResult extends MinTimeAggrResult {
   }
 
   @Override
+  public void updateResultUsingValues(long[] timestamps, int length, Object[] values) {
+    for (int i = length - 1; i >= 0; i--) {
+      if (values[i] != null) {
+        setLongValue(timestamps[i]);
+        return;
+      }
+    }
+  }
+
+  @Override
   public boolean hasFinalResult() {
     return false;
   }

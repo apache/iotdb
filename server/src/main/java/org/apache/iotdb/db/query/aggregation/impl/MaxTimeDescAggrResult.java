@@ -64,6 +64,19 @@ public class MaxTimeDescAggrResult extends MaxTimeAggrResult {
   }
 
   @Override
+  public void updateResultUsingValues(long[] timestamps, int length, Object[] values) {
+    if (hasFinalResult()) {
+      return;
+    }
+    for (int i = 0; i < length; i++) {
+      if (values[i] != null) {
+        updateMaxTimeResult(timestamps[i]);
+        return;
+      }
+    }
+  }
+
+  @Override
   public boolean hasFinalResult() {
     return hasCandidateResult;
   }

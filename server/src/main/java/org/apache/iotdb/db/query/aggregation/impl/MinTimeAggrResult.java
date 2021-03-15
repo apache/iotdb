@@ -86,6 +86,19 @@ public class MinTimeAggrResult extends AggregateResult {
   }
 
   @Override
+  public void updateResultUsingValues(long[] timestamps, int length, Object[] values) {
+    if (hasFinalResult()) {
+      return;
+    }
+    for (int i = 0; i < length; i++) {
+      if (values[i] != null) {
+        setLongValue(timestamps[i]);
+        return;
+      }
+    }
+  }
+
+  @Override
   public boolean hasFinalResult() {
     return hasCandidateResult;
   }

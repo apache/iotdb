@@ -110,6 +110,15 @@ public class AvgAggrResult extends AggregateResult {
     }
   }
 
+  @Override
+  public void updateResultUsingValues(long[] timestamps, int length, Object[] values) {
+    for (int i = 0; i < length; i++) {
+      if (values[i] != null) {
+        updateAvg(seriesDataType, values[i]);
+      }
+    }
+  }
+
   private void updateAvg(TSDataType type, Object sumVal) throws UnSupportedDataTypeException {
     double val;
     switch (type) {

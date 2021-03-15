@@ -107,6 +107,20 @@ public class FirstValueAggrResult extends AggregateResult {
   }
 
   @Override
+  public void updateResultUsingValues(long[] timestamps, int length, Object[] values) {
+    if (hasFinalResult()) {
+      return;
+    }
+    for (int i = 0; i < length; i++) {
+      if (values[i] != null) {
+        setValue(values[i]);
+        timestamp = timestamps[i];
+        break;
+      }
+    }
+  }
+
+  @Override
   public boolean hasFinalResult() {
     return hasCandidateResult;
   }

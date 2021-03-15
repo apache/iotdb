@@ -96,6 +96,17 @@ public class LastValueAggrResult extends AggregateResult {
   }
 
   @Override
+  public void updateResultUsingValues(long[] timestamps, int length, Object[] values) {
+    for (int i = length - 1; i >= 0; i--) {
+      if (values[i] != null) {
+        timestamp = timestamps[i];
+        setValue(values[i]);
+        return;
+      }
+    }
+  }
+
+  @Override
   public boolean hasFinalResult() {
     return false;
   }

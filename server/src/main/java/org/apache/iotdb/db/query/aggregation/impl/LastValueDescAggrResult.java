@@ -81,6 +81,20 @@ public class LastValueDescAggrResult extends LastValueAggrResult {
   }
 
   @Override
+  public void updateResultUsingValues(long[] timestamps, int length, Object[] values) {
+    if (hasFinalResult()) {
+      return;
+    }
+    for (int i = 0; i < length; i++) {
+      if (values[i] != null) {
+        timestamp = timestamps[i];
+        setValue(values[i]);
+        return;
+      }
+    }
+  }
+
+  @Override
   public boolean hasFinalResult() {
     return hasCandidateResult;
   }

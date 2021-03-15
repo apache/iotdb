@@ -64,6 +64,17 @@ public class FirstValueDescAggrResult extends FirstValueAggrResult {
   }
 
   @Override
+  public void updateResultUsingValues(long[] timestamps, int length, Object[] values) {
+    for (int i = length - 1; i >= 0; i--) {
+      if (values[i] != null) {
+        setValue(values[i]);
+        timestamp = timestamps[i];
+        return;
+      }
+    }
+  }
+
+  @Override
   public boolean hasFinalResult() {
     return false;
   }

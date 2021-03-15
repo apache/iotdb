@@ -87,6 +87,20 @@ public class CountAggrResult extends AggregateResult {
   }
 
   @Override
+  public void updateResultUsingValues(long[] timestamps, int length, Object[] values) {
+    int cnt = 0;
+    for (int i = 0; i < length; i++) {
+      if (values[i] != null) {
+        cnt++;
+      }
+    }
+
+    long preValue = getLongValue();
+    preValue += cnt;
+    setLongValue(preValue);
+  }
+
+  @Override
   public boolean hasFinalResult() {
     return false;
   }
