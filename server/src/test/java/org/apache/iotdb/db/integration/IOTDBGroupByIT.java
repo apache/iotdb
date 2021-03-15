@@ -134,7 +134,7 @@ public class IOTDBGroupByIT {
     System.out.println("countSumAvgTest");
     String[] retArray1 =
         new String[] {
-          "5,3,35.8,11.933333333333332",
+          "5,3,35.8,11.93333",
           "25,2,70.7,35.35",
           "45,1,50.5,50.5",
           "65,0,0.0,null",
