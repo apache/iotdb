@@ -223,8 +223,10 @@ public class LastQueryExecutor {
         restDataType.add(dataTypes.get(i));
       } else if (!satisfyFilter(filter, tvPair)) {
         resultContainer.add(new Pair<>(true, null));
+        DEBUG_LOGGER.info("[LastQueryExecutor] Last cache hit for path: " + seriesPaths.get(i) + " with timestamp: " + tvPair.getTimestamp());
       } else {
         resultContainer.add(new Pair<>(true, tvPair));
+        DEBUG_LOGGER.info("[LastQueryExecutor] Last cache hit for path: " + seriesPaths.get(i) + " with timestamp: " + tvPair.getTimestamp());
       }
     }
     return resultContainer;
