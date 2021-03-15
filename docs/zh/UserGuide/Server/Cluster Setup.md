@@ -41,9 +41,9 @@ __集群模式目前是测试版！请谨慎在生产环境中使用。__
 
 ## 3节点3副本伪分布式搭建示例
 ```
-mvn clean package -pl cluster -am -Dmaven.test.skip=true
+mvn clean package -DskipTests
 chmod -R 777 ./cluster/target/
-nohup ./cluster/target/cluster-0.12.0-SNAPSHOT/sbin/start-node.sh  ./cluster/target/test-classes/node1conf/ >/dev/null 2>&1 &
+nohup ./cluster/target/cluster-0.12.0-SNAPSHOT/sbin/start-node.sh ./cluster/target/test-classes/node1conf/ >/dev/null 2>&1 &
 nohup ./cluster/target/cluster-0.12.0-SNAPSHOT/sbin/start-node.sh ./cluster/target/test-classes/node2conf/ >/dev/null 2>&1 &
 nohup ./cluster/target/cluster-0.12.0-SNAPSHOT/sbin/start-node.sh ./cluster/target/test-classes/node3conf/ >/dev/null 2>&1 &
 ```
