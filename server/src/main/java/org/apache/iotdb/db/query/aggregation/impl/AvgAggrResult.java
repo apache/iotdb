@@ -33,7 +33,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 
 public class AvgAggrResult extends AggregateResult {
@@ -79,12 +78,7 @@ public class AvgAggrResult extends AggregateResult {
     } else {
       sum = statistics.getSumDoubleValue();
     }
-    // avg = (avg * preCnt + sum) / cnt;
-    BigDecimal bAvg = new BigDecimal(Double.toString(avg));
-    BigDecimal bPreCnt = new BigDecimal(Long.toString(preCnt));
-    BigDecimal bSum = new BigDecimal(Double.toString(sum));
-    BigDecimal bCnt = new BigDecimal(Long.toString(cnt));
-    avg = bAvg.multiply(bPreCnt).add(bSum).divide(bCnt, 5, BigDecimal.ROUND_HALF_UP).doubleValue();
+    avg = (avg * preCnt + sum) / cnt;
   }
 
   @Override
@@ -135,16 +129,7 @@ public class AvgAggrResult extends AggregateResult {
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type in aggregation AVG : %s", type));
     }
-    // avg = (avg * cnt + val) / (cnt + 1);
-    BigDecimal bAvg = new BigDecimal(Double.toString(avg));
-    BigDecimal bCnt = new BigDecimal(Long.toString(cnt));
-    BigDecimal bVal = new BigDecimal(Double.toString(val));
-    BigDecimal bOne = new BigDecimal("1");
-    avg =
-        bAvg.multiply(bCnt)
-            .add(bVal)
-            .divide(bCnt.add(bOne), 5, BigDecimal.ROUND_HALF_UP)
-            .doubleValue();
+    avg = (avg * cnt + val) / (cnt + 1);
 
     cnt++;
   }
@@ -178,16 +163,7 @@ public class AvgAggrResult extends AggregateResult {
       // avoid two empty results producing an NaN
       return;
     }
-    // avg = (avg * cnt + anotherAvg.avg * anotherAvg.cnt) / (cnt + anotherAvg.cnt);
-    BigDecimal bAvg = new BigDecimal(Double.toString(avg));
-    BigDecimal bCnt = new BigDecimal(Long.toString(cnt));
-    BigDecimal bAnotherAvg = new BigDecimal(Double.toString(anotherAvg.avg));
-    BigDecimal bAnotherCnt = new BigDecimal(Long.toString(anotherAvg.cnt));
-    avg =
-        bAvg.multiply(bCnt)
-            .add(bAnotherAvg.multiply(bAnotherCnt))
-            .divide(bCnt.add(bAnotherCnt), 5, BigDecimal.ROUND_HALF_UP)
-            .doubleValue();
+    avg = (avg * cnt + anotherAvg.avg * anotherAvg.cnt) / (cnt + anotherAvg.cnt);
 
     cnt += anotherAvg.cnt;
   }
