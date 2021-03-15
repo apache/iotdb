@@ -45,9 +45,7 @@ import java.util.Set;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.TIME;
 
-/**
- * provide a integration method for other user.
- */
+/** provide a integration method for other user. */
 public class Planner {
 
   protected LogicalGenerator logicalGenerator;
@@ -57,44 +55,43 @@ public class Planner {
   }
 
   @TestOnly
-  public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr)
-      throws QueryProcessException {
+  public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr) throws QueryProcessException {
     return parseSQLToPhysicalPlan(sqlStr, ZoneId.systemDefault(), 1024);
   }
 
-  /**
-   * @param fetchSize this parameter only take effect when it is a query plan
-   */
+  /** @param fetchSize this parameter only take effect when it is a query plan */
   public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr, ZoneId zoneId, int fetchSize)
       throws QueryProcessException {
     Operator operator = logicalGenerator.generate(sqlStr, zoneId);
-    int maxDeduplicatedPathNum = QueryResourceManager.getInstance()
-        .getMaxDeduplicatedPathNum(fetchSize);
+    int maxDeduplicatedPathNum =
+        QueryResourceManager.getInstance().getMaxDeduplicatedPathNum(fetchSize);
     if (operator instanceof SFWOperator && ((SFWOperator) operator).isLastQuery()) {
-      // Dataset of last query actually has only three columns, so we shouldn't limit the path num while constructing logical plan
-      // To avoid overflowing because logicalOptimize function may do maxDeduplicatedPathNum + 1, we set it to Integer.MAX_VALUE - 1
+      // Dataset of last query actually has only three columns, so we shouldn't limit the path num
+      // while constructing logical plan
+      // To avoid overflowing because logicalOptimize function may do maxDeduplicatedPathNum + 1, we
+      // set it to Integer.MAX_VALUE - 1
       maxDeduplicatedPathNum = Integer.MAX_VALUE - 1;
     }
     operator = logicalOptimize(operator, maxDeduplicatedPathNum);
     PhysicalGenerator physicalGenerator = new PhysicalGenerator();
-    return physicalGenerator.transformToPhysicalPlan(operator, fetchSize);
+    PhysicalPlan physicalPlan = physicalGenerator.transformToPhysicalPlan(operator, fetchSize);
+    physicalPlan.setDebug(operator.isDebug());
+    return physicalPlan;
   }
 
-  /**
-   * convert raw data query to physical plan directly
-   */
+  /** convert raw data query to physical plan directly */
   public PhysicalPlan rawDataQueryReqToPhysicalPlan(TSRawDataQueryReq rawDataQueryReq)
       throws QueryProcessException, IllegalPathException {
     List<String> paths = rawDataQueryReq.getPaths();
     long startTime = rawDataQueryReq.getStartTime();
     long endTime = rawDataQueryReq.getEndTime();
 
-    //construct query operator and set its global time filter
+    // construct query operator and set its global time filter
     QueryOperator queryOp = new QueryOperator(SQLConstant.TOK_QUERY);
     FromOperator fromOp = new FromOperator(SQLConstant.TOK_FROM);
     SelectOperator selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
 
-    //iterate the path list and add it to from operator
+    // iterate the path list and add it to from operator
     for (String p : paths) {
       PartialPath path = new PartialPath(p);
       fromOp.addPrefixTablePath(path);
@@ -104,7 +101,7 @@ public class Planner {
     queryOp.setSelectOperator(selectOp);
     queryOp.setFromOperator(fromOp);
 
-    //set time filter operator
+    // set time filter operator
     FilterOperator filterOp = new FilterOperator(SQLConstant.KW_AND);
     PartialPath timePath = new PartialPath(TIME);
     filterOp.setSinglePath(timePath);
@@ -113,26 +110,32 @@ public class Planner {
     filterOp.setIsSingle(true);
     filterOp.setPathSet(pathSet);
 
-    BasicFunctionOperator left = new BasicFunctionOperator(SQLConstant.GREATERTHANOREQUALTO,
-        timePath, Long.toString(startTime));
-    BasicFunctionOperator right = new BasicFunctionOperator(SQLConstant.LESSTHAN, timePath,
-        Long.toString(endTime));
+    BasicFunctionOperator left =
+        new BasicFunctionOperator(
+            SQLConstant.GREATERTHANOREQUALTO, timePath, Long.toString(startTime));
+    BasicFunctionOperator right =
+        new BasicFunctionOperator(SQLConstant.LESSTHAN, timePath, Long.toString(endTime));
     filterOp.addChildOperator(left);
     filterOp.addChildOperator(right);
 
     queryOp.setFilterOperator(filterOp);
 
-    int maxDeduplicatedPathNum = QueryResourceManager.getInstance()
-        .getMaxDeduplicatedPathNum(rawDataQueryReq.fetchSize);
+    int maxDeduplicatedPathNum =
+        QueryResourceManager.getInstance().getMaxDeduplicatedPathNum(rawDataQueryReq.fetchSize);
     if (queryOp.isLastQuery()) {
-      // Dataset of last query actually has only three columns, so we shouldn't limit the path num while constructing logical plan
-      // To avoid overflowing because logicalOptimize function may do maxDeduplicatedPathNum + 1, we set it to Integer.MAX_VALUE - 1
+      // Dataset of last query actually has only three columns, so we shouldn't limit the path num
+      // while constructing logical plan
+      // To avoid overflowing because logicalOptimize function may do maxDeduplicatedPathNum + 1, we
+      // set it to Integer.MAX_VALUE - 1
       maxDeduplicatedPathNum = Integer.MAX_VALUE - 1;
     }
     SFWOperator op = (SFWOperator) logicalOptimize(queryOp, maxDeduplicatedPathNum);
 
     PhysicalGenerator physicalGenerator = new PhysicalGenerator();
-    return physicalGenerator.transformToPhysicalPlan(op, rawDataQueryReq.fetchSize);
+    PhysicalPlan physicalPlan =
+        physicalGenerator.transformToPhysicalPlan(op, rawDataQueryReq.fetchSize);
+    physicalPlan.setDebug(op.isDebug());
+    return physicalPlan;
   }
 
   /**
