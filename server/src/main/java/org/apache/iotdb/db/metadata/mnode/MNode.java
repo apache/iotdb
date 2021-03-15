@@ -53,6 +53,9 @@ public class MNode implements Serializable {
   /** whether be loaded from file */
   protected boolean isLoaded;
 
+  /** whether the node has been modified and is different from the content in metafile*/
+  protected boolean isModified;
+
   /** offset in metafile */
   protected long position;
 
@@ -285,6 +288,14 @@ public class MNode implements Serializable {
 
   public void setLoaded(boolean loaded) {
     isLoaded = loaded;
+  }
+
+  public boolean isModified() {
+    return isModified;
+  }
+
+  public void setModified(boolean modified) {
+    isModified = modified;
   }
 
   public long getPosition() {
