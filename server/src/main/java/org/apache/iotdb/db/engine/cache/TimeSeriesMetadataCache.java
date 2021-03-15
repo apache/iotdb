@@ -198,7 +198,7 @@ public class TimeSeriesMetadataCache {
       if (debug) {
         DEBUG_LOGGER.info(
             "Get timeseries: {}. {} metadata in file: {} from cache: {}",
-            key.device, key.measurement, key.filePath, timeseriesMetadata.toString());
+            key.device, key.measurement, key.filePath, timeseriesMetadata);
       }
       return new TimeseriesMetadata(timeseriesMetadata);
     }
