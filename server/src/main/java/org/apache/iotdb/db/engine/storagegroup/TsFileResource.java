@@ -205,6 +205,7 @@ public class TsFileResource {
   }
 
   private void generateTimeSeriesMetadata() throws IOException {
+    timeSeriesMetadata = new TimeseriesMetadata();
     timeSeriesMetadata.setOffsetOfChunkMetaDataList(-1);
     timeSeriesMetadata.setDataSizeOfChunkMetaDataList(-1);
 

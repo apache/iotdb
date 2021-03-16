@@ -63,7 +63,6 @@ public class ReadOnlyMemChunk {
 
   private int chunkDataSize;
 
-  // TODO BY HAONAN HOU
   public ReadOnlyMemChunk(
       String measurementUid,
       TSDataType dataType,
