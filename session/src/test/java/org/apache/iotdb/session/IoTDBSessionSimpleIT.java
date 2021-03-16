@@ -35,6 +35,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.Tablet;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
@@ -109,7 +110,7 @@ public class IoTDBSessionSimpleIT {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
-    List<MeasurementSchema> schemaList = new ArrayList<>();
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.DOUBLE));
     schemaList.add(new MeasurementSchema("s3", TSDataType.TEXT));
@@ -121,9 +122,15 @@ public class IoTDBSessionSimpleIT {
     for (long row = 0; row < 15; row++) {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, timestamp);
-      tablet.addValue("s1", rowIndex, 1L);
-      tablet.addValue("s2", rowIndex, 1D);
-      tablet.addValue("s3", rowIndex, new Binary("1"));
+      if (row % 5 == 0) {
+        tablet.addValue("s1", rowIndex, null);
+        tablet.addValue("s2", rowIndex, null);
+        tablet.addValue("s3", rowIndex, null);
+      } else {
+        tablet.addValue("s1", rowIndex, 1L);
+        tablet.addValue("s2", rowIndex, 1D);
+        tablet.addValue("s3", rowIndex, new Binary("1"));
+      }
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
         session.insertTablet(tablet, true);
         tablet.reset();

@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.nio.ByteBuffer;
+import java.util.BitSet;
 
 public class SessionUtils {
 
@@ -58,42 +59,95 @@ public class SessionUtils {
 
   private static void getValueBufferOfDataType(
       TSDataType dataType, Tablet tablet, int i, ByteBuffer valueBuffer) {
+    int lastPos = 0, nextPos;
+    BitSet curBitset = tablet.BitSets[i];
+
     switch (dataType) {
       case INT32:
         int[] intValues = (int[]) tablet.values[i];
-        for (int index = 0; index < tablet.rowSize; index++) {
-          valueBuffer.putInt(intValues[index]);
+        while (true) {
+          nextPos = curBitset.nextClearBit(lastPos);
+          for (int index = lastPos; index < nextPos; index++) {
+            valueBuffer.putInt(intValues[index]);
+          }
+          if (nextPos == tablet.rowSize) {
+            break;
+          }
+          valueBuffer.putInt(-1);
+          lastPos = nextPos + 1;
         }
         break;
       case INT64:
         long[] longValues = (long[]) tablet.values[i];
-        for (int index = 0; index < tablet.rowSize; index++) {
-          valueBuffer.putLong(longValues[index]);
+        while (true) {
+          nextPos = curBitset.nextClearBit(lastPos);
+          for (int index = lastPos; index < nextPos; index++) {
+            valueBuffer.putLong(longValues[index]);
+          }
+          if (nextPos == tablet.rowSize) {
+            break;
+          }
+          valueBuffer.putLong(-1);
+          lastPos = nextPos + 1;
         }
         break;
       case FLOAT:
         float[] floatValues = (float[]) tablet.values[i];
-        for (int index = 0; index < tablet.rowSize; index++) {
-          valueBuffer.putFloat(floatValues[index]);
+        while (true) {
+          nextPos = curBitset.nextClearBit(lastPos);
+          for (int index = lastPos; index < nextPos; index++) {
+            valueBuffer.putFloat(floatValues[index]);
+          }
+          if (nextPos == tablet.rowSize) {
+            break;
+          }
+          valueBuffer.putFloat(-1);
+          lastPos = nextPos + 1;
         }
         break;
       case DOUBLE:
         double[] doubleValues = (double[]) tablet.values[i];
-        for (int index = 0; index < tablet.rowSize; index++) {
-          valueBuffer.putDouble(doubleValues[index]);
+        while (true) {
+          nextPos = curBitset.nextClearBit(lastPos);
+          for (int index = lastPos; index < nextPos; index++) {
+            valueBuffer.putDouble(doubleValues[index]);
+          }
+          if (nextPos == tablet.rowSize) {
+            break;
+          }
+          valueBuffer.putDouble(-1);
+          lastPos = nextPos + 1;
         }
         break;
       case BOOLEAN:
         boolean[] boolValues = (boolean[]) tablet.values[i];
-        for (int index = 0; index < tablet.rowSize; index++) {
-          valueBuffer.put(BytesUtils.boolToByte(boolValues[index]));
+        while (true) {
+          nextPos = curBitset.nextClearBit(lastPos);
+          for (int index = lastPos; index < nextPos; index++) {
+            valueBuffer.put(BytesUtils.boolToByte(boolValues[index]));
+          }
+          if (nextPos == tablet.rowSize) {
+            break;
+          }
+          valueBuffer.put(BytesUtils.boolToByte(false));
+          lastPos = nextPos + 1;
         }
         break;
       case TEXT:
         Binary[] binaryValues = (Binary[]) tablet.values[i];
-        for (int index = 0; index < tablet.rowSize; index++) {
-          valueBuffer.putInt(binaryValues[index].getLength());
-          valueBuffer.put(binaryValues[index].getValues());
+        while (true) {
+          nextPos = curBitset.nextClearBit(lastPos);
+          for (int index = lastPos; index < nextPos; index++) {
+            valueBuffer.putInt(binaryValues[index].getLength());
+            valueBuffer.put(binaryValues[index].getValues());
+          }
+          if (nextPos == tablet.rowSize) {
+            break;
+          }
+          Binary emptyStr = new Binary(".");
+          valueBuffer.putInt(emptyStr.getLength());
+          valueBuffer.put(emptyStr.getValues());
+          lastPos = nextPos + 1;
         }
         break;
       default:
