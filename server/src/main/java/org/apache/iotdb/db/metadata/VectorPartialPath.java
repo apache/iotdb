@@ -55,4 +55,9 @@ public class VectorPartialPath extends PartialPath {
   public void setSubSensorsPathList(List<PartialPath> subSensorsPathList) {
     this.subSensorsPathList = subSensorsPathList;
   }
+
+  @Override
+  public String getMeasurement() {
+    return subSensorsPathList.get(0).toString();
+  }
 }
