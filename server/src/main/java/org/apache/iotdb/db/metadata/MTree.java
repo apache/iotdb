@@ -698,8 +698,12 @@ public class MTree implements Serializable {
       throw new IllegalPathException(path.getFullPath());
     }
     MNode cur = root;
+    Template upperTemplate = cur.getDeviceTemplate();
+
     for (int i = 1; i < nodes.length; i++) {
-      Template upperTemplate = cur.getDeviceTemplate();
+      if (cur.getDeviceTemplate() != null) {
+        upperTemplate = cur.getDeviceTemplate();
+      }
       MNode next = cur.getChild(nodes[i]);
       if (next == null) {
         if (upperTemplate == null) {
