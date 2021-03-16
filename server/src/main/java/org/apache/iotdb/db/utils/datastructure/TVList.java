@@ -212,7 +212,7 @@ public abstract class TVList {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public TVList getTVListByColumnIndex(int columnIndex) {
+  public TVList getTVListByColumnIndex(List<Integer> columnIndexList) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
