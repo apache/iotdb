@@ -36,6 +36,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
@@ -129,6 +130,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.thrift.TException;
@@ -617,45 +619,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     long queryId = -1;
     try {
 
-      // In case users forget to set this field in query, use the default value
-      fetchSize = fetchSize == 0 ? DEFAULT_FETCH_SIZE : fetchSize;
-
-      if (plan instanceof QueryPlan && !((QueryPlan) plan).isAlignByTime()) {
-        OperatorType operatorType = plan.getOperatorType();
-        if (operatorType == OperatorType.AGGREGATION
-            || operatorType == OperatorType.FILL
-            || operatorType == OperatorType.GROUPBYTIME) {
-          throw new QueryProcessException(
-              operatorType.name() + " doesn't support disable align clause.");
-        }
-      }
-      if (plan.getOperatorType() == OperatorType.AGGREGATION) {
-        // the actual row number of aggregation query is 1
-        fetchSize = 1;
-      }
-
-      if (plan instanceof GroupByTimePlan) {
-        fetchSize = Math.min(getFetchSizeForGroupByTimePlan((GroupByTimePlan) plan), fetchSize);
-      }
-
-      // get deduplicated path num
-      int deduplicatedPathNum = -1;
-      if (plan instanceof AlignByDevicePlan) {
-        deduplicatedPathNum = ((AlignByDevicePlan) plan).getMeasurements().size();
-      } else if (plan instanceof LastQueryPlan) {
-        // dataset of last query consists of three column: time column + value column = 1
-        // deduplicatedPathNum
-        // and we assume that the memory which sensor name takes equals to 1 deduplicatedPathNum
-        deduplicatedPathNum = 2;
-        // last query's actual row number should be the minimum between the number of series and
-        // fetchSize
-        fetchSize = Math.min(((LastQueryPlan) plan).getDeduplicatedPaths().size(), fetchSize);
-      } else if (plan instanceof RawDataQueryPlan) {
-        deduplicatedPathNum = ((RawDataQueryPlan) plan).getDeduplicatedPaths().size();
-      }
-
+      // pair.left = fetchSize, pair.right = deduplicatedNum
+      Pair<Integer, Integer> p = getMemoryParametersFromPhysicalPlan(plan, fetchSize);
+      fetchSize = p.left;
       // generate the queryId for the operation
-      queryId = generateQueryId(true, fetchSize, deduplicatedPathNum);
+      queryId = generateQueryId(true, fetchSize, p.right);
       // register query info to queryTimeManager
       if (!(plan instanceof ShowQueryProcesslistPlan)) {
         queryTimeManager.registerQuery(queryId, startTime, statement, timeout);
@@ -744,20 +712,49 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
   }
 
+  /**
+   * get fetchSize and deduplicatedPathNum that are used for memory estimation
+   *
+   * @return Pair<fetchSize, deduplicatedPathNum>
+   */
+  private Pair<Integer, Integer> getMemoryParametersFromPhysicalPlan(
+      PhysicalPlan plan, int fetchSizeBefore) {
+    // In case users forget to set this field in query, use the default value
+    int fetchSize = fetchSizeBefore == 0 ? DEFAULT_FETCH_SIZE : fetchSizeBefore;
+    int deduplicatedPathNum = -1;
+    if (plan instanceof GroupByTimePlan) {
+      fetchSize = Math.min(getFetchSizeForGroupByTimePlan((GroupByTimePlan) plan), fetchSize);
+    } else if (plan.getOperatorType() == OperatorType.AGGREGATION) {
+      // the actual row number of aggregation query is 1
+      fetchSize = 1;
+    }
+    if (plan instanceof AlignByDevicePlan) {
+      deduplicatedPathNum = ((AlignByDevicePlan) plan).getMeasurements().size();
+    } else if (plan instanceof LastQueryPlan) {
+      // dataset of last query consists of three column: time column + value column = 1
+      // deduplicatedPathNum
+      // and we assume that the memory which sensor name takes equals to 1 deduplicatedPathNum
+      deduplicatedPathNum = 2;
+      // last query's actual row number should be the minimum between the number of series and
+      // fetchSize
+      fetchSize = Math.min(((LastQueryPlan) plan).getDeduplicatedPaths().size(), fetchSize);
+    } else if (plan instanceof RawDataQueryPlan) {
+      deduplicatedPathNum = ((RawDataQueryPlan) plan).getDeduplicatedPaths().size();
+    }
+    return new Pair<>(fetchSize, deduplicatedPathNum);
+  }
+
   /*
   calculate fetch size for group by time plan
    */
-  private int getFetchSizeForGroupByTimePlan(GroupByTimePlan groupByTimePlan) {
-    int rows =
-        (int)
-            ((groupByTimePlan.getEndTime() - groupByTimePlan.getStartTime())
-                / groupByTimePlan.getInterval());
+  private int getFetchSizeForGroupByTimePlan(GroupByTimePlan plan) {
+    int rows = (int) ((plan.getEndTime() - plan.getStartTime()) / plan.getInterval());
     // rows gets 0 is caused by: the end time - the start time < the time interval.
-    if (rows == 0 && groupByTimePlan.isIntervalByMonth()) {
+    if (rows == 0 && plan.isIntervalByMonth()) {
       Calendar calendar = Calendar.getInstance();
-      calendar.setTimeInMillis(groupByTimePlan.getStartTime());
-      calendar.add(Calendar.MONTH, (int) (groupByTimePlan.getInterval() / MS_TO_MONTH));
-      rows = calendar.getTimeInMillis() <= groupByTimePlan.getEndTime() ? 1 : 0;
+      calendar.setTimeInMillis(plan.getStartTime());
+      calendar.add(Calendar.MONTH, (int) (plan.getInterval() / MS_TO_MONTH));
+      rows = calendar.getTimeInMillis() <= plan.getEndTime() ? 1 : 0;
     }
     return rows;
   }
@@ -1058,7 +1055,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
   }
 
-  private TSExecuteStatementResp executeUpdateStatement(PhysicalPlan plan, long sessionId) {
+  private TSExecuteStatementResp executeUpdateStatement(PhysicalPlan plan, long sessionId)
+      throws QueryProcessException {
     TSStatus status = checkAuthority(plan, sessionId);
     if (status != null) {
       return new TSExecuteStatementResp(status);
@@ -1858,9 +1856,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         : RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
   }
 
-  private long generateQueryId(boolean isDataQuery, int fetchSize, int deduplicatedPathNum) {
-    return QueryResourceManager.getInstance()
-        .assignQueryId(isDataQuery, fetchSize, deduplicatedPathNum);
+  private long generateQueryId(boolean isDataQuery, int fetchSize, int deduplicatedPathNum)
+      throws QueryProcessException {
+    try {
+      return QueryResourceManager.getInstance()
+          .assignQueryId(isDataQuery, fetchSize, deduplicatedPathNum);
+    } catch (PathNumOverLimitException e) {
+      throw new QueryProcessException(e);
+    }
   }
 
   protected List<TSDataType> getSeriesTypesByPaths(
