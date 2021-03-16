@@ -123,7 +123,6 @@ import org.apache.iotdb.db.qp.physical.sys.ShowTriggersPlan;
 import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.udf.core.context.UDFContext;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.FilePathUtils;
@@ -660,13 +659,6 @@ public class PhysicalGenerator {
         measurements = slimitTrimColumn(measurements, seriesSlimit, seriesOffset);
       }
 
-      int maxDeduplicatedPathNum =
-          QueryResourceManager.getInstance().getMaxDeduplicatedPathNum(fetchSize);
-
-      if (measurements.size() > maxDeduplicatedPathNum) {
-        throw new PathNumOverLimitException(maxDeduplicatedPathNum, measurements.size());
-      }
-
       // assigns to alignByDevicePlan
       alignByDevicePlan.setMeasurements(measurements);
       alignByDevicePlan.setMeasurementAliasMap(measurementAliasMap);
@@ -719,7 +711,7 @@ public class PhysicalGenerator {
       return queryPlan;
     }
     try {
-      deduplicate(queryPlan, fetchSize);
+      deduplicate(queryPlan);
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -800,7 +792,7 @@ public class PhysicalGenerator {
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private void deduplicate(QueryPlan queryPlan, int fetchSize)
+  private void deduplicate(QueryPlan queryPlan)
       throws MetadataException, PathNumOverLimitException {
     // generate dataType first
     List<PartialPath> paths = queryPlan.getPaths();
@@ -810,19 +802,6 @@ public class PhysicalGenerator {
     // deduplicate from here
     if (queryPlan instanceof AlignByDevicePlan) {
       return;
-    }
-
-    if (queryPlan instanceof GroupByTimePlan) {
-      GroupByTimePlan plan = (GroupByTimePlan) queryPlan;
-      // the actual row number of group by query should be calculated from startTime, endTime and
-      // interval.
-      long interval = (plan.getEndTime() - plan.getStartTime()) / plan.getInterval();
-      if (interval > 0) {
-        fetchSize = Math.min((int) (interval), fetchSize);
-      }
-    } else if (queryPlan instanceof AggregationPlan) {
-      // the actual row number of aggregation query is 1
-      fetchSize = 1;
     }
 
     RawDataQueryPlan rawDataQueryPlan = (RawDataQueryPlan) queryPlan;
@@ -863,11 +842,8 @@ public class PhysicalGenerator {
     }
     indexedPaths.sort(Comparator.comparing(pair -> pair.left));
 
-    int maxDeduplicatedPathNum =
-        QueryResourceManager.getInstance().getMaxDeduplicatedPathNum(fetchSize);
     Map<String, Integer> pathNameToReaderIndex = new HashMap<>();
     Set<String> columnForDisplaySet = new HashSet<>();
-
     for (Pair<PartialPath, Integer> indexedPath : indexedPaths) {
       PartialPath originalPath = indexedPath.left;
       Integer originalIndex = indexedPath.right;
@@ -896,9 +872,6 @@ public class PhysicalGenerator {
               .addDeduplicatedAggregations(queryPlan.getAggregations().get(originalIndex));
         }
         columnForReaderSet.add(columnForReader);
-        if (maxDeduplicatedPathNum < columnForReaderSet.size()) {
-          throw new PathNumOverLimitException(maxDeduplicatedPathNum, columnForReaderSet.size());
-        }
       }
 
       String columnForDisplay =
