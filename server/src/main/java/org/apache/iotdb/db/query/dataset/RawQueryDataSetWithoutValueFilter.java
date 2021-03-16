@@ -146,6 +146,8 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
 
   protected BatchData[] cachedBatchDataArray;
 
+  private int bufferNum;
+
   // capacity for blocking queue
   private static final int BLOCKING_QUEUE_CAPACITY = 5;
 
@@ -179,6 +181,14 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
     }
     cachedBatchDataArray = new BatchData[readers.size()];
     noMoreDataInQueueArray = new boolean[readers.size()];
+    bufferNum = 0;
+    for (int index = 0; index < paths.size(); index++) {
+      if (paths.get(index) instanceof VectorPartialPath) {
+        bufferNum += ((VectorPartialPath) paths).getSubSensorsPathList().size();
+      } else {
+        bufferNum += 1;
+      }
+    }
     init();
   }
 
@@ -215,14 +225,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
     TSQueryDataSet tsQueryDataSet = new TSQueryDataSet();
 
     PublicBAOS timeBAOS = new PublicBAOS();
-    int bufferNum = 0;
-    for (int index = 0; index < seriesNum; index++) {
-      if (paths.get(index) instanceof VectorPartialPath) {
-        bufferNum += ((VectorPartialPath) paths).getSubSensorsPathList().size();
-      } else {
-        bufferNum += 1;
-      }
-    }
+
     PublicBAOS[] valueBAOSList = new PublicBAOS[bufferNum];
     PublicBAOS[] bitmapBAOSList = new PublicBAOS[bufferNum];
 
@@ -254,7 +257,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
           // current batch is empty or does not have value at minTime
           if (rowOffset == 0) {
             if (paths.get(seriesIndex) instanceof VectorPartialPath) {
-              for (int i = 0; i < ((VectorPartialPath) paths).getSubSensorsPathList().size(); i++) {
+              for (int i = 0; i < ((VectorPartialPath) paths.get(seriesIndex)).getSubSensorsPathList().size(); i++) {
                 currentBitmapList[bufferIndex] = (currentBitmapList[bufferIndex] << 1);
                 bufferIndex++;
               }
@@ -318,6 +321,11 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
                 break;
               case VECTOR:
                 for (TsPrimitiveType primitiveVal : cachedBatchDataArray[seriesIndex].getVector()) {
+                  if (primitiveVal == null) {
+                    currentBitmapList[bufferIndex] = (currentBitmapList[bufferIndex] << 1);
+                    bufferIndex++;
+                    continue;
+                  }
                   currentBitmapList[bufferIndex] = (currentBitmapList[bufferIndex] << 1) | FLAG;
                   switch (primitiveVal.getDataType()) {
                     case INT32:
