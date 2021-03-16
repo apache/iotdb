@@ -45,7 +45,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.modifyTsFileNameUnseqMergCnt;
 import static org.junit.Assert.assertEquals;
 
 public class MergeTaskTest extends MergeTest {
@@ -87,7 +86,7 @@ public class MergeTaskTest extends MergeTest {
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
     List<TsFileResource> list = new ArrayList<>();
-    list.add(modifyTsFileNameUnseqMergCnt(seqResources.get(0)));
+    list.add(seqResources.get(0));
     IBatchReader tsFilesReader =
         new SeriesRawDataBatchReader(
             path,
@@ -145,7 +144,7 @@ public class MergeTaskTest extends MergeTest {
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
     List<TsFileResource> list = new ArrayList<>();
-    list.add(modifyTsFileNameUnseqMergCnt(seqResources.get(0)));
+    list.add(seqResources.get(0));
     IBatchReader tsFilesReader =
         new SeriesRawDataBatchReader(
             path,
@@ -186,7 +185,7 @@ public class MergeTaskTest extends MergeTest {
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
     List<TsFileResource> resources = new ArrayList<>();
-    resources.add(modifyTsFileNameUnseqMergCnt(seqResources.get(0)));
+    resources.add(seqResources.get(0));
     IBatchReader tsFilesReader =
         new SeriesRawDataBatchReader(
             path,
@@ -270,7 +269,7 @@ public class MergeTaskTest extends MergeTest {
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
     List<TsFileResource> list = new ArrayList<>();
-    list.add(modifyTsFileNameUnseqMergCnt(seqResources.get(0)));
+    list.add(seqResources.get(0));
     IBatchReader tsFilesReader =
         new SeriesRawDataBatchReader(
             path,
@@ -310,7 +309,7 @@ public class MergeTaskTest extends MergeTest {
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
     List<TsFileResource> list = new ArrayList<>();
-    list.add(modifyTsFileNameUnseqMergCnt(seqResources.get(2)));
+    list.add(seqResources.get(2));
     IBatchReader tsFilesReader =
         new SeriesRawDataBatchReader(
             path,
@@ -425,7 +424,7 @@ public class MergeTaskTest extends MergeTest {
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
     List<TsFileResource> resources = new ArrayList<>();
-    resources.add(modifyTsFileNameUnseqMergCnt(seqResources.get(2)));
+    resources.add(seqResources.get(2));
     IBatchReader tsFilesReader =
         new SeriesRawDataBatchReader(
             path,

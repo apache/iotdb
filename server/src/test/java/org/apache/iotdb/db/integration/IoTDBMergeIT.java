@@ -163,7 +163,6 @@ public class IoTDBMergeIT {
             long s1 = resultSet.getLong("root.mergeTest.s1");
             long s2 = resultSet.getLong("root.mergeTest.s2");
             long s3 = resultSet.getLong("root.mergeTest.s3");
-            System.out.println("time " + time + "  s1   " + s1 + "  s2   " + s2 + "  s3   " + s3);
             assertEquals(time + 10, s1);
             assertEquals(time + 20, s2);
             assertEquals(time + 30, s3);
@@ -310,10 +309,6 @@ public class IoTDBMergeIT {
           long s2 = resultSet.getLong("root.mergeTest.s2");
           long s3 = resultSet.getLong("root.mergeTest.s3");
           assertEquals(cnt, time);
-          System.out.println(cnt + "---->" + time);
-          assertEquals(time + 10, s1);
-          assertEquals(time + 20, s2);
-          assertEquals(time + 30, s3);
           if (time % 1000 < 700) {
             assertEquals(time + 10, s1);
             assertEquals(time + 20, s2);

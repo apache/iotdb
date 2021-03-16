@@ -233,7 +233,7 @@ public class MergeTask implements Callable<Void> {
     }
 
     File logFile = new File(storageGroupSysDir, MergeLogger.MERGE_LOG_NAME);
-    if (!executeCallback) {
+    if (executeCallback) {
       // make sure merge.log is not deleted until unseqFiles are cleared so that when system
       // reboots, the undeleted files can be deleted again
       callback.call(resource.getSeqFiles(), resource.getUnseqFiles(), logFile);
