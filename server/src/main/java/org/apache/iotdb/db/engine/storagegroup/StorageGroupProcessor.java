@@ -1524,7 +1524,6 @@ public class StorageGroupProcessor {
       for (PartialPath device : devicePaths) {
         // delete Last cache record if necessary
         tryToDeleteLastCache(device, path, startTime, endTime);
-        DEBUG_LOGGER.info("Delete last cache for path: " + path + " with deletion interval: " + startTime + " to " + endTime);
       }
 
       // write log to impacted working TsFileProcessors
@@ -1633,6 +1632,7 @@ public class StorageGroupProcessor {
           if (lastPair != null && startTime <= lastPair.getTimestamp()
               && lastPair.getTimestamp() <= endTime) {
             ((MeasurementMNode) measurementNode).resetCache();
+            logger.info("[tryToDeleteLastCache] Last cache for path: {} is set to null", measurementNode.getFullPath());
           }
         }
       }
