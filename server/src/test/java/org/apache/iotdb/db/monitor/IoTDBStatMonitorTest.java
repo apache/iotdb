@@ -18,6 +18,12 @@
  */
 package org.apache.iotdb.db.monitor;
 
+import java.io.File;
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.Statement;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -25,20 +31,12 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
-
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.Statement;
 
 /** This is a integration test for StatMonitor. */
 public class IoTDBStatMonitorTest {
@@ -113,12 +111,13 @@ public class IoTDBStatMonitorTest {
   }
 
   private void saveStatValueTest() throws MetadataException, StorageEngineException {
-    statMonitor.saveStatValue(STORAGE_GROUP_NAME);
-
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
+      // flush to save statistics
+      statement.execute("flush");
+
       boolean hasResult = statement.execute("select TOTAL_POINTS from root.stats.\"root.sg\"");
       Assert.assertTrue(hasResult);
 
