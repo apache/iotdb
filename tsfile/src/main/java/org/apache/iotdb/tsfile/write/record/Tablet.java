@@ -71,23 +71,8 @@ public class Tablet {
    * @param schemas the list of measurement schemas for creating the tablet, only measurementId and
    *     type take effects
    */
-  public Tablet(String deviceId, List<MeasurementSchema> schemas) {
+  public Tablet(String deviceId, List<IMeasurementSchema> schemas) {
     this(deviceId, schemas, DEFAULT_SIZE);
-  }
-
-  public Tablet(String deviceId, List<VectorMeasurementSchema> vectorSchemas, boolean haha) {
-    this.deviceId = deviceId;
-    this.schemas = new ArrayList<>(vectorSchemas);
-    this.maxRowNumber = DEFAULT_SIZE;
-    measurementIndex = new HashMap<>();
-
-    for (int i = 0; i < schemas.size(); i++) {
-      measurementIndex.put(schemas.get(i).getMeasurementId(), i);
-    }
-
-    createColumns();
-
-    reset();
   }
 
   /**
@@ -99,7 +84,7 @@ public class Tablet {
    *     and type take effects
    * @param maxRowNumber the maximum number of rows for this tablet
    */
-  public Tablet(String deviceId, List<MeasurementSchema> schemas, int maxRowNumber) {
+  public Tablet(String deviceId, List<IMeasurementSchema> schemas, int maxRowNumber) {
     this.deviceId = deviceId;
     this.schemas = new ArrayList<>(schemas);
     this.maxRowNumber = maxRowNumber;
