@@ -192,6 +192,10 @@
             <artifactId>netty-buffer</artifactId>
             <version>4.1.27.Final</version>
         </dependency>
+        <dependency>
+            <groupId>org.fusesource.mqtt-client</groupId>
+            <artifactId>mqtt-client</artifactId>
+        </dependency>
     </dependencies>
     <build>
         <plugins>

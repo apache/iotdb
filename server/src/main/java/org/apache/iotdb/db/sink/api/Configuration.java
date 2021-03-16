@@ -17,46 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sink.mqtt;
+package org.apache.iotdb.db.sink.api;
 
-import org.apache.iotdb.db.sink.api.Event;
-
-import org.fusesource.mqtt.client.QoS;
-
-public class MQTTEvent implements Event {
-
-  private final String topic;
-  private final QoS qos;
-  private final boolean retain;
-
-  private final long timestamp;
-  private final Object[] values;
-
-  public MQTTEvent(String topic, QoS qos, boolean retain, long timestamp, Object... values) {
-    this.topic = topic;
-    this.qos = qos;
-    this.retain = retain;
-    this.timestamp = timestamp;
-    this.values = values;
-  }
-
-  public String getTopic() {
-    return topic;
-  }
-
-  public QoS getQoS() {
-    return qos;
-  }
-
-  public boolean retain() {
-    return retain;
-  }
-
-  public long getTimestamp() {
-    return timestamp;
-  }
-
-  public Object[] getValues() {
-    return values;
-  }
-}
+public interface Configuration {}

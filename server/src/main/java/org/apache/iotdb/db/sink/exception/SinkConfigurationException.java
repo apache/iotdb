@@ -17,14 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sink.api;
+package org.apache.iotdb.db.sink.exception;
 
-public interface Sink<E extends Event> {
+public class SinkConfigurationException extends Exception {
 
-  default void open() {}
+  public SinkConfigurationException(String message) {
+    super(message);
+  }
 
-  default void close() {}
-
-  @SuppressWarnings("squid:S112")
-  void onEvent(E event) throws Exception;
+  public SinkConfigurationException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }
