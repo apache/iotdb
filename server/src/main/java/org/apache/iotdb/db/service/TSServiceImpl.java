@@ -1655,8 +1655,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       CreateMultiTimeSeriesPlan multiPlan = new CreateMultiTimeSeriesPlan();
       List<PartialPath> paths = new ArrayList<>(req.paths.size());
-      List<TSDataType> dataTypes = new ArrayList<>(req.paths.size());
-      List<TSEncoding> encodings = new ArrayList<>(req.paths.size());
+      List<TSDataType> dataTypes = new ArrayList<>(req.dataTypes.size());
+      List<TSEncoding> encodings = new ArrayList<>(req.dataTypes.size());
       List<CompressionType> compressors = new ArrayList<>(req.paths.size());
       List<String> alias = null;
       if (req.measurementAliasList != null) {
@@ -1687,8 +1687,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         }
 
         paths.add(new PartialPath(req.paths.get(i)));
-        dataTypes.add(TSDataType.values()[req.dataTypes.get(i)]);
-        encodings.add(TSEncoding.values()[req.encodings.get(i)]);
         compressors.add(CompressionType.values()[req.compressors.get(i)]);
         if (alias != null) {
           alias.add(req.measurementAliasList.get(i));
@@ -1702,6 +1700,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         if (attributes != null) {
           attributes.add(req.attributesList.get(i));
         }
+      }
+      for (int i = 0; i < req.dataTypes.size(); i++) {
+        dataTypes.add(TSDataType.values()[req.dataTypes.get(i)]);
+        encodings.add(TSEncoding.values()[req.encodings.get(i)]);
       }
 
       multiPlan.setPaths(paths);

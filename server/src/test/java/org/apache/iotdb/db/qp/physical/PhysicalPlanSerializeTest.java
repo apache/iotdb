@@ -255,6 +255,32 @@ public class PhysicalPlanSerializeTest {
   }
 
   @Test
+  public void createMuSerializeTest3() throws IOException, IllegalPathException {
+    // same as:
+    // create timeseries root.sg.d1.s0 with datatype=DOUBLE, encoding=GORILLA, compression=SNAPPY
+    // create aligned timeseries root.sg.d1.(s1 INT64, s2 DOUBLE, s3 INT64)
+    // with encoding=(GORILLA, GORILLA, GORILLA), compression=SNAPPY
+    CreateMultiTimeSeriesPlan plan = new CreateMultiTimeSeriesPlan();
+    plan.setPaths(
+        Arrays.asList(new PartialPath("root.sg.d1.s0"), new PartialPath("root.sg.d1.(s1,s2,s3)")));
+    plan.setDataTypes(
+        Arrays.asList(TSDataType.DOUBLE, TSDataType.INT64, TSDataType.DOUBLE, TSDataType.INT64));
+    plan.setEncodings(
+        Arrays.asList(
+            TSEncoding.GORILLA, TSEncoding.GORILLA, TSEncoding.GORILLA, TSEncoding.GORILLA));
+    plan.setCompressors(Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY));
+    plan.setProps(null);
+    plan.setTags(null);
+    plan.setAttributes(null);
+    plan.setAlias(null);
+
+    PhysicalPlan result = testTwoSerializeMethodAndDeserialize(plan);
+
+    Assert.assertEquals(OperatorType.CREATE_MULTI_TIMESERIES, result.getOperatorType());
+    Assert.assertEquals(plan, result);
+  }
+
+  @Test
   public void AlterTimeSeriesPlanSerializeTest() throws IOException, IllegalPathException {
     AlterTimeSeriesPlan alterTimeSeriesPlan =
         new AlterTimeSeriesPlan(

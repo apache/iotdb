@@ -409,7 +409,7 @@ public class TsFileProcessor {
 
     List<String> measurementIds = vectorSchema.getValueMeasurementIdList();
     List<TSDataType> dataTypes = vectorSchema.getValueTSDataTypeList();
-    if (workMemTable.checkIfChunkDoesNotExist(deviceId, measurementIds.get(0))) {
+    if (workMemTable.checkIfChunkDoesNotExist(deviceId, vectorSchema.getMeasurementId())) {
       // ChunkMetadataIncrement
       memIncrements[2] +=
           dataTypes.size()
@@ -419,7 +419,7 @@ public class TsFileProcessor {
               * TVList.vectorTVListArrayMemSize(dataTypes);
     } else {
       int currentChunkPointNum =
-          workMemTable.getCurrentChunkPointNum(deviceId, measurementIds.get(0));
+          workMemTable.getCurrentChunkPointNum(deviceId, vectorSchema.getMeasurementId());
       if (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE == 0) {
         memIncrements[0] +=
             ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)

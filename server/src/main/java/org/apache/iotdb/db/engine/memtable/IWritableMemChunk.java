@@ -23,6 +23,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
+import java.util.List;
+
 public interface IWritableMemChunk {
 
   void putLong(long t, long v);
@@ -92,7 +94,7 @@ public interface IWritableMemChunk {
    *
    * @return sorted tv list
    */
-  TVList getSortedTVListForQuery(int columnIndex);
+  TVList getSortedTVListForQuery(List<Integer> columnIndexList);
 
   /**
    * served for flush requests. The logic is just same as getSortedTVListForQuery, but without add

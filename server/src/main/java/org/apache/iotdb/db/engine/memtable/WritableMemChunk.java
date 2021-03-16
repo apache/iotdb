@@ -19,11 +19,12 @@
 package org.apache.iotdb.db.engine.memtable;
 
 import org.apache.iotdb.db.utils.datastructure.TVList;
-import org.apache.iotdb.db.utils.datastructure.VectorTVList;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+
+import java.util.List;
 
 public class WritableMemChunk implements IWritableMemChunk {
 
@@ -179,14 +180,14 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public synchronized TVList getSortedTVListForQuery(int columnIndex) {
+  public synchronized TVList getSortedTVListForQuery(List<Integer> columnIndexList) {
+    if (list.getDataType() != TSDataType.VECTOR) {
+      throw new UnSupportedDataTypeException("Unsupported data type:" + list.getDataType());
+    }
     sortTVList();
     // increase reference count
     list.increaseReferenceCount();
-    if (list instanceof VectorTVList) {
-      return list.getTVListByColumnIndex(columnIndex);
-    }
-    return list;
+    return list.getTVListByColumnIndex(columnIndexList);
   }
 
   private void sortTVList() {

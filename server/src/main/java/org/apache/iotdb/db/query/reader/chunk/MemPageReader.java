@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.query.reader.chunk;
 
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -33,11 +33,11 @@ import java.io.IOException;
 public class MemPageReader implements IPageReader {
 
   private final IPointReader timeValuePairIterator;
-  private final ChunkMetadata chunkMetadata;
+  private final IChunkMetadata chunkMetadata;
   private Filter valueFilter;
 
   public MemPageReader(
-      IPointReader timeValuePairIterator, ChunkMetadata chunkMetadata, Filter filter) {
+      IPointReader timeValuePairIterator, IChunkMetadata chunkMetadata, Filter filter) {
     this.timeValuePairIterator = timeValuePairIterator;
     this.chunkMetadata = chunkMetadata;
     this.valueFilter = filter;

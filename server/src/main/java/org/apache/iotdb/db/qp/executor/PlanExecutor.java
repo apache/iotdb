@@ -44,6 +44,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
@@ -129,6 +130,7 @@ import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -1376,24 +1378,53 @@ public class PlanExecutor implements IPlanExecutor {
 
   private boolean createMultiTimeSeries(CreateMultiTimeSeriesPlan multiPlan)
       throws BatchProcessException {
+    int dataTypeIdx = 0;
     for (int i = 0; i < multiPlan.getPaths().size(); i++) {
       if (multiPlan.getResults().containsKey(i)) {
         continue;
       }
-      CreateTimeSeriesPlan plan =
-          new CreateTimeSeriesPlan(
-              multiPlan.getPaths().get(i),
-              multiPlan.getDataTypes().get(i),
-              multiPlan.getEncodings().get(i),
-              multiPlan.getCompressors().get(i),
-              multiPlan.getProps() == null ? null : multiPlan.getProps().get(i),
-              multiPlan.getTags() == null ? null : multiPlan.getTags().get(i),
-              multiPlan.getAttributes() == null ? null : multiPlan.getAttributes().get(i),
-              multiPlan.getAlias() == null ? null : multiPlan.getAlias().get(i));
-      try {
-        createTimeSeries(plan);
-      } catch (QueryProcessException e) {
-        multiPlan.getResults().put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+      PartialPath path = multiPlan.getPaths().get(i);
+      String measurement = path.getMeasurement();
+      if (measurement.contains("(") && measurement.contains(",")) {
+        PartialPath devicePath = path.getDevicePath();
+        List<String> measurements = MetaUtils.getMeasurementsInPartialPath(path);
+        List<TSDataType> dataTypes = new ArrayList<>();
+        List<TSEncoding> encodings = new ArrayList<>();
+        for (int j = 0; j < measurements.size(); j++) {
+          dataTypes.add(multiPlan.getDataTypes().get(dataTypeIdx));
+          encodings.add(multiPlan.getEncodings().get(dataTypeIdx));
+          dataTypeIdx++;
+        }
+        CreateAlignedTimeSeriesPlan plan =
+            new CreateAlignedTimeSeriesPlan(
+                devicePath,
+                measurements,
+                dataTypes,
+                encodings,
+                multiPlan.getCompressors().get(i),
+                Collections.emptyList());
+        try {
+          createAlignedTimeSeries(plan);
+        } catch (QueryProcessException e) {
+          multiPlan.getResults().put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+        }
+      } else {
+        CreateTimeSeriesPlan plan =
+            new CreateTimeSeriesPlan(
+                multiPlan.getPaths().get(i),
+                multiPlan.getDataTypes().get(i),
+                multiPlan.getEncodings().get(i),
+                multiPlan.getCompressors().get(i),
+                multiPlan.getProps() == null ? null : multiPlan.getProps().get(i),
+                multiPlan.getTags() == null ? null : multiPlan.getTags().get(i),
+                multiPlan.getAttributes() == null ? null : multiPlan.getAttributes().get(i),
+                multiPlan.getAlias() == null ? null : multiPlan.getAlias().get(i));
+        dataTypeIdx++;
+        try {
+          createTimeSeries(plan);
+        } catch (QueryProcessException e) {
+          multiPlan.getResults().put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+        }
       }
     }
     if (!multiPlan.getResults().isEmpty()) {

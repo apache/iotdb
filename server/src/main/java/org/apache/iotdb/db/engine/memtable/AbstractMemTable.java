@@ -31,7 +31,6 @@ import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
@@ -42,6 +41,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.stream.Collectors;
 
 public abstract class AbstractMemTable implements IMemTable {
 
@@ -274,50 +274,24 @@ public abstract class AbstractMemTable implements IMemTable {
   public ReadOnlyMemChunk query(
       String deviceId,
       String measurement,
-      TSDataType dataType,
-      TSEncoding encoding,
-      Map<String, String> props,
-      long timeLowerBound,
-      List<TimeRange> deletionList)
-      throws IOException, QueryProcessException, MetadataException {
-    if (!checkPath(deviceId, measurement)) {
-      return null;
-    }
-    IWritableMemChunk memChunk = memTableMap.get(deviceId).get(measurement);
-    // get sorted tv list is synchronized so different query can get right sorted list reference
-    TVList chunkCopy = memChunk.getSortedTVListForQuery();
-    int curSize = chunkCopy.size();
-
-    return new ReadOnlyMemChunk(
-        measurement, dataType, encoding, chunkCopy, props, curSize, deletionList);
-  }
-
-  @Override
-  public ReadOnlyMemChunk query(
-      String deviceId,
-      String measurement,
       IMeasurementSchema schema,
       long timeLowerBound,
       List<TimeRange> deletionList)
       throws IOException, QueryProcessException, MetadataException {
     if (schema.getType() == TSDataType.VECTOR) {
-      int columnIndex = schema.getMeasurementIdColumnIndex(measurement);
-      // measurementColumnIndex == -1 if schema doesn't contain that measurement
-      if (!memTableMap.containsKey(deviceId) || columnIndex < 0) {
+      if (!memTableMap.containsKey(deviceId)) {
         return null;
       }
       IWritableMemChunk memChunk = memTableMap.get(deviceId).get(schema.getMeasurementId());
+
+      List<Integer> columns =
+          schema.getValueMeasurementIdList().stream()
+              .map(Integer::parseInt)
+              .collect(Collectors.toList());
       // get sorted tv list is synchronized so different query can get right sorted list reference
-      TVList chunkCopy = memChunk.getSortedTVListForQuery(columnIndex);
+      TVList chunkCopy = memChunk.getSortedTVListForQuery(columns);
       int curSize = chunkCopy.size();
-      return new ReadOnlyMemChunk(
-          measurement,
-          schema.getType(),
-          schema.getValueTSEncodingList().get(columnIndex),
-          chunkCopy,
-          null,
-          curSize,
-          deletionList);
+      return new ReadOnlyMemChunk(schema, chunkCopy, curSize, deletionList);
     } else {
       if (!checkPath(deviceId, measurement)) {
         return null;
