@@ -1339,7 +1339,7 @@ public class MTree implements Serializable {
         tsRow[2] = schema.getValueTSDataTypeList().get(i).toString();
         tsRow[3] = schema.getValueTSEncodingList().get(i).toString();
         tsRow[4] = schema.getCompressor().toString();
-        tsRow[5] = "0";
+        tsRow[5] = "-1";
         tsRow[6] =
             needLast
                 ? String.valueOf(getLastTimeStamp((MeasurementMNode) node, queryContext))

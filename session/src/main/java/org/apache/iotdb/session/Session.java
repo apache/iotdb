@@ -438,13 +438,13 @@ public class Session {
 
     request.setPaths(paths);
 
-    List<Integer> dataTypeOrdinals = new ArrayList<>(paths.size());
+    List<Integer> dataTypeOrdinals = new ArrayList<>(dataTypes.size());
     for (TSDataType dataType : dataTypes) {
       dataTypeOrdinals.add(dataType.ordinal());
     }
     request.setDataTypes(dataTypeOrdinals);
 
-    List<Integer> encodingOrdinals = new ArrayList<>(paths.size());
+    List<Integer> encodingOrdinals = new ArrayList<>(dataTypes.size());
     for (TSEncoding encoding : encodings) {
       encodingOrdinals.add(encoding.ordinal());
     }
