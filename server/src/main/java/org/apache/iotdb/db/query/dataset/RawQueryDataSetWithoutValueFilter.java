@@ -257,7 +257,9 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
           // current batch is empty or does not have value at minTime
           if (rowOffset == 0) {
             if (paths.get(seriesIndex) instanceof VectorPartialPath) {
-              for (int i = 0; i < ((VectorPartialPath) paths.get(seriesIndex)).getSubSensorsPathList().size(); i++) {
+              for (int i = 0;
+                  i < ((VectorPartialPath) paths.get(seriesIndex)).getSubSensorsPathList().size();
+                  i++) {
                 currentBitmapList[bufferIndex] = (currentBitmapList[bufferIndex] << 1);
                 bufferIndex++;
               }
