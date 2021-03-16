@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.engine.flush;
 
+import static java.io.File.separator;
+
+import java.util.concurrent.ConcurrentLinkedDeque;
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -31,11 +34,8 @@ import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.concurrent.ConcurrentLinkedDeque;
 
 public class FlushManager implements FlushManagerMBean, IService {
 
@@ -110,7 +110,8 @@ public class FlushManager implements FlushManagerMBean, IService {
       // update stat monitor cache to system during each flush()
       if (config.isEnableStatMonitor() && config.isEnableMonitorSeriesWrite()) {
         try {
-          StatMonitor.getInstance().saveStatValue(tsFileProcessor.getStorageGroupName());
+          StatMonitor.getInstance()
+              .saveStatValue(tsFileProcessor.getStorageGroupName().split(separator)[0]);
         } catch (StorageEngineException | MetadataException e) {
           LOGGER.error("Inserting monitor series data error.", e);
         }
