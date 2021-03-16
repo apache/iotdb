@@ -93,6 +93,7 @@ import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -1094,7 +1095,7 @@ public class MManager {
   }
 
   /**
-   * getSeriesSchema of paritialPath
+   * Get schema of paritialPath
    *
    * @param fullPath (may be ParitialPath or VectorPartialPath)
    * @return MeasurementSchema or VectorMeasurementSchema. Attention: measurements of
@@ -1128,6 +1129,37 @@ public class MManager {
       return ((MeasurementMNode) leaf).getSchema();
     }
     return null;
+  }
+
+  /**
+   * Get schema of partialPaths, in which aligned timeseries should only organized to one schema.
+   * This method should be called when logical plan converts to physical plan.
+   *
+   * @param fullPaths full path list without pointing out which timeseries are aligned. For example,
+   *     maybe (s1,s2) are aligned, but the input could be [root.sg1.d1.s1, root.sg1.d1.s2]
+   * @return IMeasurementSchema list, whose size could be NOT equals to the fullPaths.size(). For
+   *     example, the VectorMeasurementSchema (s1,s2) would be returned once
+   */
+  public List<PartialPath> getSeriesSchemas(List<PartialPath> fullPaths) throws MetadataException {
+    Map<MNode, PartialPath> nodeToPartialPath = new LinkedHashMap<>();
+    for (PartialPath path : fullPaths) {
+      // use dfs to collect paths
+      MeasurementMNode node = (MeasurementMNode) getNodeByPath(path);
+
+      if (!nodeToPartialPath.containsKey(node)) {
+        if (node.getSchema() instanceof MeasurementMNode) {
+          nodeToPartialPath.put(node, path);
+        } else {
+          List<PartialPath> subSensorsPathList = new ArrayList<>();
+          subSensorsPathList.add(new PartialPath(path.getMeasurement()));
+          nodeToPartialPath.put(node, new VectorPartialPath(path.getDevice(), subSensorsPathList));
+        }
+      } else {
+        // if nodeToPartialPath contains node, it must be VectorPartialPath
+        ((VectorPartialPath) nodeToPartialPath.get(node)).addSubSensor(path);
+      }
+    }
+    return new ArrayList<>(nodeToPartialPath.values());
   }
 
   /**
