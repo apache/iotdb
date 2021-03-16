@@ -1448,7 +1448,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       insertTabletPlan.setTimes(QueryDataSetUtils.readTimesFromBuffer(req.timestamps, req.size));
       insertTabletPlan.setColumns(
           QueryDataSetUtils.readValuesFromBuffer(
-              req.values, req.types, req.measurements.size(), req.size));
+              req.values, req.types, req.types.size(), req.size));
       insertTabletPlan.setRowCount(req.size);
       insertTabletPlan.setDataTypes(req.types);
 

@@ -55,6 +55,8 @@ public interface IMeasurementSchema {
 
   List<Encoder> getValueEncoderList();
 
+  int getMeasurementIdColumnIndex(String measurementId);
+
   int serializeTo(ByteBuffer buffer);
 
   int serializeTo(OutputStream outputStream) throws IOException;

@@ -23,6 +23,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.nio.ByteBuffer;
 
@@ -41,51 +43,62 @@ public class SessionUtils {
   public static ByteBuffer getValueBuffer(Tablet tablet) {
     ByteBuffer valueBuffer = ByteBuffer.allocate(tablet.getValueBytesSize());
     for (int i = 0; i < tablet.getSchemas().size(); i++) {
-      TSDataType dataType = tablet.getSchemas().get(i).getType();
-      switch (dataType) {
-        case INT32:
-          int[] intValues = (int[]) tablet.values[i];
-          for (int index = 0; index < tablet.rowSize; index++) {
-            valueBuffer.putInt(intValues[index]);
-          }
-          break;
-        case INT64:
-          long[] longValues = (long[]) tablet.values[i];
-          for (int index = 0; index < tablet.rowSize; index++) {
-            valueBuffer.putLong(longValues[index]);
-          }
-          break;
-        case FLOAT:
-          float[] floatValues = (float[]) tablet.values[i];
-          for (int index = 0; index < tablet.rowSize; index++) {
-            valueBuffer.putFloat(floatValues[index]);
-          }
-          break;
-        case DOUBLE:
-          double[] doubleValues = (double[]) tablet.values[i];
-          for (int index = 0; index < tablet.rowSize; index++) {
-            valueBuffer.putDouble(doubleValues[index]);
-          }
-          break;
-        case BOOLEAN:
-          boolean[] boolValues = (boolean[]) tablet.values[i];
-          for (int index = 0; index < tablet.rowSize; index++) {
-            valueBuffer.put(BytesUtils.boolToByte(boolValues[index]));
-          }
-          break;
-        case TEXT:
-          Binary[] binaryValues = (Binary[]) tablet.values[i];
-          for (int index = 0; index < tablet.rowSize; index++) {
-            valueBuffer.putInt(binaryValues[index].getLength());
-            valueBuffer.put(binaryValues[index].getValues());
-          }
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format("Data type %s is not supported.", dataType));
+      IMeasurementSchema schema = tablet.getSchemas().get(i);
+      if (schema instanceof MeasurementSchema) {
+        getValueBufferOfDataType(schema.getType(), tablet, i, valueBuffer);
+      } else {
+        for (int j = 0; j < schema.getValueTSDataTypeList().size(); j++) {
+          getValueBufferOfDataType(schema.getValueTSDataTypeList().get(j), tablet, j, valueBuffer);
+        }
       }
     }
     valueBuffer.flip();
     return valueBuffer;
+  }
+
+  private static void getValueBufferOfDataType(
+      TSDataType dataType, Tablet tablet, int i, ByteBuffer valueBuffer) {
+    switch (dataType) {
+      case INT32:
+        int[] intValues = (int[]) tablet.values[i];
+        for (int index = 0; index < tablet.rowSize; index++) {
+          valueBuffer.putInt(intValues[index]);
+        }
+        break;
+      case INT64:
+        long[] longValues = (long[]) tablet.values[i];
+        for (int index = 0; index < tablet.rowSize; index++) {
+          valueBuffer.putLong(longValues[index]);
+        }
+        break;
+      case FLOAT:
+        float[] floatValues = (float[]) tablet.values[i];
+        for (int index = 0; index < tablet.rowSize; index++) {
+          valueBuffer.putFloat(floatValues[index]);
+        }
+        break;
+      case DOUBLE:
+        double[] doubleValues = (double[]) tablet.values[i];
+        for (int index = 0; index < tablet.rowSize; index++) {
+          valueBuffer.putDouble(doubleValues[index]);
+        }
+        break;
+      case BOOLEAN:
+        boolean[] boolValues = (boolean[]) tablet.values[i];
+        for (int index = 0; index < tablet.rowSize; index++) {
+          valueBuffer.put(BytesUtils.boolToByte(boolValues[index]));
+        }
+        break;
+      case TEXT:
+        Binary[] binaryValues = (Binary[]) tablet.values[i];
+        for (int index = 0; index < tablet.rowSize; index++) {
+          valueBuffer.putInt(binaryValues[index].getLength());
+          valueBuffer.put(binaryValues[index].getValues());
+        }
+        break;
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Data type %s is not supported.", dataType));
+    }
   }
 }

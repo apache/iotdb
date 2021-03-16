@@ -20,11 +20,13 @@ package org.apache.iotdb.db.qp.physical;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan.PhysicalPlanType;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
@@ -45,6 +47,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -120,44 +123,13 @@ public class InsertTabletPlanTest {
   public void testInsertTabletPlanWithAlignedTimeseries()
       throws QueryProcessException, MetadataException, InterruptedException,
           QueryFilterOptimizationException, StorageEngineException, IOException {
-    long[] times = new long[] {110L, 111L, 112L, 113L};
-    List<Integer> dataTypes = new ArrayList<>();
-    dataTypes.add(TSDataType.DOUBLE.ordinal());
-    dataTypes.add(TSDataType.FLOAT.ordinal());
-    dataTypes.add(TSDataType.INT64.ordinal());
-    dataTypes.add(TSDataType.INT32.ordinal());
-    dataTypes.add(TSDataType.BOOLEAN.ordinal());
-    dataTypes.add(TSDataType.TEXT.ordinal());
-
-    Object[] columns = new Object[6];
-    columns[0] = new double[4];
-    columns[1] = new float[4];
-    columns[2] = new long[4];
-    columns[3] = new int[4];
-    columns[4] = new boolean[4];
-    columns[5] = new Binary[4];
-
-    for (int r = 0; r < 4; r++) {
-      ((double[]) columns[0])[r] = 1.0;
-      ((float[]) columns[1])[r] = 2;
-      ((long[]) columns[2])[r] = 10000;
-      ((int[]) columns[3])[r] = 100;
-      ((boolean[]) columns[4])[r] = false;
-      ((Binary[]) columns[5])[r] = new Binary("hh" + r);
-    }
-
-    InsertTabletPlan tabletPlan =
-        new InsertTabletPlan(
-            new PartialPath("root.isp.d1"),
-            new String[] {"(s1,s2,s3)", "(s4,s5)", "s6"},
-            dataTypes);
-    tabletPlan.setTimes(times);
-    tabletPlan.setColumns(columns);
-    tabletPlan.setRowCount(times.length);
+    InsertTabletPlan tabletPlan = getInsertTabletPlan();
 
     PlanExecutor executor = new PlanExecutor();
     executor.insertTablet(tabletPlan);
 
+    Assert.assertEquals(
+        "[s1.align, s4.align, s6]", Arrays.toString(tabletPlan.getMeasurementMNodes()));
     System.out.println(Arrays.toString(tabletPlan.getMeasurementMNodes()));
 
     QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
@@ -224,6 +196,42 @@ public class InsertTabletPlanTest {
 
     IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
 
+    InsertTabletPlan tabletPlan = getInsertTabletPlan();
+
+    PlanExecutor executor = new PlanExecutor();
+    executor.insertTablet(tabletPlan);
+
+    System.out.println(Arrays.toString(tabletPlan.getMeasurementMNodes()));
+
+    QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
+    QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    Assert.assertEquals(6, dataSet.getPaths().size());
+    while (dataSet.hasNext()) {
+      RowRecord record = dataSet.next();
+      Assert.assertEquals(6, record.getFields().size());
+    }
+  }
+
+  @Test
+  public void testInsertTabletSerialization() throws IllegalPathException, QueryProcessException {
+    InsertTabletPlan plan1 = getInsertTabletPlan();
+
+    PlanExecutor executor = new PlanExecutor();
+    executor.insertTablet(plan1);
+
+    ByteBuffer byteBuffer = ByteBuffer.allocate(10000);
+    plan1.serialize(byteBuffer);
+    byteBuffer.flip();
+
+    Assert.assertEquals(PhysicalPlanType.BATCHINSERT.ordinal(), byteBuffer.get());
+
+    InsertTabletPlan plan2 = new InsertTabletPlan();
+    plan2.deserialize(byteBuffer);
+
+    Assert.assertEquals(plan1, plan2);
+  }
+
+  private InsertTabletPlan getInsertTabletPlan() throws IllegalPathException {
     long[] times = new long[] {110L, 111L, 112L, 113L};
     List<Integer> dataTypes = new ArrayList<>();
     dataTypes.add(TSDataType.DOUBLE.ordinal());
@@ -258,18 +266,6 @@ public class InsertTabletPlanTest {
     tabletPlan.setTimes(times);
     tabletPlan.setColumns(columns);
     tabletPlan.setRowCount(times.length);
-
-    PlanExecutor executor = new PlanExecutor();
-    executor.insertTablet(tabletPlan);
-
-    System.out.println(Arrays.toString(tabletPlan.getMeasurementMNodes()));
-
-    QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
-    QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(6, dataSet.getPaths().size());
-    while (dataSet.hasNext()) {
-      RowRecord record = dataSet.next();
-      Assert.assertEquals(6, record.getFields().size());
-    }
+    return tabletPlan;
   }
 }

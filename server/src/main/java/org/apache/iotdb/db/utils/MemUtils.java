@@ -88,10 +88,21 @@ public class MemUtils {
       return 0L;
     }
     long memSize = 0;
-    for (int i = 0; i < insertTabletPlan.getMeasurements().length; i++) {
+    int columnCount = 0;
+    for (int i = 0; i < insertTabletPlan.getMeasurementMNodes().length; i++) {
       if (insertTabletPlan.getDataTypes()[i] == null) {
         continue;
       }
+      // FIXME:::
+      //      if (insertTabletPlan.getMeasurementMNodes()[i].getSchema().getType() ==
+      // TSDataType.VECTOR) {
+      //        IMeasurementSchema vectorSchema =
+      // insertTabletPlan.getMeasurementMNodes()[i].getSchema();
+      //        for (int j = 0; j < vectorSchema.getValueMeasurementIdList().size(); j++) {
+      //          columns[j] = insertTabletPlan.getColumns()[columnCount++];
+      //        }
+      //      }
+      //      else {
       switch (insertTabletPlan.getDataTypes()[i]) {
         case INT32:
           memSize += (end - start) * (8L + 4L);
@@ -119,6 +130,7 @@ public class MemUtils {
         default:
           memSize += (end - start) * (8L + 8L);
       }
+      // }
     }
     return memSize;
   }

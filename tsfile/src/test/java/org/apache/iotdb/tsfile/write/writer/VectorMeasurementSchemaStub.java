@@ -106,4 +106,9 @@ public class VectorMeasurementSchemaStub implements IMeasurementSchema {
   public int serializeTo(OutputStream outputStream) throws IOException {
     return 0;
   }
+
+  @Override
+  public int getMeasurementIdColumnIndex(String measurementId) {
+    return 0;
+  }
 }
