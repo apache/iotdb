@@ -29,6 +29,7 @@ import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -109,9 +110,12 @@ public class PrimitiveMemTableTest {
         memTable.query(
             deviceId,
             measurementId[0],
-            TSDataType.INT32,
-            TSEncoding.RLE,
-            Collections.emptyMap(),
+            new MeasurementSchema(
+                measurementId[0],
+                TSDataType.INT32,
+                TSEncoding.RLE,
+                CompressionType.UNCOMPRESSED,
+                Collections.emptyMap()),
             Long.MIN_VALUE,
             null);
     IPointReader iterator = memChunk.getPointReader();
@@ -146,9 +150,12 @@ public class PrimitiveMemTableTest {
             .query(
                 deviceId,
                 sensorId,
-                dataType,
-                encoding,
-                Collections.emptyMap(),
+                new MeasurementSchema(
+                    sensorId,
+                    dataType,
+                    encoding,
+                    CompressionType.UNCOMPRESSED,
+                    Collections.emptyMap()),
                 Long.MIN_VALUE,
                 null)
             .getPointReader();
@@ -190,9 +197,12 @@ public class PrimitiveMemTableTest {
             .query(
                 "root.sg.device5",
                 "sensor1",
-                TSDataType.INT64,
-                TSEncoding.GORILLA,
-                Collections.emptyMap(),
+                new MeasurementSchema(
+                    "sensor1",
+                    TSDataType.INT64,
+                    TSEncoding.GORILLA,
+                    CompressionType.UNCOMPRESSED,
+                    Collections.emptyMap()),
                 Long.MIN_VALUE,
                 null)
             .getPointReader();
