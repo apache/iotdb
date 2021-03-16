@@ -31,7 +31,6 @@ import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
@@ -146,8 +145,7 @@ public abstract class AbstractMemTable implements IMemTable {
       write(insertTabletPlan, start, end);
       memSize += MemUtils.getRecordSize(insertTabletPlan, start, end, disableMemControl);
       totalPointsNum +=
-          (insertTabletPlan.getMeasurements().length
-                  - insertTabletPlan.getFailedMeasurementNumber())
+          (insertTabletPlan.getDataTypes().length - insertTabletPlan.getFailedMeasurementNumber())
               * (end - start);
     } catch (RuntimeException e) {
       throw new WriteProcessException(e);
@@ -269,28 +267,6 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public boolean isEmpty() {
     return memTableMap.isEmpty();
-  }
-
-  @Override
-  public ReadOnlyMemChunk query(
-      String deviceId,
-      String measurement,
-      TSDataType dataType,
-      TSEncoding encoding,
-      Map<String, String> props,
-      long timeLowerBound,
-      List<TimeRange> deletionList)
-      throws IOException, QueryProcessException, MetadataException {
-    if (!checkPath(deviceId, measurement)) {
-      return null;
-    }
-    IWritableMemChunk memChunk = memTableMap.get(deviceId).get(measurement);
-    // get sorted tv list is synchronized so different query can get right sorted list reference
-    TVList chunkCopy = memChunk.getSortedTVListForQuery();
-    int curSize = chunkCopy.size();
-
-    return new ReadOnlyMemChunk(
-        measurement, dataType, encoding, chunkCopy, props, curSize, deletionList);
   }
 
   @Override

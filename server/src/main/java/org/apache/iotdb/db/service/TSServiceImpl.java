@@ -1772,7 +1772,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
 
       List<List<TSDataType>> dataTypes = new ArrayList<>();
-      for (List<Integer> list : req.dataTypes) {
+      for (List<Integer> list : req.getDataTypes()) {
         List<TSDataType> dataTypesList = new ArrayList<>();
         for (int dataType : list) {
           dataTypesList.add(TSDataType.values()[dataType]);
@@ -1781,7 +1781,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
 
       List<List<TSEncoding>> encodings = new ArrayList<>();
-      for (List<Integer> list : req.dataTypes) {
+      for (List<Integer> list : req.getEncodings()) {
         List<TSEncoding> encodingsList = new ArrayList<>();
         for (int encoding : list) {
           encodingsList.add(TSEncoding.values()[encoding]);

@@ -96,6 +96,8 @@ public abstract class TVList {
     long size = 0;
     // time size
     size += (long) PrimitiveArrayManager.ARRAY_SIZE * 8L;
+    // index size
+    size += (long) PrimitiveArrayManager.ARRAY_SIZE * 4L;
     // value size
     for (TSDataType type : types) {
       size += (long) PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
