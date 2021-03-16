@@ -42,6 +42,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.stream.Collectors;
 
 public abstract class AbstractMemTable implements IMemTable {
 
@@ -305,8 +306,13 @@ public abstract class AbstractMemTable implements IMemTable {
         return null;
       }
       IWritableMemChunk memChunk = memTableMap.get(deviceId).get(schema.getMeasurementId());
+
+      List<Integer> columns =
+          schema.getValueMeasurementIdList().stream()
+              .map(Integer::parseInt)
+              .collect(Collectors.toList());
       // get sorted tv list is synchronized so different query can get right sorted list reference
-      TVList chunkCopy = memChunk.getSortedTVListForQuery();
+      TVList chunkCopy = memChunk.getSortedTVListForQuery(columns);
       int curSize = chunkCopy.size();
       return new ReadOnlyMemChunk(schema, chunkCopy, curSize, deletionList);
     } else {

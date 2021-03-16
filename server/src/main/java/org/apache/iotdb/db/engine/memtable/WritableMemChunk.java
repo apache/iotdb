@@ -24,6 +24,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
+import java.util.List;
+
 public class WritableMemChunk implements IWritableMemChunk {
 
   private IMeasurementSchema schema;
@@ -175,6 +177,17 @@ public class WritableMemChunk implements IWritableMemChunk {
     // increase reference count
     list.increaseReferenceCount();
     return list;
+  }
+
+  @Override
+  public synchronized TVList getSortedTVListForQuery(List<Integer> columnIndexList) {
+    if (list.getDataType() != TSDataType.VECTOR) {
+      throw new UnSupportedDataTypeException("Unsupported data type:" + list.getDataType());
+    }
+    sortTVList();
+    // increase reference count
+    list.increaseReferenceCount();
+    return list.getTVListByColumnIndex(columnIndexList);
   }
 
   private void sortTVList() {
