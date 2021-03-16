@@ -317,47 +317,42 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
                 bufferIndex++;
                 break;
               case VECTOR:
-                for (TsPrimitiveType primitiveType :
-                    cachedBatchDataArray[seriesIndex].getVector()) {
+                for (TsPrimitiveType primitiveVal : cachedBatchDataArray[seriesIndex].getVector()) {
                   currentBitmapList[bufferIndex] = (currentBitmapList[bufferIndex] << 1) | FLAG;
-                  switch (primitiveType.getDataType()) {
+                  switch (primitiveVal.getDataType()) {
                     case INT32:
-                      int intVal = cachedBatchDataArray[seriesIndex].getInt();
+                      int intVal = primitiveVal.getInt();
                       if (encoder != null && encoder.needEncode(minTime)) {
                         intVal = encoder.encodeInt(intVal, minTime);
                       }
                       ReadWriteIOUtils.write(intVal, valueBAOSList[bufferIndex]);
                       break;
                     case INT64:
-                      long longVal = cachedBatchDataArray[seriesIndex].getLong();
+                      long longVal = primitiveVal.getLong();
                       if (encoder != null && encoder.needEncode(minTime)) {
                         longVal = encoder.encodeLong(longVal, minTime);
                       }
                       ReadWriteIOUtils.write(longVal, valueBAOSList[bufferIndex]);
                       break;
                     case FLOAT:
-                      float floatVal = cachedBatchDataArray[seriesIndex].getFloat();
+                      float floatVal = primitiveVal.getFloat();
                       if (encoder != null && encoder.needEncode(minTime)) {
                         floatVal = encoder.encodeFloat(floatVal, minTime);
                       }
                       ReadWriteIOUtils.write(floatVal, valueBAOSList[bufferIndex]);
                       break;
                     case DOUBLE:
-                      double doubleVal = cachedBatchDataArray[seriesIndex].getDouble();
+                      double doubleVal = primitiveVal.getDouble();
                       if (encoder != null && encoder.needEncode(minTime)) {
                         doubleVal = encoder.encodeDouble(doubleVal, minTime);
                       }
                       ReadWriteIOUtils.write(doubleVal, valueBAOSList[bufferIndex]);
                       break;
                     case BOOLEAN:
-                      ReadWriteIOUtils.write(
-                          cachedBatchDataArray[seriesIndex].getBoolean(),
-                          valueBAOSList[bufferIndex]);
+                      ReadWriteIOUtils.write(primitiveVal.getBoolean(), valueBAOSList[bufferIndex]);
                       break;
                     case TEXT:
-                      ReadWriteIOUtils.write(
-                          cachedBatchDataArray[seriesIndex].getBinary(),
-                          valueBAOSList[bufferIndex]);
+                      ReadWriteIOUtils.write(primitiveVal.getBinary(), valueBAOSList[bufferIndex]);
                       break;
                     default:
                       throw new UnSupportedDataTypeException(
