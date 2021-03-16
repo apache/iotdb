@@ -268,22 +268,20 @@ public class MergeResource {
 
   public void updateStartTime(TsFileResource tsFileResource, String device, long startTime) {
     Map<String, Pair<Long, Long>> deviceStartEndTimePairMap =
-        startEndTimeCache.getOrDefault(tsFileResource, new HashMap<>());
+        startEndTimeCache.computeIfAbsent(tsFileResource, k -> new HashMap<>());
     Pair<Long, Long> startEndTimePair =
-        deviceStartEndTimePairMap.getOrDefault(device, new Pair<>(Long.MAX_VALUE, Long.MIN_VALUE));
-    long newStartTime = startEndTimePair.left > startTime ? startTime : startEndTimePair.left;
-    deviceStartEndTimePairMap.put(device, new Pair<>(newStartTime, startEndTimePair.right));
-    startEndTimeCache.put(tsFileResource, deviceStartEndTimePairMap);
+        deviceStartEndTimePairMap.computeIfAbsent(
+            device, k -> new Pair<>(Long.MAX_VALUE, Long.MIN_VALUE));
+    startEndTimePair.left = startEndTimePair.left > startTime ? startTime : startEndTimePair.left;
   }
 
   public void updateEndTime(TsFileResource tsFileResource, String device, long endTime) {
     Map<String, Pair<Long, Long>> deviceStartEndTimePairMap =
-        startEndTimeCache.getOrDefault(tsFileResource, new HashMap<>());
+        startEndTimeCache.computeIfAbsent(tsFileResource, k -> new HashMap<>());
     Pair<Long, Long> startEndTimePair =
-        deviceStartEndTimePairMap.getOrDefault(device, new Pair<>(Long.MAX_VALUE, Long.MIN_VALUE));
-    long newEndTime = startEndTimePair.right < endTime ? endTime : startEndTimePair.right;
-    deviceStartEndTimePairMap.put(device, new Pair<>(startEndTimePair.left, newEndTime));
-    startEndTimeCache.put(tsFileResource, deviceStartEndTimePairMap);
+        deviceStartEndTimePairMap.computeIfAbsent(
+            device, k -> new Pair<>(Long.MAX_VALUE, Long.MIN_VALUE));
+    startEndTimePair.right = startEndTimePair.right < endTime ? endTime : startEndTimePair.right;
   }
 
   public Map<String, Pair<Long, Long>> getStartEndTime(TsFileResource tsFileResource) {
