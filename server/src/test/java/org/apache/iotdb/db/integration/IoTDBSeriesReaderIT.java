@@ -360,7 +360,7 @@ public class IoTDBSeriesReaderIT {
       queryDataSet.next();
       cnt++;
     }
-    assertEquals(16340, cnt);
+    assertEquals(16940, cnt);
 
     QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
   }
@@ -430,7 +430,7 @@ public class IoTDBSeriesReaderIT {
       cnt++;
     }
 
-    assertEquals(22900, cnt);
+    assertEquals(22300, cnt);
 
     QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
   }
