@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -25,14 +28,8 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
 
 /**
  * IMemTable is designed to store data points which are not flushed into TsFile yet. An instance of
@@ -85,16 +82,6 @@ public interface IMemTable {
   /** [start, end) */
   void insertTablet(InsertTabletPlan insertTabletPlan, int start, int end)
       throws WriteProcessException;
-
-  ReadOnlyMemChunk query(
-      String deviceId,
-      String measurement,
-      TSDataType dataType,
-      TSEncoding encoding,
-      Map<String, String> props,
-      long timeLowerBound,
-      List<TimeRange> deletionList)
-      throws IOException, QueryProcessException, MetadataException;
 
   ReadOnlyMemChunk query(
       String deviceId,

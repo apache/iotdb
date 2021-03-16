@@ -19,6 +19,18 @@
 
 package org.apache.iotdb.db.writelog.recover;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.MappedByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
@@ -44,27 +56,15 @@ import org.apache.iotdb.db.utils.MmapUtil;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
-
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.MappedByteBuffer;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 
 public class LogReplayerTest {
 
@@ -164,9 +164,8 @@ public class LogReplayerTest {
             memTable.query(
                 "root.sg.device" + i,
                 "sensor" + i,
-                TSDataType.INT64,
-                TSEncoding.RLE,
-                Collections.emptyMap(),
+                new MeasurementSchema("sensor" + i, TSDataType.INT64, TSEncoding.RLE,
+                    CompressionType.UNCOMPRESSED, Collections.emptyMap()),
                 Long.MIN_VALUE,
                 null);
         IPointReader iterator = memChunk.getPointReader();
@@ -200,9 +199,8 @@ public class LogReplayerTest {
             memTable.query(
                 "root.sg.device5",
                 "sensor" + i,
-                TSDataType.INT64,
-                TSEncoding.PLAIN,
-                Collections.emptyMap(),
+                new MeasurementSchema("sensor" + i, TSDataType.INT64, TSEncoding.PLAIN,
+                    CompressionType.UNCOMPRESSED, Collections.emptyMap()),
                 Long.MIN_VALUE,
                 null);
         // s0 has datatype boolean, but required INT64, will return null
