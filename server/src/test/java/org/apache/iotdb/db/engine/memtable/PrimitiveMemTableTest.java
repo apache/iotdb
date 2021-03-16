@@ -110,8 +110,12 @@ public class PrimitiveMemTableTest {
         memTable.query(
             deviceId,
             measurementId[0],
-            new MeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.RLE,
-                CompressionType.UNCOMPRESSED, Collections.emptyMap()),
+            new MeasurementSchema(
+                measurementId[0],
+                TSDataType.INT32,
+                TSEncoding.RLE,
+                CompressionType.UNCOMPRESSED,
+                Collections.emptyMap()),
             Long.MIN_VALUE,
             null);
     IPointReader iterator = memChunk.getPointReader();
@@ -146,7 +150,11 @@ public class PrimitiveMemTableTest {
             .query(
                 deviceId,
                 sensorId,
-                new MeasurementSchema(sensorId, dataType, encoding, CompressionType.UNCOMPRESSED,
+                new MeasurementSchema(
+                    sensorId,
+                    dataType,
+                    encoding,
+                    CompressionType.UNCOMPRESSED,
                     Collections.emptyMap()),
                 Long.MIN_VALUE,
                 null)
@@ -189,8 +197,12 @@ public class PrimitiveMemTableTest {
             .query(
                 "root.sg.device5",
                 "sensor1",
-                new MeasurementSchema("sensor1", TSDataType.INT64, TSEncoding.GORILLA,
-                    CompressionType.UNCOMPRESSED, Collections.emptyMap()),
+                new MeasurementSchema(
+                    "sensor1",
+                    TSDataType.INT64,
+                    TSEncoding.GORILLA,
+                    CompressionType.UNCOMPRESSED,
+                    Collections.emptyMap()),
                 Long.MIN_VALUE,
                 null)
             .getPointReader();
@@ -291,7 +303,7 @@ public class PrimitiveMemTableTest {
 
     InsertTabletPlan insertTabletPlan =
         new InsertTabletPlan(
-            new PartialPath(deviceId), new String[]{"(sensor0,sensor1)"}, dataTypesList);
+            new PartialPath(deviceId), new String[] {"(sensor0,sensor1)"}, dataTypesList);
 
     long[] times = new long[100];
     Object[] columns = new Object[2];
