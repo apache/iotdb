@@ -17,6 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sink.mqtt;
+package org.apache.iotdb.db.sink.exception;
 
-public class MQTTSink {}
+public class SinkConfigurationException extends Exception {
+
+  public SinkConfigurationException(String message) {
+    super(message);
+  }
+
+  public SinkConfigurationException(String message, Throwable cause) {
+    super(message, cause);
+  }
+}

@@ -21,7 +21,6 @@ package org.apache.iotdb.db.sink.ts;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -29,24 +28,24 @@ import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.sink.api.Sink;
+import org.apache.iotdb.db.sink.api.Handler;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class TimeSeriesSink implements Sink<TimeSeriesEvent> {
+public class TimeSeriesHandler implements Handler<TimeSeriesConfiguration, TimeSeriesEvent> {
 
-  private final IPlanExecutor executor;
+  private IPlanExecutor executor;
 
-  private final PartialPath device;
-  private final String[] measurements;
-  private final TSDataType[] dataTypes;
+  private PartialPath device;
+  private String[] measurements;
+  private TSDataType[] dataTypes;
 
-  public TimeSeriesSink(String device, String[] measurements, TSDataType[] dataTypes)
-      throws IllegalPathException, QueryProcessException {
+  @Override
+  public void open(TimeSeriesConfiguration configuration) throws Exception {
     executor = new PlanExecutor();
 
-    this.device = new PartialPath(device);
-    this.measurements = measurements;
-    this.dataTypes = dataTypes;
+    device = configuration.getDevice();
+    measurements = configuration.getMeasurements();
+    dataTypes = configuration.getDataTypes();
   }
 
   @Override
