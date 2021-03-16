@@ -1049,8 +1049,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
   }
 
-  private TSExecuteStatementResp executeUpdateStatement(PhysicalPlan plan, long sessionId)
-      throws MetadataException {
+  private TSExecuteStatementResp executeUpdateStatement(PhysicalPlan plan, long sessionId) {
     TSStatus status = checkAuthority(plan, sessionId);
     if (status != null) {
       return new TSExecuteStatementResp(status);
@@ -1072,7 +1071,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   private TSExecuteStatementResp executeUpdateStatement(String statement, long sessionId)
-      throws QueryProcessException, MetadataException {
+      throws QueryProcessException {
     PhysicalPlan physicalPlan =
         processor.parseSQLToPhysicalPlan(
             statement, sessionIdZoneIdMap.get(sessionId), DEFAULT_FETCH_SIZE);
