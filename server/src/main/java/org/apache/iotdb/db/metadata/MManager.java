@@ -1093,10 +1093,37 @@ public class MManager {
     return null;
   }
 
-  // TODO BY ZESONG SUN
+  /**
+   * getSeriesSchema of paritialPath
+   *
+   * @param fullPath (may be ParitialPath or VectorPartialPath)
+   * @return MeasurementSchema or VectorMeasurementSchema. Attention: measurements of
+   *     VectorMeasurementSchema are index of the sensors in the leaf node, instead of sensor names.
+   *     For example: As for leaf node {s1, s2, s3, s4}, if fullPath = {s3, s1}, we should return
+   *     measurements = ["2", "0"]
+   */
   public IMeasurementSchema getSeriesSchema(PartialPath fullPath) throws MetadataException {
     MNode node = mtree.getNodeByPath(fullPath.getDevicePath());
     MNode leaf = node.getChild(fullPath.getMeasurement());
+
+    if (fullPath instanceof VectorPartialPath) {
+      List<PartialPath> measurements = ((VectorPartialPath) fullPath).getSubSensorsPathList();
+      String[] measurementIndices = new String[measurements.size()];
+      TSDataType[] types = new TSDataType[measurements.size()];
+      TSEncoding[] encodings = new TSEncoding[measurements.size()];
+      IMeasurementSchema schema = ((MeasurementMNode) leaf).getSchema();
+
+      List<String> measurementsInLeaf = schema.getValueMeasurementIdList();
+      for (int i = 0; i < measurements.size(); i++) {
+        int index = measurementsInLeaf.indexOf(measurements.get(i).toString());
+        measurementIndices[i] = String.valueOf(index);
+        types[i] = schema.getValueTSDataTypeList().get(index);
+        encodings[i] = schema.getValueTSEncodingList().get(index);
+      }
+      return new VectorMeasurementSchema(
+          measurementIndices, types, encodings, schema.getCompressor());
+    }
+
     if (leaf != null) {
       return ((MeasurementMNode) leaf).getSchema();
     }
