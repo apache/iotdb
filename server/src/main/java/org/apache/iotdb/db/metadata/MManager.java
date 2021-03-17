@@ -1169,9 +1169,13 @@ public class MManager {
         types[i] = schema.getValueTSDataTypeList().get(index);
         encodings[i] = schema.getValueTSEncodingList().get(index);
       }
+      String[] array = new String[measurements.size()];
+      for (int i = 0; i < array.length; i++) {
+        array[i] = measurements.get(i).getFullPath();
+      }
       return new VectorMeasurementSchema(
           IoTDBConstant.ALIGN_TIMESERIES_PREFIX,
-          (String[]) measurements.toArray(),
+          array,
           types,
           encodings,
           schema.getCompressor());
@@ -1212,17 +1216,11 @@ public class MManager {
           nodeToPartialPath.put(node,
               new VectorPartialPath(path.getDevice() + "." + node.getName(), subSensorsPathList));
         }
-        nodeToIndex.put(node, Collections.singletonList(i));
+        nodeToIndex.computeIfAbsent(node, k -> new ArrayList<>()).add(i);
       } else {
         // if nodeToPartialPath contains node, it must be VectorPartialPath
         ((VectorPartialPath) nodeToPartialPath.get(node)).addSubSensor(path);
-        if (!nodeToIndex.containsKey(node)) {
-          List<Integer> list = new ArrayList<>();
-          list.add(i);
-          nodeToIndex.put(node, list);
-        } else {
-          nodeToIndex.get(node).add(i);
-        }
+        nodeToIndex.get(node).add(i);
       }
     }
     Map<String, Integer> indexMap = new HashMap<>();
