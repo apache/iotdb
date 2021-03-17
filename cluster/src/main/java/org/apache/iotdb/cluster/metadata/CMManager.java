@@ -168,7 +168,8 @@ public class CMManager extends MManager {
   }
 
   @Override
-  public String deleteTimeseries(PartialPath prefixPath) throws MetadataException {
+  public Pair<Set<String>, String> deleteTimeseries(PartialPath prefixPath)
+      throws MetadataException {
     cacheLock.writeLock().lock();
     mRemoteMetaCache.removeItem(prefixPath);
     cacheLock.writeLock().unlock();

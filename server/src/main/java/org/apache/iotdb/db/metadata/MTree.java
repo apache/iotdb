@@ -1247,8 +1247,7 @@ public class MTree implements Serializable {
             needLast,
             queryContext,
             measurementSchema,
-            "*",
-            nodes.length == idx ? lastWord : null);
+            nodes.length == idx ? lastWord : "*");
       }
       if (hasLimit) {
         count.set(count.get() + 1);
@@ -1322,14 +1321,12 @@ public class MTree implements Serializable {
                   nodeReg);
             } else if (schema instanceof VectorMeasurementSchema) {
               addVectorMeasurementSchema(
-                  new MeasurementMNode(
-                      node, schema.getValueMeasurementIdList().get(0) + ".align", schema, null),
+                  new MeasurementMNode(node, IoTDBConstant.ALIGN_TIMESERIES_PREFIX, schema, null),
                   timeseriesSchemaList,
                   needLast,
                   queryContext,
                   schema,
-                  nodeReg,
-                  null);
+                  nodeReg);
             }
           }
         }
@@ -1367,16 +1364,12 @@ public class MTree implements Serializable {
       boolean needLast,
       QueryContext queryContext,
       IMeasurementSchema schema,
-      String reg,
-      String lastMeasurement)
+      String reg)
       throws StorageGroupNotSetException, IllegalPathException {
     List<String> measurements = schema.getValueMeasurementIdList();
     int measurementSize = measurements.size();
     for (int i = 0; i < measurementSize; i++) {
       if (Pattern.matches(reg.replace("*", ".*"), measurements.get(i))) {
-        if (lastMeasurement != null && !lastMeasurement.contains(measurements.get(i))) {
-          continue;
-        }
         PartialPath devicePath = node.getPartialPath().getDevicePath();
         String[] tsRow = new String[7];
         tsRow[0] = null;
