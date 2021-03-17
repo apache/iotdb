@@ -233,6 +233,11 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
+  public int delete(long lowerBound, long upperBound, int columnIndex) {
+    return list.delete(lowerBound, upperBound, columnIndex);
+  }
+
+  @Override
   public String toString() {
     int size = getSortedTVListForQuery().size();
     StringBuilder out = new StringBuilder("MemChunk Size: " + size + System.lineSeparator());

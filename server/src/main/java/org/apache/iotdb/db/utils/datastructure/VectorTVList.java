@@ -177,6 +177,9 @@ public class VectorTVList extends TVList {
   }
 
   public int getIntByValueIndex(int valueIndex, int column) {
+    if (dataTypes.get(column) != TSDataType.INT32) {
+      throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+    }
     if (valueIndex >= size) {
       throw new ArrayIndexOutOfBoundsException(valueIndex);
     }
@@ -197,6 +200,9 @@ public class VectorTVList extends TVList {
   }
 
   public long getLongByValueIndex(int valueIndex, int column) {
+    if (dataTypes.get(column) != TSDataType.INT64) {
+      throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+    }
     if (valueIndex >= size) {
       throw new ArrayIndexOutOfBoundsException(valueIndex);
     }
@@ -217,6 +223,9 @@ public class VectorTVList extends TVList {
   }
 
   public float getFloatByValueIndex(int valueIndex, int column) {
+    if (dataTypes.get(column) != TSDataType.FLOAT) {
+      throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+    }
     if (valueIndex >= size) {
       throw new ArrayIndexOutOfBoundsException(valueIndex);
     }
@@ -237,6 +246,9 @@ public class VectorTVList extends TVList {
   }
 
   public double getDoubleByValueIndex(int valueIndex, int column) {
+    if (dataTypes.get(column) != TSDataType.DOUBLE) {
+      throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+    }
     if (valueIndex >= size) {
       throw new ArrayIndexOutOfBoundsException(valueIndex);
     }
@@ -257,6 +269,9 @@ public class VectorTVList extends TVList {
   }
 
   public Binary getBinaryByValueIndex(int valueIndex, int column) {
+    if (dataTypes.get(column) != TSDataType.TEXT) {
+      throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+    }
     if (valueIndex >= size) {
       throw new ArrayIndexOutOfBoundsException(valueIndex);
     }
@@ -277,6 +292,9 @@ public class VectorTVList extends TVList {
   }
 
   public boolean getBooleanByValueIndex(int valueIndex, int column) {
+    if (dataTypes.get(column) != TSDataType.BOOLEAN) {
+      throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+    }
     if (valueIndex >= size) {
       throw new ArrayIndexOutOfBoundsException(valueIndex);
     }
@@ -477,6 +495,9 @@ public class VectorTVList extends TVList {
   @Override
   protected void releaseLastValueArray() {
     PrimitiveArrayManager.release(indices.remove(indices.size() - 1));
+    for (int i = 0; i < dataTypes.size(); i++) {
+      PrimitiveArrayManager.release(values.get(i).remove(values.get(i).size() - 1));
+    }
   }
 
   @Override
@@ -547,6 +568,12 @@ public class VectorTVList extends TVList {
           break;
       }
     }
+  }
+
+  //FIXME: need to implement the bitmap first.
+  @Override
+  public int delete(long lowerBound, long upperBound, int columnIndex) {
+    return 0;
   }
 
   @Override

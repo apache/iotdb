@@ -329,6 +329,7 @@ public abstract class AbstractMemTable implements IMemTable {
         }
         int deletedPointsNumber = chunk.delete(startTimestamp, endTimestamp);
         totalPointsNum -= deletedPointsNumber;
+        continue;
       }
     }
   }
