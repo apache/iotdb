@@ -55,6 +55,8 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -473,6 +475,11 @@ public class CMManager extends MManager {
     } else if (plan instanceof CreateTimeSeriesPlan) {
       storageGroups.addAll(
           getStorageGroups(Collections.singletonList(((CreateTimeSeriesPlan) plan).getPath())));
+    } else if (plan instanceof SetDeviceTemplatePlan) {
+      storageGroups.addAll(
+          getStorageGroups(
+              Collections.singletonList(
+                  new PartialPath(((SetDeviceTemplatePlan) plan).getPrefixPath()))));
     } else {
       storageGroups.addAll(getStorageGroups(plan.getPaths()));
     }
@@ -618,8 +625,15 @@ public class CMManager extends MManager {
       logger.error("Failed to infer storage group from deviceId {}", deviceId);
       return false;
     }
+    boolean hasVector = false;
     for (String measurementId : insertPlan.getMeasurements()) {
+      if (measurementId.contains("(") && measurementId.contains(",")) {
+        hasVector = true;
+      }
       seriesList.add(deviceId.getFullPath() + TsFileConstant.PATH_SEPARATOR + measurementId);
+    }
+    if (hasVector) {
+      return createAlignTimeseries(seriesList, (InsertTabletPlan) insertPlan);
     }
     PartitionGroup partitionGroup =
         metaGroupMember.getPartitionTable().route(storageGroupName.getFullPath(), 0);
@@ -627,6 +641,51 @@ public class CMManager extends MManager {
     logger.debug("Unregisterd series of {} are {}", seriesList, unregisteredSeriesList);
 
     return createTimeseries(unregisteredSeriesList, seriesList, insertPlan);
+  }
+
+  private boolean createAlignTimeseries(List<String> seriesList, InsertTabletPlan insertPlan)
+      throws IllegalPathException {
+    List<String> measurements = new ArrayList<>();
+    for (String series : seriesList) {
+      measurements.addAll(MetaUtils.getMeasurementsInPartialPath(new PartialPath(series)));
+    }
+
+    List<TSDataType> dataTypes = new ArrayList<>();
+    List<TSEncoding> encodings = new ArrayList<>();
+    for (TSDataType dataType : insertPlan.getDataTypes()) {
+      dataTypes.add(dataType);
+      encodings.add(getDefaultEncoding(dataType));
+    }
+
+    CreateAlignedTimeSeriesPlan plan =
+        new CreateAlignedTimeSeriesPlan(
+            insertPlan.getDeviceId(),
+            measurements,
+            dataTypes,
+            encodings,
+            TSFileDescriptor.getInstance().getConfig().getCompressor(),
+            null);
+    TSStatus result;
+    try {
+      result = coordinator.processPartitionedPlan(plan);
+    } catch (UnsupportedPlanException e) {
+      logger.error(
+          "Failed to create timeseries {} automatically. Unsupported plan exception {} ",
+          plan,
+          e.getMessage());
+      return false;
+    }
+    if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && result.getCode() != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()
+        && result.getCode() != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+      logger.error(
+          "{} failed to execute create timeseries {}: {}",
+          metaGroupMember.getThisNode(),
+          plan,
+          result);
+      return false;
+    }
+    return true;
   }
 
   /**
@@ -666,6 +725,7 @@ public class CMManager extends MManager {
     plan.setDataTypes(dataTypes);
     plan.setEncodings(encodings);
     plan.setCompressors(compressionTypes);
+
     TSStatus result;
     try {
       result = coordinator.processPartitionedPlan(plan);
