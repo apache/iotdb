@@ -18,38 +18,6 @@
  */
 package org.apache.iotdb.db.metadata;
 
-import static java.util.stream.Collectors.toList;
-import static org.apache.iotdb.db.conf.IoTDBConstant.LOSS;
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
-import static org.apache.iotdb.db.conf.IoTDBConstant.SDT;
-import static org.apache.iotdb.db.conf.IoTDBConstant.SDT_COMP_DEV;
-import static org.apache.iotdb.db.conf.IoTDBConstant.SDT_COMP_MAX_TIME;
-import static org.apache.iotdb.db.conf.IoTDBConstant.SDT_COMP_MIN_TIME;
-
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import java.io.File;
-import java.io.IOException;
-import java.io.Serializable;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Queue;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.regex.Pattern;
-import java.util.stream.Stream;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -88,12 +56,44 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * The hierarchical struct of the Metadata Tree is implemented in this class.
- */
+import java.io.File;
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Queue;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Pattern;
+import java.util.stream.Stream;
+
+import static java.util.stream.Collectors.toList;
+import static org.apache.iotdb.db.conf.IoTDBConstant.LOSS;
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
+import static org.apache.iotdb.db.conf.IoTDBConstant.SDT;
+import static org.apache.iotdb.db.conf.IoTDBConstant.SDT_COMP_DEV;
+import static org.apache.iotdb.db.conf.IoTDBConstant.SDT_COMP_MAX_TIME;
+import static org.apache.iotdb.db.conf.IoTDBConstant.SDT_COMP_MIN_TIME;
+
+/** The hierarchical struct of the Metadata Tree is implemented in this class. */
 public class MTree implements Serializable {
 
   public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -150,9 +150,7 @@ public class MTree implements Serializable {
     return GSON.toJson(jsonObject);
   }
 
-  /**
-   * combine multiple metadata in string format
-   */
+  /** combine multiple metadata in string format */
   @TestOnly
   static JsonObject combineMetadataInStrings(String[] metadataStrs) {
     JsonObject[] jsonObjects = new JsonObject[metadataStrs.length];
@@ -201,12 +199,12 @@ public class MTree implements Serializable {
    * Create a timeseries with a full path from root to leaf node. Before creating a timeseries, the
    * storage group should be set first, throw exception otherwise
    *
-   * @param path       timeseries path
-   * @param dataType   data type
-   * @param encoding   encoding
+   * @param path timeseries path
+   * @param dataType data type
+   * @param encoding encoding
    * @param compressor compressor
-   * @param props      props
-   * @param alias      alias of measurement
+   * @param props props
+   * @param alias alias of measurement
    */
   MeasurementMNode createTimeseries(
       PartialPath path,
@@ -291,11 +289,11 @@ public class MTree implements Serializable {
    * Create aligned timeseries with full paths from root to one leaf node. Before creating
    * timeseries, the * storage group should be set first, throw exception otherwise
    *
-   * @param devicePath   device path
+   * @param devicePath device path
    * @param measurements measurements list
-   * @param dataTypes    data types list
-   * @param encodings    encodings list
-   * @param compressor   compressor
+   * @param dataTypes data types list
+   * @param encodings encodings list
+   * @param compressor compressor
    */
   void createAlignedTimeseries(
       PartialPath devicePath,
@@ -527,9 +525,7 @@ public class MTree implements Serializable {
     }
   }
 
-  /**
-   * Delete a storage group
-   */
+  /** Delete a storage group */
   List<MeasurementMNode> deleteStorageGroup(PartialPath path) throws MetadataException {
     MNode cur = getNodeByPath(path);
     if (!(cur instanceof StorageGroupMNode)) {
@@ -853,12 +849,12 @@ public class MTree implements Serializable {
    * use this method to find its belonged storage group. When prefixOnly is set to true, storage
    * group paths in 1 is only added into result, otherwise, both 1 and 2 are returned.
    *
-   * @param node              the current traversing node
-   * @param nodes             split the prefix path with '.'
-   * @param idx               the current index of array nodes
-   * @param parent            current parent path
+   * @param node the current traversing node
+   * @param nodes split the prefix path with '.'
+   * @param idx the current index of array nodes
+   * @param parent current parent path
    * @param storageGroupPaths store all matched storage group names
-   * @param prefixOnly        only return storage groups that start with this prefix path
+   * @param prefixOnly only return storage groups that start with this prefix path
    */
   private void findStorageGroupPaths(
       MNode node,
@@ -896,9 +892,7 @@ public class MTree implements Serializable {
     }
   }
 
-  /**
-   * Get all storage group MNodes
-   */
+  /** Get all storage group MNodes */
   List<StorageGroupMNode> getAllStorageGroupNodes() {
     List<StorageGroupMNode> ret = new ArrayList<>();
     Deque<MNode> nodeStack = new ArrayDeque<>();
@@ -935,9 +929,7 @@ public class MTree implements Serializable {
     throw new StorageGroupNotSetException(path.getFullPath());
   }
 
-  /**
-   * Check whether the given path contains a storage group
-   */
+  /** Check whether the given path contains a storage group */
   boolean checkStorageGroupByPath(PartialPath path) {
     String[] nodes = path.getNodes();
     MNode cur = root;
@@ -972,7 +964,7 @@ public class MTree implements Serializable {
    *
    * @param prefixPath a prefix path or a full path, may contain '*'.
    * @return Pair.left contains all the satisfied paths Pair.right means the current offset or zero
-   * if we don't set offset.
+   *     if we don't set offset.
    */
   Pair<List<PartialPath>, Integer> getAllTimeseriesPathWithAlias(
       PartialPath prefixPath, int limit, int offset) throws MetadataException {
@@ -1015,9 +1007,7 @@ public class MTree implements Serializable {
     }
   }
 
-  /**
-   * Traverse the MTree to get the count of timeseries.
-   */
+  /** Traverse the MTree to get the count of timeseries. */
   private int getCount(MNode node, String[] nodes, int idx, boolean wildcard)
       throws PathNotExistException {
     if (idx < nodes.length) {
@@ -1073,9 +1063,7 @@ public class MTree implements Serializable {
     return getStorageGroupCount(root, nodes, 1, "");
   }
 
-  /**
-   * Get the count of nodes in the given level under the given prefix path.
-   */
+  /** Get the count of nodes in the given level under the given prefix path. */
   int getNodesCountInGivenLevel(PartialPath prefixPath, int level) throws MetadataException {
     String[] nodes = prefixPath.getNodes();
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
@@ -1096,9 +1084,7 @@ public class MTree implements Serializable {
     return getCountInGivenLevel(node, level - (i - 1));
   }
 
-  /**
-   * Traverse the MTree to get the count of devices.
-   */
+  /** Traverse the MTree to get the count of devices. */
   private int getDevicesCount(MNode node, String[] nodes, int idx) {
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
     int cnt = 0;
@@ -1124,9 +1110,7 @@ public class MTree implements Serializable {
     return cnt;
   }
 
-  /**
-   * Traverse the MTree to get the count of storage group.
-   */
+  /** Traverse the MTree to get the count of storage group. */
   private int getStorageGroupCount(MNode node, String[] nodes, int idx, String parent) {
     int cnt = 0;
     if (node instanceof StorageGroupMNode && idx >= nodes.length) {
@@ -1183,7 +1167,7 @@ public class MTree implements Serializable {
         allMatchedNodes.stream()
             .sorted(
                 Comparator.comparingLong(
-                    (Pair<PartialPath, String[]> p) -> Long.parseLong(p.right[6]))
+                        (Pair<PartialPath, String[]> p) -> Long.parseLong(p.right[6]))
                     .reversed()
                     .thenComparing((Pair<PartialPath, String[]> p) -> p.left));
 
@@ -1230,9 +1214,9 @@ public class MTree implements Serializable {
   /**
    * Iterate through MTree to fetch metadata info of all leaf nodes under the given seriesPath
    *
-   * @param needLast             if false, lastTimeStamp in timeseriesSchemaList will be null
+   * @param needLast if false, lastTimeStamp in timeseriesSchemaList will be null
    * @param timeseriesSchemaList List<timeseriesSchema> result: [name, alias, storage group,
-   *                             dataType, encoding, compression, offset, lastTimeStamp]
+   *     dataType, encoding, compression, offset, lastTimeStamp]
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void findPath(
@@ -1435,11 +1419,11 @@ public class MTree implements Serializable {
   /**
    * Traverse the MTree to match all child node path in next level
    *
-   * @param node   the current traversing node
-   * @param nodes  split the prefix path with '.'
-   * @param idx    the current index of array nodes
+   * @param node the current traversing node
+   * @param nodes split the prefix path with '.'
+   * @param idx the current index of array nodes
    * @param parent store the node string having traversed
-   * @param res    store all matched device names
+   * @param res store all matched device names
    * @param length expected length of path
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -1506,11 +1490,11 @@ public class MTree implements Serializable {
   /**
    * Traverse the MTree to match all child node path in next level
    *
-   * @param node   the current traversing node
-   * @param nodes  split the prefix path with '.'
-   * @param idx    the current index of array nodes
+   * @param node the current traversing node
+   * @param nodes split the prefix path with '.'
+   * @param idx the current index of array nodes
    * @param parent store the node string having traversed
-   * @param res    store all matched device names
+   * @param res store all matched device names
    * @param length expected length of path
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -1598,10 +1582,10 @@ public class MTree implements Serializable {
   /**
    * Traverse the MTree to match all devices with prefix path.
    *
-   * @param node  the current traversing node
+   * @param node the current traversing node
    * @param nodes split the prefix path with '.'
-   * @param idx   the current index of array nodes
-   * @param res   store all matched device names
+   * @param idx the current index of array nodes
+   * @param res store all matched device names
    */
   @SuppressWarnings("squid:S3776")
   private void findDevices(
@@ -1650,16 +1634,12 @@ public class MTree implements Serializable {
     }
   }
 
-  /**
-   * Get all paths from root to the given level.
-   */
+  /** Get all paths from root to the given level. */
   List<PartialPath> getNodesList(PartialPath path, int nodeLevel) throws MetadataException {
     return getNodesList(path, nodeLevel, null);
   }
 
-  /**
-   * Get all paths from root to the given level
-   */
+  /** Get all paths from root to the given level */
   List<PartialPath> getNodesList(PartialPath path, int nodeLevel, StorageGroupFilter filter)
       throws MetadataException {
     String[] nodes = path.getNodes();
@@ -1697,8 +1677,8 @@ public class MTree implements Serializable {
       StorageGroupFilter filter) {
     if (node == null
         || node instanceof StorageGroupMNode
-        && filter != null
-        && !filter.satisfy(node.getFullPath())) {
+            && filter != null
+            && !filter.satisfy(node.getFullPath())) {
       return;
     }
     if (targetLevel == 0) {
