@@ -26,7 +26,6 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
@@ -148,19 +147,21 @@ public class VectorTVList extends TVList {
           break;
       }
     }
-    // For query one column in vectorTVList
-    if (vector.length == 1) {
-      return vector[0];
-    }
     return TsPrimitiveType.getByType(TSDataType.VECTOR, vector);
   }
 
   @Override
-  public TVList getTVListByColumnIndex(int column) {
-    VectorTVList vectorTVList = new VectorTVList(Collections.singletonList(dataTypes.get(column)));
+  public TVList getTVListByColumnIndex(List<Integer> columns) {
+    List<TSDataType> types = new ArrayList<>();
+    List<List<Object>> values = new ArrayList<>();
+    for (int column : columns) {
+      types.add(this.dataTypes.get(column));
+      values.add(this.values.get(column));
+    }
+    VectorTVList vectorTVList = new VectorTVList(types);
     vectorTVList.timestamps = this.timestamps;
     vectorTVList.indices = this.indices;
-    vectorTVList.values = Collections.singletonList(this.values.get(column));
+    vectorTVList.values = values;
     vectorTVList.size = this.size;
     return vectorTVList;
   }
@@ -389,6 +390,8 @@ public class VectorTVList extends TVList {
         columnValues.clear();
       }
     }
+    values.clear();
+    dataTypes.clear();
   }
 
   @Override

@@ -269,6 +269,10 @@ public class MergeMultiChunkTask {
             modifications[i] = resource.getModifications(currTsFile, currMergingPaths.get(i));
             seqChunkMeta[i] = measurementChunkMetadataListEntry.getValue();
             modifyChunkMetaData(seqChunkMeta[i], modifications[i]);
+            for (ChunkMetadata chunkMetadata : seqChunkMeta[i]) {
+              resource.updateStartTime(currTsFile, deviceId, chunkMetadata.getStartTime());
+              resource.updateEndTime(currTsFile, deviceId, chunkMetadata.getEndTime());
+            }
 
             if (Thread.interrupted()) {
               Thread.currentThread().interrupt();

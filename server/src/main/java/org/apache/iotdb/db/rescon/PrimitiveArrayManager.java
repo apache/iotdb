@@ -23,7 +23,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -210,9 +209,6 @@ public class PrimitiveArrayManager {
     } else if (dataArray instanceof Binary[]) {
       Arrays.fill((Binary[]) dataArray, null);
       dataType = TSDataType.TEXT;
-    } else if (dataArray instanceof TsPrimitiveType[][]) {
-      Arrays.fill((TsPrimitiveType[][]) dataArray, null);
-      dataType = TSDataType.VECTOR;
     } else {
       throw new UnSupportedDataTypeException("Unknown data array type");
     }

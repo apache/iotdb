@@ -35,6 +35,7 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.writer.ForceAppendTsFileWriter;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
@@ -211,13 +212,24 @@ class MergeFileTask {
 
   private void updateStartTimeAndEndTime(TsFileResource seqFile, TsFileIOWriter fileWriter) {
     // TODO change to get one timeseries block each time
-    for (Entry<String, List<ChunkMetadata>> deviceChunkMetadataEntry :
-        fileWriter.getDeviceChunkMetadataMap().entrySet()) {
-      String device = deviceChunkMetadataEntry.getKey();
-      for (IChunkMetadata chunkMetadata : deviceChunkMetadataEntry.getValue()) {
-        seqFile.updateStartTime(device, chunkMetadata.getStartTime());
-        seqFile.updateEndTime(device, chunkMetadata.getEndTime());
+    Map<String, List<ChunkMetadata>> deviceChunkMetadataListMap =
+        fileWriter.getDeviceChunkMetadataMap();
+    for (Entry<String, List<ChunkMetadata>> deviceChunkMetadataListEntry :
+        deviceChunkMetadataListMap.entrySet()) {
+      String device = deviceChunkMetadataListEntry.getKey();
+      for (IChunkMetadata chunkMetadata : deviceChunkMetadataListEntry.getValue()) {
+        resource.updateStartTime(seqFile, device, chunkMetadata.getStartTime());
+        resource.updateEndTime(seqFile, device, chunkMetadata.getEndTime());
       }
+    }
+    // update all device start time and end time of the resource
+    Map<String, Pair<Long, Long>> deviceStartEndTimePairMap = resource.getStartEndTime(seqFile);
+    for (Entry<String, Pair<Long, Long>> deviceStartEndTimePairEntry :
+        deviceStartEndTimePairMap.entrySet()) {
+      String device = deviceStartEndTimePairEntry.getKey();
+      Pair<Long, Long> startEndTimePair = deviceStartEndTimePairEntry.getValue();
+      seqFile.putStartTime(device, startEndTimePair.left);
+      seqFile.putEndTime(device, startEndTimePair.right);
     }
   }
 
@@ -315,6 +327,7 @@ class MergeFileTask {
       }
     }
     updateStartTimeAndEndTime(seqFile, fileWriter);
+    resource.removeFileReader(seqFile);
     fileWriter.endFile();
 
     updatePlanIndexes(seqFile);
@@ -324,7 +337,6 @@ class MergeFileTask {
 
     seqFile.writeLock();
     try {
-      resource.removeFileReader(seqFile);
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
       File newMergeFile = seqFile.getTsFile();
       newMergeFile.delete();

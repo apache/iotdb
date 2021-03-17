@@ -18,6 +18,34 @@
  */
 package org.apache.iotdb.db.metadata;
 
+import static java.util.stream.Collectors.toList;
+import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -77,37 +105,8 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
-
-import static java.util.stream.Collectors.toList;
-import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 /**
  * This class takes the responsibility of serialization of all the metadata info and persistent it
@@ -784,7 +783,13 @@ public class MManager {
       return TSDataType.INT64;
     }
 
-    return mtree.getSchema(path).getType();
+    IMeasurementSchema schema = mtree.getSchema(path);
+    if (schema instanceof MeasurementSchema) {
+      return schema.getType();
+    } else {
+      List<String> measurements = schema.getValueMeasurementIdList();
+      return schema.getValueTSDataTypeList().get(measurements.indexOf(path.getMeasurement()));
+    }
   }
 
   public MeasurementMNode[] getMNodes(PartialPath deviceId, String[] measurements)
@@ -1085,22 +1090,88 @@ public class MManager {
 
   public IMeasurementSchema getSeriesSchema(PartialPath device, String measurement)
       throws MetadataException {
-    MNode node = mtree.getNodeByPath(device);
-    MNode leaf = node.getChild(measurement);
+    return getSeriesSchema(new PartialPath(device.getFullPath(), measurement));
+  }
+
+  /**
+   * Get schema of paritialPath
+   *
+   * @param fullPath (may be ParitialPath or VectorPartialPath)
+   * @return MeasurementSchema or VectorMeasurementSchema. Attention: measurements of
+   *     VectorMeasurementSchema are index of the sensors in the leaf node, instead of sensor names.
+   *     For example: As for leaf node {s1, s2, s3, s4}, if fullPath = {s3, s1}, we should return
+   *     measurements = ["2", "0"]
+   */
+  public IMeasurementSchema getSeriesSchema(PartialPath fullPath) throws MetadataException {
+    MNode leaf = mtree.getNodeByPath(fullPath);
+    if (fullPath instanceof VectorPartialPath) {
+      List<PartialPath> measurements = ((VectorPartialPath) fullPath).getSubSensorsPathList();
+      String[] measurementIndices = new String[measurements.size()];
+      TSDataType[] types = new TSDataType[measurements.size()];
+      TSEncoding[] encodings = new TSEncoding[measurements.size()];
+      IMeasurementSchema schema = ((MeasurementMNode) leaf).getSchema();
+
+      List<String> measurementsInLeaf = schema.getValueMeasurementIdList();
+      for (int i = 0; i < measurements.size(); i++) {
+        int index = measurementsInLeaf.indexOf(measurements.get(i).toString());
+        measurementIndices[i] = String.valueOf(index);
+        types[i] = schema.getValueTSDataTypeList().get(index);
+        encodings[i] = schema.getValueTSEncodingList().get(index);
+      }
+      return new VectorMeasurementSchema(
+          measurementIndices, types, encodings, schema.getCompressor());
+    }
+
     if (leaf != null) {
       return ((MeasurementMNode) leaf).getSchema();
     }
     return null;
   }
 
-  // TODO BY ZESONG SUN
-  public IMeasurementSchema getSeriesSchema(PartialPath fullPath) throws MetadataException {
-    MNode node = mtree.getNodeByPath(fullPath.getDevicePath());
-    MNode leaf = node.getChild(fullPath.getMeasurement());
-    if (leaf != null) {
-      return ((MeasurementMNode) leaf).getSchema();
+  /**
+   * Get schema of partialPaths, in which aligned timeseries should only organized to one schema.
+   * This method should be called when logical plan converts to physical plan.
+   *
+   * @param fullPaths full path list without pointing out which timeseries are aligned. For example,
+   *     maybe (s1,s2) are aligned, but the input could be [root.sg1.d1.s1, root.sg1.d1.s2]
+   * @return Pair<List<PartialPath>, List<Integer>>. Size of partial path list could NOT equal to
+   *     the input list size. For example, the VectorMeasurementSchema (s1,s2) would be returned
+   *     once; Size of integer list must equal to the input list size. It indicates the index of
+   *     elements of original list in the result list
+   */
+  public Pair<List<PartialPath>, Map<String, Integer>> getSeriesSchemas(List<PartialPath> fullPaths)
+      throws MetadataException {
+    Map<MNode, PartialPath> nodeToPartialPath = new LinkedHashMap<>();
+    Map<MNode, List<Integer>> nodeToIndex = new LinkedHashMap<>();
+    for (int i = 0; i < fullPaths.size(); i++) {
+      PartialPath path = fullPaths.get(i);
+      // use dfs to collect paths
+      MeasurementMNode node = (MeasurementMNode) getNodeByPath(path);
+
+      if (!nodeToPartialPath.containsKey(node)) {
+        if (node.getSchema() instanceof MeasurementMNode) {
+          nodeToPartialPath.put(node, path);
+        } else {
+          List<PartialPath> subSensorsPathList = new ArrayList<>();
+          subSensorsPathList.add(new PartialPath(path.getMeasurement()));
+          nodeToPartialPath.put(node, new VectorPartialPath(path.getDevice(), subSensorsPathList));
+        }
+        nodeToIndex.put(node, Collections.singletonList(i));
+      } else {
+        // if nodeToPartialPath contains node, it must be VectorPartialPath
+        ((VectorPartialPath) nodeToPartialPath.get(node)).addSubSensor(path);
+        nodeToIndex.get(node).add(i);
+      }
     }
-    return null;
+    Map<String, Integer> indexMap = new HashMap<>();
+    int i = 0;
+    for (List<Integer> indexList : nodeToIndex.values()) {
+      for (int index : indexList) {
+        indexMap.put(fullPaths.get(i).getFullPath(), index);
+        i++;
+      }
+    }
+    return new Pair<>(new ArrayList<>(nodeToPartialPath.values()), indexMap);
   }
 
   /**
@@ -2176,12 +2247,35 @@ public class MManager {
     }
   }
 
-  private boolean isTemplateCompatible(Template upper, Template current) {
+  public boolean isTemplateCompatible(Template upper, Template current) {
     if (upper == null) {
       return true;
     }
 
-    // todo add check logic
-    return true;
+    Map<String, IMeasurementSchema> upperMap = new HashMap<>(upper.getSchemaMap());
+    Map<String, IMeasurementSchema> currentMap = new HashMap<>(current.getSchemaMap());
+
+    // for identical vector schema, we should just compare once
+    Map<IMeasurementSchema, IMeasurementSchema> sameSchema = new HashMap<>();
+
+    for (String name : currentMap.keySet()) {
+      IMeasurementSchema upperSchema = upperMap.remove(name);
+      if (upperSchema != null) {
+        IMeasurementSchema currentSchema = currentMap.get(name);
+        // use "==" to compare actual address space
+        if (upperSchema == sameSchema.get(currentSchema)) {
+          continue;
+        }
+
+        if (!upperSchema.equals(currentSchema)) {
+          return false;
+        }
+
+        sameSchema.put(currentSchema, upperSchema);
+      }
+    }
+
+    // current template must contains all measurements of upper template
+    return upperMap.isEmpty();
   }
 }

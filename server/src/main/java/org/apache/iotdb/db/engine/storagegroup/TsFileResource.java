@@ -322,8 +322,18 @@ public class TsFileResource {
     timeIndex.updateStartTime(device, time);
   }
 
+  // used in merge, refresh all start time
+  public void putStartTime(String device, long time) {
+    timeIndex.putStartTime(device, time);
+  }
+
   public void updateEndTime(String device, long time) {
     timeIndex.updateEndTime(device, time);
+  }
+
+  // used in merge, refresh all end time
+  public void putEndTime(String device, long time) {
+    timeIndex.putEndTime(device, time);
   }
 
   public boolean resourceFileExists() {

@@ -38,7 +38,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -160,47 +159,18 @@ public class ReadOnlyMemChunk {
 
   private void initVectorChunkMeta() throws IOException, QueryProcessException {
     Statistics timeStatistics = Statistics.getStatsByType(TSDataType.VECTOR);
-    Statistics statsByType = Statistics.getStatsByType(dataType);
     IChunkMetadata timeChunkMetadata =
         new ChunkMetadata(measurementUid, TSDataType.VECTOR, 0, timeStatistics);
-    IChunkMetadata valueChunkMetadata = new ChunkMetadata(measurementUid, dataType, 0, statsByType);
     if (!isEmpty()) {
       IPointReader iterator =
           chunkData.getIterator(floatPrecision, encoding, chunkDataSize, deletionList);
       while (iterator.hasNextTimeValuePair()) {
         TimeValuePair timeValuePair = iterator.nextTimeValuePair();
         timeStatistics.update(timeValuePair.getTimestamp());
-        switch (dataType) {
-          case BOOLEAN:
-            statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getBoolean());
-            break;
-          case TEXT:
-            statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getBinary());
-            break;
-          case FLOAT:
-            statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getFloat());
-            break;
-          case INT32:
-            statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getInt());
-            break;
-          case INT64:
-            statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getLong());
-            break;
-          case DOUBLE:
-            statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getDouble());
-            break;
-          case VECTOR:
-            statsByType.update(timeValuePair.getTimestamp());
-            break;
-          default:
-            throw new QueryProcessException("Unsupported data type:" + dataType);
-        }
       }
     }
     timeStatistics.setEmpty(isEmpty());
-    statsByType.setEmpty(isEmpty());
-    IChunkMetadata vectorChunkMetadata =
-        new VectorChunkMetadata(timeChunkMetadata, Collections.singletonList(valueChunkMetadata));
+    IChunkMetadata vectorChunkMetadata = new VectorChunkMetadata(timeChunkMetadata, null);
     vectorChunkMetadata.setChunkLoader(new MemChunkLoader(this));
     vectorChunkMetadata.setVersion(Long.MAX_VALUE);
     cachedMetaData = vectorChunkMetadata;

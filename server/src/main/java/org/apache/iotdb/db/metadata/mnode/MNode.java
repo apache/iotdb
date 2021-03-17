@@ -18,12 +18,6 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.logfile.MLogWriter;
-import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.rescon.CachedStringPool;
-
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -32,6 +26,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.logfile.MLogWriter;
+import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.rescon.CachedStringPool;
 
 /**
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the
@@ -103,7 +102,38 @@ public class MNode implements Serializable {
       }
     }
 
+    child.parent = this;
     children.putIfAbsent(name, child);
+  }
+
+  /**
+   * Add a child to the current mnode.
+   *
+   * <p>This method will not take the child's name as one of the inputs and will also make this
+   * Mnode be child node's parent. All is to reduce the probability of mistaken by users and be more
+   * convenient for users to use. And the return of this method is used to conveniently construct a
+   * chain of time series for users.
+   *
+   * @param child child's node
+   * @return return the MNode already added
+   */
+  MNode addChild(MNode child) {
+    /* use cpu time to exchange memory
+     * measurementNode's children should be null to save memory
+     * add child method will only be called when writing MTree, which is not a frequent operation
+     */
+    if (children == null) {
+      // double check, children is volatile
+      synchronized (this) {
+        if (children == null) {
+          children = new ConcurrentHashMap<>();
+        }
+      }
+    }
+
+    child.parent = this;
+    children.putIfAbsent(child.getName(), child);
+    return child;
   }
 
   /** delete a child */
@@ -283,5 +313,17 @@ public class MNode implements Serializable {
 
     this.deleteChild(measurement);
     this.addChild(newChildNode.getName(), newChildNode);
+  }
+
+  public Template getUpperTemplate() {
+    MNode cur = this;
+    while (cur != null) {
+      if (cur.getDeviceTemplate() != null) {
+        return cur.deviceTemplate;
+      }
+      cur = cur.parent;
+    }
+
+    return null;
   }
 }

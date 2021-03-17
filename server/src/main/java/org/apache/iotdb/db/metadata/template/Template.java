@@ -18,15 +18,20 @@
  */
 package org.apache.iotdb.db.metadata.template;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
-
-import java.util.HashMap;
-import java.util.Map;
 
 public class Template {
   String name;
@@ -91,5 +96,25 @@ public class Template {
 
   public void setSchemaMap(Map<String, IMeasurementSchema> schemaMap) {
     this.schemaMap = schemaMap;
+  }
+
+  public boolean isCompatible(PartialPath path) {
+    return !schemaMap.containsKey(path.getMeasurement());
+  }
+
+  public List<MeasurementMNode> getMeasurementMNode() {
+    Set<IMeasurementSchema> deduplicateSchema = new HashSet<>();
+    List<MeasurementMNode> res = new ArrayList<>();
+
+    for (IMeasurementSchema measurementSchema : schemaMap.values()) {
+      if (deduplicateSchema.add(measurementSchema)) {
+        MeasurementMNode measurementMNode =
+            new MeasurementMNode(
+                null, measurementSchema.getMeasurementId(), measurementSchema, null);
+        res.add(measurementMNode);
+      }
+    }
+
+    return res;
   }
 }

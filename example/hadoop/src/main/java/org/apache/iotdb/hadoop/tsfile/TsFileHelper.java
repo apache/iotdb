@@ -74,7 +74,7 @@ public class TsFileHelper {
       }
 
       for (int i = 2; i < sensorNum; i++) {
-        MeasurementSchema measurementSchema =
+        IMeasurementSchema measurementSchema =
             new MeasurementSchema(
                 Constant.SENSOR_PREFIX + (i + 1), TSDataType.DOUBLE, TSEncoding.TS_2DIFF);
         schema.registerTimeseries(

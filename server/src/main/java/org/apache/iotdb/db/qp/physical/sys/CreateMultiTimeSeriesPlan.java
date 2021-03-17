@@ -152,6 +152,7 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
     int type = PhysicalPlanType.CREATE_MULTI_TIMESERIES.ordinal();
     stream.write(type);
     stream.writeInt(paths.size());
+    stream.writeInt(dataTypes.size()); // size of datatypes, encodings for aligned timeseries
 
     for (PartialPath path : paths) {
       putString(stream, path.getFullPath());
@@ -209,6 +210,7 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
     int type = PhysicalPlanType.CREATE_MULTI_TIMESERIES.ordinal();
     buffer.put((byte) type);
     buffer.putInt(paths.size());
+    buffer.putInt(dataTypes.size()); // size of datatypes, encodings for aligned timeseries
 
     for (PartialPath path : paths) {
       putString(buffer, path.getFullPath());
@@ -264,16 +266,17 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
   @Override
   public void deserialize(ByteBuffer buffer) throws IllegalPathException {
     int totalSize = buffer.getInt();
+    int dataTypeSize = buffer.getInt();
     paths = new ArrayList<>(totalSize);
     for (int i = 0; i < totalSize; i++) {
       paths.add(new PartialPath(readString(buffer)));
     }
     dataTypes = new ArrayList<>(totalSize);
-    for (int i = 0; i < totalSize; i++) {
+    for (int i = 0; i < dataTypeSize; i++) {
       dataTypes.add(TSDataType.values()[buffer.get()]);
     }
     encodings = new ArrayList<>(totalSize);
-    for (int i = 0; i < totalSize; i++) {
+    for (int i = 0; i < dataTypeSize; i++) {
       encodings.add(TSEncoding.values()[buffer.get()]);
     }
     compressors = new ArrayList<>(totalSize);
