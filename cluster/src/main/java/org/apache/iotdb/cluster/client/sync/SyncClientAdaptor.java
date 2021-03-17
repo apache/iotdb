@@ -39,15 +39,7 @@ import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.RaftServer;
-import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
-import org.apache.iotdb.cluster.server.handlers.caller.GetChildNodeNextLevelPathHandler;
-import org.apache.iotdb.cluster.server.handlers.caller.GetDevicesHandler;
-import org.apache.iotdb.cluster.server.handlers.caller.GetNodesListHandler;
-import org.apache.iotdb.cluster.server.handlers.caller.GetTimeseriesSchemaHandler;
-import org.apache.iotdb.cluster.server.handlers.caller.JoinClusterHandler;
-import org.apache.iotdb.cluster.server.handlers.caller.PullMeasurementSchemaHandler;
-import org.apache.iotdb.cluster.server.handlers.caller.PullSnapshotHandler;
-import org.apache.iotdb.cluster.server.handlers.caller.PullTimeseriesSchemaHandler;
+import org.apache.iotdb.cluster.server.handlers.caller.*;
 import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardPlanHandler;
 import org.apache.iotdb.cluster.utils.PlanSerializer;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -172,6 +164,22 @@ public class SyncClientAdaptor {
     handler.setContact(client.getNode());
 
     client.getNodeList(header, schemaPattern, level, handler);
+    synchronized (response) {
+      if (response.get() == null) {
+        response.wait(RaftServer.getReadOperationTimeoutMS());
+      }
+    }
+    return response.get();
+  }
+
+  public static Set<String> getChildNodeInNextLevel(
+      AsyncDataClient client, Node header, String path) throws TException, InterruptedException {
+    GetChildNodeNextLevelHandler handler = new GetChildNodeNextLevelHandler();
+    AtomicReference<Set<String>> response = new AtomicReference<>(null);
+    handler.setResponse(response);
+    handler.setContact(client.getNode());
+
+    client.getChildNodeInNextLevel(header, path, handler);
     synchronized (response) {
       if (response.get() == null) {
         response.wait(RaftServer.getReadOperationTimeoutMS());

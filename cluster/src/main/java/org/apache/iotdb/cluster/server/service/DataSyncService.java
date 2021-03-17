@@ -262,6 +262,16 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
+  public Set<String> getChildNodeInNextLevel(Node header, String path) throws TException {
+    try {
+      dataGroupMember.syncLeaderWithConsistencyCheck(false);
+      return ((CMManager) IoTDB.metaManager).getChildNodeInNextLevel(path);
+    } catch (CheckConsistencyException | MetadataException e) {
+      throw new TException(e);
+    }
+  }
+
+  @Override
   public Set<String> getChildNodePathInNextLevel(Node header, String path) throws TException {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);

@@ -1417,8 +1417,12 @@ public class CMManager extends MManager {
         .collect(Collectors.toList());
   }
 
-  public Set<String> getChildNodePathInNextLevel(String path) throws MetadataException {
+  public Set<String> getChildNodeInNextLevel(String path) throws MetadataException {
     return getChildNodePathInNextLevel(new PartialPath(path));
+  }
+
+  public Set<String> getChildNodePathInNextLevel(String path) throws MetadataException {
+    return getChildNodeInNextLevel(new PartialPath(path));
   }
 
   /**
