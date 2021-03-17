@@ -103,6 +103,7 @@ public class AggregationPlan extends RawDataQueryPlan {
     return levelAggPaths;
   }
 
+  @Override
   public void setAlignByTime(boolean align) throws QueryProcessException {
     if (!align) {
       throw new QueryProcessException(

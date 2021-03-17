@@ -709,7 +709,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   /**
    * get fetchSize and deduplicatedPathNum that are used for memory estimation
    *
-   * @return Pair<fetchSize, deduplicatedPathNum>
+   * @return Pair - fetchSize, deduplicatedPathNum
    */
   private Pair<Integer, Integer> getMemoryParametersFromPhysicalPlan(
       PhysicalPlan plan, int fetchSizeBefore) {
