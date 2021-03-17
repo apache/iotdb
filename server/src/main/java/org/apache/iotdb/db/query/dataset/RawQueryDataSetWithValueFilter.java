@@ -207,7 +207,7 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet implements UDFI
     }
 
     // 5. check whether there is next row record
-    if (cachedRowRecords.isEmpty() && timeGenerator.hasNext()) {
+    if (cachedRowInObjects.isEmpty() && timeGenerator.hasNext()) {
       return cacheRowInObjects();
     }
     return !cachedRowInObjects.isEmpty();
