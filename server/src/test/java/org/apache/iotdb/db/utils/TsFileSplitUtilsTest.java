@@ -22,6 +22,10 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.Planner;
+import org.apache.iotdb.db.qp.executor.IPlanExecutor;
+import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -73,8 +77,15 @@ public class TsFileSplitUtilsTest {
   private final String SENSOR2 = "sensor_2";
   private final long VALUE_OFFSET = 1;
 
+  private final IPlanExecutor queryExecutor = new PlanExecutor();
+  private final Planner processor = new Planner();
+
+  public TsFileSplitUtilsTest() throws QueryProcessException {}
+
   @Before
   public void setUp() {
+    EnvironmentUtils.envSetUp();
+
     config = IoTDBDescriptor.getInstance().getConfig();
     originEnablePartition = config.isEnablePartition();
     originPartitionInterval = config.getPartitionInterval();
@@ -112,6 +123,12 @@ public class TsFileSplitUtilsTest {
     } catch (IOException e) {
       Assert.fail(e.getMessage());
     }
+
+    try {
+      EnvironmentUtils.cleanEnv();
+    } catch (Exception e) {
+      Assert.fail(e.getMessage());
+    }
   }
 
   @Test
@@ -136,7 +153,7 @@ public class TsFileSplitUtilsTest {
   }
 
   @Test
-  public void splitOneTsfileWithTwoDeviceTwoSensorTest() throws IOException {
+  public void splitOneTsfileWithTwoDeviceTwoSensorTest() {
     HashMap<String, List<String>> deviceSensorsMap = new HashMap<>();
     List<String> sensors = new ArrayList<>();
     sensors.add(SENSOR1);
@@ -145,6 +162,17 @@ public class TsFileSplitUtilsTest {
     deviceSensorsMap.put(DEVICE2, sensors);
     createOneTsFile(deviceSensorsMap);
     splitFileAndQueryCheck(deviceSensorsMap);
+  }
+
+  @Test
+  public void loadFileTest() {
+    // try load the tsfile
+    String sql = "load \"" + path + "\"" + " true";
+    try {
+      queryExecutor.processNonQuery(processor.parseSQLToPhysicalPlan(sql));
+    } catch (Exception e) {
+      Assert.fail(e.getMessage());
+    }
   }
 
   private void splitFileAndQueryCheck(HashMap<String, List<String>> deviceSensorsMap) {
@@ -161,6 +189,8 @@ public class TsFileSplitUtilsTest {
     for (int i = 0; i < splitResource.size(); i++) {
       try {
         queryAndCheckTsFileWithOneDevice(splitResource.get(i).getTsFilePath(), i, deviceSensorsMap);
+        long partitionId = splitResource.get(i).getTimePartition();
+        Assert.assertEquals(i, partitionId);
       } catch (IOException e) {
         Assert.fail(e.getMessage());
       }
