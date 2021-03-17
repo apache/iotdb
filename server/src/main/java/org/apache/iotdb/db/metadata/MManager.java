@@ -1139,7 +1139,7 @@ public class MManager {
    *     once; Size of integer list must equal to the input list size. It indicates the index of
    *     elements of original list in the result list
    */
-  public Pair<List<PartialPath>, List<Integer>> getSeriesSchemas(List<PartialPath> fullPaths)
+  public Pair<List<PartialPath>, Map<String, Integer>> getSeriesSchemas(List<PartialPath> fullPaths)
       throws MetadataException {
     Map<MNode, PartialPath> nodeToPartialPath = new LinkedHashMap<>();
     Map<MNode, List<Integer>> nodeToIndex = new LinkedHashMap<>();
@@ -1163,11 +1163,15 @@ public class MManager {
         nodeToIndex.get(node).add(i);
       }
     }
-    List<Integer> indexList = new ArrayList<>();
-    for (List<Integer> index : nodeToIndex.values()) {
-      indexList.addAll(index);
+    Map<String, Integer> indexMap = new HashMap<>();
+    int i = 0;
+    for (List<Integer> indexList : nodeToIndex.values()) {
+      for (int index : indexList) {
+        indexMap.put(fullPaths.get(i).getFullPath(), index);
+        i++;
+      }
     }
-    return new Pair<>(new ArrayList<>(nodeToPartialPath.values()), indexList);
+    return new Pair<>(new ArrayList<>(nodeToPartialPath.values()), indexMap);
   }
 
   /**
