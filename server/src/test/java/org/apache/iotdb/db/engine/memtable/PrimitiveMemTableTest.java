@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -297,7 +298,9 @@ public class PrimitiveMemTableTest {
     String deviceId = "root.sg.device5";
 
     MeasurementMNode[] mNodes = new MeasurementMNode[2];
-    IMeasurementSchema schema = new VectorMeasurementSchema(measurements, dataTypes, encodings);
+    IMeasurementSchema schema =
+        new VectorMeasurementSchema(
+            IoTDBConstant.ALIGN_TIMESERIES_PREFIX, measurements, dataTypes, encodings);
     mNodes[0] = new MeasurementMNode(null, "sensor0", schema, null);
     mNodes[1] = new MeasurementMNode(null, "sensor1", schema, null);
 

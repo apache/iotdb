@@ -102,4 +102,11 @@ public class AggregationPlan extends RawDataQueryPlan {
     }
     return levelAggPaths;
   }
+
+  public void setAlignByTime(boolean align) throws QueryProcessException {
+    if (!align) {
+      throw new QueryProcessException(
+          getOperatorType().name() + " doesn't support disable align clause.");
+    }
+  }
 }

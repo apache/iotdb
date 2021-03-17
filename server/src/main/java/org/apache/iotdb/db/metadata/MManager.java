@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -557,42 +558,57 @@ public class MManager {
    *
    * @param prefixPath path to be deleted, could be root or a prefix path or a full path TODO:
    *     directly return the failed string set
-   * @return The String is the deletion failed Timeseries
+   * @return pair.left: names of MNodes which are deleted; pair.right: deletion failed Timeseries
    */
-  public String deleteTimeseries(PartialPath prefixPath) throws MetadataException {
+  public Pair<Set<String>, String> deleteTimeseries(PartialPath prefixPath)
+      throws MetadataException {
     if (isStorageGroup(prefixPath)) {
       mNodeCache.clear();
     }
     try {
       List<String> measurements = MetaUtils.getMeasurementsInPartialPath(prefixPath);
-      PartialPath path = new PartialPath(prefixPath.getDevice(), measurements.get(0));
-
-      List<PartialPath> allTimeseries = mtree.getAllTimeseriesPath(path);
+      List<PartialPath> allTimeseries = mtree.getAllTimeseriesPath(prefixPath);
       if (allTimeseries.isEmpty()) {
         throw new PathNotExistException(prefixPath.getFullPath());
-      } else if (allTimeseries.size() != measurements.size()) {
-        throw new AlignedTimeseriesException(
-            "Not support deleting part of aligned timeseies!", prefixPath.getFullPath());
       }
+
+      // for not support deleting part of aligned timeseies
+      // should be removed after partial deletion is supported
+      MNode lastNode = getNodeByPath(allTimeseries.get(0));
+      if (lastNode instanceof MeasurementMNode) {
+        IMeasurementSchema schema = ((MeasurementMNode) lastNode).getSchema();
+        if (schema instanceof VectorMeasurementSchema
+            && schema.getValueMeasurementIdList().size() != allTimeseries.size()) {
+          throw new AlignedTimeseriesException(
+              "Not support deleting part of aligned timeseies!", prefixPath.getFullPath());
+        }
+      }
+
       // Monitor storage group seriesPath is not allowed to be deleted
       allTimeseries.removeIf(p -> p.startsWith(MonitorConstants.STAT_STORAGE_GROUP_ARRAY));
 
+      Set<String> mNodeNames = new HashSet<>();
       Set<String> failedNames = new HashSet<>();
       for (PartialPath p : allTimeseries) {
-        deleteSingleTimeseriesInternal(p, failedNames);
+        deleteSingleTimeseriesInternal(p, mNodeNames, failedNames);
       }
-      return failedNames.isEmpty() ? null : String.join(",", failedNames);
+      String failedNameString = failedNames.isEmpty() ? null : String.join(",", failedNames);
+      return new Pair<>(mNodeNames, failedNameString);
     } catch (IOException e) {
       throw new MetadataException(e.getMessage());
     }
   }
 
-  private void deleteSingleTimeseriesInternal(PartialPath p, Set<String> failedNames)
+  private void deleteSingleTimeseriesInternal(
+      PartialPath p, Set<String> mNodeNames, Set<String> failedNames)
       throws MetadataException, IOException {
     DeleteTimeSeriesPlan deleteTimeSeriesPlan = new DeleteTimeSeriesPlan();
     try {
-      PartialPath emptyStorageGroup = deleteOneTimeseriesAndUpdateStatistics(p);
+      Pair<String, PartialPath> nodeAndEmptyStorageGroup =
+          deleteOneTimeseriesAndUpdateStatistics(p);
+      mNodeNames.add(nodeAndEmptyStorageGroup.left);
       if (!isRecovering) {
+        PartialPath emptyStorageGroup = nodeAndEmptyStorageGroup.right;
         if (emptyStorageGroup != null) {
           StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(emptyStorageGroup);
           StorageEngine.getInstance()
@@ -650,9 +666,10 @@ public class MManager {
 
   /**
    * @param path full path from root to leaf node
-   * @return after delete if the storage group is empty, return its path, otherwise return null
+   * @return pair.left: name of MNode which is deleted;pair.right: After delete if the storage group
+   *     is empty, return its path, otherwise return null
    */
-  private PartialPath deleteOneTimeseriesAndUpdateStatistics(PartialPath path)
+  private Pair<String, PartialPath> deleteOneTimeseriesAndUpdateStatistics(PartialPath path)
       throws MetadataException, IOException {
     Pair<PartialPath, MeasurementMNode> pair =
         mtree.deleteTimeseriesAndReturnEmptyStorageGroup(path);
@@ -679,7 +696,7 @@ public class MManager {
       logger.info("Current series number {} come back to normal level", totalSeriesNumber);
       allowToCreateNewSeries = true;
     }
-    return storageGroupPath;
+    return new Pair<>(pair.right.getName(), storageGroupPath);
   }
 
   /**
@@ -785,6 +802,9 @@ public class MManager {
       return TSDataType.INT64;
     }
 
+    if (path instanceof VectorPartialPath) {
+      return TSDataType.VECTOR;
+    }
     IMeasurementSchema schema = mtree.getSchema(path);
     if (schema instanceof MeasurementSchema) {
       return schema.getType();
@@ -1092,12 +1112,7 @@ public class MManager {
 
   public IMeasurementSchema getSeriesSchema(PartialPath device, String measurement)
       throws MetadataException {
-    MNode node = mtree.getNodeByPath(device);
-    MNode leaf = node.getChild(measurement);
-    if (leaf != null) {
-      return ((MeasurementMNode) leaf).getSchema();
-    }
-    return null;
+    return getSeriesSchema(new PartialPath(device.getFullPath(), measurement));
   }
 
   /**
@@ -1110,9 +1125,7 @@ public class MManager {
    *     measurements = ["2", "0"]
    */
   public IMeasurementSchema getSeriesSchema(PartialPath fullPath) throws MetadataException {
-    MNode node = mtree.getNodeByPath(fullPath.getDevicePath());
-    MNode leaf = node.getChild(fullPath.getMeasurement());
-
+    MNode leaf = mtree.getNodeByPath(fullPath);
     if (fullPath instanceof VectorPartialPath) {
       List<PartialPath> measurements = ((VectorPartialPath) fullPath).getSubSensorsPathList();
       String[] measurementIndices = new String[measurements.size()];
@@ -1128,7 +1141,11 @@ public class MManager {
         encodings[i] = schema.getValueTSEncodingList().get(index);
       }
       return new VectorMeasurementSchema(
-          measurementIndices, types, encodings, schema.getCompressor());
+          IoTDBConstant.ALIGN_TIMESERIES_PREFIX,
+          measurementIndices,
+          types,
+          encodings,
+          schema.getCompressor());
     }
 
     if (leaf != null) {
@@ -1148,7 +1165,7 @@ public class MManager {
    *     once; Size of integer list must equal to the input list size. It indicates the index of
    *     elements of original list in the result list
    */
-  public Pair<List<PartialPath>, List<Integer>> getSeriesSchemas(List<PartialPath> fullPaths)
+  public Pair<List<PartialPath>, Map<String, Integer>> getSeriesSchemas(List<PartialPath> fullPaths)
       throws MetadataException {
     Map<MNode, PartialPath> nodeToPartialPath = new LinkedHashMap<>();
     Map<MNode, List<Integer>> nodeToIndex = new LinkedHashMap<>();
@@ -1172,11 +1189,15 @@ public class MManager {
         nodeToIndex.get(node).add(i);
       }
     }
-    List<Integer> indexList = new ArrayList<>();
-    for (List<Integer> index : nodeToIndex.values()) {
-      indexList.addAll(index);
+    Map<String, Integer> indexMap = new HashMap<>();
+    int i = 0;
+    for (List<Integer> indexList : nodeToIndex.values()) {
+      for (int index : indexList) {
+        indexMap.put(fullPaths.get(i).getFullPath(), index);
+        i++;
+      }
     }
-    return new Pair<>(new ArrayList<>(nodeToPartialPath.values()), indexList);
+    return new Pair<>(new ArrayList<>(nodeToPartialPath.values()), indexMap);
   }
 
   /**
@@ -2252,12 +2273,35 @@ public class MManager {
     }
   }
 
-  private boolean isTemplateCompatible(Template upper, Template current) {
+  public boolean isTemplateCompatible(Template upper, Template current) {
     if (upper == null) {
       return true;
     }
 
-    // todo add check logic
-    return true;
+    Map<String, IMeasurementSchema> upperMap = new HashMap<>(upper.getSchemaMap());
+    Map<String, IMeasurementSchema> currentMap = new HashMap<>(current.getSchemaMap());
+
+    // for identical vector schema, we should just compare once
+    Map<IMeasurementSchema, IMeasurementSchema> sameSchema = new HashMap<>();
+
+    for (String name : currentMap.keySet()) {
+      IMeasurementSchema upperSchema = upperMap.remove(name);
+      if (upperSchema != null) {
+        IMeasurementSchema currentSchema = currentMap.get(name);
+        // use "==" to compare actual address space
+        if (upperSchema == sameSchema.get(currentSchema)) {
+          continue;
+        }
+
+        if (!upperSchema.equals(currentSchema)) {
+          return false;
+        }
+
+        sameSchema.put(currentSchema, upperSchema);
+      }
+    }
+
+    // current template must contains all measurements of upper template
+    return upperMap.isEmpty();
   }
 }

@@ -42,6 +42,9 @@ import java.util.Objects;
 public class VectorMeasurementSchema
     implements IMeasurementSchema, Comparable<VectorMeasurementSchema>, Serializable {
 
+  public static final String ALIGN_TIMESERIES_PREFIX = "$#$";
+
+  private String meausurementId;
   private String[] measurements;
   private byte[] types;
   private byte[] encodings;
@@ -51,10 +54,12 @@ public class VectorMeasurementSchema
   public VectorMeasurementSchema() {}
 
   public VectorMeasurementSchema(
+      String measurementId,
       String[] measurements,
       TSDataType[] types,
       TSEncoding[] encodings,
       CompressionType compressionType) {
+    this.meausurementId = measurementId;
     this.measurements = measurements;
     byte[] typesInByte = new byte[types.length];
     for (int i = 0; i < types.length; i++) {
@@ -100,14 +105,18 @@ public class VectorMeasurementSchema
   }
 
   public VectorMeasurementSchema(
-      String[] measurements, TSDataType[] types, TSEncoding[] encodings) {
+      String measurementId, String[] measurements, TSDataType[] types, TSEncoding[] encodings) {
     this(
-        measurements, types, encodings, TSFileDescriptor.getInstance().getConfig().getCompressor());
+        measurementId,
+        measurements,
+        types,
+        encodings,
+        TSFileDescriptor.getInstance().getConfig().getCompressor());
   }
 
   @Override
   public String getMeasurementId() {
-    return measurements[0] + ".align";
+    return meausurementId;
   }
 
   @Override
@@ -196,6 +205,8 @@ public class VectorMeasurementSchema
   @Override
   public int serializeTo(ByteBuffer buffer) {
     int byteLen = 0;
+    byteLen +=
+        ReadWriteIOUtils.write(meausurementId.substring(ALIGN_TIMESERIES_PREFIX.length()), buffer);
     byteLen += ReadWriteIOUtils.write(measurements.length, buffer);
 
     for (String measurementId : measurements) {
@@ -215,6 +226,9 @@ public class VectorMeasurementSchema
   @Override
   public int serializeTo(OutputStream outputStream) throws IOException {
     int byteLen = 0;
+    byteLen +=
+        ReadWriteIOUtils.write(
+            meausurementId.substring(ALIGN_TIMESERIES_PREFIX.length()), outputStream);
     byteLen += ReadWriteIOUtils.write(measurements.length, outputStream);
 
     for (String measurementId : measurements) {
@@ -234,6 +248,9 @@ public class VectorMeasurementSchema
   public static VectorMeasurementSchema deserializeFrom(InputStream inputStream)
       throws IOException {
     VectorMeasurementSchema vectorMeasurementSchema = new VectorMeasurementSchema();
+    vectorMeasurementSchema.meausurementId =
+        ALIGN_TIMESERIES_PREFIX + ReadWriteIOUtils.readInt(inputStream);
+
     int measurementSize = ReadWriteIOUtils.readInt(inputStream);
     String[] measurements = new String[measurementSize];
     for (int i = 0; i < measurementSize; i++) {
@@ -257,8 +274,10 @@ public class VectorMeasurementSchema
     return vectorMeasurementSchema;
   }
 
-  public static VectorMeasurementSchema deserializeFrom(ByteBuffer buffer) throws IOException {
+  public static VectorMeasurementSchema deserializeFrom(ByteBuffer buffer) {
     VectorMeasurementSchema vectorMeasurementSchema = new VectorMeasurementSchema();
+    vectorMeasurementSchema.meausurementId =
+        ALIGN_TIMESERIES_PREFIX + ReadWriteIOUtils.readInt(buffer);
     int measurementSize = ReadWriteIOUtils.readInt(buffer);
     String[] measurements = new String[measurementSize];
     for (int i = 0; i < measurementSize; i++) {
