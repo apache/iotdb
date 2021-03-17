@@ -100,6 +100,10 @@ public abstract class QueryPlan extends PhysicalPlan {
     pathToIndex.put(columnName, index);
   }
 
+  public void setPathToIndex(Map<String, Integer> pathToIndex) {
+    this.pathToIndex = pathToIndex;
+  }
+
   public Map<String, Integer> getPathToIndex() {
     return pathToIndex;
   }
