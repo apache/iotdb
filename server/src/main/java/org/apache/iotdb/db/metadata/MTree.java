@@ -351,6 +351,7 @@ public class MTree implements Serializable {
               cur,
               leafName,
               new VectorMeasurementSchema(
+                  leafName,
                   measurements.toArray(new String[measurementsSize]),
                   dataTypes.toArray(new TSDataType[measurementsSize]),
                   encodings.toArray(new TSEncoding[measurementsSize]),
@@ -1240,8 +1241,15 @@ public class MTree implements Serializable {
         addMeasurementSchema(
             node, timeseriesSchemaList, needLast, queryContext, measurementSchema, "*");
       } else if (measurementSchema instanceof VectorMeasurementSchema) {
+        String lastWord = nodes[nodes.length - 1];
         addVectorMeasurementSchema(
-            node, timeseriesSchemaList, needLast, queryContext, measurementSchema, "*");
+            node,
+            timeseriesSchemaList,
+            needLast,
+            queryContext,
+            measurementSchema,
+            "*",
+            nodes.length == idx ? lastWord : null);
       }
       if (hasLimit) {
         count.set(count.get() + 1);
@@ -1316,7 +1324,8 @@ public class MTree implements Serializable {
                   needLast,
                   queryContext,
                   schema,
-                  nodeReg);
+                  nodeReg,
+                  null);
             }
           }
         }
@@ -1354,12 +1363,16 @@ public class MTree implements Serializable {
       boolean needLast,
       QueryContext queryContext,
       IMeasurementSchema schema,
-      String reg)
+      String reg,
+      String lastMeasurement)
       throws StorageGroupNotSetException, IllegalPathException {
     List<String> measurements = schema.getValueMeasurementIdList();
     int measurementSize = measurements.size();
     for (int i = 0; i < measurementSize; i++) {
       if (Pattern.matches(reg.replace("*", ".*"), measurements.get(i))) {
+        if (lastMeasurement != null && !lastMeasurement.contains(measurements.get(i))) {
+          continue;
+        }
         PartialPath devicePath = node.getPartialPath().getDevicePath();
         String[] tsRow = new String[7];
         tsRow[0] = null;
