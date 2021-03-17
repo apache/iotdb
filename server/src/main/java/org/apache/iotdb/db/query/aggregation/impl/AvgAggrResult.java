@@ -78,6 +78,7 @@ public class AvgAggrResult extends AggregateResult {
     } else {
       sum = statistics.getSumDoubleValue();
     }
+
     avg = (avg * preCnt + sum) / cnt;
   }
 
