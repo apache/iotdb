@@ -1368,24 +1368,31 @@ public class MTree implements Serializable {
       throws StorageGroupNotSetException, IllegalPathException {
     List<String> measurements = schema.getValueMeasurementIdList();
     int measurementSize = measurements.size();
+    Set<String> measurementsInReg = new HashSet<>();
+    if (reg.contains("(") && reg.contains(",")) {
+      measurementsInReg.addAll(MetaUtils.getMeasurementsInPartialPath(reg));
+    }
     for (int i = 0; i < measurementSize; i++) {
-      if (Pattern.matches(reg.replace("*", ".*"), measurements.get(i))) {
-        PartialPath devicePath = node.getPartialPath().getDevicePath();
-        String[] tsRow = new String[7];
-        tsRow[0] = null;
-        tsRow[1] = getStorageGroupPath(devicePath).getFullPath();
-        tsRow[2] = schema.getValueTSDataTypeList().get(i).toString();
-        tsRow[3] = schema.getValueTSEncodingList().get(i).toString();
-        tsRow[4] = schema.getCompressor().toString();
-        tsRow[5] = "-1";
-        tsRow[6] =
-            needLast
-                ? String.valueOf(getLastTimeStamp((MeasurementMNode) node, queryContext))
-                : null;
-        Pair<PartialPath, String[]> temp =
-            new Pair<>(new PartialPath(devicePath.getFullPath(), measurements.get(i)), tsRow);
-        timeseriesSchemaList.add(temp);
+      if (measurementsInReg.size() != 0 && !measurementsInReg.contains(measurements.get(i))) {
+        continue;
       }
+      if (measurementsInReg.size() == 0
+          && !Pattern.matches(reg.replace("*", ".*"), measurements.get(i))) {
+        continue;
+      }
+      PartialPath devicePath = node.getPartialPath().getDevicePath();
+      String[] tsRow = new String[7];
+      tsRow[0] = null;
+      tsRow[1] = getStorageGroupPath(devicePath).getFullPath();
+      tsRow[2] = schema.getValueTSDataTypeList().get(i).toString();
+      tsRow[3] = schema.getValueTSEncodingList().get(i).toString();
+      tsRow[4] = schema.getCompressor().toString();
+      tsRow[5] = "-1";
+      tsRow[6] =
+          needLast ? String.valueOf(getLastTimeStamp((MeasurementMNode) node, queryContext)) : null;
+      Pair<PartialPath, String[]> temp =
+          new Pair<>(new PartialPath(devicePath.getFullPath(), measurements.get(i)), tsRow);
+      timeseriesSchemaList.add(temp);
     }
   }
 

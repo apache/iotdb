@@ -558,10 +558,9 @@ public class MManager {
    *
    * @param prefixPath path to be deleted, could be root or a prefix path or a full path TODO:
    *     directly return the failed string set
-   * @return pair.left: names of MNodes which are deleted; pair.right: deletion failed Timeseries
+   * @return deletion failed Timeseries
    */
-  public Pair<Set<String>, String> deleteTimeseries(PartialPath prefixPath)
-      throws MetadataException {
+  public String deleteTimeseries(PartialPath prefixPath) throws MetadataException {
     if (isStorageGroup(prefixPath)) {
       mNodeCache.clear();
     }
@@ -587,28 +586,22 @@ public class MManager {
       // Monitor storage group seriesPath is not allowed to be deleted
       allTimeseries.removeIf(p -> p.startsWith(MonitorConstants.STAT_STORAGE_GROUP_ARRAY));
 
-      Set<String> mNodeNames = new HashSet<>();
       Set<String> failedNames = new HashSet<>();
       for (PartialPath p : allTimeseries) {
-        deleteSingleTimeseriesInternal(p, mNodeNames, failedNames);
+        deleteSingleTimeseriesInternal(p, failedNames);
       }
-      String failedNameString = failedNames.isEmpty() ? null : String.join(",", failedNames);
-      return new Pair<>(mNodeNames, failedNameString);
+      return failedNames.isEmpty() ? null : String.join(",", failedNames);
     } catch (IOException e) {
       throw new MetadataException(e.getMessage());
     }
   }
 
-  private void deleteSingleTimeseriesInternal(
-      PartialPath p, Set<String> mNodeNames, Set<String> failedNames)
+  private void deleteSingleTimeseriesInternal(PartialPath p, Set<String> failedNames)
       throws MetadataException, IOException {
     DeleteTimeSeriesPlan deleteTimeSeriesPlan = new DeleteTimeSeriesPlan();
     try {
-      Pair<String, PartialPath> nodeAndEmptyStorageGroup =
-          deleteOneTimeseriesAndUpdateStatistics(p);
-      mNodeNames.add(nodeAndEmptyStorageGroup.left);
+      PartialPath emptyStorageGroup = deleteOneTimeseriesAndUpdateStatistics(p);
       if (!isRecovering) {
-        PartialPath emptyStorageGroup = nodeAndEmptyStorageGroup.right;
         if (emptyStorageGroup != null) {
           StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(emptyStorageGroup);
           StorageEngine.getInstance()
@@ -666,10 +659,9 @@ public class MManager {
 
   /**
    * @param path full path from root to leaf node
-   * @return pair.left: name of MNode which is deleted;pair.right: After delete if the storage group
-   *     is empty, return its path, otherwise return null
+   * @return After delete if the storage group is empty, return its path, otherwise return null
    */
-  private Pair<String, PartialPath> deleteOneTimeseriesAndUpdateStatistics(PartialPath path)
+  private PartialPath deleteOneTimeseriesAndUpdateStatistics(PartialPath path)
       throws MetadataException, IOException {
     Pair<PartialPath, MeasurementMNode> pair =
         mtree.deleteTimeseriesAndReturnEmptyStorageGroup(path);
@@ -696,7 +688,7 @@ public class MManager {
       logger.info("Current series number {} come back to normal level", totalSeriesNumber);
       allowToCreateNewSeries = true;
     }
-    return new Pair<>(pair.right.getName(), storageGroupPath);
+    return storageGroupPath;
   }
 
   /**
@@ -1119,16 +1111,12 @@ public class MManager {
    * Get schema of paritialPath
    *
    * @param fullPath (may be ParitialPath or VectorPartialPath)
-   * @return MeasurementSchema or VectorMeasurementSchema. Attention: measurements of
-   *     VectorMeasurementSchema are index of the sensors in the leaf node, instead of sensor names.
-   *     For example: As for leaf node {s1, s2, s3, s4}, if fullPath = {s3, s1}, we should return
-   *     measurements = ["2", "0"]
+   * @return MeasurementSchema or VectorMeasurementSchema
    */
   public IMeasurementSchema getSeriesSchema(PartialPath fullPath) throws MetadataException {
     MNode leaf = mtree.getNodeByPath(fullPath);
     if (fullPath instanceof VectorPartialPath) {
       List<PartialPath> measurements = ((VectorPartialPath) fullPath).getSubSensorsPathList();
-      String[] measurementIndices = new String[measurements.size()];
       TSDataType[] types = new TSDataType[measurements.size()];
       TSEncoding[] encodings = new TSEncoding[measurements.size()];
       IMeasurementSchema schema = ((MeasurementMNode) leaf).getSchema();
@@ -1136,13 +1124,12 @@ public class MManager {
       List<String> measurementsInLeaf = schema.getValueMeasurementIdList();
       for (int i = 0; i < measurements.size(); i++) {
         int index = measurementsInLeaf.indexOf(measurements.get(i).toString());
-        measurementIndices[i] = String.valueOf(index);
         types[i] = schema.getValueTSDataTypeList().get(index);
         encodings[i] = schema.getValueTSEncodingList().get(index);
       }
       return new VectorMeasurementSchema(
           IoTDBConstant.ALIGN_TIMESERIES_PREFIX,
-          measurementIndices,
+          (String[]) measurements.toArray(),
           types,
           encodings,
           schema.getCompressor());
@@ -1186,7 +1173,13 @@ public class MManager {
       } else {
         // if nodeToPartialPath contains node, it must be VectorPartialPath
         ((VectorPartialPath) nodeToPartialPath.get(node)).addSubSensor(path);
-        nodeToIndex.get(node).add(i);
+        if (!nodeToIndex.containsKey(node)) {
+          List<Integer> list = new ArrayList<>();
+          list.add(i);
+          nodeToIndex.put(node, list);
+        } else {
+          nodeToIndex.get(node).add(i);
+        }
       }
     }
     Map<String, Integer> indexMap = new HashMap<>();
