@@ -20,7 +20,7 @@
 -->
 # IoTDB-Flink-Connector
 
-IoTDB integration for [Apache Flink](https://flink.apache.org/). This module includes the iotdb sink that allows a flink job to write events into timeseries.
+IoTDB integration for [Apache Flink](https://flink.apache.org/). This module includes the iotdb sinkType that allows a flink job to write events into timeseries.
 
 ## IoTDBSink
 To use the `IoTDBSink`,  you need construct an instance of it by specifying `IoTDBOptions` and `IoTSerializationSchema` instances.
@@ -50,7 +50,7 @@ The following is an example which receiving events from sensor source and then s
                 .name("sensor-source")
                 .setParallelism(1)
                 .addSink(ioTDBSink)
-                .name("iotdb-sink")
+                .name("iotdb-sinkType")
                 .setParallelism(1)
         ;
 
