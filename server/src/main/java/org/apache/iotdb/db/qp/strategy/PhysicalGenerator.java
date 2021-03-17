@@ -940,6 +940,27 @@ public class PhysicalGenerator {
     if (queryPlan instanceof UDTFPlan) {
       ((UDTFPlan) queryPlan).setPathNameToReaderIndex(pathNameToReaderIndex);
     }
+
+    // support vector
+    List<PartialPath> deduplicatedPaths = rawDataQueryPlan.getDeduplicatedPaths();
+    Pair<List<PartialPath>, Map<String, Integer>> pair =
+        IoTDB.metaManager.getSeriesSchemas(deduplicatedPaths);
+
+    List<PartialPath> vectorizedDeduplicatedPaths = pair.left;
+    List<TSDataType> vectorizedDeduplicatedDataTypes = new ArrayList<>();
+    for (PartialPath vectorizedDeduplicatedPath : vectorizedDeduplicatedPaths) {
+      vectorizedDeduplicatedDataTypes.add(
+          IoTDB.metaManager.getSeriesType(vectorizedDeduplicatedPath));
+    }
+    rawDataQueryPlan.setDeduplicatedPaths(vectorizedDeduplicatedPaths);
+    rawDataQueryPlan.setDeduplicatedDataTypes(vectorizedDeduplicatedDataTypes);
+
+    Map<String, Integer> columnForDisplayToQueryDataSetIndex = pair.right;
+    Map<String, Integer> pathToIndex = new HashMap<>();
+    for (String columnForDisplay : columnForDisplaySet) {
+      pathToIndex.put(columnForDisplay, columnForDisplayToQueryDataSetIndex.get(columnForDisplay));
+    }
+    queryPlan.setPathToIndex(pathToIndex);
   }
 
   private List<String> slimitTrimColumn(List<String> columnList, int seriesLimit, int seriesOffset)

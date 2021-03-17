@@ -814,10 +814,6 @@ public class MManager {
     }
   }
 
-  public TSDataType getSeriesType(VectorPartialPath path) {
-    return TSDataType.VECTOR;
-  }
-
   public MeasurementMNode[] getMNodes(PartialPath deviceId, String[] measurements)
       throws MetadataException {
     MNode deviceNode = getNodeByPath(deviceId);
