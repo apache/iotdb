@@ -18,35 +18,8 @@
  */
 package org.apache.iotdb.db.metadata;
 
-import static java.util.stream.Collectors.toList;
-import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -105,8 +78,38 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
+
+import static java.util.stream.Collectors.toList;
+import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 /**
  * This class takes the responsibility of serialization of all the metadata info and persistent it
@@ -554,8 +557,10 @@ public class MManager {
    * Delete all timeseries under the given path, may cross different storage group
    *
    * @param prefixPath path to be deleted, could be root or a prefix path or a full path TODO:
-   *     directly return the failed string set
-   * @return The String is the deletion failed Timeseries
+   *     <<<<<<< HEAD directly return the failed string set
+   * @return pair.left: names of MNodes which are deleted; pair.right: deletion failed Timeseries
+   *     ======= directly return the failed string set
+   * @return deletion failed Timeseries >>>>>>> cf081f9a1d0c48bcb02bc7dac2695483ac624eec
    */
   public String deleteTimeseries(PartialPath prefixPath) throws MetadataException {
     if (isStorageGroup(prefixPath)) {
@@ -563,15 +568,23 @@ public class MManager {
     }
     try {
       List<String> measurements = MetaUtils.getMeasurementsInPartialPath(prefixPath);
-      PartialPath path = new PartialPath(prefixPath.getDevice(), measurements.get(0));
-
-      List<PartialPath> allTimeseries = mtree.getAllTimeseriesPath(path);
+      List<PartialPath> allTimeseries = mtree.getAllTimeseriesPath(prefixPath);
       if (allTimeseries.isEmpty()) {
         throw new PathNotExistException(prefixPath.getFullPath());
-      } else if (allTimeseries.size() != measurements.size()) {
-        throw new AlignedTimeseriesException(
-            "Not support deleting part of aligned timeseies!", prefixPath.getFullPath());
       }
+
+      // for not support deleting part of aligned timeseies
+      // should be removed after partial deletion is supported
+      MNode lastNode = getNodeByPath(allTimeseries.get(0));
+      if (lastNode instanceof MeasurementMNode) {
+        IMeasurementSchema schema = ((MeasurementMNode) lastNode).getSchema();
+        if (schema instanceof VectorMeasurementSchema
+            && schema.getValueMeasurementIdList().size() != allTimeseries.size()) {
+          throw new AlignedTimeseriesException(
+              "Not support deleting part of aligned timeseies!", prefixPath.getFullPath());
+        }
+      }
+
       // Monitor storage group seriesPath is not allowed to be deleted
       allTimeseries.removeIf(p -> p.startsWith(MonitorConstants.STAT_STORAGE_GROUP_ARRAY));
 
@@ -647,8 +660,11 @@ public class MManager {
   }
 
   /**
-   * @param path full path from root to leaf node
-   * @return after delete if the storage group is empty, return its path, otherwise return null
+   * @param path full path from root to leaf node <<<<<<< HEAD
+   * @return pair.left: name of MNode which is deleted;pair.right: After delete if the storage group
+   *     is empty, return its path, otherwise return null =======
+   * @return After delete if the storage group is empty, return its path, otherwise return null
+   *     >>>>>>> cf081f9a1d0c48bcb02bc7dac2695483ac624eec
    */
   private PartialPath deleteOneTimeseriesAndUpdateStatistics(PartialPath path)
       throws MetadataException, IOException {
@@ -783,6 +799,9 @@ public class MManager {
       return TSDataType.INT64;
     }
 
+    if (path instanceof VectorPartialPath) {
+      return TSDataType.VECTOR;
+    }
     IMeasurementSchema schema = mtree.getSchema(path);
     if (schema instanceof MeasurementSchema) {
       return schema.getType();
@@ -1096,32 +1115,36 @@ public class MManager {
   /**
    * Get schema of paritialPath
    *
-   * @param fullPath (may be ParitialPath or VectorPartialPath)
+   * @param fullPath (may be ParitialPath or VectorPartialPath) <<<<<<< HEAD
    * @return MeasurementSchema or VectorMeasurementSchema. Attention: measurements of
    *     VectorMeasurementSchema are index of the sensors in the leaf node, instead of sensor names.
    *     For example: As for leaf node {s1, s2, s3, s4}, if fullPath = {s3, s1}, we should return
-   *     measurements = ["2", "0"]
+   *     measurements = ["2", "0"] =======
+   * @return MeasurementSchema or VectorMeasurementSchema >>>>>>>
+   *     cf081f9a1d0c48bcb02bc7dac2695483ac624eec
    */
   public IMeasurementSchema getSeriesSchema(PartialPath fullPath) throws MetadataException {
     MNode leaf = mtree.getNodeByPath(fullPath);
     if (fullPath instanceof VectorPartialPath) {
+
       List<PartialPath> measurements = ((VectorPartialPath) fullPath).getSubSensorsPathList();
-      String[] measurementIndices = new String[measurements.size()];
       TSDataType[] types = new TSDataType[measurements.size()];
       TSEncoding[] encodings = new TSEncoding[measurements.size()];
       IMeasurementSchema schema = ((MeasurementMNode) leaf).getSchema();
 
       List<String> measurementsInLeaf = schema.getValueMeasurementIdList();
       for (int i = 0; i < measurements.size(); i++) {
-        int index = measurementsInLeaf.indexOf(measurements.get(i).toString());
-        measurementIndices[i] = String.valueOf(index);
+        int index = measurementsInLeaf.indexOf(measurements.get(i).getMeasurement());
         types[i] = schema.getValueTSDataTypeList().get(index);
         encodings[i] = schema.getValueTSEncodingList().get(index);
       }
+      String[] array = new String[measurements.size()];
+      for (int i = 0; i < array.length; i++) {
+        array[i] = measurements.get(i).getFullPath();
+      }
       return new VectorMeasurementSchema(
-          measurementIndices, types, encodings, schema.getCompressor());
+          IoTDBConstant.ALIGN_TIMESERIES_PREFIX, array, types, encodings, schema.getCompressor());
     }
-
     if (leaf != null) {
       return ((MeasurementMNode) leaf).getSchema();
     }
@@ -1134,7 +1157,7 @@ public class MManager {
    *
    * @param fullPaths full path list without pointing out which timeseries are aligned. For example,
    *     maybe (s1,s2) are aligned, but the input could be [root.sg1.d1.s1, root.sg1.d1.s2]
-   * @return Pair<List<PartialPath>, List<Integer>>. Size of partial path list could NOT equal to
+   * @return Pair<List < PartialPath>, List<Integer>>. Size of partial path list could NOT equal to
    *     the input list size. For example, the VectorMeasurementSchema (s1,s2) would be returned
    *     once; Size of integer list must equal to the input list size. It indicates the index of
    *     elements of original list in the result list
@@ -1153,10 +1176,12 @@ public class MManager {
           nodeToPartialPath.put(node, path);
         } else {
           List<PartialPath> subSensorsPathList = new ArrayList<>();
-          subSensorsPathList.add(new PartialPath(path.getMeasurement()));
-          nodeToPartialPath.put(node, new VectorPartialPath(path.getDevice(), subSensorsPathList));
+          subSensorsPathList.add(path);
+          nodeToPartialPath.put(
+              node,
+              new VectorPartialPath(path.getDevice() + "." + node.getName(), subSensorsPathList));
         }
-        nodeToIndex.put(node, Collections.singletonList(i));
+        nodeToIndex.computeIfAbsent(node, k -> new ArrayList<>()).add(i);
       } else {
         // if nodeToPartialPath contains node, it must be VectorPartialPath
         ((VectorPartialPath) nodeToPartialPath.get(node)).addSubSensor(path);

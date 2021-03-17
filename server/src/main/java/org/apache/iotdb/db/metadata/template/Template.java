@@ -18,12 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.template;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
@@ -32,6 +27,13 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class Template {
   String name;
@@ -59,7 +61,11 @@ public class Template {
 
         curSchema =
             new VectorMeasurementSchema(
-                measurementsArray, typeArray, encodingArray, plan.getCompressors().get(i));
+                IoTDBConstant.ALIGN_TIMESERIES_PREFIX,
+                measurementsArray,
+                typeArray,
+                encodingArray,
+                plan.getCompressors().get(i));
       }
       // normal measurement
       else {
