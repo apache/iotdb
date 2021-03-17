@@ -139,7 +139,6 @@ public class TsFileSplitUtils implements AutoCloseable {
     byte marker;
     List<MeasurementSchema> measurementSchemaList = new ArrayList<>();
     String lastChunkGroupDeviceId = null;
-    String currentChunkGroupDeviceId = null;
     try {
       while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
@@ -177,8 +176,7 @@ public class TsFileSplitUtils implements AutoCloseable {
           case MetaMarker.CHUNK_GROUP_HEADER:
             ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader();
             String deviceId = chunkGroupHeader.getDeviceID();
-            lastChunkGroupDeviceId = deviceId;
-            if (!measurementSchemaList.isEmpty()) {
+            if (lastChunkGroupDeviceId != null && !measurementSchemaList.isEmpty()) {
               rewrite(
                   lastChunkGroupDeviceId,
                   measurementSchemaList,
@@ -190,6 +188,7 @@ public class TsFileSplitUtils implements AutoCloseable {
               measurementSchemaList.clear();
               needToDecodeInfoInChunkGroup.clear();
             }
+            lastChunkGroupDeviceId = deviceId;
             break;
           case MetaMarker.OPERATION_INDEX_RANGE:
             reader.readPlanIndex();
