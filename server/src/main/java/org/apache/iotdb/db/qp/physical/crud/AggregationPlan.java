@@ -109,4 +109,28 @@ public class AggregationPlan extends RawDataQueryPlan {
           getOperatorType().name() + " doesn't support disable align clause.");
     }
   }
+
+  @Override
+  public String getColumnForReaderFromPath(int pathIndex) {
+    String columnForReader = super.getColumnForReaderFromPath(pathIndex);
+    if (columnForReader == null) {
+      columnForReader = this.getAggregations().get(pathIndex) + "(" + columnForReader + ")";
+    }
+    return columnForReader;
+  }
+
+  @Override
+  public String getColumnForDisplay(String columnForReader, int pathIndex)
+      throws IllegalPathException {
+    String columnForDisplay = columnForReader;
+    if (level >= 0) {
+      PartialPath path = paths.get(pathIndex);
+      String aggregatePath =
+          path.isMeasurementAliasExists()
+              ? FilePathUtils.generatePartialPathByLevel(path.getFullPathWithAlias(), level)
+              : FilePathUtils.generatePartialPathByLevel(path.toString(), level);
+      columnForDisplay = aggregations.get(pathIndex) + "(" + aggregatePath + ")";
+    }
+    return columnForDisplay;
+  }
 }
