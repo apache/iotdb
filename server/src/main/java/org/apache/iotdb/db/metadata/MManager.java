@@ -18,6 +18,34 @@
  */
 package org.apache.iotdb.db.metadata;
 
+import static java.util.stream.Collectors.toList;
+import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -77,38 +105,8 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
-
-import static java.util.stream.Collectors.toList;
-import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 /**
  * This class takes the responsibility of serialization of all the metadata info and persistent it
@@ -2252,12 +2250,35 @@ public class MManager {
     }
   }
 
-  private boolean isTemplateCompatible(Template upper, Template current) {
+  public boolean isTemplateCompatible(Template upper, Template current) {
     if (upper == null) {
       return true;
     }
 
-    // todo add check logic
-    return true;
+    Map<String, IMeasurementSchema> upperMap = new HashMap<>(upper.getSchemaMap());
+    Map<String, IMeasurementSchema> currentMap = new HashMap<>(current.getSchemaMap());
+
+    // for identical vector schema, we should just compare once
+    Map<IMeasurementSchema, IMeasurementSchema> sameSchema = new HashMap<>();
+
+    for (String name : currentMap.keySet()) {
+      IMeasurementSchema upperSchema = upperMap.remove(name);
+      if (upperSchema != null) {
+        IMeasurementSchema currentSchema = currentMap.get(name);
+        // use "==" to compare actual address space
+        if (upperSchema == sameSchema.get(currentSchema)) {
+          continue;
+        }
+
+        if (!upperSchema.equals(currentSchema)) {
+          return false;
+        }
+
+        sameSchema.put(currentSchema, upperSchema);
+      }
+    }
+
+    // current template must contains all measurements of upper template
+    return upperMap.isEmpty();
   }
 }
