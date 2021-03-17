@@ -272,6 +272,16 @@ public class MManagerBasicTest {
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s1")));
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s2")));
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s3")));
+    try {
+      assertEquals(
+          1,
+          manager
+              .getStorageGroupNodeByStorageGroupPath(new PartialPath("root.laptop"))
+              .getAlignedTimeseriesIndex());
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
 
     try {
       manager.deleteTimeseries(new PartialPath("root.laptop.d1.s2"));
@@ -331,6 +341,16 @@ public class MManagerBasicTest {
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s0")));
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s2")));
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s4")));
+    try {
+      assertEquals(
+          2,
+          manager
+              .getStorageGroupNodeByStorageGroupPath(new PartialPath("root.laptop"))
+              .getAlignedTimeseriesIndex());
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
   }
 
   @Test

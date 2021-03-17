@@ -1092,12 +1092,7 @@ public class MManager {
 
   public IMeasurementSchema getSeriesSchema(PartialPath device, String measurement)
       throws MetadataException {
-    MNode node = mtree.getNodeByPath(device);
-    MNode leaf = node.getChild(measurement);
-    if (leaf != null) {
-      return ((MeasurementMNode) leaf).getSchema();
-    }
-    return null;
+    return getSeriesSchema(new PartialPath(device.getFullPath(), measurement));
   }
 
   /**
@@ -1110,9 +1105,7 @@ public class MManager {
    *     measurements = ["2", "0"]
    */
   public IMeasurementSchema getSeriesSchema(PartialPath fullPath) throws MetadataException {
-    MNode node = mtree.getNodeByPath(fullPath.getDevicePath());
-    MNode leaf = node.getChild(fullPath.getMeasurement());
-
+    MNode leaf = mtree.getNodeByPath(fullPath);
     if (fullPath instanceof VectorPartialPath) {
       List<PartialPath> measurements = ((VectorPartialPath) fullPath).getSubSensorsPathList();
       String[] measurementIndices = new String[measurements.size()];
