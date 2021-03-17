@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.sink.mqtt;
 
 import org.apache.iotdb.db.sink.api.Handler;
-import org.apache.iotdb.db.sink.exception.SinkConfigurationException;
+import org.apache.iotdb.db.sink.exception.SinkException;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.fusesource.mqtt.client.BlockingConnection;
@@ -45,7 +45,7 @@ public class MQTTHandler implements Handler<MQTTConfiguration, MQTTEvent> {
   }
 
   private static String generatePayloadFormatter(MQTTConfiguration configuration)
-      throws SinkConfigurationException {
+      throws SinkException {
     return String.format(
         "{\"device\":\"%s\",\"measurements\":[%s]%s",
         configuration.getDevice(),
@@ -53,9 +53,9 @@ public class MQTTHandler implements Handler<MQTTConfiguration, MQTTEvent> {
         ",\"timestamp\":%d,\"values\":[%s]}");
   }
 
-  private static String arrayToJson(Object[] array) throws SinkConfigurationException {
+  private static String arrayToJson(Object[] array) throws SinkException {
     if (array.length <= 0) {
-      throw new SinkConfigurationException("The number of measurements should be positive.");
+      throw new SinkException("The number of measurements should be positive.");
     }
 
     StringBuilder sb = new StringBuilder(objectToJson(array[0]));

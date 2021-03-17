@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.sink.exception;
 
-public class SinkConfigurationException extends Exception {
+public class SinkException extends Exception {
 
-  public SinkConfigurationException(String message) {
+  public SinkException(String message) {
     super(message);
   }
 
-  public SinkConfigurationException(String message, Throwable cause) {
+  public SinkException(String message, Throwable cause) {
     super(message, cause);
   }
 }
