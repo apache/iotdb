@@ -93,6 +93,7 @@ import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -784,7 +785,13 @@ public class MManager {
       return TSDataType.INT64;
     }
 
-    return mtree.getSchema(path).getType();
+    IMeasurementSchema schema = mtree.getSchema(path);
+    if (schema instanceof MeasurementSchema) {
+      return schema.getType();
+    } else {
+      List<String> measurements = schema.getValueMeasurementIdList();
+      return schema.getValueTSDataTypeList().get(measurements.indexOf(path.getMeasurement()));
+    }
   }
 
   public MeasurementMNode[] getMNodes(PartialPath deviceId, String[] measurements)
@@ -1094,7 +1101,7 @@ public class MManager {
   }
 
   /**
-   * getSeriesSchema of paritialPath
+   * Get schema of paritialPath
    *
    * @param fullPath (may be ParitialPath or VectorPartialPath)
    * @return MeasurementSchema or VectorMeasurementSchema. Attention: measurements of
@@ -1128,6 +1135,48 @@ public class MManager {
       return ((MeasurementMNode) leaf).getSchema();
     }
     return null;
+  }
+
+  /**
+   * Get schema of partialPaths, in which aligned timeseries should only organized to one schema.
+   * This method should be called when logical plan converts to physical plan.
+   *
+   * @param fullPaths full path list without pointing out which timeseries are aligned. For example,
+   *     maybe (s1,s2) are aligned, but the input could be [root.sg1.d1.s1, root.sg1.d1.s2]
+   * @return Pair<List<PartialPath>, List<Integer>>. Size of partial path list could NOT equal to
+   *     the input list size. For example, the VectorMeasurementSchema (s1,s2) would be returned
+   *     once; Size of integer list must equal to the input list size. It indicates the index of
+   *     elements of original list in the result list
+   */
+  public Pair<List<PartialPath>, List<Integer>> getSeriesSchemas(List<PartialPath> fullPaths)
+      throws MetadataException {
+    Map<MNode, PartialPath> nodeToPartialPath = new LinkedHashMap<>();
+    Map<MNode, List<Integer>> nodeToIndex = new LinkedHashMap<>();
+    for (int i = 0; i < fullPaths.size(); i++) {
+      PartialPath path = fullPaths.get(i);
+      // use dfs to collect paths
+      MeasurementMNode node = (MeasurementMNode) getNodeByPath(path);
+
+      if (!nodeToPartialPath.containsKey(node)) {
+        if (node.getSchema() instanceof MeasurementMNode) {
+          nodeToPartialPath.put(node, path);
+        } else {
+          List<PartialPath> subSensorsPathList = new ArrayList<>();
+          subSensorsPathList.add(new PartialPath(path.getMeasurement()));
+          nodeToPartialPath.put(node, new VectorPartialPath(path.getDevice(), subSensorsPathList));
+        }
+        nodeToIndex.put(node, Collections.singletonList(i));
+      } else {
+        // if nodeToPartialPath contains node, it must be VectorPartialPath
+        ((VectorPartialPath) nodeToPartialPath.get(node)).addSubSensor(path);
+        nodeToIndex.get(node).add(i);
+      }
+    }
+    List<Integer> indexList = new ArrayList<>();
+    for (List<Integer> index : nodeToIndex.values()) {
+      indexList.addAll(index);
+    }
+    return new Pair<>(new ArrayList<>(nodeToPartialPath.values()), indexList);
   }
 
   /**

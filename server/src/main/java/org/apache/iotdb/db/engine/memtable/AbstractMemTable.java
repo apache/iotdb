@@ -145,8 +145,7 @@ public abstract class AbstractMemTable implements IMemTable {
       write(insertTabletPlan, start, end);
       memSize += MemUtils.getRecordSize(insertTabletPlan, start, end, disableMemControl);
       totalPointsNum +=
-          (insertTabletPlan.getMeasurements().length
-                  - insertTabletPlan.getFailedMeasurementNumber())
+          (insertTabletPlan.getDataTypes().length - insertTabletPlan.getFailedMeasurementNumber())
               * (end - start);
     } catch (RuntimeException e) {
       throw new WriteProcessException(e);

@@ -31,6 +31,7 @@ import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.StringDataPoint;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -90,20 +91,48 @@ public class MemUtils {
     long memSize = 0;
     int columnCount = 0;
     for (int i = 0; i < insertTabletPlan.getMeasurementMNodes().length; i++) {
-      if (insertTabletPlan.getDataTypes()[i] == null) {
+      if (insertTabletPlan.getMeasurementMNodes()[i] == null) {
+        columnCount++;
         continue;
       }
-      // FIXME:::
-      //      if (insertTabletPlan.getMeasurementMNodes()[i].getSchema().getType() ==
-      // TSDataType.VECTOR) {
-      //        IMeasurementSchema vectorSchema =
-      // insertTabletPlan.getMeasurementMNodes()[i].getSchema();
-      //        for (int j = 0; j < vectorSchema.getValueMeasurementIdList().size(); j++) {
-      //          columns[j] = insertTabletPlan.getColumns()[columnCount++];
-      //        }
-      //      }
-      //      else {
-      switch (insertTabletPlan.getDataTypes()[i]) {
+      IMeasurementSchema schema = insertTabletPlan.getMeasurementMNodes()[i].getSchema();
+      if (schema.getType() == TSDataType.VECTOR) {
+        // time and index column memSize
+        memSize += (end - start) * (8L + 4L);
+        // value columns memSize
+        for (TSDataType type : schema.getValueTSDataTypeList()) {
+          switch (type) {
+            case INT32:
+              memSize += (end - start) * 4L;
+              break;
+            case INT64:
+              memSize += (end - start) * 8L;
+              break;
+            case FLOAT:
+              memSize += (end - start) * 4L;
+              break;
+            case DOUBLE:
+              memSize += (end - start) * 8L;
+              break;
+            case BOOLEAN:
+              memSize += (end - start) * 1L;
+              break;
+            case TEXT:
+              if (addingTextDataSize) {
+                for (int j = start; j < end; j++) {
+                  memSize +=
+                      getBinarySize(((Binary[]) insertTabletPlan.getColumns()[columnCount])[j]);
+                }
+              }
+              break;
+            default:
+              memSize += (end - start) * 8L;
+          }
+          columnCount++;
+        }
+        continue;
+      }
+      switch (insertTabletPlan.getDataTypes()[columnCount]) {
         case INT32:
           memSize += (end - start) * (8L + 4L);
           break;
@@ -123,14 +152,14 @@ public class MemUtils {
           memSize += (end - start) * 8L;
           if (addingTextDataSize) {
             for (int j = start; j < end; j++) {
-              memSize += getBinarySize(((Binary[]) insertTabletPlan.getColumns()[i])[j]);
+              memSize += getBinarySize(((Binary[]) insertTabletPlan.getColumns()[columnCount])[j]);
             }
           }
           break;
         default:
           memSize += (end - start) * (8L + 8L);
       }
-      // }
+      columnCount++;
     }
     return memSize;
   }

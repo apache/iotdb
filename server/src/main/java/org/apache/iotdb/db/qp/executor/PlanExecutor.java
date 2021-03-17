@@ -1402,7 +1402,7 @@ public class PlanExecutor implements IPlanExecutor {
                 dataTypes,
                 encodings,
                 multiPlan.getCompressors().get(i),
-                Collections.emptyList());
+                null);
         try {
           createAlignedTimeSeries(plan);
         } catch (QueryProcessException e) {
