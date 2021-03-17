@@ -53,21 +53,19 @@ public class TVListAllocator implements TVListAllocatorMBean, IService {
   }
 
   public synchronized TVList allocate(List<TSDataType> dataTypes) {
-    return TVList.newVectorList(dataTypes);
+    Queue<TVList> tvLists = tvListCache.computeIfAbsent(TSDataType.VECTOR, k -> new ArrayDeque<>());
+    TVList list = tvLists.poll();
+    return list != null ? list : TVList.newVectorList(dataTypes);
   }
 
   public synchronized void release(TSDataType dataType, TVList list) {
     list.clear();
-    if (dataType != TSDataType.VECTOR) {
-      tvListCache.get(list.getDataType()).add(list);
-    }
+    tvListCache.get(list.getDataType()).add(list);
   }
 
   public synchronized void release(TVList list) {
     list.clear();
-    if (list.getDataType() != TSDataType.VECTOR) {
-      tvListCache.get(list.getDataType()).add(list);
-    }
+    tvListCache.get(list.getDataType()).add(list);
   }
 
   @Override
