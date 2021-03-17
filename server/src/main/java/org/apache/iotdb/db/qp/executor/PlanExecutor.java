@@ -1440,11 +1440,11 @@ public class PlanExecutor implements IPlanExecutor {
       PartialPath path = deletePathList.get(i);
       try {
         StorageEngine.getInstance().deleteTimeseries(path, deleteTimeSeriesPlan.getIndex());
-        String failed = IoTDB.metaManager.deleteTimeseries(path);
+        Pair<Set<String>, String> failed = IoTDB.metaManager.deleteTimeseries(path);
         if (failed != null) {
           deleteTimeSeriesPlan
               .getResults()
-              .put(i, RpcUtils.getStatus(TSStatusCode.NODE_DELETE_FAILED_ERROR, failed));
+              .put(i, RpcUtils.getStatus(TSStatusCode.NODE_DELETE_FAILED_ERROR, failed.right));
         }
       } catch (StorageEngineException | MetadataException e) {
         deleteTimeSeriesPlan
@@ -1742,7 +1742,7 @@ public class PlanExecutor implements IPlanExecutor {
     return dataSet;
   }
 
-  protected String deleteTimeSeries(PartialPath path) throws MetadataException {
+  protected Pair<Set<String>, String> deleteTimeSeries(PartialPath path) throws MetadataException {
     return IoTDB.metaManager.deleteTimeseries(path);
   }
 

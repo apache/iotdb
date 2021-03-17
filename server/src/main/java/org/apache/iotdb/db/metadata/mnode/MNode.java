@@ -19,6 +19,9 @@
 package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -169,6 +172,24 @@ public class MNode implements Serializable {
       return child;
     }
     return aliasChildren == null ? null : aliasChildren.get(name);
+  }
+
+  public MNode getChildOfAlignedTimeseries(String name) throws MetadataException {
+    MNode node = null;
+    // for aligned timeseries
+    List<String> measurementList = MetaUtils.getMeasurementsInPartialPath(name);
+    for (String measurement : measurementList) {
+      MNode nodeOfMeasurement = getChild(measurement);
+      if (node == null) {
+        node = nodeOfMeasurement;
+      } else {
+        if (node != nodeOfMeasurement) {
+          throw new AlignedTimeseriesException(
+              "Cannot get node of children in different aligned timeseries", name);
+        }
+      }
+    }
+    return node;
   }
 
   /** get the count of all MeasurementMNode whose ancestor is current node */

@@ -305,7 +305,7 @@ public class MManagerBasicTest {
     }
 
     try {
-      manager.deleteTimeseries(new PartialPath("root.laptop.d1.(s1, s2, s3)"));
+      manager.deleteTimeseries(new PartialPath("root.laptop.d1.(s1,s2,s3)"));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -1122,10 +1122,22 @@ public class MManagerBasicTest {
       for (int i = 0; i < result.size(); i++) {
         assertEquals("root.laptop.d1.s" + (i + 1), result.get(i).getName());
       }
-
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
+    }
+
+    // show timeseries root.laptop.d1.(s0,s1)
+    try {
+      ShowTimeSeriesPlan showTimeSeriesPlan =
+          new ShowTimeSeriesPlan(
+              new PartialPath("root.laptop.d1.(s0,s1)"), false, null, null, 0, 0, false);
+      List<ShowTimeSeriesResult> result =
+          manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+    } catch (MetadataException e) {
+      assertEquals(
+          "Cannot get node of children in different aligned timeseries (Path: (s0,s1))",
+          e.getMessage());
     }
   }
 }

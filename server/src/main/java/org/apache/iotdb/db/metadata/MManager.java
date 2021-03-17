@@ -558,42 +558,57 @@ public class MManager {
    *
    * @param prefixPath path to be deleted, could be root or a prefix path or a full path TODO:
    *     directly return the failed string set
-   * @return The String is the deletion failed Timeseries
+   * @return pair.left: names of MNodes which are deleted; pair.right: deletion failed Timeseries
    */
-  public String deleteTimeseries(PartialPath prefixPath) throws MetadataException {
+  public Pair<Set<String>, String> deleteTimeseries(PartialPath prefixPath)
+      throws MetadataException {
     if (isStorageGroup(prefixPath)) {
       mNodeCache.clear();
     }
     try {
       List<String> measurements = MetaUtils.getMeasurementsInPartialPath(prefixPath);
-      PartialPath path = new PartialPath(prefixPath.getDevice(), measurements.get(0));
-
-      List<PartialPath> allTimeseries = mtree.getAllTimeseriesPath(path);
+      List<PartialPath> allTimeseries = mtree.getAllTimeseriesPath(prefixPath);
       if (allTimeseries.isEmpty()) {
         throw new PathNotExistException(prefixPath.getFullPath());
-      } else if (allTimeseries.size() != measurements.size()) {
-        throw new AlignedTimeseriesException(
-            "Not support deleting part of aligned timeseies!", prefixPath.getFullPath());
       }
+
+      // for not support deleting part of aligned timeseies
+      // should be removed after partial deletion is supported
+      MNode lastNode = getNodeByPath(allTimeseries.get(0));
+      if (lastNode instanceof MeasurementMNode) {
+        IMeasurementSchema schema = ((MeasurementMNode) lastNode).getSchema();
+        if (schema instanceof VectorMeasurementSchema
+            && schema.getValueMeasurementIdList().size() != allTimeseries.size()) {
+          throw new AlignedTimeseriesException(
+              "Not support deleting part of aligned timeseies!", prefixPath.getFullPath());
+        }
+      }
+
       // Monitor storage group seriesPath is not allowed to be deleted
       allTimeseries.removeIf(p -> p.startsWith(MonitorConstants.STAT_STORAGE_GROUP_ARRAY));
 
+      Set<String> mNodeNames = new HashSet<>();
       Set<String> failedNames = new HashSet<>();
       for (PartialPath p : allTimeseries) {
-        deleteSingleTimeseriesInternal(p, failedNames);
+        deleteSingleTimeseriesInternal(p, mNodeNames, failedNames);
       }
-      return failedNames.isEmpty() ? null : String.join(",", failedNames);
+      String failedNameString = failedNames.isEmpty() ? null : String.join(",", failedNames);
+      return new Pair<>(mNodeNames, failedNameString);
     } catch (IOException e) {
       throw new MetadataException(e.getMessage());
     }
   }
 
-  private void deleteSingleTimeseriesInternal(PartialPath p, Set<String> failedNames)
+  private void deleteSingleTimeseriesInternal(
+      PartialPath p, Set<String> mNodeNames, Set<String> failedNames)
       throws MetadataException, IOException {
     DeleteTimeSeriesPlan deleteTimeSeriesPlan = new DeleteTimeSeriesPlan();
     try {
-      PartialPath emptyStorageGroup = deleteOneTimeseriesAndUpdateStatistics(p);
+      Pair<String, PartialPath> nodeAndEmptyStorageGroup =
+          deleteOneTimeseriesAndUpdateStatistics(p);
+      mNodeNames.add(nodeAndEmptyStorageGroup.left);
       if (!isRecovering) {
+        PartialPath emptyStorageGroup = nodeAndEmptyStorageGroup.right;
         if (emptyStorageGroup != null) {
           StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(emptyStorageGroup);
           StorageEngine.getInstance()
@@ -651,9 +666,10 @@ public class MManager {
 
   /**
    * @param path full path from root to leaf node
-   * @return after delete if the storage group is empty, return its path, otherwise return null
+   * @return pair.left: name of MNode which is deleted;pair.right: After delete if the storage group
+   *     is empty, return its path, otherwise return null
    */
-  private PartialPath deleteOneTimeseriesAndUpdateStatistics(PartialPath path)
+  private Pair<String, PartialPath> deleteOneTimeseriesAndUpdateStatistics(PartialPath path)
       throws MetadataException, IOException {
     Pair<PartialPath, MeasurementMNode> pair =
         mtree.deleteTimeseriesAndReturnEmptyStorageGroup(path);
@@ -680,7 +696,7 @@ public class MManager {
       logger.info("Current series number {} come back to normal level", totalSeriesNumber);
       allowToCreateNewSeries = true;
     }
-    return storageGroupPath;
+    return new Pair<>(pair.right.getName(), storageGroupPath);
   }
 
   /**

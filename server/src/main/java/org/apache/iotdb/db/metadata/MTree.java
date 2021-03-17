@@ -602,7 +602,6 @@ public class MTree implements Serializable {
     }
 
     MeasurementMNode deletedNode = (MeasurementMNode) curNode;
-    IMeasurementSchema schema = deletedNode.getSchema();
 
     // delete the last node of path
     curNode.getParent().deleteChild(path.getMeasurement());
@@ -1264,7 +1263,12 @@ public class MTree implements Serializable {
     // we should use template when all child is measurement or this node has no child
     boolean shouldUseTemplate = true;
     if (!nodeReg.contains(PATH_WILDCARD)) {
-      MNode next = node.getChild(nodeReg);
+      MNode next = null;
+      if (nodeReg.contains("(") && nodeReg.contains(",")) {
+        next = node.getChildOfAlignedTimeseries(nodeReg);
+      } else {
+        next = node.getChild(nodeReg);
+      }
       if (!(next instanceof MeasurementMNode)) {
         shouldUseTemplate = false;
       }
