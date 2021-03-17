@@ -36,6 +36,7 @@ import org.apache.iotdb.db.engine.merge.manage.MergeManager.TaskStatus;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.BatchProcessException;
+import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.exception.QueryIdNotExsitException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.UDFRegistrationException;
@@ -118,6 +119,7 @@ import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
+import org.apache.iotdb.db.utils.TsFileSplitUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -136,6 +138,9 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -189,6 +194,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
 @SuppressWarnings("java:S1135") // ignore todos
 public class PlanExecutor implements IPlanExecutor {
 
+  private static final Logger logger = LoggerFactory.getLogger(PlanExecutor.class);
   // for data query
   protected IQueryRouter queryRouter;
   // for administration
@@ -975,7 +981,23 @@ public class PlanExecutor implements IPlanExecutor {
         createSchemaAutomatically(chunkGroupMetadataList, schemaMap, plan.getSgLevel());
       }
 
-      StorageEngine.getInstance().loadNewTsFile(tsFileResource);
+      List<TsFileResource> splitResources = new ArrayList();
+      try {
+        tsFileResource.getTimePartitionWithCheck();
+      } catch (PartitionViolationException e) {
+        logger.info("try to split the tsfile={}", tsFileResource.getTsFile().getPath());
+        TsFileSplitUtils.splitOneTsfile(tsFileResource, splitResources);
+        logger.info(
+            "after split, the old tsfile was split to {} new tsfiles", splitResources.size());
+      }
+
+      if (splitResources.isEmpty()) {
+        splitResources.add(tsFileResource);
+      }
+
+      for (TsFileResource resource : splitResources) {
+        StorageEngine.getInstance().loadNewTsFile(resource);
+      }
     } catch (Exception e) {
       throw new QueryProcessException(
           String.format("Cannot load file %s because %s", file.getAbsolutePath(), e.getMessage()));

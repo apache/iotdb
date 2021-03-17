@@ -108,13 +108,13 @@ public class TsFileSplitUtils implements AutoCloseable {
   /**
    * split one single TsFile
    *
-   * @param upgradedResources new version tsFiles' resources
+   * @param splitResources new version tsFiles' resources
    */
   public static void splitOneTsfile(
-      TsFileResource resourceToBeUpgraded, List<TsFileResource> upgradedResources)
+      TsFileResource resourceToBeSplit, List<TsFileResource> splitResources)
       throws IOException, WriteProcessException {
-    try (TsFileSplitUtils updater = new TsFileSplitUtils(resourceToBeUpgraded)) {
-      updater.splitTsFile(upgradedResources);
+    try (TsFileSplitUtils splitUtils = new TsFileSplitUtils(resourceToBeSplit)) {
+      splitUtils.splitTsFile(splitResources);
     }
   }
 
@@ -130,7 +130,7 @@ public class TsFileSplitUtils implements AutoCloseable {
     if (!fileCheck()) {
       return;
     }
-    int headerLength = TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER;
+    int headerLength = TSFileConfig.MAGIC_STRING.getBytes().length + Byte.BYTES;
     reader.position(headerLength);
     // start to scan chunks and chunkGroups
     List<List<PageHeader>> pageHeadersInChunkGroup = new ArrayList<>();
@@ -138,6 +138,8 @@ public class TsFileSplitUtils implements AutoCloseable {
     List<List<Boolean>> needToDecodeInfoInChunkGroup = new ArrayList<>();
     byte marker;
     List<MeasurementSchema> measurementSchemaList = new ArrayList<>();
+    String lastChunkGroupDeviceId = null;
+    String currentChunkGroupDeviceId = null;
     try {
       while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
@@ -174,17 +176,20 @@ public class TsFileSplitUtils implements AutoCloseable {
             break;
           case MetaMarker.CHUNK_GROUP_HEADER:
             ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader();
-            String deviceID = chunkGroupHeader.getDeviceID();
-            rewrite(
-                deviceID,
-                measurementSchemaList,
-                pageHeadersInChunkGroup,
-                pageDataInChunkGroup,
-                needToDecodeInfoInChunkGroup);
-            pageHeadersInChunkGroup.clear();
-            pageDataInChunkGroup.clear();
-            measurementSchemaList.clear();
-            needToDecodeInfoInChunkGroup.clear();
+            String deviceId = chunkGroupHeader.getDeviceID();
+            lastChunkGroupDeviceId = deviceId;
+            if (!measurementSchemaList.isEmpty()) {
+              rewrite(
+                  lastChunkGroupDeviceId,
+                  measurementSchemaList,
+                  pageHeadersInChunkGroup,
+                  pageDataInChunkGroup,
+                  needToDecodeInfoInChunkGroup);
+              pageHeadersInChunkGroup.clear();
+              pageDataInChunkGroup.clear();
+              measurementSchemaList.clear();
+              needToDecodeInfoInChunkGroup.clear();
+            }
             break;
           case MetaMarker.OPERATION_INDEX_RANGE:
             reader.readPlanIndex();
@@ -208,6 +213,19 @@ public class TsFileSplitUtils implements AutoCloseable {
           default:
             MetaMarker.handleUnexpectedMarker(marker);
         }
+      }
+
+      if (!measurementSchemaList.isEmpty()) {
+        rewrite(
+            lastChunkGroupDeviceId,
+            measurementSchemaList,
+            pageHeadersInChunkGroup,
+            pageDataInChunkGroup,
+            needToDecodeInfoInChunkGroup);
+        pageHeadersInChunkGroup.clear();
+        pageDataInChunkGroup.clear();
+        measurementSchemaList.clear();
+        needToDecodeInfoInChunkGroup.clear();
       }
       // close upgraded tsFiles and generate resources for them
       for (TsFileIOWriter tsFileIOWriter : partitionWriterMap.values()) {
