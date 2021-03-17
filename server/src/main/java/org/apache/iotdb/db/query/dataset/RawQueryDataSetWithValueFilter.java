@@ -77,8 +77,7 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet implements UDFI
     if (cachedRowRecords.isEmpty() && !cacheRowRecords()) {
       return null;
     }
-
-    return cachedRowRecords.remove(0);
+    return cachedRowRecords.remove(cachedRowRecords.size() - 1);
   }
 
   /**
@@ -127,13 +126,17 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet implements UDFI
       }
     }
     // 4. remove rowRecord if all values in one timestamp are null
-    for (int i = 0; i < cachedTimeCnt; i++) {
+    // traverse in reversed order to get element efficiently
+    for (int i = cachedTimeCnt - 1; i >= 0; i--) {
       if (hasField[i]) {
         cachedRowRecords.add(rowRecords[i]);
       }
     }
 
     // 5. check whether there is next row record
+    if (cachedRowRecords.isEmpty() && timeGenerator.hasNext()) {
+      return cacheRowRecords();
+    }
     return !cachedRowRecords.isEmpty();
   }
 
@@ -152,7 +155,7 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet implements UDFI
       return new Object[seriesReaderByTimestampList.size() + 1];
     }
 
-    return cachedRowInObjects.remove(0);
+    return cachedRowInObjects.remove(cachedRowInObjects.size() - 1);
   }
 
   private boolean cacheRowInObjects() throws IOException {
@@ -196,13 +199,17 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet implements UDFI
       }
     }
     // 4. remove rowRecord if all values in one timestamp are null
-    for (int i = 0; i < cachedTimeCnt; i++) {
+    // traverse in reversed order to get element efficiently
+    for (int i = cachedTimeCnt - 1; i >= 0; i--) {
       if (hasField[i]) {
         cachedRowInObjects.add(rowsInObject[i]);
       }
     }
 
     // 5. check whether there is next row record
+    if (cachedRowRecords.isEmpty() && timeGenerator.hasNext()) {
+      return cacheRowInObjects();
+    }
     return !cachedRowInObjects.isEmpty();
   }
 }

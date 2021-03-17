@@ -68,6 +68,10 @@ public abstract class TimeGenerator {
 
   /** ATTENTION: this method should only be used when there is no `OR` node */
   public Object[] getValues(Path path) throws IOException {
+    if (hasOrNode) {
+      throw new IOException(
+          "getValues() method should not be invoked when there is OR operator in where clause");
+    }
     if (leafValuesCache.get(path) == null) {
       throw new IOException(
           "getValues() method should not be invoked by non-existent path in where clause");
@@ -77,9 +81,13 @@ public abstract class TimeGenerator {
 
   /** ATTENTION: this method should only be used when there is no `OR` node */
   public Object getValue(Path path) throws IOException {
+    if (hasOrNode) {
+      throw new IOException(
+          "getValue() method should not be invoked when there is OR operator in where clause");
+    }
     if (leafValuesCache.get(path) == null) {
       throw new IOException(
-          "getValues() method should not be invoked by non-existent path in where clause");
+          "getValue() method should not be invoked by non-existent path in where clause");
     }
     return leafValuesCache.get(path).remove(0);
   }

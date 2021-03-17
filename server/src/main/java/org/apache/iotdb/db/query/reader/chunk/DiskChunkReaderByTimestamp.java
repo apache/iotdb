@@ -51,7 +51,7 @@ public class DiskChunkReaderByTimestamp implements IReaderByTimestamp {
       currentTime = timestamps[i];
       while (hasNext()) {
         data = next();
-        if (data.getMaxTimestamp() > currentTime) {
+        if (data.getMinTimestamp() > currentTime) {
           result[i] = null;
           break;
         }
