@@ -32,22 +32,6 @@ public class VectorPartialPath extends PartialPath {
     this.subSensorsPathList = subSensorsPathList;
   }
 
-  public VectorPartialPath(String device, String measurement, List<PartialPath> subSensorsPathList)
-      throws IllegalPathException {
-    super(device, measurement);
-    this.subSensorsPathList = subSensorsPathList;
-  }
-
-  public VectorPartialPath(String[] partialNodes, List<PartialPath> subSensorsPathList) {
-    super(partialNodes);
-    this.subSensorsPathList = subSensorsPathList;
-  }
-
-  public VectorPartialPath(String path, boolean needSplit, List<PartialPath> subSensorsPathList) {
-    super(path, needSplit);
-    this.subSensorsPathList = subSensorsPathList;
-  }
-
   public List<PartialPath> getSubSensorsPathList() {
     return subSensorsPathList;
   }
@@ -58,10 +42,5 @@ public class VectorPartialPath extends PartialPath {
 
   public void addSubSensor(PartialPath path) {
     this.subSensorsPathList.add(path);
-  }
-
-  @Override
-  public String getMeasurement() {
-    return subSensorsPathList.get(0).toString();
   }
 }

@@ -182,9 +182,9 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
     cachedBatchDataArray = new BatchData[readers.size()];
     noMoreDataInQueueArray = new boolean[readers.size()];
     bufferNum = 0;
-    for (int index = 0; index < paths.size(); index++) {
-      if (paths.get(index) instanceof VectorPartialPath) {
-        bufferNum += ((VectorPartialPath) paths).getSubSensorsPathList().size();
+    for (PartialPath path : paths) {
+      if (path instanceof VectorPartialPath) {
+        bufferNum += ((VectorPartialPath) path).getSubSensorsPathList().size();
       } else {
         bufferNum += 1;
       }
