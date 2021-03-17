@@ -113,8 +113,7 @@ public abstract class QueryPlan extends PhysicalPlan {
     this.ascending = ascending;
   }
 
-  public String getColumnForReaderFromPath(int pathIndex) {
-    PartialPath path = paths.get(pathIndex);
+  public String getColumnForReaderFromPath(PartialPath path, int pathIndex) {
     String columnForReader = path.isTsAliasExists() ? path.getTsAlias() : null;
     if (columnForReader == null) {
       columnForReader =

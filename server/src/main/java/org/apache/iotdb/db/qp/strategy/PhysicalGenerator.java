@@ -840,7 +840,7 @@ public class PhysicalGenerator {
     if (queryPlan instanceof LastQueryPlan) {
       for (int i = 0; i < paths.size(); i++) {
         PartialPath path = paths.get(i);
-        String column = queryPlan.getColumnForReaderFromPath(i);
+        String column = queryPlan.getColumnForReaderFromPath(path, i);
         if (!columnForReaderSet.contains(column)) {
           TSDataType seriesType = dataTypes.get(i);
           rawDataQueryPlan.addDeduplicatedPaths(path);
@@ -873,7 +873,7 @@ public class PhysicalGenerator {
       PartialPath originalPath = indexedPath.left;
       Integer originalIndex = indexedPath.right;
 
-      String columnForReader = queryPlan.getColumnForReaderFromPath(originalIndex);
+      String columnForReader = queryPlan.getColumnForReaderFromPath(originalPath, originalIndex);
       boolean isUdf = queryPlan instanceof UDTFPlan && paths.get(originalIndex) == null;
 
       if (!columnForReaderSet.contains(columnForReader)) {
@@ -914,10 +914,9 @@ public class PhysicalGenerator {
 
     // check parameter range
     if (seriesOffset >= size) {
-      throw new QueryProcessException(
-          String.format(
-              "The value of SOFFSET (%d) is equal to or exceeds the number of sequences (%d) that can actually be returned.",
-              seriesOffset, size));
+      String errorMessage =
+          "The value of SOFFSET (%d) is equal to or exceeds the number of sequences (%d) that can actually be returned.";
+      throw new QueryProcessException(String.format(errorMessage, seriesOffset, size));
     }
     int endPosition = seriesOffset + seriesLimit;
     if (endPosition > size) {
