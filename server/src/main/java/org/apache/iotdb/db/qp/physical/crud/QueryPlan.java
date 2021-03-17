@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -110,5 +111,19 @@ public abstract class QueryPlan extends PhysicalPlan {
 
   public void setAscending(boolean ascending) {
     this.ascending = ascending;
+  }
+
+  public String getColumnForReaderFromPath(PartialPath path, int pathIndex) {
+    String columnForReader = path.isTsAliasExists() ? path.getTsAlias() : null;
+    if (columnForReader == null) {
+      columnForReader =
+          path.isMeasurementAliasExists() ? path.getFullPathWithAlias() : path.toString();
+    }
+    return columnForReader;
+  }
+
+  public String getColumnForDisplay(String columnForReader, int pathIndex)
+      throws IllegalPathException {
+    return columnForReader;
   }
 }
