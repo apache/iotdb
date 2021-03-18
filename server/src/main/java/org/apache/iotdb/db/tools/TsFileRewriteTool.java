@@ -94,13 +94,13 @@ public class TsFileRewriteTool implements AutoCloseable {
    *
    * @throws IOException If some I/O error occurs
    */
-  public TsFileRewriteTool(TsFileResource resourceToBeUpgraded) throws IOException {
-    oldTsFile = resourceToBeUpgraded.getTsFile();
+  public TsFileRewriteTool(TsFileResource resourceToBeRewritten) throws IOException {
+    oldTsFile = resourceToBeRewritten.getTsFile();
     String file = oldTsFile.getAbsolutePath();
     reader = new TsFileSequenceReader(file);
     partitionWriterMap = new HashMap<>();
     if (FSFactoryProducer.getFSFactory().getFile(file + ModificationFile.FILE_SUFFIX).exists()) {
-      oldModification = (List<Modification>) resourceToBeUpgraded.getModFile().getModifications();
+      oldModification = (List<Modification>) resourceToBeRewritten.getModFile().getModifications();
       modsIterator = oldModification.iterator();
       fileModificationMap = new HashMap<>();
     }
@@ -109,13 +109,13 @@ public class TsFileRewriteTool implements AutoCloseable {
   /**
    * Rewrite an old file to the latest version
    *
-   * @param resourceToBeRewrite the tsfile which to be rewrite
+   * @param resourceToBeRewritten the tsfile which to be rewrite
    * @param rewrittenResources the rewritten files
    */
   public static void rewriteTsfile(
-      TsFileResource resourceToBeRewrite, List<TsFileResource> rewrittenResources)
+      TsFileResource resourceToBeRewritten, List<TsFileResource> rewrittenResources)
       throws IOException, WriteProcessException {
-    try (TsFileRewriteTool rewriteTool = new TsFileRewriteTool(resourceToBeRewrite)) {
+    try (TsFileRewriteTool rewriteTool = new TsFileRewriteTool(resourceToBeRewritten)) {
       rewriteTool.parseAndRewriteFile(rewrittenResources);
     }
   }
@@ -258,7 +258,7 @@ public class TsFileRewriteTool implements AutoCloseable {
       }
     } catch (IOException e2) {
       throw new IOException(
-          "TsFile upgrade process cannot proceed at position "
+          "TsFile rewrite process cannot proceed at position "
               + reader.position()
               + "because: "
               + e2.getMessage());
@@ -286,7 +286,7 @@ public class TsFileRewriteTool implements AutoCloseable {
   /**
    * This method is for rewriting the ChunkGroup which data is in the different time partitions. In
    * this case, we have to decode the data to points, and then rewrite the data points to different
-   * chunkWriters, finally write chunks to their own upgraded TsFiles
+   * chunkWriters, finally write chunks to their own upgraded TsFiles.
    */
   protected void rewrite(
       String deviceId,
