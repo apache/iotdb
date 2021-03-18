@@ -289,6 +289,18 @@ public class DeviceTimeIndex implements ITimeIndex {
   }
 
   @Override
+  public void putStartTime(String deviceId, long time) {
+    int index = getDeviceIndex(deviceId);
+    startTimes[index] = time;
+  }
+
+  @Override
+  public void putEndTime(String deviceId, long time) {
+    int index = getDeviceIndex(deviceId);
+    endTimes[index] = time;
+  }
+
+  @Override
   public long getStartTime(String deviceId) {
     if (!deviceToIndex.containsKey(deviceId)) {
       return Long.MAX_VALUE;

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.merge;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
@@ -34,6 +35,7 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
@@ -116,6 +118,59 @@ public class MergeTaskTest extends MergeTest {
             tempSGDir.getPath(),
             (k, v, l) -> {
               assertEquals(499, k.get(2).getEndTime("root.mergeTest.device1"));
+            },
+            "test",
+            false,
+            1,
+            MERGE_TEST_SG);
+    mergeTask.call();
+  }
+
+  @Test
+  public void testMergeEndTimeAfterDeletion() throws Exception {
+    File file =
+        new File(
+            TestConstant.BASE_OUTPUT_PATH.concat(
+                10
+                    + "unseq"
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 10
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 10
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 0
+                    + ".tsfile"));
+    TsFileResource smallUnseqTsFileResource = new TsFileResource(file);
+    smallUnseqTsFileResource.setClosed(true);
+    smallUnseqTsFileResource.setMinPlanIndex(10);
+    smallUnseqTsFileResource.setMaxPlanIndex(10);
+    smallUnseqTsFileResource.setVersion(10);
+    prepareFile(smallUnseqTsFileResource, 0, 50, 0);
+
+    // remove all data of first file
+    for (String deviceId : deviceIds) {
+      for (MeasurementSchema measurementSchema : measurementSchemas) {
+        PartialPath device = new PartialPath(deviceId);
+        seqResources
+            .get(0)
+            .getModFile()
+            .write(
+                new Deletion(
+                    device.concatNode(measurementSchema.getMeasurementId()),
+                    seqResources.get(0).getTsFileSize(),
+                    Long.MIN_VALUE,
+                    Long.MAX_VALUE));
+      }
+    }
+    List<TsFileResource> testSeqResources = seqResources.subList(0, 1);
+    List<TsFileResource> testUnseqResources = new ArrayList<>();
+    testUnseqResources.add(smallUnseqTsFileResource);
+    MergeTask mergeTask =
+        new MergeTask(
+            new MergeResource(testSeqResources, testUnseqResources),
+            tempSGDir.getPath(),
+            (k, v, l) -> {
+              assertEquals(49, k.get(0).getEndTime("root.mergeTest.device1"));
             },
             "test",
             false,

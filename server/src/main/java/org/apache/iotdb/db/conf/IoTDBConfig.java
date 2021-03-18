@@ -156,7 +156,7 @@ public class IoTDBConfig {
 
   /**
    * The cycle when write ahead log is periodically forced to be written to disk(in milliseconds) If
-   * set this parameter to 0 it means call outputStream.force(true) after every each insert
+   * set this parameter to 0 it means call channel.force(true) after every each insert
    */
   private long forceWalPeriodInMs = 100;
 
@@ -374,7 +374,7 @@ public class IoTDBConfig {
   private long cacheFileReaderClearPeriod = 100000;
 
   /** the max executing time of query in ms. */
-  private int queryTimeThreshold = 60000;
+  private int queryTimeoutThreshold = 60000;
 
   /** Replace implementation class of JDBC service */
   private String rpcImplClassName = TSServiceImpl.class.getName();
@@ -1139,12 +1139,12 @@ public class IoTDBConfig {
     this.cacheFileReaderClearPeriod = cacheFileReaderClearPeriod;
   }
 
-  public int getQueryTimeThreshold() {
-    return queryTimeThreshold;
+  public int getQueryTimeoutThreshold() {
+    return queryTimeoutThreshold;
   }
 
-  public void setQueryTimeThreshold(int queryTimeThreshold) {
-    this.queryTimeThreshold = queryTimeThreshold;
+  public void setQueryTimeoutThreshold(int queryTimeoutThreshold) {
+    this.queryTimeoutThreshold = queryTimeoutThreshold;
   }
 
   public boolean isReadOnly() {

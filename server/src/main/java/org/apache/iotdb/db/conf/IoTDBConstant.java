@@ -75,7 +75,6 @@ public class IoTDBConstant {
   public static final String COLUMN_TAGS = "tags";
   public static final String COLUMN_ATTRIBUTES = "attributes";
   public static final String QUERY_ID = "queryId";
-  public static final String START_TIME = "startTime";
   public static final String STATEMENT = "statement";
 
   public static final String COLUMN_ROLE = "role";

@@ -278,6 +278,21 @@ public class ClusterDescriptor {
                 "enable_use_persist_log_on_disk_to_catch_up",
                 String.valueOf(config.isEnableUsePersistLogOnDiskToCatchUp()))));
 
+    config.setMaxReadLogLag(
+        Long.parseLong(
+            properties.getProperty("max_read_log_lag", String.valueOf(config.getMaxReadLogLag()))));
+
+    config.setMaxClientPerNodePerMember(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_client_pernode_permember_number",
+                String.valueOf(config.getMaxClientPerNodePerMember()))));
+
+    config.setWaitClientTimeoutMS(
+        Long.parseLong(
+            properties.getProperty(
+                "wait_client_timeout_ms", String.valueOf(config.getWaitClientTimeoutMS()))));
+
     String consistencyLevel = properties.getProperty("consistency_level");
     if (consistencyLevel != null) {
       config.setConsistencyLevel(ConsistencyLevel.getConsistencyLevel(consistencyLevel));
