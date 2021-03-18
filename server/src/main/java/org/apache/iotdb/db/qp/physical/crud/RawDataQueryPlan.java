@@ -20,6 +20,7 @@ package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -74,10 +75,16 @@ public class RawDataQueryPlan extends QueryPlan {
   public void setDeduplicatedPaths(List<PartialPath> deduplicatedPaths) {
     deviceToMeasurements.clear();
     deduplicatedPaths.forEach(
-        path ->
-            deviceToMeasurements
-                .computeIfAbsent(path.getDevice(), key -> new HashSet<>())
-                .add(path.getMeasurement()));
+        path -> {
+          Set<String> set = deviceToMeasurements
+              .computeIfAbsent(path.getDevice(), key -> new HashSet<>());
+          set.add(path.getMeasurement());
+          if (path instanceof VectorPartialPath) {
+            ((VectorPartialPath) path).getSubSensorsPathList().forEach(subSensor -> set.add(
+                subSensor.getMeasurement()));
+          }
+        }
+    );
     this.deduplicatedPaths = deduplicatedPaths;
   }
 

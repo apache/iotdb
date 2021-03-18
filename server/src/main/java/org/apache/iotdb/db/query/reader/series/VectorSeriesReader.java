@@ -18,6 +18,10 @@
  */
 package org.apache.iotdb.db.query.reader.series;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -30,12 +34,6 @@ import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.VectorTimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
 
 public class VectorSeriesReader extends SeriesReader {
 
@@ -96,7 +94,7 @@ public class VectorSeriesReader extends SeriesReader {
             vectorPartialPath,
             context,
             getAnyFilter(),
-            Collections.singleton(vectorPartialPath.getMeasurement()));
+            allSensors);
     if (timeseriesMetadata != null) {
       timeseriesMetadata.setSeq(true);
       List<TimeseriesMetadata> valueTimeseriesMetadataList = new ArrayList<>();
@@ -107,7 +105,7 @@ public class VectorSeriesReader extends SeriesReader {
                 subSensor,
                 context,
                 getAnyFilter(),
-                Collections.singleton(subSensor.getMeasurement()));
+                allSensors);
         if (valueTimeSeriesMetadata == null) {
           throw new IOException("File doesn't contains value");
         }
@@ -128,7 +126,7 @@ public class VectorSeriesReader extends SeriesReader {
             vectorPartialPath,
             context,
             getAnyFilter(),
-            Collections.singleton(vectorPartialPath.getMeasurement()));
+            allSensors);
     if (timeseriesMetadata != null) {
       timeseriesMetadata.setModified(true);
       timeseriesMetadata.setSeq(false);
@@ -140,7 +138,7 @@ public class VectorSeriesReader extends SeriesReader {
                 subSensor,
                 context,
                 getAnyFilter(),
-                Collections.singleton(subSensor.getMeasurement()));
+                allSensors);
         if (valueTimeSeriesMetadata == null) {
           throw new IOException("File contains value");
         }
