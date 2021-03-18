@@ -181,9 +181,9 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
   }
 
   /**
-   * dummy dataSet for redirect query
+   * Dummy dataSet for redirect query.
    *
-   * @param queryId queryId for the query
+   * @param queryId queryId for the query.
    */
   public RawQueryDataSetWithoutValueFilter(long queryId) {
     this.queryId = queryId;

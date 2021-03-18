@@ -36,7 +36,8 @@ public abstract class QueryDataSet {
   protected boolean ascending;
   /*
    *  whether current data group has data for query.
-   *  If not null(must be in cluster mode), we need to redirect the query to any data group which has some data to speed up query.
+   *  If not null(must be in cluster mode),
+   *  we need to redirect the query to any data group which has some data to speed up query.
    */
   protected EndPoint endPoint = null;
 

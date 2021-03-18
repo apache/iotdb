@@ -46,10 +46,11 @@ public class SessionExample {
   private static final String ROOT_SG1_D1_S4 = "root.sg1.d1.s4";
   private static final String ROOT_SG1_D1_S5 = "root.sg1.d1.s5";
   private static final String ROOT_SG1_D1 = "root.sg1.d1";
+  private static final String LOCAL_HOST = "127.0.0.1";
 
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException {
-    session = new Session("127.0.0.1", 6667, "root", "root");
+    session = new Session(LOCAL_HOST, 6667, "root", "root");
     session.open(false);
 
     // set session fetchSize
@@ -79,7 +80,7 @@ public class SessionExample {
     setTimeout();
     session.close();
 
-    sessionEnableRedirect = new Session("127.0.0.1", 6667, "root", "root");
+    sessionEnableRedirect = new Session(LOCAL_HOST, 6667, "root", "root");
     sessionEnableRedirect.setEnableQueryRedirection(true);
     sessionEnableRedirect.open(false);
 
@@ -211,10 +212,10 @@ public class SessionExample {
       for (int j = 0; j < 2; j++) {
         String deviceId = "root.redirect" + i + ".d" + j;
         List<String> measurements = new ArrayList<>();
-        List<TSDataType> types = new ArrayList<>();
         measurements.add("s1");
         measurements.add("s2");
         measurements.add("s3");
+        List<TSDataType> types = new ArrayList<>();
         types.add(TSDataType.INT64);
         types.add(TSDataType.INT64);
         types.add(TSDataType.INT64);
@@ -487,9 +488,10 @@ public class SessionExample {
 
   private static void query4Redirect()
       throws IoTDBConnectionException, StatementExecutionException {
+    String selectPrefix = "select * from root.redirect";
     for (int i = 0; i < 6; i++) {
       SessionDataSet dataSet =
-          sessionEnableRedirect.executeQueryStatement("select * from root.redirect" + i + ".d1");
+          sessionEnableRedirect.executeQueryStatement(selectPrefix + i + ".d1");
       System.out.println(dataSet.getColumnNames());
       dataSet.setFetchSize(1024); // default is 10000
       while (dataSet.hasNext()) {
@@ -502,7 +504,7 @@ public class SessionExample {
     for (int i = 0; i < 6; i++) {
       SessionDataSet dataSet =
           sessionEnableRedirect.executeQueryStatement(
-              "select * from root.redirect" + i + ".d1 where time >= 1 and time < 10");
+              selectPrefix + i + ".d1 where time >= 1 and time < 10");
       System.out.println(dataSet.getColumnNames());
       dataSet.setFetchSize(1024); // default is 10000
       while (dataSet.hasNext()) {
@@ -515,9 +517,7 @@ public class SessionExample {
     for (int i = 0; i < 6; i++) {
       SessionDataSet dataSet =
           sessionEnableRedirect.executeQueryStatement(
-              "select * from root.redirect"
-                  + i
-                  + ".d1 where time >= 1 and time < 10 align by device");
+              selectPrefix + i + ".d1 where time >= 1 and time < 10 align by device");
       System.out.println(dataSet.getColumnNames());
       dataSet.setFetchSize(1024); // default is 10000
       while (dataSet.hasNext()) {
@@ -530,7 +530,7 @@ public class SessionExample {
     for (int i = 0; i < 6; i++) {
       SessionDataSet dataSet =
           sessionEnableRedirect.executeQueryStatement(
-              "select * from root.redirect"
+              selectPrefix
                   + i
                   + ".d1 where time >= 1 and time < 10 and root.redirect"
                   + i
@@ -623,7 +623,7 @@ public class SessionExample {
   }
 
   private static void setTimeout() throws StatementExecutionException {
-    Session tempSession = new Session("127.0.0.1", 6667, "root", "root", 10000, 20000);
+    Session tempSession = new Session(LOCAL_HOST, 6667, "root", "root", 10000, 20000);
     tempSession.setTimeout(60000);
   }
 }

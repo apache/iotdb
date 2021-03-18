@@ -210,9 +210,11 @@ public class RawDataQueryExecutor {
   }
 
   /**
-   * check whether need to redirect query to other node
+   * Check whether need to redirect query to other node.
    *
    * @param queryId queryId to cancel query
+   * @param timeGenerator timeGenerator to check whether has local reader when query with value
+   *     filter
    * @return dummyDataSet to avoid more cost, if null, no need
    */
   protected QueryDataSet needRedirect(long queryId, TimeGenerator timeGenerator) {

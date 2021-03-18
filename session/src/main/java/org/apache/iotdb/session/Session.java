@@ -66,6 +66,8 @@ public class Session {
   protected static final TSProtocolVersion protocolVersion =
       TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
   public static final String MSG_UNSUPPORTED_DATA_TYPE = "Unsupported data type:";
+  public static final String MSG_DONOT_ENABLE_REDIRECT =
+      "Query do not enable redirect," + " please confirm the session and server conf.";
   protected String username;
   protected String password;
   protected int fetchSize;
@@ -474,8 +476,7 @@ public class Session {
           throw new StatementExecutionException(sql + " redirect twice, please try again.");
         }
       } else {
-        throw new StatementExecutionException(
-            "raw data query do not support redirect, please confirm the session and server conf.");
+        throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
       }
     }
   }
@@ -506,8 +507,7 @@ public class Session {
           throw new StatementExecutionException(sql + " redirect twice, please try again.");
         }
       } else {
-        throw new StatementExecutionException(
-            "raw data query do not support redirect, please confirm the session and server conf.");
+        throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
       }
     }
   }
@@ -549,8 +549,7 @@ public class Session {
           throw new StatementExecutionException("Redirect twice, please try again.");
         }
       } else {
-        throw new StatementExecutionException(
-            "raw data query do not support redirect, please confirm the session and server conf.");
+        throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
       }
     }
   }

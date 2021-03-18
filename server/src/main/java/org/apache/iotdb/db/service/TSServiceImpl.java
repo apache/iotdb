@@ -600,7 +600,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    * @param plan must be a plan for Query: FillQueryPlan, AggregationPlan, GroupByTimePlan, UDFPlan,
    *     some AuthorPlan
    */
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  @SuppressWarnings({"squid:S3776", "squid:S1141"}) // Suppress high Cognitive Complexity warning
   private TSExecuteStatementResp internalExecuteQueryStatement(
       String statement,
       long statementId,
@@ -700,7 +700,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
             return resp;
           } else {
             LOGGER.error(
-                "execute {} error, if session not support redirect, should not throw redirection exception",
+                "execute {} error, if session does not support redirect,"
+                    + " should not throw redirection exception.",
                 statement,
                 e);
           }

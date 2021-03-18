@@ -124,13 +124,13 @@ public class ClusterReaderFactory {
     boolean hasLocalReader = false;
     for (PartitionGroup partitionGroup : partitionGroups) {
       // query each group to get a reader in that group
-      IReaderByTimestamp iReaderByTimestamp =
+      IReaderByTimestamp readerByTimestamp =
           getSeriesReaderByTime(
               partitionGroup, path, deviceMeasurements, context, dataType, ascending);
-      readers.add(iReaderByTimestamp);
-      if (iReaderByTimestamp instanceof SeriesReaderByTimestamp) {
+      readers.add(readerByTimestamp);
+      if (readerByTimestamp instanceof SeriesReaderByTimestamp) {
         hasLocalReader = true;
-      } else if (iReaderByTimestamp instanceof RemoteSeriesReaderByTimestamp) {
+      } else if (readerByTimestamp instanceof RemoteSeriesReaderByTimestamp) {
         endPoint.setIp(partitionGroup.getHeader().getClientIp());
         endPoint.setPort(partitionGroup.getHeader().getClientPort());
       }
@@ -346,8 +346,8 @@ public class ClusterReaderFactory {
    * @param timeFilter nullable
    * @param valueFilter nullable
    * @param context
-   * @return
-   * @throws StorageEngineException
+   * @return reader
+   * @throws StorageEngineException encounter exception
    */
   public IPointReader getSeriesPointReader(
       PartialPath path,
@@ -387,7 +387,7 @@ public class ClusterReaderFactory {
    * @param valueFilter nullable
    * @param context
    * @return
-   * @throws StorageEngineException
+   * @throws StorageEngineException encounter exception
    */
   private SeriesReader getSeriesReader(
       PartialPath path,
