@@ -1283,7 +1283,7 @@ public class MTree implements Serializable {
             upperTemplate);
       }
     } else {
-      for (MNode child : node.getChildren().values()) {
+      for (MNode child : node.getDistinctMNodes()) {
         if (!(child instanceof MeasurementMNode)) {
           shouldUseTemplate = false;
         }

@@ -1122,6 +1122,12 @@ public class MManagerBasicTest {
       for (int i = 0; i < result.size(); i++) {
         assertEquals("root.laptop.d1.s" + (i + 1), result.get(i).getName());
       }
+
+      // show timeseries
+      showTimeSeriesPlan =
+          new ShowTimeSeriesPlan(new PartialPath("root"), false, null, null, 0, 0, false);
+      result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+      assertEquals(4, result.size());
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
