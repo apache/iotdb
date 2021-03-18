@@ -408,8 +408,6 @@ public class VectorTVList extends TVList {
         columnValues.clear();
       }
     }
-    values.clear();
-    dataTypes.clear();
   }
 
   @Override

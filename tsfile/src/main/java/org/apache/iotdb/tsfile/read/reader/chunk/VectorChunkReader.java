@@ -91,7 +91,7 @@ public class VectorChunkReader implements IChunkReader {
       // deserialize a PageHeader from chunkDataBuffer
       PageHeader timePageHeader;
       List<PageHeader> valuePageHeaderList = new ArrayList<>();
-      if (timeChunkHeader.getChunkType() == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
+      if (timeChunkHeader.getChunkType() == (MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER | (byte) 0x80)) {
         timePageHeader = PageHeader.deserializeFrom(timeChunkDataBuffer, timeChunkStatistics);
         for (int i = 0; i < valueChunkDataBufferList.size(); i++) {
           valuePageHeaderList.add(
