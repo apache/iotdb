@@ -95,6 +95,8 @@ public class IOTDBGroupByInnerIntervalIT {
             + "values(29, 50.5, false, 550)",
       };
 
+  private static final double DETLA = 1e-6;
+
   private static final String TIMESTAMP_STR = "Time";
 
   @Before
@@ -116,10 +118,10 @@ public class IOTDBGroupByInnerIntervalIT {
         new String[] {
           "1,3,6.6,2.2",
           "6,3,23.1,7.7",
-          "11,3,36.599999999999994,12.2",
-          "16,2,35.400000000000006,17.700000000000003",
+          "11,3,36.6,12.2",
+          "16,2,35.4,17.7",
           "21,2,45.5,22.75",
-          "26,3,90.9,30.299999999999997"
+          "26,3,90.9,30.3"
         };
 
     try (Connection connection =
@@ -144,7 +146,7 @@ public class IOTDBGroupByInnerIntervalIT {
                   + resultSet.getString(sum("root.ln.wf01.wt01.temperature"))
                   + ","
                   + resultSet.getString(avg("root.ln.wf01.wt01.temperature"));
-          assertEquals(retArray1[cnt], ans);
+          assertEquals(retArray1[cnt], ans, DETLA);
           cnt++;
         }
         assertEquals(retArray1.length, cnt);
@@ -162,10 +164,10 @@ public class IOTDBGroupByInnerIntervalIT {
         new String[] {
           "1,1,3.3,3.3",
           "6,3,23.1,7.7",
-          "11,3,36.599999999999994,12.2",
-          "16,2,35.400000000000006,17.700000000000003",
+          "11,3,36.6,12.2",
+          "16,2,35.4,17.7",
           "21,2,45.5,22.75",
-          "26,3,90.9,30.299999999999997"
+          "26,3,90.9,30.3"
         };
 
     try (Connection connection =
@@ -190,7 +192,7 @@ public class IOTDBGroupByInnerIntervalIT {
                   + resultSet.getString(sum("root.ln.wf01.wt01.temperature"))
                   + ","
                   + resultSet.getString(avg("root.ln.wf01.wt01.temperature"));
-          assertEquals(retArray1[cnt], ans);
+          assertEquals(retArray1[cnt], ans, DETLA);
           cnt++;
         }
         assertEquals(retArray1.length, cnt);
@@ -198,11 +200,11 @@ public class IOTDBGroupByInnerIntervalIT {
 
       String[] retArray2 =
           new String[] {
-            "26,3,90.9,30.299999999999997",
+            "26,3,90.9,30.3",
             "21,2,45.5,22.75",
-            "16,2,35.400000000000006,17.700000000000003",
+            "16,2,35.4,17.7",
             "11,3,36.6,12.2",
-            "6,3,23.1,7.699999999999999",
+            "6,3,23.1,7.7",
             "1,1,3.3,3.3",
           };
       hasResultSet =
@@ -223,7 +225,7 @@ public class IOTDBGroupByInnerIntervalIT {
                   + resultSet.getString(sum("root.ln.wf01.wt01.temperature"))
                   + ","
                   + resultSet.getString(avg("root.ln.wf01.wt01.temperature"));
-          assertEquals(retArray2[cnt], ans);
+          assertEquals(retArray2[cnt], ans, DETLA);
           cnt++;
         }
         assertEquals(retArray2.length, cnt);
@@ -240,10 +242,10 @@ public class IOTDBGroupByInnerIntervalIT {
         new String[] {
           "1,0,0.0,null",
           "6,3,23.1,7.7",
-          "11,3,36.599999999999994,12.2",
-          "16,2,35.400000000000006,17.700000000000003",
+          "11,3,36.6,12.2",
+          "16,2,35.4,17.7",
           "21,2,45.5,22.75",
-          "26,3,90.9,30.299999999999997"
+          "26,3,90.9,30.3"
         };
 
     try (Connection connection =
@@ -268,7 +270,7 @@ public class IOTDBGroupByInnerIntervalIT {
                   + resultSet.getString(sum("root.ln.wf01.wt01.temperature"))
                   + ","
                   + resultSet.getString(avg("root.ln.wf01.wt01.temperature"));
-          assertEquals(retArray1[cnt], ans);
+          assertEquals(retArray1[cnt], ans, DETLA);
           cnt++;
         }
         assertEquals(retArray1.length, cnt);

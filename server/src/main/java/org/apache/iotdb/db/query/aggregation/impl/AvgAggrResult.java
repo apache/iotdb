@@ -78,9 +78,7 @@ public class AvgAggrResult extends AggregateResult {
     } else {
       sum = statistics.getSumDoubleValue();
     }
-    avg =
-        avg * ((double) preCnt / cnt)
-            + ((double) statistics.getCount() / cnt) * sum / statistics.getCount();
+    avg = (avg * preCnt + sum) / cnt;
   }
 
   @Override
@@ -131,7 +129,7 @@ public class AvgAggrResult extends AggregateResult {
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type in aggregation AVG : %s", type));
     }
-    avg = avg * ((double) cnt / (cnt + 1)) + val * (1.0 / (cnt + 1));
+    avg = (avg * cnt + val) / (cnt + 1);
     cnt++;
   }
 
@@ -164,9 +162,7 @@ public class AvgAggrResult extends AggregateResult {
       // avoid two empty results producing an NaN
       return;
     }
-    avg =
-        avg * ((double) cnt / (cnt + anotherAvg.cnt))
-            + anotherAvg.avg * ((double) anotherAvg.cnt / (cnt + anotherAvg.cnt));
+    avg = (avg * cnt + anotherAvg.avg * anotherAvg.cnt) / (cnt + anotherAvg.cnt);
     cnt += anotherAvg.cnt;
   }
 

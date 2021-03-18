@@ -49,6 +49,7 @@ import static org.junit.Assert.fail;
 
 public class IoTDBAggregationIT {
 
+  private static final double DETLA = 1e-6;
   private static final String TIMESTAMP_STR = "Time";
   private static final String TEMPERATURE_STR = "root.ln.wf01.wt01.temperature";
 
@@ -715,7 +716,7 @@ public class IoTDBAggregationIT {
                   + resultSet.getString(sum(d0s0))
                   + ","
                   + resultSet.getString(avg(d0s2));
-          Assert.assertEquals(retArray[cnt], ans);
+          Assert.assertEquals(retArray[cnt], ans, DETLA);
           cnt++;
         }
         Assert.assertEquals(1, cnt);
@@ -865,7 +866,7 @@ public class IoTDBAggregationIT {
                   + resultSet.getString(avg(d0s0))
                   + ","
                   + resultSet.getString(sum(d0s2));
-          Assert.assertEquals(retArray[cnt], ans);
+          Assert.assertEquals(retArray[cnt], ans, DETLA);
           cnt++;
         }
         Assert.assertEquals(1, cnt);
