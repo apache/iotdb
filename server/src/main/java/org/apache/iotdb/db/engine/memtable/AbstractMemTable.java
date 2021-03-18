@@ -23,6 +23,7 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -36,6 +37,7 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -283,10 +285,12 @@ public abstract class AbstractMemTable implements IMemTable {
       }
       IWritableMemChunk memChunk = memTableMap.get(deviceId).get(schema.getMeasurementId());
 
-      List<Integer> columns =
-          schema.getValueMeasurementIdList().stream()
-              .map(Integer::parseInt)
-              .collect(Collectors.toList());
+      List<String> measurementIdList = schema.getValueMeasurementIdList();
+      List<Integer> columns = new ArrayList<>();
+      IMeasurementSchema vectorSchema = memChunk.getSchema();
+      for (String queryingMeasurement : measurementIdList) {
+        columns.add(vectorSchema.getValueMeasurementIdList().indexOf(queryingMeasurement));
+      }
       // get sorted tv list is synchronized so different query can get right sorted list reference
       TVList chunkCopy = memChunk.getSortedTVListForQuery(columns);
       int curSize = chunkCopy.size();
@@ -323,13 +327,24 @@ public abstract class AbstractMemTable implements IMemTable {
       Entry<String, IWritableMemChunk> entry = iter.next();
       IWritableMemChunk chunk = entry.getValue();
       PartialPath fullPath = devicePath.concatNode(entry.getKey());
+      IMeasurementSchema schema = chunk.getSchema();
       if (originalPath.matchFullPath(fullPath)) {
         if (startTimestamp == Long.MIN_VALUE && endTimestamp == Long.MAX_VALUE) {
           iter.remove();
         }
         int deletedPointsNumber = chunk.delete(startTimestamp, endTimestamp);
         totalPointsNum -= deletedPointsNumber;
-        continue;
+      }
+      // for vector type
+      else if (schema.getType() == TSDataType.VECTOR) {
+        List<String> measurements = MetaUtils.getMeasurementsInPartialPath(originalPath);
+        if (measurements.containsAll(schema.getValueMeasurementIdList())) {
+          if (startTimestamp == Long.MIN_VALUE && endTimestamp == Long.MAX_VALUE) {
+            iter.remove();
+          }
+          int deletedPointsNumber = chunk.delete(startTimestamp, endTimestamp);
+          totalPointsNum -= deletedPointsNumber;
+        }
       }
     }
   }

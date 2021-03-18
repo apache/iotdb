@@ -568,12 +568,6 @@ public class VectorTVList extends TVList {
     }
   }
 
-  //FIXME: need to implement the bitmap first.
-  @Override
-  public int delete(long lowerBound, long upperBound, int columnIndex) {
-    return 0;
-  }
-
   @Override
   public TSDataType getDataType() {
     return TSDataType.VECTOR;

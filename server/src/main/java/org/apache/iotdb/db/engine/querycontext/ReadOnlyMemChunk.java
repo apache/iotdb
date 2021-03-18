@@ -38,6 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -170,7 +171,8 @@ public class ReadOnlyMemChunk {
       }
     }
     timeStatistics.setEmpty(isEmpty());
-    IChunkMetadata vectorChunkMetadata = new VectorChunkMetadata(timeChunkMetadata, null);
+    IChunkMetadata vectorChunkMetadata =
+        new VectorChunkMetadata(timeChunkMetadata, Collections.singletonList(timeChunkMetadata));
     vectorChunkMetadata.setChunkLoader(new MemChunkLoader(this));
     vectorChunkMetadata.setVersion(Long.MAX_VALUE);
     cachedMetaData = vectorChunkMetadata;

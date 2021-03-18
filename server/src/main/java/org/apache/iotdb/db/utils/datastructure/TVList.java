@@ -279,6 +279,7 @@ public abstract class TVList {
     return deletedNumber;
   }
 
+  // TODO: THIS METHOLD IS FOR DELETING ONE COLUMN OF A VECTOR
   public int delete(long lowerBound, long upperBound, int columnIndex) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }

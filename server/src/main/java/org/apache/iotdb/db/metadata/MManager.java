@@ -1140,10 +1140,10 @@ public class MManager {
       }
       String[] array = new String[measurements.size()];
       for (int i = 0; i < array.length; i++) {
-        array[i] = measurements.get(i).getFullPath();
+        array[i] = measurements.get(i).getMeasurement();
       }
       return new VectorMeasurementSchema(
-          IoTDBConstant.ALIGN_TIMESERIES_PREFIX, array, types, encodings, schema.getCompressor());
+          leaf.getName(), array, types, encodings, schema.getCompressor());
     }
     if (leaf != null) {
       return ((MeasurementMNode) leaf).getSchema();
