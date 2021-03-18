@@ -32,11 +32,11 @@
 
 ## 安装步骤
 
-IoTDB支持多种安装途径。用户可以使用三种方式对IoTDB进行安装——下载二进制可运行程序、使用源码、使用docker镜像。
-
-* 使用源码：您可以从代码仓库下载源码并编译，具体编译方法见下方。
+IoTDB支持多种安装途径。用户可以使用三种方式对IoTDB进行安装——下载二进制可运行程序、使用源码、使用Docker镜像。
 
 * 二进制可运行程序：请从[下载](/Download/)页面下载最新的安装包，解压后即完成安装。
+
+* 使用源码：您可以从代码仓库下载源码并编译，具体编译方法见下方。
 
 * 使用Docker镜像：dockerfile 文件位于 https://github.com/apache/iotdb/blob/master/docker/src/main
 
@@ -45,8 +45,8 @@ IoTDB支持多种安装途径。用户可以使用三种方式对IoTDB进行安�
 
 * sbin 启动和停止脚本目录
 * conf 配置文件目录
-*  tools 系统工具目录
-*  lib 依赖包目录
+* tools 系统工具目录
+* lib 依赖包目录
 
 ## IoTDB试用
 
@@ -70,9 +70,9 @@ Windows系统启动命令如下：
 ```
 > sbin\start-server.bat -c <conf_path> -rpc_port <rpc_port>
 ```
-- "-c" and "-rpc_port" 都是可选的。
+- "-c" 和 "-rpc_port" 都是可选的。
 - 选项 "-c" 指定了配置文件所在的文件夹。
-- 选项 "-rpc_port" 指定了启动的 rpc port。
+- 选项 "-rpc_port" 指定了启动的 rpc 端口。
 - 如果两个选项同时指定，那么*rpc_port*将会覆盖*conf_path*下面的配置。
 
 
