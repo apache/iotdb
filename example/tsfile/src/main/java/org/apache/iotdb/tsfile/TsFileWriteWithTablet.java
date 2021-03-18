@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.Tablet;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 
@@ -57,10 +58,10 @@ public class TsFileWriteWithTablet {
       // the number of values to include in the tablet
       int sensorNum = 10;
 
-      List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+      List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
       // add measurements into file schema (all with INT64 data type)
       for (int i = 0; i < sensorNum; i++) {
-        MeasurementSchema measurementSchema =
+        IMeasurementSchema measurementSchema =
             new MeasurementSchema(sensorPrefix + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF);
         measurementSchemas.add(measurementSchema);
         schema.registerTimeseries(

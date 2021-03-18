@@ -18,6 +18,38 @@
  */
 package org.apache.iotdb.db.metadata;
 
+import static java.util.stream.Collectors.toList;
+import static org.apache.iotdb.db.conf.IoTDBConstant.LOSS;
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
+import static org.apache.iotdb.db.conf.IoTDBConstant.SDT;
+import static org.apache.iotdb.db.conf.IoTDBConstant.SDT_COMP_DEV;
+import static org.apache.iotdb.db.conf.IoTDBConstant.SDT_COMP_MAX_TIME;
+import static org.apache.iotdb.db.conf.IoTDBConstant.SDT_COMP_MIN_TIME;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import java.io.File;
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Queue;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Pattern;
+import java.util.stream.Stream;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -56,42 +88,8 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
-
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.io.Serializable;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Queue;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.regex.Pattern;
-import java.util.stream.Stream;
-
-import static java.util.stream.Collectors.toList;
-import static org.apache.iotdb.db.conf.IoTDBConstant.LOSS;
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
-import static org.apache.iotdb.db.conf.IoTDBConstant.SDT;
-import static org.apache.iotdb.db.conf.IoTDBConstant.SDT_COMP_DEV;
-import static org.apache.iotdb.db.conf.IoTDBConstant.SDT_COMP_MAX_TIME;
-import static org.apache.iotdb.db.conf.IoTDBConstant.SDT_COMP_MIN_TIME;
 
 /** The hierarchical struct of the Metadata Tree is implemented in this class. */
 public class MTree implements Serializable {
@@ -351,11 +349,13 @@ public class MTree implements Serializable {
               cur,
               leafName,
               new VectorMeasurementSchema(
+                  leafName,
                   measurements.toArray(new String[measurementsSize]),
                   dataTypes.toArray(new TSDataType[measurementsSize]),
                   encodings.toArray(new TSEncoding[measurementsSize]),
                   compressor),
               null);
+      cur.addChild(leafName, measurementMNode);
       for (String measurement : measurements) {
         if (child != null) {
           cur.replaceChild(measurementMNode.getName(), measurementMNode);
@@ -601,7 +601,6 @@ public class MTree implements Serializable {
     }
 
     MeasurementMNode deletedNode = (MeasurementMNode) curNode;
-    IMeasurementSchema schema = deletedNode.getSchema();
 
     // delete the last node of path
     curNode.getParent().deleteChild(path.getMeasurement());
@@ -1240,8 +1239,14 @@ public class MTree implements Serializable {
         addMeasurementSchema(
             node, timeseriesSchemaList, needLast, queryContext, measurementSchema, "*");
       } else if (measurementSchema instanceof VectorMeasurementSchema) {
+        String lastWord = nodes[nodes.length - 1];
         addVectorMeasurementSchema(
-            node, timeseriesSchemaList, needLast, queryContext, measurementSchema, "*");
+            node,
+            timeseriesSchemaList,
+            needLast,
+            queryContext,
+            measurementSchema,
+            nodes.length == idx ? lastWord : "*");
       }
       if (hasLimit) {
         count.set(count.get() + 1);
@@ -1256,11 +1261,16 @@ public class MTree implements Serializable {
     // we should use template when all child is measurement or this node has no child
     boolean shouldUseTemplate = true;
     if (!nodeReg.contains(PATH_WILDCARD)) {
-      MNode next = node.getChild(nodeReg);
-      if (!(next instanceof MeasurementMNode)) {
-        shouldUseTemplate = false;
+      MNode next = null;
+      if (nodeReg.contains("(") && nodeReg.contains(",")) {
+        next = node.getChildOfAlignedTimeseries(nodeReg);
+      } else {
+        next = node.getChild(nodeReg);
       }
       if (next != null) {
+        if (!(next instanceof MeasurementMNode)) {
+          shouldUseTemplate = false;
+        }
         findPath(
             next,
             nodes,
@@ -1310,8 +1320,7 @@ public class MTree implements Serializable {
                   nodeReg);
             } else if (schema instanceof VectorMeasurementSchema) {
               addVectorMeasurementSchema(
-                  new MeasurementMNode(
-                      node, schema.getValueMeasurementIdList().get(0) + ".align", schema, null),
+                  new MeasurementMNode(node, IoTDBConstant.ALIGN_TIMESERIES_PREFIX, schema, null),
                   timeseriesSchemaList,
                   needLast,
                   queryContext,
@@ -1358,24 +1367,31 @@ public class MTree implements Serializable {
       throws StorageGroupNotSetException, IllegalPathException {
     List<String> measurements = schema.getValueMeasurementIdList();
     int measurementSize = measurements.size();
+    Set<String> measurementsInReg = new HashSet<>();
+    if (reg.contains("(") && reg.contains(",")) {
+      measurementsInReg.addAll(MetaUtils.getMeasurementsInPartialPath(reg));
+    }
     for (int i = 0; i < measurementSize; i++) {
-      if (Pattern.matches(reg.replace("*", ".*"), measurements.get(i))) {
-        PartialPath devicePath = node.getPartialPath().getDevicePath();
-        String[] tsRow = new String[7];
-        tsRow[0] = null;
-        tsRow[1] = getStorageGroupPath(devicePath).getFullPath();
-        tsRow[2] = schema.getValueTSDataTypeList().get(i).toString();
-        tsRow[3] = schema.getValueTSEncodingList().get(i).toString();
-        tsRow[4] = schema.getCompressor().toString();
-        tsRow[5] = "-1";
-        tsRow[6] =
-            needLast
-                ? String.valueOf(getLastTimeStamp((MeasurementMNode) node, queryContext))
-                : null;
-        Pair<PartialPath, String[]> temp =
-            new Pair<>(new PartialPath(devicePath.getFullPath(), measurements.get(i)), tsRow);
-        timeseriesSchemaList.add(temp);
+      if (measurementsInReg.size() != 0 && !measurementsInReg.contains(measurements.get(i))) {
+        continue;
       }
+      if (measurementsInReg.size() == 0
+          && !Pattern.matches(reg.replace("*", ".*"), measurements.get(i))) {
+        continue;
+      }
+      PartialPath devicePath = node.getPartialPath().getDevicePath();
+      String[] tsRow = new String[7];
+      tsRow[0] = null;
+      tsRow[1] = getStorageGroupPath(devicePath).getFullPath();
+      tsRow[2] = schema.getValueTSDataTypeList().get(i).toString();
+      tsRow[3] = schema.getValueTSEncodingList().get(i).toString();
+      tsRow[4] = schema.getCompressor().toString();
+      tsRow[5] = "-1";
+      tsRow[6] =
+          needLast ? String.valueOf(getLastTimeStamp((MeasurementMNode) node, queryContext)) : null;
+      Pair<PartialPath, String[]> temp =
+          new Pair<>(new PartialPath(devicePath.getFullPath(), measurements.get(i)), tsRow);
+      timeseriesSchemaList.add(temp);
     }
   }
 

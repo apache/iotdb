@@ -40,6 +40,9 @@ import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -300,7 +303,7 @@ public class MManagerBasicTest {
     }
 
     try {
-      manager.deleteTimeseries(new PartialPath("root.laptop.d1.(s1, s2, s3)"));
+      manager.deleteTimeseries(new PartialPath("root.laptop.d1.(s1,s2,s3)"));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -1066,6 +1069,160 @@ public class MManagerBasicTest {
     } catch (Exception e) {
       assertEquals(
           "Path [root.sg1.d1.s1 ( which is incompatible with template )] already exist",
+          e.getMessage());
+    }
+  }
+
+  @Test
+  public void testShowTimeseries() {
+    MManager manager = IoTDB.metaManager;
+    try {
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d1.s0"),
+          TSDataType.valueOf("INT32"),
+          TSEncoding.valueOf("RLE"),
+          compressionType,
+          Collections.emptyMap());
+      manager.createAlignedTimeSeries(
+          new PartialPath("root.laptop.d1"),
+          Arrays.asList("s1", "s2", "s3"),
+          Arrays.asList(
+              TSDataType.valueOf("INT32"),
+              TSDataType.valueOf("FLOAT"),
+              TSDataType.valueOf("INT32")),
+          Arrays.asList(
+              TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
+          compressionType);
+
+      // show timeseries root.laptop.d1.s0
+      ShowTimeSeriesPlan showTimeSeriesPlan =
+          new ShowTimeSeriesPlan(
+              new PartialPath("root.laptop.d1.s0"), false, null, null, 0, 0, false);
+      List<ShowTimeSeriesResult> result =
+          manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+      assertEquals(1, result.size());
+      assertEquals("root.laptop.d1.s0", result.get(0).getName());
+
+      // show timeseries root.laptop.d1.s1
+      showTimeSeriesPlan =
+          new ShowTimeSeriesPlan(
+              new PartialPath("root.laptop.d1.s1"), false, null, null, 0, 0, false);
+      result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+      assertEquals(1, result.size());
+      assertEquals("root.laptop.d1.s1", result.get(0).getName());
+
+      // show timeseries root.laptop.d1.(s1,s2,s3)
+      showTimeSeriesPlan =
+          new ShowTimeSeriesPlan(
+              new PartialPath("root.laptop.d1.(s1,s2,s3)"), false, null, null, 0, 0, false);
+      result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+      assertEquals(3, result.size());
+      for (int i = 0; i < result.size(); i++) {
+        assertEquals("root.laptop.d1.s" + (i + 1), result.get(i).getName());
+      }
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    // show timeseries root.laptop.d1.(s0,s1)
+    try {
+      ShowTimeSeriesPlan showTimeSeriesPlan =
+          new ShowTimeSeriesPlan(
+              new PartialPath("root.laptop.d1.(s0,s1)"), false, null, null, 0, 0, false);
+      List<ShowTimeSeriesResult> result =
+          manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+    } catch (MetadataException e) {
+      assertEquals(
+          "Cannot get node of children in different aligned timeseries (Path: (s0,s1))",
+          e.getMessage());
+    }
+  }
+
+  @Test
+  public void testShowTimeseriesWithTemplate() {
+    List<List<String>> measurementList = new ArrayList<>();
+    measurementList.add(Collections.singletonList("s0"));
+    List<String> measurements = new ArrayList<>();
+    for (int i = 1; i <= 3; i++) {
+      measurements.add("s" + i);
+    }
+    measurementList.add(measurements);
+
+    List<List<TSDataType>> dataTypeList = new ArrayList<>();
+    dataTypeList.add(Collections.singletonList(TSDataType.INT32));
+    List<TSDataType> dataTypes = new ArrayList<>();
+    dataTypes.add(TSDataType.INT32);
+    dataTypes.add(TSDataType.FLOAT);
+    dataTypes.add(TSDataType.INT32);
+    dataTypeList.add(dataTypes);
+
+    List<List<TSEncoding>> encodingList = new ArrayList<>();
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+    List<TSEncoding> encodings = new ArrayList<>();
+    for (int i = 1; i <= 3; i++) {
+      encodings.add(TSEncoding.RLE);
+    }
+    encodingList.add(encodings);
+
+    List<CompressionType> compressionTypes = new ArrayList<>();
+    for (int i = 0; i < 2; i++) {
+      compressionTypes.add(compressionType);
+    }
+
+    CreateTemplatePlan plan =
+        new CreateTemplatePlan(
+            "template1", measurementList, dataTypeList, encodingList, compressionTypes);
+    MManager manager = IoTDB.metaManager;
+    try {
+      manager.createDeviceTemplate(plan);
+
+      // set device template
+      SetDeviceTemplatePlan setDeviceTemplatePlan =
+          new SetDeviceTemplatePlan("template1", "root.laptop.d1");
+      manager.setDeviceTemplate(setDeviceTemplatePlan);
+
+      // show timeseries root.laptop.d1.s0
+      ShowTimeSeriesPlan showTimeSeriesPlan =
+          new ShowTimeSeriesPlan(
+              new PartialPath("root.laptop.d1.s0"), false, null, null, 0, 0, false);
+      List<ShowTimeSeriesResult> result =
+          manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+      assertEquals(1, result.size());
+      assertEquals("root.laptop.d1.s0", result.get(0).getName());
+
+      // show timeseries root.laptop.d1.s1
+      showTimeSeriesPlan =
+          new ShowTimeSeriesPlan(
+              new PartialPath("root.laptop.d1.s1"), false, null, null, 0, 0, false);
+      result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+      assertEquals(1, result.size());
+      assertEquals("root.laptop.d1.s1", result.get(0).getName());
+
+      // show timeseries root.laptop.d1.(s1,s2,s3)
+      showTimeSeriesPlan =
+          new ShowTimeSeriesPlan(
+              new PartialPath("root.laptop.d1.(s1,s2,s3)"), false, null, null, 0, 0, false);
+      result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+      assertEquals(3, result.size());
+      for (int i = 0; i < result.size(); i++) {
+        assertEquals("root.laptop.d1.s" + (i + 1), result.get(i).getName());
+      }
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    // show timeseries root.laptop.d1.(s0,s1)
+    try {
+      ShowTimeSeriesPlan showTimeSeriesPlan =
+          new ShowTimeSeriesPlan(
+              new PartialPath("root.laptop.d1.(s0,s1)"), false, null, null, 0, 0, false);
+      List<ShowTimeSeriesResult> result =
+          manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+    } catch (MetadataException e) {
+      assertEquals(
+          "Cannot get node of children in different aligned timeseries (Path: (s0,s1))",
           e.getMessage());
     }
   }

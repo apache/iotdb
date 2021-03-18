@@ -92,16 +92,24 @@ public class VectorSeriesReader extends SeriesReader {
     TsFileResource resource = orderUtils.getNextSeqFileResource(seqFileResource, true);
     TimeseriesMetadata timeseriesMetadata =
         FileLoaderUtils.loadTimeSeriesMetadata(
-            resource, vectorPartialPath, context, getAnyFilter(), allSensors);
+            resource,
+            vectorPartialPath,
+            context,
+            getAnyFilter(),
+            Collections.singleton(vectorPartialPath.getMeasurement()));
     if (timeseriesMetadata != null) {
       timeseriesMetadata.setSeq(true);
       List<TimeseriesMetadata> valueTimeseriesMetadataList = new ArrayList<>();
       for (PartialPath subSensor : vectorPartialPath.getSubSensorsPathList()) {
         TimeseriesMetadata valueTimeSeriesMetadata =
             FileLoaderUtils.loadTimeSeriesMetadata(
-                resource, subSensor, context, getAnyFilter(), Collections.emptySet());
+                resource,
+                subSensor,
+                context,
+                getAnyFilter(),
+                Collections.singleton(subSensor.getMeasurement()));
         if (valueTimeSeriesMetadata == null) {
-          throw new IOException("File contains value");
+          throw new IOException("File doesn't contains value");
         }
         valueTimeSeriesMetadata.setSeq(true);
         valueTimeseriesMetadataList.add(valueTimeSeriesMetadata);
@@ -116,7 +124,11 @@ public class VectorSeriesReader extends SeriesReader {
     TsFileResource resource = unseqFileResource.remove(0);
     TimeseriesMetadata timeseriesMetadata =
         FileLoaderUtils.loadTimeSeriesMetadata(
-            resource, vectorPartialPath, context, getAnyFilter(), allSensors);
+            resource,
+            vectorPartialPath,
+            context,
+            getAnyFilter(),
+            Collections.singleton(vectorPartialPath.getMeasurement()));
     if (timeseriesMetadata != null) {
       timeseriesMetadata.setModified(true);
       timeseriesMetadata.setSeq(false);
@@ -124,7 +136,11 @@ public class VectorSeriesReader extends SeriesReader {
       for (PartialPath subSensor : vectorPartialPath.getSubSensorsPathList()) {
         TimeseriesMetadata valueTimeSeriesMetadata =
             FileLoaderUtils.loadTimeSeriesMetadata(
-                resource, subSensor, context, getAnyFilter(), Collections.emptySet());
+                resource,
+                subSensor,
+                context,
+                getAnyFilter(),
+                Collections.singleton(subSensor.getMeasurement()));
         if (valueTimeSeriesMetadata == null) {
           throw new IOException("File contains value");
         }

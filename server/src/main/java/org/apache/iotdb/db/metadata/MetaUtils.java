@@ -115,11 +115,19 @@ public class MetaUtils {
    */
   public static List<String> getMeasurementsInPartialPath(PartialPath fullPath) {
     if (fullPath.getMeasurement().contains("(") && fullPath.getMeasurement().contains(",")) {
-      return (Arrays.asList(
-          fullPath.getMeasurement().replace("(", "").replace(")", "").split(",")));
+      return getMeasurementsInPartialPath(fullPath.getMeasurement());
     } else {
       return Arrays.asList(fullPath.getMeasurement());
     }
+  }
+
+  public static List<String> getMeasurementsInPartialPath(String measurementString) {
+    String[] measurements = measurementString.replace("(", "").replace(")", "").split(",");
+    List<String> measurementList = new ArrayList<>();
+    for (String measurement : measurements) {
+      measurementList.add(measurement.trim());
+    }
+    return measurementList;
   }
 
   @TestOnly
