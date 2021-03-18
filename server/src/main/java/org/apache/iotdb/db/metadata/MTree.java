@@ -733,8 +733,7 @@ public class MTree implements Serializable {
         if (schema instanceof MeasurementSchema) {
           return new MeasurementMNode(cur, schema.getMeasurementId(), schema, null);
         } else if (schema instanceof VectorMeasurementSchema) {
-          return new MeasurementMNode(
-              cur, schema.getValueMeasurementIdList().get(0) + ".align", schema, null);
+          return new MeasurementMNode(cur, upperTemplate.getMeasurementNodeName(), schema, null);
         } else {
           throw new IllegalArgumentException("Undefined type of schema");
         }
@@ -1320,7 +1319,7 @@ public class MTree implements Serializable {
                   nodeReg);
             } else if (schema instanceof VectorMeasurementSchema) {
               addVectorMeasurementSchema(
-                  new MeasurementMNode(node, IoTDBConstant.ALIGN_TIMESERIES_PREFIX, schema, null),
+                  new MeasurementMNode(node, upperTemplate.getMeasurementNodeName(), schema, null),
                   timeseriesSchemaList,
                   needLast,
                   queryContext,

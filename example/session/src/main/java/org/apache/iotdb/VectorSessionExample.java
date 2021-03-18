@@ -18,15 +18,18 @@
  */
 package org.apache.iotdb;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
-
-import java.util.*;
 
 public class VectorSessionExample {
 
@@ -41,8 +44,40 @@ public class VectorSessionExample {
     // set session fetchSize
     session.setFetchSize(10000);
 
+    createTemplate();
     insertTabletWithAlignedTimeseries();
     session.close();
+  }
+
+  // be sure template is coordinate with tablet
+  private static void createTemplate()
+      throws StatementExecutionException, IoTDBConnectionException {
+    List<List<String>> measurementList = new ArrayList<>();
+    List<String> measurements = new ArrayList<>();
+    for (int i = 1; i <= 2; i++) {
+      measurements.add("s" + i);
+    }
+    measurementList.add(measurements);
+
+    List<List<TSDataType>> dataTypeList = new ArrayList<>();
+    List<TSDataType> dataTypes = new ArrayList<>();
+    dataTypes.add(TSDataType.INT64);
+    dataTypes.add(TSDataType.INT32);
+    dataTypeList.add(dataTypes);
+
+    List<List<TSEncoding>> encodingList = new ArrayList<>();
+    List<TSEncoding> encodings = new ArrayList<>();
+    for (int i = 1; i <= 2; i++) {
+      encodings.add(TSEncoding.RLE);
+    }
+    encodingList.add(encodings);
+
+    List<CompressionType> compressionTypes = new ArrayList<>();
+    compressionTypes.add(CompressionType.SNAPPY);
+
+    session.createDeviceTemplate(
+        "template1", measurementList, dataTypeList, encodingList, compressionTypes);
+    session.setDeviceTemplate("template1", ROOT_SG1_D1);
   }
 
   private static void insertTabletWithAlignedTimeseries()
