@@ -60,9 +60,11 @@ public class ByTimestampReaderAdapter implements IReaderByTimestamp {
         pair = pointReader.nextTimeValuePair();
         if (pair.getTimestamp() == currentTime) {
           result[i] = pair.getValue().getValue();
+          break;
         } else if (pair.getTimestamp() > currentTime) {
           hasCached = true;
           result[i] = null;
+          break;
         }
       }
     }

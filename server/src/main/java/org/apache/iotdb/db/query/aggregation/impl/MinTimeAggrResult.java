@@ -74,14 +74,19 @@ public class MinTimeAggrResult extends AggregateResult {
     if (hasFinalResult()) {
       return;
     }
-    for (int i = 0; i < length; i++) {
-      long[] oneTimestamp = new long[1];
-      oneTimestamp[0] = timestamps[i];
-      Object[] values = dataReader.getValuesInTimestamps(oneTimestamp, 1);
-      if (values[0] != null) {
-        setLongValue(timestamps[i]);
-        return;
+    int currentPos = 0;
+    long[] timesForFirstValue = new long[TIME_LENGTH_FOR_FIRST_VALUE];
+    while (currentPos < length) {
+      int timeLength = Math.min(length - currentPos, TIME_LENGTH_FOR_FIRST_VALUE);
+      System.arraycopy(timestamps, currentPos, timesForFirstValue, 0, timeLength);
+      Object[] values = dataReader.getValuesInTimestamps(timesForFirstValue, timeLength);
+      for (int i = 0; i < timeLength; i++) {
+        if (values[i] != null) {
+          setLongValue(timesForFirstValue[i]);
+          return;
+        }
       }
+      currentPos += timeLength;
     }
   }
 
