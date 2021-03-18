@@ -17,16 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.db.utils.windowing.exception;
 
-public class WindowEvaluationException extends StorageEngineException {
+public class WindowingException extends Exception {
 
-  public WindowEvaluationException(String message, Throwable cause) {
+  public WindowingException(String message) {
     super(message);
-    this.initCause(cause);
   }
 
-  public WindowEvaluationException(String message) {
-    super(message);
+  public WindowingException(String message, Throwable cause) {
+    super(message, cause);
   }
 }
