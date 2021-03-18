@@ -1121,12 +1121,12 @@ public class MManager {
    */
   public IMeasurementSchema getSeriesSchema(PartialPath fullPath) throws MetadataException {
     MNode leaf = mtree.getNodeByPath(fullPath);
-    if (fullPath instanceof VectorPartialPath) {
+    IMeasurementSchema schema = ((MeasurementMNode) leaf).getSchema();
+    if (schema != null && schema.getType() == TSDataType.VECTOR) {
 
       List<PartialPath> measurements = ((VectorPartialPath) fullPath).getSubSensorsPathList();
       TSDataType[] types = new TSDataType[measurements.size()];
       TSEncoding[] encodings = new TSEncoding[measurements.size()];
-      IMeasurementSchema schema = ((MeasurementMNode) leaf).getSchema();
 
       List<String> measurementsInLeaf = schema.getValueMeasurementIdList();
       for (int i = 0; i < measurements.size(); i++) {
@@ -1141,10 +1141,7 @@ public class MManager {
       return new VectorMeasurementSchema(
           leaf.getName(), array, types, encodings, schema.getCompressor());
     }
-    if (leaf != null) {
-      return ((MeasurementMNode) leaf).getSchema();
-    }
-    return null;
+    return leaf != null ? schema : null;
   }
 
   /**
