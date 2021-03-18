@@ -357,6 +357,7 @@ public class MManager {
         CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
             (CreateAlignedTimeSeriesPlan) plan;
         createAlignedTimeSeries(createAlignedTimeSeriesPlan);
+        break;
       case DELETE_TIMESERIES:
         DeleteTimeSeriesPlan deleteTimeSeriesPlan = (DeleteTimeSeriesPlan) plan;
         // cause we only has one path for one DeleteTimeSeriesPlan
@@ -1111,13 +1112,8 @@ public class MManager {
   /**
    * Get schema of paritialPath
    *
-   * @param fullPath (may be ParitialPath or VectorPartialPath) <<<<<<< HEAD
-   * @return MeasurementSchema or VectorMeasurementSchema. Attention: measurements of
-   *     VectorMeasurementSchema are index of the sensors in the leaf node, instead of sensor names.
-   *     For example: As for leaf node {s1, s2, s3, s4}, if fullPath = {s3, s1}, we should return
-   *     measurements = ["2", "0"] =======
-   * @return MeasurementSchema or VectorMeasurementSchema >>>>>>>
-   *     cf081f9a1d0c48bcb02bc7dac2695483ac624eec
+   * @param fullPath (may be ParitialPath or VectorPartialPath)
+   * @return MeasurementSchema or VectorMeasurementSchema
    */
   public IMeasurementSchema getSeriesSchema(PartialPath fullPath) throws MetadataException {
     MNode leaf = mtree.getNodeByPath(fullPath);

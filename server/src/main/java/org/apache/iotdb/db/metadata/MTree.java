@@ -1288,9 +1288,25 @@ public class MTree implements Serializable {
         if (!(child instanceof MeasurementMNode)) {
           shouldUseTemplate = false;
         }
-        if (!Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
+        boolean continueSearch = false;
+        if (child instanceof MeasurementMNode
+            && ((MeasurementMNode) child).getSchema() instanceof VectorMeasurementSchema) {
+          List<String> measurementsList =
+              ((MeasurementMNode) child).getSchema().getValueMeasurementIdList();
+          for (String measurement : measurementsList) {
+            if (Pattern.matches(nodeReg.replace("*", ".*"), measurement)) {
+              continueSearch = true;
+            }
+          }
+        } else {
+          if (Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
+            continueSearch = true;
+          }
+        }
+        if (!continueSearch) {
           continue;
         }
+
         findPath(
             child,
             nodes,
