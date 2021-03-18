@@ -20,6 +20,19 @@
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.compaction.TsFileManagement;
+import org.apache.iotdb.db.engine.compaction.level.LevelCompactionTsFileManagement;
+import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
+import org.apache.iotdb.db.engine.merge.manage.MergeResource;
+import org.apache.iotdb.db.engine.merge.selector.MaxFileMergeFileSelector;
+import org.apache.iotdb.db.engine.merge.selector.MaxSeriesMergeFileSelector;
+import org.apache.iotdb.db.engine.merge.task.MergeFileTask;
+import org.apache.iotdb.db.engine.merge.task.MergeMultiChunkTask;
+import org.apache.iotdb.db.engine.merge.task.MergeMultiChunkTask.MergeChunkHeapTask;
+import org.apache.iotdb.db.engine.merge.task.MergeTask;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -28,7 +41,11 @@ import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -44,8 +61,35 @@ public class IoTDBRemovePartitionIT {
 
   private static int partitionInterval = 100;
 
+  private void setLoggerLevel(Class clazz, String loggerLevelNew)
+      throws NoSuchMethodException, ClassNotFoundException, InvocationTargetException,
+          IllegalAccessException {
+    Logger loggerInterface = LoggerFactory.getLogger(clazz);
+    Class<?> levelLogBackClass = Class.forName("ch.qos.logback.classic.Level");
+    Method toLevelMethod = levelLogBackClass.getDeclaredMethod("toLevel", String.class);
+    Object traceLevel = toLevelMethod.invoke(null, loggerLevelNew);
+    Method loggerSetLevelMethod =
+        loggerInterface.getClass().getDeclaredMethod("setLevel", levelLogBackClass);
+    loggerSetLevelMethod.invoke(loggerInterface, traceLevel);
+  }
+
   @Before
   public void setUp() throws Exception {
+    setLoggerLevel(StorageEngine.class, "DEBUG");
+    setLoggerLevel(MemTableFlushTask.class, "DEBUG");
+    setLoggerLevel(StorageGroupProcessor.class, "DEBUG");
+    setLoggerLevel(MergeResource.class, "DEBUG");
+    setLoggerLevel(TsFileProcessor.class, "DEBUG");
+    setLoggerLevel(TsFileResource.class, "DEBUG");
+    setLoggerLevel(LevelCompactionTsFileManagement.class, "DEBUG");
+    setLoggerLevel(TsFileManagement.class, "DEBUG");
+    setLoggerLevel(MaxFileMergeFileSelector.class, "DEBUG");
+    setLoggerLevel(MaxSeriesMergeFileSelector.class, "DEBUG");
+    setLoggerLevel(MergeMultiChunkTask.class, "DEBUG");
+    setLoggerLevel(MergeChunkHeapTask.class, "DEBUG");
+    setLoggerLevel(MergeFileTask.class, "DEBUG");
+    setLoggerLevel(MergeTask.class, "DEBUG");
+
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     StorageEngine.setEnablePartition(true);
@@ -58,6 +102,21 @@ public class IoTDBRemovePartitionIT {
     StorageEngine.setEnablePartition(false);
     StorageEngine.setTimePartitionInterval(-1);
     EnvironmentUtils.cleanEnv();
+
+    setLoggerLevel(StorageEngine.class, "ERROR");
+    setLoggerLevel(MemTableFlushTask.class, "ERROR");
+    setLoggerLevel(StorageGroupProcessor.class, "ERROR");
+    setLoggerLevel(MergeResource.class, "ERROR");
+    setLoggerLevel(TsFileProcessor.class, "ERROR");
+    setLoggerLevel(TsFileResource.class, "ERROR");
+    setLoggerLevel(LevelCompactionTsFileManagement.class, "ERROR");
+    setLoggerLevel(TsFileManagement.class, "ERROR");
+    setLoggerLevel(MaxFileMergeFileSelector.class, "ERROR");
+    setLoggerLevel(MaxSeriesMergeFileSelector.class, "ERROR");
+    setLoggerLevel(MergeMultiChunkTask.class, "ERROR");
+    setLoggerLevel(MergeChunkHeapTask.class, "ERROR");
+    setLoggerLevel(MergeFileTask.class, "ERROR");
+    setLoggerLevel(MergeTask.class, "ERROR");
   }
 
   @Test

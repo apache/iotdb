@@ -120,6 +120,8 @@ public class FileLoaderTest {
                 + IoTDBConstant.FILE_NAME_SEPARATOR
                 + rand
                 + IoTDBConstant.FILE_NAME_SEPARATOR
+                + "0"
+                + IoTDBConstant.FILE_NAME_SEPARATOR
                 + "0.tsfile";
 
         File syncFile = new File(fileName);
@@ -243,6 +245,8 @@ public class FileLoaderTest {
                 + (time + i * 100 + j)
                 + IoTDBConstant.FILE_NAME_SEPARATOR
                 + rand
+                + IoTDBConstant.FILE_NAME_SEPARATOR
+                + "0"
                 + IoTDBConstant.FILE_NAME_SEPARATOR
                 + "0.tsfile";
 

@@ -49,12 +49,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.modifyTsFileNameUnseqMergCnt;
+
 /**
  * MergeFileTask merges the merge temporary files with the seqFiles, either move the merged chunks
  * in the temp files into the seqFiles or move the unmerged chunks into the merge temp files,
  * depending on which one is the majority.
  */
-class MergeFileTask {
+public class MergeFileTask {
 
   private static final Logger logger = LoggerFactory.getLogger(MergeFileTask.class);
 
@@ -201,6 +203,37 @@ class MergeFileTask {
       seqFile.serialize();
       mergeLogger.logFileMergeEnd();
       logger.debug("{} moved merged chunks of {} to the old file", taskName, seqFile);
+
+      newFileWriter.getFile().delete();
+      // change tsFile name
+      File nextMergeVersionFile = modifyTsFileNameUnseqMergCnt(seqFile.getTsFile());
+      if (!nextMergeVersionFile.exists()) {
+        fsFactory.moveFile(seqFile.getTsFile(), nextMergeVersionFile);
+      } else {
+        nextMergeVersionFile.delete();
+        fsFactory.moveFile(seqFile.getTsFile(), nextMergeVersionFile);
+      }
+      if (!fsFactory
+          .getFile(nextMergeVersionFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX)
+          .exists()) {
+        fsFactory.moveFile(
+            fsFactory.getFile(
+                seqFile.getTsFile().getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX),
+            fsFactory.getFile(
+                nextMergeVersionFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
+
+      } else {
+        fsFactory
+            .getFile(nextMergeVersionFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX)
+            .delete();
+        fsFactory.moveFile(
+            fsFactory.getFile(
+                seqFile.getTsFile().getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX),
+            fsFactory.getFile(
+                nextMergeVersionFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
+      }
+
+      seqFile.setFile(nextMergeVersionFile);
     } catch (Exception e) {
       restoreOldFile(seqFile);
       throw e;
@@ -330,17 +363,43 @@ class MergeFileTask {
     fileWriter.endFile();
 
     updatePlanIndexes(seqFile);
-    seqFile.serialize();
     mergeLogger.logFileMergeEnd();
     logger.debug("{} moved unmerged chunks of {} to the new file", taskName, seqFile);
 
     seqFile.writeLock();
     try {
+      seqFile.serialize();
+      resource.removeFileReader(seqFile);
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
-      File newMergeFile = seqFile.getTsFile();
-      newMergeFile.delete();
-      fsFactory.moveFile(fileWriter.getFile(), newMergeFile);
-      seqFile.setFile(newMergeFile);
+
+      // change tsFile name
+      seqFile.getTsFile().delete();
+      File nextMergeVersionFile = modifyTsFileNameUnseqMergCnt(seqFile.getTsFile());
+      if (!nextMergeVersionFile.exists()) {
+        fsFactory.moveFile(fileWriter.getFile(), nextMergeVersionFile);
+      } else {
+        nextMergeVersionFile.delete();
+        fsFactory.moveFile(fileWriter.getFile(), nextMergeVersionFile);
+      }
+      if (!fsFactory
+          .getFile(nextMergeVersionFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX)
+          .exists()) {
+        fsFactory.moveFile(
+            fsFactory.getFile(
+                seqFile.getTsFile().getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX),
+            fsFactory.getFile(
+                nextMergeVersionFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
+      } else {
+        fsFactory
+            .getFile(nextMergeVersionFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX)
+            .delete();
+        fsFactory.moveFile(
+            fsFactory.getFile(
+                seqFile.getTsFile().getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX),
+            fsFactory.getFile(
+                nextMergeVersionFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
+      }
+      seqFile.setFile(nextMergeVersionFile);
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
     } finally {

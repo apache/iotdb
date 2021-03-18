@@ -83,6 +83,8 @@ public class MergeOverLapTest extends MergeTest {
                       + i
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + 0
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 0
                       + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
       tsFileResource.setClosed(true);
@@ -100,6 +102,8 @@ public class MergeOverLapTest extends MergeTest {
                       + (10000 + i)
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + 0
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 0
                       + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
       tsFileResource.setClosed(true);
@@ -114,6 +118,8 @@ public class MergeOverLapTest extends MergeTest {
                 unseqFileNum
                     + IoTDBConstant.FILE_NAME_SEPARATOR
                     + unseqFileNum
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 0
                     + IoTDBConstant.FILE_NAME_SEPARATOR
                     + 0
                     + ".tsfile"));
@@ -192,7 +198,7 @@ public class MergeOverLapTest extends MergeTest {
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
     List<TsFileResource> resources = new ArrayList<>();
-    resources.add(seqResources.get(0));
+    resources.add(seqResources.get(1));
     IBatchReader tsFilesReader =
         new SeriesRawDataBatchReader(
             path,
