@@ -21,7 +21,7 @@ package org.apache.iotdb.db.utils.windowing.configuration;
 
 import org.apache.iotdb.db.utils.windowing.exception.WindowingException;
 
-public class SlidingSizeWindowConfiguration implements WindowConfiguration {
+public class SlidingSizeWindowConfiguration implements Configuration {
 
   private final int windowSize;
   private final int slidingStep;

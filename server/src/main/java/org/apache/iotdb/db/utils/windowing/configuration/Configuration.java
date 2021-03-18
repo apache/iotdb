@@ -21,7 +21,7 @@ package org.apache.iotdb.db.utils.windowing.configuration;
 
 import org.apache.iotdb.db.utils.windowing.exception.WindowingException;
 
-public interface WindowConfiguration {
+public interface Configuration {
 
   void check() throws WindowingException;
 }

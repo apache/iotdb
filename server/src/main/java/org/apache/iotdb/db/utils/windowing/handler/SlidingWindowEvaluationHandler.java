@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.utils.windowing.handler;
 
 import org.apache.iotdb.db.utils.windowing.runtime.WindowEvaluationTaskPoolManager;
-import org.apache.iotdb.db.utils.windowing.configuration.WindowConfiguration;
+import org.apache.iotdb.db.utils.windowing.configuration.Configuration;
 import org.apache.iotdb.db.utils.windowing.api.Evaluator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -31,27 +31,27 @@ public abstract class SlidingWindowEvaluationHandler {
       WindowEvaluationTaskPoolManager.getInstance();
 
   private final TSDataType dataType;
-  private final WindowConfiguration configuration;
+  private final Configuration configuration;
   private final Evaluator evaluator;
 
   protected SlidingWindowEvaluationHandler(
-      TSDataType dataType, WindowConfiguration configuration, Evaluator evaluator) {
+      TSDataType dataType, Configuration configuration, Evaluator evaluator) {
     this.dataType = dataType;
     this.configuration = configuration;
     this.evaluator = evaluator;
   }
 
-  public void add(long timestamp, int value) {}
+  public void accept(long timestamp, int value) {}
 
-  public void add(long timestamp, long value) {}
+  public void accept(long timestamp, long value) {}
 
-  public void add(long timestamp, float value) {}
+  public void accept(long timestamp, float value) {}
 
-  public void add(long timestamp, double value) {}
+  public void accept(long timestamp, double value) {}
 
-  public void add(long timestamp, boolean value) {}
+  public void accept(long timestamp, boolean value) {}
 
-  public void add(long timestamp, String value) {}
+  public void accept(long timestamp, String value) {}
 
-  public void add(long timestamp, Binary value) {}
+  public void accept(long timestamp, Binary value) {}
 }

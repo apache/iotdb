@@ -25,7 +25,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public abstract class SlidingSizeWindowEvaluationHandler extends SlidingWindowEvaluationHandler {
 
-  protected SlidingSizeWindowEvaluationHandler(
+  public SlidingSizeWindowEvaluationHandler(
       TSDataType dataType, SlidingSizeWindowConfiguration configuration, Evaluator evaluator) {
     super(dataType, configuration, evaluator);
   }

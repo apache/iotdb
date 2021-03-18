@@ -25,7 +25,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public abstract class SlidingTimeWindowEvaluationHandler extends SlidingWindowEvaluationHandler {
 
-  protected SlidingTimeWindowEvaluationHandler(
+  public SlidingTimeWindowEvaluationHandler(
       TSDataType dataType, SlidingTimeWindowConfiguration configuration, Evaluator evaluator) {
     super(dataType, configuration, evaluator);
   }
