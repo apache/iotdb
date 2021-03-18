@@ -23,12 +23,15 @@ import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.EmptyIntervalException;
 import org.apache.iotdb.cluster.query.reader.ClusterReaderFactory;
 import org.apache.iotdb.cluster.query.reader.ClusterTimeGenerator;
+import org.apache.iotdb.cluster.query.reader.ManagedMergeReader;
+import org.apache.iotdb.cluster.query.reader.MergedReaderByTime;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.executor.RawDataQueryExecutor;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
@@ -36,6 +39,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 
 import org.slf4j.Logger;
@@ -51,6 +55,8 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
   private static final Logger logger = LoggerFactory.getLogger(ClusterDataQueryExecutor.class);
   private MetaGroupMember metaGroupMember;
   private ClusterReaderFactory readerFactory;
+  private QueryDataSet.EndPoint endPoint = null;
+  private boolean hasLocalReader = false;
 
   ClusterDataQueryExecutor(RawDataQueryPlan plan, MetaGroupMember metaGroupMember) {
     super(plan);
@@ -74,6 +80,7 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
     }
 
     List<ManagedSeriesReader> readersOfSelectedSeries = new ArrayList<>();
+    hasLocalReader = false;
     for (int i = 0; i < queryPlan.getDeduplicatedPaths().size(); i++) {
       PartialPath path = queryPlan.getDeduplicatedPaths().get(i);
       TSDataType dataType = queryPlan.getDeduplicatedDataTypes().get(i);
@@ -95,9 +102,22 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
       }
 
       readersOfSelectedSeries.add(reader);
+      if (((ManagedMergeReader) reader).getEndPoint() != null) {
+        endPoint = ((ManagedMergeReader) reader).getEndPoint();
+      } else {
+        hasLocalReader = true;
+      }
     }
     if (logger.isDebugEnabled()) {
-      logger.debug("Initialized {} readers for {}", readersOfSelectedSeries.size(), queryPlan);
+      logger.debug(
+          "Initialized {} readers for {} has localReader {}",
+          readersOfSelectedSeries.size(),
+          queryPlan,
+          hasLocalReader);
+    }
+    if (hasLocalReader) {
+      // no need to redirect query
+      endPoint = null;
     }
     return readersOfSelectedSeries;
   }
@@ -106,8 +126,15 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
   protected IReaderByTimestamp getReaderByTimestamp(
       PartialPath path, Set<String> deviceMeasurements, TSDataType dataType, QueryContext context)
       throws StorageEngineException, QueryProcessException {
-    return readerFactory.getReaderByTimestamp(
-        path, deviceMeasurements, dataType, context, queryPlan.isAscending());
+    IReaderByTimestamp iReaderByTimestamp =
+        readerFactory.getReaderByTimestamp(
+            path, deviceMeasurements, dataType, context, queryPlan.isAscending());
+    if (((MergedReaderByTime) iReaderByTimestamp).getEndPoint() == null) {
+      hasLocalReader = true;
+    } else if (!hasLocalReader && endPoint == null) {
+      endPoint = ((MergedReaderByTime) iReaderByTimestamp).getEndPoint();
+    }
+    return iReaderByTimestamp;
   }
 
   @Override
@@ -115,5 +142,37 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
       IExpression queryExpression, QueryContext context, RawDataQueryPlan rawDataQueryPlan)
       throws StorageEngineException {
     return new ClusterTimeGenerator(queryExpression, context, metaGroupMember, rawDataQueryPlan);
+  }
+
+  public QueryDataSet.EndPoint getEndPoint() {
+    return endPoint;
+  }
+
+  public void setEndPoint(QueryDataSet.EndPoint endPoint) {
+    this.endPoint = endPoint;
+  }
+
+  @Override
+  protected QueryDataSet needRedirect(long queryId, TimeGenerator timeGenerator) {
+    ClusterTimeGenerator clusterTimeGenerator = (ClusterTimeGenerator) timeGenerator;
+    logger.debug(
+        "redirect queryId {}, {}, {}, {}, {}",
+        queryId,
+        hasLocalReader,
+        queryPlan.getOperatorType(),
+        endPoint,
+        clusterTimeGenerator);
+    if (hasLocalReader
+        || !queryPlan.isEnableRedirect()
+        || (clusterTimeGenerator != null && clusterTimeGenerator.isHasLocalReader())) {
+      endPoint = null;
+    }
+    if (!hasLocalReader && endPoint != null && queryPlan.isEnableRedirect()) {
+      // dummy dataSet
+      QueryDataSet dataSet = new RawQueryDataSetWithoutValueFilter(queryId);
+      dataSet.setEndPoint(endPoint);
+      return dataSet;
+    }
+    return null;
   }
 }

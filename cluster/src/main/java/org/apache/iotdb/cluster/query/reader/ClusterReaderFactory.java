@@ -61,6 +61,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
@@ -119,14 +120,29 @@ public class ClusterReaderFactory {
         path,
         partitionGroups.size());
     List<IReaderByTimestamp> readers = new ArrayList<>(partitionGroups.size());
+    QueryDataSet.EndPoint endPoint = new QueryDataSet.EndPoint();
+    boolean hasLocalReader = false;
     for (PartitionGroup partitionGroup : partitionGroups) {
       // query each group to get a reader in that group
-      readers.add(
+      IReaderByTimestamp iReaderByTimestamp =
           getSeriesReaderByTime(
-              partitionGroup, path, deviceMeasurements, context, dataType, ascending));
+              partitionGroup, path, deviceMeasurements, context, dataType, ascending);
+      readers.add(iReaderByTimestamp);
+      if (iReaderByTimestamp instanceof SeriesReaderByTimestamp) {
+        hasLocalReader = true;
+      } else if (iReaderByTimestamp instanceof RemoteSeriesReaderByTimestamp) {
+        endPoint.setIp(partitionGroup.getHeader().getClientIp());
+        endPoint.setPort(partitionGroup.getHeader().getClientPort());
+      }
+    }
+    if (hasLocalReader) {
+      // no need redirect query to the endpoint
+      endPoint = null;
     }
     // merge the readers
-    return new MergedReaderByTime(readers);
+    MergedReaderByTime mergedReaderByTime = new MergedReaderByTime(readers);
+    mergedReaderByTime.setEndPoint(endPoint);
+    return mergedReaderByTime;
   }
 
   /**
@@ -227,6 +243,8 @@ public class ClusterReaderFactory {
         path,
         partitionGroups.size());
     ManagedMergeReader mergeReader = new ManagedMergeReader(dataType);
+    QueryDataSet.EndPoint endPoint = new QueryDataSet.EndPoint();
+    boolean hasLocalReader = false;
     try {
       // build a reader for each group and merge them
       for (PartitionGroup partitionGroup : partitionGroups) {
@@ -240,11 +258,23 @@ public class ClusterReaderFactory {
                 context,
                 dataType,
                 ascending);
+        if (seriesReader instanceof SeriesRawDataPointReader
+            && seriesReader.hasNextTimeValuePair()) {
+          hasLocalReader = true;
+        } else if (seriesReader instanceof RemoteSimpleSeriesReader) {
+          endPoint.setIp(partitionGroup.getHeader().getClientIp());
+          endPoint.setPort(partitionGroup.getHeader().getClientPort());
+        }
         mergeReader.addReader(seriesReader, 0);
       }
     } catch (IOException | QueryProcessException e) {
       throw new StorageEngineException(e);
     }
+    if (hasLocalReader) {
+      // no need redirect query to the endpoint
+      endPoint = null;
+    }
+    mergeReader.setEndPoint(endPoint);
     return mergeReader;
   }
 

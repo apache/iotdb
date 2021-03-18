@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.query.reader;
 
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 import java.io.IOException;
 import java.util.List;
@@ -27,6 +28,7 @@ import java.util.List;
 public class MergedReaderByTime implements IReaderByTimestamp {
 
   private List<IReaderByTimestamp> innerReaders;
+  private QueryDataSet.EndPoint endPoint = null;
 
   public MergedReaderByTime(List<IReaderByTimestamp> innerReaders) {
     this.innerReaders = innerReaders;
@@ -43,5 +45,13 @@ public class MergedReaderByTime implements IReaderByTimestamp {
       }
     }
     return null;
+  }
+
+  public QueryDataSet.EndPoint getEndPoint() {
+    return endPoint;
+  }
+
+  public void setEndPoint(QueryDataSet.EndPoint endPoint) {
+    this.endPoint = endPoint;
   }
 }

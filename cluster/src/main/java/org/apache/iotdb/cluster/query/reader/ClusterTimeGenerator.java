@@ -26,6 +26,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -40,6 +41,7 @@ import java.util.Collections;
 public class ClusterTimeGenerator extends ServerTimeGenerator {
 
   private ClusterReaderFactory readerFactory;
+  private boolean hasLocalReader = false;
 
   /** Constructor of EngineTimeGenerator. */
   public ClusterTimeGenerator(
@@ -65,22 +67,41 @@ public class ClusterTimeGenerator extends ServerTimeGenerator {
     Filter filter = expression.getFilter();
     PartialPath path = (PartialPath) expression.getSeriesPath();
     TSDataType dataType;
+    ManagedSeriesReader mergeReader = null;
     try {
       dataType =
           ((CMManager) IoTDB.metaManager)
               .getSeriesTypesByPaths(Collections.singletonList(path), null)
               .left
               .get(0);
-      return readerFactory.getSeriesReader(
-          path,
-          queryPlan.getAllMeasurementsInDevice(path.getDevice()),
-          dataType,
-          null,
-          filter,
-          context,
-          queryPlan.isAscending());
+      mergeReader =
+          readerFactory.getSeriesReader(
+              path,
+              queryPlan.getAllMeasurementsInDevice(path.getDevice()),
+              dataType,
+              null,
+              filter,
+              context,
+              queryPlan.isAscending());
     } catch (Exception e) {
       throw new IOException(e);
     }
+    if (((ManagedMergeReader) mergeReader).getEndPoint() == null) {
+      hasLocalReader = true;
+    }
+    return mergeReader;
+  }
+
+  public boolean isHasLocalReader() {
+    return hasLocalReader;
+  }
+
+  public void setHasLocalReader(boolean hasLocalReader) {
+    this.hasLocalReader = hasLocalReader;
+  }
+
+  @Override
+  public String toString() {
+    return super.toString() + ", has local reader:" + hasLocalReader;
   }
 }

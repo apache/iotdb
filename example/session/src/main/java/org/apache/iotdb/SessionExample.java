@@ -39,6 +39,7 @@ import java.util.Random;
 public class SessionExample {
 
   private static Session session;
+  private static Session sessionEnableRedirect;
   private static final String ROOT_SG1_D1_S1 = "root.sg1.d1.s1";
   private static final String ROOT_SG1_D1_S2 = "root.sg1.d1.s2";
   private static final String ROOT_SG1_D1_S3 = "root.sg1.d1.s3";
@@ -77,6 +78,17 @@ public class SessionExample {
     deleteTimeseries();
     setTimeout();
     session.close();
+
+    sessionEnableRedirect = new Session("127.0.0.1", 6667, "root", "root");
+    sessionEnableRedirect.setEnableQueryRedirection(true);
+    sessionEnableRedirect.open(false);
+
+    // set session fetchSize
+    sessionEnableRedirect.setFetchSize(10000);
+
+    insertRecord4Redirect();
+    query4Redirect();
+    sessionEnableRedirect.close();
   }
 
   private static void createTimeseries()
@@ -190,6 +202,31 @@ public class SessionExample {
       values.add(2L);
       values.add(3L);
       session.insertRecord(deviceId, time, measurements, types, values);
+    }
+  }
+
+  private static void insertRecord4Redirect()
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < 6; i++) {
+      for (int j = 0; j < 2; j++) {
+        String deviceId = "root.redirect" + i + ".d" + j;
+        List<String> measurements = new ArrayList<>();
+        List<TSDataType> types = new ArrayList<>();
+        measurements.add("s1");
+        measurements.add("s2");
+        measurements.add("s3");
+        types.add(TSDataType.INT64);
+        types.add(TSDataType.INT64);
+        types.add(TSDataType.INT64);
+
+        for (long time = 0; time < 5; time++) {
+          List<Object> values = new ArrayList<>();
+          values.add(1L + time);
+          values.add(2L + time);
+          values.add(3L + time);
+          session.insertRecord(deviceId, time, measurements, types, values);
+        }
+      }
     }
   }
 
@@ -446,6 +483,66 @@ public class SessionExample {
     }
 
     dataSet.closeOperationHandle();
+  }
+
+  private static void query4Redirect()
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < 6; i++) {
+      SessionDataSet dataSet =
+          sessionEnableRedirect.executeQueryStatement("select * from root.redirect" + i + ".d1");
+      System.out.println(dataSet.getColumnNames());
+      dataSet.setFetchSize(1024); // default is 10000
+      while (dataSet.hasNext()) {
+        System.out.println(dataSet.next());
+      }
+
+      dataSet.closeOperationHandle();
+    }
+
+    for (int i = 0; i < 6; i++) {
+      SessionDataSet dataSet =
+          sessionEnableRedirect.executeQueryStatement(
+              "select * from root.redirect" + i + ".d1 where time >= 1 and time < 10");
+      System.out.println(dataSet.getColumnNames());
+      dataSet.setFetchSize(1024); // default is 10000
+      while (dataSet.hasNext()) {
+        System.out.println(dataSet.next());
+      }
+
+      dataSet.closeOperationHandle();
+    }
+
+    for (int i = 0; i < 6; i++) {
+      SessionDataSet dataSet =
+          sessionEnableRedirect.executeQueryStatement(
+              "select * from root.redirect"
+                  + i
+                  + ".d1 where time >= 1 and time < 10 align by device");
+      System.out.println(dataSet.getColumnNames());
+      dataSet.setFetchSize(1024); // default is 10000
+      while (dataSet.hasNext()) {
+        System.out.println(dataSet.next());
+      }
+
+      dataSet.closeOperationHandle();
+    }
+
+    for (int i = 0; i < 6; i++) {
+      SessionDataSet dataSet =
+          sessionEnableRedirect.executeQueryStatement(
+              "select * from root.redirect"
+                  + i
+                  + ".d1 where time >= 1 and time < 10 and root.redirect"
+                  + i
+                  + "d1.s1 > 1");
+      System.out.println(dataSet.getColumnNames());
+      dataSet.setFetchSize(1024); // default is 10000
+      while (dataSet.hasNext()) {
+        System.out.println(dataSet.next());
+      }
+
+      dataSet.closeOperationHandle();
+    }
   }
 
   private static void queryWithTimeout()

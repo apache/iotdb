@@ -24,6 +24,7 @@ import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 import java.io.IOException;
 import java.util.NoSuchElementException;
@@ -38,6 +39,10 @@ public class ManagedMergeReader extends PriorityMergeReader implements ManagedSe
 
   private BatchData batchData;
   private TSDataType dataType;
+  /*
+   * whether need to redirect node to the node
+   */
+  private QueryDataSet.EndPoint endPoint = null;
 
   public ManagedMergeReader(TSDataType dataType) {
     this.dataType = dataType;
@@ -90,5 +95,13 @@ public class ManagedMergeReader extends PriorityMergeReader implements ManagedSe
     BatchData ret = batchData;
     batchData = null;
     return ret;
+  }
+
+  public QueryDataSet.EndPoint getEndPoint() {
+    return endPoint;
+  }
+
+  public void setEndPoint(QueryDataSet.EndPoint endPoint) {
+    this.endPoint = endPoint;
   }
 }

@@ -62,6 +62,10 @@ public class RawDataQueryExecutor {
   public QueryDataSet executeWithoutValueFilter(QueryContext context)
       throws StorageEngineException, QueryProcessException {
     List<ManagedSeriesReader> readersOfSelectedSeries = initManagedSeriesReader(context);
+    QueryDataSet dataSet = needRedirect(context.getQueryId(), null);
+    if (dataSet != null) {
+      return dataSet;
+    }
     try {
       return new RawQueryDataSetWithoutValueFilter(
           context.getQueryId(),
@@ -80,6 +84,10 @@ public class RawDataQueryExecutor {
   public final QueryDataSet executeNonAlign(QueryContext context)
       throws StorageEngineException, QueryProcessException {
     List<ManagedSeriesReader> readersOfSelectedSeries = initManagedSeriesReader(context);
+    QueryDataSet dataSet = needRedirect(context.getQueryId(), null);
+    if (dataSet != null) {
+      return dataSet;
+    }
     return new NonAlignEngineDataSet(
         context.getQueryId(),
         queryPlan.getDeduplicatedPaths(),
@@ -142,6 +150,10 @@ public class RawDataQueryExecutor {
             timestampGenerator.hasOrNode());
     List<IReaderByTimestamp> readersOfSelectedSeries =
         initSeriesReaderByTimestamp(context, queryPlan, cached);
+    QueryDataSet dataSet = needRedirect(context.getQueryId(), timestampGenerator);
+    if (dataSet != null) {
+      return dataSet;
+    }
     return new RawQueryDataSetWithValueFilter(
         queryPlan.getDeduplicatedPaths(),
         queryPlan.getDeduplicatedDataTypes(),
@@ -195,5 +207,15 @@ public class RawDataQueryExecutor {
       IExpression expression, QueryContext context, RawDataQueryPlan queryPlan)
       throws StorageEngineException {
     return new ServerTimeGenerator(expression, context, queryPlan);
+  }
+
+  /**
+   * check whether need to redirect query to other node
+   *
+   * @param queryId queryId to cancel query
+   * @return dummyDataSet to avoid more cost, if null, no need
+   */
+  protected QueryDataSet needRedirect(long queryId, TimeGenerator timeGenerator) {
+    return null;
   }
 }
