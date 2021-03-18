@@ -19,4 +19,40 @@
 
 package org.apache.iotdb.db.utils.windowing.configuration;
 
-public class SlidingSizeWindowConfiguration implements WindowConfiguration {}
+import org.apache.iotdb.db.utils.windowing.exception.WindowingException;
+
+public class SlidingSizeWindowConfiguration implements WindowConfiguration {
+
+  private final int windowSize;
+  private final int slidingStep;
+
+  public SlidingSizeWindowConfiguration(int windowSize, int slidingStep) {
+    this.windowSize = windowSize;
+    this.slidingStep = slidingStep;
+  }
+
+  public SlidingSizeWindowConfiguration(int windowSize) {
+    this.windowSize = windowSize;
+    this.slidingStep = windowSize;
+  }
+
+  @Override
+  public void check() throws WindowingException {
+    if (windowSize <= 0) {
+      throw new WindowingException(
+          String.format("Parameter windowSize(%d) should be positive.", windowSize));
+    }
+    if (slidingStep <= 0) {
+      throw new WindowingException(
+          String.format("Parameter slidingStep(%d) should be positive.", slidingStep));
+    }
+  }
+
+  public int getWindowSize() {
+    return windowSize;
+  }
+
+  public int getSlidingStep() {
+    return slidingStep;
+  }
+}

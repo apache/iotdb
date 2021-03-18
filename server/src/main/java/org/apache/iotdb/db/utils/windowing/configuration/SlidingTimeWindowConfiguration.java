@@ -19,4 +19,40 @@
 
 package org.apache.iotdb.db.utils.windowing.configuration;
 
-public class SlidingTimeWindowConfiguration implements WindowConfiguration {}
+import org.apache.iotdb.db.utils.windowing.exception.WindowingException;
+
+public class SlidingTimeWindowConfiguration implements WindowConfiguration {
+
+  private final long timeInterval;
+  private final long slidingStep;
+
+  public SlidingTimeWindowConfiguration(long timeInterval, long slidingStep) {
+    this.timeInterval = timeInterval;
+    this.slidingStep = slidingStep;
+  }
+
+  public SlidingTimeWindowConfiguration(long timeInterval) {
+    this.timeInterval = timeInterval;
+    this.slidingStep = timeInterval;
+  }
+
+  @Override
+  public void check() throws WindowingException {
+    if (timeInterval <= 0) {
+      throw new WindowingException(
+          String.format("Parameter timeInterval(%d) should be positive.", timeInterval));
+    }
+    if (slidingStep <= 0) {
+      throw new WindowingException(
+          String.format("Parameter slidingStep(%d) should be positive.", slidingStep));
+    }
+  }
+
+  public long getTimeInterval() {
+    return timeInterval;
+  }
+
+  public long getSlidingStep() {
+    return slidingStep;
+  }
+}
