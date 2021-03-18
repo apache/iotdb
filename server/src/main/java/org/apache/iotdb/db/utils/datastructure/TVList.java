@@ -38,7 +38,7 @@ import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 public abstract class TVList {
 
   protected static final int SMALL_ARRAY_LENGTH = 32;
-  private static final String ERR_DATATYPE_NOT_CONSISTENT = "DataType not consistent";
+  protected static final String ERR_DATATYPE_NOT_CONSISTENT = "DataType not consistent";
   protected List<long[]> timestamps;
   protected int size;
 
@@ -273,7 +273,15 @@ public abstract class TVList {
       releaseLastTimeArray();
       releaseLastValueArray();
     }
+    if (getDataType() == TSDataType.VECTOR) {
+      return deletedNumber * ((VectorTVList) this).getTsDataTypes().size();
+    }
     return deletedNumber;
+  }
+
+  // TODO: THIS METHOLD IS FOR DELETING ONE COLUMN OF A VECTOR
+  public int delete(long lowerBound, long upperBound, int columnIndex) {
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
   protected void cloneAs(TVList cloneList) {
