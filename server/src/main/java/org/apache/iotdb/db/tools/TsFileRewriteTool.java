@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.utils;
+package org.apache.iotdb.db.tools;
 
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.Deletion;
@@ -60,22 +60,27 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-public class TsFileSplitUtils implements AutoCloseable {
+public class TsFileRewriteTool implements AutoCloseable {
 
-  private static final Logger logger = LoggerFactory.getLogger(TsFileSplitUtils.class);
+  private static final Logger logger = LoggerFactory.getLogger(TsFileRewriteTool.class);
 
-  private TsFileSequenceReader reader;
-  private File oldTsFile;
-  private List<Modification> oldModification;
-  private Iterator<Modification> modsIterator;
-  // new tsFile writer -> list of new modification
-  private Map<TsFileIOWriter, ModificationFile> fileModificationMap;
-  private Deletion currentMod;
-  private Decoder defaultTimeDecoder =
+  protected TsFileSequenceReader reader;
+  protected File oldTsFile;
+  protected List<Modification> oldModification;
+  protected Iterator<Modification> modsIterator;
+
+  /** new tsFile writer -> list of new modification */
+  protected Map<TsFileIOWriter, ModificationFile> fileModificationMap;
+
+  protected Deletion currentMod;
+  protected Decoder defaultTimeDecoder =
       Decoder.getDecoderByType(
           TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
           TSDataType.INT64);
-  private Decoder valueDecoder;
+  protected Decoder valueDecoder;
+
+  /** PartitionId -> TsFileIOWriter */
+  protected Map<Long, TsFileIOWriter> partitionWriterMap;
 
   /** Maximum index of plans executed within this TsFile. */
   protected long maxPlanIndex = Long.MIN_VALUE;
@@ -83,17 +88,13 @@ public class TsFileSplitUtils implements AutoCloseable {
   /** Minimum index of plans executed within this TsFile. */
   protected long minPlanIndex = Long.MAX_VALUE;
 
-  // PartitionId -> TsFileIOWriter
-  private Map<Long, TsFileIOWriter> partitionWriterMap;
-
   /**
-   * Create a file reader of the given file. The reader will read the tail of the file to get the
-   * file metadata size. Then the reader will skip the first TSFileConfig.OLD_MAGIC_STRING.length()
-   * bytes of the file for preparing reading real data.
+   * Create a file reader of the given file. The reader will read the real data and rewrite to some
+   * new tsFiles.
    *
    * @throws IOException If some I/O error occurs
    */
-  public TsFileSplitUtils(TsFileResource resourceToBeUpgraded) throws IOException {
+  public TsFileRewriteTool(TsFileResource resourceToBeUpgraded) throws IOException {
     oldTsFile = resourceToBeUpgraded.getTsFile();
     String file = oldTsFile.getAbsolutePath();
     reader = new TsFileSequenceReader(file);
@@ -106,15 +107,16 @@ public class TsFileSplitUtils implements AutoCloseable {
   }
 
   /**
-   * split one single TsFile
+   * Rewrite an old file to the latest version
    *
-   * @param splitResources new version tsFiles' resources
+   * @param resourceToBeRewrite the tsfile which to be rewrite
+   * @param rewrittenResources the rewritten files
    */
-  public static void splitOneTsfile(
-      TsFileResource resourceToBeSplit, List<TsFileResource> splitResources)
+  public static void rewriteTsfile(
+      TsFileResource resourceToBeRewrite, List<TsFileResource> rewrittenResources)
       throws IOException, WriteProcessException {
-    try (TsFileSplitUtils splitUtils = new TsFileSplitUtils(resourceToBeSplit)) {
-      splitUtils.splitTsFile(splitResources);
+    try (TsFileRewriteTool rewriteTool = new TsFileRewriteTool(resourceToBeRewrite)) {
+      rewriteTool.parseAndRewriteFile(rewrittenResources);
     }
   }
 
@@ -123,10 +125,15 @@ public class TsFileSplitUtils implements AutoCloseable {
     this.reader.close();
   }
 
-  @SuppressWarnings({"squid:S3776"}) // Suppress high Cognitive Complexity warning
-  private void splitTsFile(List<TsFileResource> splitResource)
+  /**
+   * Parse the old files and generate some new files according to the time partition interval.
+   *
+   * @throws IOException WriteProcessException
+   */
+  @SuppressWarnings({"squid:S3776", "deprecation"}) // Suppress high Cognitive Complexity warning
+  public void parseAndRewriteFile(List<TsFileResource> rewrittenResources)
       throws IOException, WriteProcessException {
-    // check if the old TsFile has correct header
+    // check if the TsFile has correct header
     if (!fileCheck()) {
       return;
     }
@@ -228,7 +235,7 @@ public class TsFileSplitUtils implements AutoCloseable {
       }
       // close upgraded tsFiles and generate resources for them
       for (TsFileIOWriter tsFileIOWriter : partitionWriterMap.values()) {
-        splitResource.add(endFileAndGenerateResource(tsFileIOWriter));
+        rewrittenResources.add(endFileAndGenerateResource(tsFileIOWriter));
       }
       // write the remain modification for new file
       if (oldModification != null) {
@@ -267,7 +274,7 @@ public class TsFileSplitUtils implements AutoCloseable {
    * PLAIN encoding, and also add a sum statistic for BOOLEAN data, these types of data need to
    * decode to points and rewrite in new TsFile.
    */
-  private boolean checkIfNeedToDecode(
+  protected boolean checkIfNeedToDecode(
       TSDataType dataType, TSEncoding encoding, PageHeader pageHeader) {
     return dataType == TSDataType.BOOLEAN
         || dataType == TSDataType.TEXT
@@ -281,7 +288,7 @@ public class TsFileSplitUtils implements AutoCloseable {
    * this case, we have to decode the data to points, and then rewrite the data points to different
    * chunkWriters, finally write chunks to their own upgraded TsFiles
    */
-  private void rewrite(
+  protected void rewrite(
       String deviceId,
       List<MeasurementSchema> schemas,
       List<List<PageHeader>> pageHeadersInChunkGroup,
@@ -298,12 +305,9 @@ public class TsFileSplitUtils implements AutoCloseable {
       boolean isOnlyOnePageChunk = pageDataInChunk.size() == 1;
       for (int j = 0; j < pageDataInChunk.size(); j++) {
         if (Boolean.TRUE.equals(needToDecodeInfoInChunk.get(j))) {
-          decodeAndWritePageInToFiles(
-              oldTsFile, schema, pageDataInChunk.get(j), chunkWritersInChunkGroup);
+          decodeAndWritePageInToFiles(schema, pageDataInChunk.get(j), chunkWritersInChunkGroup);
         } else {
-          // No need to split the chunk, we can write the whole chunk.
           writePageInToFile(
-              oldTsFile,
               schema,
               pageHeadersInChunk.get(j),
               pageDataInChunk.get(j),
@@ -326,7 +330,7 @@ public class TsFileSplitUtils implements AutoCloseable {
     }
   }
 
-  private TsFileIOWriter getOrDefaultTsFileIOWriter(File oldTsFile, long partition) {
+  protected TsFileIOWriter getOrDefaultTsFileIOWriter(File oldTsFile, long partition) {
     return partitionWriterMap.computeIfAbsent(
         partition,
         k -> {
@@ -360,8 +364,7 @@ public class TsFileSplitUtils implements AutoCloseable {
         });
   }
 
-  private void writePageInToFile(
-      File oldTsFile,
+  protected void writePageInToFile(
       MeasurementSchema schema,
       PageHeader pageHeader,
       ByteBuffer pageData,
@@ -378,8 +381,7 @@ public class TsFileSplitUtils implements AutoCloseable {
     chunkWritersInChunkGroup.put(partitionId, chunkWriters);
   }
 
-  private void decodeAndWritePageInToFiles(
-      File oldTsFile,
+  protected void decodeAndWritePageInToFiles(
       MeasurementSchema schema,
       ByteBuffer pageData,
       Map<Long, Map<MeasurementSchema, ChunkWriterImpl>> chunkWritersInChunkGroup)
@@ -388,6 +390,13 @@ public class TsFileSplitUtils implements AutoCloseable {
     PageReader pageReader =
         new PageReader(pageData, schema.getType(), valueDecoder, defaultTimeDecoder, null);
     BatchData batchData = pageReader.getAllSatisfiedPageData();
+    rewritePageIntoFiles(batchData, schema, chunkWritersInChunkGroup);
+  }
+
+  protected void rewritePageIntoFiles(
+      BatchData batchData,
+      MeasurementSchema schema,
+      Map<Long, Map<MeasurementSchema, ChunkWriterImpl>> chunkWritersInChunkGroup) {
     while (batchData.hasCurrent()) {
       long time = batchData.currentTime();
       Object value = batchData.currentValue();
@@ -427,7 +436,7 @@ public class TsFileSplitUtils implements AutoCloseable {
   }
 
   /** check if the file has correct magic strings and version number */
-  private boolean fileCheck() throws IOException {
+  protected boolean fileCheck() throws IOException {
     String magic = reader.readHeadMagic();
     if (!magic.equals(TSFileConfig.MAGIC_STRING)) {
       logger.error("the file's MAGIC STRING is incorrect, file path: {}", reader.getFileName());
@@ -447,7 +456,7 @@ public class TsFileSplitUtils implements AutoCloseable {
     return true;
   }
 
-  private TsFileResource endFileAndGenerateResource(TsFileIOWriter tsFileIOWriter)
+  protected TsFileResource endFileAndGenerateResource(TsFileIOWriter tsFileIOWriter)
       throws IOException {
     tsFileIOWriter.endFile();
     TsFileResource tsFileResource = new TsFileResource(tsFileIOWriter.getFile());

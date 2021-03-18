@@ -117,9 +117,9 @@ import org.apache.iotdb.db.query.executor.QueryRouter;
 import org.apache.iotdb.db.query.udf.service.UDFRegistrationInformation;
 import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.tools.TsFileRewriteTool;
 import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
-import org.apache.iotdb.db.utils.TsFileSplitUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -986,7 +986,7 @@ public class PlanExecutor implements IPlanExecutor {
         tsFileResource.getTimePartitionWithCheck();
       } catch (PartitionViolationException e) {
         logger.info("try to split the tsfile={}", tsFileResource.getTsFile().getPath());
-        TsFileSplitUtils.splitOneTsfile(tsFileResource, splitResources);
+        TsFileRewriteTool.rewriteTsfile(tsFileResource, splitResources);
         logger.info(
             "after split, the old tsfile was split to {} new tsfiles", splitResources.size());
       }

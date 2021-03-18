@@ -26,6 +26,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
+import org.apache.iotdb.db.tools.TsFileRewriteTool;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -55,7 +56,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class TsFileSplitUtilsTest {
+public class TsFileRewriteToolTest {
 
   private String path = null;
 
@@ -80,7 +81,7 @@ public class TsFileSplitUtilsTest {
   private final IPlanExecutor queryExecutor = new PlanExecutor();
   private final Planner processor = new Planner();
 
-  public TsFileSplitUtilsTest() throws QueryProcessException {}
+  public TsFileRewriteToolTest() throws QueryProcessException {}
 
   @Before
   public void setUp() {
@@ -166,6 +167,11 @@ public class TsFileSplitUtilsTest {
 
   @Test
   public void loadFileTest() {
+    HashMap<String, List<String>> deviceSensorsMap = new HashMap<>();
+    List<String> sensors = new ArrayList<>();
+    sensors.add(SENSOR1);
+    deviceSensorsMap.put(DEVICE1, sensors);
+    createOneTsFile(deviceSensorsMap);
     // try load the tsfile
     String sql = "load \"" + path + "\"" + " true";
     try {
@@ -180,7 +186,7 @@ public class TsFileSplitUtilsTest {
     TsFileResource tsFileResource = new TsFileResource(tsFile);
     List<TsFileResource> splitResource = new ArrayList<>();
     try {
-      TsFileSplitUtils.splitOneTsfile(tsFileResource, splitResource);
+      TsFileRewriteTool.rewriteTsfile(tsFileResource, splitResource);
     } catch (IOException | WriteProcessException e) {
       Assert.fail(e.getMessage());
     }
