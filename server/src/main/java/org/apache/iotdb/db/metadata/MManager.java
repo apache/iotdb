@@ -556,10 +556,7 @@ public class MManager {
   /**
    * Delete all timeseries under the given path, may cross different storage group
    *
-   * @param prefixPath path to be deleted, could be root or a prefix path or a full path TODO:
-   *     <<<<<<< HEAD directly return the failed string set
-   * @return pair.left: names of MNodes which are deleted; pair.right: deletion failed Timeseries
-   *     ======= directly return the failed string set
+   * @param prefixPath path to be deleted, could be root or a prefix path or a full path
    * @return deletion failed Timeseries >>>>>>> cf081f9a1d0c48bcb02bc7dac2695483ac624eec
    */
   public String deleteTimeseries(PartialPath prefixPath) throws MetadataException {
@@ -567,7 +564,6 @@ public class MManager {
       mNodeCache.clear();
     }
     try {
-      List<String> measurements = MetaUtils.getMeasurementsInPartialPath(prefixPath);
       List<PartialPath> allTimeseries = mtree.getAllTimeseriesPath(prefixPath);
       if (allTimeseries.isEmpty()) {
         throw new PathNotExistException(prefixPath.getFullPath());
