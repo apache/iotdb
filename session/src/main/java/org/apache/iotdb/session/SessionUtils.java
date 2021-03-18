@@ -60,7 +60,11 @@ public class SessionUtils {
   private static void getValueBufferOfDataType(
       TSDataType dataType, Tablet tablet, int i, ByteBuffer valueBuffer) {
     int lastPos = 0, nextPos;
-    BitSet curBitset = tablet.BitSets[i];
+    BitSet curBitset = tablet.bitSets[i];
+    long[] curWords = curBitset.toLongArray();
+    for (int j = 0; j < curWords.length; j++) {
+      valueBuffer.putLong(curWords[j]);
+    }
 
     switch (dataType) {
       case INT32:

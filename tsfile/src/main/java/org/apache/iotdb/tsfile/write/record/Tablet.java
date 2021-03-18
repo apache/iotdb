@@ -126,10 +126,10 @@ public class Tablet {
 
     // set bitset
     if (value == null) {
-      BitSets[indexOfValue].clear(rowIndex);
+      bitSets[indexOfValue].clear(rowIndex);
       return;
     }
-    BitSets[indexOfValue].set(rowIndex);
+    bitSets[indexOfValue].set(rowIndex);
 
     switch (dataType) {
       case TEXT:
@@ -201,14 +201,14 @@ public class Tablet {
 
     // value column and bitset column
     values = new Object[valueColumnsSize];
-    BitSets = new BitSet[valueColumnsSize];
+    bitSets = new BitSet[valueColumnsSize];
     int columnIndex = 0;
     for (IMeasurementSchema schema : schemas) {
       TSDataType dataType = schema.getType();
       if (dataType.equals(TSDataType.VECTOR)) {
         columnIndex = buildVectorColumns((VectorMeasurementSchema) schema, columnIndex);
       } else {
-        BitSets[columnIndex] = new BitSet(maxRowNumber);
+        bitSets[columnIndex] = new BitSet(maxRowNumber);
         values[columnIndex] = createValueColumnOfDataType(dataType);
         columnIndex++;
       }
@@ -218,7 +218,7 @@ public class Tablet {
   private int buildVectorColumns(VectorMeasurementSchema schema, int idx) {
     for (int i = 0; i < schema.getValueMeasurementIdList().size(); i++) {
       TSDataType dataType = schema.getValueTSDataTypeList().get(i);
-      BitSets[idx] = new BitSet(maxRowNumber);
+      bitSets[idx] = new BitSet(maxRowNumber);
       values[idx] = createValueColumnOfDataType(dataType);
       idx++;
     }
@@ -291,14 +291,19 @@ public class Tablet {
       case TEXT:
         valueOccupation += rowSize * 4;
         Binary[] binaries = (Binary[]) values[i];
-        BitSet curBitSet = BitSets[i];
-        for (int rowIndex = 0; rowIndex < rowSize; rowIndex++) {
-          if (curBitSet.get(rowIndex)) {
+        BitSet curBitSet = bitSets[i];
+        int nextPos, lastPos = 0;
+        while (true) {
+          nextPos = curBitSet.nextClearBit(lastPos);
+          for (int rowIndex = lastPos; rowIndex < nextPos; rowIndex++) {
             valueOccupation += binaries[rowIndex].getLength();
-          } else {
-            Binary emptyStr = new Binary(".");
-            valueOccupation += emptyStr.getLength();
           }
+          if (nextPos == rowSize) {
+            break;
+          }
+          Binary emptyStr = new Binary(".");
+          valueOccupation += emptyStr.getLength();
+          lastPos = nextPos + 1;
         }
         break;
       default:
