@@ -1168,7 +1168,7 @@ public class MManager {
       MeasurementMNode node = (MeasurementMNode) getNodeByPath(path);
 
       if (!nodeToPartialPath.containsKey(node)) {
-        if (node.getSchema() instanceof MeasurementMNode) {
+        if (node.getSchema() instanceof MeasurementSchema) {
           nodeToPartialPath.put(node, path);
         } else {
           List<PartialPath> subSensorsPathList = new ArrayList<>();
