@@ -31,9 +31,11 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -274,6 +276,13 @@ public class MNode implements Serializable {
       return Collections.emptyMap();
     }
     return children;
+  }
+
+  public Set<MNode> getDistinctMNodes() {
+    if (children == null) {
+      return Collections.emptySet();
+    }
+    return new HashSet<>(children.values());
   }
 
   public Map<String, MNode> getAliasChildren() {
