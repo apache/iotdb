@@ -61,7 +61,7 @@ public class Template {
 
         curSchema =
             new VectorMeasurementSchema(
-                IoTDBConstant.ALIGN_TIMESERIES_PREFIX,
+                IoTDBConstant.ALIGN_TIMESERIES_PREFIX + name + "#" + measurementsArray[0],
                 measurementsArray,
                 typeArray,
                 encodingArray,
@@ -114,13 +114,32 @@ public class Template {
 
     for (IMeasurementSchema measurementSchema : schemaMap.values()) {
       if (deduplicateSchema.add(measurementSchema)) {
-        MeasurementMNode measurementMNode =
-            new MeasurementMNode(
-                null, measurementSchema.getMeasurementId(), measurementSchema, null);
+        MeasurementMNode measurementMNode = null;
+        if (measurementSchema instanceof MeasurementSchema) {
+          measurementMNode =
+              new MeasurementMNode(
+                  null, measurementSchema.getMeasurementId(), measurementSchema, null);
+
+        } else if (measurementSchema instanceof VectorMeasurementSchema) {
+          measurementMNode =
+              new MeasurementMNode(
+                  null,
+                  getMeasurementNodeName(measurementSchema.getValueMeasurementIdList().get(0)),
+                  measurementSchema,
+                  null);
+        }
+
         res.add(measurementMNode);
       }
     }
 
     return res;
+  }
+
+  public String getMeasurementNodeName(String measurementName) {
+    return IoTDBConstant.ALIGN_TIMESERIES_PREFIX
+        + name
+        + "#"
+        + schemaMap.get(measurementName).getValueMeasurementIdList().get(0);
   }
 }

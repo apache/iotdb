@@ -727,7 +727,12 @@ public class MTree implements Serializable {
           throw new PathNotExistException(path.getFullPath(), true);
         }
 
-        IMeasurementSchema schema = upperTemplate.getSchemaMap().get(nodes[i]);
+        String realName = nodes[i];
+        if (realName.contains(IoTDBConstant.ALIGN_TIMESERIES_PREFIX)) {
+          String[] part = realName.split("#");
+          realName = part[part.length - 1];
+        }
+        IMeasurementSchema schema = upperTemplate.getSchemaMap().get(realName);
         if (schema == null) {
           throw new PathNotExistException(path.getFullPath(), true);
         }
@@ -736,7 +741,10 @@ public class MTree implements Serializable {
           return new MeasurementMNode(cur, schema.getMeasurementId(), schema, null);
         } else if (schema instanceof VectorMeasurementSchema) {
           return new MeasurementMNode(
-              cur, schema.getValueMeasurementIdList().get(0) + ".align", schema, null);
+              cur,
+              upperTemplate.getMeasurementNodeName(schema.getValueMeasurementIdList().get(0)),
+              schema,
+              null);
         } else {
           throw new IllegalArgumentException("Undefined type of schema");
         }
@@ -1269,10 +1277,10 @@ public class MTree implements Serializable {
       } else {
         next = node.getChild(nodeReg);
       }
-      if (!(next instanceof MeasurementMNode)) {
-        shouldUseTemplate = false;
-      }
       if (next != null) {
+        if (!(next instanceof MeasurementMNode)) {
+          shouldUseTemplate = false;
+        }
         findPath(
             next,
             nodes,
@@ -1284,13 +1292,29 @@ public class MTree implements Serializable {
             upperTemplate);
       }
     } else {
-      for (MNode child : node.getChildren().values()) {
+      for (MNode child : node.getDistinctMNodes()) {
         if (!(child instanceof MeasurementMNode)) {
           shouldUseTemplate = false;
         }
-        if (!Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
+        boolean continueSearch = false;
+        if (child instanceof MeasurementMNode
+            && ((MeasurementMNode) child).getSchema() instanceof VectorMeasurementSchema) {
+          List<String> measurementsList =
+              ((MeasurementMNode) child).getSchema().getValueMeasurementIdList();
+          for (String measurement : measurementsList) {
+            if (Pattern.matches(nodeReg.replace("*", ".*"), measurement)) {
+              continueSearch = true;
+            }
+          }
+        } else {
+          if (Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
+            continueSearch = true;
+          }
+        }
+        if (!continueSearch) {
           continue;
         }
+
         findPath(
             child,
             nodes,
@@ -1321,8 +1345,10 @@ public class MTree implements Serializable {
                   schema,
                   nodeReg);
             } else if (schema instanceof VectorMeasurementSchema) {
+              String firstNode = schema.getValueMeasurementIdList().get(0);
               addVectorMeasurementSchema(
-                  new MeasurementMNode(node, IoTDBConstant.ALIGN_TIMESERIES_PREFIX, schema, null),
+                  new MeasurementMNode(
+                      node, upperTemplate.getMeasurementNodeName(firstNode), schema, null),
                   timeseriesSchemaList,
                   needLast,
                   queryContext,

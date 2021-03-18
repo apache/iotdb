@@ -140,20 +140,22 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeByte((byte) PhysicalPlanType.CREATE_TIMESERIES.ordinal());
+    stream.writeByte((byte) PhysicalPlanType.CREATE_ALIGNED_TIMESERIES.ordinal());
+    byte[] bytes = devicePath.getFullPath().getBytes();
+    stream.writeInt(bytes.length);
+    stream.write(bytes);
 
-    ReadWriteIOUtils.write(devicePath.getFullPath(), stream);
     ReadWriteIOUtils.write(measurements.size(), stream);
     for (String measurement : measurements) {
       ReadWriteIOUtils.write(measurement, stream);
     }
     for (TSDataType dataType : dataTypes) {
-      ReadWriteIOUtils.write(dataType.ordinal(), stream);
+      stream.write(dataType.ordinal());
     }
     for (TSEncoding encoding : encodings) {
-      ReadWriteIOUtils.write(encoding.ordinal(), stream);
+      stream.write(encoding.ordinal());
     }
-    ReadWriteIOUtils.write(compressor.ordinal(), stream);
+    stream.write(compressor.ordinal());
 
     // alias
     if (aliasList != null) {
@@ -169,20 +171,22 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
 
   @Override
   public void serialize(ByteBuffer buffer) {
-    buffer.put((byte) PhysicalPlanType.CREATE_TIMESERIES.ordinal());
+    buffer.put((byte) PhysicalPlanType.CREATE_ALIGNED_TIMESERIES.ordinal());
+    byte[] bytes = devicePath.getFullPath().getBytes();
+    buffer.putInt(bytes.length);
+    buffer.put(bytes);
 
-    ReadWriteIOUtils.write(devicePath.getFullPath(), buffer);
     ReadWriteIOUtils.write(measurements.size(), buffer);
     for (String measurement : measurements) {
       ReadWriteIOUtils.write(measurement, buffer);
     }
     for (TSDataType dataType : dataTypes) {
-      ReadWriteIOUtils.write(dataType.ordinal(), buffer);
+      buffer.put((byte) dataType.ordinal());
     }
     for (TSEncoding encoding : encodings) {
-      ReadWriteIOUtils.write(encoding.ordinal(), buffer);
+      buffer.put((byte) encoding.ordinal());
     }
-    ReadWriteIOUtils.write(compressor.ordinal(), buffer);
+    buffer.put((byte) compressor.ordinal());
 
     // alias
     if (aliasList != null) {
@@ -199,15 +203,23 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
 
   @Override
   public void deserialize(ByteBuffer buffer) throws IllegalPathException {
-    devicePath = new PartialPath(ReadWriteIOUtils.readString(buffer));
+    int length = buffer.getInt();
+    byte[] bytes = new byte[length];
+    buffer.get(bytes);
+
+    devicePath = new PartialPath(new String(bytes));
     int size = ReadWriteIOUtils.readInt(buffer);
+    measurements = new ArrayList<>();
+    for (int i = 0; i < size; i++) {
+      measurements.add(ReadWriteIOUtils.readString(buffer));
+    }
     dataTypes = new ArrayList<>();
     for (int i = 0; i < size; i++) {
-      dataTypes.add(TSDataType.values()[ReadWriteIOUtils.readInt(buffer)]);
+      dataTypes.add(TSDataType.values()[buffer.get()]);
     }
     encodings = new ArrayList<>();
     for (int i = 0; i < size; i++) {
-      encodings.add(TSEncoding.values()[ReadWriteIOUtils.readInt(buffer)]);
+      encodings.add(TSEncoding.values()[buffer.get()]);
     }
     compressor = CompressionType.values()[buffer.get()];
 

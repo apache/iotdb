@@ -244,6 +244,7 @@ public abstract class PhysicalPlan {
         case CREATE_ALIGNED_TIMESERIES:
           plan = new CreateAlignedTimeSeriesPlan();
           plan.deserialize(buffer);
+          break;
         case DELETE_TIMESERIES:
           plan = new DeleteTimeSeriesPlan();
           plan.deserialize(buffer);

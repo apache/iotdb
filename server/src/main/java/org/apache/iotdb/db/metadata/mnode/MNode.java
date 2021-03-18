@@ -31,9 +31,12 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -276,6 +279,13 @@ public class MNode implements Serializable {
     return children;
   }
 
+  public Set<MNode> getDistinctMNodes() {
+    if (children == null) {
+      return Collections.emptySet();
+    }
+    return new HashSet<>(children.values());
+  }
+
   public Map<String, MNode> getAliasChildren() {
     if (aliasChildren == null) {
       return Collections.emptyMap();
@@ -347,5 +357,22 @@ public class MNode implements Serializable {
     }
 
     return null;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    MNode mNode = (MNode) o;
+    return Objects.equals(fullPath, mNode.fullPath);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(fullPath);
   }
 }

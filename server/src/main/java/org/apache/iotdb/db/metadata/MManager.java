@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -357,6 +356,7 @@ public class MManager {
         CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
             (CreateAlignedTimeSeriesPlan) plan;
         createAlignedTimeSeries(createAlignedTimeSeriesPlan);
+        break;
       case DELETE_TIMESERIES:
         DeleteTimeSeriesPlan deleteTimeSeriesPlan = (DeleteTimeSeriesPlan) plan;
         // cause we only has one path for one DeleteTimeSeriesPlan
@@ -381,6 +381,14 @@ public class MManager {
       case CHANGE_TAG_OFFSET:
         ChangeTagOffsetPlan changeTagOffsetPlan = (ChangeTagOffsetPlan) plan;
         changeOffset(changeTagOffsetPlan.getPath(), changeTagOffsetPlan.getOffset());
+        break;
+      case CREATE_TEMPLATE:
+        CreateTemplatePlan createTemplatePlan = (CreateTemplatePlan) plan;
+        createDeviceTemplate(createTemplatePlan);
+        break;
+      case SET_DEVICE_TEMPLATE:
+        SetDeviceTemplatePlan setDeviceTemplatePlan = (SetDeviceTemplatePlan) plan;
+        setDeviceTemplate(setDeviceTemplatePlan);
         break;
       default:
         logger.error("Unrecognizable command {}", plan.getOperatorType());
@@ -556,10 +564,7 @@ public class MManager {
   /**
    * Delete all timeseries under the given path, may cross different storage group
    *
-   * @param prefixPath path to be deleted, could be root or a prefix path or a full path TODO:
-   *     <<<<<<< HEAD directly return the failed string set
-   * @return pair.left: names of MNodes which are deleted; pair.right: deletion failed Timeseries
-   *     ======= directly return the failed string set
+   * @param prefixPath path to be deleted, could be root or a prefix path or a full path
    * @return deletion failed Timeseries >>>>>>> cf081f9a1d0c48bcb02bc7dac2695483ac624eec
    */
   public String deleteTimeseries(PartialPath prefixPath) throws MetadataException {
@@ -567,7 +572,6 @@ public class MManager {
       mNodeCache.clear();
     }
     try {
-      List<String> measurements = MetaUtils.getMeasurementsInPartialPath(prefixPath);
       List<PartialPath> allTimeseries = mtree.getAllTimeseriesPath(prefixPath);
       if (allTimeseries.isEmpty()) {
         throw new PathNotExistException(prefixPath.getFullPath());
@@ -1115,22 +1119,17 @@ public class MManager {
   /**
    * Get schema of paritialPath
    *
-   * @param fullPath (may be ParitialPath or VectorPartialPath) <<<<<<< HEAD
-   * @return MeasurementSchema or VectorMeasurementSchema. Attention: measurements of
-   *     VectorMeasurementSchema are index of the sensors in the leaf node, instead of sensor names.
-   *     For example: As for leaf node {s1, s2, s3, s4}, if fullPath = {s3, s1}, we should return
-   *     measurements = ["2", "0"] =======
-   * @return MeasurementSchema or VectorMeasurementSchema >>>>>>>
-   *     cf081f9a1d0c48bcb02bc7dac2695483ac624eec
+   * @param fullPath (may be ParitialPath or VectorPartialPath)
+   * @return MeasurementSchema or VectorMeasurementSchema
    */
   public IMeasurementSchema getSeriesSchema(PartialPath fullPath) throws MetadataException {
     MNode leaf = mtree.getNodeByPath(fullPath);
-    if (fullPath instanceof VectorPartialPath) {
+    IMeasurementSchema schema = ((MeasurementMNode) leaf).getSchema();
+    if (schema != null && schema.getType() == TSDataType.VECTOR) {
 
       List<PartialPath> measurements = ((VectorPartialPath) fullPath).getSubSensorsPathList();
       TSDataType[] types = new TSDataType[measurements.size()];
       TSEncoding[] encodings = new TSEncoding[measurements.size()];
-      IMeasurementSchema schema = ((MeasurementMNode) leaf).getSchema();
 
       List<String> measurementsInLeaf = schema.getValueMeasurementIdList();
       for (int i = 0; i < measurements.size(); i++) {
@@ -1140,15 +1139,12 @@ public class MManager {
       }
       String[] array = new String[measurements.size()];
       for (int i = 0; i < array.length; i++) {
-        array[i] = measurements.get(i).getFullPath();
+        array[i] = measurements.get(i).getMeasurement();
       }
       return new VectorMeasurementSchema(
-          IoTDBConstant.ALIGN_TIMESERIES_PREFIX, array, types, encodings, schema.getCompressor());
+          leaf.getName(), array, types, encodings, schema.getCompressor());
     }
-    if (leaf != null) {
-      return ((MeasurementMNode) leaf).getSchema();
-    }
-    return null;
+    return leaf != null ? schema : null;
   }
 
   /**
@@ -1172,7 +1168,7 @@ public class MManager {
       MeasurementMNode node = (MeasurementMNode) getNodeByPath(path);
 
       if (!nodeToPartialPath.containsKey(node)) {
-        if (node.getSchema() instanceof MeasurementMNode) {
+        if (node.getSchema() instanceof MeasurementSchema) {
           nodeToPartialPath.put(node, path);
         } else {
           List<PartialPath> subSensorsPathList = new ArrayList<>();
@@ -2177,7 +2173,11 @@ public class MManager {
         if (schema instanceof MeasurementSchema) {
           return new MeasurementMNode(deviceMNode.left, firstMeasurement, schema, null);
         } else if (schema instanceof VectorMeasurementSchema) {
-          return new MeasurementMNode(deviceMNode.left, firstMeasurement + ".align", schema, null);
+          return new MeasurementMNode(
+              deviceMNode.left,
+              deviceMNode.right.getMeasurementNodeName(schema.getValueMeasurementIdList().get(0)),
+              schema,
+              null);
         }
       }
       return null;
