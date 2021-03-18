@@ -61,7 +61,7 @@ public class Template {
 
         curSchema =
             new VectorMeasurementSchema(
-                IoTDBConstant.ALIGN_TIMESERIES_PREFIX,
+                IoTDBConstant.ALIGN_TIMESERIES_PREFIX + name,
                 measurementsArray,
                 typeArray,
                 encodingArray,
