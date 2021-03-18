@@ -357,6 +357,7 @@ public class MTree implements Serializable {
                   encodings.toArray(new TSEncoding[measurementsSize]),
                   compressor),
               null);
+      cur.addChild(leafName, measurementMNode);
       for (String measurement : measurements) {
         if (child != null) {
           cur.replaceChild(measurementMNode.getName(), measurementMNode);

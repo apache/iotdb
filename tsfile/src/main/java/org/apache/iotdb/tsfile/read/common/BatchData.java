@@ -212,6 +212,7 @@ public class BatchData {
       case VECTOR:
         vectorRet = new ArrayList<>();
         vectorRet.add(new TsPrimitiveType[capacity][]);
+        break;
       default:
         throw new UnSupportedDataTypeException(String.valueOf(dataType));
     }
