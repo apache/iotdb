@@ -356,6 +356,7 @@ public class MManager {
         CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
             (CreateAlignedTimeSeriesPlan) plan;
         createAlignedTimeSeries(createAlignedTimeSeriesPlan);
+        break;
       case DELETE_TIMESERIES:
         DeleteTimeSeriesPlan deleteTimeSeriesPlan = (DeleteTimeSeriesPlan) plan;
         // cause we only has one path for one DeleteTimeSeriesPlan
@@ -1110,22 +1111,17 @@ public class MManager {
   /**
    * Get schema of paritialPath
    *
-   * @param fullPath (may be ParitialPath or VectorPartialPath) <<<<<<< HEAD
-   * @return MeasurementSchema or VectorMeasurementSchema. Attention: measurements of
-   *     VectorMeasurementSchema are index of the sensors in the leaf node, instead of sensor names.
-   *     For example: As for leaf node {s1, s2, s3, s4}, if fullPath = {s3, s1}, we should return
-   *     measurements = ["2", "0"] =======
-   * @return MeasurementSchema or VectorMeasurementSchema >>>>>>>
-   *     cf081f9a1d0c48bcb02bc7dac2695483ac624eec
+   * @param fullPath (may be ParitialPath or VectorPartialPath)
+   * @return MeasurementSchema or VectorMeasurementSchema
    */
   public IMeasurementSchema getSeriesSchema(PartialPath fullPath) throws MetadataException {
     MNode leaf = mtree.getNodeByPath(fullPath);
-    if (fullPath instanceof VectorPartialPath) {
+    IMeasurementSchema schema = ((MeasurementMNode) leaf).getSchema();
+    if (schema != null && schema.getType() == TSDataType.VECTOR) {
 
       List<PartialPath> measurements = ((VectorPartialPath) fullPath).getSubSensorsPathList();
       TSDataType[] types = new TSDataType[measurements.size()];
       TSEncoding[] encodings = new TSEncoding[measurements.size()];
-      IMeasurementSchema schema = ((MeasurementMNode) leaf).getSchema();
 
       List<String> measurementsInLeaf = schema.getValueMeasurementIdList();
       for (int i = 0; i < measurements.size(); i++) {
@@ -1140,10 +1136,7 @@ public class MManager {
       return new VectorMeasurementSchema(
           leaf.getName(), array, types, encodings, schema.getCompressor());
     }
-    if (leaf != null) {
-      return ((MeasurementMNode) leaf).getSchema();
-    }
-    return null;
+    return leaf != null ? schema : null;
   }
 
   /**
@@ -2173,7 +2166,10 @@ public class MManager {
           return new MeasurementMNode(deviceMNode.left, firstMeasurement, schema, null);
         } else if (schema instanceof VectorMeasurementSchema) {
           return new MeasurementMNode(
-              deviceMNode.left, deviceMNode.right.getMeasurementNodeName(), schema, null);
+              deviceMNode.left,
+              deviceMNode.right.getMeasurementNodeName(schema.getValueMeasurementIdList().get(0)),
+              schema,
+              null);
         }
       }
       return null;
