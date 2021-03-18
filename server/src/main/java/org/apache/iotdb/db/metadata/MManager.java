@@ -47,7 +47,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -2172,7 +2171,10 @@ public class MManager {
           return new MeasurementMNode(deviceMNode.left, firstMeasurement, schema, null);
         } else if (schema instanceof VectorMeasurementSchema) {
           return new MeasurementMNode(
-              deviceMNode.left, deviceMNode.right.getMeasurementNodeName(), schema, null);
+              deviceMNode.left,
+              deviceMNode.right.getMeasurementNodeName(schema.getValueMeasurementIdList().get(0)),
+              schema,
+              null);
         }
       }
       return null;

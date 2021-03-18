@@ -121,7 +121,11 @@ public class Template {
 
         } else if (measurementSchema instanceof VectorMeasurementSchema) {
           measurementMNode =
-              new MeasurementMNode(null, getMeasurementNodeName(), measurementSchema, null);
+              new MeasurementMNode(
+                  null,
+                  getMeasurementNodeName(measurementSchema.getValueMeasurementIdList().get(0)),
+                  measurementSchema,
+                  null);
         }
 
         res.add(measurementMNode);
@@ -131,7 +135,10 @@ public class Template {
     return res;
   }
 
-  public String getMeasurementNodeName() {
-    return IoTDBConstant.ALIGN_TIMESERIES_PREFIX + name;
+  public String getMeasurementNodeName(String measurementName) {
+    return IoTDBConstant.ALIGN_TIMESERIES_PREFIX
+        + name
+        + "#"
+        + schemaMap.get(measurementName).getValueMeasurementIdList().get(0);
   }
 }
