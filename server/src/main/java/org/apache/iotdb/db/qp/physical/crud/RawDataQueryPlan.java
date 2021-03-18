@@ -76,15 +76,15 @@ public class RawDataQueryPlan extends QueryPlan {
     deviceToMeasurements.clear();
     deduplicatedPaths.forEach(
         path -> {
-          Set<String> set = deviceToMeasurements
-              .computeIfAbsent(path.getDevice(), key -> new HashSet<>());
+          Set<String> set =
+              deviceToMeasurements.computeIfAbsent(path.getDevice(), key -> new HashSet<>());
           set.add(path.getMeasurement());
           if (path instanceof VectorPartialPath) {
-            ((VectorPartialPath) path).getSubSensorsPathList().forEach(subSensor -> set.add(
-                subSensor.getMeasurement()));
+            ((VectorPartialPath) path)
+                .getSubSensorsPathList()
+                .forEach(subSensor -> set.add(subSensor.getMeasurement()));
           }
-        }
-    );
+        });
     this.deduplicatedPaths = deduplicatedPaths;
   }
 

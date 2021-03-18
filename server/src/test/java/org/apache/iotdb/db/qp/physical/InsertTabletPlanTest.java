@@ -128,8 +128,7 @@ public class InsertTabletPlanTest {
     PlanExecutor executor = new PlanExecutor();
     executor.insertTablet(tabletPlan);
 
-    Assert.assertEquals(
-        "[$#$0, $#$1, s6]", Arrays.toString(tabletPlan.getMeasurementMNodes()));
+    Assert.assertEquals("[$#$0, $#$1, s6]", Arrays.toString(tabletPlan.getMeasurementMNodes()));
     System.out.println(Arrays.toString(tabletPlan.getMeasurementMNodes()));
 
     QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
