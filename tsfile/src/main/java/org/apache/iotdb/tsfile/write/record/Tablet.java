@@ -60,7 +60,7 @@ public class Tablet {
   /** each object is a primitive type array, which represents values of one measurement */
   public Object[] values;
   /** each bitset represents the existence of each value in the current column */
-  public BitSet[] BitSets;
+  public BitSet[] bitSets;
   /** the number of rows to include in this tablet */
   public int rowSize;
   /** the maximum number of rows for this tablet */
