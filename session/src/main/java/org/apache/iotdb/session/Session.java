@@ -457,28 +457,7 @@ public class Session {
    */
   public SessionDataSet executeQueryStatement(String sql)
       throws StatementExecutionException, IoTDBConnectionException {
-    try {
-      logger.info("{} execute sql {}", defaultSessionConnection.getEndPoint(), sql);
-      return defaultSessionConnection.executeQueryStatement(sql, timeout);
-    } catch (RedirectException e) {
-      handleQueryRedirection(e.getEndPoint());
-      if (enableQueryRedirection) {
-        logger.debug(
-            "{} redirect query {} to {}",
-            defaultSessionConnection.getEndPoint(),
-            sql,
-            e.getEndPoint());
-        // retry
-        try {
-          return defaultSessionConnection.executeQueryStatement(sql, timeout);
-        } catch (RedirectException redirectException) {
-          logger.error("{} redirect twice", sql, redirectException);
-          throw new StatementExecutionException(sql + " redirect twice, please try again.");
-        }
-      } else {
-        throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
-      }
-    }
+    return executeStatementMayRedirect(sql, timeout);
   }
 
   /**
@@ -493,15 +472,34 @@ public class Session {
     if (timeoutInMs < 0) {
       throw new StatementExecutionException("Timeout must be >= 0, please check and try again.");
     }
+    return executeStatementMayRedirect(sql, timeoutInMs);
+  }
+
+  /**
+   * execute the query, may redirect query to other node.
+   *
+   * @param sql the query statement
+   * @param timeoutInMs time in ms
+   * @return data set
+   * @throws StatementExecutionException statement is not right
+   * @throws IoTDBConnectionException the network is not good
+   */
+  private SessionDataSet executeStatementMayRedirect(String sql, long timeoutInMs)
+      throws StatementExecutionException, IoTDBConnectionException {
     try {
+      logger.info("{} execute sql {}", defaultSessionConnection.getEndPoint(), sql);
       return defaultSessionConnection.executeQueryStatement(sql, timeoutInMs);
     } catch (RedirectException e) {
       handleQueryRedirection(e.getEndPoint());
       if (enableQueryRedirection) {
-        logger.debug("redirect query {} to {}", sql, e.getEndPoint());
+        logger.debug(
+            "{} redirect query {} to {}",
+            defaultSessionConnection.getEndPoint(),
+            sql,
+            e.getEndPoint());
         // retry
         try {
-          return defaultSessionConnection.executeQueryStatement(sql, timeoutInMs);
+          return defaultSessionConnection.executeQueryStatement(sql, timeout);
         } catch (RedirectException redirectException) {
           logger.error("{} redirect twice", sql, redirectException);
           throw new StatementExecutionException(sql + " redirect twice, please try again.");
@@ -526,12 +524,12 @@ public class Session {
    * query eg. select * from paths where time >= startTime and time < endTime time interval include
    * startTime and exclude endTime
    *
-   * @param paths
+   * @param paths series path
    * @param startTime included
    * @param endTime excluded
-   * @return
-   * @throws StatementExecutionException
-   * @throws IoTDBConnectionException
+   * @return data set
+   * @throws StatementExecutionException statement is not right
+   * @throws IoTDBConnectionException the network is not good
    */
   public SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
       throws StatementExecutionException, IoTDBConnectionException {

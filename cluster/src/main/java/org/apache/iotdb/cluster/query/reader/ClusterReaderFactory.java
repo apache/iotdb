@@ -341,11 +341,11 @@ public class ClusterReaderFactory {
    * Create an IPointReader of "path" with “timeFilter” and "valueFilter". A synchronization with
    * the leader will be performed according to consistency level
    *
-   * @param path
-   * @param dataType
+   * @param path series path
+   * @param dataType data type
    * @param timeFilter nullable
    * @param valueFilter nullable
-   * @param context
+   * @param context query context
    * @return reader
    * @throws StorageEngineException encounter exception
    */
@@ -381,12 +381,12 @@ public class ClusterReaderFactory {
    * Create a SeriesReader of "path" with “timeFilter” and "valueFilter". The consistency is not
    * guaranteed here and only data slots managed by the member will be queried.
    *
-   * @param path
-   * @param dataType
+   * @param path series path
+   * @param dataType data type
    * @param timeFilter nullable
    * @param valueFilter nullable
-   * @param context
-   * @return
+   * @param context query context
+   * @return reader for series
    * @throws StorageEngineException encounter exception
    */
   private SeriesReader getSeriesReader(

@@ -126,15 +126,15 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
   protected IReaderByTimestamp getReaderByTimestamp(
       PartialPath path, Set<String> deviceMeasurements, TSDataType dataType, QueryContext context)
       throws StorageEngineException, QueryProcessException {
-    IReaderByTimestamp iReaderByTimestamp =
+    IReaderByTimestamp readerByTimestamp =
         readerFactory.getReaderByTimestamp(
             path, deviceMeasurements, dataType, context, queryPlan.isAscending());
-    if (((MergedReaderByTime) iReaderByTimestamp).getEndPoint() == null) {
+    if (((MergedReaderByTime) readerByTimestamp).getEndPoint() == null) {
       hasLocalReader = true;
     } else if (!hasLocalReader && endPoint == null) {
-      endPoint = ((MergedReaderByTime) iReaderByTimestamp).getEndPoint();
+      endPoint = ((MergedReaderByTime) readerByTimestamp).getEndPoint();
     }
-    return iReaderByTimestamp;
+    return readerByTimestamp;
   }
 
   @Override
