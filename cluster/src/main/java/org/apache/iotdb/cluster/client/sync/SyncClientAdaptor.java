@@ -181,8 +181,8 @@ public class SyncClientAdaptor {
     return response.get();
   }
 
-  public static Set<String> getChildNodeInNextLevel(AsyncDataClient client, Node header, String path)
-          throws TException, InterruptedException {
+  public static Set<String> getChildNodeInNextLevel(
+      AsyncDataClient client, Node header, String path) throws TException, InterruptedException {
     GetChildNodeNextLevelHandler handler = new GetChildNodeNextLevelHandler();
     AtomicReference<Set<String>> response = new AtomicReference<>(null);
     handler.setResponse(response);

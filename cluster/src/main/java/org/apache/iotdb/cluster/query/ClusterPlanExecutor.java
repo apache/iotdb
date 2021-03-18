@@ -413,13 +413,13 @@ public class ClusterPlanExecutor extends PlanExecutor {
   private Set<String> getChildNodeInNextLevel(PartitionGroup group, PartialPath path)
       throws CheckConsistencyException {
     if (group.contains(metaGroupMember.getThisNode())) {
-      return getLocalChildNodeInnNextLevel(group, path);
+      return getLocalChildNodeInNextLevel(group, path);
     } else {
       return getRemoteChildNodeInNextLevel(group, path);
     }
   }
 
-  private Set<String> getLocalChildNodeInnNextLevel(PartitionGroup group, PartialPath path)
+  private Set<String> getLocalChildNodeInNextLevel(PartitionGroup group, PartialPath path)
       throws CheckConsistencyException {
     Node header = group.getHeader();
     DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header);

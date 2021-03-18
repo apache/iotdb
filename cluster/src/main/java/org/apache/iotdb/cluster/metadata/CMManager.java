@@ -1418,11 +1418,11 @@ public class CMManager extends MManager {
   }
 
   public Set<String> getChildNodeInNextLevel(String path) throws MetadataException {
-    return getChildNodePathInNextLevel(new PartialPath(path));
+    return getChildNodeInNextLevel(new PartialPath(path));
   }
 
   public Set<String> getChildNodePathInNextLevel(String path) throws MetadataException {
-    return getChildNodeInNextLevel(new PartialPath(path));
+    return getChildNodePathInNextLevel(new PartialPath(path));
   }
 
   /**

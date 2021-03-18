@@ -437,7 +437,7 @@ public class DataClusterServer extends RaftServer
   public void getChildNodeInNextLevel(
       Node header, String path, AsyncMethodCallback<Set<String>> resultHandler) {
     DataAsyncService service =
-        getDataAsyncService(header, resultHandler, "Get child node path in next level");
+        getDataAsyncService(header, resultHandler, "Get child node in next level");
     service.getChildNodeInNextLevel(header, path, resultHandler);
   }
 
