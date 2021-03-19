@@ -40,7 +40,7 @@ IoTDB > set storage group to root.sgcc
 
 ```
 IoTDB> set storage group to root.ln.wf01
-Msg: org.apache.iotdb.exception.MetadataException: org.apache.iotdb.exception.MetadataException: The prefix of root.ln.wf01 has been set to the storage group.
+Msg: 300: root.ln has already been set to storage group.
 ```
 存储组节点名只支持中英文字符、数字和下划线的组合。
 
@@ -371,7 +371,7 @@ SHOW CHILD NODES prefixPath
 
 示例：
 
-* 查询 root 的下一层：show child paths root
+* 查询 root 的下一层：show child nodes root
 
 ```
 +------------+
@@ -381,7 +381,7 @@ SHOW CHILD NODES prefixPath
 +------------+
 ```
 
-* 查询 root.vehicle的下一层 ：show child paths root.ln
+* 查询 root.vehicle的下一层 ：show child nodes root.ln
 
 ```
 +------------+
