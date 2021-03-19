@@ -2065,7 +2065,7 @@ public class MManager {
                   Arrays.asList(measurementList[i].replace("(", "").replace(")", "").split(","));
               if (measurements.size() == 1) {
                 internalCreateTimeseries(
-                    deviceId.concatNode(measurementList[i]), plan.getDataTypes()[loc]);
+                    deviceId.concatNode(measurementList[i]), plan.getDataTypes()[loc++]);
                 measurementMNode = (MeasurementMNode) deviceMNode.left.getChild(measurementList[i]);
               } else {
                 int curLoc = loc;
