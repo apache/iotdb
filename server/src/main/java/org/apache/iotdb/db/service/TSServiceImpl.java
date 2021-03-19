@@ -461,6 +461,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
     InsertRowsPlan insertRowsPlan = new InsertRowsPlan();
     int index = 0;
+
+    CreateMultiTimeSeriesPlan multiPlan = new CreateMultiTimeSeriesPlan();
+    List<PartialPath> paths = new ArrayList<>();
+    List<TSDataType> tsDataTypes = new ArrayList<>();
+    List<TSEncoding> tsEncodings = new ArrayList<>();
+    List<CompressionType> tsCompressionTypes = new ArrayList<>();
+    List<Map<String, String>> tagsList = new ArrayList<>();
+    List<Map<String, String>> attributesList = new ArrayList<>();
+    List<String> aliasList = new ArrayList<>();
+
     for (int i = 0; i < req.getStatements().size(); i++) {
       String statement = req.getStatements().get(i);
       try {
@@ -478,6 +488,24 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
               && !executeInsertRowsPlan(insertRowsPlan, result)) {
             isAllSuccessful = false;
           }
+        } else if (physicalPlan.getOperatorType().equals(OperatorType.CREATE_TIMESERIES)) {
+
+          CreateTimeSeriesPlan createTimeSeriesPlan = (CreateTimeSeriesPlan) physicalPlan;
+          PartialPath path = createTimeSeriesPlan.getPath();
+          TSDataType type = createTimeSeriesPlan.getDataType();
+          TSEncoding encoding = createTimeSeriesPlan.getEncoding();
+          CompressionType compressor = createTimeSeriesPlan.getCompressor();
+          Map<String, String> tags = createTimeSeriesPlan.getTags();
+          Map<String, String> attributes = createTimeSeriesPlan.getAttributes();
+          String alias = createTimeSeriesPlan.getAlias();
+
+          paths.add(path);
+          tsDataTypes.add(type);
+          tsEncodings.add(encoding);
+          tsCompressionTypes.add(compressor);
+          tagsList.add(tags);
+          attributesList.add(attributes);
+          aliasList.add(alias);
         } else {
           if (insertRowsPlan.getRowCount() > 0) {
             if (!executeInsertRowsPlan(insertRowsPlan, result)) {
@@ -506,6 +534,30 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         }
       }
     }
+    if (paths.size() > 0) {
+      multiPlan.setPaths(paths);
+      multiPlan.setDataTypes(tsDataTypes);
+      multiPlan.setEncodings(tsEncodings);
+      multiPlan.setCompressors(tsCompressionTypes);
+      multiPlan.setTags(tagsList);
+      multiPlan.setAttributes(attributesList);
+      multiPlan.setAlias(aliasList);
+      TSStatus status = executeNonQueryPlan(multiPlan);
+      if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        int startIndex = result.size();
+        if (startIndex > 0) {
+          startIndex = startIndex - 1;
+        }
+        for (int i = 0; i < paths.size(); i++) {
+          result.add(RpcUtils.SUCCESS_STATUS);
+        }
+        for (Entry<Integer, TSStatus> entry : multiPlan.getResults().entrySet()) {
+          result.set(startIndex + entry.getKey(), entry.getValue());
+        }
+        isAllSuccessful = false;
+      }
+    }
+
     Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_JDBC_BATCH, t1);
     return isAllSuccessful
         ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute batch statements successfully")
