@@ -2073,7 +2073,7 @@ public class MManager {
                   Arrays.asList(measurement.replace("(", "").replace(")", "").split(","));
               if (measurements.size() == 1) {
                 internalCreateTimeseries(
-                    deviceId.concatNode(measurement), plan.getDataTypes()[loc]);
+                    deviceId.concatNode(measurement), plan.getDataTypes()[loc++]);
                 measurementMNode = (MeasurementMNode) deviceMNode.left.getChild(measurement);
               } else {
                 int curLoc = loc;
