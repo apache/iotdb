@@ -318,7 +318,7 @@ public class TsFileIOWriter {
       TimeseriesMetadata timeseriesMetadata =
           new TimeseriesMetadata(
               (byte)
-                  ((serializeStatistic ? (byte) 1 : (byte) 0) | chunkMetadataList.get(0).getMask()),
+                  ((serializeStatistic ? (byte) 1 : (byte) 0) | entry.getValue().get(0).getMask()),
               chunkMetadataListLength,
               path.getMeasurement(),
               dataType,
