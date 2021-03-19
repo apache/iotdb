@@ -98,11 +98,11 @@ public class Tablet {
 
     reset();
   }
-  
+
   public void setDeviceId(String deviceId) {
     this.deviceId = deviceId;
   }
-  
+
   public void addTimestamp(int rowIndex, long timestamp) {
     timestamps[rowIndex] = timestamp;
   }
