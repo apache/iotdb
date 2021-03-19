@@ -732,13 +732,11 @@ public class IoTDBAggregationIT {
 
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(sum(d0s0))
-                  + ","
-                  + resultSet.getString(avg(d0s2));
-          Assert.assertEquals(retArray[cnt], ans);
+          double[] ans = new double[3];
+          ans[0] = Double.valueOf(resultSet.getString(TIMESTAMP_STR));
+          ans[1] = Double.valueOf(resultSet.getString(sum(d0s0)));
+          ans[2] = Double.valueOf(resultSet.getString(avg(d0s2)));
+          assertArrayEquals(retArray[cnt], ans, DETLA);
           cnt++;
         }
         Assert.assertEquals(2, cnt);
@@ -754,13 +752,11 @@ public class IoTDBAggregationIT {
       cnt = 0;
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(sum(d0s0))
-                  + ","
-                  + resultSet.getString(avg(d0s2));
-          Assert.assertEquals(retArray[cnt], ans);
+          double[] ans = new double[3];
+          ans[0] = Double.valueOf(resultSet.getString(TIMESTAMP_STR));
+          ans[1] = Double.valueOf(resultSet.getString(sum(d0s0)));
+          ans[2] = Double.valueOf(resultSet.getString(avg(d0s2)));
+          assertArrayEquals(retArray[cnt], ans, DETLA);
           cnt++;
         }
         Assert.assertEquals(1, cnt);
@@ -918,7 +914,7 @@ public class IoTDBAggregationIT {
 
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
-          double[] ans = new double[5];
+          double[] ans = new double[7];
           ans[0] = Double.valueOf(resultSet.getString(TIMESTAMP_STR));
           ans[1] = Double.valueOf(resultSet.getString(sum(d0s2)));
           ans[2] = Double.valueOf(resultSet.getString(count(d0s0)));

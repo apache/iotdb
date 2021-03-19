@@ -228,8 +228,8 @@ public class IOTDBGroupByInnerIntervalIT {
 
   @Test
   public void countSumAvgInnerIntervalTestWithTimeFilter() {
+    String retArray = "1,0,0.0,null";
     double[][] retArray1 = {
-      {1.0, 0.0, 0.0, 0.0},
       {6.0, 3.0, 23.1, 7.7},
       {11.0, 3.0, 36.6, 12.2},
       {16.0, 2.0, 35.4, 17.7},
@@ -245,10 +245,20 @@ public class IOTDBGroupByInnerIntervalIT {
               "select count(temperature), sum(temperature), avg(temperature) from "
                   + "root.ln.wf01.wt01 where time > 3"
                   + " GROUP BY ([1, 30), 3ms, 5ms)");
-
       assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
+        String res =
+            resultSet.getString(TIMESTAMP_STR)
+                + ","
+                + resultSet.getString(TIMESTAMP_STR)
+                + ","
+                + resultSet.getString(count("root.ln.wf01.wt01.temperature"))
+                + ","
+                + resultSet.getString(sum("root.ln.wf01.wt01.temperature"))
+                + ","
+                + resultSet.getString(avg("root.ln.wf01.wt01.temperature"));
+        assertEquals(retArray, res);
         cnt = 0;
         while (resultSet.next()) {
           double[] ans = new double[4];
