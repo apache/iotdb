@@ -374,7 +374,7 @@ service TSDataService extends RaftService {
   list<string> getNodeList(1:Node header, 2:string path, 3:int nodeLevel)
 
   /**
-   * Given path patterns, return all children nodes they match
+   * Given path patterns(paths with wildcard), return all children nodes they match
    **/
   set<string> getChildNodeInNextLevel(1: Node header, 2: string path)
 
