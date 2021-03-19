@@ -107,24 +107,19 @@ public class LocalQueryExecutor {
     return ((CMManager) IoTDB.metaManager);
   }
 
-  /**
-   * Return the data of the reader whose id is "readerId", using timestamps in "timeBuffer".
-   *
-   * @param readerId
-   * @param time
-   */
-  public ByteBuffer fetchSingleSeriesByTimestamp(long readerId, long time)
+  /** Return the data of the reader whose id is "readerId", using timestamps in "timeBuffer". */
+  public ByteBuffer fetchSingleSeriesByTimestamps(long readerId, long[] timestamps, int length)
       throws ReaderNotFoundException, IOException {
     IReaderByTimestamp reader = dataGroupMember.getQueryManager().getReaderByTimestamp(readerId);
     if (reader == null) {
       throw new ReaderNotFoundException(readerId);
     }
-    Object value = reader.getValueInTimestamp(time);
-    if (value != null) {
+    Object[] values = reader.getValuesInTimestamps(timestamps, length);
+    if (values != null) {
       ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
       DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
 
-      SerializeUtils.serializeObject(value, dataOutputStream);
+      SerializeUtils.serializeObjects(values, dataOutputStream);
       return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
     } else {
       return ByteBuffer.allocate(0);

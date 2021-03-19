@@ -645,7 +645,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         resp = getQueryColumnHeaders(plan, username);
       }
       // create and cache dataset
-      QueryDataSet newDataSet = createQueryDataSet(queryId, plan);
+      QueryDataSet newDataSet = createQueryDataSet(queryId, plan, fetchSize);
       if (plan instanceof ShowPlan || plan instanceof AuthorPlan) {
         resp = getListDataSetHeaders(newDataSet);
       } else if (plan instanceof UDFPlan) {
@@ -1022,12 +1022,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   /** create QueryDataSet and buffer it for fetchResults */
-  private QueryDataSet createQueryDataSet(long queryId, PhysicalPlan physicalPlan)
+  private QueryDataSet createQueryDataSet(long queryId, PhysicalPlan physicalPlan, int fetchSize)
       throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException,
           IOException, MetadataException, SQLException, TException, InterruptedException {
 
     QueryContext context = genQueryContext(queryId);
     QueryDataSet queryDataSet = executor.processQuery(physicalPlan, context);
+    queryDataSet.setFetchSize(fetchSize);
     queryId2DataSet.put(queryId, queryDataSet);
     return queryDataSet;
   }
@@ -1278,9 +1279,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       try {
         plan.setDeviceId(new PartialPath(req.getDeviceIds().get(i)));
         plan.setTime(req.getTimestamps().get(i));
-        plan.setMeasurements(req.getMeasurementsList().get(i).toArray(new String[0]));
+        addMeasurementAndValue(plan, req.getMeasurementsList().get(i), req.getValuesList().get(i));
         plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
-        plan.setValues(req.getValuesList().get(i).toArray(new Object[0]));
         plan.setNeedInferType(true);
         TSStatus status = checkAuthority(plan, req.getSessionId());
         if (status != null) {
@@ -1302,6 +1302,24 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
     return judgeFinalTsStatus(
         allCheckSuccess, tsStatus, insertRowsPlan.getResults(), req.deviceIds.size());
+  }
+
+  private void addMeasurementAndValue(
+      InsertRowPlan insertRowPlan, List<String> measurements, List<String> values) {
+    List<String> newMeasurements = new ArrayList<>(measurements.size());
+    List<Object> newValues = new ArrayList<>(values.size());
+
+    for (int i = 0; i < measurements.size(); ++i) {
+      String value = values.get(i);
+      if (value.isEmpty()) {
+        continue;
+      }
+      newMeasurements.add(measurements.get(i));
+      newValues.add(value);
+    }
+
+    insertRowPlan.setValues(newValues.toArray(new Object[0]));
+    insertRowPlan.setMeasurements(newMeasurements.toArray(new String[0]));
   }
 
   @Override
