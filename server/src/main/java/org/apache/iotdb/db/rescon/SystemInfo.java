@@ -20,15 +20,10 @@
 package org.apache.iotdb.db.rescon;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupInfo;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
-import org.apache.iotdb.db.exception.StartupException;
-import org.apache.iotdb.db.service.IService;
-import org.apache.iotdb.db.service.JMXService;
-import org.apache.iotdb.db.service.ServiceType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,7 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 
-public class SystemInfo implements SystemInfoMBean, IService {
+public class SystemInfo {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final Logger logger = LoggerFactory.getLogger(SystemInfo.class);
@@ -54,10 +49,6 @@ public class SystemInfo implements SystemInfoMBean, IService {
   private static double REJECT_THERSHOLD = memorySizeForWrite * config.getRejectProportion();
 
   private boolean isEncodingFasterThanIo = true;
-
-  private String mbeanName =
-      String.format(
-          "%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, getID().getJmxName());
 
   /**
    * Report current mem cost of storage group to system. Called when the memory of storage group
@@ -234,37 +225,19 @@ public class SystemInfo implements SystemInfoMBean, IService {
     REJECT_THERSHOLD = memorySizeForWrite * config.getRejectProportion();
   }
 
-  @Override
-  public void start() throws StartupException {
-    try {
-      JMXService.registerMBean(getInstance(), mbeanName);
-    } catch (Exception e) {
-      throw new StartupException(this.getID().getName(), e.getMessage());
-    }
-  }
-
-  @Override
-  public void stop() {
-    JMXService.deregisterMBean(mbeanName);
-  }
-
-  @Override
-  public ServiceType getID() {
-    return ServiceType.SYSTEMINFO_SERVICE;
-  }
-
-  @Override
   public long getTotalMemTableSize() {
     return totalSgMemCost;
   }
 
-  @Override
   public double getFlushThershold() {
     return FLUSH_THERSHOLD;
   }
 
-  @Override
   public double getRejectThershold() {
     return REJECT_THERSHOLD;
+  }
+
+  public int flushingMemTableNum() {
+    return FlushManager.getInstance().getNumberOfWorkingTasks();
   }
 }
