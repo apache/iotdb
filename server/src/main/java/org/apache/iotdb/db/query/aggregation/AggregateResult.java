@@ -35,6 +35,7 @@ import java.nio.ByteBuffer;
 
 public abstract class AggregateResult {
 
+  public static final int TIME_LENGTH_FOR_FIRST_VALUE = 100;
   private final AggregationType aggregationType;
   protected TSDataType resultDataType;
 
@@ -93,6 +94,9 @@ public abstract class AggregateResult {
    */
   public abstract void updateResultUsingTimestamps(
       long[] timestamps, int length, IReaderByTimestamp dataReader) throws IOException;
+
+  /** This method calculates the aggregation using values that have been calculated */
+  public abstract void updateResultUsingValues(long[] timestamps, int length, Object[] values);
 
   /**
    * Judge if aggregation results have been calculated. In other words, if the aggregated result

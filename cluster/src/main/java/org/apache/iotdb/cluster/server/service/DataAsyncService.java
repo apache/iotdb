@@ -207,13 +207,17 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
   }
 
   @Override
-  public void fetchSingleSeriesByTimestamp(
-      Node header, long readerId, long timestamp, AsyncMethodCallback<ByteBuffer> resultHandler) {
+  public void fetchSingleSeriesByTimestamps(
+      Node header,
+      long readerId,
+      List<Long> timestamps,
+      AsyncMethodCallback<ByteBuffer> resultHandler) {
     try {
       resultHandler.onComplete(
           dataGroupMember
               .getLocalQueryExecutor()
-              .fetchSingleSeriesByTimestamp(readerId, timestamp));
+              .fetchSingleSeriesByTimestamps(
+                  readerId, timestamps.stream().mapToLong(k -> k).toArray(), timestamps.size()));
     } catch (ReaderNotFoundException | IOException e) {
       resultHandler.onError(e);
     }
