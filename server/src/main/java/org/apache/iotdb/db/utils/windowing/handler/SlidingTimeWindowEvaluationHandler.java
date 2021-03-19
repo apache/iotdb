@@ -19,14 +19,17 @@
 
 package org.apache.iotdb.db.utils.windowing.handler;
 
-import org.apache.iotdb.db.utils.windowing.configuration.SlidingTimeWindowConfiguration;
 import org.apache.iotdb.db.utils.windowing.api.Evaluator;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.db.utils.windowing.configuration.SlidingTimeWindowConfiguration;
+import org.apache.iotdb.db.utils.windowing.exception.WindowingException;
 
 public abstract class SlidingTimeWindowEvaluationHandler extends SlidingWindowEvaluationHandler {
 
   public SlidingTimeWindowEvaluationHandler(
-      TSDataType dataType, SlidingTimeWindowConfiguration configuration, Evaluator evaluator) {
-    super(dataType, configuration, evaluator);
+      SlidingTimeWindowConfiguration configuration, Evaluator evaluator) throws WindowingException {
+    super(configuration, evaluator);
   }
+
+  @Override
+  protected void createEvaluationTaskIfNecessary(long timestamp) {}
 }

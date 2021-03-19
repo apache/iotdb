@@ -20,18 +20,21 @@
 package org.apache.iotdb.db.utils.windowing.configuration;
 
 import org.apache.iotdb.db.utils.windowing.exception.WindowingException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class SlidingTimeWindowConfiguration implements Configuration {
+public class SlidingTimeWindowConfiguration extends Configuration {
 
   private final long timeInterval;
   private final long slidingStep;
 
-  public SlidingTimeWindowConfiguration(long timeInterval, long slidingStep) {
+  public SlidingTimeWindowConfiguration(TSDataType dataType, long timeInterval, long slidingStep) {
+    super(dataType);
     this.timeInterval = timeInterval;
     this.slidingStep = slidingStep;
   }
 
-  public SlidingTimeWindowConfiguration(long timeInterval) {
+  public SlidingTimeWindowConfiguration(TSDataType dataType, long timeInterval) {
+    super(dataType);
     this.timeInterval = timeInterval;
     this.slidingStep = timeInterval;
   }

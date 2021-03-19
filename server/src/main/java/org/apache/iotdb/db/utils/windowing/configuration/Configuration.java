@@ -20,8 +20,19 @@
 package org.apache.iotdb.db.utils.windowing.configuration;
 
 import org.apache.iotdb.db.utils.windowing.exception.WindowingException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public interface Configuration {
+public abstract class Configuration {
 
-  void check() throws WindowingException;
+  private final TSDataType dataType;
+
+  protected Configuration(TSDataType dataType) {
+    this.dataType = dataType;
+  }
+
+  public TSDataType getDataType() {
+    return dataType;
+  }
+
+  public abstract void check() throws WindowingException;
 }

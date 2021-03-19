@@ -157,6 +157,10 @@ public class EvictableBatchList {
     actualOuterIndexAt0 = outerEvictionUpperBound;
   }
 
+  public int size() {
+    return size;
+  }
+
   public TSDataType getDataType() {
     return dataType;
   }

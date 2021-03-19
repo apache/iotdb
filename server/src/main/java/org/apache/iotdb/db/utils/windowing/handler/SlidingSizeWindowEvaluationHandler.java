@@ -19,14 +19,40 @@
 
 package org.apache.iotdb.db.utils.windowing.handler;
 
-import org.apache.iotdb.db.utils.windowing.configuration.SlidingSizeWindowConfiguration;
 import org.apache.iotdb.db.utils.windowing.api.Evaluator;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.db.utils.windowing.configuration.SlidingSizeWindowConfiguration;
+import org.apache.iotdb.db.utils.windowing.exception.WindowingException;
+import org.apache.iotdb.db.utils.windowing.runtime.WindowEvaluationTask;
+import org.apache.iotdb.db.utils.windowing.window.WindowImpl;
 
 public abstract class SlidingSizeWindowEvaluationHandler extends SlidingWindowEvaluationHandler {
 
+  private final int windowSize;
+  private final int slidingStep;
+
+  private int nextTriggerPoint;
+
   public SlidingSizeWindowEvaluationHandler(
-      TSDataType dataType, SlidingSizeWindowConfiguration configuration, Evaluator evaluator) {
-    super(dataType, configuration, evaluator);
+      SlidingSizeWindowConfiguration configuration, Evaluator evaluator) throws WindowingException {
+    super(configuration, evaluator);
+
+    windowSize = configuration.getWindowSize();
+    slidingStep = configuration.getSlidingStep();
+
+    nextTriggerPoint = windowSize;
+  }
+
+  @Override
+  protected void createEvaluationTaskIfNecessary(long timestamp) {
+    if (data.size() != nextTriggerPoint) {
+      return;
+    }
+
+    TASK_POOL_MANAGER.submit(
+        new WindowEvaluationTask(
+            evaluator, new WindowImpl(data, nextTriggerPoint - windowSize, windowSize)));
+    data.setEvictionUpperBound(nextTriggerPoint - windowSize + 1);
+
+    nextTriggerPoint += slidingStep;
   }
 }

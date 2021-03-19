@@ -19,39 +19,67 @@
 
 package org.apache.iotdb.db.utils.windowing.handler;
 
-import org.apache.iotdb.db.utils.windowing.runtime.WindowEvaluationTaskPoolManager;
-import org.apache.iotdb.db.utils.windowing.configuration.Configuration;
 import org.apache.iotdb.db.utils.windowing.api.Evaluator;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.db.utils.windowing.configuration.Configuration;
+import org.apache.iotdb.db.utils.windowing.exception.WindowingException;
+import org.apache.iotdb.db.utils.windowing.runtime.WindowEvaluationTaskPoolManager;
+import org.apache.iotdb.db.utils.windowing.window.EvictableBatchList;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 public abstract class SlidingWindowEvaluationHandler {
 
-  private static final WindowEvaluationTaskPoolManager TASK_POOL_MANAGER =
+  protected static final WindowEvaluationTaskPoolManager TASK_POOL_MANAGER =
       WindowEvaluationTaskPoolManager.getInstance();
 
-  private final TSDataType dataType;
-  private final Configuration configuration;
-  private final Evaluator evaluator;
+  protected final Configuration configuration;
+  protected final Evaluator evaluator;
 
-  protected SlidingWindowEvaluationHandler(
-      TSDataType dataType, Configuration configuration, Evaluator evaluator) {
-    this.dataType = dataType;
+  protected final EvictableBatchList data;
+
+  protected SlidingWindowEvaluationHandler(Configuration configuration, Evaluator evaluator)
+      throws WindowingException {
     this.configuration = configuration;
     this.evaluator = evaluator;
+
+    configuration.check();
+
+    data = new EvictableBatchList(configuration.getDataType());
   }
 
-  public void accept(long timestamp, int value) {}
+  protected abstract void createEvaluationTaskIfNecessary(long timestamp);
 
-  public void accept(long timestamp, long value) {}
+  public final void accept(long timestamp, int value) {
+    data.putInt(timestamp, value);
+    createEvaluationTaskIfNecessary(timestamp);
+  }
 
-  public void accept(long timestamp, float value) {}
+  public final void accept(long timestamp, long value) {
+    data.putLong(timestamp, value);
+    createEvaluationTaskIfNecessary(timestamp);
+  }
 
-  public void accept(long timestamp, double value) {}
+  public final void accept(long timestamp, float value) {
+    data.putFloat(timestamp, value);
+    createEvaluationTaskIfNecessary(timestamp);
+  }
 
-  public void accept(long timestamp, boolean value) {}
+  public final void accept(long timestamp, double value) {
+    data.putDouble(timestamp, value);
+    createEvaluationTaskIfNecessary(timestamp);
+  }
 
-  public void accept(long timestamp, String value) {}
+  public final void accept(long timestamp, boolean value) {
+    data.putBoolean(timestamp, value);
+    createEvaluationTaskIfNecessary(timestamp);
+  }
 
-  public void accept(long timestamp, Binary value) {}
+  public final void accept(long timestamp, String value) {
+    data.putBinary(timestamp, Binary.valueOf(value));
+    createEvaluationTaskIfNecessary(timestamp);
+  }
+
+  public final void accept(long timestamp, Binary value) {
+    data.putBinary(timestamp, value);
+    createEvaluationTaskIfNecessary(timestamp);
+  }
 }
