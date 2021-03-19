@@ -22,14 +22,51 @@ package org.apache.iotdb.db.utils.windowing.handler;
 import org.apache.iotdb.db.utils.windowing.api.Evaluator;
 import org.apache.iotdb.db.utils.windowing.configuration.SlidingTimeWindowConfiguration;
 import org.apache.iotdb.db.utils.windowing.exception.WindowingException;
+import org.apache.iotdb.db.utils.windowing.runtime.WindowEvaluationTask;
+import org.apache.iotdb.db.utils.windowing.window.WindowImpl;
+
+import java.util.LinkedList;
+import java.util.Queue;
 
 public abstract class SlidingTimeWindowEvaluationHandler extends SlidingWindowEvaluationHandler {
+
+  private final long timeInterval;
+  private final long slidingStep;
+
+  private final Queue<Integer> windowBeginIndexQueue;
+  private long currentWindowEndTime;
+  private long nextWindowBeginTime;
 
   public SlidingTimeWindowEvaluationHandler(
       SlidingTimeWindowConfiguration configuration, Evaluator evaluator) throws WindowingException {
     super(configuration, evaluator);
+
+    timeInterval = configuration.getTimeInterval();
+    slidingStep = configuration.getSlidingStep();
+
+    windowBeginIndexQueue = new LinkedList<>();
   }
 
   @Override
-  protected void createEvaluationTaskIfNecessary(long timestamp) {}
+  protected void createEvaluationTaskIfNecessary(long timestamp) {
+    if (data.size() == 0) {
+      windowBeginIndexQueue.add(0);
+      currentWindowEndTime = timestamp + timeInterval;
+      nextWindowBeginTime = timestamp + slidingStep;
+      return;
+    }
+
+    while (nextWindowBeginTime <= timestamp) {
+      windowBeginIndexQueue.add(data.size() - 1);
+      nextWindowBeginTime += slidingStep;
+    }
+
+    while (currentWindowEndTime <= timestamp) {
+      int windowBeginIndex = windowBeginIndexQueue.remove();
+      TASK_POOL_MANAGER.submit(
+          new WindowEvaluationTask(
+              evaluator, new WindowImpl(data, windowBeginIndex, data.size() - windowBeginIndex)));
+      data.setEvictionUpperBound(windowBeginIndex + 1);
+    }
+  }
 }
