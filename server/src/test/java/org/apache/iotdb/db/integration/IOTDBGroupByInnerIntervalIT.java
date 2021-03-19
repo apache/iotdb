@@ -248,17 +248,17 @@ public class IOTDBGroupByInnerIntervalIT {
       assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
-        String res =
-            resultSet.getString(TIMESTAMP_STR)
-                + ","
-                + resultSet.getString(TIMESTAMP_STR)
-                + ","
-                + resultSet.getString(count("root.ln.wf01.wt01.temperature"))
-                + ","
-                + resultSet.getString(sum("root.ln.wf01.wt01.temperature"))
-                + ","
-                + resultSet.getString(avg("root.ln.wf01.wt01.temperature"));
-        assertEquals(retArray, res);
+        if (resultSet.next()) {
+          String res =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(count("root.ln.wf01.wt01.temperature"))
+                  + ","
+                  + resultSet.getString(sum("root.ln.wf01.wt01.temperature"))
+                  + ","
+                  + resultSet.getString(avg("root.ln.wf01.wt01.temperature"));
+          assertEquals(retArray, res);
+        }
         cnt = 0;
         while (resultSet.next()) {
           double[] ans = new double[4];
