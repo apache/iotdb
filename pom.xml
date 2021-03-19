@@ -42,7 +42,7 @@
         <connection>scm:git:ssh://git@github.com/apache/iotdb.git</connection>
         <developerConnection>scm:git:ssh://git@github.com/apache/iotdb.git</developerConnection>
         <url>ssh://git@github.com:apache/iotdb.git</url>
-        <tag>release/0.11.2</tag>
+        <tag>v0.11.3</tag>
     </scm>
     <!-- Only configure the site distribution as the rest is handled by the apache parent -->
     <distributionManagement>
