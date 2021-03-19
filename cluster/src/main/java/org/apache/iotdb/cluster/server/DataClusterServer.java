@@ -39,6 +39,7 @@ import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.LastQueryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.MultSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
@@ -335,12 +336,37 @@ public class DataClusterServer extends RaftServer
   }
 
   @Override
+  public void queryMultSeries(
+      MultSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler) throws TException {
+    DataAsyncService service =
+        getDataAsyncService(
+            request.getHeader(), resultHandler, "Query series:" + request.getPath());
+    if (service != null) {
+      service.queryMultSeries(request, resultHandler);
+    }
+  }
+
+  @Override
   public void fetchSingleSeries(
       Node header, long readerId, AsyncMethodCallback<ByteBuffer> resultHandler) {
     DataAsyncService service =
         getDataAsyncService(header, resultHandler, "Fetch reader:" + readerId);
     if (service != null) {
       service.fetchSingleSeries(header, readerId, resultHandler);
+    }
+  }
+
+  @Override
+  public void fetchMultSeries(
+      Node header,
+      long readerId,
+      List<String> paths,
+      AsyncMethodCallback<Map<String, ByteBuffer>> resultHandler)
+      throws TException {
+    DataAsyncService service =
+        getDataAsyncService(header, resultHandler, "Fetch reader:" + readerId);
+    if (service != null) {
+      service.fetchMultSeries(header, readerId, paths, resultHandler);
     }
   }
 
@@ -727,8 +753,19 @@ public class DataClusterServer extends RaftServer
   }
 
   @Override
+  public long queryMultSeries(MultSeriesQueryRequest request) throws TException {
+    return getDataSyncService(request.getHeader()).queryMultSeries(request);
+  }
+
+  @Override
   public ByteBuffer fetchSingleSeries(Node header, long readerId) throws TException {
     return getDataSyncService(header).fetchSingleSeries(header, readerId);
+  }
+
+  @Override
+  public Map<String, ByteBuffer> fetchMultSeries(Node header, long readerId, List<String> paths)
+      throws TException {
+    return getDataSyncService(header).fetchMultSeries(header, readerId, paths);
   }
 
   @Override

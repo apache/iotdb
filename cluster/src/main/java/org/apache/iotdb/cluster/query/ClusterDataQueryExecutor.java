@@ -23,12 +23,15 @@ import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.EmptyIntervalException;
 import org.apache.iotdb.cluster.query.reader.ClusterReaderFactory;
 import org.apache.iotdb.cluster.query.reader.ClusterTimeGenerator;
+import org.apache.iotdb.cluster.query.reader.mult.IMultPointReader;
+import org.apache.iotdb.cluster.query.reader.mult.MultManagedMergeReader;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.executor.RawDataQueryExecutor;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
@@ -36,11 +39,14 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 
+import com.google.common.collect.Lists;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -56,6 +62,70 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
     super(plan);
     this.metaGroupMember = metaGroupMember;
     this.readerFactory = new ClusterReaderFactory(metaGroupMember);
+  }
+
+  /** use mult batch query. */
+  @Override
+  public QueryDataSet executeWithoutValueFilter(QueryContext context)
+      throws StorageEngineException, QueryProcessException {
+    try {
+      List<ManagedSeriesReader> readersOfSelectedSeries = initMultSeriesReader(context);
+      return new RawQueryDataSetWithoutValueFilter(
+          context.getQueryId(),
+          queryPlan.getDeduplicatedPaths(),
+          queryPlan.getDeduplicatedDataTypes(),
+          readersOfSelectedSeries,
+          queryPlan.isAscending());
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new StorageEngineException(e.getMessage());
+    } catch (IOException | EmptyIntervalException e) {
+      throw new StorageEngineException(e.getMessage());
+    }
+  }
+
+  private List<ManagedSeriesReader> initMultSeriesReader(QueryContext context)
+      throws StorageEngineException, IOException, EmptyIntervalException {
+    Filter timeFilter = null;
+    if (queryPlan.getExpression() != null) {
+      timeFilter = ((GlobalTimeExpression) queryPlan.getExpression()).getFilter();
+    }
+
+    // make sure the partition table is new
+    try {
+      metaGroupMember.syncLeaderWithConsistencyCheck(false);
+    } catch (CheckConsistencyException e) {
+      throw new StorageEngineException(e);
+    }
+    List<ManagedSeriesReader> readersOfSelectedSeries = Lists.newArrayList();
+    List<IMultPointReader> multPointReaders = Lists.newArrayList();
+
+    multPointReaders =
+        readerFactory.getMultSeriesReader(
+            queryPlan.getDeduplicatedPaths(),
+            queryPlan.getDeviceToMeasurements(),
+            queryPlan.getDeduplicatedDataTypes(),
+            timeFilter,
+            null,
+            context,
+            queryPlan.isAscending());
+
+    for (int i = 0; i < queryPlan.getDeduplicatedPaths().size(); i++) {
+      PartialPath partialPath = queryPlan.getDeduplicatedPaths().get(i);
+      TSDataType dataType = queryPlan.getDeduplicatedDataTypes().get(i);
+      MultManagedMergeReader multManagedMergeReader =
+          new MultManagedMergeReader(partialPath.getFullPath(), dataType);
+      for (IMultPointReader multPointReader : multPointReaders) {
+        if (multPointReader.getAllPaths().contains(partialPath.getFullPath())) {
+          multManagedMergeReader.addReader(multPointReader, 0);
+        }
+      }
+      readersOfSelectedSeries.add(multManagedMergeReader);
+    }
+    if (logger.isDebugEnabled()) {
+      logger.debug("Initialized {} readers for {}", readersOfSelectedSeries.size(), queryPlan);
+    }
+    return readersOfSelectedSeries;
   }
 
   @Override

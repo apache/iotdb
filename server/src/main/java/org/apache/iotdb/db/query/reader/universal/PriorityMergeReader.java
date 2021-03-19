@@ -143,35 +143,35 @@ public class PriorityMergeReader implements IPointReader {
     }
   }
 
-  static class Element {
+  public static class Element {
 
     IPointReader reader;
     TimeValuePair timeValuePair;
     MergeReaderPriority priority;
 
-    Element(IPointReader reader, TimeValuePair timeValuePair, MergeReaderPriority priority) {
+    public Element(IPointReader reader, TimeValuePair timeValuePair, MergeReaderPriority priority) {
       this.reader = reader;
       this.timeValuePair = timeValuePair;
       this.priority = priority;
     }
 
-    long currTime() {
+    protected long currTime() {
       return timeValuePair.getTimestamp();
     }
 
-    TimeValuePair currPair() {
+    protected TimeValuePair currPair() {
       return timeValuePair;
     }
 
-    boolean hasNext() throws IOException {
+    protected boolean hasNext() throws IOException {
       return reader.hasNextTimeValuePair();
     }
 
-    void next() throws IOException {
+    protected void next() throws IOException {
       timeValuePair = reader.nextTimeValuePair();
     }
 
-    void close() throws IOException {
+    protected void close() throws IOException {
       reader.close();
     }
   }

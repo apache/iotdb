@@ -26,6 +26,7 @@ import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
+import org.apache.iotdb.cluster.rpc.thrift.MultSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
@@ -44,6 +45,7 @@ import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
+import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 
 import java.io.File;
@@ -79,6 +81,24 @@ public class TestAsyncDataClient extends AsyncDataClient {
   }
 
   @Override
+  public void fetchMultSeries(
+      Node header,
+      long readerId,
+      List<String> paths,
+      AsyncMethodCallback<Map<String, ByteBuffer>> resultHandler) {
+    new Thread(
+            () -> {
+              try {
+                new DataAsyncService(dataGroupMemberMap.get(header))
+                    .fetchMultSeries(header, readerId, paths, resultHandler);
+              } catch (TException e) {
+                e.printStackTrace();
+              }
+            })
+        .start();
+  }
+
+  @Override
   public void getAggrResult(
       GetAggrResultRequest request, AsyncMethodCallback<List<ByteBuffer>> resultHandler) {
     new Thread(
@@ -95,6 +115,21 @@ public class TestAsyncDataClient extends AsyncDataClient {
             () ->
                 new DataAsyncService(dataGroupMemberMap.get(request.getHeader()))
                     .querySingleSeries(request, resultHandler))
+        .start();
+  }
+
+  @Override
+  public void queryMultSeries(
+      MultSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler) {
+    new Thread(
+            () -> {
+              try {
+                new DataAsyncService(dataGroupMemberMap.get(request.getHeader()))
+                    .queryMultSeries(request, resultHandler);
+              } catch (TException e) {
+                e.printStackTrace();
+              }
+            })
         .start();
   }
 
