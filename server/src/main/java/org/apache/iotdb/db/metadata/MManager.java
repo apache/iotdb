@@ -2075,6 +2075,7 @@ public class MManager {
                 internalCreateTimeseries(
                     deviceId.concatNode(measurement), plan.getDataTypes()[loc++]);
                 measurementMNode = (MeasurementMNode) deviceMNode.left.getChild(measurement);
+
               } else {
                 int curLoc = loc;
                 for (int j = 0; j < measurements.size(); j++) {
