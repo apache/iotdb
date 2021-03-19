@@ -140,5 +140,4 @@ public class CacheHitRatioMonitor implements CacheHitRatioMonitorMXBean, IServic
   public int totalMemTableNum() {
     return MemTableManager.getInstance().getCurrentMemtableNumber();
   }
-  
 }
