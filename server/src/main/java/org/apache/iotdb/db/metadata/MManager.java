@@ -382,6 +382,14 @@ public class MManager {
         ChangeTagOffsetPlan changeTagOffsetPlan = (ChangeTagOffsetPlan) plan;
         changeOffset(changeTagOffsetPlan.getPath(), changeTagOffsetPlan.getOffset());
         break;
+      case CREATE_TEMPLATE:
+        CreateTemplatePlan createTemplatePlan = (CreateTemplatePlan) plan;
+        createDeviceTemplate(createTemplatePlan);
+        break;
+      case SET_DEVICE_TEMPLATE:
+        SetDeviceTemplatePlan setDeviceTemplatePlan = (SetDeviceTemplatePlan) plan;
+        setDeviceTemplate(setDeviceTemplatePlan);
+        break;
       default:
         logger.error("Unrecognizable command {}", plan.getOperatorType());
     }
@@ -1160,7 +1168,7 @@ public class MManager {
       MeasurementMNode node = (MeasurementMNode) getNodeByPath(path);
 
       if (!nodeToPartialPath.containsKey(node)) {
-        if (node.getSchema() instanceof MeasurementMNode) {
+        if (node.getSchema() instanceof MeasurementSchema) {
           nodeToPartialPath.put(node, path);
         } else {
           List<PartialPath> subSensorsPathList = new ArrayList<>();
