@@ -104,13 +104,9 @@ public abstract class TimeGenerator {
       IBatchReader seriesReader = generateNewBatchReader(singleSeriesExp);
       Path path = singleSeriesExp.getSeriesPath();
 
-      if (!leafNodeCache.containsKey(path)) {
-        leafNodeCache.put(path, new ArrayList<>());
-      }
-
       // put the current reader to valueCache
       LeafNode leafNode = new LeafNode(seriesReader);
-      leafNodeCache.get(path).add(leafNode);
+      leafNodeCache.computeIfAbsent(path, p -> new ArrayList<>()).add(leafNode);
 
       return leafNode;
     } else {

@@ -53,7 +53,7 @@ public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
   @Override
   public Object[] getValuesInTimestamps(long[] timestamps, int length) throws IOException {
     if (!sourceInfo.checkCurClient()) {
-      return null;
+      return new Object[0];
     }
 
     ByteBuffer result;

@@ -42,6 +42,6 @@ public class MergedReaderByTime implements IReaderByTimestamp {
         }
       }
     }
-    return null;
+    return new Object[0];
   }
 }

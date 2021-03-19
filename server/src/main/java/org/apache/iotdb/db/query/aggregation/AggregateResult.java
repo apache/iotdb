@@ -35,7 +35,7 @@ import java.nio.ByteBuffer;
 
 public abstract class AggregateResult {
 
-  public static int TIME_LENGTH_FOR_FIRST_VALUE = 100;
+  public static final int TIME_LENGTH_FOR_FIRST_VALUE = 100;
   private final AggregationType aggregationType;
   protected TSDataType resultDataType;
 

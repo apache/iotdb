@@ -135,6 +135,7 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet implements UDFI
 
     // 5. check whether there is next row record
     if (cachedRowRecords.isEmpty() && timeGenerator.hasNext()) {
+      // Note: This may leads to a deep stack if much rowRecords are empty
       return cacheRowRecords();
     }
     return !cachedRowRecords.isEmpty();
@@ -208,6 +209,7 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet implements UDFI
 
     // 5. check whether there is next row record
     if (cachedRowInObjects.isEmpty() && timeGenerator.hasNext()) {
+      // Note: This may leads to a deep stack if much rowRecords are empty
       return cacheRowInObjects();
     }
     return !cachedRowInObjects.isEmpty();

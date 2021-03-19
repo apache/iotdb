@@ -157,7 +157,7 @@ public class EmptyReader extends BaseManagedSeriesReader
 
   @Override
   public Object[] getValuesInTimestamps(long[] timestamps, int length) throws IOException {
-    return null;
+    return new Object[0];
   }
 
   @Override

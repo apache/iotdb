@@ -69,7 +69,7 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
   @Override
   public Object[] getValuesInTimestamps(long[] timestamps, int length) throws IOException {
     if (length <= 0) {
-      return null;
+      return new Object[0];
     }
     Object[] results = new Object[length];
     seriesReader.setTimeFilter(timestamps[0]);
