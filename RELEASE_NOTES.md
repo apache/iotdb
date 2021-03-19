@@ -33,7 +33,8 @@
 * ISSUE-2639 Fix possible NPE during end query process
 * Alter IT for An error is reported and the system is suspended occasionally
 * IOTDB-1149 print error for -e param when set maxPRC<=0
-* IOTDB-2648 Last query not right when having multiple devices
+* IOTDB-1274 Fix the insert blocked caused the bugs in mem control module
+* ISSUE-2648 Last query not right when having multiple devices
 * Delete mods files after compaction
 * ISSUE-2687 fix insert NaN bug
 * ISSUE-2598 Throw explicit exception when time series is unknown in where clause
