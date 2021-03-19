@@ -74,7 +74,7 @@ public class RemoteMultSeriesReader implements IMultPointReader {
             partialPath -> {
               this.cachedBatchs.put(partialPath.getFullPath(), new ConcurrentLinkedQueue<>());
             });
-    this.cachedBatchs = Maps.newHashMap();
+    this.currentBatchDatas = Maps.newHashMap();
     this.batchStrategy = new DefaultBatchStrategy();
   }
 
@@ -218,7 +218,7 @@ public class RemoteMultSeriesReader implements IMultPointReader {
     List<String> selectBatchPaths(Map<String, Queue<BatchData>> cacheBatchs);
   }
 
-  static class DefaultBatchStrategy implements BatchStrategy {
+  public static class DefaultBatchStrategy implements BatchStrategy {
 
     @Override
     public List<String> selectBatchPaths(Map<String, Queue<BatchData>> cacheBatchs) {
