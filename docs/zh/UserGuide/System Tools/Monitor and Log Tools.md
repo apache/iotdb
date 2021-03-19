@@ -183,8 +183,8 @@ select last TOTAL_POINTS from root.stats."global"
 
 **操作**
 
-1. startContinuousStatistics：开启性能监控并以‘DisplayIntervalInMs’的时间间隔打印统计结果。 
-2. startOneTimeStatistics：开启性能监控并以‘DisplayIntervalInMs’的时间延迟打印一次统计结果。 
+1. startContinuousPrintStatistics：开启性能监控并以‘DisplayIntervalInMs’的时间间隔打印统计结果。 
+2. startPrintStatisticsOnce：开启性能监控并以‘DisplayIntervalInMs’的时间延迟打印一次统计结果。 
 3. stopStatistic：关闭性能监控。
 4. clearStatisticalState(): 清除以统计的结果，从新开始统计。
 5. changeOperationSwitch(String operationName, Boolean operationState):设置是否针对每一种不同的操作开启监控。参数‘operationName是操作的名称，在OperationSwitch属性中展示了所有操作的名称。参数 ‘operationState’是操作的状态，打开或者关闭。如果状态设置成功则此函数会返回true，否则返回false。
@@ -233,7 +233,7 @@ IoTDB支持用户通过修改日志配置文件的方式对IoTDB系统日志（�
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577204-fe122900-1ef3-11e9-9e89-2eb1d46e24b8.png">
 
-在`ch.qos.logback.classic`的MBean操作（Operations）选项中，可以看到当前动态系统日志配置支持的5种接口，您可以通过使用相应的方法，来执行相应的操作，操作页面如图。
+在`ch.qos.logback.classic`的MBean操作（Operations）选项中，可以看到当前动态系统日志配置支持的6种接口，您可以通过使用相应的方法，来执行相应的操作，操作页面如图。
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577216-09fdeb00-1ef4-11e9-9005-542ad7d9e9e0.png">
 
