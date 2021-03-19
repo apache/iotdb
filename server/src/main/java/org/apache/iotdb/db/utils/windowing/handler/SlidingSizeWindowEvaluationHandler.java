@@ -25,7 +25,7 @@ import org.apache.iotdb.db.utils.windowing.exception.WindowingException;
 import org.apache.iotdb.db.utils.windowing.runtime.WindowEvaluationTask;
 import org.apache.iotdb.db.utils.windowing.window.WindowImpl;
 
-public abstract class SlidingSizeWindowEvaluationHandler extends SlidingWindowEvaluationHandler {
+public class SlidingSizeWindowEvaluationHandler extends SlidingWindowEvaluationHandler {
 
   private final int windowSize;
   private final int slidingStep;

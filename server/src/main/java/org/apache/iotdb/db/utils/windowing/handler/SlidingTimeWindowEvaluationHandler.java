@@ -28,7 +28,7 @@ import org.apache.iotdb.db.utils.windowing.window.WindowImpl;
 import java.util.LinkedList;
 import java.util.Queue;
 
-public abstract class SlidingTimeWindowEvaluationHandler extends SlidingWindowEvaluationHandler {
+public class SlidingTimeWindowEvaluationHandler extends SlidingWindowEvaluationHandler {
 
   private final long timeInterval;
   private final long slidingStep;
