@@ -112,26 +112,44 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public void insert(InsertRowPlan insertRowPlan) {
     updatePlanIndexes(insertRowPlan.getIndex());
+    TSDataType[] types = insertRowPlan.getDataTypes();
     Object[] values = insertRowPlan.getValues();
 
     MeasurementMNode[] measurementMNodes = insertRowPlan.getMeasurementMNodes();
-    String[] measurements = insertRowPlan.getMeasurements();
-    for (int i = 0; i < values.length; i++) {
-      Object value = values[i];
-      if (value == null) {
+    int columnCount = 0;
+    for (int i = 0; i < measurementMNodes.length; i++) {
+      if (values[columnCount] == null) {
         continue;
       }
 
-      memSize +=
-          MemUtils.getRecordSize(
-              measurementMNodes[i].getSchema().getType(), value, disableMemControl);
+      if (measurementMNodes[i].getSchema().getType() == TSDataType.VECTOR) {
+        // write vector
+        Object[] vectorValue = new Object[measurementMNodes[i].getSchema().getValueTSDataTypeList().size()];
+        for (int j = 0; j < vectorValue.length; j++) {
+          memSize +=
+              MemUtils.getRecordSize(
+                  types[columnCount], values[columnCount], disableMemControl);
+          vectorValue[j] = values[columnCount];
+          columnCount++;
+        }
+        write(
+            insertRowPlan.getDeviceId().getFullPath(),
+            measurementMNodes[i].getSchema(),
+            insertRowPlan.getTime(),
+            vectorValue);
+      }
+      else {
+        memSize +=
+            MemUtils.getRecordSize(
+                measurementMNodes[i].getSchema().getType(), values[columnCount], disableMemControl);
 
-      write(
-          insertRowPlan.getDeviceId().getFullPath(),
-          measurements[i],
-          measurementMNodes[i].getSchema(),
-          insertRowPlan.getTime(),
-          value);
+        write(
+            insertRowPlan.getDeviceId().getFullPath(),
+            measurementMNodes[i].getSchema(),
+            insertRowPlan.getTime(),
+            values[columnCount]);
+        columnCount++;
+      }
     }
 
     totalPointsNum +=
@@ -151,17 +169,6 @@ public abstract class AbstractMemTable implements IMemTable {
     } catch (RuntimeException e) {
       throw new WriteProcessException(e);
     }
-  }
-
-  @Override
-  public void write(
-      String deviceId,
-      String measurement,
-      IMeasurementSchema schema,
-      long insertTime,
-      Object objectValue) {
-    IWritableMemChunk memSeries = createIfNotExistAndGet(deviceId, schema);
-    memSeries.write(insertTime, objectValue);
   }
 
   @Override

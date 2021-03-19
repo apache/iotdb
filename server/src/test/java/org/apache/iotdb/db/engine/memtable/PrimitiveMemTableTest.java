@@ -94,7 +94,6 @@ public class PrimitiveMemTableTest {
     for (int i = 0; i < dataSize; i++) {
       memTable.write(
           deviceId,
-          measurementId[0],
           new MeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN),
           dataSize - i - 1,
           i + 10);
@@ -102,7 +101,6 @@ public class PrimitiveMemTableTest {
     for (int i = 0; i < dataSize; i++) {
       memTable.write(
           deviceId,
-          measurementId[0],
           new MeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN),
           i,
           i);
@@ -141,7 +139,6 @@ public class PrimitiveMemTableTest {
     for (TimeValuePair aRet : ret) {
       memTable.write(
           deviceId,
-          sensorId,
           new MeasurementSchema(sensorId, dataType, encoding),
           aRet.getTimestamp(),
           aRet.getValue().getValue());

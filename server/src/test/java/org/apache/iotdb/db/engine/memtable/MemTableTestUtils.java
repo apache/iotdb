@@ -61,11 +61,7 @@ public class MemTableTestUtils {
     }
     for (long l = startTime; l <= endTime; l++) {
       iMemTable.write(
-          deviceId,
-          measurementId,
-          new MeasurementSchema(measurementId, dataType, TSEncoding.PLAIN),
-          l,
-          (int) l);
+          deviceId, new MeasurementSchema(measurementId, dataType, TSEncoding.PLAIN), l, (int) l);
     }
   }
 
