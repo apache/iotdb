@@ -24,13 +24,25 @@ public class TracingOperator extends RootOperator {
 
   private boolean isTracingOn;
 
+  private Integer tracingType;
+
   public TracingOperator(int tokenIntType, boolean isTracingOn) {
     super(tokenIntType);
     this.isTracingOn = isTracingOn;
     operatorType = OperatorType.TRACING;
   }
 
+  public TracingOperator(int tokenIntType, int tracingType) {
+    super(tokenIntType);
+    this.tracingType = tracingType;
+    operatorType = OperatorType.TRACING;
+  }
+
   public boolean isTracingOn() {
     return isTracingOn;
+  }
+
+  public Integer tracingType() {
+    return tracingType;
   }
 }

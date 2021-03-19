@@ -178,6 +178,8 @@ public class SQLConstant {
   public static final int TOK_TRIGGER_STOP = 103;
   public static final int TOK_SHOW_TRIGGERS = 104;
 
+  public static final int TOK_TRACING_CLEAR_ALL = 105;
+
   public static final Map<Integer, String> tokenSymbol = new HashMap<>();
   public static final Map<Integer, String> tokenNames = new HashMap<>();
   public static final Map<Integer, Integer> reverseWords = new HashMap<>();
