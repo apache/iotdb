@@ -22,29 +22,12 @@
 # Apache IoTDB 0.11.3
 
 ## Bug Fixes
-* ISSUE-2240 Fix using incorrect Thrift protocol in sync module
-* ISSUE-2253 Femove the dependency of fastutil-7.0.6.jar
-* IOTDB-1069 restrict the flushing memtable number to avoid OOM when mem_control is disabled
-* ISSUE-2313 Data error when using CHINESE CHARACTAR in path on Windows OS
-* IOTDB-1084 Restrict temporary memory in flushing that may cause OOM
-* ISSUE-2341 Fix the compaction will block the flush process
-* IOTDB-1065 Fix deletion bug while trying to delete data from a timeseries which contains comma
-* IOTDB-1103 Fix frame size larger than max length error
-* Fix incorrect file path in compaction
-* Fix RestartTests failed because the compaction module does not allow clear the MManamger before it is stopped
-* IOTDB-1106 Fix delete time series bug 
-* IOTDB-1108 Add error log to print file name while error happened
-* Fix the compaction todo list bug in recovery module
-* Fix the copyright and readme in 0.11
-* Fix invalid urls docker file in 0.11
-* Fix bug in in-place compaction strategy
 * ISSUE-2505 ignore PathNotExistException in recover and change recover error to warn
 * IOTDB-1119 Fix C++ SessionDataSet bug when reading value buffer
 * Fix SessionPool does not recycle session and can not offer new Session due to RunTimeException
-* Fix the end time bug in compaction module
 * ISSUE-2588 Fix dead lock between deleting data and querying in parallel
 * ISSUE-2546 Fix first chunkmetadata should be consumed first
-* IOTDB-1126 Fix unseq tsfile is deleted due to merge
+* IOTDB-1126 Fix unseq tsfile is deleted due to compaction
 * IOTDB-1137 MNode.getLeafCount error when existing sub-device
 * ISSUE-2624 ISSUE-2625 Avoid OOM if user don't close Statement and Session manually
 * ISSUE-2639 Fix possible NPE during end query process
@@ -58,27 +41,19 @@
 * ISSUE-2611 An unsequence file that covers too many sequence file causes OOM query
 * IOTDB-1135 Fix count timeseries bug when the paths are nested
 * ISSUE-2709 IOTDB-1178 Fix cache is not cleared after compaction
-* ISSUE-2746 Fix data overlapped bug after unseq compaction
+* ISSUE-2746 Fix data overlapped bug after the elimination unseq compaction process
 * Fix getObject method in JDBC should return an Object
 * IOTDB-1188 Fix IoTDB 0.11 unable to delete data bug
 * Fix when covering a tsfile resource with HistoricalVersion = null, it’ll throw a NPE
-* fix the unseq compaction may loss data bug after a delete operation is executed
+* fix the elimination unseq compaction may loss data bug after a delete operation is executed
 
 ## Improvements
-* Fix incorrect last result after deleting all data
-* Add parallelism in timeseries metadata cache
-* IOTDB-1068 Improve the time series metadata cache size
-* use asynchronous compaction in the restart-recovery module
-* print more insert error message in client
-* Refactor the CSV tool
-* Expose enablePartition parameter into iotdb-engines.properpties
 * IOTDB-1140 optimize regular data encoding
 * Add more log for better tracing
 * Add backgroup exec for cli -e function
 * Add max direct memory size parameter to env.sh
 
 ## New Features
-* IOTDB-1077 add insertOneDeviceRecords API in java session
 * Add explain sql support
 
 
