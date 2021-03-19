@@ -1,38 +1,69 @@
 package org.apache.iotdb.db.utils.windowing;
 
-import org.junit.After;
-import org.junit.Before;
+import org.apache.iotdb.db.utils.windowing.configuration.SlidingSizeWindowConfiguration;
+import org.apache.iotdb.db.utils.windowing.exception.WindowingException;
+import org.apache.iotdb.db.utils.windowing.handler.SlidingSizeWindowEvaluationHandler;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
 import org.junit.Test;
+
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.awaitility.Awaitility.await;
 
 public class SlidingSizeWindowEvaluationHandlerTest {
 
-  @Before
-  public void setUp() throws Exception {}
-
-  @After
-  public void tearDown() throws Exception {}
+  @Test
+  public void test00() throws WindowingException {
+    doTest(1, 1, 0);
+  }
 
   @Test
-  public void accept() {}
+  public void test01() throws WindowingException {
+    doTest(1, 1, 1);
+  }
 
   @Test
-  public void testAccept() {}
+  public void test02() throws WindowingException {
+    doTest(1, 1, 2);
+  }
 
   @Test
-  public void testAccept1() {}
+  public void test03() throws WindowingException {
+    doTest(1, 1, 5);
+  }
 
   @Test
-  public void testAccept2() {}
+  public void test04() throws WindowingException {
+    doTest(1, 1, 10);
+  }
 
   @Test
-  public void testAccept3() {}
+  public void test05() throws WindowingException {
+    doTest(4, 2, 10);
+  }
 
-  @Test
-  public void testAccept4() {}
+  private void doTest(int windowSize, int slidingStep, int totalPointNumber)
+      throws WindowingException {
+    final AtomicInteger count = new AtomicInteger(0);
 
-  @Test
-  public void testAccept5() {}
+    SlidingSizeWindowEvaluationHandler handler =
+        new SlidingSizeWindowEvaluationHandler(
+            new SlidingSizeWindowConfiguration(TSDataType.INT32, windowSize, slidingStep),
+            window -> count.incrementAndGet());
 
-  @Test
-  public void createEvaluationTaskIfNecessary() {}
+    for (int i = 0; i < totalPointNumber; ++i) {
+      handler.accept(i, i);
+    }
+
+    await()
+        .atMost(5, SECONDS)
+        .until(
+            () ->
+                (totalPointNumber < windowSize
+                        ? 0
+                        : 1 + (totalPointNumber - windowSize) / slidingStep)
+                    == count.get());
+  }
 }
