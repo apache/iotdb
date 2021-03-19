@@ -224,4 +224,20 @@ public class SystemInfo {
     FLUSH_THERSHOLD = memorySizeForWrite * config.getFlushProportion();
     REJECT_THERSHOLD = memorySizeForWrite * config.getRejectProportion();
   }
+
+  public long getTotalMemTableSize() {
+    return totalSgMemCost;
+  }
+
+  public double getFlushThershold() {
+    return FLUSH_THERSHOLD;
+  }
+
+  public double getRejectThershold() {
+    return REJECT_THERSHOLD;
+  }
+
+  public int flushingMemTableNum() {
+    return FlushManager.getInstance().getNumberOfWorkingTasks();
+  }
 }

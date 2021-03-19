@@ -368,11 +368,19 @@ public class MNode implements Serializable {
       return false;
     }
     MNode mNode = (MNode) o;
-    return Objects.equals(fullPath, mNode.fullPath);
+    if (fullPath == null) {
+      return Objects.equals(getFullPath(), mNode.getFullPath());
+    } else {
+      return Objects.equals(fullPath, mNode.fullPath);
+    }
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(fullPath);
+    if (fullPath == null) {
+      return Objects.hash(getFullPath());
+    } else {
+      return Objects.hash(fullPath);
+    }
   }
 }
