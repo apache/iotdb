@@ -1010,12 +1010,12 @@ It costs 0.000s
 SQL语句是：
 
 ```
-select count(status), max_value(temperature) from root.ln.wf01.wt01 group by ([2017-11-01T00:00:00, 2017-11-07T23:00:00),1d) limit 5 offset 3
+select count(status), max_value(temperature) from root.ln.wf01.wt01 group by ([2017-11-01T00:00:00, 2017-11-07T23:00:00),1d) limit 4 offset 3
 ```
 
 意思是：
 
-SQL语句子句要求返回查询结果的第3至7行（第一行编号为0行）。
+SQL语句子句要求返回查询结果的第3至6行（第一行编号为0行）。
 
 结果如下所示：
 
