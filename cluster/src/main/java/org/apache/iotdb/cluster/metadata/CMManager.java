@@ -633,7 +633,7 @@ public class CMManager extends MManager {
       seriesList.add(deviceId.getFullPath() + TsFileConstant.PATH_SEPARATOR + measurementId);
     }
     if (hasVector) {
-      return createAlignTimeseries(seriesList, (InsertTabletPlan) insertPlan);
+      return createAlignedTimeseries(seriesList, (InsertTabletPlan) insertPlan);
     }
     PartitionGroup partitionGroup =
         metaGroupMember.getPartitionTable().route(storageGroupName.getFullPath(), 0);
@@ -643,7 +643,7 @@ public class CMManager extends MManager {
     return createTimeseries(unregisteredSeriesList, seriesList, insertPlan);
   }
 
-  private boolean createAlignTimeseries(List<String> seriesList, InsertTabletPlan insertPlan)
+  private boolean createAlignedTimeseries(List<String> seriesList, InsertTabletPlan insertPlan)
       throws IllegalPathException {
     List<String> measurements = new ArrayList<>();
     for (String series : seriesList) {
