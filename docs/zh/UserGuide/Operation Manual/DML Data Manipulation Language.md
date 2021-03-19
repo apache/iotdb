@@ -460,7 +460,7 @@ select count(status) from root.ln.wf01.wt01 group by([2017-10-31T00:00:00, 2019-
 
 由于用户指定了滑动步长为`2mo`，GROUP BY语句执行时将会每次把时间间隔往后移动2个自然月的步长，而不是默认的1个自然月。
 
-也就意味着，我们想要取从2017-10-31到2029-11-07每2个自然月的第一个月的数据。
+也就意味着，我们想要取从2017-10-31到2019-11-07每2个自然月的第一个月的数据。
 
 与上述示例不同的是起始时间为2017-10-31T00:00:00，滑动步长将会以起始时间作为标准按月递增，取当月的31号（即最后一天）作为时间间隔的起始时间。若起始时间设置为30号，滑动步长会将时间间隔的起始时间设置为当月30号，若不存在则为最后一天。
 
@@ -502,7 +502,7 @@ select count(status) from root.ln.wf01.wt01 group by([2017-10-31T00:00:00, 2019-
 select count(status) from root.ln.wf01.wt01 group by ((2017-11-01T00:00:00, 2017-11-07T23:00:00],1d);
 ```
 
-这条查询语句的时间区间是左开右闭的，结果中不会包含时间点5的数据，但是会包含时间点40的数据。
+这条查询语句的时间区间是左开右闭的，结果中不会包含时间点2017-11-01的数据，但是会包含时间点2017-11-07的数据。
 
 SQL执行后的结果集如下所示：
 
@@ -812,21 +812,6 @@ It costs 0.017s
 
 </center>
 
-如果未指定fill方法，则每种数据类型均具有其自己的默认fill方法和参数。 对应关系如表3-7所示。
-
-<center>**表3-7各种数据类型的默认填充方法和参数**
-
-| 数据类型 | 默认填充方法和参数     |
-| :------- | :--------------------- |
-| boolean  | previous, 600000       |
-| int32    | linear, 600000, 600000 |
-| int64    | linear, 600000, 600000 |
-| float    | linear, 600000, 600000 |
-| double   | linear, 600000, 600000 |
-| text     | previous, 600000       |
-
-</center>
-
 > 注意：应在Fill语句中至少指定一种填充方法。
 
  * 时间区间分组聚合查询补空值
@@ -997,7 +982,7 @@ It costs 0.342s
 SQL语句是：
 
 ```
-select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time< 2017-11-01T00:12:00.000 limit 2 offset 3
+select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time< 2017-11-01T00:12:00.000 limit 5 offset 3
 ```
 
 意思是：
@@ -1056,12 +1041,12 @@ select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000
 SQL语句将不会执行，并且相应的错误提示如下：
 
 ```
-Msg: 401: line 1:107 mismatched input 'limit' expecting {<EOF>, SLIMIT, SOFFSET, GROUP, DISABLE, ALIGN}
+Msg: 401: Error occured while parsing SQL to physical plan: line 1:101 mismatched input 'limit' expecting {<EOF>, SLIMIT, SOFFSET, GROUP, DISABLE, ALIGN}
 ```
 
  * 查询结果的列控制
 
-通过使用LIMIT和OFFSET子句，用户可以以与列相关的方式控制查询结果。 我们将通过以下示例演示如何使用SLIMIT和OFFSET子句。
+通过使用SLIMIT和SOFFSET子句，用户可以与列相关的方式控制查询结果。 我们将通过以下示例演示如何使用SLIMIT和SOFFSET子句。
 
 - 示例1：基本的SLIMIT子句
 
@@ -1073,7 +1058,7 @@ select * from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 
 
 意思是：
 
-所选设备为ln组wf01工厂wt01设备； 所选时间序列是该设备下的第一列，即电源状态。 SQL语句要求在“ 2017-11-01T00：05：00.000”和“ 2017-11-01T00：12：00.000”的时间点之间选择状态传感器值。
+所选设备为ln组wf01工厂wt01设备； 所选时间序列是该设备下的第二列，即温度。 SQL语句要求在“ 2017-11-01T00：05：00.000”和“ 2017-11-01T00：12：00.000”的时间点之间选择温度传感器值。
 
 结果如下所示：
 
@@ -1092,7 +1077,7 @@ Total line number = 6
 It costs 0.000s
 ```
 
-- 示例2：带OFFSET的LIMIT子句
+- 示例2：带SOFFSET的SLIMIT子句
 
 SQL语句是：
 
@@ -1102,7 +1087,7 @@ select * from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 
 
 意思是：
 
-所选设备为ln组wf01工厂wt01设备； 所选时间序列是该设备下的第二列，即温度。 SQL语句要求在“ 2017-11-01T00：05：00.000”和“ 2017-11-01T00：12：00.000”的时间点之间选择温度传感器值。
+所选设备为ln组wf01工厂wt01设备； 所选时间序列是该设备下的第一列，即电源状态。 SQL语句要求在“ 2017-11-01T00：05：00.000”和“ 2017-11-01T00：12：00.000”的时间点之间选择状态传感器值。
 
 结果如下所示：
 
@@ -1157,10 +1142,6 @@ select * from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(floa
 
 ```
 
-意思是：
-
-所选设备为ln组wf01工厂wt01设备； 所选时间序列是该设备下的第二列，即温度。
-
 结果如下所示：
 
 ```
@@ -1186,7 +1167,7 @@ select * from root.ln.wf01.wt01 limit 10 offset 100 slimit 2 soffset 0
 
 意思是：
 
-所选设备为ln组wf01工厂wt01设备； 所选时间序列是此设备下的第0列至第1列（第一列编号为第0列）。 SQL语句子句要求返回查询结果的第100至109行（第一行编号为0行）。
+所选设备为ln组wf01工厂wt01设备； 所选时间序列是此设备下的第0列至第1列（第一列编号为第0列）。 SQL语句子句要求返回查询结果的第0至9行（第一行编号为0行）。
 
 结果如下所示：
 
@@ -1261,6 +1242,7 @@ select s1 as temperature, s2 as speed from root.ln.wf01.wt01;
 ```   sql
 select s1, sin(s1), cos(s1), tan(s1) from root.sg1.d1 limit 5 offset 1000;
 ```
+select s1,s2 from root.ln.* ALIGN BY DEVICE
 
 结果：
 
