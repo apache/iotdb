@@ -271,7 +271,6 @@ public class IOTDBGroupByInnerIntervalIT {
         }
         assertEquals(retArray1.length, cnt);
       }
-
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
