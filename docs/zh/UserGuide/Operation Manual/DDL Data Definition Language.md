@@ -299,7 +299,7 @@ create timeseries root.turbine.d1.s1(temprature) with datatype=FLOAT, encoding=R
 > 注意：额外的标签和属性信息总的大小不能超过`tag_attribute_total_size`.
 
  * 标签点属性更新
-创建时间序列后，我们也可以对其原有的标签点属性进行更新，主要有以下五种更新方式：
+创建时间序列后，我们也可以对其原有的标签点属性进行更新，主要有以下六种更新方式：
 
 * 重命名标签或属性
 ```
