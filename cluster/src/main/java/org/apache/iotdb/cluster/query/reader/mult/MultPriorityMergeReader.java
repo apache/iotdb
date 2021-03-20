@@ -35,35 +35,31 @@ public class MultPriorityMergeReader extends PriorityMergeReader {
     this.fullPath = fullPath;
   }
 
-  @Override
-  public void addReader(IPointReader reader, long priority) throws IOException {
-    IMultPointReader multReader = (IMultPointReader) reader;
-    if (multReader.hasNextTimeValuePair(fullPath)) {
+  public void addReader(AbstractMultPointReader reader, long priority) throws IOException {
+    if (reader.hasNextTimeValuePair(fullPath)) {
       heap.add(
           new MultElement(
-              multReader,
-              multReader.nextTimeValuePair(fullPath),
-              new MergeReaderPriority(priority, 0)));
+              reader, reader.nextTimeValuePair(fullPath), new MergeReaderPriority(priority, 0)));
     } else {
-      multReader.close();
+      reader.close();
     }
   }
 
   public class MultElement extends Element {
 
     public MultElement(
-        IMultPointReader reader, TimeValuePair timeValuePair, MergeReaderPriority priority) {
+        AbstractMultPointReader reader, TimeValuePair timeValuePair, MergeReaderPriority priority) {
       super(reader, timeValuePair, priority);
     }
 
     @Override
     public boolean hasNext() throws IOException {
-      return ((IMultPointReader) reader).hasNextTimeValuePair(fullPath);
+      return ((AbstractMultPointReader) reader).hasNextTimeValuePair(fullPath);
     }
 
     @Override
     public void next() throws IOException {
-      timeValuePair = ((IMultPointReader) reader).nextTimeValuePair(fullPath);
+      timeValuePair = ((AbstractMultPointReader) reader).nextTimeValuePair(fullPath);
     }
   }
 }

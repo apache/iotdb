@@ -24,7 +24,7 @@ import java.io.IOException;
 import java.util.Set;
 
 /** empty mult reader */
-public class MultEmptyReader implements IMultPointReader {
+public class MultEmptyReader extends AbstractMultPointReader {
 
   private Set<String> fullPaths;
 
@@ -48,20 +48,5 @@ public class MultEmptyReader implements IMultPointReader {
   }
 
   @Override
-  public boolean hasNextTimeValuePair() throws IOException {
-    return false;
-  }
-
-  @Override
-  public TimeValuePair nextTimeValuePair() throws IOException {
-    return null;
-  }
-
-  @Override
-  public TimeValuePair currentTimeValuePair() throws IOException {
-    return null;
-  }
-
-  @Override
-  public void close() throws IOException {}
+  public void close() {}
 }

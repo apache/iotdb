@@ -48,7 +48,7 @@ import java.util.concurrent.atomic.AtomicReference;
 /**
  * RemoteSimpleSeriesReader is a reader without value filter that reads points from a remote side.
  */
-public class RemoteMultSeriesReader implements IMultPointReader {
+public class RemoteMultSeriesReader extends AbstractMultPointReader {
 
   private static final Logger logger = LoggerFactory.getLogger(RemoteMultSeriesReader.class);
   private static final int FETCH_BATCH_DATA_SIZE = 10;
@@ -64,18 +64,21 @@ public class RemoteMultSeriesReader implements IMultPointReader {
 
   private Map<String, BatchData> currentBatchDatas;
 
+  private Map<String, TSDataType> pathToDataType;
+
   public RemoteMultSeriesReader(MultDataSourceInfo sourceInfo) {
     this.sourceInfo = sourceInfo;
     this.handler = new GenericHandler<>(sourceInfo.getCurrentNode(), fetchResult);
-    this.cachedBatchs = Maps.newHashMap();
-    this.sourceInfo
-        .getPartialPaths()
-        .forEach(
-            partialPath -> {
-              this.cachedBatchs.put(partialPath.getFullPath(), new ConcurrentLinkedQueue<>());
-            });
     this.currentBatchDatas = Maps.newHashMap();
     this.batchStrategy = new DefaultBatchStrategy();
+
+    this.cachedBatchs = Maps.newHashMap();
+    this.pathToDataType = Maps.newHashMap();
+    for (int i = 0; i < sourceInfo.getPartialPaths().size(); i++) {
+      String fullPath = sourceInfo.getPartialPaths().get(i).getFullPath();
+      this.cachedBatchs.put(fullPath, new ConcurrentLinkedQueue<>());
+      this.pathToDataType.put(fullPath, sourceInfo.getDataTypes().get(i));
+    }
   }
 
   @Override
@@ -108,16 +111,10 @@ public class RemoteMultSeriesReader implements IMultPointReader {
       throw new NoSuchElementException();
     }
 
-    TSDataType dataType = null;
-    for (int i = 0; i < sourceInfo.getPartialPaths().size(); i++) {
-      if (fullPath.equals(sourceInfo.getPartialPaths().get(i).getFullPath())) {
-        dataType = sourceInfo.getDataTypes().get(i);
-      }
-    }
-
     TimeValuePair timeValuePair =
         new TimeValuePair(
-            batchData.currentTime(), TsPrimitiveType.getByType(dataType, batchData.currentValue()));
+            batchData.currentTime(),
+            TsPrimitiveType.getByType(pathToDataType.get(fullPath), batchData.currentValue()));
     batchData.next();
     return timeValuePair;
   }
@@ -126,6 +123,10 @@ public class RemoteMultSeriesReader implements IMultPointReader {
   public Set<String> getAllPaths() {
     return cachedBatchs.keySet();
   }
+
+  /** query resource deal close there is not dealing. */
+  @Override
+  public void close() {}
 
   private void fetchBatch() throws IOException {
     if (!sourceInfo.checkCurClient()) {
@@ -191,26 +192,6 @@ public class RemoteMultSeriesReader implements IMultPointReader {
       logger.error("Failed to fetch result sync, connect to {}", sourceInfo, e);
       return null;
     }
-  }
-
-  @Override
-  public boolean hasNextTimeValuePair() throws IOException {
-    return false;
-  }
-
-  @Override
-  public TimeValuePair nextTimeValuePair() throws IOException {
-    return null;
-  }
-
-  @Override
-  public TimeValuePair currentTimeValuePair() throws IOException {
-    return null;
-  }
-
-  @Override
-  public void close() {
-    // closed by Resource manager
   }
 
   /** select path, which could batch-fetch result */

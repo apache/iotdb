@@ -24,11 +24,26 @@ import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import java.io.IOException;
 import java.util.Set;
 
-public interface IMultPointReader extends IPointReader {
+public abstract class AbstractMultPointReader implements IPointReader {
 
-  boolean hasNextTimeValuePair(String fullPath) throws IOException;
+  public abstract boolean hasNextTimeValuePair(String fullPath) throws IOException;
 
-  TimeValuePair nextTimeValuePair(String fullPath) throws IOException;
+  public abstract TimeValuePair nextTimeValuePair(String fullPath) throws IOException;
 
-  Set<String> getAllPaths();
+  public abstract Set<String> getAllPaths();
+
+  @Override
+  public boolean hasNextTimeValuePair() throws IOException {
+    return false;
+  }
+
+  @Override
+  public TimeValuePair nextTimeValuePair() throws IOException {
+    return null;
+  }
+
+  @Override
+  public TimeValuePair currentTimeValuePair() throws IOException {
+    return null;
+  }
 }

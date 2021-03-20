@@ -23,7 +23,7 @@ import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.EmptyIntervalException;
 import org.apache.iotdb.cluster.query.reader.ClusterReaderFactory;
 import org.apache.iotdb.cluster.query.reader.ClusterTimeGenerator;
-import org.apache.iotdb.cluster.query.reader.mult.IMultPointReader;
+import org.apache.iotdb.cluster.query.reader.mult.AbstractMultPointReader;
 import org.apache.iotdb.cluster.query.reader.mult.MultManagedMergeReader;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -98,7 +98,7 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
       throw new StorageEngineException(e);
     }
     List<ManagedSeriesReader> readersOfSelectedSeries = Lists.newArrayList();
-    List<IMultPointReader> multPointReaders = Lists.newArrayList();
+    List<AbstractMultPointReader> multPointReaders = Lists.newArrayList();
 
     multPointReaders =
         readerFactory.getMultSeriesReader(
@@ -115,7 +115,7 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
       TSDataType dataType = queryPlan.getDeduplicatedDataTypes().get(i);
       MultManagedMergeReader multManagedMergeReader =
           new MultManagedMergeReader(partialPath.getFullPath(), dataType);
-      for (IMultPointReader multPointReader : multPointReaders) {
+      for (AbstractMultPointReader multPointReader : multPointReaders) {
         if (multPointReader.getAllPaths().contains(partialPath.getFullPath())) {
           multManagedMergeReader.addReader(multPointReader, 0);
         }

@@ -33,7 +33,7 @@ import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.query.filter.SlotTsFileFilter;
 import org.apache.iotdb.cluster.query.groupby.RemoteGroupByExecutor;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
-import org.apache.iotdb.cluster.query.reader.mult.IMultPointReader;
+import org.apache.iotdb.cluster.query.reader.mult.AbstractMultPointReader;
 import org.apache.iotdb.cluster.query.reader.mult.MultBatchReader;
 import org.apache.iotdb.cluster.query.reader.mult.MultDataSourceInfo;
 import org.apache.iotdb.cluster.query.reader.mult.MultEmptyReader;
@@ -221,7 +221,7 @@ public class ClusterReaderFactory {
    * @param timeFilter nullable, when null, all data groups will be queried
    * @param valueFilter nullable
    */
-  public List<IMultPointReader> getMultSeriesReader(
+  public List<AbstractMultPointReader> getMultSeriesReader(
       List<PartialPath> paths,
       Map<String, Set<String>> deviceMeasurements,
       List<TSDataType> dataTypes,
@@ -243,13 +243,13 @@ public class ClusterReaderFactory {
           });
     }
 
-    List<IMultPointReader> multPointReaders = Lists.newArrayList();
+    List<AbstractMultPointReader> multPointReaders = Lists.newArrayList();
 
     partitionGroupListMap
-        .keySet()
+        .entrySet()
         .forEach(
-            partitionGroup -> {
-              List<PartialPath> partialPaths = partitionGroupListMap.get(partitionGroup);
+            entityPartitionGroup -> {
+              List<PartialPath> partialPaths = entityPartitionGroup.getValue();
               Map<String, Set<String>> partitionGroupDeviceMeasurements = Maps.newHashMap();
               List<TSDataType> partitionGroupTSDataType = Lists.newArrayList();
               partialPaths.forEach(
@@ -262,18 +262,17 @@ public class ClusterReaderFactory {
                   });
 
               try {
-                IMultPointReader iMultPointReader =
-                    (IMultPointReader)
-                        getMultSeriesReader(
-                            partitionGroup,
-                            partialPaths,
-                            partitionGroupTSDataType,
-                            partitionGroupDeviceMeasurements,
-                            timeFilter,
-                            valueFilter,
-                            context,
-                            ascending);
-                multPointReaders.add(iMultPointReader);
+                AbstractMultPointReader abstractMultPointReader =
+                    getMultSeriesReader(
+                        entityPartitionGroup.getKey(),
+                        partialPaths,
+                        partitionGroupTSDataType,
+                        partitionGroupDeviceMeasurements,
+                        timeFilter,
+                        valueFilter,
+                        context,
+                        ascending);
+                multPointReaders.add(abstractMultPointReader);
               } catch (Exception e) {
 
               }
@@ -289,7 +288,7 @@ public class ClusterReaderFactory {
    * @param timeFilter nullable
    * @param valueFilter nullable
    */
-  private IPointReader getMultSeriesReader(
+  private AbstractMultPointReader getMultSeriesReader(
       PartitionGroup partitionGroup,
       List<PartialPath> partialPaths,
       List<TSDataType> dataTypes,
@@ -539,7 +538,7 @@ public class ClusterReaderFactory {
    * @param timeFilter nullable
    * @param valueFilter nullable
    */
-  private IPointReader getRemoteMultSeriesPointReader(
+  private AbstractMultPointReader getRemoteMultSeriesPointReader(
       Filter timeFilter,
       Filter valueFilter,
       List<TSDataType> dataType,

@@ -25,7 +25,7 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.Set;
 
-public class MultSeriesRawDataPointReader implements IMultPointReader {
+public class MultSeriesRawDataPointReader extends AbstractMultPointReader {
   private Map<String, IPointReader> partitalPathReaders;
 
   public MultSeriesRawDataPointReader(Map<String, IPointReader> partitalPathReaders) {
@@ -50,20 +50,5 @@ public class MultSeriesRawDataPointReader implements IMultPointReader {
   }
 
   @Override
-  public boolean hasNextTimeValuePair() throws IOException {
-    return false;
-  }
-
-  @Override
-  public TimeValuePair nextTimeValuePair() throws IOException {
-    return null;
-  }
-
-  @Override
-  public TimeValuePair currentTimeValuePair() throws IOException {
-    return null;
-  }
-
-  @Override
-  public void close() throws IOException {}
+  public void close() {}
 }

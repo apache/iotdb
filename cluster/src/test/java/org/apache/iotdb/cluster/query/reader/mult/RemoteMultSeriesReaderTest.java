@@ -121,7 +121,7 @@ public class RemoteMultSeriesReaderTest {
         assertEquals(i, pair.getTimestamp());
         assertEquals(i * 1.0, pair.getValue().getDouble(), 0.00001);
       }
-      assertFalse(reader.hasNextTimeValuePair());
+      assertFalse(reader.hasNextTimeValuePair(paths.get(0).getFullPath()));
 
     } finally {
       QueryResourceManager.getInstance().endQuery(context.getQueryId());
@@ -153,7 +153,7 @@ public class RemoteMultSeriesReaderTest {
         assertEquals(i, pair.getTimestamp());
         assertEquals(i * 1.0, pair.getValue().getDouble(), 0.00001);
       }
-      assertFalse(reader.hasNextTimeValuePair());
+      assertFalse(reader.hasNextTimeValuePair(paths.get(0).getFullPath()));
 
       for (int i = 0; i < 100; i++) {
         assertTrue(reader.hasNextTimeValuePair(paths.get(1).getFullPath()));
@@ -161,7 +161,7 @@ public class RemoteMultSeriesReaderTest {
         assertEquals(i, pair.getTimestamp());
         assertEquals(i * 1.0, pair.getValue().getInt(), 0.00001);
       }
-      assertFalse(reader.hasNextTimeValuePair());
+      assertFalse(reader.hasNextTimeValuePair(paths.get(1).getFullPath()));
     } finally {
       QueryResourceManager.getInstance().endQuery(context.getQueryId());
     }

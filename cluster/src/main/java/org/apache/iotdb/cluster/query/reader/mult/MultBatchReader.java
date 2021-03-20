@@ -60,7 +60,7 @@ public class MultBatchReader implements IMultBatchReader {
 
   @Override
   public BatchData nextBatch() throws IOException {
-    return null;
+    throw new UnsupportedOperationException();
   }
 
   /**
