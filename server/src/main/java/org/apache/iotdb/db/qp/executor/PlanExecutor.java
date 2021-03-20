@@ -106,6 +106,7 @@ import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.control.QueryTimeManager.QueryInfo;
+import org.apache.iotdb.db.query.control.TracingManager;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.query.dataset.ShowDevicesDataSet;
@@ -410,7 +411,24 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private void operateTracing(TracingPlan plan) {
-    IoTDBDescriptor.getInstance().getConfig().setEnablePerformanceTracing(plan.isTracingOn());
+    if (plan.tracingType() != null && plan.tracingType() > 0) {
+      tracingClearAll();
+    } else {
+      IoTDBDescriptor.getInstance().getConfig().setEnablePerformanceTracing(plan.isTracingOn());
+    }
+  }
+
+  private void tracingClearAll() {
+    Boolean isTracingOn = IoTDBDescriptor.getInstance().getConfig().isEnablePerformanceTracing();
+    String tracingDir = IoTDBDescriptor.getInstance().getConfig().getTracingDir();
+    String tracingDirName = IoTDBConstant.TRACING_LOG;
+    if (isTracingOn) {
+      IoTDBDescriptor.getInstance().getConfig().setEnablePerformanceTracing(false);
+      TracingManager.getInstance().clearTracingAllInfo(tracingDir, tracingDirName);
+      IoTDBDescriptor.getInstance().getConfig().setEnablePerformanceTracing(true);
+    } else {
+      TracingManager.getInstance().clearTracingAllInfo(tracingDir, tracingDirName);
+    }
   }
 
   private void operateFlush(FlushPlan plan) throws StorageGroupNotSetException {

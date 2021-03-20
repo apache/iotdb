@@ -204,6 +204,7 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.TableCallContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.TableElementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.TagClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.TimeIntervalContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.TracingClearAllContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.TracingOffContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.TracingOnContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.TriggerAttributeContext;
@@ -895,6 +896,11 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   @Override
   public Operator visitTracingOff(TracingOffContext ctx) {
     return new TracingOperator(SQLConstant.TOK_TRACING, false);
+  }
+
+  @Override
+  public Operator visitTracingClearAll(TracingClearAllContext ctx) {
+    return new TracingOperator(SQLConstant.TOK_TRACING, SQLConstant.TOK_TRACING_CLEAR_ALL);
   }
 
   @Override

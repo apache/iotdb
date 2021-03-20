@@ -202,6 +202,26 @@ public class TracingManager {
     writer.close();
   }
 
+  public boolean getWriterStatus() {
+    try {
+      writer.flush();
+      return true;
+    } catch (IOException e) {
+      return false;
+    }
+  }
+
+  public void reOpenBufferedWriter(String dirName, String logFileName) {
+    File logFile = SystemFileFactory.INSTANCE.getFile(dirName + File.separator + logFileName);
+    FileWriter fileWriter = null;
+    try {
+      fileWriter = new FileWriter(logFile, true);
+    } catch (IOException e) {
+      logger.error("Meeting error while again open TracingManager_writer: {}", e.getMessage());
+    }
+    writer = new BufferedWriter(fileWriter);
+  }
+
   private static class TracingManagerHelper {
 
     private static final TracingManager INSTANCE =
@@ -209,5 +229,29 @@ public class TracingManager {
             IoTDBDescriptor.getInstance().getConfig().getTracingDir(), IoTDBConstant.TRACING_LOG);
 
     private TracingManagerHelper() {}
+  }
+
+  /** Clear all Tracing records */
+  public void clearTracingAllInfo(String dirName, String logFileName) {
+    File tracingDir = SystemFileFactory.INSTANCE.getFile(dirName);
+    if (tracingDir.exists()) {
+      File logFile = SystemFileFactory.INSTANCE.getFile(dirName + File.separator + logFileName);
+      if (logFile.exists()) {
+        try {
+          Boolean flag = logFile.delete();
+          if (!flag) {
+            FileWriter fw5 = new FileWriter(logFile);
+            BufferedWriter bw1 = new BufferedWriter(fw5);
+            bw1.write("");
+            bw1.close();
+            fw5.close();
+          }
+        } catch (IOException e) {
+          logger.error("TracingFile Clear all error: {}", e.getMessage());
+        }
+      }
+    } else {
+      logger.info("Directory does not exist tracingDir: {}", tracingDir);
+    }
   }
 }
