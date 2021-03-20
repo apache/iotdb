@@ -26,7 +26,8 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import java.io.IOException;
 import java.util.NoSuchElementException;
 
-public class MultManagedMergeReader extends MultPriorityMergeReader implements ManagedSeriesReader {
+public class AssignPathManagedMergeReader extends MultPriorityMergeReader
+    implements ManagedSeriesReader {
 
   private static final int BATCH_SIZE = 4096;
   private volatile boolean managedByPool;
@@ -35,7 +36,7 @@ public class MultManagedMergeReader extends MultPriorityMergeReader implements M
   private BatchData batchData;
   private TSDataType dataType;
 
-  public MultManagedMergeReader(String fullPath, TSDataType dataType) {
+  public AssignPathManagedMergeReader(String fullPath, TSDataType dataType) {
     super(fullPath);
     this.dataType = dataType;
   }

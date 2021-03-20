@@ -21,11 +21,13 @@ package org.apache.iotdb.cluster.query.reader.mult;
 import org.apache.iotdb.db.query.reader.universal.Element;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
 import java.io.IOException;
 
-/** This class implements {@link IPointReader} for data sources with different priorities. */
+/**
+ * This class extends {@link extends PriorityMergeReader} for data sources with different
+ * priorities.
+ */
 public class MultPriorityMergeReader extends PriorityMergeReader {
 
   private String fullPath;
@@ -46,7 +48,6 @@ public class MultPriorityMergeReader extends PriorityMergeReader {
   }
 
   public class MultElement extends Element {
-
     public MultElement(
         AbstractMultPointReader reader, TimeValuePair timeValuePair, MergeReaderPriority priority) {
       super(reader, timeValuePair, priority);

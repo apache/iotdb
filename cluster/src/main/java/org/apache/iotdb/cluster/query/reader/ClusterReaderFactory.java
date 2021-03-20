@@ -213,13 +213,20 @@ public class ClusterReaderFactory {
   }
 
   /**
-   * Create a ManagedSeriesReader that can read the data of "path" with filters in the whole
-   * cluster. The data groups that should be queried will be determined by the timeFilter, then for
-   * each group a series reader will be created, and finally all such readers will be merged into
-   * one.
+   * Create a MultSeriesReader that can read the data of "path" with filters in the whole cluster.
+   * The data groups that should be queried will be determined by the timeFilter, then for each
+   * group a series reader will be created, and finally all such readers will be merged into one.
    *
-   * @param timeFilter nullable, when null, all data groups will be queried
-   * @param valueFilter nullable
+   * @param paths all path
+   * @param deviceMeasurements device to measurements
+   * @param dataTypes data type
+   * @param timeFilter time filter
+   * @param valueFilter value filter
+   * @param context query context
+   * @param ascending asc or aesc
+   * @return
+   * @throws StorageEngineException
+   * @throws EmptyIntervalException
    */
   public List<AbstractMultPointReader> getMultSeriesReader(
       List<PartialPath> paths,
@@ -229,8 +236,7 @@ public class ClusterReaderFactory {
       Filter valueFilter,
       QueryContext context,
       boolean ascending)
-      throws StorageEngineException, EmptyIntervalException {
-    // find the groups that should be queried using the timeFilter
+      throws StorageEngineException, EmptyIntervalException, QueryProcessException {
 
     Map<PartitionGroup, List<PartialPath>> partitionGroupListMap = Maps.newHashMap();
     for (PartialPath partialPath : paths) {
@@ -245,38 +251,34 @@ public class ClusterReaderFactory {
 
     List<AbstractMultPointReader> multPointReaders = Lists.newArrayList();
 
-    partitionGroupListMap
-        .entrySet()
-        .forEach(
-            entityPartitionGroup -> {
-              List<PartialPath> partialPaths = entityPartitionGroup.getValue();
-              Map<String, Set<String>> partitionGroupDeviceMeasurements = Maps.newHashMap();
-              List<TSDataType> partitionGroupTSDataType = Lists.newArrayList();
-              partialPaths.forEach(
-                  partialPath -> {
-                    Set<String> measurements =
-                        deviceMeasurements.getOrDefault(
-                            partialPath.getDevice(), Collections.emptySet());
-                    partitionGroupDeviceMeasurements.put(partialPath.getFullPath(), measurements);
-                    partitionGroupTSDataType.add(dataTypes.get(paths.lastIndexOf(partialPath)));
-                  });
+    // different path of the same partition group are constructed as a AbstractMultPointReader
+    // if be local partition, constructed a MultBatchReader
+    // if be a remote partition, constructed a RemoteMultSeriesReader
+    for (Map.Entry<PartitionGroup, List<PartialPath>> entityPartitionGroup :
+        partitionGroupListMap.entrySet()) {
+      List<PartialPath> partialPaths = entityPartitionGroup.getValue();
+      Map<String, Set<String>> partitionGroupDeviceMeasurements = Maps.newHashMap();
+      List<TSDataType> partitionGroupTSDataType = Lists.newArrayList();
+      partialPaths.forEach(
+          partialPath -> {
+            Set<String> measurements =
+                deviceMeasurements.getOrDefault(partialPath.getDevice(), Collections.emptySet());
+            partitionGroupDeviceMeasurements.put(partialPath.getFullPath(), measurements);
+            partitionGroupTSDataType.add(dataTypes.get(paths.lastIndexOf(partialPath)));
+          });
 
-              try {
-                AbstractMultPointReader abstractMultPointReader =
-                    getMultSeriesReader(
-                        entityPartitionGroup.getKey(),
-                        partialPaths,
-                        partitionGroupTSDataType,
-                        partitionGroupDeviceMeasurements,
-                        timeFilter,
-                        valueFilter,
-                        context,
-                        ascending);
-                multPointReaders.add(abstractMultPointReader);
-              } catch (Exception e) {
-
-              }
-            });
+      AbstractMultPointReader abstractMultPointReader =
+          getMultSeriesReader(
+              entityPartitionGroup.getKey(),
+              partialPaths,
+              partitionGroupTSDataType,
+              partitionGroupDeviceMeasurements,
+              timeFilter,
+              valueFilter,
+              context,
+              ascending);
+      multPointReaders.add(abstractMultPointReader);
+    }
     return multPointReaders;
   }
 
@@ -297,7 +299,7 @@ public class ClusterReaderFactory {
       Filter valueFilter,
       QueryContext context,
       boolean ascending)
-      throws IOException, StorageEngineException, QueryProcessException {
+      throws StorageEngineException, QueryProcessException {
     if (partitionGroup.contains(metaGroupMember.getThisNode())) {
       // the target storage group contains this node, perform a local query
       DataGroupMember dataGroupMember =

@@ -57,9 +57,9 @@ import java.util.concurrent.ConcurrentSkipListSet;
 
 import static junit.framework.TestCase.assertEquals;
 
-public class MultManagedMergeReaderTest {
+public class AssignPathManagedMergeReaderTest {
 
-  private MultManagedMergeReader multManagedMergeReader;
+  private AssignPathManagedMergeReader assignPathManagedMergeReader;
   private RemoteMultSeriesReader reader;
   private List<BatchData> batchData;
   private boolean batchUsed;
@@ -85,7 +85,7 @@ public class MultManagedMergeReaderTest {
     batchData.add(TestUtils.genBatchData(TSDataType.INT32, 0, 100));
     batchUsed = false;
     metaGroupMember = new TestMetaGroupMember();
-    multManagedMergeReader = new MultManagedMergeReader("root.a.b", TSDataType.DOUBLE);
+    assignPathManagedMergeReader = new AssignPathManagedMergeReader("root.a.b", TSDataType.DOUBLE);
   }
 
   @After
@@ -111,15 +111,15 @@ public class MultManagedMergeReaderTest {
       sourceInfo.hasNextDataClient(Long.MIN_VALUE);
 
       reader = new RemoteMultSeriesReader(sourceInfo);
-      multManagedMergeReader.addReader(reader, 0);
+      assignPathManagedMergeReader.addReader(reader, 0);
 
       for (int i = 0; i < 100; i++) {
-        assertEquals(true, multManagedMergeReader.hasNextTimeValuePair());
-        TimeValuePair pair = multManagedMergeReader.nextTimeValuePair();
+        assertEquals(true, assignPathManagedMergeReader.hasNextTimeValuePair());
+        TimeValuePair pair = assignPathManagedMergeReader.nextTimeValuePair();
         assertEquals(i, pair.getTimestamp());
         assertEquals(i * 1.0, pair.getValue().getDouble(), 0.00001);
       }
-      assertEquals(false, multManagedMergeReader.hasNextTimeValuePair());
+      assertEquals(false, assignPathManagedMergeReader.hasNextTimeValuePair());
 
     } finally {
       QueryResourceManager.getInstance().endQuery(context.getQueryId());

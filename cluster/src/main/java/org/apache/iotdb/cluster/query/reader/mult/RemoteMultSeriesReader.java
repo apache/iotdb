@@ -45,9 +45,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicReference;
 
-/**
- * RemoteSimpleSeriesReader is a reader without value filter that reads points from a remote side.
- */
+/** mult reader without value filter that reads points from a remote side. */
 public class RemoteMultSeriesReader extends AbstractMultPointReader {
 
   private static final Logger logger = LoggerFactory.getLogger(RemoteMultSeriesReader.class);

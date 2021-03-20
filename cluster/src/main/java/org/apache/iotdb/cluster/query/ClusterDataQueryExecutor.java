@@ -24,7 +24,7 @@ import org.apache.iotdb.cluster.exception.EmptyIntervalException;
 import org.apache.iotdb.cluster.query.reader.ClusterReaderFactory;
 import org.apache.iotdb.cluster.query.reader.ClusterTimeGenerator;
 import org.apache.iotdb.cluster.query.reader.mult.AbstractMultPointReader;
-import org.apache.iotdb.cluster.query.reader.mult.MultManagedMergeReader;
+import org.apache.iotdb.cluster.query.reader.mult.AssignPathManagedMergeReader;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -64,10 +64,17 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
     this.readerFactory = new ClusterReaderFactory(metaGroupMember);
   }
 
-  /** use mult batch query. */
+  /**
+   * use mult batch query for without value filter
+   *
+   * @param context query context
+   * @return query data set
+   * @throws StorageEngineException
+   * @throws QueryProcessException
+   */
   @Override
   public QueryDataSet executeWithoutValueFilter(QueryContext context)
-      throws StorageEngineException, QueryProcessException {
+      throws StorageEngineException {
     try {
       List<ManagedSeriesReader> readersOfSelectedSeries = initMultSeriesReader(context);
       return new RawQueryDataSetWithoutValueFilter(
@@ -79,13 +86,13 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new StorageEngineException(e.getMessage());
-    } catch (IOException | EmptyIntervalException e) {
+    } catch (IOException | EmptyIntervalException | QueryProcessException e) {
       throw new StorageEngineException(e.getMessage());
     }
   }
 
   private List<ManagedSeriesReader> initMultSeriesReader(QueryContext context)
-      throws StorageEngineException, IOException, EmptyIntervalException {
+      throws StorageEngineException, IOException, EmptyIntervalException, QueryProcessException {
     Filter timeFilter = null;
     if (queryPlan.getExpression() != null) {
       timeFilter = ((GlobalTimeExpression) queryPlan.getExpression()).getFilter();
@@ -110,17 +117,19 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
             context,
             queryPlan.isAscending());
 
+    // combine reader of different partition group of the same path
+    // into a MultManagedMergeReader
     for (int i = 0; i < queryPlan.getDeduplicatedPaths().size(); i++) {
       PartialPath partialPath = queryPlan.getDeduplicatedPaths().get(i);
       TSDataType dataType = queryPlan.getDeduplicatedDataTypes().get(i);
-      MultManagedMergeReader multManagedMergeReader =
-          new MultManagedMergeReader(partialPath.getFullPath(), dataType);
+      AssignPathManagedMergeReader assignPathManagedMergeReader =
+          new AssignPathManagedMergeReader(partialPath.getFullPath(), dataType);
       for (AbstractMultPointReader multPointReader : multPointReaders) {
         if (multPointReader.getAllPaths().contains(partialPath.getFullPath())) {
-          multManagedMergeReader.addReader(multPointReader, 0);
+          assignPathManagedMergeReader.addReader(multPointReader, 0);
         }
       }
-      readersOfSelectedSeries.add(multManagedMergeReader);
+      readersOfSelectedSeries.add(assignPathManagedMergeReader);
     }
     if (logger.isDebugEnabled()) {
       logger.debug("Initialized {} readers for {}", readersOfSelectedSeries.size(), queryPlan);

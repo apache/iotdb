@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.Set;
 
+/** mult reader of local partition group */
 public class MultSeriesRawDataPointReader extends AbstractMultPointReader {
   private Map<String, IPointReader> partitalPathReaders;
 

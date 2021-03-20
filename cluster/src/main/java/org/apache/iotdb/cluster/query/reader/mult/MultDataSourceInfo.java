@@ -46,8 +46,8 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * provide client which could connect to all nodes of the partitionGroup. Notice: methods like
- * getter should be called only after nextDataClient() has been called
+ * provide client which could connect to all nodes of the partitionGroup, and mult reader Notice:
+ * methods like getter should be called only after nextDataClient() has been called
  */
 public class MultDataSourceInfo {
 
