@@ -100,6 +100,9 @@ public abstract class RaftLogManager {
   private int maxNumOfLogsInMem =
       ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem();
 
+  private long maxLogMemSize =
+      ClusterDescriptor.getInstance().getConfig().getMaxMemorySizeForRaftLog();
+
   /**
    * Each time new logs are appended, this condition will be notified so logs that have larger
    * indices but arrived earlier can proceed.
@@ -582,14 +585,30 @@ public abstract class RaftLogManager {
           .clear();
     }
     try {
-      int currentSize = committedEntryManager.getTotalSize();
-      int deltaSize = entries.size();
-      if (currentSize + deltaSize > maxNumOfLogsInMem) {
-        int sizeToReserveForNew = maxNumOfLogsInMem - deltaSize;
+      boolean needCompactedLog = false;
+      int numToReserveForNew = minNumOfLogsInMem;
+      if (committedEntryManager.getTotalSize() + entries.size() > maxNumOfLogsInMem) {
+        needCompactedLog = true;
+        numToReserveForNew = maxNumOfLogsInMem - entries.size();
+      }
+
+      long newEntryMemSize = 0;
+      for (Log entry : entries) {
+        newEntryMemSize += entry.getByteSize();
+      }
+      int sizeToReserveForNew = minNumOfLogsInMem;
+      if (newEntryMemSize + committedEntryManager.getEntryTotalMemSize() > maxLogMemSize) {
+        needCompactedLog = true;
+        sizeToReserveForNew =
+            committedEntryManager.maxLogNumShouldReserve(maxLogMemSize - newEntryMemSize);
+      }
+
+      if (needCompactedLog) {
+        int numForNew = Math.min(numToReserveForNew, sizeToReserveForNew);
         int sizeToReserveForConfig = minNumOfLogsInMem;
         startTime = Statistic.RAFT_SENDER_COMMIT_DELETE_EXCEEDING_LOGS.getOperationStartTime();
         synchronized (this) {
-          innerDeleteLog(Math.min(sizeToReserveForConfig, sizeToReserveForNew));
+          innerDeleteLog(Math.min(sizeToReserveForConfig, numForNew));
         }
         Statistic.RAFT_SENDER_COMMIT_DELETE_EXCEEDING_LOGS.calOperationCostTimeFromStart(startTime);
       }
