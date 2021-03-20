@@ -20,7 +20,6 @@ package org.apache.iotdb.cluster.query.reader.mult;
 
 import org.apache.iotdb.cluster.client.DataClientProvider;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
-import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
@@ -53,17 +52,14 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 import java.util.Set;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentSkipListSet;
 
 import static junit.framework.TestCase.assertEquals;
-import static junit.framework.TestCase.assertFalse;
-import static junit.framework.TestCase.assertTrue;
 
-public class RemoteMultSeriesReaderTest {
+public class MultManagedMergeReaderTest {
 
+  private MultManagedMergeReader multManagedMergeReader;
   private RemoteMultSeriesReader reader;
   private List<BatchData> batchData;
   private boolean batchUsed;
@@ -89,6 +85,7 @@ public class RemoteMultSeriesReaderTest {
     batchData.add(TestUtils.genBatchData(TSDataType.INT32, 0, 100));
     batchUsed = false;
     metaGroupMember = new TestMetaGroupMember();
+    multManagedMergeReader = new MultManagedMergeReader("root.a.b", TSDataType.DOUBLE);
   }
 
   @After
@@ -97,7 +94,7 @@ public class RemoteMultSeriesReaderTest {
   }
 
   @Test
-  public void testAsyncMultSeriesReader() throws IOException, StorageEngineException {
+  public void testMultManagerMergeRemoteSeriesReader() throws IOException, StorageEngineException {
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(true);
     PartitionGroup group = new PartitionGroup();
     setAsyncDataClient();
@@ -114,71 +111,19 @@ public class RemoteMultSeriesReaderTest {
       sourceInfo.hasNextDataClient(Long.MIN_VALUE);
 
       reader = new RemoteMultSeriesReader(sourceInfo);
+      multManagedMergeReader.addReader(reader, 0);
 
       for (int i = 0; i < 100; i++) {
-        assertTrue(reader.hasNextTimeValuePair(paths.get(0).getFullPath()));
-        TimeValuePair pair = reader.nextTimeValuePair(paths.get(0).getFullPath());
+        assertEquals(true, multManagedMergeReader.hasNextTimeValuePair());
+        TimeValuePair pair = multManagedMergeReader.nextTimeValuePair();
         assertEquals(i, pair.getTimestamp());
         assertEquals(i * 1.0, pair.getValue().getDouble(), 0.00001);
       }
-      assertFalse(reader.hasNextTimeValuePair());
+      assertEquals(false, multManagedMergeReader.hasNextTimeValuePair());
 
     } finally {
       QueryResourceManager.getInstance().endQuery(context.getQueryId());
     }
-  }
-
-  @Test
-  public void testSyncMultSeriesReader() throws IOException, StorageEngineException {
-    ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(false);
-    setSyncDataClient();
-    PartitionGroup group = new PartitionGroup();
-    group.add(TestUtils.getNode(0));
-    group.add(TestUtils.getNode(1));
-    group.add(TestUtils.getNode(2));
-
-    MultSeriesQueryRequest request = new MultSeriesQueryRequest();
-    RemoteQueryContext context = new RemoteQueryContext(1);
-
-    try {
-      MultDataSourceInfo sourceInfo =
-          new MultDataSourceInfo(group, paths, dataTypes, request, context, metaGroupMember, group);
-      sourceInfo.hasNextDataClient(Long.MIN_VALUE);
-
-      reader = new RemoteMultSeriesReader(sourceInfo);
-
-      for (int i = 0; i < 100; i++) {
-        assertTrue(reader.hasNextTimeValuePair(paths.get(0).getFullPath()));
-        TimeValuePair pair = reader.nextTimeValuePair(paths.get(0).getFullPath());
-        assertEquals(i, pair.getTimestamp());
-        assertEquals(i * 1.0, pair.getValue().getDouble(), 0.00001);
-      }
-      assertFalse(reader.hasNextTimeValuePair());
-
-      for (int i = 0; i < 100; i++) {
-        assertTrue(reader.hasNextTimeValuePair(paths.get(1).getFullPath()));
-        TimeValuePair pair = reader.nextTimeValuePair(paths.get(1).getFullPath());
-        assertEquals(i, pair.getTimestamp());
-        assertEquals(i * 1.0, pair.getValue().getInt(), 0.00001);
-      }
-      assertFalse(reader.hasNextTimeValuePair());
-    } finally {
-      QueryResourceManager.getInstance().endQuery(context.getQueryId());
-    }
-  }
-
-  @Test
-  public void testDefaultBatchStrategySelect() {
-    RemoteMultSeriesReader.DefaultBatchStrategy defaultBatchStrategy =
-        new RemoteMultSeriesReader.DefaultBatchStrategy();
-    Map cachedBatches = Maps.newHashMap();
-    Queue queue = new ConcurrentLinkedQueue<BatchData>();
-    batchData.forEach(
-        data -> {
-          queue.add(data);
-        });
-    cachedBatches.put("root.a.b", queue);
-    assertEquals(1, defaultBatchStrategy.selectBatchPaths(cachedBatches).size());
   }
 
   private void setAsyncDataClient() {
@@ -229,47 +174,6 @@ public class RemoteMultSeriesReaderTest {
                 }
 
                 new Thread(() -> resultHandler.onComplete(1L)).start();
-              }
-            };
-          }
-        });
-  }
-
-  private void setSyncDataClient() {
-    metaGroupMember.setClientProvider(
-        new DataClientProvider(new Factory()) {
-          @Override
-          public SyncDataClient getSyncDataClient(Node node, int timeout) {
-            return new SyncDataClient(null) {
-              @Override
-              public Map<String, ByteBuffer> fetchMultSeries(
-                  Node header, long readerId, List<String> paths) throws TException {
-                if (failedNodes.contains(node)) {
-                  throw new TException("Node down.");
-                }
-
-                Map<String, ByteBuffer> stringByteBufferMap = Maps.newHashMap();
-                if (batchUsed) {
-                  paths.forEach(
-                      path -> {
-                        stringByteBufferMap.put(path, ByteBuffer.allocate(0));
-                      });
-                } else {
-                  batchUsed = true;
-                  for (int i = 0; i < batchData.size(); i++) {
-                    stringByteBufferMap.put(paths.get(i), generateByteBuffer(batchData.get(i)));
-                  }
-                }
-                return stringByteBufferMap;
-              }
-
-              @Override
-              public long queryMultSeries(MultSeriesQueryRequest request) throws TException {
-                if (failedNodes.contains(node)) {
-                  throw new TException("Node down.");
-                }
-
-                return 1L;
               }
             };
           }

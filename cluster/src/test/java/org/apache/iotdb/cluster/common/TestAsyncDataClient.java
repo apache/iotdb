@@ -26,6 +26,7 @@ import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
+import org.apache.iotdb.cluster.rpc.thrift.MultSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
@@ -114,6 +115,21 @@ public class TestAsyncDataClient extends AsyncDataClient {
             () ->
                 new DataAsyncService(dataGroupMemberMap.get(request.getHeader()))
                     .querySingleSeries(request, resultHandler))
+        .start();
+  }
+
+  @Override
+  public void queryMultSeries(
+      MultSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler) {
+    new Thread(
+            () -> {
+              try {
+                new DataAsyncService(dataGroupMemberMap.get(request.getHeader()))
+                    .queryMultSeries(request, resultHandler);
+              } catch (TException e) {
+                e.printStackTrace();
+              }
+            })
         .start();
   }
 

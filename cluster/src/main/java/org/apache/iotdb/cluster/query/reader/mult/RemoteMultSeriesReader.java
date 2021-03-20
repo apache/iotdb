@@ -90,7 +90,7 @@ public class RemoteMultSeriesReader implements IMultPointReader {
 
   private boolean checkPathBatchData(String fullPath) {
     BatchData batchData = cachedBatchs.get(fullPath).peek();
-    if (!batchData.isEmpty()) {
+    if (batchData != null && !batchData.isEmpty()) {
       return true;
     }
     return false;
@@ -218,7 +218,7 @@ public class RemoteMultSeriesReader implements IMultPointReader {
     List<String> selectBatchPaths(Map<String, Queue<BatchData>> cacheBatchs);
   }
 
-  public static class DefaultBatchStrategy implements BatchStrategy {
+  static class DefaultBatchStrategy implements BatchStrategy {
 
     @Override
     public List<String> selectBatchPaths(Map<String, Queue<BatchData>> cacheBatchs) {

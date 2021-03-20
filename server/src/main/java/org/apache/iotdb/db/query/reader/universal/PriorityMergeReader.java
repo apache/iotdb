@@ -91,7 +91,7 @@ public class PriorityMergeReader implements IPointReader {
   @Override
   public TimeValuePair nextTimeValuePair() throws IOException {
     Element top = heap.poll();
-    TimeValuePair ret = top.timeValuePair;
+    TimeValuePair ret = top.getTimeValuePair();
     TimeValuePair topNext = null;
     if (top.hasNext()) {
       top.next();
@@ -108,10 +108,10 @@ public class PriorityMergeReader implements IPointReader {
 
   @Override
   public TimeValuePair currentTimeValuePair() throws IOException {
-    return heap.peek().timeValuePair;
+    return heap.peek().getTimeValuePair();
   }
 
-  private void updateHeap(long topTime, long topNextTime) throws IOException {
+  protected void updateHeap(long topTime, long topNextTime) throws IOException {
     while (!heap.isEmpty() && heap.peek().currTime() == topTime) {
       Element e = heap.poll();
       if (!e.hasNext()) {
@@ -140,39 +140,6 @@ public class PriorityMergeReader implements IPointReader {
     while (!heap.isEmpty()) {
       Element e = heap.poll();
       e.close();
-    }
-  }
-
-  public static class Element {
-
-    IPointReader reader;
-    TimeValuePair timeValuePair;
-    MergeReaderPriority priority;
-
-    public Element(IPointReader reader, TimeValuePair timeValuePair, MergeReaderPriority priority) {
-      this.reader = reader;
-      this.timeValuePair = timeValuePair;
-      this.priority = priority;
-    }
-
-    protected long currTime() {
-      return timeValuePair.getTimestamp();
-    }
-
-    protected TimeValuePair currPair() {
-      return timeValuePair;
-    }
-
-    protected boolean hasNext() throws IOException {
-      return reader.hasNextTimeValuePair();
-    }
-
-    protected void next() throws IOException {
-      timeValuePair = reader.nextTimeValuePair();
-    }
-
-    protected void close() throws IOException {
-      reader.close();
     }
   }
 
