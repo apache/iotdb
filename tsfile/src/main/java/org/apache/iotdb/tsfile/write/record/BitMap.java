@@ -42,8 +42,7 @@ public class BitMap {
     this.size = size;
     if (size % Byte.SIZE == 0) {
       this.length = size / Byte.SIZE;
-    }
-    else {
+    } else {
       this.length = size / Byte.SIZE + 1;
     }
     this.length = size / Byte.SIZE + 1;
@@ -59,8 +58,7 @@ public class BitMap {
     int newLength;
     if (this.length % (Long.SIZE / Byte.SIZE) == 0) {
       newLength = this.length / (Long.SIZE / Byte.SIZE);
-    }
-    else {
+    } else {
       newLength = this.length / (Long.SIZE / Byte.SIZE) + 1;
     }
 
@@ -68,7 +66,7 @@ public class BitMap {
     for (int i = 0; i < newLength; i++) {
       long curLong = 0;
       for (int j = 0; j < Byte.SIZE; j++) {
-        curLong |= ((long)(this.bits[i + j]) << j);
+        curLong |= ((long) (this.bits[i + j]) << j);
       }
       retLong[i] = curLong;
     }
