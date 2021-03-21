@@ -133,7 +133,7 @@ public class LastQueryExecutor {
     List<TSDataType> restDataTypes = new ArrayList<>();
     List<PartialPath> restPaths = new ArrayList<>();
     List<Pair<Boolean, TimeValuePair>> resultContainer =
-            readLastPairsFromCache(seriesPaths, dataTypes, filter, cacheAccessors, restPaths, restDataTypes);
+            readLastPairsFromCache(seriesPaths, dataTypes, filter, cacheAccessors, restPaths, restDataTypes, lastQueryPlan.isDebug());
     // If any '>' or '>=' filters are specified, only access cache to get Last result.
     if (filter != null || restPaths.isEmpty()) {
       return resultContainer;
@@ -162,7 +162,13 @@ public class LastQueryExecutor {
           resultContainer.get(i).left = true;
           if (lastCacheEnabled) {
             cacheAccessors.get(i).write(resultContainer.get(i).right);
-            DEBUG_LOGGER.info("[LastQueryExecutor] Update last cache for path: " + seriesPaths + " with timestamp: " + resultContainer.get(i).right.getTimestamp());
+            if (lastQueryPlan.isDebug()) {
+              DEBUG_LOGGER.info(
+                  "[LastQueryExecutor] Update last cache for path: "
+                      + seriesPaths
+                      + " with timestamp: "
+                      + resultContainer.get(i).right.getTimestamp());
+            }
           }
         }
       }
@@ -173,7 +179,7 @@ public class LastQueryExecutor {
   private static List<Pair<Boolean, TimeValuePair>> readLastPairsFromCache(
       List<PartialPath> seriesPaths, List<TSDataType> dataTypes, Filter filter,
       List<LastCacheAccessor> cacheAccessors,
-      List<PartialPath> restPaths, List<TSDataType> restDataTypes) {
+      List<PartialPath> restPaths, List<TSDataType> restDataTypes, boolean isDebug) {
     List<Pair<Boolean, TimeValuePair>> resultContainer = new ArrayList<>();
     if (lastCacheEnabled) {
       for (PartialPath path : seriesPaths) {
@@ -187,7 +193,12 @@ public class LastQueryExecutor {
       TimeValuePair tvPair = cacheAccessors.get(i).read();
       if (tvPair != null) {
         resultContainer.add(new Pair<>(true, tvPair));
-        DEBUG_LOGGER.info("[LastQueryExecutor] Last cache hit for path: {} with timestamp: {}" , seriesPaths.get(i), tvPair.getTimestamp());
+        if (isDebug) {
+          DEBUG_LOGGER.info(
+              "[LastQueryExecutor] Last cache hit for path: {} with timestamp: {}",
+              seriesPaths.get(i),
+              tvPair.getTimestamp());
+        }
       } else {
         resultContainer.add(new Pair<>(false, null));
         restPaths.add(seriesPaths.get(i));
