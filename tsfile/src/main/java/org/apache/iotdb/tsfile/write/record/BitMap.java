@@ -40,6 +40,12 @@ public class BitMap {
 
   public BitMap(int size) {
     this.size = size;
+    if (size % Byte.SIZE == 0) {
+      this.length = size / Byte.SIZE;
+    }
+    else {
+      this.length = size / Byte.SIZE + 1;
+    }
     this.length = size / Byte.SIZE + 1;
     bits = new byte[this.length];
     Arrays.fill(bits, (byte) 0);
@@ -47,6 +53,26 @@ public class BitMap {
 
   public byte[] getByteArray() {
     return this.bits;
+  }
+
+  public long[] getLongArray() {
+    int newLength;
+    if (this.length % (Long.SIZE / Byte.SIZE) == 0) {
+      newLength = this.length / (Long.SIZE / Byte.SIZE);
+    }
+    else {
+      newLength = this.length / (Long.SIZE / Byte.SIZE) + 1;
+    }
+
+    long[] retLong = new long[newLength];
+    for (int i = 0; i < newLength; i++) {
+      long curLong = 0;
+      for (int j = 0; j < Byte.SIZE; j++) {
+        curLong |= ((long)(this.bits[i + j]) << j);
+      }
+      retLong[i] = curLong;
+    }
+    return retLong;
   }
 
   /** returns the value of the bit with the specified index. */
