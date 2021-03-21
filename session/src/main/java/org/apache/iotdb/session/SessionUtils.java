@@ -22,12 +22,12 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
+import org.apache.iotdb.tsfile.write.record.BitMap;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.nio.ByteBuffer;
-import java.util.BitSet;
 
 public class SessionUtils {
 
@@ -60,98 +60,74 @@ public class SessionUtils {
   private static void getValueBufferOfDataType(
       TSDataType dataType, Tablet tablet, int i, ByteBuffer valueBuffer) {
     int lastPos = 0, nextPos;
-    BitSet curBitset = tablet.bitSets[i];
-    long[] curWords = curBitset.toLongArray();
-    for (int j = 0; j < curWords.length; j++) {
-      valueBuffer.putLong(curWords[j]);
+    BitMap curBitMap = tablet.bitMaps[i];
+    byte[] curBytes = curBitMap.getByteArray();
+    for (int j = 0; j < curBytes.length; j++) {
+      valueBuffer.putLong(curBytes[j]);
     }
 
     switch (dataType) {
       case INT32:
         int[] intValues = (int[]) tablet.values[i];
-        while (true) {
-          nextPos = curBitset.nextClearBit(lastPos);
-          for (int index = lastPos; index < nextPos; index++) {
+        for (int index = 0; index < tablet.rowSize; index++) {
+          if (curBitMap.get(index)) {
             valueBuffer.putInt(intValues[index]);
+          } else {
+            valueBuffer.putInt(-1);
           }
-          if (nextPos == tablet.rowSize) {
-            break;
-          }
-          valueBuffer.putInt(-1);
-          lastPos = nextPos + 1;
         }
         break;
       case INT64:
         long[] longValues = (long[]) tablet.values[i];
-        while (true) {
-          nextPos = curBitset.nextClearBit(lastPos);
-          for (int index = lastPos; index < nextPos; index++) {
+        for (int index = 0; index < tablet.rowSize; index++) {
+          if (curBitMap.get(index)) {
             valueBuffer.putLong(longValues[index]);
+          } else {
+            valueBuffer.putLong(-1);
           }
-          if (nextPos == tablet.rowSize) {
-            break;
-          }
-          valueBuffer.putLong(-1);
-          lastPos = nextPos + 1;
         }
         break;
       case FLOAT:
         float[] floatValues = (float[]) tablet.values[i];
-        while (true) {
-          nextPos = curBitset.nextClearBit(lastPos);
-          for (int index = lastPos; index < nextPos; index++) {
+        for (int index = 0; index < tablet.rowSize; index++) {
+          if (curBitMap.get(index)) {
             valueBuffer.putFloat(floatValues[index]);
+          } else {
+            valueBuffer.putFloat(-1);
           }
-          if (nextPos == tablet.rowSize) {
-            break;
-          }
-          valueBuffer.putFloat(-1);
-          lastPos = nextPos + 1;
         }
         break;
       case DOUBLE:
         double[] doubleValues = (double[]) tablet.values[i];
-        while (true) {
-          nextPos = curBitset.nextClearBit(lastPos);
-          for (int index = lastPos; index < nextPos; index++) {
+        for (int index = 0; index < tablet.rowSize; index++) {
+          if (curBitMap.get(index)) {
             valueBuffer.putDouble(doubleValues[index]);
+          } else {
+            valueBuffer.putDouble(-1);
           }
-          if (nextPos == tablet.rowSize) {
-            break;
-          }
-          valueBuffer.putDouble(-1);
-          lastPos = nextPos + 1;
         }
         break;
       case BOOLEAN:
         boolean[] boolValues = (boolean[]) tablet.values[i];
-        while (true) {
-          nextPos = curBitset.nextClearBit(lastPos);
-          for (int index = lastPos; index < nextPos; index++) {
+        for (int index = 0; index < tablet.rowSize; index++) {
+          if (curBitMap.get(index)) {
             valueBuffer.put(BytesUtils.boolToByte(boolValues[index]));
+          } else {
+            valueBuffer.put(BytesUtils.boolToByte(false));
           }
-          if (nextPos == tablet.rowSize) {
-            break;
-          }
-          valueBuffer.put(BytesUtils.boolToByte(false));
-          lastPos = nextPos + 1;
         }
         break;
       case TEXT:
         Binary[] binaryValues = (Binary[]) tablet.values[i];
-        while (true) {
-          nextPos = curBitset.nextClearBit(lastPos);
-          for (int index = lastPos; index < nextPos; index++) {
+        for (int index = 0; index < tablet.rowSize; index++) {
+          if (curBitMap.get(index)) {
             valueBuffer.putInt(binaryValues[index].getLength());
             valueBuffer.put(binaryValues[index].getValues());
+          } else {
+            Binary emptyStr = new Binary(".");
+            valueBuffer.putInt(emptyStr.getLength());
+            valueBuffer.put(emptyStr.getValues());
           }
-          if (nextPos == tablet.rowSize) {
-            break;
-          }
-          Binary emptyStr = new Binary(".");
-          valueBuffer.putInt(emptyStr.getLength());
-          valueBuffer.put(emptyStr.getValues());
-          lastPos = nextPos + 1;
         }
         break;
       default:

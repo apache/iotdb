@@ -26,7 +26,6 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import java.util.ArrayList;
-import java.util.BitSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -60,7 +59,7 @@ public class Tablet {
   /** each object is a primitive type array, which represents values of one measurement */
   public Object[] values;
   /** each bitset represents the existence of each value in the current column */
-  public BitSet[] bitSets;
+  public BitMap[] bitMaps;
   /** the number of rows to include in this tablet */
   public int rowSize;
   /** the maximum number of rows for this tablet */
@@ -126,10 +125,10 @@ public class Tablet {
 
     // set bitset
     if (value == null) {
-      bitSets[indexOfValue].clear(rowIndex);
+      bitMaps[indexOfValue].unmark(rowIndex);
       return;
     }
-    bitSets[indexOfValue].set(rowIndex);
+    bitMaps[indexOfValue].mark(rowIndex);
 
     switch (dataType) {
       case TEXT:
@@ -201,14 +200,14 @@ public class Tablet {
 
     // value column and bitset column
     values = new Object[valueColumnsSize];
-    bitSets = new BitSet[valueColumnsSize];
+    bitMaps = new BitMap[valueColumnsSize];
     int columnIndex = 0;
     for (IMeasurementSchema schema : schemas) {
       TSDataType dataType = schema.getType();
       if (dataType.equals(TSDataType.VECTOR)) {
         columnIndex = buildVectorColumns((VectorMeasurementSchema) schema, columnIndex);
       } else {
-        bitSets[columnIndex] = new BitSet(maxRowNumber);
+        bitMaps[columnIndex] = new BitMap(maxRowNumber);
         values[columnIndex] = createValueColumnOfDataType(dataType);
         columnIndex++;
       }
@@ -218,7 +217,7 @@ public class Tablet {
   private int buildVectorColumns(VectorMeasurementSchema schema, int idx) {
     for (int i = 0; i < schema.getValueMeasurementIdList().size(); i++) {
       TSDataType dataType = schema.getValueTSDataTypeList().get(i);
-      bitSets[idx] = new BitSet(maxRowNumber);
+      bitMaps[idx] = new BitMap(maxRowNumber);
       values[idx] = createValueColumnOfDataType(dataType);
       idx++;
     }
@@ -291,19 +290,14 @@ public class Tablet {
       case TEXT:
         valueOccupation += rowSize * 4;
         Binary[] binaries = (Binary[]) values[i];
-        BitSet curBitSet = bitSets[i];
-        int nextPos, lastPos = 0;
-        while (true) {
-          nextPos = curBitSet.nextClearBit(lastPos);
-          for (int rowIndex = lastPos; rowIndex < nextPos; rowIndex++) {
+        BitMap curBitMap = bitMaps[i];
+        for (int rowIndex = 0; rowIndex < rowSize; rowIndex++) {
+          if (curBitMap.get(rowIndex)) {
             valueOccupation += binaries[rowIndex].getLength();
+          } else {
+            Binary emptyStr = new Binary(".");
+            valueOccupation += emptyStr.getLength();
           }
-          if (nextPos == rowSize) {
-            break;
-          }
-          Binary emptyStr = new Binary(".");
-          valueOccupation += emptyStr.getLength();
-          lastPos = nextPos + 1;
         }
         break;
       default:
