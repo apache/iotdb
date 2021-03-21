@@ -187,7 +187,7 @@ public class LastQueryExecutor {
       TimeValuePair tvPair = cacheAccessors.get(i).read();
       if (tvPair != null) {
         resultContainer.add(new Pair<>(true, tvPair));
-        DEBUG_LOGGER.info("[LastQueryExecutor] Last cache hit for path: " + seriesPaths.get(i) + " with timestamp: " + tvPair.getTimestamp());
+        DEBUG_LOGGER.info("[LastQueryExecutor] Last cache hit for path: {} with timestamp: {}" , seriesPaths.get(i), tvPair.getTimestamp());
       } else {
         resultContainer.add(new Pair<>(false, null));
         restPaths.add(seriesPaths.get(i));

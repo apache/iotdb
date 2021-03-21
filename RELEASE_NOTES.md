@@ -18,6 +18,46 @@
     under the License.
 
 -->
+
+# Apache IoTDB 0.11.3
+
+## Bug Fixes
+* ISSUE-2505 ignore PathNotExistException in recover and change recover error to warn
+* IOTDB-1119 Fix C++ SessionDataSet bug when reading value buffer
+* Fix SessionPool does not recycle session and can not offer new Session due to RunTimeException
+* ISSUE-2588 Fix dead lock between deleting data and querying in parallel
+* ISSUE-2546 Fix first chunkmetadata should be consumed first
+* IOTDB-1126 Fix unseq tsfile is deleted due to compaction
+* IOTDB-1137 MNode.getLeafCount error when existing sub-device
+* ISSUE-2624 ISSUE-2625 Avoid OOM if user don't close Statement and Session manually
+* ISSUE-2639 Fix possible NPE during end query process
+* Alter IT for An error is reported and the system is suspended occasionally
+* IOTDB-1149 print error for -e param when set maxPRC<=0
+* IOTDB-1247 Fix the insert blocked caused the bugs in mem control module
+* ISSUE-2648 Last query not right when having multiple devices
+* Delete mods files after compaction
+* ISSUE-2687 fix insert NaN bug
+* ISSUE-2598 Throw explicit exception when time series is unknown in where clause
+* Fix timeseriesMetadata cache is not cleared after the TsFile is deleted by a compaction
+* ISSUE-2611 An unsequence file that covers too many sequence file causes OOM query
+* IOTDB-1135 Fix count timeseries bug when the paths are nested
+* ISSUE-2709 IOTDB-1178 Fix cache is not cleared after compaction
+* ISSUE-2746 Fix data overlapped bug after the elimination unseq compaction process
+* Fix getObject method in JDBC should return an Object
+* IOTDB-1188 Fix IoTDB 0.11 unable to delete data bug
+* Fix when covering a tsfile resource with HistoricalVersion = null, it’ll throw a NPE
+* fix the elimination unseq compaction may loss data bug after a delete operation is executed
+
+## Improvements
+* IOTDB-1140 optimize regular data encoding
+* Add more log for better tracing
+* Add backgroup exec for cli -e function
+* Add max direct memory size parameter to env.sh
+
+## New Features
+* Add explain sql support
+
+
 # Apache IoTDB 0.11.2
 
 ## Bug Fixes
