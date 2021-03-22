@@ -48,6 +48,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
@@ -322,6 +323,7 @@ public class MManager {
       this.mNodeCache.clear();
       this.tagIndex.clear();
       this.totalSeriesNumber.set(0);
+      this.templateMap.clear();
       if (logWriter != null) {
         logWriter.close();
         logWriter = null;
@@ -389,6 +391,10 @@ public class MManager {
       case SET_DEVICE_TEMPLATE:
         SetDeviceTemplatePlan setDeviceTemplatePlan = (SetDeviceTemplatePlan) plan;
         setDeviceTemplate(setDeviceTemplatePlan);
+        break;
+      case AUTO_CREATE_DEVICE_MNODE:
+        AutoCreateDeviceMNodePlan autoCreateDeviceMNodePlan = (AutoCreateDeviceMNodePlan) plan;
+        autoCreateDeviceMNode(autoCreateDeviceMNodePlan);
         break;
       default:
         logger.error("Unrecognizable command {}", plan.getOperatorType());
@@ -1257,7 +1263,8 @@ public class MManager {
    * @param path path
    */
   public Pair<MNode, Template> getDeviceNodeWithAutoCreate(
-      PartialPath path, boolean autoCreateSchema, int sgLevel) throws MetadataException {
+      PartialPath path, boolean autoCreateSchema, int sgLevel)
+      throws IOException, MetadataException {
     Pair<MNode, Template> node;
     boolean shouldSetStorageGroup;
     try {
@@ -1276,17 +1283,23 @@ public class MManager {
         setStorageGroup(storageGroupPath);
       }
       node = mtree.getDeviceNodeWithAutoCreating(path, sgLevel);
+      if (!(node.left instanceof StorageGroupMNode)) {
+        logWriter.autoCreateDeviceMNode(new AutoCreateDeviceMNodePlan(node.left.getPartialPath()));
+      }
       return node;
     } catch (StorageGroupAlreadySetException e) {
       // ignore set storage group concurrently
       node = mtree.getDeviceNodeWithAutoCreating(path, sgLevel);
+      if (!(node.left instanceof StorageGroupMNode)) {
+        logWriter.autoCreateDeviceMNode(new AutoCreateDeviceMNodePlan(node.left.getPartialPath()));
+      }
       return node;
     }
   }
 
   /** !!!!!!Attention!!!!! must call the return node's readUnlock() if you call this method. */
   public Pair<MNode, Template> getDeviceNodeWithAutoCreate(PartialPath path)
-      throws MetadataException {
+      throws MetadataException, IOException {
     return getDeviceNodeWithAutoCreate(
         path, config.isAutoCreateSchemaEnabled(), config.getDefaultStorageGroupLevel());
   }
@@ -2022,8 +2035,8 @@ public class MManager {
 
   /** get schema for device. Attention!!! Only support insertPlan */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public MNode getSeriesSchemasAndReadLockDevice(InsertPlan plan) throws MetadataException {
-
+  public MNode getSeriesSchemasAndReadLockDevice(InsertPlan plan)
+      throws MetadataException, IOException {
     PartialPath deviceId = plan.getDeviceId();
     String[] measurementList = plan.getMeasurements();
     MeasurementMNode[] measurementMNodes = plan.getMeasurementMNodes();
@@ -2296,5 +2309,9 @@ public class MManager {
 
     // current template must contains all measurements of upper template
     return upperMap.isEmpty();
+  }
+
+  public void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) throws MetadataException {
+    mtree.getDeviceNodeWithAutoCreating(plan.getPath(), config.getDefaultStorageGroupLevel());
   }
 }

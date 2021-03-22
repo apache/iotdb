@@ -1018,7 +1018,7 @@ public class PlanExecutor implements IPlanExecutor {
       List<ChunkGroupMetadata> chunkGroupMetadataList,
       Map<Path, IMeasurementSchema> knownSchemas,
       int sgLevel)
-      throws QueryProcessException, MetadataException {
+      throws QueryProcessException, MetadataException, IOException {
     if (chunkGroupMetadataList.isEmpty()) {
       return;
     }
@@ -1119,7 +1119,11 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   protected MNode getSeriesSchemas(InsertPlan insertPlan) throws MetadataException {
-    return IoTDB.metaManager.getSeriesSchemasAndReadLockDevice(insertPlan);
+    try {
+      return IoTDB.metaManager.getSeriesSchemasAndReadLockDevice(insertPlan);
+    } catch (IOException e) {
+      throw new MetadataException(e);
+    }
   }
 
   private void checkFailedMeasurments(InsertPlan plan)
@@ -1200,7 +1204,7 @@ public class PlanExecutor implements IPlanExecutor {
         throw new StorageEngineException(
             "failed to insert points "
                 + failedMeasurements
-                + (exception != null ? (" caused by " + exception.getMessage()) : ""));
+                + (" caused by " + exception.getMessage()));
       }
 
     } catch (StorageEngineException | MetadataException e) {

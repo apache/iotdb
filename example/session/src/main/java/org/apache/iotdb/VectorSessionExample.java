@@ -107,14 +107,6 @@ public class VectorSessionExample {
 
   private static void insertTabletWithAlignedTimeseries()
       throws IoTDBConnectionException, StatementExecutionException {
-    /*
-     * A Tablet example:
-     *      device1
-     * time s1, s2, s3
-     * 1,   1,  1,  1
-     * 2,   2,  2,  2
-     * 3,   3,  3,  3
-     */
     // The schema of measurements of one device
     // only measurementId and data type in MeasurementSchema take effects in Tablet
     List<IMeasurementSchema> schemaList = new ArrayList<>();
@@ -124,7 +116,6 @@ public class VectorSessionExample {
 
     Tablet tablet = new Tablet(ROOT_SG1_D1, schemaList);
 
-    // Method 2 to add tablet data
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
 
