@@ -115,10 +115,8 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
   protected IReaderByTimestamp getReaderByTimestamp(
       PartialPath path, Set<String> deviceMeasurements, TSDataType dataType, QueryContext context)
       throws StorageEngineException, QueryProcessException {
-    IReaderByTimestamp readerByTimestamp =
-        readerFactory.getReaderByTimestamp(
-            path, deviceMeasurements, dataType, context, queryPlan.isAscending());
-    return readerByTimestamp;
+    return readerFactory.getReaderByTimestamp(
+        path, deviceMeasurements, dataType, context, queryPlan.isAscending());
   }
 
   @Override
@@ -167,6 +165,7 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
     return null;
   }
 
+  @SuppressWarnings({"squid:S3776", "squid:S1141"})
   private void checkReaderHasLocalData(QueryContext context, boolean hasValueFilter)
       throws StorageEngineException {
     Filter timeFilter = null;
