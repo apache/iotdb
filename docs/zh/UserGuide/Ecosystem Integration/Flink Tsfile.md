@@ -19,9 +19,9 @@
 
 -->
 
-# TsFile-Flink 连接器
+## TsFile-Flink 连接器
 
-## 1. 关于 TsFile-Flink 连接器
+###  关于 TsFile-Flink 连接器
 
 TsFile-Flink-Connector 对Tsfile类型的外部数据源实现 Flink 的支持。 这使用户可以通过 Flink DataStream/DataSet 进行读取，写入和查询。
 
@@ -30,9 +30,9 @@ TsFile-Flink-Connector 对Tsfile类型的外部数据源实现 Flink 的支持�
 * 从本地文件系统或 hdfs 加载单个或多个 TsFile （只支持以DataSet的形式）到 Flink 。
 * 将本地文件系统或 hdfs 中特定目录中的所有文件加载到 Flink 中。
 
-## 2. 快速开始
+###  快速开始
 
-### TsFileInputFormat 示例
+#### TsFileInputFormat 示例
 
 1. 使用默认的 RowRowRecordParser 创建 TsFileInputFormat 。
 
@@ -92,7 +92,7 @@ for (String s : result) {
 }
 ```
 
-### TSRecordOutputFormat 示例
+#### TSRecordOutputFormat 示例
 
 1. 使用默认的 RowTSRecordConverter 创建 TSRecordOutputFormat 。
 
