@@ -47,6 +47,7 @@ import java.sql.Statement;
 import java.sql.Types;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -210,6 +211,7 @@ public class IoTDBJDBCResultSetTest {
       // check fetched result
       int colCount = resultSetMetaData.getColumnCount();
       StringBuilder resultStr = new StringBuilder();
+      List<Object> resultObjectList = new ArrayList<>();
       for (int i = 1; i < colCount + 1; i++) { // meta title
         resultStr.append(resultSetMetaData.getColumnName(i)).append(",");
       }
@@ -217,6 +219,7 @@ public class IoTDBJDBCResultSetTest {
       while (resultSet.next()) { // data
         for (int i = 1; i <= colCount; i++) {
           resultStr.append(resultSet.getString(i)).append(",");
+          resultObjectList.add(resultSet.getObject(i));
         }
         resultStr.append("\n");
         fetchResultsResp.hasResultSet = false; // at the second time to fetch
@@ -233,6 +236,12 @@ public class IoTDBJDBCResultSetTest {
               + "105,11.11,199,33333,11.11,\n"
               + "1000,1000.11,55555,22222,1000.11,\n"; // Note the LIMIT&OFFSET clause takes effect
       Assert.assertEquals(standard, resultStr.toString());
+      List<Object> standardObject = new ArrayList<>();
+      constructObjectList(standardObject);
+      Assert.assertEquals(standardObject.size(), resultObjectList.size());
+      for (int i = 0; i < standardObject.size(); i++) {
+        Assert.assertEquals(standardObject.get(i), resultObjectList.get(i));
+      }
     }
 
     // The client get TSQueryDataSet at the first request
@@ -357,5 +366,40 @@ public class IoTDBJDBCResultSetTest {
     tsQueryDataSet.setBitmapList(bitmapList);
     tsQueryDataSet.setValueList(valueList);
     return tsQueryDataSet;
+  }
+
+  private void constructObjectList(List<Object> standardObject) {
+    Object[][] input = {
+      {
+        2L, 2.22F, 40000L, null, 2.22F,
+      },
+      {
+        3L, 3.33F, null, null, 3.33F,
+      },
+      {
+        4L, 4.44F, null, null, 4.44F,
+      },
+      {
+        50L, null, 50000L, null, null,
+      },
+      {
+        100L, null, 199L, null, null,
+      },
+      {
+        101L, null, 199L, null, null,
+      },
+      {
+        103L, null, 199L, null, null,
+      },
+      {
+        105L, 11.11F, 199L, 33333, 11.11F,
+      },
+      {
+        1000L, 1000.11F, 55555L, 22222, 1000.11F,
+      }
+    };
+    for (Object[] row : input) {
+      standardObject.addAll(Arrays.asList(row));
+    }
   }
 }
