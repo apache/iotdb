@@ -68,4 +68,6 @@ public interface IChunkMetadata {
   List<TimeRange> getDeleteIntervalList();
 
   int serializeTo(OutputStream outputStream, boolean serializeStatistic) throws IOException;
+
+  byte getMask();
 }
