@@ -136,12 +136,8 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
       if (hasValueFilter) {
         // 1. check time Generator has local data
         ClusterTimeGenerator clusterTimeGenerator =
-          new ClusterTimeGenerator(
-            queryPlan.getExpression(),
-            context,
-            metaGroupMember,
-            queryPlan,
-            true);
+            new ClusterTimeGenerator(
+                queryPlan.getExpression(), context, metaGroupMember, queryPlan, true);
         if (clusterTimeGenerator.isHasLocalReader()) {
           this.hasLocalReader = true;
           this.endPoint = null;
@@ -155,11 +151,11 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
       }
 
       logger.debug(
-        "redirect queryId {}, {}, {}, {}",
-        context.getQueryId(),
-        hasLocalReader,
-        hasValueFilter,
-        endPoint);
+          "redirect queryId {}, {}, {}, {}",
+          context.getQueryId(),
+          hasLocalReader,
+          hasValueFilter,
+          endPoint);
 
       if (!hasLocalReader) {
         // dummy dataSet

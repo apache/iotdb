@@ -100,8 +100,7 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
   }
 
   @Test
-  public void testNoFilterWithRedirect()
-      throws StorageEngineException, QueryProcessException {
+  public void testNoFilterWithRedirect() throws StorageEngineException, QueryProcessException {
     RawDataQueryPlan plan = new RawDataQueryPlan();
     plan.setDeduplicatedPaths(pathList);
     plan.setDeduplicatedDataTypes(dataTypes);
