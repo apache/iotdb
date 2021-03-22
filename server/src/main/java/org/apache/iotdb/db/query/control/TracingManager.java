@@ -198,8 +198,12 @@ public class TracingManager {
     writer.flush();
   }
 
-  public void close() throws IOException {
-    writer.close();
+  public void close() {
+    try {
+      writer.close();
+    } catch (IOException e) {
+      logger.error("Meeting error while close TracingManager_writer: {}", e.getMessage());
+    }
   }
 
   public boolean getWriterStatus() {
