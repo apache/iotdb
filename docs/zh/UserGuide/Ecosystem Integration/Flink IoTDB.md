@@ -19,15 +19,15 @@
 
 -->
 
-# Flink IoTDB 连接器
+## Flink IoTDB 连接器
 
 IoTDB 与 [Apache Flink](https://flink.apache.org/) 的集成. 此模块包含了 iotdb sink，允许 flink job 将时序数据写入IoTDB。
 
-## IoTDBSink
+### IoTDBSink
 
 使用 `IoTDBSink` ，您需要定义一个 `IoTDBOptions` 和一个 `IoTSerializationSchema` 实例。 `IoTDBSink` 默认每次发送一个数据，可以通过调用 `withBatchSize(int)` 进行调整。
 
-## 示例
+### 示例
 
 该示例演示了如下从一个 Flink job 中发送数据到 IoTDB server 的场景：
 
@@ -35,7 +35,7 @@ IoTDB 与 [Apache Flink](https://flink.apache.org/) 的集成. 此模块包含�
 
 - Flink使用 `IoTDBSink` 消费产生的数据并写入 IoTDB 。
 
-  ```
+  ```java
   import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
   import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
   import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -116,7 +116,7 @@ IoTDB 与 [Apache Flink](https://flink.apache.org/) 的集成. 此模块包含�
   
 
 
-## 运行示例
+### 运行方法
 
 * 启动 IoTDB server
 * 运行 `org.apache.iotdb.flink.FlinkIoTDBSink.java` 将 Flink job 运行在本地的集群上。
