@@ -388,11 +388,7 @@ insertValuesSpec
 
 measurementValue
     : constant
-    | alignedConstants
-    ;
-
-alignedConstants
-    : LR_BRACKET constant (COMMA constant)+ RR_BRACKET
+    | LR_BRACKET constant (COMMA constant)+ RR_BRACKET
     ;
 
 setCol

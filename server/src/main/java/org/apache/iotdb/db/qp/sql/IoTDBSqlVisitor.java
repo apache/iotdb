@@ -1757,12 +1757,8 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     List<String> valueList = new ArrayList<>();
     List<MeasurementValueContext> values = ctx.measurementValue();
     for (MeasurementValueContext value : values) {
-      if (value.constant() != null) {
-        valueList.add(value.constant().getText());
-      } else {
-        for (ConstantContext counstant : value.alignedConstants().constant()) {
-          valueList.add(counstant.getText());
-        }
+      for (ConstantContext counstant : value.constant()) {
+        valueList.add(counstant.getText());
       }
     }
     insertOp.setValueList(valueList.toArray(new String[0]));
