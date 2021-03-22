@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.tsfile.file.metadata.enums;
 
-import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
-
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
