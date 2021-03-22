@@ -61,11 +61,11 @@ public class RawDataQueryExecutor {
   /** without filter or with global time filter. */
   public QueryDataSet executeWithoutValueFilter(QueryContext context)
       throws StorageEngineException, QueryProcessException {
-    List<ManagedSeriesReader> readersOfSelectedSeries = initManagedSeriesReader(context);
-    QueryDataSet dataSet = needRedirect(context.getQueryId(), null);
+    QueryDataSet dataSet = needRedirect(context, false);
     if (dataSet != null) {
       return dataSet;
     }
+    List<ManagedSeriesReader> readersOfSelectedSeries = initManagedSeriesReader(context);
     try {
       return new RawQueryDataSetWithoutValueFilter(
           context.getQueryId(),
@@ -83,11 +83,11 @@ public class RawDataQueryExecutor {
 
   public final QueryDataSet executeNonAlign(QueryContext context)
       throws StorageEngineException, QueryProcessException {
-    List<ManagedSeriesReader> readersOfSelectedSeries = initManagedSeriesReader(context);
-    QueryDataSet dataSet = needRedirect(context.getQueryId(), null);
+    QueryDataSet dataSet = needRedirect(context, false);
     if (dataSet != null) {
       return dataSet;
     }
+    List<ManagedSeriesReader> readersOfSelectedSeries = initManagedSeriesReader(context);
     return new NonAlignEngineDataSet(
         context.getQueryId(),
         queryPlan.getDeduplicatedPaths(),
@@ -141,6 +141,11 @@ public class RawDataQueryExecutor {
    */
   public final QueryDataSet executeWithValueFilter(QueryContext context)
       throws StorageEngineException, QueryProcessException {
+    QueryDataSet dataSet = needRedirect(context, true);
+    if (dataSet != null) {
+      return dataSet;
+    }
+
     TimeGenerator timestampGenerator =
         getTimeGenerator(queryPlan.getExpression(), context, queryPlan);
     List<Boolean> cached =
@@ -150,10 +155,6 @@ public class RawDataQueryExecutor {
             timestampGenerator.hasOrNode());
     List<IReaderByTimestamp> readersOfSelectedSeries =
         initSeriesReaderByTimestamp(context, queryPlan, cached);
-    QueryDataSet dataSet = needRedirect(context.getQueryId(), timestampGenerator);
-    if (dataSet != null) {
-      return dataSet;
-    }
     return new RawQueryDataSetWithValueFilter(
         queryPlan.getDeduplicatedPaths(),
         queryPlan.getDeduplicatedDataTypes(),
@@ -212,12 +213,12 @@ public class RawDataQueryExecutor {
   /**
    * Check whether need to redirect query to other node.
    *
-   * @param queryId queryId to cancel query
-   * @param timeGenerator timeGenerator to check whether has local reader when query with value
-   *     filter
+   * @param context query context
+   * @param hasValueFilter if has value filter, we need to check timegenerator
    * @return dummyDataSet to avoid more cost, if null, no need
    */
-  protected QueryDataSet needRedirect(long queryId, TimeGenerator timeGenerator) {
+  protected QueryDataSet needRedirect(QueryContext context, boolean hasValueFilter)
+      throws StorageEngineException, QueryProcessException {
     return null;
   }
 }

@@ -101,7 +101,7 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
 
   @Test
   public void testNoFilterWithRedirect()
-      throws IOException, StorageEngineException, QueryProcessException {
+      throws StorageEngineException, QueryProcessException {
     RawDataQueryPlan plan = new RawDataQueryPlan();
     plan.setDeduplicatedPaths(pathList);
     plan.setDeduplicatedDataTypes(dataTypes);
@@ -111,7 +111,6 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
     try {
       QueryDataSet dataSet = queryExecutor.executeWithoutValueFilter(context);
-      System.out.println(dataSet.getEndPoint());
       assertNull(dataSet.getEndPoint());
     } finally {
       QueryResourceManager.getInstance().endQuery(context.getQueryId());
@@ -120,7 +119,7 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
 
   @Test
   public void testFilterWithValueFilterRedirect()
-      throws IOException, StorageEngineException, QueryProcessException, IllegalPathException {
+      throws StorageEngineException, QueryProcessException, IllegalPathException {
     IExpression expression =
         new SingleSeriesExpression(
             new PartialPath(TestUtils.getTestSeries(0, 0)), ValueFilter.gtEq(5.0));

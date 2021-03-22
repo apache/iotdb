@@ -46,6 +46,13 @@ public abstract class QueryDataSet {
     private String ip = null;
     private int port = 0;
 
+    public EndPoint(String ip, int port) {
+      this.ip = ip;
+      this.port = port;
+    }
+
+    public EndPoint() {}
+
     public String getIp() {
       return ip;
     }

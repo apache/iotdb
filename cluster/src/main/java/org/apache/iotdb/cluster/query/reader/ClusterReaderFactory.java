@@ -243,8 +243,6 @@ public class ClusterReaderFactory {
         path,
         partitionGroups.size());
     ManagedMergeReader mergeReader = new ManagedMergeReader(dataType);
-    QueryDataSet.EndPoint endPoint = new QueryDataSet.EndPoint();
-    boolean hasLocalReader = false;
     try {
       // build a reader for each group and merge them
       for (PartitionGroup partitionGroup : partitionGroups) {
@@ -258,23 +256,11 @@ public class ClusterReaderFactory {
                 context,
                 dataType,
                 ascending);
-        if (seriesReader instanceof SeriesRawDataPointReader
-            && seriesReader.hasNextTimeValuePair()) {
-          hasLocalReader = true;
-        } else if (seriesReader instanceof RemoteSimpleSeriesReader) {
-          endPoint.setIp(partitionGroup.getHeader().getClientIp());
-          endPoint.setPort(partitionGroup.getHeader().getClientPort());
-        }
         mergeReader.addReader(seriesReader, 0);
       }
     } catch (IOException | QueryProcessException e) {
       throw new StorageEngineException(e);
     }
-    if (hasLocalReader) {
-      // no need redirect query to the endpoint
-      endPoint = null;
-    }
-    mergeReader.setEndPoint(endPoint);
     return mergeReader;
   }
 

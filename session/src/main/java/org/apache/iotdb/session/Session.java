@@ -261,7 +261,7 @@ public class Session {
     defaultSessionConnection.setEnableRedirect(enableQueryRedirection);
     metaSessionConnection = defaultSessionConnection;
     isClosed = false;
-    if (enableCacheLeader) {
+    if (enableCacheLeader || enableQueryRedirection) {
       deviceIdToEndpoint = new HashMap<>();
       endPointToSessionConnection = new HashMap<>();
       endPointToSessionConnection.put(defaultEndPoint, defaultSessionConnection);
@@ -643,9 +643,24 @@ public class Session {
 
   private void handleQueryRedirection(EndPoint endPoint) throws IoTDBConnectionException {
     if (enableQueryRedirection) {
-      defaultSessionConnection.close();
-      defaultSessionConnection = constructSessionConnection(this, endPoint, zoneId);
-      defaultSessionConnection.setEnableRedirect(enableQueryRedirection);
+      SessionConnection connection =
+          endPointToSessionConnection.computeIfAbsent(
+              endPoint,
+              k -> {
+                try {
+                  SessionConnection sessionConnection =
+                      constructSessionConnection(this, endPoint, zoneId);
+                  sessionConnection.setEnableRedirect(enableQueryRedirection);
+                  return sessionConnection;
+                } catch (IoTDBConnectionException ex) {
+                  tmp.set(ex);
+                  return null;
+                }
+              });
+      if (connection == null) {
+        throw new IoTDBConnectionException(tmp.get());
+      }
+      defaultSessionConnection = endPointToSessionConnection.get(endPoint);
     }
   }
 
