@@ -89,7 +89,11 @@ public class TimeSeriesMetadataCache {
                       + RamUsageEstimator.sizeOf(key.measurement)
                       + RamUsageEstimator.shallowSizeOf(value)
                       + RamUsageEstimator.sizeOf(value.getMeasurementId())
-                      + RamUsageEstimator.shallowSizeOf(value.getStatistics());
+                      + RamUsageEstimator.shallowSizeOf(value.getStatistics())
+                      + (value.getChunkMetadataList().get(0).calculateRamSize()
+                              + RamUsageEstimator.NUM_BYTES_OBJECT_REF)
+                          * value.getChunkMetadataList().size()
+                      + RamUsageEstimator.shallowSizeOf(value.getChunkMetadataList());
               averageSize = ((averageSize * count) + currentSize) / (++count);
             } else if (count < 100000) {
               count++;
@@ -101,7 +105,11 @@ public class TimeSeriesMetadataCache {
                       + RamUsageEstimator.sizeOf(key.measurement)
                       + RamUsageEstimator.shallowSizeOf(value)
                       + RamUsageEstimator.sizeOf(value.getMeasurementId())
-                      + RamUsageEstimator.shallowSizeOf(value.getStatistics());
+                      + RamUsageEstimator.shallowSizeOf(value.getStatistics())
+                      + (value.getChunkMetadataList().get(0).calculateRamSize()
+                              + RamUsageEstimator.NUM_BYTES_OBJECT_REF)
+                          * value.getChunkMetadataList().size()
+                      + RamUsageEstimator.shallowSizeOf(value.getChunkMetadataList());
               count = 1;
               currentSize = averageSize;
             }

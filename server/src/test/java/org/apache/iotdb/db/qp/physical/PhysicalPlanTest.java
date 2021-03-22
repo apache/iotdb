@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.qp.physical;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.trigger.api.TriggerEvent;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -39,11 +40,16 @@ import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropFunctionPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTriggersPlan;
+import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
+import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.query.executor.fill.LinearFill;
 import org.apache.iotdb.db.query.executor.fill.PreviousFill;
 import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
@@ -72,8 +78,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
@@ -1139,5 +1147,72 @@ public class PhysicalPlanTest {
         plan.getPaths(), Collections.singletonList(new PartialPath("root.vehicle.d1")));
     Assert.assertEquals(1, ((DeletePlan) plan).getDeleteStartTime());
     Assert.assertEquals(2, ((DeletePlan) plan).getDeleteEndTime());
+  }
+
+  @Test
+  public void testCreateTrigger1() throws QueryProcessException {
+    String sql =
+        "CREATE TRIGGER trigger1 BEFORE INSERT ON root.sg1.d1.s1 AS 'org.apache.iotdb.engine.trigger.Example'";
+
+    CreateTriggerPlan plan = (CreateTriggerPlan) processor.parseSQLToPhysicalPlan(sql);
+    Assert.assertFalse(plan.isQuery());
+    Assert.assertEquals("trigger1", plan.getTriggerName());
+    Assert.assertEquals(TriggerEvent.BEFORE_INSERT, plan.getEvent());
+    Assert.assertEquals("root.sg1.d1.s1", plan.getFullPath().getFullPath());
+    Assert.assertEquals("org.apache.iotdb.engine.trigger.Example", plan.getClassName());
+  }
+
+  @Test
+  public void testCreateTrigger2() throws QueryProcessException {
+    String sql =
+        "CREATE TRIGGER trigger2 AFTER INSERT ON root.sg1.d1.s2 AS 'org.apache.iotdb.engine.trigger.Example'"
+            + "WITH ('key1'='value1', 'key2'='value2')";
+
+    CreateTriggerPlan plan = (CreateTriggerPlan) processor.parseSQLToPhysicalPlan(sql);
+    Assert.assertFalse(plan.isQuery());
+    Assert.assertEquals("trigger2", plan.getTriggerName());
+    Assert.assertEquals(TriggerEvent.AFTER_INSERT, plan.getEvent());
+    Assert.assertEquals("root.sg1.d1.s2", plan.getFullPath().getFullPath());
+    Assert.assertEquals("org.apache.iotdb.engine.trigger.Example", plan.getClassName());
+    Map<String, String> expectedAttributes = new HashMap<>();
+    expectedAttributes.put("key1", "value1");
+    expectedAttributes.put("key2", "value2");
+    Assert.assertEquals(expectedAttributes, plan.getAttributes());
+  }
+
+  @Test
+  public void testDropTrigger() throws QueryProcessException {
+    String sql = "DROP TRIGGER trigger1";
+
+    DropTriggerPlan plan = (DropTriggerPlan) processor.parseSQLToPhysicalPlan(sql);
+    Assert.assertFalse(plan.isQuery());
+    Assert.assertEquals("trigger1", plan.getTriggerName());
+  }
+
+  @Test
+  public void testStartTrigger() throws QueryProcessException {
+    String sql = "START TRIGGER my-trigger";
+
+    StartTriggerPlan plan = (StartTriggerPlan) processor.parseSQLToPhysicalPlan(sql);
+    Assert.assertFalse(plan.isQuery());
+    Assert.assertEquals("my-trigger", plan.getTriggerName());
+  }
+
+  @Test
+  public void testStopTrigger() throws QueryProcessException {
+    String sql = "STOP TRIGGER my-trigger";
+
+    StopTriggerPlan plan = (StopTriggerPlan) processor.parseSQLToPhysicalPlan(sql);
+    Assert.assertFalse(plan.isQuery());
+    Assert.assertEquals("my-trigger", plan.getTriggerName());
+  }
+
+  @Test
+  public void testShowTriggers() throws QueryProcessException {
+    String sql = "SHOW TRIGGERS ON root.sg1.d1.s1";
+
+    ShowTriggersPlan plan = (ShowTriggersPlan) processor.parseSQLToPhysicalPlan(sql);
+    Assert.assertTrue(plan.isQuery());
+    Assert.assertEquals("root.sg1.d1.s1", plan.getPath().getFullPath());
   }
 }

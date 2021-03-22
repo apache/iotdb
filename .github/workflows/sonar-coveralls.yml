@@ -7,16 +7,16 @@ on:
   push:
     branches:
       - master
-      - 'rel/*'
+      - "rel/*"
     paths-ignore:
-      - 'docs/**'
+      - "docs/**"
   pull_request:
     branches:
       - master
-      - 'rel/*'
+      - "rel/*"
       - cluster_new
     paths-ignore:
-      - 'docs/**'
+      - "docs/**"
   # allow manually run the action:
   workflow_dispatch:
 
@@ -38,9 +38,9 @@ jobs:
           restore-keys: ${{ runner.os }}-m2-
       - name: IT/UT Test
         # we do not compile client-cpp for saving time, it is tested in client.yml
-        run:  mvn -B clean post-integration-test -Dtest.port.closed=true -Pcode-coverage
+        run: mvn -B clean post-integration-test -Dtest.port.closed=true -Pcode-coverage
       - name: Code Coverage (Coveralls)
-        if: ${{ success() && github.repository == 'apache/iotdb'}}
+        if: ${{ success() && (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == 'apache/iotdb' || github.event_name == 'push') }}
         run: |
           mvn -B post-integration-test -Pcode-coverage -pl code-coverage
           mvn -B coveralls:report \
@@ -50,7 +50,7 @@ jobs:
           -DrepoToken=${{ secrets.COVERALL_TOKEN }} \
           -Pcode-coverage
       - name: SonarCloud Report
-        if: ${{ success() && github.repository == 'apache/iotdb'}}
+        if: ${{ success() && (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == 'apache/iotdb' || github.event_name == 'push') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONARCLOUD_TOKEN }}

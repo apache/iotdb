@@ -264,6 +264,37 @@ It costs 0.002s
 
 > get all paths in form of root.xx.xx.xx：show child paths root.xx.xx
 
+## Show Child Nodes
+
+```
+SHOW CHILD NODES prefixPath
+```
+
+Return all child nodes of the prefixPath.
+
+Example：
+
+* return the child nodes of root：show child paths root
+
+```
++------------+
+| child nodes|
++------------+
+|          ln|
++------------+
+```
+
+* return the child nodes of root.vehicle：show child paths root.ln
+
+```
++------------+
+| child nodes|
++------------+
+|        wf01|
+|        wf02|
++------------+
+```
+
 ## Count Timeseries
 
 IoTDB is able to use `COUNT TIMESERIES <Path>` to count the number of timeseries in the path. SQL statements are as follows:

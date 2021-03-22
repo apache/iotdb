@@ -31,7 +31,7 @@
 
 ![image](https://user-images.githubusercontent.com/34242296/104586593-a224aa00-56a0-11eb-9c52-241dcdb68ecb.png)
 
-系统默认的超时时间为 60000 ms，可以在配置文件中通过 `query_time_threshold` 参数进行自定义配置。
+系统默认的超时时间为 60000 ms，可以在配置文件中通过 `query_timeout_threshold` 参数进行自定义配置。
 
 如果您使用 JDBC 或 Session，还支持对单个查询设置超时时间（单位为 ms）：
 

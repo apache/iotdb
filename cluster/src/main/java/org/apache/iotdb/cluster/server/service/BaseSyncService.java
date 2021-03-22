@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.cluster.server.service;
 
-import org.apache.iotdb.cluster.client.sync.SyncDataClient;
-import org.apache.iotdb.cluster.client.sync.SyncMetaClient;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
@@ -34,6 +32,7 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -111,17 +110,9 @@ public abstract class BaseSyncService implements RaftService.Iface {
       client.getInputProtocol().getTransport().close();
       throw e;
     } finally {
-      putBackSyncClient(client);
+      ClientUtils.putBackSyncClient(client);
     }
     return commitIndex;
-  }
-
-  void putBackSyncClient(Client client) {
-    if (client instanceof SyncDataClient) {
-      ((SyncDataClient) client).putBack();
-    } else {
-      ((SyncMetaClient) client).putBack();
-    }
   }
 
   @Override
@@ -160,7 +151,7 @@ public abstract class BaseSyncService implements RaftService.Iface {
           client.getInputProtocol().getTransport().close();
           throw e;
         } finally {
-          putBackSyncClient(client);
+          ClientUtils.putBackSyncClient(client);
         }
         return status;
       } else {

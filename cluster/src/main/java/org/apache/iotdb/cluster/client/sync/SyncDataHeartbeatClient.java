@@ -41,7 +41,7 @@ public class SyncDataHeartbeatClient extends SyncDataClient {
         protocolFactory.getProtocol(
             RpcTransportFactory.INSTANCE.getTransport(
                 new TSocket(
-                    node.getIp(),
+                    node.getInternalIp(),
                     node.getDataPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET,
                     RaftServer.getConnectionTimeoutInMS()))));
     this.node = node;

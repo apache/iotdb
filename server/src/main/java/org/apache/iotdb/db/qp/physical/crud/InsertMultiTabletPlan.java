@@ -114,14 +114,6 @@ public class InsertMultiTabletPlan extends InsertPlan {
     parentInsertTabletPlanIndexList.add(parentIndex);
   }
 
-  public List<InsertTabletPlan> getInsertTabletPlanList() {
-    return insertTabletPlanList;
-  }
-
-  public List<Integer> getParentInsertTabletPlanIndexList() {
-    return parentInsertTabletPlanIndexList;
-  }
-
   @Override
   public List<PartialPath> getPaths() {
     List<PartialPath> result = new ArrayList<>();
@@ -216,8 +208,16 @@ public class InsertMultiTabletPlan extends InsertPlan {
     this.parentInsertTabletPlanIndexList = parentInsertTabletPlanIndexList;
   }
 
+  public List<Integer> getParentInsertTabletPlanIndexList() {
+    return parentInsertTabletPlanIndexList;
+  }
+
   public void setInsertTabletPlanList(List<InsertTabletPlan> insertTabletPlanList) {
     this.insertTabletPlanList = insertTabletPlanList;
+  }
+
+  public List<InsertTabletPlan> getInsertTabletPlanList() {
+    return insertTabletPlanList;
   }
 
   public void setResults(Map<Integer, TSStatus> results) {

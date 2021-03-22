@@ -322,8 +322,18 @@ public class TsFileResource {
     timeIndex.updateStartTime(device, time);
   }
 
+  // used in merge, refresh all start time
+  public void putStartTime(String device, long time) {
+    timeIndex.putStartTime(device, time);
+  }
+
   public void updateEndTime(String device, long time) {
     timeIndex.updateEndTime(device, time);
+  }
+
+  // used in merge, refresh all end time
+  public void putEndTime(String device, long time) {
+    timeIndex.putEndTime(device, time);
   }
 
   public boolean resourceFileExists() {
@@ -365,6 +375,7 @@ public class TsFileResource {
     return timeIndex.getStartTime(deviceId);
   }
 
+  /** open file's end time is Long.MIN_VALUE */
   public long getEndTime(String deviceId) {
     return timeIndex.getEndTime(deviceId);
   }
@@ -738,5 +749,9 @@ public class TsFileResource {
 
   public long getVersion() {
     return version;
+  }
+
+  public void setTimeIndex(ITimeIndex timeIndex) {
+    this.timeIndex = timeIndex;
   }
 }

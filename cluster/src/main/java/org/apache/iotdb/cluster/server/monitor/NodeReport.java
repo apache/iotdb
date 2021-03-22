@@ -159,7 +159,7 @@ public class NodeReport {
                 + writeCompressionRatio
                 + ")";
       }
-      return "MetaMemberReport{"
+      return "MetaMemberReport {\n"
           + "character="
           + character
           + ", Leader="

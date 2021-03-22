@@ -30,6 +30,8 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.MetaClusterServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
+import org.apache.iotdb.db.conf.IoTDBConfigCheck;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -44,9 +46,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 public class ClusterMain {
@@ -60,36 +60,44 @@ public class ClusterMain {
   // send a request to remove a node, more arguments: ip-of-removed-node
   // metaport-of-removed-node
   private static final String MODE_REMOVE = "-r";
-  // the separator between the cluster configuration and the single-server configuration
-  private static final String SERVER_CONF_SEPARATOR = "-sc";
+
   private static MetaClusterServer metaServer;
 
   public static void main(String[] args) {
     if (args.length < 1) {
       logger.error(
-          "Usage: <-s|-a|-r> [-internal_meta_port <internal meta port>] "
-              + "[-internal_data_port <internal data port>] "
-              + "[-cluster_rpc_port <cluster rpc port>] "
-              + "[-seed_nodes <node1:meta_port:data_port:cluster_rpc_port,"
-              + "node2:meta_port:data_port:cluster_rpc_port,"
-              + "...,noden:meta_port:data_port:cluster_rpc_port>] "
-              + "[-sc] "
-              + "[-rpc_port <rpc port>]");
+          "Usage: <-s|-a|-r> "
+              + "[-D{} <configure folder>] \n"
+              + "-s: start the node as a seed\n"
+              + "-a: start the node as a new node\n"
+              + "-r: remove the node out of the cluster\n",
+          IoTDBConstant.IOTDB_CONF);
+
       return;
     }
-    String mode = args[0];
-    if (args.length > 1) {
-      String[] params = Arrays.copyOfRange(args, 1, args.length);
-      replaceDefaultPrams(params);
+
+    try {
+      IoTDBConfigCheck.getInstance().checkConfig();
+    } catch (IOException e) {
+      logger.error("meet error when doing start checking", e);
     }
+
+    // init server's configuration first, because the cluster configuration may read settings from
+    // the server's configuration.
+    IoTDBDescriptor.getInstance().getConfig().setSyncEnable(false);
+    // auto create schema is took over by cluster module, so we disable it in the server module.
+    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
 
     // params check
-    if (!checkConfig()) {
+    try {
+      ClusterDescriptor.getInstance().replaceHostnameWithIp();
+    } catch (Exception e) {
+      logger.error("replace hostname with ip failed, {}", e.getMessage());
       return;
     }
 
-    IoTDBDescriptor.getInstance().getConfig().setSyncEnable(false);
-    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
+    String mode = args[0];
+
     logger.info("Running mode {}", mode);
     if (MODE_START.equals(mode)) {
       try {
@@ -179,10 +187,11 @@ public class ClusterMain {
     // assert this node is in seed nodes list
     Node localNode = new Node();
     localNode
-        .setIp(config.getClusterRpcIp())
+        .setInternalIp(config.getInternalIp())
         .setMetaPort(config.getInternalMetaPort())
         .setDataPort(config.getInternalDataPort())
-        .setClientPort(config.getClusterRpcPort());
+        .setClientPort(config.getClusterRpcPort())
+        .setClientIp(IoTDBDescriptor.getInstance().getConfig().getRpcAddress());
     if (!seedNodes.contains(localNode)) {
       String message =
           String.format(
@@ -190,64 +199,6 @@ public class ClusterMain {
               localNode.toString(), config.getSeedNodeUrls());
       throw new StartupException(metaServer.getMember().getName(), message);
     }
-  }
-
-  private static void replaceDefaultPrams(String[] args) {
-    int index;
-    String[] clusterParams;
-    String[] serverParams = null;
-    for (index = 0; index < args.length; index++) {
-      // find where -sc is
-      if (SERVER_CONF_SEPARATOR.equals(args[index])) {
-        break;
-      }
-    }
-    // parameters from 0 to "-sc" are for clusters
-    clusterParams = Arrays.copyOfRange(args, 0, index);
-
-    if (index < args.length) {
-      serverParams = Arrays.copyOfRange(args, index + 1, args.length);
-    }
-
-    if (clusterParams.length > 0) {
-      // replace the cluster default conf params
-      ClusterDescriptor.getInstance().replaceProps(clusterParams);
-    }
-
-    if (serverParams != null && serverParams.length > 0) {
-      // replace the server default conf params
-      IoTDBDescriptor.getInstance().replaceProps(serverParams);
-    }
-  }
-
-  /** check the configuration is legal or not */
-  private static boolean checkConfig() {
-    // 0. first replace all hostname with ip
-    try {
-      ClusterDescriptor.getInstance().replaceHostnameWithIp();
-    } catch (Exception e) {
-      logger.error("replace hostname with ip failed, {}", e.getMessage());
-      return false;
-    }
-
-    // 1. check the cluster_rpc_ip and seed_nodes consistent or not
-    // when clusterRpcIp is 127.0.0.1, the entire cluster must be start locally
-    ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
-    String localhostIp = "127.0.0.1";
-    String configClusterRpcIp = config.getClusterRpcIp();
-    List<String> seedNodes = config.getSeedNodeUrls();
-    boolean isLocalCluster = localhostIp.equals(configClusterRpcIp);
-    for (String seedNodeIP : seedNodes) {
-      if ((isLocalCluster && !seedNodeIP.contains(localhostIp))
-          || (!isLocalCluster && seedNodeIP.contains(localhostIp))) {
-        logger.error(
-            "cluster_rpc_ip={} and seed_nodes={} should be consistent, both use local ip or real ip please",
-            configClusterRpcIp,
-            seedNodes);
-        return false;
-      }
-    }
-    return true;
   }
 
   private static void doRemoveNode(String[] args) throws IOException {
@@ -261,7 +212,7 @@ public class ClusterMain {
     TProtocolFactory factory =
         config.isRpcThriftCompressionEnabled() ? new TCompactProtocol.Factory() : new Factory();
     Node nodeToRemove = new Node();
-    nodeToRemove.setIp(ip).setMetaPort(metaPort);
+    nodeToRemove.setInternalIp(ip).setMetaPort(metaPort);
     // try sending the request to each seed node
     for (String url : config.getSeedNodeUrls()) {
       Node node = ClusterUtils.parseNode(url);
@@ -316,7 +267,7 @@ public class ClusterMain {
           @Override
           public int calculateSlotByTime(String storageGroupName, long timestamp, int maxSlotNum) {
             int sgSerialNum = extractSerialNumInSGName(storageGroupName) % k;
-            if (sgSerialNum > 0) {
+            if (sgSerialNum >= 0) {
               return maxSlotNum / k * sgSerialNum;
             } else {
               return defaultStrategy.calculateSlotByTime(storageGroupName, timestamp, maxSlotNum);
@@ -327,7 +278,7 @@ public class ClusterMain {
           public int calculateSlotByPartitionNum(
               String storageGroupName, long partitionId, int maxSlotNum) {
             int sgSerialNum = extractSerialNumInSGName(storageGroupName) % k;
-            if (sgSerialNum > 0) {
+            if (sgSerialNum >= 0) {
               return maxSlotNum / k * sgSerialNum;
             } else {
               return defaultStrategy.calculateSlotByPartitionNum(
