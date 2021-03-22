@@ -210,12 +210,13 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
-  public ByteBuffer fetchSingleSeriesByTimestamp(Node header, long readerId, long timestamp)
+  public ByteBuffer fetchSingleSeriesByTimestamps(Node header, long readerId, List<Long> timestamps)
       throws TException {
     try {
       return dataGroupMember
           .getLocalQueryExecutor()
-          .fetchSingleSeriesByTimestamp(readerId, timestamp);
+          .fetchSingleSeriesByTimestamps(
+              readerId, timestamps.stream().mapToLong(k -> k).toArray(), timestamps.size());
     } catch (ReaderNotFoundException | IOException e) {
       throw new TException(e);
     }

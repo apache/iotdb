@@ -31,6 +31,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -155,7 +156,7 @@ public class EmptyReader extends BaseManagedSeriesReader
   }
 
   @Override
-  public Object getValueInTimestamp(long timestamp) {
+  public Object[] getValuesInTimestamps(long[] timestamps, int length) throws IOException {
     return null;
   }
 
