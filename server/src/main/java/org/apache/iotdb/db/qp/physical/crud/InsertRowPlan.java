@@ -588,12 +588,6 @@ public class InsertRowPlan extends InsertPlan {
     if (values.length == 0) {
       throw new QueryProcessException("The size of values is 0");
     }
-//    if (measurements.length != values.length) {
-//      throw new QueryProcessException(
-//          String.format(
-//              "Measurements length [%d] does not match " + "values length [%d]",
-//              measurements.length, values.length));
-//    }
     for (Object value : values) {
       if (value == null) {
         throw new QueryProcessException("Values contain null: " + Arrays.toString(values));
