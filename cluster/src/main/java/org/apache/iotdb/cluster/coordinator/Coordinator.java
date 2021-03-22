@@ -325,6 +325,9 @@ public class Coordinator {
         status = forwardToMultipleGroup(planGroupMap);
       }
     }
+    if (status == null) {
+      return null;
+    }
     if (plan instanceof InsertPlan
         && status.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()
         && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
@@ -364,18 +367,22 @@ public class Coordinator {
   private TSStatus forwardToSingleGroup(Map.Entry<PhysicalPlan, PartitionGroup> entry) {
     TSStatus result;
     if (entry.getValue().contains(thisNode)) {
-      // the query should be handled by a group the local node is in, handle it with in the group
-      long startTime =
-          Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP
-              .getOperationStartTime();
-      logger.debug(
-          "Execute {} in a local group of {}", entry.getKey(), entry.getValue().getHeader());
-      result =
-          metaGroupMember
-              .getLocalDataMember(entry.getValue().getHeader())
-              .executeNonQueryPlan(entry.getKey());
-      Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP
-          .calOperationCostTimeFromStart(startTime);
+      if (entry.getKey() instanceof InsertPlan) {
+        return null;
+      } else {
+        // the query should be handled by a group the local node is in, handle it with in the group
+        long startTime =
+            Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP
+                .getOperationStartTime();
+        logger.debug(
+            "Execute {} in a local group of {}", entry.getKey(), entry.getValue().getHeader());
+        result =
+            metaGroupMember
+                .getLocalDataMember(entry.getValue().getHeader())
+                .executeNonQueryPlan(entry.getKey());
+        Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP
+            .calOperationCostTimeFromStart(startTime);
+      }
     } else {
       // forward the query to the group that should handle it
       long startTime =

@@ -71,6 +71,7 @@ public class ChunkMetadata implements Accountable, IChunkMetadata {
   private boolean isSeq = true;
   private boolean isClosed;
   private String filePath;
+  private byte mask;
 
   private ChunkMetadata() {}
 
@@ -163,7 +164,7 @@ public class ChunkMetadata implements Accountable, IChunkMetadata {
     chunkMetaData.offsetOfChunkHeader = ReadWriteIOUtils.readLong(buffer);
     // if the TimeSeriesMetadataType is not 0, it means it has more than one chunk
     // and each chunk's metadata has its own statistics
-    if (timeseriesMetadata.getTimeSeriesMetadataType() != 0) {
+    if ((timeseriesMetadata.getTimeSeriesMetadataType() & 0x3F) != 0) {
       chunkMetaData.statistics = Statistics.deserialize(buffer, chunkMetaData.tsDataType);
     } else {
       // if the TimeSeriesMetadataType is 0, it means it has only one chunk
@@ -313,5 +314,14 @@ public class ChunkMetadata implements Accountable, IChunkMetadata {
 
   public void setFilePath(String filePath) {
     this.filePath = filePath;
+  }
+
+  @Override
+  public byte getMask() {
+    return mask;
+  }
+
+  public void setMask(byte mask) {
+    this.mask = mask;
   }
 }

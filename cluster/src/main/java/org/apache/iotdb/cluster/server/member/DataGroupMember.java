@@ -73,6 +73,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
@@ -141,6 +142,8 @@ public class DataGroupMember extends RaftMember {
 
   private LocalQueryExecutor localQueryExecutor;
 
+  IPlanExecutor executor;
+
   /**
    * When a new partition table is installed, all data members will be checked if unchanged. If not,
    * such members will be removed.
@@ -182,6 +185,10 @@ public class DataGroupMember extends RaftMember {
     term.set(logManager.getHardState().getCurrentTerm());
     voteFor = logManager.getHardState().getVoteFor();
     localQueryExecutor = new LocalQueryExecutor(this);
+    try {
+      executor = new PlanExecutor();
+    } catch (Exception e) {
+    }
   }
 
   /**
@@ -692,16 +699,23 @@ public class DataGroupMember extends RaftMember {
    */
   @Override
   public TSStatus executeNonQueryPlan(PhysicalPlan plan) {
-    TSStatus status = executeNonQueryPlanWithKnownLeader(plan);
-    if (!StatusUtils.NO_LEADER.equals(status)) {
-      return status;
+    try {
+      executor.processNonQuery(plan);
+      return StatusUtils.OK;
+    } catch (Exception e) {
+      return StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy().setMessage(e.getMessage());
     }
 
-    long startTime = Timer.Statistic.DATA_GROUP_MEMBER_WAIT_LEADER.getOperationStartTime();
-    waitLeader();
-    Timer.Statistic.DATA_GROUP_MEMBER_WAIT_LEADER.calOperationCostTimeFromStart(startTime);
-
-    return executeNonQueryPlanWithKnownLeader(plan);
+    //    TSStatus status = executeNonQueryPlanWithKnownLeader(plan);
+    //    if (!StatusUtils.NO_LEADER.equals(status)) {
+    //      return status;
+    //    }
+    //
+    //    long startTime = Timer.Statistic.DATA_GROUP_MEMBER_WAIT_LEADER.getOperationStartTime();
+    //    waitLeader();
+    //    Timer.Statistic.DATA_GROUP_MEMBER_WAIT_LEADER.calOperationCostTimeFromStart(startTime);
+    //
+    //    return executeNonQueryPlanWithKnownLeader(plan);
   }
 
   private TSStatus executeNonQueryPlanWithKnownLeader(PhysicalPlan plan) {

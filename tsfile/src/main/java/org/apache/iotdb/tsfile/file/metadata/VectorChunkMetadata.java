@@ -149,6 +149,11 @@ public class VectorChunkMetadata implements IChunkMetadata {
     throw new UnsupportedOperationException("VectorChunkMetadata doesn't support serial method");
   }
 
+  @Override
+  public byte getMask() {
+    return 0;
+  }
+
   public Chunk getTimeChunk() throws IOException {
     return timeChunkMetadata.getChunkLoader().loadChunk((ChunkMetadata) timeChunkMetadata);
   }

@@ -189,6 +189,7 @@ public class TsFileIOWriter {
 
     currentChunkMetadata =
         new ChunkMetadata(measurementId, tsDataType, out.getPosition(), statistics);
+    currentChunkMetadata.setMask((byte) mask);
 
     ChunkHeader header =
         new ChunkHeader(
@@ -316,7 +317,8 @@ public class TsFileIOWriter {
       }
       TimeseriesMetadata timeseriesMetadata =
           new TimeseriesMetadata(
-              serializeStatistic ? (byte) 1 : (byte) 0,
+              (byte)
+                  ((serializeStatistic ? (byte) 1 : (byte) 0) | entry.getValue().get(0).getMask()),
               chunkMetadataListLength,
               path.getMeasurement(),
               dataType,
