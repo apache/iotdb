@@ -726,6 +726,18 @@ public class IoTDBDescriptor {
           Long.parseLong(
               properties.getProperty("partition_interval", conf.getPartitionInterval() + "")));
 
+      conf.setOpenApiPort(
+          Integer.parseInt(
+              properties.getProperty("openApi_port", Integer.toString(conf.getOpenApiPort()))));
+
+      conf.setStartOpenApi(
+          Boolean.parseBoolean(
+              properties.getProperty("enable_openApi", conf.isStartOpenApi() + "")));
+
+      conf.setSgCount(
+          Integer.parseInt(
+              properties.getProperty("sg_count", Integer.toString(conf.getSgCount()))));
+
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance()
           .getConfig()

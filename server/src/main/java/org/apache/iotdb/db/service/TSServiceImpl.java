@@ -1127,13 +1127,19 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     properties.getSupportedTimeAggregationOperations().add(IoTDBConstant.MIN_TIME);
     properties.setTimestampPrecision(
         IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision());
-    properties.setMaxConcurrentClientNum( IoTDBDescriptor.getInstance().getConfig().getRpcMaxConcurrentClientNum());
-    properties.setWatermarkSecretKey(IoTDBDescriptor.getInstance().getConfig().getWatermarkSecretKey());
-    properties.setWatermarkBitString(IoTDBDescriptor.getInstance().getConfig().getWatermarkBitString());
-    properties.setWatermarkParamMarkRate(IoTDBDescriptor.getInstance().getConfig().getWatermarkParamMarkRate());
-    properties.setWatermarkParamMaxRightBit(IoTDBDescriptor.getInstance().getConfig().getWatermarkParamMaxRightBit());
+    properties.setMaxConcurrentClientNum(
+        IoTDBDescriptor.getInstance().getConfig().getRpcMaxConcurrentClientNum());
+    properties.setWatermarkSecretKey(
+        IoTDBDescriptor.getInstance().getConfig().getWatermarkSecretKey());
+    properties.setWatermarkBitString(
+        IoTDBDescriptor.getInstance().getConfig().getWatermarkBitString());
+    properties.setWatermarkParamMarkRate(
+        IoTDBDescriptor.getInstance().getConfig().getWatermarkParamMarkRate());
+    properties.setWatermarkParamMaxRightBit(
+        IoTDBDescriptor.getInstance().getConfig().getWatermarkParamMaxRightBit());
     properties.setIsReadOnly(IoTDBDescriptor.getInstance().getConfig().isReadOnly());
-    properties.setThriftMaxFrameSize(IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize());
+    properties.setThriftMaxFrameSize(
+        IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize());
     return properties;
   }
 

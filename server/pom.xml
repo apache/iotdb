@@ -196,6 +196,12 @@
             <artifactId>netty-buffer</artifactId>
             <version>4.1.27.Final</version>
         </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>java-rest</artifactId>
+            <version>0.12.0-SNAPSHOT</version>
+            <scope>compile</scope>
+        </dependency>
     </dependencies>
     <build>
         <plugins>

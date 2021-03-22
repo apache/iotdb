@@ -636,8 +636,41 @@ public class IoTDBConfig {
   /** the number of virtual storage groups per user-defined storage group */
   private int virtualStorageGroupNum = 1;
 
+  /** if the startOpenApi is true, we will start OpenApi */
+  private boolean startOpenApi = true;
+
+  /** set the OpenApi reset port.*/
+  private int OpenApiPort = 18080;
+
+  /** set the OpenApi reset port.*/
+  private int sgCount = 5;
+
+  public int getSgCount() {
+    return sgCount;
+  }
+
+  public void setSgCount(int sgCount) {
+    this.sgCount = sgCount;
+  }
+
   public IoTDBConfig() {
     // empty constructor
+  }
+
+  public boolean isStartOpenApi() {
+    return startOpenApi;
+  }
+
+  public void setStartOpenApi(boolean startOpenApi) {
+    this.startOpenApi = startOpenApi;
+  }
+
+  public int getOpenApiPort() {
+    return OpenApiPort;
+  }
+
+  public void setOpenApiPort(int openApiPort) {
+    OpenApiPort = openApiPort;
   }
 
   public float getUdfMemoryBudgetInMB() {
