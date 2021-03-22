@@ -32,6 +32,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
@@ -373,6 +374,10 @@ public abstract class PhysicalPlan {
           plan = new SetDeviceTemplatePlan();
           plan.deserialize(buffer);
           break;
+        case AUTO_CREATE_DEVICE_MNODE:
+          plan = new AutoCreateDeviceMNodePlan();
+          plan.deserialize(buffer);
+          break;
         default:
           throw new IOException("unrecognized log type " + type);
       }
@@ -421,6 +426,7 @@ public abstract class PhysicalPlan {
     SHOW_DEVICES,
     CREATE_TEMPLATE,
     SET_DEVICE_TEMPLATE,
+    AUTO_CREATE_DEVICE_MNODE,
   }
 
   public long getIndex() {
