@@ -107,7 +107,7 @@
                                         <packageVersion>${project.version}</packageVersion>
                                         <serverPort>5667</serverPort>
                                         <useGzipFeature>true</useGzipFeature>
-                                        <!-- sourceFolder is a relative folder -->
+                                        <!-- sourceFolder is a relative folder1 -->
                                         <sourceFolder>iotdbrest</sourceFolder>
                                     </configOptions>
                                 </configuration>
