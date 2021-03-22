@@ -411,25 +411,15 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private void operateTracing(TracingPlan plan) {
-    if (plan.tracingType() > 0) {
+    if (plan.tracingType() != null && plan.tracingType() > 0) {
       tracingClearAll();
     } else {
       IoTDBDescriptor.getInstance().getConfig().setEnablePerformanceTracing(plan.isTracingOn());
-      if (!plan.isTracingOn()) {
-        TracingManager.getInstance().close();
-      } else {
-        if (!TracingManager.getInstance().getWriterStatus()) {
-          TracingManager.getInstance()
-              .reOpenBufferedWriter(
-                  IoTDBDescriptor.getInstance().getConfig().getTracingDir(),
-                  IoTDBConstant.TRACING_LOG);
-        }
-      }
     }
   }
 
   private void tracingClearAll() {
-    boolean isTracingOn = IoTDBDescriptor.getInstance().getConfig().isEnablePerformanceTracing();
+    Boolean isTracingOn = IoTDBDescriptor.getInstance().getConfig().isEnablePerformanceTracing();
     String tracingDir = IoTDBDescriptor.getInstance().getConfig().getTracingDir();
     String tracingDirName = IoTDBConstant.TRACING_LOG;
     if (isTracingOn) {
