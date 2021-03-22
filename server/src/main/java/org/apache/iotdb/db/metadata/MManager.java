@@ -323,6 +323,7 @@ public class MManager {
       this.mNodeCache.clear();
       this.tagIndex.clear();
       this.totalSeriesNumber.set(0);
+      this.templateMap.clear();
       if (logWriter != null) {
         logWriter.close();
         logWriter = null;
@@ -2325,7 +2326,7 @@ public class MManager {
     return upperMap.isEmpty();
   }
 
-  public void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) throws MetadataException {
-    mtree.getDeviceNodeWithAutoCreating(plan.getPath(), config.getDefaultStorageGroupLevel());
-  }
+  //  public void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) throws MetadataException {
+  //    mtree.getDeviceNodeWithAutoCreating(plan.getPath(), config.getDefaultStorageGroupLevel());
+  //  }
 }

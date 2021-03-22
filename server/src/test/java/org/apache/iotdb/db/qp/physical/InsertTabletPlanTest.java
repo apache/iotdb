@@ -236,6 +236,7 @@ public class InsertTabletPlanTest {
     // test recover
     // we want to recover
     EnvironmentUtils.stopDaemon();
+    IoTDB.metaManager.clear();
     // wait for close
     try {
       Thread.sleep(1000);
