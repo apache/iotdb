@@ -340,6 +340,7 @@ public class InsertRowPlan extends InsertPlan {
     }
 
     try {
+      stream.writeInt(dataTypes.length);
       putValues(stream);
     } catch (QueryProcessException e) {
       throw new IOException(e);
@@ -429,7 +430,7 @@ public class InsertRowPlan extends InsertPlan {
 
   /** Make sure the values is already inited before calling this */
   public void fillValues(ByteBuffer buffer) throws QueryProcessException {
-    for (int i = 0; i < measurements.length; i++) {
+    for (int i = 0; i < dataTypes.length; i++) {
       // types are not determined, the situation mainly occurs when the plan uses string values
       // and is forwarded to other nodes
       byte typeNum = (byte) ReadWriteIOUtils.read(buffer);
@@ -486,8 +487,8 @@ public class InsertRowPlan extends InsertPlan {
         putString(buffer, measurement);
       }
     }
-
     try {
+      buffer.putInt(dataTypes.length);
       putValues(buffer);
     } catch (QueryProcessException e) {
       logger.error("Failed to serialize values for {}", this, e);
@@ -513,8 +514,9 @@ public class InsertRowPlan extends InsertPlan {
       measurements[i] = readString(buffer);
     }
 
-    this.dataTypes = new TSDataType[measurementSize];
-    this.values = new Object[measurementSize];
+    int dataTypeSize = buffer.getInt();
+    this.dataTypes = new TSDataType[dataTypeSize];
+    this.values = new Object[dataTypeSize];
     try {
       fillValues(buffer);
     } catch (QueryProcessException e) {

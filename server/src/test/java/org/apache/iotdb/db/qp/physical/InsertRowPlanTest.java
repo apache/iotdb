@@ -214,11 +214,10 @@ public class InsertRowPlanTest {
     plan1.serialize(byteBuffer);
     byteBuffer.flip();
 
-    Assert.assertEquals(PhysicalPlanType.BATCHINSERT.ordinal(), byteBuffer.get());
+    Assert.assertEquals(PhysicalPlanType.INSERT.ordinal(), byteBuffer.get());
 
     InsertRowPlan plan2 = new InsertRowPlan();
     plan2.deserialize(byteBuffer);
-
     Assert.assertEquals(plan1, plan2);
   }
 
