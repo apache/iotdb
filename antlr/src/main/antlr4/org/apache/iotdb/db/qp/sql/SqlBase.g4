@@ -378,7 +378,7 @@ insertColumnsSpec
     ;
 measurementName
     : nodeNameWithoutStar
-    | alignedNodeNames
+    | LR_BRACKET nodeNameWithoutStar (COMMA nodeNameWithoutStar)+ RR_BRACKET
     ;
 
 insertValuesSpec
@@ -655,10 +655,6 @@ nodeNameWithoutStar
     | PARTITION
     | DESC
     | ASC
-    ;
-
-alignedNodeNames
-    : LR_BRACKET nodeNameWithoutStar (COMMA nodeNameWithoutStar)+ RR_BRACKET
     ;
 
 dataType
