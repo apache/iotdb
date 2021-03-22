@@ -36,12 +36,69 @@ public class SlidingSizeWindowEvaluationHandlerTest {
 
   @Test
   public void test04() throws WindowingException {
-    doTest(1, 1, 10);
+    doTest(1, 2, 0);
   }
 
   @Test
   public void test05() throws WindowingException {
-    doTest(4, 2, 10);
+    doTest(1, 2, 1);
+  }
+
+  @Test
+  public void test06() throws WindowingException {
+    doTest(1, 2, 2);
+  }
+
+  @Test
+  public void test07() throws WindowingException {
+    doTest(1, 2, 5);
+  }
+
+  //
+
+  @Test
+  public void test08() throws WindowingException {
+    doTest(7, 2, 5);
+  }
+
+  @Test
+  public void test09() throws WindowingException {
+    doTest(7, 3, 7);
+  }
+
+  @Test
+  public void test10() throws WindowingException {
+    doTest(7, 3, 24);
+  }
+
+  @Test
+  public void test11() throws WindowingException {
+    doTest(7, 10, 75);
+  }
+
+  @Test
+  public void test12() throws WindowingException {
+    doTest(7, 10, 76);
+  }
+
+  @Test
+  public void test13() throws WindowingException {
+    doTest(7, 10, 77);
+  }
+
+  @Test
+  public void test14() throws WindowingException {
+    doTest(7, 7, 75);
+  }
+
+  @Test
+  public void test15() throws WindowingException {
+    doTest(7, 7, 76);
+  }
+
+  @Test
+  public void test16() throws WindowingException {
+    doTest(7, 7, 77);
   }
 
   private void doTest(int windowSize, int slidingStep, int totalPointNumber)
@@ -58,7 +115,7 @@ public class SlidingSizeWindowEvaluationHandlerTest {
     }
 
     await()
-        .atMost(5, SECONDS)
+        .atMost(10, SECONDS)
         .until(
             () ->
                 (totalPointNumber < windowSize
