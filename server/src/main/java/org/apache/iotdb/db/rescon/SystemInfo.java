@@ -88,37 +88,39 @@ public class SystemInfo {
    *
    * @param storageGroupInfo storage group
    */
-  public synchronized void resetStorageGroupStatus(
+  public void resetStorageGroupStatus(
       StorageGroupInfo storageGroupInfo, boolean shouldInvokeFlush) {
-    if (reportedSgMemCostMap.containsKey(storageGroupInfo)) {
-      this.totalSgMemCost -=
-          (reportedSgMemCostMap.get(storageGroupInfo) - storageGroupInfo.getMemCost());
-      storageGroupInfo.setLastReportedSize(storageGroupInfo.getMemCost());
-      reportedSgMemCostMap.put(storageGroupInfo, storageGroupInfo.getMemCost());
-      if (shouldInvokeFlush) {
-        checkSystemToInvokeFlush();
+    boolean needForceAsyncFlush = false;
+    synchronized (this) {
+      if (reportedSgMemCostMap.containsKey(storageGroupInfo)) {
+        this.totalSgMemCost -=
+            (reportedSgMemCostMap.get(storageGroupInfo) - storageGroupInfo.getMemCost());
+        storageGroupInfo.setLastReportedSize(storageGroupInfo.getMemCost());
+        reportedSgMemCostMap.put(storageGroupInfo, storageGroupInfo.getMemCost());
+      }
+
+      if (totalSgMemCost >= FLUSH_THERSHOLD && totalSgMemCost < REJECT_THERSHOLD) {
+        logger.debug("Some sg memory released but still exceeding flush proportion, call flush.");
+        if (rejected) {
+          logger.info("Some sg memory released, set system to normal status.");
+        }
+        logCurrentTotalSGMemory();
+        rejected = false;
+        needForceAsyncFlush = true;
+      } else if (totalSgMemCost >= REJECT_THERSHOLD) {
+        logger.warn("Some sg memory released, but system is still in reject status.");
+        logCurrentTotalSGMemory();
+        rejected = true;
+        needForceAsyncFlush = true;
+
+      } else {
+        logger.debug("Some sg memory released, system is in normal status.");
+        logCurrentTotalSGMemory();
+        rejected = false;
       }
     }
-  }
-
-  private void checkSystemToInvokeFlush() {
-    if (totalSgMemCost >= FLUSH_THERSHOLD && totalSgMemCost < REJECT_THERSHOLD) {
-      logger.debug("Some sg memory released but still exceeding flush proportion, call flush.");
-      if (rejected) {
-        logger.info("Some sg memory released, set system to normal status.");
-      }
-      logCurrentTotalSGMemory();
-      rejected = false;
+    if (shouldInvokeFlush && needForceAsyncFlush) {
       forceAsyncFlush();
-    } else if (totalSgMemCost >= REJECT_THERSHOLD) {
-      logger.warn("Some sg memory released, but system is still in reject status.");
-      logCurrentTotalSGMemory();
-      rejected = true;
-      forceAsyncFlush();
-    } else {
-      logger.debug("Some sg memory released, system is in normal status.");
-      logCurrentTotalSGMemory();
-      rejected = false;
     }
   }
 
@@ -150,7 +152,7 @@ public class SystemInfo {
 
   /** Be Careful!! This method can only be called by flush thread! */
   private void forceAsyncFlush() {
-    if (FlushManager.getInstance().getNumberOfWorkingTasks() > 0) {
+    if (FlushManager.getInstance().getNumberOfWorkingTasks() > 1) {
       return;
     }
     List<TsFileProcessor> processors = getTsFileProcessorsToFlush();
@@ -223,5 +225,21 @@ public class SystemInfo {
     memorySizeForWrite += estimatedTemporaryMemSize;
     FLUSH_THERSHOLD = memorySizeForWrite * config.getFlushProportion();
     REJECT_THERSHOLD = memorySizeForWrite * config.getRejectProportion();
+  }
+
+  public long getTotalMemTableSize() {
+    return totalSgMemCost;
+  }
+
+  public double getFlushThershold() {
+    return FLUSH_THERSHOLD;
+  }
+
+  public double getRejectThershold() {
+    return REJECT_THERSHOLD;
+  }
+
+  public int flushingMemTableNum() {
+    return FlushManager.getInstance().getNumberOfWorkingTasks();
   }
 }

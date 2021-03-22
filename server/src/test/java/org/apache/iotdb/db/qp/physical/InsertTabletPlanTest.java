@@ -133,7 +133,7 @@ public class InsertTabletPlanTest {
 
     QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(6, dataSet.getPaths().size());
+    Assert.assertEquals(3, dataSet.getPaths().size());
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
       System.out.println(record);
@@ -204,7 +204,7 @@ public class InsertTabletPlanTest {
 
     QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(6, dataSet.getPaths().size());
+    Assert.assertEquals(3, dataSet.getPaths().size());
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
       Assert.assertEquals(6, record.getFields().size());

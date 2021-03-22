@@ -36,6 +36,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
 
@@ -72,7 +73,8 @@ abstract class BaseApplier implements LogApplier {
       try {
         getQueryExecutor().processNonQuery(plan);
       } catch (QueryProcessException e) {
-        if (e.getCause() instanceof StorageGroupNotSetException) {
+        if (e.getCause() instanceof StorageGroupNotSetException
+            || plan instanceof SetDeviceTemplatePlan) {
           executeAfterSync(plan);
         } else if (e instanceof BatchProcessException) {
           logger.warn("Exception occurred while processing non-query. ", e);

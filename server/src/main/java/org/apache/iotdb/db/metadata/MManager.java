@@ -2041,32 +2041,41 @@ public class MManager {
 
     for (int i = 0; i < measurementList.length; i++) {
       try {
-        MNode child = getMNode(deviceMNode.left, measurementList[i]);
+        String measurement = measurementList[i];
+        boolean isVector = false;
+        String firstMeasurementOfVector = null;
+        if (measurement.contains("(") && measurement.contains(",")) {
+          isVector = true;
+          firstMeasurementOfVector = measurement.replace("(", "").replace(")", "").split(",")[0];
+        }
+
+        MNode child = getMNode(deviceMNode.left, isVector ? firstMeasurementOfVector : measurement);
         if (child instanceof MeasurementMNode) {
           measurementMNode = (MeasurementMNode) child;
         } else if (child instanceof StorageGroupMNode) {
-          throw new PathAlreadyExistException(deviceId + PATH_SEPARATOR + measurementList[i]);
-        } else if ((measurementMNode = findTemplate(deviceMNode, measurementList[i])) != null) {
+          throw new PathAlreadyExistException(deviceId + PATH_SEPARATOR + measurement);
+        } else if ((measurementMNode = findTemplate(deviceMNode, measurement)) != null) {
           // empty
         } else {
           if (!config.isAutoCreateSchemaEnabled()) {
-            throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurementList[i]);
+            throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurement);
           } else {
             // child is null or child is type of MNode
             // get dataType of plan, only support InsertRowPlan and InsertTabletPlan
             if (plan instanceof InsertRowPlan) {
               TSDataType dataType = plan.getDataTypes()[i];
               // create it, may concurrent created by multiple thread
-              internalCreateTimeseries(deviceId.concatNode(measurementList[i]), dataType);
-              measurementMNode = (MeasurementMNode) deviceMNode.left.getChild(measurementList[i]);
+              internalCreateTimeseries(deviceId.concatNode(measurement), dataType);
+              measurementMNode = (MeasurementMNode) deviceMNode.left.getChild(measurement);
             } else if (plan instanceof InsertTabletPlan) {
               List<TSDataType> dataTypes = new ArrayList<>();
               List<String> measurements =
-                  Arrays.asList(measurementList[i].replace("(", "").replace(")", "").split(","));
+                  Arrays.asList(measurement.replace("(", "").replace(")", "").split(","));
               if (measurements.size() == 1) {
                 internalCreateTimeseries(
-                    deviceId.concatNode(measurementList[i]), plan.getDataTypes()[loc]);
-                measurementMNode = (MeasurementMNode) deviceMNode.left.getChild(measurementList[i]);
+                    deviceId.concatNode(measurement), plan.getDataTypes()[loc++]);
+                measurementMNode = (MeasurementMNode) deviceMNode.left.getChild(measurement);
+
               } else {
                 int curLoc = loc;
                 for (int j = 0; j < measurements.size(); j++) {

@@ -85,8 +85,6 @@ public class ClusterMain {
     // init server's configuration first, because the cluster configuration may read settings from
     // the server's configuration.
     IoTDBDescriptor.getInstance().getConfig().setSyncEnable(false);
-    // auto create schema is took over by cluster module, so we disable it in the server module.
-    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
 
     // params check
     try {
