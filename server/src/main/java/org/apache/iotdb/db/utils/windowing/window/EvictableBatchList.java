@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.utils.windowing.window;
 
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -29,7 +30,7 @@ import java.util.List;
 
 public class EvictableBatchList {
 
-  private static final int INTERNAL_BATCH_SIZE =
+  private static int internalBatchSize =
       TSFileConfig.ARRAY_CAPACITY_THRESHOLD * TSFileConfig.ARRAY_CAPACITY_THRESHOLD;
 
   private final TSDataType dataType;
@@ -47,104 +48,104 @@ public class EvictableBatchList {
   }
 
   public synchronized void putInt(long t, int v) {
-    if (size % INTERNAL_BATCH_SIZE == 0) {
+    if (size % internalBatchSize == 0) {
       batchList.add(new BatchData(dataType));
     }
 
-    batchList.get(size / INTERNAL_BATCH_SIZE - actualOuterIndexAt0).putInt(t, v);
+    batchList.get(size / internalBatchSize - actualOuterIndexAt0).putInt(t, v);
     ++size;
   }
 
   public synchronized void putLong(long t, long v) {
-    if (size % INTERNAL_BATCH_SIZE == 0) {
+    if (size % internalBatchSize == 0) {
       batchList.add(new BatchData(dataType));
     }
 
-    batchList.get(size / INTERNAL_BATCH_SIZE - actualOuterIndexAt0).putLong(t, v);
+    batchList.get(size / internalBatchSize - actualOuterIndexAt0).putLong(t, v);
     ++size;
   }
 
   public synchronized void putFloat(long t, float v) {
-    if (size % INTERNAL_BATCH_SIZE == 0) {
+    if (size % internalBatchSize == 0) {
       batchList.add(new BatchData(dataType));
     }
 
-    batchList.get(size / INTERNAL_BATCH_SIZE - actualOuterIndexAt0).putFloat(t, v);
+    batchList.get(size / internalBatchSize - actualOuterIndexAt0).putFloat(t, v);
     ++size;
   }
 
   public synchronized void putDouble(long t, double v) {
-    if (size % INTERNAL_BATCH_SIZE == 0) {
+    if (size % internalBatchSize == 0) {
       batchList.add(new BatchData(dataType));
     }
 
-    batchList.get(size / INTERNAL_BATCH_SIZE - actualOuterIndexAt0).putDouble(t, v);
+    batchList.get(size / internalBatchSize - actualOuterIndexAt0).putDouble(t, v);
     ++size;
   }
 
   public synchronized void putBoolean(long t, boolean v) {
-    if (size % INTERNAL_BATCH_SIZE == 0) {
+    if (size % internalBatchSize == 0) {
       batchList.add(new BatchData(dataType));
     }
 
-    batchList.get(size / INTERNAL_BATCH_SIZE - actualOuterIndexAt0).putBoolean(t, v);
+    batchList.get(size / internalBatchSize - actualOuterIndexAt0).putBoolean(t, v);
     ++size;
   }
 
   public synchronized void putBinary(long t, Binary v) {
-    if (size % INTERNAL_BATCH_SIZE == 0) {
+    if (size % internalBatchSize == 0) {
       batchList.add(new BatchData(dataType));
     }
 
-    batchList.get(size / INTERNAL_BATCH_SIZE - actualOuterIndexAt0).putBinary(t, v);
+    batchList.get(size / internalBatchSize - actualOuterIndexAt0).putBinary(t, v);
     ++size;
   }
 
   public synchronized long getTimeByIndex(int index) {
     return batchList
-        .get(index / INTERNAL_BATCH_SIZE - actualOuterIndexAt0)
-        .getTimeByIndex(index % INTERNAL_BATCH_SIZE);
+        .get(index / internalBatchSize - actualOuterIndexAt0)
+        .getTimeByIndex(index % internalBatchSize);
   }
 
   public synchronized int getIntByIndex(int index) {
     return batchList
-        .get(index / INTERNAL_BATCH_SIZE - actualOuterIndexAt0)
-        .getIntByIndex(index % INTERNAL_BATCH_SIZE);
+        .get(index / internalBatchSize - actualOuterIndexAt0)
+        .getIntByIndex(index % internalBatchSize);
   }
 
   public synchronized long getLongByIndex(int index) {
     return batchList
-        .get(index / INTERNAL_BATCH_SIZE - actualOuterIndexAt0)
-        .getLongByIndex(index % INTERNAL_BATCH_SIZE);
+        .get(index / internalBatchSize - actualOuterIndexAt0)
+        .getLongByIndex(index % internalBatchSize);
   }
 
   public synchronized float getFloatByIndex(int index) {
     return batchList
-        .get(index / INTERNAL_BATCH_SIZE - actualOuterIndexAt0)
-        .getFloatByIndex(index % INTERNAL_BATCH_SIZE);
+        .get(index / internalBatchSize - actualOuterIndexAt0)
+        .getFloatByIndex(index % internalBatchSize);
   }
 
   public synchronized double getDoubleByIndex(int index) {
     return batchList
-        .get(index / INTERNAL_BATCH_SIZE - actualOuterIndexAt0)
-        .getDoubleByIndex(index % INTERNAL_BATCH_SIZE);
+        .get(index / internalBatchSize - actualOuterIndexAt0)
+        .getDoubleByIndex(index % internalBatchSize);
   }
 
   public synchronized boolean getBooleanByIndex(int index) {
     return batchList
-        .get(index / INTERNAL_BATCH_SIZE - actualOuterIndexAt0)
-        .getBooleanByIndex(index % INTERNAL_BATCH_SIZE);
+        .get(index / internalBatchSize - actualOuterIndexAt0)
+        .getBooleanByIndex(index % internalBatchSize);
   }
 
   public synchronized Binary getBinaryByIndex(int index) {
     return batchList
-        .get(index / INTERNAL_BATCH_SIZE - actualOuterIndexAt0)
-        .getBinaryByIndex(index % INTERNAL_BATCH_SIZE);
+        .get(index / internalBatchSize - actualOuterIndexAt0)
+        .getBinaryByIndex(index % internalBatchSize);
   }
 
   /** @param evictionUpperBound valid elements [evictionUpperBound, size) */
   public void setEvictionUpperBound(int evictionUpperBound) {
-    int outerEvictionUpperBound = evictionUpperBound / INTERNAL_BATCH_SIZE;
+    int outerEvictionUpperBound = evictionUpperBound / internalBatchSize;
     if (actualOuterIndexAt0 < outerEvictionUpperBound) {
       doEviction(outerEvictionUpperBound);
     }
@@ -163,5 +164,10 @@ public class EvictableBatchList {
 
   public TSDataType getDataType() {
     return dataType;
+  }
+
+  @TestOnly
+  public static void setInternalBatchSize(int internalBatchSize) {
+    EvictableBatchList.internalBatchSize = internalBatchSize;
   }
 }
