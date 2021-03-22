@@ -56,6 +56,7 @@ import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.PullMeasurementSchemaHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.PullSnapshotHandler;
 import org.apache.iotdb.cluster.server.service.DataAsyncService;
+import org.apache.iotdb.cluster.utils.Constants;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
@@ -182,7 +183,7 @@ public class DataGroupMemberTest extends MemberTest {
     DataGroupMember dataGroupMember =
         new DataGroupMember(new Factory(), nodes, node, testMetaMember) {
           @Override
-          public boolean syncLeader() {
+          public boolean syncLeader(CheckConsistency checkConsistency) {
             return true;
           }
 
@@ -330,8 +331,8 @@ public class DataGroupMemberTest extends MemberTest {
     testMetaMember.getTerm().set(10);
     List<Log> metaLogs = TestUtils.prepareTestLogs(6);
     metaLogManager.append(metaLogs);
-    Node voteFor = new Node("127.0.0.1", 30000, 0, 40000, 55560);
-    Node elector = new Node("127.0.0.1", 30001, 1, 40001, 55561);
+    Node voteFor = new Node("127.0.0.1", 30000, 0, 40000, Constants.RPC_PORT, "127.0.0.1");
+    Node elector = new Node("127.0.0.1", 30001, 1, 40001, Constants.RPC_PORT + 1, "127.0.0.1");
 
     // a request with smaller term
     ElectionRequest electionRequest = new ElectionRequest();
@@ -802,11 +803,15 @@ public class DataGroupMemberTest extends MemberTest {
     AtomicReference<ByteBuffer> dataResult = new AtomicReference<>();
     GenericHandler<ByteBuffer> dataHandler = new GenericHandler<>(TestUtils.getNode(0), dataResult);
 
+    List<Long> timestamps = new ArrayList<>(5);
     for (int i = 5; i < 10; i++) {
-      new DataAsyncService(dataGroupMember)
-          .fetchSingleSeriesByTimestamp(TestUtils.getNode(0), readerId, i, dataHandler);
-      Object value = SerializeUtils.deserializeObject(dataResult.get());
-      assertEquals(i * 1.0, (Double) value, 0.00001);
+      timestamps.add((long) i);
+    }
+    new DataAsyncService(dataGroupMember)
+        .fetchSingleSeriesByTimestamps(TestUtils.getNode(0), readerId, timestamps, dataHandler);
+    Object[] values = SerializeUtils.deserializeObjects(dataResult.get());
+    for (int i = 5; i < 10; i++) {
+      assertEquals(i * 1.0, (Double) values[i - 5], 0.00001);
     }
 
     new DataAsyncService(dataGroupMember)
@@ -860,11 +865,15 @@ public class DataGroupMemberTest extends MemberTest {
 
     AtomicReference<ByteBuffer> dataResult = new AtomicReference<>();
     GenericHandler<ByteBuffer> dataHandler = new GenericHandler<>(TestUtils.getNode(0), dataResult);
+    List<Long> timestamps = new ArrayList<>(4);
     for (int i = 5; i < 9; i++) {
-      new DataAsyncService(dataGroupMember)
-          .fetchSingleSeriesByTimestamp(TestUtils.getNode(0), readerId, i, dataHandler);
-      Object value = SerializeUtils.deserializeObject(dataResult.get());
-      assertEquals(i * 1.0, (Double) value, 0.00001);
+      timestamps.add((long) i);
+    }
+    new DataAsyncService(dataGroupMember)
+        .fetchSingleSeriesByTimestamps(TestUtils.getNode(0), readerId, timestamps, dataHandler);
+    Object[] values = SerializeUtils.deserializeObjects(dataResult.get());
+    for (int i = 5; i < 9; i++) {
+      assertEquals(i * 1.0, (Double) values[i - 5], 0.00001);
     }
 
     new DataAsyncService(dataGroupMember)
@@ -895,11 +904,13 @@ public class DataGroupMemberTest extends MemberTest {
   public void testFetchWithoutQuery() {
     System.out.println("Start testFetchWithoutQuery()");
     AtomicReference<Exception> result = new AtomicReference<>();
+    List<Long> timestamps = new ArrayList<>(1);
+    timestamps.add((long) 0);
     new DataAsyncService(dataGroupMember)
-        .fetchSingleSeriesByTimestamp(
+        .fetchSingleSeriesByTimestamps(
             TestUtils.getNode(0),
             0,
-            0,
+            timestamps,
             new AsyncMethodCallback<ByteBuffer>() {
               @Override
               public void onComplete(ByteBuffer buffer) {}

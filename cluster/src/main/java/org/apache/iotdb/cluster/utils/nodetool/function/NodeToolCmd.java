@@ -112,7 +112,8 @@ public abstract class NodeToolCmd implements Runnable {
 
   String nodeToString(Node node) {
     return String.format(
-        "%s:%d:%d:%d", node.getIp(), node.getMetaPort(), node.getDataPort(), node.getClientPort());
+        "%s:%d:%d:%d",
+        node.getInternalIp(), node.getMetaPort(), node.getDataPort(), node.getClientPort());
   }
 
   String partitionGroupToString(PartitionGroup group) {

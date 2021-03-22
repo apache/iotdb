@@ -248,4 +248,26 @@ public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
     return ioTDBRpcDataSet.getString(
         index, ioTDBRpcDataSet.columnTypeDeduplicatedList.get(index), ioTDBRpcDataSet.values);
   }
+
+  @Override
+  protected Object getObjectByName(String columnName) throws SQLException {
+    checkRecord();
+    if (columnName.startsWith(TIMESTAMP_STR)) {
+      String column = columnName.substring(TIMESTAMP_STR_LENGTH);
+      int index = ioTDBRpcDataSet.columnOrdinalMap.get(column) - START_INDEX;
+      if (times[index] == null || times[index].length == 0) {
+        return null;
+      }
+      return BytesUtils.bytesToLong(times[index]);
+    }
+    int index = ioTDBRpcDataSet.columnOrdinalMap.get(columnName) - START_INDEX;
+    if (index < 0
+        || index >= ioTDBRpcDataSet.values.length
+        || ioTDBRpcDataSet.values[index] == null
+        || ioTDBRpcDataSet.values[index].length < 1) {
+      return null;
+    }
+    return ioTDBRpcDataSet.getObject(
+        index, ioTDBRpcDataSet.columnTypeDeduplicatedList.get(index), ioTDBRpcDataSet.values);
+  }
 }

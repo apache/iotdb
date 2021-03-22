@@ -462,7 +462,7 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
 
   @Override
   public Object getObject(String columnName) throws SQLException {
-    return getValueByName(columnName);
+    return getObjectByName(columnName);
   }
 
   @Override
@@ -1140,4 +1140,6 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
   abstract void checkRecord() throws SQLException;
 
   abstract String getValueByName(String columnName) throws SQLException;
+
+  abstract Object getObjectByName(String columnName) throws SQLException;
 }

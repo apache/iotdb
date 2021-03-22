@@ -23,7 +23,6 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
-import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -94,7 +93,6 @@ abstract class MergeTest {
         .getConfig()
         .setMergeChunkPointNumberThreshold(prevMergeChunkThreshold);
     ChunkCache.getInstance().clear();
-    ChunkMetadataCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
     IoTDB.metaManager.clear();
     EnvironmentUtils.cleanAllDir();
@@ -132,9 +130,6 @@ abstract class MergeTest {
           new File(
               TestConstant.BASE_OUTPUT_PATH.concat(
                   i
-                      + "seq"
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + i
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + i
                       + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -152,12 +147,9 @@ abstract class MergeTest {
       File file =
           new File(
               TestConstant.BASE_OUTPUT_PATH.concat(
-                  i
-                      + "unseq"
+                  (10000 + i)
                       + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + i
-                      + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + i
+                      + (10000 + i)
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + 0
                       + ".tsfile"));
@@ -174,9 +166,6 @@ abstract class MergeTest {
         new File(
             TestConstant.BASE_OUTPUT_PATH.concat(
                 unseqFileNum
-                    + "unseq"
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + unseqFileNum
                     + IoTDBConstant.FILE_NAME_SEPARATOR
                     + unseqFileNum
                     + IoTDBConstant.FILE_NAME_SEPARATOR

@@ -35,8 +35,11 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -53,6 +56,32 @@ public class MTreeTest {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
+  }
+
+  @Test
+  public void testSetStorageGroupExceptionMessage() throws IllegalPathException {
+    MTree root = new MTree();
+    try {
+      root.setStorageGroup(new PartialPath("root.edge1.access"));
+      root.setStorageGroup(new PartialPath("root.edge1"));
+      fail("Expected exception");
+    } catch (MetadataException e) {
+      assertEquals(
+          "some children of root.edge1 have already been set to storage group", e.getMessage());
+    }
+    try {
+      root.setStorageGroup(new PartialPath("root.edge2"));
+      root.setStorageGroup(new PartialPath("root.edge2.access"));
+      fail("Expected exception");
+    } catch (MetadataException e) {
+      assertEquals("root.edge2 has already been set to storage group", e.getMessage());
+    }
+    try {
+      root.setStorageGroup(new PartialPath("root.edge1.access"));
+      fail("Expected exception");
+    } catch (MetadataException e) {
+      assertEquals("root.edge1.access has already been set to storage group", e.getMessage());
+    }
   }
 
   @Test
@@ -373,6 +402,49 @@ public class MTreeTest {
   }
 
   @Test
+  public void testGetAllChildNodeNamesByPath() {
+    MTree root = new MTree();
+    try {
+      root.setStorageGroup(new PartialPath("root.a.d0"));
+      root.createTimeseries(
+          new PartialPath("root.a.d0.s0"),
+          TSDataType.INT32,
+          TSEncoding.RLE,
+          TSFileDescriptor.getInstance().getConfig().getCompressor(),
+          Collections.emptyMap(),
+          null);
+      root.createTimeseries(
+          new PartialPath("root.a.d0.s1"),
+          TSDataType.INT32,
+          TSEncoding.RLE,
+          TSFileDescriptor.getInstance().getConfig().getCompressor(),
+          Collections.emptyMap(),
+          null);
+      root.createTimeseries(
+          new PartialPath("root.a.d5"),
+          TSDataType.INT32,
+          TSEncoding.RLE,
+          TSFileDescriptor.getInstance().getConfig().getCompressor(),
+          Collections.emptyMap(),
+          null);
+
+      // getChildNodeByPath
+      Set<String> result1 = root.getChildNodeInNextLevel(new PartialPath("root.a.d0"));
+      Set<String> result2 = root.getChildNodeInNextLevel(new PartialPath("root.a"));
+      Set<String> result3 = root.getChildNodeInNextLevel(new PartialPath("root"));
+      assertEquals(result1, new HashSet<>(Arrays.asList("s0", "s1")));
+      assertEquals(result2, new HashSet<>(Arrays.asList("d0", "d5")));
+      assertEquals(result3, new HashSet<>(Arrays.asList("a")));
+
+      // if child node is nll   will return  null HashSet
+      Set<String> result5 = root.getChildNodeInNextLevel(new PartialPath("root.a.d5"));
+      assertEquals(result5, new HashSet<>(Arrays.asList()));
+    } catch (MetadataException e1) {
+      e1.printStackTrace();
+    }
+  }
+
+  @Test
   public void testSetStorageGroup() throws IllegalPathException {
     // set storage group first
     MTree root = new MTree();
@@ -400,7 +472,8 @@ public class MTreeTest {
     try {
       root.setStorageGroup(new PartialPath("root.laptop"));
     } catch (MetadataException e) {
-      Assert.assertEquals("root.laptop has already been set to storage group", e.getMessage());
+      Assert.assertEquals(
+          "some children of root.laptop have already been set to storage group", e.getMessage());
     }
     // check timeseries
     assertFalse(root.isPathExist(new PartialPath("root.laptop.d1.s0")));

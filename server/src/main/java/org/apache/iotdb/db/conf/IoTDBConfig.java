@@ -156,7 +156,7 @@ public class IoTDBConfig {
 
   /**
    * The cycle when write ahead log is periodically forced to be written to disk(in milliseconds) If
-   * set this parameter to 0 it means call outputStream.force(true) after every each insert
+   * set this parameter to 0 it means call channel.force(true) after every each insert
    */
   private long forceWalPeriodInMs = 100;
 
@@ -166,6 +166,10 @@ public class IoTDBConfig {
    * then the insert plan will be rejected by WAL.
    */
   private int walBufferSize = 16 * 1024 * 1024;
+
+  private int maxWalBytebufferNumForEachPartition = 6;
+
+  private long walPoolTrimIntervalInMS = 10_000;
 
   private int estimatedSeriesSize = 300;
 
@@ -316,10 +320,7 @@ public class IoTDBConfig {
   private boolean metaDataCacheEnable = true;
 
   /** Memory allocated for timeSeriesMetaData cache in read process */
-  private long allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForRead / 10;
-
-  /** Memory allocated for chunkMetaData cache in read process */
-  private long allocateMemoryForChunkMetaDataCache = allocateMemoryForRead / 10;
+  private long allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForRead / 5;
 
   /** Memory allocated for chunk cache in read process */
   private long allocateMemoryForChunkCache = allocateMemoryForRead / 10;
@@ -362,7 +363,7 @@ public class IoTDBConfig {
   private long cacheFileReaderClearPeriod = 100000;
 
   /** the max executing time of query in ms. */
-  private int queryTimeThreshold = 60000;
+  private int queryTimeoutThreshold = 60000;
 
   /** Replace implementation class of JDBC service */
   private String rpcImplClassName = TSServiceImpl.class.getName();
@@ -630,6 +631,12 @@ public class IoTDBConfig {
   /** if the debug_state is true, we will print more details about the process of query */
   private boolean debugState = false;
 
+  /**
+   * whether enable the rpc service. This parameter has no a corresponding field in the
+   * iotdb-engine.properties
+   */
+  private boolean enableRpcService = true;
+
   /** the size of ioTaskQueue */
   private int ioTaskQueueSizeForFlushing = 10;
 
@@ -860,7 +867,7 @@ public class IoTDBConfig {
     return rpcAddress;
   }
 
-  void setRpcAddress(String rpcAddress) {
+  public void setRpcAddress(String rpcAddress) {
     this.rpcAddress = rpcAddress;
   }
 
@@ -868,7 +875,7 @@ public class IoTDBConfig {
     return rpcPort;
   }
 
-  void setRpcPort(int rpcPort) {
+  public void setRpcPort(int rpcPort) {
     this.rpcPort = rpcPort;
   }
 
@@ -1112,12 +1119,12 @@ public class IoTDBConfig {
     this.cacheFileReaderClearPeriod = cacheFileReaderClearPeriod;
   }
 
-  public int getQueryTimeThreshold() {
-    return queryTimeThreshold;
+  public int getQueryTimeoutThreshold() {
+    return queryTimeoutThreshold;
   }
 
-  public void setQueryTimeThreshold(int queryTimeThreshold) {
-    this.queryTimeThreshold = queryTimeThreshold;
+  public void setQueryTimeoutThreshold(int queryTimeoutThreshold) {
+    this.queryTimeoutThreshold = queryTimeoutThreshold;
   }
 
   public boolean isReadOnly() {
@@ -1142,6 +1149,22 @@ public class IoTDBConfig {
 
   public void setWalBufferSize(int walBufferSize) {
     this.walBufferSize = walBufferSize;
+  }
+
+  public int getMaxWalBytebufferNumForEachPartition() {
+    return maxWalBytebufferNumForEachPartition;
+  }
+
+  public void setMaxWalBytebufferNumForEachPartition(int maxWalBytebufferNumForEachPartition) {
+    this.maxWalBytebufferNumForEachPartition = maxWalBytebufferNumForEachPartition;
+  }
+
+  public long getWalPoolTrimIntervalInMS() {
+    return walPoolTrimIntervalInMS;
+  }
+
+  public void setWalPoolTrimIntervalInMS(long walPoolTrimIntervalInMS) {
+    this.walPoolTrimIntervalInMS = walPoolTrimIntervalInMS;
   }
 
   public int getEstimatedSeriesSize() {
@@ -1471,14 +1494,6 @@ public class IoTDBConfig {
   public void setAllocateMemoryForTimeSeriesMetaDataCache(
       long allocateMemoryForTimeSeriesMetaDataCache) {
     this.allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForTimeSeriesMetaDataCache;
-  }
-
-  public long getAllocateMemoryForChunkMetaDataCache() {
-    return allocateMemoryForChunkMetaDataCache;
-  }
-
-  public void setAllocateMemoryForChunkMetaDataCache(long allocateMemoryForChunkMetaDataCache) {
-    this.allocateMemoryForChunkMetaDataCache = allocateMemoryForChunkMetaDataCache;
   }
 
   public long getAllocateMemoryForChunkCache() {
@@ -2049,6 +2064,14 @@ public class IoTDBConfig {
 
   public void setMlogBufferSize(int mlogBufferSize) {
     this.mlogBufferSize = mlogBufferSize;
+  }
+
+  public boolean isEnableRpcService() {
+    return enableRpcService;
+  }
+
+  public void setEnableRpcService(boolean enableRpcService) {
+    this.enableRpcService = enableRpcService;
   }
 
   public int getIoTaskQueueSizeForFlushing() {

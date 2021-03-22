@@ -33,6 +33,7 @@ public abstract class QueryDataSet {
   protected int rowLimit = 0; // rowLimit > 0 means the LIMIT constraint exists
   protected int rowOffset = 0;
   protected int alreadyReturnedRowNum = 0;
+  protected int fetchSize = 10000;
   protected boolean ascending;
 
   public QueryDataSet() {}
@@ -79,6 +80,10 @@ public abstract class QueryDataSet {
       alreadyReturnedRowNum++;
     }
     return nextWithoutConstraint();
+  }
+
+  public void setFetchSize(int fetchSize) {
+    this.fetchSize = fetchSize;
   }
 
   public abstract RowRecord nextWithoutConstraint() throws IOException;

@@ -18,53 +18,62 @@
  */
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 
-import org.junit.AfterClass;
+import org.junit.After;
 import org.junit.Assert;
-import org.junit.BeforeClass;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 
-import static org.junit.Assert.fail;
+import static org.junit.Assert.assertEquals;
 
-public class IoTDBTracingTest {
-
-  @BeforeClass
-  public static void setUp() {
-    EnvironmentUtils.closeStatMonitor();
+public class IoTDBExecuteBatchIT {
+  @Before
+  public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
   }
 
-  @AfterClass
-  public static void tearDown() throws Exception {
+  @After
+  public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
   }
 
   @Test
-  public void tracingTest() throws ClassNotFoundException {
+  public void testJDBCExecuteBatch() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-      Assert.assertEquals(false, config.isEnablePerformanceTracing());
+      statement.setFetchSize(5);
+      statement.addBatch(
+          "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465600000,1.2)");
+      statement.addBatch(
+          "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465600001,2.3)");
+      statement.addBatch("delete timeseries root.ln.wf01.wt01");
+      statement.addBatch(
+          "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465600002,3.4)");
+      statement.executeBatch();
+      ResultSet resultSet = statement.executeQuery("select * from root.ln.wf01.wt01");
+      int count = 0;
 
-      statement.execute("tracing on");
-      Assert.assertEquals(true, config.isEnablePerformanceTracing());
+      String[] timestamps = {"1509465600002"};
+      String[] values = {"3.4"};
 
-      statement.execute("tracing off");
-      Assert.assertEquals(false, config.isEnablePerformanceTracing());
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
+      while (resultSet.next()) {
+        assertEquals(timestamps[count], resultSet.getString("Time"));
+        assertEquals(values[count], resultSet.getString("root.ln.wf01.wt01.temperature"));
+        count++;
+      }
+    } catch (SQLException e) {
+      Assert.fail(e.getMessage());
     }
   }
 }

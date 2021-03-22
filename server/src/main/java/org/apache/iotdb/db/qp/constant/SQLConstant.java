@@ -170,6 +170,14 @@ public class SQLConstant {
   public static final int TOK_QUERY_PROCESSLIST = 97;
   public static final int TOK_KILL_QUERY = 98;
 
+  public static final int TOK_CHILD_NODES = 99;
+
+  public static final int TOK_TRIGGER_CREATE = 100;
+  public static final int TOK_TRIGGER_DROP = 101;
+  public static final int TOK_TRIGGER_START = 102;
+  public static final int TOK_TRIGGER_STOP = 103;
+  public static final int TOK_SHOW_TRIGGERS = 104;
+
   public static final Map<Integer, String> tokenSymbol = new HashMap<>();
   public static final Map<Integer, String> tokenNames = new HashMap<>();
   public static final Map<Integer, Integer> reverseWords = new HashMap<>();
@@ -257,6 +265,12 @@ public class SQLConstant {
     tokenNames.put(TOK_CREATE_INDEX, "TOK_CREATE_INDEX");
     tokenNames.put(TOK_DROP_INDEX, "TOK_DROP_INDEX");
     tokenNames.put(TOK_QUERY_INDEX, "TOK_QUERY_INDEX");
+
+    tokenNames.put(TOK_TRIGGER_CREATE, "TOK_TRIGGER_CREATE");
+    tokenNames.put(TOK_TRIGGER_DROP, "TOK_TRIGGER_DROP");
+    tokenNames.put(TOK_TRIGGER_START, "TOK_TRIGGER_START");
+    tokenNames.put(TOK_TRIGGER_STOP, "TOK_TRIGGER_STOP");
+    tokenNames.put(TOK_SHOW_TRIGGERS, "TOK_SHOW_TRIGGERS");
   }
 
   static {

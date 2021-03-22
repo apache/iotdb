@@ -66,6 +66,7 @@ import org.apache.iotdb.cluster.server.heartbeat.DataHeartbeatServer;
 import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
 import org.apache.iotdb.cluster.server.service.MetaAsyncService;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
+import org.apache.iotdb.cluster.utils.Constants;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
@@ -192,7 +193,7 @@ public class MetaGroupMemberTest extends MemberTest {
     DataGroupMember dataGroupMember =
         new DataGroupMember(null, group, node, testMetaMember) {
           @Override
-          public boolean syncLeader() {
+          public boolean syncLeader(CheckConsistency checkConsistency) {
             return true;
           }
 
@@ -341,7 +342,7 @@ public class MetaGroupMemberTest extends MemberTest {
             for (String seedUrl : seedUrls) {
               Node node = ClusterUtils.parseNode(seedUrl);
               if (node != null
-                  && (!node.getIp().equals(thisNode.ip)
+                  && (!node.getInternalIp().equals(thisNode.internalIp)
                       || node.getMetaPort() != thisNode.getMetaPort())
                   && !allNodes.contains(node)) {
                 // do not add the local node since it is added in `setThisNode()`
@@ -880,6 +881,10 @@ public class MetaGroupMemberTest extends MemberTest {
 
     try {
       ClusterReaderFactory readerFactory = new ClusterReaderFactory(testMetaMember);
+      long[] times = new long[10];
+      for (int i = 0; i < 10; i++) {
+        times[i] = i;
+      }
       for (int i = 0; i < 10; i++) {
         IReaderByTimestamp readerByTimestamp =
             readerFactory.getReaderByTimestamp(
@@ -888,8 +893,10 @@ public class MetaGroupMemberTest extends MemberTest {
                 TSDataType.DOUBLE,
                 context,
                 true);
+
+        Object[] values = readerByTimestamp.getValuesInTimestamps(times, 10);
         for (int j = 0; j < 10; j++) {
-          assertEquals(j * 1.0, (double) readerByTimestamp.getValueInTimestamp(j), 0.00001);
+          assertEquals(j * 1.0, (double) values[j], 0.00001);
         }
       }
     } finally {
@@ -1006,7 +1013,7 @@ public class MetaGroupMemberTest extends MemberTest {
   @Test
   public void testProcessValidHeartbeatResp() throws QueryProcessException {
     System.out.println("Start testProcessValidHeartbeatResp()");
-    MetaGroupMember metaGroupMember = getMetaGroupMember(TestUtils.getNode(10));
+    MetaGroupMember metaGroupMember = getMetaGroupMember(TestUtils.getNode(9));
     metaGroupMember.start();
     metaGroupMember.onElectionWins();
     try {
@@ -1014,6 +1021,7 @@ public class MetaGroupMemberTest extends MemberTest {
         HeartBeatResponse response = new HeartBeatResponse();
         response.setFollowerIdentifier(i);
         response.setRequirePartitionTable(true);
+        response.setFollower(TestUtils.getNode(i));
         metaGroupMember.processValidHeartbeatResp(response, TestUtils.getNode(i));
         metaGroupMember.removeBlindNode(TestUtils.getNode(i));
       }
@@ -1038,7 +1046,7 @@ public class MetaGroupMemberTest extends MemberTest {
     request.setLeaderCommit(0);
     request.setPrevLogIndex(-1);
     request.setPrevLogTerm(-1);
-    request.setLeader(new Node("127.0.0.1", 30000, 0, 40000, 55560));
+    request.setLeader(new Node("127.0.0.1", 30000, 0, 40000, Constants.RPC_PORT, "127.0.0.1"));
     AtomicReference<Long> result = new AtomicReference<>();
     GenericHandler<Long> handler = new GenericHandler<>(TestUtils.getNode(0), result);
     new MetaAsyncService(testMetaMember).appendEntry(request, handler);

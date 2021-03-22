@@ -30,7 +30,7 @@ public abstract class Operator {
 
   protected OperatorType operatorType = OperatorType.NULL;
 
-  public Operator(int tokenIntType) {
+  protected Operator(int tokenIntType) {
     this.tokenIntType = tokenIntType;
     this.tokenName = SQLConstant.tokenNames.get(tokenIntType);
   }
@@ -146,6 +146,10 @@ public abstract class Operator {
     STORAGE_GROUP_MNODE,
     BATCH_INSERT_ONE_DEVICE,
     MULTI_BATCH_INSERT,
-    BATCH_INSERT_ROWS
+    BATCH_INSERT_ROWS,
+    CREATE_TRIGGER,
+    DROP_TRIGGER,
+    START_TRIGGER,
+    STOP_TRIGGER
   }
 }

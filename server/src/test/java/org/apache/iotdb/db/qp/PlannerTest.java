@@ -211,6 +211,13 @@ public class PlannerTest {
     }
   }
 
+  @Test
+  public void parseShowChildNodeToPhysicalPlan() throws Exception {
+    String showChildNodesStatement = "show child nodes root.vehicle1.device1";
+    PhysicalPlan plan14 = processor.parseSQLToPhysicalPlan(showChildNodesStatement);
+    assertEquals(OperatorType.SHOW, plan14.getOperatorType());
+  }
+
   @Test(expected = ParseCancellationException.class)
   public void parseErrorSQLToPhysicalPlan() throws QueryProcessException {
     String createTSStatement =
