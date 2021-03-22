@@ -85,11 +85,11 @@ public class InsertRowPlan extends InsertPlan {
     this.time = insertTime;
     this.deviceId = deviceId;
     this.measurements = measurementList;
-    this.dataTypes = new TSDataType[measurements.length];
+    this.dataTypes = new TSDataType[insertValues.length];
     // We need to create an Object[] for the data type casting, because we can not set Float, Long
     // to String[i]
-    this.values = new Object[measurements.length];
-    System.arraycopy(insertValues, 0, values, 0, measurements.length);
+    this.values = new Object[insertValues.length];
+    System.arraycopy(insertValues, 0, values, 0, insertValues.length);
     isNeedInferType = true;
   }
 
@@ -588,12 +588,12 @@ public class InsertRowPlan extends InsertPlan {
     if (values.length == 0) {
       throw new QueryProcessException("The size of values is 0");
     }
-    if (measurements.length != values.length) {
-      throw new QueryProcessException(
-          String.format(
-              "Measurements length [%d] does not match " + "values length [%d]",
-              measurements.length, values.length));
-    }
+//    if (measurements.length != values.length) {
+//      throw new QueryProcessException(
+//          String.format(
+//              "Measurements length [%d] does not match " + "values length [%d]",
+//              measurements.length, values.length));
+//    }
     for (Object value : values) {
       if (value == null) {
         throw new QueryProcessException("Values contain null: " + Arrays.toString(values));

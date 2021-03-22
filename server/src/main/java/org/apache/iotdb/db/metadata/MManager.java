@@ -2061,7 +2061,6 @@ public class MManager {
             throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurement);
           } else {
             if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
-              List<TSDataType> dataTypes = new ArrayList<>();
               List<String> measurements =
                   Arrays.asList(measurement.replace("(", "").replace(")", "").split(","));
               if (measurements.size() == 1) {
@@ -2071,6 +2070,7 @@ public class MManager {
 
               } else {
                 int curLoc = loc;
+                List<TSDataType> dataTypes = new ArrayList<>();
                 for (int j = 0; j < measurements.size(); j++) {
                   dataTypes.add(plan.getDataTypes()[curLoc]);
                   curLoc++;
