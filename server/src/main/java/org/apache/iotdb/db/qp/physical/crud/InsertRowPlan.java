@@ -118,8 +118,8 @@ public class InsertRowPlan extends InsertPlan {
     this.deviceId = deviceId;
     this.measurements = measurements;
     this.dataTypes = dataTypes;
-    this.values = new Object[measurements.length];
-    for (int i = 0; i < measurements.length; i++) {
+    this.values = new Object[dataTypes.length];
+    for (int i = 0; i < dataTypes.length; i++) {
       try {
         values[i] = CommonUtils.parseValueForTest(dataTypes[i], insertValues[i]);
       } catch (QueryProcessException e) {
@@ -194,6 +194,7 @@ public class InsertRowPlan extends InsertPlan {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void transferType() throws QueryProcessException {
     if (isNeedInferType) {
+      int columnIndex = 0;
       for (int i = 0; i < measurementMNodes.length; i++) {
         if (measurementMNodes[i] == null) {
           if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
@@ -207,23 +208,52 @@ public class InsertRowPlan extends InsertPlan {
                 new PathNotExistException(
                     deviceId.getFullPath() + IoTDBConstant.PATH_SEPARATOR + measurements[i]));
           }
+          columnIndex++;
           continue;
         }
-        dataTypes[i] = measurementMNodes[i].getSchema().getType();
-        try {
-          values[i] = CommonUtils.parseValue(dataTypes[i], values[i].toString());
-        } catch (Exception e) {
-          logger.warn(
-              "{}.{} data type is not consistent, input {}, registered {}",
-              deviceId,
-              measurements[i],
-              values[i],
-              dataTypes[i]);
-          if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-            markFailedMeasurementInsertion(i, e);
-            measurementMNodes[i] = null;
-          } else {
-            throw e;
+        if (measurementMNodes[i].getSchema().getType() != TSDataType.VECTOR) {
+          dataTypes[columnIndex] = measurementMNodes[i].getSchema().getType();
+          try {
+            values[columnIndex] =
+                CommonUtils.parseValue(dataTypes[columnIndex], values[columnIndex].toString());
+          } catch (Exception e) {
+            logger.warn(
+                "{}.{} data type is not consistent, input {}, registered {}",
+                deviceId,
+                measurements[i],
+                values[i],
+                dataTypes[i]);
+            if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
+              markFailedMeasurementInsertion(i, e);
+              measurementMNodes[i] = null;
+            } else {
+              throw e;
+            }
+          }
+          columnIndex++;
+        }
+        // for aligned timeseries
+        else {
+          for (TSDataType dataType : measurementMNodes[i].getSchema().getValueTSDataTypeList()) {
+            dataTypes[columnIndex] = dataType;
+            try {
+              values[columnIndex] =
+                  CommonUtils.parseValue(dataTypes[columnIndex], values[columnIndex].toString());
+            } catch (Exception e) {
+              logger.warn(
+                  "{}.{} data type is not consistent, input {}, registered {}",
+                  deviceId,
+                  measurements[i],
+                  values[i],
+                  dataTypes[i]);
+              if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
+                markFailedMeasurementInsertion(i, e);
+                measurementMNodes[i] = null;
+              } else {
+                throw e;
+              }
+            }
+            columnIndex++;
           }
         }
       }
@@ -323,7 +353,7 @@ public class InsertRowPlan extends InsertPlan {
 
   private void putValues(DataOutputStream outputStream) throws QueryProcessException, IOException {
     for (int i = 0; i < values.length; i++) {
-      if (measurements[i] == null) {
+      if (dataTypes[i] == null) {
         continue;
       }
       // types are not determined, the situation mainly occurs when the plan uses string values
@@ -361,7 +391,7 @@ public class InsertRowPlan extends InsertPlan {
 
   private void putValues(ByteBuffer buffer) throws QueryProcessException {
     for (int i = 0; i < values.length; i++) {
-      if (measurements[i] == null) {
+      if (dataTypes[i] == null) {
         continue;
       }
       // types are not determined, the situation mainly occurs when the plan uses string values

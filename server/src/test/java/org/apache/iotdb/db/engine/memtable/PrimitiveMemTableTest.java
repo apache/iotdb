@@ -195,15 +195,21 @@ public class PrimitiveMemTableTest {
             .query(
                 "root.sg.device5",
                 "sensor1",
-                new MeasurementSchema(
-                    "sensor1",
-                    TSDataType.INT64,
-                    TSEncoding.GORILLA,
-                    CompressionType.UNCOMPRESSED,
-                    Collections.emptyMap()),
+                new VectorMeasurementSchema(
+                    IoTDBConstant.ALIGN_TIMESERIES_PREFIX + 0,
+                    new String[] {"sensor1"},
+                    new TSDataType[] {TSDataType.INT64},
+                    new TSEncoding[] {TSEncoding.GORILLA},
+                    CompressionType.UNCOMPRESSED),
                 Long.MIN_VALUE,
                 null)
             .getPointReader();
+    for (int i = 0; i < 100; i++) {
+      tvPair.hasNextTimeValuePair();
+      TimeValuePair next = tvPair.nextTimeValuePair();
+      Assert.assertEquals(i, next.getTimestamp());
+      Assert.assertEquals(i, next.getValue().getVector()[0].getLong());
+    }
   }
 
   @Test
@@ -297,7 +303,7 @@ public class PrimitiveMemTableTest {
     MeasurementMNode[] mNodes = new MeasurementMNode[2];
     IMeasurementSchema schema =
         new VectorMeasurementSchema(
-            IoTDBConstant.ALIGN_TIMESERIES_PREFIX, measurements, dataTypes, encodings);
+            IoTDBConstant.ALIGN_TIMESERIES_PREFIX + 0, measurements, dataTypes, encodings);
     mNodes[0] = new MeasurementMNode(null, "sensor0", schema, null);
     mNodes[1] = new MeasurementMNode(null, "sensor1", schema, null);
 

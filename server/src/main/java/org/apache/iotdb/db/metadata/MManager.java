@@ -2060,14 +2060,7 @@ public class MManager {
           if (!config.isAutoCreateSchemaEnabled()) {
             throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurement);
           } else {
-            // child is null or child is type of MNode
-            // get dataType of plan, only support InsertRowPlan and InsertTabletPlan
-            if (plan instanceof InsertRowPlan) {
-              TSDataType dataType = plan.getDataTypes()[i];
-              // create it, may concurrent created by multiple thread
-              internalCreateTimeseries(deviceId.concatNode(measurement), dataType);
-              measurementMNode = (MeasurementMNode) deviceMNode.left.getChild(measurement);
-            } else if (plan instanceof InsertTabletPlan) {
+            if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
               List<TSDataType> dataTypes = new ArrayList<>();
               List<String> measurements =
                   Arrays.asList(measurement.replace("(", "").replace(")", "").split(","));
@@ -2098,15 +2091,7 @@ public class MManager {
         // check type is match
         boolean mismatch = false;
         TSDataType insertDataType = null;
-        if (plan instanceof InsertRowPlan) {
-          if (!((InsertRowPlan) plan).isNeedInferType()) {
-            // only when InsertRowPlan's values list is object[], we should check type
-            insertDataType = plan.getDataTypes()[i];
-          } else {
-            insertDataType = measurementMNode.getSchema().getType();
-          }
-          mismatch = measurementMNode.getSchema().getType() != insertDataType;
-        } else if (plan instanceof InsertTabletPlan) {
+        if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
           int measurementSize = measurementList[i].split(",").length;
           if (measurementSize == 1) {
             insertDataType = measurementMNode.getSchema().getType();

@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.apache.commons.lang3.ArrayUtils;
 import org.junit.Assert;
@@ -33,13 +34,13 @@ public class VectorTVListTest {
   public void testVectorTVList1() {
     List<TSDataType> dataTypes = new ArrayList<>();
     for (int i = 0; i < 5; i++) {
-      dataTypes.add(TSDataType.INT32);
+      dataTypes.add(TSDataType.INT64);
     }
     VectorTVList tvList = new VectorTVList(dataTypes);
-    for (int i = 0; i < 1000; i++) {
-      int[][] value = new int[5][1];
+    for (long i = 0; i < 1000; i++) {
+      Object[] value = new Object[5];
       for (int j = 0; j < 5; j++) {
-        value[j][0] = i;
+        value[j] = i;
       }
       tvList.putVector(i, value);
     }
@@ -58,24 +59,27 @@ public class VectorTVListTest {
   @Test
   public void testVectorTVList2() {
     List<TSDataType> dataTypes = new ArrayList<>();
-    for (int i = 0; i < 5; i++) {
-      dataTypes.add(TSDataType.INT32);
-    }
+    dataTypes.add(TSDataType.BOOLEAN);
+    dataTypes.add(TSDataType.INT32);
+    dataTypes.add(TSDataType.INT64);
+    dataTypes.add(TSDataType.FLOAT);
+    dataTypes.add(TSDataType.DOUBLE);
+    dataTypes.add(TSDataType.TEXT);
     VectorTVList tvList = new VectorTVList(dataTypes);
     for (int i = 1000; i >= 0; i--) {
-      int[][] value = new int[5][1];
-      for (int j = 0; j < 5; j++) {
-        value[j][0] = i;
-      }
+      Object[] value = new Object[6];
+      value[0] = false;
+      value[1] = 100;
+      value[2] = 1000L;
+      value[3] = 0.1f;
+      value[4] = 0.2d;
+      value[5] = new Binary("Test");
       tvList.putVector(i, value);
     }
     tvList.sort();
     for (int i = 0; i < tvList.size; i++) {
       StringBuilder builder = new StringBuilder("[");
-      builder.append(String.valueOf(i));
-      for (int j = 1; j < 5; j++) {
-        builder.append(", ").append(String.valueOf(i));
-      }
+      builder.append("false, 100, 1000, 0.1, 0.2, Test");
       builder.append("]");
       Assert.assertEquals(builder.toString(), tvList.getVector(i).toString());
       Assert.assertEquals(i, tvList.getTime(i));

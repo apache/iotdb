@@ -119,6 +119,7 @@ public abstract class AbstractMemTable implements IMemTable {
     int columnCount = 0;
     for (int i = 0; i < measurementMNodes.length; i++) {
       if (values[columnCount] == null) {
+        columnCount++;
         continue;
       }
 
@@ -127,6 +128,7 @@ public abstract class AbstractMemTable implements IMemTable {
         Object[] vectorValue =
             new Object[measurementMNodes[i].getSchema().getValueTSDataTypeList().size()];
         for (int j = 0; j < vectorValue.length; j++) {
+          // FIXME
           memSize +=
               MemUtils.getRecordSize(types[columnCount], values[columnCount], disableMemControl);
           vectorValue[j] = values[columnCount];

@@ -50,9 +50,8 @@ public class MemUtils {
   public static long getRecordSize(TSDataType dataType, Object value, boolean addingTextDataSize) {
     if (dataType == TSDataType.TEXT) {
       return 8L + (addingTextDataSize ? getBinarySize((Binary) value) : 0);
-    } else {
-      return 8L + dataType.getDataTypeSize();
     }
+    return 8L + dataType.getDataTypeSize();
   }
 
   public static long getBinarySize(Binary value) {
@@ -107,8 +106,8 @@ public class MemUtils {
         } else {
           memSize += (end - start) * insertTabletPlan.getDataTypes()[columnCount].getDataTypeSize();
         }
+        columnCount++;
       }
-      columnCount++;
     }
     return memSize;
   }
