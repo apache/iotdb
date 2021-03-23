@@ -160,10 +160,10 @@ SlidingSizeWindowEvaluationHandler handler =
 ``` java
 final long timestamp = 0;
 final int value = 0;
-hander.accept(timestamp, value);
+hander.collect(timestamp, value);
 ```
 
-注意，`accept`方法接受的第二个参数类型需要与构造时传入的`dataType`声明一致。
+注意，`collect`方法接受的第二个参数类型需要与构造时传入的`dataType`声明一致。
 
 
 
@@ -211,8 +211,8 @@ SlidingTimeWindowEvaluationHandler handler =
 ``` java
 final long timestamp = 0;
 final int value = 0;
-hander.accept(timestamp, value);
+hander.collect(timestamp, value);
 ```
 
-注意，`accept`方法接受的第二个参数类型需要与构造时传入的`dataType`声明一致。
+注意，`collect`方法接受的第二个参数类型需要与构造时传入的`dataType`声明一致。
 

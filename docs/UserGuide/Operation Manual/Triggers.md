@@ -160,10 +160,10 @@ The window size and the sliding step must be positive.
 ``` java
 final long timestamp = 0;
 final int value = 0;
-hander.accept(timestamp, value);
+hander.collect(timestamp, value);
 ```
 
-Note that the type of the second parameter accepted by the `accept` method needs to be consistent with the `dataType` parameter provided during construction.
+Note that the type of the second parameter accepted by the `collect` method needs to be consistent with the `dataType` parameter provided during construction.
 
 
 
@@ -211,8 +211,8 @@ The time interval and the sliding step must be positive.
 ``` java
 final long timestamp = 0;
 final int value = 0;
-hander.accept(timestamp, value);
+hander.collect(timestamp, value);
 ```
 
-Note that the type of the second parameter accepted by the `accept` method needs to be consistent with the `dataType` parameter provided during construction.
+Note that the type of the second parameter accepted by the `collect` method needs to be consistent with the `dataType` parameter provided during construction.
 

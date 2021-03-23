@@ -48,37 +48,37 @@ public abstract class SlidingWindowEvaluationHandler {
 
   protected abstract void createEvaluationTaskIfNecessary(long timestamp);
 
-  public final void accept(long timestamp, int value) {
+  public final void collect(long timestamp, int value) {
     data.putInt(timestamp, value);
     createEvaluationTaskIfNecessary(timestamp);
   }
 
-  public final void accept(long timestamp, long value) {
+  public final void collect(long timestamp, long value) {
     data.putLong(timestamp, value);
     createEvaluationTaskIfNecessary(timestamp);
   }
 
-  public final void accept(long timestamp, float value) {
+  public final void collect(long timestamp, float value) {
     data.putFloat(timestamp, value);
     createEvaluationTaskIfNecessary(timestamp);
   }
 
-  public final void accept(long timestamp, double value) {
+  public final void collect(long timestamp, double value) {
     data.putDouble(timestamp, value);
     createEvaluationTaskIfNecessary(timestamp);
   }
 
-  public final void accept(long timestamp, boolean value) {
+  public final void collect(long timestamp, boolean value) {
     data.putBoolean(timestamp, value);
     createEvaluationTaskIfNecessary(timestamp);
   }
 
-  public final void accept(long timestamp, String value) {
+  public final void collect(long timestamp, String value) {
     data.putBinary(timestamp, Binary.valueOf(value));
     createEvaluationTaskIfNecessary(timestamp);
   }
 
-  public final void accept(long timestamp, Binary value) {
+  public final void collect(long timestamp, Binary value) {
     data.putBinary(timestamp, value);
     createEvaluationTaskIfNecessary(timestamp);
   }

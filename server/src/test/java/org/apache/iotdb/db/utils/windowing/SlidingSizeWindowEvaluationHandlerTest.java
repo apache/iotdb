@@ -133,7 +133,7 @@ public class SlidingSizeWindowEvaluationHandlerTest {
             });
 
     for (int i = 0; i < totalPointNumber; ++i) {
-      handler.accept(i, i);
+      handler.collect(i, i);
     }
 
     await()

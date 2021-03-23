@@ -148,7 +148,7 @@ public class SlidingTimeWindowEvaluationHandlerTest {
             });
 
     for (int i = 0; i < totalTime; ++i) {
-      handler.accept(i, i);
+      handler.collect(i, i);
     }
 
     await()
@@ -196,7 +196,7 @@ public class SlidingTimeWindowEvaluationHandlerTest {
             });
 
     for (int i = 0; i < 10; ++i) {
-      handler.accept(21 * i, 21 * i);
+      handler.collect(21 * i, 21 * i);
     }
 
     await().atMost(10, SECONDS).until(() -> countTotal.get() == 27 && countEmpty.get() == 18);
