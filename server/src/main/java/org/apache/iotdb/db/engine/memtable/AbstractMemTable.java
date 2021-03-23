@@ -128,12 +128,14 @@ public abstract class AbstractMemTable implements IMemTable {
         Object[] vectorValue =
             new Object[measurementMNodes[i].getSchema().getValueTSDataTypeList().size()];
         for (int j = 0; j < vectorValue.length; j++) {
-          // FIXME
-          memSize +=
-              MemUtils.getRecordSize(types[columnCount], values[columnCount], disableMemControl);
           vectorValue[j] = values[columnCount];
           columnCount++;
         }
+        memSize +=
+            MemUtils.getVectorRecordSize(
+                measurementMNodes[i].getSchema().getValueTSDataTypeList(),
+                vectorValue,
+                disableMemControl);
         write(
             insertRowPlan.getDeviceId().getFullPath(),
             measurementMNodes[i].getSchema(),

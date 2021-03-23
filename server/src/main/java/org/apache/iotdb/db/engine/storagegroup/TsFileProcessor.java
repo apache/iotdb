@@ -297,7 +297,6 @@ public class TsFileProcessor {
         // ChunkMetadataIncrement
         IMeasurementSchema schema = insertRowPlan.getMeasurementMNodes()[i].getSchema();
         if (schema.getType() == TSDataType.VECTOR) {
-          // chunkMetadataIncrement += VectorChunkMetadata.calculateRamSize(insertRowPlan....);
           chunkMetadataIncrement +=
               schema.getValueTSDataTypeList().size()
                   * ChunkMetadata.calculateRamSize(

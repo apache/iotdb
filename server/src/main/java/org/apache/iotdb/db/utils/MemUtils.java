@@ -36,6 +36,8 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
+
 // Notice : methods in this class may not be accurate.
 public class MemUtils {
 
@@ -52,6 +54,20 @@ public class MemUtils {
       return 8L + (addingTextDataSize ? getBinarySize((Binary) value) : 0);
     }
     return 8L + dataType.getDataTypeSize();
+  }
+
+  public static long getVectorRecordSize(
+      List<TSDataType> dataTypes, Object[] value, boolean addingTextDataSize) {
+    // time and index size
+    long memSize = 8L + 4L;
+    for (int i = 0; i < dataTypes.size(); i++) {
+      if (dataTypes.get(i) == TSDataType.TEXT) {
+        memSize += (addingTextDataSize ? getBinarySize((Binary) value[i]) : 0);
+      } else {
+        memSize += dataTypes.get(i).getDataTypeSize();
+      }
+    }
+    return memSize;
   }
 
   public static long getBinarySize(Binary value) {
