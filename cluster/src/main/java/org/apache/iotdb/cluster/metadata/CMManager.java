@@ -332,7 +332,8 @@ public class CMManager extends MManager {
   }
 
   @Override
-  public MNode getSeriesSchemasAndReadLockDevice(InsertPlan plan) throws MetadataException {
+  public MNode getSeriesSchemasAndReadLockDevice(InsertPlan plan)
+      throws MetadataException, IOException {
     MeasurementMNode[] measurementMNodes = new MeasurementMNode[plan.getMeasurements().length];
     try {
       MNode deviceNode = getDeviceNode(plan.getDeviceId());
