@@ -18,6 +18,16 @@
  */
 package org.apache.iotdb.db.integration;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
@@ -28,21 +38,9 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.concurrent.TimeUnit;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 public class IoTDBNewTsFileCompactionIT {
 
@@ -53,7 +51,7 @@ public class IoTDBNewTsFileCompactionIT {
   private CompactionStrategy preCompactionStrategy;
   private PartialPath storageGroupPath;
   // the unit is ns
-  private static final long MAX_WAIT_TIME_FOR_MERGE = 5_000_000_000L;
+  private static final long MAX_WAIT_TIME_FOR_MERGE = Long.MAX_VALUE;
   private static final float FLOAT_DELTA = 0.00001f;
 
   @Before
