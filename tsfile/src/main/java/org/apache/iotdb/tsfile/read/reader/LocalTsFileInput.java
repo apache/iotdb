@@ -144,6 +144,7 @@ public class LocalTsFileInput implements TsFileInput {
     int varIntLength = ReadWriteForEncodingUtils.varIntSize(strLength);
     byte[] bytes = new byte[strLength];
     channel.read(strBuffer, offset + varIntLength);
+    strBuffer.flip();
     strBuffer.get(bytes, 0, strLength);
     return new String(bytes, 0, strLength);
   }

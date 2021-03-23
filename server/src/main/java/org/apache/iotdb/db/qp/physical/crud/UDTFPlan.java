@@ -130,4 +130,12 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
   public void setPathNameToReaderIndex(Map<String, Integer> pathNameToReaderIndex) {
     this.pathNameToReaderIndex = pathNameToReaderIndex;
   }
+
+  @Override
+  public String getColumnForDisplay(String columnForReader, int pathIndex) {
+    if (paths.get(pathIndex) == null) {
+      return this.getExecutorByOriginalOutputColumnIndex(pathIndex).getContext().getColumnName();
+    }
+    return columnForReader;
+  }
 }

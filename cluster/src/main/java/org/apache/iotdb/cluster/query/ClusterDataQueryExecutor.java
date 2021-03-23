@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.query;
 
+import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.EmptyIntervalException;
 import org.apache.iotdb.cluster.query.reader.ClusterReaderFactory;
 import org.apache.iotdb.cluster.query.reader.ClusterTimeGenerator;
@@ -63,6 +64,13 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
     Filter timeFilter = null;
     if (queryPlan.getExpression() != null) {
       timeFilter = ((GlobalTimeExpression) queryPlan.getExpression()).getFilter();
+    }
+
+    // make sure the partition table is new
+    try {
+      metaGroupMember.syncLeaderWithConsistencyCheck(false);
+    } catch (CheckConsistencyException e) {
+      throw new StorageEngineException(e);
     }
 
     List<ManagedSeriesReader> readersOfSelectedSeries = new ArrayList<>();
