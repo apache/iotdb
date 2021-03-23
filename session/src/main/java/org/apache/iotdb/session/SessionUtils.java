@@ -22,6 +22,7 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
+import org.apache.iotdb.tsfile.write.record.BitMap;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -58,42 +59,74 @@ public class SessionUtils {
 
   private static void getValueBufferOfDataType(
       TSDataType dataType, Tablet tablet, int i, ByteBuffer valueBuffer) {
+    BitMap curBitMap = tablet.bitMaps[i];
+    long[] curLongs = curBitMap.getLongArray();
+    for (int j = 0; j < curLongs.length; j++) {
+      valueBuffer.putLong(curLongs[j]);
+    }
+
     switch (dataType) {
       case INT32:
         int[] intValues = (int[]) tablet.values[i];
         for (int index = 0; index < tablet.rowSize; index++) {
-          valueBuffer.putInt(intValues[index]);
+          if (curBitMap.get(index)) {
+            valueBuffer.putInt(intValues[index]);
+          } else {
+            valueBuffer.putInt(-1);
+          }
         }
         break;
       case INT64:
         long[] longValues = (long[]) tablet.values[i];
         for (int index = 0; index < tablet.rowSize; index++) {
-          valueBuffer.putLong(longValues[index]);
+          if (curBitMap.get(index)) {
+            valueBuffer.putLong(longValues[index]);
+          } else {
+            valueBuffer.putLong(-1);
+          }
         }
         break;
       case FLOAT:
         float[] floatValues = (float[]) tablet.values[i];
         for (int index = 0; index < tablet.rowSize; index++) {
-          valueBuffer.putFloat(floatValues[index]);
+          if (curBitMap.get(index)) {
+            valueBuffer.putFloat(floatValues[index]);
+          } else {
+            valueBuffer.putFloat(-1);
+          }
         }
         break;
       case DOUBLE:
         double[] doubleValues = (double[]) tablet.values[i];
         for (int index = 0; index < tablet.rowSize; index++) {
-          valueBuffer.putDouble(doubleValues[index]);
+          if (curBitMap.get(index)) {
+            valueBuffer.putDouble(doubleValues[index]);
+          } else {
+            valueBuffer.putDouble(-1);
+          }
         }
         break;
       case BOOLEAN:
         boolean[] boolValues = (boolean[]) tablet.values[i];
         for (int index = 0; index < tablet.rowSize; index++) {
-          valueBuffer.put(BytesUtils.boolToByte(boolValues[index]));
+          if (curBitMap.get(index)) {
+            valueBuffer.put(BytesUtils.boolToByte(boolValues[index]));
+          } else {
+            valueBuffer.put(BytesUtils.boolToByte(false));
+          }
         }
         break;
       case TEXT:
         Binary[] binaryValues = (Binary[]) tablet.values[i];
         for (int index = 0; index < tablet.rowSize; index++) {
-          valueBuffer.putInt(binaryValues[index].getLength());
-          valueBuffer.put(binaryValues[index].getValues());
+          if (curBitMap.get(index)) {
+            valueBuffer.putInt(binaryValues[index].getLength());
+            valueBuffer.put(binaryValues[index].getValues());
+          } else {
+            Binary emptyStr = new Binary(".");
+            valueBuffer.putInt(emptyStr.getLength());
+            valueBuffer.put(emptyStr.getValues());
+          }
         }
         break;
       default:

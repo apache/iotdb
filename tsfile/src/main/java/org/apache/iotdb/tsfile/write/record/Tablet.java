@@ -58,6 +58,8 @@ public class Tablet {
   public long[] timestamps;
   /** each object is a primitive type array, which represents values of one measurement */
   public Object[] values;
+  /** each bitset represents the existence of each value in the current column */
+  public BitMap[] bitMaps;
   /** the number of rows to include in this tablet */
   public int rowSize;
   /** the maximum number of rows for this tablet */
@@ -124,6 +126,14 @@ public class Tablet {
 
   private void addValueOfDataType(
       TSDataType dataType, int rowIndex, int indexOfValue, Object value) {
+
+    // set bitset
+    if (value == null) {
+      bitMaps[indexOfValue].unmark(rowIndex);
+      return;
+    }
+    bitMaps[indexOfValue].mark(rowIndex);
+
     switch (dataType) {
       case TEXT:
         {
@@ -191,14 +201,17 @@ public class Tablet {
         valueColumnsSize++;
       }
     }
+
+    // value column and bitset column
     values = new Object[valueColumnsSize];
+    bitMaps = new BitMap[valueColumnsSize];
     int columnIndex = 0;
-    // create value columns
     for (IMeasurementSchema schema : schemas) {
       TSDataType dataType = schema.getType();
       if (dataType.equals(TSDataType.VECTOR)) {
         columnIndex = buildVectorColumns((VectorMeasurementSchema) schema, columnIndex);
       } else {
+        bitMaps[columnIndex] = new BitMap(maxRowNumber);
         values[columnIndex] = createValueColumnOfDataType(dataType);
         columnIndex++;
       }
@@ -208,6 +221,7 @@ public class Tablet {
   private int buildVectorColumns(VectorMeasurementSchema schema, int idx) {
     for (int i = 0; i < schema.getValueMeasurementIdList().size(); i++) {
       TSDataType dataType = schema.getValueTSDataTypeList().get(i);
+      bitMaps[idx] = new BitMap(maxRowNumber);
       values[idx] = createValueColumnOfDataType(dataType);
       idx++;
     }
@@ -280,8 +294,14 @@ public class Tablet {
       case TEXT:
         valueOccupation += rowSize * 4;
         Binary[] binaries = (Binary[]) values[i];
+        BitMap curBitMap = bitMaps[i];
         for (int rowIndex = 0; rowIndex < rowSize; rowIndex++) {
-          valueOccupation += binaries[rowIndex].getLength();
+          if (curBitMap.get(rowIndex)) {
+            valueOccupation += binaries[rowIndex].getLength();
+          } else {
+            Binary emptyStr = new Binary(".");
+            valueOccupation += emptyStr.getLength();
+          }
         }
         break;
       default:
