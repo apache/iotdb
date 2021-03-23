@@ -112,7 +112,6 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public void insert(InsertRowPlan insertRowPlan) {
     updatePlanIndexes(insertRowPlan.getIndex());
-    TSDataType[] types = insertRowPlan.getDataTypes();
     Object[] values = insertRowPlan.getValues();
 
     MeasurementMNode[] measurementMNodes = insertRowPlan.getMeasurementMNodes();

@@ -240,9 +240,12 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   private void writeDataTypes(ByteBuffer buffer) {
-    buffer.putInt(dataTypes.length);
+    buffer.putInt(dataTypes.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
     for (int i = 0, dataTypesLength = dataTypes.length; i < dataTypesLength; i++) {
       TSDataType dataType = dataTypes[i];
+      if (columns[i] == null) {
+        continue;
+      }
       dataType.serializeTo(buffer);
     }
   }
