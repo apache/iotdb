@@ -271,6 +271,9 @@ public class CompactionUtils {
       for (TsFileResource tsFileResource : tsFileResources) {
         TsFileSequenceReader reader =
             buildReaderFromTsFileResource(tsFileResource, tsFileSequenceReaderMap, storageGroup);
+        if (reader == null) {
+          throw new IOException();
+        }
         Iterator<Map<String, List<ChunkMetadata>>> iterator =
             reader.getMeasurementChunkMetadataListMapIterator(device);
         chunkMetadataListIteratorCache.put(reader, iterator);

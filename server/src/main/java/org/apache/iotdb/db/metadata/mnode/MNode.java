@@ -99,7 +99,38 @@ public class MNode implements Serializable {
       }
     }
 
+    child.parent = this;
     children.putIfAbsent(name, child);
+  }
+
+  /**
+   * Add a child to the current mnode.
+   *
+   * <p>This method will not take the child's name as one of the inputs and will also make this
+   * Mnode be child node's parent. All is to reduce the probability of mistaken by users and be more
+   * convenient for users to use. And the return of this method is used to conveniently construct a
+   * chain of time series for users.
+   *
+   * @param child child's node
+   * @return return the MNode already added
+   */
+  MNode addChild(MNode child) {
+    /* use cpu time to exchange memory
+     * measurementNode's children should be null to save memory
+     * add child method will only be called when writing MTree, which is not a frequent operation
+     */
+    if (children == null) {
+      // double check, children is volatile
+      synchronized (this) {
+        if (children == null) {
+          children = new ConcurrentHashMap<>();
+        }
+      }
+    }
+
+    child.parent = this;
+    children.putIfAbsent(child.getName(), child);
+    return child;
   }
 
   /** delete a child */

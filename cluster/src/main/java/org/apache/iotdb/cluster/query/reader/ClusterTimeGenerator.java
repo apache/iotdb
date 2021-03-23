@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.query.reader;
 
+import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -51,8 +52,9 @@ public class ClusterTimeGenerator extends ServerTimeGenerator {
     this.queryPlan = rawDataQueryPlan;
     this.readerFactory = new ClusterReaderFactory(metaGroupMember);
     try {
+      readerFactory.syncMetaGroup();
       constructNode(expression);
-    } catch (IOException e) {
+    } catch (IOException | CheckConsistencyException e) {
       throw new StorageEngineException(e);
     }
   }

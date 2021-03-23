@@ -116,12 +116,14 @@ public class TsFileSketchTool {
                     + String.format("%20s", "")
                     + " \t"
                     + chunkMetadata.getStatistics());
-            printlnBoth(pw, String.format("%20s", "") + "|\t\t[marker] 1");
+            printlnBoth(
+                pw,
+                String.format("%20s", "") + "|\t\t[marker] " + chunk.getHeader().getChunkType());
             nextChunkGroupHeaderPos =
                 chunkMetadata.getOffsetOfChunkHeader()
                     + chunk.getHeader().getSerializedSize()
                     + chunk.getHeader().getDataSize()
-                    - 1;
+                    + 17; // skip the PlanIndex
           }
 
           printlnBoth(pw, str1 + "\t[Chunk Group] of " + chunkGroupMetadata.getDevice() + " ends");

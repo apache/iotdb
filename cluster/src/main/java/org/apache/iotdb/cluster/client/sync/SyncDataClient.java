@@ -31,6 +31,7 @@ import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
 
+import java.io.Closeable;
 import java.net.SocketException;
 
 /**
@@ -39,7 +40,7 @@ import java.net.SocketException;
  */
 // the two classes does not share a common parent and Java does not allow multiple extension
 @SuppressWarnings("common-java:DuplicatedBlocks")
-public class SyncDataClient extends Client {
+public class SyncDataClient extends Client implements Closeable {
 
   Node node;
   SyncClientPool pool;
@@ -82,6 +83,12 @@ public class SyncDataClient extends Client {
         inputProtocol.getTransport().close();
       }
     }
+  }
+
+  /** put the client to pool, instead of close client. */
+  @Override
+  public void close() {
+    putBack();
   }
 
   public static class FactorySync implements SyncClientFactory {
