@@ -8,6 +8,8 @@ import java.util.Collection;
 
 public interface MNodeCache extends Cache<PartialPath, MNode> {
 
+  int DEFAULT_MAX_CAPACITY = 10000;
+
   void put(MNode mNode);
 
   MNode get(PartialPath path);
