@@ -116,6 +116,21 @@ public class SlidingTimeWindowEvaluationHandlerTest {
     doTest(7, 7, 77);
   }
 
+  @Test
+  public void test17() throws WindowingException {
+    doTest(7, 33, 77);
+  }
+
+  @Test
+  public void test18() throws WindowingException {
+    doTest(4, 16, 128);
+  }
+
+  @Test
+  public void test19() throws WindowingException {
+    doTest(1, 100, 101);
+  }
+
   private void doTest(long timeInterval, long slidingStep, long totalTime)
       throws WindowingException {
     final AtomicInteger count = new AtomicInteger(0);
