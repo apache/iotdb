@@ -19,13 +19,8 @@
 
 package org.apache.iotdb.openapi.gen.handler.impl;
 
-import java.io.UnsupportedEncodingException;
-import java.math.BigDecimal;
-import java.util.WeakHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
-
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -38,13 +33,11 @@ import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
-
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.ShowTimeseriesDataSet;
 import org.apache.iotdb.db.query.executor.QueryRouter;
-import org.apache.iotdb.openapi.gen.handler.ApiResponseMessage;
 import org.apache.iotdb.openapi.gen.handler.NotFoundException;
 import org.apache.iotdb.openapi.gen.handler.V1ApiService;
 import org.apache.iotdb.openapi.gen.model.GroupByFillPlan;
@@ -68,11 +61,15 @@ import prometheus.Remote.ReadResponse;
 import prometheus.Types;
 import prometheus.Types.Label;
 import prometheus.Types.LabelMatcher;
+import prometheus.Types.Sample;
+import prometheus.Types.TimeSeries;
+import prometheus.Types.TimeSeries.Builder;
 
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
@@ -82,30 +79,30 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
-import prometheus.Types.Sample;
-import prometheus.Types.TimeSeries;
-import prometheus.Types.TimeSeries.Builder;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @javax.annotation.Generated(
     value = "org.openapitools.codegen.languages.JavaJerseyServerCodegen",
     date = "2021-01-13T21:45:03.765+08:00[Asia/Shanghai]")
 public class V1ApiServiceImpl extends V1ApiService {
   private static final long MS_TO_MONTH = 30 * 86400_000L;
-  private ConcurrentHashMap<String, ConcurrentHashMap> bigmap = new ConcurrentHashMap<String, ConcurrentHashMap>();
-  private AtomicInteger lableTime=new AtomicInteger(0);
-  private int sgcount=5;
-  private String timestampPrecision= "ms";
-  private float timePrecision=1;//the timestamp Precision is default ms
-  private String NOPERMSSION="No permissions for this operation ";
-  public V1ApiServiceImpl(){
-    sgcount= IoTDBDescriptor.getInstance().getConfig().getSgCount();
-    timestampPrecision= IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
-    if(timestampPrecision.equals("ns")){
-      timePrecision=timePrecision*1000000;
-    }else if(timestampPrecision.equals("us")){
-      timePrecision=timePrecision*1000;
-    }else if(timestampPrecision.equals("s")){
-      timePrecision=timePrecision/1000;
+  private ConcurrentHashMap<String, ConcurrentHashMap> bigmap =
+      new ConcurrentHashMap<String, ConcurrentHashMap>();
+  private AtomicInteger lableTime = new AtomicInteger(0);
+  private int sgcount = 5;
+  private String timestampPrecision = "ms";
+  private float timePrecision = 1; // the timestamp Precision is default ms
+  private String NOPERMSSION = "No permissions for this operation ";
+
+  public V1ApiServiceImpl() {
+    sgcount = IoTDBDescriptor.getInstance().getConfig().getSgCount();
+    timestampPrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
+    if (timestampPrecision.equals("ns")) {
+      timePrecision = timePrecision * 1000000;
+    } else if (timestampPrecision.equals("us")) {
+      timePrecision = timePrecision * 1000;
+    } else if (timestampPrecision.equals("s")) {
+      timePrecision = timePrecision / 1000;
     }
   }
 
@@ -123,10 +120,10 @@ public class V1ApiServiceImpl extends V1ApiService {
           String.format(
               "select last_value(*) FROM %s where time>=%d and time<%d group by ([%d, %d),%s) fill (%s[%s,%s])",
               path,
-              groupByFillPlan.getStime().longValue()*timePrecision,
-              groupByFillPlan.getEtime().longValue()*timePrecision,
-              groupByFillPlan.getStime().longValue()*timePrecision,
-              groupByFillPlan.getEtime().longValue()*timePrecision,
+              groupByFillPlan.getStime().longValue() * timePrecision,
+              groupByFillPlan.getEtime().longValue() * timePrecision,
+              groupByFillPlan.getStime().longValue() * timePrecision,
+              groupByFillPlan.getEtime().longValue() * timePrecision,
               getInterval(groupByFillPlan.getInterval().longValue()),
               groupByFillPlan.getFills().get(0).getDtype(),
               groupByFillPlan.getFills().get(0).getFun(),
@@ -136,10 +133,10 @@ public class V1ApiServiceImpl extends V1ApiService {
           String.format(
               "select avg(*) FROM %s where time>=%d and time<%d group by ([%d, %d),%s)",
               path,
-              groupByFillPlan.getStime().longValue()*timePrecision,
-              groupByFillPlan.getEtime().longValue()*timePrecision,
-              groupByFillPlan.getStime().longValue()*timePrecision,
-              groupByFillPlan.getEtime().longValue()*timePrecision,
+              groupByFillPlan.getStime().longValue() * timePrecision,
+              groupByFillPlan.getEtime().longValue() * timePrecision,
+              groupByFillPlan.getStime().longValue() * timePrecision,
+              groupByFillPlan.getEtime().longValue() * timePrecision,
               getInterval(groupByFillPlan.getInterval().longValue()));
     }
     Planner planner = new Planner();
@@ -182,7 +179,7 @@ public class V1ApiServiceImpl extends V1ApiService {
         Map m = new HashMap();
         String fullname = pathResult.getFullPath();
         m.put("name", fullname);
-        m.put("type", "string");//number
+        m.put("type", "string"); // number
         listtemp.add(m);
       }
 
@@ -248,10 +245,10 @@ public class V1ApiServiceImpl extends V1ApiService {
               "select last_value(%s) FROM %s where time>=%d and time<%d group by ([%d, %d),%s) fill (%s[%s,%s]) limit 10000",
               path.substring(path.lastIndexOf('.') + 1),
               path.substring(0, path.lastIndexOf('.')),
-              (long)(groupByFillPlan.getStime().longValue()*timePrecision),
-              (long)(groupByFillPlan.getEtime().longValue()*timePrecision),
-              (long)(groupByFillPlan.getStime().longValue()*timePrecision),
-              (long)(groupByFillPlan.getEtime().longValue()*timePrecision),
+              (long) (groupByFillPlan.getStime().longValue() * timePrecision),
+              (long) (groupByFillPlan.getEtime().longValue() * timePrecision),
+              (long) (groupByFillPlan.getStime().longValue() * timePrecision),
+              (long) (groupByFillPlan.getEtime().longValue() * timePrecision),
               getInterval(groupByFillPlan.getInterval().longValue()),
               groupByFillPlan.getFills().get(0).getDtype(),
               groupByFillPlan.getFills().get(0).getFun(),
@@ -262,10 +259,10 @@ public class V1ApiServiceImpl extends V1ApiService {
               "select avg(%s) FROM %s where time>=%d and time<%d group by ([%d, %d),%s) limit 10000",
               path.substring(path.lastIndexOf('.') + 1),
               path.substring(0, path.lastIndexOf('.')),
-              (long)(groupByFillPlan.getStime().longValue()*timePrecision),
-              (long)(groupByFillPlan.getEtime().longValue()*timePrecision),
-              (long)(groupByFillPlan.getStime().longValue()*timePrecision),
-              (long)(groupByFillPlan.getEtime().longValue()*timePrecision),
+              (long) (groupByFillPlan.getStime().longValue() * timePrecision),
+              (long) (groupByFillPlan.getEtime().longValue() * timePrecision),
+              (long) (groupByFillPlan.getStime().longValue() * timePrecision),
+              (long) (groupByFillPlan.getEtime().longValue() * timePrecision),
               getInterval(groupByFillPlan.getInterval().longValue()));
     }
     try {
@@ -277,9 +274,9 @@ public class V1ApiServiceImpl extends V1ApiService {
           physicalPlan.getOperatorType(),
           null)) {
 
-        return Response.ok().entity(NOPERMSSION+ physicalPlan.getOperatorType()).build();
+        return Response.ok().entity(NOPERMSSION + physicalPlan.getOperatorType()).build();
       }
-      QueryDataSet dataSet = getDataBySelect(securityContext,sql,physicalPlan);
+      QueryDataSet dataSet = getDataBySelect(securityContext, sql, physicalPlan);
       Map<String, Object> tmpmap = new HashMap<String, Object>();
       List<Object> temlist = new ArrayList<Object>();
       while (dataSet.hasNext()) {
@@ -297,14 +294,15 @@ public class V1ApiServiceImpl extends V1ApiService {
       tmpmap.put("target", path);
       tmpmap.put("datapoints", temlist);
       resultList.add(tmpmap);
-   }catch (IOException | QueryProcessException | AuthException e) {
+    } catch (IOException | QueryProcessException | AuthException e) {
       e.printStackTrace();
     }
     return Response.ok().entity(result.toJson(resultList)).build();
   }
 
   /**
-   * time  defulted ms
+   * time defulted ms
+   *
    * @param time
    * @return
    */
@@ -312,14 +310,14 @@ public class V1ApiServiceImpl extends V1ApiService {
     if (!(time > 1)) {
       return "";
     }
-    if (time < 60*1000 && time > 1000) {
-      return  time/1000+"s";
-    } else if(time>=60*1000&&time<60*60*1000){
-      return  time/1000/60+"m";
-    }else if(time>=60*60*1000&&time<60*60*1000*24){
-      return  time/1000/60/60+"h";
-    }else if (time>=60*60*1000*24) {
-      return time/1000/60/60/24+"d";
+    if (time < 60 * 1000 && time > 1000) {
+      return time / 1000 + "s";
+    } else if (time >= 60 * 1000 && time < 60 * 60 * 1000) {
+      return time / 1000 / 60 + "m";
+    } else if (time >= 60 * 60 * 1000 && time < 60 * 60 * 1000 * 24) {
+      return time / 1000 / 60 / 60 + "h";
+    } else if (time >= 60 * 60 * 1000 * 24) {
+      return time / 1000 / 60 / 60 / 24 + "d";
     }
     return time + "ms";
   }
@@ -343,9 +341,7 @@ public class V1ApiServiceImpl extends V1ApiService {
             showTimeSeriesPlan.getPaths(),
             showTimeSeriesPlan.getOperatorType(),
             null)) {
-          return Response.ok()
-              .entity(NOPERMSSION + showTimeSeriesPlan.getOperatorType())
-              .build();
+          return Response.ok().entity(NOPERMSSION + showTimeSeriesPlan.getOperatorType()).build();
         }
         QueryContext context = new QueryContext();
         ShowTimeseriesDataSet showTimeseriesDataSet =
@@ -401,13 +397,13 @@ public class V1ApiServiceImpl extends V1ApiService {
       throws NotFoundException {
     long startTime = 0;
     long endTime = 0;
-    String sql="";
+    String sql = "";
     ReadResponse.Builder readResponse = Remote.ReadResponse.newBuilder();
     try {
-      if(bigmap.size()==0){
+      if (bigmap.size() == 0) {
         initBigMap(securityContext);
       }
-      int l=body.length;
+      int l = body.length;
       byte[] a = Snappy.uncompress(body);
       ReadRequest readRequest = Remote.ReadRequest.parseFrom(a);
       List<Query> queryList = readRequest.getQueriesList();
@@ -418,8 +414,8 @@ public class V1ApiServiceImpl extends V1ApiService {
       String strogeGroup = "root";
       List pathList = new ArrayList<String>();
       for (Query query : queryList) {
-        startTime = (long) (query.getStartTimestampMs()*timePrecision);
-        endTime = (long) (query.getEndTimestampMs()*timePrecision);
+        startTime = (long) (query.getStartTimestampMs() * timePrecision);
+        endTime = (long) (query.getEndTimestampMs() * timePrecision);
         for (LabelMatcher labelMatcher : query.getMatchersList()) {
           if ("__name__".equals(labelMatcher.getName())) {
             merticName = labelMatcher.getValue();
@@ -428,9 +424,10 @@ public class V1ApiServiceImpl extends V1ApiService {
             break;
           }
         }
-        if(bigmap==null||bigmap.get(merticName)==null){
+        if (bigmap == null || bigmap.get(merticName) == null) {
           continue;
-         // return Response.ok().entity(new ApiResponseMessage(ApiResponseMessage.OK, "magic!")).build();
+          // return Response.ok().entity(new ApiResponseMessage(ApiResponseMessage.OK,
+          // "magic!")).build();
         }
         for (int i = 0; i < bigmap.get(merticName).size(); i++) {
           pathList.add("*");
@@ -442,19 +439,19 @@ public class V1ApiServiceImpl extends V1ApiService {
         }
         Types.ReadHints readHints = query.getHints();
         boolean by = readHints.getBy();
-        long step = readHints.getStepMs()/1000;
-        long range = readHints.getRangeMs()/1000;
-        long groupStartTime = (long) (readHints.getStartMs()*timePrecision);
-        long groupEndTime = (long) (readHints.getEndMs()*timePrecision);
+        long step = readHints.getStepMs() / 1000;
+        long range = readHints.getRangeMs() / 1000;
+        long groupStartTime = (long) (readHints.getStartMs() * timePrecision);
+        long groupEndTime = (long) (readHints.getEndMs() * timePrecision);
         ProtocolStringList grouplist = readHints.getGroupingList();
         String func = readHints.getFunc();
-        if (!StringUtils.isEmpty(func)&&(func.equals("count")||func.equals("sum"))) {
+        if (!StringUtils.isEmpty(func) && (func.equals("count") || func.equals("sum"))) {
           sqlSelect.append(func).append("(").append("*").append(")");
-        }else if(!StringUtils.isEmpty(func)&&func.equals("max")){
+        } else if (!StringUtils.isEmpty(func) && func.equals("max")) {
           sqlSelect.append("max_value").append("(").append("*").append(")");
-        }else if(!StringUtils.isEmpty(func)&&func.equals("min")){
+        } else if (!StringUtils.isEmpty(func) && func.equals("min")) {
           sqlSelect.append("min_value").append("(").append("*").append(")");
-        }else {
+        } else {
           sqlSelect.append(" * ");
         }
 
@@ -462,9 +459,9 @@ public class V1ApiServiceImpl extends V1ApiService {
           sqlWhere.append("  time >= ").append(startTime);
         }
 
-        if (startTime>=0&&endTime >= 0) {
+        if (startTime >= 0 && endTime >= 0) {
           sqlWhere.append(" and ").append(" time < ").append(endTime);
-        }else if(startTime<0&&endTime >= 0){
+        } else if (startTime < 0 && endTime >= 0) {
           sqlWhere.append(" time < ").append(endTime);
         }
 
@@ -485,11 +482,7 @@ public class V1ApiServiceImpl extends V1ApiService {
           }
         }
         clear(pathList);
-        sql=  sqlSelect
-            + " from "
-            + strogeGroup
-            + Joiner.on(".").join(pathList)
-            + sqlWhere;
+        sql = sqlSelect + " from " + strogeGroup + Joiner.on(".").join(pathList) + sqlWhere;
         Planner planner = new Planner();
         PhysicalPlan physicalPlan = planner.parseSQLToPhysicalPlan(sql);
         if (!AuthorityChecker.check(
@@ -498,40 +491,48 @@ public class V1ApiServiceImpl extends V1ApiService {
             physicalPlan.getOperatorType(),
             null)) {
 
-          return Response.ok().entity(NOPERMSSION+ physicalPlan.getOperatorType()).build();
+          return Response.ok().entity(NOPERMSSION + physicalPlan.getOperatorType()).build();
         }
-        QueryDataSet dataSet = getDataBySelect(securityContext,sql,physicalPlan);
+        QueryDataSet dataSet = getDataBySelect(securityContext, sql, physicalPlan);
 
         Map<String, Object> tmpmap = new HashMap<String, Object>();
         List<Object> temlist = new ArrayList<Object>();
-        List<Map> timeseries=new ArrayList<Map>();
+        List<Map> timeseries = new ArrayList<Map>();
 
-        TimeSeries timeSeries=null;
-        int index=0;
+        TimeSeries timeSeries = null;
+        int index = 0;
         while (dataSet.hasNext()) {
           RowRecord rowRecord = dataSet.next();
           List<org.apache.iotdb.tsfile.read.common.Field> fields = rowRecord.getFields();
-          List<Path> listpath= dataSet.getPaths();
-          Map<String,Object> temMap=new HashMap<String,Object>();
-          List<Label> labelList=new ArrayList<>();
-          for(int i=0;i<fields.size();i++){
-            Field field=fields.get(i);
+          List<Path> listpath = dataSet.getPaths();
+          Map<String, Object> temMap = new HashMap<String, Object>();
+          List<Label> labelList = new ArrayList<>();
+          for (int i = 0; i < fields.size(); i++) {
+            Field field = fields.get(i);
             if (field == null || field.getDataType() == null) {
               continue;
             }
-             timeSeries= generTimeSeries(dataSet.getPaths().get(i),merticName).setSamples(index, Sample.newBuilder()
-                .setTimestamp(rowRecord.getTimestamp()).setValue(field.getDoubleV())).build();
+            timeSeries =
+                generTimeSeries(dataSet.getPaths().get(i), merticName)
+                    .setSamples(
+                        index,
+                        Sample.newBuilder()
+                            .setTimestamp(rowRecord.getTimestamp())
+                            .setValue(field.getDoubleV()))
+                    .build();
           }
           index++;
         }
-        if(timeSeries==null||timeSeries.getLabelsList().size()==0){
-          return Response.ok().header("type","application/x-protobuf").entity(null).build();
+        if (timeSeries == null || timeSeries.getLabelsList().size() == 0) {
+          return Response.ok().header("type", "application/x-protobuf").entity(null).build();
         }
-        Remote.QueryResult.Builder queryResult = Remote.QueryResult.newBuilder().setTimeseries(0,timeSeries);
-        readResponse.setResults(0,queryResult.build());
-        byte[] datas = readResponse.build().toByteArray();;
-        datas=Snappy.compress(datas);
-        return Response.ok().header("type","application/x-protobuf").entity(datas).build();
+        Remote.QueryResult.Builder queryResult =
+            Remote.QueryResult.newBuilder().setTimeseries(0, timeSeries);
+        readResponse.setResults(0, queryResult.build());
+        byte[] datas = readResponse.build().toByteArray();
+        ;
+        datas = Snappy.compress(datas);
+        return Response.ok().header("type", "application/x-protobuf").entity(datas).build();
       }
 
     } catch (InvalidProtocolBufferException e) {
@@ -543,25 +544,27 @@ public class V1ApiServiceImpl extends V1ApiService {
     } catch (QueryProcessException e) {
       e.printStackTrace();
     }
-    return Response.ok().header("type","application/x-protobuf").entity(null).build();
+    return Response.ok().header("type", "application/x-protobuf").entity(null).build();
   }
 
-  private Builder generTimeSeries(Path path,String metricName){
-    Builder timeBuilder=TimeSeries.newBuilder();
-    String[] paths= path.getFullPath().split(".");
-    if(paths.length>2){
-      List<Label> lables=new ArrayList<Label>();
-      int index=0;
-      for (int i=2;i<paths.length;i++){
-        Map m=new HashMap<String,String>();
-        if(paths[i].equals("ph")){
+  private Builder generTimeSeries(Path path, String metricName) {
+    Builder timeBuilder = TimeSeries.newBuilder();
+    String[] paths = path.getFullPath().split(".");
+    if (paths.length > 2) {
+      List<Label> lables = new ArrayList<Label>();
+      int index = 0;
+      for (int i = 2; i < paths.length; i++) {
+        Map m = new HashMap<String, String>();
+        if (paths[i].equals("ph")) {
           continue;
         }
         Iterator<Entry<String, String>> iter3 = bigmap.get(metricName).entrySet().iterator();
         while (iter3.hasNext()) {
           Entry<String, String> entry = iter3.next();
-          if(i==Integer.valueOf(entry.getValue())){
-            timeBuilder.setLabels(index,Label.newBuilder().setName(entry.getKey().toString()).setValue(paths[i]).build());
+          if (i == Integer.valueOf(entry.getValue())) {
+            timeBuilder.setLabels(
+                index,
+                Label.newBuilder().setName(entry.getKey().toString()).setValue(paths[i]).build());
             index++;
             break;
           }
@@ -572,17 +575,19 @@ public class V1ApiServiceImpl extends V1ApiService {
     return null;
   }
 
-  private QueryDataSet getDataBySelect(SecurityContext securityContext,String sql,PhysicalPlan physicalPlan ){
+  private QueryDataSet getDataBySelect(
+      SecurityContext securityContext, String sql, PhysicalPlan physicalPlan) {
     try {
       PlanExecutor executor = new PlanExecutor();
-      int fetchSize =10000;
+      int fetchSize = 10000;
       if (physicalPlan instanceof GroupByTimePlan) {
-        fetchSize = Math.min(getFetchSizeForGroupByTimePlan((GroupByTimePlan) physicalPlan), fetchSize);
+        fetchSize =
+            Math.min(getFetchSizeForGroupByTimePlan((GroupByTimePlan) physicalPlan), fetchSize);
       }
-        QueryRouter qr = new QueryRouter();
-        Long quertId = QueryResourceManager.getInstance().assignQueryId(true, fetchSize, -1);
-        QueryContext context = new QueryContext(quertId);
-        return  executor.processQuery(physicalPlan,context);
+      QueryRouter qr = new QueryRouter();
+      Long quertId = QueryResourceManager.getInstance().assignQueryId(true, fetchSize, -1);
+      QueryContext context = new QueryContext(quertId);
+      return executor.processQuery(physicalPlan, context);
 
     } catch (QueryProcessException e) {
       e.printStackTrace();
@@ -597,19 +602,21 @@ public class V1ApiServiceImpl extends V1ApiService {
     } catch (StorageEngineException e) {
       e.printStackTrace();
     }
-  return null;
+    return null;
   }
-private void clear(List<String> list){
-  List<String> newSubPathList=new ArrayList<>();
-  int i=0;
-  for(i=list.size()-1;i>=0;i--){
-      if(!list.get(i).equals("*")){
-          break;
+
+  private void clear(List<String> list) {
+    List<String> newSubPathList = new ArrayList<>();
+    int i = 0;
+    for (i = list.size() - 1; i >= 0; i--) {
+      if (!list.get(i).equals("*")) {
+        break;
       }
-    newSubPathList.add(list.get(i));
+      newSubPathList.add(list.get(i));
+    }
+    list = newSubPathList;
   }
-  list=newSubPathList;
-}
+
   private void appendtimeseries(LabelMatcher labelMatcher, List pathList, String merticName) {
     String tagV = labelMatcher.getValue();
     String tagK = labelMatcher.getName();
@@ -619,7 +626,8 @@ private void clear(List<String> list){
     }
     switch (labelMatcher.getTypeValue()) {
       case LabelMatcher.Type.EQ_VALUE:
-        pathList.set(Integer.valueOf(bigmap.get(merticName).get(tagK).toString()), "\""+tagV+"\"");
+        pathList.set(
+            Integer.valueOf(bigmap.get(merticName).get(tagK).toString()), "\"" + tagV + "\"");
         break;
       case LabelMatcher.Type.NEQ_VALUE:
         break;
@@ -628,7 +636,8 @@ private void clear(List<String> list){
       case LabelMatcher.Type.NRE_VALUE: // uncontain
         break;
       default:
-        pathList.set(Integer.valueOf(bigmap.get(merticName).get(tagV).toString()), "\""+tagV+"\"");
+        pathList.set(
+            Integer.valueOf(bigmap.get(merticName).get(tagV).toString()), "\"" + tagV + "\"");
     }
   }
 
@@ -639,11 +648,11 @@ private void clear(List<String> list){
       byte[] body,
       SecurityContext securityContext)
       throws NotFoundException {
-   String resultValue="fail";
-   Gson result = new Gson();
-   Map resultMap=new HashMap<String,Object>();
+    String resultValue = "fail";
+    Gson result = new Gson();
+    Map resultMap = new HashMap<String, Object>();
     try {
-      if(bigmap.size()==0){
+      if (bigmap.size() == 0) {
         initBigMap(securityContext);
       }
       byte[] a = Snappy.uncompress(body);
@@ -664,17 +673,17 @@ private void clear(List<String> list){
           }
         }
         for (Types.Label label : labels) {
-            if (bigmap.get(merticName) == null) {
-              bigmap.put(merticName, map);
-            } else if (bigmap.get(merticName) != null
-                && bigmap.get(merticName).get(label.getName()) == null&&!label.getName().equals("__name__")) {
-              insertLabelOrder(bigmap.get(merticName).size(),lableTime,securityContext);
-              insertMertic(merticName,lableTime,securityContext);
-              insertLabel(label.getName(),lableTime,securityContext);
-              bigmap.get(merticName).put(label.getName(), bigmap.get(merticName).size());
-              pathmap.put(label.getName(), label.getValue());
-            }
-
+          if (bigmap.get(merticName) == null) {
+            bigmap.put(merticName, map);
+          } else if (bigmap.get(merticName) != null
+              && bigmap.get(merticName).get(label.getName()) == null
+              && !label.getName().equals("__name__")) {
+            insertLabelOrder(bigmap.get(merticName).size(), lableTime, securityContext);
+            insertMertic(merticName, lableTime, securityContext);
+            insertLabel(label.getName(), lableTime, securityContext);
+            bigmap.get(merticName).put(label.getName(), bigmap.get(merticName).size());
+            pathmap.put(label.getName(), label.getValue());
+          }
         }
         for (Types.Sample sample : samples) {
           timestamp = sample.getTimestamp();
@@ -683,30 +692,29 @@ private void clear(List<String> list){
         if (String.valueOf(value).equals("NaN")) {
           continue;
         }
-        if(!pathmap.isEmpty()){
-          String sql= generInsertSql(bigmap, pathmap, merticName, timestamp, value, sgcount);
-          resultValue=insertDb(securityContext,sql);
+        if (!pathmap.isEmpty()) {
+          String sql = generInsertSql(bigmap, pathmap, merticName, timestamp, value, sgcount);
+          resultValue = insertDb(securityContext, sql);
         }
-
       }
     } catch (IOException e) {
       e.printStackTrace();
     }
-    if(resultValue.equals("success")){
-      resultMap.put("code",200);
-      resultMap.put("message","write data success");
-    }else if(resultValue.equals("fail")){
-      resultMap.put("code",500);
-      resultMap.put("message","write data failed");
-    }else{
-      resultMap.put("code",401);
-      resultMap.put("message",resultValue);
+    if (resultValue.equals("success")) {
+      resultMap.put("code", 200);
+      resultMap.put("message", "write data success");
+    } else if (resultValue.equals("fail")) {
+      resultMap.put("code", 500);
+      resultMap.put("message", "write data failed");
+    } else {
+      resultMap.put("code", 401);
+      resultMap.put("message", resultValue);
     }
     return Response.ok().entity(result.toJson(resultMap)).build();
   }
 
-  public String insertDb(SecurityContext securityContext,String sql){
-    String result="fail";
+  public String insertDb(SecurityContext securityContext, String sql) {
+    String result = "fail";
     try {
       Planner planner = new Planner();
       PlanExecutor executor = new PlanExecutor();
@@ -716,11 +724,11 @@ private void clear(List<String> list){
           physicalPlan.getPaths(),
           physicalPlan.getOperatorType(),
           null)) {
-        return NOPERMSSION+ physicalPlan.getOperatorType();
+        return NOPERMSSION + physicalPlan.getOperatorType();
       }
-      boolean b= executor.processNonQuery(physicalPlan);
-      if(b){
-        result="success";
+      boolean b = executor.processNonQuery(physicalPlan);
+      if (b) {
+        result = "success";
       }
     } catch (QueryProcessException e) {
       e.printStackTrace();
@@ -734,22 +742,38 @@ private void clear(List<String> list){
     return result;
   }
 
-  public String insertMertic(String merticName,
-      AtomicInteger time,SecurityContext securityContext) {
-      String sql="insert into root.system_p.label_info(timestamp,metric_name) values("+time+",\""+merticName+"\")";
-      return insertDb(securityContext,sql);
+  public String insertMertic(
+      String merticName, AtomicInteger time, SecurityContext securityContext) {
+    String sql =
+        "insert into root.system_p.label_info(timestamp,metric_name) values("
+            + time
+            + ",\""
+            + merticName
+            + "\")";
+    return insertDb(securityContext, sql);
   }
 
-  public String insertLabel(String labelName,AtomicInteger time,SecurityContext securityContext) {
-    String sql="insert into root.system_p.label_info(timestamp,label_name) values("+time+",\""+labelName+"\")";
-    String result=insertDb(securityContext,sql);
+  public String insertLabel(String labelName, AtomicInteger time, SecurityContext securityContext) {
+    String sql =
+        "insert into root.system_p.label_info(timestamp,label_name) values("
+            + time
+            + ",\""
+            + labelName
+            + "\")";
+    String result = insertDb(securityContext, sql);
     time.getAndAdd(1);
     return result;
   }
 
-  public String insertLabelOrder(int labelOrder,AtomicInteger time,SecurityContext securityContext) {
-    String sql="insert into root.system_p.label_info(timestamp,label_order) values("+time+",\""+labelOrder+"\")";
-    return insertDb(securityContext,sql);
+  public String insertLabelOrder(
+      int labelOrder, AtomicInteger time, SecurityContext securityContext) {
+    String sql =
+        "insert into root.system_p.label_info(timestamp,label_order) values("
+            + time
+            + ",\""
+            + labelOrder
+            + "\")";
+    return insertDb(securityContext, sql);
   }
 
   public String generInsertSql(
@@ -759,8 +783,10 @@ private void clear(List<String> list){
       long timestamp,
       double value,
       int sgcount) {
-    BigDecimal bd = BigDecimal.valueOf(timestamp);//Scientific counting does not support the need to convert numbers
-    timestamp=(long)(bd.longValue()*timePrecision);
+    BigDecimal bd =
+        BigDecimal.valueOf(
+            timestamp); // Scientific counting does not support the need to convert numbers
+    timestamp = (long) (bd.longValue() * timePrecision);
     List<String> patlist = new ArrayList<String>();
     for (int i = 0; i < bigMap.get(metricName).size(); i++) {
       patlist.add("ph");
@@ -769,16 +795,18 @@ private void clear(List<String> list){
     while (iter3.hasNext()) {
       Entry<String, String> entry = iter3.next();
       patlist.set(
-          Integer.valueOf(bigMap.get(metricName).get(entry.getKey()).toString()), "\""+entry.getValue()+"\"");
+          Integer.valueOf(bigMap.get(metricName).get(entry.getKey()).toString()),
+          "\"" + entry.getValue() + "\"");
     }
     int sgcode = metricName.hashCode() % sgcount;
     String path =
         "root.sg" + Math.abs(sgcode) + "." + metricName + "." + Joiner.on(".").join(patlist);
-    String sql="insert into "+ path + "(timestamp,node) values(" + timestamp+ "," + value + ")";
+    String sql = "insert into " + path + "(timestamp,node) values(" + timestamp + "," + value + ")";
     return sql;
   }
-  public  void  initBigMap(SecurityContext securityContext){
-    String sql="select metric_name,label_name,label_order from root.system_p.label_info";
+
+  public void initBigMap(SecurityContext securityContext) {
+    String sql = "select metric_name,label_name,label_order from root.system_p.label_info";
     try {
       Planner planner = new Planner();
       PhysicalPlan physicalPlan = planner.parseSQLToPhysicalPlan(sql);
@@ -787,9 +815,9 @@ private void clear(List<String> list){
           physicalPlan.getPaths(),
           physicalPlan.getOperatorType(),
           null)) {
-        return ;
+        return;
       }
-      QueryDataSet dataSet = getDataBySelect(securityContext,sql,physicalPlan);
+      QueryDataSet dataSet = getDataBySelect(securityContext, sql, physicalPlan);
 
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
@@ -797,32 +825,31 @@ private void clear(List<String> list){
         List<Path> listpath = dataSet.getPaths();
         Map<String, Object> temMap = new HashMap<String, Object>();
         List<Label> labelList = new ArrayList<>();
-        String meticName="";
-        String labelName="";
-        String orderValue="";
-        for (int i=0;i<listpath.size();i++) {
-          Path path=listpath.get(i);
-          if(path.getFullPath().contains("metric_name")){
-            meticName=fields.get(i).getStringValue();
-          }else if(path.getFullPath().contains("label_name")){
-            labelName=fields.get(i).getStringValue();
-          }else if(path.getFullPath().contains("label_order")){
-            orderValue=fields.get(i).getStringValue();
+        String meticName = "";
+        String labelName = "";
+        String orderValue = "";
+        for (int i = 0; i < listpath.size(); i++) {
+          Path path = listpath.get(i);
+          if (path.getFullPath().contains("metric_name")) {
+            meticName = fields.get(i).getStringValue();
+          } else if (path.getFullPath().contains("label_name")) {
+            labelName = fields.get(i).getStringValue();
+          } else if (path.getFullPath().contains("label_order")) {
+            orderValue = fields.get(i).getStringValue();
           }
         }
-        ConcurrentHashMap<String,String> m=new ConcurrentHashMap<String,String>();
-            if(bigmap.get(meticName)==null){
-              bigmap.put(meticName,m);
-            }else{
-              m= bigmap.get(meticName);
-            }
-            if(m.get(labelName)==null){
-              m.put(labelName,orderValue);
-            }
+        ConcurrentHashMap<String, String> m = new ConcurrentHashMap<String, String>();
+        if (bigmap.get(meticName) == null) {
+          bigmap.put(meticName, m);
+        } else {
+          m = bigmap.get(meticName);
+        }
+        if (m.get(labelName) == null) {
+          m.put(labelName, orderValue);
+        }
       }
     } catch (IOException | QueryProcessException | AuthException e) {
       e.printStackTrace();
     }
   }
-
 }

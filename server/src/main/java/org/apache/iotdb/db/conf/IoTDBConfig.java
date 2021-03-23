@@ -646,10 +646,10 @@ public class IoTDBConfig {
   /** if the startOpenApi is true, we will start OpenApi */
   private boolean startOpenApi = true;
 
-  /** set the OpenApi reset port.*/
+  /** set the OpenApi reset port. */
   private int OpenApiPort = 18080;
 
-  /** set the OpenApi reset port.*/
+  /** set the OpenApi reset port. */
   private int sgCount = 5;
 
   public int getSgCount() {
