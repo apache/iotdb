@@ -61,16 +61,12 @@ public class MemTableTestUtils {
     }
     for (long l = startTime; l <= endTime; l++) {
       iMemTable.write(
-          deviceId,
-          measurementId,
-          new MeasurementSchema(measurementId, dataType, TSEncoding.PLAIN),
-          l,
-          (int) l);
+          deviceId, new MeasurementSchema(measurementId, dataType, TSEncoding.PLAIN), l, (int) l);
     }
   }
 
   public static void produceVectorData(IMemTable iMemTable) throws IllegalPathException {
-    iMemTable.write(genInsertTablePlan(), 0, 100);
+    iMemTable.write(genInsertTablePlan(), 1, 101);
   }
 
   private static InsertTabletPlan genInsertTablePlan() throws IllegalPathException {
@@ -100,12 +96,12 @@ public class MemTableTestUtils {
         new InsertTabletPlan(
             new PartialPath(deviceId0), new String[] {"(sensor0,sensor1)"}, dataTypesList);
 
-    long[] times = new long[100];
+    long[] times = new long[101];
     Object[] columns = new Object[2];
-    columns[0] = new boolean[100];
-    columns[1] = new long[100];
+    columns[0] = new boolean[101];
+    columns[1] = new long[101];
 
-    for (long r = 0; r < 100; r++) {
+    for (long r = 0; r < 101; r++) {
       times[(int) r] = r;
       ((boolean[]) columns[0])[(int) r] = false;
       ((long[]) columns[1])[(int) r] = r;

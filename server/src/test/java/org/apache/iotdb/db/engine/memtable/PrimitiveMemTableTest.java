@@ -94,7 +94,6 @@ public class PrimitiveMemTableTest {
     for (int i = 0; i < dataSize; i++) {
       memTable.write(
           deviceId,
-          measurementId[0],
           new MeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN),
           dataSize - i - 1,
           i + 10);
@@ -102,7 +101,6 @@ public class PrimitiveMemTableTest {
     for (int i = 0; i < dataSize; i++) {
       memTable.write(
           deviceId,
-          measurementId[0],
           new MeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN),
           i,
           i);
@@ -141,7 +139,6 @@ public class PrimitiveMemTableTest {
     for (TimeValuePair aRet : ret) {
       memTable.write(
           deviceId,
-          sensorId,
           new MeasurementSchema(sensorId, dataType, encoding),
           aRet.getTimestamp(),
           aRet.getValue().getValue());
@@ -198,15 +195,21 @@ public class PrimitiveMemTableTest {
             .query(
                 "root.sg.device5",
                 "sensor1",
-                new MeasurementSchema(
-                    "sensor1",
-                    TSDataType.INT64,
-                    TSEncoding.GORILLA,
-                    CompressionType.UNCOMPRESSED,
-                    Collections.emptyMap()),
+                new VectorMeasurementSchema(
+                    IoTDBConstant.ALIGN_TIMESERIES_PREFIX + 0,
+                    new String[] {"sensor1"},
+                    new TSDataType[] {TSDataType.INT64},
+                    new TSEncoding[] {TSEncoding.GORILLA},
+                    CompressionType.UNCOMPRESSED),
                 Long.MIN_VALUE,
                 null)
             .getPointReader();
+    for (int i = 0; i < 100; i++) {
+      tvPair.hasNextTimeValuePair();
+      TimeValuePair next = tvPair.nextTimeValuePair();
+      Assert.assertEquals(i, next.getTimestamp());
+      Assert.assertEquals(i, next.getValue().getVector()[0].getLong());
+    }
   }
 
   @Test
@@ -300,7 +303,7 @@ public class PrimitiveMemTableTest {
     MeasurementMNode[] mNodes = new MeasurementMNode[2];
     IMeasurementSchema schema =
         new VectorMeasurementSchema(
-            IoTDBConstant.ALIGN_TIMESERIES_PREFIX, measurements, dataTypes, encodings);
+            IoTDBConstant.ALIGN_TIMESERIES_PREFIX + 0, measurements, dataTypes, encodings);
     mNodes[0] = new MeasurementMNode(null, "sensor0", schema, null);
     mNodes[1] = new MeasurementMNode(null, "sensor1", schema, null);
 
