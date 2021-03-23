@@ -332,17 +332,11 @@ public class CMManager extends MManager {
   @Override
   public MNode getSeriesSchemasAndReadLockDevice(InsertPlan plan) throws MetadataException {
     MeasurementMNode[] measurementMNodes = new MeasurementMNode[plan.getMeasurements().length];
-    try {
-      MNode deviceNode = getDeviceNode(plan.getDeviceId());
-
-      int nonExistSchemaIndex =
-          getMNodesLocally(plan.getDeviceId(), plan.getMeasurements(), measurementMNodes);
-      if (nonExistSchemaIndex == -1) {
-        plan.setMeasurementMNodes(measurementMNodes);
-        return deviceNode;
-      }
-    } catch (PathNotExistException exception) {
-      // ignore, so we could try local MTree
+    int nonExistSchemaIndex =
+        getMNodesLocally(plan.getDeviceId(), plan.getMeasurements(), measurementMNodes);
+    if (nonExistSchemaIndex == -1) {
+      plan.setMeasurementMNodes(measurementMNodes);
+      return new MNode(null, plan.getDeviceId().getDevice());
     }
     // auto-create schema in IoTDBConfig is always disabled in the cluster version, and we have
     // another config in ClusterConfig to do this
