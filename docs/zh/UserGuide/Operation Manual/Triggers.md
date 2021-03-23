@@ -108,7 +108,7 @@ SHOW TRIGGERS
 
 ### 窗口工具类
 
-窗口工具类能够辅助您定义滑动窗口以及窗口上的数据处理逻辑。它提供两类滑动窗口的构造方法：固定窗口内时间长度的滑动窗口（`SlidingTimeWindowEvaluationHandler`）和固定窗口内数据点数的滑动窗口（`SlidingSizeWindowEvaluationHandler`）。
+窗口工具类能够辅助您定义滑动窗口以及窗口上的数据处理逻辑。它能够构造两类滑动窗口：一种滑动窗口是固定窗口内时间长度的（`SlidingTimeWindowEvaluationHandler`），另一种滑动窗口是固定窗口内数据点数的（`SlidingSizeWindowEvaluationHandler`）。
 
 窗口工具类允许您在窗口（`Window`）上定义侦听钩子（`Evaluator`）。每当一个新的窗口形成，您定义的侦听钩子就会被调用一次。您可以在这个侦听钩子内定义任何数据处理相关的逻辑。侦听钩子的调用是异步的，因此，在执行钩子内窗口处理逻辑的时候，是不会阻塞当前线程的。
 

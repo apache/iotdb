@@ -98,3 +98,121 @@ STOP TRIGGER <TRIGGER-NAME>
 SHOW TRIGGERS
 ```
 
+
+
+## Utilities
+
+Utility classes provide programming paradigms and execution frameworks for the common requirements, which can simplify part of your work of implementing triggers.
+
+
+
+### Windowing Utility
+
+The windowing utility can help you define sliding windows and the data processing logic on them. It can construct two types of sliding windows: one has a fixed time interval (`SlidingTimeWindowEvaluationHandler`), and the other has fixed number of data points (`SlidingSizeWindowEvaluationHandler`).
+
+The windowing utility allows you to define a hook (`Evaluator`) on the window (`Window`). Whenever a new window is formed, the hook you defined will be called once. You can define any data processing-related logic in the hook. The call of the hook is asynchronous. Therefore, the current thread will not be blocked when the window processing logic is executed.
+
+For the definition of `Window` and `Evaluator`, please refer to the `org.apache.iotdb.db.utils.windowing.api` package.
+
+
+
+#### SlidingSizeWindowEvaluationHandler
+
+##### Window Construction
+
+There are two construction methods.
+
+The first method requires you to provide the type of data points that the window collects, the window size, the sliding step, and a hook (`Evaluator`).
+
+``` java
+final TSDataType dataType = TSDataType.INT32;
+final int windowSize = 10;
+final int slidingStep = 5;
+
+SlidingSizeWindowEvaluationHandler handler =
+	  new SlidingSizeWindowEvaluationHandler(
+        new SlidingSizeWindowConfiguration(dataType, windowSize, slidingStep),
+        window -> {
+          // do something
+        });
+```
+
+The second method requires you to provide the type of data points that the window collects, the window size, and a hook (`Evaluator`). The sliding step is equal to the window size by default.
+
+``` java
+final TSDataType dataType = TSDataType.INT32;
+final int windowSize = 10;
+
+SlidingSizeWindowEvaluationHandler handler =
+	  new SlidingSizeWindowEvaluationHandler(
+        new SlidingSizeWindowConfiguration(dataType, windowSize),
+        window -> {
+          // do something
+        });
+```
+
+The window size and the sliding step must be positive.
+
+
+
+#####  Datapoint Collection
+
+``` java
+final long timestamp = 0;
+final int value = 0;
+hander.accept(timestamp, value);
+```
+
+Note that the type of the second parameter accepted by the `accept` method needs to be consistent with the `dataType` parameter provided during construction.
+
+
+
+#### SlidingTimeWindowEvaluationHandler
+
+##### Window Construction
+
+There are two construction methods.
+
+The first method requires you to provide the type of data points that the window collects, the time interval, the sliding step, and a hook (`Evaluator`).
+
+``` java
+final TSDataType dataType = TSDataType.INT32;
+final long timeInterval = 1000;
+final long slidingStep = 500;
+
+SlidingTimeWindowEvaluationHandler handler =
+    new SlidingTimeWindowEvaluationHandler(
+        new SlidingTimeWindowConfiguration(dataType, timeInterval, slidingStep),
+        window -> {
+          // do something
+        });
+```
+
+The second method requires you to provide the type of data points that the window collects, the time interval, and a hook (`Evaluator`). The sliding step is equal to the time interval by default.
+
+``` java
+final TSDataType dataType = TSDataType.INT32;
+final long timeInterval = 1000;
+
+SlidingTimeWindowEvaluationHandler handler =
+    new SlidingTimeWindowEvaluationHandler(
+        new SlidingTimeWindowConfiguration(dataType, timeInterval),
+        window -> {
+          // do something
+        });
+```
+
+The time interval and the sliding step must be positive.
+
+
+
+#####  Datapoint Collection
+
+``` java
+final long timestamp = 0;
+final int value = 0;
+hander.accept(timestamp, value);
+```
+
+Note that the type of the second parameter accepted by the `accept` method needs to be consistent with the `dataType` parameter provided during construction.
+
