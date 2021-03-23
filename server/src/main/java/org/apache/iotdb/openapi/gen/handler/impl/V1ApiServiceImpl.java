@@ -20,6 +20,7 @@
 package org.apache.iotdb.openapi.gen.handler.impl;
 
 import java.io.UnsupportedEncodingException;
+import java.math.BigDecimal;
 import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.db.auth.AuthException;
@@ -103,7 +104,7 @@ public class V1ApiServiceImpl extends V1ApiService {
       timePrecision=timePrecision*1000000;
     }else if(timestampPrecision.equals("us")){
       timePrecision=timePrecision*1000;
-    }else{
+    }else if(timestampPrecision.equals("s")){
       timePrecision=timePrecision/1000;
     }
   }
@@ -733,13 +734,6 @@ private void clear(List<String> list){
     return result;
   }
 
-  public String insertLabelInfo(String merticName,String labelName,String labelOrder,
-      AtomicInteger time,SecurityContext securityContext){
-    String sql="insert into root.system_p.label_info(timestamp,label_order) values("+time+",\""+labelOrder+"\")";
-    String result= insertDb(securityContext,sql);
-    return result;
-
-  }
   public String insertMertic(String merticName,
       AtomicInteger time,SecurityContext securityContext) {
       String sql="insert into root.system_p.label_info(timestamp,metric_name) values("+time+",\""+merticName+"\")";
@@ -765,6 +759,8 @@ private void clear(List<String> list){
       long timestamp,
       double value,
       int sgcount) {
+    BigDecimal bd = BigDecimal.valueOf(timestamp);//Scientific counting does not support the need to convert numbers
+    timestamp=(long)(bd.longValue()*timePrecision);
     List<String> patlist = new ArrayList<String>();
     for (int i = 0; i < bigMap.get(metricName).size(); i++) {
       patlist.add("ph");
@@ -778,7 +774,7 @@ private void clear(List<String> list){
     int sgcode = metricName.hashCode() % sgcount;
     String path =
         "root.sg" + Math.abs(sgcode) + "." + metricName + "." + Joiner.on(".").join(patlist);
-    String sql="insert into "+ path + "(timestamp,node) values(" + timestamp*timePrecision + "," + value + ")";
+    String sql="insert into "+ path + "(timestamp,node) values(" + timestamp+ "," + value + ")";
     return sql;
   }
   public  void  initBigMap(SecurityContext securityContext){
@@ -827,7 +823,6 @@ private void clear(List<String> list){
     } catch (IOException | QueryProcessException | AuthException e) {
       e.printStackTrace();
     }
-
   }
 
 }
