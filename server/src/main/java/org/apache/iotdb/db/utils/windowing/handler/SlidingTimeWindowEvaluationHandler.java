@@ -71,7 +71,7 @@ public class SlidingTimeWindowEvaluationHandler extends SlidingWindowEvaluationH
           new WindowEvaluationTask(
               evaluator,
               new WindowImpl(data, windowBeginIndex, data.size() - 1 - windowBeginIndex)));
-      data.setEvictionUpperBound(windowBeginIndex + 1);
+      data.setEvictionUpperBound(windowBeginIndex);
       currentWindowEndTime += slidingStep;
     }
   }

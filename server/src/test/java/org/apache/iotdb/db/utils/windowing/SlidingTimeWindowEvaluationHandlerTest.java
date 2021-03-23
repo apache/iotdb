@@ -176,4 +176,29 @@ public class SlidingTimeWindowEvaluationHandlerTest {
     }
     Assert.assertEquals(expectedTVMap, actualTVMap);
   }
+
+  @Test
+  public void testWithEmptyWindows() throws WindowingException {
+    final AtomicInteger countTotal = new AtomicInteger(0);
+    final AtomicInteger countEmpty = new AtomicInteger(0);
+
+    SlidingTimeWindowEvaluationHandler handler =
+        new SlidingTimeWindowEvaluationHandler(
+            new SlidingTimeWindowConfiguration(TSDataType.INT32, 3, 7),
+            window -> {
+              Assert.assertTrue(window.size() == 0 || window.size() == 1);
+
+              countTotal.incrementAndGet();
+
+              if (window.size() == 0) {
+                countEmpty.incrementAndGet();
+              }
+            });
+
+    for (int i = 0; i < 10; ++i) {
+      handler.accept(21 * i, 21 * i);
+    }
+
+    await().atMost(10, SECONDS).until(() -> countTotal.get() == 27 && countEmpty.get() == 18);
+  }
 }
