@@ -3,27 +3,27 @@
 
 # CPP compiling is too slow, so let's do it in parallel with testing other modules.
 # As there is no Java client, we just use one JDK.
-name:  Clients_except_Java CI with Maven
+name: Clients_except_Java CI with Maven
 
 on:
   push:
     branches:
       - master
-      - 'rel/*'
+      - "rel/*"
     paths:
-      - 'client-*/**'
-      - 'compile-tools/**'
-      - 'thrift/**'
-      - 'service-rpc/**'
+      - "client-*/**"
+      - "compile-tools/**"
+      - "thrift/**"
+      - "service-rpc/**"
   pull_request:
     branches:
       - master
-      - 'rel/*'
+      - "rel/*"
     paths:
-      - 'client-*/**'
-      - 'compile-tools/**'
-      - 'thrift/**'
-      - 'service-rpc/**'
+      - "client-*/**"
+      - "compile-tools/**"
+      - "thrift/**"
+      - "service-rpc/**"
   # allow manually run the action:
   workflow_dispatch:
 
@@ -45,8 +45,8 @@ jobs:
       - name: Install CPP Dependencies (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         shell: bash
-        run: sudo apt-get install libboost-all-dev
-      - name: Install CPP Dependencies (Mac)
+        run: sudo apt-get update && sudo apt-get install libboost-all-dev
+      - name: Install CPP Dependencies (Mac)`
         if: matrix.os == 'macos-latest'
         shell: bash
         run: |
@@ -61,7 +61,7 @@ jobs:
           key: client-${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
       - name: Test with Maven
-        run:  mvn -B clean integration-test -P compile-cpp -Dtsfile.test.skip=true -Djdbc.test.skip=true -Diotdb.test.skip=true -Dtest.port.closed=true -pl server,client-cpp,example/client-cpp-example -am
+        run: mvn -B clean integration-test -P compile-cpp -Dtsfile.test.skip=true -Djdbc.test.skip=true -Diotdb.test.skip=true -Dtest.port.closed=true -pl server,client-cpp,example/client-cpp-example -am
 
   build-win:
     strategy:
@@ -97,4 +97,4 @@ jobs:
         run: cd /d/a/cpp && unzip win_flex_bison.zip && mv win_flex.exe flex.exe && mv win_bison.exe bison.exe && echo 'export PATH=/d/a/cpp:$PATH' >> ~/.bash_profile && source ~/.bash_profile
       - name: Test with Maven
         shell: bash
-        run:  source ~/.bash_profile && mvn -B clean integration-test -P compile-cpp -Dboost.include.dir=/d/a/cpp/boost_1_72_0 -Dboost.library.dir=/d/a/cpp/boost_1_72_0/stage/lib -Dtsfile.test.skip=true -Djdbc.test.skip=true -Diotdb.test.skip=true -Dtest.port.closed=true -Denforcer.skip=true -pl server,client-cpp,example/client-cpp-example -am
+        run: source ~/.bash_profile && mvn -B clean integration-test -P compile-cpp -Dboost.include.dir=/d/a/cpp/boost_1_72_0 -Dboost.library.dir=/d/a/cpp/boost_1_72_0/stage/lib -Dtsfile.test.skip=true -Djdbc.test.skip=true -Diotdb.test.skip=true -Dtest.port.closed=true -Denforcer.skip=true -pl server,client-cpp,example/client-cpp-example -am

@@ -72,6 +72,13 @@ public class ClusterConfig {
   private int maxClientPerNodePerMember = 1000;
 
   /**
+   * If the number of connections created for a node exceeds `max_client_pernode_permember_number`,
+   * we need to wait so much time for other connections to be released until timeout, or a new
+   * connection will be created.
+   */
+  private long waitClientTimeoutMS = 5 * 1000L;
+
+  /**
    * ClientPool will have so many selector threads (TAsyncClientManager) to distribute to its
    * clients.
    */
@@ -147,14 +154,15 @@ public class ClusterConfig {
    */
   private boolean waitForSlowNode = true;
 
+  /**
+   * When consistency level is set to mid, query will fail if the log lag exceeds max_read_log_lag.
+   */
+  private long maxReadLogLag = 1000L;
+
   private boolean openServerRpcPort = false;
 
   public int getSelectorNumOfClientPool() {
     return selectorNumOfClientPool;
-  }
-
-  public void setSelectorNumOfClientPool(int selectorNumOfClientPool) {
-    this.selectorNumOfClientPool = selectorNumOfClientPool;
   }
 
   public int getMaxClientPerNodePerMember() {
@@ -417,8 +425,12 @@ public class ClusterConfig {
     return waitForSlowNode;
   }
 
-  public void setWaitForSlowNode(boolean waitForSlowNode) {
-    this.waitForSlowNode = waitForSlowNode;
+  public long getMaxReadLogLag() {
+    return maxReadLogLag;
+  }
+
+  public void setMaxReadLogLag(long maxReadLogLag) {
+    this.maxReadLogLag = maxReadLogLag;
   }
 
   public String getInternalIp() {
@@ -435,5 +447,13 @@ public class ClusterConfig {
 
   public void setOpenServerRpcPort(boolean openServerRpcPort) {
     this.openServerRpcPort = openServerRpcPort;
+  }
+
+  public long getWaitClientTimeoutMS() {
+    return waitClientTimeoutMS;
+  }
+
+  public void setWaitClientTimeoutMS(long waitClientTimeoutMS) {
+    this.waitClientTimeoutMS = waitClientTimeoutMS;
   }
 }

@@ -25,6 +25,8 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator.LoadConfigurationOperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
@@ -67,12 +69,26 @@ public class ClusterPhysicalGenerator extends PhysicalGenerator {
 
   @Override
   protected List<PartialPath> getMatchedTimeseries(PartialPath path) throws MetadataException {
-    return ((CMManager) IoTDB.metaManager).getMatchedPaths(path);
+    return getCMManager().getMatchedPaths(path);
   }
 
   @Override
   protected Set<PartialPath> getMatchedDevices(PartialPath path) throws MetadataException {
-    return ((CMManager) IoTDB.metaManager).getMatchedDevices(path);
+    return getCMManager().getMatchedDevices(path);
+  }
+
+  @Override
+  public PhysicalPlan transformToPhysicalPlan(Operator operator, int fetchSize)
+      throws QueryProcessException {
+    // update storage groups before parsing query plans
+    if (operator instanceof SFWOperator) {
+      try {
+        getCMManager().syncMetaLeader();
+      } catch (MetadataException e) {
+        throw new QueryProcessException(e);
+      }
+    }
+    return super.transformToPhysicalPlan(operator, fetchSize);
   }
 
   @Override

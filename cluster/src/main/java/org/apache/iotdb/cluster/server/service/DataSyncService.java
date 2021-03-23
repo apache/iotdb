@@ -38,6 +38,7 @@ import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
+import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -108,7 +109,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
         client.getInputProtocol().getTransport().close();
         throw e;
       } finally {
-        putBackSyncClient(client);
+        ClientUtils.putBackSyncClient(client);
       }
       return pullSnapshotResp;
     } else {
@@ -136,7 +137,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
         client.getInputProtocol().getTransport().close();
         throw te;
       } finally {
-        putBackSyncClient(client);
+        ClientUtils.putBackSyncClient(client);
       }
       return pullSchemaResp;
     } catch (MetadataException e) {
@@ -164,7 +165,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
         client.getInputProtocol().getTransport().close();
         throw te;
       } finally {
-        putBackSyncClient(client);
+        ClientUtils.putBackSyncClient(client);
       }
       return pullSchemaResp;
     } catch (IllegalPathException e) {
@@ -209,12 +210,13 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
-  public ByteBuffer fetchSingleSeriesByTimestamp(Node header, long readerId, long timestamp)
+  public ByteBuffer fetchSingleSeriesByTimestamps(Node header, long readerId, List<Long> timestamps)
       throws TException {
     try {
       return dataGroupMember
           .getLocalQueryExecutor()
-          .fetchSingleSeriesByTimestamp(readerId, timestamp);
+          .fetchSingleSeriesByTimestamps(
+              readerId, timestamps.stream().mapToLong(k -> k).toArray(), timestamps.size());
     } catch (ReaderNotFoundException | IOException e) {
       throw new TException(e);
     }
@@ -255,6 +257,16 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
       return ((CMManager) IoTDB.metaManager).getNodeList(path, nodeLevel);
+    } catch (CheckConsistencyException | MetadataException e) {
+      throw new TException(e);
+    }
+  }
+
+  @Override
+  public Set<String> getChildNodeInNextLevel(Node header, String path) throws TException {
+    try {
+      dataGroupMember.syncLeaderWithConsistencyCheck(false);
+      return ((CMManager) IoTDB.metaManager).getChildNodeInNextLevel(path);
     } catch (CheckConsistencyException | MetadataException e) {
       throw new TException(e);
     }

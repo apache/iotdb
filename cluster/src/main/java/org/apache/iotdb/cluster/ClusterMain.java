@@ -30,6 +30,7 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.MetaClusterServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
+import org.apache.iotdb.db.conf.IoTDBConfigCheck;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
@@ -73,6 +74,12 @@ public class ClusterMain {
           IoTDBConstant.IOTDB_CONF);
 
       return;
+    }
+
+    try {
+      IoTDBConfigCheck.getInstance().checkConfig();
+    } catch (IOException e) {
+      logger.error("meet error when doing start checking", e);
     }
 
     // init server's configuration first, because the cluster configuration may read settings from
@@ -260,7 +267,7 @@ public class ClusterMain {
           @Override
           public int calculateSlotByTime(String storageGroupName, long timestamp, int maxSlotNum) {
             int sgSerialNum = extractSerialNumInSGName(storageGroupName) % k;
-            if (sgSerialNum > 0) {
+            if (sgSerialNum >= 0) {
               return maxSlotNum / k * sgSerialNum;
             } else {
               return defaultStrategy.calculateSlotByTime(storageGroupName, timestamp, maxSlotNum);
@@ -271,7 +278,7 @@ public class ClusterMain {
           public int calculateSlotByPartitionNum(
               String storageGroupName, long partitionId, int maxSlotNum) {
             int sgSerialNum = extractSerialNumInSGName(storageGroupName) % k;
-            if (sgSerialNum > 0) {
+            if (sgSerialNum >= 0) {
               return maxSlotNum / k * sgSerialNum;
             } else {
               return defaultStrategy.calculateSlotByPartitionNum(
