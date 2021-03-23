@@ -384,12 +384,15 @@ public class DataClusterServer extends RaftServer
   }
 
   @Override
-  public void fetchSingleSeriesByTimestamp(
-      Node header, long readerId, long time, AsyncMethodCallback<ByteBuffer> resultHandler) {
+  public void fetchSingleSeriesByTimestamps(
+      Node header,
+      long readerId,
+      List<Long> timestamps,
+      AsyncMethodCallback<ByteBuffer> resultHandler) {
     DataAsyncService service =
         getDataAsyncService(header, resultHandler, "Fetch by timestamp:" + readerId);
     if (service != null) {
-      service.fetchSingleSeriesByTimestamp(header, readerId, time, resultHandler);
+      service.fetchSingleSeriesByTimestamps(header, readerId, timestamps, resultHandler);
     }
   }
 
@@ -737,9 +740,9 @@ public class DataClusterServer extends RaftServer
   }
 
   @Override
-  public ByteBuffer fetchSingleSeriesByTimestamp(Node header, long readerId, long timestamp)
+  public ByteBuffer fetchSingleSeriesByTimestamps(Node header, long readerId, List<Long> timestamps)
       throws TException {
-    return getDataSyncService(header).fetchSingleSeriesByTimestamp(header, readerId, timestamp);
+    return getDataSyncService(header).fetchSingleSeriesByTimestamps(header, readerId, timestamps);
   }
 
   @Override

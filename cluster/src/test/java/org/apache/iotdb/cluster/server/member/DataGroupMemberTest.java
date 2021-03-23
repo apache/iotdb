@@ -803,11 +803,15 @@ public class DataGroupMemberTest extends MemberTest {
     AtomicReference<ByteBuffer> dataResult = new AtomicReference<>();
     GenericHandler<ByteBuffer> dataHandler = new GenericHandler<>(TestUtils.getNode(0), dataResult);
 
+    List<Long> timestamps = new ArrayList<>(5);
     for (int i = 5; i < 10; i++) {
-      new DataAsyncService(dataGroupMember)
-          .fetchSingleSeriesByTimestamp(TestUtils.getNode(0), readerId, i, dataHandler);
-      Object value = SerializeUtils.deserializeObject(dataResult.get());
-      assertEquals(i * 1.0, (Double) value, 0.00001);
+      timestamps.add((long) i);
+    }
+    new DataAsyncService(dataGroupMember)
+        .fetchSingleSeriesByTimestamps(TestUtils.getNode(0), readerId, timestamps, dataHandler);
+    Object[] values = SerializeUtils.deserializeObjects(dataResult.get());
+    for (int i = 5; i < 10; i++) {
+      assertEquals(i * 1.0, (Double) values[i - 5], 0.00001);
     }
 
     new DataAsyncService(dataGroupMember)
@@ -861,11 +865,15 @@ public class DataGroupMemberTest extends MemberTest {
 
     AtomicReference<ByteBuffer> dataResult = new AtomicReference<>();
     GenericHandler<ByteBuffer> dataHandler = new GenericHandler<>(TestUtils.getNode(0), dataResult);
+    List<Long> timestamps = new ArrayList<>(4);
     for (int i = 5; i < 9; i++) {
-      new DataAsyncService(dataGroupMember)
-          .fetchSingleSeriesByTimestamp(TestUtils.getNode(0), readerId, i, dataHandler);
-      Object value = SerializeUtils.deserializeObject(dataResult.get());
-      assertEquals(i * 1.0, (Double) value, 0.00001);
+      timestamps.add((long) i);
+    }
+    new DataAsyncService(dataGroupMember)
+        .fetchSingleSeriesByTimestamps(TestUtils.getNode(0), readerId, timestamps, dataHandler);
+    Object[] values = SerializeUtils.deserializeObjects(dataResult.get());
+    for (int i = 5; i < 9; i++) {
+      assertEquals(i * 1.0, (Double) values[i - 5], 0.00001);
     }
 
     new DataAsyncService(dataGroupMember)
@@ -896,11 +904,13 @@ public class DataGroupMemberTest extends MemberTest {
   public void testFetchWithoutQuery() {
     System.out.println("Start testFetchWithoutQuery()");
     AtomicReference<Exception> result = new AtomicReference<>();
+    List<Long> timestamps = new ArrayList<>(1);
+    timestamps.add((long) 0);
     new DataAsyncService(dataGroupMember)
-        .fetchSingleSeriesByTimestamp(
+        .fetchSingleSeriesByTimestamps(
             TestUtils.getNode(0),
             0,
-            0,
+            timestamps,
             new AsyncMethodCallback<ByteBuffer>() {
               @Override
               public void onComplete(ByteBuffer buffer) {}
