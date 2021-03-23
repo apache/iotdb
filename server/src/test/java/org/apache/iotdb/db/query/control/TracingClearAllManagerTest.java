@@ -20,29 +20,26 @@ package org.apache.iotdb.db.query.control;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
-import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.utils.FileUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-public class TracingManagerTest {
+public class TracingClearAllManagerTest {
 
+  private TracingManager tracingManager = TracingManager.getInstance();
   private final String tracingDir = IoTDBDescriptor.getInstance().getConfig().getTracingDir();
-  private TracingManager tracingManager;
   private final String sql = "select * from root.sg.device1 where time > 10";
   private final long queryId = 10;
 
@@ -50,18 +47,19 @@ public class TracingManagerTest {
 
   @Before
   public void setUp() {
-    tracingManager = TracingManager.getInstance();
-    prepareTsFileResources();
+    System.out.println("do Before");
   }
 
   @After
   public void tearDown() throws IOException {
+    System.out.println("do After");
     FileUtils.deleteDirectory(new File(tracingDir));
     EnvironmentUtils.cleanAllDir();
   }
 
   @Test
   public void tracingQueryTest() throws IOException {
+    System.out.println("do Test");
     String[] ans = {
       "Query Id: 10 - Query Statement: " + sql,
       "Query Id: 10 - Start time: 2020-12-",
@@ -76,44 +74,28 @@ public class TracingManagerTest {
       "Query Id: 10 - Average size of chunks: 1371",
       "Query Id: 10 - Total cost time: "
     };
-
     tracingManager.writeQueryInfo(queryId, sql, 1607529600000L);
     tracingManager.writePathsNum(queryId, 3);
     tracingManager.writeQueryInfo(queryId, sql, 1607529600000L, 3);
-    tracingManager.writeTsFileInfo(queryId, seqResources, Collections.EMPTY_SET);
     tracingManager.writeChunksInfo(queryId, 3, 4113L);
     tracingManager.writeEndTime(queryId);
     tracingManager.close();
-
-    File tracingFile =
-        SystemFileFactory.INSTANCE.getFile(tracingDir + File.separator + IoTDBConstant.TRACING_LOG);
-    BufferedReader bufferedReader = new BufferedReader(new FileReader(tracingFile));
-    String str;
-    int cnt = 0;
-    while ((str = bufferedReader.readLine()) != null) {
-      Assert.assertTrue(str.contains(ans[cnt++]));
-    }
-    bufferedReader.close();
 
     /*tracing clear all UT*/
     tracingManager.clearTracingAllInfo(tracingDir, IoTDBConstant.TRACING_LOG);
     File tracingClearAllTestFile =
         SystemFileFactory.INSTANCE.getFile(tracingDir + File.separator + IoTDBConstant.TRACING_LOG);
-    BufferedReader tracingClearAllTestBufferedReader =
-        new BufferedReader(new FileReader(tracingClearAllTestFile));
-    Assert.assertTrue(tracingClearAllTestBufferedReader.readLine() == null);
-    tracingClearAllTestBufferedReader.close();
+    Assert.assertTrue(tracingClearStatues(tracingClearAllTestFile));
   }
 
-  void prepareTsFileResources() {
-    Map<String, Integer> deviceToIndex = new HashMap<>();
-    deviceToIndex.put("root.sg.d1", 0);
-    deviceToIndex.put("root.sg.d2", 1);
-    long[] startTimes = {1, 2};
-    long[] endTimes = {999, 998};
-    File file1 = new File(TestConstant.OUTPUT_DATA_DIR.concat("1-1-0.tsfile"));
-    TsFileResource tsFileResource1 = new TsFileResource(file1, deviceToIndex, startTimes, endTimes);
-    tsFileResource1.setClosed(true);
-    seqResources.add(tsFileResource1);
+  public boolean tracingClearStatues(File tracingClearAllTestFile) throws IOException {
+    try {
+      BufferedReader tracingClearAllTestBufferedReader =
+          new BufferedReader(new FileReader(tracingClearAllTestFile));
+      tracingClearAllTestBufferedReader.close();
+      return false;
+    } catch (FileNotFoundException e) {
+      return true;
+    }
   }
 }

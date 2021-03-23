@@ -18,14 +18,6 @@
  */
 package org.apache.iotdb.db.query.control;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -35,6 +27,12 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TracingManager {
 
@@ -198,8 +196,12 @@ public class TracingManager {
     writer.flush();
   }
 
-  public void close() throws IOException {
-    writer.close();
+  public void close() {
+    try {
+      writer.close();
+    } catch (IOException e) {
+      logger.error("Meeting error while close TracingManager_writer: {}", e.getMessage());
+    }
   }
 
   public boolean getWriterStatus() {

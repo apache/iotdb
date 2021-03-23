@@ -18,24 +18,23 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
+import java.util.Collections;
+import java.util.List;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
-import java.util.Collections;
-import java.util.List;
-
 public class TracingPlan extends PhysicalPlan {
 
   private boolean isTracingOn;
-  private Integer tracingType;
+  private int tracingType;
 
   public TracingPlan(boolean isTracingOn) {
     super(false, OperatorType.TRACING);
     this.isTracingOn = isTracingOn;
   }
 
-  public TracingPlan(Integer tracingType) {
+  public TracingPlan(int tracingType) {
     super(false, OperatorType.TRACING);
     this.tracingType = tracingType;
   }
@@ -49,7 +48,7 @@ public class TracingPlan extends PhysicalPlan {
     return isTracingOn;
   }
 
-  public Integer tracingType() {
+  public int tracingType() {
     return tracingType;
   }
 }
