@@ -85,6 +85,28 @@ public class IOTDBInsertAlignedValuesIT {
     Assert.assertEquals(true, rs2.getBoolean(2));
     Assert.assertEquals(17.1, rs2.getFloat(3), 0.1);
 
+    rs2.next();
+    Assert.assertEquals(5000, rs2.getLong(1));
+    Assert.assertEquals(true, rs2.getBoolean(2));
+    Assert.assertEquals(20.1, rs2.getFloat(3), 0.1);
+
+    rs2.next();
+    Assert.assertEquals(6000, rs2.getLong(1));
+    Assert.assertEquals(true, rs2.getBoolean(2));
+    Assert.assertEquals(22, rs2.getFloat(3), 0.1);
     st1.close();
+  }
+
+  @Test(expected = Exception.class)
+  public void testInsertWithWrongMeasurementNum1() throws SQLException {
+    Statement st1 = connection.createStatement();
+    st1.execute("insert into root.t1.wf01.wt01(time, (status, temperature)) values(11000, 100)");
+  }
+
+  @Test(expected = Exception.class)
+  public void testInsertWithWrongMeasurementNum2() throws SQLException {
+    Statement st1 = connection.createStatement();
+    st1.execute(
+        "insert into root.t1.wf01.wt01(time, (status, temperature)) values(11000, (100, 300, 400))");
   }
 }

@@ -24,6 +24,7 @@ import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -227,13 +228,16 @@ public class PhysicalGenerator {
       case INSERT:
         InsertOperator insert = (InsertOperator) operator;
         paths = insert.getSelectedPaths();
-        //        if (insert.getMeasurementList().length != insert.getValueList().length) {
-        //          throw new SQLParserException(
-        //              String.format(
-        //                  "the measurementList's size %d is not consistent with the valueList's
-        // size %d",
-        //                  insert.getMeasurementList().length, insert.getValueList().length));
-        //        }
+        int measurementsNum = 0;
+        for (String measurement : insert.getMeasurementList()) {
+          measurementsNum += measurement.replace("(", "").replace(")", "").split(",").length;
+        }
+        if (measurementsNum != insert.getValueList().length) {
+          throw new SQLParserException(
+              String.format(
+                  "the measurementList's size %d is not consistent with the valueList's size %d",
+                  insert.getMeasurementList().length, insert.getValueList().length));
+        }
         return new InsertRowPlan(
             paths.get(0), insert.getTime(), insert.getMeasurementList(), insert.getValueList());
       case MERGE:
