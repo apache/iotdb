@@ -137,7 +137,7 @@ public class SlidingSizeWindowEvaluationHandlerTest {
     }
 
     await()
-        .atMost(60, SECONDS)
+        .atMost(10, SECONDS)
         .until(
             () ->
                 (totalPointNumber < windowSize
@@ -147,11 +147,12 @@ public class SlidingSizeWindowEvaluationHandlerTest {
 
     final ConcurrentHashMap<Integer, Integer> expectedTVMap = new ConcurrentHashMap<>();
     final int windowCount = count.get();
+    collection:
     for (int i = 0; i < windowCount; ++i) {
       for (int j = 0; j < windowSize; ++j) {
         final int tv = i * slidingStep + j;
         if (totalPointNumber <= tv) {
-          break;
+          break collection;
         }
         expectedTVMap.put(tv, tv);
       }

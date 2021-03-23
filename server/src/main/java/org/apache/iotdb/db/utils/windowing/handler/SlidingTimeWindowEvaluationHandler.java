@@ -34,7 +34,11 @@ public class SlidingTimeWindowEvaluationHandler extends SlidingWindowEvaluationH
   private final long slidingStep;
 
   private final Queue<Integer> windowBeginIndexQueue;
+
+  /** window: [begin, end) */
   private long currentWindowEndTime;
+
+  /** window: [begin, end) */
   private long nextWindowBeginTime;
 
   public SlidingTimeWindowEvaluationHandler(
@@ -49,7 +53,7 @@ public class SlidingTimeWindowEvaluationHandler extends SlidingWindowEvaluationH
 
   @Override
   protected void createEvaluationTaskIfNecessary(long timestamp) {
-    if (data.size() == 0) {
+    if (data.size() == 1) {
       windowBeginIndexQueue.add(0);
       currentWindowEndTime = timestamp + timeInterval;
       nextWindowBeginTime = timestamp + slidingStep;
@@ -65,8 +69,10 @@ public class SlidingTimeWindowEvaluationHandler extends SlidingWindowEvaluationH
       int windowBeginIndex = windowBeginIndexQueue.remove();
       TASK_POOL_MANAGER.submit(
           new WindowEvaluationTask(
-              evaluator, new WindowImpl(data, windowBeginIndex, data.size() - windowBeginIndex)));
+              evaluator,
+              new WindowImpl(data, windowBeginIndex, data.size() - 1 - windowBeginIndex)));
       data.setEvictionUpperBound(windowBeginIndex + 1);
+      currentWindowEndTime += slidingStep;
     }
   }
 }
