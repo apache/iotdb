@@ -45,7 +45,7 @@ public abstract class Log implements Comparable<Log> {
   private long createTime;
   private long enqueueTime;
 
-  private int byteSize;
+  private int byteSize = 0;
 
   public abstract ByteBuffer serialize();
 

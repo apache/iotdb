@@ -585,10 +585,10 @@ public abstract class RaftLogManager {
           .clear();
     }
     try {
-      boolean needCompactedLog = false;
+      boolean needToCompactLog = false;
       int numToReserveForNew = minNumOfLogsInMem;
       if (committedEntryManager.getTotalSize() + entries.size() > maxNumOfLogsInMem) {
-        needCompactedLog = true;
+        needToCompactLog = true;
         numToReserveForNew = maxNumOfLogsInMem - entries.size();
       }
 
@@ -598,12 +598,12 @@ public abstract class RaftLogManager {
       }
       int sizeToReserveForNew = minNumOfLogsInMem;
       if (newEntryMemSize + committedEntryManager.getEntryTotalMemSize() > maxLogMemSize) {
-        needCompactedLog = true;
+        needToCompactLog = true;
         sizeToReserveForNew =
             committedEntryManager.maxLogNumShouldReserve(maxLogMemSize - newEntryMemSize);
       }
 
-      if (needCompactedLog) {
+      if (needToCompactLog) {
         int numForNew = Math.min(numToReserveForNew, sizeToReserveForNew);
         int sizeToReserveForConfig = minNumOfLogsInMem;
         startTime = Statistic.RAFT_SENDER_COMMIT_DELETE_EXCEEDING_LOGS.getOperationStartTime();

@@ -536,7 +536,7 @@ public abstract class RaftMember {
     for (ByteBuffer buffer : request.getEntries()) {
       buffer.mark();
       Log log;
-      logByteSize = buffer.limit() - buffer.position();
+      logByteSize = buffer.array().length;
       try {
         log = LogParser.getINSTANCE().parse(buffer);
         log.setByteSize(logByteSize);
@@ -953,6 +953,7 @@ public abstract class RaftMember {
 
       log.setPlan(plan);
       plan.setIndex(log.getCurrLogIndex());
+      log.setByteSize(log.serialize().array().length);
       logManager.append(log);
     }
     Timer.Statistic.RAFT_SENDER_APPEND_LOG.calOperationCostTimeFromStart(startTime);
@@ -986,6 +987,7 @@ public abstract class RaftMember {
       log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
       log.setPlan(plan);
       plan.setIndex(log.getCurrLogIndex());
+      log.setByteSize(log.serialize().array().length);
 
       startTime = Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.getOperationStartTime();
       logManager.append(log);

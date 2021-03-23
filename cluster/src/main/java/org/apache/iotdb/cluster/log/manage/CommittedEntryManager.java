@@ -278,6 +278,6 @@ public class CommittedEntryManager {
       }
       totalSize += entries.get(i).getByteSize();
     }
-    return entries.size();
+    return entries.size() - 1;
   }
 }

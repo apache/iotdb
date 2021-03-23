@@ -65,6 +65,7 @@ public class ClusterConfig {
   /** max number of committed logs in memory */
   private int maxNumOfLogsInMem = 1000;
 
+  /** max memory size of committed logs in memory, default 512M */
   private long maxMemorySizeForRaftLog = 536870912;
 
   /** deletion check period of the submitted log */
