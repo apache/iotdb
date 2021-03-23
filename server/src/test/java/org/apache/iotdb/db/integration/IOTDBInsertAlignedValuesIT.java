@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.integration;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 
@@ -41,6 +42,7 @@ public class IOTDBInsertAlignedValuesIT {
   public static void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
+    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(true);
     Class.forName(Config.JDBC_DRIVER_NAME);
     connection =
         DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");

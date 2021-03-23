@@ -73,6 +73,9 @@ public class MemUtils {
    */
   public static long getRecordSize(
       InsertTabletPlan insertTabletPlan, int start, int end, boolean addingTextDataSize) {
+    if (insertTabletPlan.getMeasurementMNodes() == null) {
+      return getRecordSizeForTest(insertTabletPlan, start, end, addingTextDataSize);
+    }
     if (start >= end) {
       return 0L;
     }
@@ -99,6 +102,8 @@ public class MemUtils {
           columnCount++;
         }
       } else {
+        // time column memSize
+        memSize += (end - start) * 8L;
         if (insertTabletPlan.getDataTypes()[columnCount] == TSDataType.TEXT && addingTextDataSize) {
           for (int j = start; j < end; j++) {
             memSize += getBinarySize(((Binary[]) insertTabletPlan.getColumns()[columnCount])[j]);
@@ -107,6 +112,26 @@ public class MemUtils {
           memSize += (end - start) * insertTabletPlan.getDataTypes()[columnCount].getDataTypeSize();
         }
         columnCount++;
+      }
+    }
+    return memSize;
+  }
+
+  public static long getRecordSizeForTest(
+      InsertTabletPlan insertTabletPlan, int start, int end, boolean addingTextDataSize) {
+    if (start >= end) {
+      return 0L;
+    }
+    long memSize = 0;
+    for (int i = 0; i < insertTabletPlan.getMeasurements().length; i++) {
+      // time column memSize
+      memSize += (end - start) * 8L;
+      if (insertTabletPlan.getDataTypes()[i] == TSDataType.TEXT && addingTextDataSize) {
+        for (int j = start; j < end; j++) {
+          memSize += getBinarySize(((Binary[]) insertTabletPlan.getColumns()[i])[j]);
+        }
+      } else {
+        memSize += (end - start) * insertTabletPlan.getDataTypes()[i].getDataTypeSize();
       }
     }
     return memSize;

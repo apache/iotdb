@@ -184,7 +184,8 @@ public abstract class AbstractMemTable implements IMemTable {
     int columnCount = 0;
     updatePlanIndexes(insertTabletPlan.getIndex());
     for (int i = 0; i < insertTabletPlan.getMeasurements().length; i++) {
-      if (insertTabletPlan.getColumns()[i] == null) {
+      if (insertTabletPlan.getColumns()[columnCount] == null) {
+        columnCount++;
         continue;
       }
       IWritableMemChunk memSeries =

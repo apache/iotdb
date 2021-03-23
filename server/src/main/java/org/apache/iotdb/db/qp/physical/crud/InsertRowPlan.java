@@ -354,9 +354,6 @@ public class InsertRowPlan extends InsertPlan {
 
   private void putValues(DataOutputStream outputStream) throws QueryProcessException, IOException {
     for (int i = 0; i < values.length; i++) {
-      if (dataTypes[i] == null) {
-        continue;
-      }
       // types are not determined, the situation mainly occurs when the plan uses string values
       // and is forwarded to other nodes
       if (dataTypes == null || dataTypes[i] == null) {
@@ -392,9 +389,6 @@ public class InsertRowPlan extends InsertPlan {
 
   private void putValues(ByteBuffer buffer) throws QueryProcessException {
     for (int i = 0; i < values.length; i++) {
-      if (dataTypes[i] == null) {
-        continue;
-      }
       // types are not determined, the situation mainly occurs when the plan uses string values
       // and is forwarded to other nodes
       if (dataTypes == null || dataTypes[i] == null) {
