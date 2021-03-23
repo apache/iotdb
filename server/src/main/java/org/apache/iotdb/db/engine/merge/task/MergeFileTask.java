@@ -53,7 +53,7 @@ import java.util.Map.Entry;
  * in the temp files into the seqFiles or move the unmerged chunks into the merge temp files,
  * depending on which one is the majority.
  */
-public class MergeFileTask {
+class MergeFileTask {
 
   private static final Logger logger = LoggerFactory.getLogger(MergeFileTask.class);
 
