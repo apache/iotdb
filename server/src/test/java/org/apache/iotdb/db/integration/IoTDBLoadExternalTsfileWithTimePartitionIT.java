@@ -49,7 +49,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-public class IoTDBLoadExternalTsfileWithTimePartition {
+public class IoTDBLoadExternalTsfileWithTimePartitionIT {
 
   String DOT = ".";
   String tempDir = "temp";
