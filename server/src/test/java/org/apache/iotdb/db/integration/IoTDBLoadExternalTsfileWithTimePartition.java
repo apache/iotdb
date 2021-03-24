@@ -150,7 +150,7 @@ public class IoTDBLoadExternalTsfileWithTimePartition {
       TsFileWriter tsFileWriter = null;
       int counter = 0;
       for (long timestamp = startTime; timestamp < endTime; timestamp += 1000) {
-        if (timestamp % (timePartition*1000) == 0) {
+        if (timestamp % (timePartition * 1000) == 0) {
           if (tsFileWriter != null) {
             tsFileWriter.flushAllChunkGroups();
             tsFileWriter.close();
