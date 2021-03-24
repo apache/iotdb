@@ -561,13 +561,17 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
       if (logger.isDebugEnabled()) {
         logger.debug("Data cluster server: start to handle new groups when adding new node {}", node);
       }
-      for (PartitionGroup newGroup: result.getNewGroupList()) {
-        if (newGroup.contains(thisNode)) {
-          logger.info("Adding this node into a new group {}", newGroup);
-          DataGroupMember dataGroupMember = dataMemberFactory.create(newGroup, thisNode);
-          addDataGroupMember(dataGroupMember);
-          dataGroupMember.pullNodeAdditionSnapshots(((SlotPartitionTable) partitionTable).getNodeSlots(node,
-              newGroup.getId()), node);
+      // pull snapshot has already done when the new node starts.
+      if (!node.equals(thisNode)) {
+        for (PartitionGroup newGroup : result.getNewGroupList()) {
+          if (newGroup.contains(thisNode)) {
+            logger.info("Adding this node into a new group {}", newGroup);
+            DataGroupMember dataGroupMember = dataMemberFactory.create(newGroup, thisNode);
+            addDataGroupMember(dataGroupMember);
+            dataGroupMember
+                .pullNodeAdditionSnapshots(((SlotPartitionTable) partitionTable).getNodeSlots(node,
+                    newGroup.getId()), node);
+          }
         }
       }
     }

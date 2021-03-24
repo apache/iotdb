@@ -128,9 +128,7 @@ public class AddNodeLog extends Log {
 
   @Override
   public String toString() {
-    return "AddNodeLog{" +
-        "newNode=" + newNode +
-        '}';
+    return "AddNodeLog{" + "newNode=" + newNode.toString() + '}';
   }
 
   @Override

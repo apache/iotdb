@@ -107,11 +107,8 @@ public class DataLogApplier extends BaseApplier {
 
   private void applyInsert(InsertPlan plan)
       throws StorageGroupNotSetException, QueryProcessException, StorageEngineException {
-    // check if the corresponding slot is being pulled
-    PartialPath sg;
-    long time = plan.getMinTime();
     try {
-      sg = IoTDB.metaManager.getStorageGroupPath(plan.getDeviceId());
+      IoTDB.metaManager.getStorageGroupPath(plan.getDeviceId());
     } catch (StorageGroupNotSetException e) {
       // the sg may not exist because the node does not catch up with the leader, retry after
       // synchronization
@@ -120,12 +117,7 @@ public class DataLogApplier extends BaseApplier {
       } catch (CheckConsistencyException ce) {
         throw new QueryProcessException(ce.getMessage());
       }
-      sg = IoTDB.metaManager.getStorageGroupPath(plan.getDeviceId());
     }
-    int slotId = SlotPartitionTable.getSlotStrategy().calculateSlotByTime(sg.getFullPath(), time,
-        ClusterConstant.SLOT_NUM);
-    // the slot may not be writable because it is pulling file versions, wait until it is done
-    dataGroupMember.getSlotManager().waitSlotForWrite(slotId);
     applyPhysicalPlan(plan, dataGroupMember);
   }
 }

@@ -154,7 +154,7 @@ public class MetaAsyncService extends BaseAsyncService implements TSMetaService.
 
   @Override
   public void removeNode(Node node, AsyncMethodCallback<Long> resultHandler) {
-    long result = Response.RESPONSE_NULL;
+    long result;
     try {
       result = metaGroupMember.removeNode(node);
     } catch (PartitionTableUnavailableException | LogExecutionException | ChangeMembershipException | InterruptedException | UnsupportedPlanException e) {

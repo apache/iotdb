@@ -122,9 +122,7 @@ public class RemoveNodeLog extends Log {
 
   @Override
   public String toString() {
-    return "RemoveNodeLog{" +
-        "removedNode=" + removedNode +
-        '}';
+    return "RemoveNodeLog{" + "removedNode=" + removedNode.toString() + '}';
   }
 
   @Override

@@ -73,6 +73,9 @@ public class MetaHeartbeatThread extends HeartbeatThread {
 
   @Override
   void startElection() {
+//    if (localMetaMember.getThisNode().metaPort != 9003 && localMetaMember.getThisNode().metaPort != 9005) {
+//      return;
+//    }
     super.startElection();
     localMetaMember.getAppendLogThreadPool().submit(() -> localMetaMember.processEmptyContentLog());
   }

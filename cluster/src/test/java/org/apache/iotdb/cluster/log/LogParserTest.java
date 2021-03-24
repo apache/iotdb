@@ -107,6 +107,7 @@ public class LogParserTest {
   @Test
   public void testLogPlan() throws IOException, IllegalPathException, UnknownLogTypeException {
     AddNodeLog log = new AddNodeLog(TestUtils.seralizePartitionTable, TestUtils.getNode(0));
+    log.setMetaLogIndex(1);
     LogPlan logPlan = new LogPlan(log.serialize());
     ByteBuffer buffer = ByteBuffer.wrap(PlanSerializer.getInstance().serialize(logPlan));
     PhysicalPlan plan = PhysicalPlan.Factory.create(buffer);

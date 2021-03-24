@@ -192,12 +192,7 @@ public class MetaGroupMemberTest extends MemberTest {
 
     buildDataGroups(dataClusterServer);
     testMetaMember.getThisNode().setNodeIdentifier(0);
-    testMetaMember.setRouter(new ClusterPlanRouter(testMetaMember.getPartitionTable()){
-      @Override
-      protected Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(LogPlan plan) {
-        return Collections.singletonMap(plan, partitionTable.getHeaderGroup(testMetaMember.getThisNode()));
-      }
-    });
+    testMetaMember.setRouter(new ClusterPlanRouter(testMetaMember.getPartitionTable()));
     mockDataClusterServer = false;
     NodeStatusManager.getINSTANCE().setMetaGroupMember(testMetaMember);
     exiledNode = null;

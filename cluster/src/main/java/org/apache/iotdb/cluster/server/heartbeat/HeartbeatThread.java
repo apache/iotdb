@@ -266,6 +266,9 @@ public class HeartbeatThread implements Runnable {
   @SuppressWarnings({"java:S2274"})
   // enable timeout
   void startElection() {
+    if (localMember.isSkipElection()) {
+      return;
+    }
     synchronized (localMember.getTerm()) {
       long nextTerm = localMember.getTerm().incrementAndGet();
       localMember.setVoteFor(localMember.getThisNode());

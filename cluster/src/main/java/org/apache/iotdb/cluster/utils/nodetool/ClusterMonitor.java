@@ -81,7 +81,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
     }
     List<Pair<Node, NodeCharacter>> res = new ArrayList<>();
     for (Node node : metaMember.getPartitionTable().getAllNodes()) {
-      if (node.equals(metaMember.getThisNode())) {
+      if (node.equals(metaMember.getLeader())) {
         res.add(new Pair<>(node, NodeCharacter.LEADER));
       } else {
         res.add(new Pair<>(node, NodeCharacter.FOLLOWER));

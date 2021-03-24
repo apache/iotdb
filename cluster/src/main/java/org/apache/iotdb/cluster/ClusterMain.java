@@ -86,6 +86,7 @@ public class ClusterMain {
     }
 
     IoTDBDescriptor.getInstance().getConfig().setSyncEnable(false);
+    IoTDBDescriptor.getInstance().getConfig().setEnablePartition(true);
     logger.info("Running mode {}", mode);
     if (MODE_START.equals(mode)) {
       try {
@@ -101,10 +102,13 @@ public class ClusterMain {
       }
     } else if (MODE_ADD.equals(mode)) {
       try {
+        long startTime = System.currentTimeMillis();
         metaServer = new MetaClusterServer();
         // preStartCustomize();
         metaServer.start();
         metaServer.joinCluster();
+        logger.info("Adding this node {} to cluster costs {} ms",
+            metaServer.getMember().getThisNode(), (System.currentTimeMillis() - startTime));
       } catch (TTransportException | StartupException | QueryProcessException | StartUpCheckFailureException | ConfigInconsistentException e) {
         metaServer.stop();
         logger.error("Fail to join cluster", e);
@@ -252,6 +256,7 @@ public class ClusterMain {
       }
       AsyncMetaClient client = new AsyncMetaClient(factory, new TAsyncClientManager(), node, null);
       Long response = null;
+      long startTime = System.currentTimeMillis();
       try {
         logger.info("Start removing node {} with the help of node {}", nodeToRemove, node);
         response = SyncClientAdaptor.removeNode(client, nodeToRemove);
@@ -262,15 +267,15 @@ public class ClusterMain {
         logger.warn("Cannot send remove node request through {}, try next node", node);
       }
       if (response != null) {
-        handleNodeRemovalResp(response, nodeToRemove);
+        handleNodeRemovalResp(response, nodeToRemove, startTime);
         return;
       }
     }
   }
 
-  private static void handleNodeRemovalResp(Long response, Node nodeToRemove) {
+  private static void handleNodeRemovalResp(Long response, Node nodeToRemove, long startTime) {
     if (response == Response.RESPONSE_AGREE) {
-      logger.info("Node {} is successfully removed", nodeToRemove);
+      logger.info("Node {} is successfully removed, cost {}ms", nodeToRemove, (System.currentTimeMillis() - startTime));
     } else if (response == Response.RESPONSE_CLUSTER_TOO_SMALL) {
       logger.error("Cluster size is too small, cannot remove any node");
     } else if (response == Response.RESPONSE_REJECT) {
@@ -278,6 +283,9 @@ public class ClusterMain {
     } else if (response == Response.RESPONSE_CHANGE_MEMBERSHIP_CONFLICT) {
       logger.warn(
           "The cluster is performing other change membership operations. Change membership operations should be performed one by one. Please try again later");
+    } else if (response == Response.RESPONSE_DATA_MIGRATION_NOT_FINISH) {
+      logger.warn(
+          "The data migration of the previous membership change operation is not finished. Please try again later");
     } else {
       logger.error("Unexpected response {}", response);
     }

@@ -92,7 +92,7 @@ public class SlotPartitionTable implements PartitionTable {
   private List<PartitionGroup> globalGroups;
 
   // the last meta log index that modifies the partition table
-  private long lastMetaLogIndex = -1;
+  private volatile long lastMetaLogIndex = -1;
 
   private SlotBalancer slotBalancer = new DefaultSlotBalancer(this);
 
@@ -379,6 +379,9 @@ public class SlotPartitionTable implements PartitionTable {
   public synchronized boolean deserialize(ByteBuffer buffer) {
     long newLastLogIndex = buffer.getLong();
 
+    if (logger.isDebugEnabled()) {
+      logger.debug("Partition table: lastMetaLogIndex {}, newLastLogIndex {}", lastMetaLogIndex, newLastLogIndex);
+    }
     // judge whether the partition table of byte buffer is out of date
     if (lastMetaLogIndex != -1 && lastMetaLogIndex >= newLastLogIndex) {
       return lastMetaLogIndex == newLastLogIndex;
@@ -575,11 +578,14 @@ public class SlotPartitionTable implements PartitionTable {
   }
 
   @Override
-  public synchronized long getLastMetaLogIndex() {
+  public long getLastMetaLogIndex() {
     return lastMetaLogIndex;
   }
 
-  public synchronized void setLastMetaLogIndex(long lastMetaLogIndex) {
+  public void setLastMetaLogIndex(long lastMetaLogIndex) {
+    if (logger.isDebugEnabled()) {
+      logger.debug("Set last meta log index of partition table to {}", lastMetaLogIndex);
+    }
     this.lastMetaLogIndex = Math.max(this.lastMetaLogIndex, lastMetaLogIndex);
   }
 

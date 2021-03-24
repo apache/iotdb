@@ -28,7 +28,6 @@ import java.util.Map;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
 import org.apache.iotdb.cluster.log.Log;
-import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
@@ -132,8 +131,6 @@ public class ClusterPlanRouter {
       return splitAndRoutePlan((AlterTimeSeriesPlan) plan);
     } else if (plan instanceof CreateMultiTimeSeriesPlan) {
       return splitAndRoutePlan((CreateMultiTimeSeriesPlan) plan);
-    } else if (plan instanceof LogPlan) {
-      return splitAndRoutePlan((LogPlan)plan);
     }
     //the if clause can be removed after the program is stable
     if (PartitionUtils.isLocalNonQueryPlan(plan)) {
@@ -147,20 +144,24 @@ public class ClusterPlanRouter {
     throw new UnsupportedPlanException(plan);
   }
 
-  protected Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(LogPlan plan)
-      throws UnknownLogTypeException, UnsupportedPlanException {
+  public Map<PhysicalPlan, PartitionGroup> splitAndRouteChangeMembershipLog(Log log) {
     Map<PhysicalPlan, PartitionGroup> result = new HashMap<>();
-    Log log = LogParser.getINSTANCE().parse(plan.getLog());
+    LogPlan plan = new LogPlan(log.serialize());
     List<Node> oldRing = new ArrayList<>(partitionTable.getAllNodes());
     if (log instanceof AddNodeLog) {
       oldRing.remove(((AddNodeLog) log).getNewNode());
     } else if (log instanceof RemoveNodeLog) {
-      oldRing.add(((RemoveNodeLog) log).getRemovedNode());
-      oldRing.sort(Comparator.comparingInt(Node::getNodeIdentifier));
-    } else {
-      throw new UnsupportedPlanException(plan);
+      if (!oldRing.contains(((RemoveNodeLog) log).getRemovedNode())) {
+        oldRing.add(((RemoveNodeLog) log).getRemovedNode());
+        oldRing.sort(Comparator.comparingInt(Node::getNodeIdentifier));
+      }
     }
-    for (PartitionGroup partitionGroup: partitionTable.calculateGlobalGroups(oldRing)) {
+    for (PartitionGroup partitionGroup : partitionTable.calculateGlobalGroups(oldRing)) {
+      // It doesn't need to notify the data group which will be removed from cluster.
+      if (log instanceof RemoveNodeLog && partitionGroup.getHeader()
+          .equals(((RemoveNodeLog) log).getRemovedNode())) {
+        continue;
+      }
       result.put(new LogPlan(plan), partitionGroup);
     }
     return result;

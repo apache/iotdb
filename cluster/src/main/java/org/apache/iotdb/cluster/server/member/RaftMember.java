@@ -61,9 +61,7 @@ import org.apache.iotdb.cluster.log.LogDispatcher;
 import org.apache.iotdb.cluster.log.LogDispatcher.SendLogRequest;
 import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.log.catchup.CatchUpTask;
-import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
-import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
@@ -242,7 +240,12 @@ public abstract class RaftMember {
    */
   private LogDispatcher logDispatcher;
 
-  private boolean hasSyncedLeaderBeforeRemoved = false;
+  private volatile boolean hasSyncedLeaderBeforeRemoved = false;
+
+  /**
+   * If this node can not be the leader, this parameter will be set true.
+   */
+  private volatile boolean skipElection = false;
 
   protected RaftMember() {
   }
@@ -1478,7 +1481,7 @@ public abstract class RaftMember {
         term.set(newTerm);
         setVoteFor(null);
         setCharacter(NodeCharacter.ELECTOR);
-        setLeader(ClusterConstant.EMPTY_NODE);
+        setLeader(null);
         updateHardState(newTerm, getVoteFor());
       }
 
@@ -1560,7 +1563,7 @@ public abstract class RaftMember {
         case TIME_OUT:
           logger.debug("{}: log {} timed out, retrying...", name, log);
           try {
-            Thread.sleep(1000);
+            Thread.sleep(ClusterConstant.RETRY_WAIT_TIME_MS);
           } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
           }
@@ -1908,5 +1911,13 @@ public abstract class RaftMember {
 
   public void setHasSyncedLeaderBeforeRemoved(boolean hasSyncedLeaderAfterRemoved) {
     this.hasSyncedLeaderBeforeRemoved = hasSyncedLeaderAfterRemoved;
+  }
+
+  public boolean isSkipElection() {
+    return skipElection;
+  }
+
+  public void setSkipElection(boolean skipElection) {
+    this.skipElection = skipElection;
   }
 }
