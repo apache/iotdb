@@ -509,19 +509,17 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     multiPlan.getAlias().add(alias);
   }
 
-  private boolean executeBatchList(ArrayList executeList, List<TSStatus> result) {
+  private boolean executeBatchList(List executeList, List<TSStatus> result) {
     boolean isAllSuccessful = true;
-    if (executeList.size() > 0) {
-      for (int j = 0; j < executeList.size(); j++) {
-        Object planObject = executeList.get(j);
-        if (InsertRowsPlan.class.isInstance(planObject)) {
-          if (!executeInsertRowsPlan((InsertRowsPlan) planObject, result)) {
-            isAllSuccessful = false;
-          }
-        } else if (CreateMultiTimeSeriesPlan.class.isInstance(planObject)) {
-          if (!executeMultiTimeSeriesPlan((CreateMultiTimeSeriesPlan) planObject, result)) {
-            isAllSuccessful = false;
-          }
+    for (int j = 0; j < executeList.size(); j++) {
+      Object planObject = executeList.get(j);
+      if (InsertRowsPlan.class.isInstance(planObject)) {
+        if (!executeInsertRowsPlan((InsertRowsPlan) planObject, result)) {
+          isAllSuccessful = false;
+        }
+      } else if (CreateMultiTimeSeriesPlan.class.isInstance(planObject)) {
+        if (!executeMultiTimeSeriesPlan((CreateMultiTimeSeriesPlan) planObject, result)) {
+          isAllSuccessful = false;
         }
       }
     }
@@ -539,7 +537,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
     InsertRowsPlan insertRowsPlan;
     int index = 0;
-    ArrayList executeList = new ArrayList();
+    List executeList = new ArrayList();
     OperatorType lastOperatorType = null;
     CreateMultiTimeSeriesPlan multiPlan;
     for (int i = 0; i < req.getStatements().size(); i++) {
@@ -567,7 +565,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
             if (!executeBatchList(executeList, result)) {
               isAllSuccessful = false;
             }
-            executeList = new ArrayList();
           }
         } else if (physicalPlan.getOperatorType().equals(OperatorType.CREATE_TIMESERIES)) {
           if (OperatorType.CREATE_TIMESERIES == lastOperatorType) {
@@ -585,7 +582,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
             if (!executeBatchList(executeList, result)) {
               isAllSuccessful = false;
             }
-            executeList = new ArrayList();
           }
         } else {
           lastOperatorType = physicalPlan.getOperatorType();
@@ -593,7 +589,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
             if (!executeBatchList(executeList, result)) {
               isAllSuccessful = false;
             }
-            executeList = new ArrayList();
+            executeList.clear();
           }
           long t2 = System.currentTimeMillis();
           TSExecuteStatementResp resp = executeUpdateStatement(physicalPlan, req.getSessionId());
