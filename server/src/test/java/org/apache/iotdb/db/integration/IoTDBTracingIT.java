@@ -18,17 +18,7 @@
  */
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.jdbc.Config;
-
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import static org.junit.Assert.fail;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -39,8 +29,16 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
-
-import static org.junit.Assert.fail;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.jdbc.Config;
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
 
 public class IoTDBTracingIT {
 
@@ -111,6 +109,7 @@ public class IoTDBTracingIT {
                   + File.separator
                   + IoTDBConstant.TRACING_LOG);
       Assert.assertTrue(tracingClearStatues(tracingClearBeforeTestFile));
+
       String clearSql = "tracing clear all";
       statement.execute(clearSql);
       File tracingClearAfterTestFile =
@@ -119,6 +118,7 @@ public class IoTDBTracingIT {
                   + File.separator
                   + IoTDBConstant.TRACING_LOG);
       Assert.assertFalse(tracingClearStatues(tracingClearAfterTestFile));
+      statement.execute("tracing off");
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -144,9 +144,9 @@ public class IoTDBTracingIT {
   }
 
   public boolean tracingClearStatues(File tracingClearAllTestFile) throws IOException {
+    BufferedReader tracingClearAllTestBufferedReader =
+        new BufferedReader(new FileReader(tracingClearAllTestFile));
     try {
-      BufferedReader tracingClearAllTestBufferedReader =
-          new BufferedReader(new FileReader(tracingClearAllTestFile));
       String str;
       while ((str = tracingClearAllTestBufferedReader.readLine()) != null) {
         if (str.contains("Query Id")) {
@@ -155,10 +155,11 @@ public class IoTDBTracingIT {
           return false;
         }
       }
-      tracingClearAllTestBufferedReader.close();
       return false;
     } catch (FileNotFoundException e) {
       return false;
+    } finally {
+      tracingClearAllTestBufferedReader.close();
     }
   }
 }
