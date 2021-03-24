@@ -18,33 +18,37 @@
  */
 package org.apache.iotdb.db.query.control;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-
-import org.apache.commons.io.FileUtils;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import static org.junit.Assert.fail;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.constant.TestConstant;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.jdbc.Config;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
 
 public class TracingManagerTest {
 
   private final String tracingDir = IoTDBDescriptor.getInstance().getConfig().getTracingDir();
-  private TracingManager tracingManager;
+  // private TracingManager tracingManager;
   private final String sql = "select * from root.sg.device1 where time > 10";
   private final long queryId = 10;
 
@@ -52,18 +56,24 @@ public class TracingManagerTest {
 
   @Before
   public void setUp() {
-    tracingManager = TracingManager.getInstance();
+    // tracingManager = TracingManager.getInstance();
+    EnvironmentUtils.closeStatMonitor();
+    EnvironmentUtils.envSetUp();
     prepareTsFileResources();
   }
 
   @After
-  public void tearDown() throws IOException {
-    FileUtils.deleteDirectory(new File(tracingDir));
-    EnvironmentUtils.cleanAllDir();
+  public void tearDown() throws IOException, StorageEngineException {
+    EnvironmentUtils.cleanEnv();
+    // FileUtils.deleteDirectory(new File(tracingDir));
+    // EnvironmentUtils.cleanAllDir();
   }
 
   @Test
-  public void tracingQueryTest() throws IOException {
+  public void tracingQueryTest() throws IOException, ClassNotFoundException {
+    tracingSwitch("tracing on");
+    TracingManager tracingManager = TracingManager.getInstance();
+    // tracingManager.reOpenBufferedWriter(tracingDir, IoTDBConstant.TRACING_LOG);
     String[] ans = {
       "Query Id: 10 - Query Statement: " + sql,
       "Query Id: 10 - Start time: 2020-12-",
@@ -85,8 +95,8 @@ public class TracingManagerTest {
     tracingManager.writeTsFileInfo(queryId, seqResources, Collections.EMPTY_SET);
     tracingManager.writeChunksInfo(queryId, 3, 4113L);
     tracingManager.writeEndTime(queryId);
-    tracingManager.close();
-
+    // tracingManager.close();
+    tracingSwitch("tracing off");
     File tracingFile =
         SystemFileFactory.INSTANCE.getFile(tracingDir + File.separator + IoTDBConstant.TRACING_LOG);
     BufferedReader bufferedReader = new BufferedReader(new FileReader(tracingFile));
@@ -108,5 +118,19 @@ public class TracingManagerTest {
     TsFileResource tsFileResource1 = new TsFileResource(file1, deviceToIndex, startTimes, endTimes);
     tsFileResource1.setClosed(true);
     seqResources.add(tsFileResource1);
+  }
+
+  private void tracingSwitch(String sql) throws ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute(sql);
+      statement.close();
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
   }
 }

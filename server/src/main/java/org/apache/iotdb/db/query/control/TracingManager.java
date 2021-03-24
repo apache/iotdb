@@ -18,14 +18,6 @@
  */
 package org.apache.iotdb.db.query.control;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -35,6 +27,12 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TracingManager {
 
@@ -216,12 +214,20 @@ public class TracingManager {
   }
 
   public void reOpenBufferedWriter(String dirName, String logFileName) {
+    File tracingDir = SystemFileFactory.INSTANCE.getFile(dirName);
+    if (!tracingDir.exists()) {
+      if (tracingDir.mkdirs()) {
+        logger.info("create performance folder {}.", tracingDir);
+      } else {
+        logger.info("create performance folder {} failed.", tracingDir);
+      }
+    }
     File logFile = SystemFileFactory.INSTANCE.getFile(dirName + File.separator + logFileName);
     FileWriter fileWriter = null;
     try {
       fileWriter = new FileWriter(logFile, true);
     } catch (IOException e) {
-      logger.error("Meeting error while again open TracingManager_writer: {}", e.getMessage());
+      logger.error("Meeting error while creating TracingManager: {}", e.getMessage());
     }
     writer = new BufferedWriter(fileWriter);
   }

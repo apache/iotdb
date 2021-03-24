@@ -18,50 +18,59 @@
  */
 package org.apache.iotdb.db.query.control;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.db.utils.FileUtils;
-
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import static org.junit.Assert.fail;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
 import java.util.HashSet;
 import java.util.Set;
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.jdbc.Config;
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
 
 public class TracingClearAllManagerTest {
 
-  private TracingManager tracingManager = TracingManager.getInstance();
   private final String tracingDir = IoTDBDescriptor.getInstance().getConfig().getTracingDir();
   private final String sql = "select * from root.sg.device1 where time > 10";
   private final long queryId = 10;
 
   private Set<TsFileResource> seqResources = new HashSet<>();
 
-  @Before
-  public void setUp() {
+  @BeforeClass
+  public static void setUp() throws ClassNotFoundException {
+    EnvironmentUtils.closeStatMonitor();
+    EnvironmentUtils.envSetUp();
     System.out.println("do Before");
   }
 
-  @After
-  public void tearDown() throws IOException {
+  @AfterClass
+  public static void tearDown() throws IOException, StorageEngineException, ClassNotFoundException {
     System.out.println("do After");
-    FileUtils.deleteDirectory(new File(tracingDir));
-    EnvironmentUtils.cleanAllDir();
+    EnvironmentUtils.cleanEnv();
+    // FileUtils.deleteDirectory(new File(tracingDir));
+    // EnvironmentUtils.cleanAllDir();
   }
 
   @Test
-  public void tracingQueryTest() throws IOException {
+  public void tracingClearTest() throws IOException, ClassNotFoundException {
     System.out.println("do Test");
+    tracingSwitch("tracing on");
+    TracingManager tracingManager = TracingManager.getInstance();
+    // tracingManager.reOpenBufferedWriter(tracingDir, IoTDBConstant.TRACING_LOG);
     String[] ans = {
       "Query Id: 10 - Query Statement: " + sql,
       "Query Id: 10 - Start time: 2020-12-",
@@ -82,22 +91,42 @@ public class TracingClearAllManagerTest {
     tracingManager.writeChunksInfo(queryId, 3, 4113L);
     tracingManager.writeEndTime(queryId);
     tracingManager.close();
-
     /*tracing clear all UT*/
+    tracingSwitch("tracing off");
     tracingManager.clearTracingAllInfo(tracingDir, IoTDBConstant.TRACING_LOG);
     File tracingClearAllTestFile =
         SystemFileFactory.INSTANCE.getFile(tracingDir + File.separator + IoTDBConstant.TRACING_LOG);
+
     Assert.assertTrue(tracingClearStatues(tracingClearAllTestFile));
   }
 
   public boolean tracingClearStatues(File tracingClearAllTestFile) throws IOException {
+    BufferedReader tracingClearAllTestBufferedReader = null;
     try {
-      BufferedReader tracingClearAllTestBufferedReader =
+      tracingClearAllTestBufferedReader =
           new BufferedReader(new FileReader(tracingClearAllTestFile));
       tracingClearAllTestBufferedReader.close();
       return false;
     } catch (FileNotFoundException e) {
       return true;
+    } finally {
+      if (tracingClearAllTestBufferedReader != null) {
+        tracingClearAllTestBufferedReader.close();
+      }
+    }
+  }
+
+  private static void tracingSwitch(String sql) throws ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute(sql);
+      statement.close();
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
     }
   }
 }
