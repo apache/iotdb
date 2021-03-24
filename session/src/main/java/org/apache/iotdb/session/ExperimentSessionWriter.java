@@ -35,14 +35,16 @@ public class ExperimentSessionWriter {
     session.open(false);
     session.readRecordFromFile();
     session.readMetadataFromFile();
-    try {
-      session.deleteStorageGroup("root.test");
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
-    session.setStorageGroup("root.test");
-    createTimeseries();
-    testReplicaDead();
+//    try {
+//      session.deleteStorageGroup("root.test");
+//    } catch (Exception e) {
+//      e.printStackTrace();
+//    }
+//    session.setStorageGroup("root.test");
+//    createTimeseries();
+
+//    testReplicaDead();
+    testMultipleReplicaSAWithChunkSize(3);
     session.close();
     // 1 -> 3
     // 2 -> 4
@@ -173,7 +175,7 @@ public class ExperimentSessionWriter {
   static void testMultipleReplicaSAWithChunkSize(int replicaNum) {
     try {
       long startTime = System.currentTimeMillis();
-      ReplicaSet replicaSet = session.runMultiReplicaOptimizeWithChunkSize("root.test.device", replicaNum);
+      ReplicaSet replicaSet = session.runMultiReplicaOptimizeWithChunkSize("root.B023.DSS24", replicaNum);
       StringBuilder sb = new StringBuilder();
       for(double cost : replicaSet.costList) {
         sb.append(cost);

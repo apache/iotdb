@@ -372,7 +372,7 @@ public class MeasurementOrderOptimizer {
   private void optimizeChunkSizeBySA(String deviceID) {
     List<String> measurementOrder = measurementsMap.get(deviceID);
     // measurementID -> <ChunkSize, MeasurePointNumber>
-    Map<String, Pair<Long, Integer>> chunkConfigMap = new HashMap<>();
+    Map<String, Pair<Long, Long>> chunkConfigMap = new HashMap<>();
     for (String measurementId : measurementOrder) {
       long chunkSize = chunkMap.get(deviceID).get(measurementId);
       chunkConfigMap.put(measurementId,

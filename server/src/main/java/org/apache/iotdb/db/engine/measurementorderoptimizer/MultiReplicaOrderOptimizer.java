@@ -124,7 +124,7 @@ public class MultiReplicaOrderOptimizer {
 			temperature = temperature * COOLING_RATE;
 			int selectedReplica = r.nextInt(replicaNum);
 			int operation = r.nextInt(2);
-			if (operation == 0) {
+			if (operation == 0 && measurementOrder.size() > 1) {
 				// Swap chunk order
 				int swapLeft = r.nextInt(measurementOrder.size());
 				int swapRight = r.nextInt(measurementOrder.size());
@@ -525,7 +525,7 @@ public class MultiReplicaOrderOptimizer {
 		for (QueryRecord record : records) {
 			if (record instanceof GroupByQueryRecord) {
 				long visitLength = ((GroupByQueryRecord) record).getVisitLength();
-				long visitChunkSize = MeasurePointEstimator.getInstance().getChunkSize((int) visitLength);
+				long visitChunkSize = MeasurePointEstimator.getInstance().getChunkSize(visitLength);
 				if (visitChunkSize * CHUNK_SIZE_LOWER_BOUND < lowerBound) {
 					lowerBound = (long) (visitChunkSize * CHUNK_SIZE_LOWER_BOUND);
 				}
@@ -589,7 +589,7 @@ public class MultiReplicaOrderOptimizer {
 		LinkedList<Double> recentCost;
 		List<Long> timeList;
 		boolean initMinMax;
-		final int RECENT_RANGE = 300;
+		final int RECENT_RANGE = 2000;
 		double maxCost;
 		double minCost;
 		CostRecorder() {
@@ -606,7 +606,7 @@ public class MultiReplicaOrderOptimizer {
 			costHistory.add(cost);
 			if (recentCost.size() >= RECENT_RANGE) {
 				update(cost);
-				if ((maxCost - minCost) < maxCost * 0.001) {
+				if ((maxCost - minCost) < maxCost * 0.00001) {
 					return false;
 				}
 				return true;
