@@ -228,13 +228,16 @@ public class PhysicalGenerator {
       case INSERT:
         InsertOperator insert = (InsertOperator) operator;
         paths = insert.getSelectedPaths();
-        if (insert.getMeasurementList().length != insert.getValueList().length) {
+        int measurementsNum = 0;
+        for (String measurement : insert.getMeasurementList()) {
+          measurementsNum += measurement.replace("(", "").replace(")", "").split(",").length;
+        }
+        if (measurementsNum != insert.getValueList().length) {
           throw new SQLParserException(
               String.format(
                   "the measurementList's size %d is not consistent with the valueList's size %d",
                   insert.getMeasurementList().length, insert.getValueList().length));
         }
-
         return new InsertRowPlan(
             paths.get(0), insert.getTime(), insert.getMeasurementList(), insert.getValueList());
       case MERGE:

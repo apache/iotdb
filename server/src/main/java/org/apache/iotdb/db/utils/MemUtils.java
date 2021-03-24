@@ -36,6 +36,8 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
+
 // Notice : methods in this class may not be accurate.
 public class MemUtils {
 
@@ -48,22 +50,24 @@ public class MemUtils {
    * the size will be added to memtable before inserting.
    */
   public static long getRecordSize(TSDataType dataType, Object value, boolean addingTextDataSize) {
-    switch (dataType) {
-      case INT32:
-        return 8L + 4L;
-      case INT64:
-        return 8L + 8L;
-      case FLOAT:
-        return 8L + 4L;
-      case DOUBLE:
-        return 8L + 8L;
-      case BOOLEAN:
-        return 8L + 1L;
-      case TEXT:
-        return 8L + (addingTextDataSize ? getBinarySize((Binary) value) : 0);
-      default:
-        return 8L + 8L;
+    if (dataType == TSDataType.TEXT) {
+      return 8L + (addingTextDataSize ? getBinarySize((Binary) value) : 0);
     }
+    return 8L + dataType.getDataTypeSize();
+  }
+
+  public static long getVectorRecordSize(
+      List<TSDataType> dataTypes, Object[] value, boolean addingTextDataSize) {
+    // time and index size
+    long memSize = 8L + 4L;
+    for (int i = 0; i < dataTypes.size(); i++) {
+      if (dataTypes.get(i) == TSDataType.TEXT) {
+        memSize += (addingTextDataSize ? getBinarySize((Binary) value[i]) : 0);
+      } else {
+        memSize += dataTypes.get(i).getDataTypeSize();
+      }
+    }
+    return memSize;
   }
 
   public static long getBinarySize(Binary value) {
@@ -85,6 +89,9 @@ public class MemUtils {
    */
   public static long getRecordSize(
       InsertTabletPlan insertTabletPlan, int start, int end, boolean addingTextDataSize) {
+    if (insertTabletPlan.getMeasurementMNodes() == null) {
+      return getRecordSizeForTest(insertTabletPlan, start, end, addingTextDataSize);
+    }
     if (start >= end) {
       return 0L;
     }
@@ -101,65 +108,47 @@ public class MemUtils {
         memSize += (end - start) * (8L + 4L);
         // value columns memSize
         for (TSDataType type : schema.getValueTSDataTypeList()) {
-          switch (type) {
-            case INT32:
-              memSize += (end - start) * 4L;
-              break;
-            case INT64:
-              memSize += (end - start) * 8L;
-              break;
-            case FLOAT:
-              memSize += (end - start) * 4L;
-              break;
-            case DOUBLE:
-              memSize += (end - start) * 8L;
-              break;
-            case BOOLEAN:
-              memSize += (end - start) * 1L;
-              break;
-            case TEXT:
-              if (addingTextDataSize) {
-                for (int j = start; j < end; j++) {
-                  memSize +=
-                      getBinarySize(((Binary[]) insertTabletPlan.getColumns()[columnCount])[j]);
-                }
-              }
-              break;
-            default:
-              memSize += (end - start) * 8L;
-          }
-          columnCount++;
-        }
-        continue;
-      }
-      switch (insertTabletPlan.getDataTypes()[columnCount]) {
-        case INT32:
-          memSize += (end - start) * (8L + 4L);
-          break;
-        case INT64:
-          memSize += (end - start) * (8L + 8L);
-          break;
-        case FLOAT:
-          memSize += (end - start) * (8L + 4L);
-          break;
-        case DOUBLE:
-          memSize += (end - start) * (8L + 8L);
-          break;
-        case BOOLEAN:
-          memSize += (end - start) * (8L + 1L);
-          break;
-        case TEXT:
-          memSize += (end - start) * 8L;
-          if (addingTextDataSize) {
+          if (type == TSDataType.TEXT && addingTextDataSize) {
             for (int j = start; j < end; j++) {
               memSize += getBinarySize(((Binary[]) insertTabletPlan.getColumns()[columnCount])[j]);
             }
+          } else {
+            memSize += (end - start) * type.getDataTypeSize();
           }
-          break;
-        default:
-          memSize += (end - start) * (8L + 8L);
+          columnCount++;
+        }
+      } else {
+        // time column memSize
+        memSize += (end - start) * 8L;
+        if (insertTabletPlan.getDataTypes()[columnCount] == TSDataType.TEXT && addingTextDataSize) {
+          for (int j = start; j < end; j++) {
+            memSize += getBinarySize(((Binary[]) insertTabletPlan.getColumns()[columnCount])[j]);
+          }
+        } else {
+          memSize += (end - start) * insertTabletPlan.getDataTypes()[columnCount].getDataTypeSize();
+        }
+        columnCount++;
       }
-      columnCount++;
+    }
+    return memSize;
+  }
+
+  public static long getRecordSizeForTest(
+      InsertTabletPlan insertTabletPlan, int start, int end, boolean addingTextDataSize) {
+    if (start >= end) {
+      return 0L;
+    }
+    long memSize = 0;
+    for (int i = 0; i < insertTabletPlan.getMeasurements().length; i++) {
+      // time column memSize
+      memSize += (end - start) * 8L;
+      if (insertTabletPlan.getDataTypes()[i] == TSDataType.TEXT && addingTextDataSize) {
+        for (int j = start; j < end; j++) {
+          memSize += getBinarySize(((Binary[]) insertTabletPlan.getColumns()[i])[j]);
+        }
+      } else {
+        memSize += (end - start) * insertTabletPlan.getDataTypes()[i].getDataTypeSize();
+      }
     }
     return memSize;
   }

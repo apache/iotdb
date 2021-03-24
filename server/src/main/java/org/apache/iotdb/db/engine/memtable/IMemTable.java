@@ -44,13 +44,6 @@ public interface IMemTable {
 
   Map<String, Map<String, IWritableMemChunk>> getMemTableMap();
 
-  void write(
-      String deviceId,
-      String measurement,
-      IMeasurementSchema schema,
-      long insertTime,
-      Object objectValue);
-
   void write(String deviceId, IMeasurementSchema schema, long insertTime, Object objectValue);
 
   void write(InsertTabletPlan insertTabletPlan, int start, int end);
