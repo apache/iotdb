@@ -174,6 +174,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private static final String INFO_NOT_ALLOWED_IN_BATCH_ERROR =
       "The query statement is not allowed in batch: ";
 
+  private static final String INFO_INTERRUPT_ERROR = "Current Thread interrupted when dealing with request {}";
+
   private static final int MAX_SIZE =
       IoTDBDescriptor.getInstance().getConfig().getQueryCacheSizeInMetric();
   private static final int DELETE_SIZE = 20;
@@ -536,6 +538,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
               sessionIdUsernameMap.get(req.getSessionId()),
               req.isEnableRedirectQuery())
           : executeUpdateStatement(physicalPlan, req.getSessionId());
+    } catch (InterruptedException e) {
+      LOGGER.error(INFO_INTERRUPT_ERROR, req, e);
+      Thread.currentThread().interrupt();
+      return RpcUtils.getTSExecuteStatementResp(onQueryException(e, "executing executeStatement"));
     } catch (Exception e) {
       return RpcUtils.getTSExecuteStatementResp(onQueryException(e, "executing executeStatement"));
     }
@@ -564,6 +570,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
               req.isEnableRedirectQuery())
           : RpcUtils.getTSExecuteStatementResp(
               TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement.");
+    } catch (InterruptedException e) {
+      LOGGER.error(INFO_INTERRUPT_ERROR, req, e);
+      Thread.currentThread().interrupt();
+      return RpcUtils.getTSExecuteStatementResp(onQueryException(e, "executing executeStatement"));
     } catch (Exception e) {
       return RpcUtils.getTSExecuteStatementResp(
           onQueryException(e, "executing executeQueryStatement"));
@@ -590,6 +600,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
               req.isEnableRedirectQuery())
           : RpcUtils.getTSExecuteStatementResp(
               TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement.");
+    } catch (InterruptedException e) {
+      LOGGER.error(INFO_INTERRUPT_ERROR, req, e);
+      Thread.currentThread().interrupt();
+      return RpcUtils.getTSExecuteStatementResp(onQueryException(e, "executing executeStatement"));
     } catch (Exception e) {
       return RpcUtils.getTSExecuteStatementResp(
           onQueryException(e, "executing executeRawDataQuery"));
@@ -1019,6 +1033,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         queryTimeManager.unRegisterQuery(req.queryId);
         return resp;
       }
+    } catch (InterruptedException e) {
+      LOGGER.error(INFO_INTERRUPT_ERROR, req, e);
+      Thread.currentThread().interrupt();
+      return RpcUtils.getTSFetchResultsResp(
+          onNPEOrUnexpectedException(
+              e, "executing fetchResults", TSStatusCode.INTERNAL_SERVER_ERROR));
     } catch (Exception e) {
       releaseQueryResourceNoExceptions(req.queryId);
       return RpcUtils.getTSFetchResultsResp(
