@@ -21,7 +21,10 @@ public class SeekCostModel {
   /**
    * Read the empirical data from local file
    */
-  public static boolean readEmpiricalData() {
+  public static synchronized boolean readEmpiricalData() {
+    if (empiricalData.size() > 0) {
+      return true;
+    }
     String systemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
     String filename = systemDir + File.separator + "experiment" + File.separator +  "seek_time.csv";
     EMPIRICAL_SEEK_FILE = new File(filename);

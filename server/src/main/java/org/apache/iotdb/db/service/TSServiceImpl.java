@@ -1818,73 +1818,76 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public ReplicaSet multipleReplicaOptimize(String deviceID) throws TException {
-    MultiReplicaOrderOptimizer optimizer = new MultiReplicaOrderOptimizer(deviceID);
-    Pair<Replica[], Workload[]> result = optimizer.optimizeBySA();
-    ReplicaSet resultSet = new ReplicaSet();
-    resultSet.measurementOrders = new ArrayList<>();
-    resultSet.workloadPartition = new ArrayList<>();
-    for(int i = 0; i < result.left.length; ++i) {
-      Replica replica = result.left[i];
-      MeasurementOrder order = new MeasurementOrder();
-      order.deviceid = deviceID;
-      order.measurements = replica.getMeasurements();
-      resultSet.measurementOrders.add(order);
-      List<String> workloadStr = new ArrayList<>();
-      for(QueryRecord record : result.right[i].getRecords()) {
-        workloadStr.add(record.toString());
-      }
-      resultSet.workloadPartition.add(workloadStr);
-    }
-    return resultSet;
+//    MultiReplicaOrderOptimizer optimizer = new MultiReplicaOrderOptimizer(deviceID);
+//    Pair<Replica[], Workload[]> result = optimizer.optimizeBySA();
+//    ReplicaSet resultSet = new ReplicaSet();
+//    resultSet.measurementOrders = new ArrayList<>();
+//    resultSet.workloadPartition = new ArrayList<>();
+//    for(int i = 0; i < result.left.length; ++i) {
+//      Replica replica = result.left[i];
+//      MeasurementOrder order = new MeasurementOrder();
+//      order.deviceid = deviceID;
+//      order.measurements = replica.getMeasurements();
+//      resultSet.measurementOrders.add(order);
+//      List<String> workloadStr = new ArrayList<>();
+//      for(QueryRecord record : result.right[i].getRecords()) {
+//        workloadStr.add(record.toString());
+//      }
+//      resultSet.workloadPartition.add(workloadStr);
+//    }
+//    return resultSet;
+    return null;
   }
 
   @Override
   public ReplicaSet multipleReplicaOptimizeWithReplicaNum(String deviceID, int replicaNum) throws TException {
-    MultiReplicaOrderOptimizer optimizer = new MultiReplicaOrderOptimizer(deviceID, replicaNum);
-    Pair<Replica[], Workload[]> result = optimizer.optimizeBySA();
-    ReplicaSet resultSet = new ReplicaSet();
-    resultSet.measurementOrders = new ArrayList<>();
-    resultSet.workloadPartition = new ArrayList<>();
-    for(int i = 0; i < result.left.length; ++i) {
-      Replica replica = result.left[i];
-      MeasurementOrder order = new MeasurementOrder();
-      order.deviceid = deviceID;
-      order.measurements = replica.getMeasurements();
-      resultSet.measurementOrders.add(order);
-      List<String> workloadStr = new ArrayList<>();
-      for(QueryRecord record : result.right[i].getRecords()) {
-        workloadStr.add(record.toString());
-      }
-      resultSet.workloadPartition.add(workloadStr);
-    }
-    return resultSet;
+//    MultiReplicaOrderOptimizer optimizer = new MultiReplicaOrderOptimizer(deviceID, replicaNum);
+//    Pair<Replica[], Workload[]> result = optimizer.optimizeBySA();
+//    ReplicaSet resultSet = new ReplicaSet();
+//    resultSet.measurementOrders = new ArrayList<>();
+//    resultSet.workloadPartition = new ArrayList<>();
+//    for(int i = 0; i < result.left.length; ++i) {
+//      Replica replica = result.left[i];
+//      MeasurementOrder order = new MeasurementOrder();
+//      order.deviceid = deviceID;
+//      order.measurements = replica.getMeasurements();
+//      resultSet.measurementOrders.add(order);
+//      List<String> workloadStr = new ArrayList<>();
+//      for(QueryRecord record : result.right[i].getRecords()) {
+//        workloadStr.add(record.toString());
+//      }
+//      resultSet.workloadPartition.add(workloadStr);
+//    }
+//    return resultSet;
+    return null;
   }
 
   @Override
   public ReplicaSet multipleReplicaOptimizeWithChunkSize(String deviceID, String method) throws TException {
-    MultiReplicaOrderOptimizer optimizer = new MultiReplicaOrderOptimizer(deviceID);
-    Pair<Replica[], Workload[]> result = null;
-    if (method.equals("sa")) {
-       result = optimizer.optimizeBySAWithChunkSizeAdjustment();
-    } else if (method.equalsIgnoreCase("ga")) {
-      result = optimizer.optimizeByGAWithChunkSizeAdjustment();
-    }
-    ReplicaSet resultSet = new ReplicaSet();
-    resultSet.measurementOrders = new ArrayList<>();
-    resultSet.workloadPartition = new ArrayList<>();
-    for(int i = 0; i < result.left.length; ++i) {
-      Replica replica = result.left[i];
-      MeasurementOrder order = new MeasurementOrder();
-      order.deviceid = deviceID;
-      order.measurements = replica.getMeasurements();
-      resultSet.measurementOrders.add(order);
-      List<String> workloadStr = new ArrayList<>();
-      for(QueryRecord record : result.right[i].getRecords()) {
-        workloadStr.add(record.toString());
-      }
-      resultSet.workloadPartition.add(workloadStr);
-    }
-    return resultSet;
+//    MultiReplicaOrderOptimizer optimizer = new MultiReplicaOrderOptimizer(deviceID);
+//    Pair<Replica[], Workload[]> result = null;
+//    if (method.equals("sa")) {
+//       result = optimizer.optimizeBySAWithChunkSizeAdjustment();
+//    } else if (method.equalsIgnoreCase("ga")) {
+//      result = optimizer.optimizeByGAWithChunkSizeAdjustment();
+//    }
+//    ReplicaSet resultSet = new ReplicaSet();
+//    resultSet.measurementOrders = new ArrayList<>();
+//    resultSet.workloadPartition = new ArrayList<>();
+//    for(int i = 0; i < result.left.length; ++i) {
+//      Replica replica = result.left[i];
+//      MeasurementOrder order = new MeasurementOrder();
+//      order.deviceid = deviceID;
+//      order.measurements = replica.getMeasurements();
+//      resultSet.measurementOrders.add(order);
+//      List<String> workloadStr = new ArrayList<>();
+//      for(QueryRecord record : result.right[i].getRecords()) {
+//        workloadStr.add(record.toString());
+//      }
+//      resultSet.workloadPartition.add(workloadStr);
+//    }
+//    return resultSet;
+    return null;
   }
 
   @Override
@@ -1946,27 +1949,29 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public ConvergenceTestResult convergenceTest(String deviceID) throws TException {
-//    MultiReplicaOrderOptimizer optimizer = new MultiReplicaOrderOptimizer(deviceID);
-//    Pair<List<Double>, List<Long>> convergenceResultOfOurMethod = optimizer.optimizeBySAWithChunkSizeAdjustmentAndCostRecord();
+    MultiReplicaOrderOptimizer optimizer = new MultiReplicaOrderOptimizer(deviceID);
+//    Pair<List<Double>, List<Long>> result = MeasurementOrderOptimizer.getInstance().optimizeOrderBySAWithCostRecord(deviceID);
+    Pair<List<Double>, List<Long>> convergenceResultOfOurMethod = optimizer.optimizeBySAWithChunkSizeAdjustmentAndCostRecord();
 //    DivergentDesign divergentDesign = new DivergentDesign(deviceID);
-////    Pair<List<Double>, List<Long>> convergenceResultOfOriDivergentDesign = divergentDesign.optimizeWithCostRecord();
-////    Pair<List<Double>, List<Long>> convergenceResultOfNewDivergentDesign = divergentDesign.optimizeWithChunkSizeAndCostRecord();
-//    ConvergenceTestResult testResult = new ConvergenceTestResult();
-//    testResult.method = new ArrayList<>();
-////    testResult.method.add("Our Method");
-////    testResult.method.add("Ori DivergentDesign");
-////    testResult.method.add("New DivergentDesign");
+//    Pair<List<Double>, List<Long>> convergenceResultOfOriDivergentDesign = divergentDesign.optimizeWithCostRecord();
+//    Pair<List<Double>, List<Long>> convergenceResultOfNewDivergentDesign = divergentDesign.optimizeWithChunkSizeAndCostRecord();
+    ConvergenceTestResult testResult = new ConvergenceTestResult();
+    testResult.method = new ArrayList<>();
+//    testResult.method.add("DIVG+TCA");
+    testResult.method.add("Ori DivergentDesign");
+//    testResult.method.add("New DivergentDesign");
 //    testResult.method.add("Out separate method(Permutation first)");
-//    testResult.lost = new ArrayList<>();
-//    testResult.lost.add(convergenceResultOfOurMethod.left);
-////    testResult.lost.add(convergenceResultOfOriDivergentDesign.left);
-////    testResult.lost.add(convergenceResultOfNewDivergentDesign.left);
-//    testResult.time = new ArrayList<>();
-//    testResult.time.add(convergenceResultOfOurMethod.right);
-////    testResult.time.add(convergenceResultOfOriDivergentDesign.right);
-////    testResult.time.add(convergenceResultOfNewDivergentDesign.right);
-//    return testResult;
-    return null;
+    testResult.lost = new ArrayList<>();
+//    testResult.lost.add(result.left);
+    testResult.lost.add(convergenceResultOfOurMethod.left);
+//    testResult.lost.add(convergenceResultOfOriDivergentDesign.left);
+//    testResult.lost.add(convergenceResultOfNewDivergentDesign.left);
+    testResult.time = new ArrayList<>();
+//    testResult.time.add(result.right);
+    testResult.time.add(convergenceResultOfOurMethod.right);
+//    testResult.time.add(convergenceResultOfOriDivergentDesign.right);
+//    testResult.time.add(convergenceResultOfNewDivergentDesign.right);
+    return testResult;
   }
 
   @Override
@@ -1974,37 +1979,29 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     MultiReplicaOrderOptimizer optimizer = new MultiReplicaOrderOptimizer(deviceID);
     Pair<Replica[], Workload[]> optimizeResult = optimizer.optimizeBySAWithChunkSizeAdjustment();
     QueryCost queryCost = new QueryCost();
+    List<Double> costFirst = new ArrayList<>();
+    List<Double> costSecond = new ArrayList<>();
+    List<Double> costThird = new ArrayList<>();
     Replica[] replicas = optimizeResult.left;
-    Workload[] workloads = optimizeResult.right;
-    List<Double> oriCostList = new ArrayList<>();
-    List<Double> afterCostList = new ArrayList<>();
-    for(int i = 0; i < replicas.length; ++i) {
-      List<QueryRecord> records = workloads[i].getRecords();
-      Replica replica = replicas[i];
-      for(int j = 0; j < records.size(); ++j) {
+    for(Workload workload : optimizeResult.right) {
+      for(QueryRecord queryRecord : workload.getRecords()) {
         List<QueryRecord> tmpList = new ArrayList<>();
-        tmpList.add(records.get(j));
-        float oriCost = CostModel.approximateAggregationQueryCostWithTimeRange(tmpList,
-                replica.getMeasurements(), replica.getAverageChunkSize());
-        float afterCost = Float.MAX_VALUE;
-        for (int k = 0; k < replicas.length; ++k) {
-          if (k == i) {
-            continue;
-          }
-          afterCost = Float.min(afterCost,
-                  CostModel.approximateAggregationQueryCostWithTimeRange(tmpList, replicas[k].getMeasurements(),
-                          replicas[k].getAverageChunkSize()));
-        }
-        if (oriCost > afterCost) {
-          System.out.println(String.format("Replica %d, sql:%s", i, records.get(j).getSql()));
-        }
-        oriCostList.add((double) oriCost);
-        afterCostList.add((double) afterCost);
+        tmpList.add(queryRecord);
+        costFirst.add((double)CostModel.approximateAggregationQueryCostWithTimeRange(tmpList, replicas[0].getMeasurements(), replicas[0].getAverageChunkSize()));
+        costSecond.add((double)CostModel.approximateAggregationQueryCostWithTimeRange(tmpList, replicas[0].getMeasurements(), replicas[1].getAverageChunkSize()));
+        costThird.add((double)CostModel.approximateAggregationQueryCostWithTimeRange(tmpList, replicas[0].getMeasurements(), replicas[2].getAverageChunkSize()));
       }
     }
-    queryCost.oriCost = oriCostList;
-    queryCost.disableCost = afterCostList;
+    queryCost.firstCost = costFirst;
+    queryCost.secondCost = costSecond;
+    queryCost.thirdCost = costThird;
     return queryCost;
+  }
+
+  @Override
+  public List<Double> testWorkloadAdaption(String deviceID) throws TException {
+    MultiReplicaOrderOptimizer optimizer = new MultiReplicaOrderOptimizer(deviceID, 1);
+    return optimizer.testWorkloadAdaption();
   }
 
 

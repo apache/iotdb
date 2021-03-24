@@ -1373,6 +1373,26 @@ public class Session {
     }
   }
 
+  public List<Double> testWorkloadAdaption(String deviceID) throws IoTDBConnectionException{
+    List<Double> result = null;
+    try {
+      result = client.testWorkloadAdaption(deviceID);
+      return result;
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          result = client.testWorkloadAdaption(deviceID);
+          return result;
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(
+                "Fail to reconnect to server. Please check server status");
+      }
+    }
+  }
+
   public ReplicaSet runMultiReplicaOptimize(String deviceID) throws IoTDBConnectionException {
     ReplicaSet replicaSet = null;
     try {

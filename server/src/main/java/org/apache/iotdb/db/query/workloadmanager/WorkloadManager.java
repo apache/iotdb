@@ -78,9 +78,9 @@ public class WorkloadManager {
         }
         if (recordType.equals("group by")) {
           long startTime = record.getLong("startTime");
-          long endTime = record.getLong("endTime");
+          long endTime =  record.getLong("endTime");
           long interval = record.getLong("interval");
-          long slidingStep = record.getLong("slidingStep");
+          long slidingStep =  record.getLong("slidingStep");
           records.add(new GroupByQueryRecord(deviceID, measurements, ops, startTime, endTime, interval, slidingStep));
         } else {
           records.add(new AggregationQueryRecord(deviceID, measurements, ops));
