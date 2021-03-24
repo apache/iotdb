@@ -22,55 +22,52 @@ import static org.junit.Assert.fail;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
-public class TracingManagerTest {
+public class TracingClearAllManagerTest {
 
   private final String tracingDir = IoTDBDescriptor.getInstance().getConfig().getTracingDir();
-  // private TracingManager tracingManager;
   private final String sql = "select * from root.sg.device1 where time > 10";
   private final long queryId = 10;
 
   private Set<TsFileResource> seqResources = new HashSet<>();
 
-  @Before
-  public void setUp() {
-    // tracingManager = TracingManager.getInstance();
+  @BeforeClass
+  public static void setUp() throws ClassNotFoundException {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
-    prepareTsFileResources();
+    System.out.println("do Before");
   }
 
-  @After
-  public void tearDown() throws IOException, StorageEngineException {
+  @AfterClass
+  public static void tearDown() throws IOException, StorageEngineException, ClassNotFoundException {
+    System.out.println("do After");
     EnvironmentUtils.cleanEnv();
     // FileUtils.deleteDirectory(new File(tracingDir));
     // EnvironmentUtils.cleanAllDir();
   }
 
   @Test
-  public void tracingQueryTest() throws IOException, ClassNotFoundException {
+  public void tracingClearTest() throws IOException, ClassNotFoundException {
+    System.out.println("do Test");
     tracingSwitch("tracing on");
     TracingManager tracingManager = TracingManager.getInstance();
     // tracingManager.reOpenBufferedWriter(tracingDir, IoTDBConstant.TRACING_LOG);
@@ -88,39 +85,38 @@ public class TracingManagerTest {
       "Query Id: 10 - Average size of chunks: 1371",
       "Query Id: 10 - Total cost time: "
     };
-
     tracingManager.writeQueryInfo(queryId, sql, 1607529600000L);
     tracingManager.writePathsNum(queryId, 3);
     tracingManager.writeQueryInfo(queryId, sql, 1607529600000L, 3);
-    tracingManager.writeTsFileInfo(queryId, seqResources, Collections.EMPTY_SET);
     tracingManager.writeChunksInfo(queryId, 3, 4113L);
     tracingManager.writeEndTime(queryId);
-    // tracingManager.close();
+    tracingManager.close();
+    /*tracing clear all UT*/
     tracingSwitch("tracing off");
-    File tracingFile =
+    tracingManager.clearTracingAllInfo(tracingDir, IoTDBConstant.TRACING_LOG);
+    File tracingClearAllTestFile =
         SystemFileFactory.INSTANCE.getFile(tracingDir + File.separator + IoTDBConstant.TRACING_LOG);
-    BufferedReader bufferedReader = new BufferedReader(new FileReader(tracingFile));
-    String str;
-    int cnt = 0;
-    while ((str = bufferedReader.readLine()) != null) {
-      Assert.assertTrue(str.contains(ans[cnt++]));
+
+    Assert.assertTrue(tracingClearStatues(tracingClearAllTestFile));
+  }
+
+  public boolean tracingClearStatues(File tracingClearAllTestFile) throws IOException {
+    BufferedReader tracingClearAllTestBufferedReader = null;
+    try {
+      tracingClearAllTestBufferedReader =
+          new BufferedReader(new FileReader(tracingClearAllTestFile));
+      tracingClearAllTestBufferedReader.close();
+      return false;
+    } catch (FileNotFoundException e) {
+      return true;
+    } finally {
+      if (tracingClearAllTestBufferedReader != null) {
+        tracingClearAllTestBufferedReader.close();
+      }
     }
-    bufferedReader.close();
   }
 
-  void prepareTsFileResources() {
-    Map<String, Integer> deviceToIndex = new HashMap<>();
-    deviceToIndex.put("root.sg.d1", 0);
-    deviceToIndex.put("root.sg.d2", 1);
-    long[] startTimes = {1, 2};
-    long[] endTimes = {999, 998};
-    File file1 = new File(TestConstant.OUTPUT_DATA_DIR.concat("1-1-0.tsfile"));
-    TsFileResource tsFileResource1 = new TsFileResource(file1, deviceToIndex, startTimes, endTimes);
-    tsFileResource1.setClosed(true);
-    seqResources.add(tsFileResource1);
-  }
-
-  private void tracingSwitch(String sql) throws ClassNotFoundException {
+  private static void tracingSwitch(String sql) throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
             DriverManager.getConnection(

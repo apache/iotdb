@@ -24,7 +24,6 @@ import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.query.control.TracingManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -37,7 +36,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -1311,21 +1309,6 @@ public class IoTDBConfig {
 
   public void setEnablePerformanceTracing(boolean enablePerformanceTracing) {
     this.enablePerformanceTracing = enablePerformanceTracing;
-    if (!enablePerformanceTracing) {
-      try {
-        TracingManager.getInstance().close();
-      } catch (IOException e) {
-        logger.info("close Tracing stream error:{}" + e.getMessage());
-      }
-    } else {
-      Boolean writerStatus = TracingManager.getInstance().getWriterStatus();
-      if (!writerStatus) {
-        TracingManager.getInstance()
-            .reOpenBufferedWriter(
-                IoTDBDescriptor.getInstance().getConfig().getTracingDir(),
-                IoTDBConstant.TRACING_LOG);
-      }
-    }
   }
 
   public long getPerformanceStatDisplayInterval() {
