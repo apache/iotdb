@@ -31,12 +31,10 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -279,11 +277,11 @@ public class MNode implements Serializable {
     return children;
   }
 
-  public Set<MNode> getDistinctMNodes() {
+  public List<MNode> getDistinctMNodes() {
     if (children == null) {
-      return Collections.emptySet();
+      return Collections.emptyList();
     }
-    return new HashSet<>(children.values());
+    return new ArrayList<>(children.values());
   }
 
   public Map<String, MNode> getAliasChildren() {

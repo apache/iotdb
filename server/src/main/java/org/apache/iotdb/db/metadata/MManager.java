@@ -571,7 +571,7 @@ public class MManager {
    * Delete all timeseries under the given path, may cross different storage group
    *
    * @param prefixPath path to be deleted, could be root or a prefix path or a full path
-   * @return deletion failed Timeseries >>>>>>> cf081f9a1d0c48bcb02bc7dac2695483ac624eec
+   * @return deletion failed Timeseries
    */
   public String deleteTimeseries(PartialPath prefixPath) throws MetadataException {
     if (isStorageGroup(prefixPath)) {
@@ -588,10 +588,13 @@ public class MManager {
       MNode lastNode = getNodeByPath(allTimeseries.get(0));
       if (lastNode instanceof MeasurementMNode) {
         IMeasurementSchema schema = ((MeasurementMNode) lastNode).getSchema();
-        if (schema instanceof VectorMeasurementSchema
-            && schema.getValueMeasurementIdList().size() != allTimeseries.size()) {
-          throw new AlignedTimeseriesException(
-              "Not support deleting part of aligned timeseies!", prefixPath.getFullPath());
+        if (schema instanceof VectorMeasurementSchema) {
+          if (schema.getValueMeasurementIdList().size() != allTimeseries.size()) {
+            throw new AlignedTimeseriesException(
+                "Not support deleting part of aligned timeseies!", prefixPath.getFullPath());
+          } else {
+            allTimeseries.add(lastNode.getPartialPath());
+          }
         }
       }
 
@@ -670,11 +673,8 @@ public class MManager {
   }
 
   /**
-   * @param path full path from root to leaf node <<<<<<< HEAD
-   * @return pair.left: name of MNode which is deleted;pair.right: After delete if the storage group
-   *     is empty, return its path, otherwise return null =======
+   * @param path full path from root to leaf node
    * @return After delete if the storage group is empty, return its path, otherwise return null
-   *     >>>>>>> cf081f9a1d0c48bcb02bc7dac2695483ac624eec
    */
   private PartialPath deleteOneTimeseriesAndUpdateStatistics(PartialPath path)
       throws MetadataException, IOException {
@@ -1185,9 +1185,16 @@ public class MManager {
         }
         nodeToIndex.computeIfAbsent(node, k -> new ArrayList<>()).add(i);
       } else {
-        // if nodeToPartialPath contains node, it must be VectorPartialPath
-        ((VectorPartialPath) nodeToPartialPath.get(node)).addSubSensor(path);
-        nodeToIndex.get(node).add(i);
+        // if nodeToPartialPath contains node
+        String existPath = nodeToPartialPath.get(node).getFullPath();
+        if (existPath.equals(path.getFullPath())) {
+          // could be the same path in different aggregate functions
+          nodeToIndex.get(node).add(i);
+        } else {
+          // could be VectorPartialPath
+          ((VectorPartialPath) nodeToPartialPath.get(node)).addSubSensor(path);
+          nodeToIndex.get(node).add(i);
+        }
       }
     }
     Map<String, Integer> indexMap = new HashMap<>();
