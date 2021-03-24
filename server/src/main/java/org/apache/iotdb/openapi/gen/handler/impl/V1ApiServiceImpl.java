@@ -242,7 +242,7 @@ public class V1ApiServiceImpl extends V1ApiService {
     if (groupByFillPlan.getFills() != null && groupByFillPlan.getFills().size() > 0) {
       sql =
           String.format(
-              "select last_value(%s) FROM %s where time>=%d and time<%d group by ([%d, %d),%s) fill (%s[%s,%s]) limit 10000",
+              "select last_value(%s) FROM %s where time>=%d and time<%d group by ([%d, %d),%s) fill (%s[%s,%s])",
               path.substring(path.lastIndexOf('.') + 1),
               path.substring(0, path.lastIndexOf('.')),
               (long) (groupByFillPlan.getStime().longValue() * timePrecision),
@@ -256,7 +256,7 @@ public class V1ApiServiceImpl extends V1ApiService {
     } else {
       sql =
           String.format(
-              "select avg(%s) FROM %s where time>=%d and time<%d group by ([%d, %d),%s) limit 10000",
+              "select avg(%s) FROM %s where time>=%d and time<%d group by ([%d, %d),%s)",
               path.substring(path.lastIndexOf('.') + 1),
               path.substring(0, path.lastIndexOf('.')),
               (long) (groupByFillPlan.getStime().longValue() * timePrecision),
@@ -335,7 +335,7 @@ public class V1ApiServiceImpl extends V1ApiService {
         String timeser = Joiner.on(".").join(requestBody);
         path = new PartialPath(timeser);
         ShowTimeSeriesPlan showTimeSeriesPlan =
-            new ShowTimeSeriesPlan(path, false, null, null, 5000, 0, false);
+            new ShowTimeSeriesPlan(path, false, null, null, 0, 0, false);
         if (!AuthorityChecker.check(
             securityContext.getUserPrincipal().getName(),
             showTimeSeriesPlan.getPaths(),
