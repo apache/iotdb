@@ -26,7 +26,7 @@ public class DivergentDesign {
   private Replica[] replicas;
   private int replicaNum = 3;
   private int balanceFactor = 1;
-  private int maxIter = 2;
+  private int maxIter = 6;
   private float breakPoint = 1e-2f;
   private List<QueryRecord> queryRecords;
   private String deviceID;
@@ -226,7 +226,7 @@ public class DivergentDesign {
       ++i;
       nextCost = totalCost(nextWorkloadPartition, nextReplica);
       LOGGER.info(String.format("Epoch%d Cur cost: %.3f, New cost: %.3f", i, curCost, nextCost));
-    } while (i < maxIter  && System.currentTimeMillis() - startTime < 30l * 60l * 1000l);
+    } while (i < maxIter  && System.currentTimeMillis() - startTime < 60l * 60l * 1000l);
     curWorkloadPartition = nextWorkloadPartition;
     costList.add(nextCost);
     timeList.add(System.currentTimeMillis() - startTime);

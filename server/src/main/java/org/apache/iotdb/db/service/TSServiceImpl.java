@@ -2003,31 +2003,31 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     MethodCompareResult result = new MethodCompareResult();
     result.cost = new HashMap<>();
 
-//    List<Double> costForSCOA = new ArrayList<>();
-//    MeasurementOrderOptimizer SCOAOptimizer = MeasurementOrderOptimizer.getInstance();
-//    Pair<List<Double>, List<Long>> SCOAResult = SCOAOptimizer.optimizeOrderBySAWithCostRecord(deviceID);
-//    for(int i = 0; i < 5; ++i) {
-//      costForSCOA.add(SCOAResult.left.get(SCOAResult.left.size() - 1) / (i + 1));
-//    }
-//    result.cost.put("SCOA", costForSCOA);
-//
-//    List<Double> costForTRCA = new ArrayList<>();
-//    MultiReplicaOrderOptimizer optimizer1 = new MultiReplicaOrderOptimizer(deviceID, 1);
-//    Pair<List<Double>, List<Long>> singleReplicaResult = optimizer1.optimizeBySAWithChunkSizeAdjustmentAndCostRecord();
-//    costForTRCA.add(singleReplicaResult.left.get(singleReplicaResult.left.size() - 1));
-//    MultiReplicaOrderOptimizer optimizer2 = new MultiReplicaOrderOptimizer(deviceID, 2);
-//    Pair<List<Double>, List<Long>> twoReplicaResult = optimizer2.optimizeBySAWithChunkSizeAdjustmentAndCostRecord();
-//    costForTRCA.add(twoReplicaResult.left.get(twoReplicaResult.left.size() - 1));
-//    MultiReplicaOrderOptimizer optimizer3 = new MultiReplicaOrderOptimizer(deviceID, 3);
-//    Pair<List<Double>, List<Long>> threeReplicaResult = optimizer3.optimizeBySAWithChunkSizeAdjustmentAndCostRecord();
-//    costForTRCA.add(threeReplicaResult.left.get(threeReplicaResult.left.size() - 1));
-//    MultiReplicaOrderOptimizer optimizer4 = new MultiReplicaOrderOptimizer(deviceID, 4);
-//    Pair<List<Double>, List<Long>> fourReplicaResult = optimizer4.optimizeBySAWithChunkSizeAdjustmentAndCostRecord();
-//    costForTRCA.add(fourReplicaResult.left.get(fourReplicaResult.left.size() - 1));
-//    MultiReplicaOrderOptimizer optimizer5 = new MultiReplicaOrderOptimizer(deviceID, 5);
-//    Pair<List<Double>, List<Long>> fiveReplicaResult = optimizer5.optimizeBySAWithChunkSizeAdjustmentAndCostRecord();
-//    costForTRCA.add(fiveReplicaResult.left.get(fiveReplicaResult.left.size() - 1));
-//    result.cost.put("TRCA", costForTRCA);
+    List<Double> costForSCOA = new ArrayList<>();
+    MeasurementOrderOptimizer SCOAOptimizer = MeasurementOrderOptimizer.getInstance();
+    Pair<List<Double>, List<Long>> SCOAResult = SCOAOptimizer.optimizeOrderBySAWithCostRecord(deviceID);
+    for(int i = 0; i < 5; ++i) {
+      costForSCOA.add(SCOAResult.left.get(SCOAResult.left.size() - 1) / (i + 1));
+    }
+    result.cost.put("SCOA", costForSCOA);
+
+    List<Double> costForTRCA = new ArrayList<>();
+    MultiReplicaOrderOptimizer optimizer1 = new MultiReplicaOrderOptimizer(deviceID, 1);
+    Pair<List<Double>, List<Long>> singleReplicaResult = optimizer1.optimizeBySAWithChunkSizeAdjustmentAndCostRecord();
+    costForTRCA.add(singleReplicaResult.left.get(singleReplicaResult.left.size() - 1));
+    MultiReplicaOrderOptimizer optimizer2 = new MultiReplicaOrderOptimizer(deviceID, 2);
+    Pair<List<Double>, List<Long>> twoReplicaResult = optimizer2.optimizeBySAWithChunkSizeAdjustmentAndCostRecord();
+    costForTRCA.add(twoReplicaResult.left.get(twoReplicaResult.left.size() - 1));
+    MultiReplicaOrderOptimizer optimizer3 = new MultiReplicaOrderOptimizer(deviceID, 3);
+    Pair<List<Double>, List<Long>> threeReplicaResult = optimizer3.optimizeBySAWithChunkSizeAdjustmentAndCostRecord();
+    costForTRCA.add(threeReplicaResult.left.get(threeReplicaResult.left.size() - 1));
+    MultiReplicaOrderOptimizer optimizer4 = new MultiReplicaOrderOptimizer(deviceID, 4);
+    Pair<List<Double>, List<Long>> fourReplicaResult = optimizer4.optimizeBySAWithChunkSizeAdjustmentAndCostRecord();
+    costForTRCA.add(fourReplicaResult.left.get(fourReplicaResult.left.size() - 1));
+    MultiReplicaOrderOptimizer optimizer5 = new MultiReplicaOrderOptimizer(deviceID, 5);
+    Pair<List<Double>, List<Long>> fiveReplicaResult = optimizer5.optimizeBySAWithChunkSizeAdjustmentAndCostRecord();
+    costForTRCA.add(fiveReplicaResult.left.get(fiveReplicaResult.left.size() - 1));
+    result.cost.put("TRCA", costForTRCA);
 
     List<Double> costForDIVGWithSCOA = new ArrayList<>();
     DivergentDesign scoaDivergentDesign1 = new DivergentDesign(1, deviceID);

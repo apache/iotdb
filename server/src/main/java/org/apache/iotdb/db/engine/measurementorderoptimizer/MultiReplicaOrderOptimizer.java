@@ -14,7 +14,7 @@ import java.util.*;
 
 public class MultiReplicaOrderOptimizer {
 	private int replicaNum = 3;
-	private int maxIter = 60000;
+	private int maxIter = 800000;
 	private float breakPoint = 1e-2f;
 	private static final Logger LOGGER = LoggerFactory.getLogger(MultiReplicaOrderOptimizer.class);
 	private String deviceID;
@@ -202,7 +202,7 @@ public class MultiReplicaOrderOptimizer {
 		int k = 0;
 		CostRecorder costRecorder = new CostRecorder();
 		long startTime = System.currentTimeMillis();
-		for (; k < maxIter && System.currentTimeMillis() - optimizeStartTime < 5l * 60l * 1000l; ++k) {
+		for (; k < maxIter && System.currentTimeMillis() - optimizeStartTime < 15l * 60l * 1000l; ++k) {
 			temperature = temperature * COOLING_RATE;
 			int selectedReplica = r.nextInt(replicaNum);
 			int operation = r.nextInt(2);
