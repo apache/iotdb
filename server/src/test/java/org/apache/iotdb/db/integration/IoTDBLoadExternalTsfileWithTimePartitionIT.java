@@ -50,7 +50,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-public class IoTDBLoadExternalTsfileWithTimePartition {
+public class IoTDBLoadExternalTsfileWithTimePartitionIT {
 
   String DOT = ".";
   String tempDir = "temp";
