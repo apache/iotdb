@@ -447,7 +447,85 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         result.set(startIndex + entry.getKey(), entry.getValue());
       }
     }
-    return tsStatus.equals(RpcUtils.SUCCESS_STATUS);
+    return tsStatus.getCode() == RpcUtils.SUCCESS_STATUS.getCode();
+  }
+
+  private boolean executeMultiTimeSeriesPlan(
+      CreateMultiTimeSeriesPlan multiPlan, List<TSStatus> result) {
+    long t1 = System.currentTimeMillis();
+    TSStatus tsStatus = executeNonQueryPlan(multiPlan);
+    Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_ROWS_PLAN_IN_BATCH, t1);
+
+    int startIndex = result.size();
+    if (startIndex > 0) {
+      startIndex = startIndex - 1;
+    }
+    for (int k = 0; k < multiPlan.getPaths().size(); k++) {
+      result.add(RpcUtils.SUCCESS_STATUS);
+    }
+    if (tsStatus.subStatus != null) {
+      for (Entry<Integer, TSStatus> entry : multiPlan.getResults().entrySet()) {
+        result.set(startIndex + entry.getKey(), entry.getValue());
+      }
+    }
+    return tsStatus.getCode() == RpcUtils.SUCCESS_STATUS.getCode();
+  }
+
+  private void initMultiTimeSeriesPlan(CreateMultiTimeSeriesPlan multiPlan) {
+    if (multiPlan.getPaths() == null) {
+      List<PartialPath> paths = new ArrayList<>();
+      List<TSDataType> tsDataTypes = new ArrayList<>();
+      List<TSEncoding> tsEncodings = new ArrayList<>();
+      List<CompressionType> tsCompressionTypes = new ArrayList<>();
+      List<Map<String, String>> tagsList = new ArrayList<>();
+      List<Map<String, String>> attributesList = new ArrayList<>();
+      List<String> aliasList = new ArrayList<>();
+      multiPlan.setPaths(paths);
+      multiPlan.setDataTypes(tsDataTypes);
+      multiPlan.setEncodings(tsEncodings);
+      multiPlan.setCompressors(tsCompressionTypes);
+      multiPlan.setTags(tagsList);
+      multiPlan.setAttributes(attributesList);
+      multiPlan.setAlias(aliasList);
+    }
+  }
+
+  private void setMultiTimeSeriesPlan(
+      CreateMultiTimeSeriesPlan multiPlan, CreateTimeSeriesPlan createTimeSeriesPlan) {
+    PartialPath path = createTimeSeriesPlan.getPath();
+    TSDataType type = createTimeSeriesPlan.getDataType();
+    TSEncoding encoding = createTimeSeriesPlan.getEncoding();
+    CompressionType compressor = createTimeSeriesPlan.getCompressor();
+    Map<String, String> tags = createTimeSeriesPlan.getTags();
+    Map<String, String> attributes = createTimeSeriesPlan.getAttributes();
+    String alias = createTimeSeriesPlan.getAlias();
+
+    multiPlan.getPaths().add(path);
+    multiPlan.getDataTypes().add(type);
+    multiPlan.getEncodings().add(encoding);
+    multiPlan.getCompressors().add(compressor);
+    multiPlan.getTags().add(tags);
+    multiPlan.getAttributes().add(attributes);
+    multiPlan.getAlias().add(alias);
+  }
+
+  private boolean executeBatchList(ArrayList executeList, List<TSStatus> result) {
+    boolean isAllSuccessful = true;
+    if (executeList.size() > 0) {
+      for (int j = 0; j < executeList.size(); j++) {
+        Object planObject = executeList.get(j);
+        if (InsertRowsPlan.class.isInstance(planObject)) {
+          if (!executeInsertRowsPlan((InsertRowsPlan) planObject, result)) {
+            isAllSuccessful = false;
+          }
+        } else if (CreateMultiTimeSeriesPlan.class.isInstance(planObject)) {
+          if (!executeMultiTimeSeriesPlan((CreateMultiTimeSeriesPlan) planObject, result)) {
+            isAllSuccessful = false;
+          }
+        }
+      }
+    }
+    return isAllSuccessful;
   }
 
   @Override
@@ -459,18 +537,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
     }
 
-    InsertRowsPlan insertRowsPlan = new InsertRowsPlan();
+    InsertRowsPlan insertRowsPlan;
     int index = 0;
-
-    CreateMultiTimeSeriesPlan multiPlan = new CreateMultiTimeSeriesPlan();
-    List<PartialPath> paths = new ArrayList<>();
-    List<TSDataType> tsDataTypes = new ArrayList<>();
-    List<TSEncoding> tsEncodings = new ArrayList<>();
-    List<CompressionType> tsCompressionTypes = new ArrayList<>();
-    List<Map<String, String>> tagsList = new ArrayList<>();
-    List<Map<String, String>> attributesList = new ArrayList<>();
-    List<String> aliasList = new ArrayList<>();
-
+    ArrayList executeList = new ArrayList();
+    OperatorType lastOperatorType = null;
+    CreateMultiTimeSeriesPlan multiPlan;
     for (int i = 0; i < req.getStatements().size(); i++) {
       String statement = req.getStatements().get(i);
       try {
@@ -482,37 +553,59 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         }
 
         if (physicalPlan.getOperatorType().equals(OperatorType.INSERT)) {
+          if (lastOperatorType == null || OperatorType.INSERT == lastOperatorType) {
+            insertRowsPlan =
+                executeList.size() > 0
+                    ? (InsertRowsPlan) executeList.get(executeList.size() - 1)
+                    : new InsertRowsPlan();
+            if (lastOperatorType == null) {
+              executeList.add(insertRowsPlan);
+            }
+          } else {
+            insertRowsPlan = new InsertRowsPlan();
+            executeList.add(insertRowsPlan);
+            index = 0;
+          }
+          lastOperatorType = OperatorType.INSERT;
           insertRowsPlan.addOneInsertRowPlan((InsertRowPlan) physicalPlan, index);
           index++;
-          if (i == req.getStatements().size() - 1
-              && !executeInsertRowsPlan(insertRowsPlan, result)) {
-            isAllSuccessful = false;
-          }
-        } else if (physicalPlan.getOperatorType().equals(OperatorType.CREATE_TIMESERIES)) {
-
-          CreateTimeSeriesPlan createTimeSeriesPlan = (CreateTimeSeriesPlan) physicalPlan;
-          PartialPath path = createTimeSeriesPlan.getPath();
-          TSDataType type = createTimeSeriesPlan.getDataType();
-          TSEncoding encoding = createTimeSeriesPlan.getEncoding();
-          CompressionType compressor = createTimeSeriesPlan.getCompressor();
-          Map<String, String> tags = createTimeSeriesPlan.getTags();
-          Map<String, String> attributes = createTimeSeriesPlan.getAttributes();
-          String alias = createTimeSeriesPlan.getAlias();
-
-          paths.add(path);
-          tsDataTypes.add(type);
-          tsEncodings.add(encoding);
-          tsCompressionTypes.add(compressor);
-          tagsList.add(tags);
-          attributesList.add(attributes);
-          aliasList.add(alias);
-        } else {
-          if (insertRowsPlan.getRowCount() > 0) {
-            if (!executeInsertRowsPlan(insertRowsPlan, result)) {
+          if (i == req.getStatements().size() - 1) {
+            if (!executeBatchList(executeList, result)) {
               isAllSuccessful = false;
             }
-            index = 0;
-            insertRowsPlan = new InsertRowsPlan();
+            executeList = new ArrayList();
+          }
+        } else if (physicalPlan.getOperatorType().equals(OperatorType.CREATE_TIMESERIES)) {
+          if (lastOperatorType == null || OperatorType.CREATE_TIMESERIES == lastOperatorType) {
+            multiPlan =
+                executeList.size() > 0
+                    ? (CreateMultiTimeSeriesPlan) executeList.get(executeList.size() - 1)
+                    : new CreateMultiTimeSeriesPlan();
+            if (lastOperatorType == null) {
+              executeList.add(multiPlan);
+            }
+          } else {
+            multiPlan = new CreateMultiTimeSeriesPlan();
+            executeList.add(multiPlan);
+          }
+          lastOperatorType = OperatorType.CREATE_TIMESERIES;
+          initMultiTimeSeriesPlan(multiPlan);
+
+          CreateTimeSeriesPlan createTimeSeriesPlan = (CreateTimeSeriesPlan) physicalPlan;
+          setMultiTimeSeriesPlan(multiPlan, createTimeSeriesPlan);
+          if (i == req.getStatements().size() - 1) {
+            if (!executeBatchList(executeList, result)) {
+              isAllSuccessful = false;
+            }
+            executeList = new ArrayList();
+          }
+        } else {
+          lastOperatorType = physicalPlan.getOperatorType();
+          if (executeList.size() > 0) {
+            if (!executeBatchList(executeList, result)) {
+              isAllSuccessful = false;
+            }
+            executeList = new ArrayList();
           }
           long t2 = System.currentTimeMillis();
           TSExecuteStatementResp resp = executeUpdateStatement(physicalPlan, req.getSessionId());
@@ -523,6 +616,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           }
         }
       } catch (Exception e) {
+        LOGGER.error("Error occurred when executing executeBatchStatement: ", e);
         TSStatus status = tryCatchQueryException(e);
         if (status != null) {
           result.add(status);
@@ -534,30 +628,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         }
       }
     }
-    if (paths.size() > 0) {
-      multiPlan.setPaths(paths);
-      multiPlan.setDataTypes(tsDataTypes);
-      multiPlan.setEncodings(tsEncodings);
-      multiPlan.setCompressors(tsCompressionTypes);
-      multiPlan.setTags(tagsList);
-      multiPlan.setAttributes(attributesList);
-      multiPlan.setAlias(aliasList);
-      TSStatus status = executeNonQueryPlan(multiPlan);
-      if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        int startIndex = result.size();
-        if (startIndex > 0) {
-          startIndex = startIndex - 1;
-        }
-        for (int i = 0; i < paths.size(); i++) {
-          result.add(RpcUtils.SUCCESS_STATUS);
-        }
-        for (Entry<Integer, TSStatus> entry : multiPlan.getResults().entrySet()) {
-          result.set(startIndex + entry.getKey(), entry.getValue());
-        }
-        isAllSuccessful = false;
-      }
-    }
-
     Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_JDBC_BATCH, t1);
     return isAllSuccessful
         ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute batch statements successfully")
