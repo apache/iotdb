@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
+@SuppressWarnings("squid:S106")
 public class SessionExample {
 
   private static Session session;

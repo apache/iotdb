@@ -660,7 +660,7 @@ public class Session {
       if (connection == null) {
         throw new IoTDBConnectionException(tmp.get());
       }
-      defaultSessionConnection = endPointToSessionConnection.get(endPoint);
+      defaultSessionConnection = connection;
     }
   }
 
