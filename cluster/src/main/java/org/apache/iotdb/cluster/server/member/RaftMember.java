@@ -536,7 +536,7 @@ public abstract class RaftMember {
     for (ByteBuffer buffer : request.getEntries()) {
       buffer.mark();
       Log log;
-      logByteSize = buffer.array().length;
+      logByteSize = buffer.limit() - buffer.position();
       try {
         log = LogParser.getINSTANCE().parse(buffer);
         log.setByteSize(logByteSize);
@@ -1572,7 +1572,6 @@ public abstract class RaftMember {
       // single node group, no followers
       long startTime = Timer.Statistic.RAFT_SENDER_COMMIT_LOG.getOperationStartTime();
       logger.debug(MSG_LOG_IS_ACCEPTED, name, log);
-      log.setByteSize(log.serialize().array().length);
       commitLog(log);
       Timer.Statistic.RAFT_SENDER_COMMIT_LOG.calOperationCostTimeFromStart(startTime);
       return true;

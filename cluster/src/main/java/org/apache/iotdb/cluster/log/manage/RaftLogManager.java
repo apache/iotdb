@@ -595,11 +595,12 @@ public abstract class RaftLogManager {
       long newEntryMemSize = 0;
       for (Log entry : entries) {
         if (entry.getByteSize() == 0) {
-          logger.warn("{} should not go here, must be send to the follower, so the log has been serialized", entry);
-          newEntryMemSize += entry.serialize().array().length;
-        } else {
-          newEntryMemSize += entry.getByteSize();
+          logger.info(
+              "{} should not go here, must be send to the follower, "
+                  + "so the log has been serialized exclude single node",
+              entry);
         }
+        newEntryMemSize += entry.getByteSize();
       }
       int sizeToReserveForNew = minNumOfLogsInMem;
       if (newEntryMemSize + committedEntryManager.getEntryTotalMemSize() > maxLogMemSize) {
