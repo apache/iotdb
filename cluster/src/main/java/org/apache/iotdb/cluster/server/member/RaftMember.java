@@ -953,7 +953,7 @@ public abstract class RaftMember {
 
       log.setPlan(plan);
       plan.setIndex(log.getCurrLogIndex());
-      log.setByteSize(log.serialize().array().length);
+      // appendLogInGroup will serialize log, and set log size, and we will use the size after it
       logManager.append(log);
     }
     Timer.Statistic.RAFT_SENDER_APPEND_LOG.calOperationCostTimeFromStart(startTime);
@@ -987,9 +987,9 @@ public abstract class RaftMember {
       log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
       log.setPlan(plan);
       plan.setIndex(log.getCurrLogIndex());
-      log.setByteSize(log.serialize().array().length);
 
       startTime = Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.getOperationStartTime();
+      // logDispatcher will serialize log, and set log size, and we will use the size after it
       logManager.append(log);
       Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.calOperationCostTimeFromStart(startTime);
 
@@ -1481,7 +1481,9 @@ public abstract class RaftMember {
     AppendEntryRequest request = new AppendEntryRequest();
     request.setTerm(term.get());
     if (serializeNow) {
-      request.setEntry(log.serialize());
+      ByteBuffer byteBuffer = log.serialize();
+      log.setByteSize(byteBuffer.array().length);
+      request.setEntry(byteBuffer);
     }
     request.setLeader(getThisNode());
     // don't need lock because even if it's larger than the commitIndex when appending this log to
@@ -1570,6 +1572,7 @@ public abstract class RaftMember {
       // single node group, no followers
       long startTime = Timer.Statistic.RAFT_SENDER_COMMIT_LOG.getOperationStartTime();
       logger.debug(MSG_LOG_IS_ACCEPTED, name, log);
+      log.setByteSize(log.serialize().array().length);
       commitLog(log);
       Timer.Statistic.RAFT_SENDER_COMMIT_LOG.calOperationCostTimeFromStart(startTime);
       return true;
