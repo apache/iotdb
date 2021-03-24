@@ -1201,7 +1201,18 @@ public class MManager {
     int i = 0;
     for (List<Integer> indexList : nodeToIndex.values()) {
       for (int index : indexList) {
-        indexMap.put(fullPaths.get(i).getFullPath(), index);
+        PartialPath partialPath = fullPaths.get(i);
+        if (indexMap.containsKey(partialPath.getFullPath())) {
+          throw new MetadataException(
+              "Query for measurement and its alias at the same time!", true);
+        }
+        indexMap.put(partialPath.getFullPath(), index);
+        if (partialPath.isMeasurementAliasExists()) {
+          indexMap.put(partialPath.getFullPathWithAlias(), index);
+        }
+        if (partialPath.isTsAliasExists()) {
+          indexMap.put(partialPath.getTsAlias(), index);
+        }
         i++;
       }
     }

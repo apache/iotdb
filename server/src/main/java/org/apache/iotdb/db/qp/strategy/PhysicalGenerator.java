@@ -944,6 +944,10 @@ public class PhysicalGenerator {
       ((UDTFPlan) queryPlan).setPathNameToReaderIndex(pathNameToReaderIndex);
     }
 
+    if (queryPlan instanceof AggregationPlan) {
+      return;
+    }
+
     // support vector
     List<PartialPath> deduplicatedPaths = rawDataQueryPlan.getDeduplicatedPaths();
     Pair<List<PartialPath>, Map<String, Integer>> pair =
