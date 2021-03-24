@@ -20,6 +20,7 @@ package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -56,8 +57,8 @@ public class IoTDBLoadExternalTsfileWithTimePartitionIT {
   String tempDir = "temp";
 
   String STORAGE_GROUP = "root.ln";
-  String[] devices = new String[] {"d1", "d2"};
-  String[] measurements = new String[] {"s1", "s2"};
+  String[] devices = new String[]{"d1", "d2"};
+  String[] measurements = new String[]{"s1", "s2"};
 
   // generate several tsfiles, with timestamp from startTime(inclusive) to endTime(exclusive)
   long startTime = 0;
@@ -67,6 +68,7 @@ public class IoTDBLoadExternalTsfileWithTimePartitionIT {
 
   boolean originalIsEnablePartition;
   long originalPartitionInterval;
+
 
   IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -96,12 +98,16 @@ public class IoTDBLoadExternalTsfileWithTimePartitionIT {
     }
   }
 
-  /** get the name of tsfile given counter */
+  /**
+   * get the name of tsfile given counter
+   */
   String getName(int counter) {
     return tempDir + File.separator + System.currentTimeMillis() + "-" + counter + "-0.tsfile";
   }
 
-  /** write a record, given timestamp */
+  /**
+   * write a record, given timestamp
+   */
   void writeData(TsFileWriter tsFileWriter, long timestamp)
       throws IOException, WriteProcessException {
     for (String deviceId : devices) {
@@ -114,7 +120,9 @@ public class IoTDBLoadExternalTsfileWithTimePartitionIT {
     }
   }
 
-  /** register all timeseries in tsfiles */
+  /**
+   * register all timeseries in tsfiles
+   */
   void register(TsFileWriter tsFileWriter) {
     try {
       for (String deviceId : devices) {
@@ -129,7 +137,9 @@ public class IoTDBLoadExternalTsfileWithTimePartitionIT {
     }
   }
 
-  /** create multiple tsfiles, each correspond to a time partition. */
+  /**
+   * create multiple tsfiles, each correspond to a time partition.
+   */
   private void prepareData() {
     File dir = new File(tempDir);
     if (dir.exists()) {
@@ -164,10 +174,12 @@ public class IoTDBLoadExternalTsfileWithTimePartitionIT {
   @Test
   public void loadTsfileWithTimePartition() {
     try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       statement.execute(String.format("load \"%s\"", new File(tempDir).getAbsolutePath()));
+
+      long k = StorageEngine.getTimePartitionInterval();
 
       String dataDir = config.getDataDirs()[0];
       File f =
