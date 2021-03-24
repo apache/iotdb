@@ -17,7 +17,7 @@ public class MeasurePointEstimator {
   private final File EMPIRICAL_FILE;
   private static final Logger LOGGER = LoggerFactory.getLogger(MeasurePointEstimator.class);
   // Pair<ChunkSize, MeasurementPointNum>
-  List<Pair<Long, Integer>> empiricalData = new ArrayList<>();
+  List<Pair<Long, Long>> empiricalData = new ArrayList<>();
 
   public static class MeasurePointEstimatorHolder {
     private static final MeasurePointEstimator estimator = new MeasurePointEstimator();
@@ -50,7 +50,7 @@ public class MeasurePointEstimator {
       while (reader.readRecord()) {
         String chunkSize = reader.get("ChunkSize");
         String pointNum = reader.get("PointNum");
-        empiricalData.add(new Pair<>(stringDataToBytes(chunkSize), Integer.valueOf(pointNum)));
+        empiricalData.add(new Pair<>(stringDataToBytes(chunkSize), Long.valueOf(pointNum)));
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -86,7 +86,7 @@ public class MeasurePointEstimator {
    * @param chunkSize: The number of byte of the chunk size
    * @return The number of the measure point.
    */
-  public int getMeasurePointNum(long chunkSize) {
+  public Long getMeasurePointNum(long chunkSize) {
     if (empiricalData.size() == 0) {
       readEmpiricalData();
     }
@@ -98,33 +98,36 @@ public class MeasurePointEstimator {
         double dx = chunkSize - empiricalData.get(i).left;
         double result = empiricalData.get(i).right;
         result += (dx / deltaX) * deltaY;
-        return (int) result;
+        return (long)result;
       }
     }
     if (chunkSize == empiricalData.get(empiricalData.size() - 1).left) {
       return empiricalData.get(empiricalData.size() - 1).right;
     }
     if (chunkSize > empiricalData.get(empiricalData.size() - 1).left) {
-      LOGGER.error("ChunkSize " + chunkSize + " is too large");
-    } else if (chunkSize < 0) {
-      LOGGER.error("ChunkSize " + chunkSize + " is invalid");
+      Pair<Long,Long> last = empiricalData.get(empiricalData.size() - 1);
+      return (long) (chunkSize / last.left * (long)last.right);
     }
-    return -1;
+    return -1l;
   }
 
-  public long getChunkSize(int measurementPoint) {
+  public long getChunkSize(long measurementPoint) {
     if (empiricalData.size() == 0) {
       readEmpiricalData();
     }
     long resultChunkSize = -1l;
     for (int i = 0; i < empiricalData.size() - 1; ++i) {
-      Pair<Long, Integer> curPair = empiricalData.get(i);
-      Pair<Long, Integer> nextPair = empiricalData.get(i + 1);
+      Pair<Long, Long> curPair = empiricalData.get(i);
+      Pair<Long, Long> nextPair = empiricalData.get(i + 1);
       if (measurementPoint >= curPair.right && measurementPoint <= nextPair.right) {
         resultChunkSize = curPair.left;
         resultChunkSize += (long)((float)(measurementPoint - curPair.right) / (float) (nextPair.right - curPair.right) * (float)(nextPair.left - curPair.left));
         break;
       }
+    }
+    if (resultChunkSize == -1) {
+      Pair<Long, Long> last = empiricalData.get(empiricalData.size() - 1);
+      resultChunkSize = (long)(measurementPoint / last.right) * last.left;
     }
     return resultChunkSize;
   }

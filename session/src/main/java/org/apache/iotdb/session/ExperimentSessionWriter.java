@@ -18,11 +18,11 @@ import java.util.List;
 import java.util.Random;
 
 public class ExperimentSessionWriter {
-  private static final Session session = new Session("192.168.130.38", 6667, "root", "root");
+  private static final Session session = new Session("127.0.0.1", 6667, "root", "root");
   //private static final Session session = new Session("127.0.0.1", 6667, "root", "root");
   private static final int TIMESERIES_NUM = 4000;
   private static int DATA_NUM = 10000;
-  private static final File COST_LOG_FILE = new File(".\\convergence_result_chunk.txt");
+  private static final File COST_LOG_FILE = new File(".\\TRCA.txt");
 //  private static final File CHUNK_SIZE_OPT_LOG_FILE = new File("E:\\Thing\\Workspace\\IoTDB\\res\\ChunkSizeOpt.txt");
   private static final File REPLICA_DEAD_FILE = new File(".\\replica_dead.txt");
   private static OutputStream COST_LOG_STREAM;
@@ -173,7 +173,8 @@ public class ExperimentSessionWriter {
   static void testMultipleReplicaSAWithChunkSize(int replicaNum) {
     try {
       long startTime = System.currentTimeMillis();
-      ReplicaSet replicaSet = session.runMultiReplicaOptimizeWithChunkSize("root.test.device", replicaNum);
+      String device = "root.B023";
+      ReplicaSet replicaSet = session.runMultiReplicaOptimizeWithChunkSize("root.B023", replicaNum);
       StringBuilder sb = new StringBuilder();
       for(double cost : replicaSet.costList) {
         sb.append(cost);
@@ -202,7 +203,8 @@ public class ExperimentSessionWriter {
   static void testDivergentDesign(int replicaNum) {
     try {
       long startTime = System.currentTimeMillis();
-      ReplicaSet replicaSet = session.runDivergentDesign("root.test.device", replicaNum);
+      String device = "root.B023.DSS13";
+      ReplicaSet replicaSet = session.runDivergentDesign("root.B023", replicaNum);
       long lastTime = System.currentTimeMillis() - startTime;
       System.out.println(lastTime / 1000l + " s");
     } catch (Exception e) {
@@ -243,7 +245,6 @@ public class ExperimentSessionWriter {
         for(int j = 0; j < testResult.time.get(i).size(); ++j) {
           sb.append(String.format("%s %.2f\n", String.valueOf(testResult.time.get(i).get(j)), testResult.lost.get(i).get(j)));
         }
-        sb.append("\n");
       }
       COST_LOG_STREAM.write(sb.toString().getBytes(StandardCharsets.UTF_8));
       COST_LOG_STREAM.close();
@@ -263,18 +264,35 @@ public class ExperimentSessionWriter {
       }
       OutputStream os = new FileOutputStream(REPLICA_DEAD_FILE);
       StringBuilder sb = new StringBuilder();
-      sb.append("OriCost\n");
-      for(int i = 0; i < costList.oriCost.size(); ++i) {
-        sb.append(costList.oriCost.get(i));
-        sb.append('\n');
+      sb.append("First\n");
+      for(Double cost : costList.firstCost) {
+        sb.append(cost + "\n");
       }
-      sb.append("deadCost\n");
-      for(int i = 0; i < costList.disableCost.size(); ++i) {
-        sb.append(costList.disableCost.get(i));
-        if (i != costList.disableCost.size() - 1) sb.append('\n');
+      sb.append("Second\n");
+      for(Double cost : costList.secondCost) {
+        sb.append(cost + "\n");
+      }
+      sb.append("Third\n");
+      for(Double cost : costList.thirdCost) {
+        sb.append(cost + "\n");
       }
       os.write(sb.toString().getBytes(StandardCharsets.UTF_8));
       os.close();
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+
+  public static void workloadAdaption(String deviceID) {
+    try {
+      List<Double> result = session.testWorkloadAdaption(deviceID);
+      StringBuilder sb = new StringBuilder();
+      for(int i = 0; i < result.size(); ++i) {
+        sb.append(result.get(i));
+        if (i != result.size() - 1) sb.append('\n');
+      }
+      COST_LOG_STREAM.write(sb.toString().getBytes(StandardCharsets.UTF_8));
+      COST_LOG_STREAM.close();
     } catch (Exception e) {
       e.printStackTrace();
     }

@@ -10,6 +10,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.workloadmanager.Workload;
 import org.apache.iotdb.db.query.workloadmanager.WorkloadManager;
+import org.apache.iotdb.db.query.workloadmanager.queryrecord.GroupByQueryRecord;
 import org.apache.iotdb.db.query.workloadmanager.queryrecord.QueryRecord;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -32,11 +33,11 @@ public class MeasurementOrderOptimizer {
   Map<String, Integer> chunkGroupCountMap = new HashMap<>();
   List<QueryRecord> queryRecords = new ArrayList<>();
   final float CHUNK_SIZE_UPPER_BOUND = 2.0f;
-  final float CHUNK_SIZE_LOWER_BOUND = 0.5f;
+  final float CHUNK_SIZE_LOWER_BOUND = 0.8f;
   long averageChunkSize;
-  public static final int SA_MAX_ITERATION = 15000;
+  public static final int SA_MAX_ITERATION = 100000;
   public static final float SA_INIT_TEMPERATURE = 2.0f;
-  public static final float SA_COOLING_RATE = 0.02f;
+  public static final float SA_COOLING_RATE = 0.01f;
   private static final Logger LOGGER = LoggerFactory.getLogger(MeasurementOrderOptimizer.class);
 
   private MeasurementOrderOptimizer() {
@@ -301,7 +302,7 @@ public class MeasurementOrderOptimizer {
    * 10. endfor
    * 11. return S;
    */
-  private void optimizeOrderBySA(String deviceID) {
+  public void optimizeOrderBySA(String deviceID) {
     if (queryRecords.size() == 0) {
       getQueryRecordFromManager();
     }
@@ -326,7 +327,7 @@ public class MeasurementOrderOptimizer {
     Random r = new Random();
     long startTime = System.currentTimeMillis();
     // Run the main loop of Simulated Annealing
-    for (int k = 0; k < SA_MAX_ITERATION && System.currentTimeMillis() - startTime < 30l * 60l * 1000l; ++k) {
+    for (int k = 0; System.currentTimeMillis() - startTime < 120l * 60l * 1000l; ++k) {
       temperature = updateTemperature(temperature);
 
       // Generate a neighbor state
@@ -357,12 +358,82 @@ public class MeasurementOrderOptimizer {
         swap(curMeasurementOrder, swapPosFirst, swapPosSecond);
         swap(chunkSize, swapPosFirst, swapPosSecond);
       }
-      if (k % 500 == 0) {
+      if (k % 1000 == 0) {
         LOGGER.info(String.format("Epoch %d: Cur cost %.3f", k, curCost));
       }
     }
 
     measurementsMap.put(deviceID, curMeasurementOrder);
+    LOGGER.info(String.format("Final cost: .3f", curCost));
+  }
+
+  public Pair<List<Double>, List<Long>> optimizeOrderBySAWithCostRecord(String deviceID) {
+    if (queryRecords.size() == 0) {
+      getQueryRecordFromManager();
+    }
+    List<QueryRecord> queryRecordsForCurDevice = new ArrayList<>();
+    // Collect the query for current device
+    for (QueryRecord queryRecord : queryRecords) {
+      if (queryRecord.getDevice().equals(deviceID)) {
+        queryRecordsForCurDevice.add(queryRecord);
+      }
+    }
+    List<String> curMeasurementOrder = measurementsMap.get(deviceID);
+
+    // Collect the chunksize for current device
+    List<Long> chunkSize = new ArrayList<>();
+    Map<String, Long> chunkSizeMapForCurDevice = chunkMap.get(deviceID);
+    for (String measurement : curMeasurementOrder) {
+      chunkSize.add(chunkSizeMapForCurDevice.get(measurement));
+    }
+    float curCost = CostModel.
+            approximateAggregationQueryCostWithTimeRange(queryRecordsForCurDevice, curMeasurementOrder, chunkSize);
+    float temperature = SA_INIT_TEMPERATURE;
+    List<Double> costList = new ArrayList<>();
+    List<Long> timeList = new ArrayList<>();
+    costList.add((double)curCost);
+    timeList.add(0l);
+    Random r = new Random();
+    long startTime = System.currentTimeMillis();
+    // Run the main loop of Simulated Annealing
+    for (int k = 0; System.currentTimeMillis() - startTime < 30l * 60l * 1000l; ++k) {
+      temperature = updateTemperature(temperature);
+
+      // Generate a neighbor state
+      int swapPosFirst = 0;
+      int swapPosSecond = 0;
+      while (swapPosSecond == swapPosFirst) {
+        swapPosFirst = r.nextInt();
+        swapPosFirst = swapPosFirst < 0 ? -swapPosFirst : swapPosFirst;
+        swapPosFirst %= curMeasurementOrder.size();
+        swapPosSecond = r.nextInt();
+        swapPosSecond = swapPosSecond < 0 ? -swapPosSecond : swapPosSecond;
+        swapPosSecond %= curMeasurementOrder.size();
+      }
+      swap(curMeasurementOrder, swapPosFirst, swapPosSecond);
+      swap(chunkSize, swapPosFirst, swapPosSecond);
+
+      float newCost = CostModel.
+              approximateAggregationQueryCostWithTimeRange(queryRecordsForCurDevice, curMeasurementOrder, chunkSize);
+      float probability = r.nextFloat();
+      probability = probability < 0 ? -probability : probability;
+      probability %= 1.0;
+      if (newCost < curCost ||
+              Math.exp((curCost - newCost) / temperature) > probability) {
+        // Accept the new status
+        curCost = newCost;
+      } else {
+        // Recover the origin status
+        swap(curMeasurementOrder, swapPosFirst, swapPosSecond);
+        swap(chunkSize, swapPosFirst, swapPosSecond);
+      }
+      timeList.add(System.currentTimeMillis() - startTime);
+      costList.add((double)curCost);
+      if (k % 1000 == 0) {
+        LOGGER.info(String.format("Epoch %d: Cur cost %.3f", k, curCost));
+      }
+    }
+    return new Pair<>(costList, timeList);
   }
 
   /**
@@ -372,7 +443,7 @@ public class MeasurementOrderOptimizer {
   private void optimizeChunkSizeBySA(String deviceID) {
     List<String> measurementOrder = measurementsMap.get(deviceID);
     // measurementID -> <ChunkSize, MeasurePointNumber>
-    Map<String, Pair<Long, Integer>> chunkConfigMap = new HashMap<>();
+    Map<String, Pair<Long, Long>> chunkConfigMap = new HashMap<>();
     for (String measurementId : measurementOrder) {
       long chunkSize = chunkMap.get(deviceID).get(measurementId);
       chunkConfigMap.put(measurementId,
@@ -440,7 +511,7 @@ public class MeasurementOrderOptimizer {
     Random r = new Random();
     long startTime = System.currentTimeMillis();
     // Run the main loop of Simulated Annealing
-    for (int k = 0; k < SA_MAX_ITERATION && System.currentTimeMillis() - startTime < 30l * 60l * 1000l; ++k) {
+    for (int k = 0; k < SA_MAX_ITERATION && System.currentTimeMillis() - startTime < 10l * 60l * 1000l; ++k) {
       temperature = updateTemperature(temperature);
 
       // Generate a neighbor state
@@ -484,6 +555,24 @@ public class MeasurementOrderOptimizer {
     return optimizedReplica;
   }
 
+  private Pair<Long, Long> getChunkSizeBound(List<QueryRecord> records) {
+    long lowerBound = Long.MAX_VALUE;
+    long upperBound = Long.MIN_VALUE;
+    for (QueryRecord record : records) {
+      if (record instanceof GroupByQueryRecord) {
+        long visitLength = ((GroupByQueryRecord) record).getVisitLength();
+        long visitChunkSize = MeasurePointEstimator.getInstance().getChunkSize((int) visitLength);
+        if (visitChunkSize * CHUNK_SIZE_LOWER_BOUND < lowerBound) {
+          lowerBound = (long) (visitChunkSize * CHUNK_SIZE_LOWER_BOUND);
+        }
+        if (visitChunkSize * CHUNK_SIZE_UPPER_BOUND > upperBound) {
+          upperBound = (long) (visitChunkSize * CHUNK_SIZE_UPPER_BOUND);
+        }
+      }
+    }
+    return new Pair<>(lowerBound, upperBound);
+  }
+
   public Replica getOptimalReplicaWithChunkSizeAdjustment(Workload workload, String deviceID) {
     List<QueryRecord> queryRecordsForCurDevice = workload.getRecords();
     List<String> curMeasurementOrder = new ArrayList<>(measurementsMap.get(deviceID));
@@ -503,20 +592,21 @@ public class MeasurementOrderOptimizer {
             approximateAggregationQueryCostWithTimeRange(queryRecordsForCurDevice, curMeasurementOrder, averageChunkSize);
     float temperature = SA_INIT_TEMPERATURE;
     Random r = new Random();
-    long chunkSizeUpperBound = (long) (averageChunkSize * CHUNK_SIZE_UPPER_BOUND);
-    long chunkSizeLowerBound = (long) (averageChunkSize * CHUNK_SIZE_LOWER_BOUND);
+    Pair<Long, Long> chunkBound = getChunkSizeBound(workload.getRecords());
+    long chunkSizeUpperBound = chunkBound.right;
+    long chunkSizeLowerBound = chunkBound.left;
     long startTime = System.currentTimeMillis();
 
     // Run the main loop of Simulated Annealing
-    for (int k = 0; k < SA_MAX_ITERATION && System.currentTimeMillis() - startTime < 30l * 60l * 1000l; ++k) {
+    for (int k = 0; k < SA_MAX_ITERATION && System.currentTimeMillis() - startTime < 5l * 60l * 1000l; ++k) {
       temperature = updateTemperature(temperature);
 
       // Generate a neighbor state
       int op = r.nextInt(2);
-      if (op == 0) {
+      if (op == 0 && curMeasurementOrder.size() > 1) {
         int swapPosFirst = 0;
         int swapPosSecond = 0;
-        while (swapPosSecond == swapPosFirst) {
+        while (swapPosSecond == swapPosFirst ) {
           swapPosFirst = r.nextInt();
           swapPosFirst = swapPosFirst < 0 ? -swapPosFirst : swapPosFirst;
           swapPosFirst %= curMeasurementOrder.size();
@@ -555,8 +645,8 @@ public class MeasurementOrderOptimizer {
           curCost = newCost;
           averageChunkSize = newChunkSize;
         }
-        if (k % 500 == 0) {
-          LOGGER.info(String.format("epoch%d cuCost: %.3f", k, curCost));
+        if (k % 1000 == 0) {
+          LOGGER.info(String.format("epoch%d curCost: %.3f", k, curCost));
         }
       }
     }

@@ -308,8 +308,9 @@ struct ChunkSizeOptimizationResult {
 }
 
 struct QueryCost {
-    1: required list<double> oriCost;
-    2: required list<double> disableCost;
+    1: required list<double> firstCost;
+    2: required list<double> secondCost;
+    3: required list<double> thirdCost;
 }
 
 struct ConvergenceTestResult {
@@ -417,4 +418,5 @@ service TSIService {
 
   QueryCost testReplicaDead(1:string deviceID);
 
+  list<double> testWorkloadAdaption(1:string deviceID);
 }
