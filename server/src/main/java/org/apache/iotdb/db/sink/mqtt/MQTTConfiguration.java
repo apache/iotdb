@@ -22,10 +22,7 @@ package org.apache.iotdb.db.sink.mqtt;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.sink.api.Configuration;
 
-import org.apache.commons.lang3.builder.EqualsBuilder;
-import org.apache.commons.lang3.builder.HashCodeBuilder;
-
-public class MQTTConfiguration extends Configuration {
+public class MQTTConfiguration implements Configuration {
 
   private final String host;
   private final int port;
@@ -37,14 +34,12 @@ public class MQTTConfiguration extends Configuration {
   private final String[] measurements;
 
   public MQTTConfiguration(
-      String id,
       String host,
       int port,
       String username,
       String password,
       PartialPath device,
       String[] measurements) {
-    super(id);
     this.host = host;
     this.port = port;
     this.username = username;
@@ -75,41 +70,5 @@ public class MQTTConfiguration extends Configuration {
 
   public PartialPath getDevice() {
     return device;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-
-    if (!(o instanceof MQTTConfiguration)) {
-      return false;
-    }
-
-    MQTTConfiguration that = (MQTTConfiguration) o;
-
-    return new EqualsBuilder()
-        .appendSuper(super.equals(o))
-        .append(port, that.port)
-        .append(host, that.host)
-        .append(username, that.username)
-        .append(password, that.password)
-        .append(device, that.device)
-        .append(measurements, that.measurements)
-        .isEquals();
-  }
-
-  @Override
-  public int hashCode() {
-    return new HashCodeBuilder(17, 37)
-        .appendSuper(super.hashCode())
-        .append(host)
-        .append(port)
-        .append(username)
-        .append(password)
-        .append(device)
-        .append(measurements)
-        .toHashCode();
   }
 }
