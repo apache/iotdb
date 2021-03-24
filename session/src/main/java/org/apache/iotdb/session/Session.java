@@ -1553,4 +1553,24 @@ public class Session {
     }
   }
 
+  public MethodCompareResult compareMethod(String deviceID) throws IoTDBConnectionException {
+    MethodCompareResult result = null;
+    try {
+      result = client.compareMethod(deviceID);
+      return result;
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          result = client.compareMethod(deviceID);
+          return result;
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(
+                "Fail to reconnect to server. Please check server status");
+      }
+    }
+  }
+
 }

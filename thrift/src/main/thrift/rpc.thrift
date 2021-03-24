@@ -319,6 +319,10 @@ struct ConvergenceTestResult {
     3: required list<list<i64>> time;
 }
 
+struct MethodCompareResult {
+    1: required map<string, list<double>> cost;
+}
+
 service TSIService {
 	TSOpenSessionResp openSession(1:TSOpenSessionReq req);
 
@@ -419,4 +423,6 @@ service TSIService {
   QueryCost testReplicaDead(1:string deviceID);
 
   list<double> testWorkloadAdaption(1:string deviceID);
+
+  MethodCompareResult compareMethod(1:string deviceID);
 }

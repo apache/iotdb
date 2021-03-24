@@ -25,13 +25,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.Executors;
@@ -1952,9 +1946,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     MultiReplicaOrderOptimizer optimizer = new MultiReplicaOrderOptimizer(deviceID);
 //    Pair<List<Double>, List<Long>> result = MeasurementOrderOptimizer.getInstance().optimizeOrderBySAWithCostRecord(deviceID);
     Pair<List<Double>, List<Long>> convergenceResultOfOurMethod = optimizer.optimizeBySAWithChunkSizeAdjustmentAndCostRecord();
-//    DivergentDesign divergentDesign = new DivergentDesign(deviceID);
-//    Pair<List<Double>, List<Long>> convergenceResultOfOriDivergentDesign = divergentDesign.optimizeWithCostRecord();
-//    Pair<List<Double>, List<Long>> convergenceResultOfNewDivergentDesign = divergentDesign.optimizeWithChunkSizeAndCostRecord();
+    DivergentDesign divergentDesign = new DivergentDesign(deviceID);
+    Pair<List<Double>, List<Long>> convergenceResultOfOriDivergentDesign = divergentDesign.optimizeWithCostRecord();
+    Pair<List<Double>, List<Long>> convergenceResultOfNewDivergentDesign = divergentDesign.optimizeWithChunkSizeAndCostRecord();
     ConvergenceTestResult testResult = new ConvergenceTestResult();
     testResult.method = new ArrayList<>();
 //    testResult.method.add("DIVG+TCA");
@@ -1963,14 +1957,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 //    testResult.method.add("Out separate method(Permutation first)");
     testResult.lost = new ArrayList<>();
 //    testResult.lost.add(result.left);
-    testResult.lost.add(convergenceResultOfOurMethod.left);
+//    testResult.lost.add(convergenceResultOfOurMethod.left);
 //    testResult.lost.add(convergenceResultOfOriDivergentDesign.left);
-//    testResult.lost.add(convergenceResultOfNewDivergentDesign.left);
+    testResult.lost.add(convergenceResultOfNewDivergentDesign.left);
     testResult.time = new ArrayList<>();
 //    testResult.time.add(result.right);
-    testResult.time.add(convergenceResultOfOurMethod.right);
+//    testResult.time.add(convergenceResultOfOurMethod.right);
 //    testResult.time.add(convergenceResultOfOriDivergentDesign.right);
-//    testResult.time.add(convergenceResultOfNewDivergentDesign.right);
+    testResult.time.add(convergenceResultOfNewDivergentDesign.right);
     return testResult;
   }
 
@@ -2002,6 +1996,75 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   public List<Double> testWorkloadAdaption(String deviceID) throws TException {
     MultiReplicaOrderOptimizer optimizer = new MultiReplicaOrderOptimizer(deviceID, 1);
     return optimizer.testWorkloadAdaption();
+  }
+
+  @Override
+  public MethodCompareResult compareMethod(String deviceID) throws TException {
+    MethodCompareResult result = new MethodCompareResult();
+    result.cost = new HashMap<>();
+
+//    List<Double> costForSCOA = new ArrayList<>();
+//    MeasurementOrderOptimizer SCOAOptimizer = MeasurementOrderOptimizer.getInstance();
+//    Pair<List<Double>, List<Long>> SCOAResult = SCOAOptimizer.optimizeOrderBySAWithCostRecord(deviceID);
+//    for(int i = 0; i < 5; ++i) {
+//      costForSCOA.add(SCOAResult.left.get(SCOAResult.left.size() - 1) / (i + 1));
+//    }
+//    result.cost.put("SCOA", costForSCOA);
+//
+//    List<Double> costForTRCA = new ArrayList<>();
+//    MultiReplicaOrderOptimizer optimizer1 = new MultiReplicaOrderOptimizer(deviceID, 1);
+//    Pair<List<Double>, List<Long>> singleReplicaResult = optimizer1.optimizeBySAWithChunkSizeAdjustmentAndCostRecord();
+//    costForTRCA.add(singleReplicaResult.left.get(singleReplicaResult.left.size() - 1));
+//    MultiReplicaOrderOptimizer optimizer2 = new MultiReplicaOrderOptimizer(deviceID, 2);
+//    Pair<List<Double>, List<Long>> twoReplicaResult = optimizer2.optimizeBySAWithChunkSizeAdjustmentAndCostRecord();
+//    costForTRCA.add(twoReplicaResult.left.get(twoReplicaResult.left.size() - 1));
+//    MultiReplicaOrderOptimizer optimizer3 = new MultiReplicaOrderOptimizer(deviceID, 3);
+//    Pair<List<Double>, List<Long>> threeReplicaResult = optimizer3.optimizeBySAWithChunkSizeAdjustmentAndCostRecord();
+//    costForTRCA.add(threeReplicaResult.left.get(threeReplicaResult.left.size() - 1));
+//    MultiReplicaOrderOptimizer optimizer4 = new MultiReplicaOrderOptimizer(deviceID, 4);
+//    Pair<List<Double>, List<Long>> fourReplicaResult = optimizer4.optimizeBySAWithChunkSizeAdjustmentAndCostRecord();
+//    costForTRCA.add(fourReplicaResult.left.get(fourReplicaResult.left.size() - 1));
+//    MultiReplicaOrderOptimizer optimizer5 = new MultiReplicaOrderOptimizer(deviceID, 5);
+//    Pair<List<Double>, List<Long>> fiveReplicaResult = optimizer5.optimizeBySAWithChunkSizeAdjustmentAndCostRecord();
+//    costForTRCA.add(fiveReplicaResult.left.get(fiveReplicaResult.left.size() - 1));
+//    result.cost.put("TRCA", costForTRCA);
+
+    List<Double> costForDIVGWithSCOA = new ArrayList<>();
+    DivergentDesign scoaDivergentDesign1 = new DivergentDesign(1, deviceID);
+    Pair<List<Double>, List<Long>> scoaDIVG1Res = scoaDivergentDesign1.optimizeWithCostRecord();
+    costForDIVGWithSCOA.add(scoaDIVG1Res.left.get(scoaDIVG1Res.left.size() - 1));
+    DivergentDesign scoaDivergentDesign2 = new DivergentDesign(2, deviceID);
+    Pair<List<Double>, List<Long>> scoaDIVG2Res = scoaDivergentDesign2.optimizeWithCostRecord();
+    costForDIVGWithSCOA.add(scoaDIVG2Res.left.get(scoaDIVG2Res.left.size() - 1));
+    DivergentDesign scoaDivergentDesign3 = new DivergentDesign(3, deviceID);
+    Pair<List<Double>, List<Long>> scoaDIVG3Res = scoaDivergentDesign3.optimizeWithCostRecord();
+    costForDIVGWithSCOA.add(scoaDIVG3Res.left.get(scoaDIVG3Res.left.size() - 1));
+    DivergentDesign scoaDivergentDesign4 = new DivergentDesign(4, deviceID);
+    Pair<List<Double>, List<Long>> scoaDIVG4Res = scoaDivergentDesign4.optimizeWithCostRecord();
+    costForDIVGWithSCOA.add(scoaDIVG4Res.left.get(scoaDIVG4Res.left.size() - 1));
+    DivergentDesign scoaDivergentDesign5 = new DivergentDesign(5, deviceID);
+    Pair<List<Double>, List<Long>> scoaDIVG5Res = scoaDivergentDesign5.optimizeWithCostRecord();
+    costForDIVGWithSCOA.add(scoaDIVG5Res.left.get(scoaDIVG5Res.left.size() - 1));
+    result.cost.put("DIVG+SCOA", costForDIVGWithSCOA);
+
+    List<Double> costForDIVGWithTCA = new ArrayList<>();
+    DivergentDesign tcaDIVG1 = new DivergentDesign(1, deviceID);
+    Pair<List<Double>, List<Long>> tcaDIVG1Res = tcaDIVG1.optimizeWithChunkSizeAndCostRecord();
+    costForDIVGWithTCA.add(tcaDIVG1Res.left.get(tcaDIVG1Res.left.size() - 1));
+    DivergentDesign tcaDIVG2 = new DivergentDesign(2, deviceID);
+    Pair<List<Double>, List<Long>> tcaDIVG2Res = tcaDIVG2.optimizeWithChunkSizeAndCostRecord();
+    costForDIVGWithTCA.add(tcaDIVG2Res.left.get(tcaDIVG2Res.left.size() - 1));
+    DivergentDesign tcaDIVG3 = new DivergentDesign(3, deviceID);
+    Pair<List<Double>, List<Long>> tcaDIVG3Res = tcaDIVG3.optimizeWithChunkSizeAndCostRecord();
+    costForDIVGWithTCA.add(tcaDIVG3Res.left.get(tcaDIVG3Res.left.size() - 1));
+    DivergentDesign tcaDIVG4 = new DivergentDesign(4, deviceID);
+    Pair<List<Double>, List<Long>> tcaDIVG4Res = tcaDIVG4.optimizeWithChunkSizeAndCostRecord();
+    costForDIVGWithTCA.add(tcaDIVG4Res.left.get(tcaDIVG4Res.left.size() - 1));
+    DivergentDesign tcaDIVG5 = new DivergentDesign(5, deviceID);
+    Pair<List<Double>, List<Long>> tcaDIVG5Res = tcaDIVG5.optimizeWithChunkSizeAndCostRecord();
+    costForDIVGWithTCA.add(tcaDIVG5Res.left.get(tcaDIVG5Res.left.size() - 1));
+    result.cost.put("DIVG+TCA", costForDIVGWithTCA);
+    return result;
   }
 
 

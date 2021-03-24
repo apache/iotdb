@@ -183,6 +183,13 @@ public class MultiReplicaOrderOptimizer {
 	}
 
 	public Pair<List<Double>, List<Long>> optimizeBySAWithChunkSizeAdjustmentAndCostRecord() {
+//		List<QueryRecord> tmpList = new ArrayList<>();
+//		for(int i = 0; i < records.size(); ++i) {
+//			if (((GroupByQueryRecord)records.get(i)).getVisitLength() == 1000l){
+//				tmpList.add(records.get(i));
+//			}
+//		}
+//		records = tmpList;
 		double curCost = getCostAndWorkloadPartitionForCurReplicas(records, replicas).left;
 		LOGGER.info("Ori cost: " + curCost);
 		Pair<Long, Long> chunkBound = getChunkSizeBound(records);
@@ -195,7 +202,7 @@ public class MultiReplicaOrderOptimizer {
 		int k = 0;
 		CostRecorder costRecorder = new CostRecorder();
 		long startTime = System.currentTimeMillis();
-		for (; k < maxIter && System.currentTimeMillis() - optimizeStartTime < 20l * 60l * 1000l; ++k) {
+		for (; k < maxIter && System.currentTimeMillis() - optimizeStartTime < 5l * 60l * 1000l; ++k) {
 			temperature = temperature * COOLING_RATE;
 			int selectedReplica = r.nextInt(replicaNum);
 			int operation = r.nextInt(2);
