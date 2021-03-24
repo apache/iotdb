@@ -26,7 +26,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import java.io.IOException;
 import java.util.NoSuchElementException;
 
-public class AssignPathManagedMergeReader extends MultPriorityMergeReader
+public class AssignPathManagedMergeReader extends AssignPathPriorityMergeReader
     implements ManagedSeriesReader {
 
   private static final int BATCH_SIZE = 4096;

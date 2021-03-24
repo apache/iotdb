@@ -28,11 +28,11 @@ import java.io.IOException;
  * This class extends {@link extends PriorityMergeReader} for data sources with different
  * priorities.
  */
-public class MultPriorityMergeReader extends PriorityMergeReader {
+public class AssignPathPriorityMergeReader extends PriorityMergeReader {
 
   private String fullPath;
 
-  public MultPriorityMergeReader(String fullPath) {
+  public AssignPathPriorityMergeReader(String fullPath) {
     super();
     this.fullPath = fullPath;
   }

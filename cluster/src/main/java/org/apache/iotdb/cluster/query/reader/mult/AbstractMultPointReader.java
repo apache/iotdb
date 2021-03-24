@@ -32,17 +32,38 @@ public abstract class AbstractMultPointReader implements IPointReader {
 
   public abstract Set<String> getAllPaths();
 
+  /**
+   * do not support this method
+   *
+   * @return only false
+   * @throws IOException
+   */
   @Override
+  @Deprecated
   public boolean hasNextTimeValuePair() throws IOException {
     return false;
   }
 
+  /**
+   * do not support this method
+   *
+   * @return only null
+   * @throws IOException
+   */
   @Override
+  @Deprecated
   public TimeValuePair nextTimeValuePair() throws IOException {
     return null;
   }
 
+  /**
+   * do not support this method
+   *
+   * @return only null
+   * @throws IOException
+   */
   @Override
+  @Deprecated
   public TimeValuePair currentTimeValuePair() throws IOException {
     return null;
   }

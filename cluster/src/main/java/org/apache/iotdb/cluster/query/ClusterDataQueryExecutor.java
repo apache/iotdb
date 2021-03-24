@@ -70,7 +70,6 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
    * @param context query context
    * @return query data set
    * @throws StorageEngineException
-   * @throws QueryProcessException
    */
   @Override
   public QueryDataSet executeWithoutValueFilter(QueryContext context)

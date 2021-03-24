@@ -158,7 +158,8 @@ public class LocalQueryExecutor {
   /**
    * Fetch a batch from the reader whose id is "readerId".
    *
-   * @param readerId
+   * @param readerId reader id
+   * @param paths mult series path
    */
   public Map<String, ByteBuffer> fetchMultSeries(long readerId, List<String> paths)
       throws ReaderNotFoundException, IOException {
