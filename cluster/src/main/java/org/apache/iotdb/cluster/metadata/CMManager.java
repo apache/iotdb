@@ -285,8 +285,7 @@ public class CMManager extends MManager {
     List<MeasurementSchema> schemas = metaPuller.pullMeasurementSchemas(schemasToPull);
     for (MeasurementSchema schema : schemas) {
       // TODO-Cluster: also pull alias?
-      // take care, the pulled schema's measurement Id is the full path
-      schema.setMeasurementId(new PartialPath(schema.getMeasurementId()).getMeasurement());
+      // take care, the pulled schema's measurement Id is only series name
       MeasurementMNode measurementMNode =
           new MeasurementMNode(null, schema.getMeasurementId(), schema, null);
       cacheMeta(deviceId.concatNode(schema.getMeasurementId()), measurementMNode);
