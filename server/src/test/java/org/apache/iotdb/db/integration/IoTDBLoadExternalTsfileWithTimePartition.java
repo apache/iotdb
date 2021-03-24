@@ -18,12 +18,6 @@
  */
 package org.apache.iotdb.db.integration;
 
-import java.io.File;
-import java.io.IOException;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.sql.Statement;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
@@ -43,10 +37,18 @@ import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.File;
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
 
 public class IoTDBLoadExternalTsfileWithTimePartition {
 
@@ -54,14 +56,14 @@ public class IoTDBLoadExternalTsfileWithTimePartition {
   String tempDir = "temp";
 
   String STORAGE_GROUP = "root.ln";
-  String[] devices = new String[]{"d1", "d2"};
-  String[] measurements = new String[]{"s1", "s2"};
+  String[] devices = new String[] {"d1", "d2"};
+  String[] measurements = new String[] {"s1", "s2"};
 
   // generate several tsfiles, with timestamp from startTime(inclusive) to endTime(exclusive)
   long startTime = 0;
   long endTime = 1000000;
 
-  long timePartition = 100_000;// unit ms
+  long timePartition = 100; // unit sec
 
   boolean originalIsEnablePartition;
   long originalPartitionInterval;
@@ -94,22 +96,16 @@ public class IoTDBLoadExternalTsfileWithTimePartition {
     }
   }
 
-  /**
-   * get the name of tsfile given counter
-   */
+  /** get the name of tsfile given counter */
   String getName(int counter) {
-    return tempDir + File.separator + System.currentTimeMillis() + "-" + counter
-        + "-0.tsfile";
+    return tempDir + File.separator + System.currentTimeMillis() + "-" + counter + "-0.tsfile";
   }
 
-  /**
-   * write a record, given timestamp
-   */
+  /** write a record, given timestamp */
   void writeData(TsFileWriter tsFileWriter, long timestamp)
       throws IOException, WriteProcessException {
     for (String deviceId : devices) {
-      TSRecord tsRecord = new TSRecord(timestamp,
-          STORAGE_GROUP + DOT + deviceId);
+      TSRecord tsRecord = new TSRecord(timestamp, STORAGE_GROUP + DOT + deviceId);
       for (String measurement : measurements) {
         DataPoint dPoint = new LongDataPoint(measurement, 10000);
         tsRecord.addTuple(dPoint);
@@ -118,9 +114,7 @@ public class IoTDBLoadExternalTsfileWithTimePartition {
     }
   }
 
-  /**
-   * register all timeseries in tsfiles
-   */
+  /** register all timeseries in tsfiles */
   void register(TsFileWriter tsFileWriter) {
     try {
       for (String deviceId : devices) {
@@ -135,9 +129,7 @@ public class IoTDBLoadExternalTsfileWithTimePartition {
     }
   }
 
-  /**
-   * create multiple tsfiles, each correspond to a time partition.
-   */
+  /** create multiple tsfiles, each correspond to a time partition. */
   private void prepareData() {
     File dir = new File(tempDir);
     if (dir.exists()) {
@@ -149,7 +141,7 @@ public class IoTDBLoadExternalTsfileWithTimePartition {
       TsFileWriter tsFileWriter = null;
       int counter = 0;
       for (long timestamp = startTime; timestamp < endTime; timestamp += 1000) {
-        if (timestamp % timePartition == 0) {
+        if (timestamp % (timePartition * 1000) == 0) {
           if (tsFileWriter != null) {
             tsFileWriter.flushAllChunkGroups();
             tsFileWriter.close();
@@ -167,33 +159,32 @@ public class IoTDBLoadExternalTsfileWithTimePartition {
     } catch (Throwable e) {
       e.printStackTrace();
     }
-
   }
-
 
   @Test
   public void loadTsfileWithTimePartition() {
     try (Connection connection =
-        DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       statement.execute(String.format("load \"%s\"", new File(tempDir).getAbsolutePath()));
 
       String dataDir = config.getDataDirs()[0];
-      File f = new File(dataDir,
-          new PartialPath("sequence") + File.separator + "root.ln" + File.separator + "0");
-      Assert.assertEquals((endTime - startTime) / timePartition, f.list().length);
+      File f =
+          new File(
+              dataDir,
+              new PartialPath("sequence") + File.separator + "root.ln" + File.separator + "0");
+      Assert.assertEquals((endTime - startTime) / (timePartition * 1000), f.list().length);
 
-      for (int i = 0; i < (endTime - startTime) / timePartition; i++) {
+      for (int i = 0; i < (endTime - startTime) / (timePartition * 1000); i++) {
         Assert.assertEquals("" + i, f.list()[i]);
       }
       // each time partition folder should contain 2 files, the tsfile and the resource file
-      for (int i = 0; i < (endTime - startTime) / timePartition; i++) {
+      for (int i = 0; i < (endTime - startTime) / (timePartition * 1000); i++) {
         Assert.assertEquals(2, new File(f.getAbsolutePath(), "" + i).list().length);
       }
     } catch (SQLException | IllegalPathException throwables) {
       throwables.printStackTrace();
     }
   }
-
 }
