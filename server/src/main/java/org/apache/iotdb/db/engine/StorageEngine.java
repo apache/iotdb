@@ -122,7 +122,6 @@ public class StorageEngine implements IService {
   private ExecutorService recoverAllSgThreadPool;
 
 
-
   static class InstanceHolder {
 
     private InstanceHolder() {
@@ -143,27 +142,14 @@ public class StorageEngine implements IService {
   private List<CloseFileListener> customCloseFileListeners = new ArrayList<>();
   private List<FlushListener> customFlushListeners = new ArrayList<>();
 
-  /**
-   * Time range for dividing storage group, the time unit is the same with IoTDB's
-   * TimestampPrecision
-   */
-  @ServerConfigConsistent
-  private static long timePartitionInterval = -1;
-
-  /**
-   * whether enable data partition if disabled, all data belongs to partition 0
-   */
-  @ServerConfigConsistent
-  private static boolean enablePartition =
-      IoTDBDescriptor.getInstance().getConfig().isEnablePartition();
 
   private StorageEngine() {
     logger = LoggerFactory.getLogger(StorageEngine.class);
     systemDir = FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
 
     // build time Interval to divide time partition
-    if (!enablePartition) {
-      timePartitionInterval = Long.MAX_VALUE;
+    if (!config.isEnablePartition()) {
+      config.setPartitionInterval(Long.MAX_VALUE);
     } else {
       initTimePartition();
     }
@@ -225,8 +211,8 @@ public class StorageEngine implements IService {
   }
 
   private static void initTimePartition() {
-    timePartitionInterval = convertMilliWithPrecision(IoTDBDescriptor.getInstance().
-        getConfig().getPartitionInterval() * 1000L);
+    config.setPartitionInterval(convertMilliWithPrecision(IoTDBDescriptor.getInstance().
+        getConfig().getPartitionInterval() * 1000L));
   }
 
   public static long convertMilliWithPrecision(long milliTime) {
@@ -386,7 +372,8 @@ public class StorageEngine implements IService {
 
   public void insert(InsertRowsOfOneDevicePlan insertRowsOfOneDevicePlan)
       throws StorageEngineException {
-    StorageGroupProcessor storageGroupProcessor = getProcessor(insertRowsOfOneDevicePlan.getDeviceId());
+    StorageGroupProcessor storageGroupProcessor = getProcessor(
+        insertRowsOfOneDevicePlan.getDeviceId());
 
     // TODO monitor: update statistics
     try {
@@ -729,19 +716,19 @@ public class StorageEngine implements IService {
   }
 
   public static long getTimePartitionInterval() {
-    if (timePartitionInterval == -1) {
+    if (config.getPartitionInterval() == -1) {
       initTimePartition();
     }
-    return timePartitionInterval;
+    return config.getPartitionInterval();
   }
 
   @TestOnly
   public static void setTimePartitionInterval(long timePartitionInterval) {
-    StorageEngine.timePartitionInterval = timePartitionInterval;
+    config.setPartitionInterval(timePartitionInterval);
   }
 
   public static long getTimePartition(long time) {
-    return enablePartition ? time / timePartitionInterval : 0;
+    return config.isEnablePartition() ? time / config.getPartitionInterval() : 0;
   }
 
   /**
@@ -795,12 +782,12 @@ public class StorageEngine implements IService {
 
   @TestOnly
   public static void setEnablePartition(boolean enablePartition) {
-    StorageEngine.enablePartition = enablePartition;
+    config.setEnablePartition(enablePartition);
   }
 
   @TestOnly
   public static boolean isEnablePartition() {
-    return enablePartition;
+    return config.isEnablePartition();
   }
 
   /**
@@ -855,8 +842,9 @@ public class StorageEngine implements IService {
       try {
         TimeUnit.MILLISECONDS.sleep(config.getCheckPeriodWhenInsertBlocked());
         if (System.currentTimeMillis() - startTime > config.getMaxWaitingTimeWhenInsertBlocked()) {
-          throw new WriteProcessRejectException("System rejected over " + config.getMaxWaitingTimeWhenInsertBlocked() +
-              "ms");
+          throw new WriteProcessRejectException(
+              "System rejected over " + config.getMaxWaitingTimeWhenInsertBlocked() +
+                  "ms");
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
