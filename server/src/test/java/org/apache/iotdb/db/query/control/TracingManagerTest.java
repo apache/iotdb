@@ -96,15 +96,6 @@ public class TracingManagerTest {
       Assert.assertTrue(str.contains(ans[cnt++]));
     }
     bufferedReader.close();
-
-    /*tracing clear all UT*/
-    tracingManager.clearTracingAllInfo(tracingDir, IoTDBConstant.TRACING_LOG);
-    File tracingClearAllTestFile =
-        SystemFileFactory.INSTANCE.getFile(tracingDir + File.separator + IoTDBConstant.TRACING_LOG);
-    BufferedReader tracingClearAllTestBufferedReader =
-        new BufferedReader(new FileReader(tracingClearAllTestFile));
-    Assert.assertTrue(tracingClearAllTestBufferedReader.readLine() == null);
-    tracingClearAllTestBufferedReader.close();
   }
 
   void prepareTsFileResources() {
