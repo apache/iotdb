@@ -24,19 +24,14 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.sink.api.Configuration;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import org.apache.commons.lang3.builder.EqualsBuilder;
-import org.apache.commons.lang3.builder.HashCodeBuilder;
-
-public class TimeSeriesConfiguration extends Configuration {
+public class TimeSeriesConfiguration implements Configuration {
 
   private final PartialPath device;
   private final String[] measurements;
   private final TSDataType[] dataTypes;
 
-  public TimeSeriesConfiguration(
-      String id, String device, String[] measurements, TSDataType[] dataTypes)
+  public TimeSeriesConfiguration(String device, String[] measurements, TSDataType[] dataTypes)
       throws IllegalPathException {
-    super(id);
     this.device = new PartialPath(device);
     this.measurements = measurements;
     this.dataTypes = dataTypes;
@@ -52,35 +47,5 @@ public class TimeSeriesConfiguration extends Configuration {
 
   public TSDataType[] getDataTypes() {
     return dataTypes;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-
-    if (!(o instanceof TimeSeriesConfiguration)) {
-      return false;
-    }
-
-    TimeSeriesConfiguration that = (TimeSeriesConfiguration) o;
-
-    return new EqualsBuilder()
-        .appendSuper(super.equals(o))
-        .append(device, that.device)
-        .append(measurements, that.measurements)
-        .append(dataTypes, that.dataTypes)
-        .isEquals();
-  }
-
-  @Override
-  public int hashCode() {
-    return new HashCodeBuilder(17, 37)
-        .appendSuper(super.hashCode())
-        .append(device)
-        .append(measurements)
-        .append(dataTypes)
-        .toHashCode();
   }
 }
