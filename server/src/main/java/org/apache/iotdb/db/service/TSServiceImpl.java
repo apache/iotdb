@@ -553,14 +553,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         }
 
         if (physicalPlan.getOperatorType().equals(OperatorType.INSERT)) {
-          if (lastOperatorType == null || OperatorType.INSERT == lastOperatorType) {
-            insertRowsPlan =
-                executeList.size() > 0
-                    ? (InsertRowsPlan) executeList.get(executeList.size() - 1)
-                    : new InsertRowsPlan();
-            if (lastOperatorType == null) {
-              executeList.add(insertRowsPlan);
-            }
+          if (OperatorType.INSERT == lastOperatorType) {
+            insertRowsPlan = (InsertRowsPlan) executeList.get(executeList.size() - 1);
           } else {
             insertRowsPlan = new InsertRowsPlan();
             executeList.add(insertRowsPlan);
@@ -576,14 +570,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
             executeList = new ArrayList();
           }
         } else if (physicalPlan.getOperatorType().equals(OperatorType.CREATE_TIMESERIES)) {
-          if (lastOperatorType == null || OperatorType.CREATE_TIMESERIES == lastOperatorType) {
-            multiPlan =
-                executeList.size() > 0
-                    ? (CreateMultiTimeSeriesPlan) executeList.get(executeList.size() - 1)
-                    : new CreateMultiTimeSeriesPlan();
-            if (lastOperatorType == null) {
-              executeList.add(multiPlan);
-            }
+          if (OperatorType.CREATE_TIMESERIES == lastOperatorType) {
+            multiPlan = (CreateMultiTimeSeriesPlan) executeList.get(executeList.size() - 1);
           } else {
             multiPlan = new CreateMultiTimeSeriesPlan();
             executeList.add(multiPlan);
