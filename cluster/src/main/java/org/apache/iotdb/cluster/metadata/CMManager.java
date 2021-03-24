@@ -78,7 +78,6 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
-
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -285,6 +284,8 @@ public class CMManager extends MManager {
     List<MeasurementSchema> schemas = metaPuller.pullMeasurementSchemas(schemasToPull);
     for (MeasurementSchema schema : schemas) {
       // TODO-Cluster: also pull alias?
+      // take care, the pulled schema's measurement Id is the full path
+      schema.setMeasurementId(new PartialPath(schema.getMeasurementId()).getMeasurement());
       MeasurementMNode measurementMNode =
           new MeasurementMNode(null, schema.getMeasurementId(), schema, null);
       cacheMeta(deviceId.concatNode(schema.getMeasurementId()), measurementMNode);
@@ -1391,7 +1392,7 @@ public class CMManager extends MManager {
   public Set<String> getAllDevices(List<String> paths) throws MetadataException {
     Set<String> results = new HashSet<>();
     for (String path : paths) {
-      getAllTimeseriesPath(new PartialPath(path)).stream()
+      getDevices(new PartialPath(path)).stream()
           .map(PartialPath::getFullPath)
           .forEach(results::add);
     }

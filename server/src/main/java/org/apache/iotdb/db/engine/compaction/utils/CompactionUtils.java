@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.engine.compaction.utils;
 
+import com.google.common.util.concurrent.RateLimiter;
+import org.apache.commons.collections4.keyvalue.DefaultMapEntry;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.TsFileManagement;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
@@ -41,9 +43,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
-
-import com.google.common.util.concurrent.RateLimiter;
-import org.apache.commons.collections4.keyvalue.DefaultMapEntry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -190,7 +189,7 @@ public class CompactionUtils {
               IoTDB.metaManager.getSeriesSchema(new PartialPath(device), entry.getKey()), true);
     } catch (MetadataException e) {
       // this may caused in IT by restart
-      logger.error("{} get schema {} error,skip this sensor", device, entry.getKey());
+      logger.error("{} get schema {} error, skip this sensor", device, entry.getKey(), e);
       return;
     }
     for (TimeValuePair timeValuePair : timeValuePairMap.values()) {
