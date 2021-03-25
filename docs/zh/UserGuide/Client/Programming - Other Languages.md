@@ -66,8 +66,6 @@ pip install apache-iotdb
 - Boost
 - OpenSSL 1.0+
 
-编译C++客户端之前首先需要本地编译Thrift库，compile-tools模块负责编译Thrift，之后再编译client-cpp。
-
 ### 安装方法
 
 编译C++客户端之前首先需要本地编译Thrift库，compile-tools模块负责编译Thrift，之后再编译client-cpp。
@@ -227,9 +225,8 @@ Maven 命令中添加"-P client-cpp" 选项编译client-cpp模块。client-cpp�
 例如：
 
 ```
-mvn integration-test -P client-cpp -pl client-cpp,server,example/client-cpp-example -am 
--D"iotdb.test.skip"=true -D"tsfile.test.skip"=true -D"jdbc.test.skip"=true 
--D"boost.include.dir"="D:\boost_1_75_0" -D"boost.library.dir"="D:\boost_1_75_0\stage\lib"
+mvn package -P compile-cpp -pl client-cpp,server,example/client-cpp-example -am 
+-D"boost.include.dir"="D:\boost_1_75_0" -D"boost.library.dir"="D:\boost_1_75_0\stage\lib" -DskipTests
 ```
 
 
