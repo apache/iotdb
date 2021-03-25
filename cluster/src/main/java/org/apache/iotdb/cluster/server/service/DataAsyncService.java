@@ -111,27 +111,25 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
     }
   }
 
+  /**
+   * forward the request to the leader
+   *
+   * @param request pull schema request
+   * @param resultHandler result handler
+   */
   @Override
   public void pullTimeSeriesSchema(
       PullSchemaRequest request, AsyncMethodCallback<PullSchemaResp> resultHandler) {
+    // forward the request to the leader
+    AsyncDataClient leaderClient = getLeaderClient();
+    if (leaderClient == null) {
+      resultHandler.onError(new LeaderUnknownException(dataGroupMember.getAllNodes()));
+      return;
+    }
     try {
-      resultHandler.onComplete(
-          dataGroupMember.getLocalQueryExecutor().queryTimeSeriesSchema(request));
-    } catch (CheckConsistencyException e) {
-      // if this node cannot synchronize with the leader with in a given time, forward the
-      // request to the leader
-      AsyncDataClient leaderClient = getLeaderClient();
-      if (leaderClient == null) {
-        resultHandler.onError(new LeaderUnknownException(dataGroupMember.getAllNodes()));
-        return;
-      }
-      try {
-        leaderClient.pullTimeSeriesSchema(request, resultHandler);
-      } catch (TException e1) {
-        resultHandler.onError(e1);
-      }
-    } catch (MetadataException e) {
-      resultHandler.onError(e);
+      leaderClient.pullTimeSeriesSchema(request, resultHandler);
+    } catch (TException e1) {
+      resultHandler.onError(e1);
     }
   }
 
@@ -140,27 +138,25 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
     return (AsyncDataClient) dataGroupMember.getAsyncClient(dataGroupMember.getLeader());
   }
 
+  /**
+   * forward the request to the leader
+   *
+   * @param request pull schema request
+   * @param resultHandler result handler
+   */
   @Override
   public void pullMeasurementSchema(
       PullSchemaRequest request, AsyncMethodCallback<PullSchemaResp> resultHandler) {
+    // forward the request to the leader
+    AsyncDataClient leaderClient = getLeaderClient();
+    if (leaderClient == null) {
+      resultHandler.onError(new LeaderUnknownException(dataGroupMember.getAllNodes()));
+      return;
+    }
     try {
-      resultHandler.onComplete(
-          dataGroupMember.getLocalQueryExecutor().queryMeasurementSchema(request));
-    } catch (CheckConsistencyException e) {
-      // if this node cannot synchronize with the leader with in a given time, forward the
-      // request to the leader
-      AsyncDataClient leaderClient = getLeaderClient();
-      if (leaderClient == null) {
-        resultHandler.onError(new LeaderUnknownException(dataGroupMember.getAllNodes()));
-        return;
-      }
-      try {
-        leaderClient.pullMeasurementSchema(request, resultHandler);
-      } catch (TException e1) {
-        resultHandler.onError(e1);
-      }
-    } catch (IllegalPathException e) {
-      resultHandler.onError(e);
+      leaderClient.pullMeasurementSchema(request, resultHandler);
+    } catch (TException e1) {
+      resultHandler.onError(e1);
     }
   }
 
