@@ -138,7 +138,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-public class MetaGroupMemberTest extends MemberTest {
+public class MetaGroupMemberTest extends BaseMember {
 
   private DataClusterServer dataClusterServer;
   protected boolean mockDataClusterServer;

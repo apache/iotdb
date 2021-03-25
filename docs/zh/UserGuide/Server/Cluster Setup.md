@@ -43,9 +43,9 @@ __集群模式目前是测试版！请谨慎在生产环境中使用。__
 ```
 mvn clean package -DskipTests
 chmod -R 777 ./cluster/target/
-nohup ./cluster/target/cluster-0.12.0-SNAPSHOT/sbin/start-node.sh ./cluster/target/test-classes/node1conf/ >/dev/null 2>&1 &
-nohup ./cluster/target/cluster-0.12.0-SNAPSHOT/sbin/start-node.sh ./cluster/target/test-classes/node2conf/ >/dev/null 2>&1 &
-nohup ./cluster/target/cluster-0.12.0-SNAPSHOT/sbin/start-node.sh ./cluster/target/test-classes/node3conf/ >/dev/null 2>&1 &
+nohup ./cluster/target/iotdb-cluster-0.12.0-SNAPSHOT/sbin/start-node.sh ./cluster/target/test-classes/node1conf/ >/dev/null 2>&1 &
+nohup ./cluster/target/iotdb-cluster-0.12.0-SNAPSHOT/sbin/start-node.sh ./cluster/target/test-classes/node2conf/ >/dev/null 2>&1 &
+nohup ./cluster/target/iotdb-cluster-0.12.0-SNAPSHOT/sbin/start-node.sh ./cluster/target/test-classes/node3conf/ >/dev/null 2>&1 &
 ```
 
 ## 被覆盖的单机版选项

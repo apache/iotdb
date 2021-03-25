@@ -200,6 +200,12 @@ public class ClusterDescriptor {
             properties.getProperty(
                 "max_num_of_logs_in_mem", String.valueOf(config.getMaxNumOfLogsInMem()))));
 
+    config.setMaxMemorySizeForRaftLog(
+        Long.parseLong(
+            properties.getProperty(
+                "max_memory_size_for_raft_log",
+                String.valueOf(config.getMaxMemorySizeForRaftLog()))));
+
     config.setLogDeleteCheckIntervalSecond(
         Integer.parseInt(
             properties.getProperty(
@@ -292,6 +298,11 @@ public class ClusterDescriptor {
         Long.parseLong(
             properties.getProperty(
                 "wait_client_timeout_ms", String.valueOf(config.getWaitClientTimeoutMS()))));
+
+    config.setEnableQueryRedirect(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_query_redirect", String.valueOf(config.isEnableQueryRedirect()))));
 
     String consistencyLevel = properties.getProperty("consistency_level");
     if (consistencyLevel != null) {

@@ -121,11 +121,11 @@ public class ClusterReaderFactory {
     List<IReaderByTimestamp> readers = new ArrayList<>(partitionGroups.size());
     for (PartitionGroup partitionGroup : partitionGroups) {
       // query each group to get a reader in that group
-      readers.add(
+      IReaderByTimestamp readerByTimestamp =
           getSeriesReaderByTime(
-              partitionGroup, path, deviceMeasurements, context, dataType, ascending));
+              partitionGroup, path, deviceMeasurements, context, dataType, ascending);
+      readers.add(readerByTimestamp);
     }
-    // merge the readers
     return new MergedReaderByTime(readers);
   }
 
@@ -311,13 +311,13 @@ public class ClusterReaderFactory {
    * Create an IPointReader of "path" with “timeFilter” and "valueFilter". A synchronization with
    * the leader will be performed according to consistency level
    *
-   * @param path
-   * @param dataType
+   * @param path series path
+   * @param dataType data type
    * @param timeFilter nullable
    * @param valueFilter nullable
-   * @param context
-   * @return
-   * @throws StorageEngineException
+   * @param context query context
+   * @return reader
+   * @throws StorageEngineException encounter exception
    */
   public IPointReader getSeriesPointReader(
       PartialPath path,
@@ -351,13 +351,13 @@ public class ClusterReaderFactory {
    * Create a SeriesReader of "path" with “timeFilter” and "valueFilter". The consistency is not
    * guaranteed here and only data slots managed by the member will be queried.
    *
-   * @param path
-   * @param dataType
+   * @param path series path
+   * @param dataType data type
    * @param timeFilter nullable
    * @param valueFilter nullable
-   * @param context
-   * @return
-   * @throws StorageEngineException
+   * @param context query context
+   * @return reader for series
+   * @throws StorageEngineException encounter exception
    */
   private SeriesReader getSeriesReader(
       PartialPath path,

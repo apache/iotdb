@@ -118,7 +118,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-public class DataGroupMemberTest extends MemberTest {
+public class DataGroupMemberTest extends BaseMember {
 
   private DataGroupMember dataGroupMember;
   private Map<Integer, FileSnapshot> snapshotMap;
