@@ -73,6 +73,9 @@ public class IoTDBStatMonitorTest {
   @After
   public void tearDown() throws IOException, StorageEngineException {
     // reset setEnableStatMonitor to false
+    config.setEnableStatMonitor(false);
+    config.setEnableMonitorSeriesWrite(false);
+
     statMonitor.close();
     EnvironmentUtils.cleanEnv();
   }
