@@ -942,6 +942,7 @@ public class PhysicalGenerator {
 
     if (queryPlan instanceof UDTFPlan) {
       ((UDTFPlan) queryPlan).setPathNameToReaderIndex(pathNameToReaderIndex);
+      return;
     }
 
     if (queryPlan instanceof AggregationPlan) {
