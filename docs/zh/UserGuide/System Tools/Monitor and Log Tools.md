@@ -256,3 +256,7 @@ IoTDB支持用户通过修改日志配置文件的方式对IoTDB系统日志（�
 该方法为获取指定Logger的日志级别。该方法接受一个名为p1的String类型的参数，该参数为指定Logger的名称。该方法返回指定Logger的日志级别。
 
 需要注意的是，该方法与`getLoggerEffectiveLevel`方法的区别在于，该方法返回的是指定Logger在配置文件中被设定的日志级别，如果用户没有对该Logger进行日志级别的设定，则返回空。按照Logback的日志级别继承机制，如果一个Logger没有被显示地设定日志级别，其将会从其最近的祖先继承日志级别的设定。这时，调用`getLoggerEffectiveLevel`方法将返回该Logger生效的日志级别；而调用本节所述方法，将返回空。
+
+* setLoggerLevel接口
+
+该方法为设置指定Logger的日志级别。该方法接受一个名为p1的String类型的参数和一个名为p2的String类型的参数，分别指定Logger的名称和目标的日志等级。
