@@ -155,7 +155,7 @@ abstract class LevelCompactionTest {
                       + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
       tsFileResource.setClosed(true);
-      tsFileResource.updatePlanIndexes((long) (i + seqFileNum));
+      tsFileResource.updatePlanIndexes(i + seqFileNum);
       unseqResources.add(tsFileResource);
       prepareFile(tsFileResource, i * ptNum, ptNum * (i + 1) / unseqFileNum, 10000);
     }
@@ -173,7 +173,7 @@ abstract class LevelCompactionTest {
                     + ".tsfile"));
     TsFileResource tsFileResource = new TsFileResource(file);
     tsFileResource.setClosed(true);
-    tsFileResource.updatePlanIndexes((long) (seqFileNum + unseqFileNum));
+    tsFileResource.updatePlanIndexes(seqFileNum + unseqFileNum);
     unseqResources.add(tsFileResource);
     prepareFile(tsFileResource, 0, ptNum * unseqFileNum, 20000);
   }
