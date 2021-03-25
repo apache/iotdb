@@ -51,22 +51,13 @@ The download command is:
 pip install apache-iotdb
 ```
 
-#### Option 2: use the compile script we provided
+#### Option 2: basic usage of thrift
 
-If you have added Thrift executable into your path, you may just run `client-py/compile.sh` or
- `client-py\compile.bat`, otherwise, modify it to set variable `THRIFT_EXE` to point to
-your executable. This will generate thrift sources under folder `target`, you can add it to your
-`PYTHONPATH` so that you will be able to use the library in your code. Note that the scripts
-locate the thrift source file by relative path, so if you move the scripts else where, they are
-no longer valid.
-
-#### Option 3: basic usage of thrift
-
-Optionally, if you know the basic usage of thrift, download the thrift source file in
-`thrift\src\main\thrift\rpc.thrift`, and simply use `thrift -gen py -out ./target/iotdb rpc.thrift` 
-to generate the python library.
+Optionally, if you know the basic usage of thrift, you can download the thrift source file in
+`thrift\src\main\thrift\rpc.thrift`, and simply run `thrift -gen py -out ./target/iotdb rpc.thrift` 
+to generate the Python library.
 
 ### 4. Use Example
 
 We provided an example of how to use the thrift library to connect to IoTDB in `client-py/src
-/client_example.py`, please read it carefully before you write your own code.
+/SessionExample.py`, please read it carefully before you write your own code.
