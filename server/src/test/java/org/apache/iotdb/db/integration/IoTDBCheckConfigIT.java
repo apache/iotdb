@@ -95,6 +95,7 @@ public class IoTDBCheckConfigIT {
     EnvironmentUtils.cleanEnv();
     systemProperties.clear();
     properties.clear();
+    System.setOut(console);
   }
 
   @Test
