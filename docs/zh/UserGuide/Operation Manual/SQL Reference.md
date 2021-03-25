@@ -941,7 +941,7 @@ Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <T
 IoTDB支持对存储组级别设置数据存活时间（TTL），这使得IoTDB可以定期、自动地删除一定时间之前的数据。合理使用TTL
 可以帮助您控制IoTDB占用的总磁盘空间以避免出现磁盘写满等异常。并且，随着文件数量的增多，查询性能往往随之下降,
 内存占用也会有所提高。及时地删除一些较老的文件有助于使查询性能维持在一个较高的水平和减少内存资源的占用。
-IoTDB中的TTL操作通可以由以下的语句进行实现：
+IoTDB中的TTL操作可以由以下的语句进行实现：
 
 * 设置 TTL
 

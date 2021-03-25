@@ -222,7 +222,7 @@ Maven 命令中添加"-P client-cpp" 选项编译client-cpp模块。client-cpp�
 
 完整的C++客户端命令如下：
 
-`mvn integration-test -P client-cpp -pl client-cpp,server -am -Diotdb.test.skip=true -Dtsfile.test.skip=true -Djdbc.test.skip=true`
+`mvn  package -P compile-cpp  -pl example/client-cpp-example -am -DskipTest`
 
 注意在Windows下需提前安装好Boost，并添加以下Maven 编译选项:
 ```

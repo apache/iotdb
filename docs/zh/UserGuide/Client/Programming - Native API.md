@@ -41,7 +41,7 @@ mvn clean install -pl session -am -Dmaven.test.skip=true
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>iotdb-session</artifactId>
-      <version>0.10.0</version>
+      <version>0.12.0</version>
     </dependency>
 </dependencies>
 ```
@@ -103,7 +103,7 @@ void deleteTimeseries(String path)
 void deleteTimeseries(List<String> paths)
 ```
 
-* 删除一个或多个时间序列在某个时间点前的数据
+* 删除一个或多个时间序列在某个时间点前或这个时间点的数据
 
 ```
 void deleteData(String path, long time)
@@ -187,14 +187,6 @@ void testInsertRecords(List<String> deviceIds, List<Long> times, List<List<Strin
   
 ```
 void testInsertRecords(List<String> deviceIds, List<Long> times,
-      List<List<String>> measurementsList, List<List<TSDataType>> typesList,
-      List<List<Object>> valuesList)
-```
-
-* 测试 testInsertRecordsOfOneDevice，不实际写入数据，只将数据传输到 server 即返回。
-
-```
-void testInsertRecordsOfOneDevice(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<TSDataType>> typesList,
       List<List<Object>> valuesList)
 ```

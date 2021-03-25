@@ -40,7 +40,7 @@ IoTDB > set storage group to root.sgcc
 
 ```
 IoTDB> set storage group to root.ln.wf01
-Msg: org.apache.iotdb.exception.MetadataException: org.apache.iotdb.exception.MetadataException: The prefix of root.ln.wf01 has been set to the storage group.
+Msg: 300: root.ln has already been set to storage group.
 ```
 存储组节点名只支持中英文字符、数字和下划线的组合。
 
@@ -299,7 +299,7 @@ create timeseries root.turbine.d1.s1(temprature) with datatype=FLOAT, encoding=R
 > 注意：额外的标签和属性信息总的大小不能超过`tag_attribute_total_size`.
 
  * 标签点属性更新
-创建时间序列后，我们也可以对其原有的标签点属性进行更新，主要有以下五种更新方式：
+创建时间序列后，我们也可以对其原有的标签点属性进行更新，主要有以下六种更新方式：
 
 * 重命名标签或属性
 ```
@@ -371,7 +371,7 @@ SHOW CHILD NODES prefixPath
 
 示例：
 
-* 查询 root 的下一层：show child paths root
+* 查询 root 的下一层：show child nodes root
 
 ```
 +------------+
@@ -381,7 +381,7 @@ SHOW CHILD NODES prefixPath
 +------------+
 ```
 
-* 查询 root.vehicle的下一层 ：show child paths root.ln
+* 查询 root.vehicle的下一层 ：show child nodes root.ln
 
 ```
 +------------+

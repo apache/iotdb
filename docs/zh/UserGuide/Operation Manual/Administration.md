@@ -145,7 +145,7 @@ Msg: The statement is executed successfully.
 |CREATE\_ROLE|创建角色。路径无关|
 |DELETE\_ROLE|删除角色。路径无关|
 |LIST\_ROLE|列出所有角色，列出某角色拥有的权限，列出拥有某角色的所有用户三种操作的权限。路径无关|
-|GRANT\_ROLE\_PRIVILEGE|grant role priviledges; path independent|
+|GRANT\_ROLE\_PRIVILEGE|赋予角色权限。路径无关|
 |REVOKE\_ROLE\_PRIVILEGE|撤销角色权限。路径无关|
 |CREATE_FUNCTION|注册UDF。路径无关|
 |DROP_FUNCTION|卸载UDF。路径无关|

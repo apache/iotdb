@@ -53,7 +53,7 @@ IoTDB默认关闭水印嵌入功能。为了使用这个功能，第一步要做
 
 ```
 .\start-cli.bat -u root -pw root
-create user Alice 1234
+create user Alice '1234'
 grant user Alice privileges 'READ_TIMESERIES' on root.vehicle
 exit
 

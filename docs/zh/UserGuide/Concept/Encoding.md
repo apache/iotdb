@@ -21,7 +21,7 @@
 
 ## 编码方式
 
-为了提高数据的存储效率，需要在数据写入的过程中对数据进行编码，从而减少磁盘空间的使用量。在写数据以及读数据的过程中都能够减少I/O操作的数据量从而提高性能。IoTDB支持四种针对不同类型的数据的编码方法：
+为了提高数据的存储效率，需要在数据写入的过程中对数据进行编码，从而减少磁盘空间的使用量。在写数据以及读数据的过程中都能够减少I/O操作的数据量从而提高性能。IoTDB支持多种针对不同类型的数据的编码方法：
 
 * PLAIN编码（PLAIN）
 
@@ -49,7 +49,7 @@ GORILLA编码是一种无损编码，它比较适合编码前后值比较接近�
 
 * 定频数据编码 (REGULAR)
 
-定频数据编码，仅适用于整形（INT32）和长整型（INT64）的时间列定频数据，且允许数据中有一些点缺失，使用此方法编码定频数据优于二阶差分编码（TS_2DIFF）。
+定频数据编码，仅适用于整型（INT32）和长整型（INT64）的时间列定频数据，且允许数据中有一些点缺失，使用此方法编码定频数据优于二阶差分编码（TS_2DIFF）。
 
 定频数据编码无法用于非定频数据，建议使用二阶差分编码（TS_2DIFF）进行处理。
 
@@ -62,8 +62,8 @@ GORILLA编码是一种无损编码，它比较适合编码前后值比较接近�
 |数据类型	|支持的编码|
 |:---:|:---:|
 |BOOLEAN|	PLAIN, RLE|
-|INT32	|PLAIN, RLE, TS_2DIFF, REGULAR, GORILLA|
-|INT64	|PLAIN, RLE, TS_2DIFF, REGULAR, GORILLA|
+|INT32	|PLAIN, RLE, TS_2DIFF, GORILLA|
+|INT64	|PLAIN, RLE, TS_2DIFF, GORILLA|
 |FLOAT	|PLAIN, RLE, TS_2DIFF, GORILLA|
 |DOUBLE	|PLAIN, RLE, TS_2DIFF, GORILLA|
 |TEXT	|PLAIN|
