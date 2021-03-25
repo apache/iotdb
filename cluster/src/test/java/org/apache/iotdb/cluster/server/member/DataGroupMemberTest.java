@@ -347,8 +347,6 @@ public class DataGroupMemberTest extends MemberTest {
     electionRequest.setTerm(1);
     electionRequest.setLastLogIndex(100);
     electionRequest.setLastLogTerm(100);
-    electionRequest.setDataLogLastTerm(100);
-    electionRequest.setDataLogLastIndex(100);
     TestHandler handler = new TestHandler();
     new DataAsyncService(dataGroupMember).startElection(electionRequest, handler);
     assertEquals(10, handler.getResponse());
@@ -376,31 +374,17 @@ public class DataGroupMemberTest extends MemberTest {
     new DataAsyncService(dataGroupMember).startElection(electionRequest, handler);
     assertEquals(Response.RESPONSE_AGREE, handler.getResponse());
 
-    // a request with larger term and stale meta log
-    // should reject election but update term
-    electionRequest.setTerm(13);
-    electionRequest.setLastLogIndex(1);
-    electionRequest.setLastLogTerm(1);
-    handler = new TestHandler();
-    new DataAsyncService(dataGroupMember).startElection(electionRequest, handler);
-    assertEquals(Response.RESPONSE_META_LOG_STALE, handler.getResponse());
-    assertEquals(13, dataGroupMember.getTerm().get());
-
     // a request with with larger term and stale data log
     // should reject election but update term
     electionRequest.setTerm(14);
     electionRequest.setLastLogIndex(100);
     electionRequest.setLastLogTerm(100);
-    electionRequest.setDataLogLastTerm(1);
-    electionRequest.setDataLogLastIndex(1);
     new DataAsyncService(dataGroupMember).startElection(electionRequest, handler);
     assertEquals(Response.RESPONSE_LOG_MISMATCH, handler.getResponse());
     assertEquals(14, dataGroupMember.getTerm().get());
 
     // a valid request with with larger term
     electionRequest.setTerm(15);
-    electionRequest.setDataLogLastTerm(100);
-    electionRequest.setDataLogLastIndex(100);
     new DataAsyncService(dataGroupMember).startElection(electionRequest, handler);
     assertEquals(Response.RESPONSE_AGREE, handler.getResponse());
     assertEquals(15, dataGroupMember.getTerm().get());

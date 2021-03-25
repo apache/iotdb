@@ -54,7 +54,7 @@ public class RemoveNodeLog extends Log {
   }
 
   public ByteBuffer getPartitionTable() {
-    partitionTable.clear();
+    partitionTable.rewind();
     return partitionTable;
   }
 

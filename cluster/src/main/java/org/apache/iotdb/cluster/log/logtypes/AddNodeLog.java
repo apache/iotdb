@@ -68,7 +68,7 @@ public class AddNodeLog extends Log {
   }
 
   public ByteBuffer getPartitionTable() {
-    partitionTable.clear();
+    partitionTable.rewind();
     return partitionTable;
   }
 

@@ -70,8 +70,6 @@ struct ElectionRequest {
   // member should process the request or response. Only used in data group communication.
   5: optional Node header
   6: required int raftId
-  7: optional long dataLogLastIndex
-  8: optional long dataLogLastTerm
 }
 
 // leader -> follower

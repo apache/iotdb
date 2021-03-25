@@ -82,7 +82,9 @@ public class HeartbeatThread implements Runnable {
           case LEADER:
             // send heartbeats to the followers
             sendHeartbeats();
-            Thread.sleep(RaftServer.getHeartBeatIntervalMs());
+            synchronized (localMember.getHeartBeatWaitObject()) {
+              localMember.getHeartBeatWaitObject().wait(RaftServer.getHeartBeatIntervalMs());
+            }
             hasHadLeader = true;
             break;
           case FOLLOWER:
@@ -97,7 +99,9 @@ public class HeartbeatThread implements Runnable {
             } else {
               logger.debug("{}: Heartbeat from leader {} is still valid", memberName,
                   localMember.getLeader());
-              Thread.sleep(RaftServer.getConnectionTimeoutInMS());
+              synchronized (localMember.getHeartBeatWaitObject()) {
+                localMember.getHeartBeatWaitObject().wait(RaftServer.getConnectionTimeoutInMS());
+              }
             }
             hasHadLeader = true;
             break;
@@ -267,6 +271,7 @@ public class HeartbeatThread implements Runnable {
   // enable timeout
   void startElection() {
     if (localMember.isSkipElection()) {
+      logger.info("{}: Skip election because this node has stopped.", memberName);
       return;
     }
     synchronized (localMember.getTerm()) {
@@ -291,12 +296,8 @@ public class HeartbeatThread implements Runnable {
 
       electionRequest.setTerm(nextTerm);
       electionRequest.setElector(localMember.getThisNode());
-      if (!electionRequest.isSetLastLogIndex()) {
-        // these field are overridden in DataGroupMember, they will be set to the term and index
-        // of the MetaGroupMember that manages the DataGroupMember so we cannot overwrite them
-        electionRequest.setLastLogTerm(localMember.getLogManager().getLastLogTerm());
-        electionRequest.setLastLogIndex(localMember.getLogManager().getLastLogIndex());
-      }
+      electionRequest.setLastLogTerm(localMember.getLogManager().getLastLogTerm());
+      electionRequest.setLastLogIndex(localMember.getLogManager().getLastLogIndex());
 
       requestVote(localMember.getAllNodes(), electionRequest, nextTerm, quorum,
           electionTerminated, electionValid, failingVoteCounter);

@@ -134,6 +134,8 @@ public abstract class RaftMember {
    */
   private final Object snapshotApplyLock = new Object();
 
+  private final Object heartBeatWaitObject = new Object();
+
   protected Node thisNode = ClusterConstant.EMPTY_NODE;
 
   /**
@@ -327,6 +329,7 @@ public abstract class RaftMember {
    * induce side effects.
    */
   public void stop() {
+    setSkipElection(true);
     closeLogManager();
     if (heartBeatService == null) {
       return;
@@ -453,6 +456,9 @@ public abstract class RaftMember {
    * whether to accept by examining the log status of the elector.
    */
   public long processElectionRequest(ElectionRequest electionRequest) {
+    if (logger.isDebugEnabled()) {
+      logger.debug("{}: start to handle request from elector {}", name, electionRequest.getElector());
+    }
     synchronized (term) {
       long currentTerm = term.get();
       long response = checkElectorTerm(currentTerm, electionRequest.getTerm(),
@@ -1911,6 +1917,10 @@ public abstract class RaftMember {
 
   public void setHasSyncedLeaderBeforeRemoved(boolean hasSyncedLeaderAfterRemoved) {
     this.hasSyncedLeaderBeforeRemoved = hasSyncedLeaderAfterRemoved;
+  }
+
+  public Object getHeartBeatWaitObject() {
+    return heartBeatWaitObject;
   }
 
   public boolean isSkipElection() {

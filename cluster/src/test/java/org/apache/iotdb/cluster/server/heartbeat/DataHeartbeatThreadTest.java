@@ -121,8 +121,6 @@ public class DataHeartbeatThreadTest extends HeartbeatThreadTest {
           assertEquals(11, request.getTerm());
           assertEquals(6, request.getLastLogIndex());
           assertEquals(6, request.getLastLogTerm());
-          assertEquals(13, request.getDataLogLastTerm());
-          assertEquals(13, request.getDataLogLastIndex());
           if (respondToElection) {
             resultHandler.onComplete(Response.RESPONSE_AGREE);
           }

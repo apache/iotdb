@@ -603,7 +603,6 @@ public class MetaGroupMember extends RaftMember {
       logger.info("Node {} admitted this node into the cluster", node);
       ByteBuffer partitionTableBuffer = resp.partitionTableBytes;
       acceptPartitionTable(partitionTableBuffer, true);
-      getDataClusterServer().pullSnapshots();
       return true;
     } else if (resp.getRespNum() == Response.RESPONSE_IDENTIFIER_CONFLICT) {
       logger.info("The identifier {} conflicts the existing ones, regenerate a new one",
@@ -1798,10 +1797,10 @@ public class MetaGroupMember extends RaftMember {
         }
         return status;
       } else {
-        logger.warn("Forward {} to {} timed out", plan, node);
+        logger.debug("Forward {} to {} timed out", plan, node);
       }
     }
-    logger.warn("Forward {} to {} timed out", plan, group);
+    logger.debug("Forward {} to {} timed out", plan, group);
     return StatusUtils.TIME_OUT;
   }
 

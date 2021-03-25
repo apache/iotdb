@@ -541,7 +541,9 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
    */
   public void addNode(Node node, NodeAdditionResult result) {
     // If the node executed adding itself to the cluster, it's unnecessary to add new groups because they already exist.
+    // Just pull snapshot.
     if (node.equals(thisNode)) {
+      pullSnapshots();
       return;
     }
     Iterator<Entry<RaftNode, DataGroupMember>> entryIterator = headerGroupMap.entrySet().iterator();
@@ -559,23 +561,36 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
       }
 
       if (logger.isDebugEnabled()) {
-        logger.debug("Data cluster server: start to handle new groups when adding new node {}", node);
+        logger
+            .debug("Data cluster server: start to handle new groups when adding new node {}", node);
       }
-      // pull snapshot has already done when the new node starts.
-      if (!node.equals(thisNode)) {
-        for (PartitionGroup newGroup : result.getNewGroupList()) {
-          if (newGroup.contains(thisNode)) {
-            logger.info("Adding this node into a new group {}", newGroup);
-            DataGroupMember dataGroupMember = dataMemberFactory.create(newGroup, thisNode);
-            addDataGroupMember(dataGroupMember);
-            dataGroupMember
-                .pullNodeAdditionSnapshots(((SlotPartitionTable) partitionTable).getNodeSlots(node,
-                    newGroup.getId()), node);
-          }
+      for (PartitionGroup newGroup : result.getNewGroupList()) {
+        if (newGroup.contains(thisNode)) {
+          logger.info("Adding this node into a new group {}", newGroup);
+          DataGroupMember dataGroupMember = dataMemberFactory.create(newGroup, thisNode);
+          addDataGroupMember(dataGroupMember);
+          dataGroupMember
+              .pullNodeAdditionSnapshots(((SlotPartitionTable) partitionTable).getNodeSlots(node,
+                  newGroup.getId()), node);
         }
       }
     }
   }
+
+  /**
+   * When the node joins a cluster, it also creates a new data group and a corresponding member
+   * which has no data. This is to make that member pull data from other nodes.
+   */
+  public void pullSnapshots() {
+    for (int raftId = 0; raftId < ClusterDescriptor.getInstance().getConfig().getMultiRaftFactor();
+        raftId++) {
+      RaftNode raftNode = new RaftNode(thisNode, raftId);
+      List<Integer> slots = ((SlotPartitionTable) partitionTable).getNodeSlots(raftNode);
+      DataGroupMember dataGroupMember = headerGroupMap.get(raftNode);
+      dataGroupMember.pullNodeAdditionSnapshots(slots, thisNode);
+    }
+  }
+
 
   /**
    * Make sure the group will not receive new raft logs
@@ -696,20 +711,6 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
 
   public void setPartitionTable(PartitionTable partitionTable) {
     this.partitionTable = partitionTable;
-  }
-
-  /**
-   * When the node joins a cluster, it also creates a new data group and a corresponding member
-   * When the node joins a cluster, it also creates a new data group and a corresponding member
-   * which has no data. This is to make that member pull data from other nodes.
-   */
-  public void pullSnapshots() {
-    for (int raftId = 0; raftId < ClusterDescriptor.getInstance().getConfig().getMultiRaftFactor(); raftId++) {
-      RaftNode raftNode = new RaftNode(thisNode, raftId);
-      List<Integer> slots = ((SlotPartitionTable) partitionTable).getNodeSlots(raftNode);
-      DataGroupMember dataGroupMember = headerGroupMap.get(raftNode);
-      dataGroupMember.pullNodeAdditionSnapshots(slots, thisNode);
-    }
   }
 
   /**

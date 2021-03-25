@@ -62,12 +62,6 @@ public class DataHeartbeatThread extends HeartbeatThread {
       return;
     }
     electionRequest.setHeader(dataGroupMember.getHeader());
-    electionRequest
-        .setLastLogTerm(dataGroupMember.getMetaGroupMember().getLogManager().getLastLogTerm());
-    electionRequest
-        .setLastLogIndex(dataGroupMember.getMetaGroupMember().getLogManager().getLastLogIndex());
-    electionRequest.setDataLogLastIndex(dataGroupMember.getLogManager().getLastLogIndex());
-    electionRequest.setDataLogLastTerm(dataGroupMember.getLogManager().getLastLogTerm());
 
     super.startElection();
   }

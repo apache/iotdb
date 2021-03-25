@@ -174,7 +174,6 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Void> {
     request.setRequiredSlots(descriptor.getSlots());
     request.setRequireReadOnly(descriptor.isRequireReadOnly());
 
-    long startTime = System.currentTimeMillis();
     logger.info("{}: data migration starts.", newMember.getName());
     boolean finished = false;
     int nodeIndex = ((PartitionGroup) newMember.getAllNodes()).indexOf(newMember.getThisNode()) - 1;
@@ -202,7 +201,6 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Void> {
         }
       }
     }
-    logger.info("{}: data migration ends, cost {}ms", newMember.getName(), (System.currentTimeMillis() - startTime));
     removeTask();
     return null;
   }

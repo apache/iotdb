@@ -26,6 +26,7 @@ import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.utils.IOUtils;
 
 /**
  * It's used by cluster to wrap log to plan
@@ -45,11 +46,11 @@ public class LogPlan extends PhysicalPlan {
 
   public LogPlan(LogPlan plan) {
     super(false);
-    this.log = plan.log;
+    this.log = IOUtils.clone(plan.log);
   }
 
   public ByteBuffer getLog() {
-    log.clear();
+    log.rewind();
     return log;
   }
 

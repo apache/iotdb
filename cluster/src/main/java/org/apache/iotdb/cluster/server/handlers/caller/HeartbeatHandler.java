@@ -50,8 +50,10 @@ public class HeartbeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
 
   @Override
   public void onComplete(HeartBeatResponse resp) {
-    logger.trace("{}: Received a heartbeat response", memberName);
     long followerTerm = resp.getTerm();
+    if (logger.isDebugEnabled()) {
+      logger.debug("{}: Received a heartbeat response {}", memberName, followerTerm);
+    }
     if (followerTerm == RESPONSE_AGREE) {
       // current leadership is still valid
       handleNormalHeartbeatResponse(resp);

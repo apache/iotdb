@@ -326,70 +326,14 @@ public class DataGroupMember extends RaftMember {
           // if the leader is removed, also start an election immediately
           synchronized (term) {
             setCharacter(NodeCharacter.ELECTOR);
-            setLastHeartbeatReceivedTime(Long.MIN_VALUE);
+            setLeader(null);
+            getHeartBeatWaitObject().notifyAll();
           }
         }
         return removedNode.equals(thisNode);
       }
       return false;
     }
-  }
-
-  /**
-   * Process the election request from another node in the group. To win the vote from the local
-   * member, a node must have both meta and data logs no older than then local member, or it will be
-   * turned down.
-   *
-   * @return Response.RESPONSE_META_LOG_STALE if the meta logs of the elector fall behind
-   * Response.RESPONSE_LOG_MISMATCH if the data logs of the elector fall behind Response.SUCCESS if
-   * the vote is given to the elector the term of local member if the elector's term is no bigger
-   * than the local member
-   */
-  @Override
-  long checkElectorLogProgress(ElectionRequest electionRequest) {
-    // to be a data group leader, a node should also be qualified to be the meta group leader
-    // which guarantees the data group leader has the newest partition table.
-    long thatTerm = electionRequest.getTerm();
-    long thatMetaLastLogIndex = electionRequest.getLastLogIndex();
-    long thatMetaLastLogTerm = electionRequest.getLastLogTerm();
-    long thatDataLastLogIndex = electionRequest.getDataLogLastIndex();
-    long thatDataLastLogTerm = electionRequest.getDataLogLastTerm();
-    logger.info(
-        "{} received an dataGroup election request, term:{}, metaLastLogIndex:{}, metaLastLogTerm:{}, dataLastLogIndex:{}, dataLastLogTerm:{}",
-        name, thatTerm, thatMetaLastLogIndex, thatMetaLastLogTerm, thatDataLastLogIndex,
-        thatDataLastLogTerm);
-
-    // check meta logs
-    // term of the electors' MetaGroupMember is not verified, so 0 and 1 are used to make sure
-    // the verification does not fail
-    long metaResponse = metaGroupMember.checkLogProgress(thatMetaLastLogIndex, thatMetaLastLogTerm);
-    if (metaResponse == Response.RESPONSE_LOG_MISMATCH) {
-      return Response.RESPONSE_META_LOG_STALE;
-    }
-
-    long resp = checkLogProgress(thatDataLastLogIndex, thatDataLastLogTerm);
-    if (resp == Response.RESPONSE_AGREE) {
-      logger.info(
-          "{} accepted an dataGroup election request, term:{}/{}, dataLogIndex:{}/{}, dataLogTerm:{}/{}, metaLogIndex:{}/{},metaLogTerm:{}/{}",
-          name, thatTerm, term.get(), thatDataLastLogIndex, logManager.getLastLogIndex(),
-          thatDataLastLogTerm,
-          logManager.getLastLogTerm(), thatMetaLastLogIndex,
-          metaGroupMember.getLogManager().getLastLogIndex(), thatMetaLastLogTerm,
-          metaGroupMember.getLogManager().getLastLogTerm());
-      setCharacter(NodeCharacter.FOLLOWER);
-      lastHeartbeatReceivedTime = System.currentTimeMillis();
-      setVoteFor(electionRequest.getElector());
-      updateHardState(thatTerm, getVoteFor());
-    } else {
-      logger.info(
-          "{} rejected an dataGroup election request, term:{}/{}, dataLogIndex:{}/{}, dataLogTerm:{}/{}, metaLogIndex:{}/{},metaLogTerm:{}/{}",
-          name, thatTerm, term.get(), thatDataLastLogIndex, logManager.getLastLogIndex(),
-          thatDataLastLogTerm,
-          logManager.getLastLogTerm(), thatMetaLastLogIndex,
-          metaGroupMember.getLogManager().getLastLogIndex(), thatMetaLastLogTerm,
-          metaGroupMember.getLogManager().getLastLogTerm());
-    }
-    return resp;
   }
 
   /**
@@ -799,7 +743,8 @@ public class DataGroupMember extends RaftMember {
           // if the leader is removed, also start an election immediately
           synchronized (term) {
             setCharacter(NodeCharacter.ELECTOR);
-            setLastHeartbeatReceivedTime(Long.MIN_VALUE);
+            setLeader(null);
+            getHeartBeatWaitObject().notifyAll();
           }
         }
       }
