@@ -30,6 +30,7 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -61,6 +62,8 @@ public class MergeResource {
   private Map<TsFileResource, TsFileSequenceReader> fileReaderCache = new HashMap<>();
   private Map<TsFileResource, RestorableTsFileIOWriter> fileWriterCache = new HashMap<>();
   private Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
+  private Map<TsFileResource, Map<String, Pair<Long, Long>>> startEndTimeCache =
+      new HashMap<>(); // pair<startTime, endTime>
   private Map<PartialPath, MeasurementSchema> measurementSchemaMap =
       new HashMap<>(); // is this too waste?
   private Map<MeasurementSchema, IChunkWriter> chunkWriterCache = new ConcurrentHashMap<>();
@@ -262,5 +265,29 @@ public class MergeResource {
 
   public void clearChunkWriterCache() {
     this.chunkWriterCache.clear();
+  }
+
+  public void updateStartTime(TsFileResource tsFileResource, String device, long startTime) {
+    Map<String, Pair<Long, Long>> deviceStartEndTimePairMap =
+        startEndTimeCache.getOrDefault(tsFileResource, new HashMap<>());
+    Pair<Long, Long> startEndTimePair =
+        deviceStartEndTimePairMap.getOrDefault(device, new Pair<>(Long.MAX_VALUE, Long.MIN_VALUE));
+    long newStartTime = startEndTimePair.left > startTime ? startTime : startEndTimePair.left;
+    deviceStartEndTimePairMap.put(device, new Pair<>(newStartTime, startEndTimePair.right));
+    startEndTimeCache.put(tsFileResource, deviceStartEndTimePairMap);
+  }
+
+  public void updateEndTime(TsFileResource tsFileResource, String device, long endTime) {
+    Map<String, Pair<Long, Long>> deviceStartEndTimePairMap =
+        startEndTimeCache.getOrDefault(tsFileResource, new HashMap<>());
+    Pair<Long, Long> startEndTimePair =
+        deviceStartEndTimePairMap.getOrDefault(device, new Pair<>(Long.MAX_VALUE, Long.MIN_VALUE));
+    long newEndTime = startEndTimePair.right < endTime ? endTime : startEndTimePair.right;
+    deviceStartEndTimePairMap.put(device, new Pair<>(startEndTimePair.left, newEndTime));
+    startEndTimeCache.put(tsFileResource, deviceStartEndTimePairMap);
+  }
+
+  public Map<String, Pair<Long, Long>> getStartEndTime(TsFileResource tsFileResource) {
+    return startEndTimeCache.getOrDefault(tsFileResource, new HashMap<>());
   }
 }

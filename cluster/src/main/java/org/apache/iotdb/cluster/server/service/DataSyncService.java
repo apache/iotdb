@@ -210,12 +210,13 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
-  public ByteBuffer fetchSingleSeriesByTimestamp(Node header, long readerId, long timestamp)
+  public ByteBuffer fetchSingleSeriesByTimestamps(Node header, long readerId, List<Long> timestamps)
       throws TException {
     try {
       return dataGroupMember
           .getLocalQueryExecutor()
-          .fetchSingleSeriesByTimestamp(readerId, timestamp);
+          .fetchSingleSeriesByTimestamps(
+              readerId, timestamps.stream().mapToLong(k -> k).toArray(), timestamps.size());
     } catch (ReaderNotFoundException | IOException e) {
       throw new TException(e);
     }
@@ -256,6 +257,16 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
       return ((CMManager) IoTDB.metaManager).getNodeList(path, nodeLevel);
+    } catch (CheckConsistencyException | MetadataException e) {
+      throw new TException(e);
+    }
+  }
+
+  @Override
+  public Set<String> getChildNodeInNextLevel(Node header, String path) throws TException {
+    try {
+      dataGroupMember.syncLeaderWithConsistencyCheck(false);
+      return ((CMManager) IoTDB.metaManager).getChildNodeInNextLevel(path);
     } catch (CheckConsistencyException | MetadataException e) {
       throw new TException(e);
     }
