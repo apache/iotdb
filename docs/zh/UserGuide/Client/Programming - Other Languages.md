@@ -46,19 +46,14 @@ http://thrift.apache.org/docs/install/
 pip install apache-iotdb
 ```
 
- * 方案2: 使用我们提供的编译脚本
+ * 方案2：thrift的基本用法
 
-如果你在路径中添加了Thrift可执行文件，则可以运行`client-py/compile.sh`或
-  `client-py \ compile.bat`，或者你必须对其进行修改以将变量`THRIFT_EXE`设置为指向你的可执行文件。 这将在`target`文件夹下生成节俭源，你可以将其添加到你的`PYTHONPATH`，以便你可以在代码中使用该库。 请注意，脚本通过相对路径找到节俭的源文件，因此，如果将脚本移动到其他位置，它们将不再有效。
-
- * 方案3：thrift的基本用法
-
-或者，如果您了解thrift的基本用法，则只能在以下位置下载Thrift源文件：
-`thrift\src\main\thrift\rpc.thrift`，并且只需使用`thrift -gen py -out ./target/iotdb rpc.thrift`生成python库。
+或者，如果您了解thrift的基本用法，则可以在以下位置查看thrift源文件：
+`thrift\src\main\thrift\rpc.thrift`，使用`thrift -gen py -out ./target/iotdb rpc.thrift`生成Python库。
 
 ### 示例代码
 
-我们在`client-py/src/client_example.py`中提供了一个示例，说明如何使用Thrift库连接到IoTDB，请先仔细阅读，然后再编写自己的代码。
+我们在`client-py/src/SessionExample.py`中提供了一个示例，说明如何使用Thrift库连接到IoTDB，请先仔细阅读，然后再编写自己的代码。
 
 
 ## C++ 原生接口
