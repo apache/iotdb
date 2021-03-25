@@ -31,8 +31,8 @@ import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
+import org.apache.iotdb.cluster.server.member.BaseMember;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
-import org.apache.iotdb.cluster.server.member.MemberTest;
 import org.apache.iotdb.cluster.server.service.DataAsyncService;
 import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
@@ -99,12 +99,15 @@ public class TestAsyncDataClient extends AsyncDataClient {
   }
 
   @Override
-  public void fetchSingleSeriesByTimestamp(
-      Node header, long readerId, long time, AsyncMethodCallback<ByteBuffer> resultHandler) {
+  public void fetchSingleSeriesByTimestamps(
+      Node header,
+      long readerId,
+      List<Long> timestamps,
+      AsyncMethodCallback<ByteBuffer> resultHandler) {
     new Thread(
             () ->
                 new DataAsyncService(dataGroupMemberMap.get(header))
-                    .fetchSingleSeriesByTimestamp(header, readerId, time, resultHandler))
+                    .fetchSingleSeriesByTimestamps(header, readerId, timestamps, resultHandler))
         .start();
   }
 
@@ -170,7 +173,7 @@ public class TestAsyncDataClient extends AsyncDataClient {
 
   @Override
   public void appendEntry(AppendEntryRequest request, AsyncMethodCallback<Long> resultHandler) {
-    new Thread(() -> resultHandler.onComplete(MemberTest.dummyResponse.get())).start();
+    new Thread(() -> resultHandler.onComplete(BaseMember.dummyResponse.get())).start();
   }
 
   @Override

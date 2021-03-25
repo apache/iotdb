@@ -21,15 +21,10 @@ package org.apache.iotdb.cluster.config;
 
 import org.apache.iotdb.cluster.exception.BadSeedUrlFormatException;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 
 import com.google.common.net.InetAddresses;
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.DefaultParser;
-import org.apache.commons.cli.Option;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,17 +43,23 @@ public class ClusterDescriptor {
 
   private static final Logger logger = LoggerFactory.getLogger(ClusterDescriptor.class);
   private static final ClusterDescriptor INSTANCE = new ClusterDescriptor();
-
-  private static final String OPTION_INTERVAL_META_PORT = "internal_meta_port";
-  private static final String OPTION_INTERVAL_DATA_PORT = "internal_data_port";
-  private static final String OPTION_CLUSTER_RPC_PORT = "cluster_rpc_port";
-  private static final String OPTION_SEED_NODES = "seed_nodes";
-
-  private ClusterConfig config = new ClusterConfig();
-  private static CommandLine commandLine;
+  private final ClusterConfig config = new ClusterConfig();
 
   private ClusterDescriptor() {
+    // load settings from cluster's file.
+    // so, iotdb-cluster.properties can overwrite iotdb-engine.properties.
     loadProps();
+
+    // if open the server rpc port, we will enable the rpc service and change the server's rpc port
+    // to rpc_port + 1
+    if (config.isOpenServerRpcPort()) {
+      IoTDBDescriptor.getInstance().getConfig().setEnableRpcService(true);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setRpcPort(IoTDBDescriptor.getInstance().getConfig().getRpcPort() + 1);
+    } else {
+      IoTDBDescriptor.getInstance().getConfig().setEnableRpcService(false);
+    }
   }
 
   public ClusterConfig getConfig() {
@@ -70,14 +71,14 @@ public class ClusterDescriptor {
   }
 
   public String getPropsUrl() {
-    String url = System.getProperty(ClusterConstant.CLUSTER_CONF, null);
+    String url = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
     if (url == null) {
       url = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
       if (url != null) {
         url = url + File.separatorChar + "conf" + File.separatorChar + ClusterConfig.CONFIG_NAME;
       } else {
         logger.warn(
-            "Cannot find IOTDB_HOME or CLUSTER_CONF environment variable when loading "
+            "Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading "
                 + "config file {}, use default configuration",
             ClusterConfig.CONFIG_NAME);
         // update all data seriesPath
@@ -89,112 +90,36 @@ public class ClusterDescriptor {
     return url;
   }
 
-  public void replaceProps(String[] params) {
-    Options options = new Options();
-
-    Option metaPort =
-        new Option(
-            OPTION_INTERVAL_META_PORT,
-            OPTION_INTERVAL_META_PORT,
-            true,
-            "port for metadata service");
-    metaPort.setRequired(false);
-    options.addOption(metaPort);
-
-    Option dataPort =
-        new Option(
-            OPTION_INTERVAL_DATA_PORT, OPTION_INTERVAL_DATA_PORT, true, "port for data service");
-    dataPort.setRequired(false);
-    options.addOption(dataPort);
-
-    Option clusterRpcPort =
-        new Option(
-            OPTION_CLUSTER_RPC_PORT, OPTION_CLUSTER_RPC_PORT, true, "port for client service");
-    clusterRpcPort.setRequired(false);
-    options.addOption(clusterRpcPort);
-
-    Option seedNodes =
-        new Option(
-            OPTION_SEED_NODES,
-            OPTION_SEED_NODES,
-            true,
-            "comma-separated {IP/DOMAIN}:meta_port:data_port:client_port pairs");
-    seedNodes.setRequired(false);
-    options.addOption(seedNodes);
-
-    boolean ok = parseCommandLine(options, params);
-    if (!ok) {
-      logger.error("replaces properties failed, use default conf params");
-    } else {
-      if (commandLine.hasOption(OPTION_INTERVAL_META_PORT)) {
-        config.setInternalMetaPort(
-            Integer.parseInt(commandLine.getOptionValue(OPTION_INTERVAL_META_PORT)));
-        logger.debug("replace local meta port with={}", config.getInternalMetaPort());
-      }
-
-      if (commandLine.hasOption(OPTION_INTERVAL_DATA_PORT)) {
-        config.setInternalDataPort(
-            Integer.parseInt(commandLine.getOptionValue(OPTION_INTERVAL_DATA_PORT)));
-        logger.debug("replace local data port with={}", config.getInternalDataPort());
-      }
-
-      if (commandLine.hasOption(OPTION_CLUSTER_RPC_PORT)) {
-        config.setClusterRpcPort(
-            Integer.parseInt(commandLine.getOptionValue(OPTION_CLUSTER_RPC_PORT)));
-        logger.debug("replace local cluster rpc port with={}", config.getClusterRpcPort());
-      }
-
-      if (commandLine.hasOption(OPTION_SEED_NODES)) {
-        String seedNodeUrls = commandLine.getOptionValue(OPTION_SEED_NODES);
-        config.setSeedNodeUrls(getSeedUrlList(seedNodeUrls));
-        logger.debug("replace seed nodes with={}", config.getSeedNodeUrls());
-      }
-    }
-  }
-
   public void replaceHostnameWithIp() throws UnknownHostException, BadSeedUrlFormatException {
-    boolean isInvalidClusterRpcIp = InetAddresses.isInetAddress(config.getClusterRpcIp());
-    if (!isInvalidClusterRpcIp) {
-      String clusterRpcIp = hostnameToIP(config.getClusterRpcIp());
-      config.setClusterRpcIp(clusterRpcIp);
+    boolean isInvalidClusterInternalIp = InetAddresses.isInetAddress(config.getInternalIp());
+    if (!isInvalidClusterInternalIp) {
+      config.setInternalIp(hostnameToIP(config.getInternalIp()));
     }
-
     List<String> newSeedUrls = new ArrayList<>();
     for (String seedUrl : config.getSeedNodeUrls()) {
       String[] splits = seedUrl.split(":");
-      if (splits.length != 4) {
+      if (splits.length != 2) {
         throw new BadSeedUrlFormatException(seedUrl);
       }
       String seedIP = splits[0];
       boolean isInvalidSeedIp = InetAddresses.isInetAddress(seedIP);
       if (!isInvalidSeedIp) {
         String newSeedIP = hostnameToIP(seedIP);
-        newSeedUrls.add(newSeedIP + ":" + splits[1] + ":" + splits[2] + ":" + splits[3]);
+        newSeedUrls.add(newSeedIP + ":" + splits[1]);
       } else {
         newSeedUrls.add(seedUrl);
       }
     }
     config.setSeedNodeUrls(newSeedUrls);
     logger.debug(
-        "after replace, the clusterRpcIP={}, seedUrls={}",
-        config.getClusterRpcIp(),
+        "after replace, the rpcIP={}, internalIP={}, seedUrls={}",
+        IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
+        config.getInternalIp(),
         config.getSeedNodeUrls());
-  }
-
-  private static boolean parseCommandLine(Options options, String[] params) {
-    try {
-      CommandLineParser parser = new DefaultParser();
-      commandLine = parser.parse(options, params);
-    } catch (ParseException e) {
-      logger.error("parse conf params failed", e);
-      return false;
-    }
-    return true;
   }
 
   /** load an property file and set TsfileDBConfig variables. */
   private void loadProps() {
-
     String url = getPropsUrl();
     Properties properties = System.getProperties();
     if (url != null) {
@@ -205,22 +130,21 @@ public class ClusterDescriptor {
         logger.warn("Fail to find config file {}", url, e);
       }
     }
-    config.setClusterRpcIp(properties.getProperty("cluster_rpc_ip", config.getClusterRpcIp()));
+    config.setInternalIp(properties.getProperty("internal_ip", config.getInternalIp()));
 
     config.setInternalMetaPort(
         Integer.parseInt(
             properties.getProperty(
-                OPTION_INTERVAL_META_PORT, String.valueOf(config.getInternalMetaPort()))));
+                "internal_meta_port", String.valueOf(config.getInternalMetaPort()))));
 
     config.setInternalDataPort(
         Integer.parseInt(
             properties.getProperty(
-                OPTION_INTERVAL_DATA_PORT, Integer.toString(config.getInternalDataPort()))));
+                "internal_data_port", Integer.toString(config.getInternalDataPort()))));
 
     config.setClusterRpcPort(
         Integer.parseInt(
-            properties.getProperty(
-                OPTION_CLUSTER_RPC_PORT, Integer.toString(config.getClusterRpcPort()))));
+            properties.getProperty("rpc_port", Integer.toString(config.getClusterRpcPort()))));
 
     config.setMaxConcurrentClientNum(
         Integer.parseInt(
@@ -276,6 +200,12 @@ public class ClusterDescriptor {
             properties.getProperty(
                 "max_num_of_logs_in_mem", String.valueOf(config.getMaxNumOfLogsInMem()))));
 
+    config.setMaxMemorySizeForRaftLog(
+        Long.parseLong(
+            properties.getProperty(
+                "max_memory_size_for_raft_log",
+                String.valueOf(config.getMaxMemorySizeForRaftLog()))));
+
     config.setLogDeleteCheckIntervalSecond(
         Integer.parseInt(
             properties.getProperty(
@@ -291,6 +221,11 @@ public class ClusterDescriptor {
         Boolean.parseBoolean(
             properties.getProperty(
                 "is_use_async_server", String.valueOf(config.isUseAsyncServer()))));
+
+    config.setOpenServerRpcPort(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "open_server_rpc_port", String.valueOf(config.isOpenServerRpcPort()))));
 
     config.setUseAsyncApplier(
         Boolean.parseBoolean(
@@ -349,19 +284,40 @@ public class ClusterDescriptor {
                 "enable_use_persist_log_on_disk_to_catch_up",
                 String.valueOf(config.isEnableUsePersistLogOnDiskToCatchUp()))));
 
+    config.setMaxReadLogLag(
+        Long.parseLong(
+            properties.getProperty("max_read_log_lag", String.valueOf(config.getMaxReadLogLag()))));
+
+    config.setMaxClientPerNodePerMember(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_client_pernode_permember_number",
+                String.valueOf(config.getMaxClientPerNodePerMember()))));
+
+    config.setWaitClientTimeoutMS(
+        Long.parseLong(
+            properties.getProperty(
+                "wait_client_timeout_ms", String.valueOf(config.getWaitClientTimeoutMS()))));
+
     String consistencyLevel = properties.getProperty("consistency_level");
     if (consistencyLevel != null) {
       config.setConsistencyLevel(ConsistencyLevel.getConsistencyLevel(consistencyLevel));
     }
 
-    String seedUrls = properties.getProperty(OPTION_SEED_NODES);
+    String seedUrls = properties.getProperty("seed_nodes");
     if (seedUrls != null) {
       List<String> urlList = getSeedUrlList(seedUrls);
       config.setSeedNodeUrls(urlList);
     }
   }
 
-  private List<String> getSeedUrlList(String seedUrls) {
+  /**
+   * Split the seed urls as one list.
+   *
+   * @param seedUrls the seed urls.
+   * @return the seed urls as a list.
+   */
+  public static List<String> getSeedUrlList(String seedUrls) {
     if (seedUrls == null) {
       return Collections.emptyList();
     }

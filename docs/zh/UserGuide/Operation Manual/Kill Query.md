@@ -71,7 +71,7 @@ IoTDB> select * from root;
 Msg: 701 Current query is time out, please check your statement or modify timeout parameter.
 ```
 
-系统默认的超时时间为 60000 ms，可以在配置文件中通过 `query_time_threshold` 参数进行自定义配置。
+系统默认的超时时间为 60000 ms，可以在配置文件中通过 `query_timeout_threshold` 参数进行自定义配置。
 
 如果您使用 JDBC 或 Session，还支持对单个查询设置超时时间（单位为 ms）：
 

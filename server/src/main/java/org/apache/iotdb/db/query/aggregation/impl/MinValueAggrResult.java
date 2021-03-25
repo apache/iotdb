@@ -67,13 +67,21 @@ public class MinValueAggrResult extends AggregateResult {
   public void updateResultUsingTimestamps(
       long[] timestamps, int length, IReaderByTimestamp dataReader) throws IOException {
     Comparable<Object> minVal = null;
+    Object[] values = dataReader.getValuesInTimestamps(timestamps, length);
     for (int i = 0; i < length; i++) {
-      Object value = dataReader.getValueInTimestamp(timestamps[i]);
-      if (value == null) {
-        continue;
+      if (values[i] != null && (minVal == null || minVal.compareTo(values[i]) > 0)) {
+        minVal = (Comparable<Object>) values[i];
       }
-      if (minVal == null || minVal.compareTo(value) > 0) {
-        minVal = (Comparable<Object>) value;
+    }
+    updateResult(minVal);
+  }
+
+  @Override
+  public void updateResultUsingValues(long[] timestamps, int length, Object[] values) {
+    Comparable<Object> minVal = null;
+    for (int i = 0; i < length; i++) {
+      if (values[i] != null && (minVal == null || minVal.compareTo(values[i]) > 0)) {
+        minVal = (Comparable<Object>) values[i];
       }
     }
     updateResult(minVal);

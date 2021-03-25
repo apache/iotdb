@@ -122,11 +122,12 @@ public class PullSnapshotHintService {
   }
 
   private boolean sendHintSync(Node receiver, PullSnapshotHint hint) throws TException {
-    SyncDataClient syncDataClient = (SyncDataClient) member.getSyncClient(receiver);
-    if (syncDataClient == null) {
-      return false;
+    try (SyncDataClient syncDataClient = (SyncDataClient) member.getSyncClient(receiver)) {
+      if (syncDataClient == null) {
+        return false;
+      }
+      return syncDataClient.onSnapshotApplied(hint.header, hint.slots);
     }
-    return syncDataClient.onSnapshotApplied(hint.header, hint.slots);
   }
 
   private static class PullSnapshotHint {

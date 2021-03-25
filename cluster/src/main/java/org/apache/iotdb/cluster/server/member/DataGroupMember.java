@@ -160,7 +160,7 @@ public class DataGroupMember extends RaftMember {
       Node thisNode,
       MetaGroupMember metaGroupMember) {
     super(
-        "Data(" + nodes.getHeader().getIp() + ":" + nodes.getHeader().getMetaPort() + ")",
+        "Data(" + nodes.getHeader().getInternalIp() + ":" + nodes.getHeader().getMetaPort() + ")",
         new AsyncClientPool(new AsyncDataClient.FactoryAsync(factory)),
         new SyncClientPool(new SyncDataClient.FactorySync(factory)),
         new AsyncClientPool(new AsyncDataHeartbeatClient.FactoryAsync(factory)),
@@ -717,7 +717,8 @@ public class DataGroupMember extends RaftMember {
       TSStatus result = forwardPlan(plan, leader.get(), getHeader());
       Timer.Statistic.DATA_GROUP_MEMBER_FORWARD_PLAN.calOperationCostTimeFromStart(startTime);
       if (!StatusUtils.NO_LEADER.equals(result)) {
-        result.setRedirectNode(new EndPoint(leader.get().getIp(), leader.get().getClientPort()));
+        result.setRedirectNode(
+            new EndPoint(leader.get().getClientIp(), leader.get().getClientPort()));
         return result;
       }
     }

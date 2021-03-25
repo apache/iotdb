@@ -41,7 +41,7 @@ public class SyncMetaHeartbeatClient extends SyncMetaClient {
         protocolFactory.getProtocol(
             RpcTransportFactory.INSTANCE.getTransport(
                 new TSocket(
-                    node.getIp(),
+                    node.getInternalIp(),
                     node.getMetaPort() + ClusterUtils.META_HEARTBEAT_PORT_OFFSET,
                     RaftServer.getConnectionTimeoutInMS()))));
     this.node = node;

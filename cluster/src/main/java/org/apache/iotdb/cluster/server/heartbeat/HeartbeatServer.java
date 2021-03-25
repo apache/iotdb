@@ -23,6 +23,7 @@ import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.rpc.RpcTransportFactory;
@@ -76,9 +77,10 @@ public abstract class HeartbeatServer {
 
   HeartbeatServer() {
     thisNode = new Node();
-    thisNode.setIp(config.getClusterRpcIp());
+    thisNode.setInternalIp(config.getInternalIp());
     thisNode.setMetaPort(config.getInternalMetaPort());
     thisNode.setDataPort(config.getInternalDataPort());
+    thisNode.setClientIp(IoTDBDescriptor.getInstance().getConfig().getRpcAddress());
   }
 
   HeartbeatServer(Node thisNode) {
@@ -205,6 +207,6 @@ public abstract class HeartbeatServer {
         Executors.newSingleThreadExecutor(r -> new Thread(r, getServerClientName()));
     heartbeatClientService.submit(() -> heartbeatPoolServer.serve());
 
-    logger.info("Cluster node's heartbeat {} is up", thisNode);
+    logger.info("[{}] Cluster node's heartbeat {} is up", getServerClientName(), thisNode);
   }
 }

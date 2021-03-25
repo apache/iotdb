@@ -26,6 +26,9 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class HardState {
@@ -40,9 +43,6 @@ public class HardState {
   public static HardState deserialize(ByteBuffer buffer) {
     HardState res = new HardState();
     res.setCurrentTerm(ReadWriteIOUtils.readLong(buffer));
-    // marker is previously read, remaining fields:
-    // currentTerm(long), marker(byte)
-    // (optional)ipLength(int), ipBytes(byte[]), port(int), identifier(int), dataPort(int)
     int isNull = buffer.get();
     if (isNull == 1) {
       Node node = new Node();
@@ -54,41 +54,21 @@ public class HardState {
     return res;
   }
 
-  @SuppressWarnings("java:S125") // not commented code
   public ByteBuffer serialize() {
-    int totalSize = Long.BYTES + Byte.BYTES;
-    // currentTerm(long), marker(byte)
-    // (optional) ipLength(int), ipBytes(byte[]), port(int), identifier(int), dataPort(int),
-    // clientPort(int)
-    if (voteFor != null) {
-      byte[] ipBytes = voteFor.getIp().getBytes();
-      totalSize +=
-          Integer.BYTES
-              + ipBytes.length
-              + Integer.BYTES
-              + Integer.BYTES
-              + Integer.BYTES
-              + Integer.BYTES;
-      byte[] buffer = new byte[totalSize];
-      ByteBuffer byteBuffer = ByteBuffer.wrap(buffer);
-      byteBuffer.putLong(currentTerm);
-      byteBuffer.put((byte) 1);
-      byteBuffer.putInt(ipBytes.length);
-      byteBuffer.put(ipBytes);
-      byteBuffer.putInt(voteFor.getMetaPort());
-      byteBuffer.putInt(voteFor.getNodeIdentifier());
-      byteBuffer.putInt(voteFor.getDataPort());
-      byteBuffer.putInt(voteFor.getClientPort());
-      byteBuffer.flip();
-      return byteBuffer;
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(outputStream);
+    try {
+      dataOutputStream.writeLong(currentTerm);
+      if (voteFor == null) {
+        dataOutputStream.writeByte(0);
+      } else {
+        dataOutputStream.writeByte(1);
+        SerializeUtils.serialize(voteFor, dataOutputStream);
+      }
+    } catch (IOException e) {
+      // unreachable
     }
-    byte[] buffer = new byte[totalSize];
-    ByteBuffer byteBuffer = ByteBuffer.wrap(buffer);
-    byteBuffer.putLong(currentTerm);
-    byteBuffer.put((byte) 0);
-    byteBuffer.flip();
-
-    return byteBuffer;
+    return ByteBuffer.wrap(outputStream.toByteArray());
   }
 
   public long getCurrentTerm() {

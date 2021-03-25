@@ -168,17 +168,13 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
-    <!-- org.pentaho:pentaho-aggdesigner-algorithm is in repo.spring.io and we have to claim
-    to use https-->
-    <!-- Please note the notice in https://spring.io/blog/2020/10/29/notice-of-permissions-changes-to-repo-spring-io-fall-and-winter-2020
-    Anonymous access using /libs-snapshot or /libs-milestone in the pom.xml, or with
-    these configured in a remote repository, should replace them with /snapshot and /milestone, 
-    respectively.-->
+    <!-- org.pentaho:pentaho-aggdesigner-algorithm is removed from  repo.spring.io and we have to claim
+    to use https://public.nexus.pentaho.org or http://conjars.org/repo  -->
     <repositories>
         <repository>
             <id>for_pentaho</id>
-            <name>spring.io</name>
-            <url>https://repo.spring.io/milestone</url>
+            <name>public.nexus.pentaho.org</name>
+            <url>https://public.nexus.pentaho.org/repository/proxy-public-3rd-party-release</url>
             <layout>default</layout>
             <releases>
                 <enabled>true</enabled>
