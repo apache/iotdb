@@ -1236,11 +1236,12 @@ public class CMManager extends MManager {
       try {
         Set<String> paths = getMatchedDevices(node, partitionGroup.getHeader(), pathsToQuery);
         logger.debug(
-            "{}: get matched paths of {} from {}, result {}",
+            "{}: get matched paths of {} from {}, result {} for {}",
             metaGroupMember.getName(),
             partitionGroup,
             node,
-            paths);
+            paths,
+            pathsToQuery);
         if (paths != null) {
           // query next group
           Set<PartialPath> partialPaths = new HashSet<>();
