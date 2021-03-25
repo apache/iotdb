@@ -72,10 +72,12 @@ public class TestUtils {
 
   public static Node getNode(int nodeNum) {
     Node node = new Node();
-    node.setIp("192.168.0." + nodeNum);
+    node.setInternalIp("192.168.0." + nodeNum);
     node.setMetaPort(ClusterDescriptor.getInstance().getConfig().getInternalMetaPort());
     node.setDataPort(ClusterDescriptor.getInstance().getConfig().getInternalDataPort());
     node.setNodeIdentifier(nodeNum);
+    node.setClientPort(IoTDBDescriptor.getInstance().getConfig().getRpcPort());
+    node.setClientIp(IoTDBDescriptor.getInstance().getConfig().getRpcAddress());
     return node;
   }
 
@@ -124,6 +126,7 @@ public class TestUtils {
       Log log = new LargeTestLog();
       log.setCurrLogIndex(i);
       log.setCurrLogTerm(i);
+      log.setByteSize(8192);
       logList.add(log);
     }
     return logList;

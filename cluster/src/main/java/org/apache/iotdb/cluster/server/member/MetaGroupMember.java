@@ -162,6 +162,7 @@ public class MetaGroupMember extends RaftMember {
    * members in this node
    */
   private static final int REPORT_INTERVAL_SEC = 10;
+
   /** how many times is a data record replicated, also the number of nodes in a data group */
   private static final int REPLICATION_NUM =
       ClusterDescriptor.getInstance().getConfig().getReplicationNum();
@@ -397,7 +398,8 @@ public class MetaGroupMember extends RaftMember {
     for (String seedUrl : seedUrls) {
       Node node = ClusterUtils.parseNode(seedUrl);
       if (node != null
-          && (!node.getIp().equals(thisNode.ip) || node.getMetaPort() != thisNode.getMetaPort())
+          && (!node.getInternalIp().equals(thisNode.internalIp)
+              || node.getMetaPort() != thisNode.getMetaPort())
           && !allNodes.contains(node)) {
         // do not add the local node since it is added in the constructor
         allNodes.add(node);
@@ -691,9 +693,16 @@ public class MetaGroupMember extends RaftMember {
   public void processValidHeartbeatResp(HeartBeatResponse response, Node receiver) {
     // register the id of the node
     if (response.isSetFollowerIdentifier()) {
-      registerNodeIdentifier(receiver, response.getFollowerIdentifier());
+      // register the follower, the response.getFollower() contains the node information of the
+      // receiver.
+      registerNodeIdentifier(response.getFollower(), response.getFollowerIdentifier());
       // if all nodes' ids are known, we can build the partition table
       if (allNodesIdKnown()) {
+        // When the meta raft group is established, the follower reports its node information to the
+        // leader through the first heartbeat. After the leader knows the node information of all
+        // nodes, it can replace the incomplete node information previously saved locally, and build
+        // partitionTable to send it to other followers.
+        allNodes = new ArrayList<>(idNodeMap.values());
         if (partitionTable == null) {
           partitionTable = new SlotPartitionTable(allNodes, thisNode);
           logger.info("Partition table is set up");
@@ -1316,7 +1325,8 @@ public class MetaGroupMember extends RaftMember {
    * @return a new identifier
    */
   private int genNodeIdentifier() {
-    return Objects.hash(thisNode.getIp(), thisNode.getMetaPort(), System.currentTimeMillis());
+    return Objects.hash(
+        thisNode.getInternalIp(), thisNode.getMetaPort(), System.currentTimeMillis());
   }
 
   /** Set the node's identifier to "identifier", also save it to a local file in text format. */
@@ -1385,7 +1395,8 @@ public class MetaGroupMember extends RaftMember {
     } else if (!ClusterConstant.EMPTY_NODE.equals(leader.get())) {
       TSStatus result = forwardPlan(plan, leader.get(), null);
       if (!StatusUtils.NO_LEADER.equals(result)) {
-        result.setRedirectNode(new EndPoint(leader.get().getIp(), leader.get().getClientPort()));
+        result.setRedirectNode(
+            new EndPoint(leader.get().getClientIp(), leader.get().getClientPort()));
         return result;
       }
     }
@@ -1400,7 +1411,8 @@ public class MetaGroupMember extends RaftMember {
     }
     TSStatus result = forwardPlan(plan, leader.get(), null);
     if (!StatusUtils.NO_LEADER.equals(result)) {
-      result.setRedirectNode(new EndPoint(leader.get().getIp(), leader.get().getClientPort()));
+      result.setRedirectNode(
+          new EndPoint(leader.get().getClientIp(), leader.get().getClientPort()));
     }
     return result;
   }
@@ -1419,9 +1431,31 @@ public class MetaGroupMember extends RaftMember {
     return routeIntervals(intervals, path);
   }
 
+  /**
+   * obtaining partition group based on path and intervals
+   *
+   * @param intervals time intervals, include minimum and maximum value
+   * @param path partial path
+   * @return data partition on which the current interval of the current path is stored
+   * @throws StorageEngineException if Failed to get storage group path
+   */
   public List<PartitionGroup> routeIntervals(Intervals intervals, PartialPath path)
       throws StorageEngineException {
     List<PartitionGroup> partitionGroups = new ArrayList<>();
+    PartialPath storageGroupName = null;
+    try {
+      storageGroupName = IoTDB.metaManager.getStorageGroupPath(path);
+    } catch (MetadataException e) {
+      throw new StorageEngineException(e);
+    }
+
+    // if cluster is not enable-partition, a partial data storage in one PartitionGroup
+    if (!StorageEngine.isEnablePartition()) {
+      PartitionGroup partitionGroup = partitionTable.route(storageGroupName.getFullPath(), 0L);
+      partitionGroups.add(partitionGroup);
+      return partitionGroups;
+    }
+
     long firstLB = intervals.getLowerBound(0);
     long lastUB = intervals.getUpperBound(intervals.getIntervalSize() - 1);
 
@@ -1432,24 +1466,19 @@ public class MetaGroupMember extends RaftMember {
     } else {
       // compute the related data groups of all intervals
       // TODO-Cluster#690: change to a broadcast when the computation is too expensive
-      try {
-        PartialPath storageGroupName = IoTDB.metaManager.getStorageGroupPath(path);
-        Set<Node> groupHeaders = new HashSet<>();
-        for (int i = 0; i < intervals.getIntervalSize(); i++) {
-          // compute the headers of groups involved in every interval
-          PartitionUtils.getIntervalHeaders(
-              storageGroupName.getFullPath(),
-              intervals.getLowerBound(i),
-              intervals.getUpperBound(i),
-              partitionTable,
-              groupHeaders);
-        }
-        // translate the headers to groups
-        for (Node groupHeader : groupHeaders) {
-          partitionGroups.add(partitionTable.getHeaderGroup(groupHeader));
-        }
-      } catch (MetadataException e) {
-        throw new StorageEngineException(e);
+      Set<Node> groupHeaders = new HashSet<>();
+      for (int i = 0; i < intervals.getIntervalSize(); i++) {
+        // compute the headers of groups involved in every interval
+        PartitionUtils.getIntervalHeaders(
+            storageGroupName.getFullPath(),
+            intervals.getLowerBound(i),
+            intervals.getUpperBound(i),
+            partitionTable,
+            groupHeaders);
+      }
+      // translate the headers to groups
+      for (Node groupHeader : groupHeaders) {
+        partitionGroups.add(partitionTable.getHeaderGroup(groupHeader));
       }
     }
     return partitionGroups;
@@ -1567,7 +1596,7 @@ public class MetaGroupMember extends RaftMember {
     Node target = null;
     synchronized (allNodes) {
       for (Node n : allNodes) {
-        if (n.ip.equals(node.ip) && n.metaPort == node.metaPort) {
+        if (n.internalIp.equals(node.internalIp) && n.metaPort == node.metaPort) {
           target = n;
           break;
         }

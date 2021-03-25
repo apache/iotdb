@@ -35,6 +35,7 @@ import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 
 import org.apache.thrift.TException;
@@ -114,7 +115,7 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
         client.getInputProtocol().getTransport().close();
         logger.warn("Cannot connect to node {}", node, e);
       } finally {
-        putBackSyncClient(client);
+        ClientUtils.putBackSyncClient(client);
       }
     }
     return null;
@@ -177,7 +178,7 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
         client.getInputProtocol().getTransport().close();
         logger.warn("Cannot connect to node {}", node, e);
       } finally {
-        putBackSyncClient(client);
+        ClientUtils.putBackSyncClient(client);
       }
     }
     return null;

@@ -11,6 +11,8 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 
@@ -28,9 +30,18 @@ public class SyncClientPoolTest {
 
   @Mock private SyncClientFactory testSyncClientFactory;
 
+  @Before
+  public void setUp() {
+    testSyncClientFactory = new TestSyncClientFactory();
+  }
+
+  @After
+  public void tearDown() {
+    testSyncClientFactory = null;
+  }
+
   @Test
   public void testTestClient() {
-    testSyncClientFactory = new TestSyncClientFactory();
     getClient();
     putClient();
   }
@@ -65,7 +76,6 @@ public class SyncClientPoolTest {
 
   @Test
   public void testPutBadClient() {
-    testSyncClientFactory = new TestSyncClientFactory();
     SyncClientPool syncClientPool = new SyncClientPool(testSyncClientFactory);
     Client client = syncClientPool.getClient(TestUtils.getNode(0));
     client.getInputProtocol().getTransport().close();
@@ -78,7 +88,6 @@ public class SyncClientPoolTest {
   public void testMaxClient() {
     int maxClientNum = ClusterDescriptor.getInstance().getConfig().getMaxClientPerNodePerMember();
     ClusterDescriptor.getInstance().getConfig().setMaxClientPerNodePerMember(5);
-    testSyncClientFactory = new TestSyncClientFactory();
     SyncClientPool syncClientPool = new SyncClientPool(testSyncClientFactory);
 
     for (int i = 0; i < 5; i++) {
@@ -98,7 +107,6 @@ public class SyncClientPoolTest {
         ClusterDescriptor.getInstance().getConfig().getMaxClientPerNodePerMember();
     try {
       ClusterDescriptor.getInstance().getConfig().setMaxClientPerNodePerMember(10);
-      testSyncClientFactory = new TestSyncClientFactory();
       SyncClientPool syncClientPool = new SyncClientPool(testSyncClientFactory);
 
       Node node = TestUtils.getNode(0);
@@ -141,7 +149,6 @@ public class SyncClientPoolTest {
         ClusterDescriptor.getInstance().getConfig().getMaxClientPerNodePerMember();
     try {
       ClusterDescriptor.getInstance().getConfig().setMaxClientPerNodePerMember(1);
-      testSyncClientFactory = new TestSyncClientFactory();
       SyncClientPool syncClientPool = new SyncClientPool(testSyncClientFactory);
 
       Node node = TestUtils.getNode(0);

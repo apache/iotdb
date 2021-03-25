@@ -35,7 +35,6 @@ import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -107,6 +106,7 @@ import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.cluster.query.ClusterPlanExecutor.LOG_FAIL_CONNECT;
@@ -150,6 +150,19 @@ public class CMManager extends MManager {
    */
   public static CMManager getInstance() {
     return CMManager.MManagerHolder.INSTANCE;
+  }
+
+  /**
+   * sync meta leader to get the newest partition table and storage groups.
+   *
+   * @throws MetadataException throws MetadataException if necessary
+   */
+  public void syncMetaLeader() throws MetadataException {
+    try {
+      metaGroupMember.syncLeaderWithConsistencyCheck(false);
+    } catch (CheckConsistencyException e) {
+      throw new MetadataException(e);
+    }
   }
 
   @Override
@@ -206,13 +219,11 @@ public class CMManager extends MManager {
   }
 
   /**
-   * the org.apache.iotdb.db.writelog.recover.logReplayer will call this to get schema after restart
-   * we should retry to get schema util we get the schema
+   * the {@link org.apache.iotdb.db.writelog.recover.LogReplayer#replayLogs(Supplier)} will call
+   * this to get schema after restart we should retry to get schema util we get the schema.
    *
-   * @param deviceId
-   * @param measurements
-   * @return
-   * @throws MetadataException
+   * @param deviceId the device id.
+   * @param measurements the measurements.
    */
   @Override
   public MeasurementMNode[] getMNodes(PartialPath deviceId, String[] measurements)
@@ -274,6 +285,7 @@ public class CMManager extends MManager {
     List<MeasurementSchema> schemas = metaPuller.pullMeasurementSchemas(schemasToPull);
     for (MeasurementSchema schema : schemas) {
       // TODO-Cluster: also pull alias?
+      // take care, the pulled schema's measurement Id is only series name
       MeasurementMNode measurementMNode =
           new MeasurementMNode(null, schema.getMeasurementId(), schema, null);
       cacheMeta(deviceId.concatNode(schema.getMeasurementId()), measurementMNode);
@@ -321,17 +333,11 @@ public class CMManager extends MManager {
   @Override
   public MNode getSeriesSchemasAndReadLockDevice(InsertPlan plan) throws MetadataException {
     MeasurementMNode[] measurementMNodes = new MeasurementMNode[plan.getMeasurements().length];
-    try {
-      MNode deviceNode = getDeviceNode(plan.getDeviceId());
-
-      int nonExistSchemaIndex =
-          getMNodesLocally(plan.getDeviceId(), plan.getMeasurements(), measurementMNodes);
-      if (nonExistSchemaIndex == -1) {
-        plan.setMeasurementMNodes(measurementMNodes);
-        return deviceNode;
-      }
-    } catch (PathNotExistException exception) {
-      // ignore, so we could try local MTree
+    int nonExistSchemaIndex =
+        getMNodesLocally(plan.getDeviceId(), plan.getMeasurements(), measurementMNodes);
+    if (nonExistSchemaIndex == -1) {
+      plan.setMeasurementMNodes(measurementMNodes);
+      return new MNode(null, plan.getDeviceId().getDevice());
     }
     // auto-create schema in IoTDBConfig is always disabled in the cluster version, and we have
     // another config in ClusterConfig to do this
@@ -721,16 +727,12 @@ public class CMManager extends MManager {
               SyncClientAdaptor.getUnregisteredMeasurements(
                   client, partitionGroup.getHeader(), seriesList);
         } else {
-          SyncDataClient syncDataClient = null;
-          try {
-            syncDataClient =
-                metaGroupMember
-                    .getClientProvider()
-                    .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+          try (SyncDataClient syncDataClient =
+              metaGroupMember
+                  .getClientProvider()
+                  .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
             result =
                 syncDataClient.getUnregisteredTimeseries(partitionGroup.getHeader(), seriesList);
-          } finally {
-            ClientUtils.putBackSyncClient(syncDataClient);
           }
         }
         if (result != null) {
@@ -814,9 +816,13 @@ public class CMManager extends MManager {
   private void pullTimeSeriesSchemas(PartitionGroup partitionGroup, List<String> prefixPaths) {
     if (partitionGroup.contains(metaGroupMember.getThisNode())) {
       // the node is in the target group, synchronize with leader should be enough
-      metaGroupMember
-          .getLocalDataMember(partitionGroup.getHeader(), "Pull timeseries of " + prefixPaths)
-          .syncLeader();
+      try {
+        metaGroupMember
+            .getLocalDataMember(partitionGroup.getHeader(), "Pull timeseries of " + prefixPaths)
+            .syncLeader(null);
+      } catch (CheckConsistencyException e) {
+        logger.warn("Failed to check consistency.", e);
+      }
       return;
     }
 
@@ -905,12 +911,11 @@ public class CMManager extends MManager {
               .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       schemas = SyncClientAdaptor.pullTimeseriesSchema(client, request);
     } else {
-      SyncDataClient syncDataClient = null;
-      try {
-        syncDataClient =
-            metaGroupMember
-                .getClientProvider()
-                .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+      try (SyncDataClient syncDataClient =
+          metaGroupMember
+              .getClientProvider()
+              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
+
         PullSchemaResp pullSchemaResp = syncDataClient.pullTimeSeriesSchema(request);
         ByteBuffer buffer = pullSchemaResp.schemaBytes;
         int size = buffer.getInt();
@@ -918,8 +923,6 @@ public class CMManager extends MManager {
         for (int i = 0; i < size; i++) {
           schemas.add(TimeseriesSchema.deserializeFrom(buffer));
         }
-      } finally {
-        ClientUtils.putBackSyncClient(syncDataClient);
       }
     }
 
@@ -1025,12 +1028,6 @@ public class CMManager extends MManager {
    * @return all paths after removing wildcards in the path
    */
   public Set<PartialPath> getMatchedDevices(PartialPath originPath) throws MetadataException {
-    // make sure this node knows all storage groups
-    try {
-      metaGroupMember.syncLeaderWithConsistencyCheck(false);
-    } catch (CheckConsistencyException e) {
-      throw new MetadataException(e);
-    }
     // get all storage groups this path may belong to
     // the key is the storage group name and the value is the path to be queried with storage group
     // added, e.g:
@@ -1063,7 +1060,11 @@ public class CMManager extends MManager {
       if (partitionGroup.contains(metaGroupMember.getThisNode())) {
         // this node is a member of the group, perform a local query after synchronizing with the
         // leader
-        metaGroupMember.getLocalDataMember(partitionGroup.getHeader()).syncLeader();
+        try {
+          metaGroupMember.getLocalDataMember(partitionGroup.getHeader()).syncLeader(null);
+        } catch (CheckConsistencyException e) {
+          logger.warn("Failed to check consistency.", e);
+        }
         List<PartialPath> allTimeseriesName = getMatchedPathsLocally(pathUnderSG, withAlias);
         logger.debug(
             "{}: get matched paths of {} locally, result {}",
@@ -1144,15 +1145,12 @@ public class CMManager extends MManager {
               .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       result = SyncClientAdaptor.getAllPaths(client, header, pathsToQuery, withAlias);
     } else {
-      SyncDataClient syncDataClient = null;
-      try {
-        syncDataClient =
-            metaGroupMember
-                .getClientProvider()
-                .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+      try (SyncDataClient syncDataClient =
+          metaGroupMember
+              .getClientProvider()
+              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
+
         result = syncDataClient.getAllPaths(header, pathsToQuery, withAlias);
-      } finally {
-        ClientUtils.putBackSyncClient(syncDataClient);
       }
     }
 
@@ -1199,7 +1197,11 @@ public class CMManager extends MManager {
       if (partitionGroup.contains(metaGroupMember.getThisNode())) {
         // this node is a member of the group, perform a local query after synchronizing with the
         // leader
-        metaGroupMember.getLocalDataMember(partitionGroup.getHeader()).syncLeader();
+        try {
+          metaGroupMember.getLocalDataMember(partitionGroup.getHeader()).syncLeader(null);
+        } catch (CheckConsistencyException e) {
+          logger.warn("Failed to check consistency.", e);
+        }
         Set<PartialPath> allDevices = getDevices(pathUnderSG);
         logger.debug(
             "{}: get matched paths of {} locally, result {}",
@@ -1268,15 +1270,12 @@ public class CMManager extends MManager {
               .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       paths = SyncClientAdaptor.getAllDevices(client, header, pathsToQuery);
     } else {
-      SyncDataClient syncDataClient = null;
-      try {
-        syncDataClient =
-            metaGroupMember
-                .getClientProvider()
-                .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+      try (SyncDataClient syncDataClient =
+          metaGroupMember
+              .getClientProvider()
+              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
+
         paths = syncDataClient.getAllDevices(header, pathsToQuery);
-      } finally {
-        ClientUtils.putBackSyncClient(syncDataClient);
       }
     }
     return paths;
@@ -1286,12 +1285,7 @@ public class CMManager extends MManager {
   @Override
   public Pair<List<PartialPath>, Integer> getAllTimeseriesPathWithAlias(
       PartialPath prefixPath, int limit, int offset) throws MetadataException {
-    // make sure this node knows all storage groups
-    try {
-      metaGroupMember.syncLeaderWithConsistencyCheck(false);
-    } catch (CheckConsistencyException e) {
-      throw new MetadataException(e);
-    }
+
     // get all storage groups this path may belong to
     // the key is the storage group name and the value is the path to be queried with storage group
     // added, e.g:
@@ -1324,12 +1318,6 @@ public class CMManager extends MManager {
    * @return all paths after removing wildcards in the path
    */
   public List<PartialPath> getMatchedPaths(PartialPath originPath) throws MetadataException {
-    // make sure this node knows all storage groups
-    try {
-      metaGroupMember.syncLeaderWithConsistencyCheck(false);
-    } catch (CheckConsistencyException e) {
-      throw new MetadataException(e);
-    }
     // get all storage groups this path may belong to
     // the key is the storage group name and the value is the path to be queried with storage group
     // added, e.g:
@@ -1404,7 +1392,7 @@ public class CMManager extends MManager {
   public Set<String> getAllDevices(List<String> paths) throws MetadataException {
     Set<String> results = new HashSet<>();
     for (String path : paths) {
-      getAllTimeseriesPath(new PartialPath(path)).stream()
+      getDevices(new PartialPath(path)).stream()
           .map(PartialPath::getFullPath)
           .forEach(results::add);
     }
@@ -1424,6 +1412,10 @@ public class CMManager extends MManager {
         .collect(Collectors.toList());
   }
 
+  public Set<String> getChildNodeInNextLevel(String path) throws MetadataException {
+    return getChildNodeInNextLevel(new PartialPath(path));
+  }
+
   public Set<String> getChildNodePathInNextLevel(String path) throws MetadataException {
     return getChildNodePathInNextLevel(new PartialPath(path));
   }
@@ -1432,7 +1424,11 @@ public class CMManager extends MManager {
    * Replace partial paths (paths not containing measurements), and abstract paths (paths containing
    * wildcards) with full paths.
    */
-  public void convertToFullPaths(PhysicalPlan plan) throws PathNotExistException {
+  public void convertToFullPaths(PhysicalPlan plan)
+      throws PathNotExistException, CheckConsistencyException {
+    // make sure this node knows all storage groups
+    metaGroupMember.syncLeaderWithConsistencyCheck(false);
+
     Pair<List<PartialPath>, List<PartialPath>> getMatchedPathsRet =
         getMatchedPaths(plan.getPaths());
     List<PartialPath> fullPaths = getMatchedPathsRet.left;
@@ -1716,19 +1712,16 @@ public class CMManager extends MManager {
               .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       resultBinary = SyncClientAdaptor.getAllMeasurementSchema(client, group.getHeader(), plan);
     } else {
-      SyncDataClient syncDataClient = null;
       try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-          DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
-        syncDataClient =
-            metaGroupMember
-                .getClientProvider()
-                .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+          DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+          SyncDataClient syncDataClient =
+              metaGroupMember
+                  .getClientProvider()
+                  .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
         plan.serialize(dataOutputStream);
         resultBinary =
             syncDataClient.getAllMeasurementSchema(
                 group.getHeader(), ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
-      } finally {
-        ClientUtils.putBackSyncClient(syncDataClient);
       }
     }
     return resultBinary;
@@ -1744,20 +1737,17 @@ public class CMManager extends MManager {
               .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       resultBinary = SyncClientAdaptor.getDevices(client, group.getHeader(), plan);
     } else {
-      SyncDataClient syncDataClient = null;
-      try {
-        syncDataClient =
-            metaGroupMember
-                .getClientProvider()
-                .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+      try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+          DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+          SyncDataClient syncDataClient =
+              metaGroupMember
+                  .getClientProvider()
+                  .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
+
         plan.serialize(dataOutputStream);
         resultBinary =
             syncDataClient.getDevices(
                 group.getHeader(), ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
-      } finally {
-        ClientUtils.putBackSyncClient(syncDataClient);
       }
     }
     return resultBinary;
@@ -1770,6 +1760,8 @@ public class CMManager extends MManager {
     if (withAlias) {
       alias = new ArrayList<>();
     }
+    // make sure this node knows all storage groups
+    syncMetaLeader();
 
     if (withAlias) {
       for (String path : paths) {
@@ -1795,7 +1787,11 @@ public class CMManager extends MManager {
     try {
       return super.getStorageGroupPath(path);
     } catch (StorageGroupNotSetException e) {
-      metaGroupMember.syncLeader();
+      try {
+        metaGroupMember.syncLeader(null);
+      } catch (CheckConsistencyException ex) {
+        logger.warn("Failed to check consistency.", e);
+      }
       return super.getStorageGroupPath(path);
     }
   }

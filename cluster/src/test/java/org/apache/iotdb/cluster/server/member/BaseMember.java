@@ -29,9 +29,7 @@ import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestPartitionedLogManager;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.config.ConsistencyLevel;
 import org.apache.iotdb.cluster.coordinator.Coordinator;
-import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.log.applier.DataLogApplier;
 import org.apache.iotdb.cluster.log.manage.PartitionedSnapshotLogManager;
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;
@@ -46,6 +44,7 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.NodeCharacter;
+import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -60,9 +59,7 @@ import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
@@ -74,7 +71,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class MemberTest {
+public class BaseMember {
 
   public static AtomicLong dummyResponse = new AtomicLong(Response.RESPONSE_AGREE);
 
@@ -95,6 +92,9 @@ public class MemberTest {
   private boolean prevUseAsyncApplier;
   private boolean prevEnableWAL;
 
+  private int syncLeaderMaxWait;
+  private long heartBeatInterval;
+
   @Before
   public void setUp() throws Exception {
     prevUseAsyncApplier = ClusterDescriptor.getInstance().getConfig().isUseAsyncApplier();
@@ -108,6 +108,12 @@ public class MemberTest {
     prevEnableWAL = IoTDBDescriptor.getInstance().getConfig().isEnableWal();
     IoTDBDescriptor.getInstance().getConfig().setEnableWal(false);
     RaftMember.setWaitLeaderTimeMs(10);
+
+    syncLeaderMaxWait = RaftServer.getSyncLeaderMaxWaitMs();
+    heartBeatInterval = RaftServer.getHeartBeatIntervalMs();
+
+    RaftServer.setSyncLeaderMaxWaitMs(100);
+    RaftServer.setHeartBeatIntervalMs(100);
 
     allNodes = new PartitionGroup();
     for (int i = 0; i < 100; i += 10) {
@@ -138,14 +144,7 @@ public class MemberTest {
     List<String> testUrls = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       Node node = TestUtils.getNode(i);
-      testUrls.add(
-          node.getIp()
-              + ":"
-              + node.getMetaPort()
-              + ":"
-              + node.getDataPort()
-              + ":"
-              + node.getClientPort());
+      testUrls.add(node.getInternalIp() + ":" + node.getMetaPort());
     }
     ClusterDescriptor.getInstance().getConfig().setSeedNodeUrls(testUrls);
 
@@ -190,6 +189,9 @@ public class MemberTest {
     ClusterDescriptor.getInstance().getConfig().setRaftLogBufferSize(preLogBufferSize);
     ClusterDescriptor.getInstance().getConfig().setUseAsyncApplier(prevUseAsyncApplier);
     IoTDBDescriptor.getInstance().getConfig().setEnableWal(prevEnableWAL);
+
+    RaftServer.setSyncLeaderMaxWaitMs(syncLeaderMaxWait);
+    RaftServer.setHeartBeatIntervalMs(heartBeatInterval);
   }
 
   DataGroupMember getDataGroupMember(Node node) {
@@ -201,7 +203,7 @@ public class MemberTest {
         new TestDataGroupMember(node, partitionTable.getHeaderGroup(node)) {
 
           @Override
-          public boolean syncLeader() {
+          public boolean syncLeader(RaftMember.CheckConsistency checkConsistency) {
             return true;
           }
 
@@ -309,155 +311,5 @@ public class MemberTest {
           }
         });
     return ret;
-  }
-
-  private DataGroupMember newDataGroupMemberWithSyncLeader(Node node, boolean syncLeader) {
-    DataGroupMember newMember =
-        new TestDataGroupMember(node, partitionTable.getHeaderGroup(node)) {
-
-          @Override
-          public boolean syncLeader() {
-            return syncLeader;
-          }
-
-          @Override
-          public long appendEntry(AppendEntryRequest request) {
-            return Response.RESPONSE_AGREE;
-          }
-
-          @Override
-          public AsyncClient getAsyncClient(Node node) {
-            try {
-              return new TestAsyncDataClient(node, dataGroupMemberMap);
-            } catch (IOException e) {
-              return null;
-            }
-          }
-        };
-    newMember.setThisNode(node);
-    newMember.setMetaGroupMember(testMetaMember);
-    newMember.setLeader(node);
-    newMember.setCharacter(NodeCharacter.LEADER);
-    newMember.setLogManager(new TestPartitionedLogManager());
-    newMember.setAppendLogThreadPool(testThreadPool);
-    return newMember;
-  }
-
-  @Test
-  public void testsyncLeaderWithConsistencyCheck() {
-
-    // 1. write request : Strong consistency level with syncLeader false
-    DataGroupMember dataGroupMemberWithWriteStrongConsistencyFalse =
-        newDataGroupMemberWithSyncLeader(TestUtils.getNode(0), false);
-    ClusterDescriptor.getInstance()
-        .getConfig()
-        .setConsistencyLevel(ConsistencyLevel.WEAK_CONSISTENCY);
-    CheckConsistencyException exception = null;
-    try {
-      dataGroupMemberWithWriteStrongConsistencyFalse.syncLeaderWithConsistencyCheck(true);
-    } catch (CheckConsistencyException e) {
-      exception = e;
-    }
-    Assert.assertNotNull(exception);
-    Assert.assertEquals(CheckConsistencyException.CHECK_STRONG_CONSISTENCY_EXCEPTION, exception);
-
-    // 2. write request : Strong consistency level with syncLeader true
-    DataGroupMember dataGroupMemberWithWriteStrongConsistencyTrue =
-        newDataGroupMemberWithSyncLeader(TestUtils.getNode(0), true);
-    ClusterDescriptor.getInstance()
-        .getConfig()
-        .setConsistencyLevel(ConsistencyLevel.WEAK_CONSISTENCY);
-    exception = null;
-    try {
-      dataGroupMemberWithWriteStrongConsistencyTrue.syncLeaderWithConsistencyCheck(true);
-    } catch (CheckConsistencyException e) {
-      exception = e;
-    }
-    Assert.assertNull(exception);
-
-    // 3. Strong consistency level with syncLeader false
-    DataGroupMember dataGroupMemberWithStrongConsistencyFalse =
-        newDataGroupMemberWithSyncLeader(TestUtils.getNode(0), false);
-    ClusterDescriptor.getInstance()
-        .getConfig()
-        .setConsistencyLevel(ConsistencyLevel.STRONG_CONSISTENCY);
-    exception = null;
-    try {
-      dataGroupMemberWithStrongConsistencyFalse.syncLeaderWithConsistencyCheck(false);
-    } catch (CheckConsistencyException e) {
-      exception = e;
-    }
-    Assert.assertNotNull(exception);
-    Assert.assertEquals(CheckConsistencyException.CHECK_STRONG_CONSISTENCY_EXCEPTION, exception);
-
-    // 4. Strong consistency level with syncLeader true
-    DataGroupMember dataGroupMemberWithStrongConsistencyTrue =
-        newDataGroupMemberWithSyncLeader(TestUtils.getNode(0), true);
-    ClusterDescriptor.getInstance()
-        .getConfig()
-        .setConsistencyLevel(ConsistencyLevel.STRONG_CONSISTENCY);
-    exception = null;
-    try {
-      dataGroupMemberWithStrongConsistencyTrue.syncLeaderWithConsistencyCheck(false);
-    } catch (CheckConsistencyException e) {
-      exception = e;
-    }
-    Assert.assertNull(exception);
-
-    // 5. Mid consistency level with syncLeader false
-    DataGroupMember dataGroupMemberWithMidConsistencyFalse =
-        newDataGroupMemberWithSyncLeader(TestUtils.getNode(0), false);
-    ClusterDescriptor.getInstance()
-        .getConfig()
-        .setConsistencyLevel(ConsistencyLevel.MID_CONSISTENCY);
-    exception = null;
-    try {
-      dataGroupMemberWithMidConsistencyFalse.syncLeaderWithConsistencyCheck(false);
-    } catch (CheckConsistencyException e) {
-      exception = e;
-    }
-    Assert.assertNull(exception);
-
-    // 6. Mid consistency level with syncLeader true
-    DataGroupMember dataGroupMemberWithMidConsistencyTrue =
-        newDataGroupMemberWithSyncLeader(TestUtils.getNode(0), true);
-    ClusterDescriptor.getInstance()
-        .getConfig()
-        .setConsistencyLevel(ConsistencyLevel.MID_CONSISTENCY);
-    exception = null;
-    try {
-      dataGroupMemberWithMidConsistencyTrue.syncLeaderWithConsistencyCheck(false);
-    } catch (CheckConsistencyException e) {
-      exception = e;
-    }
-    Assert.assertNull(exception);
-
-    // 7. Weak consistency level with syncLeader false
-    DataGroupMember dataGroupMemberWithWeakConsistencyFalse =
-        newDataGroupMemberWithSyncLeader(TestUtils.getNode(0), false);
-    ClusterDescriptor.getInstance()
-        .getConfig()
-        .setConsistencyLevel(ConsistencyLevel.WEAK_CONSISTENCY);
-    exception = null;
-    try {
-      dataGroupMemberWithWeakConsistencyFalse.syncLeaderWithConsistencyCheck(false);
-    } catch (CheckConsistencyException e) {
-      exception = e;
-    }
-    Assert.assertNull(exception);
-
-    // 8. Weak consistency level with syncLeader true
-    DataGroupMember dataGroupMemberWithWeakConsistencyTrue =
-        newDataGroupMemberWithSyncLeader(TestUtils.getNode(0), true);
-    ClusterDescriptor.getInstance()
-        .getConfig()
-        .setConsistencyLevel(ConsistencyLevel.WEAK_CONSISTENCY);
-    exception = null;
-    try {
-      dataGroupMemberWithWeakConsistencyTrue.syncLeaderWithConsistencyCheck(false);
-    } catch (CheckConsistencyException e) {
-      exception = e;
-    }
-    Assert.assertNull(exception);
   }
 }
