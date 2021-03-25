@@ -71,3 +71,31 @@ zone = session.get_time_zone()
 session.close()
 
 ```
+
+## Pandas Support
+
+To easily transform a query result to a [Pandas Dataframe](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html)
+the SessionDataSet has a method `.todf()` which consumes the dataset and transforms it to a pandas dataframe.
+
+Example:
+
+```python
+
+from iotdb.Session import Session
+
+ip = "127.0.0.1"
+port_ = "6667"
+username_ = 'root'
+password_ = 'root'
+session = Session(ip, port_, username_, password_)
+session.open(False)
+result = session.execute_query_statement("SELECT * FROM root.*")
+
+# Transform to Pandas Dataset
+df = result.todf()
+
+session.close()
+
+# Now you can work with the dataframe
+df = ...
+```
