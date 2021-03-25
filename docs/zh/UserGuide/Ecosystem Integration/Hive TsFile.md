@@ -37,7 +37,7 @@ TsFile的Hive连接器实现了对Hive读取外部Tsfile类型的文件格式的
 
 |Hadoop Version |Hive Version | Java Version | TsFile |
 |-------------  |------------ | ------------ |------------ |
-| `2.7.3` or `3.2.1`       |    `2.3.6` or `3.1.2`  | `1.8`        | `0.10.0`|
+| `2.7.3` or `3.2.1`       |    `2.3.6` or `3.1.2`  | `1.8`        | `0.10.0+`|
 
 
 ### 数据类型对应关系
@@ -56,7 +56,7 @@ TsFile的Hive连接器实现了对Hive读取外部Tsfile类型的文件格式的
 
 为了在Hive中使用Tsfile的hive连接器，我们需要把hive连接器的jar导入进hive。
 
-从 <https://github.com/apache/iotdb>下载完iotdb后, 你可以使用 `mvn clean package -pl hive-connector -am -Dmaven.test.skip=true`命令得到一个 `hive-connector-X.X.X-SNAPSHOT-jar-with-dependencies.jar`。
+从 <https://github.com/apache/iotdb>下载完iotdb后, 你可以使用 `mvn clean package -pl hive-connector -am -Dmaven.test.skip=true -P get-jar-with-dependencies`命令得到一个 `hive-connector-X.X.X-SNAPSHOT-jar-with-dependencies.jar`。
 
 然后在hive的命令行中，使用`add jar XXX`命令添加依赖。例如:
 

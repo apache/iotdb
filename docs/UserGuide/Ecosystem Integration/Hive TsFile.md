@@ -50,7 +50,7 @@ With this connector, you can
 
 |Hadoop Version |Hive Version | Java Version | TsFile |
 |-------------  |------------ | ------------ |------------ |
-| `2.7.3` or `3.2.1`       |    `2.3.6` or `3.1.2`  | `1.8`        | `0.10.0`|
+| `2.7.3` or `3.2.1`       |    `2.3.6` or `3.1.2`  | `1.8`        | `0.10.0+`|
 
 > Note: For more information about how to download and use TsFile, please see the following link: https://github.com/apache/iotdb/tree/master/tsfile.
 
@@ -70,7 +70,7 @@ With this connector, you can
 
 To use hive-connector in hive, we should add the hive-connector jar into hive.
 
-After downloading the code of iotdb from <https://github.com/apache/iotdb>, you can use the command of `mvn clean package -pl hive-connector -am -Dmaven.test.skip=true` to get a `hive-connector-X.X.X-jar-with-dependencies.jar`.
+After downloading the code of iotdb from <https://github.com/apache/iotdb>, you can use the command of `mvn clean package -pl hive-connector -am -Dmaven.test.skip=true -P get-jar-with-dependencies` to get a `hive-connector-X.X.X-jar-with-dependencies.jar`.
 
 Then in hive, use the command of `add jar XXX` to add the dependency. For example:
 
