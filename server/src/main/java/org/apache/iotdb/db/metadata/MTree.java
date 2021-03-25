@@ -740,11 +740,7 @@ public class MTree implements Serializable {
         if (schema instanceof MeasurementSchema) {
           return new MeasurementMNode(cur, schema.getMeasurementId(), schema, null);
         } else if (schema instanceof VectorMeasurementSchema) {
-          return new MeasurementMNode(
-              cur,
-              upperTemplate.getMeasurementNodeName(schema.getValueMeasurementIdList().get(0)),
-              schema,
-              null);
+          return new MeasurementMNode(cur, realName, schema, null);
         } else {
           throw new IllegalArgumentException("Undefined type of schema");
         }
@@ -1347,8 +1343,7 @@ public class MTree implements Serializable {
             } else if (schema instanceof VectorMeasurementSchema) {
               String firstNode = schema.getValueMeasurementIdList().get(0);
               addVectorMeasurementSchema(
-                  new MeasurementMNode(
-                      node, upperTemplate.getMeasurementNodeName(firstNode), schema, null),
+                  new MeasurementMNode(node, firstNode, schema, null),
                   timeseriesSchemaList,
                   needLast,
                   queryContext,

@@ -319,6 +319,8 @@ public class MManager {
   /** function for clearing MTree */
   public void clear() {
     try {
+      templateMap.clear();
+      Template.clear();
       this.mtree = new MTree();
       this.mNodeCache.clear();
       this.tagIndex.clear();
@@ -1148,7 +1150,7 @@ public class MManager {
         array[i] = measurements.get(i).getMeasurement();
       }
       return new VectorMeasurementSchema(
-          leaf.getName(), array, types, encodings, schema.getCompressor());
+          schema.getMeasurementId(), array, types, encodings, schema.getCompressor());
     }
     return leaf != null ? schema : null;
   }
