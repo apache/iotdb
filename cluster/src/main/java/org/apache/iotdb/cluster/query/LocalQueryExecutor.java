@@ -305,7 +305,7 @@ public class LocalQueryExecutor {
               try {
                 paths.add(new PartialPath(fullPath));
               } catch (IllegalPathException e) {
-                // ignore
+                logger.warn("Failed to create partial path, fullPath is {}.", fullPath, e);
               }
             });
 
