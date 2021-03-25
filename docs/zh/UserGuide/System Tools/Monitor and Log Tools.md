@@ -34,7 +34,7 @@
 通过使用JConsole工具并与JMX连接，您可以查看一些系统统计信息和参数。
 本节描述如何使用JConsole的 "Mbean" 选项卡来监视IoTDB的一些系统配置、写入数据统计等等。 连接到JMX后，您可以通过 "MBeans" 标签找到名为 "org.apache.iotdb.service" 的 "MBean"，如下图所示。
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/34242296/92922876-16d4a700-f469-11ea-874d-dcf58d5bb1b3.png"> <br>
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/112428223-ce7e3600-8d75-11eb-8e50-04f04571925b.png"> <br>
 
 Monitor下有几个属性，包括数据文件目录，写入数据统计信息以及某些系统参数的值。 通过双击与属性对应的值，它还可以显示该属性的折线图。有关Monitor属性的具体介绍，请参见以下部分。
 
@@ -68,6 +68,27 @@ Monitor下有几个属性，包括数据文件目录，写入数据统计信息�
 | :--: | :---------------------------------------- |
 | 描述 | 预写日志（WAL）的状态。 True表示启用WAL。 |
 | 类型 | Boolean                                   |
+
+- GlobalTotalPointsNum
+
+| 名称 | GlobalTotalPointsNum                       |
+| :--: | :---------------------------------------- |
+| 描述 | 总点数 |
+| 类型 |     Long                               |
+
+- GlobalReqSuccessNum
+  
+| 名称 | GlobalReqSuccessNum                       |
+| :--: | :---------------------------------------- |
+| 描述 |  成功的请求数 |
+| 类型 |     Long                               |
+  
+- GlobalReqFailNum
+  
+| 名称 | GlobalReqFailNum                       |
+| :--: | :---------------------------------------- |
+| 描述 | 失败的请求数 |
+| 类型 |      Long                              |
 
 ### 数据统计监控
 
@@ -173,7 +194,7 @@ select last TOTAL_POINTS from root.stats."global"
 
 通过端口31999连接jconsole，并在上方菜单项中选择`MBean`. 展开侧边框并选择 `org.apache.iotdb.db.cost.statistic`. 将会得到如下图所示结果：
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/60937484-30c5a780-a303-11e9-8e92-04c413df2088.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/112426751-721a1700-8d73-11eb-871c-db2e9c13cf99.png">
 
 **属性**
 
@@ -183,11 +204,13 @@ select last TOTAL_POINTS from root.stats."global"
 
 **操作**
 
-1. startContinuousPrintStatistics：开启性能监控并以‘DisplayIntervalInMs’的时间间隔打印统计结果。 
-2. startPrintStatisticsOnce：开启性能监控并以‘DisplayIntervalInMs’的时间延迟打印一次统计结果。 
-3. stopStatistic：关闭性能监控。
-4. clearStatisticalState(): 清除以统计的结果，从新开始统计。
-5. changeOperationSwitch(String operationName, Boolean operationState):设置是否针对每一种不同的操作开启监控。参数‘operationName是操作的名称，在OperationSwitch属性中展示了所有操作的名称。参数 ‘operationState’是操作的状态，打开或者关闭。如果状态设置成功则此函数会返回true，否则返回false。
+1. startStatistics：开启性能监控。
+2. startContinuousPrintStatistics：开启性能监控并以‘DisplayIntervalInMs’的时间间隔打印统计结果。 
+3. startPrintStatisticsOnce：开启性能监控并以‘DisplayIntervalInMs’的时间延迟打印一次统计结果。 
+4. stopPrintStatistic：关闭打印性能监控的统计结果。
+5. stopStatistic：关闭性能监控。
+6. clearStatisticalState(): 清除以统计的结果，从新开始统计。
+7. changeOperationSwitch(String operationName, Boolean operationState):设置是否针对每一种不同的操作开启监控。参数‘operationName是操作的名称，在OperationSwitch属性中展示了所有操作的名称。参数 ‘operationState’是操作的状态，打开或者关闭。如果状态设置成功则此函数会返回true，否则返回false。
 
 ### 自定义操作类型监控其他区域
 
@@ -213,7 +236,7 @@ select last TOTAL_POINTS from root.stats."global"
 1. 通过端口31999连接jconsole，并在上方菜单项中选择‘MBean’. 
 2. 展开侧边框并选择 'org.apache.iotdb.db.service'. 将会得到如下图所示结果：
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/65687623-404fc380-e09c-11e9-83c3-3c7c63a5b0be.jpeg">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/112426760-73e3da80-8d73-11eb-9a8f-9232d1f2033b.png">
 
 ## 系统日志
 
