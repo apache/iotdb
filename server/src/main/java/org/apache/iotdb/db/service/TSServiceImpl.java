@@ -83,8 +83,10 @@ import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
+import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
@@ -171,6 +173,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private static final String INFO_QUERY_PROCESS_ERROR = "Error occurred in query process: ";
   private static final String INFO_NOT_ALLOWED_IN_BATCH_ERROR =
       "The query statement is not allowed in batch: ";
+
+  private static final String INFO_INTERRUPT_ERROR =
+      "Current Thread interrupted when dealing with request {}";
 
   private static final int MAX_SIZE =
       IoTDBDescriptor.getInstance().getConfig().getQueryCacheSizeInMetric();
@@ -531,8 +536,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
               physicalPlan,
               req.fetchSize,
               req.timeout,
-              sessionIdUsernameMap.get(req.getSessionId()))
+              sessionIdUsernameMap.get(req.getSessionId()),
+              req.isEnableRedirectQuery())
           : executeUpdateStatement(physicalPlan, req.getSessionId());
+    } catch (InterruptedException e) {
+      LOGGER.error(INFO_INTERRUPT_ERROR, req, e);
+      Thread.currentThread().interrupt();
+      return RpcUtils.getTSExecuteStatementResp(onQueryException(e, "executing executeStatement"));
     } catch (Exception e) {
       return RpcUtils.getTSExecuteStatementResp(onQueryException(e, "executing executeStatement"));
     }
@@ -557,9 +567,15 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
               physicalPlan,
               req.fetchSize,
               req.timeout,
-              sessionIdUsernameMap.get(req.getSessionId()))
+              sessionIdUsernameMap.get(req.getSessionId()),
+              req.isEnableRedirectQuery())
           : RpcUtils.getTSExecuteStatementResp(
               TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement.");
+    } catch (InterruptedException e) {
+      LOGGER.error(INFO_INTERRUPT_ERROR, req, e);
+      Thread.currentThread().interrupt();
+      return RpcUtils.getTSExecuteStatementResp(
+          onQueryException(e, "executing executeQueryStatement"));
     } catch (Exception e) {
       return RpcUtils.getTSExecuteStatementResp(
           onQueryException(e, "executing executeQueryStatement"));
@@ -582,9 +598,15 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
               physicalPlan,
               req.fetchSize,
               config.getQueryTimeoutThreshold(),
-              sessionIdUsernameMap.get(req.getSessionId()))
+              sessionIdUsernameMap.get(req.getSessionId()),
+              req.isEnableRedirectQuery())
           : RpcUtils.getTSExecuteStatementResp(
               TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement.");
+    } catch (InterruptedException e) {
+      LOGGER.error(INFO_INTERRUPT_ERROR, req, e);
+      Thread.currentThread().interrupt();
+      return RpcUtils.getTSExecuteStatementResp(
+          onQueryException(e, "executing executeRawDataQuery"));
     } catch (Exception e) {
       return RpcUtils.getTSExecuteStatementResp(
           onQueryException(e, "executing executeRawDataQuery"));
@@ -595,14 +617,15 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    * @param plan must be a plan for Query: FillQueryPlan, AggregationPlan, GroupByTimePlan, UDFPlan,
    *     some AuthorPlan
    */
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  @SuppressWarnings({"squid:S3776", "squid:S1141"}) // Suppress high Cognitive Complexity warning
   private TSExecuteStatementResp internalExecuteQueryStatement(
       String statement,
       long statementId,
       PhysicalPlan plan,
       int fetchSize,
       long timeout,
-      String username)
+      String username,
+      boolean enableRedirect)
       throws QueryProcessException, SQLException, StorageEngineException,
           QueryFilterOptimizationException, MetadataException, IOException, InterruptedException,
           TException, AuthException {
@@ -644,8 +667,25 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       if (plan instanceof QueryPlan && !(plan instanceof UDFPlan)) {
         resp = getQueryColumnHeaders(plan, username);
       }
+      if (plan instanceof QueryPlan) {
+        ((QueryPlan) plan).setEnableRedirect(enableRedirect);
+      }
       // create and cache dataset
       QueryDataSet newDataSet = createQueryDataSet(queryId, plan, fetchSize);
+
+      if (newDataSet.getEndPoint() != null && enableRedirect) {
+        // redirect query
+        LOGGER.debug(
+            "need to redirect {} {} to node {}", statement, queryId, newDataSet.getEndPoint());
+        TSStatus status = new TSStatus();
+        status.setRedirectNode(
+            new EndPoint(newDataSet.getEndPoint().getIp(), newDataSet.getEndPoint().getPort()));
+        status.setCode(TSStatusCode.NEED_REDIRECTION.getStatusCode());
+        resp.setStatus(status);
+        resp.setQueryId(queryId);
+        return resp;
+      }
+
       if (plan instanceof ShowPlan || plan instanceof AuthorPlan) {
         resp = getListDataSetHeaders(newDataSet);
       } else if (plan instanceof UDFPlan) {
@@ -662,7 +702,27 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       if (newDataSet instanceof DirectNonAlignDataSet) {
         resp.setNonAlignQueryDataSet(fillRpcNonAlignReturnData(fetchSize, newDataSet, username));
       } else {
-        resp.setQueryDataSet(fillRpcReturnData(fetchSize, newDataSet, username));
+        try {
+          TSQueryDataSet tsQueryDataSet = fillRpcReturnData(fetchSize, newDataSet, username);
+          resp.setQueryDataSet(tsQueryDataSet);
+        } catch (RedirectException e) {
+          LOGGER.debug("need to redirect {} {} to {}", statement, queryId, e.getEndPoint());
+          if (enableRedirect) {
+            // redirect query
+            TSStatus status = new TSStatus();
+            status.setRedirectNode(e.getEndPoint());
+            status.setCode(TSStatusCode.NEED_REDIRECTION.getStatusCode());
+            resp.setStatus(status);
+            resp.setQueryId(queryId);
+            return resp;
+          } else {
+            LOGGER.error(
+                "execute {} error, if session does not support redirect,"
+                    + " should not throw redirection exception.",
+                statement,
+                e);
+          }
+        }
       }
       resp.setQueryId(queryId);
 
@@ -976,6 +1036,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         queryTimeManager.unRegisterQuery(req.queryId);
         return resp;
       }
+    } catch (InterruptedException e) {
+      LOGGER.error(INFO_INTERRUPT_ERROR, req, e);
+      Thread.currentThread().interrupt();
+      return RpcUtils.getTSFetchResultsResp(
+          onNPEOrUnexpectedException(
+              e, "executing fetchResults", TSStatusCode.INTERNAL_SERVER_ERROR));
     } catch (Exception e) {
       releaseQueryResourceNoExceptions(req.queryId);
       return RpcUtils.getTSFetchResultsResp(

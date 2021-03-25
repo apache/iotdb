@@ -29,9 +29,7 @@ import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestPartitionedLogManager;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.config.ConsistencyLevel;
 import org.apache.iotdb.cluster.coordinator.Coordinator;
-import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.log.applier.DataLogApplier;
 import org.apache.iotdb.cluster.log.manage.PartitionedSnapshotLogManager;
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;
@@ -61,10 +59,7 @@ import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Test;
-import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
@@ -76,7 +71,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class MemberTest {
+public class BaseMember {
 
   public static AtomicLong dummyResponse = new AtomicLong(Response.RESPONSE_AGREE);
 
@@ -316,208 +311,5 @@ public class MemberTest {
           }
         });
     return ret;
-  }
-
-  private DataGroupMember newDataGroupMemberWithSyncLeaderFalse(Node node, boolean syncLeader) {
-    DataGroupMember newMember =
-        new TestDataGroupMember(node, partitionTable.getHeaderGroup(node)) {
-
-          @Override
-          public boolean syncLeader(RaftMember.CheckConsistency checkConsistency) {
-            return syncLeader;
-          }
-
-          @Override
-          protected long requestCommitIdAsync() {
-            return 5;
-          }
-
-          @Override
-          public long appendEntry(AppendEntryRequest request) {
-            return Response.RESPONSE_AGREE;
-          }
-
-          @Override
-          public AsyncClient getAsyncClient(Node node) {
-            try {
-              return new TestAsyncDataClient(node, dataGroupMemberMap);
-            } catch (IOException e) {
-              return null;
-            }
-          }
-        };
-    newMember.setThisNode(node);
-    newMember.setMetaGroupMember(testMetaMember);
-    newMember.setLeader(node);
-    newMember.setCharacter(NodeCharacter.LEADER);
-    newMember.setLogManager(new TestPartitionedLogManager());
-    newMember.setAppendLogThreadPool(testThreadPool);
-    return newMember;
-  }
-
-  private DataGroupMember newDataGroupMemberWithSyncLeaderTrue(Node node, boolean syncLeader) {
-    DataGroupMember newMember =
-        new TestDataGroupMember(node, partitionTable.getHeaderGroup(node)) {
-
-          @Override
-          public boolean syncLeader(RaftMember.CheckConsistency checkConsistency) {
-            return syncLeader;
-          }
-
-          @Override
-          protected long requestCommitIdAsync() {
-            return 1000L;
-          }
-
-          @Override
-          public long appendEntry(AppendEntryRequest request) {
-            return Response.RESPONSE_AGREE;
-          }
-
-          @Override
-          public AsyncClient getAsyncClient(Node node) {
-            try {
-              return new TestAsyncDataClient(node, dataGroupMemberMap);
-            } catch (IOException e) {
-              return null;
-            }
-          }
-        };
-    newMember.setThisNode(node);
-    newMember.setMetaGroupMember(testMetaMember);
-    newMember.setLeader(node);
-    newMember.setCharacter(NodeCharacter.LEADER);
-    newMember.setLogManager(new TestPartitionedLogManager());
-    newMember.setAppendLogThreadPool(testThreadPool);
-    return newMember;
-  }
-
-  @Test
-  public void testsyncLeaderStrongConsistencyCheckFalse() {
-    // 1. write request : Strong consistency level with syncLeader false
-    DataGroupMember dataGroupMemberWithWriteStrongConsistencyFalse =
-        newDataGroupMemberWithSyncLeaderFalse(TestUtils.getNode(0), false);
-    ClusterDescriptor.getInstance()
-        .getConfig()
-        .setConsistencyLevel(ConsistencyLevel.STRONG_CONSISTENCY);
-    try {
-      dataGroupMemberWithWriteStrongConsistencyFalse.waitUntilCatchUp(
-          new RaftMember.StrongCheckConsistency());
-    } catch (CheckConsistencyException e) {
-      Assert.assertNotNull(e);
-      Assert.assertEquals(CheckConsistencyException.CHECK_STRONG_CONSISTENCY_EXCEPTION, e);
-    }
-  }
-
-  @Test
-  public void testsyncLeaderStrongConsistencyCheckTrue() {
-    // 1. write request : Strong consistency level with syncLeader false
-    DataGroupMember dataGroupMemberWithWriteStrongConsistencyTrue =
-        newDataGroupMemberWithSyncLeaderTrue(TestUtils.getNode(0), false);
-    ClusterDescriptor.getInstance()
-        .getConfig()
-        .setConsistencyLevel(ConsistencyLevel.STRONG_CONSISTENCY);
-    try {
-
-      PartitionedSnapshotLogManager partitionedSnapshotLogManager =
-          Mockito.mock(PartitionedSnapshotLogManager.class);
-      Mockito.when(partitionedSnapshotLogManager.getMaxHaveAppliedCommitIndex()).thenReturn(1000L);
-      dataGroupMemberWithWriteStrongConsistencyTrue.setLogManager(partitionedSnapshotLogManager);
-
-      dataGroupMemberWithWriteStrongConsistencyTrue.waitUntilCatchUp(
-          new RaftMember.StrongCheckConsistency());
-    } catch (CheckConsistencyException e) {
-      Assert.fail();
-    }
-  }
-
-  @Test
-  public void testsyncLeaderMidConsistencyCheckFalse() {
-    // 1. write request : Strong consistency level with syncLeader false
-    DataGroupMember dataGroupMemberWithWriteStrongConsistencyFalse =
-        newDataGroupMemberWithSyncLeaderFalse(TestUtils.getNode(0), false);
-    ClusterDescriptor.getInstance()
-        .getConfig()
-        .setConsistencyLevel(ConsistencyLevel.MID_CONSISTENCY);
-    ClusterDescriptor.getInstance().getConfig().setMaxReadLogLag(1);
-    try {
-
-      PartitionedSnapshotLogManager partitionedSnapshotLogManager =
-          Mockito.mock(PartitionedSnapshotLogManager.class);
-      Mockito.when(partitionedSnapshotLogManager.getMaxHaveAppliedCommitIndex()).thenReturn(-2L);
-      dataGroupMemberWithWriteStrongConsistencyFalse.setLogManager(partitionedSnapshotLogManager);
-
-      dataGroupMemberWithWriteStrongConsistencyFalse.waitUntilCatchUp(
-          new RaftMember.MidCheckConsistency());
-    } catch (CheckConsistencyException e) {
-      Assert.assertEquals(CheckConsistencyException.CHECK_MID_CONSISTENCY_EXCEPTION, e);
-    }
-  }
-
-  @Test
-  public void testsyncLeaderMidConsistencyCheckTrue() {
-    // 1. write request : Strong consistency level with syncLeader false
-    DataGroupMember dataGroupMemberWithWriteStrongConsistencyTrue =
-        newDataGroupMemberWithSyncLeaderTrue(TestUtils.getNode(0), false);
-    ClusterDescriptor.getInstance()
-        .getConfig()
-        .setConsistencyLevel(ConsistencyLevel.MID_CONSISTENCY);
-    ClusterDescriptor.getInstance().getConfig().setMaxReadLogLag(500);
-    try {
-
-      PartitionedSnapshotLogManager partitionedSnapshotLogManager =
-          Mockito.mock(PartitionedSnapshotLogManager.class);
-      Mockito.when(partitionedSnapshotLogManager.getMaxHaveAppliedCommitIndex()).thenReturn(600L);
-      dataGroupMemberWithWriteStrongConsistencyTrue.setLogManager(partitionedSnapshotLogManager);
-
-      dataGroupMemberWithWriteStrongConsistencyTrue.waitUntilCatchUp(
-          new RaftMember.MidCheckConsistency());
-    } catch (CheckConsistencyException e) {
-      Assert.fail();
-    }
-  }
-
-  @Test
-  public void testsyncLeaderWeakConsistencyCheckFalse() {
-    // 1. write request : Strong consistency level with syncLeader false
-    DataGroupMember dataGroupMemberWithWriteStrongConsistencyFalse =
-        newDataGroupMemberWithSyncLeaderFalse(TestUtils.getNode(0), false);
-    ClusterDescriptor.getInstance()
-        .getConfig()
-        .setConsistencyLevel(ConsistencyLevel.WEAK_CONSISTENCY);
-    ClusterDescriptor.getInstance().getConfig().setMaxReadLogLag(1);
-    try {
-
-      PartitionedSnapshotLogManager partitionedSnapshotLogManager =
-          Mockito.mock(PartitionedSnapshotLogManager.class);
-      Mockito.when(partitionedSnapshotLogManager.getMaxHaveAppliedCommitIndex()).thenReturn(-2L);
-      dataGroupMemberWithWriteStrongConsistencyFalse.setLogManager(partitionedSnapshotLogManager);
-
-      dataGroupMemberWithWriteStrongConsistencyFalse.waitUntilCatchUp(null);
-    } catch (CheckConsistencyException e) {
-      Assert.fail();
-    }
-  }
-
-  @Test
-  public void testsyncLeaderWeakConsistencyCheckTrue() {
-    // 1. write request : Strong consistency level with syncLeader false
-    DataGroupMember dataGroupMemberWithWriteStrongConsistencyTrue =
-        newDataGroupMemberWithSyncLeaderTrue(TestUtils.getNode(0), false);
-    ClusterDescriptor.getInstance()
-        .getConfig()
-        .setConsistencyLevel(ConsistencyLevel.WEAK_CONSISTENCY);
-    ClusterDescriptor.getInstance().getConfig().setMaxReadLogLag(500);
-    try {
-
-      PartitionedSnapshotLogManager partitionedSnapshotLogManager =
-          Mockito.mock(PartitionedSnapshotLogManager.class);
-      Mockito.when(partitionedSnapshotLogManager.getMaxHaveAppliedCommitIndex()).thenReturn(600L);
-      dataGroupMemberWithWriteStrongConsistencyTrue.setLogManager(partitionedSnapshotLogManager);
-
-      dataGroupMemberWithWriteStrongConsistencyTrue.waitUntilCatchUp(null);
-    } catch (CheckConsistencyException e) {
-      Assert.fail();
-    }
   }
 }

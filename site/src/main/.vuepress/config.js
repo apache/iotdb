@@ -587,7 +587,7 @@ var config = {
 							['Ecosystem Integration/Hive TsFile','Hive TsFile'],
 							['Ecosystem Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
 							['Ecosystem Integration/Flink IoTDB','Flink IoTDB'],
-							['Ecosystem Integration/Flink Tsfile','Flink Tsfile']
+							['Ecosystem Integration/Flink TsFile','Flink TsFile']
 						]
 					},
 					{
@@ -1214,7 +1214,7 @@ var config = {
 							['Ecosystem Integration/Hive TsFile','Hive TsFile'],
 							['Ecosystem Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
 							['Ecosystem Integration/Flink IoTDB','Flink IoTDB'],
-							['Ecosystem Integration/Flink Tsfile','Flink Tsfile']
+							['Ecosystem Integration/Flink TsFile','Flink TsFile']
 						]
 					},
 					{

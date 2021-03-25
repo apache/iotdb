@@ -38,7 +38,7 @@ public class Schema implements Serializable {
    */
   private Map<Path, MeasurementSchema> registeredTimeseries;
 
-  /** template name -> (measuremnet -> MeasurementSchema) */
+  /** template name -> (measurement -> MeasurementSchema) */
   private Map<String, Map<String, MeasurementSchema>> deviceTemplates;
 
   public Schema() {

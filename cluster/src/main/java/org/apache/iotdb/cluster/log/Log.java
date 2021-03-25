@@ -45,6 +45,8 @@ public abstract class Log implements Comparable<Log> {
   private long createTime;
   private long enqueueTime;
 
+  private int byteSize = 0;
+
   public abstract ByteBuffer serialize();
 
   public abstract void deserialize(ByteBuffer buffer);
@@ -131,5 +133,13 @@ public abstract class Log implements Comparable<Log> {
 
   public void setEnqueueTime(long enqueueTime) {
     this.enqueueTime = enqueueTime;
+  }
+
+  public long getByteSize() {
+    return byteSize;
+  }
+
+  public void setByteSize(int byteSize) {
+    this.byteSize = byteSize;
   }
 }
