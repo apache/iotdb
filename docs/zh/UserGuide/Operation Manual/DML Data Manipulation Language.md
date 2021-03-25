@@ -1087,7 +1087,7 @@ select * from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 
 
 意思是：
 
-所选设备为ln组wf01工厂wt01设备； 所选时间序列是该设备下的第一列，即电源状态。 SQL语句要求在“ 2017-11-01T00：05：00.000”和“ 2017-11-01T00：12：00.000”的时间点之间选择状态传感器值。
+所选设备为ln组wf01工厂wt01设备； 所选时间序列是该设备下的第一列，即电源状态。 SQL语句要求在" 2017-11-01T00:05:00.000"和"2017-11-01T00:12:00.000"的时间点之间选择状态传感器值。
 
 结果如下所示：
 
@@ -1167,7 +1167,7 @@ select * from root.ln.wf01.wt01 limit 10 offset 100 slimit 2 soffset 0
 
 意思是：
 
-所选设备为ln组wf01工厂wt01设备； 所选时间序列是此设备下的第0列至第1列（第一列编号为第0列）。 SQL语句子句要求返回查询结果的第0至9行（第一行编号为0行）。
+所选设备为ln组wf01工厂wt01设备； 所选时间序列是此设备下的第0列至第1列（第一列编号为第0列）。 SQL语句子句要求返回查询结果的第100至109行（第一行编号为0行）。
 
 结果如下所示：
 
@@ -1242,7 +1242,6 @@ select s1 as temperature, s2 as speed from root.ln.wf01.wt01;
 ```   sql
 select s1, sin(s1), cos(s1), tan(s1) from root.sg1.d1 limit 5 offset 1000;
 ```
-select s1,s2 from root.ln.* ALIGN BY DEVICE
 
 结果：
 
