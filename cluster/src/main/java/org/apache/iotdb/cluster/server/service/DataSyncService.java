@@ -119,6 +119,13 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
     }
   }
 
+  /**
+   * return the schema, whose measurement Id is the series full path.
+   *
+   * @param request the pull request
+   * @return response
+   * @throws TException remind of thrift
+   */
   @Override
   public PullSchemaResp pullTimeSeriesSchema(PullSchemaRequest request) throws TException {
     try {
@@ -147,6 +154,13 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
     }
   }
 
+  /**
+   * return the schema, whose measurement Id is the series name.
+   *
+   * @param request the pull request
+   * @return response
+   * @throws TException remind of thrift
+   */
   @Override
   public PullSchemaResp pullMeasurementSchema(PullSchemaRequest request) throws TException {
     try {
@@ -278,6 +292,16 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
       return ((CMManager) IoTDB.metaManager).getNodeList(path, nodeLevel);
+    } catch (CheckConsistencyException | MetadataException e) {
+      throw new TException(e);
+    }
+  }
+
+  @Override
+  public Set<String> getChildNodeInNextLevel(Node header, String path) throws TException {
+    try {
+      dataGroupMember.syncLeaderWithConsistencyCheck(false);
+      return ((CMManager) IoTDB.metaManager).getChildNodeInNextLevel(path);
     } catch (CheckConsistencyException | MetadataException e) {
       throw new TException(e);
     }

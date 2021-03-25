@@ -297,6 +297,17 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
   }
 
   @Override
+  public void getChildNodeInNextLevel(
+      Node header, String path, AsyncMethodCallback<Set<String>> resultHandler) {
+    try {
+      dataGroupMember.syncLeaderWithConsistencyCheck(false);
+      resultHandler.onComplete(((CMManager) IoTDB.metaManager).getChildNodeInNextLevel(path));
+    } catch (CheckConsistencyException | MetadataException e) {
+      resultHandler.onError(e);
+    }
+  }
+
+  @Override
   public void getChildNodePathInNextLevel(
       Node header, String path, AsyncMethodCallback<Set<String>> resultHandler) {
     try {

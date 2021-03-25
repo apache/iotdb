@@ -463,6 +463,14 @@ public class DataClusterServer extends RaftServer
   }
 
   @Override
+  public void getChildNodeInNextLevel(
+      Node header, String path, AsyncMethodCallback<Set<String>> resultHandler) {
+    DataAsyncService service =
+        getDataAsyncService(header, resultHandler, "Get child node in next level");
+    service.getChildNodeInNextLevel(header, path, resultHandler);
+  }
+
+  @Override
   public void getChildNodePathInNextLevel(
       Node header, String path, AsyncMethodCallback<Set<String>> resultHandler) {
     DataAsyncService service =
@@ -801,6 +809,11 @@ public class DataClusterServer extends RaftServer
   @Override
   public List<String> getNodeList(Node header, String path, int nodeLevel) throws TException {
     return getDataSyncService(header).getNodeList(header, path, nodeLevel);
+  }
+
+  @Override
+  public Set<String> getChildNodeInNextLevel(Node header, String path) throws TException {
+    return getDataSyncService(header).getChildNodeInNextLevel(header, path);
   }
 
   @Override
