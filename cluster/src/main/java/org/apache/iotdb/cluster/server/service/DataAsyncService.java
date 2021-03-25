@@ -28,6 +28,7 @@ import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.LastQueryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.MultSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
@@ -52,6 +53,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class DataAsyncService extends BaseAsyncService implements TSDataService.AsyncIface {
@@ -175,6 +177,16 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
   }
 
   @Override
+  public void queryMultSeries(
+      MultSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler) throws TException {
+    try {
+      resultHandler.onComplete(dataGroupMember.getLocalQueryExecutor().queryMultSeries(request));
+    } catch (Exception e) {
+      resultHandler.onError(e);
+    }
+  }
+
+  @Override
   public void querySingleSeriesByTimestamp(
       SingleSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler) {
     try {
@@ -201,6 +213,21 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
       Node header, long readerId, AsyncMethodCallback<ByteBuffer> resultHandler) {
     try {
       resultHandler.onComplete(dataGroupMember.getLocalQueryExecutor().fetchSingleSeries(readerId));
+    } catch (ReaderNotFoundException | IOException e) {
+      resultHandler.onError(e);
+    }
+  }
+
+  @Override
+  public void fetchMultSeries(
+      Node header,
+      long readerId,
+      List<String> paths,
+      AsyncMethodCallback<Map<String, ByteBuffer>> resultHandler)
+      throws TException {
+    try {
+      resultHandler.onComplete(
+          dataGroupMember.getLocalQueryExecutor().fetchMultSeries(readerId, paths));
     } catch (ReaderNotFoundException | IOException e) {
       resultHandler.onError(e);
     }

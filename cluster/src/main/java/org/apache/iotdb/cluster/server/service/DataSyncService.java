@@ -28,6 +28,7 @@ import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.LastQueryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.MultSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
@@ -52,6 +53,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class DataSyncService extends BaseSyncService implements TSDataService.Iface {
@@ -197,6 +199,15 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
+  public long queryMultSeries(MultSeriesQueryRequest request) throws TException {
+    try {
+      return dataGroupMember.getLocalQueryExecutor().queryMultSeries(request);
+    } catch (Exception e) {
+      throw new TException(e);
+    }
+  }
+
+  @Override
   public long querySingleSeriesByTimestamp(SingleSeriesQueryRequest request) throws TException {
     try {
       return dataGroupMember.getLocalQueryExecutor().querySingleSeriesByTimestamp(request);
@@ -218,6 +229,16 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   public ByteBuffer fetchSingleSeries(Node header, long readerId) throws TException {
     try {
       return dataGroupMember.getLocalQueryExecutor().fetchSingleSeries(readerId);
+    } catch (ReaderNotFoundException | IOException e) {
+      throw new TException(e);
+    }
+  }
+
+  @Override
+  public Map<String, ByteBuffer> fetchMultSeries(Node header, long readerId, List<String> paths)
+      throws TException {
+    try {
+      return dataGroupMember.getLocalQueryExecutor().fetchMultSeries(readerId, paths);
     } catch (ReaderNotFoundException | IOException e) {
       throw new TException(e);
     }
