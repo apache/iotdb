@@ -37,6 +37,7 @@ import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
+import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -127,6 +128,14 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
    */
   @Override
   public PullSchemaResp pullTimeSeriesSchema(PullSchemaRequest request) throws TException {
+    if (dataGroupMember.getCharacter() == NodeCharacter.LEADER) {
+      try {
+        return dataGroupMember.getLocalQueryExecutor().queryTimeSeriesSchema(request);
+      } catch (CheckConsistencyException | MetadataException e) {
+        throw new TException(e);
+      }
+    }
+
     // forward the request to the leader
     dataGroupMember.waitLeader();
     SyncDataClient client =
@@ -155,6 +164,14 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
    */
   @Override
   public PullSchemaResp pullMeasurementSchema(PullSchemaRequest request) throws TException {
+    if (dataGroupMember.getCharacter() == NodeCharacter.LEADER) {
+      try {
+        return dataGroupMember.getLocalQueryExecutor().queryMeasurementSchema(request);
+      } catch (CheckConsistencyException | IllegalPathException e) {
+        throw new TException(e);
+      }
+    }
+
     // forward the request to the leader
     dataGroupMember.waitLeader();
     SyncDataClient client =

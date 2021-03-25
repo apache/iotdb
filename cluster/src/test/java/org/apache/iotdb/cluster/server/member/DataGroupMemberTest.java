@@ -44,6 +44,7 @@ import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
+import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
@@ -204,6 +205,14 @@ public class DataGroupMemberTest extends BaseMember {
           public AsyncClient getAsyncClient(Node node) {
             try {
               return new TestAsyncDataClient(node, dataGroupMemberMap) {
+
+                @Override
+                public void pullMeasurementSchema(
+                    PullSchemaRequest request, AsyncMethodCallback<PullSchemaResp> resultHandler) {
+                  dataGroupMemberMap.get(request.getHeader()).setCharacter(NodeCharacter.LEADER);
+                  new DataAsyncService(dataGroupMemberMap.get(request.getHeader()))
+                      .pullMeasurementSchema(request, resultHandler);
+                }
 
                 @Override
                 public void pullSnapshot(
@@ -606,12 +615,13 @@ public class DataGroupMemberTest extends BaseMember {
     RaftServer.setSyncLeaderMaxWaitMs(200);
     try {
       // sync with leader is temporarily disabled, the request should be forward to the leader
-      dataGroupMember.setLeader(TestUtils.getNode(1));
+      dataGroupMember.setLeader(TestUtils.getNode(0));
       dataGroupMember.setCharacter(NodeCharacter.FOLLOWER);
       enableSyncLeader = false;
 
       PullSchemaRequest request = new PullSchemaRequest();
       request.setPrefixPaths(Collections.singletonList(TestUtils.getTestSg(0)));
+      request.setHeader(TestUtils.getNode(0));
       AtomicReference<List<MeasurementSchema>> result = new AtomicReference<>();
       PullMeasurementSchemaHandler handler =
           new PullMeasurementSchemaHandler(TestUtils.getNode(1), request.getPrefixPaths(), result);

@@ -37,6 +37,7 @@ import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
+import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -120,6 +121,16 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
   @Override
   public void pullTimeSeriesSchema(
       PullSchemaRequest request, AsyncMethodCallback<PullSchemaResp> resultHandler) {
+    if (dataGroupMember.getCharacter() == NodeCharacter.LEADER) {
+      try {
+        resultHandler.onComplete(
+            dataGroupMember.getLocalQueryExecutor().queryTimeSeriesSchema(request));
+        return;
+      } catch (CheckConsistencyException | MetadataException e) {
+        resultHandler.onError(e);
+      }
+    }
+
     // forward the request to the leader
     AsyncDataClient leaderClient = getLeaderClient();
     if (leaderClient == null) {
@@ -147,6 +158,16 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
   @Override
   public void pullMeasurementSchema(
       PullSchemaRequest request, AsyncMethodCallback<PullSchemaResp> resultHandler) {
+    if (dataGroupMember.getCharacter() == NodeCharacter.LEADER) {
+      try {
+        resultHandler.onComplete(
+            dataGroupMember.getLocalQueryExecutor().queryMeasurementSchema(request));
+        return;
+      } catch (CheckConsistencyException | MetadataException e) {
+        resultHandler.onError(e);
+      }
+    }
+
     // forward the request to the leader
     AsyncDataClient leaderClient = getLeaderClient();
     if (leaderClient == null) {
