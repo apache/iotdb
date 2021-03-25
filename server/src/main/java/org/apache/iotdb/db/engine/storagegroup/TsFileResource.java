@@ -254,7 +254,9 @@ public class TsFileResource {
     }
     File src = fsFactory.getFile(file + RESOURCE_SUFFIX + TEMP_SUFFIX);
     File dest = fsFactory.getFile(file + RESOURCE_SUFFIX);
-    Files.deleteIfExists(dest.toPath());
+    if (dest.exists()) {
+      dest.delete();
+    }
     fsFactory.moveFile(src, dest);
   }
 
