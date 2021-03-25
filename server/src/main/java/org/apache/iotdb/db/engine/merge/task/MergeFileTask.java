@@ -338,6 +338,7 @@ public class MergeFileTask {
     }
     updateStartTimeAndEndTime(seqFile, fileWriter);
     resource.removeFileReader(seqFile);
+    FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
     fileWriter.endFile();
 
     updatePlanIndexes(seqFile);
@@ -347,7 +348,6 @@ public class MergeFileTask {
     seqFile.writeLock();
     try {
       seqFile.serialize();
-      FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
 
       // change tsFile name
       seqFile.getTsFile().delete();
