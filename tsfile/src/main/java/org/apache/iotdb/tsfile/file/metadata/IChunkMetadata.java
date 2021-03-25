@@ -22,6 +22,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -30,6 +31,10 @@ import java.util.List;
 public interface IChunkMetadata {
 
   Statistics getStatistics();
+
+  TsPrimitiveType getStatisticalFirstValue();
+
+  TsPrimitiveType getStatisticalLastValue();
 
   boolean isModified();
 

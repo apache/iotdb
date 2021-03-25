@@ -24,6 +24,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.reader.series.SeriesReaderFactory;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
@@ -104,10 +105,10 @@ public class PreviousFill extends IFill {
     // update filter by TTL
     timeFilter = dataSource.updateFilterUsingTTL(timeFilter);
     LastPointReader lastReader =
-        new LastPointReader(
-            seriesPath, dataType, allSensors, context, dataSource, queryTime, timeFilter);
+        SeriesReaderFactory.createLastPointReader(
+            seriesPath, allSensors, dataType, context, dataSource, queryTime, timeFilter);
 
-    return lastReader.readLastPoint();
+    return lastReader.getCachedLastPair();
   }
 
   public boolean isUntilLast() {

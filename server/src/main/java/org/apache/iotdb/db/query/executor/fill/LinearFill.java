@@ -30,6 +30,7 @@ import org.apache.iotdb.db.query.aggregation.impl.MinTimeAggrResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.executor.AggregationExecutor;
+import org.apache.iotdb.db.query.reader.series.SeriesReaderFactory;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
@@ -144,10 +145,10 @@ public class LinearFill extends IFill {
     QueryDataSource dataSource =
         QueryResourceManager.getInstance().getQueryDataSource(seriesPath, context, beforeFilter);
     LastPointReader lastReader =
-        new LastPointReader(
-            seriesPath, dataType, deviceMeasurements, context, dataSource, queryTime, beforeFilter);
+        SeriesReaderFactory.createLastPointReader(
+            seriesPath, deviceMeasurements, dataType, context, dataSource, queryTime, beforeFilter);
 
-    return lastReader.readLastPoint();
+    return lastReader.getCachedLastPair();
   }
 
   protected TimeValuePair calculateSucceedingPoint()

@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -119,6 +120,16 @@ public class ChunkMetadata implements Accountable, IChunkMetadata {
   @Override
   public Statistics getStatistics() {
     return statistics;
+  }
+
+  @Override
+  public TsPrimitiveType getStatisticalFirstValue() {
+    return TsPrimitiveType.getByType(tsDataType, statistics.getFirstValue());
+  }
+
+  @Override
+  public TsPrimitiveType getStatisticalLastValue() {
+    return TsPrimitiveType.getByType(tsDataType, statistics.getLastValue());
   }
 
   public long getStartTime() {

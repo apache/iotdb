@@ -28,6 +28,7 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsVector;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -105,6 +106,30 @@ public class VectorPageReader implements IPageReader {
   }
 
   @Override
+  public TsPrimitiveType getStatisticalFirstValue() {
+    TsPrimitiveType[] vecValue = new TsPrimitiveType[valuePageReaderList.size()];
+    for (int i = 0; i < valuePageReaderList.size(); i++) {
+      ValuePageReader subPageReader = valuePageReaderList.get(i);
+      vecValue[i] =
+          TsPrimitiveType.getByType(
+              subPageReader.getDataType(), subPageReader.getStatistics().getFirstValue());
+    }
+    return new TsVector(vecValue);
+  }
+
+  @Override
+  public TsPrimitiveType getStatisticalLastValue() {
+    TsPrimitiveType[] vecValue = new TsPrimitiveType[valuePageReaderList.size()];
+    for (int i = 0; i < valuePageReaderList.size(); i++) {
+      ValuePageReader subPageReader = valuePageReaderList.get(i);
+      vecValue[i] =
+          TsPrimitiveType.getByType(
+              subPageReader.getDataType(), subPageReader.getStatistics().getLastValue());
+    }
+    return new TsVector(vecValue);
+  }
+
+  @Override
   public void setFilter(Filter filter) {
     this.filter = filter;
   }
@@ -112,5 +137,9 @@ public class VectorPageReader implements IPageReader {
   @Override
   public boolean isModified() {
     return isModified;
+  }
+
+  public List<ValuePageReader> getValuePageReaderList() {
+    return valuePageReaderList;
   }
 }

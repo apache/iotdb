@@ -31,6 +31,7 @@ import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -156,6 +157,16 @@ public class PageReader implements IPageReader {
   @Override
   public Statistics getStatistics() {
     return pageHeader.getStatistics();
+  }
+
+  @Override
+  public TsPrimitiveType getStatisticalFirstValue() {
+    return TsPrimitiveType.getByType(dataType, pageHeader.getStatistics().getFirstValue());
+  }
+
+  @Override
+  public TsPrimitiveType getStatisticalLastValue() {
+    return TsPrimitiveType.getByType(dataType, pageHeader.getStatistics().getLastValue());
   }
 
   @Override

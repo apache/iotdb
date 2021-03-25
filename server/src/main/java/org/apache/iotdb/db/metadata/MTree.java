@@ -47,6 +47,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.executor.fill.LastPointReader;
+import org.apache.iotdb.db.query.reader.series.SeriesReaderFactory;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -126,15 +127,15 @@ public class MTree implements Serializable {
         Set<String> measurementSet = new HashSet<>();
         measurementSet.add(node.getPartialPath().getFullPath());
         LastPointReader lastReader =
-            new LastPointReader(
+            SeriesReaderFactory.createLastPointReader(
                 node.getPartialPath(),
-                node.getSchema().getType(),
                 measurementSet,
+                node.getSchema().getType(),
                 queryContext,
                 dataSource,
                 Long.MAX_VALUE,
                 null);
-        last = lastReader.readLastPoint();
+        last = lastReader.getCachedLastPair();
         return (last != null ? last.getTimestamp() : Long.MIN_VALUE);
       } catch (Exception e) {
         logger.error(

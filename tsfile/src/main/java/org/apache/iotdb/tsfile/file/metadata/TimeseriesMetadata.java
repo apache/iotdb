@@ -26,6 +26,7 @@ import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -180,6 +181,16 @@ public class TimeseriesMetadata implements Accountable, ITimeSeriesMetadata {
   @Override
   public Statistics getStatistics() {
     return statistics;
+  }
+
+  @Override
+  public TsPrimitiveType getStatisticalFirstValue() {
+    return TsPrimitiveType.getByType(dataType, statistics.getFirstValue());
+  }
+
+  @Override
+  public TsPrimitiveType getStatisticalLastValue() {
+    return TsPrimitiveType.getByType(dataType, statistics.getLastValue());
   }
 
   public void setStatistics(Statistics statistics) {

@@ -856,6 +856,19 @@ public class PhysicalGenerator {
           columnForReaderSet.add(column);
         }
       }
+      // TODO: Refactor deduplicate method to make LastQuery comply with rawDataQuery
+      List<PartialPath> deduplicatedPaths = rawDataQueryPlan.getDeduplicatedPaths();
+      Pair<List<PartialPath>, Map<String, Integer>> pair =
+          IoTDB.metaManager.getSeriesSchemas(deduplicatedPaths);
+
+      List<PartialPath> vectorizedDeduplicatedPaths = pair.left;
+      List<TSDataType> vectorizedDeduplicatedDataTypes = new ArrayList<>();
+      for (PartialPath vectorizedDeduplicatedPath : vectorizedDeduplicatedPaths) {
+        vectorizedDeduplicatedDataTypes.add(
+            IoTDB.metaManager.getSeriesType(vectorizedDeduplicatedPath));
+      }
+      rawDataQueryPlan.setDeduplicatedPaths(vectorizedDeduplicatedPaths);
+      rawDataQueryPlan.setDeduplicatedDataTypes(vectorizedDeduplicatedDataTypes);
       return;
     }
 

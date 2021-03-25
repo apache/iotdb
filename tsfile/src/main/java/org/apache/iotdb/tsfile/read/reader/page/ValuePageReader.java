@@ -133,6 +133,10 @@ public class ValuePageReader {
     return pageHeader.getStatistics();
   }
 
+  public TSDataType getDataType() {
+    return dataType;
+  }
+
   public void setDeleteIntervalList(List<TimeRange> list) {
     this.deleteIntervalList = list;
   }

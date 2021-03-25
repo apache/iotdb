@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.tsfile.file.metadata;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
 import java.util.List;
@@ -26,6 +28,10 @@ import java.util.List;
 public interface ITimeSeriesMetadata {
 
   Statistics getStatistics();
+
+  TsPrimitiveType getStatisticalFirstValue();
+
+  TsPrimitiveType getStatisticalLastValue();
 
   boolean isModified();
 
@@ -38,4 +44,6 @@ public interface ITimeSeriesMetadata {
   List<IChunkMetadata> loadChunkMetadataList() throws IOException;
 
   List<IChunkMetadata> getChunkMetadataList();
+
+  TSDataType getTSDataType();
 }

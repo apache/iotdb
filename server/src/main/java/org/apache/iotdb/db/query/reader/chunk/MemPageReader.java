@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
 
@@ -61,6 +62,18 @@ public class MemPageReader implements IPageReader {
   @Override
   public Statistics getStatistics() {
     return chunkMetadata.getStatistics();
+  }
+
+  @Override
+  public TsPrimitiveType getStatisticalFirstValue() {
+    return TsPrimitiveType.getByType(
+        chunkMetadata.getDataType(), chunkMetadata.getStatistics().getFirstValue());
+  }
+
+  @Override
+  public TsPrimitiveType getStatisticalLastValue() {
+    return TsPrimitiveType.getByType(
+        chunkMetadata.getDataType(), chunkMetadata.getStatistics().getLastValue());
   }
 
   @Override

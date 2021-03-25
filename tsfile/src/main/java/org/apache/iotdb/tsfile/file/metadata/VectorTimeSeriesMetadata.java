@@ -18,7 +18,10 @@
  */
 package org.apache.iotdb.tsfile.file.metadata;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsVector;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -38,6 +41,30 @@ public class VectorTimeSeriesMetadata implements ITimeSeriesMetadata {
   @Override
   public Statistics getStatistics() {
     return timeseriesMetadata.getStatistics();
+  }
+
+  @Override
+  public TsPrimitiveType getStatisticalFirstValue() {
+    TsPrimitiveType[] vecValue = new TsPrimitiveType[valueTimeseriesMetadataList.size()];
+    for (int i = 0; i < valueTimeseriesMetadataList.size(); i++) {
+      ITimeSeriesMetadata subMetadata = valueTimeseriesMetadataList.get(i);
+      vecValue[i] =
+          TsPrimitiveType.getByType(
+              subMetadata.getTSDataType(), subMetadata.getStatistics().getFirstValue());
+    }
+    return new TsVector(vecValue);
+  }
+
+  @Override
+  public TsPrimitiveType getStatisticalLastValue() {
+    TsPrimitiveType[] vecValue = new TsPrimitiveType[valueTimeseriesMetadataList.size()];
+    for (int i = 0; i < valueTimeseriesMetadataList.size(); i++) {
+      ITimeSeriesMetadata subMetadata = valueTimeseriesMetadataList.get(i);
+      vecValue[i] =
+          TsPrimitiveType.getByType(
+              subMetadata.getTSDataType(), subMetadata.getStatistics().getLastValue());
+    }
+    return new TsVector(vecValue);
   }
 
   @Override
@@ -87,5 +114,10 @@ public class VectorTimeSeriesMetadata implements ITimeSeriesMetadata {
   @Override
   public List<IChunkMetadata> getChunkMetadataList() {
     return null;
+  }
+
+  @Override
+  public TSDataType getTSDataType() {
+    return TSDataType.VECTOR;
   }
 }

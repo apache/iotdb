@@ -27,6 +27,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
@@ -34,6 +35,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.query.executor.fill.LastPointReader;
+import org.apache.iotdb.db.query.reader.series.SeriesReaderFactory;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -93,34 +95,63 @@ public class LastQueryExecutor {
     List<Pair<Boolean, TimeValuePair>> lastPairList =
         calculateLastPairForSeries(selectedSeries, dataTypes, context, expression, lastQueryPlan);
 
-    for (int i = 0; i < lastPairList.size(); i++) {
-      if (lastPairList.get(i).right != null && lastPairList.get(i).right.getValue() != null) {
-        TimeValuePair lastTimeValuePair = lastPairList.get(i).right;
-        RowRecord resultRecord = new RowRecord(lastTimeValuePair.getTimestamp());
-        Field pathField = new Field(TSDataType.TEXT);
-        if (selectedSeries.get(i).isTsAliasExists()) {
-          pathField.setBinaryV(new Binary(selectedSeries.get(i).getTsAlias()));
-        } else {
-          if (selectedSeries.get(i).isMeasurementAliasExists()) {
-            pathField.setBinaryV(new Binary(selectedSeries.get(i).getFullPathWithAlias()));
-          } else {
-            pathField.setBinaryV(new Binary(selectedSeries.get(i).getFullPath()));
-          }
-        }
-        resultRecord.addField(pathField);
-
-        Field valueField = new Field(TSDataType.TEXT);
-        valueField.setBinaryV(new Binary(lastTimeValuePair.getValue().getStringValue()));
-        resultRecord.addField(valueField);
-
-        dataSet.putRecord(resultRecord);
-      }
-    }
+    composeLastDataSet(dataSet, lastPairList);
 
     if (!lastQueryPlan.isAscending()) {
       dataSet.sortByTime();
     }
     return dataSet;
+  }
+
+  public void composeLastDataSet(
+      ListDataSet dataSet, List<Pair<Boolean, TimeValuePair>> lastPairList) {
+    for (int i = 0; i < lastPairList.size(); i++) {
+      if (lastPairList.get(i).right != null && lastPairList.get(i).right.getValue() != null) {
+        TimeValuePair lastTimeValuePair = lastPairList.get(i).right;
+        if (selectedSeries.get(i) instanceof VectorPartialPath) {
+          List<PartialPath> subSensorList =
+              ((VectorPartialPath) (selectedSeries.get(i))).getSubSensorsPathList();
+          for (int j = 0; j < subSensorList.size(); j++) {
+            RowRecord resultRecord = new RowRecord(lastTimeValuePair.getTimestamp());
+            Field pathField = new Field(TSDataType.TEXT);
+            if (subSensorList.get(j).isTsAliasExists()) {
+              pathField.setBinaryV(new Binary(subSensorList.get(j).getTsAlias()));
+            } else {
+              if (subSensorList.get(j).isMeasurementAliasExists()) {
+                pathField.setBinaryV(new Binary(subSensorList.get(j).getFullPathWithAlias()));
+              } else {
+                pathField.setBinaryV(new Binary(subSensorList.get(j).getFullPath()));
+              }
+            }
+            resultRecord.addField(pathField);
+            Field valueField = new Field(TSDataType.TEXT);
+            valueField.setBinaryV(
+                new Binary(lastTimeValuePair.getValue().getVector()[j].getStringValue()));
+            resultRecord.addField(valueField);
+            dataSet.putRecord(resultRecord);
+          }
+        } else {
+          RowRecord resultRecord = new RowRecord(lastTimeValuePair.getTimestamp());
+          Field pathField = new Field(TSDataType.TEXT);
+          if (selectedSeries.get(i).isTsAliasExists()) {
+            pathField.setBinaryV(new Binary(selectedSeries.get(i).getTsAlias()));
+          } else {
+            if (selectedSeries.get(i).isMeasurementAliasExists()) {
+              pathField.setBinaryV(new Binary(selectedSeries.get(i).getFullPathWithAlias()));
+            } else {
+              pathField.setBinaryV(new Binary(selectedSeries.get(i).getFullPath()));
+            }
+          }
+          resultRecord.addField(pathField);
+
+          Field valueField = new Field(TSDataType.TEXT);
+          valueField.setBinaryV(new Binary(lastTimeValuePair.getValue().getStringValue()));
+          resultRecord.addField(valueField);
+
+          dataSet.putRecord(resultRecord);
+        }
+      }
+    }
   }
 
   protected List<Pair<Boolean, TimeValuePair>> calculateLastPairForSeries(
@@ -162,10 +193,10 @@ public class LastQueryExecutor {
             QueryResourceManager.getInstance()
                 .getQueryDataSource(nonCachedPaths.get(i), context, null);
         LastPointReader lastReader =
-            new LastPointReader(
+            SeriesReaderFactory.createLastPointReader(
                 nonCachedPaths.get(i),
-                nonCachedDataTypes.get(i),
                 deviceMeasurementsMap.get(nonCachedPaths.get(i).getDevice()),
+                nonCachedDataTypes.get(i),
                 context,
                 dataSource,
                 Long.MAX_VALUE,
@@ -180,7 +211,7 @@ public class LastQueryExecutor {
     int index = 0;
     for (int i = 0; i < resultContainer.size(); i++) {
       if (Boolean.FALSE.equals(resultContainer.get(i).left)) {
-        resultContainer.get(i).right = readerList.get(index++).readLastPoint();
+        resultContainer.get(i).right = readerList.get(index++).getCachedLastPair();
         if (resultContainer.get(i).right.getValue() != null) {
           resultContainer.get(i).left = true;
           if (CACHE_ENABLED) {

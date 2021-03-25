@@ -71,6 +71,12 @@ public class VectorSessionExample {
       System.out.println(dataSet.next());
     }
 
+    dataSet = session.executeQueryStatement("select last d1 from root.sg_0");
+    System.out.println(dataSet.getColumnNames());
+    while (dataSet.hasNext()) {
+      System.out.println(dataSet.next());
+    }
+
     dataSet.closeOperationHandle();
   }
 

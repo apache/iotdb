@@ -23,6 +23,8 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsVector;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -164,5 +166,33 @@ public class VectorChunkMetadata implements IChunkMetadata {
       valueChunkList.add(chunkMetadata.getChunkLoader().loadChunk((ChunkMetadata) chunkMetadata));
     }
     return valueChunkList;
+  }
+
+  @Override
+  public TsPrimitiveType getStatisticalFirstValue() {
+    TsPrimitiveType[] vecValue = new TsPrimitiveType[valueChunkMetadataList.size()];
+    for (int i = 0; i < valueChunkMetadataList.size(); i++) {
+      IChunkMetadata subMetadata = valueChunkMetadataList.get(i);
+      vecValue[i] =
+          TsPrimitiveType.getByType(
+              subMetadata.getDataType(), subMetadata.getStatistics().getFirstValue());
+    }
+    return new TsVector(vecValue);
+  }
+
+  @Override
+  public TsPrimitiveType getStatisticalLastValue() {
+    TsPrimitiveType[] vecValue = new TsPrimitiveType[valueChunkMetadataList.size()];
+    for (int i = 0; i < valueChunkMetadataList.size(); i++) {
+      IChunkMetadata subMetadata = valueChunkMetadataList.get(i);
+      vecValue[i] =
+          TsPrimitiveType.getByType(
+              subMetadata.getDataType(), subMetadata.getStatistics().getLastValue());
+    }
+    return new TsVector(vecValue);
+  }
+
+  public List<IChunkMetadata> getValueChunkMetadataList() {
+    return valueChunkMetadataList;
   }
 }

@@ -23,10 +23,13 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.executor.fill.LastPointReader;
+import org.apache.iotdb.db.query.executor.fill.VectorLastPointReader;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Set;
 
@@ -87,5 +90,23 @@ public class SeriesReaderFactory {
         timeFilter,
         valueFilter,
         ascending);
+  }
+
+  public static LastPointReader createLastPointReader(
+      PartialPath seriesPath,
+      Set<String> allSensors,
+      TSDataType dataType,
+      QueryContext context,
+      QueryDataSource dataSource,
+      long queryTime,
+      Filter timeFilter)
+      throws IOException {
+    if (seriesPath instanceof VectorPartialPath) {
+      return new VectorLastPointReader(
+          seriesPath, dataType, allSensors, context, dataSource, queryTime, timeFilter);
+    } else {
+      return new LastPointReader(
+          seriesPath, dataType, allSensors, context, dataSource, queryTime, timeFilter);
+    }
   }
 }
