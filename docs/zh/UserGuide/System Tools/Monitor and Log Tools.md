@@ -260,3 +260,4 @@ IoTDB支持用户通过修改日志配置文件的方式对IoTDB系统日志（�
 * setLoggerLevel接口
 
 该方法为设置指定Logger的日志级别。该方法接受一个名为p1的String类型的参数和一个名为p2的String类型的参数，分别指定Logger的名称和目标的日志等级。
+
