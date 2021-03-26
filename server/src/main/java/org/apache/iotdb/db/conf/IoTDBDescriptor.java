@@ -625,10 +625,10 @@ public class IoTDBDescriptor {
         conf.setThriftMaxFrameSize(IoTDBConstant.LEFT_SIZE_IN_REQUEST * 2);
       }
 
-      conf.setThriftInitBufferSize(
+      conf.setThriftDefaultBufferSize(
           Integer.parseInt(
               properties.getProperty(
-                  "thrift_init_buffer_size", String.valueOf(conf.getThriftInitBufferSize()))));
+                  "thrift_init_buffer_size", String.valueOf(conf.getThriftDefaultBufferSize()))));
 
       conf.setFrequencyIntervalInMinute(
           Integer.parseInt(

@@ -23,38 +23,35 @@ import org.xerial.snappy.Snappy;
 
 import java.io.IOException;
 
-import static org.apache.iotdb.rpc.RpcUtils.DEFAULT_BUF_CAPACITY;
-import static org.apache.iotdb.rpc.RpcUtils.DEFAULT_MAX_LENGTH;
-
 public class TSnappyElasticFramedTransport extends TCompressedElasticFramedTransport {
 
   public static class Factory extends TElasticFramedTransport.Factory {
 
     public Factory() {
-      this(DEFAULT_BUF_CAPACITY, DEFAULT_MAX_LENGTH);
+      this(RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY, RpcUtils.THRIFT_FRAME_MAX_SIZE);
     }
 
-    public Factory(int initialCapacity) {
-      this(initialCapacity, DEFAULT_MAX_LENGTH);
+    public Factory(int thriftDefaultBufferSize) {
+      this(thriftDefaultBufferSize, RpcUtils.THRIFT_FRAME_MAX_SIZE);
     }
 
-    public Factory(int initialCapacity, int maxLength) {
-      super(initialCapacity, maxLength);
+    public Factory(int thriftDefaultBufferSize, int thriftMaxFrameSize) {
+      super(thriftDefaultBufferSize, thriftMaxFrameSize);
     }
 
     @Override
     public TTransport getTransport(TTransport trans) {
-      return new TSnappyElasticFramedTransport(trans, initialCapacity, softMaxLength);
+      return new TSnappyElasticFramedTransport(trans, thriftDefaultBufferSize, thriftMaxFrameSize);
     }
   }
 
   public TSnappyElasticFramedTransport(TTransport underlying) {
-    this(underlying, DEFAULT_BUF_CAPACITY, DEFAULT_MAX_LENGTH);
+    this(underlying, RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY, RpcUtils.THRIFT_FRAME_MAX_SIZE);
   }
 
   public TSnappyElasticFramedTransport(
-      TTransport underlying, int initialBufferCapacity, int maxLength) {
-    super(underlying, initialBufferCapacity, maxLength);
+      TTransport underlying, int thriftDefaultBufferSize, int thriftMaxFrameSize) {
+    super(underlying, thriftDefaultBufferSize, thriftMaxFrameSize);
   }
 
   @Override
