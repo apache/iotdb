@@ -28,6 +28,7 @@ import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.LastQueryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.MultSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
@@ -52,6 +53,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class DataSyncService extends BaseSyncService implements TSDataService.Iface {
@@ -117,6 +119,13 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
     }
   }
 
+  /**
+   * return the schema, whose measurement Id is the series full path.
+   *
+   * @param request the pull request
+   * @return response
+   * @throws TException remind of thrift
+   */
   @Override
   public PullSchemaResp pullTimeSeriesSchema(PullSchemaRequest request) throws TException {
     try {
@@ -145,6 +154,13 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
     }
   }
 
+  /**
+   * return the schema, whose measurement Id is the series name.
+   *
+   * @param request the pull request
+   * @return response
+   * @throws TException remind of thrift
+   */
   @Override
   public PullSchemaResp pullMeasurementSchema(PullSchemaRequest request) throws TException {
     try {
@@ -183,6 +199,15 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
+  public long queryMultSeries(MultSeriesQueryRequest request) throws TException {
+    try {
+      return dataGroupMember.getLocalQueryExecutor().queryMultSeries(request);
+    } catch (Exception e) {
+      throw new TException(e);
+    }
+  }
+
+  @Override
   public long querySingleSeriesByTimestamp(SingleSeriesQueryRequest request) throws TException {
     try {
       return dataGroupMember.getLocalQueryExecutor().querySingleSeriesByTimestamp(request);
@@ -210,12 +235,23 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
-  public ByteBuffer fetchSingleSeriesByTimestamp(Node header, long readerId, long timestamp)
+  public Map<String, ByteBuffer> fetchMultSeries(Node header, long readerId, List<String> paths)
+      throws TException {
+    try {
+      return dataGroupMember.getLocalQueryExecutor().fetchMultSeries(readerId, paths);
+    } catch (ReaderNotFoundException | IOException e) {
+      throw new TException(e);
+    }
+  }
+
+  @Override
+  public ByteBuffer fetchSingleSeriesByTimestamps(Node header, long readerId, List<Long> timestamps)
       throws TException {
     try {
       return dataGroupMember
           .getLocalQueryExecutor()
-          .fetchSingleSeriesByTimestamp(readerId, timestamp);
+          .fetchSingleSeriesByTimestamps(
+              readerId, timestamps.stream().mapToLong(k -> k).toArray(), timestamps.size());
     } catch (ReaderNotFoundException | IOException e) {
       throw new TException(e);
     }
@@ -256,6 +292,16 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
       return ((CMManager) IoTDB.metaManager).getNodeList(path, nodeLevel);
+    } catch (CheckConsistencyException | MetadataException e) {
+      throw new TException(e);
+    }
+  }
+
+  @Override
+  public Set<String> getChildNodeInNextLevel(Node header, String path) throws TException {
+    try {
+      dataGroupMember.syncLeaderWithConsistencyCheck(false);
+      return ((CMManager) IoTDB.metaManager).getChildNodeInNextLevel(path);
     } catch (CheckConsistencyException | MetadataException e) {
       throw new TException(e);
     }

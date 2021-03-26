@@ -80,14 +80,18 @@ public class SeriesReaderByTimestampTest {
             null,
             true);
 
+    long timestamps[] = new long[500];
+    for (int i = 0; i < 500; i++) {
+      timestamps[i] = i;
+    }
+    Object[] values = seriesReader.getValuesInTimestamps(timestamps, timestamps.length);
     for (int time = 0; time < 500; time++) {
-      Integer value = (Integer) seriesReader.getValueInTimestamp(time);
       if (time < 200) {
-        Assert.assertEquals(time + 20000, value.intValue());
+        Assert.assertEquals(time + 20000, values[time]);
       } else if (time < 260 || (time >= 300 && time < 380) || (time >= 400)) {
-        Assert.assertEquals(time + 10000, value.intValue());
+        Assert.assertEquals(time + 10000, values[time]);
       } else {
-        Assert.assertEquals(time, value.intValue());
+        Assert.assertEquals(time, values[time]);
       }
     }
   }

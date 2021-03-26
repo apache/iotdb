@@ -43,10 +43,21 @@ public class MinTimeDescAggrResult extends MinTimeAggrResult {
   @Override
   public void updateResultUsingTimestamps(
       long[] timestamps, int length, IReaderByTimestamp dataReader) throws IOException {
-    for (int i = 0; i < length; i++) {
-      Object value = dataReader.getValueInTimestamp(timestamps[i]);
-      if (value != null) {
+    Object[] values = dataReader.getValuesInTimestamps(timestamps, length);
+    for (int i = length - 1; i >= 0; i--) {
+      if (values[i] != null) {
         setLongValue(timestamps[i]);
+        return;
+      }
+    }
+  }
+
+  @Override
+  public void updateResultUsingValues(long[] timestamps, int length, Object[] values) {
+    for (int i = length - 1; i >= 0; i--) {
+      if (values[i] != null) {
+        setLongValue(timestamps[i]);
+        return;
       }
     }
   }
