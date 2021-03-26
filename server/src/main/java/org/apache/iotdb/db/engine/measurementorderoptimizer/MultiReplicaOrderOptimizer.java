@@ -20,7 +20,7 @@ public class MultiReplicaOrderOptimizer {
 	private String deviceID;
 	private Replica[] replicas;
 	private List<String> measurementOrder;
-	private List<QueryRecord> records;
+	public List<QueryRecord> records;
 	private List<Long> chunkSize;
 	private final float SA_INIT_TEMPERATURE = 100.0f;
 	private final float COOLING_RATE = 0.999f;
@@ -124,11 +124,11 @@ public class MultiReplicaOrderOptimizer {
 		CostRecorder costRecorder = new CostRecorder();
 		long startTime = System.currentTimeMillis();
 		costRecorder.addCost(curCost, startTime);
-		for (; k < maxIter && System.currentTimeMillis() - optimizeStartTime < 30l * 60l * 1000l; ++k) {
+		for (; k < maxIter && System.currentTimeMillis() - optimizeStartTime < 40l * 60l * 1000l; ++k) {
 			temperature = temperature * COOLING_RATE;
 			int selectedReplica = r.nextInt(replicaNum);
 			int operation = r.nextInt(2);
-			if (operation == 0 && measurementOrder.size() > 1) {
+			if ((operation == 0 && measurementOrder.size() > 1) || k > 10000) {
 				// Swap chunk order
 				int swapLeft = r.nextInt(measurementOrder.size());
 				int swapRight = r.nextInt(measurementOrder.size());
@@ -202,7 +202,7 @@ public class MultiReplicaOrderOptimizer {
 		int k = 0;
 		CostRecorder costRecorder = new CostRecorder();
 		long startTime = System.currentTimeMillis();
-		for (; k < maxIter && System.currentTimeMillis() - optimizeStartTime < 15l * 60l * 1000l; ++k) {
+		for (; k < maxIter && System.currentTimeMillis() - optimizeStartTime < 5l * 60l * 1000l; ++k) {
 			temperature = temperature * COOLING_RATE;
 			int selectedReplica = r.nextInt(replicaNum);
 			int operation = r.nextInt(2);
