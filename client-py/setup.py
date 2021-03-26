@@ -39,7 +39,11 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/apache/iotdb",
     packages=setuptools.find_packages(),
-    install_requires=["thrift>=0.13.0", "pandas>=1.0.0,<1.99.99", "testcontainers>=2.0.0"],
+    install_requires=[
+        "thrift>=0.13.0",
+        "pandas>=1.0.0,<1.99.99",
+        "testcontainers>=2.0.0",
+    ],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: Apache Software License",
