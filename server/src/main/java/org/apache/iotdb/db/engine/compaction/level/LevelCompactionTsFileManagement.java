@@ -191,6 +191,26 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     return result;
   }
 
+  private List<TsFileResource> getTsFileListByTimePartition(boolean sequence, long timePartition) {
+    List<TsFileResource> result = new ArrayList<>();
+    if (sequence) {
+      synchronized (sequenceTsFileResources) {
+        for (SortedSet<TsFileResource> sequenceTsFileList :
+            sequenceTsFileResources.get(timePartition)) {
+          result.addAll(sequenceTsFileList);
+        }
+      }
+    } else {
+      synchronized (unSequenceTsFileResources) {
+        for (List<TsFileResource> unSequenceTsFileList :
+            unSequenceTsFileResources.get(timePartition)) {
+          result.addAll(unSequenceTsFileList);
+        }
+      }
+    }
+    return result;
+  }
+
   @Override
   public Iterator<TsFileResource> getIterator(boolean sequence) {
     return getTsFileList(sequence).iterator();
@@ -557,7 +577,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     if (enableUnseqCompaction && unseqLevelNum <= 1 && forkedUnSequenceTsFileResources.size() > 0) {
       merge(
           isForceFullMerge,
-          getTsFileList(true),
+          getTsFileListByTimePartition(true, timePartition),
           forkedUnSequenceTsFileResources.get(0),
           Long.MAX_VALUE);
     } else {
