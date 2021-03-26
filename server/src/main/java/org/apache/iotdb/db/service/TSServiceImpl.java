@@ -1947,7 +1947,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   @Override
   public ConvergenceTestResult convergenceTest(String deviceID) throws TException {
 //    MultiReplicaOrderOptimizer optimizer = new MultiReplicaOrderOptimizer(deviceID, 1);
-    Pair<List<Double>, List<Long>> result = MeasurementOrderOptimizer.getInstance().optimizeOrderBySAWithCostRecord(deviceID);
+    Pair<List<Double>, List<Long>> result = MeasurementOrderOptimizer.getInstance().optimizeChunkSize(deviceID, MeasurementOptimizationType.SA);
 //    Pair<List<Double>, List<Long>> convergenceResultOfOurMethod = optimizer.optimizeBySAWithChunkSizeAdjustmentAndCostRecord();
 //    DivergentDesign divergentDesign = new DivergentDesign(deviceID);
 //    Pair<List<Double>, List<Long>> convergenceResultOfOriDivergentDesign = divergentDesign.optimizeWithCostRecord();
