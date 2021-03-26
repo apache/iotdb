@@ -18,6 +18,12 @@
  */
 package org.apache.iotdb.db.qp.physical;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -40,18 +46,10 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
-
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
 
 public class InsertTabletPlanTest {
 
@@ -159,7 +157,7 @@ public class InsertTabletPlanTest {
 
     QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(6, dataSet.getPaths().size());
+    Assert.assertEquals(3, dataSet.getPaths().size());
     //    while (dataSet.hasNext()) {
     //      RowRecord record = dataSet.next();
     //      Assert.assertEquals(6, record.getFields().size());
@@ -227,7 +225,7 @@ public class InsertTabletPlanTest {
 
     QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(6, dataSet.getPaths().size());
+    Assert.assertEquals(3, dataSet.getPaths().size());
     //    while (dataSet.hasNext()) {
     //      RowRecord record = dataSet.next();
     //      Assert.assertEquals(6, record.getFields().size());
@@ -248,7 +246,7 @@ public class InsertTabletPlanTest {
 
     queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
     dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(6, dataSet.getPaths().size());
+    Assert.assertEquals(3, dataSet.getPaths().size());
     //    while (dataSet.hasNext()) {
     //      RowRecord record = dataSet.next();
     //      Assert.assertEquals(6, record.getFields().size());
