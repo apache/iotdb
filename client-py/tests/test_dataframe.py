@@ -1,6 +1,8 @@
 from iotdb.Session import Session
 from iotdb.TestContainer import IoTDBContainer
 
+from numpy.testing import assert_array_equal
+
 
 def test_simple_query():
     with IoTDBContainer("apache/iotdb:0.11.2") as db:
@@ -9,7 +11,7 @@ def test_simple_query():
         session.open(False)
 
         # Write data
-        session.insert_str_record("device", 123, "pressure", "15.0")
+        session.insert_str_record("root.device", 123, "pressure", "15.0")
 
         # Read
         session_data_set = session.execute_query_statement("SELECT * FROM root.*")
@@ -17,4 +19,5 @@ def test_simple_query():
 
         session.close()
 
-    assert df == []
+    assert list(df.columns) == ["Time", "root.device.pressure"]
+    assert_array_equal(df.values, [[123.0, 15.0]])

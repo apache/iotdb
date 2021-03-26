@@ -137,19 +137,19 @@ tutorial of installation, eventually, you should have a thrift executable.
 http://thrift.apache.org/docs/install/
 ```
 
+Before starting you need to install `requirements_dev.txt` in your python environment, e.g. by calling
+```
+pip install -r requirements_dev.txt
+```
+
 ### Compile the thrift library and Debug
 
-In the root of IoTDB's source code folder,  run `mvn generate-sources -pl client-py -am`.
+In the root of IoTDB's source code folder,  run `mvn clean generate-sources -pl client-py -am`.
 
-Then a complete project will be generated at `client-py/target/pypi` folder.
-But !BE CAUTIOUS!
-All your modifications in `client-py/target/pypi` must be copied manually to `client-py/src/` folder.
-Otherwise once you run `mvn clean`, you will lose all your effort.
+This will automatically delete and repopulate the folder `iotdb/thrift` with the generated thrift files.
+This folder is ignored from git and should **never be pushed to git!**
 
-Or, you can also copy `client-py/target/pypi/iotdb/thrift` folder to `client-py/src/thrift`, then the
-`src` folder will become also a complete python project.
-But !BE CAUTIOUS!
-Do not upload `client-py/src/thrift` to the git repo.
+**Notice** Do not upload `iotdb/thrift` to the git repo.
 
 
 ### Session Client & Example
@@ -173,8 +173,21 @@ zone = session.get_time_zone()
 session.close()
 ```
 
-### test file
+### Tests
 
-You can use `client-py/src/SessionTest.py` to test python session, if the test has been passed, it will return 0. Otherwise it will return 1. You can use the printed message to locate failed operations and the reason of them.
+Please add your custom tests in `tests` folder.
+To run all defined tests just type `pytest .` in the root folder.
 
-Notice: you should start IoTDB server firstly and then run the test.
+**Notice** Some tests need docker to be started on your system as a test instance is started in a docker container using [testcontainers](https://testcontainers-python.readthedocs.io/en/latest/index.html).
+
+### Futher Tools
+
+[black](https://pypi.org/project/black/) and [flake8](https://pypi.org/project/flake8/) are installed for autoformatting and linting.
+Both can be run by `black .` or `flake8 .` respectively.
+
+## Releasing
+
+To do a release just ensure that you have the right set of generated thrift files.
+Then run linting and auto-formatting.
+Then, ensure that all tests work (via `pytest .`).
+Then you are good to go to do a release!
