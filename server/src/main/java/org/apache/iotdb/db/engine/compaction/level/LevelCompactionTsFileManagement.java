@@ -191,6 +191,28 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     return result;
   }
 
+  private List<TsFileResource> getTsFileListByTimePartition(boolean sequence, long timePartition) {
+    List<TsFileResource> result = new ArrayList<>();
+    if (sequence) {
+      synchronized (sequenceTsFileResources) {
+        List<SortedSet<TsFileResource>> sequenceTsFileList =
+            sequenceTsFileResources.get(timePartition);
+        for (int i = sequenceTsFileList.size() - 1; i >= 0; i--) {
+          result.addAll(sequenceTsFileList.get(i));
+        }
+      }
+    } else {
+      synchronized (unSequenceTsFileResources) {
+        List<List<TsFileResource>> unSequenceTsFileList =
+            unSequenceTsFileResources.get(timePartition);
+        for (int i = unSequenceTsFileList.size() - 1; i >= 0; i--) {
+          result.addAll(unSequenceTsFileList.get(i));
+        }
+      }
+    }
+    return result;
+  }
+
   @Override
   public Iterator<TsFileResource> getIterator(boolean sequence) {
     return getTsFileList(sequence).iterator();
@@ -557,7 +579,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     if (enableUnseqCompaction && unseqLevelNum <= 1 && forkedUnSequenceTsFileResources.size() > 0) {
       merge(
           isForceFullMerge,
-          getTsFileList(true),
+          getTsFileListByTimePartition(true, timePartition),
           forkedUnSequenceTsFileResources.get(0),
           Long.MAX_VALUE);
     } else {
@@ -598,7 +620,11 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
             // do not merge current unseq file level to upper level and just merge all of them to
             // seq file
             isSeqMerging = false;
-            merge(isForceFullMerge, getTsFileList(true), mergeResources.get(i), Long.MAX_VALUE);
+            merge(
+                isForceFullMerge,
+                getTsFileListByTimePartition(true, timePartition),
+                mergeResources.get(i),
+                Long.MAX_VALUE);
           } else {
             CompactionLogger compactionLogger =
                 new CompactionLogger(storageGroupDir, storageGroupName);
