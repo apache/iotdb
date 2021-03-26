@@ -98,6 +98,7 @@ public class StatMonitor implements StatMonitorMBean, IService {
   /** Generate tsRecords for stat parameters and insert them into StorageEngine. */
   public void saveStatValue(String storageGroupName)
       throws MetadataException, StorageEngineException {
+    logger.error("start save value at " + storageGroupName);
     long insertTime = System.currentTimeMillis();
     // update monitor series of storage group
     PartialPath storageGroupSeries = getStorageGroupMonitorSeries(storageGroupName);
