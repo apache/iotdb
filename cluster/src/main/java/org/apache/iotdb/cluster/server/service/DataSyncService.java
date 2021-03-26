@@ -38,6 +38,7 @@ import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
+import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -120,73 +121,76 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   /**
-   * return the schema, whose measurement Id is the series full path.
+   * forward the request to the leader return the schema, whose measurement Id is the series full
+   * path.
    *
    * @param request the pull request
-   * @return response
+   * @return response pull schema resp
    * @throws TException remind of thrift
    */
   @Override
   public PullSchemaResp pullTimeSeriesSchema(PullSchemaRequest request) throws TException {
-    try {
-      return dataGroupMember.getLocalQueryExecutor().queryTimeSeriesSchema(request);
-    } catch (CheckConsistencyException e) {
-      // if this node cannot synchronize with the leader with in a given time, forward the
-      // request to the leader
-      dataGroupMember.waitLeader();
-      SyncDataClient client =
-          (SyncDataClient) dataGroupMember.getSyncClient(dataGroupMember.getLeader());
-      if (client == null) {
-        throw new TException(new LeaderUnknownException(dataGroupMember.getAllNodes()));
-      }
-      PullSchemaResp pullSchemaResp;
+    if (dataGroupMember.getCharacter() == NodeCharacter.LEADER) {
       try {
-        pullSchemaResp = client.pullTimeSeriesSchema(request);
-      } catch (TException te) {
-        client.getInputProtocol().getTransport().close();
-        throw te;
-      } finally {
-        ClientUtils.putBackSyncClient(client);
+        return dataGroupMember.getLocalQueryExecutor().queryTimeSeriesSchema(request);
+      } catch (CheckConsistencyException | MetadataException e) {
+        throw new TException(e);
       }
-      return pullSchemaResp;
-    } catch (MetadataException e) {
-      throw new TException(e);
     }
+
+    // forward the request to the leader
+    dataGroupMember.waitLeader();
+    SyncDataClient client =
+        (SyncDataClient) dataGroupMember.getSyncClient(dataGroupMember.getLeader());
+    if (client == null) {
+      throw new TException(new LeaderUnknownException(dataGroupMember.getAllNodes()));
+    }
+    PullSchemaResp pullSchemaResp;
+    try {
+      pullSchemaResp = client.pullTimeSeriesSchema(request);
+    } catch (TException te) {
+      client.getInputProtocol().getTransport().close();
+      throw te;
+    } finally {
+      ClientUtils.putBackSyncClient(client);
+    }
+    return pullSchemaResp;
   }
 
   /**
-   * return the schema, whose measurement Id is the series name.
+   * forward the request to the leader return the schema, whose measurement Id is the series name.
    *
    * @param request the pull request
-   * @return response
+   * @return response pull schema resp
    * @throws TException remind of thrift
    */
   @Override
   public PullSchemaResp pullMeasurementSchema(PullSchemaRequest request) throws TException {
-    try {
-      return dataGroupMember.getLocalQueryExecutor().queryMeasurementSchema(request);
-    } catch (CheckConsistencyException e) {
-      // if this node cannot synchronize with the leader with in a given time, forward the
-      // request to the leader
-      dataGroupMember.waitLeader();
-      SyncDataClient client =
-          (SyncDataClient) dataGroupMember.getSyncClient(dataGroupMember.getLeader());
-      if (client == null) {
-        throw new TException(new LeaderUnknownException(dataGroupMember.getAllNodes()));
-      }
-      PullSchemaResp pullSchemaResp;
+    if (dataGroupMember.getCharacter() == NodeCharacter.LEADER) {
       try {
-        pullSchemaResp = client.pullMeasurementSchema(request);
-      } catch (TException te) {
-        client.getInputProtocol().getTransport().close();
-        throw te;
-      } finally {
-        ClientUtils.putBackSyncClient(client);
+        return dataGroupMember.getLocalQueryExecutor().queryMeasurementSchema(request);
+      } catch (CheckConsistencyException | IllegalPathException e) {
+        throw new TException(e);
       }
-      return pullSchemaResp;
-    } catch (IllegalPathException e) {
-      throw new TException(e);
     }
+
+    // forward the request to the leader
+    dataGroupMember.waitLeader();
+    SyncDataClient client =
+        (SyncDataClient) dataGroupMember.getSyncClient(dataGroupMember.getLeader());
+    if (client == null) {
+      throw new TException(new LeaderUnknownException(dataGroupMember.getAllNodes()));
+    }
+    PullSchemaResp pullSchemaResp;
+    try {
+      pullSchemaResp = client.pullMeasurementSchema(request);
+    } catch (TException te) {
+      client.getInputProtocol().getTransport().close();
+      throw te;
+    } finally {
+      ClientUtils.putBackSyncClient(client);
+    }
+    return pullSchemaResp;
   }
 
   @Override

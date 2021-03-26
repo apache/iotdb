@@ -38,6 +38,7 @@ import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
+import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -113,27 +114,35 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
     }
   }
 
+  /**
+   * forward the request to the leader
+   *
+   * @param request pull schema request
+   * @param resultHandler result handler
+   */
   @Override
   public void pullTimeSeriesSchema(
       PullSchemaRequest request, AsyncMethodCallback<PullSchemaResp> resultHandler) {
-    try {
-      resultHandler.onComplete(
-          dataGroupMember.getLocalQueryExecutor().queryTimeSeriesSchema(request));
-    } catch (CheckConsistencyException e) {
-      // if this node cannot synchronize with the leader with in a given time, forward the
-      // request to the leader
-      AsyncDataClient leaderClient = getLeaderClient();
-      if (leaderClient == null) {
-        resultHandler.onError(new LeaderUnknownException(dataGroupMember.getAllNodes()));
-        return;
-      }
+    if (dataGroupMember.getCharacter() == NodeCharacter.LEADER) {
       try {
-        leaderClient.pullTimeSeriesSchema(request, resultHandler);
-      } catch (TException e1) {
-        resultHandler.onError(e1);
+        resultHandler.onComplete(
+            dataGroupMember.getLocalQueryExecutor().queryTimeSeriesSchema(request));
+        return;
+      } catch (CheckConsistencyException | MetadataException e) {
+        resultHandler.onError(e);
       }
-    } catch (MetadataException e) {
-      resultHandler.onError(e);
+    }
+
+    // forward the request to the leader
+    AsyncDataClient leaderClient = getLeaderClient();
+    if (leaderClient == null) {
+      resultHandler.onError(new LeaderUnknownException(dataGroupMember.getAllNodes()));
+      return;
+    }
+    try {
+      leaderClient.pullTimeSeriesSchema(request, resultHandler);
+    } catch (TException e1) {
+      resultHandler.onError(e1);
     }
   }
 
@@ -142,27 +151,35 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
     return (AsyncDataClient) dataGroupMember.getAsyncClient(dataGroupMember.getLeader());
   }
 
+  /**
+   * forward the request to the leader
+   *
+   * @param request pull schema request
+   * @param resultHandler result handler
+   */
   @Override
   public void pullMeasurementSchema(
       PullSchemaRequest request, AsyncMethodCallback<PullSchemaResp> resultHandler) {
-    try {
-      resultHandler.onComplete(
-          dataGroupMember.getLocalQueryExecutor().queryMeasurementSchema(request));
-    } catch (CheckConsistencyException e) {
-      // if this node cannot synchronize with the leader with in a given time, forward the
-      // request to the leader
-      AsyncDataClient leaderClient = getLeaderClient();
-      if (leaderClient == null) {
-        resultHandler.onError(new LeaderUnknownException(dataGroupMember.getAllNodes()));
-        return;
-      }
+    if (dataGroupMember.getCharacter() == NodeCharacter.LEADER) {
       try {
-        leaderClient.pullMeasurementSchema(request, resultHandler);
-      } catch (TException e1) {
-        resultHandler.onError(e1);
+        resultHandler.onComplete(
+            dataGroupMember.getLocalQueryExecutor().queryMeasurementSchema(request));
+        return;
+      } catch (CheckConsistencyException | MetadataException e) {
+        resultHandler.onError(e);
       }
-    } catch (IllegalPathException e) {
-      resultHandler.onError(e);
+    }
+
+    // forward the request to the leader
+    AsyncDataClient leaderClient = getLeaderClient();
+    if (leaderClient == null) {
+      resultHandler.onError(new LeaderUnknownException(dataGroupMember.getAllNodes()));
+      return;
+    }
+    try {
+      leaderClient.pullMeasurementSchema(request, resultHandler);
+    } catch (TException e1) {
+      resultHandler.onError(e1);
     }
   }
 
