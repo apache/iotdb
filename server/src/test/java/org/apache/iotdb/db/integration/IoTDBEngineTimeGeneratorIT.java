@@ -225,7 +225,7 @@ public class IoTDBEngineTimeGeneratorIT {
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     List<PartialPath> paths = new ArrayList<>();
     paths.add(pd1s0);
-    queryPlan.setDeduplicatedPaths(paths);
+    queryPlan.setDeduplicatedPathsAndUpdate(paths);
 
     ServerTimeGenerator timeGenerator =
         new ServerTimeGenerator(singleSeriesExpression, TEST_QUERY_CONTEXT, queryPlan);
@@ -264,7 +264,7 @@ public class IoTDBEngineTimeGeneratorIT {
     List<PartialPath> paths = new ArrayList<>();
     paths.add(pd0s0);
     paths.add(pd0s2);
-    queryPlan.setDeduplicatedPaths(paths);
+    queryPlan.setDeduplicatedPathsAndUpdate(paths);
     ServerTimeGenerator timeGenerator =
         new ServerTimeGenerator(andExpression, TEST_QUERY_CONTEXT, queryPlan);
     int cnt = 0;

@@ -84,7 +84,7 @@ public class ChunkReader implements IChunkReader {
     while (chunkDataBuffer.remaining() > 0) {
       // deserialize a PageHeader from chunkDataBuffer
       PageHeader pageHeader;
-      if (chunkHeader.getChunkType() == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
+      if (((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
         pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkStatistic);
       } else {
         pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
