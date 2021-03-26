@@ -172,6 +172,9 @@ public class InsertTabletPlan extends InsertPlan {
   private void writeDataTypes(DataOutputStream stream) throws IOException {
     stream.writeInt(dataTypes.length);
     for (int i = 0; i < dataTypes.length; i++) {
+      if (columns[i] == null) {
+        continue;
+      }
       TSDataType dataType = dataTypes[i];
       stream.write(dataType.serialize());
     }
@@ -237,9 +240,12 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   private void writeDataTypes(ByteBuffer buffer) {
-    buffer.putInt(dataTypes.length);
+    buffer.putInt(dataTypes.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
     for (int i = 0, dataTypesLength = dataTypes.length; i < dataTypesLength; i++) {
       TSDataType dataType = dataTypes[i];
+      if (columns[i] == null) {
+        continue;
+      }
       dataType.serializeTo(buffer);
     }
   }
@@ -280,12 +286,18 @@ public class InsertTabletPlan extends InsertPlan {
 
   private void serializeValues(DataOutputStream outputStream) throws IOException {
     for (int i = 0; i < dataTypes.length; i++) {
+      if (columns[i] == null) {
+        continue;
+      }
       serializeColumn(dataTypes[i], columns[i], outputStream, start, end);
     }
   }
 
   private void serializeValues(ByteBuffer buffer) {
     for (int i = 0; i < dataTypes.length; i++) {
+      if (columns[i] == null) {
+        continue;
+      }
       serializeColumn(dataTypes[i], columns[i], buffer, start, end);
     }
   }

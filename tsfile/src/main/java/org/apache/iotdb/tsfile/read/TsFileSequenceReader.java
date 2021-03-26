@@ -997,6 +997,8 @@ public class TsFileSequenceReader implements AutoCloseable {
         switch (marker) {
           case MetaMarker.CHUNK_HEADER:
           case MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER:
+          case (byte) (MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER | 0x80):
+          case (byte) (MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER | 0x40):
             fileOffsetOfChunk = this.position() - 1;
             // if there is something wrong with a chunk, we will drop the whole ChunkGroup
             // as different chunks may be created by the same insertions(sqls), and partial
@@ -1013,7 +1015,7 @@ public class TsFileSequenceReader implements AutoCloseable {
             dataType = chunkHeader.getDataType();
             Statistics<?> chunkStatistics = Statistics.getStatsByType(dataType);
             int dataSize = chunkHeader.getDataSize();
-            if (chunkHeader.getChunkType() == MetaMarker.CHUNK_HEADER) {
+            if (((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.CHUNK_HEADER) {
               while (dataSize > 0) {
                 // a new Page
                 PageHeader pageHeader = this.readPageHeader(chunkHeader.getDataType(), true);

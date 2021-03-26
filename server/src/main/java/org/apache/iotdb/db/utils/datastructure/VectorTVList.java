@@ -64,22 +64,22 @@ public class VectorTVList extends TVList {
       List<Object> columnValues = values.get(i);
       switch (dataTypes.get(i)) {
         case TEXT:
-          ((Binary[]) columnValues.get(arrayIndex))[elementIndex] = ((Binary[]) columnValue)[0];
+          ((Binary[]) columnValues.get(arrayIndex))[elementIndex] = (Binary) columnValue;
           break;
         case FLOAT:
-          ((float[]) columnValues.get(arrayIndex))[elementIndex] = ((float[]) columnValue)[0];
+          ((float[]) columnValues.get(arrayIndex))[elementIndex] = (float) columnValue;
           break;
         case INT32:
-          ((int[]) columnValues.get(arrayIndex))[elementIndex] = ((int[]) columnValue)[0];
+          ((int[]) columnValues.get(arrayIndex))[elementIndex] = (int) columnValue;
           break;
         case INT64:
-          ((long[]) columnValues.get(arrayIndex))[elementIndex] = ((long[]) columnValue)[0];
+          ((long[]) columnValues.get(arrayIndex))[elementIndex] = (long) columnValue;
           break;
         case DOUBLE:
-          ((double[]) columnValues.get(arrayIndex))[elementIndex] = ((double[]) columnValue)[0];
+          ((double[]) columnValues.get(arrayIndex))[elementIndex] = (double) columnValue;
           break;
         case BOOLEAN:
-          ((boolean[]) columnValues.get(arrayIndex))[elementIndex] = ((boolean[]) columnValue)[0];
+          ((boolean[]) columnValues.get(arrayIndex))[elementIndex] = (boolean) columnValue;
           break;
         default:
           break;

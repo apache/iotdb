@@ -48,6 +48,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
@@ -318,10 +319,13 @@ public class MManager {
   /** function for clearing MTree */
   public void clear() {
     try {
+      templateMap.clear();
+      Template.clear();
       this.mtree = new MTree();
       this.mNodeCache.clear();
       this.tagIndex.clear();
       this.totalSeriesNumber.set(0);
+      this.templateMap.clear();
       if (logWriter != null) {
         logWriter.close();
         logWriter = null;
@@ -389,6 +393,10 @@ public class MManager {
       case SET_DEVICE_TEMPLATE:
         SetDeviceTemplatePlan setDeviceTemplatePlan = (SetDeviceTemplatePlan) plan;
         setDeviceTemplate(setDeviceTemplatePlan);
+        break;
+      case AUTO_CREATE_DEVICE_MNODE:
+        AutoCreateDeviceMNodePlan autoCreateDeviceMNodePlan = (AutoCreateDeviceMNodePlan) plan;
+        autoCreateDeviceMNode(autoCreateDeviceMNodePlan);
         break;
       default:
         logger.error("Unrecognizable command {}", plan.getOperatorType());
@@ -565,7 +573,7 @@ public class MManager {
    * Delete all timeseries under the given path, may cross different storage group
    *
    * @param prefixPath path to be deleted, could be root or a prefix path or a full path
-   * @return deletion failed Timeseries >>>>>>> cf081f9a1d0c48bcb02bc7dac2695483ac624eec
+   * @return deletion failed Timeseries
    */
   public String deleteTimeseries(PartialPath prefixPath) throws MetadataException {
     if (isStorageGroup(prefixPath)) {
@@ -582,10 +590,13 @@ public class MManager {
       MNode lastNode = getNodeByPath(allTimeseries.get(0));
       if (lastNode instanceof MeasurementMNode) {
         IMeasurementSchema schema = ((MeasurementMNode) lastNode).getSchema();
-        if (schema instanceof VectorMeasurementSchema
-            && schema.getValueMeasurementIdList().size() != allTimeseries.size()) {
-          throw new AlignedTimeseriesException(
-              "Not support deleting part of aligned timeseies!", prefixPath.getFullPath());
+        if (schema instanceof VectorMeasurementSchema) {
+          if (schema.getValueMeasurementIdList().size() != allTimeseries.size()) {
+            throw new AlignedTimeseriesException(
+                "Not support deleting part of aligned timeseies!", prefixPath.getFullPath());
+          } else {
+            allTimeseries.add(lastNode.getPartialPath());
+          }
         }
       }
 
@@ -664,11 +675,8 @@ public class MManager {
   }
 
   /**
-   * @param path full path from root to leaf node <<<<<<< HEAD
-   * @return pair.left: name of MNode which is deleted;pair.right: After delete if the storage group
-   *     is empty, return its path, otherwise return null =======
+   * @param path full path from root to leaf node
    * @return After delete if the storage group is empty, return its path, otherwise return null
-   *     >>>>>>> cf081f9a1d0c48bcb02bc7dac2695483ac624eec
    */
   private PartialPath deleteOneTimeseriesAndUpdateStatistics(PartialPath path)
       throws MetadataException, IOException {
@@ -1142,7 +1150,7 @@ public class MManager {
         array[i] = measurements.get(i).getMeasurement();
       }
       return new VectorMeasurementSchema(
-          leaf.getName(), array, types, encodings, schema.getCompressor());
+          schema.getMeasurementId(), array, types, encodings, schema.getCompressor());
     }
     return leaf != null ? schema : null;
   }
@@ -1179,16 +1187,34 @@ public class MManager {
         }
         nodeToIndex.computeIfAbsent(node, k -> new ArrayList<>()).add(i);
       } else {
-        // if nodeToPartialPath contains node, it must be VectorPartialPath
-        ((VectorPartialPath) nodeToPartialPath.get(node)).addSubSensor(path);
-        nodeToIndex.get(node).add(i);
+        // if nodeToPartialPath contains node
+        String existPath = nodeToPartialPath.get(node).getFullPath();
+        if (existPath.equals(path.getFullPath())) {
+          // could be the same path in different aggregate functions
+          nodeToIndex.get(node).add(i);
+        } else {
+          // could be VectorPartialPath
+          ((VectorPartialPath) nodeToPartialPath.get(node)).addSubSensor(path);
+          nodeToIndex.get(node).add(i);
+        }
       }
     }
     Map<String, Integer> indexMap = new HashMap<>();
     int i = 0;
     for (List<Integer> indexList : nodeToIndex.values()) {
       for (int index : indexList) {
-        indexMap.put(fullPaths.get(i).getFullPath(), index);
+        PartialPath partialPath = fullPaths.get(i);
+        if (indexMap.containsKey(partialPath.getFullPath())) {
+          throw new MetadataException(
+              "Query for measurement and its alias at the same time!", true);
+        }
+        indexMap.put(partialPath.getFullPath(), index);
+        if (partialPath.isMeasurementAliasExists()) {
+          indexMap.put(partialPath.getFullPathWithAlias(), index);
+        }
+        if (partialPath.isTsAliasExists()) {
+          indexMap.put(partialPath.getTsAlias(), index);
+        }
         i++;
       }
     }
@@ -1257,7 +1283,8 @@ public class MManager {
    * @param path path
    */
   public Pair<MNode, Template> getDeviceNodeWithAutoCreate(
-      PartialPath path, boolean autoCreateSchema, int sgLevel) throws MetadataException {
+      PartialPath path, boolean autoCreateSchema, int sgLevel)
+      throws IOException, MetadataException {
     Pair<MNode, Template> node;
     boolean shouldSetStorageGroup;
     try {
@@ -1276,17 +1303,23 @@ public class MManager {
         setStorageGroup(storageGroupPath);
       }
       node = mtree.getDeviceNodeWithAutoCreating(path, sgLevel);
+      if (!(node.left instanceof StorageGroupMNode)) {
+        logWriter.autoCreateDeviceMNode(new AutoCreateDeviceMNodePlan(node.left.getPartialPath()));
+      }
       return node;
     } catch (StorageGroupAlreadySetException e) {
       // ignore set storage group concurrently
       node = mtree.getDeviceNodeWithAutoCreating(path, sgLevel);
+      if (!(node.left instanceof StorageGroupMNode)) {
+        logWriter.autoCreateDeviceMNode(new AutoCreateDeviceMNodePlan(node.left.getPartialPath()));
+      }
       return node;
     }
   }
 
   /** !!!!!!Attention!!!!! must call the return node's readUnlock() if you call this method. */
   public Pair<MNode, Template> getDeviceNodeWithAutoCreate(PartialPath path)
-      throws MetadataException {
+      throws MetadataException, IOException {
     return getDeviceNodeWithAutoCreate(
         path, config.isAutoCreateSchemaEnabled(), config.getDefaultStorageGroupLevel());
   }
@@ -2022,8 +2055,8 @@ public class MManager {
 
   /** get schema for device. Attention!!! Only support insertPlan */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public MNode getSeriesSchemasAndReadLockDevice(InsertPlan plan) throws MetadataException {
-
+  public MNode getSeriesSchemasAndReadLockDevice(InsertPlan plan)
+      throws MetadataException, IOException {
     PartialPath deviceId = plan.getDeviceId();
     String[] measurementList = plan.getMeasurements();
     MeasurementMNode[] measurementMNodes = plan.getMeasurementMNodes();
@@ -2060,15 +2093,7 @@ public class MManager {
           if (!config.isAutoCreateSchemaEnabled()) {
             throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurement);
           } else {
-            // child is null or child is type of MNode
-            // get dataType of plan, only support InsertRowPlan and InsertTabletPlan
-            if (plan instanceof InsertRowPlan) {
-              TSDataType dataType = plan.getDataTypes()[i];
-              // create it, may concurrent created by multiple thread
-              internalCreateTimeseries(deviceId.concatNode(measurement), dataType);
-              measurementMNode = (MeasurementMNode) deviceMNode.left.getChild(measurement);
-            } else if (plan instanceof InsertTabletPlan) {
-              List<TSDataType> dataTypes = new ArrayList<>();
+            if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
               List<String> measurements =
                   Arrays.asList(measurement.replace("(", "").replace(")", "").split(","));
               if (measurements.size() == 1) {
@@ -2078,6 +2103,7 @@ public class MManager {
 
               } else {
                 int curLoc = loc;
+                List<TSDataType> dataTypes = new ArrayList<>();
                 for (int j = 0; j < measurements.size(); j++) {
                   dataTypes.add(plan.getDataTypes()[curLoc]);
                   curLoc++;
@@ -2098,15 +2124,7 @@ public class MManager {
         // check type is match
         boolean mismatch = false;
         TSDataType insertDataType = null;
-        if (plan instanceof InsertRowPlan) {
-          if (!((InsertRowPlan) plan).isNeedInferType()) {
-            // only when InsertRowPlan's values list is object[], we should check type
-            insertDataType = plan.getDataTypes()[i];
-          } else {
-            insertDataType = measurementMNode.getSchema().getType();
-          }
-          mismatch = measurementMNode.getSchema().getType() != insertDataType;
-        } else if (plan instanceof InsertTabletPlan) {
+        if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
           int measurementSize = measurementList[i].split(",").length;
           if (measurementSize == 1) {
             insertDataType = measurementMNode.getSchema().getType();
@@ -2311,5 +2329,9 @@ public class MManager {
 
     // current template must contains all measurements of upper template
     return upperMap.isEmpty();
+  }
+
+  public void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) throws MetadataException {
+    mtree.getDeviceNodeWithAutoCreating(plan.getPath(), config.getDefaultStorageGroupLevel());
   }
 }

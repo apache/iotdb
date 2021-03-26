@@ -55,7 +55,7 @@ public class ClusterPlanExecutorTest extends BaseQueryTest {
       throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException,
           IOException, MetadataException, InterruptedException {
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
-    queryPlan.setDeduplicatedPaths(pathList);
+    queryPlan.setDeduplicatedPathsAndUpdate(pathList);
     queryPlan.setDeduplicatedDataTypes(dataTypes);
     queryPlan.setPaths(pathList);
     queryPlan.setDataTypes(dataTypes);

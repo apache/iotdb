@@ -122,6 +122,7 @@ import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
+import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -1018,7 +1019,7 @@ public class PlanExecutor implements IPlanExecutor {
       List<ChunkGroupMetadata> chunkGroupMetadataList,
       Map<Path, IMeasurementSchema> knownSchemas,
       int sgLevel)
-      throws QueryProcessException, MetadataException {
+      throws QueryProcessException, MetadataException, IOException {
     if (chunkGroupMetadataList.isEmpty()) {
       return;
     }
@@ -1119,7 +1120,11 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   protected MNode getSeriesSchemas(InsertPlan insertPlan) throws MetadataException {
-    return IoTDB.metaManager.getSeriesSchemasAndReadLockDevice(insertPlan);
+    try {
+      return IoTDB.metaManager.getSeriesSchemasAndReadLockDevice(insertPlan);
+    } catch (IOException e) {
+      throw new MetadataException(e);
+    }
   }
 
   private void checkFailedMeasurments(InsertPlan plan)
@@ -1200,7 +1205,7 @@ public class PlanExecutor implements IPlanExecutor {
         throw new StorageEngineException(
             "failed to insert points "
                 + failedMeasurements
-                + (exception != null ? (" caused by " + exception.getMessage()) : ""));
+                + (" caused by " + exception.getMessage()));
       }
 
     } catch (StorageEngineException | MetadataException e) {
@@ -1230,6 +1235,15 @@ public class PlanExecutor implements IPlanExecutor {
     try {
       insertRowPlan.setMeasurementMNodes(
           new MeasurementMNode[insertRowPlan.getMeasurements().length]);
+      // When insert data with sql statement, the data types will be null here.
+      // We need to predicted the data types first
+      if (insertRowPlan.getDataTypes()[0] == null) {
+        for (int i = 0; i < insertRowPlan.getDataTypes().length; i++) {
+          insertRowPlan.getDataTypes()[i] =
+              TypeInferenceUtils.getPredictedDataType(
+                  insertRowPlan.getValues()[i], insertRowPlan.isNeedInferType());
+        }
+      }
       // check whether types are match
       getSeriesSchemas(insertRowPlan);
       insertRowPlan.transferType();

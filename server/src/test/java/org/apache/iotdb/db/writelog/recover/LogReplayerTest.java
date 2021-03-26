@@ -262,7 +262,7 @@ public class LogReplayerTest {
 
     MeasurementMNode[] mNodes = new MeasurementMNode[2];
     mNodes[0] = new MeasurementMNode(null, "sensor0", null, null);
-    mNodes[0] = new MeasurementMNode(null, "sensor1", null, null);
+    mNodes[1] = new MeasurementMNode(null, "sensor1", null, null);
 
     InsertTabletPlan insertTabletPlan =
         new InsertTabletPlan(new PartialPath(deviceId), measurements, dataTypes);
