@@ -142,14 +142,27 @@ public class StorageEngine implements IService {
   private List<CloseFileListener> customCloseFileListeners = new ArrayList<>();
   private List<FlushListener> customFlushListeners = new ArrayList<>();
 
+  /**
+   * Time range for dividing storage group, the time unit is the same with IoTDB's
+   * TimestampPrecision
+   */
+  @ServerConfigConsistent
+  private static long timePartitionInterval = -1;
+
+  /**
+   * whether enable data partition if disabled, all data belongs to partition 0
+   */
+  @ServerConfigConsistent
+  private static boolean enablePartition =
+      IoTDBDescriptor.getInstance().getConfig().isEnablePartition();
 
   private StorageEngine() {
     logger = LoggerFactory.getLogger(StorageEngine.class);
     systemDir = FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
 
     // build time Interval to divide time partition
-    if (!config.isEnablePartition()) {
-      config.setPartitionInterval(Long.MAX_VALUE);
+    if (!enablePartition) {
+      timePartitionInterval = Long.MAX_VALUE;
     } else {
       initTimePartition();
     }
@@ -211,8 +224,8 @@ public class StorageEngine implements IService {
   }
 
   private static void initTimePartition() {
-    config.setPartitionInterval(convertMilliWithPrecision(IoTDBDescriptor.getInstance().
-        getConfig().getPartitionInterval() * 1000L));
+    timePartitionInterval = convertMilliWithPrecision(IoTDBDescriptor.getInstance().
+        getConfig().getPartitionInterval() * 1000L);
   }
 
   public static long convertMilliWithPrecision(long milliTime) {
@@ -716,19 +729,19 @@ public class StorageEngine implements IService {
   }
 
   public static long getTimePartitionInterval() {
-    if (config.getPartitionInterval() == -1) {
+    if (timePartitionInterval == -1) {
       initTimePartition();
     }
-    return config.getPartitionInterval();
+    return timePartitionInterval;
   }
 
   @TestOnly
   public static void setTimePartitionInterval(long timePartitionInterval) {
-    config.setPartitionInterval(timePartitionInterval);
+    StorageEngine.timePartitionInterval = timePartitionInterval;
   }
 
   public static long getTimePartition(long time) {
-    return config.isEnablePartition() ? time / config.getPartitionInterval() : 0;
+    return enablePartition ? time / timePartitionInterval : 0;
   }
 
   /**
@@ -782,7 +795,7 @@ public class StorageEngine implements IService {
 
   @TestOnly
   public static void setEnablePartition(boolean enablePartition) {
-    config.setEnablePartition(enablePartition);
+    StorageEngine.enablePartition = enablePartition;
   }
 
   @TestOnly
