@@ -396,7 +396,7 @@ public class MeasurementOrderOptimizer {
     Random r = new Random();
     long startTime = System.currentTimeMillis();
     // Run the main loop of Simulated Annealing
-    for (int k = 0; System.currentTimeMillis() - startTime < 90l * 60l * 1000l; ++k) {
+    for (int k = 0; System.currentTimeMillis() - startTime < 15l * 60l * 1000l; ++k) {
       temperature = updateTemperature(temperature);
 
       // Generate a neighbor state
