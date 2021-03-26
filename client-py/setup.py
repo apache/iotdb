@@ -41,6 +41,7 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     install_requires=[
               'thrift>=0.13.0',
+              'pandas>=1.0.0,<1.99.99'
           ],
     classifiers=[
         "Programming Language :: Python :: 3",

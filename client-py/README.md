@@ -90,3 +90,91 @@ class MyTestCase(unittest.TestCase):
 ```
 
 by default it will load the image `apache/iotdb:latest`, if you want a specific version just pass it like e.g. `IoTDBContainer("apache/iotdb:0.10.0")` to get version `0.10.0` running.
+
+## Pandas Support
+
+To easily transform a query result to a [Pandas Dataframe](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html)
+the SessionDataSet has a method `.todf()` which consumes the dataset and transforms it to a pandas dataframe.
+
+Example:
+
+```python
+
+from iotdb.Session import Session
+
+ip = "127.0.0.1"
+port_ = "6667"
+username_ = 'root'
+password_ = 'root'
+session = Session(ip, port_, username_, password_)
+session.open(False)
+result = session.execute_query_statement("SELECT * FROM root.*")
+
+# Transform to Pandas Dataset
+df = result.todf()
+
+session.close()
+
+# Now you can work with the dataframe
+df = ...
+```
+
+## Developers
+
+### Introduction
+
+This is an example of how to connect to IoTDB with python, using the thrift rpc interfaces. Things
+are almost the same on Windows or Linux, but pay attention to the difference like path separator.
+
+### Prerequisites
+
+python3.7 or later is preferred.
+
+You have to install Thrift (0.11.0 or later) to compile our thrift file into python code. Below is the official
+tutorial of installation, eventually, you should have a thrift executable.
+
+```
+http://thrift.apache.org/docs/install/
+```
+
+### Compile the thrift library and Debug
+
+In the root of IoTDB's source code folder,  run `mvn generate-sources -pl client-py -am`.
+
+Then a complete project will be generated at `client-py/target/pypi` folder.
+But !BE CAUTIOUS!
+All your modifications in `client-py/target/pypi` must be copied manually to `client-py/src/` folder.
+Otherwise once you run `mvn clean`, you will lose all your effort.
+
+Or, you can also copy `client-py/target/pypi/iotdb/thrift` folder to `client-py/src/thrift`, then the
+`src` folder will become also a complete python project.
+But !BE CAUTIOUS!
+Do not upload `client-py/src/thrift` to the git repo.
+
+
+### Session Client & Example
+
+We packed up the Thrift interface in `client-py/src/iotdb/Session.py` (similar with its Java counterpart), also provided
+an example file `client-py/src/SessionExample.py` of how to use the session module. please read it carefully.
+
+
+Or, another simple example:
+
+```python
+from iotdb.Session import Session
+
+ip = "127.0.0.1"
+port_ = "6667"
+username_ = 'root'
+password_ = 'root'
+session = Session(ip, port_, username_, password_)
+session.open(False)
+zone = session.get_time_zone()
+session.close()
+```
+
+### test file
+
+You can use `client-py/src/SessionTest.py` to test python session, if the test has been passed, it will return 0. Otherwise it will return 1. You can use the printed message to locate failed operations and the reason of them.
+
+Notice: you should start IoTDB server firstly and then run the test.
