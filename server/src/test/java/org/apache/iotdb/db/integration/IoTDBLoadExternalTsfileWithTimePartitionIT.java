@@ -27,6 +27,7 @@ import java.sql.Statement;
 import java.util.Arrays;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -73,11 +74,13 @@ public class IoTDBLoadExternalTsfileWithTimePartitionIT {
   public void setUp() throws Exception {
     originalIsEnablePartition = config.isEnablePartition();
     originalPartitionInterval = config.getPartitionInterval();
-    config.setEnablePartition(true);
-    config.setPartitionInterval(timePartition);
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
+
+    StorageEngine.setEnablePartition(true);
+    StorageEngine.setTimePartitionInterval(timePartition);
+
     prepareData();
   }
 
@@ -87,8 +90,8 @@ public class IoTDBLoadExternalTsfileWithTimePartitionIT {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
-    config.setEnablePartition(originalIsEnablePartition);
-    config.setPartitionInterval(originalPartitionInterval);
+    StorageEngine.setEnablePartition(originalIsEnablePartition);
+    StorageEngine.setTimePartitionInterval(originalPartitionInterval);
     File f = new File(tempDir);
     if (f.exists()) {
       FileUtils.deleteDirectory(f);
