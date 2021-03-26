@@ -83,6 +83,7 @@ public class IoTDBStatMonitorTest {
   @Test
   public void completeTest() throws Exception {
     getValueInMemoryTest();
+    statMonitor.saveStatValue("root.sg");
     saveStatValueTest();
 
     // restart server
@@ -120,9 +121,6 @@ public class IoTDBStatMonitorTest {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      // flush to save statistics
-      statement.execute("flush");
-
       boolean hasResult = statement.execute("select TOTAL_POINTS from root.stats.\"root.sg\"");
       Assert.assertTrue(hasResult);
 
