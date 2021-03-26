@@ -484,6 +484,7 @@ class Session(object):
         return SessionDataSet(sql, resp.columns, resp.dataTypeList, resp.columnNameIndexMap, resp.queryId,
                               self.__client, self.__session_id, resp.queryDataSet, resp.ignoreTimeStamp)
 
+
     def execute_non_query_statement(self, sql):
         """
         execute non-query sql statement

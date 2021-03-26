@@ -30,6 +30,8 @@ from .RowRecord import RowRecord
 
 import struct
 
+from ..iotdb_utils import resultset_to_pandas
+
 
 class SessionDataSet(object):
 
@@ -104,6 +106,5 @@ class SessionDataSet(object):
     def close_operation_handle(self):
         self.iotdb_rpc_data_set.close()
 
-
-
-
+    def todf(self):
+        return resultset_to_pandas(self)
