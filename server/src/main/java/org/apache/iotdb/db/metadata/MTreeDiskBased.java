@@ -45,6 +45,15 @@ public class MTreeDiskBased implements MTreeInterface {
   private Lock readLock = lock.readLock();
   private Lock writeLock = lock.writeLock();
 
+  public MNode getMNode(PartialPath path) throws Exception{
+    MNode result=cache.get(path);
+    if(result!=null){
+      return result;
+    }
+    result=metaFile.read(path);
+    return result;
+  }
+
   @Override
   public MeasurementMNode createTimeseries(
       PartialPath path,
