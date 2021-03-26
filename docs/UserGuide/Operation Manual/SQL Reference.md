@@ -19,7 +19,7 @@
 
 -->
 
-# SQL Reference
+# Appendix 2: SQL Reference
 
 In this part, we will introduce you IoTDB's Query Language. IoTDB offers you a SQL-like query language for interacting with IoTDB, the query language can be devided into 4 major parts:
 
@@ -1036,13 +1036,13 @@ SHOW QUERY PROCESSLIST
 ```
 
 - Kill query
+
 ```
 KILL QUERY INT?
 E.g. KILL QUERY
 E.g. KILL QUERY 2
 ```
 
-# Reference
 
 ## Identifiers
 

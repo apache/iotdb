@@ -19,44 +19,37 @@
 
 -->
 
-# Programming - JDBC
+# Application Program Interface (API)
 
-## Usage
+## JDBC
 
-## Dependencies
+### Dependencies
 
 * JDK >= 1.8
 * Maven >= 3.6
 
-## Package only JDBC projects
-
-Execute the following command in the root directory:
-
-```
-mvn clean package -pl jdbc -am -DskipTests
-```
-
-## Install in local maven repository
+### Installation
 
 In root directory:
+
 ```
 mvn clean install -pl jdbc -am -Dmaven.test.skip=true
 ```
 
-## Use IoTDB JDBC with Maven
+### Use IoTDB JDBC with Maven
 
 ```
 <dependencies>
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>iotdb-jdbc</artifactId>
-      <version>0.10.0</version>
+      <version>0.12.0</version>
     </dependency>
 </dependencies>
 ```
 
 
-## Examples
+### Coding Examples
 
 This chapter provides an example of how to open a database connection, execute a SQL query, and display the results.
 

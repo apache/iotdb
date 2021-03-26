@@ -45,7 +45,7 @@
 > under directory basedir/system/schema
 
 #### Meta
-1. mlog.txt
+1. mlog.bin
     + record the meta operation
 2. mtree-1.snapshot
     + snapshot of metadata
@@ -62,17 +62,16 @@
 
 #### WAL
 > under directory basedir/wal
+
 1. {StorageGroupName}-{TsFileName}/wal1
     + every storage group has several wal files, and every memtable has one associated wal file before it is flushed into a TsFile 
 
 #### TsFile
 > under directory data/sequence or unsequence/{StorageGroupName}/{TimePartitionId}/
+
 1. {time}-{version}-{mergeCnt}.tsfile
     + normal data file
-2. {TsFileName}-{level}-{time}.vm
-    + virtual merged TsFile
-    + to optimize query performance, more details in https://issues.apache.org/jira/browse/IOTDB-706
-3. {TsFileName}.tsfile.mod
+2. {TsFileName}.tsfile.mod
     + modification file
     + record delete operation
 
@@ -87,16 +86,19 @@
 
 #### Version
 > under directory basedir/system/storage_groups/{StorageGroupName}/{TimePartitionId} or upgrade
+
 1. Version-{version}
     + version file, record the max version in fileName of a storage group
 
 #### Upgrade
 > under directory basedir/system/upgrade
+
 1. upgrade.txt
     + record which files have been upgraded
 
 #### Merge
 > under directory basedir/system/storage_groups/{StorageGroup}/
+
 1. merge.mods
     + modification file generated during a merge
 2. merge.log
@@ -123,6 +125,7 @@
 
 ## State Related Files
 > under directory basedir/
+
 1. node_identifier
     + the identifier of the local node in a cluster
 2. partitions
@@ -150,6 +153,7 @@
 
 ### Raft Catch Up
 > under directory basedir/remote/{nodeIdentifier}/{storageGroupName}/{partitionNum}/
+
 1. {fileName}.tsfile
     + remote TsFile, will be loaded during snapshot installation
 2. {fileName}.tsfile.mod

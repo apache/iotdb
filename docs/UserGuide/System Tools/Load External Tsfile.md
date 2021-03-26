@@ -18,18 +18,18 @@
     under the License.
 
 -->
+# System Tools
+## Load External TsFile Tool
 
-# Load External TsFile Tool
-
-# Introduction
+### Introduction
 
 The load external tsfile tool allows users to load tsfiles, delete a tsfile, or move a tsfile to target directory from the running Apache IoTDB instance.
 
-# Usage
+### Usage
 
 The user sends specified commands to the Apache IoTDB system through the Cli tool or JDBC to use the tool.
 
-## load tsfiles
+#### load tsfiles
 
 The command to load tsfiles is `load "<path/dir>" [true/false] [storage group level]`.
 
@@ -59,7 +59,7 @@ Examples:
 * `load "/Users/Desktop/data" true`
 * `load "/Users/Desktop/data" true 1`
 
-## remove a tsfile
+#### remove a tsfile
 
 The command to delete a tsfile is: `remove "<path>"`.
 
@@ -70,7 +70,7 @@ Examples:
 * `remove "root.vehicle/1575028885956-101-0.tsfile"` 
 * `remove "1575028885956-101-0.tsfile"`
 
-## move a tsfile to a target directory
+#### move a tsfile to a target directory
 
 The command to move a tsfile to target directory is: `move "<path>" "<dir>"`.
 

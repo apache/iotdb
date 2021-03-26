@@ -18,7 +18,7 @@
     under the License.
 
 -->
-# MQTT Protocol
+## MQTT Protocol
 
 [MQTT](http://mqtt.org/) is a machine-to-machine (M2M)/"Internet of Things" connectivity protocol.
 It was designed as an extremely lightweight publish/subscribe messaging transport.
@@ -30,7 +30,7 @@ IoTDB server includes a built-in MQTT service that allows remote devices send me
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/6711230/78357432-0c71cf80-75e4-11ea-98aa-c43a54d469ce.png">
 
 
-## Built-in MQTT Service
+### Built-in MQTT Service
 The Built-in MQTT Service provide the ability of direct connection to IoTDB through MQTT. It listen the publish messages from MQTT clients
  and then write the data into storage immediately. 
 The MQTT topic corresponds to IoTDB timeseries. 
@@ -57,7 +57,7 @@ or
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/6711230/78357469-1bf11880-75e4-11ea-978f-a53996667a0d.png">
 
-## MQTT Configurations
+### MQTT Configurations
 The IoTDB MQTT service load configurations from `${IOTDB_HOME}/${IOTDB_CONF}/iotdb-engine.properties` by default.
 
 Configurations are as follows:
@@ -72,30 +72,33 @@ Configurations are as follows:
 | mqtt_max_message_size | the max mqtt message size in byte|   1048576 |
 
 
-## Examples
+### Coding Examples
 The following is an example which a mqtt client send messages to IoTDB server.
 
 ```java
-        MQTT mqtt = new MQTT();
-        mqtt.setHost("127.0.0.1", 1883);
-        mqtt.setUserName("root");
-        mqtt.setPassword("root");
+MQTT mqtt = new MQTT();
+mqtt.setHost("127.0.0.1", 1883);
+mqtt.setUserName("root");
+mqtt.setPassword("root");
 
-        BlockingConnection connection = mqtt.blockingConnection();
-        connection.connect();
+BlockingConnection connection = mqtt.blockingConnection();
+connection.connect();
 
-        Random random = new Random();
-        for (int i = 0; i < 10; i++) {
-            String payload = String.format("{\n" +
-                    "\"device\":\"root.sg.d1\",\n" +
-                    "\"timestamp\":%d,\n" +
-                    "\"measurements\":[\"s1\"],\n" +
-                    "\"values\":[%f]\n" +
-                    "}", System.currentTimeMillis(), random.nextDouble());
+Random random = new Random();
+for (int i = 0; i < 10; i++) {
+    String payload = String.format("{\n" +
+            "\"device\":\"root.sg.d1\",\n" +
+            "\"timestamp\":%d,\n" +
+            "\"measurements\":[\"s1\"],\n" +
+            "\"values\":[%f]\n" +
+            "}", System.currentTimeMillis(), random.nextDouble());
 
-            connection.publish("root.sg.d1.s1", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
-        }
+    connection.publish("root.sg.d1.s1", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
+}
 
-        connection.disconnect();
-    }
+connection.disconnect();
+
 ```
+
+## Rest
+

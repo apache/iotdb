@@ -19,7 +19,7 @@
 
 -->
 
-# SDT
+## SDT
 
 The Swinging Door Trending (SDT) algorithm is a lossy compression algorithm. 
 SDT has low computational complexity and uses a linear trend to represent a quantity of data. 

@@ -19,214 +19,213 @@
 
 -->
 
-# Programming - Native API
+## Java Native API
 
-## Dependencies
+### Dependencies
 
 * JDK >= 1.8
 * Maven >= 3.6
 
-## How to install in local maven repository
+### Installation
 
 In root directory:
 > mvn clean install -pl session -am -DskipTests
 
-## Using IoTDB Native API with Maven
+### Using IoTDB Java Native API with Maven
 
 ```
 <dependencies>
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>iotdb-session</artifactId>
-      <version>0.10.0</version>
+      <version>0.12.0</version>
     </dependency>
 </dependencies>
 ```
 
 
-## Native APIs
+### Native APIs
 
 Here we show the commonly used interfaces and their parameters in the Native API:
 
 * Initialize a Session
 
-  ```
-  Session(String host, int rpcPort)
+```
+Session(String host, int rpcPort)
 
-  Session(String host, String rpcPort, String username, String password)
+Session(String host, String rpcPort, String username, String password)
 
-  Session(String host, int rpcPort, String username, String password)
-  ```
+Session(String host, int rpcPort, String username, String password)
+```
 
 * Open a Session
 
-  ```
-  Session.open()
-  ```
+```
+Session.open()
+```
 
 * Close a Session
 
-  ```
-  ​Session.close()
-  ```
+```
+​Session.close()
+```
   
 * Set storage group
 
-  ```
-  void setStorageGroup(String storageGroupId)    
-  ```
-  ​	
+```
+void setStorageGroup(String storageGroupId)    
+```
 
 * Delete one or several storage groups
 
-  ```
-  void deleteStorageGroup(String storageGroup)
-  void deleteStorageGroups(List<String> storageGroups)
-  ```
+```
+void deleteStorageGroup(String storageGroup)
+void deleteStorageGroups(List<String> storageGroups)
+```
 
 * Create one or multiple timeseries
 
-  ```
-  void createTimeseries(String path, TSDataType dataType,
-          TSEncoding encoding, CompressionType compressor, Map<String, String> props,
-          Map<String, String> tags, Map<String, String> attributes, String measurementAlias)
-          
-  void createMultiTimeseries(List<String> paths, List<TSDataType> dataTypes,
-          List<TSEncoding> encodings, List<CompressionType> compressors,
-          List<Map<String, String>> propsList, List<Map<String, String>> tagsList,
-          List<Map<String, String>> attributesList, List<String> measurementAliasList)
-  ```
+```
+void createTimeseries(String path, TSDataType dataType,
+      TSEncoding encoding, CompressionType compressor, Map<String, String> props,
+      Map<String, String> tags, Map<String, String> attributes, String measurementAlias)
+      
+void createMultiTimeseries(List<String> paths, List<TSDataType> dataTypes,
+      List<TSEncoding> encodings, List<CompressionType> compressors,
+      List<Map<String, String>> propsList, List<Map<String, String>> tagsList,
+      List<Map<String, String>> attributesList, List<String> measurementAliasList)
+```
 
 * Delete one or several timeseries
 
-  ```
-  void deleteTimeseries(String path)
-  void deleteTimeseries(List<String> paths)
-  ```
+```
+void deleteTimeseries(String path)
+void deleteTimeseries(List<String> paths)
+```
 
 * Delete data before or equal to a timestamp of one or several timeseries
 
-  ```
-  void deleteData(String path, long time)
-  void deleteData(List<String> paths, long time)
-  ```
+```
+void deleteData(String path, long time)
+void deleteData(List<String> paths, long time)
+```
 
 * Insert a Record，which contains multiple measurement value of a device at a timestamp. Without type info the server has to do type inference, which may cost some time
 
-  ```
-  void insertRecord(String deviceId, long time, List<String> measurements, List<String> values)
-  ```
+```
+void insertRecord(String deviceId, long time, List<String> measurements, List<String> values)
+```
 
 * Insert a Tablet，which is multiple rows of a device, each row has the same measurements
 
-  ```
-  void insertTablet(Tablet tablet)
-  ```
+```
+void insertTablet(Tablet tablet)
+```
 
 * Insert multiple Tablets
 
-  ```
-  void insertTablets(Map<String, Tablet> tablet)
-  ```
+```
+void insertTablets(Map<String, Tablet> tablet)
+```
   
 * Insert multiple Records. Without type info the server has to do type inference, which may cost some time
 
-  ```
-  void insertRecords(List<String> deviceIds, List<Long> times, 
-                       List<List<String>> measurementsList, List<List<String>> valuesList)
-  ```
+```
+void insertRecords(List<String> deviceIds, List<Long> times, 
+                   List<List<String>> measurementsList, List<List<String>> valuesList)
+```
   
 * Insert a Record，which contains multiple measurement value of a device at a timestamp. With type info the server has no need to do type inference, which leads a better performance
 
-  ```
-  void insertRecord(String deviceId, long time, List<String> measurements,
-       List<TSDataType> types, List<Object> values)
-  ```
+```
+void insertRecord(String deviceId, long time, List<String> measurements,
+   List<TSDataType> types, List<Object> values)
+```
 
 * Insert multiple Records. With type info the server has no need to do type inference, which leads a better performance
 
-  ```
-  void insertRecords(List<String> deviceIds, List<Long> times,
-        List<List<String>> measurementsList, List<List<TSDataType>> typesList,
-        List<List<Object>> valuesList)
-  ```
+```
+void insertRecords(List<String> deviceIds, List<Long> times,
+    List<List<String>> measurementsList, List<List<TSDataType>> typesList,
+    List<List<Object>> valuesList)
+```
 * Insert multiple Records that belong to the same device. 
   With type info the server has no need to do type inference, which leads a better performance
-  
-  ```
-  void insertRecordsOfOneDevice(String deviceId, List<Long> times,
-        List<List<String>> measurementsList, List<List<TSDataType>> typesList,
-        List<List<Object>> valuesList)
-  ```
+
+```
+void insertRecordsOfOneDevice(String deviceId, List<Long> times,
+    List<List<String>> measurementsList, List<List<TSDataType>> typesList,
+    List<List<Object>> valuesList)
+```
   
 * Raw data query. Time interval include startTime and exclude endTime
 
-  ```
-  SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
-  ```
+```
+SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
+```
 
 * Execute query statement
 
-  ```
-  SessionDataSet executeQueryStatement(String sql)
-  ```
+```
+SessionDataSet executeQueryStatement(String sql)
+```
   
 * Execute non query statement
 
-  ```
-  void executeNonQueryStatement(String sql)
-  ```
+```
+void executeNonQueryStatement(String sql)
+```
 
-## Native APIs for profiling network cost
+### Native APIs for profiling network cost
 
 * Test the network and client cost of insertRecords. This method NOT insert data into database and server just return after accept the request, this method should be used to test other time cost in client
 
-  ```
-  void testInsertRecords(List<String> deviceIds, List<Long> times,
-                  List<List<String>> measurementsList, List<List<String>> valuesList)
-  ```
+```
+void testInsertRecords(List<String> deviceIds, List<Long> times,
+              List<List<String>> measurementsList, List<List<String>> valuesList)
+```
   or
-  ```
-  void testInsertRecords(List<String> deviceIds, List<Long> times,
-        List<List<String>> measurementsList, List<List<TSDataType>> typesList,
-        List<List<Object>> valuesList)
-  ```
+```
+void testInsertRecords(List<String> deviceIds, List<Long> times,
+    List<List<String>> measurementsList, List<List<TSDataType>> typesList,
+    List<List<Object>> valuesList)
+```
 
 * Test the network and client cost of insertRecordsOfOneDevice. 
 This method NOT insert data into database and server just return after accept the request, 
 this method should be used to test other time cost in client
 
-  ```
-  void testInsertRecordsOfOneDevice(String deviceId, List<Long> times,
-        List<List<String>> measurementsList, List<List<TSDataType>> typesList,
-        List<List<Object>> valuesList)
-  ```  
+```
+void testInsertRecordsOfOneDevice(String deviceId, List<Long> times,
+    List<List<String>> measurementsList, List<List<TSDataType>> typesList,
+    List<List<Object>> valuesList)
+```  
 
 * Test the network and client cost of insertRecord. This method NOT insert data into database and server just return after accept the request, this method should be used to test other time cost in client
 
-  ```
-  void testInsertRecord(String deviceId, long time, List<String> measurements, List<String> values)
-  ```
+```
+void testInsertRecord(String deviceId, long time, List<String> measurements, List<String> values)
+```
   or
-  ```
-  void testInsertRecord(String deviceId, long time, List<String> measurements,
-        List<TSDataType> types, List<Object> values)
-  ```
+```
+void testInsertRecord(String deviceId, long time, List<String> measurements,
+    List<TSDataType> types, List<Object> values)
+```
 
 * Test the network and client cost of insertTablet. This method NOT insert data into database and server just return after accept the request, this method should be used to test other time cost in client
 
-  ```
-  void testInsertTablet(Tablet tablet)
-  ```
+```
+void testInsertTablet(Tablet tablet)
+```
   
-## Sample code
+### Coding example
 
 To get more information of the following interfaces, please view session/src/main/java/org/apache/iotdb/session/Session.java
 
 The sample code of using these interfaces is in example/session/src/main/java/org/apache/iotdb/SessionExample.java，which provides an example of how to open an IoTDB session, execute a batch insertion.
 
 
-## Session Pool for Native API
+### Session Pool for Native API
 
 We provide a connection pool (`SessionPool) for Native API.
 Using the interface, you need to define the pool size.
@@ -249,106 +248,6 @@ you have to call `SessionPool.closeResultSet(wrapper)` manually;
 Examples: ```session/src/test/java/org/apache/iotdb/session/pool/SessionPoolTest.java```
 
 Or `example/session/src/main/java/org/apache/iotdb/SessionPoolExample.java`
-
-
-## 0.9-0.10 Session Interface Updates
-
-Significant changes are made in IoTDB session of version 0.10 compared to version 0.9.
-A number of new interfaces are added, and some old interfaces have new names or parameters.
-Besides, all exceptions thrown by session interfaces are changed from *IoTDBSessionExeception* to *IoTDBConnectionException* or *StatementExecutionExeception*.
-The detailed modifications are listed as follows.
-
-### Method name modifications
-
-#### insert()
-
-Insert a Record，which contains deviceId, timestamp of the record and multiple measurement values
-
-```
-void insert(String deviceId, long time, List<String> measurements, List<String> values)
-```
-
-The method name has been changed to insertRecord() in 0.10 version
-
-```
-void insertRecord(String deviceId, long time, List<String> measurements, List<String> values)
-```
-
-#### insertRowInBatch()
-
-Insert multiple Records, which contains all the deviceIds, timestamps of the records and multiple measurement values
-
-```
-void insertRowInBatch(List<String> deviceIds, List<Long> times, List<List<String>> measurementsList,   
-                      List<List<String>> valuesList)
-```
-
-
-The method name has been changed to insertRecords() in 0.10 version
-
-```
-void insertRecords(List<String> deviceIds, List<Long> times, List<List<String>> measurementsList, 
-                   List<List<String>> valuesList)
-```
-
-#### insertBatch()
-
-In 0.9, insertBatch is used for insertion in terms of "RowBatch" structure.
-
-```
-void insertBatch(RowBatch rowBatch)
-```
-
-As "Tablet" replaced "RowBatch" in 0.10, the name has been changed to insertTablet()
-
-```
-void insertTablet(Tablet tablet)
-```
-
-#### testInsertRow()
-
-To test the responsiveness of insertRow()
-
-```
-void testInsertRow(String deviceId, long time, List<String> measurements, List<String> values)
-```
-
-The method name has been changed to testInsertRecord() in 0.10 version
-
-```
-void testInsertRecord(String deviceId, long time, List<String> measurements, List<String> values)
-```
-
-#### testInsertRowInBatch()
-
-To test the responsiveness of insertRowInBatch()
-
-```
-void testInsertRowInBatch(List<String> deviceIds, List<Long> times, List<List<String>> measurementsList, 
-                          List<List<String>> valuesList)
-```
-
-The method name has been changed to testInsertRecords() in 0.10 version
-
-```
-void testInsertRecords(List<String> deviceIds, List<Long> times, List<List<String>> measurementsList, 
-                       List<List<String>> valuesList)
-```
-
-#### testInsertBatch
-
-To test the responsiveness of insertBatch()
-
-```
-void testInsertBatch(RowBatch rowBatch)
-```
-
-The method name has been changed to testInsertTablet() in 0.10 version
-
-```
-void testInsertTablet(Tablet tablet)
-```
-
 
 
 ### New Interfaces

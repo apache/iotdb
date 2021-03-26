@@ -18,7 +18,7 @@
     under the License.
 
 -->
-# Performance Tracing Tool
+## Performance Tracing Tool
 
 IoTDB supports the use of `TRACING` statements to enable and disable performance tracing of query statements, which is disabled by default. Users can use performance tracking tool to analyze potential performance problems in some queries. By default, the log files for performance tracing are stored in the directory `./data/tracing`.
 
@@ -43,7 +43,7 @@ Since the cost of an IoTDB query mainly depends on the number of time series que
 - Average size of chunks
 - Total cost time
 
-## Example
+### Example
 
 For example, execute `select * from root`, the contents of the tracing log file will include the following contents:
 

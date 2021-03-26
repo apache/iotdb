@@ -21,24 +21,6 @@
 
 # Quick Start
 
-## Outline
-
-- Quick Start
-- Prerequisites
-- Installation
-  - Build from source
-    - Configurations
-- Start
-  - Start IoTDB
-  - Use IoTDB
-    - Use Cli
-    - Basic commands for IoTDB
-  - Stop IoTDB
-- Only build server
-- Only build cli
-
-<!-- /TOC -->
-
 This short guide will walk you through the basic process of using IoTDB. For a more-complete guide, please visit our website's [User Guide](../Overview/What%20is%20IoTDB.md).
 
 ## Prerequisites
@@ -57,8 +39,6 @@ IoTDB provides you three installation methods, you can refer to the following su
 * Using Docker：The path to the dockerfile is https://github.com/apache/iotdb/blob/master/docker/src/main
 
 
-Here in the Quick Start, we give a brief introduction to install IoTDB. For further information, please refer to Chapter 3 of the User Guide.
-
 ## Download
 
 You can download the binary file from:
@@ -72,7 +52,7 @@ configuration files are under "conf" folder
   * system config module (`iotdb-engine.properties`)
   * log config module (`logback.xml`). 
 
-For more, see [Chapter3: Server](../Server/Download.md) in detail.
+For more, see [Config](../Server/Download.md) in detail.
 
 ## Start
 
@@ -105,9 +85,7 @@ if you want to use JMX to connect IOTDB, you may need to add
 to $IOTDB_JMX_OPTS in iotdb-env.sh. or iotdb-env.bat
 
 
-### Use IoTDB
-
-#### Use Cli
+### Use Cli
 
 IoTDB offers different ways to interact with server, here we introduce basic steps of using Cli tool to insert and query data.
 
@@ -140,7 +118,7 @@ IoTDB> login successfully
 IoTDB>
 ```
 
-#### Basic commands for IoTDB
+### Basic commands for IoTDB
 
 Now, let us introduce the way of creating timeseries, inserting data and querying data. 
 
@@ -252,12 +230,10 @@ The server can be stopped with ctrl-C or the following script:
 ```
 
 
-## Only build cli
+## Basic configuration
 
-Under the root path of iotdb:
+The configuration files is in the `conf` folder, includes:
 
-```
-> mvn clean package -pl cli -am -DskipTests
-```
-
-After build, the IoTDB cli will be in the folder "cli/target/iotdb-cli-{project.version}".
+* environment configuration (`iotdb-env.bat`, `iotdb-env.sh`),
+* system configuration (`iotdb-engine.properties`)
+* log configuration (`logback.xml`).

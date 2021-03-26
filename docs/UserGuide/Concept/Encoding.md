@@ -19,9 +19,9 @@
 
 -->
 
-# Encoding 
+## Encoding 
 
-To improve the efficiency of data storage, it is necessary to encode data during data writing, thereby reducing the amount of disk space used. In the process of writing and reading data, the amount of data involved in the I/O operations can be reduced to improve performance. IoTDB supports four encoding methods for different data types:
+To improve the efficiency of data storage, it is necessary to encode data during data writing, thereby reducing the amount of disk space used. In the process of writing and reading data, the amount of data involved in the I/O operations can be reduced to improve performance. IoTDB supports the following encoding methods for different data types:
 
 * PLAIN
 
@@ -35,7 +35,7 @@ Second-order differential encoding is more suitable for encoding monotonically i
 
 Run-length encoding is suitable for storing sequence with continuous integer values, and is not recommended for sequence data with most of the time different values.
 
-Run-length encoding can also be used to encode floating-point numbers, while it is necessary to specify reserved decimal digits (MAX\_POINT\_NUMBER, see [this page](../Operation%20Manual/SQL%20Reference.md) for more information on how to specify) when creating time series. It is more suitable to store sequence data where floating-point values appear continuously, monotonously increasing or decreasing, and it is not suitable for storing sequence data with high precision requirements after the decimal point or with large fluctuations.
+Run-length encoding can also be used to encode floating-point numbers, while it is necessary to specify reserved decimal digits (MAX\_POINT\_NUMBER) when creating time series. It is more suitable to store sequence data where floating-point values appear continuously, monotonously increasing or decreasing, and it is not suitable for storing sequence data with high precision requirements after the decimal point or with large fluctuations.
 
 > TS_2DIFF and RLE have precision limit for data type of float and double. By default, two decimal places are reserved. GORILLA is recommended. 
 
@@ -55,15 +55,15 @@ Regular data encoding method is not suitable for the data with fluctuations (irr
 
 * Correspondence between data type and encoding
 
-The four encodings described in the previous sections are applicable to different data types. If the correspondence is wrong, the time series cannot be created correctly. The correspondence between the data type and its supported encodings is summarized in Table 2-3.
+The four encodings described in the previous sections are applicable to different data types. If the correspondence is wrong, the time series cannot be created correctly. The correspondence between the data type and its supported encodings is summarized in the Table below.
 
-<center> **Table 2-3 The correspondence between the data type and its supported encodings**
+<center> **The correspondence between the data type and its supported encodings**
 
 |Data Type	|Supported Encoding|
 |:---:|:---:|
 |BOOLEAN|	PLAIN, RLE|
-|INT32	|PLAIN, RLE, TS_2DIFF, REGULAR, GORILLA|
-|INT64	|PLAIN, RLE, TS_2DIFF, REGULAR, GORILLA|
+|INT32	|PLAIN, RLE, TS_2DIFF, GORILLA|
+|INT64	|PLAIN, RLE, TS_2DIFF, GORILLA|
 |FLOAT	|PLAIN, RLE, TS_2DIFF, GORILLA|
 |DOUBLE	|PLAIN, RLE, TS_2DIFF, GORILLA|
 |TEXT	|PLAIN|

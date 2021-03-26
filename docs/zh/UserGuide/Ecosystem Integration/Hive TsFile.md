@@ -172,7 +172,3 @@ Time taken: 11.334 seconds, Fetched: 1 row(s)
 ```
 
 
-
-## Flink-TsFile
-
-## Flink-IoTDB

@@ -21,11 +21,11 @@
 
 
 
-# Triggers
+## Triggers
 
 
 
-## Triggers Management
+### Triggers Management
 
 You can register, deregister, start or stop a trigger instance through SQL statements, and you can also query all registered triggers through SQL statements.
 
@@ -33,7 +33,7 @@ Triggers have two states: `STARTED` and `STOPPED`. You can start or stop a trigg
 
 
 
-### Create Triggers
+#### Create Triggers
 
 The following shows the SQL syntax of how to register a trigger.
 
@@ -62,7 +62,7 @@ Note that `CLASSNAME`, `KEY` and `VALUE` in key-value pair attributes need to be
 
 
 
-### Drop Triggers
+#### Drop Triggers
 
 The following shows the SQL syntax of how to deregister a trigger.
 
@@ -82,7 +82,7 @@ START TRIGGER <TRIGGER-NAME>
 
 
 
-### Stop Triggers
+#### Stop Triggers
 
 The following shows the SQL syntax of how to stop a trigger.
 
@@ -92,7 +92,7 @@ STOP TRIGGER <TRIGGER-NAME>
 
 
 
-### Show All Registered Triggers
+#### Show All Registered Triggers
 
 ``` sql
 SHOW TRIGGERS

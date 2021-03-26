@@ -18,13 +18,13 @@
     under the License.
 
 -->
-# Csv tool
+## CSV Tool
 
 Csv tool is that you can import csv file into IoTDB or export csv file from IoTDB.
 
-## Usage of import-csv.sh
+### Usage of import-csv.sh
 
-### Create metadata (optional)
+#### Create metadata (optional)
 
 ```
 SET STORAGE GROUP TO root.fit.d1;
@@ -39,7 +39,7 @@ CREATE TIMESERIES root.fit.p.s1 WITH DATATYPE=INT32,ENCODING=RLE;
 
 IoTDB has the ability of type inference, so it is not necessary to create metadata before data import. However, we still recommend creating metadata before importing data using the CSV import tool, as this can avoid unnecessary type conversion errors.
 
-### An example of import csv file
+#### An example of import csv file
 
 ```
 Time,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2.s1,root.fit.d2.s3,root.fit.p.s1
@@ -53,7 +53,7 @@ Time,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2.s1,root.fit.d2.s3,root.fit.p.s1
 > 3. `'` : `'` in fields should be replaced by `\'` or fields should be enclosed by `"`.
 > 4. you can input time format like yyyy-MM-dd'T'HH:mm:ss, yyy-MM-dd HH:mm:ss, or yyyy-MM-dd'T'HH:mm:ss.SSSZ.
 
-### Run import shell
+#### Run import shell
 ```
 # Unix/OS X
 > tools/import-csv.sh -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv>
@@ -62,9 +62,9 @@ Time,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2.s1,root.fit.d2.s3,root.fit.p.s1
 > tools\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv>
 ```
 
-## Usage of export-csv.sh
+### Usage of export-csv.sh
 
-### Run export shell
+#### Run export shell
 ```
 # Unix/OS X
 > tools/export-csv.sh -h <ip> -p <port> -u <username> -pw <password> -td <directory> [-tf <time-format> -s <sqlfile>]

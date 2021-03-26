@@ -18,8 +18,8 @@
     under the License.
 
 -->
-# Spark IoTDB Connecter
-## version
+## Spark-IoTDB
+### version
 
 The versions required for Spark and Java are as follow:
 
@@ -28,11 +28,11 @@ The versions required for Spark and Java are as follow:
 | `2.4.3`        | `2.11`        | `1.8`        | `0.10.0`|
 
 
-## install
+### Install
 mvn clean scala:compile compile install
 
 
-# 1. maven dependency
+#### Maven Dependency
 
 ```
     <dependency>
@@ -43,7 +43,7 @@ mvn clean scala:compile compile install
 ```
 
 
-# 2. spark-shell user guide
+#### spark-shell user guide
 
 ```
 spark-shell --jars spark-iotdb-connector-0.10.0.jar,iotdb-jdbc-0.10.0-jar-with-dependencies.jar
@@ -57,7 +57,8 @@ df.printSchema()
 df.show()
 ```
 
-### To partition rdd:
+To partition rdd:
+
 ```
 spark-shell --jars spark-iotdb-connector-0.10.0.jar,iotdb-jdbc-0.10.0-jar-with-dependencies.jar
 
@@ -72,7 +73,7 @@ df.printSchema()
 df.show()
 ```
 
-# 3. Schema Inference
+#### Schema Inference
 
 Take the following TsFile structure as an example: There are three Measurements in the TsFile schema: status, temperature, and hardware. The basic information of these three measurements is as follows:
 
@@ -110,9 +111,10 @@ You can also use narrow table form which as follows: (You can see part 4 about h
 |    5 | root.ln.wf02.wt01             | false                    | null                       | null                          |
 |    6 | root.ln.wf02.wt02             | null                     | ccc                        | null                          |
 
-# 4. Transform between wide and narrow table
+#### Transform between wide and narrow table
 
-## from wide to narrow
+* from wide to narrow
+
 ```
 import org.apache.iotdb.spark.db._
 
@@ -120,14 +122,16 @@ val wide_df = spark.read.format("org.apache.iotdb.spark.db").option("url", "jdbc
 val narrow_df = Transformer.toNarrowForm(spark, wide_df)
 ```
 
-## from narrow to wide
+* from narrow to wide
+
 ```
 import org.apache.iotdb.spark.db._
 
 val wide_df = Transformer.toWideForm(spark, narrow_df)
 ```
 
-# 5. Java user guide
+#### Java user guide
+
 ```
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
@@ -156,3 +160,4 @@ public class Example {
   }
 }
 ```
+

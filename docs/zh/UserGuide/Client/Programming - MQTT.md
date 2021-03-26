@@ -18,9 +18,6 @@
     under the License.
 
 -->
-# 通信服务协议
-
-## Thrift
 
 ## MQTT协议
 

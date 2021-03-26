@@ -1,6 +1,4 @@
 <!--
-
-```
 Licensed to the Apache Software Foundation (ASF) under one
 or more contributor license agreements.  See the NOTICE file
 distributed with this work for additional information
@@ -17,17 +15,15 @@ software distributed under the License is distributed on an
 KIND, either express or implied.  See the License for the
 specific language governing permissions and limitations
 under the License.
-```
-
 -->
 
-# Watermark Tool
+## Watermark Tool
 
 This tool has two functions: 1) watermark embedding of the IoTDB query result and 2) watermark detection of the suspected data.
 
-## 1. Watermark Embedding
+### Watermark Embedding
 
-### 1.1 Configuration
+#### Configuration
 
 Watermark is disabled by default in IoTDB. To enable watermark embedding, the first thing is to modify the following fields in the configuration file `iotdb-engine.properties`:
 
@@ -49,9 +45,9 @@ Notes:
   - GroupBasedLSBMethod uses LSB embedding. `embed_lsb_num` controls the number of least significant bits available for watermark embedding. The biggger the `embed_lsb_num`, the larger the varying range of a data point.
 - `watermark_secret_key`, `watermark_bit_string`  and `watermark_method` should be kept secret from possible attackers. That is, it is your responsiblity to take care of `iotdb-engine.properties`.
 
-### 1.2 Usage Example 
+#### Usage Example 
 
-#### step 1. Create a new user Alice, grant read privilege and query
+* step 1. Create a new user Alice, grant read privilege and query
 
 A newly created user doesn't use watermark by default. So the query result is the original data.
 
@@ -102,7 +98,7 @@ select * from root
 +-----------------------------------+------------------+
 ```
 
-#### step 2. grant watermark_embedding to Alice
+* step 2. grant watermark_embedding to Alice
 
 Usage: `grant watermark_embedding to Alice` 
 
@@ -115,7 +111,7 @@ Only root can run this command. After root grants watermark_embedding to Alice, 
 grant watermark_embedding to Alice
 exit
 
-.\start-cli.bat -u Alice -pw 1234
+.\start-cli.bat -u Alice -pw '1234'
 select * from root
 +-----------------------------------+------------------+
 |                               Time|root.vehicle.d0.s0|
@@ -156,7 +152,7 @@ select * from root
 +-----------------------------------+------------------+
 ```
 
-#### step 3. revoke watermark_embedding from Alice
+* step 3. revoke watermark_embedding from Alice
 
 Usage: `revoke watermark_embedding from Alice` 
 
@@ -164,7 +160,7 @@ Note that you can use `revoke watermark_embedding from user1,user2,...` to revok
 
 Only root can run this command. After root revokes watermark_embedding from Alice, all query results of Alice are original again.
 
-## 2. Watermark Detection
+### Watermark Detection
 
 `detect-watermark.sh` and `detect-watermark.bat` are provided for different platforms.
 
@@ -197,3 +193,4 @@ Notes:
 - `alpha`: It should be in the range of [0,1]. The watermark detection is based on the significance test. The smaller the `alpha` is, the lower the probability that the data without the watermark is detected to be watermark embedded, and thus the higher the credibility of the result of detecting the existence of the watermark in data.
 
 - `columnIndex`: It should be a positive integer.
+

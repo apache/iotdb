@@ -19,7 +19,7 @@
 
 -->
 
-# What
+## MlogParser Tool
 
 After version 0.12.x, IoTDB encodes metadata files into binary format.
 
@@ -27,7 +27,7 @@ If you want to parse metadata into a human readable way, you can use this tool t
 
 The tool can parse snapshot files and mlog files.
 
-# How to use
+### How to use
 
 Linux/MacOS
 > ./mLogParser.sh -f /your path/mlog.bin -o /your path/mlog.txt
@@ -35,3 +35,4 @@ Linux/MacOS
 Windows
 
 > .\mLogParser.bat -f \your path\mlog.bin -o \your path\mlog.txt
+

@@ -19,7 +19,7 @@
 
 -->
 
-# Architecture
+## System Architecture
 
 Besides IoTDB engine, we also developed several components to provide better IoT service. All components are referred to below as the IoTDB suite, and IoTDB refers specifically to the IoTDB engine.
 

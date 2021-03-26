@@ -19,24 +19,9 @@
 
 -->
 
-<!-- TOC -->
-
-<!-- /TOC -->
 # Frequently Asked Questions
 
-## Outline
-
-- Frequently Asked Questions
-  - How can I identify my version of IoTDB?
-  - Where can I find IoTDB logs?
-  - Where can I find IoTDB data files?
-  - How do I know how many time series are stored in IoTDB?
-  - Can I use Hadoop and Spark to read TsFile in IoTDB?
-  - How does IoTDB handle duplicate points?
-  - How can I tell what type of the specific timeseries?
-  - How can I change IoTDB's Cli time display format?
-
-## How can I identify my version of IoTDB?
+**How can I identify my version of IoTDB?**
 
 There are several ways to identify the version of IoTDB that you are using:
 
@@ -78,7 +63,7 @@ Total line number = 1
 It costs 0.241s
 ```
 
-## Where can I find IoTDB logs?
+**Where can I find IoTDB logs?**
 
 Suppose your root directory is:
 
@@ -100,11 +85,11 @@ Let `$IOTDB_CLI_HOME = /workspace/iotdb/cli/target/iotdb-cli-{project.version}`
 
 By default settings, the logs are stored under ```IOTDB_HOME/logs```. You can change log level and storage path by configuring ```logback.xml``` under ```IOTDB_HOME/conf```.
 
-## Where can I find IoTDB data files?
+**Where can I find IoTDB data files?**
 
 By default settings, the data files (including tsfile, metadata, and WAL files) are stored under ```IOTDB_HOME/data```.
 
-## How do I know how many time series are stored in IoTDB?
+**How do I know how many time series are stored in IoTDB?**
 
 Use IoTDB's Command Line Interface:
 
@@ -127,15 +112,15 @@ If you are using Linux, you can use the following shell command:
 >   6
 ```
 
-## Can I use Hadoop and Spark to read TsFile in IoTDB?
+**Can I use Hadoop and Spark to read TsFile in IoTDB?**
 
 Yes. IoTDB has intense integration with Open Source Ecosystem. IoTDB supports [Hadoop](https://github.com/apache/iotdb/tree/master/hadoop), [Spark](https://github.com/apache/iotdb/tree/master/spark) and [Grafana](https://github.com/apache/iotdb/tree/master/grafana) visualization tool.
 
-## How does IoTDB handle duplicate points?
+**How does IoTDB handle duplicate points?**
 
 A data point is uniquely identified by a full time series path (e.g. ```root.vehicle.d0.s0```) and timestamp. If you submit a new point with the same path and timestamp as an existing point, IoTDB updates the value of this point instead of inserting a new point. 
 
-## How can I tell what type of the specific timeseries?
+**How can I tell what type of the specific timeseries?**
 
 Use ```SHOW TIMESERIES <timeseries path>``` SQL in IoTDB's Command Line Interface:
 
@@ -157,7 +142,7 @@ Otherwise, you can also use wildcard in timeseries path:
 IoTDB> show timeseries root.fit.d1.*
 ```
 
-## How can I change IoTDB's Cli time display format?
+**How can I change IoTDB's Cli time display format?**
 
 The default IoTDB's Cli time display format is readable (e.g. ```1970-01-01T08:00:00.001```), if you want to display time in timestamp type or other readable format, add parameter ```-disableISO8601``` in start command:
 

@@ -19,13 +19,13 @@
 
 -->
 
-# Monitor and Log Tools
+## Monitor and Log Tools
 
-## System Monitor
+### System Monitor
 
 Currently, IoTDB provides users Java's JConsole tool to monitor system status or use IoTDB's open API to check data status.
 
-### System Status Monitoring
+#### System Status Monitoring
 
 After starting JConsole tool and connecting to IoTDB server, a basic look at IoTDB system status(CPU Occupation, in-memory information, etc.) is provided. See [official documentation](https://docs.oracle.com/javase/7/docs/technotes/guides/management/jconsole.html) for more information.
 
@@ -34,11 +34,11 @@ By using JConsole tool and connecting with JMX you are provided with some system
 
 This section describes how to use the JConsole ```Mbean```tab of jconsole to monitor some system configurations of IoTDB, the statistics of writing, and so on. After connecting to JMX, you can find the "MBean" of "org.apache.iotdb.service", as shown in the figure below.
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/34242296/92922876-16d4a700-f469-11ea-874d-dcf58d5bb1b3.png"> <br>
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/112428223-ce7e3600-8d75-11eb-8e50-04f04571925b.png"> <br>
 
 There are several attributes under monitor, including data file directory, the statistics of writing and the values of some system parameters. It can also display a line chart of the property by double clicking the value corresponding to the property. For a detailed description of monitor attributes, see the following sections.
 
-##### MBean Monitor Attributes List
+**MBean Monitor Attributes List**
 
 * SystemDirectory
 
@@ -116,7 +116,7 @@ The above attributes also support visualization in JConsole. For the statistical
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/34242296/92922942-34a20c00-f469-11ea-8dc2-8229d454583c.png">
 
-##### Example
+#### Example
 
 Here we give some examples of using writing data statistics.
 
@@ -139,15 +139,15 @@ flush
 select last TOTAL_POINTS from root.stats."global"
 ```
 
-## Performance Monitor
+### Performance Monitor
 
-### Introduction
+#### Introduction
 
 To grasp the performance of iotdb, this module is added to count the time-consumption of each operation. This module can compute the statistics of the avg time-consuming of each operation and the proportion of each operation whose time consumption falls into a time range. The output is in log_measure.log file. An output example is below.  
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/60937461-14296f80-a303-11e9-9602-a7bed624bfb3.png">
 
-### Configuration parameter
+#### Configuration parameter
 
 location：conf/iotdb-engine.properties
 
@@ -160,11 +160,11 @@ location：conf/iotdb-engine.properties
 |performance_stat_memory_in_kb|20|The memory used for performance_stat in kb.|
 </center>
 
-### JMX MBean
+#### JMX MBean
 
-Connect to jconsole with port 31999，and choose ‘MBean’in menu bar. Expand the sidebar and choose 'org.apache.iotdb.db.cost.statistic'. You can Find：
+Connect to jconsole with port 31999，and choose `MBean`in menu bar. Expand the sidebar and choose `org.apache.iotdb.db.cost.statistic`. You can Find：
 
-<img style="width:100%; max-width:600px; max-height:200px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/60937484-30c5a780-a303-11e9-8e92-04c413df2088.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/112426751-721a1700-8d73-11eb-871c-db2e9c13cf99.png">
 
 **Attribute**
 
@@ -197,15 +197,16 @@ Add timing code in the monitoring stop area:
 
     Measurement.INSTANCE.addOperationLatency(Operation, t0);
 
-## Cache Hit Ratio Statistics
+### Cache Hit Ratio Statistics
 
-### Overview
+#### Overview
 
 To improve query performance, IOTDB caches ChunkMetaData and TsFileMetaData. Users can view the cache hit ratio through debug level log and MXBean, and adjust the memory occupied by the cache according to the cache hit ratio and system memory. The method of using MXBean to view cache hit ratio is as follows:
 1. Connect to jconsole with port 31999 and select 'MBean' in the menu item above.
 2. Expand the sidebar and select 'org.apache.iotdb.db.service'. You will get the results shown in the following figure:
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/65687623-404fc380-e09c-11e9-83c3-3c7c63a5b0be.jpeg">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/112426760-73e3da80-8d73-11eb-9a8f-9232d1f2033b.png">
+
 ## System log
 
 IoTDB allows users to configure IoTDB system logs (such as log output level) by modifying the log configuration file. The default location of the system log configuration file is in \$IOTDB_HOME/conf folder. 

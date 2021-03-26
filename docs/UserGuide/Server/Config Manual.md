@@ -19,7 +19,7 @@
 
 -->
 
-# Config Manual
+# Appendix 1: Configuration Parameters
 
 
 Before starting to use IoTDB, you need to config the configuration files first. For your convenience, we have already set the default config in the files.

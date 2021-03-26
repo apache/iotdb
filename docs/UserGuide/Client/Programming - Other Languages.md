@@ -19,16 +19,11 @@
 
 -->
 
-# Programming - Other Languages
 
-## Python API
+## Python Native Dependencies
 
-### 1. Introduction
 
-This is an example of how to connect to IoTDB with python, using the thrift rpc interfaces. Things will be a bit different
-on Linux or Windows, we will introduce how to operate on the two systems separately.
-
-### 2. Prerequisites
+### Dependencies
 
 python3.7 or later is preferred.
 
@@ -39,9 +34,9 @@ tutorial of installation:
 http://thrift.apache.org/docs/install/
 ```
 
-### 3. How to Get the Python Library
+### Installation
 
-#### Option 1: pip install
+* Option 1: pip install
 
 You can find the Apache IoTDB Python Client API package on https://pypi.org/project/apache-iotdb/.
 
@@ -51,13 +46,13 @@ The download command is:
 pip install apache-iotdb
 ```
 
-#### Option 2: basic usage of thrift
+* Option 2: basic usage of thrift
 
 Optionally, if you know the basic usage of thrift, you can download the thrift source file in
 `thrift\src\main\thrift\rpc.thrift`, and simply run `thrift -gen py -out ./target/iotdb rpc.thrift` 
 to generate the Python library.
 
-### 4. Use Example
+### Coding Example
 
 We provided an example of how to use the thrift library to connect to IoTDB in `client-py/src
 /SessionExample.py`, please read it carefully before you write your own code.
@@ -65,7 +60,7 @@ We provided an example of how to use the thrift library to connect to IoTDB in `
 
 ## C++ Native Interfaces
 
-### Requirements
+### Dependencies
 - Java 8+
 - Maven 3.5+
 - Flex
@@ -73,7 +68,7 @@ We provided an example of how to use the thrift library to connect to IoTDB in `
 - Boost
 - OpenSSL 1.0+
 
-### Building compile tools
+### Installation
 
 The compilation of CPP client requires the module "compile-tools" to be built first. 
 "compile-tools" is mainly responsible for building Thrift libraries locally.
@@ -152,12 +147,12 @@ MSVC, MinGW... are supported.
 
 If you are using MS Visual Studio, remember to install Visual Studio C/C++ IDE and compiler(supporting CMake, Clang, MinGW).
 
-#### Flex and Bison
+- Flex and Bison
 Windows Flex and Bison could be downloaded from SourceForge: https://sourceforge.net/projects/winflexbison/
 
 After downloaded, please rename the executables to flex.exe and bison.exe and add them to "PATH" environment variables.
 
-#### Boost
+- Boost
 For Boost, please download from the official website: https://www.boost.org/users/download/
 
 Then build Boost by executing bootstrap.bat and b2.exe.
@@ -219,7 +214,7 @@ To compile cpp client, add "-P compile-cpp" option to maven build command.
 
 The compiling requires the module "compile-tools" to be built first.
 
-## Compile and Test:
+#### Compile and Test:
 
 `mvn package -P compile-cpp  -pl example/client-cpp-example -am -DskipTest`
 
@@ -229,17 +224,17 @@ To compile on Windows, please install Boost first and add following Maven settin
 ```
 
 e.g.,
+
 ```
 mvn package -P compile-cpp -pl client-cpp,server,example/client-cpp-example -am 
 -D"boost.include.dir"="D:\boost_1_75_0" -D"boost.library.dir"="D:\boost_1_75_0\stage\lib" -DskipTests
 ```
 
-## 
-
 If the compilation finishes successfully, the packaged zip file will be placed under
 "client-cpp/target/client-cpp-${project.version}-cpp-${os}.zip". 
 
 On Mac machines, the hierarchy of the package should look like this:
+
 ```
 .
 +-- client

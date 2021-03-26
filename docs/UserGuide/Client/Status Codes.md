@@ -19,7 +19,7 @@
 
 -->
 
-# Status Codes
+# Appendix 3: Status Codes
 
 **Status Code** is introduced in the latest version. A sample solution as IoTDB requires registering the time series first before writing data is:
 
@@ -104,3 +104,4 @@ Here is a list of Status Code and related message:
 
 > All exceptions are refactored in latest version by extracting uniform message into exception classes. Different error codes are added to all exceptions. When an exception is caught and a higher-level exception is thrown, the error code will keep and pass so that users will know the detailed error reason.
 A base exception class "ProcessException" is also added to be extended by all exceptions.
+

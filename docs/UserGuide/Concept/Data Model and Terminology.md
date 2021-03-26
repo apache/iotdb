@@ -19,17 +19,17 @@
 
 -->
 
-# Data Model and Terminology
+# Data Model
 
 In this section, a power scenario is taken as an example to illustrate how to creat a correct data model in IoTDB. For convenience, a sample data file is attached for you to practise IoTDB.
 
 Download the attachment: [IoTDB-SampleData.txt](https://github.com/thulab/iotdb/files/4438687/OtherMaterial-Sample.Data.txt).
 
-According to the data attribute layers described in [sample data](https://github.com/thulab/iotdb/files/4438687/OtherMaterial-Sample.Data.txt), it is expressed as an attribute hierarchy structure based on the coverage of attributes and the subordinate relationship between them, as shown in Figure 2.1 below. The hierarchical from top to bottom is: power group layer - power plant layer - device layer - sensor layer. ROOT is the root node, and each node of sensor layer is a leaf node. In the process of using IoTDB, the attributes on the path from ROOT node is directly connected to each leaf node with ".", thus forming the name of a timeseries in IoTDB. For example, The left-most path in Figure 2.1 can generate a timeseries named `ROOT.ln.wf01.wt01.status`.
+According to the data attribute layers, it is expressed as an attribute hierarchy structure based on the coverage of attributes and the subordinate relationship between them, as shown below. The hierarchical from top to bottom is: power group layer - power plant layer - device layer - sensor layer. ROOT is the root node, and each node of sensor layer is a leaf node. In the process of using IoTDB, the attributes on the path from ROOT node is directly connected to each leaf node with ".", thus forming the name of a timeseries in IoTDB. For example, The left-most path in Figure 2.1 can generate a timeseries named `root.ln.wf01.wt01.status`.
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577327-7aa50780-1ef4-11e9-9d75-cadabb62444e.jpg"></center>
 
-**Figure 2.1 Attribute hierarchy structure**
+**Attribute hierarchy structure**
 
 After getting the name of the timeseries, we need to set up the storage group according to the actual scenario and scale of the data. Because in the scenario of this chapter data is usually arrived in the unit of groups (i.e., data may be across electric fields and devices), in order to avoid frequent switch of IO when writing data, and meet the user's requirement of physical isolation of data in the unit of groups, storage group is set at the group layer.
 

@@ -19,27 +19,11 @@
 
 -->
 
-# Sync Tool
+# Collaboration of Edge and Cloud
 
-## Data Import
+## TsFile Sync Tool
 
-<!-- TOC -->
-
-- [Chapter 8: System Tools](#chapter-8-system-tools)
-    - [Data Import](#data-import)
-- [Introduction](#introduction)
-- [Application Scenario](#application-scenario)
-- [Configuration](#configuration)
-    - [Sync Receiver](#sync-receiver)
-    - [Sync Sender](#sync-sender)
-- [Usage](#usage)
-    - [Start Sync Receiver](#start-sync-receiver)
-    - [Stop Sync Receiver](#stop-sync-receiver)
-    - [Start Sync Sender](#start-sync-sender)
-    - [Stop Sync Sender](#stop-sync-sender)
-
-<!-- /TOC -->
-# Introduction
+### Introduction
 The Sync Tool is an IoTDB suite tool that periodically uploads persistent tsfiles from the sender disk to the receiver and loads them.
 
 On the sender side of the sync, the sync module is a separate process, independent of the IoTDB process. It can be started and closed through a separate script (see Sections `Usage` for details). The frequency cycle of the sync can be set by the user. 
@@ -49,15 +33,17 @@ On the receiver side of the sync, the sync module is embedded in the engine of I
 The sync tool has a many-to-one sender-receiver mode - that is, one sync receiver can receive data from multiple sync senders simultaneously while one sync sender can only send data to one sync receiver.
 
 > Note: Before using the sync tool, the client and server need to be configured separately. The configuration is detailed in Sections Configuration.
-# Application Scenario
+
+### Application Scenario
 In the case of a factory application, there are usually multiple sub-factories and multiple general(main) factories. Each sub-factory uses an IoTDB instance to collect data, and then synchronize the data to the general factory for backup or analysis. A general factory can receive data from multiple sub-factories and a sub-factory can also synchronize data to multiple general factories. In this scenario, each IoTDB instance manages different devices. 
 ​      
 In the sync module, each sub-factory is a sender, a general factory is a receiver, and senders periodically synchronizes the data to receivers. In the scenario above, the data of one device can only be collected by one sender, so there is no device overlap between the data synchronized by multiple senders. Otherwise, the application scenario of the sync module is not satisfied.
 
 When there is an abnormal scenario, namely, two or more senders synchronize the data of the same device (whose storage group is set as root.sg) to the same receiver, the root.sg data of the sender containing the device data received later by the receiver will be rejected. Example: the engine 1 synchronizes the storage groups root.sg1 and root.sg2 to the receiver, and the engine 2 synchronizes the storage groups root.sg2 and root.sg3 to the receiver. All of them include the time series root.sg2.d0.s0. 
 If the receiver receives the data of root.sg2.d0.s0 of the sender 1 first, the receiver will reject the data of root.sg2 of the sender 2.
-# Configuration
-## Sync Receiver
+
+### Configuration
+#### Sync Receiver
 The parameter configuration of the sync receiver is located in the configuration file `iotdb-engine.properties` of IoTDB, and its directory is `$IOTDB_HOME/conf/iotdb-engine.properties`. In this configuration file, there are four parameters related to the sync receiver. The configuration instructions are as follows:
 
 |parameter: is_sync_enable||
@@ -83,7 +69,7 @@ The parameter configuration of the sync receiver is located in the configuration
 |Default|5555|
 |Modalities for Entry into Force after Modification|Restart receiver|
 
-## Sync Sender
+#### Sync Sender
 The parameters of the sync sender are configured in a separate configuration file iotdb-sync-client.properties with the installation directory of ```$IOTDB_HOME/conf/iotdb-sync-client.properties```. In this configuration file, there are five parameters related to the sync sender. The configuration instructions are as follows:
 
 |parameter: server_ip||
@@ -112,7 +98,7 @@ The parameters of the sync sender are configured in a separate configuration fil
 
 |parameter: iotdb_schema_directory||
 |--- |--- |
-|Description |The absolute path of the sender's IoTDB schema file, such as $IOTDB_HOME/data/system/schema/mlog.txt (if the user does not manually set the path of schema metadata, the path is the default path of IoTDB engine). This parameter is not valid by default and is set manually when the user needs it. |
+|Description |The absolute path of the sender's IoTDB schema file, such as `$IOTDB_HOME/data/system/schema/mlog.txt` (if the user does not manually set the path of schema metadata, the path is the default path of IoTDB engine). This parameter is not valid by default and is set manually when the user needs it. |
 |Type|String|
 |Modalities for Entry into Force after Modification|Restart client|
 
@@ -132,39 +118,69 @@ The parameters of the sync sender are configured in a separate configuration fil
 |Modalities for Entry into Force after Modification|Restart client|
 
 
-# Usage
-## Start Sync Receiver
+### Usage
+#### Start Sync Receiver
 1. Set up parameters of sync receiver. For example:
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/26211279/64172919-a32cb100-ce88-11e9-821c-33369bff6d34.png">
-2. Start IoTDB engine, and the sync receiver will start at the same time, and the LOG log will start with the sentence `IoTDB: start SYNC ServerService successfully` indicating the successful start of the return receiver.
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/26211279/59494513-df6ef780-8ebf-11e9-83e1-ee8ae64b76d0.png">
 
-## Stop Sync Receiver
+```
+	####################
+	### Sync Server Configuration
+	####################
+	# Whether to open the sync_server_port for receiving data from sync client, the default is closed
+	is_sync_enable=false
+	# Sync server port to listen
+	sync_server_port=5555
+	# White IP list of Sync client.
+	# Please use the form of network segment to present the range of IP, for example: 192.168.0.0/16
+	# If there are more than one IP segment, please separate them by commas
+	# The default is to allow all IP to sync
+	ip_white_list=0.0.0.0/0
+```
+
+2. Start IoTDB engine, and the sync receiver will start at the same time, and the LOG log will start with the sentence `IoTDB: start SYNC ServerService successfully` indicating the successful start of the return receiver.
+
+
+#### Stop Sync Receiver
 Stop IoTDB and the sync receiver will be closed at the same time.
 
-## Start Sync Sender
+#### Start Sync Sender
 1. Set up parameters of sync sender. For example:
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/26211279/64172668-15e95c80-ce88-11e9-9700-dff7daf06bb7.png">
-2. Start sync sender
-Users can use the scripts under the ```$IOTDB_HOME/bin``` folder to start the sync sender.
-For Linux and Mac OS X users:
-```
-  Shell >$IOTDB_HOME/bin/start-sync-client.sh
-```
-For Windows users:
-```
-  Shell >$IOTDB_HOME\bin\start-sync-client.bat
-```
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/26211279/59494951-dc283b80-8ec0-11e9-9575-5d8578c08ceb.png">
 
-## Stop Sync Sender
-Users can use the scripts under the ```$IOTDB_HOME/bin``` folder to stop the sync sender.
+```
+	# Sync receiver server address
+	server_ip=127.0.0.1
+	# Sync receiver server port
+	server_port=5555
+	# The period time of sync process, the time unit is second.
+	sync_period_in_second=600
+	# This parameter represents storage groups that participate in the synchronization task, which distinguishes each storage group by comma.
+	# If the list is empty, it means that all storage groups participate in synchronization.
+	# By default, it is empty list.
+	# sync_storage_groups = root.sg1, root.sg2
+	# The maximum number of retry when syncing a file to receiver fails.
+	max_number_of_sync_file_retry=5
+```
+
+2. Start sync sender
+Users can use the scripts under the ```$IOTDB_HOME/tools``` folder to start the sync sender.
 For Linux and Mac OS X users:
 ```
-  Shell >$IOTDB_HOME/bin/stop-sync-client.sh
+  Shell >$IOTDB_HOME/tools/start-sync-client.sh
 ```
 For Windows users:
 ```
-  Shell >$IOTDB_HOME\bin\stop-sync-client.bat
+  Shell >$IOTDB_HOME\tools\start-sync-client.bat
+```
+
+
+#### Stop Sync Sender
+Users can use the scripts under the ```$IOTDB_HOME/tools``` folder to stop the sync sender.
+For Linux and Mac OS X users:
+```
+  Shell >$IOTDB_HOME/tools/stop-sync-client.sh
+```
+For Windows users:
+```
+  Shell >$IOTDB_HOME\tools\stop-sync-client.bat
 ```
 

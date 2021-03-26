@@ -19,9 +19,12 @@
 
 -->
 
-# DDL (Data Definition Language)
+# IoTDB-SQL Language
 
-## Create Storage Group
+## Data Definition Language (DDL) 
+
+### Stroage Group Management
+#### Create Storage Group
 
 According to the storage model we can set up the corresponding storage group. The SQL statements for creating storage groups are as follows:
 
@@ -36,13 +39,13 @@ It is worth noting that when the path itself or the parent/child layer of the pa
 
 ```
 IoTDB> set storage group to root.ln.wf01
-Msg: org.apache.iotdb.exception.MetadataException: org.apache.iotdb.exception.MetadataException: The prefix of root.ln.wf01 has been set to the storage group.
+Msg: 300: root.ln has already been set to storage group.
 ```
 The LayerName of storage group can only be characters, numbers and underscores. 
  
 Besides, if deploy on Windows system, the LayerName is case-insensitive, which means it's not allowed to set storage groups `root.ln` and `root.LN` at the same time.
 
-## Show Storage Group
+#### Show Storage Group
 
 After creating the storage group, we can use the [SHOW STORAGE GROUP](../Operation%20Manual/SQL%20Reference.md) statement and [SHOW STORAGE GROUP \<PrefixPath>](../Operation%20Manual/SQL%20Reference.md) to view the storage groups. The SQL statements are as follows:
 
@@ -64,7 +67,7 @@ Total line number = 2
 It costs 0.060s
 ```
 
-## Delete Storage Group
+#### Delete Storage Group
 
 User can use the `DELETE STORAGE GROUP <PrefixPath>` statement to delete all storage groups under the prefixPath. Please note the data in the storage group will also be deleted. 
 
@@ -74,8 +77,8 @@ IoTDB > DELETE STORAGE GROUP root.sgcc
 // delete all data, all timeseries and all storage groups
 IoTDB > DELETE STORAGE GROUP root.*
 ```
-
-## Create Timeseries
+### Timeseries Management
+#### Create Timeseries
 
 According to the storage model selected before, we can create corresponding timeseries in the two storage groups respectively. The SQL statements for creating timeseries are as follows:
 
@@ -97,54 +100,19 @@ error: encoding TS_2DIFF does not support BOOLEAN
 
 Please refer to [Encoding](../Concept/Encoding.md) for correspondence between data type and encoding.
 
-### Tag and attribute management
+#### Delete Timeseries
 
-We can also add an alias, extra tag and attribute information while creating one timeseries.
-The SQL statements for creating timeseries with extra tag and attribute information are extended as follows:
+To delete the timeseries we created before, we are able to use `DELETE TimeSeries <PrefixPath>` statement.
+
+The usage are as follows:
 
 ```
-create timeseries root.turbine.d1.s1(temprature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)
-```
-
-The `temprature` in the brackets is an alias for the sensor `s1`. So we can use `temprature` to replace `s1` anywhere.
-
-> IoTDB also supports [using AS function](../Operation%20Manual/DML%20Data%20Manipulation%20Language.md) to set alias. The difference between the two is: the alias set by the AS function is used to replace the whole time series name, temporary and not bound with the time series; while the alias mentioned above is only used as the alias of the sensor, which is bound with it and can be used equivalent to the original sensor name.
-
-The only difference between tag and attribute is that we will maintain an inverted index on the tag, so we can use tag property in the show timeseries where clause which you can see in the following `Show Timeseries` section.
-
-> Notice that the size of the extra tag and attribute information shouldn't exceed the `tag_attribute_total_size`.
-
-
-## UPDATE TAG OPERATION
-We can update the tag information after creating it as following:
-
-* Rename the tag/attribute key
-```
-ALTER timeseries root.turbine.d1.s1 RENAME tag1 TO newTag1
-```
-* reset the tag/attribute value
-```
-ALTER timeseries root.turbine.d1.s1 SET newTag1=newV1, attr1=newV1
-```
-* delete the existing tag/attribute
-```
-ALTER timeseries root.turbine.d1.s1 DROP tag1, tag2
-```
-* add new tags
-```
-ALTER timeseries root.turbine.d1.s1 ADD TAGS tag3=v3, tag4=v4
-```
-* add new attributes
-```
-ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES attr3=v3, attr4=v4
-```
-* upsert alias, tags and attributes
-> add alias or a new key-value if the alias or key doesn't exist, otherwise, update the old one with new value.
-```
-ALTER timeseries root.turbine.d1.s1 UPSERT ALIAS=newAlias TAGS(tag3=v3, tag4=v4) ATTRIBUTES(attr3=v3, attr4=v4)
+IoTDB> delete timeseries root.ln.wf01.wt01.status
+IoTDB> delete timeseries root.ln.wf01.wt01.temperature, root.ln.wf02.wt02.hardware
+IoTDB> delete timeseries root.ln.wf02.*
 ```
 
-## Show Timeseries
+#### Show Timeseries
 
 * SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause?
 
@@ -239,63 +207,8 @@ It costs 0.004s
   
 It is worth noting that when the queried path does not exist, the system will return no timeseries.  
 
-## Show Child Paths
 
-```
-SHOW CHILD PATHS prefixPath
-```
-
-Return all child paths of the prefixPath, the prefixPath could contains *.
-
-Example：
-
-* return the child paths of root.ln：show child paths root.ln
-
-```
-+------------+
-| child paths|
-+------------+
-|root.ln.wf01|
-|root.ln.wf02|
-+------------+
-Total line number = 2
-It costs 0.002s
-```
-
-> get all paths in form of root.xx.xx.xx：show child paths root.xx.xx
-
-## Show Child Nodes
-
-```
-SHOW CHILD NODES prefixPath
-```
-
-Return all child nodes of the prefixPath.
-
-Example：
-
-* return the child nodes of root：show child paths root
-
-```
-+------------+
-| child nodes|
-+------------+
-|          ln|
-+------------+
-```
-
-* return the child nodes of root.vehicle：show child paths root.ln
-
-```
-+------------+
-| child nodes|
-+------------+
-|        wf01|
-|        wf02|
-+------------+
-```
-
-## Count Timeseries
+#### Count Timeseries
 
 IoTDB is able to use `COUNT TIMESERIES <Path>` to count the number of timeseries in the path. SQL statements are as follows:
 
@@ -371,7 +284,109 @@ It costs 0.002s
 
 > Note: The path of timeseries is just a filter condition, which has no relationship with the definition of level.
 
-## Count Nodes
+#### Tag and attribute management
+
+We can also add an alias, extra tag and attribute information while creating one timeseries.
+The SQL statements for creating timeseries with extra tag and attribute information are extended as follows:
+
+```
+create timeseries root.turbine.d1.s1(temprature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)
+```
+
+The `temprature` in the brackets is an alias for the sensor `s1`. So we can use `temprature` to replace `s1` anywhere.
+
+> IoTDB also supports [using AS function](../Operation%20Manual/DML%20Data%20Manipulation%20Language.md) to set alias. The difference between the two is: the alias set by the AS function is used to replace the whole time series name, temporary and not bound with the time series; while the alias mentioned above is only used as the alias of the sensor, which is bound with it and can be used equivalent to the original sensor name.
+
+The only difference between tag and attribute is that we will maintain an inverted index on the tag, so we can use tag property in the show timeseries where clause which you can see in the following `Show Timeseries` section.
+
+> Notice that the size of the extra tag and attribute information shouldn't exceed the `tag_attribute_total_size`.
+
+We can update the tag information after creating it as following:
+
+* Rename the tag/attribute key
+```
+ALTER timeseries root.turbine.d1.s1 RENAME tag1 TO newTag1
+```
+* reset the tag/attribute value
+```
+ALTER timeseries root.turbine.d1.s1 SET newTag1=newV1, attr1=newV1
+```
+* delete the existing tag/attribute
+```
+ALTER timeseries root.turbine.d1.s1 DROP tag1, tag2
+```
+* add new tags
+```
+ALTER timeseries root.turbine.d1.s1 ADD TAGS tag3=v3, tag4=v4
+```
+* add new attributes
+```
+ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES attr3=v3, attr4=v4
+```
+* upsert alias, tags and attributes
+> add alias or a new key-value if the alias or key doesn't exist, otherwise, update the old one with new value.
+```
+ALTER timeseries root.turbine.d1.s1 UPSERT ALIAS=newAlias TAGS(tag3=v3, tag4=v4) ATTRIBUTES(attr3=v3, attr4=v4)
+```
+
+### Node Management
+#### Show Child Paths
+
+```
+SHOW CHILD PATHS prefixPath
+```
+
+Return all child paths of the prefixPath, the prefixPath could contains *.
+
+Example：
+
+* return the child paths of root.ln：show child paths root.ln
+
+```
++------------+
+| child paths|
++------------+
+|root.ln.wf01|
+|root.ln.wf02|
++------------+
+Total line number = 2
+It costs 0.002s
+```
+
+> get all paths in form of root.xx.xx.xx：show child paths root.xx.xx
+
+#### Show Child Nodes
+
+```
+SHOW CHILD NODES prefixPath
+```
+
+Return all child nodes of the prefixPath.
+
+Example：
+
+* return the child nodes of root：show child nodes root
+
+```
++------------+
+| child nodes|
++------------+
+|          ln|
++------------+
+```
+
+* return the child nodes of root.vehicle：show child nodes root.ln
+
+```
++------------+
+| child nodes|
++------------+
+|        wf01|
+|        wf02|
++------------+
+```
+
+#### Count Nodes
 
 IoTDB is able to use `COUNT NODES <PrefixPath> LEVEL=<INTEGER>` to count the number of nodes at the given level in current Metadata Tree. This could be used to query the number of devices. The usage are as follows:
 
@@ -412,19 +427,7 @@ It costs 0.002s
 > Note: The path of timeseries is just a filter condition, which has no relationship with the definition of level.
 `PrefixPath` could contains `*`, but all nodes after `*` would be ignored. Only the prefix path before `*` is valid.
 
-## Delete Timeseries
-
-To delete the timeseries we created before, we are able to use `DELETE TimeSeries <PrefixPath>` statement.
-
-The usage are as follows:
-
-```
-IoTDB> delete timeseries root.ln.wf01.wt01.status
-IoTDB> delete timeseries root.ln.wf01.wt01.temperature, root.ln.wf02.wt02.hardware
-IoTDB> delete timeseries root.ln.wf02.*
-```
-
-## Show Devices
+#### Show Devices
 
 * SHOW DEVICES prefixPath? (WITH STORAGE GROUP)? limitClause? #showDevices
 
@@ -501,11 +504,11 @@ Total line number = 2
 It costs 0.001s
 ```
 
-# TTL
+### TTL
 
 IoTDB supports storage-level TTL settings, which means it is able to delete old data automatically and periodically. The benefit of using TTL is that hopefully you can control the total disk space usage and prevent the machine from running out of disks. Moreover, the query performance may downgrade as the total number of files goes up and the memory usage also increase as there are more files. Timely removing such files helps to keep at a high query performance level and reduce memory usage.
 
-## Set TTL
+#### Set TTL
 
 The SQL Statement for setting TTL is as follow:
 
@@ -515,7 +518,7 @@ IoTDB> set ttl to root.ln 3600000
 
 This example means that for data in `root.ln`, only that of the latest 1 hour will remain, the older one is removed or made invisible.
 
-## Unset TTL
+#### Unset TTL
 
 To unset TTL, we can use follwing SQL statement:
 
@@ -525,7 +528,7 @@ IoTDB> unset ttl to root.ln
 
 After unset TTL, all data will be accepted in `root.ln`
 
-## Show TTL
+#### Show TTL
 
 To Show TTL, we can use following SQL statement:
 
@@ -539,38 +542,3 @@ The SHOW TTL ON  root.group1 , root.group2 , root.group3 example shows the TTL f
 groups specified.
 Note: the TTL for storage groups that do not have a TTL set will display as null.
 
-## FLUSH
-
-Persist all the data points in the memory table of the storage group to the disk, and seal the data file.
-
-```
-IoTDB> FLUSH 
-IoTDB> FLUSH root.ln
-IoTDB> FLUSH root.sg1,root.sg2
-```
-
-## MERGE
-
-Merge sequence and unsequence data. Currently IoTDB supports the following two types of SQL to manually trigger the merge process of data files:
-
-* `MERGE` Only rewrite overlapped Chunks, the merge speed is quick, while there will be redundant data on the disk eventually.
-* `FULL MERGE` Rewrite all data in overlapped files, the merge speed is slow, but there will be no redundant data on the disk eventually.
-
-```
-IoTDB> MERGE
-IoTDB> FULL MERGE
-```
-
-## CLEAR CACHE
-
-Clear the cache of chunk, chunk metadata and timeseries metadata to release the memory footprint.
-```
-IoTDB> CLEAR CACHE
-```
-
-## CREATE SNAPSHOT FOR SCHEMA
-
-To speed up restarting of IoTDB, users can create snapshot of schema and avoid recovering schema from mlog file.
-```
-IoTDB> CREATE SNAPSHOT FOR SCHEMA
-```
