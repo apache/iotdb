@@ -459,7 +459,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       CreateMultiTimeSeriesPlan multiPlan, List<TSStatus> result) {
     long t1 = System.currentTimeMillis();
     TSStatus tsStatus = executeNonQueryPlan(multiPlan);
-    Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_ROWS_PLAN_IN_BATCH, t1);
+    Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_MULTI_TIMESERIES_PLAN_IN_BATCH, t1);
 
     int startIndex = result.size();
     if (startIndex > 0) {
