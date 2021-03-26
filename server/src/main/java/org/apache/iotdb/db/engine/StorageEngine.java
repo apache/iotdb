@@ -800,7 +800,7 @@ public class StorageEngine implements IService {
 
   @TestOnly
   public static boolean isEnablePartition() {
-    return config.isEnablePartition();
+    return enablePartition;
   }
 
   /**
