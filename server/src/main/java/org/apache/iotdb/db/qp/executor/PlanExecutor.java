@@ -410,34 +410,15 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
+  /** when tracing off need Close the stream */
   private void operateTracing(TracingPlan plan) {
-    if (plan.tracingType() > 0) {
-      tracingClearAll();
+    IoTDBDescriptor.getInstance().getConfig().setEnablePerformanceTracing(plan.isTracingOn());
+    if (!plan.isTracingOn()) {
+      TracingManager.getInstance().close();
     } else {
-      IoTDBDescriptor.getInstance().getConfig().setEnablePerformanceTracing(plan.isTracingOn());
-      if (!plan.isTracingOn()) {
-        TracingManager.getInstance().close();
-      } else {
-        if (!TracingManager.getInstance().getWriterStatus()) {
-          TracingManager.getInstance()
-              .reOpenBufferedWriter(
-                  IoTDBDescriptor.getInstance().getConfig().getTracingDir(),
-                  IoTDBConstant.TRACING_LOG);
-        }
+      if (!TracingManager.getInstance().getWriterStatus()) {
+        TracingManager.getInstance().openTracingWriteStream();
       }
-    }
-  }
-
-  private void tracingClearAll() {
-    boolean isTracingOn = IoTDBDescriptor.getInstance().getConfig().isEnablePerformanceTracing();
-    String tracingDir = IoTDBDescriptor.getInstance().getConfig().getTracingDir();
-    String tracingDirName = IoTDBConstant.TRACING_LOG;
-    if (isTracingOn) {
-      IoTDBDescriptor.getInstance().getConfig().setEnablePerformanceTracing(false);
-      TracingManager.getInstance().clearTracingAllInfo(tracingDir, tracingDirName);
-      IoTDBDescriptor.getInstance().getConfig().setEnablePerformanceTracing(true);
-    } else {
-      TracingManager.getInstance().clearTracingAllInfo(tracingDir, tracingDirName);
     }
   }
 

@@ -18,6 +18,14 @@
  */
 package org.apache.iotdb.db.query.control;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -27,12 +35,6 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class TracingManager {
 
@@ -200,7 +202,7 @@ public class TracingManager {
     try {
       writer.close();
     } catch (IOException e) {
-      logger.error("Meeting error while close TracingManager_writer: {}", e.getMessage());
+      logger.error("Meeting error while Close the tracing log stream : {}", e.getMessage());
     }
   }
 
@@ -213,8 +215,10 @@ public class TracingManager {
     }
   }
 
-  public void reOpenBufferedWriter(String dirName, String logFileName) {
-    File tracingDir = SystemFileFactory.INSTANCE.getFile(dirName);
+  public void openTracingWriteStream() {
+    File tracingDir =
+        SystemFileFactory.INSTANCE.getFile(
+            IoTDBDescriptor.getInstance().getConfig().getTracingDir());
     if (!tracingDir.exists()) {
       if (tracingDir.mkdirs()) {
         logger.info("create performance folder {}.", tracingDir);
@@ -222,7 +226,11 @@ public class TracingManager {
         logger.info("create performance folder {} failed.", tracingDir);
       }
     }
-    File logFile = SystemFileFactory.INSTANCE.getFile(dirName + File.separator + logFileName);
+    File logFile =
+        SystemFileFactory.INSTANCE.getFile(
+            IoTDBDescriptor.getInstance().getConfig().getTracingDir()
+                + File.separator
+                + IoTDBConstant.TRACING_LOG);
     FileWriter fileWriter = null;
     try {
       fileWriter = new FileWriter(logFile, true);
@@ -239,29 +247,5 @@ public class TracingManager {
             IoTDBDescriptor.getInstance().getConfig().getTracingDir(), IoTDBConstant.TRACING_LOG);
 
     private TracingManagerHelper() {}
-  }
-
-  /** Clear all Tracing records */
-  public void clearTracingAllInfo(String dirName, String logFileName) {
-    File tracingDir = SystemFileFactory.INSTANCE.getFile(dirName);
-    if (tracingDir.exists()) {
-      File logFile = SystemFileFactory.INSTANCE.getFile(dirName + File.separator + logFileName);
-      if (logFile.exists()) {
-        try {
-          Boolean flag = logFile.delete();
-          if (!flag) {
-            FileWriter fw5 = new FileWriter(logFile);
-            BufferedWriter bw1 = new BufferedWriter(fw5);
-            bw1.write("");
-            bw1.close();
-            fw5.close();
-          }
-        } catch (IOException e) {
-          logger.error("TracingFile Clear all error: {}", e.getMessage());
-        }
-      }
-    } else {
-      logger.info("Directory does not exist tracingDir: {}", tracingDir);
-    }
   }
 }
