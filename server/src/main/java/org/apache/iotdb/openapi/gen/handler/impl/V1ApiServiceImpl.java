@@ -111,33 +111,35 @@ public class V1ApiServiceImpl extends V1ApiService {
       GroupByFillPlan groupByFillPlan, SecurityContext securityContext) throws NotFoundException {
     Gson result = new Gson();
     Map timemap = new HashMap();
-    List<List<String>> pathList = groupByFillPlan.getPaths();
-    String path = Joiner.on(".").join(pathList.get(0));
+    List<String> pathList = groupByFillPlan.getPaths();
+    String path = Joiner.on(".").join(pathList);
     String sql = "";
     List<Map> listtemp = new ArrayList<>();
+    long stime= (long)(groupByFillPlan.getStime().doubleValue()*timePrecision);
+    long etime= (long)(groupByFillPlan.getEtime().doubleValue()*timePrecision);
     if (groupByFillPlan.getFills() != null && groupByFillPlan.getFills().size() > 0) {
       sql =
           String.format(
               "select last_value(*) FROM %s where time>=%d and time<%d group by ([%d, %d),%s) fill (%s[%s,%s])",
               path,
-              groupByFillPlan.getStime().longValue() * timePrecision,
-              groupByFillPlan.getEtime().longValue() * timePrecision,
-              groupByFillPlan.getStime().longValue() * timePrecision,
-              groupByFillPlan.getEtime().longValue() * timePrecision,
-              getInterval(groupByFillPlan.getInterval().longValue()),
+              stime,
+              etime,
+              stime,
+              etime,
+              groupByFillPlan.getInterval(),
               groupByFillPlan.getFills().get(0).getDtype(),
               groupByFillPlan.getFills().get(0).getFun(),
-              getInterval(groupByFillPlan.getInterval().longValue()));
+              groupByFillPlan.getInterval());
     } else {
       sql =
           String.format(
               "select avg(*) FROM %s where time>=%d and time<%d group by ([%d, %d),%s)",
               path,
-              groupByFillPlan.getStime().longValue() * timePrecision,
-              groupByFillPlan.getEtime().longValue() * timePrecision,
-              groupByFillPlan.getStime().longValue() * timePrecision,
-              groupByFillPlan.getEtime().longValue() * timePrecision,
-              getInterval(groupByFillPlan.getInterval().longValue()));
+              stime,
+              etime,
+              stime,
+              etime,
+              groupByFillPlan.getInterval());
     }
     Planner planner = new Planner();
 
@@ -236,34 +238,36 @@ public class V1ApiServiceImpl extends V1ApiService {
       GroupByFillPlan groupByFillPlan, SecurityContext securityContext) throws NotFoundException {
     Gson result = new Gson();
     List<Map> resultList = new ArrayList<Map>();
-    List<List<String>> pathList = groupByFillPlan.getPaths();
-    String path = Joiner.on(".").join(pathList.get(0));
+    List<String> pathList = groupByFillPlan.getPaths();
+    String path = Joiner.on(".").join(pathList);
     String sql = "";
+   long stime= (long)(groupByFillPlan.getStime().doubleValue()*timePrecision);
+   long etime= (long)(groupByFillPlan.getEtime().doubleValue()*timePrecision);
     if (groupByFillPlan.getFills() != null && groupByFillPlan.getFills().size() > 0) {
       sql =
           String.format(
               "select last_value(%s) FROM %s where time>=%d and time<%d group by ([%d, %d),%s) fill (%s[%s,%s])",
               path.substring(path.lastIndexOf('.') + 1),
               path.substring(0, path.lastIndexOf('.')),
-              (long) (groupByFillPlan.getStime().longValue() * timePrecision),
-              (long) (groupByFillPlan.getEtime().longValue() * timePrecision),
-              (long) (groupByFillPlan.getStime().longValue() * timePrecision),
-              (long) (groupByFillPlan.getEtime().longValue() * timePrecision),
-              getInterval(groupByFillPlan.getInterval().longValue()),
+              stime,
+              etime,
+              stime,
+              etime,
+              groupByFillPlan.getInterval(),
               groupByFillPlan.getFills().get(0).getDtype(),
               groupByFillPlan.getFills().get(0).getFun(),
-              getInterval(groupByFillPlan.getInterval().longValue()));
+              groupByFillPlan.getInterval());
     } else {
       sql =
           String.format(
               "select avg(%s) FROM %s where time>=%d and time<%d group by ([%d, %d),%s)",
               path.substring(path.lastIndexOf('.') + 1),
               path.substring(0, path.lastIndexOf('.')),
-              (long) (groupByFillPlan.getStime().longValue() * timePrecision),
-              (long) (groupByFillPlan.getEtime().longValue() * timePrecision),
-              (long) (groupByFillPlan.getStime().longValue() * timePrecision),
-              (long) (groupByFillPlan.getEtime().longValue() * timePrecision),
-              getInterval(groupByFillPlan.getInterval().longValue()));
+              stime,
+              etime,
+              stime,
+              etime,
+              groupByFillPlan.getInterval());
     }
     try {
       Planner planner = new Planner();
@@ -291,35 +295,13 @@ public class V1ApiServiceImpl extends V1ApiService {
           temlist.add(rowRecord.getTimestamp());
         }
       }
-      tmpmap.put("target", path);
+      tmpmap.put("target", dataSet.getPaths().get(0).getFullPath());
       tmpmap.put("datapoints", temlist);
       resultList.add(tmpmap);
     } catch (IOException | QueryProcessException | AuthException e) {
       e.printStackTrace();
     }
     return Response.ok().entity(result.toJson(resultList)).build();
-  }
-
-  /**
-   * time defulted ms
-   *
-   * @param time
-   * @return
-   */
-  private String getInterval(final long time) {
-    if (!(time > 1)) {
-      return "";
-    }
-    if (time < 60 * 1000 && time > 1000) {
-      return time / 1000 + "s";
-    } else if (time >= 60 * 1000 && time < 60 * 60 * 1000) {
-      return time / 1000 / 60 + "m";
-    } else if (time >= 60 * 60 * 1000 && time < 60 * 60 * 1000 * 24) {
-      return time / 1000 / 60 / 60 + "h";
-    } else if (time >= 60 * 60 * 1000 * 24) {
-      return time / 1000 / 60 / 60 / 24 + "d";
-    }
-    return time + "ms";
   }
 
   @Override

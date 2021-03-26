@@ -343,7 +343,7 @@ components:
       type: object
       properties:
         interval:
-          type: number
+          type: string
           description: group by
         stime:
           type: number
@@ -354,8 +354,6 @@ components:
           items:
             $ref: '#/components/schemas/GroupByFillPlan_fills'
         paths:
-          type: array
-          items:
             type: array
             items:
               type: string
