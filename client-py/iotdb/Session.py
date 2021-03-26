@@ -225,6 +225,10 @@ class Session(object):
 
     def insert_str_record(self, device_id, timestamp, measurements, string_values):
         """ special case for inserting one row of String (TEXT) value """
+        if type(string_values) == str:
+            string_values = [string_values]
+        if type(measurements) == str:
+            measurements = [measurements]
         data_types = [TSDataType.TEXT.value for _ in string_values]
         request = self.gen_insert_str_record_req(device_id, timestamp, measurements, data_types, string_values)
         status = self.__client.insertStringRecord(request)

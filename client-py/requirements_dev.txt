@@ -1,1 +1,4 @@
+-r requirements.txt
+# Pytest to run tests
 pytest==6.2.2
+thrift==0.13.0
