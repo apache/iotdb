@@ -210,7 +210,7 @@ public class IoTDBSequenceDataQueryIT {
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedDataTypes(dataTypes);
-    queryPlan.setDeduplicatedPaths(pathList);
+    queryPlan.setDeduplicatedPathsAndUpdate(pathList);
     QueryDataSet queryDataSet = queryRouter.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
 
     int cnt = 0;
@@ -246,7 +246,7 @@ public class IoTDBSequenceDataQueryIT {
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedDataTypes(dataTypes);
-    queryPlan.setDeduplicatedPaths(pathList);
+    queryPlan.setDeduplicatedPathsAndUpdate(pathList);
     queryPlan.setExpression(globalTimeExpression);
     QueryDataSet queryDataSet = queryRouter.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
 
@@ -303,7 +303,7 @@ public class IoTDBSequenceDataQueryIT {
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedDataTypes(dataTypes);
-    queryPlan.setDeduplicatedPaths(pathList);
+    queryPlan.setDeduplicatedPathsAndUpdate(pathList);
     queryPlan.setExpression(singleSeriesExpression);
     QueryDataSet queryDataSet = queryRouter.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
 

@@ -166,14 +166,14 @@ public class AlignByDeviceDataSet extends QueryDataSet {
       try {
         switch (dataSetType) {
           case GROUPBYTIME:
-            groupByTimePlan.setDeduplicatedPaths(executePaths);
+            groupByTimePlan.setDeduplicatedPathsAndUpdate(executePaths);
             groupByTimePlan.setDeduplicatedDataTypes(tsDataTypes);
             groupByTimePlan.setDeduplicatedAggregations(executeAggregations);
             groupByTimePlan.setExpression(expression);
             currentDataSet = queryRouter.groupBy(groupByTimePlan, context);
             break;
           case AGGREGATE:
-            aggregationPlan.setDeduplicatedPaths(executePaths);
+            aggregationPlan.setDeduplicatedPathsAndUpdate(executePaths);
             aggregationPlan.setDeduplicatedAggregations(executeAggregations);
             aggregationPlan.setDeduplicatedDataTypes(tsDataTypes);
             aggregationPlan.setExpression(expression);
@@ -181,11 +181,11 @@ public class AlignByDeviceDataSet extends QueryDataSet {
             break;
           case FILL:
             fillQueryPlan.setDeduplicatedDataTypes(tsDataTypes);
-            fillQueryPlan.setDeduplicatedPaths(executePaths);
+            fillQueryPlan.setDeduplicatedPathsAndUpdate(executePaths);
             currentDataSet = queryRouter.fill(fillQueryPlan, context);
             break;
           case QUERY:
-            rawDataQueryPlan.setDeduplicatedPaths(executePaths);
+            rawDataQueryPlan.setDeduplicatedPathsAndUpdate(executePaths);
             rawDataQueryPlan.setDeduplicatedDataTypes(tsDataTypes);
             rawDataQueryPlan.setExpression(expression);
             currentDataSet = queryRouter.rawDataQuery(rawDataQueryPlan, context);

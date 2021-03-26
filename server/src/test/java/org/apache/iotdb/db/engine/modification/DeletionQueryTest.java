@@ -124,7 +124,7 @@ public class DeletionQueryTest {
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedDataTypes(dataTypes);
-    queryPlan.setDeduplicatedPaths(pathList);
+    queryPlan.setDeduplicatedPathsAndUpdate(pathList);
     QueryDataSet dataSet = router.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
 
     int count = 0;
@@ -163,7 +163,7 @@ public class DeletionQueryTest {
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedDataTypes(dataTypes);
-    queryPlan.setDeduplicatedPaths(pathList);
+    queryPlan.setDeduplicatedPathsAndUpdate(pathList);
     QueryDataSet dataSet = router.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
 
     int count = 0;
@@ -212,7 +212,7 @@ public class DeletionQueryTest {
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedDataTypes(dataTypes);
-    queryPlan.setDeduplicatedPaths(pathList);
+    queryPlan.setDeduplicatedPathsAndUpdate(pathList);
     QueryDataSet dataSet = router.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
 
     int count = 0;
@@ -262,7 +262,7 @@ public class DeletionQueryTest {
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedDataTypes(dataTypes);
-    queryPlan.setDeduplicatedPaths(pathList);
+    queryPlan.setDeduplicatedPathsAndUpdate(pathList);
     QueryDataSet dataSet = router.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
 
     int count = 0;
@@ -333,7 +333,7 @@ public class DeletionQueryTest {
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedDataTypes(dataTypes);
-    queryPlan.setDeduplicatedPaths(pathList);
+    queryPlan.setDeduplicatedPathsAndUpdate(pathList);
     QueryDataSet dataSet = router.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
 
     int count = 0;
