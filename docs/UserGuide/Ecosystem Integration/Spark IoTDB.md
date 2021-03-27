@@ -28,6 +28,9 @@ The versions required for Spark and Java are as follow:
 | `2.4.3`        | `2.11`        | `1.8`        | `0.10.0`|
 
 
+> Currently we only support spark version 2.4.3 and there are some known issue on 2.4.7, do no use it
+
+
 ### Install
 mvn clean scala:compile compile install
 

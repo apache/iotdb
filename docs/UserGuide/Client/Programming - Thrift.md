@@ -19,139 +19,139 @@
 
 -->
 
-# 通信服务协议
+# Communication Service protocol
 
-## Thrift rpc 接口
+## Thrift rpc interface
 
-### 简介
+### introduction
 
-Thrift是一个远程方法调用软件框架，用来进行可扩展且跨语言的服务的开发。
-它结合了功能强大的软件堆栈和代码生成引擎，
-以构建在 C++, Java, Go,Python, PHP, Ruby, Erlang, Perl, Haskell, C#, Cocoa, JavaScript, Node.js, Smalltalk, and OCaml 这些编程语言间无缝结合的、高效的服务。
+Thrift is a remote procedure call software framework for the development of extensible and cross-language services.
+It combines a powerful software stack and code generation engine,
+In order to build seamlessly integrated and efficient services among programming languages ​​such as C++, Java, Go, Python, PHP, Ruby, Erlang, Perl, Haskell, C#, Cocoa, JavaScript, Node.js, Smalltalk, and OCaml.
 
-IoTDB服务端和客户端之间使用thrift进行通信，实际使用中建议使用IoTDB提供的原生客户端封装:
-Session或Session Pool。如有特殊需要，您也可以直接针对RPC接口进行编程
+IoTDB server and client use thrift for communication. In actual use, it is recommended to use the native client package provided by IoTDB:
+Session or Session Pool. If you have special needs, you can also program directly against the RPC interface
 
-默认IoTDB服务端使用6667端口作为RPC通信端口，可修改配置项中的
+The default IoTDB server uses port 6667 as the RPC communication port, you can modify the configuration item
 ```
 rpc_port=6667
 ```
-更改默认接口
+to change the default thrift port
 
 
-### rpc接口
+### rpc interface
 
 ```
-// 打开一个 session
+// open a session
 TSOpenSessionResp openSession(1:TSOpenSessionReq req);
 
-// 关闭一个 session
+// close a session
 TSStatus closeSession(1:TSCloseSessionReq req);
 
-// 执行一条 SQL 语句
+// run an SQL statement in batch
 TSExecuteStatementResp executeStatement(1:TSExecuteStatementReq req);
 
-// 批量执行 SQL 语句
+// execute SQL statement in batch
 TSStatus executeBatchStatement(1:TSExecuteBatchStatementReq req);
 
-// 执行查询 SQL 语句
+// execute query SQL statement
 TSExecuteStatementResp executeQueryStatement(1:TSExecuteStatementReq req);
 
-// 执行插入、删除 SQL 语句
+// execute insert, delete and update SQL statement 
 TSExecuteStatementResp executeUpdateStatement(1:TSExecuteStatementReq req);
 
-// 向服务器取下一批查询结果
+// fetch next query result
 TSFetchResultsResp fetchResults(1:TSFetchResultsReq req)
 
-// 获取元数据
+// fetch meta data
 TSFetchMetadataResp fetchMetadata(1:TSFetchMetadataReq req)
 
-// 取消某次查询操作
+// cancel a query 
 TSStatus cancelOperation(1:TSCancelOperationReq req);
 
-// 关闭查询操作数据集，释放资源
+// close a query dataset
 TSStatus closeOperation(1:TSCloseOperationReq req);
 
-// 获取时区信息
+// get time zone
 TSGetTimeZoneResp getTimeZone(1:i64 sessionId);
 
-// 设置时区
+// set time zone
 TSStatus setTimeZone(1:TSSetTimeZoneReq req);
 
-// 获取服务端配置
+// get server's properties
 ServerProperties getProperties();
 
-// 设置存储组
+// set storage group
 TSStatus setStorageGroup(1:i64 sessionId, 2:string storageGroup);
 
-// 创建时间序列
+// create timeseries
 TSStatus createTimeseries(1:TSCreateTimeseriesReq req);
 
-// 创建多条时间序列
+// create multi timeseries
 TSStatus createMultiTimeseries(1:TSCreateMultiTimeseriesReq req);
 
-// 删除时间序列
+// delete timeseries
 TSStatus deleteTimeseries(1:i64 sessionId, 2:list<string> path)
 
-// 删除存储组
+// delete sttorage groups
 TSStatus deleteStorageGroups(1:i64 sessionId, 2:list<string> storageGroup);
 
-// 按行插入数据
+// insert record
 TSStatus insertRecord(1:TSInsertRecordReq req);
 
-// 按String格式插入一条数据
+// insert record in string format
 TSStatus insertStringRecord(1:TSInsertStringRecordReq req);
 
-// 按列插入数据
+// insert tablet
 TSStatus insertTablet(1:TSInsertTabletReq req);
 
-// 按列批量插入数据
+// insert tablets in batch
 TSStatus insertTablets(1:TSInsertTabletsReq req);
 
-// 按行批量插入数据
+// insert records in batch
 TSStatus insertRecords(1:TSInsertRecordsReq req);
 
-// 按行批量插入同属于某个设备的数据
+// insert records of one device
 TSStatus insertRecordsOfOneDevice(1:TSInsertRecordsOfOneDeviceReq req);
 
-// 按String格式批量按行插入数据
+// insert records in batch as string format
 TSStatus insertStringRecords(1:TSInsertStringRecordsReq req);
 
-// 测试按列插入数据的延迟，注意：该接口不真实插入数据，只用来测试网络延迟
+// test the latency of innsert tablet，caution：no data will be inserted, only for test latency
 TSStatus testInsertTablet(1:TSInsertTabletReq req);
 
-// 测试批量按列插入数据的延迟，注意：该接口不真实插入数据，只用来测试网络延迟
+// test the latency of innsert tablets，caution：no data will be inserted, only for test latency
 TSStatus testInsertTablets(1:TSInsertTabletsReq req);
 
-// 测试按行插入数据的延迟，注意：该接口不真实插入数据，只用来测试网络延迟
+// test the latency of innsert record，caution：no data will be inserted, only for test latency
 TSStatus testInsertRecord(1:TSInsertRecordReq req);
 
-// 测试按String格式按行插入数据的延迟，注意：该接口不真实插入数据，只用来测试网络延迟
+// test the latency of innsert record in string format，caution：no data will be inserted, only for test latency
 TSStatus testInsertStringRecord(1:TSInsertStringRecordReq req);
 
-// 测试按行插入数据的延迟，注意：该接口不真实插入数据，只用来测试网络延迟
+// test the latency of innsert records，caution：no data will be inserted, only for test latency
 TSStatus testInsertRecords(1:TSInsertRecordsReq req);
 
-// 测试按行批量插入同属于某个设备的数据的延迟，注意：该接口不真实插入数据，只用来测试网络延迟
+// test the latency of innsert records of one device，caution：no data will be inserted, only for test latency
 TSStatus testInsertRecordsOfOneDevice(1:TSInsertRecordsOfOneDeviceReq req);
 
-// 测试按String格式批量按行插入数据的延迟，注意：该接口不真实插入数据，只用来测试网络延迟
+// test the latency of innsert records in string formate，caution：no data will be inserted, only for test latency
 TSStatus testInsertStringRecords(1:TSInsertStringRecordsReq req);
 
-// 删除数据
+// delete data
 TSStatus deleteData(1:TSDeleteDataReq req);
 
-// 执行原始数据查询
+// execute raw data query
 TSExecuteStatementResp executeRawDataQuery(1:TSRawDataQueryReq req);
 
-// 向服务器申请一个查询语句ID
+// request a statement id from server
 i64 requestStatementId(1:i64 sessionId);
 ```
 
-### IDL定义文件位置
-IDL定义文件的路径是thrift/src/main/thrift/rpc.thrift，其中包括了结构体定义与函数定义、
+### IDL file path 
+IDL file path is "thrift/src/main/thrift/rpc.thrift" which includes interface and struct
 
-### 生成文件位置
-在mvn编译过程中，会调用thrift编译IDL文件，生成最终的.class文件
-生成的文件夹路径为thrift/target/classes/org/apache/iotdb/service/rpc/thrift
+### target file path
+We will use thrift compile IDL file in mvn Compilation, in which generate target .class file
+target file path is "thrift/target/classes/org/apache/iotdb/service/rpc/thrift"
 
