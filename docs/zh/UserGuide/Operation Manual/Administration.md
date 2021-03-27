@@ -130,7 +130,8 @@ Msg: The statement is executed successfully.
 
 |权限名称|说明|
 |:---|:---|
-|SET\_STORAGE\_GROUP|创建时间序列。包含设置存储组的权限。路径相关|
+|SET\_STORAGE\_GROUP|创建存储组。包含设置存储组的权限。路径相关|
+|CREATE\_TIMESERIES|创建时间序列。路径相关|
 |INSERT\_TIMESERIES|插入数据。路径相关|
 |READ\_TIMESERIES|查询数据。路径相关|
 |DELETE\_TIMESERIES|删除数据或时间序列。路径相关|
