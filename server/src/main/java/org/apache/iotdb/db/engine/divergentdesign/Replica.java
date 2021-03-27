@@ -11,7 +11,7 @@ import java.util.List;
 
 public class Replica {
   private String deviceId;
-  private List<String> measurements;
+  public List<String> measurements;
   private List<Long> chunkSize;
   private int totalChunkGroupNum;
   private long averageChunkSize;

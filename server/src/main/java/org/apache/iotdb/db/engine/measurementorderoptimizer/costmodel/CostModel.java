@@ -12,6 +12,9 @@ import java.util.Set;
 
 public class CostModel {
 
+  static float sc = 0;
+  static float rc = 0;
+
   /**
    * Approximate the cost of a set of query over a specified measurement order.
    *
@@ -36,17 +39,21 @@ public class CostModel {
   public static float approximateAggregationQueryCostWithTimeRange(List<QueryRecord> queryRecords, List<String> measurements, List<Long> chunkSize) {
     // Get the average chunk size
     long totalChunkSize = 0l;
+    sc = 0;
+    rc = 0;
     for (int i = 0; i < chunkSize.size(); ++i) {
       totalChunkSize += chunkSize.get(i);
     }
     long averageChunkSize = totalChunkSize / chunkSize.size();
-    return approximateAggregationQueryCostWithTimeRange(queryRecords, measurements, averageChunkSize);
+    float tmp = approximateAggregationQueryCostWithTimeRange(queryRecords, measurements, averageChunkSize);
+    return tmp;
   }
 
   public static float approximateAggregationQueryCostWithTimeRange(List<QueryRecord> queryRecords, List<String> measurements, long averageChunkSize) {
     // Get the point num according to the chunk size
     long chunkLength = MeasurePointEstimator.getInstance().getMeasurePointNum(averageChunkSize);
-
+    sc = 0;
+    rc = 0;
     float cost = 0.0f;
     for (QueryRecord queryRecord : queryRecords) {
       cost += approximateSingleAggregationQueryCostWithTimeRange(queryRecord, measurements, averageChunkSize);
@@ -68,10 +75,12 @@ public class CostModel {
     int intervalCnt = 0;
     int startIdx = -1;
     float initSeekCost = 0.0f;
+    List<Long> seekLength = new ArrayList<>();
     // Calculate the init seek cost
     for (int i = 0; i < measurements.size(); ++i) {
       if (measurements.get(i).equals(visitMeasurements.get(0))) {
         initSeekCost = SeekCostModel.getSeekCost(intervalCnt * averageChunkSize);
+        seekLength.add(intervalCnt * averageChunkSize);
         cost += ReadCostModel.getReadCost(averageChunkSize);
         startIdx = i;
         intervalCnt = 0;
@@ -85,15 +94,23 @@ public class CostModel {
       if (measurements.get(i).equals(visitMeasurements.get(k))) {
         k++;
         cost += SeekCostModel.getSeekCost(intervalCnt * averageChunkSize);
+        seekLength.add(intervalCnt * averageChunkSize);
         cost += ReadCostModel.getReadCost(averageChunkSize);
         intervalCnt = 0;
       } else {
         intervalCnt++;
       }
     }
+    seekLength.add((long)(measurements.size() - i) * averageChunkSize + (long)(startIdx) * averageChunkSize);
+    List<Float> seekCost = new ArrayList<>();
+    for (int j = 0; j < seekLength.size(); ++j) {
+      seekCost.add(SeekCostModel.getSeekCost(seekLength.get(j)));
+    }
     cost += SeekCostModel.getSeekCost((long)(measurements.size() - i) * averageChunkSize + (long)(startIdx) * averageChunkSize);
     cost *= visitCnt;
     cost += initSeekCost;
+    rc += ReadCostModel.getReadCost(averageChunkSize) * visitMeasurements.size() * visitCnt;
+    sc += cost - ReadCostModel.getReadCost(averageChunkSize) * visitMeasurements.size() * visitCnt;
     return cost;
   }
 
@@ -106,9 +123,11 @@ public class CostModel {
     for (int i = 0; i < queryMeasurements.size(); ++i) {
       measurementSet.add(queryMeasurements.get(i));
     }
-    for (int i = 0; i < measurements.size(); ++i) {
+    int k = 0;
+    for (int i = 0; i < measurements.size() && k < queryMeasurements.size(); ++i) {
       if (measurementSet.contains(measurements.get(i))) {
         sortedQueryMeasurements.add(measurements.get(i));
+        k ++;
       }
     }
     return sortedQueryMeasurements;

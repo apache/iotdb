@@ -1947,11 +1947,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   @Override
   public ConvergenceTestResult convergenceTest(String deviceID) throws TException {
 //    MultiReplicaOrderOptimizer optimizer = new MultiReplicaOrderOptimizer(deviceID, 1);
-    Pair<List<Double>, List<Long>> result = MeasurementOrderOptimizer.getInstance().optimizeChunkSize(deviceID, MeasurementOptimizationType.SA);
+//    Pair<List<Double>, List<Long>> result = MeasurementOrderOptimizer.getInstance().optimizeChunkSize(deviceID, MeasurementOptimizationType.SA);
 //    Pair<List<Double>, List<Long>> convergenceResultOfOurMethod = optimizer.optimizeBySAWithChunkSizeAdjustmentAndCostRecord();
-//    DivergentDesign divergentDesign = new DivergentDesign(deviceID);
+    DivergentDesign divergentDesign = new DivergentDesign(deviceID);
 //    Pair<List<Double>, List<Long>> convergenceResultOfOriDivergentDesign = divergentDesign.optimizeWithCostRecord();
-//    Pair<List<Double>, List<Long>> convergenceResultOfNewDivergentDesign = divergentDesign.optimizeWithChunkSizeAndCostRecord();
+    Pair<List<Double>, List<Long>> convergenceResultOfNewDivergentDesign = divergentDesign.optimizeWithChunkSizeAndCostRecord();
     ConvergenceTestResult testResult = new ConvergenceTestResult();
     testResult.method = new ArrayList<>();
 //    testResult.method.add("DIVG+TCA");
@@ -1959,15 +1959,15 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 //    testResult.method.add("New DivergentDesign");
 //    testResult.method.add("Out separate method(Permutation first)");
     testResult.lost = new ArrayList<>();
-    testResult.lost.add(result.left);
+//    testResult.lost.add(result.left);
 //    testResult.lost.add(convergenceResultOfOurMethod.left);
 //    testResult.lost.add(convergenceResultOfOriDivergentDesign.left);
-//    testResult.lost.add(convergenceResultOfNewDivergentDesign.left);
+    testResult.lost.add(convergenceResultOfNewDivergentDesign.left);
     testResult.time = new ArrayList<>();
-    testResult.time.add(result.right);
+//    testResult.time.add(result.right);
 //    testResult.time.add(convergenceResultOfOurMethod.right);
 //    testResult.time.add(convergenceResultOfOriDivergentDesign.right);
-//    testResult.time.add(convergenceResultOfNewDivergentDesign.right);
+    testResult.time.add(convergenceResultOfNewDivergentDesign.right);
     return testResult;
 //    List<QueryRecord> records = WorkloadManager.getInstance().getRecord(deviceID);
 //    List<QueryRecord> longRecords = new ArrayList<>();
