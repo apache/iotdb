@@ -16,37 +16,37 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.cluster.query.reader.mult;
 
-package org.apache.iotdb.rpc;
-
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 
 import java.io.IOException;
-import java.util.Map;
+import java.util.Set;
 
-public class RedirectException extends IOException {
+/** empty mult reader */
+public class MultEmptyReader extends AbstractMultPointReader {
 
-  private final EndPoint endPoint;
+  private Set<String> fullPaths;
 
-  private final Map<String, EndPoint> deviceEndPointMap;
-
-  public RedirectException(EndPoint endpoint) {
-    super("later request in same group will be redirected to " + endpoint.toString());
-    this.endPoint = endpoint;
-    this.deviceEndPointMap = null;
+  public MultEmptyReader(Set<String> fullPaths) {
+    this.fullPaths = fullPaths;
   }
 
-  public RedirectException(Map<String, EndPoint> deviceEndPointMap) {
-    super("later request in same group will be redirected to " + deviceEndPointMap);
-    this.endPoint = null;
-    this.deviceEndPointMap = deviceEndPointMap;
+  @Override
+  public boolean hasNextTimeValuePair(String fullPath) throws IOException {
+    return false;
   }
 
-  public EndPoint getEndPoint() {
-    return this.endPoint;
+  @Override
+  public TimeValuePair nextTimeValuePair(String fullPath) throws IOException {
+    return null;
   }
 
-  public Map<String, EndPoint> getDeviceEndPointMap() {
-    return deviceEndPointMap;
+  @Override
+  public Set<String> getAllPaths() {
+    return fullPaths;
   }
+
+  @Override
+  public void close() {}
 }

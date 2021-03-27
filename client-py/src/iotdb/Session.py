@@ -25,7 +25,7 @@ from .utils.IoTDBConstants import *
 from thrift.protocol import TBinaryProtocol, TCompactProtocol
 from thrift.transport import TSocket, TTransport
 
-from .thrift.rpc.TSIService import Client, TSCreateTimeseriesReq, TSInsertRecordReq, TSInsertTabletReq, \
+from .thrift.rpc.TSIService import Client, TSCreateTimeseriesReq, TSInsertRecordReq, TSInsertStringRecordReq, TSInsertTabletReq, \
     TSExecuteStatementReq, TSOpenSessionReq, TSCreateMultiTimeseriesReq, TSCloseSessionReq, TSInsertTabletsReq, TSInsertRecordsReq, \
     TSInsertRecordsOfOneDeviceReq
 from .thrift.rpc.ttypes import TSDeleteDataReq, TSProtocolVersion, TSSetTimeZoneReq
@@ -226,8 +226,8 @@ class Session(object):
     def insert_str_record(self, device_id, timestamp, measurements, string_values):
         """ special case for inserting one row of String (TEXT) value """
         data_types = [TSDataType.TEXT.value for _ in string_values]
-        request = self.gen_insert_record_req(device_id, timestamp, measurements, data_types, string_values)
-        status = self.__client.insertRecord(request)
+        request = self.gen_insert_str_record_req(device_id, timestamp, measurements, data_types, string_values)
+        status = self.__client.insertStringRecord(request)
         print("insert one record to device {} message: {}".format(device_id, status.message))
 
         return Session.verify_success(status)
@@ -315,6 +315,13 @@ class Session(object):
             return
         values_in_bytes = Session.value_to_bytes(data_types, values)
         return TSInsertRecordReq(self.__session_id, device_id, measurements, values_in_bytes, timestamp)
+
+    def gen_insert_str_record_req(self, device_id, timestamp, measurements, data_types, values):
+        if (len(values) != len(data_types)) or (len(values) != len(measurements)):
+            print("length of data types does not equal to length of values!")
+            # could raise an error here.
+            return
+        return TSInsertStringRecordReq(self.__session_id, device_id, measurements, values, timestamp)
 
     def gen_insert_records_req(self, device_ids, times, measurements_lst, types_lst, values_lst):
         if (len(device_ids) != len(measurements_lst)) or (len(times) != len(types_lst)) or \
