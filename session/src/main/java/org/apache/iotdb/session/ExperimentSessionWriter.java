@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Random;
 
 public class ExperimentSessionWriter {
-  private static final Session session = new Session("127.0.0.1", 6667, "root", "root");
+  private static final Session session = new Session("192.168.130.38", 6667, "root", "root");
   //private static final Session session = new Session("127.0.0.1", 6667, "root", "root");
   private static final int TIMESERIES_NUM = 4000;
   private static int DATA_NUM = 10000;
