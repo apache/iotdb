@@ -197,7 +197,7 @@ public class DivergentDesign {
     do {
       curCost = nextCost;
       costList.add(curCost);
-      timeList.add(System.currentTimeMillis() - startTime);
+      timeList.add((System.currentTimeMillis() - startTime) * replicaNum);
       curWorkloadPartition = nextWorkloadPartition;
       curReplica = nextReplica;
       nextWorkloadPartition = new Workload[replicaNum];
@@ -247,6 +247,8 @@ public class DivergentDesign {
     Replica[] nextReplica = new Replica[replicaNum];
     Future<Replica> databaseAdvisorFuture[] = new Future[replicaNum];
     long startTime = System.currentTimeMillis();
+    List<Double> costList = new ArrayList<>();
+    List<Long> timeList = new ArrayList<>();
     for(int k = 0; k < replicaNum; ++k) {
       // nextReplica[k] = databaseAdvisor(nextWorkloadPartition[k]);
       databaseAdvisorFuture[k] = threadPool.submit(new DatabaseAdvisorTask(nextWorkloadPartition[k], deviceID));
@@ -261,13 +263,12 @@ public class DivergentDesign {
     }
     double curCost = 0.0f;
     double nextCost = totalCost(nextWorkloadPartition, nextReplica);
-    List<Double> costList = new ArrayList<>();
-    List<Long> timeList = new ArrayList<>();
+
     int i = 0;
     do {
       curCost = nextCost;
       costList.add(curCost);
-      timeList.add(System.currentTimeMillis() - startTime);
+      timeList.add((System.currentTimeMillis() - startTime) * replicaNum);
       curWorkloadPartition = nextWorkloadPartition;
       curReplica = nextReplica;
       nextWorkloadPartition = new Workload[replicaNum];

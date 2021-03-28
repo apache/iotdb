@@ -22,7 +22,7 @@ public class MultiReplicaOrderOptimizer {
 	private List<String> measurementOrder;
 	public List<QueryRecord> records;
 	private List<Long> chunkSize;
-	private final float SA_INIT_TEMPERATURE = 100.0f;
+	private final float SA_INIT_TEMPERATURE = 20.0f;
 	private final float COOLING_RATE = 0.999f;
 	private List<Double> costList = new LinkedList<>();
 	private static long CHUNK_SIZE_STEP_NUM = 70000l;
@@ -31,7 +31,7 @@ public class MultiReplicaOrderOptimizer {
 	private final int GA_GENERATION_NUM = 50;
 	private final float GA_CROSS_RATE = 0.15f;
 	private final float GA_MUTATE_RATE = 0.10f;
-	private final float BALANCE_FACTOR = 0.05f;
+	private final float BALANCE_FACTOR = 1.0f;
 	private int GALoop = 0;
 
 	public MultiReplicaOrderOptimizer(String deviceID) {
@@ -200,12 +200,13 @@ public class MultiReplicaOrderOptimizer {
 		int k = 0;
 		CostRecorder costRecorder = new CostRecorder();
 		long startTime = System.currentTimeMillis();
+		costRecorder.addCost(curCost, 0l);
 		boolean SCOA = false;
-		for (; k < maxIter && System.currentTimeMillis() - optimizeStartTime < 20l * 60l * 1000l; ++k) {
+		for (; k < maxIter && System.currentTimeMillis() - optimizeStartTime < 25l * 60l * 1000l; ++k) {
 			temperature = temperature * COOLING_RATE;
 			int selectedReplica = r.nextInt(replicaNum);
 			int operation = r.nextInt(2);
-			if (!SCOA && System.currentTimeMillis() - optimizeStartTime > 2l * 60l * 1000l) {
+			if (!SCOA && System.currentTimeMillis() - optimizeStartTime > 2l*60l*1000l) {
 				SCOA = true;
 			}
 			if (operation == 0 || SCOA) {
@@ -252,7 +253,7 @@ public class MultiReplicaOrderOptimizer {
 				LOGGER.info("Break by cost recorder");
 				break;
 			}
-			if (k % 10 == 0) {
+			if (k % 200 == 0) {
 				LOGGER.info(String.format("Epoch %d: curCost %.3f", k, curCost));
 			}
 		}
