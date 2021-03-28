@@ -396,7 +396,7 @@ public class MeasurementOrderOptimizer {
 		Random r = new Random();
 		long startTime = System.currentTimeMillis();
 		// Run the main loop of Simulated Annealing
-		for (int k = 0; System.currentTimeMillis() - startTime < 15l * 60l * 1000l; ++k) {
+		for (int k = 0; System.currentTimeMillis() - startTime < 20l * 60l * 1000l; ++k) {
 			temperature = updateTemperature(temperature);
 
 			// Generate a neighbor state
@@ -562,7 +562,7 @@ public class MeasurementOrderOptimizer {
 		Random r = new Random();
 		long startTime = System.currentTimeMillis();
 		// Run the main loop of Simulated Annealing
-		for (int k = 0; k < SA_MAX_ITERATION && System.currentTimeMillis() - startTime < 10l * 30l * 1000l; ++k) {
+		for (int k = 0; k < SA_MAX_ITERATION && System.currentTimeMillis() - startTime < 7l * 30l * 1000l; ++k) {
 			temperature = updateTemperature(temperature);
 
 			// Generate a neighbor state
@@ -649,7 +649,7 @@ public class MeasurementOrderOptimizer {
 		long startTime = System.currentTimeMillis();
 
 		// Run the main loop of Simulated Annealing
-		for (int k = 0; k < SA_MAX_ITERATION && System.currentTimeMillis() - startTime < 10l * 30l * 1000l; ++k) {
+		for (int k = 0; k < SA_MAX_ITERATION && System.currentTimeMillis() - startTime < 2l * 30l * 1000l; ++k) {
 			temperature = updateTemperature(temperature);
 
 			// Generate a neighbor state
