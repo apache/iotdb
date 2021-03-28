@@ -73,4 +73,4 @@ Shell > uzip iotdb-<version>.zip
 
 ## 通过Docker安装 (Dockerfile)
 
-你可以通过[这份指南](../Server/Docker%20Image.md)编译并运行一个IoTDB docker image。
+你可以通过[Docker Image](../Server/Docker%20Image.md)编译并运行一个IoTDB docker image。

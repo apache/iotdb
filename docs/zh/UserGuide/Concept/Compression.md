@@ -30,4 +30,4 @@ IoTDB允许在创建一个时间序列的时候指定该列的压缩方式。现
 * LZ4压缩
 * GZIP压缩
 
-压缩方式的指定语法详见本文[5.4节](../Operation%20Manual/SQL%20Reference.md)。
+压缩方式的指定语法详见本文[SQL 参考文档](../Operation%20Manual/SQL%20Reference.md)。
