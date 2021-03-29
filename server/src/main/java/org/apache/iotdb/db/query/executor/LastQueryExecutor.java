@@ -34,7 +34,7 @@ import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
-import org.apache.iotdb.db.query.executor.fill.LastPointReader;
+import org.apache.iotdb.db.query.reader.series.LastPointReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderFactory;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;

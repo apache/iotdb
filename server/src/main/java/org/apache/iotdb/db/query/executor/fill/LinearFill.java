@@ -30,6 +30,7 @@ import org.apache.iotdb.db.query.aggregation.impl.MinTimeAggrResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.executor.AggregationExecutor;
+import org.apache.iotdb.db.query.reader.series.LastPointReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderFactory;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
