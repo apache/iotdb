@@ -210,7 +210,7 @@ PageHeader 结构
 
 为了更清楚的说明元数据索引树的结构，这里我们使用四个例子来加以详细说明。
 
-元数据索引树的最大度（即每个节点的最大子节点个数）是可以由用户进行配置的，配置项为`max_degree_of_index_node`，其默认值为1024。在以下例子中，为了简化，我们假定 `max_degree_of_index_node = 10`。
+元数据索引树的最大度（即每个节点的最大子节点个数）是可以由用户进行配置的，配置项为`max_degree_of_index_node`，其默认值为256。在以下例子中，为了简化，我们假定 `max_degree_of_index_node = 10`。
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/81935219-de3fd080-9622-11ea-9aa1-a59bef1c0001.png">
 
