@@ -84,7 +84,6 @@ statement
     | KILL QUERY INT? #killQuery
     | TRACING ON #tracingOn
     | TRACING OFF #tracingOff
-    | TRACING CLEAR ALL #tracingClearAll
     | COUNT TIMESERIES prefixPath? (GROUP BY LEVEL OPERATOR_EQ INT)? #countTimeseries
     | COUNT DEVICES prefixPath? #countDevices
     | COUNT STORAGE GROUP prefixPath? #countStorageGroup

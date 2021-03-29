@@ -28,16 +28,10 @@ import java.util.List;
 public class TracingPlan extends PhysicalPlan {
 
   private boolean isTracingOn;
-  private int tracingType;
 
   public TracingPlan(boolean isTracingOn) {
     super(false, OperatorType.TRACING);
     this.isTracingOn = isTracingOn;
-  }
-
-  public TracingPlan(int tracingType) {
-    super(false, OperatorType.TRACING);
-    this.tracingType = tracingType;
   }
 
   @Override
@@ -47,9 +41,5 @@ public class TracingPlan extends PhysicalPlan {
 
   public boolean isTracingOn() {
     return isTracingOn;
-  }
-
-  public int tracingType() {
-    return tracingType;
   }
 }
