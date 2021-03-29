@@ -79,7 +79,6 @@ public class SessionExample {
     deleteData();
     deleteTimeseries();
     setTimeout();
-    session.close();
 
     sessionEnableRedirect = new Session(LOCAL_HOST, 6667, "root", "root");
     sessionEnableRedirect.setEnableQueryRedirection(true);
@@ -91,6 +90,7 @@ public class SessionExample {
     insertRecord4Redirect();
     query4Redirect();
     sessionEnableRedirect.close();
+    session.close();
   }
 
   private static void createTimeseries()
