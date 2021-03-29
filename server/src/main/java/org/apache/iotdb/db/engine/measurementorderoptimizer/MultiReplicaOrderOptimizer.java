@@ -239,7 +239,7 @@ public class MultiReplicaOrderOptimizer {
 //				if (k % 200 == 0) LOGGER.info(String.format("SCOA Epoch %d: curCost %.3f", k, curCost));
 //				continue;
 //			}
-			if (operation == 0 || operation == 1) {
+			if (operation == 3) {
 				// Swap chunk order
 				int swapLeft = r.nextInt(measurementOrder.size());
 				int swapRight = r.nextInt(measurementOrder.size());
