@@ -198,8 +198,12 @@ public class IoTDBEngineTimeGeneratorIT {
 
     SingleSeriesExpression singleSeriesExpression =
         new SingleSeriesExpression(pd0s0, FilterFactory.and(valueGtEq, timeGt));
+    RawDataQueryPlan queryPlan = new RawDataQueryPlan();
+    List<PartialPath> paths = new ArrayList<>();
+    paths.add(pd0s0);
+    queryPlan.setDeduplicatedPaths(paths);
     ServerTimeGenerator timeGenerator =
-        new ServerTimeGenerator(singleSeriesExpression, TEST_QUERY_CONTEXT, new RawDataQueryPlan());
+        new ServerTimeGenerator(singleSeriesExpression, TEST_QUERY_CONTEXT, queryPlan);
 
     int cnt = 0;
     while (timeGenerator.hasNext()) {
