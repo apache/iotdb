@@ -634,6 +634,9 @@ public class CMManager extends MManager {
     PartitionGroup partitionGroup =
         metaGroupMember.getPartitionTable().route(storageGroupName.getFullPath(), 0);
     List<String> unregisteredSeriesList = getUnregisteredSeriesList(seriesList, partitionGroup);
+    if (unregisteredSeriesList.isEmpty()) {
+      return true;
+    }
     logger.debug("Unregisterd series of {} are {}", seriesList, unregisteredSeriesList);
 
     return createTimeseries(unregisteredSeriesList, seriesList, insertPlan);
