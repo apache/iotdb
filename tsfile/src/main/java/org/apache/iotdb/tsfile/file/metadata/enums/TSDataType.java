@@ -76,6 +76,8 @@ public enum TSDataType {
         return TSDataType.DOUBLE;
       case 5:
         return TSDataType.TEXT;
+      case 6:
+        return TSDataType.VECTOR;
       default:
         throw new IllegalArgumentException("Invalid input: " + type);
     }
