@@ -658,6 +658,15 @@ public class IoTDBDescriptor {
         conf.setConcurrentWindowEvaluationThread(Runtime.getRuntime().availableProcessors());
       }
 
+      conf.setMaxPendingWindowEvaluationTasks(
+          Integer.parseInt(
+              properties.getProperty(
+                  "max_pending_window_evaluation_tasks",
+                  Integer.toString(conf.getMaxPendingWindowEvaluationTasks()))));
+      if (conf.getMaxPendingWindowEvaluationTasks() <= 0) {
+        conf.setMaxPendingWindowEvaluationTasks(64);
+      }
+
       // mqtt
       if (properties.getProperty(IoTDBConstant.MQTT_HOST_NAME) != null) {
         conf.setMqttHost(properties.getProperty(IoTDBConstant.MQTT_HOST_NAME));

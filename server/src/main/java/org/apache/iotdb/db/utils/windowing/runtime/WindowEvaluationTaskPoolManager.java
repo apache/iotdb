@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.utils.windowing.runtime;
 
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.db.concurrent.IoTThreadFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.flush.pool.AbstractPoolManager;
@@ -27,16 +28,37 @@ import org.apache.iotdb.db.engine.flush.pool.AbstractPoolManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+
 public class WindowEvaluationTaskPoolManager extends AbstractPoolManager {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(WindowEvaluationTaskPoolManager.class);
 
   private WindowEvaluationTaskPoolManager() {
+    final int nThreads =
+        IoTDBDescriptor.getInstance().getConfig().getConcurrentWindowEvaluationThread();
+    LOGGER.info("WindowEvaluationTaskPoolManager is initializing, thread number: {}", nThreads);
     pool =
-        IoTDBThreadPoolFactory.newFixedThreadPool(
-            IoTDBDescriptor.getInstance().getConfig().getConcurrentWindowEvaluationThread(),
-            ThreadName.WINDOW_EVALUATION_SERVICE.getName());
+        new ThreadPoolExecutor(
+            nThreads,
+            nThreads,
+            0L,
+            TimeUnit.MILLISECONDS,
+            new LinkedBlockingQueue<>(
+                IoTDBDescriptor.getInstance().getConfig().getMaxPendingWindowEvaluationTasks()),
+            new IoTThreadFactory(ThreadName.WINDOW_EVALUATION_SERVICE.getName()));
+  }
+
+  public void submit(WindowEvaluationTask task) {
+    try {
+      super.submit(task);
+    } catch (RejectedExecutionException e) {
+      task.onRejection();
+    }
   }
 
   @Override

@@ -37,4 +37,8 @@ public class WindowEvaluationTask extends WrappedRunnable {
   public void runMayThrow() {
     evaluator.evaluate(window);
   }
+
+  public void onRejection() {
+    evaluator.onRejection(window);
+  }
 }

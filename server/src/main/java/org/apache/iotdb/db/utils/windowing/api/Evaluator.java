@@ -23,4 +23,6 @@ package org.apache.iotdb.db.utils.windowing.api;
 public interface Evaluator {
 
   void evaluate(Window window);
+
+  default void onRejection(Window window) {}
 }
