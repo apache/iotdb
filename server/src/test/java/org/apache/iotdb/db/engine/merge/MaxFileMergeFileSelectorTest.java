@@ -35,6 +35,7 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -115,6 +116,7 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
                     + 0
                     + ".tsfile"));
     TsFileResource largeUnseqTsFileResource = new TsFileResource(file);
+    unseqResources.add(largeUnseqTsFileResource);
     largeUnseqTsFileResource.setClosed(true);
     largeUnseqTsFileResource.setMinPlanIndex(10);
     largeUnseqTsFileResource.setMaxPlanIndex(10);
@@ -135,10 +137,10 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
       newTimeIndex.updateStartTime(device, timeIndex.getStartTime(device));
     }
     secondTsFileResource.setTimeIndex(newTimeIndex);
-    unseqResources.clear();
-    unseqResources.add(largeUnseqTsFileResource);
 
-    MergeResource resource = new MergeResource(seqResources, unseqResources);
+    List<TsFileResource> newUnseqResources = new ArrayList<>();
+    newUnseqResources.add(largeUnseqTsFileResource);
+    MergeResource resource = new MergeResource(seqResources, newUnseqResources);
     IMergeFileSelector mergeFileSelector = new MaxFileMergeFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     assertEquals(0, result.length);
@@ -166,6 +168,7 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
                     + 0
                     + ".tsfile"));
     TsFileResource largeUnseqTsFileResource = new TsFileResource(file);
+    unseqResources.add(largeUnseqTsFileResource);
     largeUnseqTsFileResource.setClosed(true);
     largeUnseqTsFileResource.setMinPlanIndex(10);
     largeUnseqTsFileResource.setMaxPlanIndex(10);
@@ -186,11 +189,12 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
       newTimeIndex.updateStartTime(device, timeIndex.getStartTime(device));
     }
     secondTsFileResource.setTimeIndex(newTimeIndex);
-    unseqResources.clear();
-    unseqResources.add(largeUnseqTsFileResource);
+    List<TsFileResource> newUnseqResources = new ArrayList<>();
+    newUnseqResources.add(largeUnseqTsFileResource);
 
     long timeLowerBound = System.currentTimeMillis() - Long.MAX_VALUE;
-    MergeResource mergeResource = new MergeResource(seqResources, unseqResources, timeLowerBound);
+    MergeResource mergeResource =
+        new MergeResource(seqResources, newUnseqResources, timeLowerBound);
     assertEquals(5, mergeResource.getSeqFiles().size());
     assertEquals(1, mergeResource.getUnseqFiles().size());
     mergeResource.clear();

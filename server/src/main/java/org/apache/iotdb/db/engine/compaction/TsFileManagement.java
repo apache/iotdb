@@ -392,18 +392,18 @@ public abstract class TsFileManagement {
           mergedFile.delete();
         }
         updateMergeModification(seqFile);
-        if (i == seqFiles.size() - 1) {
-          // FIXME if there is an exception, the the modification file will be not closed.
-          removeMergingModification();
-          isUnseqMerging = false;
-          Files.delete(mergeLog.toPath());
-        }
-      } catch (IOException e) {
-        logger.error(
-            "{} a merge task ends but cannot delete log {}", storageGroupName, mergeLog.toPath());
       } finally {
         doubleWriteUnlock(seqFile);
       }
+    }
+
+    try {
+      removeMergingModification();
+      isUnseqMerging = false;
+      Files.delete(mergeLog.toPath());
+    } catch (IOException e) {
+      logger.error(
+          "{} a merge task ends but cannot delete log {}", storageGroupName, mergeLog.toPath());
     }
 
     logger.info("{} a merge task ends", storageGroupName);
