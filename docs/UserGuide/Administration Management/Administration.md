@@ -19,7 +19,7 @@
 
 -->
 
-# Account Management
+# Administration Management
 
 IoTDB provides users with account privilege management operations, so as to ensure data security.
 
