@@ -18,22 +18,6 @@
  */
 package org.apache.iotdb.db.qp.physical;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.trigger.api.TriggerEvent;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -82,10 +66,28 @@ import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
+
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class PhysicalPlanTest {
 
@@ -160,17 +162,19 @@ public class PhysicalPlanTest {
   }
 
   // TODO @Steve SU
-//  @Test
-//  public void testMetadata4() throws QueryProcessException {
-//    String metadata =
-//        "create aligned timeseries root.vehicle.d1.(s1 INT32, s2 FLOAT) with encoding=(RLE, RLE) compression=SNAPPY";
-//    Planner processor = new Planner();
-//    CreateAlignedTimeSeriesPlan plan =
-//        (CreateAlignedTimeSeriesPlan) processor.parseSQLToPhysicalPlan(metadata);
-//    assertEquals(
-//        "devicePath: root.vehicle.d1, measurements: [s1, s2], dataTypes: [INT32, FLOAT], encoding: [RLE, RLE], compression: SNAPPY",
-//        plan.toString());
-//  }
+  //  @Test
+  //  public void testMetadata4() throws QueryProcessException {
+  //    String metadata =
+  //        "create aligned timeseries root.vehicle.d1.(s1 INT32, s2 FLOAT) with encoding=(RLE, RLE)
+  // compression=SNAPPY";
+  //    Planner processor = new Planner();
+  //    CreateAlignedTimeSeriesPlan plan =
+  //        (CreateAlignedTimeSeriesPlan) processor.parseSQLToPhysicalPlan(metadata);
+  //    assertEquals(
+  //        "devicePath: root.vehicle.d1, measurements: [s1, s2], dataTypes: [INT32, FLOAT],
+  // encoding: [RLE, RLE], compression: SNAPPY",
+  //        plan.toString());
+  //  }
 
   @Test
   public void testAuthor() throws QueryProcessException {
