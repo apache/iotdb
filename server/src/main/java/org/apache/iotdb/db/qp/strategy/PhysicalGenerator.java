@@ -230,13 +230,18 @@ public class PhysicalGenerator {
         paths = insert.getSelectedPaths();
         int measurementsNum = 0;
         for (String measurement : insert.getMeasurementList()) {
-          measurementsNum += measurement.replace("(", "").replace(")", "").split(",").length;
+          if (measurement.startsWith("(") && measurement.endsWith(")")) {
+            measurementsNum += measurement.replace("(", "").replace(")", "").split(",").length;
+          }
+          else {
+            measurementsNum++;
+          }
         }
         if (measurementsNum != insert.getValueList().length) {
           throw new SQLParserException(
               String.format(
                   "the measurementList's size %d is not consistent with the valueList's size %d",
-                  insert.getMeasurementList().length, insert.getValueList().length));
+                  measurementsNum, insert.getValueList().length));
         }
         return new InsertRowPlan(
             paths.get(0), insert.getTime(), insert.getMeasurementList(), insert.getValueList());
