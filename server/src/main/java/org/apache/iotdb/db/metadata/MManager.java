@@ -1135,11 +1135,14 @@ public class MManager {
     IMeasurementSchema schema = ((MeasurementMNode) leaf).getSchema();
     if (schema != null && schema.getType() == TSDataType.VECTOR) {
 
-      List<PartialPath> measurements = ((VectorPartialPath) fullPath).getSubSensorsPathList();
+      List<PartialPath> measurements = new ArrayList<>();
+      List<String> measurementsInLeaf = schema.getValueMeasurementIdList();
+      for (String measurement : measurementsInLeaf) {
+        measurements.add(new PartialPath(fullPath.getDevice(), measurement));
+      }
       TSDataType[] types = new TSDataType[measurements.size()];
       TSEncoding[] encodings = new TSEncoding[measurements.size()];
 
-      List<String> measurementsInLeaf = schema.getValueMeasurementIdList();
       for (int i = 0; i < measurements.size(); i++) {
         int index = measurementsInLeaf.indexOf(measurements.get(i).getMeasurement());
         types[i] = schema.getValueTSDataTypeList().get(index);
@@ -1152,7 +1155,7 @@ public class MManager {
       return new VectorMeasurementSchema(
           schema.getMeasurementId(), array, types, encodings, schema.getCompressor());
     }
-    return leaf != null ? schema : null;
+    return schema;
   }
 
   /**
@@ -2125,12 +2128,8 @@ public class MManager {
         boolean mismatch = false;
         TSDataType insertDataType = null;
         if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
-          int measurementSize = measurementList[i].split(",").length;
-          if (measurementSize == 1) {
-            insertDataType = measurementMNode.getSchema().getType();
-            mismatch = measurementMNode.getSchema().getType() != insertDataType;
-          } else {
-            for (int j = 0; j < measurementSize; j++) {
+          if (measurementList[i].contains("(") && measurementList[i].contains(",")) {
+            for (int j = 0; j < measurementList[i].split(",").length; j++) {
               TSDataType dataTypeInNode =
                   measurementMNode.getSchema().getValueTSDataTypeList().get(j);
               insertDataType = plan.getDataTypes()[loc];
@@ -2141,6 +2140,9 @@ public class MManager {
               }
               loc++;
             }
+          } else {
+            insertDataType = measurementMNode.getSchema().getType();
+            mismatch = measurementMNode.getSchema().getType() != insertDataType;
           }
         }
 

@@ -281,7 +281,13 @@ public class MNode implements Serializable {
     if (children == null) {
       return Collections.emptyList();
     }
-    return new ArrayList<>(children.values());
+    List<MNode> distinctList = new ArrayList<>();
+    for (MNode child : children.values()) {
+      if (!distinctList.contains(child)) {
+        distinctList.add(child);
+      }
+    }
+    return distinctList;
   }
 
   public Map<String, MNode> getAliasChildren() {
