@@ -121,10 +121,9 @@ public class InsertRowPlanTest {
 
     Assert.assertEquals("[$#$0, $#$1, s6]", Arrays.toString(vectorRowPlan.getMeasurementMNodes()));
 
-    QueryPlan queryPlan =
-        (QueryPlan) processor.parseSQLToPhysicalPlan("select count(*) from root.isp.d1");
+    QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(6, dataSet.getPaths().size());
+    Assert.assertEquals(3, dataSet.getPaths().size());
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
       Assert.assertEquals(6, record.getFields().size());

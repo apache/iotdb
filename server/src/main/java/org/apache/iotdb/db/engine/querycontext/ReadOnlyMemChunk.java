@@ -38,7 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -155,24 +155,73 @@ public class ReadOnlyMemChunk {
 
     this.chunkPointReader =
         tvList.getIterator(floatPrecision, encoding, chunkDataSize, deletionList);
-    initVectorChunkMeta();
+    initVectorChunkMeta(schema);
   }
 
-  private void initVectorChunkMeta() throws IOException, QueryProcessException {
+  private void initVectorChunkMeta(IMeasurementSchema schema)
+      throws IOException, QueryProcessException {
     Statistics timeStatistics = Statistics.getStatsByType(TSDataType.VECTOR);
     IChunkMetadata timeChunkMetadata =
         new ChunkMetadata(measurementUid, TSDataType.VECTOR, 0, timeStatistics);
+    List<IChunkMetadata> valueChunkMetadataList = new ArrayList<>();
+    Statistics[] valueStatistics = new Statistics[schema.getValueTSDataTypeList().size()];
+    for (int i = 0; i < schema.getValueTSDataTypeList().size(); i++) {
+      valueStatistics[i] = Statistics.getStatsByType(schema.getValueTSDataTypeList().get(i));
+      IChunkMetadata valueChunkMetadata =
+          new ChunkMetadata(
+              schema.getValueMeasurementIdList().get(i),
+              schema.getValueTSDataTypeList().get(i),
+              0,
+              valueStatistics[i]);
+      valueChunkMetadataList.add(valueChunkMetadata);
+    }
     if (!isEmpty()) {
       IPointReader iterator =
           chunkData.getIterator(floatPrecision, encoding, chunkDataSize, deletionList);
       while (iterator.hasNextTimeValuePair()) {
         TimeValuePair timeValuePair = iterator.nextTimeValuePair();
         timeStatistics.update(timeValuePair.getTimestamp());
+        for (int i = 0; i < schema.getValueTSDataTypeList().size(); i++) {
+          switch (schema.getValueTSDataTypeList().get(i)) {
+            case BOOLEAN:
+              valueStatistics[i].update(
+                  timeValuePair.getTimestamp(),
+                  timeValuePair.getValue().getVector()[i].getBoolean());
+              break;
+            case TEXT:
+              valueStatistics[i].update(
+                  timeValuePair.getTimestamp(),
+                  timeValuePair.getValue().getVector()[i].getBinary());
+              break;
+            case FLOAT:
+              valueStatistics[i].update(
+                  timeValuePair.getTimestamp(), timeValuePair.getValue().getVector()[i].getFloat());
+              break;
+            case INT32:
+              valueStatistics[i].update(
+                  timeValuePair.getTimestamp(), timeValuePair.getValue().getVector()[i].getInt());
+              break;
+            case INT64:
+              valueStatistics[i].update(
+                  timeValuePair.getTimestamp(), timeValuePair.getValue().getVector()[i].getLong());
+              break;
+            case DOUBLE:
+              valueStatistics[i].update(
+                  timeValuePair.getTimestamp(),
+                  timeValuePair.getValue().getVector()[i].getDouble());
+              break;
+            default:
+              throw new QueryProcessException("Unsupported data type:" + dataType);
+          }
+        }
       }
     }
     timeStatistics.setEmpty(isEmpty());
+    for (Statistics valueStatistic : valueStatistics) {
+      valueStatistic.setEmpty(isEmpty());
+    }
     IChunkMetadata vectorChunkMetadata =
-        new VectorChunkMetadata(timeChunkMetadata, Collections.singletonList(timeChunkMetadata));
+        new VectorChunkMetadata(timeChunkMetadata, valueChunkMetadataList);
     vectorChunkMetadata.setChunkLoader(new MemChunkLoader(this));
     vectorChunkMetadata.setVersion(Long.MAX_VALUE);
     cachedMetaData = vectorChunkMetadata;

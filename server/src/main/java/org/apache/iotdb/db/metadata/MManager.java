@@ -1134,15 +1134,10 @@ public class MManager {
     MNode leaf = mtree.getNodeByPath(fullPath);
     IMeasurementSchema schema = ((MeasurementMNode) leaf).getSchema();
     if (schema != null && schema.getType() == TSDataType.VECTOR) {
-
-      List<PartialPath> measurements = new ArrayList<>();
       List<String> measurementsInLeaf = schema.getValueMeasurementIdList();
-      for (String measurement : measurementsInLeaf) {
-        measurements.add(new PartialPath(fullPath.getDevice(), measurement));
-      }
+      List<PartialPath> measurements = ((VectorPartialPath) fullPath).getSubSensorsPathList();
       TSDataType[] types = new TSDataType[measurements.size()];
       TSEncoding[] encodings = new TSEncoding[measurements.size()];
-
       for (int i = 0; i < measurements.size(); i++) {
         int index = measurementsInLeaf.indexOf(measurements.get(i).getMeasurement());
         types[i] = schema.getValueTSDataTypeList().get(index);
