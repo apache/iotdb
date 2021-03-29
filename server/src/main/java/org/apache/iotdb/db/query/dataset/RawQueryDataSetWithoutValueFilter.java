@@ -521,6 +521,8 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
               i++) {
             record.addField(null);
           }
+        } else {
+          record.addField(null);
         }
       } else {
         TSDataType dataType = dataTypes.get(seriesIndex);
