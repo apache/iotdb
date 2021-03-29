@@ -187,7 +187,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     return result;
   }
 
-  private List<TsFileResource> getTsFileListByTimePartition(boolean sequence, long timePartition) {
+  public List<TsFileResource> getTsFileListByTimePartition(boolean sequence, long timePartition) {
     List<TsFileResource> result = new ArrayList<>();
     if (sequence) {
       synchronized (sequenceTsFileResources) {

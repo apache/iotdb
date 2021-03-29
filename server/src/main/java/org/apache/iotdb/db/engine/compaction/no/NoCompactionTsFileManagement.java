@@ -28,41 +28,53 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class NoCompactionTsFileManagement extends TsFileManagement {
 
   private static final Logger logger = LoggerFactory.getLogger(NoCompactionTsFileManagement.class);
   // includes sealed and unsealed sequence TsFiles
-  private TreeSet<TsFileResource> sequenceFileTreeSet =
-      new TreeSet<>(
-          (o1, o2) -> {
-            try {
-              int rangeCompare =
-                  Long.compare(
-                      Long.parseLong(o1.getTsFile().getParentFile().getName()),
-                      Long.parseLong(o2.getTsFile().getParentFile().getName()));
-              return rangeCompare == 0
-                  ? compareFileName(o1.getTsFile(), o2.getTsFile())
-                  : rangeCompare;
-            } catch (NumberFormatException e) {
-              return compareFileName(o1.getTsFile(), o2.getTsFile());
-            }
-          });
+  private final Map<Long, TreeSet<TsFileResource>> sequenceFileTreeSetMap =
+      new ConcurrentSkipListMap<>();
 
   // includes sealed and unsealed unSequence TsFiles
-  private List<TsFileResource> unSequenceFileList = new ArrayList<>();
+  private final Map<Long, List<TsFileResource>> unSequenceFileListMap =
+      new ConcurrentSkipListMap<>();
 
   public NoCompactionTsFileManagement(String storageGroupName, String storageGroupDir) {
     super(storageGroupName, storageGroupDir);
   }
 
+  @Deprecated
   @Override
   public List<TsFileResource> getTsFileList(boolean sequence) {
+    List<TsFileResource> result = new ArrayList<>();
     if (sequence) {
-      return new ArrayList<>(sequenceFileTreeSet);
+      synchronized (sequenceFileTreeSetMap) {
+        for (long timePartition : sequenceFileTreeSetMap.keySet()) {
+          result.addAll(getTsFileListByTimePartition(true, timePartition));
+        }
+      }
     } else {
-      return new ArrayList<>(unSequenceFileList);
+      synchronized (unSequenceFileListMap) {
+        for (long timePartition : unSequenceFileListMap.keySet()) {
+          result.addAll(getTsFileListByTimePartition(false, timePartition));
+        }
+      }
+    }
+    return result;
+  }
+
+  @Override
+  public List<TsFileResource> getTsFileListByTimePartition(boolean sequence, long timePartition) {
+    if (sequence) {
+      return new ArrayList<>(sequenceFileTreeSetMap.get(timePartition));
+    } else {
+      return new ArrayList<>(unSequenceFileListMap.get(timePartition));
     }
   }
 
@@ -74,27 +86,48 @@ public class NoCompactionTsFileManagement extends TsFileManagement {
   @Override
   public void remove(TsFileResource tsFileResource, boolean sequence) {
     if (sequence) {
-      sequenceFileTreeSet.remove(tsFileResource);
+      synchronized (sequenceFileTreeSetMap) {
+        TreeSet<TsFileResource> sequenceFileTreeSet =
+            sequenceFileTreeSetMap.get(tsFileResource.getTimePartition());
+        sequenceFileTreeSet.remove(tsFileResource);
+      }
     } else {
-      unSequenceFileList.remove(tsFileResource);
+      synchronized (unSequenceFileListMap) {
+        List<TsFileResource> unSequenceFileList =
+            unSequenceFileListMap.get(tsFileResource.getTimePartition());
+        unSequenceFileList.remove(tsFileResource);
+      }
     }
   }
 
   @Override
   public void removeAll(List<TsFileResource> tsFileResourceList, boolean sequence) {
     if (sequence) {
-      sequenceFileTreeSet.removeAll(tsFileResourceList);
+      for (Set<TsFileResource> sequenceFileTreeSet : sequenceFileTreeSetMap.values()) {
+        sequenceFileTreeSet.removeAll(tsFileResourceList);
+      }
     } else {
-      unSequenceFileList.removeAll(tsFileResourceList);
+      for (List<TsFileResource> unSequenceFileList : unSequenceFileListMap.values()) {
+        unSequenceFileList.removeAll(tsFileResourceList);
+      }
     }
   }
 
   @Override
   public void add(TsFileResource tsFileResource, boolean sequence) {
+    long timePartitionId = tsFileResource.getTimePartition();
     if (sequence) {
-      sequenceFileTreeSet.add(tsFileResource);
+      synchronized (sequenceFileTreeSetMap) {
+        sequenceFileTreeSetMap
+            .computeIfAbsent(timePartitionId, this::newSequenceTsFileResources)
+            .add(tsFileResource);
+      }
     } else {
-      unSequenceFileList.add(tsFileResource);
+      synchronized (unSequenceFileListMap) {
+        unSequenceFileListMap
+            .computeIfAbsent(timePartitionId, this::newUnSequenceTsFileResources)
+            .add(tsFileResource);
+      }
     }
   }
 
@@ -105,44 +138,57 @@ public class NoCompactionTsFileManagement extends TsFileManagement {
 
   @Override
   public void addAll(List<TsFileResource> tsFileResourceList, boolean sequence) {
-    if (sequence) {
-      sequenceFileTreeSet.addAll(tsFileResourceList);
-    } else {
-      unSequenceFileList.addAll(tsFileResourceList);
+    for (TsFileResource tsFileResource : tsFileResourceList) {
+      add(tsFileResource, sequence);
     }
   }
 
   @Override
   public boolean contains(TsFileResource tsFileResource, boolean sequence) {
     if (sequence) {
-      return sequenceFileTreeSet.contains(tsFileResource);
+      return sequenceFileTreeSetMap.get(tsFileResource.getTimePartition()).contains(tsFileResource);
     } else {
-      return unSequenceFileList.contains(tsFileResource);
+      return unSequenceFileListMap.get(tsFileResource.getTimePartition()).contains(tsFileResource);
     }
   }
 
   @Override
   public void clear() {
-    sequenceFileTreeSet.clear();
-    unSequenceFileList.clear();
+    sequenceFileTreeSetMap.clear();
+    unSequenceFileListMap.clear();
   }
 
   @Override
   public boolean isEmpty(boolean sequence) {
     if (sequence) {
-      return sequenceFileTreeSet.isEmpty();
+      for (Set<TsFileResource> sequenceFileTreeSet : sequenceFileTreeSetMap.values()) {
+        if (!sequenceFileTreeSet.isEmpty()) {
+          return false;
+        }
+      }
     } else {
-      return unSequenceFileList.isEmpty();
+      for (List<TsFileResource> unSequenceFileList : unSequenceFileListMap.values()) {
+        if (!unSequenceFileList.isEmpty()) {
+          return false;
+        }
+      }
     }
+    return true;
   }
 
   @Override
   public int size(boolean sequence) {
+    int result = 0;
     if (sequence) {
-      return sequenceFileTreeSet.size();
+      for (Set<TsFileResource> sequenceFileTreeSet : sequenceFileTreeSetMap.values()) {
+        result += sequenceFileTreeSet.size();
+      }
     } else {
-      return unSequenceFileList.size();
+      for (List<TsFileResource> unSequenceFileList : unSequenceFileListMap.values()) {
+        result += unSequenceFileList.size();
+      }
     }
+    return result;
   }
 
   @Override
@@ -158,5 +204,26 @@ public class NoCompactionTsFileManagement extends TsFileManagement {
   @Override
   protected void merge(long timePartition) {
     logger.info("{} no merge logic", storageGroupName);
+  }
+
+  private TreeSet<TsFileResource> newSequenceTsFileResources(Long k) {
+    return new TreeSet<>(
+        (o1, o2) -> {
+          try {
+            int rangeCompare =
+                Long.compare(
+                    Long.parseLong(o1.getTsFile().getParentFile().getName()),
+                    Long.parseLong(o2.getTsFile().getParentFile().getName()));
+            return rangeCompare == 0
+                ? compareFileName(o1.getTsFile(), o2.getTsFile())
+                : rangeCompare;
+          } catch (NumberFormatException e) {
+            return compareFileName(o1.getTsFile(), o2.getTsFile());
+          }
+        });
+  }
+
+  private List<TsFileResource> newUnSequenceTsFileResources(Long k) {
+    return new CopyOnWriteArrayList<>();
   }
 }

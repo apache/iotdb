@@ -229,14 +229,10 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
         }
         // the open file's endTime is Long.MIN_VALUE, this will make the file be filtered below
         long seqEndTime = seqFile.isClosed() ? seqFile.getEndTime(deviceId) : Long.MAX_VALUE;
-        long seqStartTime = seqFile.getStartTime(deviceId);
         if (unseqEndTime <= seqEndTime) {
           // the unseqFile overlaps current seqFile
-          // filter conditions that the last seq file just does not overlap with the unseqFile
-          if (unseqEndTime >= seqStartTime) {
-            tmpSelectedSeqFiles.add(i);
-            tmpSelectedNum++;
-          }
+          tmpSelectedSeqFiles.add(i);
+          tmpSelectedNum++;
           // the device of the unseqFile can not merge with later seqFiles
           noMoreOverlap = true;
         } else if (unseqStartTime <= seqEndTime) {

@@ -554,6 +554,10 @@ public class MergeMultiChunkTask {
       long time = batchData.getTimeByIndex(i);
       // merge data in batch and data in unseqReader
 
+      if (currTimeValuePairs[pathIdx] != null
+          && currTimeValuePairs[pathIdx].getTimestamp() == 6300L) {
+        System.out.println(123);
+      }
       boolean overwriteSeqPoint = false;
       // unseq point.time <= sequence point.time, write unseq point
       while (currTimeValuePairs[pathIdx] != null
