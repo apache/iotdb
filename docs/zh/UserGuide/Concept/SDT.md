@@ -51,7 +51,7 @@ CompMaxTime是测量两个存储的数据点之间的时间距离的参数。
 * FLOAT（单精度浮点数）
 * DOUBLE（双精度浮点数）
 
-SDT的指定语法详见本文[5.4节](../Operation%20Manual/SQL%20Reference.md)。
+SDT的指定语法详见本文[SQL 参考文档](../Operation%20Manual/SQL%20Reference.md)。
 
 以下是使用SDT压缩的示例。
 
