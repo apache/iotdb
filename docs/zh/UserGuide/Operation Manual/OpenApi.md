@@ -27,6 +27,10 @@ OpenApi 接口使用了基础（basic）鉴权，每次url请求都需要在head
 ## 检查iotdb服务是否在运行
 请求方式：get
 请求Url：http://ip:port/ping
+```
+$ curl -H "Authorization:Basic cm9vdDpyb2901" http://127.0.0.1:18080/ping
+$ {"code":4,"type":"ok","message":"login success!"}
+```
 响应示例
 ```json
 {
@@ -43,32 +47,41 @@ OpenApi 接口使用了基础（basic）鉴权，每次url请求都需要在head
   "message": "username or passowrd is incorrect!"
 }
 ```
+
 ##用于通过Grafana逐级获取时间序列名称
 请求方式：post
 请求头：application/json
 请求url：http://ip:port/v1/grafana/node
+```
+$ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '["root","sg5"]' http://127.0.0.1:18080/v1/grafana/node
+$ {"internal":["b"],"series":[{"name":"a1","leaf":true},{"name":"b","leaf":false}]}
+```
 请求示例：
 ```json
-["root","xxxx","xxxx"]
+["root","sg5"]
 ```
 返回参数:
 
 |参数名称  |参数类型  |参数描述|
 | ------------ | ------------ | ------------ |
-|  internal |  array | 返回的节点值  |
+|  internal |  array | 返回的非叶子节点  |
 | series  |  array |  返回节点名称和类型 |
 |  name |  string | 节点名称|
 |  leaf | boolean  |  叶子节点为true，非叶子节点为false |
 响应示例：
 ```json
-{"internal": ["sg0","sg1"],
+{
+  "internal":[
+    "b"
+  ],
   "series":[
-  {
-  "name": "sg0",
-  "leaf": false
-}, {
-      "name": "sg1",
-      "leaf": false
+    {
+      "name":"a1",
+      "leaf":true
+    },
+    {
+      "name":"b",
+      "leaf":false
     }
   ]
 }
@@ -78,6 +91,10 @@ OpenApi 接口使用了基础（basic）鉴权，每次url请求都需要在head
 请求方式：post
 请求头：application/json
 请求url：http://ip:port/v1/grafana/query/json
+```
+$ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"interval":"1s","stime":"1616554359000","etime":"1616554369000","paths":["root","sg6","b2"]}' http://127.0.0.1:18080/v1/grafana/query/json
+$ [{"datapoints":[null,1616554359000,5.0,1616554360000,7.0,1616554361000,7.0,1616554362000,null,1616554363000,7.0,1616554364000,7.0,1616554365000,null,1616554366000,null,1616554367000,null,1616554368000],"target":"root.sg6.b2"}]
+```
 参数说明:
 
 |参数名称  |参数类型  |是否必填|参数描述|
@@ -91,7 +108,7 @@ OpenApi 接口使用了基础（basic）鉴权，每次url请求都需要在head
 | fun  |  string |  否 |  填充函数 |
 请求示例：
 ```json
-{"interval":"1s","stime":"1000","etime":"5000","paths":["root","sg0"]}
+{"interval":"1s","stime":"1616554359000","etime":"1616554368000","paths":["root","sg6","b2"]}
 ```
 返回参数:
 
@@ -104,29 +121,29 @@ OpenApi 接口使用了基础（basic）鉴权，每次url请求都需要在head
 ```json
 [
   {
-    "datapoints": [
+    "datapoints":[
       null,
       1616554359000,
-      1.0,
+      5,
       1616554360000,
-      5.0,
+      7,
       1616554361000,
-      6.0,
+      7,
       1616554362000,
       null,
       1616554363000,
-      9.0,
+      7,
       1616554364000,
-      null,
+      7,
       1616554365000,
-      1.0,
+      null,
       1616554366000,
-      3.0,
+      null,
       1616554367000,
-      2.0,
+      null,
       1616554368000
     ],
-    "target": "root.sg0.node"
+    "target":"root.sg6.b2"
   }
 ]
 ```
@@ -134,6 +151,11 @@ OpenApi 接口使用了基础（basic）鉴权，每次url请求都需要在head
 请求方式：post
 请求头：application/json
 请求url：http://ip:port/v1/grafana/query/frame
+```
+$ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"interval":"1s","stime":"1616554359000","etime":"1616554369000","paths":["root","sg6"]}' http://127.0.0.1:18080/v1/grafana/query/frame
+$ [{"values":[1616554359000,1616554360000,1616554361000,1616554362000,1616554363000,1616554364000,1616554365000,1616554366000,1616554367000,1616554368000],"name":"Time","type":"time"},{"values":[5.0,7.0,7.0,null,7.0,7.0,null,null,null],"name":"root.sg6.b2","type":"DOUBLE"},{"values":[5.0,null,null,null,null,null,null,null,null],"name":"root.sg6.b3","type":"DOUBLE"}]
+```
+
 参数说明:
 
 |参数名称  |参数类型  |是否必填|参数描述|
@@ -147,7 +169,7 @@ OpenApi 接口使用了基础（basic）鉴权，每次url请求都需要在head
 | fun  |  string |  否 |  填充函数 |
 请求示例：
 ```json
-{"interval":"1s","stime":"1000","etime":"5000","paths":["root","sg0"]}
+{"interval":"1s","stime":"1000","etime":"5000","paths":["root","sg6"]}
 ```
 返回参数:
 
@@ -161,7 +183,7 @@ OpenApi 接口使用了基础（basic）鉴权，每次url请求都需要在head
 ```json
 [
   {
-    "values": [
+    "values":[
       1616554359000,
       1616554360000,
       1616554361000,
@@ -173,12 +195,27 @@ OpenApi 接口使用了基础（basic）鉴权，每次url请求都需要在head
       1616554367000,
       1616554368000
     ],
-    "name": "Time",
-    "type": "time"
+    "name":"Time",
+    "type":"time"
   },
   {
-    "values": [
-      1.0,
+    "values":[
+      5,
+      7,
+      7,
+      null,
+      7,
+      7,
+      null,
+      null,
+      null
+    ],
+    "name":"root.sg6.b2",
+    "type":"DOUBLE"
+  },
+  {
+    "values":[
+      5,
       null,
       null,
       null,
@@ -188,8 +225,8 @@ OpenApi 接口使用了基础（basic）鉴权，每次url请求都需要在head
       null,
       null
     ],
-    "name": "root.sg0.node",
-    "type": "string"
+    "name":"root.sg6.b3",
+    "type":"DOUBLE"
   }
 ]
 ```
