@@ -198,6 +198,7 @@ public class LogReplayer {
                     + IoTDBConstant.PATH_SEPARATOR
                     + tPlan.getMeasurements()[i]));
         columnIndex++;
+        continue;
       } else if (mNodes[i].getSchema().getType() == TSDataType.VECTOR) {
         List<TSDataType> datatypes = mNodes[i].getSchema().getValueTSDataTypeList();
         for (int j = 0; j < datatypes.size(); j++) {
@@ -211,6 +212,7 @@ public class LogReplayer {
           }
           columnIndex++;
         }
+        continue;
       } else if (mNodes[i].getSchema().getType() != tPlan.getDataTypes()[columnIndex]) {
         tPlan.markFailedMeasurementInsertion(
             i,
@@ -218,8 +220,8 @@ public class LogReplayer {
                 mNodes[i].getName(),
                 tPlan.getDataTypes()[columnIndex],
                 mNodes[i].getSchema().getType()));
-        columnIndex++;
       }
+      columnIndex++;
     }
   }
 }

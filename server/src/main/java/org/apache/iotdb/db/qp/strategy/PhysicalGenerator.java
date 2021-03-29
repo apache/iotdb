@@ -232,8 +232,7 @@ public class PhysicalGenerator {
         for (String measurement : insert.getMeasurementList()) {
           if (measurement.startsWith("(") && measurement.endsWith(")")) {
             measurementsNum += measurement.replace("(", "").replace(")", "").split(",").length;
-          }
-          else {
+          } else {
             measurementsNum++;
           }
         }
