@@ -120,8 +120,9 @@ public class V1ApiServiceImpl extends V1ApiService {
     if (groupByFillPlan.getFills() != null && groupByFillPlan.getFills().size() > 0) {
       sql =
           String.format(
-              "select last_value(*) FROM %s where time>=%d and time<%d group by ([%d, %d),%s) fill (%s[%s,%s])",
-              path,
+              "select last_value(%s) FROM %s where time>=%d and time<%d group by ([%d, %d),%s) fill (%s[%s,%s])",
+              path.substring(path.lastIndexOf('.') + 1),
+              path.substring(0, path.lastIndexOf('.')),
               stime,
               etime,
               stime,
@@ -133,8 +134,9 @@ public class V1ApiServiceImpl extends V1ApiService {
     } else {
       sql =
           String.format(
-              "select avg(*) FROM %s where time>=%d and time<%d group by ([%d, %d),%s)",
-              path,
+              "select avg(%s) FROM %s where time>=%d and time<%d group by ([%d, %d),%s)",
+              path.substring(path.lastIndexOf('.') + 1),
+              path.substring(0, path.lastIndexOf('.')),
               stime,
               etime,
               stime,
@@ -181,7 +183,6 @@ public class V1ApiServiceImpl extends V1ApiService {
         Map m = new HashMap();
         String fullname = pathResult.getFullPath();
         m.put("name", fullname);
-        m.put("type", "string"); // number
         listtemp.add(m);
       }
 
@@ -190,6 +191,9 @@ public class V1ApiServiceImpl extends V1ApiService {
         temlist.add(rowRecord.getTimestamp());
         List<org.apache.iotdb.tsfile.read.common.Field> fields = rowRecord.getFields();
         for (int i = 1; i < listtemp.size(); i++) {
+
+
+
           List listvalues = null;
           if (listtemp.get(i).get("values") != null) {
             listvalues = (List) listtemp.get(i).get("values");
@@ -201,6 +205,11 @@ public class V1ApiServiceImpl extends V1ApiService {
           } else {
             listvalues.add(fields.get(i - 1).getObjectValue(fields.get(i - 1).getDataType()));
             listtemp.get(i).put("values", listvalues);
+          }
+          if(listtemp.get(i).get("type")==null){
+            listtemp.get(i).put("type","");
+          }else if(listtemp.get(i).get("type").toString().length()==0&&fields.get(i - 1) != null&&fields.get(i - 1).getDataType() != null){
+            listtemp.get(i).put("type", fields.get(i - 1).getDataType());
           }
         }
       }
@@ -295,7 +304,12 @@ public class V1ApiServiceImpl extends V1ApiService {
           temlist.add(rowRecord.getTimestamp());
         }
       }
-      tmpmap.put("target", dataSet.getPaths().get(0).getFullPath());
+      if(dataSet!=null&&dataSet.getPaths().size()>0){
+        tmpmap.put("target", dataSet.getPaths().get(0).getFullPath());
+      }else{
+        tmpmap.put("target", "");
+      }
+
       tmpmap.put("datapoints", temlist);
       resultList.add(tmpmap);
     } catch (IOException | QueryProcessException | AuthException e) {
