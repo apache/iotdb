@@ -190,7 +190,7 @@ public class CompactionUtils {
               IoTDB.metaManager.getSeriesSchema(new PartialPath(device), entry.getKey()), true);
     } catch (MetadataException e) {
       // this may caused in IT by restart
-      logger.error("{} get schema {} error,skip this sensor", device, entry.getKey());
+      logger.error("{} get schema {} error, skip this sensor", device, entry.getKey(), e);
       return;
     }
     for (TimeValuePair timeValuePair : timeValuePairMap.values()) {

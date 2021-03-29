@@ -508,7 +508,9 @@ public abstract class RaftMember {
     }
 
     long startTime = Timer.Statistic.RAFT_RECEIVER_LOG_PARSE.getOperationStartTime();
+    int logByteSize = request.getEntry().length;
     Log log = LogParser.getINSTANCE().parse(request.entry);
+    log.setByteSize(logByteSize);
     Timer.Statistic.RAFT_RECEIVER_LOG_PARSE.calOperationCostTimeFromStart(startTime);
 
     long result = appendEntry(request.prevLogIndex, request.prevLogTerm, request.leaderCommit, log);
@@ -529,12 +531,15 @@ public abstract class RaftMember {
 
     long response;
     List<Log> logs = new ArrayList<>();
+    int logByteSize = 0;
     long startTime = Timer.Statistic.RAFT_RECEIVER_LOG_PARSE.getOperationStartTime();
     for (ByteBuffer buffer : request.getEntries()) {
       buffer.mark();
       Log log;
+      logByteSize = buffer.limit() - buffer.position();
       try {
         log = LogParser.getINSTANCE().parse(buffer);
+        log.setByteSize(logByteSize);
       } catch (BufferUnderflowException e) {
         buffer.reset();
         throw e;
@@ -948,6 +953,7 @@ public abstract class RaftMember {
 
       log.setPlan(plan);
       plan.setIndex(log.getCurrLogIndex());
+      // appendLogInGroup will serialize log, and set log size, and we will use the size after it
       logManager.append(log);
     }
     Timer.Statistic.RAFT_SENDER_APPEND_LOG.calOperationCostTimeFromStart(startTime);
@@ -983,6 +989,7 @@ public abstract class RaftMember {
       plan.setIndex(log.getCurrLogIndex());
 
       startTime = Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.getOperationStartTime();
+      // logDispatcher will serialize log, and set log size, and we will use the size after it
       logManager.append(log);
       Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.calOperationCostTimeFromStart(startTime);
 
@@ -1474,7 +1481,9 @@ public abstract class RaftMember {
     AppendEntryRequest request = new AppendEntryRequest();
     request.setTerm(term.get());
     if (serializeNow) {
-      request.setEntry(log.serialize());
+      ByteBuffer byteBuffer = log.serialize();
+      log.setByteSize(byteBuffer.array().length);
+      request.setEntry(byteBuffer);
     }
     request.setLeader(getThisNode());
     // don't need lock because even if it's larger than the commitIndex when appending this log to

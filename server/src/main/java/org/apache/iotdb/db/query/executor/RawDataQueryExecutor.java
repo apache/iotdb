@@ -61,6 +61,10 @@ public class RawDataQueryExecutor {
   /** without filter or with global time filter. */
   public QueryDataSet executeWithoutValueFilter(QueryContext context)
       throws StorageEngineException, QueryProcessException {
+    QueryDataSet dataSet = needRedirect(context, false);
+    if (dataSet != null) {
+      return dataSet;
+    }
     List<ManagedSeriesReader> readersOfSelectedSeries = initManagedSeriesReader(context);
     try {
       return new RawQueryDataSetWithoutValueFilter(
@@ -79,6 +83,10 @@ public class RawDataQueryExecutor {
 
   public final QueryDataSet executeNonAlign(QueryContext context)
       throws StorageEngineException, QueryProcessException {
+    QueryDataSet dataSet = needRedirect(context, false);
+    if (dataSet != null) {
+      return dataSet;
+    }
     List<ManagedSeriesReader> readersOfSelectedSeries = initManagedSeriesReader(context);
     return new NonAlignEngineDataSet(
         context.getQueryId(),
@@ -133,6 +141,11 @@ public class RawDataQueryExecutor {
    */
   public final QueryDataSet executeWithValueFilter(QueryContext context)
       throws StorageEngineException, QueryProcessException {
+    QueryDataSet dataSet = needRedirect(context, true);
+    if (dataSet != null) {
+      return dataSet;
+    }
+
     TimeGenerator timestampGenerator =
         getTimeGenerator(queryPlan.getExpression(), context, queryPlan);
     List<Boolean> cached =
@@ -195,5 +208,17 @@ public class RawDataQueryExecutor {
       IExpression expression, QueryContext context, RawDataQueryPlan queryPlan)
       throws StorageEngineException {
     return new ServerTimeGenerator(expression, context, queryPlan);
+  }
+
+  /**
+   * Check whether need to redirect query to other node.
+   *
+   * @param context query context
+   * @param hasValueFilter if has value filter, we need to check timegenerator
+   * @return dummyDataSet to avoid more cost, if null, no need
+   */
+  protected QueryDataSet needRedirect(QueryContext context, boolean hasValueFilter)
+      throws StorageEngineException, QueryProcessException {
+    return null;
   }
 }
