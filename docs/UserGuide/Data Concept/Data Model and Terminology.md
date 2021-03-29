@@ -18,8 +18,8 @@
     under the License.
 
 -->
-
-# Data Model
+# Data Concept
+## Data Model
 
 In this section, a power scenario is taken as an example to illustrate how to creat a correct data model in IoTDB. For convenience, a sample data file is attached for you to practise IoTDB.
 
