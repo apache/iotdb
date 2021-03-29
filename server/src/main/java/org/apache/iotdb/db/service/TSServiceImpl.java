@@ -1542,6 +1542,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       return executeNonQueryPlan(multiPlan);
     } catch (Exception e) {
+      LOGGER.error("creating multi timeseries fails", e);
       return onNPEOrUnexpectedException(e, "creating multi timeseries",
           TSStatusCode.EXECUTE_STATEMENT_ERROR);
     }

@@ -66,8 +66,10 @@ public class DataLogApplier extends BaseApplier {
     try {
       if (log instanceof AddNodeLog) {
         metaGroupMember.getDataClusterServer().preAddNodeForDataGroup((AddNodeLog) log, dataGroupMember);
+        dataGroupMember.setAndSaveLastAppliedPartitionTableVersion(((AddNodeLog) log).getMetaLogIndex());
       } else if (log instanceof RemoveNodeLog) {
         metaGroupMember.getDataClusterServer().preRemoveNodeForDataGroup((RemoveNodeLog) log, dataGroupMember);
+        dataGroupMember.setAndSaveLastAppliedPartitionTableVersion(((RemoveNodeLog) log).getMetaLogIndex());
       } else if (log instanceof PhysicalPlanLog) {
         PhysicalPlanLog physicalPlanLog = (PhysicalPlanLog) log;
         PhysicalPlan plan = physicalPlanLog.getPlan();

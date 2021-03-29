@@ -50,6 +50,8 @@ public class Response {
   public static final long RESPONSE_CHANGE_MEMBERSHIP_CONFLICT = -10;
   // the data migration of previous add/remove node operations is not finished.
   public static final long RESPONSE_DATA_MIGRATION_NOT_FINISH = -11;
+  // the node has removed from the group, so the operation is rejected.
+  public static final long RESPONSE_NODE_IS_NOT_IN_GROUP = -12;
   // the request is not executed locally anc should be forwarded
   public static final long RESPONSE_NULL = Long.MIN_VALUE;
 

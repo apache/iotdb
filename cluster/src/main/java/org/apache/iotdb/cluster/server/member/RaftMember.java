@@ -1137,6 +1137,13 @@ public abstract class RaftMember {
     long thatTerm = electionRequest.getTerm();
     long thatLastLogIndex = electionRequest.getLastLogIndex();
     long thatLastLogTerm = electionRequest.getLastLogTerm();
+    Node elector = electionRequest.getElector();
+
+    // check if the node is in the group
+    if (!allNodes.contains(elector)) {
+      logger.info("{}: the elector {} is not in the group, so reject this election.", name, elector);
+      return Response.RESPONSE_NODE_IS_NOT_IN_GROUP;
+    }
 
     // check the log progress of the elector
     long resp = checkLogProgress(thatLastLogIndex, thatLastLogTerm);
@@ -1146,7 +1153,7 @@ public abstract class RaftMember {
           thatLastLogTerm, logManager.getLastLogTerm());
       setCharacter(NodeCharacter.FOLLOWER);
       lastHeartbeatReceivedTime = System.currentTimeMillis();
-      setVoteFor(electionRequest.getElector());
+      setVoteFor(elector);
       updateHardState(thatTerm, getVoteFor());
     } else {
       logger.info("{} rejected an election request, term:{}/{}, logIndex:{}/{}, logTerm:{}/{}",

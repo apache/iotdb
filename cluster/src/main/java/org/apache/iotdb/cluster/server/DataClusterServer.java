@@ -598,9 +598,6 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
    * @param dataGroupMember
    */
   private void removeMember(RaftNode header, DataGroupMember dataGroupMember, boolean waitFollowersToSync) {
-    if (dataGroupMember.syncLeader()) {
-      dataGroupMember.setHasSyncedLeaderBeforeRemoved(true);
-    }
     dataGroupMember.setReadOnly();
     if (waitFollowersToSync && dataGroupMember.getCharacter() == NodeCharacter.LEADER) {
       dataGroupMember.getAppendLogThreadPool().submit(() -> dataGroupMember.waitFollowersToSync());

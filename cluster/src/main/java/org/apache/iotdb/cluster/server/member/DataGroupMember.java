@@ -20,9 +20,12 @@
 package org.apache.iotdb.cluster.server.member;
 
 import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
@@ -151,6 +154,8 @@ public class DataGroupMember extends RaftMember {
    */
   private boolean unchanged;
 
+  private LastAppliedPatitionTableVersion lastAppliedPartitionTableVersion;
+
   @TestOnly
   public DataGroupMember() {
     // constructor for test
@@ -181,6 +186,7 @@ public class DataGroupMember extends RaftMember {
     term.set(logManager.getHardState().getCurrentTerm());
     voteFor = logManager.getHardState().getVoteFor();
     localQueryExecutor = new LocalQueryExecutor(this);
+    lastAppliedPartitionTableVersion = new LastAppliedPatitionTableVersion(getMemberDir());
   }
 
   /**
@@ -363,18 +369,8 @@ public class DataGroupMember extends RaftMember {
       setReadOnly();
     }
 
-    boolean canGetSnapshot;
-    /**
-     * There are two conditions that can get snapshot:
-     * 1. The raft member is stopped and it has synced leader successfully before stop.
-     * 2. The raft member is not stopped and syncing leader is successful.
-     */
-    if (isHasSyncedLeaderBeforeRemoved()) {
-      canGetSnapshot = true;
-    } else {
-      canGetSnapshot = syncLeader();
-    }
-    if (!canGetSnapshot) {
+    // Make sure local data is complete.
+    if (lastAppliedPartitionTableVersion.getVersion() != metaGroupMember.getPartitionTable().getLastMetaLogIndex()) {
       return null;
     }
 
@@ -904,5 +900,62 @@ public class DataGroupMember extends RaftMember {
 
   public void setUnchanged(boolean unchanged) {
     this.unchanged = unchanged;
+  }
+
+  public void setAndSaveLastAppliedPartitionTableVersion(long version) {
+    lastAppliedPartitionTableVersion.setVersion(version);
+    lastAppliedPartitionTableVersion.save();
+  }
+
+  public long getLastAppliedPartitionTableVersion() {
+    return lastAppliedPartitionTableVersion.getVersion();
+  }
+
+  private class LastAppliedPatitionTableVersion {
+
+    private static final String VERSION_FILE_NAME = "LAST_PARTITION_TABLE_VERSION";
+
+    private long version = -1;
+
+    private String filePath;
+
+    public LastAppliedPatitionTableVersion(String memberDir) {
+      this.filePath = memberDir + File.separator + VERSION_FILE_NAME;
+      load();
+    }
+
+    private void load() {
+      File versionFile = new File(filePath);
+      if (!versionFile.exists()) {
+        return ;
+      }
+      try (FileInputStream fileInputStream = new FileInputStream(filePath);
+          DataInputStream dataInputStream = new DataInputStream(fileInputStream)) {
+        version = dataInputStream.readLong();
+      } catch (Exception e) {
+        logger.warn("Cannot deserialize last partition table version from {}", filePath, e);
+      }
+    }
+
+    public synchronized void save() {
+      File versionFile = new File(filePath);
+      if (!versionFile.getParentFile().exists() && !versionFile.getParentFile().mkdirs()) {
+        logger.warn("Cannot mkdirs for {}", versionFile);
+      }
+      try (FileOutputStream outputStream = new FileOutputStream(versionFile);
+          DataOutputStream dataOutputStream = new DataOutputStream(outputStream)) {
+        dataOutputStream.writeLong(version);
+      } catch (IOException e) {
+        logger.warn("Last partition table version in {} cannot be saved", filePath, e);
+      }
+    }
+
+    public long getVersion() {
+      return version;
+    }
+
+    public void setVersion(long version) {
+      this.version = version;
+    }
   }
 }

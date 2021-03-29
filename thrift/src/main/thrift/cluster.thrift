@@ -194,7 +194,7 @@ struct SingleSeriesQueryRequest {
   10: required bool ascending
   11: required int fetchSize
   12: required int deduplicatedPathNum
-  13: required set<int> requiredSlots
+  13: optional set<int> requiredSlots
 }
 
 struct PreviousFillRequest {

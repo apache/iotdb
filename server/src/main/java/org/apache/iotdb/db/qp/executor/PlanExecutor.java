@@ -1249,7 +1249,6 @@ public class PlanExecutor implements IPlanExecutor {
           multiPlan.getAlias() == null ? null : multiPlan.getAlias().get(i));
       try {
         createTimeSeries(plan);
-        multiPlan.getResults().put(i, RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
       } catch (QueryProcessException e) {
         multiPlan.getResults().put(i, RpcUtils
             .getStatus(e.getErrorCode(), e.getMessage()));
