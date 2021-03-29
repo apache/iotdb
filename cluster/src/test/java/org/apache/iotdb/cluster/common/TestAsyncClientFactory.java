@@ -28,6 +28,7 @@ import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TNonblockingSocket;
+import org.apache.thrift.transport.TTransportException;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -45,7 +46,8 @@ public class TestAsyncClientFactory extends AsyncClientFactory {
   }
 
   @Override
-  public AsyncClient getAsyncClient(Node node, AsyncClientPool pool) throws IOException {
+  public AsyncClient getAsyncClient(Node node, AsyncClientPool pool)
+      throws IOException, TTransportException {
     return new TestAsyncClient(
         protocolFactory,
         clientManager,

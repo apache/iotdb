@@ -38,10 +38,12 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
+import org.apache.thrift.TConfiguration;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Before;
 
@@ -132,6 +134,18 @@ public abstract class DataSnapshotTest {
 
                       @Override
                       public void write(byte[] bytes, int i, int i1) {}
+
+                      @Override
+                      public TConfiguration getConfiguration() {
+                        return null;
+                      }
+
+                      @Override
+                      public void updateKnownMessageSize(long size) throws TTransportException {}
+
+                      @Override
+                      public void checkReadBytesAvailable(long numBytes)
+                          throws TTransportException {}
                     })) {
               @Override
               public ByteBuffer readFile(String filePath, long offset, int length)

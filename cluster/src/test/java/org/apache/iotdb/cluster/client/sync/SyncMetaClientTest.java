@@ -11,6 +11,7 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.apache.thrift.transport.TSocket;
+import org.apache.thrift.transport.TTransportException;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -58,6 +59,8 @@ public class SyncMetaClientTest {
       // client without a belong pool will be closed after putBack()
       client.putBack();
       assertFalse(client.getInputProtocol().getTransport().isOpen());
+    } catch (TTransportException e) {
+      e.printStackTrace();
     } finally {
       serverSocket.close();
       listenThread.interrupt();
@@ -66,7 +69,7 @@ public class SyncMetaClientTest {
   }
 
   @Test
-  public void testTryClose() throws IOException, InterruptedException {
+  public void testTryClose() throws IOException, InterruptedException, TTransportException {
     Node node = new Node();
     node.setMetaPort(9003).setInternalIp("localhost").setClientIp("localhost");
     ServerSocket serverSocket = new ServerSocket(node.getMetaPort());

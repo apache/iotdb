@@ -47,6 +47,7 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
+import org.apache.thrift.transport.TTransportException;
 
 import java.io.File;
 import java.io.IOException;
@@ -60,7 +61,7 @@ public class TestAsyncDataClient extends AsyncDataClient {
   private Map<Node, DataGroupMember> dataGroupMemberMap;
 
   public TestAsyncDataClient(Node node, Map<Node, DataGroupMember> dataGroupMemberMap)
-      throws IOException {
+      throws IOException, TTransportException {
     super(null, null, node, null);
     this.dataGroupMemberMap = dataGroupMemberMap;
     try {

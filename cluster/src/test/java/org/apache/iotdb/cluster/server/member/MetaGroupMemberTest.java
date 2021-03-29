@@ -105,6 +105,7 @@ import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol.Factory;
+import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -499,7 +500,7 @@ public class MetaGroupMemberTest extends BaseMember {
                       .start();
                 }
               };
-            } catch (IOException e) {
+            } catch (IOException | TTransportException e) {
               return null;
             }
           }
@@ -512,7 +513,8 @@ public class MetaGroupMemberTest extends BaseMember {
     metaGroupMember.setClientProvider(
         new DataClientProvider(new TBinaryProtocol.Factory()) {
           @Override
-          public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
+          public AsyncDataClient getAsyncDataClient(Node node, int timeout)
+              throws IOException, TTransportException {
             return new TestAsyncDataClient(node, dataGroupMemberMap);
           }
         });

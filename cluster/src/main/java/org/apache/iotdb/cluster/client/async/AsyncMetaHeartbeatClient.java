@@ -27,6 +27,7 @@ import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TNonblockingSocket;
+import org.apache.thrift.transport.TTransportException;
 
 import java.io.IOException;
 
@@ -41,7 +42,7 @@ public class AsyncMetaHeartbeatClient extends AsyncMetaClient {
       TAsyncClientManager clientManager,
       Node node,
       AsyncClientPool pool)
-      throws IOException {
+      throws IOException, TTransportException {
     super(
         protocolFactory,
         clientManager,
@@ -61,7 +62,7 @@ public class AsyncMetaHeartbeatClient extends AsyncMetaClient {
 
     @Override
     public RaftService.AsyncClient getAsyncClient(Node node, AsyncClientPool pool)
-        throws IOException {
+        throws IOException, TTransportException {
       TAsyncClientManager manager = managers[clientCnt.incrementAndGet() % managers.length];
       manager = manager == null ? new TAsyncClientManager() : manager;
       return new AsyncMetaHeartbeatClient(protocolFactory, manager, node, pool);

@@ -30,6 +30,7 @@ import org.apache.thrift.async.TAsyncMethodCall;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TNonblockingSocket;
 import org.apache.thrift.transport.TNonblockingTransport;
+import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,7 +62,7 @@ public class AsyncDataClient extends AsyncClient {
       TAsyncClientManager clientManager,
       Node node,
       AsyncClientPool pool)
-      throws IOException {
+      throws IOException, TTransportException {
     // the difference of the two clients lies in the port
     super(
         protocolFactory,
@@ -106,7 +107,7 @@ public class AsyncDataClient extends AsyncClient {
 
     @Override
     public RaftService.AsyncClient getAsyncClient(Node node, AsyncClientPool pool)
-        throws IOException {
+        throws IOException, TTransportException {
       TAsyncClientManager manager = managers[clientCnt.incrementAndGet() % managers.length];
       manager = manager == null ? new TAsyncClientManager() : manager;
       return new AsyncDataClient(protocolFactory, manager, node, pool);
@@ -130,7 +131,7 @@ public class AsyncDataClient extends AsyncClient {
 
     @Override
     public RaftService.AsyncClient getAsyncClient(Node node, AsyncClientPool pool)
-        throws IOException {
+        throws IOException, TTransportException {
       return new AsyncDataClient(protocolFactory, manager, node, pool);
     }
   }

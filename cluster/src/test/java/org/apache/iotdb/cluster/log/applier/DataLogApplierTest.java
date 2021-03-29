@@ -69,6 +69,7 @@ import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import junit.framework.TestCase;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
+import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -119,7 +120,7 @@ public class DataLogApplierTest extends IoTDBTest {
                     .start();
               }
             };
-          } catch (IOException e) {
+          } catch (IOException | TTransportException e) {
             return null;
           }
         }
@@ -158,7 +159,8 @@ public class DataLogApplierTest extends IoTDBTest {
     testMetaGroupMember.setClientProvider(
         new DataClientProvider(new Factory()) {
           @Override
-          public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
+          public AsyncDataClient getAsyncDataClient(Node node, int timeout)
+              throws IOException, TTransportException {
             return new AsyncDataClient(null, null, node, null) {
               @Override
               public void getAllPaths(

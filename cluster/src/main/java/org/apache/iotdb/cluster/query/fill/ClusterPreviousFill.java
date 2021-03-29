@@ -41,6 +41,7 @@ import org.apache.iotdb.db.query.executor.fill.PreviousFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 
+import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -219,7 +220,7 @@ public class ClusterPreviousFill extends PreviousFill {
           metaGroupMember
               .getClientProvider()
               .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-    } catch (IOException e) {
+    } catch (IOException | TTransportException e) {
       logger.warn("{}: Cannot connect to {} during previous fill", metaGroupMember, node);
       return null;
     }

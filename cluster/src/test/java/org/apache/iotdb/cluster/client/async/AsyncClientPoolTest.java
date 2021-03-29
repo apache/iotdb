@@ -14,6 +14,7 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
+import org.apache.thrift.transport.TTransportException;
 import org.junit.Test;
 import org.mockito.Mock;
 
@@ -33,27 +34,27 @@ public class AsyncClientPoolTest {
   @Mock private AsyncClientFactory testAsyncClientFactory;
 
   @Test
-  public void testTestClient() throws IOException {
+  public void testTestClient() throws IOException, TTransportException {
     testAsyncClientFactory = new TestAsyncClientFactory();
     getClient();
     putClient();
   }
 
   @Test
-  public void testDataClient() throws IOException {
+  public void testDataClient() throws IOException, TTransportException {
     testAsyncClientFactory = new FactoryAsync(new TBinaryProtocol.Factory());
     getClient();
     putClient();
   }
 
   @Test
-  public void testMetaClient() throws IOException {
+  public void testMetaClient() throws IOException, TTransportException {
     testAsyncClientFactory = new AsyncMetaClient.FactoryAsync(new TBinaryProtocol.Factory());
     getClient();
     putClient();
   }
 
-  private void getClient() throws IOException {
+  private void getClient() throws IOException, TTransportException {
     AsyncClientPool asyncClientPool = new AsyncClientPool(testAsyncClientFactory);
     for (int i = 0; i < 10; i++) {
       AsyncClient client = asyncClientPool.getClient(TestUtils.getNode(i));
@@ -64,7 +65,7 @@ public class AsyncClientPoolTest {
     }
   }
 
-  private void putClient() throws IOException {
+  private void putClient() throws IOException, TTransportException {
     AsyncClientPool asyncClientPool = new AsyncClientPool(testAsyncClientFactory);
     List<AsyncClient> testClients = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
@@ -92,7 +93,7 @@ public class AsyncClientPoolTest {
   }
 
   @Test
-  public void testMaxClient() throws IOException {
+  public void testMaxClient() throws IOException, TTransportException {
     int maxClientNum = ClusterDescriptor.getInstance().getConfig().getMaxClientPerNodePerMember();
     ClusterDescriptor.getInstance().getConfig().setMaxClientPerNodePerMember(5);
     testAsyncClientFactory = new TestAsyncClientFactory();
@@ -107,7 +108,7 @@ public class AsyncClientPoolTest {
             () -> {
               try {
                 reference.set(asyncClientPool.getClient(TestUtils.getNode(0)));
-              } catch (IOException e) {
+              } catch (IOException | TTransportException e) {
                 e.printStackTrace();
               }
             });
@@ -153,6 +154,8 @@ public class AsyncClientPoolTest {
         client = asyncClientPool.getClient(node);
       }
       assertNotNull(client);
+    } catch (TTransportException e) {
+      e.printStackTrace();
     } finally {
       ClusterDescriptor.getInstance()
           .getConfig()
@@ -176,6 +179,8 @@ public class AsyncClientPoolTest {
       }
 
       assertNotEquals(clients.get(0), clients.get(1));
+    } catch (TTransportException e) {
+      e.printStackTrace();
     } finally {
       ClusterDescriptor.getInstance()
           .getConfig()
@@ -184,7 +189,7 @@ public class AsyncClientPoolTest {
   }
 
   @Test
-  public void testRecreateClient() throws IOException {
+  public void testRecreateClient() throws IOException, TTransportException {
     testAsyncClientFactory = new TestAsyncClientFactory();
     AsyncClientPool asyncClientPool =
         new AsyncClientPool(new AsyncMetaClient.FactoryAsync(new Factory()));
