@@ -535,7 +535,7 @@ public class SessionExample {
                   + i
                   + ".d1 where time >= 1 and time < 10 and root.redirect"
                   + i
-                  + "d1.s1 > 1");
+                  + ".d1.s1 > 1");
       System.out.println(dataSet.getColumnNames());
       dataSet.setFetchSize(1024); // default is 10000
       while (dataSet.hasNext()) {
