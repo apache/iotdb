@@ -1942,43 +1942,43 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public ConvergenceTestResult convergenceTest(String deviceID) throws TException {
-    MultiReplicaOrderOptimizer optimizer = new MultiReplicaOrderOptimizer(deviceID);
+    MultiReplicaOrderOptimizer optimizer = new MultiReplicaOrderOptimizer(deviceID, 1);
 //    Pair<List<Double>, List<Long>> result = MeasurementOrderOptimizer.getInstance().optimizeChunkSize(deviceID, MeasurementOptimizationType.SA);
-    ExecutorService threadPool = Executors.newFixedThreadPool(3);
-//    Pair<List<Double>, List<Long>> convergenceResultOfOurMethod = optimizer.optimizeBySAWithChunkSizeAdjustmentAndCostRecord();
-    Future<Pair<List<Double>, List<Long>>> future1 = threadPool.submit(()->optimizer.optimizeBySAWithChunkSizeAdjustmentAndCostRecord());
+//    ExecutorService threadPool = Executors.newFixedThreadPool(3);
+    Pair<List<Double>, List<Long>> convergenceResultOfOurMethod = optimizer.optimizeBySAWithChunkSizeAdjustmentAndCostRecord();
+//    Future<Pair<List<Double>, List<Long>>> future1 = threadPool.submit(()->optimizer.optimizeBySAWithChunkSizeAdjustmentAndCostRecord());
     DivergentDesign divergentDesign1 = new DivergentDesign(deviceID);
-    Future<Pair<List<Double>, List<Long>>> future2 = threadPool.submit(()->divergentDesign1.optimizeWithCostRecord());
+//    Future<Pair<List<Double>, List<Long>>> future2 = threadPool.submit(()->divergentDesign1.optimizeWithCostRecord());
 //    Pair<List<Double>, List<Long>> convergenceResultOfOriDivergentDesign = divergentDesign1.optimizeWithCostRecord();
     DivergentDesign divergentDesign2 = new DivergentDesign(deviceID);
-    Future<Pair<List<Double>, List<Long>>> future3 = threadPool.submit(()->divergentDesign2.optimizeWithChunkSizeAndCostRecord());
+//    Future<Pair<List<Double>, List<Long>>> future3 = threadPool.submit(()->divergentDesign2.optimizeWithChunkSizeAndCostRecord());
 //    Pair<List<Double>, List<Long>> convergenceResultOfNewDivergentDesign = divergentDesign2.optimizeWithChunkSizeAndCostRecord();
-    Pair<List<Double>, List<Long>> convergenceResultOfOurMethod = null;
-    Pair<List<Double>, List<Long>> convergenceResultOfOriDivergentDesign = null;
-    Pair<List<Double>, List<Long>> convergenceResultOfNewDivergentDesign = null;
-    try{
-      convergenceResultOfOurMethod = future1.get();
-      convergenceResultOfOriDivergentDesign = future2.get();
-      convergenceResultOfNewDivergentDesign = future3.get();
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
+//    Pair<List<Double>, List<Long>> convergenceResultOfOurMethod = null;
+//    Pair<List<Double>, List<Long>> convergenceResultOfOriDivergentDesign = null;
+//    Pair<List<Double>, List<Long>> convergenceResultOfNewDivergentDesign = null;
+//    try{
+//      convergenceResultOfOurMethod = future1.get();
+//      convergenceResultOfOriDivergentDesign = future2.get();
+//      convergenceResultOfNewDivergentDesign = future3.get();
+//    } catch (Exception e) {
+//      e.printStackTrace();
+//    }
     ConvergenceTestResult testResult = new ConvergenceTestResult();
     testResult.method = new ArrayList<>();
     testResult.method.add("TRCA");
-    testResult.method.add("Ori DivergentDesign");
-    testResult.method.add("New DivergentDesign");
+//    testResult.method.add("Ori DivergentDesign");
+//    testResult.method.add("New DivergentDesign");
 //    testResult.method.add("Out separate method(Permutation first)");
     testResult.lost = new ArrayList<>();
 //    testResult.lost.add(result.left);
     testResult.lost.add(convergenceResultOfOurMethod.left);
-    testResult.lost.add(convergenceResultOfOriDivergentDesign.left);
-    testResult.lost.add(convergenceResultOfNewDivergentDesign.left);
+//    testResult.lost.add(convergenceResultOfOriDivergentDesign.left);
+//    testResult.lost.add(convergenceResultOfNewDivergentDesign.left);
     testResult.time = new ArrayList<>();
 //    testResult.time.add(result.right);
     testResult.time.add(convergenceResultOfOurMethod.right);
-    testResult.time.add(convergenceResultOfOriDivergentDesign.right);
-    testResult.time.add(convergenceResultOfNewDivergentDesign.right);
+//    testResult.time.add(convergenceResultOfOriDivergentDesign.right);
+//    testResult.time.add(convergenceResultOfNewDivergentDesign.right);
     return testResult;
 //    List<QueryRecord> records = WorkloadManager.getInstance().getRecord(deviceID);
 //    List<QueryRecord> longRecords = new ArrayList<>();

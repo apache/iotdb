@@ -206,7 +206,7 @@ public class MultiReplicaOrderOptimizer {
 		costRecorder.addCost(curCost, 0l);
 		boolean SCOA = false;
 		int selectedReplica = r.nextInt(replicaNum);
-		for (; k < maxIter && System.currentTimeMillis() - optimizeStartTime < 25l * 60l * 1000l; ++k) {
+		for (; k < maxIter && System.currentTimeMillis() - optimizeStartTime < 15l * 60l * 1000l; ++k) {
 			temperature = temperature * COOLING_RATE;
 			int operation = r.nextInt(2);
 			if (!SCOA && System.currentTimeMillis() - optimizeStartTime > 3l*60l*1000l) {
