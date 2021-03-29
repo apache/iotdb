@@ -54,7 +54,7 @@ content-type：application/json
 url：http://ip:port/v1/grafana/node
 ```
 $ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '["root","sg5"]' http://127.0.0.1:18080/v1/grafana/node
-$ {"internal":["b"],"series":[{"name":"a1","leaf":true},{"name":"b","leaf":false}]}
+$ {"internal":["st01"],"series":[{"name":"temperature","leaf":true},{"name":"st01","leaf":false}]}
 ```
 Request example：
 ```json
@@ -72,15 +72,15 @@ Response examples：
 ```json
 {
   "internal":[
-    "b"
+    "st01"
   ],
   "series":[
     {
-      "name":"a1",
+      "name":"temperature",
       "leaf":true
     },
     {
-      "name":"b",
+      "name":"st01",
       "leaf":false
     }
   ]
@@ -92,8 +92,8 @@ Request method：post
 content-type：application/json
 url：http://ip:port/v1/grafana/query/json
 ```
-$ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"interval":"1s","stime":"1616554359000","etime":"1616554369000","paths":["root","sg6","b2"]}' http://127.0.0.1:18080/v1/grafana/query/json
-$ [{"datapoints":[null,1616554359000,5.0,1616554360000,7.0,1616554361000,7.0,1616554362000,null,1616554363000,7.0,1616554364000,7.0,1616554365000,null,1616554366000,null,1616554367000,null,1616554368000],"target":"root.sg6.b2"}]
+$ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"interval":"1s","stime":"1616554359000","etime":"1616554369000","paths":["root","sg6","val01"]}' http://127.0.0.1:18080/v1/grafana/query/json
+$ [{"datapoints":[null,1616554359000,5.0,1616554360000,7.0,1616554361000,7.0,1616554362000,null,1616554363000,7.0,1616554364000,7.0,1616554365000,null,1616554366000,null,1616554367000,null,1616554368000],"target":"root.sg6.val01"}]
 ```
 Parameter description:
 
@@ -108,7 +108,7 @@ Parameter description:
 | fun  |  string |  false |  function |
 Request example：
 ```json
-{"interval":"1s","stime":"1616554359000","etime":"1616554368000","paths":["root","sg6","b2"]}
+{"interval":"1s","stime":"1616554359000","etime":"1616554369000","paths":["root","sg6","val01"]}
 ```
 Return parameters:
 
@@ -143,7 +143,7 @@ Response examples：
       null,
       1616554368000
     ],
-    "target":"root.sg6.b2"
+    "target":"root.sg6.val01"
   }
 ]
 ```
@@ -152,8 +152,8 @@ Request method：post
 content-type：application/json
 url：http://ip:port/v1/grafana/query/frame
 ```
-$ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"interval":"1s","stime":"1616554359000","etime":"1616554369000","paths":["root","sg6"]}' http://127.0.0.1:18080/v1/grafana/query/frame
-$ [{"values":[1616554359000,1616554360000,1616554361000,1616554362000,1616554363000,1616554364000,1616554365000,1616554366000,1616554367000,1616554368000],"name":"Time","type":"time"},{"values":[5.0,7.0,7.0,null,7.0,7.0,null,null,null],"name":"root.sg6.b2","type":"DOUBLE"},{"values":[5.0,null,null,null,null,null,null,null,null],"name":"root.sg6.b3","type":"DOUBLE"}]
+$ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"interval":"1s","stime":"1616554359000","etime":"1616554369000","paths":["root","sg7"]}' http://127.0.0.1:18080/v1/grafana/query/frame
+$ [{"values":[1616554359000,1616554360000,1616554361000,1616554362000,1616554363000,1616554364000,1616554365000,1616554366000,1616554367000,1616554368000],"name":"Time","type":"time"},{"values":[5.0,7.0,7.0,null,7.0,7.0,null,null,null],"name":"root.sg7.val02","type":"DOUBLE"},{"values":[5.0,null,null,null,null,null,null,null,null],"name":"root.sg7.val03","type":"DOUBLE"}]
 ```
 
 Parameter description:
@@ -169,7 +169,7 @@ Parameter description:
 | fun  |  string |  false |  function |
 Request example：
 ```json
-{"interval":"1s","stime":"1000","etime":"5000","paths":["root","sg6"]}
+{"interval":"1s","stime":"1616554359000","etime":"1616554369000","paths":["root","sg7"]}
 ```
 Return parameters:
 
@@ -210,7 +210,7 @@ Response examples：
       null,
       null
     ],
-    "name":"root.sg6.b2",
+    "name":"root.sg7.val02",
     "type":"DOUBLE"
   },
   {
@@ -225,11 +225,12 @@ Response examples：
       null,
       null
     ],
-    "name":"root.sg6.b3",
+    "name":"root.sg7.val03",
     "type":"DOUBLE"
   }
 ]
 ```
+
 ## prometheus
 
 ### prometheus wirte 
