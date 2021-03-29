@@ -23,7 +23,7 @@
 
 OpenAPI interface uses basic authentication. Every URL request needs to carry 'authorization':'basic '+ Base64. Encode (user name +': '+ password) in the header
 
-## grafanainterface
+## grafana interface
 
 ##Check if the iotdb service is working
 Request method：get
