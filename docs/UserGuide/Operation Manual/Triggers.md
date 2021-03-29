@@ -216,3 +216,53 @@ hander.collect(timestamp, value);
 
 Note that the type of the second parameter accepted by the `collect` method needs to be consistent with the `dataType` parameter provided during construction.
 
+
+
+#### Rejection Policy
+
+The execution of window evaluation tasks is asynchronous.
+
+When asynchronous tasks cannot be consumed by the execution thread pool in time, tasks will accumulate. In extreme cases, the accumulation of asynchronous tasks can cause the system OOM. Therefore, the number of tasks that the window evaluation thread pool allows to accumulate is set to a finite value.
+
+When the number of accumulated tasks exceeds the limit, the newly submitted tasks will not be able to enter the thread pool for execution. At this time, the system will call the rejection policy hook `onRejection` that you have implemented in the listening hook (`Evaluator`) for processing.
+
+The default behavior of `onRejection` is as follows.
+
+````java
+default void onRejection(Window window) {
+  throw new RejectedExecutionException();
+}
+````
+
+The way to implement a rejection strategy hook is as follows.
+
+```java
+SlidingTimeWindowEvaluationHandler handler =
+    new SlidingTimeWindowEvaluationHandler(
+        new SlidingTimeWindowConfiguration(TSDataType.INT32, 1, 1),
+        new Evaluator() {
+          @Override
+          public void evaluate(Window window) {
+            // do something
+	        }
+
+  	      @Override
+    	    public void onRejection(Window window) {
+      	  	// do something
+        	}
+    });
+```
+
+
+
+#### Configurable Properties
+
+##### concurrent_window_evaluation_thread
+
+The number of threads that can be used for evaluating sliding windows. The value is equals to CPU core number by default.
+
+
+
+##### max_pending_window_evaluation_tasks
+
+The maximum number of window evaluation tasks that can be pending for execution. The value is 64 by default.

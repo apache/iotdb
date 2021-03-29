@@ -216,3 +216,54 @@ hander.collect(timestamp, value);
 
 注意，`collect`方法接受的第二个参数类型需要与构造时传入的`dataType`声明一致。
 
+
+
+#### 拒绝策略
+
+窗口计算的任务执行是异步的。
+
+当异步任务无法被执行线程池及时消费时，会产生任务堆积。在极端情况下，异步任务的堆积会导致系统OOM。因此，窗口计算线程池允许堆积的任务数量被设定为有限值。
+
+当堆积的任务数量超出限值时，新提交的任务将无法进入线程池执行，此时，系统会调用您在侦听钩子（`Evaluator`）中制定的拒绝策略钩子`onRejection`进行处理。
+
+`onRejection`的默认行为如下。
+
+````java
+default void onRejection(Window window) {
+  throw new RejectedExecutionException();
+}
+````
+
+制定拒绝策略钩子的方式如下。
+
+```java
+SlidingTimeWindowEvaluationHandler handler =
+    new SlidingTimeWindowEvaluationHandler(
+        new SlidingTimeWindowConfiguration(TSDataType.INT32, 1, 1),
+        new Evaluator() {
+          @Override
+          public void evaluate(Window window) {
+            // do something
+	        }
+
+  	      @Override
+    	    public void onRejection(Window window) {
+      	  	// do something
+        	}
+    });
+```
+
+
+
+#### 配置参数
+
+##### concurrent_window_evaluation_thread
+
+窗口计算线程池的默认线程数。默认为CPU核数。
+
+
+
+##### max_pending_window_evaluation_tasks
+
+最多允许堆积的窗口计算任务。默认为64个。
+

@@ -19,10 +19,14 @@
 
 package org.apache.iotdb.db.utils.windowing.api;
 
+import java.util.concurrent.RejectedExecutionException;
+
 @FunctionalInterface
 public interface Evaluator {
 
   void evaluate(Window window);
 
-  default void onRejection(Window window) {}
+  default void onRejection(Window window) {
+    throw new RejectedExecutionException();
+  }
 }
