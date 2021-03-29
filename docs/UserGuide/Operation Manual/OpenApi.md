@@ -28,6 +28,10 @@ OpenAPI interface uses basic authentication. Every URL request needs to carry 'a
 ##Check if the iotdb service is working
 Request method：get
 Url：http://ip:port/ping
+```
+$ curl -H "Authorization:Basic cm9vdDpyb2901" http://127.0.0.1:18080/ping
+$ {"code":4,"type":"ok","message":"login success!"}
+```
 Response examples
 ```json
 {
@@ -48,9 +52,13 @@ Example of user name password authentication failure
 Request method：post
 content-type：application/json
 url：http://ip:port/v1/grafana/node
+```
+$ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '["root","sg5"]' http://127.0.0.1:18080/v1/grafana/node
+$ {"internal":["b"],"series":[{"name":"a1","leaf":true},{"name":"b","leaf":false}]}
+```
 Request example：
 ```json
-["root","xxxx","xxxx"]
+["root","sg5"]
 ```
 Return parameters:
 
@@ -62,14 +70,18 @@ Return parameters:
 |  leaf | boolean  |  The leaf node is true and the non leaf node is false |
 Response examples：
 ```json
-{"internal": ["sg0","sg1"],
+{
+  "internal":[
+    "b"
+  ],
   "series":[
-  {
-  "name": "sg0",
-  "leaf": false
-}, {
-      "name": "sg1",
-      "leaf": false
+    {
+      "name":"a1",
+      "leaf":true
+    },
+    {
+      "name":"b",
+      "leaf":false
     }
   ]
 }
@@ -79,6 +91,10 @@ Response examples：
 Request method：post
 content-type：application/json
 url：http://ip:port/v1/grafana/query/json
+```
+$ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"interval":"1s","stime":"1616554359000","etime":"1616554369000","paths":["root","sg6","b2"]}' http://127.0.0.1:18080/v1/grafana/query/json
+$ [{"datapoints":[null,1616554359000,5.0,1616554360000,7.0,1616554361000,7.0,1616554362000,null,1616554363000,7.0,1616554364000,7.0,1616554365000,null,1616554366000,null,1616554367000,null,1616554368000],"target":"root.sg6.b2"}]
+```
 Parameter description:
 
 |Parameter name  |Parameter type  |required|description|
@@ -86,13 +102,13 @@ Parameter description:
 |  interval | string | true  |  interval |
 | stime  |  number |  true |  Start time (timestamp) |
 |  etime | number|  true |  End time (timestamp) |
-| paths  |  array|  true |  Timeseries is root.sg Convert to paths to ["root", "SG"] |
+| paths  |  array|  true |  Timeseries is root.sg Convert to paths to ["root", "sg"] |
 | fills  |  object | false  |  fill |
 | dtype  |  string |  false |  data type |
 | fun  |  string |  false |  function |
 Request example：
 ```json
-{"interval":"1s","stime":"1000","etime":"5000","paths":["root","sg0"]}
+{"interval":"1s","stime":"1616554359000","etime":"1616554368000","paths":["root","sg6","b2"]}
 ```
 Return parameters:
 
@@ -105,29 +121,29 @@ Response examples：
 ```json
 [
   {
-    "datapoints": [
+    "datapoints":[
       null,
       1616554359000,
-      1.0,
+      5,
       1616554360000,
-      5.0,
+      7,
       1616554361000,
-      6.0,
+      7,
       1616554362000,
       null,
       1616554363000,
-      9.0,
+      7,
       1616554364000,
-      null,
+      7,
       1616554365000,
-      1.0,
+      null,
       1616554366000,
-      3.0,
+      null,
       1616554367000,
-      2.0,
+      null,
       1616554368000
     ],
-    "target": "root.sg0.node"
+    "target":"root.sg6.b2"
   }
 ]
 ```
@@ -135,6 +151,11 @@ Response examples：
 Request method：post
 content-type：application/json
 url：http://ip:port/v1/grafana/query/frame
+```
+$ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"interval":"1s","stime":"1616554359000","etime":"1616554369000","paths":["root","sg6"]}' http://127.0.0.1:18080/v1/grafana/query/frame
+$ [{"values":[1616554359000,1616554360000,1616554361000,1616554362000,1616554363000,1616554364000,1616554365000,1616554366000,1616554367000,1616554368000],"name":"Time","type":"time"},{"values":[5.0,7.0,7.0,null,7.0,7.0,null,null,null],"name":"root.sg6.b2","type":"DOUBLE"},{"values":[5.0,null,null,null,null,null,null,null,null],"name":"root.sg6.b3","type":"DOUBLE"}]
+```
+
 Parameter description:
 
 |Parameter name  |Parameter type  |required|description|
@@ -142,13 +163,13 @@ Parameter description:
 |  interval | string | true  |  interval |
 | stime  |  number |  true |  Start time (timestamp) |
 |  etime | number|  true |  End time (timestamp) |
-| paths  |  array|  true |  Timeseries is root.sg Convert path to ["root", "SG"] |
+| paths  |  array|  true |  Timeseries is root.sg Convert path to ["root", "sg"] |
 | fills  |  object | false  |  fill |
 | dtype  |  string |  false |  data type |
 | fun  |  string |  false |  function |
 Request example：
 ```json
-{"interval":"1s","stime":"1000","etime":"5000","paths":["root","sg0"]}
+{"interval":"1s","stime":"1000","etime":"5000","paths":["root","sg6"]}
 ```
 Return parameters:
 
@@ -162,7 +183,7 @@ Response examples：
 ```json
 [
   {
-    "values": [
+    "values":[
       1616554359000,
       1616554360000,
       1616554361000,
@@ -174,12 +195,27 @@ Response examples：
       1616554367000,
       1616554368000
     ],
-    "name": "Time",
-    "type": "time"
+    "name":"Time",
+    "type":"time"
   },
   {
-    "values": [
-      1.0,
+    "values":[
+      5,
+      7,
+      7,
+      null,
+      7,
+      7,
+      null,
+      null,
+      null
+    ],
+    "name":"root.sg6.b2",
+    "type":"DOUBLE"
+  },
+  {
+    "values":[
+      5,
       null,
       null,
       null,
@@ -189,8 +225,8 @@ Response examples：
       null,
       null
     ],
-    "name": "root.sg0.node",
-    "type": "string"
+    "name":"root.sg6.b3",
+    "type":"DOUBLE"
   }
 ]
 ```
