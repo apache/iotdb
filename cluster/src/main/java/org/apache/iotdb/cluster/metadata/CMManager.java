@@ -1761,8 +1761,6 @@ public class CMManager extends MManager {
     if (withAlias) {
       alias = new ArrayList<>();
     }
-    // make sure this node knows all storage groups
-    syncMetaLeader();
 
     if (withAlias) {
       for (String path : paths) {
