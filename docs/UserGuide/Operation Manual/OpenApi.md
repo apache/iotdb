@@ -27,7 +27,7 @@ OpenAPI interface uses basic authentication. Every URL request needs to carry 'a
 
 ##Check if the iotdb service is working
 Request method：get
-Url：http://ip:port/ping
+url：http://ip:port/ping
 ```
 $ curl -H "Authorization:Basic cm9vdDpyb2901" http://127.0.0.1:18080/ping
 $ {"code":4,"type":"ok","message":"login success!"}

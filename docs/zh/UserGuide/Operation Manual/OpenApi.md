@@ -26,7 +26,7 @@ OpenApi 接口使用了基础（basic）鉴权，每次url请求都需要在head
 
 ## 检查iotdb服务是否在运行
 请求方式：get
-请求Url：http://ip:port/ping
+请求url：http://ip:port/ping
 ```
 $ curl -H "Authorization:Basic cm9vdDpyb2901" http://127.0.0.1:18080/ping
 $ {"code":4,"type":"ok","message":"login success!"}
