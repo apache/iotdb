@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -97,6 +98,9 @@ public class QueryResourceManager {
   }
 
   public int getMaxDeduplicatedPathNum(int fetchSize) {
+    if (fetchSize == 0) {
+      return CONFIG.getMaxQueryDeduplicatedPathNum();
+    }
     return (int)
         Math.min(
             ((totalFreeMemoryForRead.get() / fetchSize) / POINT_ESTIMATED_SIZE),
@@ -105,6 +109,11 @@ public class QueryResourceManager {
 
   /** Register a new query. When a query request is created firstly, this method must be invoked. */
   public long assignQueryId(boolean isDataQuery, int fetchSize, int deduplicatedPathNum) {
+    int maxDeduplicatedPathNum = getMaxDeduplicatedPathNum(fetchSize);
+    if (deduplicatedPathNum > maxDeduplicatedPathNum) {
+      throw new RuntimeException(
+          new PathNumOverLimitException(maxDeduplicatedPathNum, deduplicatedPathNum));
+    }
     long queryId = queryIdAtom.incrementAndGet();
     if (isDataQuery) {
       filePathsManager.addQueryId(queryId);

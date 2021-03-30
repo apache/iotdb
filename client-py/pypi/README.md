@@ -71,3 +71,22 @@ zone = session.get_time_zone()
 session.close()
 
 ```
+
+## IoTDB Testcontainer
+
+The Test Support is based on the lib `testcontainers` (https://testcontainers-python.readthedocs.io/en/latest/index.html) which you need to install in your project if you want to use the feature.
+
+To start (and stop) an IoTDB Database in a Docker container simply do:
+```
+class MyTestCase(unittest.TestCase):
+
+    def test_something(self):
+        with IoTDBContainer() as c:
+            session = Session('localhost', c.get_exposed_port(6667), 'root', 'root')
+            session.open(False)
+            result = session.execute_query_statement("SHOW TIMESERIES")
+            print(result)
+            session.close()
+```
+
+by default it will load the image `apache/iotdb:latest`, if you want a specific version just pass it like e.g. `IoTDBContainer("apache/iotdb:0.10.0")` to get version `0.10.0` running.

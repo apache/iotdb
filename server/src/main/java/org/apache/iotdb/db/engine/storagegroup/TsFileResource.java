@@ -254,7 +254,7 @@ public class TsFileResource {
     }
     File src = fsFactory.getFile(file + RESOURCE_SUFFIX + TEMP_SUFFIX);
     File dest = fsFactory.getFile(file + RESOURCE_SUFFIX);
-    Files.deleteIfExists(dest.toPath());
+    fsFactory.deleteIfExists(dest);
     fsFactory.moveFile(src, dest);
   }
 
@@ -322,8 +322,18 @@ public class TsFileResource {
     timeIndex.updateStartTime(device, time);
   }
 
+  // used in merge, refresh all start time
+  public void putStartTime(String device, long time) {
+    timeIndex.putStartTime(device, time);
+  }
+
   public void updateEndTime(String device, long time) {
     timeIndex.updateEndTime(device, time);
+  }
+
+  // used in merge, refresh all end time
+  public void putEndTime(String device, long time) {
+    timeIndex.putEndTime(device, time);
   }
 
   public boolean resourceFileExists() {
@@ -449,14 +459,13 @@ public class TsFileResource {
   /** Remove the data file, its resource file, and its modification file physically. */
   public void remove() {
     try {
-      Files.deleteIfExists(file.toPath());
+      fsFactory.deleteIfExists(file);
     } catch (IOException e) {
       logger.error("TsFile {} cannot be deleted: {}", file, e.getMessage());
     }
     removeResourceFile();
     try {
-      Files.deleteIfExists(
-          fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX).toPath());
+      fsFactory.deleteIfExists(fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX));
     } catch (IOException e) {
       logger.error("ModificationFile {} cannot be deleted: {}", file, e.getMessage());
     }
@@ -464,7 +473,7 @@ public class TsFileResource {
 
   public void removeResourceFile() {
     try {
-      Files.deleteIfExists(fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX).toPath());
+      fsFactory.deleteIfExists(fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX));
     } catch (IOException e) {
       logger.error("TsFileResource {} cannot be deleted: {}", file, e.getMessage());
     }

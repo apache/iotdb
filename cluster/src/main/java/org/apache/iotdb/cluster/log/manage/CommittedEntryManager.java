@@ -41,6 +41,8 @@ public class CommittedEntryManager {
   // memory cache for logs which have been persisted in disk.
   private List<Log> entries;
 
+  private long entryTotalMemSize;
+
   /**
    * Note that it is better to use applyingSnapshot to update dummy entry immediately after this
    * instance is created.
@@ -48,6 +50,7 @@ public class CommittedEntryManager {
   CommittedEntryManager(int maxNumOfLogInMem) {
     entries = Collections.synchronizedList(new ArrayList<>(maxNumOfLogInMem));
     entries.add(new EmptyContentLog(-1, -1));
+    entryTotalMemSize = 0;
   }
 
   /**
@@ -209,6 +212,9 @@ public class CommittedEntryManager {
         0,
         new EmptyContentLog(
             entries.get(index).getCurrLogIndex(), entries.get(index).getCurrLogTerm()));
+    for (int i = 1; i <= index; i++) {
+      entryTotalMemSize -= entries.get(i).getByteSize();
+    }
     entries.subList(1, index + 1).clear();
   }
 
@@ -225,6 +231,9 @@ public class CommittedEntryManager {
     }
     long offset = appendingEntries.get(0).getCurrLogIndex() - getDummyIndex();
     if (entries.size() - offset == 0) {
+      for (int i = 0; i < appendingEntries.size(); i++) {
+        entryTotalMemSize += appendingEntries.get(i).getByteSize();
+      }
       entries.addAll(appendingEntries);
     } else if (entries.size() - offset > 0) {
       throw new TruncateCommittedEntryException(
@@ -245,5 +254,30 @@ public class CommittedEntryManager {
   @TestOnly
   List<Log> getAllEntries() {
     return entries;
+  }
+
+  public long getEntryTotalMemSize() {
+    return entryTotalMemSize;
+  }
+
+  public void setEntryTotalMemSize(long entryTotalMemSize) {
+    this.entryTotalMemSize = entryTotalMemSize;
+  }
+
+  /**
+   * check how many logs could be reserved in memory.
+   *
+   * @param maxMemSize the max memory size for old committed log
+   * @return max num to reserve old committed log
+   */
+  public int maxLogNumShouldReserve(long maxMemSize) {
+    long totalSize = 0;
+    for (int i = entries.size() - 1; i >= 1; i--) {
+      if (totalSize + entries.get(i).getByteSize() > maxMemSize) {
+        return entries.size() - 1 - i;
+      }
+      totalSize += entries.get(i).getByteSize();
+    }
+    return entries.size() - 1;
   }
 }
