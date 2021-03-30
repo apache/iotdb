@@ -19,15 +19,6 @@
 
 package org.apache.iotdb.db.engine.merge.selector;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.MergeException;
-import org.apache.iotdb.db.utils.MergeUtils;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -35,6 +26,13 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.merge.manage.MergeResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.MergeException;
+import org.apache.iotdb.db.utils.MergeUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * MaxFileMergeFileSelector selects the most files from given seqFiles and unseqFiles which can be
@@ -229,16 +227,10 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
         }
         // the open file's endTime is Long.MIN_VALUE, this will make the file be filtered below
         long seqEndTime = seqFile.isClosed() ? seqFile.getEndTime(deviceId) : Long.MAX_VALUE;
-        long seqStartTime = seqFile.getStartTime(deviceId);
         if (unseqEndTime <= seqEndTime) {
-          if (unseqEndTime == 9099) {
-            System.out.println(123);
-          }
           // the unseqFile overlaps current seqFile
-          if (unseqEndTime >= seqStartTime) {
-            tmpSelectedSeqFiles.add(i);
-            tmpSelectedNum++;
-          }
+          tmpSelectedSeqFiles.add(i);
+          tmpSelectedNum++;
           // the device of the unseqFile can not merge with later seqFiles
           noMoreOverlap = true;
         } else if (unseqStartTime <= seqEndTime) {
