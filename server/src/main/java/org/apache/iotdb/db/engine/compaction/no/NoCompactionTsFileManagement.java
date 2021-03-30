@@ -182,7 +182,7 @@ public class NoCompactionTsFileManagement extends TsFileManagement {
     if (sequence) {
       synchronized (sequenceFileTreeSetMap) {
         return sequenceFileTreeSetMap
-            .getOrDefault(tsFileResource.getTimePartition(), new TreeSet<>())
+            .getOrDefault(tsFileResource.getTimePartition(), newSequenceTsFileResources(0L))
             .contains(tsFileResource);
       }
     } else {
