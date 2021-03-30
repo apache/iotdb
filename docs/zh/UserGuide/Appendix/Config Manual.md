@@ -153,7 +153,7 @@
 |名字| time\_encoder |
 |:---:|:---|
 |描述| 时间列编码方式|
-|类型|枚举String: “TS_2DIFF”,“PLAIN”,“RLE”,“,“RLE””|
+|类型|枚举String: “TS_2DIFF”,“PLAIN”,“RLE”|
 |默认值| TS_2DIFF |
 |改后生效方式|触发生效|
 
@@ -162,7 +162,7 @@
 |名字| value\_encoder |
 |:---:|:---|
 |描述| value列编码方式|
-|类型|枚举String: “TS_2DIFF”,“PLAIN”,“RLE”,“,“RLE””|
+|类型|枚举String: “TS_2DIFF”,“PLAIN”,“RLE”|
 |默认值| PLAIN |
 |改后生效方式|触发生效|
 
