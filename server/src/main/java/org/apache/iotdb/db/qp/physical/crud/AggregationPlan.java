@@ -102,4 +102,36 @@ public class AggregationPlan extends RawDataQueryPlan {
     }
     return levelAggPaths;
   }
+
+  @Override
+  public void setAlignByTime(boolean align) throws QueryProcessException {
+    if (!align) {
+      throw new QueryProcessException(
+          getOperatorType().name() + " doesn't support disable align clause.");
+    }
+  }
+
+  @Override
+  public String getColumnForReaderFromPath(PartialPath path, int pathIndex) {
+    String columnForReader = super.getColumnForReaderFromPath(path, pathIndex);
+    if (!path.isTsAliasExists()) {
+      columnForReader = this.getAggregations().get(pathIndex) + "(" + columnForReader + ")";
+    }
+    return columnForReader;
+  }
+
+  @Override
+  public String getColumnForDisplay(String columnForReader, int pathIndex)
+      throws IllegalPathException {
+    String columnForDisplay = columnForReader;
+    if (level >= 0) {
+      PartialPath path = paths.get(pathIndex);
+      String aggregatePath =
+          path.isMeasurementAliasExists()
+              ? FilePathUtils.generatePartialPathByLevel(path.getFullPathWithAlias(), level)
+              : FilePathUtils.generatePartialPathByLevel(path.toString(), level);
+      columnForDisplay = aggregations.get(pathIndex) + "(" + aggregatePath + ")";
+    }
+    return columnForDisplay;
+  }
 }

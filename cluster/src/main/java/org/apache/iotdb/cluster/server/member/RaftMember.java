@@ -107,7 +107,7 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 @SuppressWarnings("java:S3077") // reference volatile is enough
 public abstract class RaftMember {
-
+  private static final Logger logger = LoggerFactory.getLogger(RaftMember.class);
   public static final boolean USE_LOG_DISPATCHER = false;
 
   private static final String MSG_FORWARD_TIMEOUT = "{}: Forward {} to {} time out";
@@ -115,7 +115,6 @@ public abstract class RaftMember {
       "{}: encountered an error when forwarding {} to" + " {}";
   private static final String MSG_NO_LEADER_COMMIT_INDEX =
       "{}: Cannot request commit index from {}";
-  private static final Logger logger = LoggerFactory.getLogger(RaftMember.class);
   private static final String MSG_NO_LEADER_IN_SYNC = "{}: No leader is found when synchronizing";
   public static final String MSG_LOG_IS_ACCEPTED = "{}: log {} is accepted";
   /**
@@ -279,7 +278,7 @@ public abstract class RaftMember {
         Executors.newFixedThreadPool(
             Runtime.getRuntime().availableProcessors() * 10,
             new ThreadFactoryBuilder().setNameFormat(getName() + "-AppendLog%d").build());
-    if (!ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+    if (!config.isUseAsyncServer()) {
       serialToParallelPool =
           new ThreadPoolExecutor(
               allNodes.size(),
@@ -509,7 +508,9 @@ public abstract class RaftMember {
     }
 
     long startTime = Timer.Statistic.RAFT_RECEIVER_LOG_PARSE.getOperationStartTime();
+    int logByteSize = request.getEntry().length;
     Log log = LogParser.getINSTANCE().parse(request.entry);
+    log.setByteSize(logByteSize);
     Timer.Statistic.RAFT_RECEIVER_LOG_PARSE.calOperationCostTimeFromStart(startTime);
 
     long result = appendEntry(request.prevLogIndex, request.prevLogTerm, request.leaderCommit, log);
@@ -530,12 +531,15 @@ public abstract class RaftMember {
 
     long response;
     List<Log> logs = new ArrayList<>();
+    int logByteSize = 0;
     long startTime = Timer.Statistic.RAFT_RECEIVER_LOG_PARSE.getOperationStartTime();
     for (ByteBuffer buffer : request.getEntries()) {
       buffer.mark();
       Log log;
+      logByteSize = buffer.limit() - buffer.position();
       try {
         log = LogParser.getINSTANCE().parse(buffer);
+        log.setByteSize(logByteSize);
       } catch (BufferUnderflowException e) {
         buffer.reset();
         throw e;
@@ -667,7 +671,7 @@ public abstract class RaftMember {
   /**
    * Update the followers' log by sending logs whose index >= followerLastMatchedLogIndex to the
    * follower. If some of the required logs are removed, also send the snapshot. <br>
-   * notice that if a part of data is in the snapshot, then it is not in the logs</>
+   * notice that if a part of data is in the snapshot, then it is not in the logs.
    */
   public void catchUp(Node follower, long lastLogIdx) {
     // for one follower, there is at most one ongoing catch-up, so the same data will not be sent
@@ -731,19 +735,16 @@ public abstract class RaftMember {
   public void syncLeaderWithConsistencyCheck(boolean isWriteRequest)
       throws CheckConsistencyException {
     if (isWriteRequest) {
-      if (!syncLeader()) {
-        throw CheckConsistencyException.CHECK_STRONG_CONSISTENCY_EXCEPTION;
-      }
+      syncLeader(new StrongCheckConsistency());
     } else {
-      switch (ClusterDescriptor.getInstance().getConfig().getConsistencyLevel()) {
+      switch (config.getConsistencyLevel()) {
         case STRONG_CONSISTENCY:
-          if (!syncLeader()) {
-            throw CheckConsistencyException.CHECK_STRONG_CONSISTENCY_EXCEPTION;
-          }
+          syncLeader(new StrongCheckConsistency());
           return;
         case MID_CONSISTENCY:
-          // do not care success or not
-          syncLeader();
+          // if leaderCommitId bigger than localAppliedId a value,
+          // will throw CHECK_MID_CONSISTENCY_EXCEPTION
+          syncLeader(new MidCheckConsistency());
           return;
         case WEAK_CONSISTENCY:
           // do nothing
@@ -751,8 +752,64 @@ public abstract class RaftMember {
         default:
           // this should not happen in theory
           throw new CheckConsistencyException(
-              "unknown consistency="
-                  + ClusterDescriptor.getInstance().getConfig().getConsistencyLevel().name());
+              "unknown consistency=" + config.getConsistencyLevel().name());
+      }
+    }
+  }
+
+  /** call back after syncLeader */
+  public interface CheckConsistency {
+
+    /**
+     * deal leaderCommitId and localAppliedId after syncLeader
+     *
+     * @param leaderCommitId leader commit id
+     * @param localAppliedId local applied id
+     * @throws CheckConsistencyException maybe throw CheckConsistencyException, which is defined in
+     *     implements.
+     */
+    void postCheckConsistency(long leaderCommitId, long localAppliedId)
+        throws CheckConsistencyException;
+  }
+
+  public static class MidCheckConsistency implements CheckConsistency {
+
+    /**
+     * if leaderCommitId - localAppliedId > MaxReadLogLag, will throw
+     * CHECK_MID_CONSISTENCY_EXCEPTION
+     *
+     * @param leaderCommitId leader commit id
+     * @param localAppliedId local applied id
+     * @throws CheckConsistencyException
+     */
+    @Override
+    public void postCheckConsistency(long leaderCommitId, long localAppliedId)
+        throws CheckConsistencyException {
+      if (leaderCommitId == Long.MAX_VALUE
+          || leaderCommitId == Long.MIN_VALUE
+          || leaderCommitId - localAppliedId
+              > ClusterDescriptor.getInstance().getConfig().getMaxReadLogLag()) {
+        throw CheckConsistencyException.CHECK_MID_CONSISTENCY_EXCEPTION;
+      }
+    }
+  }
+
+  public static class StrongCheckConsistency implements CheckConsistency {
+
+    /**
+     * if leaderCommitId > localAppliedId, will throw CHECK_STRONG_CONSISTENCY_EXCEPTION
+     *
+     * @param leaderCommitId leader commit id
+     * @param localAppliedId local applied id
+     * @throws CheckConsistencyException
+     */
+    @Override
+    public void postCheckConsistency(long leaderCommitId, long localAppliedId)
+        throws CheckConsistencyException {
+      if (leaderCommitId > localAppliedId
+          || leaderCommitId == Long.MAX_VALUE
+          || leaderCommitId == Long.MIN_VALUE) {
+        throw CheckConsistencyException.CHECK_STRONG_CONSISTENCY_EXCEPTION;
       }
     }
   }
@@ -761,9 +818,12 @@ public abstract class RaftMember {
    * Request and check the leader's commitId to see whether this node has caught up. If not, wait
    * until this node catches up.
    *
+   * @param checkConsistency check after syncleader
    * @return true if the node has caught up, false otherwise
+   * @throws CheckConsistencyException if leaderCommitId bigger than localAppliedId a threshold
+   *     value after timeout
    */
-  public boolean syncLeader() {
+  public boolean syncLeader(CheckConsistency checkConsistency) throws CheckConsistencyException {
     if (character == NodeCharacter.LEADER) {
       return true;
     }
@@ -777,7 +837,7 @@ public abstract class RaftMember {
       return true;
     }
     logger.debug("{}: try synchronizing with the leader {}", name, leader.get());
-    return waitUntilCatchUp();
+    return waitUntilCatchUp(checkConsistency);
   }
 
   /** Wait until the leader of this node becomes known or time out. */
@@ -806,32 +866,42 @@ public abstract class RaftMember {
    * it.
    *
    * @return true if this node has caught up before timeout, false otherwise
+   * @throws CheckConsistencyException if leaderCommitId bigger than localAppliedId a threshold
+   *     value after timeout
    */
-  private boolean waitUntilCatchUp() {
-    long startTime = System.currentTimeMillis();
-    long waitedTime = 0;
-    long leaderCommitId;
+  protected boolean waitUntilCatchUp(CheckConsistency checkConsistency)
+      throws CheckConsistencyException {
+    long leaderCommitId = Long.MIN_VALUE;
     try {
-      leaderCommitId =
-          ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()
-              ? requestCommitIdAsync()
-              : requestCommitIdSync();
-      if (leaderCommitId == Long.MAX_VALUE) {
-        // Long.MAX_VALUE representing there is a network issue
-        return false;
-      }
+      leaderCommitId = config.isUseAsyncServer() ? requestCommitIdAsync() : requestCommitIdSync();
+      return syncLocalApply(leaderCommitId);
     } catch (TException e) {
       logger.error(MSG_NO_LEADER_COMMIT_INDEX, name, leader.get(), e);
-      return false;
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.error(MSG_NO_LEADER_COMMIT_INDEX, name, leader.get(), e);
-      return false;
+    } finally {
+      if (checkConsistency != null) {
+        checkConsistency.postCheckConsistency(
+            leaderCommitId, logManager.getMaxHaveAppliedCommitIndex());
+      }
     }
+    return false;
+  }
 
+  /**
+   * sync local applyId to leader commitId
+   *
+   * @param leaderCommitId leader commit id
+   * @return true if leaderCommitId <= localAppliedId
+   */
+  private boolean syncLocalApply(long leaderCommitId) {
+    long startTime = System.currentTimeMillis();
+    long waitedTime = 0;
+    long localAppliedId = 0;
     while (waitedTime < RaftServer.getSyncLeaderMaxWaitMs()) {
       try {
-        long localAppliedId = logManager.getMaxHaveAppliedCommitIndex();
+        localAppliedId = logManager.getMaxHaveAppliedCommitIndex();
         logger.debug("{}: synchronizing commitIndex {}/{}", name, localAppliedId, leaderCommitId);
         if (leaderCommitId <= localAppliedId) {
           // this node has caught up
@@ -854,6 +924,7 @@ public abstract class RaftMember {
       }
     }
     logger.warn("{}: Failed to synchronize with the leader after {}ms", name, waitedTime);
+
     return false;
   }
 
@@ -882,6 +953,7 @@ public abstract class RaftMember {
 
       log.setPlan(plan);
       plan.setIndex(log.getCurrLogIndex());
+      // appendLogInGroup will serialize log, and set log size, and we will use the size after it
       logManager.append(log);
     }
     Timer.Statistic.RAFT_SENDER_APPEND_LOG.calOperationCostTimeFromStart(startTime);
@@ -917,6 +989,7 @@ public abstract class RaftMember {
       plan.setIndex(log.getCurrLogIndex());
 
       startTime = Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.getOperationStartTime();
+      // logDispatcher will serialize log, and set log size, and we will use the size after it
       logManager.append(log);
       Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.calOperationCostTimeFromStart(startTime);
 
@@ -984,7 +1057,7 @@ public abstract class RaftMember {
   }
 
   @SuppressWarnings("java:S2274") // enable timeout
-  private long requestCommitIdAsync() throws TException, InterruptedException {
+  protected long requestCommitIdAsync() throws TException, InterruptedException {
     // use Long.MAX_VALUE to indicate a timeout
     AtomicReference<Long> commitIdResult = new AtomicReference<>(Long.MAX_VALUE);
     AsyncClient client = getAsyncClient(leader.get());
@@ -1152,7 +1225,7 @@ public abstract class RaftMember {
     logger.debug("{}: Forward {} to node {}", name, plan, node);
 
     TSStatus status;
-    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+    if (config.isUseAsyncServer()) {
       status = forwardPlanAsync(plan, node, header);
     } else {
       status = forwardPlanSync(plan, node, header);
@@ -1271,7 +1344,6 @@ public abstract class RaftMember {
     if (ClusterConstant.EMPTY_NODE.equals(node) || node == null) {
       return null;
     }
-
     try {
       return pool.getClient(node, activatedOnly);
     } catch (IOException e) {
@@ -1409,7 +1481,9 @@ public abstract class RaftMember {
     AppendEntryRequest request = new AppendEntryRequest();
     request.setTerm(term.get());
     if (serializeNow) {
-      request.setEntry(log.serialize());
+      ByteBuffer byteBuffer = log.serialize();
+      log.setByteSize(byteBuffer.array().length);
+      request.setEntry(byteBuffer);
     }
     request.setLeader(getThisNode());
     // don't need lock because even if it's larger than the commitIndex when appending this log to
@@ -1641,7 +1715,7 @@ public abstract class RaftMember {
       return;
     }
 
-    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+    if (config.isUseAsyncServer()) {
       sendLogAsync(log, voteCounter, node, leaderShipStale, newLeaderTerm, request, peer);
     } else {
       sendLogSync(log, voteCounter, node, leaderShipStale, newLeaderTerm, request, peer);
@@ -1654,7 +1728,7 @@ public abstract class RaftMember {
    */
   @SuppressWarnings("java:S2445") // safe synchronized
   public boolean waitForPrevLog(Peer peer, Log log) {
-    final int maxLogDiff = ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem();
+    final int maxLogDiff = config.getMaxNumOfLogsInMem();
     long waitStart = System.currentTimeMillis();
     long alreadyWait = 0;
     // if the peer falls behind too much, wait until it catches up, otherwise there may be too

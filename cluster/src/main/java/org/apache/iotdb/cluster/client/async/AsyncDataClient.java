@@ -67,7 +67,7 @@ public class AsyncDataClient extends AsyncClient {
         protocolFactory,
         clientManager,
         new TNonblockingSocket(
-            node.getIp(), node.getDataPort(), RaftServer.getConnectionTimeoutInMS()));
+            node.getInternalIp(), node.getDataPort(), RaftServer.getConnectionTimeoutInMS()));
     this.node = node;
     this.pool = pool;
   }

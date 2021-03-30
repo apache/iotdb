@@ -46,7 +46,7 @@ public class AsyncDataHeartbeatClient extends AsyncDataClient {
         protocolFactory,
         clientManager,
         new TNonblockingSocket(
-            node.getIp(),
+            node.getInternalIp(),
             node.getDataPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET,
             RaftServer.getConnectionTimeoutInMS()));
     this.node = node;

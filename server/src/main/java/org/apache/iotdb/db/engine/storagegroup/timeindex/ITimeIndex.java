@@ -116,6 +116,22 @@ public interface ITimeIndex {
   void updateEndTime(String deviceId, long time);
 
   /**
+   * put start time
+   *
+   * @param deviceId device name
+   * @param time start time
+   */
+  void putStartTime(String deviceId, long time);
+
+  /**
+   * put end time
+   *
+   * @param deviceId device name
+   * @param time end time
+   */
+  void putEndTime(String deviceId, long time);
+
+  /**
    * get start time of device
    *
    * @param deviceId device name

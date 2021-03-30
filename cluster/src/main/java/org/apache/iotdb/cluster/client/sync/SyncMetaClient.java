@@ -29,13 +29,15 @@ import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
 
+import java.io.Closeable;
+
 /**
  * Notice: Because a client will be returned to a pool immediately after a successful request, you
  * should not cache it anywhere else or there may be conflicts.
  */
 // the two classes does not share a common parent and Java does not allow multiple extension
 @SuppressWarnings("common-java:DuplicatedBlocks")
-public class SyncMetaClient extends Client {
+public class SyncMetaClient extends Client implements Closeable {
 
   Node node;
   SyncClientPool pool;
@@ -50,7 +52,9 @@ public class SyncMetaClient extends Client {
         protocolFactory.getProtocol(
             RpcTransportFactory.INSTANCE.getTransport(
                 new TSocket(
-                    node.getIp(), node.getMetaPort(), RaftServer.getConnectionTimeoutInMS()))));
+                    node.getInternalIp(),
+                    node.getMetaPort(),
+                    RaftServer.getConnectionTimeoutInMS()))));
     this.node = node;
     this.pool = pool;
     getInputProtocol().getTransport().open();
@@ -62,6 +66,12 @@ public class SyncMetaClient extends Client {
     } else {
       getInputProtocol().getTransport().close();
     }
+  }
+
+  /** put the client to pool, instead of close client. */
+  @Override
+  public void close() {
+    putBack();
   }
 
   public static class FactorySync implements SyncClientFactory {
@@ -80,5 +90,10 @@ public class SyncMetaClient extends Client {
 
   public Node getNode() {
     return node;
+  }
+
+  @Override
+  public String toString() {
+    return "SyncMetaClient{" + " node=" + node + ", pool=" + pool + "}";
   }
 }

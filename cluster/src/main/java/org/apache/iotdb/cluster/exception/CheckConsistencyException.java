@@ -30,4 +30,8 @@ public class CheckConsistencyException extends Exception {
 
   public static final CheckConsistencyException CHECK_STRONG_CONSISTENCY_EXCEPTION =
       new CheckConsistencyException("strong consistency, sync with leader failed");
+
+  public static final CheckConsistencyException CHECK_MID_CONSISTENCY_EXCEPTION =
+      new CheckConsistencyException(
+          "mid consistency, localAppliedId is smaller than the leaderCommitId");
 }
