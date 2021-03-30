@@ -65,6 +65,9 @@ public class ClusterConfig {
   /** max number of committed logs in memory */
   private int maxNumOfLogsInMem = 1000;
 
+  /** max memory size of committed logs in memory, default 512M */
+  private long maxMemorySizeForRaftLog = 536870912;
+
   /** deletion check period of the submitted log */
   private int logDeleteCheckIntervalSecond = -1;
 
@@ -160,6 +163,8 @@ public class ClusterConfig {
   private long maxReadLogLag = 1000L;
 
   private boolean openServerRpcPort = false;
+
+  private boolean enableQueryRedirect = false;
 
   public int getSelectorNumOfClientPool() {
     return selectorNumOfClientPool;
@@ -381,6 +386,14 @@ public class ClusterConfig {
     this.maxRaftLogIndexSizeInMemory = maxRaftLogIndexSizeInMemory;
   }
 
+  public long getMaxMemorySizeForRaftLog() {
+    return maxMemorySizeForRaftLog;
+  }
+
+  public void setMaxMemorySizeForRaftLog(long maxMemorySizeForRaftLog) {
+    this.maxMemorySizeForRaftLog = maxMemorySizeForRaftLog;
+  }
+
   public int getMaxRaftLogPersistDataSizePerFile() {
     return maxRaftLogPersistDataSizePerFile;
   }
@@ -455,5 +468,13 @@ public class ClusterConfig {
 
   public void setWaitClientTimeoutMS(long waitClientTimeoutMS) {
     this.waitClientTimeoutMS = waitClientTimeoutMS;
+  }
+
+  public boolean isEnableQueryRedirect() {
+    return enableQueryRedirect;
+  }
+
+  public void setEnableQueryRedirect(boolean enableQueryRedirect) {
+    this.enableQueryRedirect = enableQueryRedirect;
   }
 }

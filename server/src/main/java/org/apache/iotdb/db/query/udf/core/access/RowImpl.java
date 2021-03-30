@@ -89,4 +89,9 @@ public class RowImpl implements Row {
     this.rowRecord = rowRecord;
     return this;
   }
+
+  @Override
+  public int size() {
+    return this.columnIndexes.length;
+  }
 }

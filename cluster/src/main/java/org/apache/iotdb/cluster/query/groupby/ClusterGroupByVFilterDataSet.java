@@ -63,7 +63,7 @@ public class ClusterGroupByVFilterDataSet extends GroupByWithValueFilterDataSet 
   protected TimeGenerator getTimeGenerator(
       IExpression expression, QueryContext context, RawDataQueryPlan rawDataQueryPlan)
       throws StorageEngineException {
-    return new ClusterTimeGenerator(expression, context, metaGroupMember, rawDataQueryPlan);
+    return new ClusterTimeGenerator(expression, context, metaGroupMember, rawDataQueryPlan, false);
   }
 
   @Override

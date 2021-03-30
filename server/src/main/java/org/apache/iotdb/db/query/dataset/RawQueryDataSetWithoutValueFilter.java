@@ -180,6 +180,17 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
     init();
   }
 
+  /**
+   * Dummy dataSet for redirect query.
+   *
+   * @param queryId queryId for the query.
+   */
+  public RawQueryDataSetWithoutValueFilter(long queryId) {
+    this.queryId = queryId;
+    blockingQueueArray = new BlockingQueue[0];
+    timeHeap = new TimeSelector(0, ascending);
+  }
+
   private void init() throws IOException, InterruptedException {
     timeHeap = new TimeSelector(seriesReaderList.size() << 1, ascending);
     for (int i = 0; i < seriesReaderList.size(); i++) {
