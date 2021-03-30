@@ -24,7 +24,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
-
+import org.apache.iotdb.tsfile.write.record.BitMap;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -38,6 +38,8 @@ public class VectorTVList extends TVList {
 
   private List<int[]> indices;
 
+  private List<List<BitMap>> bitMaps;
+
   private int[][] sortedIndices;
 
   private int pivotIndex;
@@ -47,7 +49,9 @@ public class VectorTVList extends TVList {
     indices = new ArrayList<>();
     dataTypes = types;
     values = new ArrayList<>();
+    bitMaps = new ArrayList<>();
     for (int i = 0; i < types.size(); i++) {
+      bitMaps.add(new ArrayList<>());
       values.add(new ArrayList<>());
     }
   }
@@ -62,6 +66,12 @@ public class VectorTVList extends TVList {
     for (int i = 0; i < values.size(); i++) {
       Object columnValue = value[i];
       List<Object> columnValues = values.get(i);
+      List<BitMap> columnBitMaps = bitMaps.get(i);
+      if (columnValue == null) {
+        columnBitMaps.get(arrayIndex).mark(elementIndex);
+      } else {
+        columnBitMaps.get(arrayIndex).unmark(elementIndex);
+      }
       switch (dataTypes.get(i)) {
         case TEXT:
           ((Binary[]) columnValues.get(arrayIndex))[elementIndex] = (Binary) columnValue;
@@ -112,6 +122,10 @@ public class VectorTVList extends TVList {
     TsPrimitiveType[] vector = new TsPrimitiveType[values.size()];
     for (int i = 0; i < values.size(); i++) {
       List<Object> columnValues = values.get(i);
+      if (bitMaps.get(i).get(arrayIndex).get(elementIndex)) {
+        vector[i] = null;
+        continue;
+      }
       switch (dataTypes.get(i)) {
         case TEXT:
           vector[i] =
@@ -154,14 +168,17 @@ public class VectorTVList extends TVList {
   public TVList getTVListByColumnIndex(List<Integer> columns) {
     List<TSDataType> types = new ArrayList<>();
     List<List<Object>> values = new ArrayList<>();
+    List<List<BitMap>> bitMaps = new ArrayList<>();
     for (int column : columns) {
       types.add(this.dataTypes.get(column));
       values.add(this.values.get(column));
+      bitMaps.add(this.bitMaps.get(column));
     }
     VectorTVList vectorTVList = new VectorTVList(types);
     vectorTVList.timestamps = this.timestamps;
     vectorTVList.indices = this.indices;
     vectorTVList.values = values;
+    vectorTVList.bitMaps = bitMaps;
     vectorTVList.size = this.size;
     return vectorTVList;
   }
@@ -304,6 +321,16 @@ public class VectorTVList extends TVList {
     return ((boolean[]) columnValues.get(arrayIndex))[elementIndex];
   }
 
+  public boolean isValueNull(int valueIndex, int column) {
+    if (valueIndex >= size) {
+      throw new ArrayIndexOutOfBoundsException(valueIndex);
+    }
+    int arrayIndex = valueIndex / ARRAY_SIZE;
+    int elementIndex = valueIndex % ARRAY_SIZE;
+    List<BitMap> columnBitMaps = bitMaps.get(column);
+    return columnBitMaps.get(arrayIndex).get(elementIndex);
+  }
+
   public List<List<Object>> getValues() {
     return values;
   }
@@ -330,13 +357,32 @@ public class VectorTVList extends TVList {
   public VectorTVList clone() {
     VectorTVList cloneList = new VectorTVList(dataTypes);
     cloneAs(cloneList);
+    for (int[] indicesArray : indices) {
+      cloneList.indices.add(cloneIndex(indicesArray));
+    }
     for (int i = 0; i < values.size(); i++) {
       List<Object> columnValues = values.get(i);
       for (Object valueArray : columnValues) {
         cloneList.values.get(i).add(cloneValue(dataTypes.get(i), valueArray));
       }
+      List<BitMap> columnBitMaps = bitMaps.get(i);
+      for (BitMap bitMap : columnBitMaps) {
+        cloneList.bitMaps.get(i).add(cloneBitMap(bitMap));
+      }
     }
     return cloneList;
+  }
+
+  private int[] cloneIndex(int[] array) {
+    int[] cloneArray = new int[array.length];
+    System.arraycopy(array, 0, cloneArray, 0, array.length);
+    return cloneArray;
+  }
+
+  private BitMap cloneBitMap(BitMap bitMap) {
+    byte[] cloneBytes = new byte[bitMap.getByteArray().length];
+    System.arraycopy(bitMap.getByteArray(), 0, cloneBytes, 0, bitMap.getByteArray().length);
+    return new BitMap(bitMap.getSize(), cloneBytes);
   }
 
   private Object cloneValue(TSDataType type, Object value) {
@@ -407,6 +453,10 @@ public class VectorTVList extends TVList {
         }
         columnValues.clear();
       }
+      List<BitMap> columnBitMaps = bitMaps.get(i);
+      if (columnBitMaps != null) {
+        columnBitMaps.clear();
+      }
     }
   }
 
@@ -455,6 +505,7 @@ public class VectorTVList extends TVList {
   protected void expandValues() {
     indices.add((int[]) getPrimitiveArraysByType(TSDataType.INT32));
     for (int i = 0; i < dataTypes.size(); i++) {
+      bitMaps.get(i).add(new BitMap(ARRAY_SIZE));
       values.get(i).add(getPrimitiveArraysByType(dataTypes.get(i)));
     }
   }
@@ -499,7 +550,7 @@ public class VectorTVList extends TVList {
   }
 
   @Override
-  public void putVectors(long[] time, Object[] value, int start, int end) {
+  public void putVectors(long[] time, BitMap[] bitMaps, Object[] value, int start, int end) {
     checkExpansion();
     int idx = start;
 
@@ -516,6 +567,13 @@ public class VectorTVList extends TVList {
         arrayCopy(value, idx, arrayIdx, elementIdx, inputRemaining);
         for (int i = 0; i < inputRemaining; i++) {
           indices.get(arrayIdx)[elementIdx + i] = size;
+          for (int j = 0; j < bitMaps.length; j++) {
+            if (bitMaps[j].get(idx + i)) {
+              this.bitMaps.get(j).get(arrayIdx).mark(elementIdx + i);
+            } else {
+              this.bitMaps.get(j).get(arrayIdx).unmark(elementIdx + i);
+            }
+          }
           size++;
         }
         break;
@@ -524,11 +582,18 @@ public class VectorTVList extends TVList {
         // one and enter the next loop
         System.arraycopy(time, idx, timestamps.get(arrayIdx), elementIdx, internalRemaining);
         arrayCopy(value, idx, arrayIdx, elementIdx, internalRemaining);
-        idx += internalRemaining;
         for (int i = 0; i < internalRemaining; i++) {
           indices.get(arrayIdx)[elementIdx + i] = size;
+          for (int j = 0; j < bitMaps.length; j++) {
+            if (bitMaps[j].get(idx + i)) {
+              this.bitMaps.get(j).get(arrayIdx).mark(elementIdx + i);
+            } else {
+              this.bitMaps.get(j).get(arrayIdx).unmark(elementIdx + i);
+            }
+          }
           size++;
         }
+        idx += internalRemaining;
         checkExpansion();
       }
     }

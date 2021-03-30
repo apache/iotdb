@@ -93,6 +93,11 @@ public class Tablet {
     measurementIndex = new HashMap<>();
 
     for (int i = 0; i < schemas.size(); i++) {
+      if (schemas.get(i).getType() == TSDataType.VECTOR) {
+        for (String measurementId : schemas.get(i).getValueMeasurementIdList()) {
+          measurementIndex.put(measurementId, i);
+        }
+      }
       measurementIndex.put(schemas.get(i).getMeasurementId(), i);
     }
 
@@ -127,12 +132,12 @@ public class Tablet {
   private void addValueOfDataType(
       TSDataType dataType, int rowIndex, int indexOfValue, Object value) {
 
-    // set bitset
+    // set bitmap
     if (value == null) {
-      bitMaps[indexOfValue].unmark(rowIndex);
+      bitMaps[indexOfValue].mark(rowIndex);
       return;
     }
-    bitMaps[indexOfValue].mark(rowIndex);
+    bitMaps[indexOfValue].unmark(rowIndex);
 
     switch (dataType) {
       case TEXT:

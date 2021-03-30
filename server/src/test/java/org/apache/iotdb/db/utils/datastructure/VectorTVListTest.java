@@ -20,7 +20,7 @@ package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
-
+import org.apache.iotdb.tsfile.write.record.BitMap;
 import org.apache.commons.lang3.ArrayUtils;
 import org.junit.Assert;
 import org.junit.Test;
@@ -89,8 +89,10 @@ public class VectorTVListTest {
   @Test
   public void testVectorTVLists() {
     List<TSDataType> dataTypes = new ArrayList<>();
+    BitMap[] bitMaps = new BitMap[5];
     for (int i = 0; i < 5; i++) {
       dataTypes.add(TSDataType.INT64);
+      bitMaps[i] = new BitMap(1001);
     }
     VectorTVList tvList = new VectorTVList(dataTypes);
     long[][] vectorArray = new long[5][1001];
@@ -100,8 +102,10 @@ public class VectorTVListTest {
       for (int j = 0; j < 5; j++) {
         vectorArray[j][i] = (long) i;
       }
+      
     }
-    tvList.putVectors(ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), vectorArray, 0, 1000);
+    
+    tvList.putVectors(ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), bitMaps, vectorArray, 0, 1000);
     for (long i = 0; i < tvList.size; i++) {
       Assert.assertEquals(tvList.size - i, tvList.getTime((int) i));
     }

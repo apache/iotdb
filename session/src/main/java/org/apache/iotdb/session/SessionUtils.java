@@ -60,9 +60,9 @@ public class SessionUtils {
   private static void getValueBufferOfDataType(
       TSDataType dataType, Tablet tablet, int i, ByteBuffer valueBuffer) {
     BitMap curBitMap = tablet.bitMaps[i];
-    long[] curLongs = curBitMap.getLongArray();
-    for (int j = 0; j < curLongs.length; j++) {
-      valueBuffer.putLong(curLongs[j]);
+    byte[] curBytes = curBitMap.getByteArray();
+    for (int j = 0; j < curBytes.length; j++) {
+      valueBuffer.put(curBytes[j]);
     }
 
     switch (dataType) {

@@ -36,41 +36,24 @@ public class BitMap {
 
   private byte[] bits;
   private int size;
-  private int length;
 
   public BitMap(int size) {
     this.size = size;
-    if (size % Byte.SIZE == 0) {
-      this.length = size / Byte.SIZE;
-    } else {
-      this.length = size / Byte.SIZE + 1;
-    }
-    this.length = size / Byte.SIZE + 1;
-    bits = new byte[this.length];
+    bits = new byte[size / Byte.SIZE + 1];
     Arrays.fill(bits, (byte) 0);
+  }
+
+  public BitMap(int size, byte[] bits) {
+    this.size = size;
+    this.bits = bits;
   }
 
   public byte[] getByteArray() {
     return this.bits;
   }
 
-  public long[] getLongArray() {
-    int newLength;
-    if (this.length % (Long.SIZE / Byte.SIZE) == 0) {
-      newLength = this.length / (Long.SIZE / Byte.SIZE);
-    } else {
-      newLength = this.length / (Long.SIZE / Byte.SIZE) + 1;
-    }
-
-    long[] retLong = new long[newLength];
-    for (int i = 0; i < newLength; i++) {
-      long curLong = 0;
-      for (int j = 0; j < Byte.SIZE; j++) {
-        curLong |= ((long) (this.bits[i + j]) << j);
-      }
-      retLong[i] = curLong;
-    }
-    return retLong;
+  public int getSize() {
+    return this.size;
   }
 
   /** returns the value of the bit with the specified index. */
@@ -83,9 +66,9 @@ public class BitMap {
     bits[position / Byte.SIZE] |= BIT_UTIL[position % Byte.SIZE];
   }
 
-  /** mark as 0 at all position or the given bit position */
+  /** mark as 0 at all positions */
   public void unmark() {
-    for (int i = 0; i < this.length; i++) {
+    for (int i = 0; i < size / Byte.SIZE + 1; i++) {
       bits[i] = (byte) 0;
     }
   }

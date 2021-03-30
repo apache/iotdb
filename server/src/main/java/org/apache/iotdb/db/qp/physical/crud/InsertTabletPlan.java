@@ -35,7 +35,7 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsDouble;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsFloat;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsInt;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
-
+import org.apache.iotdb.tsfile.write.record.BitMap;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -52,6 +52,7 @@ public class InsertTabletPlan extends InsertPlan {
   private long[] times; // times should be sorted. It is done in the session API.
   private ByteBuffer timeBuffer;
 
+  private BitMap[] bitMaps;
   private Object[] columns;
   private ByteBuffer valueBuffer;
   private int rowCount = 0;
@@ -287,7 +288,13 @@ public class InsertTabletPlan extends InsertPlan {
   private void serializeValues(DataOutputStream outputStream) throws IOException {
     for (int i = 0; i < dataTypes.length; i++) {
       if (columns[i] == null) {
+        bitMaps[i].unmark();
         continue;
+      }
+      BitMap curBitMap = bitMaps[i];
+      byte[] curBytes = curBitMap.getByteArray();
+      for (int j = 0; j < curBytes.length; j++) {
+        outputStream.write(curBytes[j]);
       }
       serializeColumn(dataTypes[i], columns[i], outputStream, start, end);
     }
@@ -296,7 +303,12 @@ public class InsertTabletPlan extends InsertPlan {
   private void serializeValues(ByteBuffer buffer) {
     for (int i = 0; i < dataTypes.length; i++) {
       if (columns[i] == null) {
+        bitMaps[i].unmark();
         continue;
+      }
+      byte[] curBytes = bitMaps[i].getByteArray();
+      for (int j = 0; j < curBytes.length; j++) {
+        buffer.put(curBytes[j]);
       }
       serializeColumn(dataTypes[i], columns[i], buffer, start, end);
     }
@@ -417,9 +429,9 @@ public class InsertTabletPlan extends InsertPlan {
       measurements[i] = readString(buffer);
     }
 
-    int dateTypeSize = buffer.getInt();
-    this.dataTypes = new TSDataType[dateTypeSize];
-    for (int i = 0; i < dateTypeSize; i++) {
+    int dataTypeSize = buffer.getInt();
+    this.dataTypes = new TSDataType[dataTypeSize];
+    for (int i = 0; i < dataTypeSize; i++) {
       dataTypes[i] = TSDataType.deserialize(buffer.get());
     }
 
@@ -429,7 +441,8 @@ public class InsertTabletPlan extends InsertPlan {
     times = QueryDataSetUtils.readTimesFromBuffer(buffer, rows);
     updateTimesCache();
 
-    columns = QueryDataSetUtils.readValuesFromBuffer(buffer, dataTypes, dateTypeSize, rows);
+    bitMaps = QueryDataSetUtils.readBitMapsFromBuffer(buffer, dataTypeSize, rows);
+    columns = QueryDataSetUtils.readValuesFromBuffer(buffer, dataTypes, dataTypeSize, rows);
     this.index = buffer.getLong();
   }
 
@@ -450,6 +463,14 @@ public class InsertTabletPlan extends InsertPlan {
 
   public void setColumn(int index, Object column) {
     columns[index] = column;
+  }
+
+  public BitMap[] getBitMaps() {
+    return bitMaps;
+  }
+
+  public void setBitMaps(BitMap[] bitMaps) {
+    this.bitMaps = bitMaps;
   }
 
   @Override

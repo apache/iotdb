@@ -40,7 +40,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
-
+import org.apache.iotdb.tsfile.write.record.BitMap;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -81,6 +81,10 @@ public class InsertTabletPlanTest {
     dataTypes.add(TSDataType.BOOLEAN.ordinal());
     dataTypes.add(TSDataType.TEXT.ordinal());
 
+    BitMap[] bitMaps = new BitMap[6];
+    for (int i = 0; i < 6; i++) {
+      bitMaps[i] = new BitMap(4);
+    }
     Object[] columns = new Object[6];
     columns[0] = new double[4];
     columns[1] = new float[4];
@@ -96,6 +100,9 @@ public class InsertTabletPlanTest {
       ((int[]) columns[3])[r] = 100;
       ((boolean[]) columns[4])[r] = false;
       ((Binary[]) columns[5])[r] = new Binary("hh" + r);
+      for (int i = 0; i < 6; i++) {
+        bitMaps[i].unmark(r);
+      }
     }
 
     InsertTabletPlan tabletPlan =
@@ -104,6 +111,7 @@ public class InsertTabletPlanTest {
             new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
             dataTypes);
     tabletPlan.setTimes(times);
+    tabletPlan.setBitMaps(bitMaps);
     tabletPlan.setColumns(columns);
     tabletPlan.setRowCount(times.length);
 
@@ -125,6 +133,33 @@ public class InsertTabletPlanTest {
           QueryFilterOptimizationException, StorageEngineException, IOException {
     InsertTabletPlan tabletPlan = getInsertTabletPlan();
 
+    PlanExecutor executor = new PlanExecutor();
+    executor.insertTablet(tabletPlan);
+
+    Assert.assertEquals("[$#$0, $#$1, s6]", Arrays.toString(tabletPlan.getMeasurementMNodes()));
+    System.out.println(Arrays.toString(tabletPlan.getMeasurementMNodes()));
+
+    QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
+    QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    Assert.assertEquals(3, dataSet.getPaths().size());
+    //    while (dataSet.hasNext()) {
+    //      RowRecord record = dataSet.next();
+    //      System.out.println(record);
+    //      Assert.assertEquals(6, record.getFields().size());
+    //    }
+  }
+
+  @Test
+  public void testInsertNullableTabletPlanWithAlignedTimeseries()
+      throws QueryProcessException, MetadataException, InterruptedException,
+          QueryFilterOptimizationException, StorageEngineException, IOException {
+    InsertTabletPlan tabletPlan = getInsertTabletPlan();
+
+    BitMap[] bitMaps = tabletPlan.getBitMaps();
+    for (int i = 0; i < 4; i++) {
+      bitMaps[i].mark(i);
+    }
+    tabletPlan.setBitMaps(bitMaps);
     PlanExecutor executor = new PlanExecutor();
     executor.insertTablet(tabletPlan);
 
@@ -284,6 +319,10 @@ public class InsertTabletPlanTest {
     dataTypes.add(TSDataType.BOOLEAN.ordinal());
     dataTypes.add(TSDataType.TEXT.ordinal());
 
+    BitMap[] bitMaps = new BitMap[6];
+    for (int i = 0; i < 6; i++) {
+      bitMaps[i] = new BitMap(4);
+    }
     Object[] columns = new Object[6];
     columns[0] = new double[4];
     columns[1] = new float[4];
@@ -299,6 +338,9 @@ public class InsertTabletPlanTest {
       ((int[]) columns[3])[r] = 100;
       ((boolean[]) columns[4])[r] = false;
       ((Binary[]) columns[5])[r] = new Binary("hh" + r);
+      for (int i = 0; i < 6; i++) {
+        bitMaps[i].unmark(r);
+      }
     }
 
     InsertTabletPlan tabletPlan =
@@ -307,6 +349,7 @@ public class InsertTabletPlanTest {
             new String[] {"(s1,s2,s3)", "(s4,s5)", "s6"},
             dataTypes);
     tabletPlan.setTimes(times);
+    tabletPlan.setBitMaps(bitMaps);
     tabletPlan.setColumns(columns);
     tabletPlan.setRowCount(times.length);
     return tabletPlan;

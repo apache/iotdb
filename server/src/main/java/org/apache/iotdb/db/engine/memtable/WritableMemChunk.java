@@ -22,6 +22,7 @@ import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.write.record.BitMap;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.List;
@@ -66,35 +67,35 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void write(long[] times, Object valueList, TSDataType dataType, int start, int end) {
+  public void write(long[] times, Object bitMap, Object valueList, TSDataType dataType, int start, int end) {
     switch (dataType) {
       case BOOLEAN:
         boolean[] boolValues = (boolean[]) valueList;
-        putBooleans(times, boolValues, start, end);
+        putBooleans(times, (BitMap) bitMap, boolValues, start, end);
         break;
       case INT32:
         int[] intValues = (int[]) valueList;
-        putInts(times, intValues, start, end);
+        putInts(times, (BitMap) bitMap, intValues, start, end);
         break;
       case INT64:
         long[] longValues = (long[]) valueList;
-        putLongs(times, longValues, start, end);
+        putLongs(times, (BitMap) bitMap, longValues, start, end);
         break;
       case FLOAT:
         float[] floatValues = (float[]) valueList;
-        putFloats(times, floatValues, start, end);
+        putFloats(times, (BitMap) bitMap, floatValues, start, end);
         break;
       case DOUBLE:
         double[] doubleValues = (double[]) valueList;
-        putDoubles(times, doubleValues, start, end);
+        putDoubles(times, (BitMap) bitMap, doubleValues, start, end);
         break;
       case TEXT:
         Binary[] binaryValues = (Binary[]) valueList;
-        putBinaries(times, binaryValues, start, end);
+        putBinaries(times, (BitMap) bitMap, binaryValues, start, end);
         break;
       case VECTOR:
         Object[] vectorValues = (Object[]) valueList;
-        putVectors(times, vectorValues, start, end);
+        putVectors(times, (BitMap[]) bitMap, vectorValues, start, end);
         break;
       default:
         throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
@@ -137,38 +138,38 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void putLongs(long[] t, long[] v, int start, int end) {
+  public void putLongs(long[] t, BitMap bitMap, long[] v, int start, int end) {
     list.putLongs(t, v, start, end);
   }
 
   @Override
-  public void putInts(long[] t, int[] v, int start, int end) {
+  public void putInts(long[] t, BitMap bitMap, int[] v, int start, int end) {
     list.putInts(t, v, start, end);
   }
 
   @Override
-  public void putFloats(long[] t, float[] v, int start, int end) {
+  public void putFloats(long[] t, BitMap bitMap, float[] v, int start, int end) {
     list.putFloats(t, v, start, end);
   }
 
   @Override
-  public void putDoubles(long[] t, double[] v, int start, int end) {
+  public void putDoubles(long[] t, BitMap bitMap, double[] v, int start, int end) {
     list.putDoubles(t, v, start, end);
   }
 
   @Override
-  public void putBinaries(long[] t, Binary[] v, int start, int end) {
+  public void putBinaries(long[] t, BitMap bitMap, Binary[] v, int start, int end) {
     list.putBinaries(t, v, start, end);
   }
 
   @Override
-  public void putBooleans(long[] t, boolean[] v, int start, int end) {
+  public void putBooleans(long[] t, BitMap bitMap, boolean[] v, int start, int end) {
     list.putBooleans(t, v, start, end);
   }
 
   @Override
-  public void putVectors(long[] t, Object[] v, int start, int end) {
-    list.putVectors(t, v, start, end);
+  public void putVectors(long[] t, BitMap[] bitMaps, Object[] v, int start, int end) {
+    list.putVectors(t, bitMaps, v, start, end);
   }
 
   @Override
