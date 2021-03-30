@@ -96,6 +96,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -218,6 +219,60 @@ public class CMManager extends MManager {
       }
     }
     return seriesType;
+  }
+
+  @Override
+  public Pair<List<PartialPath>, Map<String, Integer>> getSeriesSchemas(List<PartialPath> fullPaths)
+      throws MetadataException {
+    Map<MNode, PartialPath> nodeToPartialPath = new LinkedHashMap<>();
+    Map<MNode, List<Integer>> nodeToIndex = new LinkedHashMap<>();
+    for (int i = 0; i < fullPaths.size(); i++) {
+      PartialPath path = fullPaths.get(i);
+      MeasurementMNode node = getMeasurementMNode(path);
+      super.getNodeToPartialPath(node, nodeToPartialPath, nodeToIndex, path, i);
+    }
+    return getPair(fullPaths, nodeToPartialPath, nodeToIndex);
+  }
+
+  @Override
+  public IMeasurementSchema getSeriesSchema(PartialPath fullPath) throws MetadataException {
+    return super.getSeriesSchema(fullPath, getMeasurementMNode(fullPath));
+  }
+
+  private MeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
+    MeasurementMNode node = null;
+    // try remote cache first
+    try {
+      cacheLock.readLock().lock();
+      MeasurementMNode measurementMNode = mRemoteMetaCache.get(fullPath);
+      if (measurementMNode != null) {
+        node = measurementMNode;
+      }
+    } finally {
+      cacheLock.readLock().unlock();
+    }
+
+    if (node == null) {
+      // try local MTree
+      try {
+        node = (MeasurementMNode) super.getNodeByPath(fullPath);
+      } catch (PathNotExistException e) {
+        // pull from remote node
+        List<IMeasurementSchema> schemas =
+            metaPuller.pullMeasurementSchemas(Collections.singletonList(fullPath));
+        if (!schemas.isEmpty()) {
+          IMeasurementSchema measurementSchema = schemas.get(0);
+          MeasurementMNode measurementMNode =
+              new MeasurementMNode(
+                  null, measurementSchema.getMeasurementId(), measurementSchema, null);
+          cacheMeta(fullPath, measurementMNode);
+          node = measurementMNode;
+        } else {
+          throw e;
+        }
+      }
+    }
+    return node;
   }
 
   /**

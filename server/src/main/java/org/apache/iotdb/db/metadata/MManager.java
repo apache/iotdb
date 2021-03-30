@@ -1131,26 +1131,31 @@ public class MManager {
    * @return MeasurementSchema or VectorMeasurementSchema
    */
   public IMeasurementSchema getSeriesSchema(PartialPath fullPath) throws MetadataException {
-    MNode leaf = mtree.getNodeByPath(fullPath);
-    IMeasurementSchema schema = ((MeasurementMNode) leaf).getSchema();
-    if (schema != null && schema.getType() == TSDataType.VECTOR) {
-      List<String> measurementsInLeaf = schema.getValueMeasurementIdList();
-      List<PartialPath> measurements = ((VectorPartialPath) fullPath).getSubSensorsPathList();
-      TSDataType[] types = new TSDataType[measurements.size()];
-      TSEncoding[] encodings = new TSEncoding[measurements.size()];
-      for (int i = 0; i < measurements.size(); i++) {
-        int index = measurementsInLeaf.indexOf(measurements.get(i).getMeasurement());
-        types[i] = schema.getValueTSDataTypeList().get(index);
-        encodings[i] = schema.getValueTSEncodingList().get(index);
-      }
-      String[] array = new String[measurements.size()];
-      for (int i = 0; i < array.length; i++) {
-        array[i] = measurements.get(i).getMeasurement();
-      }
-      return new VectorMeasurementSchema(
-          schema.getMeasurementId(), array, types, encodings, schema.getCompressor());
+    MeasurementMNode leaf = (MeasurementMNode) mtree.getNodeByPath(fullPath);
+    return getSeriesSchema(fullPath, leaf);
+  }
+
+  protected IMeasurementSchema getSeriesSchema(PartialPath fullPath, MeasurementMNode leaf) {
+    IMeasurementSchema schema = leaf.getSchema();
+
+    if (schema == null || schema.getType() != TSDataType.VECTOR) {
+      return schema;
     }
-    return schema;
+    List<String> measurementsInLeaf = schema.getValueMeasurementIdList();
+    List<PartialPath> measurements = ((VectorPartialPath) fullPath).getSubSensorsPathList();
+    TSDataType[] types = new TSDataType[measurements.size()];
+    TSEncoding[] encodings = new TSEncoding[measurements.size()];
+    for (int i = 0; i < measurements.size(); i++) {
+      int index = measurementsInLeaf.indexOf(measurements.get(i).getMeasurement());
+      types[i] = schema.getValueTSDataTypeList().get(index);
+      encodings[i] = schema.getValueTSEncodingList().get(index);
+    }
+    String[] array = new String[measurements.size()];
+    for (int i = 0; i < array.length; i++) {
+      array[i] = measurements.get(i).getMeasurement();
+    }
+    return new VectorMeasurementSchema(
+        schema.getMeasurementId(), array, types, encodings, schema.getCompressor());
   }
 
   /**
@@ -1172,31 +1177,48 @@ public class MManager {
       PartialPath path = fullPaths.get(i);
       // use dfs to collect paths
       MeasurementMNode node = (MeasurementMNode) getNodeByPath(path);
+      getNodeToPartialPath(node, nodeToPartialPath, nodeToIndex, path, i);
+    }
+    return getPair(fullPaths, nodeToPartialPath, nodeToIndex);
+  }
 
-      if (!nodeToPartialPath.containsKey(node)) {
-        if (node.getSchema() instanceof MeasurementSchema) {
-          nodeToPartialPath.put(node, path);
-        } else {
-          List<PartialPath> subSensorsPathList = new ArrayList<>();
-          subSensorsPathList.add(path);
-          nodeToPartialPath.put(
-              node,
-              new VectorPartialPath(path.getDevice() + "." + node.getName(), subSensorsPathList));
-        }
-        nodeToIndex.computeIfAbsent(node, k -> new ArrayList<>()).add(i);
+  protected void getNodeToPartialPath(
+      MeasurementMNode node,
+      Map<MNode, PartialPath> nodeToPartialPath,
+      Map<MNode, List<Integer>> nodeToIndex,
+      PartialPath path,
+      int index)
+      throws MetadataException {
+    if (!nodeToPartialPath.containsKey(node)) {
+      if (node.getSchema() instanceof MeasurementSchema) {
+        nodeToPartialPath.put(node, path);
       } else {
-        // if nodeToPartialPath contains node
-        String existPath = nodeToPartialPath.get(node).getFullPath();
-        if (existPath.equals(path.getFullPath())) {
-          // could be the same path in different aggregate functions
-          nodeToIndex.get(node).add(i);
-        } else {
-          // could be VectorPartialPath
-          ((VectorPartialPath) nodeToPartialPath.get(node)).addSubSensor(path);
-          nodeToIndex.get(node).add(i);
-        }
+        List<PartialPath> subSensorsPathList = new ArrayList<>();
+        subSensorsPathList.add(path);
+        nodeToPartialPath.put(
+            node,
+            new VectorPartialPath(path.getDevice() + "." + node.getName(), subSensorsPathList));
+      }
+      nodeToIndex.computeIfAbsent(node, k -> new ArrayList<>()).add(index);
+    } else {
+      // if nodeToPartialPath contains node
+      String existPath = nodeToPartialPath.get(node).getFullPath();
+      if (existPath.equals(path.getFullPath())) {
+        // could be the same path in different aggregate functions
+        nodeToIndex.get(node).add(index);
+      } else {
+        // could be VectorPartialPath
+        ((VectorPartialPath) nodeToPartialPath.get(node)).addSubSensor(path);
+        nodeToIndex.get(node).add(index);
       }
     }
+  }
+
+  protected Pair<List<PartialPath>, Map<String, Integer>> getPair(
+      List<PartialPath> fullPaths,
+      Map<MNode, PartialPath> nodeToPartialPath,
+      Map<MNode, List<Integer>> nodeToIndex)
+      throws MetadataException {
     Map<String, Integer> indexMap = new HashMap<>();
     int i = 0;
     for (List<Integer> indexList : nodeToIndex.values()) {
