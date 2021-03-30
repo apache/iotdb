@@ -44,6 +44,7 @@ import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
+import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
@@ -55,6 +56,7 @@ import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.PullMeasurementSchemaHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.PullSnapshotHandler;
+import org.apache.iotdb.cluster.server.handlers.caller.PullTimeseriesSchemaHandler;
 import org.apache.iotdb.cluster.server.service.DataAsyncService;
 import org.apache.iotdb.cluster.utils.Constants;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -118,7 +120,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-public class DataGroupMemberTest extends MemberTest {
+public class DataGroupMemberTest extends BaseMember {
 
   private DataGroupMember dataGroupMember;
   private Map<Integer, FileSnapshot> snapshotMap;
@@ -204,6 +206,22 @@ public class DataGroupMemberTest extends MemberTest {
           public AsyncClient getAsyncClient(Node node) {
             try {
               return new TestAsyncDataClient(node, dataGroupMemberMap) {
+
+                @Override
+                public void pullMeasurementSchema(
+                    PullSchemaRequest request, AsyncMethodCallback<PullSchemaResp> resultHandler) {
+                  dataGroupMemberMap.get(request.getHeader()).setCharacter(NodeCharacter.LEADER);
+                  new DataAsyncService(dataGroupMemberMap.get(request.getHeader()))
+                      .pullMeasurementSchema(request, resultHandler);
+                }
+
+                @Override
+                public void pullTimeSeriesSchema(
+                    PullSchemaRequest request, AsyncMethodCallback<PullSchemaResp> resultHandler) {
+                  dataGroupMemberMap.get(request.getHeader()).setCharacter(NodeCharacter.LEADER);
+                  new DataAsyncService(dataGroupMemberMap.get(request.getHeader()))
+                      .pullTimeSeriesSchema(request, resultHandler);
+                }
 
                 @Override
                 public void pullSnapshot(
@@ -598,20 +616,60 @@ public class DataGroupMemberTest extends MemberTest {
   }
 
   @Test
-  public void testPullTimeseries() {
-    System.out.println("Start testPullTimeseries()");
+  public void testPullTimeseriesSchema() {
+    System.out.println("Start testPullTimeseriesSchema()");
     int prevTimeOut = RaftServer.getConnectionTimeoutInMS();
     int prevMaxWait = RaftServer.getSyncLeaderMaxWaitMs();
     RaftServer.setConnectionTimeoutInMS(20);
     RaftServer.setSyncLeaderMaxWaitMs(200);
     try {
       // sync with leader is temporarily disabled, the request should be forward to the leader
-      dataGroupMember.setLeader(TestUtils.getNode(1));
+      dataGroupMember.setLeader(TestUtils.getNode(0));
       dataGroupMember.setCharacter(NodeCharacter.FOLLOWER);
       enableSyncLeader = false;
 
       PullSchemaRequest request = new PullSchemaRequest();
       request.setPrefixPaths(Collections.singletonList(TestUtils.getTestSg(0)));
+      request.setHeader(TestUtils.getNode(0));
+      AtomicReference<List<TimeseriesSchema>> result = new AtomicReference<>();
+      PullTimeseriesSchemaHandler handler =
+          new PullTimeseriesSchemaHandler(TestUtils.getNode(1), request.getPrefixPaths(), result);
+      new DataAsyncService(dataGroupMember).pullTimeSeriesSchema(request, handler);
+      for (int i = 0; i < 10; i++) {
+        assertTrue(result.get().contains(TestUtils.getTestTimeSeriesSchema(0, i)));
+      }
+
+      // the member is a leader itself
+      dataGroupMember.setCharacter(NodeCharacter.LEADER);
+      result.set(null);
+      handler =
+          new PullTimeseriesSchemaHandler(TestUtils.getNode(1), request.getPrefixPaths(), result);
+      new DataAsyncService(dataGroupMember).pullTimeSeriesSchema(request, handler);
+      for (int i = 0; i < 10; i++) {
+        assertTrue(result.get().contains(TestUtils.getTestTimeSeriesSchema(0, i)));
+      }
+    } finally {
+      RaftServer.setConnectionTimeoutInMS(prevTimeOut);
+      RaftServer.setSyncLeaderMaxWaitMs(prevMaxWait);
+    }
+  }
+
+  @Test
+  public void testPullMeasurementSchema() {
+    System.out.println("Start testPullMeasurementSchema()");
+    int prevTimeOut = RaftServer.getConnectionTimeoutInMS();
+    int prevMaxWait = RaftServer.getSyncLeaderMaxWaitMs();
+    RaftServer.setConnectionTimeoutInMS(20);
+    RaftServer.setSyncLeaderMaxWaitMs(200);
+    try {
+      // sync with leader is temporarily disabled, the request should be forward to the leader
+      dataGroupMember.setLeader(TestUtils.getNode(0));
+      dataGroupMember.setCharacter(NodeCharacter.FOLLOWER);
+      enableSyncLeader = false;
+
+      PullSchemaRequest request = new PullSchemaRequest();
+      request.setPrefixPaths(Collections.singletonList(TestUtils.getTestSg(0)));
+      request.setHeader(TestUtils.getNode(0));
       AtomicReference<List<MeasurementSchema>> result = new AtomicReference<>();
       PullMeasurementSchemaHandler handler =
           new PullMeasurementSchemaHandler(TestUtils.getNode(1), request.getPrefixPaths(), result);
@@ -803,11 +861,15 @@ public class DataGroupMemberTest extends MemberTest {
     AtomicReference<ByteBuffer> dataResult = new AtomicReference<>();
     GenericHandler<ByteBuffer> dataHandler = new GenericHandler<>(TestUtils.getNode(0), dataResult);
 
+    List<Long> timestamps = new ArrayList<>(5);
     for (int i = 5; i < 10; i++) {
-      new DataAsyncService(dataGroupMember)
-          .fetchSingleSeriesByTimestamp(TestUtils.getNode(0), readerId, i, dataHandler);
-      Object value = SerializeUtils.deserializeObject(dataResult.get());
-      assertEquals(i * 1.0, (Double) value, 0.00001);
+      timestamps.add((long) i);
+    }
+    new DataAsyncService(dataGroupMember)
+        .fetchSingleSeriesByTimestamps(TestUtils.getNode(0), readerId, timestamps, dataHandler);
+    Object[] values = SerializeUtils.deserializeObjects(dataResult.get());
+    for (int i = 5; i < 10; i++) {
+      assertEquals(i * 1.0, (Double) values[i - 5], 0.00001);
     }
 
     new DataAsyncService(dataGroupMember)
@@ -861,11 +923,15 @@ public class DataGroupMemberTest extends MemberTest {
 
     AtomicReference<ByteBuffer> dataResult = new AtomicReference<>();
     GenericHandler<ByteBuffer> dataHandler = new GenericHandler<>(TestUtils.getNode(0), dataResult);
+    List<Long> timestamps = new ArrayList<>(4);
     for (int i = 5; i < 9; i++) {
-      new DataAsyncService(dataGroupMember)
-          .fetchSingleSeriesByTimestamp(TestUtils.getNode(0), readerId, i, dataHandler);
-      Object value = SerializeUtils.deserializeObject(dataResult.get());
-      assertEquals(i * 1.0, (Double) value, 0.00001);
+      timestamps.add((long) i);
+    }
+    new DataAsyncService(dataGroupMember)
+        .fetchSingleSeriesByTimestamps(TestUtils.getNode(0), readerId, timestamps, dataHandler);
+    Object[] values = SerializeUtils.deserializeObjects(dataResult.get());
+    for (int i = 5; i < 9; i++) {
+      assertEquals(i * 1.0, (Double) values[i - 5], 0.00001);
     }
 
     new DataAsyncService(dataGroupMember)
@@ -896,11 +962,13 @@ public class DataGroupMemberTest extends MemberTest {
   public void testFetchWithoutQuery() {
     System.out.println("Start testFetchWithoutQuery()");
     AtomicReference<Exception> result = new AtomicReference<>();
+    List<Long> timestamps = new ArrayList<>(1);
+    timestamps.add((long) 0);
     new DataAsyncService(dataGroupMember)
-        .fetchSingleSeriesByTimestamp(
+        .fetchSingleSeriesByTimestamps(
             TestUtils.getNode(0),
             0,
-            0,
+            timestamps,
             new AsyncMethodCallback<ByteBuffer>() {
               @Override
               public void onComplete(ByteBuffer buffer) {}

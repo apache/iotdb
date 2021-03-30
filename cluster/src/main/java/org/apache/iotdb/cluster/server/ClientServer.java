@@ -167,7 +167,7 @@ public class ClientServer extends TSServiceImpl {
 
               @Override
               public Thread newThread(Runnable r) {
-                return new Thread(r, "ClusterClient" + threadIndex.incrementAndGet());
+                return new Thread(r, "ClusterClient-" + threadIndex.incrementAndGet());
               }
             }));
     // ClientServer will do the following processing when the HsHaServer has parsed a request
