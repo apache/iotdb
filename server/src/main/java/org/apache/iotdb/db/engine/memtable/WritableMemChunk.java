@@ -67,7 +67,8 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void write(long[] times, Object bitMap, Object valueList, TSDataType dataType, int start, int end) {
+  public void write(
+      long[] times, Object bitMap, Object valueList, TSDataType dataType, int start, int end) {
     switch (dataType) {
       case BOOLEAN:
         boolean[] boolValues = (boolean[]) valueList;

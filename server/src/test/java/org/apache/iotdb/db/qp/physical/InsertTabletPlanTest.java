@@ -41,6 +41,7 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.BitMap;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;

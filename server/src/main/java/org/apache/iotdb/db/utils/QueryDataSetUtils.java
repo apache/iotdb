@@ -28,6 +28,7 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.write.record.BitMap;
+
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -185,7 +186,7 @@ public class QueryDataSetUtils {
 
   public static BitMap[] readBitMapsFromBuffer(ByteBuffer buffer, int columns, int size) {
     BitMap[] bitMaps = new BitMap[columns];
-    for (int i = 0 ; i < columns; i++) {
+    for (int i = 0; i < columns; i++) {
       byte[] bytes = new byte[size / Byte.SIZE + 1];
       for (int j = 0; j < bytes.length; j++) {
         bytes[j] = buffer.get();

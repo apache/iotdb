@@ -59,9 +59,8 @@ public interface IWritableMemChunk {
   void write(long insertTime, Object objectValue);
 
   /** [start, end) */
-  void write(long[] times, Object bitMaps, Object valueList, TSDataType dataType, int start, int end);
-  
-  
+  void write(
+      long[] times, Object bitMaps, Object valueList, TSDataType dataType, int start, int end);
 
   long count();
 
