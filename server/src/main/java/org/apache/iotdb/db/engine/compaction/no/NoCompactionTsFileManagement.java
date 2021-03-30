@@ -26,6 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -75,7 +76,7 @@ public class NoCompactionTsFileManagement extends TsFileManagement {
     } else {
       synchronized (unSequenceFileListMap) {
         return new ArrayList<>(
-            unSequenceFileListMap.getOrDefault(timePartition, new ArrayList<>()));
+            unSequenceFileListMap.getOrDefault(timePartition, Collections.emptyList()));
       }
     }
   }
