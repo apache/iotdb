@@ -36,6 +36,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
 
+@SuppressWarnings("squid:S2925")
 public class SlidingTimeWindowEvaluationHandlerTest {
 
   @Before
@@ -193,6 +194,12 @@ public class SlidingTimeWindowEvaluationHandlerTest {
       }
     }
     Assert.assertEquals(expectedTVMap, actualTVMap);
+
+    try {
+      Thread.sleep(200);
+    } catch (InterruptedException ignored) {
+      // ignored
+    }
   }
 
   @Test
@@ -218,5 +225,11 @@ public class SlidingTimeWindowEvaluationHandlerTest {
     }
 
     await().atMost(10, SECONDS).until(() -> countTotal.get() == 27 && countEmpty.get() == 18);
+
+    try {
+      Thread.sleep(200);
+    } catch (InterruptedException ignored) {
+      // ignored
+    }
   }
 }
