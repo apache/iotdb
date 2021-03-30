@@ -47,6 +47,7 @@ import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
@@ -55,7 +56,6 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -462,6 +462,15 @@ public class CMManager extends MManager {
     }
   }
 
+  @Override
+  public Pair<MNode, Template> getDeviceNodeWithAutoCreate(PartialPath path)
+      throws MetadataException, IOException {
+    return getDeviceNodeWithAutoCreate(
+        path,
+        ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema(),
+        config.getDefaultStorageGroupLevel());
+  }
+
   private static class RemoteMetaCache extends LRUCache<PartialPath, MeasurementMNode> {
 
     RemoteMetaCache(int cacheSize) {
@@ -526,11 +535,6 @@ public class CMManager extends MManager {
     } else if (plan instanceof CreateTimeSeriesPlan) {
       storageGroups.addAll(
           getStorageGroups(Collections.singletonList(((CreateTimeSeriesPlan) plan).getPath())));
-    } else if (plan instanceof SetDeviceTemplatePlan) {
-      storageGroups.addAll(
-          getStorageGroups(
-              Collections.singletonList(
-                  new PartialPath(((SetDeviceTemplatePlan) plan).getPrefixPath()))));
     } else {
       storageGroups.addAll(getStorageGroups(plan.getPaths()));
     }

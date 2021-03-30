@@ -34,7 +34,6 @@ import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CountPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
@@ -132,8 +131,6 @@ public class ClusterPlanRouter {
       return splitAndRoutePlan((AlterTimeSeriesPlan) plan);
     } else if (plan instanceof CreateMultiTimeSeriesPlan) {
       return splitAndRoutePlan((CreateMultiTimeSeriesPlan) plan);
-    } else if (plan instanceof SetDeviceTemplatePlan) {
-      return splitAndRoutePlan((SetDeviceTemplatePlan) plan);
     }
     // the if clause can be removed after the program is stable
     if (PartitionUtils.isLocalNonQueryPlan(plan)) {
@@ -145,13 +142,6 @@ public class ClusterPlanRouter {
       logger.error("{} cannot be split. Please call routePlan", plan);
     }
     throw new UnsupportedPlanException(plan);
-  }
-
-  private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(SetDeviceTemplatePlan plan)
-      throws MetadataException {
-    PartitionGroup partitionGroup =
-        partitionTable.partitionByPathTime(new PartialPath(plan.getPrefixPath()), 0);
-    return Collections.singletonMap(plan, partitionGroup);
   }
 
   private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(InsertRowPlan plan)

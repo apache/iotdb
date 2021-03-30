@@ -213,11 +213,7 @@ public class ClientServer extends TSServiceImpl {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
 
-    TSStatus status = coordinator.executeNonQueryPlan(plan);
-    if (status == null) {
-      return super.executeNonQueryPlan(plan);
-    }
-    return status;
+    return coordinator.executeNonQueryPlan(plan);
   }
 
   /**

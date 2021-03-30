@@ -61,6 +61,7 @@ import org.apache.iotdb.cluster.utils.PlanSerializer;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.IoTDBException;
+import org.apache.iotdb.db.exception.metadata.DuplicatedTemplateException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -963,7 +964,7 @@ public abstract class RaftMember {
         return StatusUtils.OK;
       }
     } catch (LogExecutionException e) {
-      return handleLogExecutionException(log, e);
+      return handleLogExecutionException(log.getPlan(), IOUtils.getRootCause(e));
     }
     return StatusUtils.TIME_OUT;
   }
@@ -1027,7 +1028,7 @@ public abstract class RaftMember {
           break;
       }
     } catch (LogExecutionException e) {
-      return handleLogExecutionException(log, e);
+      return handleLogExecutionException(log.getPlan(), IOUtils.getRootCause(e));
     }
     return StatusUtils.TIME_OUT;
   }
@@ -1455,10 +1456,12 @@ public abstract class RaftMember {
     }
   }
 
-  private TSStatus handleLogExecutionException(PhysicalPlanLog log, LogExecutionException e) {
-    Throwable cause = IOUtils.getRootCause(e);
+  protected TSStatus handleLogExecutionException(PhysicalPlan log, Throwable cause) {
     if (cause instanceof BatchProcessException) {
       return RpcUtils.getStatus(Arrays.asList(((BatchProcessException) cause).getFailingStatus()));
+    }
+    if (cause instanceof DuplicatedTemplateException) {
+      return StatusUtils.DUPLICATED_TEMPLATE.deepCopy().setMessage(cause.getMessage());
     }
     TSStatus tsStatus =
         StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, cause.getMessage());

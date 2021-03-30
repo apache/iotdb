@@ -28,12 +28,14 @@ import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
+import org.apache.iotdb.db.exception.metadata.DuplicatedTemplateException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.MNode;
@@ -2290,7 +2292,7 @@ public class MManager {
       Template template = templateMap.get(plan.getTemplateName());
 
       if (template == null) {
-        throw new MetadataException("Undefined template name: " + plan.getTemplateName());
+        throw new UndefinedTemplateException(plan.getTemplateName());
       }
 
       // get mnode and update template should be atomic
@@ -2299,7 +2301,11 @@ public class MManager {
             getDeviceNodeWithAutoCreate(new PartialPath(plan.getPrefixPath()));
 
         if (node.left.getDeviceTemplate() != null) {
-          throw new MetadataException("Specified node already has template");
+          if (node.left.getDeviceTemplate().equals(template)) {
+            throw new DuplicatedTemplateException(template.getName());
+          } else {
+            throw new MetadataException("Specified node already has template");
+          }
         }
 
         if (!isTemplateCompatible(node.right, template)) {

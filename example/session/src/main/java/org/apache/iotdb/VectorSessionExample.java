@@ -40,7 +40,7 @@ public class VectorSessionExample {
 
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException {
-    session = new Session("127.0.0.1", 6668, "root", "root");
+    session = new Session("127.0.0.1", 6667, "root", "root");
     session.open(false);
 
     // set session fetchSize
@@ -53,9 +53,7 @@ public class VectorSessionExample {
   }
 
   private static void selectTest() throws StatementExecutionException, IoTDBConnectionException {
-    SessionDataSet dataSet =
-        session.executeQueryStatement(
-            "select s1 from root.sg_0.d1 where time >= 0 and time < 10000000");
+    SessionDataSet dataSet = session.executeQueryStatement("select s1 from root.sg_0.d1");
     System.out.println(dataSet.getColumnNames());
     while (dataSet.hasNext()) {
       System.out.println(dataSet.next());
@@ -63,9 +61,7 @@ public class VectorSessionExample {
 
     dataSet.closeOperationHandle();
 
-    dataSet =
-        session.executeQueryStatement(
-            "select * from root.sg_0.d1 where time >= 0 and time < 10000000");
+    dataSet = session.executeQueryStatement("select * from root.sg_0.d1");
     System.out.println(dataSet.getColumnNames());
     while (dataSet.hasNext()) {
       System.out.println(dataSet.next());
