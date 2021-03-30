@@ -165,7 +165,7 @@ public class IoTDBLoadExternalTsfileWithTimePartitionIT {
   @Test
   public void loadTsfileWithTimePartition() {
     try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       statement.execute(String.format("load \"%s\"", new File(tempDir).getAbsolutePath()));
