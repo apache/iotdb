@@ -88,6 +88,7 @@ import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
+import com.google.common.collect.Lists;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TCompactProtocol.Factory;
 import org.junit.After;
@@ -951,7 +952,11 @@ public class DataGroupMemberTest extends BaseMember {
         new GenericHandler<>(TestUtils.getNode(0), pathResult);
     new DataAsyncService(dataGroupMember)
         .getAllPaths(TestUtils.getNode(0), Collections.singletonList(path), false, handler);
-    List<String> result = pathResult.get().paths;
+    List<String> result = Lists.newArrayList();
+    for (Map.Entry<String, List<String>> entry : pathResult.get().pathToPaths.entrySet()) {
+      result.addAll(entry.getValue());
+    }
+
     assertEquals(20, result.size());
     for (int i = 0; i < 10; i++) {
       assertTrue(result.contains(TestUtils.getTestSeries(0, i)));

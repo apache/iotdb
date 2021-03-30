@@ -53,6 +53,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.Before;
@@ -241,7 +243,9 @@ public class SyncClientAdaptorTest {
               List<String> path,
               boolean withAlias,
               AsyncMethodCallback<GetAllPathsResult> resultHandler) {
-            resultHandler.onComplete(new GetAllPathsResult(path));
+            Map allPath = Maps.newHashMap();
+            allPath.put(path.get(0), path);
+            resultHandler.onComplete(new GetAllPathsResult().setPathToPaths(allPath));
           }
 
           @Override
@@ -383,8 +387,16 @@ public class SyncClientAdaptorTest {
     assertEquals(
         paths.subList(0, paths.size() / 2),
         SyncClientAdaptor.getUnregisteredMeasurements(dataClient, TestUtils.getNode(0), paths));
-    assertEquals(
-        paths, SyncClientAdaptor.getAllPaths(dataClient, TestUtils.getNode(0), paths, false).paths);
+    List<String> pathAll = Lists.newArrayList();
+
+    for (Map.Entry<String, List<String>> entry :
+        SyncClientAdaptor.getAllPaths(dataClient, TestUtils.getNode(0), paths, false)
+            .pathToPaths
+            .entrySet()) {
+      pathAll.addAll(entry.getValue());
+    }
+    assertEquals(paths, pathAll);
+
     assertEquals(
         paths.size(),
         (int) SyncClientAdaptor.getPathCount(dataClient, TestUtils.getNode(0), paths, 0));

@@ -43,7 +43,7 @@ public class ClusterPlannerTest extends BaseQueryTest {
   }
 
   @Test
-  public void test() throws QueryProcessException {
+  public void testParseSQLToPhysicalPlan() throws QueryProcessException {
     List<String> sgs = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       sgs.add(TestUtils.getTestSg(i));

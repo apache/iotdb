@@ -79,6 +79,8 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -103,6 +105,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -127,11 +130,15 @@ public class CMManager extends MManager {
   private MetaGroupMember metaGroupMember;
   private Coordinator coordinator;
 
+  /** cache the up-path -> remote all Path */
+  private RemotePathAliasCache remotePathAliasCache;
+
   private CMManager() {
     super();
     metaPuller = MetaPuller.getInstance();
     int remoteCacheSize = config.getmRemoteSchemaCacheSize();
     mRemoteMetaCache = new RemoteMetaCache(remoteCacheSize);
+    remotePathAliasCache = new RemotePathAliasCache(remoteCacheSize);
   }
 
   private static class MManagerHolder {
@@ -432,6 +439,105 @@ public class CMManager extends MManager {
 
     public synchronized boolean containsKey(PartialPath key) {
       return cache.containsKey(key);
+    }
+  }
+
+  private class RemotePathAliasCache extends LRUCache<String, List<PartialPath>> {
+    private ScheduledExecutorService periodExecutorService;
+    private ExecutorService executorService = Executors.newFixedThreadPool(4);
+
+    RemotePathAliasCache(int cacheSize) {
+      super(cacheSize);
+      periodExecutorService = Executors.newSingleThreadScheduledExecutor();
+      periodExecutorService.scheduleWithFixedDelay(
+          this::executeCacheUpdate, 1000, 1000, TimeUnit.MILLISECONDS);
+    }
+
+    @Override
+    protected synchronized List<PartialPath> loadObjectByKey(String key) {
+      if (cache.containsKey(key)) {
+        return cache.get(key);
+      }
+      return null;
+    }
+
+    public void executeCacheUpdate() {
+      // split the paths by the data groups that should hold them
+      Map<PartitionGroup, List<String>> partitionGroupListMap = Maps.newHashMap();
+      for (Map.Entry<String, List<PartialPath>> entry : cache.entrySet()) {
+        String fullPath = entry.getKey();
+        PartialPath storageGroup = null;
+        try {
+          storageGroup = IoTDB.metaManager.getStorageGroupPath(new PartialPath(fullPath));
+        } catch (StorageGroupNotSetException | IllegalPathException e) {
+          logger.warn("Failed to get storage group path, fullPath is {}", fullPath, e);
+        }
+
+        PartitionGroup partitionGroup =
+            metaGroupMember.getPartitionTable().route(storageGroup.getFullPath(), 0);
+        partitionGroupListMap.computeIfAbsent(partitionGroup, p -> new ArrayList<>()).add(fullPath);
+      }
+      logger.debug("Start to execute cache updating");
+
+      for (Map.Entry<PartitionGroup, List<String>> entry : partitionGroupListMap.entrySet()) {
+        this.executorService.execute(
+            new PeriodUpdateCache(entry.getKey(), entry.getValue(), getRemotePathAliasCache()));
+      }
+    }
+  }
+
+  class PeriodUpdateCache extends Thread {
+    private PartitionGroup partitionGroup;
+    private List<String> fullPaths;
+
+    private RemotePathAliasCache remotePathAliasCache;
+
+    public PeriodUpdateCache(
+        PartitionGroup partitionGroup,
+        List<String> paths,
+        RemotePathAliasCache remotePathAliasCache) {
+      this.partitionGroup = partitionGroup;
+      this.fullPaths = paths;
+      this.remotePathAliasCache = remotePathAliasCache;
+    }
+
+    @Override
+    public void run() {
+      List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
+      for (Node node : coordinatedNodes) {
+        try {
+          logger.debug(
+              "Start to update cache, partitionGroup is {}, paths is {}",
+              partitionGroup,
+              fullPaths);
+          GetAllPathsResult result =
+              getMatchedPaths(node, partitionGroup.getHeader(), fullPaths, true);
+
+          if (result != null) {
+            result.pathToPaths.forEach(
+                (upPath, paths) -> {
+                  List<PartialPath> partialPaths = Lists.newArrayList();
+                  paths.forEach(
+                      p -> {
+                        try {
+                          PartialPath partialPath = new PartialPath(p);
+                          partialPath.setMeasurementAlias(result.pathToAlias.get(p));
+                          partialPaths.add(partialPath);
+                        } catch (IllegalPathException e) {
+                          logger.warn("Failed to create partial path", e);
+                        }
+                      });
+                  logger.debug(
+                      "Put data to cache, upper-layer path is {}, all paths is {}", upPath, paths);
+                  this.remotePathAliasCache.put(upPath, partialPaths);
+                });
+          }
+
+        } catch (Exception e) {
+          logger.warn(
+              "Failed to remote all path, this path is {}, node is {}.", fullPaths, node, e);
+        }
+      }
     }
   }
 
@@ -1076,6 +1182,22 @@ public class CMManager extends MManager {
             allTimeseriesName);
         result.addAll(allTimeseriesName);
       } else {
+
+        if (withAlias) {
+          List<PartialPath> partialPaths =
+              remotePathAliasCache.loadObjectByKey(sgPathEntry.getValue());
+          if (partialPaths != null) {
+            result.addAll(partialPaths);
+            continue;
+          }
+
+          List<String> paths = Lists.newArrayList();
+          paths.add(sgPathEntry.getValue());
+          partialPaths = getMatchedPaths(partitionGroup, paths, true);
+          result.addAll(partialPaths);
+          remotePathAliasCache.put(sgPathEntry.getValue(), partialPaths);
+          continue;
+        }
         // batch the queries of the same group to reduce communication
         groupPathMap
             .computeIfAbsent(partitionGroup, p -> new ArrayList<>())
@@ -1083,6 +1205,9 @@ public class CMManager extends MManager {
       }
     }
 
+    if (withAlias) {
+      return result;
+    }
     // query each data group separately
     for (Entry<PartitionGroup, List<String>> partitionGroupPathEntry : groupPathMap.entrySet()) {
       PartitionGroup partitionGroup = partitionGroupPathEntry.getKey();
@@ -1109,8 +1234,29 @@ public class CMManager extends MManager {
     List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
     for (Node node : coordinatedNodes) {
       try {
-        List<PartialPath> paths =
+        GetAllPathsResult result =
             getMatchedPaths(node, partitionGroup.getHeader(), pathsToQuery, withAlias);
+
+        List<PartialPath> partialPaths = new ArrayList<>();
+        if (result != null) {
+          result.pathToPaths.forEach(
+              (k, v) -> {
+                v.forEach(
+                    p -> {
+                      try {
+                        PartialPath partialPath = new PartialPath(p);
+                        if (withAlias) {
+                          partialPath.setMeasurementAlias(result.pathToAlias.get(p));
+                        }
+                        partialPaths.add(partialPath);
+                      } catch (IllegalPathException e) {
+                        logger.warn("Failed to create partial path", e);
+                      }
+                    });
+              });
+          return partialPaths;
+        }
+
         if (logger.isDebugEnabled()) {
           logger.debug(
               "{}: get matched paths of {} and other {} paths from {} in {}, result {}",
@@ -1119,12 +1265,10 @@ public class CMManager extends MManager {
               pathsToQuery.size() - 1,
               node,
               partitionGroup.getHeader(),
-              paths);
+              partialPaths);
         }
-        if (paths != null) {
-          // a non-null result contains correct result even if it is empty, so query next group
-          return paths;
-        }
+
+        return partialPaths;
       } catch (IOException | TException e) {
         throw new MetadataException(e);
       } catch (InterruptedException e) {
@@ -1137,7 +1281,7 @@ public class CMManager extends MManager {
   }
 
   @SuppressWarnings("java:S1168") // null and empty list are different
-  private List<PartialPath> getMatchedPaths(
+  private GetAllPathsResult getMatchedPaths(
       Node node, Node header, List<String> pathsToQuery, boolean withAlias)
       throws IOException, TException, InterruptedException {
     GetAllPathsResult result;
@@ -1156,27 +1300,7 @@ public class CMManager extends MManager {
         result = syncDataClient.getAllPaths(header, pathsToQuery, withAlias);
       }
     }
-
-    if (result != null) {
-      // paths may be empty, implying that the group does not contain matched paths, so we do not
-      // need to query other nodes in the group
-      List<PartialPath> partialPaths = new ArrayList<>();
-      for (int i = 0; i < result.paths.size(); i++) {
-        try {
-          PartialPath partialPath = new PartialPath(result.paths.get(i));
-          if (withAlias) {
-            partialPath.setMeasurementAlias(result.aliasList.get(i));
-          }
-          partialPaths.add(partialPath);
-        } catch (IllegalPathException e) {
-          // ignore
-        }
-      }
-      return partialPaths;
-    } else {
-      // a null implies a network failure, so we have to query other nodes in the group
-      return null;
-    }
+    return result;
   }
 
   /**
@@ -1759,28 +1883,35 @@ public class CMManager extends MManager {
 
   public GetAllPathsResult getAllPaths(List<String> paths, boolean withAlias)
       throws MetadataException {
-    List<String> retPaths = new ArrayList<>();
-    List<String> alias = null;
-    if (withAlias) {
-      alias = new ArrayList<>();
-    }
+
+    Map<String, List<String>> pathToPaths = Maps.newHashMap();
+    Map<String, String> pathToAlias = Maps.newHashMap();
 
     if (withAlias) {
       for (String path : paths) {
         List<PartialPath> allTimeseriesPathWithAlias =
             super.getAllTimeseriesPathWithAlias(new PartialPath(path), -1, -1).left;
+        List<String> fullPaths = Lists.newArrayList();
         for (PartialPath timeseriesPathWithAlias : allTimeseriesPathWithAlias) {
-          retPaths.add(timeseriesPathWithAlias.getFullPath());
-          alias.add(timeseriesPathWithAlias.getMeasurementAlias());
+          fullPaths.add(timeseriesPathWithAlias.getFullPath());
+          pathToAlias.put(
+              timeseriesPathWithAlias.getFullPath(), timeseriesPathWithAlias.getMeasurementAlias());
         }
+        pathToPaths.put(path, fullPaths);
       }
     } else {
-      retPaths = getAllPaths(paths);
+      for (String path : paths) {
+        List<String> fullPath = Lists.newArrayList();
+        getAllTimeseriesPath(new PartialPath(path)).stream()
+            .map(PartialPath::getFullPath)
+            .forEach(fullPath::add);
+        pathToPaths.put(path, fullPath);
+      }
     }
 
     GetAllPathsResult getAllPathsResult = new GetAllPathsResult();
-    getAllPathsResult.setPaths(retPaths);
-    getAllPathsResult.setAliasList(alias);
+    getAllPathsResult.setPathToPaths(pathToPaths);
+    getAllPathsResult.setPathToAlias(pathToAlias);
     return getAllPathsResult;
   }
 
@@ -1796,5 +1927,9 @@ public class CMManager extends MManager {
       }
       return super.getStorageGroupPath(path);
     }
+  }
+
+  public RemotePathAliasCache getRemotePathAliasCache() {
+    return remotePathAliasCache;
   }
 }

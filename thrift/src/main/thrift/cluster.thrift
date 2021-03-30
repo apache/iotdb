@@ -251,8 +251,8 @@ struct LastQueryRequest {
 }
 
 struct GetAllPathsResult {
-  1: required list<string> paths
-  2: optional list<string> aliasList
+  1: required map<string,list<string>> pathToPaths
+  2: required map<string,string> pathToAlias
 }
 
 
