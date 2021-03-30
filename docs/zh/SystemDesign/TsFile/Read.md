@@ -53,11 +53,11 @@ Filter 表示基本的过滤条件。用户可以在时间戳上、或某一列�
 Filter|类型|含义|示例
 ----|----|---|------
 TimeEq|时间过滤条件|时间戳等于某个值|TimeEq(t)，表示时间戳等于 t 
-TimeGt|时间过滤条件|时间戳大于某个值|TimeGt(t)，表示时间戳大 t
-TimeGtEq|时间过滤条件|时间戳大于等于某个值|TimeGtEq(t)，表示时间戳大于等 t
-TimeLt|时间过滤条件|时间戳小于某个值|TimeLt(t)，表示时间戳小 t
-TimeLtEq|时间过滤条件|时间戳小于等于某个值|TimeLtEq(t)，表示时间戳小于等 t
-TimeNotEq|时间过滤条件|时间戳不等于某个值|TimeNotEq(t)，表示时间戳不等 t
+TimeGt|时间过滤条件|时间戳大于某个值|TimeGt(t)，表示时间戳大于 t
+TimeGtEq|时间过滤条件|时间戳大于等于某个值|TimeGtEq(t)，表示时间戳大于等于 t
+TimeLt|时间过滤条件|时间戳小于某个值|TimeLt(t)，表示时间戳小于 t
+TimeLtEq|时间过滤条件|时间戳小于等于某个值|TimeLtEq(t)，表示时间戳小于等于 t
+TimeNotEq|时间过滤条件|时间戳不等于某个值|TimeNotEq(t)，表示时间戳不等于 t
 ValueEq|值过滤条件|该列数值等于某个值|ValueEq(2147483649)，表示该列数值等于2147483649
 ValueGt|值过滤条件|该列数值大于某个值|ValueGt(100.5)，表示该列数值大于100.5
 ValueGtEq|值过滤条件|该列数值大于等于某个值|ValueGtEq(2)，表示该列数值大于等于2
