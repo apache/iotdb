@@ -130,7 +130,7 @@ final int windowSize = 10;
 final int slidingStep = 5;
 
 SlidingSizeWindowEvaluationHandler handler =
-	  new SlidingSizeWindowEvaluationHandler(
+    new SlidingSizeWindowEvaluationHandler(
         new SlidingSizeWindowConfiguration(dataType, windowSize, slidingStep),
         window -> {
           // do something
@@ -144,7 +144,7 @@ final TSDataType dataType = TSDataType.INT32;
 final int windowSize = 10;
 
 SlidingSizeWindowEvaluationHandler handler =
-	  new SlidingSizeWindowEvaluationHandler(
+    new SlidingSizeWindowEvaluationHandler(
         new SlidingSizeWindowConfiguration(dataType, windowSize),
         window -> {
           // do something
