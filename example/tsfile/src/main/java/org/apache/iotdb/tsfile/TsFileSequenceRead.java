@@ -45,7 +45,7 @@ public class TsFileSequenceRead {
     "squid:S106"
   }) // Suppress high Cognitive Complexity and Standard outputs warning
   public static void main(String[] args) throws IOException {
-    String filename = "/Users/samperson1997/Desktop/test.ts";
+    String filename = "test.tsfile";
     if (args.length >= 1) {
       filename = args[0];
     }
