@@ -99,11 +99,8 @@ public class StorageEngine implements IService {
    * Time range for dividing storage group, the time unit is the same with IoTDB's
    * TimestampPrecision
    */
-  @ServerConfigConsistent
-  private static long timePartitionInterval = -1;
-  /**
-   * whether enable data partition if disabled, all data belongs to partition 0
-   */
+  @ServerConfigConsistent private static long timePartitionInterval = -1;
+  /** whether enable data partition if disabled, all data belongs to partition 0 */
   @ServerConfigConsistent
   private static boolean enablePartition =
       IoTDBDescriptor.getInstance().getConfig().isEnablePartition();
@@ -114,9 +111,7 @@ public class StorageEngine implements IService {
    * will have a subfolder under the systemDir.
    */
   private final String systemDir;
-  /**
-   * storage group name -> storage group processor
-   */
+  /** storage group name -> storage group processor */
   private final ConcurrentHashMap<PartialPath, VirtualStorageGroupManager> processorMap =
       new ConcurrentHashMap<>();
 
@@ -205,9 +200,7 @@ public class StorageEngine implements IService {
     StorageEngine.enablePartition = enablePartition;
   }
 
-  /**
-   * block insertion if the insertion is rejected by memory control
-   */
+  /** block insertion if the insertion is rejected by memory control */
   public static void blockInsertionIfReject() throws WriteProcessRejectException {
     long startTime = System.currentTimeMillis();
     while (SystemInfo.getInstance().isRejected()) {
@@ -411,9 +404,9 @@ public class StorageEngine implements IService {
   /**
    * get storage group processor by device path
    *
-   * @param devicePath        path of the device
+   * @param devicePath path of the device
    * @param storageGroupMNode mnode of the storage group, we need synchronize this to avoid
-   *                          modification in mtree
+   *     modification in mtree
    * @return found or new storage group processor
    */
   @SuppressWarnings("java:S2445")
@@ -449,7 +442,7 @@ public class StorageEngine implements IService {
   /**
    * build a new storage group processor
    *
-   * @param virtualStorageGroupId   virtual storage group id e.g. 1
+   * @param virtualStorageGroupId virtual storage group id e.g. 1
    * @param logicalStorageGroupName logical storage group name e.g. root.sg1
    */
   public StorageGroupProcessor buildNewStorageGroupProcessor(
@@ -500,9 +493,7 @@ public class StorageEngine implements IService {
     }
   }
 
-  /**
-   * This function is just for unit test.
-   */
+  /** This function is just for unit test. */
   public synchronized void reset() {
     for (VirtualStorageGroupManager virtualStorageGroupManager : processorMap.values()) {
       virtualStorageGroupManager.reset();
@@ -548,9 +539,7 @@ public class StorageEngine implements IService {
     }
   }
 
-  /**
-   * insert a InsertTabletPlan to a storage group
-   */
+  /** insert a InsertTabletPlan to a storage group */
   public void insertTablet(InsertTabletPlan insertTabletPlan)
       throws StorageEngineException, BatchProcessException {
     StorageGroupProcessor storageGroupProcessor;
@@ -587,9 +576,7 @@ public class StorageEngine implements IService {
     monitor.updateStatGlobalValue(successPointsNum);
   }
 
-  /**
-   * flush command Sync asyncCloseOneProcessor all file node processors.
-   */
+  /** flush command Sync asyncCloseOneProcessor all file node processors. */
   public void syncCloseAllProcessor() {
     logger.info("Start closing all storage group processor");
     for (VirtualStorageGroupManager processor : processorMap.values()) {
@@ -616,9 +603,9 @@ public class StorageEngine implements IService {
 
   /**
    * @param storageGroupPath the storage group name
-   * @param partitionId      the partition id
-   * @param isSeq            is sequence tsfile or unsequence tsfile
-   * @param isSync           close tsfile synchronously or asynchronously
+   * @param partitionId the partition id
+   * @param isSeq is sequence tsfile or unsequence tsfile
+   * @param isSync close tsfile synchronously or asynchronously
    * @throws StorageGroupNotSetException
    */
   public void closeStorageGroupProcessor(
@@ -650,9 +637,7 @@ public class StorageEngine implements IService {
     }
   }
 
-  /**
-   * delete data of timeseries "{deviceId}.{measurementId}"
-   */
+  /** delete data of timeseries "{deviceId}.{measurementId}" */
   public void deleteTimeseries(PartialPath path, long planIndex) throws StorageEngineException {
     try {
       List<PartialPath> sgPaths = IoTDB.metaManager.searchAllRelatedStorageGroups(path);
@@ -672,9 +657,7 @@ public class StorageEngine implements IService {
     }
   }
 
-  /**
-   * query data.
-   */
+  /** query data. */
   public QueryDataSource query(
       SingleSeriesExpression seriesExpression,
       QueryContext context,
@@ -746,18 +729,14 @@ public class StorageEngine implements IService {
     processorMap.get(storageGroupPath).syncDeleteDataFiles();
   }
 
-  /**
-   * release all the allocated non-heap
-   */
+  /** release all the allocated non-heap */
   public void releaseWalDirectByteBufferPoolInOneStorageGroup(PartialPath storageGroupPath) {
     if (processorMap.containsKey(storageGroupPath)) {
       processorMap.get(storageGroupPath).releaseWalDirectByteBufferPool();
     }
   }
 
-  /**
-   * delete all data of storage groups' timeseries.
-   */
+  /** delete all data of storage groups' timeseries. */
   public synchronized boolean deleteAll() {
     logger.info("Start deleting all storage groups' timeseries");
     syncCloseAllProcessor();
@@ -835,9 +814,7 @@ public class StorageEngine implements IService {
     return file.getParentFile().getParentFile().getParentFile().getName();
   }
 
-  /**
-   * @return TsFiles (seq or unseq) grouped by their storage group and partition number.
-   */
+  /** @return TsFiles (seq or unseq) grouped by their storage group and partition number. */
   public Map<PartialPath, Map<Long, List<TsFileResource>>> getAllClosedStorageGroupTsFile() {
     Map<PartialPath, Map<Long, List<TsFileResource>>> ret = new HashMap<>();
     for (Entry<PartialPath, VirtualStorageGroupManager> entry : processorMap.entrySet()) {
@@ -918,9 +895,7 @@ public class StorageEngine implements IService {
     customCloseFileListeners.add(listener);
   }
 
-  /**
-   * get all merge lock of the storage group processor related to the query
-   */
+  /** get all merge lock of the storage group processor related to the query */
   public List<StorageGroupProcessor> mergeLock(List<PartialPath> pathList)
       throws StorageEngineException {
     Set<StorageGroupProcessor> set = new HashSet<>();
@@ -935,9 +910,7 @@ public class StorageEngine implements IService {
     return list;
   }
 
-  /**
-   * unlock all merge lock of the storage group processor related to the query
-   */
+  /** unlock all merge lock of the storage group processor related to the query */
   public void mergeUnLock(List<StorageGroupProcessor> list) {
     list.forEach(storageGroupProcessor -> storageGroupProcessor.getTsFileManagement().readUnLock());
   }
