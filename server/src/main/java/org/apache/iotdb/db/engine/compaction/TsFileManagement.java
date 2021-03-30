@@ -83,7 +83,7 @@ public abstract class TsFileManagement {
   }
 
   /**
-   * get the TsFile list in sequence not recommend to use this method, use
+   * get the TsFile list in sequence, not recommend to use this method, use
    * getTsFileListByTimePartition instead
    */
   @Deprecated

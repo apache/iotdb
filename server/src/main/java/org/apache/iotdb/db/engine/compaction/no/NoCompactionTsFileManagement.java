@@ -257,20 +257,7 @@ public class NoCompactionTsFileManagement extends TsFileManagement {
   }
 
   private TreeSet<TsFileResource> newSequenceTsFileResources(Long k) {
-    return new TreeSet<>(
-        (o1, o2) -> {
-          try {
-            int rangeCompare =
-                Long.compare(
-                    Long.parseLong(o1.getTsFile().getParentFile().getName()),
-                    Long.parseLong(o2.getTsFile().getParentFile().getName()));
-            return rangeCompare == 0
-                ? compareFileName(o1.getTsFile(), o2.getTsFile())
-                : rangeCompare;
-          } catch (NumberFormatException e) {
-            return compareFileName(o1.getTsFile(), o2.getTsFile());
-          }
-        });
+    return new TreeSet<>((o1, o2) -> compareFileName(o1.getTsFile(), o2.getTsFile()));
   }
 
   private List<TsFileResource> newUnSequenceTsFileResources(Long k) {
