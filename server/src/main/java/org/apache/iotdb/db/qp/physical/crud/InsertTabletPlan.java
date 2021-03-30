@@ -604,7 +604,7 @@ public class InsertTabletPlan extends InsertPlan {
   @Override
   public void checkIntegrity() throws QueryProcessException {
     super.checkIntegrity();
-    if (columns == null) {
+    if (columns == null || columns.length == 0) {
       throw new QueryProcessException("Values are null");
     }
     if (measurements.length != columns.length) {
