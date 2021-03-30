@@ -45,7 +45,7 @@ public class TsFileSequenceRead {
     "squid:S106"
   }) // Suppress high Cognitive Complexity and Standard outputs warning
   public static void main(String[] args) throws IOException {
-    String filename = "test.tsfile";
+    String filename = "/Users/samperson1997/Desktop/test.ts";
     if (args.length >= 1) {
       filename = args[0];
     }
@@ -59,8 +59,7 @@ public class TsFileSequenceRead {
       // Sequential reading of one ChunkGroup now follows this order:
       // first the CHUNK_GROUP_HEADER, then SeriesChunks (headers and data) in one ChunkGroup
       // Because we do not know how many chunks a ChunkGroup may have, we should read one byte (the
-      // marker) ahead and
-      // judge accordingly.
+      // marker) ahead and judge accordingly.
       reader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
       System.out.println("[Chunk Group]");
       System.out.println("position: " + reader.position());
