@@ -717,8 +717,8 @@ public class TsFileResource {
    */
   public long getTimePartitionWithCheck() throws PartitionViolationException {
     long partitionId = -1;
-    for (Long startTime : startTimes) {
-      long p = StorageEngine.getTimePartition(startTime);
+    for (int index : deviceToIndex.values()) {
+      long p = StorageEngine.getTimePartition(startTimes[index]);
       if (partitionId == -1) {
         partitionId = p;
       } else {
@@ -726,15 +726,9 @@ public class TsFileResource {
           throw new PartitionViolationException(this);
         }
       }
-    }
-    for (Long endTime : endTimes) {
-      long p = StorageEngine.getTimePartition(endTime);
-      if (partitionId == -1) {
-        partitionId = p;
-      } else {
-        if (partitionId != p) {
-          throw new PartitionViolationException(this);
-        }
+      p = StorageEngine.getTimePartition(endTimes[index]);
+      if (partitionId != p) {
+        throw new PartitionViolationException(this);
       }
     }
     if (partitionId == -1) {

@@ -122,7 +122,6 @@ public class StorageEngine implements IService {
   private ExecutorService recoverAllSgThreadPool;
 
 
-
   static class InstanceHolder {
 
     private InstanceHolder() {
@@ -386,7 +385,8 @@ public class StorageEngine implements IService {
 
   public void insert(InsertRowsOfOneDevicePlan insertRowsOfOneDevicePlan)
       throws StorageEngineException {
-    StorageGroupProcessor storageGroupProcessor = getProcessor(insertRowsOfOneDevicePlan.getDeviceId());
+    StorageGroupProcessor storageGroupProcessor = getProcessor(
+        insertRowsOfOneDevicePlan.getDeviceId());
 
     // TODO monitor: update statistics
     try {
@@ -855,8 +855,9 @@ public class StorageEngine implements IService {
       try {
         TimeUnit.MILLISECONDS.sleep(config.getCheckPeriodWhenInsertBlocked());
         if (System.currentTimeMillis() - startTime > config.getMaxWaitingTimeWhenInsertBlocked()) {
-          throw new WriteProcessRejectException("System rejected over " + config.getMaxWaitingTimeWhenInsertBlocked() +
-              "ms");
+          throw new WriteProcessRejectException(
+              "System rejected over " + config.getMaxWaitingTimeWhenInsertBlocked() +
+                  "ms");
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
