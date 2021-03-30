@@ -699,23 +699,25 @@ public class DataGroupMember extends RaftMember {
    */
   @Override
   public TSStatus executeNonQueryPlan(PhysicalPlan plan) {
-    try {
-      executor.processNonQuery(plan);
-      return StatusUtils.OK;
-    } catch (Exception e) {
-      return StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy().setMessage(e.getMessage());
-    }
+    if (ClusterDescriptor.getInstance().getConfig().getReplicationNum() == 1) {
+      try {
+        executor.processNonQuery(plan);
+        return StatusUtils.OK;
+      } catch (Exception e) {
+        return StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy().setMessage(e.getMessage());
+      }
+    } else {
+      TSStatus status = executeNonQueryPlanWithKnownLeader(plan);
+      if (!StatusUtils.NO_LEADER.equals(status)) {
+        return status;
+      }
 
-    //    TSStatus status = executeNonQueryPlanWithKnownLeader(plan);
-    //    if (!StatusUtils.NO_LEADER.equals(status)) {
-    //      return status;
-    //    }
-    //
-    //    long startTime = Timer.Statistic.DATA_GROUP_MEMBER_WAIT_LEADER.getOperationStartTime();
-    //    waitLeader();
-    //    Timer.Statistic.DATA_GROUP_MEMBER_WAIT_LEADER.calOperationCostTimeFromStart(startTime);
-    //
-    //    return executeNonQueryPlanWithKnownLeader(plan);
+      long startTime = Timer.Statistic.DATA_GROUP_MEMBER_WAIT_LEADER.getOperationStartTime();
+      waitLeader();
+      Timer.Statistic.DATA_GROUP_MEMBER_WAIT_LEADER.calOperationCostTimeFromStart(startTime);
+
+      return executeNonQueryPlanWithKnownLeader(plan);
+    }
   }
 
   private TSStatus executeNonQueryPlanWithKnownLeader(PhysicalPlan plan) {

@@ -25,7 +25,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
-import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -52,6 +51,11 @@ public class VectorMeasurementSchemaStub implements IMeasurementSchema {
   @Override
   public TSDataType getType() {
     return TSDataType.VECTOR;
+  }
+
+  @Override
+  public void setType(TSDataType dataType) {
+    throw new UnsupportedOperationException("unsupported method for VectorMeasurementSchema");
   }
 
   @Override
@@ -103,7 +107,7 @@ public class VectorMeasurementSchemaStub implements IMeasurementSchema {
   }
 
   @Override
-  public int serializeTo(OutputStream outputStream) throws IOException {
+  public int serializeTo(OutputStream outputStream) {
     return 0;
   }
 

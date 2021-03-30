@@ -22,7 +22,6 @@ import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
-import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -125,7 +124,6 @@ import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
 import org.apache.iotdb.db.query.udf.core.context.UDFContext;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -230,13 +228,17 @@ public class PhysicalGenerator {
         paths = insert.getSelectedPaths();
         int measurementsNum = 0;
         for (String measurement : insert.getMeasurementList()) {
-          measurementsNum += measurement.replace("(", "").replace(")", "").split(",").length;
+          if (measurement.startsWith("(") && measurement.endsWith(")")) {
+            measurementsNum += measurement.replace("(", "").replace(")", "").split(",").length;
+          } else {
+            measurementsNum++;
+          }
         }
         if (measurementsNum != insert.getValueList().length) {
           throw new SQLParserException(
               String.format(
                   "the measurementList's size %d is not consistent with the valueList's size %d",
-                  insert.getMeasurementList().length, insert.getValueList().length));
+                  measurementsNum, insert.getValueList().length));
         }
         return new InsertRowPlan(
             paths.get(0), insert.getTime(), insert.getMeasurementList(), insert.getValueList());
@@ -828,8 +830,7 @@ public class PhysicalGenerator {
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private void deduplicate(QueryPlan queryPlan)
-      throws MetadataException, PathNumOverLimitException {
+  private void deduplicate(QueryPlan queryPlan) throws MetadataException {
     // generate dataType first
     List<PartialPath> paths = queryPlan.getPaths();
     List<TSDataType> dataTypes = getSeriesTypes(paths);
@@ -846,12 +847,7 @@ public class PhysicalGenerator {
     if (queryPlan instanceof LastQueryPlan) {
       for (int i = 0; i < paths.size(); i++) {
         PartialPath path = paths.get(i);
-        String column;
-        if (path.isTsAliasExists()) {
-          column = path.getTsAlias();
-        } else {
-          column = path.isMeasurementAliasExists() ? path.getFullPathWithAlias() : path.toString();
-        }
+        String column = queryPlan.getColumnForReaderFromPath(path, i);
         if (!columnForReaderSet.contains(column)) {
           TSDataType seriesType = dataTypes.get(i);
           rawDataQueryPlan.addDeduplicatedPaths(path);
@@ -884,18 +880,7 @@ public class PhysicalGenerator {
       PartialPath originalPath = indexedPath.left;
       Integer originalIndex = indexedPath.right;
 
-      String columnForReader = originalPath.isTsAliasExists() ? originalPath.getTsAlias() : null;
-      if (columnForReader == null) {
-        columnForReader =
-            originalPath.isMeasurementAliasExists()
-                ? originalPath.getFullPathWithAlias()
-                : originalPath.toString();
-        if (queryPlan instanceof AggregationPlan) {
-          columnForReader =
-              queryPlan.getAggregations().get(originalIndex) + "(" + columnForReader + ")";
-        }
-      }
-
+      String columnForReader = queryPlan.getColumnForReaderFromPath(originalPath, originalIndex);
       boolean isUdf = queryPlan instanceof UDTFPlan && paths.get(originalIndex) == null;
 
       if (!columnForReaderSet.contains(columnForReader)) {
@@ -910,23 +895,8 @@ public class PhysicalGenerator {
         columnForReaderSet.add(columnForReader);
       }
 
-      String columnForDisplay =
-          isUdf
-              ? ((UDTFPlan) queryPlan)
-                  .getExecutorByOriginalOutputColumnIndex(originalIndex)
-                  .getContext()
-                  .getColumnName()
-              : columnForReader;
-      if (queryPlan instanceof AggregationPlan && ((AggregationPlan) queryPlan).getLevel() >= 0) {
-        String aggregatePath =
-            originalPath.isMeasurementAliasExists()
-                ? FilePathUtils.generatePartialPathByLevel(
-                    originalPath.getFullPathWithAlias(), ((AggregationPlan) queryPlan).getLevel())
-                : FilePathUtils.generatePartialPathByLevel(
-                    originalPath.toString(), ((AggregationPlan) queryPlan).getLevel());
-        columnForDisplay =
-            queryPlan.getAggregations().get(originalIndex) + "(" + aggregatePath + ")";
-      }
+      String columnForDisplay = queryPlan.getColumnForDisplay(columnForReader, originalIndex);
+
       if (!columnForDisplaySet.contains(columnForDisplay)) {
         queryPlan.addPathToIndex(columnForDisplay, queryPlan.getPathToIndex().size());
         if (queryPlan instanceof UDTFPlan) {
@@ -942,6 +912,11 @@ public class PhysicalGenerator {
 
     if (queryPlan instanceof UDTFPlan) {
       ((UDTFPlan) queryPlan).setPathNameToReaderIndex(pathNameToReaderIndex);
+      return;
+    }
+
+    if (queryPlan instanceof AggregationPlan) {
+      return;
     }
 
     // support vector
@@ -972,10 +947,9 @@ public class PhysicalGenerator {
 
     // check parameter range
     if (seriesOffset >= size) {
-      throw new QueryProcessException(
-          String.format(
-              "The value of SOFFSET (%d) is equal to or exceeds the number of sequences (%d) that can actually be returned.",
-              seriesOffset, size));
+      String errorMessage =
+          "The value of SOFFSET (%d) is equal to or exceeds the number of sequences (%d) that can actually be returned.";
+      throw new QueryProcessException(String.format(errorMessage, seriesOffset, size));
     }
     int endPosition = seriesOffset + seriesLimit;
     if (endPosition > size) {

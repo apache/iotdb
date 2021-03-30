@@ -728,10 +728,11 @@ public class MTree implements Serializable {
         }
 
         String realName = nodes[i];
-        if (realName.contains(IoTDBConstant.ALIGN_TIMESERIES_PREFIX)) {
-          String[] part = realName.split("#");
-          realName = part[part.length - 1];
+        if (path instanceof VectorPartialPath) {
+          VectorPartialPath vectorPartialPath = (VectorPartialPath) path;
+          realName = vectorPartialPath.getSubSensorsPathList().get(0).getMeasurement();
         }
+
         IMeasurementSchema schema = upperTemplate.getSchemaMap().get(realName);
         if (schema == null) {
           throw new PathNotExistException(path.getFullPath(), true);
@@ -740,11 +741,7 @@ public class MTree implements Serializable {
         if (schema instanceof MeasurementSchema) {
           return new MeasurementMNode(cur, schema.getMeasurementId(), schema, null);
         } else if (schema instanceof VectorMeasurementSchema) {
-          return new MeasurementMNode(
-              cur,
-              upperTemplate.getMeasurementNodeName(schema.getValueMeasurementIdList().get(0)),
-              schema,
-              null);
+          return new MeasurementMNode(cur, schema.getMeasurementId(), schema, null);
         } else {
           throw new IllegalArgumentException("Undefined type of schema");
         }
@@ -1347,8 +1344,7 @@ public class MTree implements Serializable {
             } else if (schema instanceof VectorMeasurementSchema) {
               String firstNode = schema.getValueMeasurementIdList().get(0);
               addVectorMeasurementSchema(
-                  new MeasurementMNode(
-                      node, upperTemplate.getMeasurementNodeName(firstNode), schema, null),
+                  new MeasurementMNode(node, firstNode, schema, null),
                   timeseriesSchemaList,
                   needLast,
                   queryContext,

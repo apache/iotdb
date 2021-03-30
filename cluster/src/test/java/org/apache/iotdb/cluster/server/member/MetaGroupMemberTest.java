@@ -67,6 +67,7 @@ import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
 import org.apache.iotdb.cluster.server.service.MetaAsyncService;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.cluster.utils.Constants;
+import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
@@ -137,7 +138,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-public class MetaGroupMemberTest extends MemberTest {
+public class MetaGroupMemberTest extends BaseMember {
 
   private DataClusterServer dataClusterServer;
   protected boolean mockDataClusterServer;
@@ -881,6 +882,10 @@ public class MetaGroupMemberTest extends MemberTest {
 
     try {
       ClusterReaderFactory readerFactory = new ClusterReaderFactory(testMetaMember);
+      long[] times = new long[10];
+      for (int i = 0; i < 10; i++) {
+        times[i] = i;
+      }
       for (int i = 0; i < 10; i++) {
         IReaderByTimestamp readerByTimestamp =
             readerFactory.getReaderByTimestamp(
@@ -889,8 +894,10 @@ public class MetaGroupMemberTest extends MemberTest {
                 TSDataType.DOUBLE,
                 context,
                 true);
+
+        Object[] values = readerByTimestamp.getValuesInTimestamps(times, 10);
         for (int j = 0; j < 10; j++) {
-          assertEquals(j * 1.0, (double) readerByTimestamp.getValueInTimestamp(j), 0.00001);
+          assertEquals(j * 1.0, (double) values[j], 0.00001);
         }
       }
     } finally {
@@ -1312,6 +1319,38 @@ public class MetaGroupMemberTest extends MemberTest {
 
     assertEquals(Response.RESPONSE_CLUSTER_TOO_SMALL, (long) resultRef.get());
     assertTrue(testMetaMember.getAllNodes().contains(TestUtils.getNode(10)));
+  }
+
+  @Test
+  public void testRouteIntervalsDisablePartition()
+      throws IllegalPathException, StorageEngineException {
+    boolean isEablePartition = StorageEngine.isEnablePartition();
+    StorageEngine.setEnablePartition(false);
+    testMetaMember.setCharacter(LEADER);
+    testMetaMember.setLeader(testMetaMember.getThisNode());
+    PartitionUtils.Intervals intervals = new PartitionUtils.Intervals();
+    intervals.addInterval(Long.MIN_VALUE, Long.MAX_VALUE);
+
+    List<PartitionGroup> partitionGroups =
+        testMetaMember.routeIntervals(intervals, new PartialPath(TestUtils.getTestSg(0)));
+    assertEquals(1, partitionGroups.size());
+    StorageEngine.setEnablePartition(isEablePartition);
+  }
+
+  @Test
+  public void testRouteIntervalsEnablePartition()
+      throws IllegalPathException, StorageEngineException {
+    boolean isEablePartition = StorageEngine.isEnablePartition();
+    StorageEngine.setEnablePartition(true);
+    testMetaMember.setCharacter(LEADER);
+    testMetaMember.setLeader(testMetaMember.getThisNode());
+    PartitionUtils.Intervals intervals = new PartitionUtils.Intervals();
+    intervals.addInterval(Long.MIN_VALUE, Long.MAX_VALUE);
+
+    List<PartitionGroup> partitionGroups =
+        testMetaMember.routeIntervals(intervals, new PartialPath(TestUtils.getTestSg(0)));
+    assertTrue(partitionGroups.size() > 1);
+    StorageEngine.setEnablePartition(isEablePartition);
   }
 
   private void doRemoveNode(AtomicReference<Long> resultRef, Node nodeToRemove) {

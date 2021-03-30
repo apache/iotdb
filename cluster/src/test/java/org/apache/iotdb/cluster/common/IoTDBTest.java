@@ -166,7 +166,7 @@ public abstract class IoTDBTest {
     for (String pathStr : pathStrs) {
       paths.add(new PartialPath(pathStr));
     }
-    queryPlan.setDeduplicatedPaths(paths);
+    queryPlan.setDeduplicatedPathsAndUpdate(paths);
     queryPlan.setPaths(paths);
     List<TSDataType> dataTypes = new ArrayList<>();
     for (PartialPath path : paths) {

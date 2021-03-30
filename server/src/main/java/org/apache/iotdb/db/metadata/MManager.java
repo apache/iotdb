@@ -319,6 +319,8 @@ public class MManager {
   /** function for clearing MTree */
   public void clear() {
     try {
+      templateMap.clear();
+      Template.clear();
       this.mtree = new MTree();
       this.mNodeCache.clear();
       this.tagIndex.clear();
@@ -571,7 +573,7 @@ public class MManager {
    * Delete all timeseries under the given path, may cross different storage group
    *
    * @param prefixPath path to be deleted, could be root or a prefix path or a full path
-   * @return deletion failed Timeseries >>>>>>> cf081f9a1d0c48bcb02bc7dac2695483ac624eec
+   * @return deletion failed Timeseries
    */
   public String deleteTimeseries(PartialPath prefixPath) throws MetadataException {
     if (isStorageGroup(prefixPath)) {
@@ -588,10 +590,13 @@ public class MManager {
       MNode lastNode = getNodeByPath(allTimeseries.get(0));
       if (lastNode instanceof MeasurementMNode) {
         IMeasurementSchema schema = ((MeasurementMNode) lastNode).getSchema();
-        if (schema instanceof VectorMeasurementSchema
-            && schema.getValueMeasurementIdList().size() != allTimeseries.size()) {
-          throw new AlignedTimeseriesException(
-              "Not support deleting part of aligned timeseies!", prefixPath.getFullPath());
+        if (schema instanceof VectorMeasurementSchema) {
+          if (schema.getValueMeasurementIdList().size() != allTimeseries.size()) {
+            throw new AlignedTimeseriesException(
+                "Not support deleting part of aligned timeseies!", prefixPath.getFullPath());
+          } else {
+            allTimeseries.add(lastNode.getPartialPath());
+          }
         }
       }
 
@@ -670,11 +675,8 @@ public class MManager {
   }
 
   /**
-   * @param path full path from root to leaf node <<<<<<< HEAD
-   * @return pair.left: name of MNode which is deleted;pair.right: After delete if the storage group
-   *     is empty, return its path, otherwise return null =======
+   * @param path full path from root to leaf node
    * @return After delete if the storage group is empty, return its path, otherwise return null
-   *     >>>>>>> cf081f9a1d0c48bcb02bc7dac2695483ac624eec
    */
   private PartialPath deleteOneTimeseriesAndUpdateStatistics(PartialPath path)
       throws MetadataException, IOException {
@@ -1132,12 +1134,10 @@ public class MManager {
     MNode leaf = mtree.getNodeByPath(fullPath);
     IMeasurementSchema schema = ((MeasurementMNode) leaf).getSchema();
     if (schema != null && schema.getType() == TSDataType.VECTOR) {
-
+      List<String> measurementsInLeaf = schema.getValueMeasurementIdList();
       List<PartialPath> measurements = ((VectorPartialPath) fullPath).getSubSensorsPathList();
       TSDataType[] types = new TSDataType[measurements.size()];
       TSEncoding[] encodings = new TSEncoding[measurements.size()];
-
-      List<String> measurementsInLeaf = schema.getValueMeasurementIdList();
       for (int i = 0; i < measurements.size(); i++) {
         int index = measurementsInLeaf.indexOf(measurements.get(i).getMeasurement());
         types[i] = schema.getValueTSDataTypeList().get(index);
@@ -1148,9 +1148,9 @@ public class MManager {
         array[i] = measurements.get(i).getMeasurement();
       }
       return new VectorMeasurementSchema(
-          leaf.getName(), array, types, encodings, schema.getCompressor());
+          schema.getMeasurementId(), array, types, encodings, schema.getCompressor());
     }
-    return leaf != null ? schema : null;
+    return schema;
   }
 
   /**
@@ -1185,16 +1185,34 @@ public class MManager {
         }
         nodeToIndex.computeIfAbsent(node, k -> new ArrayList<>()).add(i);
       } else {
-        // if nodeToPartialPath contains node, it must be VectorPartialPath
-        ((VectorPartialPath) nodeToPartialPath.get(node)).addSubSensor(path);
-        nodeToIndex.get(node).add(i);
+        // if nodeToPartialPath contains node
+        String existPath = nodeToPartialPath.get(node).getFullPath();
+        if (existPath.equals(path.getFullPath())) {
+          // could be the same path in different aggregate functions
+          nodeToIndex.get(node).add(i);
+        } else {
+          // could be VectorPartialPath
+          ((VectorPartialPath) nodeToPartialPath.get(node)).addSubSensor(path);
+          nodeToIndex.get(node).add(i);
+        }
       }
     }
     Map<String, Integer> indexMap = new HashMap<>();
     int i = 0;
     for (List<Integer> indexList : nodeToIndex.values()) {
       for (int index : indexList) {
-        indexMap.put(fullPaths.get(i).getFullPath(), index);
+        PartialPath partialPath = fullPaths.get(i);
+        if (indexMap.containsKey(partialPath.getFullPath())) {
+          throw new MetadataException(
+              "Query for measurement and its alias at the same time!", true);
+        }
+        indexMap.put(partialPath.getFullPath(), index);
+        if (partialPath.isMeasurementAliasExists()) {
+          indexMap.put(partialPath.getFullPathWithAlias(), index);
+        }
+        if (partialPath.isTsAliasExists()) {
+          indexMap.put(partialPath.getTsAlias(), index);
+        }
         i++;
       }
     }
@@ -2105,12 +2123,8 @@ public class MManager {
         boolean mismatch = false;
         TSDataType insertDataType = null;
         if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
-          int measurementSize = measurementList[i].split(",").length;
-          if (measurementSize == 1) {
-            insertDataType = measurementMNode.getSchema().getType();
-            mismatch = measurementMNode.getSchema().getType() != insertDataType;
-          } else {
-            for (int j = 0; j < measurementSize; j++) {
+          if (measurementList[i].contains("(") && measurementList[i].contains(",")) {
+            for (int j = 0; j < measurementList[i].split(",").length; j++) {
               TSDataType dataTypeInNode =
                   measurementMNode.getSchema().getValueTSDataTypeList().get(j);
               insertDataType = plan.getDataTypes()[loc];
@@ -2121,6 +2135,9 @@ public class MManager {
               }
               loc++;
             }
+          } else {
+            insertDataType = measurementMNode.getSchema().getType();
+            mismatch = measurementMNode.getSchema().getType() != insertDataType;
           }
         }
 

@@ -57,13 +57,18 @@ public enum MetadataIndexNodeType {
    * @return MetadataIndexNodeType
    */
   public static MetadataIndexNodeType deserialize(byte i) {
-    for (MetadataIndexNodeType metadataIndexNodeType : MetadataIndexNodeType.values()) {
-      if (i == metadataIndexNodeType.type) {
-        return metadataIndexNodeType;
-      }
+    switch (i) {
+      case 0:
+        return MetadataIndexNodeType.INTERNAL_DEVICE;
+      case 1:
+        return MetadataIndexNodeType.LEAF_DEVICE;
+      case 2:
+        return MetadataIndexNodeType.INTERNAL_MEASUREMENT;
+      case 3:
+        return MetadataIndexNodeType.LEAF_MEASUREMENT;
+      default:
+        throw new IllegalArgumentException("Invalid input: " + i);
     }
-
-    throw new IllegalArgumentException("Invalid input: " + i);
   }
 
   public static MetadataIndexNodeType deserializeFrom(ByteBuffer buffer) {

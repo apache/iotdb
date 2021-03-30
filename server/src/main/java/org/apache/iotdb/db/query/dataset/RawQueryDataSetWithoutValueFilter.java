@@ -192,6 +192,17 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
     init();
   }
 
+  /**
+   * Dummy dataSet for redirect query.
+   *
+   * @param queryId queryId for the query.
+   */
+  public RawQueryDataSetWithoutValueFilter(long queryId) {
+    this.queryId = queryId;
+    blockingQueueArray = new BlockingQueue[0];
+    timeHeap = new TimeSelector(0, ascending);
+  }
+
   private void init() throws IOException, InterruptedException {
     timeHeap = new TimeSelector(seriesReaderList.size() << 1, ascending);
     for (int i = 0; i < seriesReaderList.size(); i++) {
@@ -515,10 +526,28 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
       if (cachedBatchDataArray[seriesIndex] == null
           || !cachedBatchDataArray[seriesIndex].hasCurrent()
           || cachedBatchDataArray[seriesIndex].currentTime() != minTime) {
-        record.addField(null);
+        if (paths.get(seriesIndex) instanceof VectorPartialPath) {
+          for (int i = 0;
+              i < ((VectorPartialPath) paths.get(seriesIndex)).getSubSensorsPathList().size();
+              i++) {
+            record.addField(null);
+          }
+        } else {
+          record.addField(null);
+        }
       } else {
         TSDataType dataType = dataTypes.get(seriesIndex);
-        record.addField(cachedBatchDataArray[seriesIndex].currentValue(), dataType);
+        if (dataType == TSDataType.VECTOR) {
+          for (TsPrimitiveType primitiveVal : cachedBatchDataArray[seriesIndex].getVector()) {
+            if (primitiveVal == null) {
+              record.addField(null);
+            } else {
+              record.addField(primitiveVal.getValue(), primitiveVal.getDataType());
+            }
+          }
+        } else {
+          record.addField(cachedBatchDataArray[seriesIndex].currentValue(), dataType);
+        }
         cacheNext(seriesIndex);
       }
     }

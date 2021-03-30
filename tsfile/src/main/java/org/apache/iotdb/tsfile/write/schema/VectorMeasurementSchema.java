@@ -135,6 +135,11 @@ public class VectorMeasurementSchema
   }
 
   @Override
+  public void setType(TSDataType dataType) {
+    throw new UnsupportedOperationException("unsupported method for VectorMeasurementSchema");
+  }
+
+  @Override
   public TSEncoding getTimeTSEncoding() {
     return TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
   }

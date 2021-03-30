@@ -51,6 +51,7 @@ public class FillQueryPlan extends RawDataQueryPlan {
     this.fillType = fillType;
   }
 
+  @Override
   public void setAlignByTime(boolean align) throws QueryProcessException {
     if (!align) {
       throw new QueryProcessException(

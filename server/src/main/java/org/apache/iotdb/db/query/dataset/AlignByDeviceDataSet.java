@@ -34,6 +34,7 @@ import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -109,6 +110,8 @@ public class AlignByDeviceDataSet extends QueryDataSet {
         this.dataSetType = DataSetType.QUERY;
         this.rawDataQueryPlan = new RawDataQueryPlan();
         this.rawDataQueryPlan.setAscending(alignByDevicePlan.isAscending());
+        // only redirect query for raw data query
+        this.rawDataQueryPlan.setEnableRedirect(alignByDevicePlan.isEnableRedirect());
     }
 
     this.curDataSetInitialized = false;
@@ -166,14 +169,14 @@ public class AlignByDeviceDataSet extends QueryDataSet {
       try {
         switch (dataSetType) {
           case GROUPBYTIME:
-            groupByTimePlan.setDeduplicatedPaths(executePaths);
+            groupByTimePlan.setDeduplicatedPathsAndUpdate(executePaths);
             groupByTimePlan.setDeduplicatedDataTypes(tsDataTypes);
             groupByTimePlan.setDeduplicatedAggregations(executeAggregations);
             groupByTimePlan.setExpression(expression);
             currentDataSet = queryRouter.groupBy(groupByTimePlan, context);
             break;
           case AGGREGATE:
-            aggregationPlan.setDeduplicatedPaths(executePaths);
+            aggregationPlan.setDeduplicatedPathsAndUpdate(executePaths);
             aggregationPlan.setDeduplicatedAggregations(executeAggregations);
             aggregationPlan.setDeduplicatedDataTypes(tsDataTypes);
             aggregationPlan.setExpression(expression);
@@ -181,11 +184,11 @@ public class AlignByDeviceDataSet extends QueryDataSet {
             break;
           case FILL:
             fillQueryPlan.setDeduplicatedDataTypes(tsDataTypes);
-            fillQueryPlan.setDeduplicatedPaths(executePaths);
+            fillQueryPlan.setDeduplicatedPathsAndUpdate(executePaths);
             currentDataSet = queryRouter.fill(fillQueryPlan, context);
             break;
           case QUERY:
-            rawDataQueryPlan.setDeduplicatedPaths(executePaths);
+            rawDataQueryPlan.setDeduplicatedPathsAndUpdate(executePaths);
             rawDataQueryPlan.setDeduplicatedDataTypes(tsDataTypes);
             rawDataQueryPlan.setExpression(expression);
             currentDataSet = queryRouter.rawDataQuery(rawDataQueryPlan, context);
@@ -197,6 +200,14 @@ public class AlignByDeviceDataSet extends QueryDataSet {
           | QueryFilterOptimizationException
           | StorageEngineException e) {
         throw new IOException(e);
+      }
+
+      if (currentDataSet.getEndPoint() != null) {
+        org.apache.iotdb.service.rpc.thrift.EndPoint endPoint =
+            new org.apache.iotdb.service.rpc.thrift.EndPoint();
+        endPoint.setIp(currentDataSet.getEndPoint().getIp());
+        endPoint.setPort(currentDataSet.getEndPoint().getPort());
+        throw new RedirectException(endPoint);
       }
 
       if (currentDataSet.hasNext()) {

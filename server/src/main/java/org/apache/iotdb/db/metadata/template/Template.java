@@ -22,6 +22,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -34,8 +35,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class Template {
+  private static final AtomicLong increasingId = new AtomicLong();
+
   String name;
 
   Map<String, IMeasurementSchema> schemaMap = new HashMap<>();
@@ -61,7 +65,7 @@ public class Template {
 
         curSchema =
             new VectorMeasurementSchema(
-                IoTDBConstant.ALIGN_TIMESERIES_PREFIX + name + "#" + measurementsArray[0],
+                IoTDBConstant.ALIGN_TIMESERIES_PREFIX + "#" + increasingId.getAndIncrement(),
                 measurementsArray,
                 typeArray,
                 encodingArray,
@@ -108,6 +112,11 @@ public class Template {
     return !schemaMap.containsKey(path.getMeasurement());
   }
 
+  @TestOnly
+  public static void clear() {
+    increasingId.set(0);
+  }
+
   public List<MeasurementMNode> getMeasurementMNode() {
     Set<IMeasurementSchema> deduplicateSchema = new HashSet<>();
     List<MeasurementMNode> res = new ArrayList<>();
@@ -137,9 +146,6 @@ public class Template {
   }
 
   public String getMeasurementNodeName(String measurementName) {
-    return IoTDBConstant.ALIGN_TIMESERIES_PREFIX
-        + name
-        + "#"
-        + schemaMap.get(measurementName).getValueMeasurementIdList().get(0);
+    return schemaMap.get(measurementName).getMeasurementId();
   }
 }
