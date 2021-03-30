@@ -35,7 +35,7 @@ With this connector, you can
 
 |Spark Version | Scala Version | Java Version | TsFile |
 |:-------------: | :-------------: | :------------: |:------------: |
-| `2.4.3`        | `2.11.8`        | `1.8`        | `0.10.0`|
+| `2.4.3`        | `2.11.8`        | `1.8`        | `0.12.0`|
 
 > Note: For more information about how to download and use TsFile, please see the following link: https://github.com/apache/iotdb/tree/master/tsfile.
 > Currently we only support spark version 2.4.3 and there are some known issue on 2.4.7, do no use it
@@ -46,7 +46,7 @@ With this connector, you can
 Start Spark with TsFile-Spark-Connector in local mode: 
 
 ```
-./<spark-shell-path>  --jars  tsfile-spark-connector.jar,tsfile-0.10.0-jar-with-dependencies.jar
+./<spark-shell-path>  --jars  tsfile-spark-connector.jar,tsfile-{version}-jar-with-dependencies.jar,hadoop-tsfile-{version}-jar-with-dependencies.jar
 ```
 
 Note:
@@ -61,7 +61,7 @@ Note:
 Start Spark with TsFile-Spark-Connector in distributed mode (That is, the spark cluster is connected by spark-shell): 
 
 ```
-. /<spark-shell-path>   --jars  tsfile-spark-connector.jar,tsfile-{version}-jar-with-dependencies.jar  --master spark://ip:7077
+. /<spark-shell-path>   --jars  tsfile-spark-connector.jar,tsfile-{version}-jar-with-dependencies.jar,hadoop-tsfile-{version}-jar-with-dependencies.jar  --master spark://ip:7077
 ```
 
 Note:
