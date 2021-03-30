@@ -244,12 +244,12 @@ SlidingTimeWindowEvaluationHandler handler =
           @Override
           public void evaluate(Window window) {
             // do something
-	        }
-
-  	      @Override
-    	    public void onRejection(Window window) {
-      	  	// do something
-        	}
+          }
+          
+          @Override
+          public void onRejection(Window window) {
+            // do something
+          }
     });
 ```
 
