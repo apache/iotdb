@@ -82,6 +82,22 @@ public class Planner {
     return physicalGenerator.transformToPhysicalPlan(operator, fetchSize);
   }
 
+  public PhysicalPlan queryOperatorToPhysicalPlan(SFWOperator queryOperator, int fetchSize)
+      throws QueryProcessException {
+    int maxDeduplicatedPathNum =
+        QueryResourceManager.getInstance().getMaxDeduplicatedPathNum(fetchSize);
+    if (queryOperator.isLastQuery()) {
+      // Dataset of last query actually has only three columns, so we shouldn't limit the path num
+      // while constructing logical plan
+      // To avoid overflowing because logicalOptimize function may do maxDeduplicatedPathNum + 1, we
+      // set it to Integer.MAX_VALUE - 1
+      maxDeduplicatedPathNum = Integer.MAX_VALUE - 1;
+    }
+    queryOperator = optimizeSFWOperator(queryOperator, maxDeduplicatedPathNum);
+    PhysicalGenerator physicalGenerator = new PhysicalGenerator();
+    return physicalGenerator.transformToPhysicalPlan(queryOperator, fetchSize);
+  }
+
   /** convert raw data query to physical plan directly */
   public PhysicalPlan rawDataQueryReqToPhysicalPlan(
       TSRawDataQueryReq rawDataQueryReq, ZoneId zoneId)
@@ -181,6 +197,9 @@ public class Planner {
       case DROP_TRIGGER:
       case START_TRIGGER:
       case STOP_TRIGGER:
+      case CREATE_CONTINUOUS_QUERY:
+      case SHOW_CONTINUOUS_QUERIES:
+      case DROP_CONTINUOUS_QUERY:
         return operator;
       case QUERY:
       case DELETE:

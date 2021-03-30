@@ -16,23 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata;
 
-public class MetadataOperationType {
+package org.apache.iotdb.db.qp.logical.sys;
 
-  private MetadataOperationType() {
-    // allowed to do nothing
+import org.apache.iotdb.db.qp.logical.RootOperator;
+
+public class DropContinuousQueryOperator extends RootOperator {
+
+  private String continuousQueryName;
+
+  public DropContinuousQueryOperator(int tokenIntType) {
+    super(tokenIntType);
+    operatorType = OperatorType.DROP_CONTINUOUS_QUERY;
   }
 
-  public static final String CREATE_TIMESERIES = "0";
-  public static final String DELETE_TIMESERIES = "1";
-  public static final String SET_STORAGE_GROUP = "2";
-  public static final String SET_TTL = "10";
-  public static final String DELETE_STORAGE_GROUP = "11";
-  public static final String CREATE_INDEX = "31";
-  public static final String DROP_INDEX = "32";
-  public static final String CHANGE_OFFSET = "12";
-  public static final String CHANGE_ALIAS = "13";
-  public static final String CREATE_CONTINUOUS_QUERY = "14";
-  public static final String DROP_CONTINUOUS_QUERY = "15";
+  public void setContinuousQueryName(String continuousQueryName) {
+    this.continuousQueryName = continuousQueryName;
+  }
+
+  public String getContinuousQueryName() {
+    return continuousQueryName;
+  }
 }

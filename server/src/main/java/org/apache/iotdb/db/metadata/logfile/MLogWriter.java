@@ -28,6 +28,8 @@ import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -123,6 +125,16 @@ public class MLogWriter implements AutoCloseable {
 
   public void deleteTimeseries(DeleteTimeSeriesPlan deleteTimeSeriesPlan) throws IOException {
     putLog(deleteTimeSeriesPlan);
+  }
+
+  public void createContinuousQuery(CreateContinuousQueryPlan createContinuousQueryPlan)
+      throws IOException {
+    putLog(createContinuousQueryPlan);
+  }
+
+  public void dropContinuousQuery(DropContinuousQueryPlan dropContinuousQueryPlan)
+      throws IOException {
+    putLog(dropContinuousQueryPlan);
   }
 
   public void setStorageGroup(PartialPath storageGroup) throws IOException {

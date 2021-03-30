@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.query.udf.core.context.UDFContext;
@@ -112,5 +113,35 @@ public final class SelectOperator extends Operator {
 
   public void setUdfList(List<UDFContext> udfList) {
     this.udfList = udfList;
+  }
+
+  public SelectOperator copy() {
+    SelectOperator ret = new SelectOperator(this.tokenIntType, this.zoneId);
+
+    try {
+      for (PartialPath path : this.suffixList) {
+        ret.suffixList.add(new PartialPath(path.getFullPath()));
+      }
+    } catch (IllegalPathException e) {
+      e.printStackTrace();
+    }
+
+    for (String aggr : this.aggregations) {
+      ret.aggregations.add(aggr);
+    }
+
+    for (UDFContext ctx : this.udfList) {
+      if (ctx != null) {
+        ret.udfList.add(ctx.copy());
+      } else {
+        ret.udfList.add(null);
+      }
+    }
+
+    ret.lastQuery = this.lastQuery;
+    ret.udfQuery = this.udfQuery;
+    ret.hasBuiltinAggregation = this.hasBuiltinAggregation;
+
+    return ret;
   }
 }
