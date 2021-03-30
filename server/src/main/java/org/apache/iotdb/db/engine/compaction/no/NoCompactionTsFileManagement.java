@@ -146,9 +146,13 @@ public class NoCompactionTsFileManagement extends TsFileManagement {
   @Override
   public boolean contains(TsFileResource tsFileResource, boolean sequence) {
     if (sequence) {
-      return sequenceFileTreeSetMap.get(tsFileResource.getTimePartition()).contains(tsFileResource);
+      return sequenceFileTreeSetMap
+          .computeIfAbsent(tsFileResource.getTimePartition(), this::newSequenceTsFileResources)
+          .contains(tsFileResource);
     } else {
-      return unSequenceFileListMap.get(tsFileResource.getTimePartition()).contains(tsFileResource);
+      return unSequenceFileListMap
+          .computeIfAbsent(tsFileResource.getTimePartition(), this::newUnSequenceTsFileResources)
+          .contains(tsFileResource);
     }
   }
 

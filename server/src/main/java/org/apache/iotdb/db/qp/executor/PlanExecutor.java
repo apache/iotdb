@@ -977,6 +977,7 @@ public class PlanExecutor implements IPlanExecutor {
 
       StorageEngine.getInstance().loadNewTsFile(tsFileResource);
     } catch (Exception e) {
+      e.printStackTrace();
       throw new QueryProcessException(
           String.format("Cannot load file %s because %s", file.getAbsolutePath(), e.getMessage()));
     }
