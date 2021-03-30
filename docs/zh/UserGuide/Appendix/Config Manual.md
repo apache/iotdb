@@ -90,8 +90,8 @@
 |名字|compressor|
 |:---:|:---|
 |描述|数据压缩方法|
-|类型|枚举String : “UNCOMPRESSED”, “SNAPPY”|
-|默认值| UNCOMPRESSED |
+|类型|枚举String : “UNCOMPRESSED”, “SNAPPY”, “LZ4”|
+|默认值| SNAPPY |
 |改后生效方式|触发生效|
 
 * group\_size\_in\_byte
@@ -118,7 +118,7 @@
 |:---:|:---|
 |描述|元数据索引树的最大度（即每个节点的最大子节点个数）|
 |类型|Int32|
-|默认值| 1024 |
+|默认值| 256 |
 |改后生效方式|仅允许在第一次启动服务前修改|
 
 * max\_string\_length
@@ -153,31 +153,27 @@
 |名字| time\_encoder |
 |:---:|:---|
 |描述| 时间列编码方式|
-|类型|枚举String: “TS_2DIFF”,“PLAIN”,“RLE”|
+|类型|枚举String: “TS_2DIFF”,“PLAIN”,“RLE”,“,“RLE””|
 |默认值| TS_2DIFF |
 |改后生效方式|触发生效|
 
-* float_precision
+* value\_encoder
 
-|名字| float_precision |
+|名字| value\_encoder |
+|:---:|:---|
+|描述| value列编码方式|
+|类型|枚举String: “TS_2DIFF”,“PLAIN”,“RLE”,“,“RLE””|
+|默认值| PLAIN |
+|改后生效方式|触发生效|
+
+* float\_precision
+
+|名字| float\_precision |
 |:---:|:---|
 |描述| 浮点数精度，为小数点后数字的位数 |
 |类型|Int32|
 |默认值| 默认为2位。注意：32位浮点数的十进制精度为7位，64位浮点数的十进制精度为15位。如果设置超过机器精度将没有实际意义。|
 |改后生效方式|触发生效|
-
-
-* bloomFilterErrorRate
-
-|名字| bloomFilterErrorRate |
-|:---:|:---|
-|描述| bloom过滤器的误报率. 在加载元数据之前 Bloom filter 可以检查给定的时间序列是否在 TsFile 中。这可以优化加载元数据的性能，并跳过不包含指定时间序列的 TsFile。如果你想了解更多关于它的细节，你可以参考: [wiki page of bloom filter](https://en.wikipedia.org/wiki/Bloom_filter).|
-|类型|浮点数, 范围为(0, 1)|
-|默认值| 0.05 |
-|改后生效方式|重启服务生效|
-
-
-
 
 ### 引擎层配置
 
@@ -187,7 +183,25 @@
 |:---:|:---|
 |描述| IoTDB数据存储路径，默认存放在和sbin目录同级的data目录下。相对路径的起始目录与操作系统相关，建议使用绝对路径。|
 |类型|String|
-|默认值| data |
+|默认值| data/data |
+|改后生效方式|触发生效|
+
+* system\_dirs
+
+|名字| system\_dirs |
+|:---:|:---|
+|描述| IoTDB元数据存储路径，默认存放在和sbin目录同级的data目录下。相对路径的起始目录与操作系统相关，建议使用绝对路径。|
+|类型|String|
+|默认值| data/system |
+|改后生效方式|触发生效|
+
+* wal\_dirs
+
+|名字| wal\_dirs |
+|:---:|:---|
+|描述| IoTDB写前日志存储路径，默认存放在和sbin目录同级的data目录下。相对路径的起始目录与操作系统相关，建议使用绝对路径。|
+|类型|String|
+|默认值| data/wal |
 |改后生效方式|触发生效|
 
 * enable\_wal
@@ -197,6 +211,15 @@
 |描述| 是否开启写前日志，默认值为true表示开启，配置成false表示关闭 |
 |类型|Bool|
 |默认值| true |
+|改后生效方式|触发生效|
+
+* enable\_discard\_out\_of\_order\_data
+
+|名字| enable\_discard\_out\_of\_order\_data |
+|:---:|:---|
+|描述| 是否删除无序数据，默认值为false表示关闭 |
+|类型|Bool|
+|默认值| false |
 |改后生效方式|触发生效|
 
 * tag\_attribute\_total\_size
@@ -226,14 +249,14 @@
 |默认值| 100000 |
 |改后生效方式|重启服务生效|
 
-* fetch\_size
+* mlog\_buffer\_size
 
-|名字| fetch\_size |
+|名字| mlog\_buffer\_size |
 |:---:|:---|
-|描述| 批量读取数据的时候，每一次读取数据的数量。单位为数据条数，即不同时间戳的个数。某次会话中，用户可以在使用时自己设定，此时仅在该次会话中生效。|
+|描述| mlog的buffer大小 |
 |类型|Int32|
-|默认值| 10000 |
-|改后生效方式|重启服务生效|
+|默认值| 1048576 |
+|改后生效方式|触发生效|
 
 * force\_wal\_period\_in\_ms
 
@@ -241,7 +264,7 @@
 |:---:|:---|
 |描述| 写前日志定期刷新到磁盘的周期，单位毫秒，有可能丢失至多force\_wal\_period\_in\_ms毫秒的操作。 |
 |类型|Int32|
-|默认值| 10 |
+|默认值| 100 |
 |改后生效方式|触发生效|
 
 * flush\_wal\_threshold
@@ -253,14 +276,14 @@
 |默认值| 10000 |
 |改后生效方式|触发生效|
 
-* merge\_concurrent\_threads
+* wal\_buffer\_size
 
-|名字| merge\_concurrent\_threads |
+|名字| wal\_buffer\_size |
 |:---:|:---|
-|描述| 乱序数据进行合并的时候最多可以用来进行merge的线程数。值越大，对IO和CPU消耗越多。值越小，当乱序数据过多时，磁盘占用量越大，读取会变慢。 |
+|描述| 写前日志的buffer大小 |
 |类型|Int32|
-|默认值| 0 |
-|改后生效方式|重启服务生效|
+|默认值| 16777216 |
+|改后生效方式|触发生效|
 
 * enable\_mem\_control
 
@@ -295,7 +318,7 @@
 |:---:|:---|
 |描述| 每个 tsfile 大小|
 |类型|Long|
-|默认值| 536870912 |
+|默认值| 1 |
 |改后生效方式| 重启服务生效|
 
 * enable\_partition
@@ -315,15 +338,6 @@
 |类型|Int64|
 |默认值| 604800 |
 |改后生效方式|仅允许在第一次启动服务前修改|
-
-* memtable\_num\_in\_each\_storage\_group
-
-|名字| memtable\_num\_in\_each\_storage\_group|
-|:---:|:---|
-|描述| 每个存储组所控制的memtable的最大数量，这决定了来源于多少个不同时间分区的数据可以并发写入。<br>举例来说，你的时间分区为按天分区，想要同时并发写入3天的数据，那么这个值应该被设置为6(3个给顺序写入，3个给乱序写入)|
-|类型|Int32|
-|默认值| 10 |
-|改后生效方式|重启服务生效|
 
 * multi\_dir\_strategy
 
@@ -352,6 +366,15 @@
 |默认值| 6667 |
 |改后生效方式|重启服务生效|
 
+* rpc\_max\_concurrent\_client\_num
+
+|名字| rpc\_max\_concurrent\_client\_num |
+|:---:|:---|
+|描述|最大连接数。|
+|类型|Short Int : [0,65535]|
+|默认值| 65535 |
+|改后生效方式|重启服务生效|
+
 * rpc\_thrift\_compression\_enable
 
 |名字| rpc\_thrift\_compression\_enable |
@@ -369,15 +392,6 @@
 |类型|true 或者 false|
 |默认值| false |
 |改后生效方式|重启服务生效|
-
-* time\_zone
-
-|名字| time_zone |
-|:---:|:---|
-|描述| 服务器所处的时区，默认为北京时间（东八区） |
-|类型|Time Zone String|
-|默认值| +08:00 |
-|改后生效方式|触发生效|
 
 * enable\_stat\_monitor
 
@@ -535,6 +549,32 @@
 |默认值| 67108864 (应大于等于 8 * 1024 * 1024) |
 |改后生效方式|重启服务生效|
 
+* thrift\_init\_buffer\_size
+
+|名字| thrift\_init\_buffer\_size |
+|:---:|:---|
+|描述| 字节数|
+|类型| long |
+|默认值| 1024 |
+|改后生效方式|重启服务生效|
+
+* timestamp\_precision
+
+|名字| timestamp\_precision |
+|:---:|:---|
+|描述| 时间戳精度，支持ms、us、ns |
+|类型|String |
+|默认值| ms |
+|改后生效方式|触发生效|
+
+* default\_ttl
+
+|名字| default\_ttl |
+|:---:|:---|
+|描述| ttl时间，单位ms|
+|类型| long |
+|默认值| 36000000 |
+|改后生效方式|重启服务生效|
 
 ## 数据类型自动推断
 
@@ -581,7 +621,7 @@
 |:---:|:---|
 |描述| NaN 字符串被推断为什么|
 |取值| DOUBLE, FLOAT or TEXT |
-|默认值|FLOAT |
+|默认值|DOUBLE |
 |改后生效方式|重启服务生效|
 
 * floating\_string\_infer\_type
@@ -591,6 +631,69 @@
 |描述| "6.7"等浮点数被推断为什么|
 |取值| DOUBLE, FLOAT or TEXT |
 |默认值|FLOAT |
+|改后生效方式|重启服务生效|
+
+* long\_string\_infer\_type
+
+|名字| long\_string\_infer\_type |
+|:---:|:---|
+|描述| long（num > 2 ^ 24）被推断为什么|
+|取值| DOUBLE, FLOAT or TEXT |
+|默认值|DOUBLE |
+|改后生效方式|重启服务生效|
+
+* default\_boolean\_encoding
+
+|名字| default\_boolean\_encoding |
+|:---:|:---|
+|描述| BOOLEAN类型编码格式|
+|取值| PLAIN, RLE |
+|默认值|RLE |
+|改后生效方式|重启服务生效|
+
+* default\_int32\_encoding
+
+|名字| default\_int32\_encoding |
+|:---:|:---|
+|描述| int32类型编码格式|
+|取值| PLAIN, RLE, TS_2DIFF, REGULAR, GORILLA |
+|默认值|RLE |
+|改后生效方式|重启服务生效|
+
+* default\_int64\_encoding
+
+|名字| default\_int64\_encoding |
+|:---:|:---|
+|描述| int64类型编码格式|
+|取值| PLAIN, RLE, TS_2DIFF, REGULAR, GORILLA |
+|默认值|RLE |
+|改后生效方式|重启服务生效|
+
+* default\_float\_encoding
+
+|名字| default\_float\_encoding |
+|:---:|:---|
+|描述| float类型编码格式|
+|取值| PLAIN, RLE, TS_2DIFF, GORILLA |
+|默认值|GORILLA |
+|改后生效方式|重启服务生效|
+
+* default\_double\_encoding
+
+|名字| default\_double\_encoding |
+|:---:|:---|
+|描述| double类型编码格式|
+|取值| PLAIN, RLE, TS_2DIFF, GORILLA |
+|默认值|GORILLA |
+|改后生效方式|重启服务生效|
+
+* default\_text\_encoding
+
+|名字| default\_text\_encoding |
+|:---:|:---|
+|描述| text类型编码格式|
+|取值| PLAIN |
+|默认值|PLAIN |
 |改后生效方式|重启服务生效|
 
 
