@@ -196,7 +196,7 @@ public class SlidingTimeWindowEvaluationHandlerTest {
     Assert.assertEquals(expectedTVMap, actualTVMap);
 
     try {
-      Thread.sleep(200);
+      Thread.sleep(1000);
     } catch (InterruptedException ignored) {
       // ignored
     }
@@ -227,7 +227,7 @@ public class SlidingTimeWindowEvaluationHandlerTest {
     await().atMost(10, SECONDS).until(() -> countTotal.get() == 27 && countEmpty.get() == 18);
 
     try {
-      Thread.sleep(200);
+      Thread.sleep(1000);
     } catch (InterruptedException ignored) {
       // ignored
     }

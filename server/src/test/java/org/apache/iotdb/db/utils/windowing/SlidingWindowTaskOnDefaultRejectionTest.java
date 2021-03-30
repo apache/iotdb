@@ -29,9 +29,12 @@ import org.junit.Test;
 
 import java.util.concurrent.RejectedExecutionException;
 
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 public class SlidingWindowTaskOnDefaultRejectionTest {
 
-  @Test(expected = RejectedExecutionException.class)
+  @Test
   public void testOnDefaultRejection() throws WindowingException {
     @SuppressWarnings("squid:S2925")
     SlidingTimeWindowEvaluationHandler handler =
@@ -50,8 +53,13 @@ public class SlidingWindowTaskOnDefaultRejectionTest {
             + IoTDBDescriptor.getInstance().getConfig().getConcurrentWindowEvaluationThread()
             + 1
             + 1;
-    for (int i = 0; i < evaluationTasks; ++i) {
-      handler.collect(i, i);
+    try {
+      for (int i = 0; i < evaluationTasks; ++i) {
+        handler.collect(i, i);
+      }
+      fail();
+    } catch (Exception e) {
+      assertTrue(e instanceof RejectedExecutionException);
     }
   }
 }

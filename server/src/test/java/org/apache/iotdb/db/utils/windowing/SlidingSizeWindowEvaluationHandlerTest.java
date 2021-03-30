@@ -179,7 +179,7 @@ public class SlidingSizeWindowEvaluationHandlerTest {
     Assert.assertEquals(expectedTVMap, actualTVMap);
 
     try {
-      Thread.sleep(200);
+      Thread.sleep(1000);
     } catch (InterruptedException ignored) {
       // ignored
     }
