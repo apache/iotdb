@@ -36,7 +36,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
 
-@SuppressWarnings("squid:S2925")
 public class SlidingSizeWindowEvaluationHandlerTest {
 
   @Before
@@ -144,11 +143,11 @@ public class SlidingSizeWindowEvaluationHandlerTest {
         new SlidingSizeWindowEvaluationHandler(
             new SlidingSizeWindowConfiguration(TSDataType.INT32, windowSize, slidingStep),
             window -> {
-              count.incrementAndGet();
-
               for (int i = 0; i < window.size(); ++i) {
                 actualTVMap.put((int) window.getTime(i), window.getInt(i));
               }
+
+              count.incrementAndGet();
             });
 
     for (int i = 0; i < totalPointNumber; ++i) {
@@ -156,7 +155,7 @@ public class SlidingSizeWindowEvaluationHandlerTest {
     }
 
     await()
-        .atMost(10, SECONDS)
+        .atMost(30, SECONDS)
         .until(
             () ->
                 (totalPointNumber < windowSize
@@ -177,11 +176,5 @@ public class SlidingSizeWindowEvaluationHandlerTest {
       }
     }
     Assert.assertEquals(expectedTVMap, actualTVMap);
-
-    try {
-      Thread.sleep(1000);
-    } catch (InterruptedException ignored) {
-      // ignored
-    }
   }
 }

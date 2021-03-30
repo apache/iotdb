@@ -36,7 +36,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
 
-@SuppressWarnings("squid:S2925")
 public class SlidingTimeWindowEvaluationHandlerTest {
 
   @Before
@@ -159,11 +158,11 @@ public class SlidingTimeWindowEvaluationHandlerTest {
         new SlidingTimeWindowEvaluationHandler(
             new SlidingTimeWindowConfiguration(TSDataType.INT32, timeInterval, slidingStep),
             window -> {
-              count.incrementAndGet();
-
               for (int i = 0; i < window.size(); ++i) {
                 actualTVMap.put((int) window.getTime(i), window.getInt(i));
               }
+
+              count.incrementAndGet();
             });
 
     for (int i = 0; i < totalTime; ++i) {
@@ -171,7 +170,7 @@ public class SlidingTimeWindowEvaluationHandlerTest {
     }
 
     await()
-        .atMost(10, SECONDS)
+        .atMost(30, SECONDS)
         .until(
             () ->
                 (totalTime < timeInterval
@@ -194,12 +193,6 @@ public class SlidingTimeWindowEvaluationHandlerTest {
       }
     }
     Assert.assertEquals(expectedTVMap, actualTVMap);
-
-    try {
-      Thread.sleep(1000);
-    } catch (InterruptedException ignored) {
-      // ignored
-    }
   }
 
   @Test
@@ -224,12 +217,6 @@ public class SlidingTimeWindowEvaluationHandlerTest {
       handler.collect(21 * i, 21 * i);
     }
 
-    await().atMost(10, SECONDS).until(() -> countTotal.get() == 27 && countEmpty.get() == 18);
-
-    try {
-      Thread.sleep(1000);
-    } catch (InterruptedException ignored) {
-      // ignored
-    }
+    await().atMost(30, SECONDS).until(() -> countTotal.get() == 27 && countEmpty.get() == 18);
   }
 }

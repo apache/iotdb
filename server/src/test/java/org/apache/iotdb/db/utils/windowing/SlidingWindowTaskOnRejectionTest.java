@@ -29,16 +29,26 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.junit.Test;
 
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
-public class SlidingWindowTaskOnCustomRejectionTest {
+public class SlidingWindowTaskOnRejectionTest {
 
   @Test
   public void testOnCustomRejection() throws WindowingException {
-    AtomicInteger count = new AtomicInteger(0);
+    final int maxPendingWindowEvaluationTasks =
+        IoTDBDescriptor.getInstance().getConfig().getMaxPendingWindowEvaluationTasks();
+    final int extraTasks = 100;
+
+    CountDownLatch countDownLatch =
+        new CountDownLatch(maxPendingWindowEvaluationTasks + extraTasks - 1);
+    AtomicInteger rejectionCount = new AtomicInteger(0);
 
     SlidingTimeWindowEvaluationHandler handler =
         new SlidingTimeWindowEvaluationHandler(
@@ -51,30 +61,79 @@ public class SlidingWindowTaskOnCustomRejectionTest {
                   Thread.sleep(1000);
                 } catch (InterruptedException ignored) {
                   // ignored
+                } finally {
+                  countDownLatch.countDown();
                 }
               }
 
               @Override
               public void onRejection(Window window) {
-                count.incrementAndGet();
+                try {
+                  rejectionCount.incrementAndGet();
+                } finally {
+                  countDownLatch.countDown();
+                }
               }
             });
 
-    final int maxPendingWindowEvaluationTasks =
-        IoTDBDescriptor.getInstance().getConfig().getMaxPendingWindowEvaluationTasks();
-    for (int i = 0; i < maxPendingWindowEvaluationTasks + 100; ++i) {
+    for (int i = 0; i < maxPendingWindowEvaluationTasks + extraTasks; ++i) {
       handler.collect(i, i);
     }
 
     await()
-        .atMost(10, SECONDS)
+        .atMost(30, SECONDS)
         .until(
             () ->
-                (count.get()
-                    == 100
+                (rejectionCount.get()
+                    == extraTasks
                         - 1
                         - IoTDBDescriptor.getInstance()
                             .getConfig()
                             .getConcurrentWindowEvaluationThread()));
+
+    try {
+      countDownLatch.await();
+    } catch (InterruptedException e) {
+      fail();
+    }
+  }
+
+  @Test
+  public void testOnDefaultRejection() throws WindowingException {
+    final int evaluationTasks =
+        IoTDBDescriptor.getInstance().getConfig().getMaxPendingWindowEvaluationTasks()
+            + IoTDBDescriptor.getInstance().getConfig().getConcurrentWindowEvaluationThread()
+            + 1
+            + 1;
+    CountDownLatch countDownLatch = new CountDownLatch(evaluationTasks - 1 - 1);
+
+    @SuppressWarnings("squid:S2925")
+    SlidingTimeWindowEvaluationHandler handler =
+        new SlidingTimeWindowEvaluationHandler(
+            new SlidingTimeWindowConfiguration(TSDataType.INT32, 1, 1),
+            window -> {
+              try {
+                Thread.sleep(1000);
+              } catch (InterruptedException ignored) {
+                // ignored
+              } finally {
+                countDownLatch.countDown();
+              }
+            });
+
+    try {
+      for (int i = 0; i < evaluationTasks; ++i) {
+        handler.collect(i, i);
+      }
+      fail();
+    } catch (Exception e) {
+      assertTrue(e instanceof RejectedExecutionException);
+    }
+
+    try {
+      countDownLatch.await();
+    } catch (InterruptedException e) {
+      fail();
+    }
   }
 }
