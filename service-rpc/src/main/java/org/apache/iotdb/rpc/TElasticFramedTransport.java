@@ -38,8 +38,8 @@ public class TElasticFramedTransport extends TTransport {
      * The capacity of the underlying buffer is allowed to exceed thriftDefaultBufferSize, but if
      * adjacent requests all have sizes smaller than thriftDefaultBufferSize, the underlying buffer
      * will be shrunk beneath thriftDefaultBufferSize. The shrinking is limited at most once per
-     * minute to reduce overhead when thriftDefaultBufferSize is set unreasonably or the workload naturally
-     * contains both ver large and very small requests.
+     * minute to reduce overhead when thriftDefaultBufferSize is set unreasonably or the workload
+     * naturally contains both ver large and very small requests.
      */
     protected final int thriftDefaultBufferSize;
 
