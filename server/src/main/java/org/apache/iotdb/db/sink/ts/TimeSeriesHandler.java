@@ -21,6 +21,7 @@ package org.apache.iotdb.db.sink.ts;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -28,8 +29,15 @@ import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.sink.api.Handler;
+import org.apache.iotdb.db.sink.exception.SinkException;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import java.util.Collections;
+
+import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 
 public class TimeSeriesHandler implements Handler<TimeSeriesConfiguration, TimeSeriesEvent> {
 
@@ -46,13 +54,37 @@ public class TimeSeriesHandler implements Handler<TimeSeriesConfiguration, TimeS
     device = configuration.getDevice();
     measurements = configuration.getMeasurements();
     dataTypes = configuration.getDataTypes();
+
+    createOrCheckTimeseries();
+  }
+
+  private void createOrCheckTimeseries() throws MetadataException, SinkException {
+    for (int i = 0; i < measurements.length; ++i) {
+      String measurement = measurements[i];
+      TSDataType dataType = dataTypes[i];
+
+      PartialPath path = new PartialPath(device.getFullPath(), measurement);
+      if (!IoTDB.metaManager.isPathExist(path)) {
+        IoTDB.metaManager.createTimeseries(
+            path,
+            dataType,
+            getDefaultEncoding(dataType),
+            TSFileDescriptor.getInstance().getConfig().getCompressor(),
+            Collections.emptyMap());
+      } else {
+        if (!IoTDB.metaManager.getSeriesSchema(device, measurement).getType().equals(dataType)) {
+          throw new SinkException(
+              String.format("The data type of %s you provided was not correct.", path));
+        }
+      }
+    }
   }
 
   @Override
   public void onEvent(TimeSeriesEvent event)
       throws QueryProcessException, StorageEngineException, StorageGroupNotSetException {
     InsertRowPlan plan = new InsertRowPlan();
-    plan.setNeedInferType(true);
+    plan.setNeedInferType(false);
     plan.setDeviceId(device);
     plan.setMeasurements(measurements);
     plan.setDataTypes(dataTypes);
