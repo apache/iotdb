@@ -26,6 +26,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 
+import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -71,7 +72,7 @@ public class IoTDBStatMonitorTest {
   }
 
   @After
-  public void tearDown() throws IOException, StorageEngineException {
+  public void tearDown() throws IOException, StorageEngineException, TTransportException {
     // reset setEnableStatMonitor to false
     statMonitor.close();
     EnvironmentUtils.cleanEnv();

@@ -49,6 +49,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
+import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -74,7 +75,7 @@ public class LogReplayerTest {
   }
 
   @After
-  public void after() throws IOException, StorageEngineException {
+  public void after() throws IOException, StorageEngineException, TTransportException {
     EnvironmentUtils.cleanEnv();
   }
 

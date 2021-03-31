@@ -289,11 +289,11 @@ public class SyncClient implements ISyncClient {
   }
 
   @Override
-  public void establishConnection(String serverIp, int serverPort) throws SyncConnectionException {
+  public void establishConnection(String serverIp, int serverPort)
+      throws SyncConnectionException, TTransportException {
     RpcTransportFactory.setInitialBufferCapacity(ioTDBConfig.getThriftInitBufferSize());
     RpcTransportFactory.setMaxLength(ioTDBConfig.getThriftMaxFrameSize());
-    transport =
-        RpcTransportFactory.INSTANCE.getTransport(new TSocket(serverIp, serverPort, TIMEOUT_MS));
+    transport = RpcTransportFactory.INSTANCE.getTransport(new TSocket(serverIp, serverPort));
     TProtocol protocol;
     if (ioTDBConfig.isRpcThriftCompressionEnable()) {
       protocol = new TCompactProtocol(transport);

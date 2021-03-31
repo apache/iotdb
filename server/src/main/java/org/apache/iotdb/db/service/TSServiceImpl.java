@@ -2003,4 +2003,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
     return e.getMessage();
   }
+
+  @Override
+  public <T> T unwrap(Class<T> iface) {
+    return null;
+  }
+
+  @Override
+  public boolean isWrapperFor(Class<?> iface) {
+    return false;
+  }
 }

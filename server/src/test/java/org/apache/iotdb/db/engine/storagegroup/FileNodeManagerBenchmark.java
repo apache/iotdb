@@ -35,6 +35,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 
+import org.apache.thrift.transport.TTransportException;
+
 import java.io.IOException;
 import java.util.Collections;
 import java.util.concurrent.CountDownLatch;
@@ -81,12 +83,13 @@ public class FileNodeManagerBenchmark {
     }
   }
 
-  private static void tearDown() throws IOException, StorageEngineException {
+  private static void tearDown() throws IOException, StorageEngineException, TTransportException {
     EnvironmentUtils.cleanEnv();
   }
 
   public static void main(String[] args)
-      throws InterruptedException, IOException, MetadataException, StorageEngineException {
+      throws InterruptedException, IOException, MetadataException, StorageEngineException,
+          TTransportException {
     tearDown();
     prepare();
     long startTime = System.currentTimeMillis();

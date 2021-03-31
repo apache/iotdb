@@ -22,6 +22,7 @@ import org.apache.iotdb.db.exception.SyncConnectionException;
 import org.apache.iotdb.db.exception.SyncDeviceOwnerConflictException;
 
 import org.apache.thrift.TException;
+import org.apache.thrift.transport.TTransportException;
 
 import java.io.File;
 import java.io.IOException;
@@ -49,7 +50,8 @@ public interface ISyncClient {
   void startTimedTask();
 
   /** Establish a connection to receiver end. */
-  void establishConnection(String serverIp, int serverPort) throws SyncConnectionException;
+  void establishConnection(String serverIp, int serverPort)
+      throws SyncConnectionException, TTransportException;
 
   /**
    * Confirm identity, the receiver will check whether the sender has synchronization privileges.

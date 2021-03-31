@@ -78,7 +78,7 @@ public class EnvironmentUtils {
   public static boolean examinePorts =
       Boolean.parseBoolean(System.getProperty("test.port.closed", "false"));
 
-  public static void cleanEnv() throws IOException, StorageEngineException {
+  public static void cleanEnv() throws IOException, StorageEngineException, TTransportException {
     // wait all compaction finished
     CompactionMergeTaskPoolManager.getInstance().waitAllCompactionFinish();
     // deregister all UDFs
@@ -148,8 +148,8 @@ public class EnvironmentUtils {
     config.setMemtableSizeThreshold(oldGroupSizeInByte);
   }
 
-  private static boolean examinePorts() {
-    TTransport transport = new TSocket("127.0.0.1", 6667, 100);
+  private static boolean examinePorts() throws TTransportException {
+    TTransport transport = new TSocket("127.0.0.1", 6667);
     if (!transport.isOpen()) {
       try {
         transport.open();
@@ -161,7 +161,7 @@ public class EnvironmentUtils {
       }
     }
     // try sync service
-    transport = new TSocket("127.0.0.1", 5555, 100);
+    transport = new TSocket("127.0.0.1", 5555);
     if (!transport.isOpen()) {
       try {
         transport.open();

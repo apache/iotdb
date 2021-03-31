@@ -20,6 +20,7 @@ package org.apache.iotdb.db.mqtt;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
+import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -37,7 +38,7 @@ public class BrokerAuthenticatorTest {
   }
 
   @After
-  public void after() throws IOException, StorageEngineException {
+  public void after() throws IOException, StorageEngineException, TTransportException {
     EnvironmentUtils.cleanEnv();
   }
 
