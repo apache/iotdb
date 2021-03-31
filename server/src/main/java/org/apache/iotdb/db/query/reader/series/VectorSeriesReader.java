@@ -60,6 +60,7 @@ public class VectorSeriesReader extends SeriesReader {
         valueFilter,
         fileFilter,
         ascending);
+    this.allSensors.add(seriesPath.getMeasurement());
     this.vectorPartialPath = (VectorPartialPath) seriesPath;
   }
 
@@ -84,6 +85,7 @@ public class VectorSeriesReader extends SeriesReader {
         timeFilter,
         valueFilter,
         ascending);
+    this.allSensors.add(seriesPath.getMeasurement());
     this.vectorPartialPath = (VectorPartialPath) seriesPath;
   }
 
