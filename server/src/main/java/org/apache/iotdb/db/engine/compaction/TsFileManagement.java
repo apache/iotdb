@@ -82,8 +82,16 @@ public abstract class TsFileManagement {
     isForceFullMerge = forceFullMerge;
   }
 
-  /** get the TsFile list in sequence */
+  /**
+   * get the TsFile list in sequence, not recommend to use this method, use
+   * getTsFileListByTimePartition instead
+   */
+  @Deprecated
   public abstract List<TsFileResource> getTsFileList(boolean sequence);
+
+  /** get the TsFile list in sequence by time partition */
+  public abstract List<TsFileResource> getTsFileListByTimePartition(
+      boolean sequence, long timePartition);
 
   /** get the TsFile list iterator in sequence */
   public abstract Iterator<TsFileResource> getIterator(boolean sequence);
