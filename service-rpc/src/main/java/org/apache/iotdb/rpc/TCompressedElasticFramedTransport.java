@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.rpc;
 
-import org.apache.thrift.transport.TFramedTransport;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
+import org.apache.thrift.transport.layered.TFramedTransport;
 
 import java.io.IOException;
 

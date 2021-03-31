@@ -438,7 +438,10 @@ public class IoTDBConnection implements Connection {
     RpcTransportFactory.setMaxLength(params.getMaxFrameSize());
     transport =
         RpcTransportFactory.INSTANCE.getTransport(
-            new TSocket(params.getHost(), params.getPort(), Config.DEFAULT_CONNECTION_TIMEOUT_MS));
+            new TSocket(
+                params.getHost(), params.getPort() // ,
+                //                    Config.DEFAULT_CONNECTION_TIMEOUT_MS
+                ));
     if (!transport.isOpen()) {
       transport.open();
     }

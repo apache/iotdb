@@ -18,10 +18,11 @@
  */
 package org.apache.iotdb.rpc;
 
-import org.apache.thrift.transport.TFramedTransport;
+import org.apache.thrift.TConfiguration;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.apache.thrift.transport.TTransportFactory;
+import org.apache.thrift.transport.layered.TFramedTransport;
 
 import static org.apache.iotdb.rpc.RpcUtils.DEFAULT_BUF_CAPACITY;
 import static org.apache.iotdb.rpc.RpcUtils.DEFAULT_MAX_LENGTH;
@@ -144,6 +145,17 @@ public class TElasticFramedTransport extends TTransport {
     }
     underlying.flush();
   }
+
+  @Override
+  public TConfiguration getConfiguration() {
+    return null;
+  }
+
+  @Override
+  public void updateKnownMessageSize(long size) throws TTransportException {}
+
+  @Override
+  public void checkReadBytesAvailable(long numBytes) throws TTransportException {}
 
   @Override
   public void write(byte[] buf, int off, int len) {
