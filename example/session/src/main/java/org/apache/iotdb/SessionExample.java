@@ -79,7 +79,6 @@ public class SessionExample {
     deleteData();
     deleteTimeseries();
     setTimeout();
-    session.close();
 
     sessionEnableRedirect = new Session(LOCAL_HOST, 6667, "root", "root");
     sessionEnableRedirect.setEnableQueryRedirection(true);
@@ -91,6 +90,7 @@ public class SessionExample {
     insertRecord4Redirect();
     query4Redirect();
     sessionEnableRedirect.close();
+    session.close();
   }
 
   private static void createTimeseries()
@@ -535,7 +535,7 @@ public class SessionExample {
                   + i
                   + ".d1 where time >= 1 and time < 10 and root.redirect"
                   + i
-                  + "d1.s1 > 1");
+                  + ".d1.s1 > 1");
       System.out.println(dataSet.getColumnNames());
       dataSet.setFetchSize(1024); // default is 10000
       while (dataSet.hasNext()) {

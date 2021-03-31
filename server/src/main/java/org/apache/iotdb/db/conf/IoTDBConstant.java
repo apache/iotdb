@@ -143,4 +143,12 @@ public class IoTDBConstant {
 
   // thrift
   public static final int LEFT_SIZE_IN_REQUEST = 4 * 1024 * 1024;
+
+  // change tsFile name
+  public static final int FILE_NAME_SUFFIX_INDEX = 0;
+  public static final int FILE_NAME_SUFFIX_TIME_INDEX = 0;
+  public static final int FILE_NAME_SUFFIX_VERSION_INDEX = 1;
+  public static final int FILE_NAME_SUFFIX_MERGECNT_INDEX = 2;
+  public static final int FILE_NAME_SUFFIX_UNSEQMERGECNT_INDEX = 3;
+  public static final String FILE_NAME_SUFFIX_SEPARATOR = "\\.";
 }
