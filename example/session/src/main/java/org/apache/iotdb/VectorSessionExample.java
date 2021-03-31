@@ -49,7 +49,7 @@ public class VectorSessionExample {
 
     createTemplate();
     insertTabletWithAlignedTimeseries();
-    //selectTest();
+    selectTest();
     session.close();
   }
 
@@ -132,7 +132,7 @@ public class VectorSessionExample {
       int[] sensors = (int[]) values[1];
       sensors[row] = new Random().nextInt();
 
-      if (time % 2 == 0) {
+      if (time % 5 == 0) {
         bitMaps[1].mark((int) row);
       }
 

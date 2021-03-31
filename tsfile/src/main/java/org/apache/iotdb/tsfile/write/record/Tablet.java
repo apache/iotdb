@@ -273,7 +273,7 @@ public class Tablet {
       // marker byte
       valueOccupation++;
       if (bitMap != null && !bitMap.isAllZero()) {
-        valueOccupation += maxRowNumber / Byte.SIZE + 1;
+        valueOccupation += rowSize / Byte.SIZE + 1;
       }
     }
     for (int i = 0; i < schemas.size(); i++) {
