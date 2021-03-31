@@ -213,8 +213,7 @@ public class Coordinator {
     if (planGroupMap == null || planGroupMap.isEmpty()) {
       if ((plan instanceof InsertPlan
               || plan instanceof CreateTimeSeriesPlan
-              || plan instanceof CreateMultiTimeSeriesPlan
-              || plan instanceof SetDeviceTemplatePlan)
+              || plan instanceof CreateMultiTimeSeriesPlan)
           && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
         logger.debug("{}: No associated storage group found for {}, auto-creating", name, plan);
         try {
@@ -246,26 +245,36 @@ public class Coordinator {
     for (PartitionGroup partitionGroup : partitionGroups) {
       if (partitionGroup.contains(thisNode)) {
         // the query should be handled by a group the local node is in, handle it with in the group
-        logger.debug("Execute {} in a local group of {}", plan, partitionGroup.getHeader());
         status =
             metaGroupMember
                 .getLocalDataMember(partitionGroup.getHeader())
                 .executeNonQueryPlan(plan);
+        logger.debug(
+            "Execute {} in a local group of {} with status {}",
+            plan,
+            partitionGroup.getHeader(),
+            status);
       } else {
         // forward the query to the group that should handle it
-        logger.debug("Forward {} to a remote group of {}", plan, partitionGroup.getHeader());
         status = forwardPlan(plan, partitionGroup);
+        logger.debug(
+            "Forward {} to a remote group of {} with status {}",
+            plan,
+            partitionGroup.getHeader(),
+            status);
       }
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          && (!(plan instanceof DeleteTimeSeriesPlan)
-              || status.getCode() != TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode())) {
+          && !(plan instanceof SetDeviceTemplatePlan
+              && status.getCode() == TSStatusCode.DUPLICATED_TEMPLATE.getStatusCode())) {
         // execution failed, record the error message
         errorCodePartitionGroups.add(
             String.format(
                 "[%s@%s:%s]", status.getCode(), partitionGroup.getHeader(), status.getMessage()));
       }
     }
-    if (errorCodePartitionGroups.isEmpty()) {
+    if (errorCodePartitionGroups.isEmpty()
+        || (plan instanceof DeleteTimeSeriesPlan
+            && errorCodePartitionGroups.size() != partitionGroups.size())) {
       status = StatusUtils.OK;
     } else {
       status =

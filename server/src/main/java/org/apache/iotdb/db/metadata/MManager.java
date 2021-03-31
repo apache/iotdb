@@ -28,12 +28,14 @@ import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
+import org.apache.iotdb.db.exception.metadata.DuplicatedTemplateException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.MNode;
@@ -1131,26 +1133,31 @@ public class MManager {
    * @return MeasurementSchema or VectorMeasurementSchema
    */
   public IMeasurementSchema getSeriesSchema(PartialPath fullPath) throws MetadataException {
-    MNode leaf = mtree.getNodeByPath(fullPath);
-    IMeasurementSchema schema = ((MeasurementMNode) leaf).getSchema();
-    if (schema != null && schema.getType() == TSDataType.VECTOR) {
-      List<String> measurementsInLeaf = schema.getValueMeasurementIdList();
-      List<PartialPath> measurements = ((VectorPartialPath) fullPath).getSubSensorsPathList();
-      TSDataType[] types = new TSDataType[measurements.size()];
-      TSEncoding[] encodings = new TSEncoding[measurements.size()];
-      for (int i = 0; i < measurements.size(); i++) {
-        int index = measurementsInLeaf.indexOf(measurements.get(i).getMeasurement());
-        types[i] = schema.getValueTSDataTypeList().get(index);
-        encodings[i] = schema.getValueTSEncodingList().get(index);
-      }
-      String[] array = new String[measurements.size()];
-      for (int i = 0; i < array.length; i++) {
-        array[i] = measurements.get(i).getMeasurement();
-      }
-      return new VectorMeasurementSchema(
-          schema.getMeasurementId(), array, types, encodings, schema.getCompressor());
+    MeasurementMNode leaf = (MeasurementMNode) mtree.getNodeByPath(fullPath);
+    return getSeriesSchema(fullPath, leaf);
+  }
+
+  protected IMeasurementSchema getSeriesSchema(PartialPath fullPath, MeasurementMNode leaf) {
+    IMeasurementSchema schema = leaf.getSchema();
+
+    if (schema == null || schema.getType() != TSDataType.VECTOR) {
+      return schema;
     }
-    return schema;
+    List<String> measurementsInLeaf = schema.getValueMeasurementIdList();
+    List<PartialPath> measurements = ((VectorPartialPath) fullPath).getSubSensorsPathList();
+    TSDataType[] types = new TSDataType[measurements.size()];
+    TSEncoding[] encodings = new TSEncoding[measurements.size()];
+    for (int i = 0; i < measurements.size(); i++) {
+      int index = measurementsInLeaf.indexOf(measurements.get(i).getMeasurement());
+      types[i] = schema.getValueTSDataTypeList().get(index);
+      encodings[i] = schema.getValueTSEncodingList().get(index);
+    }
+    String[] array = new String[measurements.size()];
+    for (int i = 0; i < array.length; i++) {
+      array[i] = measurements.get(i).getMeasurement();
+    }
+    return new VectorMeasurementSchema(
+        schema.getMeasurementId(), array, types, encodings, schema.getCompressor());
   }
 
   /**
@@ -1172,31 +1179,48 @@ public class MManager {
       PartialPath path = fullPaths.get(i);
       // use dfs to collect paths
       MeasurementMNode node = (MeasurementMNode) getNodeByPath(path);
+      getNodeToPartialPath(node, nodeToPartialPath, nodeToIndex, path, i);
+    }
+    return getPair(fullPaths, nodeToPartialPath, nodeToIndex);
+  }
 
-      if (!nodeToPartialPath.containsKey(node)) {
-        if (node.getSchema() instanceof MeasurementSchema) {
-          nodeToPartialPath.put(node, path);
-        } else {
-          List<PartialPath> subSensorsPathList = new ArrayList<>();
-          subSensorsPathList.add(path);
-          nodeToPartialPath.put(
-              node,
-              new VectorPartialPath(path.getDevice() + "." + node.getName(), subSensorsPathList));
-        }
-        nodeToIndex.computeIfAbsent(node, k -> new ArrayList<>()).add(i);
+  protected void getNodeToPartialPath(
+      MeasurementMNode node,
+      Map<MNode, PartialPath> nodeToPartialPath,
+      Map<MNode, List<Integer>> nodeToIndex,
+      PartialPath path,
+      int index)
+      throws MetadataException {
+    if (!nodeToPartialPath.containsKey(node)) {
+      if (node.getSchema() instanceof MeasurementSchema) {
+        nodeToPartialPath.put(node, path);
       } else {
-        // if nodeToPartialPath contains node
-        String existPath = nodeToPartialPath.get(node).getFullPath();
-        if (existPath.equals(path.getFullPath())) {
-          // could be the same path in different aggregate functions
-          nodeToIndex.get(node).add(i);
-        } else {
-          // could be VectorPartialPath
-          ((VectorPartialPath) nodeToPartialPath.get(node)).addSubSensor(path);
-          nodeToIndex.get(node).add(i);
-        }
+        List<PartialPath> subSensorsPathList = new ArrayList<>();
+        subSensorsPathList.add(path);
+        nodeToPartialPath.put(
+            node,
+            new VectorPartialPath(path.getDevice() + "." + node.getName(), subSensorsPathList));
+      }
+      nodeToIndex.computeIfAbsent(node, k -> new ArrayList<>()).add(index);
+    } else {
+      // if nodeToPartialPath contains node
+      String existPath = nodeToPartialPath.get(node).getFullPath();
+      if (existPath.equals(path.getFullPath())) {
+        // could be the same path in different aggregate functions
+        nodeToIndex.get(node).add(index);
+      } else {
+        // could be VectorPartialPath
+        ((VectorPartialPath) nodeToPartialPath.get(node)).addSubSensor(path);
+        nodeToIndex.get(node).add(index);
       }
     }
+  }
+
+  protected Pair<List<PartialPath>, Map<String, Integer>> getPair(
+      List<PartialPath> fullPaths,
+      Map<MNode, PartialPath> nodeToPartialPath,
+      Map<MNode, List<Integer>> nodeToIndex)
+      throws MetadataException {
     Map<String, Integer> indexMap = new HashMap<>();
     int i = 0;
     for (List<Integer> indexList : nodeToIndex.values()) {
@@ -2268,7 +2292,7 @@ public class MManager {
       Template template = templateMap.get(plan.getTemplateName());
 
       if (template == null) {
-        throw new MetadataException("Undefined template name: " + plan.getTemplateName());
+        throw new UndefinedTemplateException(plan.getTemplateName());
       }
 
       // get mnode and update template should be atomic
@@ -2277,7 +2301,11 @@ public class MManager {
             getDeviceNodeWithAutoCreate(new PartialPath(plan.getPrefixPath()));
 
         if (node.left.getDeviceTemplate() != null) {
-          throw new MetadataException("Specified node already has template");
+          if (node.left.getDeviceTemplate().equals(template)) {
+            throw new DuplicatedTemplateException(template.getName());
+          } else {
+            throw new MetadataException("Specified node already has template");
+          }
         }
 
         if (!isTemplateCompatible(node.right, template)) {

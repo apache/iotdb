@@ -26,6 +26,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
@@ -114,7 +115,8 @@ public class PartitionUtils {
     plan instanceof DeletePlan
         || plan instanceof DeleteTimeSeriesPlan
         || plan instanceof MergePlan
-        || plan instanceof FlushPlan;
+        || plan instanceof FlushPlan
+        || plan instanceof SetDeviceTemplatePlan;
   }
 
   public static int calculateStorageGroupSlotByTime(

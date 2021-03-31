@@ -65,6 +65,7 @@ import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
 import org.apache.iotdb.cluster.server.monitor.Peer;
 import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
+import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -704,7 +705,7 @@ public class DataGroupMember extends RaftMember {
         executor.processNonQuery(plan);
         return StatusUtils.OK;
       } catch (Exception e) {
-        return StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy().setMessage(e.getMessage());
+        return handleLogExecutionException(plan, IOUtils.getRootCause(e));
       }
     } else {
       TSStatus status = executeNonQueryPlanWithKnownLeader(plan);
