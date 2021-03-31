@@ -18,6 +18,13 @@
  */
 package org.apache.iotdb.db.integration;
 
+import java.io.File;
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.Arrays;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -38,18 +45,10 @@ import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
-
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.io.File;
-import java.io.IOException;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.sql.Statement;
 
 public class IoTDBLoadExternalTsfileWithTimePartitionIT {
 
@@ -57,14 +56,14 @@ public class IoTDBLoadExternalTsfileWithTimePartitionIT {
   String tempDir = "temp";
 
   String STORAGE_GROUP = "root.ln";
-  String[] devices = new String[] {"d1", "d2"};
-  String[] measurements = new String[] {"s1", "s2"};
+  String[] devices = new String[]{"d1", "d2"};
+  String[] measurements = new String[]{"s1", "s2"};
 
   // generate several tsfiles, with timestamp from startTime(inclusive) to endTime(exclusive)
   long startTime = 0;
-  long endTime = 1000000;
+  long endTime = 1000_000;
 
-  long timePartition = 100; // unit sec
+  long timePartition = 100;// unit s
 
   boolean originalIsEnablePartition;
   long originalPartitionInterval;
@@ -75,11 +74,13 @@ public class IoTDBLoadExternalTsfileWithTimePartitionIT {
   public void setUp() throws Exception {
     originalIsEnablePartition = config.isEnablePartition();
     originalPartitionInterval = config.getPartitionInterval();
-    config.setEnablePartition(true);
-    config.setPartitionInterval(timePartition);
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
+
+    StorageEngine.setEnablePartition(true);
+    StorageEngine.setTimePartitionInterval(timePartition);
+
     prepareData();
   }
 
@@ -89,24 +90,30 @@ public class IoTDBLoadExternalTsfileWithTimePartitionIT {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
-    config.setEnablePartition(originalIsEnablePartition);
-    config.setPartitionInterval(originalPartitionInterval);
+    StorageEngine.setEnablePartition(originalIsEnablePartition);
+    StorageEngine.setTimePartitionInterval(originalPartitionInterval);
     File f = new File(tempDir);
     if (f.exists()) {
       FileUtils.deleteDirectory(f);
     }
   }
 
-  /** get the name of tsfile given counter */
+  /**
+   * get the name of tsfile given counter
+   */
   String getName(int counter) {
-    return tempDir + File.separator + System.currentTimeMillis() + "-" + counter + "-0.tsfile";
+    return tempDir + File.separator + System.currentTimeMillis() + "-" + counter
+        + "-0.tsfile";
   }
 
-  /** write a record, given timestamp */
+  /**
+   * write a record, given timestamp
+   */
   void writeData(TsFileWriter tsFileWriter, long timestamp)
       throws IOException, WriteProcessException {
     for (String deviceId : devices) {
-      TSRecord tsRecord = new TSRecord(timestamp, STORAGE_GROUP + DOT + deviceId);
+      TSRecord tsRecord = new TSRecord(timestamp,
+          STORAGE_GROUP + DOT + deviceId);
       for (String measurement : measurements) {
         DataPoint dPoint = new LongDataPoint(measurement, 10000);
         tsRecord.addTuple(dPoint);
@@ -115,7 +122,9 @@ public class IoTDBLoadExternalTsfileWithTimePartitionIT {
     }
   }
 
-  /** register all timeseries in tsfiles */
+  /**
+   * register all timeseries in tsfiles
+   */
   void register(TsFileWriter tsFileWriter) {
     try {
       for (String deviceId : devices) {
@@ -130,8 +139,10 @@ public class IoTDBLoadExternalTsfileWithTimePartitionIT {
     }
   }
 
-  /** create multiple tsfiles, each correspond to a time partition. */
-  private void prepareData() {
+  /**
+   * create multiple tsfiles, each correspond to a time partition.
+   */
+  private void prepareData() throws IOException {
     File dir = new File(tempDir);
     if (dir.exists()) {
       FileUtils.deleteDirectory(dir);
@@ -160,23 +171,22 @@ public class IoTDBLoadExternalTsfileWithTimePartitionIT {
     } catch (Throwable e) {
       e.printStackTrace();
     }
+
   }
+
 
   @Test
   public void loadTsfileWithTimePartition() {
     try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       statement.execute(String.format("load \"%s\"", new File(tempDir).getAbsolutePath()));
 
-      long k = StorageEngine.getTimePartitionInterval();
-
       String dataDir = config.getDataDirs()[0];
-      File f =
-          new File(
-              dataDir,
-              new PartialPath("sequence") + File.separator + "root.ln" + File.separator + "0");
+      File f = new File(dataDir,
+          new PartialPath("sequence") + File.separator + "root.ln");
+      System.out.println(Arrays.toString(f.list()));
       Assert.assertEquals((endTime - startTime) / (timePartition * 1000), f.list().length);
 
       for (int i = 0; i < (endTime - startTime) / (timePartition * 1000); i++) {
@@ -190,4 +200,5 @@ public class IoTDBLoadExternalTsfileWithTimePartitionIT {
       throwables.printStackTrace();
     }
   }
+
 }
