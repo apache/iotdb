@@ -17,7 +17,7 @@
 #
 
 from iotdb.Session import Session
-from iotdb.TestContainer import IoTDBContainer
+from iotdb.IoTDBContainer import IoTDBContainer
 
 from numpy.testing import assert_array_equal
 
