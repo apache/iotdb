@@ -102,7 +102,7 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
   @Test
   public void testNoFilterWithRedirect() throws StorageEngineException, QueryProcessException {
     RawDataQueryPlan plan = new RawDataQueryPlan();
-    plan.setDeduplicatedPaths(pathList);
+    plan.setDeduplicatedPathsAndUpdate(pathList);
     plan.setDeduplicatedDataTypes(dataTypes);
     plan.setEnableRedirect(true);
     queryExecutor = new ClusterDataQueryExecutor(plan, testMetaMember);
@@ -123,7 +123,7 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
         new SingleSeriesExpression(
             new PartialPath(TestUtils.getTestSeries(0, 0)), ValueFilter.gtEq(5.0));
     RawDataQueryPlan plan = new RawDataQueryPlan();
-    plan.setDeduplicatedPaths(pathList);
+    plan.setDeduplicatedPathsAndUpdate(pathList);
     plan.setDeduplicatedDataTypes(dataTypes);
     plan.setExpression(expression);
     plan.setEnableRedirect(true);
@@ -144,7 +144,7 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
     IExpression expression =
         new GlobalTimeExpression(new AndFilter(TimeFilter.gtEq(5), TimeFilter.ltEq(10)));
     RawDataQueryPlan plan = new RawDataQueryPlan();
-    plan.setDeduplicatedPaths(pathList.subList(0, 1));
+    plan.setDeduplicatedPathsAndUpdate(pathList.subList(0, 1));
     plan.setDeduplicatedDataTypes(dataTypes.subList(0, 1));
     plan.setExpression(expression);
     plan.setEnableRedirect(true);
