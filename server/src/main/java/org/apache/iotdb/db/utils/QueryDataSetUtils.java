@@ -187,11 +187,14 @@ public class QueryDataSetUtils {
   public static BitMap[] readBitMapsFromBuffer(ByteBuffer buffer, int columns, int size) {
     BitMap[] bitMaps = new BitMap[columns];
     for (int i = 0; i < columns; i++) {
-      byte[] bytes = new byte[size / Byte.SIZE + 1];
-      for (int j = 0; j < bytes.length; j++) {
-        bytes[j] = buffer.get();
+      boolean hasBitMap = BytesUtils.byteToBool(buffer.get());
+      if (hasBitMap) {
+        byte[] bytes = new byte[size / Byte.SIZE + 1];
+        for (int j = 0; j < bytes.length; j++) {
+          bytes[j] = buffer.get();
+        }
+        bitMaps[i] = new BitMap(size, bytes);
       }
-      bitMaps[i] = new BitMap(size, bytes);
     }
     return bitMaps;
   }

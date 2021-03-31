@@ -77,7 +77,7 @@ public class BitMap {
     bits[position / Byte.SIZE] &= UNMARK_BIT_UTIL[position % Byte.SIZE];
   }
 
-  /** whether all bits are one */
+  /** whether all bits are zero */
   public boolean isAllZero() {
     int j;
     for (j = 0; j < size / Byte.SIZE; j++) {
@@ -93,7 +93,7 @@ public class BitMap {
     return true;
   }
 
-  /** whether all bits are zero */
+  /** whether all bits are one */
   public boolean isAllOne() {
     int j;
     for (j = 0; j < size / Byte.SIZE; j++) {

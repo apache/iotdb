@@ -60,9 +60,14 @@ public class SessionUtils {
   private static void getValueBufferOfDataType(
       TSDataType dataType, Tablet tablet, int i, ByteBuffer valueBuffer) {
     BitMap curBitMap = tablet.bitMaps[i];
-    byte[] curBytes = curBitMap.getByteArray();
-    for (int j = 0; j < curBytes.length; j++) {
-      valueBuffer.put(curBytes[j]);
+    boolean columnHasNull = !curBitMap.isAllZero();
+    valueBuffer.put(BytesUtils.boolToByte(columnHasNull));
+
+    if (columnHasNull) {
+      byte[] curBytes = curBitMap.getByteArray();
+      for (int j = 0; j < curBytes.length; j++) {
+        valueBuffer.put(curBytes[j]);
+      }
     }
 
     switch (dataType) {
@@ -72,7 +77,7 @@ public class SessionUtils {
           if (curBitMap.get(index)) {
             valueBuffer.putInt(intValues[index]);
           } else {
-            valueBuffer.putInt(-1);
+            valueBuffer.putInt(Integer.MIN_VALUE);
           }
         }
         break;
@@ -82,7 +87,7 @@ public class SessionUtils {
           if (curBitMap.get(index)) {
             valueBuffer.putLong(longValues[index]);
           } else {
-            valueBuffer.putLong(-1);
+            valueBuffer.putLong(Long.MIN_VALUE);
           }
         }
         break;
@@ -92,7 +97,7 @@ public class SessionUtils {
           if (curBitMap.get(index)) {
             valueBuffer.putFloat(floatValues[index]);
           } else {
-            valueBuffer.putFloat(-1);
+            valueBuffer.putFloat(Float.MIN_VALUE);
           }
         }
         break;
@@ -102,7 +107,7 @@ public class SessionUtils {
           if (curBitMap.get(index)) {
             valueBuffer.putDouble(doubleValues[index]);
           } else {
-            valueBuffer.putDouble(-1);
+            valueBuffer.putDouble(Double.MIN_VALUE);
           }
         }
         break;

@@ -58,7 +58,7 @@ public class Tablet {
   public long[] timestamps;
   /** each object is a primitive type array, which represents values of one measurement */
   public Object[] values;
-  /** each bitset represents the existence of each value in the current column */
+  /** each bitmap represents the existence of each value in the current column */
   public BitMap[] bitMaps;
   /** the number of rows to include in this tablet */
   public int rowSize;

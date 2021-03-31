@@ -321,9 +321,6 @@ public class InsertTabletPlanTest {
     dataTypes.add(TSDataType.TEXT.ordinal());
 
     BitMap[] bitMaps = new BitMap[6];
-    for (int i = 0; i < 6; i++) {
-      bitMaps[i] = new BitMap(4);
-    }
     Object[] columns = new Object[6];
     columns[0] = new double[4];
     columns[1] = new float[4];
@@ -339,9 +336,6 @@ public class InsertTabletPlanTest {
       ((int[]) columns[3])[r] = 100;
       ((boolean[]) columns[4])[r] = false;
       ((Binary[]) columns[5])[r] = new Binary("hh" + r);
-      for (int i = 0; i < 6; i++) {
-        bitMaps[i].unmark(r);
-      }
     }
 
     InsertTabletPlan tabletPlan =

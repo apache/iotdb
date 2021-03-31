@@ -569,6 +569,9 @@ public class VectorTVList extends TVList {
         for (int i = 0; i < inputRemaining; i++) {
           indices.get(arrayIdx)[elementIdx + i] = size;
           for (int j = 0; j < bitMaps.length; j++) {
+            if (bitMaps[j] == null) {
+              continue;
+            }
             if (bitMaps[j].get(idx + i)) {
               this.bitMaps.get(j).get(arrayIdx).mark(elementIdx + i);
             } else {
@@ -586,6 +589,9 @@ public class VectorTVList extends TVList {
         for (int i = 0; i < internalRemaining; i++) {
           indices.get(arrayIdx)[elementIdx + i] = size;
           for (int j = 0; j < bitMaps.length; j++) {
+            if (bitMaps[j] == null) {
+              continue;
+            }
             if (bitMaps[j].get(idx + i)) {
               this.bitMaps.get(j).get(arrayIdx).mark(elementIdx + i);
             } else {

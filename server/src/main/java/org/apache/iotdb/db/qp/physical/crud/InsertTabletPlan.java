@@ -289,7 +289,6 @@ public class InsertTabletPlan extends InsertPlan {
   private void serializeValues(DataOutputStream outputStream) throws IOException {
     for (int i = 0; i < dataTypes.length; i++) {
       if (columns[i] == null) {
-        bitMaps[i].unmark();
         continue;
       }
       BitMap curBitMap = bitMaps[i];
@@ -304,7 +303,6 @@ public class InsertTabletPlan extends InsertPlan {
   private void serializeValues(ByteBuffer buffer) {
     for (int i = 0; i < dataTypes.length; i++) {
       if (columns[i] == null) {
-        bitMaps[i].unmark();
         continue;
       }
       byte[] curBytes = bitMaps[i].getByteArray();
