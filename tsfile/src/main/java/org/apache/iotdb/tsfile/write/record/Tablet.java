@@ -268,6 +268,14 @@ public class Tablet {
   /** @return total bytes of values */
   public int getValueBytesSize() {
     int valueOccupation = 0;
+    // bitmap size
+    for (BitMap bitMap : bitMaps) {
+      // marker byte
+      valueOccupation++;
+      if (bitMap != null && !bitMap.isAllZero()) {
+        valueOccupation += maxRowNumber / Byte.SIZE + 1;
+      }
+    }
     for (int i = 0; i < schemas.size(); i++) {
       IMeasurementSchema schema = schemas.get(i);
       if (schema instanceof MeasurementSchema) {
@@ -299,14 +307,8 @@ public class Tablet {
       case TEXT:
         valueOccupation += rowSize * 4;
         Binary[] binaries = (Binary[]) values[i];
-        BitMap curBitMap = bitMaps[i];
         for (int rowIndex = 0; rowIndex < rowSize; rowIndex++) {
-          if (curBitMap.get(rowIndex)) {
-            valueOccupation += binaries[rowIndex].getLength();
-          } else {
-            Binary emptyStr = new Binary(".");
-            valueOccupation += emptyStr.getLength();
-          }
+          valueOccupation += binaries[rowIndex].getLength();
         }
         break;
       default:

@@ -159,7 +159,7 @@ public class VectorTVList extends TVList {
                   dataTypes.get(i), ((boolean[]) columnValues.get(arrayIndex))[elementIndex]);
           break;
         default:
-          break;
+          throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
       }
     }
     return TsPrimitiveType.getByType(TSDataType.VECTOR, vector);
@@ -574,8 +574,6 @@ public class VectorTVList extends TVList {
             }
             if (bitMaps[j].get(idx + i)) {
               this.bitMaps.get(j).get(arrayIdx).mark(elementIdx + i);
-            } else {
-              this.bitMaps.get(j).get(arrayIdx).unmark(elementIdx + i);
             }
           }
           size++;
@@ -594,8 +592,6 @@ public class VectorTVList extends TVList {
             }
             if (bitMaps[j].get(idx + i)) {
               this.bitMaps.get(j).get(arrayIdx).mark(elementIdx + i);
-            } else {
-              this.bitMaps.get(j).get(arrayIdx).unmark(elementIdx + i);
             }
           }
           size++;

@@ -43,6 +43,17 @@ public class SessionUtils {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static ByteBuffer getValueBuffer(Tablet tablet) {
     ByteBuffer valueBuffer = ByteBuffer.allocate(tablet.getValueBytesSize());
+    for (BitMap bitMap : tablet.bitMaps) {
+      boolean columnHasNull = !bitMap.isAllZero();
+      valueBuffer.put(BytesUtils.boolToByte(columnHasNull));
+
+      if (columnHasNull) {
+        byte[] bytes = bitMap.getByteArray();
+        for (int j = 0; j < tablet.rowSize / Byte.SIZE + 1; j++) {
+          valueBuffer.put(bytes[j]);
+        }
+      }
+    }
     for (int i = 0; i < tablet.getSchemas().size(); i++) {
       IMeasurementSchema schema = tablet.getSchemas().get(i);
       if (schema instanceof MeasurementSchema) {
@@ -60,21 +71,12 @@ public class SessionUtils {
   private static void getValueBufferOfDataType(
       TSDataType dataType, Tablet tablet, int i, ByteBuffer valueBuffer) {
     BitMap curBitMap = tablet.bitMaps[i];
-    boolean columnHasNull = !curBitMap.isAllZero();
-    valueBuffer.put(BytesUtils.boolToByte(columnHasNull));
-
-    if (columnHasNull) {
-      byte[] curBytes = curBitMap.getByteArray();
-      for (int j = 0; j < curBytes.length; j++) {
-        valueBuffer.put(curBytes[j]);
-      }
-    }
 
     switch (dataType) {
       case INT32:
         int[] intValues = (int[]) tablet.values[i];
         for (int index = 0; index < tablet.rowSize; index++) {
-          if (curBitMap.get(index)) {
+          if (curBitMap == null || !curBitMap.get(index)) {
             valueBuffer.putInt(intValues[index]);
           } else {
             valueBuffer.putInt(Integer.MIN_VALUE);
@@ -84,7 +86,7 @@ public class SessionUtils {
       case INT64:
         long[] longValues = (long[]) tablet.values[i];
         for (int index = 0; index < tablet.rowSize; index++) {
-          if (curBitMap.get(index)) {
+          if (curBitMap == null || !curBitMap.get(index)) {
             valueBuffer.putLong(longValues[index]);
           } else {
             valueBuffer.putLong(Long.MIN_VALUE);
@@ -94,7 +96,7 @@ public class SessionUtils {
       case FLOAT:
         float[] floatValues = (float[]) tablet.values[i];
         for (int index = 0; index < tablet.rowSize; index++) {
-          if (curBitMap.get(index)) {
+          if (curBitMap == null || !curBitMap.get(index)) {
             valueBuffer.putFloat(floatValues[index]);
           } else {
             valueBuffer.putFloat(Float.MIN_VALUE);
@@ -104,7 +106,7 @@ public class SessionUtils {
       case DOUBLE:
         double[] doubleValues = (double[]) tablet.values[i];
         for (int index = 0; index < tablet.rowSize; index++) {
-          if (curBitMap.get(index)) {
+          if (curBitMap == null || !curBitMap.get(index)) {
             valueBuffer.putDouble(doubleValues[index]);
           } else {
             valueBuffer.putDouble(Double.MIN_VALUE);
@@ -114,7 +116,7 @@ public class SessionUtils {
       case BOOLEAN:
         boolean[] boolValues = (boolean[]) tablet.values[i];
         for (int index = 0; index < tablet.rowSize; index++) {
-          if (curBitMap.get(index)) {
+          if (curBitMap == null || !curBitMap.get(index)) {
             valueBuffer.put(BytesUtils.boolToByte(boolValues[index]));
           } else {
             valueBuffer.put(BytesUtils.boolToByte(false));
@@ -124,7 +126,7 @@ public class SessionUtils {
       case TEXT:
         Binary[] binaryValues = (Binary[]) tablet.values[i];
         for (int index = 0; index < tablet.rowSize; index++) {
-          if (curBitMap.get(index)) {
+          if (curBitMap == null || !curBitMap.get(index)) {
             valueBuffer.putInt(binaryValues[index].getLength());
             valueBuffer.put(binaryValues[index].getValues());
           } else {

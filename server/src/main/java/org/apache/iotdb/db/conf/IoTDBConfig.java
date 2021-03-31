@@ -139,7 +139,7 @@ public class IoTDBConfig {
   /** When inserting rejected exceeds this, throw an exception */
   private int maxWaitingTimeWhenInsertBlockedInMs = 10000;
   /** Is the write ahead log enable. */
-  private boolean enableWal = true;
+  private boolean enableWal = false;
 
   private volatile boolean readOnly = false;
 

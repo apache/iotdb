@@ -25,6 +25,7 @@ import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.write.record.BitMap;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
@@ -40,13 +41,13 @@ public class VectorSessionExample {
 
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException {
-    session = new Session("127.0.0.1", 6668, "root", "root");
+    session = new Session("127.0.0.1", 6667, "root", "root");
     session.open(false);
 
     // set session fetchSize
     session.setFetchSize(10000);
 
-    createTemplate();
+    // createTemplate();
     insertTabletWithAlignedTimeseries();
     //    selectTest();
     session.close();
@@ -118,6 +119,7 @@ public class VectorSessionExample {
 
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
+    BitMap[] bitMaps = tablet.bitMaps;
 
     for (long time = 0; time < 100; time++) {
       int row = tablet.rowSize++;
@@ -129,9 +131,14 @@ public class VectorSessionExample {
       int[] sensors = (int[]) values[1];
       sensors[row] = new Random().nextInt();
 
+      if (time % 2 == 0) {
+        bitMaps[1].mark((int) row);
+      }
+
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
         session.insertTablet(tablet, true);
         tablet.reset();
+        bitMaps[1].unmark();
       }
     }
 
@@ -140,6 +147,6 @@ public class VectorSessionExample {
       tablet.reset();
     }
 
-    session.executeNonQueryStatement("flush");
+    //session.executeNonQueryStatement("flush");
   }
 }
