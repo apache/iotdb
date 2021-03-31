@@ -83,8 +83,8 @@ public class SessionConnection {
   }
 
   private void init(EndPoint endPoint) throws IoTDBConnectionException {
-    RpcTransportFactory.setInitialBufferCapacity(session.initialBufferCapacity);
-    RpcTransportFactory.setMaxLength(session.maxFrameSize);
+    RpcTransportFactory.setDefaultBufferCapacity(session.thriftDefaultBufferSize);
+    RpcTransportFactory.setThriftMaxFrameSize(session.thriftMaxFrameSize);
     transport =
         RpcTransportFactory.INSTANCE.getTransport(
             new TSocket(endPoint.getIp(), endPoint.getPort(), session.connectionTimeoutInMs));

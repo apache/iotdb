@@ -82,8 +82,8 @@ public class Session {
   protected int connectionTimeoutInMs;
   protected ZoneId zoneId;
 
-  protected int initialBufferCapacity;
-  protected int maxFrameSize;
+  protected int thriftDefaultBufferSize;
+  protected int thriftMaxFrameSize;
 
   protected EndPoint defaultEndPoint;
   protected SessionConnection defaultSessionConnection;
@@ -220,16 +220,16 @@ public class Session {
       String password,
       int fetchSize,
       ZoneId zoneId,
-      int initialBufferCapacity,
-      int maxFrameSize,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize,
       boolean enableCacheLeader) {
     this.defaultEndPoint = new EndPoint(host, rpcPort);
     this.username = username;
     this.password = password;
     this.fetchSize = fetchSize;
     this.zoneId = zoneId;
-    this.initialBufferCapacity = initialBufferCapacity;
-    this.maxFrameSize = maxFrameSize;
+    this.thriftDefaultBufferSize = thriftDefaultBufferSize;
+    this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.enableCacheLeader = enableCacheLeader;
   }
 
