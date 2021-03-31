@@ -65,25 +65,25 @@ public class VectorLastPointReader extends LastPointReader {
       if (lastMetadata == null) {
         continue;
       }
+      List<TimeseriesMetadata> valueTimeseriesMetadataList = new ArrayList<>();
+      for (PartialPath subSensor : vectorPartialPath.getSubSensorsPathList()) {
+        TimeseriesMetadata valueTimeSeriesMetadata =
+            FileLoaderUtils.loadTimeSeriesMetadata(
+                resource, subSensor, context, timeFilter, deviceMeasurements);
+        if (valueTimeSeriesMetadata == null) {
+          throw new IOException("File doesn't contains value");
+        }
+        valueTimeseriesMetadataList.add(valueTimeSeriesMetadata);
+      }
+      VectorTimeSeriesMetadata vecMetadata =
+          new VectorTimeSeriesMetadata(lastMetadata, valueTimeseriesMetadataList);
       if (!lastMetadata.isModified()
           && endtimeContainedByTimeFilter(lastMetadata.getStatistics())) {
-        List<TimeseriesMetadata> valueTimeseriesMetadataList = new ArrayList<>();
-        for (PartialPath subSensor : vectorPartialPath.getSubSensorsPathList()) {
-          TimeseriesMetadata valueTimeSeriesMetadata =
-              FileLoaderUtils.loadTimeSeriesMetadata(
-                  resource, subSensor, context, timeFilter, deviceMeasurements);
-          if (valueTimeSeriesMetadata == null) {
-            throw new IOException("File doesn't contains value");
-          }
-          valueTimeseriesMetadataList.add(valueTimeSeriesMetadata);
-        }
-        VectorTimeSeriesMetadata vecMetadata =
-            new VectorTimeSeriesMetadata(lastMetadata, valueTimeseriesMetadataList);
         cachedLastPair =
             new TimeValuePair(
                 lastMetadata.getStatistics().getEndTime(), vecMetadata.getStatisticalLastValue());
       } else {
-        cachedLastPair = getLastByUnpackingTimeseries(lastMetadata);
+        cachedLastPair = getLastByUnpackingTimeseries(vecMetadata);
         if (cachedLastPair != null) {
           return;
         }

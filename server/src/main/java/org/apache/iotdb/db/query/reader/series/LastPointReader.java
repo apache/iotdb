@@ -118,28 +118,10 @@ public class LastPointReader {
       }
       if (!lastMetadata.isModified()
           && endtimeContainedByTimeFilter(lastMetadata.getStatistics())) {
-        if (seriesPath instanceof VectorPartialPath) {
-          List<TimeseriesMetadata> valueTimeseriesMetadataList = new ArrayList<>();
-          for (PartialPath subSensor : ((VectorPartialPath) seriesPath).getSubSensorsPathList()) {
-            TimeseriesMetadata valueTimeSeriesMetadata =
-                FileLoaderUtils.loadTimeSeriesMetadata(
-                    resource, subSensor, context, timeFilter, deviceMeasurements);
-            if (valueTimeSeriesMetadata == null) {
-              throw new IOException("File doesn't contains value");
-            }
-            valueTimeseriesMetadataList.add(valueTimeSeriesMetadata);
-          }
-          VectorTimeSeriesMetadata vecMetadata =
-              new VectorTimeSeriesMetadata(lastMetadata, valueTimeseriesMetadataList);
-          cachedLastPair =
-              new TimeValuePair(
-                  lastMetadata.getStatistics().getEndTime(), vecMetadata.getStatisticalLastValue());
-        } else {
-          cachedLastPair =
-              new TimeValuePair(
-                  lastMetadata.getStatistics().getEndTime(),
-                  lastMetadata.getStatisticalLastValue());
-        }
+        cachedLastPair =
+            new TimeValuePair(
+                lastMetadata.getStatistics().getEndTime(),
+                lastMetadata.getStatisticalLastValue());
       } else {
         cachedLastPair = getLastByUnpackingTimeseries(lastMetadata);
         if (cachedLastPair != null) {
@@ -149,7 +131,7 @@ public class LastPointReader {
     }
   }
 
-  protected TimeValuePair getLastByUnpackingTimeseries(TimeseriesMetadata metadata)
+  protected TimeValuePair getLastByUnpackingTimeseries(ITimeSeriesMetadata metadata)
       throws IOException {
     List<IChunkMetadata> seqChunkMetadataList = metadata.loadChunkMetadataList();
     for (int i = seqChunkMetadataList.size() - 1; i >= 0; i--) {
@@ -191,7 +173,7 @@ public class LastPointReader {
     }
   }
 
-  private TimeValuePair readChunkLastPoint(IChunkMetadata chunkMetaData) throws IOException {
+  protected TimeValuePair readChunkLastPoint(IChunkMetadata chunkMetaData) throws IOException {
     TimeValuePair lastPoint = new TimeValuePair(Long.MIN_VALUE, null);
     if (chunkMetaData == null) {
       return lastPoint;
@@ -220,7 +202,7 @@ public class LastPointReader {
     return lastPoint;
   }
 
-  private boolean shouldUpdate(IChunkMetadata cachedChunk, IChunkMetadata newChunk) {
+  protected boolean shouldUpdate(IChunkMetadata cachedChunk, IChunkMetadata newChunk) {
     return (newChunk.getVersion() > cachedChunk.getVersion())
         || (newChunk.getVersion() == cachedChunk.getVersion()
             && newChunk.getOffsetOfChunkHeader() > cachedChunk.getOffsetOfChunkHeader());
@@ -270,9 +252,5 @@ public class LastPointReader {
       return true;
     }
     return timeFilter.containStartEndTime(statistics.getEndTime(), statistics.getEndTime());
-  }
-
-  private TimeValuePair constructLastPair(long timestamp, Object value, TSDataType dataType) {
-    return new TimeValuePair(timestamp, TsPrimitiveType.getByType(dataType, value));
   }
 }
