@@ -60,6 +60,12 @@
                             </includes>
                             <followSymlinks>false</followSymlinks>
                         </fileset>
+                        <fileset>
+                            <directory>./</directory>
+                            <includes>
+                                <include>LICENSE</include>
+                            </includes>
+                        </fileset>
                     </filesets>
                 </configuration>
             </plugin>
@@ -85,6 +91,27 @@
                             <resources>
                                 <resource>
                                     <directory>${basedir}/../thrift/target/generated-sources-python/iotdb/thrift/</directory>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                    <!-- Copy License -->
+                    <execution>
+                        <id>copy-pypi-file-resources</id>
+                        <!-- here the phase you need -->
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <encoding>utf-8</encoding>
+                            <outputDirectory>${basedir}/</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${basedir}/..</directory>
+                                    <includes>
+                                        <include>LICENSE</include>
+                                    </includes>
                                 </resource>
                             </resources>
                         </configuration>
