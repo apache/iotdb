@@ -737,14 +737,7 @@ public class MTree implements Serializable {
         if (schema == null) {
           throw new PathNotExistException(path.getFullPath(), true);
         }
-
-        if (schema instanceof MeasurementSchema) {
-          return new MeasurementMNode(cur, schema.getMeasurementId(), schema, null);
-        } else if (schema instanceof VectorMeasurementSchema) {
-          return new MeasurementMNode(cur, schema.getMeasurementId(), schema, null);
-        } else {
-          throw new IllegalArgumentException("Undefined type of schema");
-        }
+        return new MeasurementMNode(cur, schema.getMeasurementId(), schema, null);
       }
       cur = next;
     }
