@@ -1125,6 +1125,8 @@ public class PlanExecutor implements IPlanExecutor {
         // check whether types are match
         getSeriesSchemas(plan);
         // we do not need to infer data type for insertRowsOfOneDevicePlan
+        // infer data type in order to support SQL
+        plan.transferType();
       }
       // ok, we can begin to write data into the engine..
       StorageEngine.getInstance().insert(insertRowsOfOneDevicePlan);

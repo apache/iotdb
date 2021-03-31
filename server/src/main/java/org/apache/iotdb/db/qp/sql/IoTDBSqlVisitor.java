@@ -136,6 +136,7 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.InClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.IndexPredicateClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.IndexWithClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.InsertColumnsSpecContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.InsertMultiValueContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.InsertStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.InsertValuesSpecContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.KillQueryContext;
@@ -1881,18 +1882,23 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   }
 
   private void parseInsertValuesSpec(InsertValuesSpecContext ctx, InsertOperator insertOp) {
-    long timestamp;
-    if (ctx.dateFormat() != null) {
-      timestamp = parseTimeFormat(ctx.dateFormat().getText());
-    } else {
-      timestamp = Long.parseLong(ctx.INT().getText());
-    }
-    insertOp.setTime(timestamp);
+    List<InsertMultiValueContext> insertMultiValues = ctx.insertMultiValue();
     List<String> valueList = new ArrayList<>();
-    List<ConstantContext> values = ctx.constant();
-    for (ConstantContext value : values) {
-      valueList.add(value.getText());
+    Long[] timeArray = new Long[insertMultiValues.size()];
+    for (int i = 0; i < insertMultiValues.size(); i++) {
+      long timestamp;
+      if (insertMultiValues.get(i).dateFormat() != null) {
+        timestamp = parseTimeFormat(insertMultiValues.get(i).dateFormat().getText());
+      } else {
+        timestamp = Long.parseLong(insertMultiValues.get(i).INT().getText());
+      }
+      timeArray[i] = timestamp;
+      List<ConstantContext> values = insertMultiValues.get(i).constant();
+      for (ConstantContext value : values) {
+        valueList.add(value.getText());
+      }
     }
+    insertOp.setTime(timeArray);
     insertOp.setValueList(valueList.toArray(new String[0]));
   }
 

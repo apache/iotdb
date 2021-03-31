@@ -378,6 +378,10 @@ insertColumnsSpec
     ;
 
 insertValuesSpec
+    :(COMMA? insertMultiValue)*
+    ;
+
+insertMultiValue
     : LR_BRACKET dateFormat (COMMA constant)+ RR_BRACKET
     | LR_BRACKET INT (COMMA constant)+ RR_BRACKET
     ;

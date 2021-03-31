@@ -21,7 +21,7 @@ package org.apache.iotdb.db.qp.logical.crud;
 /** this class extends {@code RootOperator} and process insert statement. */
 public class InsertOperator extends SFWOperator {
 
-  private long time;
+  private Long[] time;
   private String[] measurementList;
   private String[] valueList;
 
@@ -46,11 +46,11 @@ public class InsertOperator extends SFWOperator {
     this.valueList = insertValue;
   }
 
-  public long getTime() {
+  public Long[] getTime() {
     return time;
   }
 
-  public void setTime(long time) {
+  public void setTime(Long[] time) {
     this.time = time;
   }
 }

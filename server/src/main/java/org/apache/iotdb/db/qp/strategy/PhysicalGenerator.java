@@ -78,6 +78,7 @@ import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryIndexPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
@@ -226,14 +227,20 @@ public class PhysicalGenerator {
       case INSERT:
         InsertOperator insert = (InsertOperator) operator;
         paths = insert.getSelectedPaths();
-        if (insert.getMeasurementList().length != insert.getValueList().length) {
+        if (insert.getValueList().length % insert.getMeasurementList().length != 0) {
           throw new SQLParserException(
               String.format(
                   "the measurementList's size %d is not consistent with the valueList's size %d",
                   insert.getMeasurementList().length, insert.getValueList().length));
         }
-
-        return new InsertRowPlan(
+        if (insert.getMeasurementList().length == insert.getValueList().length) {
+          return new InsertRowPlan(
+              paths.get(0),
+              insert.getTime()[0],
+              insert.getMeasurementList(),
+              insert.getValueList());
+        }
+        return new InsertRowsOfOneDevicePlan(
             paths.get(0), insert.getTime(), insert.getMeasurementList(), insert.getValueList());
       case MERGE:
         if (operator.getTokenIntType() == SQLConstant.TOK_FULL_MERGE) {
