@@ -58,13 +58,12 @@ public class ServerTimeGenerator extends TimeGenerator {
   }
 
   /** Constructor of EngineTimeGenerator. */
-  public ServerTimeGenerator(
-      IExpression expression, QueryContext context, RawDataQueryPlan queryPlan)
+  public ServerTimeGenerator(QueryContext context, RawDataQueryPlan queryPlan)
       throws StorageEngineException {
     this.context = context;
     this.queryPlan = queryPlan;
     try {
-      serverConstructNode(expression);
+      serverConstructNode(queryPlan.getExpression());
     } catch (IOException e) {
       throw new StorageEngineException(e);
     }
