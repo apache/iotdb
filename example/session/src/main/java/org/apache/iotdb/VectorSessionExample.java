@@ -47,9 +47,9 @@ public class VectorSessionExample {
     // set session fetchSize
     session.setFetchSize(10000);
 
-    // createTemplate();
+    createTemplate();
     insertTabletWithAlignedTimeseries();
-    selectTest();
+    //selectTest();
     session.close();
   }
 
@@ -148,6 +148,6 @@ public class VectorSessionExample {
       tablet.reset();
     }
 
-    //session.executeNonQueryStatement("flush");
+    session.executeNonQueryStatement("flush");
   }
 }
