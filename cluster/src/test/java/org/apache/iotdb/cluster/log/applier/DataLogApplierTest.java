@@ -227,7 +227,7 @@ public class DataLogApplierTest extends IoTDBTest {
 
   @Override
   @After
-  public void tearDown() throws IOException, StorageEngineException {
+  public void tearDown() throws IOException, StorageEngineException, TTransportException {
     testDataGroupMember.stop();
     testDataGroupMember.closeLogManager();
     testMetaGroupMember.stop();

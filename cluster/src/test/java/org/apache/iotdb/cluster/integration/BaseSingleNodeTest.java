@@ -26,6 +26,7 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.session.Session;
 
+import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Before;
 
@@ -78,7 +79,7 @@ public abstract class BaseSingleNodeTest {
     ClusterDescriptor.getInstance().getConfig().setEnableAutoCreateSchema(autoCreateSchema);
   }
 
-  public Session openSession() throws IoTDBConnectionException {
+  public Session openSession() throws IoTDBConnectionException, TTransportException {
     Session session = new Session("127.0.0.1", Constants.RPC_PORT);
     session.open();
     return session;

@@ -30,6 +30,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -120,7 +121,7 @@ public class SessionUT {
 
   @Test
   public void testInsertByStrAndSelectFailedData()
-      throws IoTDBConnectionException, StatementExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException, TTransportException {
     session = new Session("127.0.0.1", 6667, "root", "root", null);
     session.open();
 
@@ -184,7 +185,8 @@ public class SessionUT {
   }
 
   @Test
-  public void testSetTimeZone() throws StatementExecutionException, IoTDBConnectionException {
+  public void testSetTimeZone()
+      throws StatementExecutionException, IoTDBConnectionException, TTransportException {
     session = new Session("127.0.0.1", 6667, "root", "root", ZoneId.of("+05:00"));
     session.open();
     assertEquals("+05:00", session.getTimeZone());

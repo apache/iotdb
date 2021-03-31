@@ -22,6 +22,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
+import org.apache.thrift.transport.TTransportException;
 import org.apache.zeppelin.interpreter.InterpreterResult;
 import org.apache.zeppelin.interpreter.InterpreterResult.Code;
 import org.junit.After;
@@ -98,7 +99,7 @@ public class IoTDBInterpreterTest {
   }
 
   @After
-  public void close() throws IOException, StorageEngineException {
+  public void close() throws IOException, StorageEngineException, TTransportException {
     interpreter.close();
     EnvironmentUtils.cleanEnv();
   }

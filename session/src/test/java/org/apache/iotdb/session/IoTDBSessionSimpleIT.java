@@ -37,6 +37,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -78,7 +79,7 @@ public class IoTDBSessionSimpleIT {
 
   @Test
   public void testInsertByBlankStrAndInferType()
-      throws IoTDBConnectionException, StatementExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException, TTransportException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
@@ -105,7 +106,7 @@ public class IoTDBSessionSimpleIT {
 
   @Test
   public void testInsertPartialTablet()
-      throws IoTDBConnectionException, StatementExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException, TTransportException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
@@ -148,7 +149,7 @@ public class IoTDBSessionSimpleIT {
 
   @Test
   public void testInsertByStrAndInferType()
-      throws IoTDBConnectionException, StatementExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException, TTransportException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
@@ -185,7 +186,7 @@ public class IoTDBSessionSimpleIT {
 
   @Test
   public void testInsertWrongPathByStrAndInferType()
-      throws IoTDBConnectionException, StatementExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException, TTransportException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
@@ -215,7 +216,7 @@ public class IoTDBSessionSimpleIT {
 
   @Test
   public void testInsertIntoIllegalTimeseries()
-      throws IoTDBConnectionException, StatementExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException, TTransportException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
@@ -245,7 +246,7 @@ public class IoTDBSessionSimpleIT {
 
   @Test
   public void testInsertByObjAndNotInferType()
-      throws IoTDBConnectionException, StatementExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException, TTransportException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
@@ -288,7 +289,8 @@ public class IoTDBSessionSimpleIT {
 
   @Test
   public void testCreateMultiTimeseries()
-      throws IoTDBConnectionException, StatementExecutionException, MetadataException {
+      throws IoTDBConnectionException, StatementExecutionException, MetadataException,
+          TTransportException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
@@ -324,7 +326,8 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
-  public void testChineseCharacter() throws IoTDBConnectionException, StatementExecutionException {
+  public void testChineseCharacter()
+      throws IoTDBConnectionException, StatementExecutionException, TTransportException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
     if (!System.getProperty("sun.jnu.encoding").contains("UTF-8")) {
@@ -371,7 +374,7 @@ public class IoTDBSessionSimpleIT {
 
   @Test
   public void createTimeSeriesWithDoubleTicks()
-      throws IoTDBConnectionException, StatementExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException, TTransportException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
     if (!System.getProperty("sun.jnu.encoding").contains("UTF-8")) {
@@ -396,7 +399,8 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
-  public void createWrongTimeSeries() throws IoTDBConnectionException, StatementExecutionException {
+  public void createWrongTimeSeries()
+      throws IoTDBConnectionException, StatementExecutionException, TTransportException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
     if (!System.getProperty("sun.jnu.encoding").contains("UTF-8")) {
@@ -423,7 +427,7 @@ public class IoTDBSessionSimpleIT {
 
   @Test
   public void testDeleteNonExistTimeSeries()
-      throws StatementExecutionException, IoTDBConnectionException {
+      throws StatementExecutionException, IoTDBConnectionException, TTransportException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
     session.insertRecord(
@@ -442,7 +446,7 @@ public class IoTDBSessionSimpleIT {
 
   @Test
   public void testInsertOneDeviceRecords()
-      throws IoTDBConnectionException, StatementExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException, TTransportException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
     List<Long> times = new ArrayList<>();
@@ -493,7 +497,7 @@ public class IoTDBSessionSimpleIT {
 
   @Test
   public void testInsertOneDeviceRecordsWithOrder()
-      throws IoTDBConnectionException, StatementExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException, TTransportException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
     List<Long> times = new ArrayList<>();
@@ -545,7 +549,7 @@ public class IoTDBSessionSimpleIT {
 
   @Test(expected = BatchExecutionException.class)
   public void testInsertOneDeviceRecordsWithIncorrectOrder()
-      throws IoTDBConnectionException, StatementExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException, TTransportException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
     List<Long> times = new ArrayList<>();

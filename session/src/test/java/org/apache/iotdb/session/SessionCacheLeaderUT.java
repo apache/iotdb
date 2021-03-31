@@ -34,6 +34,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.apache.thrift.transport.TTransportException;
 import org.junit.Test;
 
 import java.time.ZoneId;
@@ -77,7 +78,8 @@ public class SessionCacheLeaderUT {
   }
 
   @Test
-  public void testSetStorageGroup() throws IoTDBConnectionException, StatementExecutionException {
+  public void testSetStorageGroup()
+      throws IoTDBConnectionException, StatementExecutionException, TTransportException {
     // without leader cache
     session = new MockSession("127.0.0.1", 55560, false);
     session.open();
@@ -109,7 +111,7 @@ public class SessionCacheLeaderUT {
 
   @Test
   public void testDeleteStorageGroups()
-      throws IoTDBConnectionException, StatementExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException, TTransportException {
     // without leader cache
     session = new MockSession("127.0.0.1", 55560, false);
     session.open();
@@ -154,7 +156,8 @@ public class SessionCacheLeaderUT {
   }
 
   @Test
-  public void testInsertRecord() throws IoTDBConnectionException, StatementExecutionException {
+  public void testInsertRecord()
+      throws IoTDBConnectionException, StatementExecutionException, TTransportException {
     // without leader cache
     session = new MockSession("127.0.0.1", 55560, false);
     session.open();
@@ -208,7 +211,7 @@ public class SessionCacheLeaderUT {
 
   @Test
   public void testInsertStringRecord()
-      throws IoTDBConnectionException, StatementExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException, TTransportException {
     // without leader cache
     session = new MockSession("127.0.0.1", 55560, false);
     session.open();
@@ -257,7 +260,8 @@ public class SessionCacheLeaderUT {
   }
 
   @Test
-  public void testInsertRecords() throws IoTDBConnectionException, StatementExecutionException {
+  public void testInsertRecords()
+      throws IoTDBConnectionException, StatementExecutionException, TTransportException {
     // without leader cache
     session = new MockSession("127.0.0.1", 55560, false);
     session.open();
@@ -361,7 +365,7 @@ public class SessionCacheLeaderUT {
 
   @Test
   public void testInsertStringRecords()
-      throws IoTDBConnectionException, StatementExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException, TTransportException {
     // without leader cache
     session = new MockSession("127.0.0.1", 55560, false);
     session.open();
@@ -451,7 +455,7 @@ public class SessionCacheLeaderUT {
 
   @Test
   public void testInsertRecordsOfOneDevice()
-      throws IoTDBConnectionException, StatementExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException, TTransportException {
     // without leader cache
     session = new MockSession("127.0.0.1", 55560, false);
     session.open();
@@ -523,7 +527,8 @@ public class SessionCacheLeaderUT {
   }
 
   @Test
-  public void testInsertTablet() throws IoTDBConnectionException, StatementExecutionException {
+  public void testInsertTablet()
+      throws IoTDBConnectionException, StatementExecutionException, TTransportException {
     // without leader cache
     session = new MockSession("127.0.0.1", 55560, false);
     session.open();
@@ -597,7 +602,8 @@ public class SessionCacheLeaderUT {
   }
 
   @Test
-  public void testInsertTablets() throws IoTDBConnectionException, StatementExecutionException {
+  public void testInsertTablets()
+      throws IoTDBConnectionException, StatementExecutionException, TTransportException {
     // without leader cache
     session = new MockSession("127.0.0.1", 55560, false);
     session.open();

@@ -37,6 +37,7 @@ import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Test;
 
@@ -51,7 +52,7 @@ public class FilePartitionedSnapshotLogManagerTest extends IoTDBTest {
 
   @Override
   @After
-  public void tearDown() throws IOException, StorageEngineException {
+  public void tearDown() throws IOException, StorageEngineException, TTransportException {
     super.tearDown();
   }
 

@@ -37,6 +37,7 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.thrift.transport.TTransportException;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -131,6 +132,8 @@ public class ExportCsv extends AbstractCsvTool {
       System.out.println("Invalid args: " + e.getMessage());
     } catch (IoTDBConnectionException | StatementExecutionException e) {
       System.out.println("Connect failed because " + e.getMessage());
+    } catch (TTransportException e) {
+      System.out.println("Transport failed because " + e.getMessage());
     } finally {
       reader.close();
       if (session != null) {

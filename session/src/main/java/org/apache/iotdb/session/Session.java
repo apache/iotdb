@@ -44,6 +44,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -241,16 +242,17 @@ public class Session {
     return this.fetchSize;
   }
 
-  public synchronized void open() throws IoTDBConnectionException {
+  public synchronized void open() throws IoTDBConnectionException, TTransportException {
     open(false, Config.DEFAULT_CONNECTION_TIMEOUT_MS);
   }
 
-  public synchronized void open(boolean enableRPCCompression) throws IoTDBConnectionException {
+  public synchronized void open(boolean enableRPCCompression)
+      throws IoTDBConnectionException, TTransportException {
     open(enableRPCCompression, Config.DEFAULT_CONNECTION_TIMEOUT_MS);
   }
 
   private synchronized void open(boolean enableRPCCompression, int connectionTimeoutInMs)
-      throws IoTDBConnectionException {
+      throws IoTDBConnectionException, TTransportException {
     if (!isClosed) {
       return;
     }
@@ -286,7 +288,8 @@ public class Session {
   }
 
   public SessionConnection constructSessionConnection(
-      Session session, EndPoint endpoint, ZoneId zoneId) throws IoTDBConnectionException {
+      Session session, EndPoint endpoint, ZoneId zoneId)
+      throws IoTDBConnectionException, TTransportException {
     return new SessionConnection(session, endpoint, zoneId);
   }
 
@@ -611,6 +614,8 @@ public class Session {
                 } catch (IoTDBConnectionException ex) {
                   tmp.set(ex);
                   return null;
+                } catch (TTransportException tex) {
+                  return null;
                 }
               });
       if (connection == null) {
@@ -633,6 +638,8 @@ public class Session {
                 } catch (IoTDBConnectionException ex) {
                   tmp.set(ex);
                   return null;
+                } catch (TTransportException tex) {
+                  return null;
                 }
               });
       if (connection == null) {
@@ -654,6 +661,8 @@ public class Session {
                   return sessionConnection;
                 } catch (IoTDBConnectionException ex) {
                   tmp.set(ex);
+                  return null;
+                } catch (TTransportException tex) {
                   return null;
                 }
               });

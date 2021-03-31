@@ -32,6 +32,7 @@ import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -71,7 +72,8 @@ public class IoTDBSessionComplexIT {
   }
 
   @Test
-  public void testInsertByStr() throws IoTDBConnectionException, StatementExecutionException {
+  public void testInsertByStr()
+      throws IoTDBConnectionException, StatementExecutionException, TTransportException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
@@ -103,7 +105,8 @@ public class IoTDBSessionComplexIT {
   }
 
   @Test
-  public void testInsertByObject() throws IoTDBConnectionException, StatementExecutionException {
+  public void testInsertByObject()
+      throws IoTDBConnectionException, StatementExecutionException, TTransportException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
@@ -132,7 +135,8 @@ public class IoTDBSessionComplexIT {
   }
 
   @Test
-  public void testAlignByDevice() throws IoTDBConnectionException, StatementExecutionException {
+  public void testAlignByDevice()
+      throws IoTDBConnectionException, StatementExecutionException, TTransportException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
@@ -164,7 +168,7 @@ public class IoTDBSessionComplexIT {
   @Test
   public void testBatchInsertSeqAndUnseq()
       throws SQLException, ClassNotFoundException, IoTDBConnectionException,
-          StatementExecutionException {
+          StatementExecutionException, TTransportException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
@@ -187,7 +191,7 @@ public class IoTDBSessionComplexIT {
   @Test
   public void testBatchInsert()
       throws StatementExecutionException, SQLException, ClassNotFoundException,
-          IoTDBConnectionException {
+          IoTDBConnectionException, TTransportException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
@@ -203,7 +207,8 @@ public class IoTDBSessionComplexIT {
   }
 
   @Test
-  public void testTestMethod() throws StatementExecutionException, IoTDBConnectionException {
+  public void testTestMethod()
+      throws StatementExecutionException, IoTDBConnectionException, TTransportException {
 
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
@@ -274,7 +279,8 @@ public class IoTDBSessionComplexIT {
   }
 
   @Test
-  public void testRawDataQuery() throws IoTDBConnectionException, StatementExecutionException {
+  public void testRawDataQuery()
+      throws IoTDBConnectionException, StatementExecutionException, TTransportException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
@@ -294,7 +300,7 @@ public class IoTDBSessionComplexIT {
     session = new Session("127.0.0.1", 6667, "root", "root");
     try {
       session.open();
-    } catch (IoTDBConnectionException e) {
+    } catch (IoTDBConnectionException | TTransportException e) {
       e.printStackTrace();
     }
     List<String> standard =
@@ -445,7 +451,7 @@ public class IoTDBSessionComplexIT {
     session = new Session("127.0.0.1", 6667, "root", "root");
     try {
       session.open();
-    } catch (IoTDBConnectionException e) {
+    } catch (IoTDBConnectionException | TTransportException e) {
       e.printStackTrace();
     }
 

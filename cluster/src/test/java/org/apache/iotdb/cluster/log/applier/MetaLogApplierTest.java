@@ -37,6 +37,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
+import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Test;
 
@@ -70,7 +71,7 @@ public class MetaLogApplierTest extends IoTDBTest {
 
   @Override
   @After
-  public void tearDown() throws IOException, StorageEngineException {
+  public void tearDown() throws IOException, StorageEngineException, TTransportException {
     testMetaGroupMember.stop();
     testMetaGroupMember.closeLogManager();
     super.tearDown();

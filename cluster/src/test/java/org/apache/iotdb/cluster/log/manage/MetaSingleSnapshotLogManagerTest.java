@@ -33,6 +33,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 
+import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -61,7 +62,8 @@ public class MetaSingleSnapshotLogManagerTest extends IoTDBTest {
   @Override
   @After
   public void tearDown()
-      throws java.io.IOException, org.apache.iotdb.db.exception.StorageEngineException {
+      throws java.io.IOException, org.apache.iotdb.db.exception.StorageEngineException,
+          TTransportException {
     logManager.close();
     super.tearDown();
   }

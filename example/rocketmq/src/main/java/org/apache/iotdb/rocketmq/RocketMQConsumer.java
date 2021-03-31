@@ -31,6 +31,7 @@ import org.apache.rocketmq.client.consumer.listener.MessageListenerOrderly;
 import org.apache.rocketmq.client.exception.MQClientException;
 import org.apache.rocketmq.common.consumer.ConsumeFromWhere;
 import org.apache.rocketmq.common.message.MessageExt;
+import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,7 +54,7 @@ public class RocketMQConsumer {
       int connectionPort,
       String user,
       String password)
-      throws IoTDBConnectionException, StatementExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException, TTransportException {
     this.producerGroup = producerGroup;
     this.serverAddresses = serverAddresses;
     this.consumer = new DefaultMQPushConsumer(producerGroup);
@@ -62,7 +63,8 @@ public class RocketMQConsumer {
   }
 
   public static void main(String[] args)
-      throws MQClientException, StatementExecutionException, IoTDBConnectionException {
+      throws MQClientException, StatementExecutionException, IoTDBConnectionException,
+          TTransportException {
     /** Instantiate with specified consumer group name and specify name server addresses. */
     RocketMQConsumer consumer =
         new RocketMQConsumer(
@@ -78,7 +80,7 @@ public class RocketMQConsumer {
   }
 
   private void initIoTDB(String host, int port, String user, String password)
-      throws IoTDBConnectionException, StatementExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException, TTransportException {
     if (host == null) {
       host = Constant.IOTDB_CONNECTION_HOST;
       port = Constant.IOTDB_CONNECTION_PORT;

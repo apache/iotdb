@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
+import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -290,7 +291,8 @@ public class IoTDBSessionIteratorIT {
     }
   }
 
-  private void prepareData() throws IoTDBConnectionException, StatementExecutionException {
+  private void prepareData()
+      throws IoTDBConnectionException, StatementExecutionException, TTransportException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 

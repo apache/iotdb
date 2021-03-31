@@ -24,6 +24,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 
+import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -136,7 +137,8 @@ public class ExportCsvTestIT extends AbstractScript {
 
   @Test
   public void testRawDataQuery()
-      throws IOException, StatementExecutionException, IoTDBConnectionException {
+      throws IOException, StatementExecutionException, IoTDBConnectionException,
+          TTransportException {
     final String[] expectCsv =
         new String[] {
           "Time,root.sg1.d1.s3,root.sg1.d1.s1,root.sg1.d1.s2", "abbe's,1.0,\"\\\"abc\\\",aa\""
@@ -172,7 +174,8 @@ public class ExportCsvTestIT extends AbstractScript {
 
   @Test
   public void testAggregationQuery()
-      throws StatementExecutionException, IoTDBConnectionException, IOException {
+      throws StatementExecutionException, IoTDBConnectionException, IOException,
+          TTransportException {
     final String[] expectCsv =
         new String[] {
           "Time,count(root.sg1.d1.s3),count(root.sg1.d1.s1),count(root.sg1.d1.s2)", "1,1,1"
@@ -206,7 +209,8 @@ public class ExportCsvTestIT extends AbstractScript {
     }
   }
 
-  private void prepareData() throws IoTDBConnectionException, StatementExecutionException {
+  private void prepareData()
+      throws IoTDBConnectionException, StatementExecutionException, TTransportException {
     Session session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 

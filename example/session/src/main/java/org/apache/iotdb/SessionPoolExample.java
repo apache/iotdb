@@ -25,6 +25,8 @@ import org.apache.iotdb.session.pool.SessionDataSetWrapper;
 import org.apache.iotdb.session.pool.SessionPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import org.apache.thrift.transport.TTransportException;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -36,7 +38,8 @@ public class SessionPoolExample {
   private static ExecutorService service;
 
   public static void main(String[] args)
-      throws StatementExecutionException, IoTDBConnectionException, InterruptedException {
+      throws StatementExecutionException, IoTDBConnectionException, InterruptedException,
+          TTransportException {
     pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3);
     service = Executors.newFixedThreadPool(10);
 
@@ -49,7 +52,8 @@ public class SessionPoolExample {
   }
 
   // more insert example, see SessionExample.java
-  private static void insertRecord() throws StatementExecutionException, IoTDBConnectionException {
+  private static void insertRecord()
+      throws StatementExecutionException, IoTDBConnectionException, TTransportException {
     String deviceId = "root.sg1.d1";
     List<String> measurements = new ArrayList<>();
     List<TSDataType> types = new ArrayList<>();
@@ -81,7 +85,9 @@ public class SessionPoolExample {
               while (wrapper.hasNext()) {
                 System.out.println(wrapper.next());
               }
-            } catch (IoTDBConnectionException | StatementExecutionException e) {
+            } catch (IoTDBConnectionException
+                | StatementExecutionException
+                | TTransportException e) {
               e.printStackTrace();
             } finally {
               // remember to close data set finally!
@@ -109,7 +115,9 @@ public class SessionPoolExample {
                 }
                 System.out.println(builder);
               }
-            } catch (IoTDBConnectionException | StatementExecutionException e) {
+            } catch (IoTDBConnectionException
+                | StatementExecutionException
+                | TTransportException e) {
               e.printStackTrace();
             } finally {
               // remember to close data set finally!

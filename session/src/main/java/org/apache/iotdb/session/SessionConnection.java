@@ -75,19 +75,19 @@ public class SessionConnection {
   public SessionConnection() {}
 
   public SessionConnection(Session session, EndPoint endPoint, ZoneId zoneId)
-      throws IoTDBConnectionException {
+      throws IoTDBConnectionException, TTransportException {
     this.session = session;
     this.endPoint = endPoint;
     this.zoneId = zoneId == null ? ZoneId.systemDefault() : zoneId;
     init(endPoint);
   }
 
-  private void init(EndPoint endPoint) throws IoTDBConnectionException {
+  private void init(EndPoint endPoint) throws IoTDBConnectionException, TTransportException {
     RpcTransportFactory.setInitialBufferCapacity(session.initialBufferCapacity);
     RpcTransportFactory.setMaxLength(session.maxFrameSize);
     transport =
         RpcTransportFactory.INSTANCE.getTransport(
-            new TSocket(endPoint.getIp(), endPoint.getPort(), session.connectionTimeoutInMs));
+            new TSocket(endPoint.getIp(), endPoint.getPort()));
 
     try {
       transport.open();
