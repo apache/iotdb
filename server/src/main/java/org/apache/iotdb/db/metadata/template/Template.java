@@ -148,4 +148,16 @@ public class Template {
   public String getMeasurementNodeName(String measurementName) {
     return schemaMap.get(measurementName).getMeasurementId();
   }
+
+  @Override
+  public boolean equals(Object t) {
+    if (this == t) {
+      return true;
+    }
+    if (t == null || getClass() != t.getClass()) {
+      return false;
+    }
+    Template that = (Template) t;
+    return this.name.equals(that.name) && this.schemaMap.equals(that.schemaMap);
+  }
 }

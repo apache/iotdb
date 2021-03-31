@@ -47,6 +47,7 @@ import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
@@ -55,7 +56,6 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -96,6 +96,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -218,6 +219,60 @@ public class CMManager extends MManager {
       }
     }
     return seriesType;
+  }
+
+  @Override
+  public Pair<List<PartialPath>, Map<String, Integer>> getSeriesSchemas(List<PartialPath> fullPaths)
+      throws MetadataException {
+    Map<MNode, PartialPath> nodeToPartialPath = new LinkedHashMap<>();
+    Map<MNode, List<Integer>> nodeToIndex = new LinkedHashMap<>();
+    for (int i = 0; i < fullPaths.size(); i++) {
+      PartialPath path = fullPaths.get(i);
+      MeasurementMNode node = getMeasurementMNode(path);
+      super.getNodeToPartialPath(node, nodeToPartialPath, nodeToIndex, path, i);
+    }
+    return getPair(fullPaths, nodeToPartialPath, nodeToIndex);
+  }
+
+  @Override
+  public IMeasurementSchema getSeriesSchema(PartialPath fullPath) throws MetadataException {
+    return super.getSeriesSchema(fullPath, getMeasurementMNode(fullPath));
+  }
+
+  private MeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
+    MeasurementMNode node = null;
+    // try remote cache first
+    try {
+      cacheLock.readLock().lock();
+      MeasurementMNode measurementMNode = mRemoteMetaCache.get(fullPath);
+      if (measurementMNode != null) {
+        node = measurementMNode;
+      }
+    } finally {
+      cacheLock.readLock().unlock();
+    }
+
+    if (node == null) {
+      // try local MTree
+      try {
+        node = (MeasurementMNode) super.getNodeByPath(fullPath);
+      } catch (PathNotExistException e) {
+        // pull from remote node
+        List<IMeasurementSchema> schemas =
+            metaPuller.pullMeasurementSchemas(Collections.singletonList(fullPath));
+        if (!schemas.isEmpty()) {
+          IMeasurementSchema measurementSchema = schemas.get(0);
+          MeasurementMNode measurementMNode =
+              new MeasurementMNode(
+                  null, measurementSchema.getMeasurementId(), measurementSchema, null);
+          cacheMeta(fullPath, measurementMNode);
+          node = measurementMNode;
+        } else {
+          throw e;
+        }
+      }
+    }
+    return node;
   }
 
   /**
@@ -407,6 +462,15 @@ public class CMManager extends MManager {
     }
   }
 
+  @Override
+  public Pair<MNode, Template> getDeviceNodeWithAutoCreate(PartialPath path)
+      throws MetadataException, IOException {
+    return getDeviceNodeWithAutoCreate(
+        path,
+        ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema(),
+        config.getDefaultStorageGroupLevel());
+  }
+
   private static class RemoteMetaCache extends LRUCache<PartialPath, MeasurementMNode> {
 
     RemoteMetaCache(int cacheSize) {
@@ -471,11 +535,6 @@ public class CMManager extends MManager {
     } else if (plan instanceof CreateTimeSeriesPlan) {
       storageGroups.addAll(
           getStorageGroups(Collections.singletonList(((CreateTimeSeriesPlan) plan).getPath())));
-    } else if (plan instanceof SetDeviceTemplatePlan) {
-      storageGroups.addAll(
-          getStorageGroups(
-              Collections.singletonList(
-                  new PartialPath(((SetDeviceTemplatePlan) plan).getPrefixPath()))));
     } else {
       storageGroups.addAll(getStorageGroups(plan.getPaths()));
     }
