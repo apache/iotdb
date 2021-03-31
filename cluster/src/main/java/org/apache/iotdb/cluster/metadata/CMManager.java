@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.metadata;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
+import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
@@ -122,6 +123,8 @@ public class CMManager extends MManager {
 
   private static final Logger logger = LoggerFactory.getLogger(CMManager.class);
 
+  private static final ClusterConfig clusterConfig = ClusterDescriptor.getInstance().getConfig();
+
   private ReentrantReadWriteLock cacheLock = new ReentrantReadWriteLock();
   // only cache the series who is writing, we need not to cache series who is reading
   // because the read is slow, so pull from remote is little cost comparing to the disk io
@@ -138,7 +141,9 @@ public class CMManager extends MManager {
     metaPuller = MetaPuller.getInstance();
     int remoteCacheSize = config.getmRemoteSchemaCacheSize();
     mRemoteMetaCache = new RemoteMetaCache(remoteCacheSize);
-    remotePathAliasCache = new RemotePathAliasCache(remoteCacheSize);
+    if (clusterConfig.isEnableQueryPathsCache()) {
+      remotePathAliasCache = new RemotePathAliasCache(remoteCacheSize);
+    }
   }
 
   private static class MManagerHolder {
@@ -1183,7 +1188,7 @@ public class CMManager extends MManager {
         result.addAll(allTimeseriesName);
       } else {
 
-        if (withAlias) {
+        if (withAlias && clusterConfig.isEnableQueryPathsCache()) {
           List<PartialPath> partialPaths =
               remotePathAliasCache.loadObjectByKey(sgPathEntry.getValue());
           if (partialPaths != null) {
@@ -1205,7 +1210,7 @@ public class CMManager extends MManager {
       }
     }
 
-    if (withAlias) {
+    if (withAlias && clusterConfig.isEnableQueryPathsCache()) {
       return result;
     }
     // query each data group separately

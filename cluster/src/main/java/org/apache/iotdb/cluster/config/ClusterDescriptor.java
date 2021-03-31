@@ -304,6 +304,11 @@ public class ClusterDescriptor {
             properties.getProperty(
                 "enable_query_redirect", String.valueOf(config.isEnableQueryRedirect()))));
 
+    config.setEnableQueryPathsCache(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_query_paths_cache", String.valueOf(config.isEnableQueryPathsCache()))));
+
     String consistencyLevel = properties.getProperty("consistency_level");
     if (consistencyLevel != null) {
       config.setConsistencyLevel(ConsistencyLevel.getConsistencyLevel(consistencyLevel));

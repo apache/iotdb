@@ -166,6 +166,12 @@ public class ClusterConfig {
 
   private boolean enableQueryRedirect = false;
 
+  /**
+   * IF the path is not updated frequently, you can enable cache to update the path every 1s
+   * improving the query performance by 14%
+   */
+  private boolean enableQueryPathsCache = false;
+
   public int getSelectorNumOfClientPool() {
     return selectorNumOfClientPool;
   }
@@ -476,5 +482,13 @@ public class ClusterConfig {
 
   public void setEnableQueryRedirect(boolean enableQueryRedirect) {
     this.enableQueryRedirect = enableQueryRedirect;
+  }
+
+  public boolean isEnableQueryPathsCache() {
+    return enableQueryPathsCache;
+  }
+
+  public void setEnableQueryPathsCache(boolean enableQueryPathsCache) {
+    this.enableQueryPathsCache = enableQueryPathsCache;
   }
 }
