@@ -1328,7 +1328,10 @@ public class MTree implements Serializable {
     }
 
     // template part
-    if (shouldUseTemplate && !(node instanceof MeasurementMNode) && node.getChildren().isEmpty()) {
+    if (shouldUseTemplate
+        && !(node instanceof MeasurementMNode)
+        && node.getDeviceTemplate() == null
+        && node.getChildren().isEmpty()) {
       if (upperTemplate != null) {
         HashSet<IMeasurementSchema> set = new HashSet<>();
         for (IMeasurementSchema schema : upperTemplate.getSchemaMap().values()) {

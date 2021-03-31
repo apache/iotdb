@@ -2186,7 +2186,7 @@ public class MManager {
   }
 
   private MeasurementMNode findTemplate(Pair<MNode, Template> deviceMNode, String measurement) {
-    if (deviceMNode.right != null) {
+    if (deviceMNode.left.getDeviceTemplate() == null && deviceMNode.right != null) {
       Map<String, IMeasurementSchema> templateMap = deviceMNode.right.getSchemaMap();
       List<String> measurements =
           Arrays.asList(measurement.replace("(", "").replace(")", "").split(","));
