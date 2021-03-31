@@ -28,13 +28,16 @@ public abstract class LRUCache<K, T> implements Cache<K, T> {
   protected Map<K, T> cache;
 
   public LRUCache(int cacheSize) {
-    this.cache =
-        new LinkedHashMap<K, T>(cacheSize, 0.75f, true) {
-          @Override
-          protected boolean removeEldestEntry(Map.Entry eldest) {
-            return size() > cacheSize;
-          }
-        };
+    this.cache = initCache(cacheSize);
+  }
+
+  protected Map<K, T> initCache(int cacheSize) {
+    return new LinkedHashMap<K, T>(cacheSize, 0.75f, true) {
+      @Override
+      protected boolean removeEldestEntry(Map.Entry eldest) {
+        return size() > cacheSize;
+      }
+    };
   }
 
   @Override

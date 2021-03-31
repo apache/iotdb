@@ -167,7 +167,7 @@ public class ClusterConfig {
   private boolean enableQueryRedirect = false;
 
   /**
-   * IF the path is not updated frequently, you can enable cache to update the path every 1s
+   * If the path is not updated frequently, you can enable cache to update the path every 1s
    * improving the query performance by 14%
    */
   private boolean enableQueryPathsCache = false;

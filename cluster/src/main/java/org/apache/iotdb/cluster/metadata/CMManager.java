@@ -97,6 +97,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -109,6 +110,7 @@ import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -448,14 +450,33 @@ public class CMManager extends MManager {
   }
 
   private class RemotePathAliasCache extends LRUCache<String, List<PartialPath>> {
+    private long valueSizeThreshold;
+    private AtomicLong valueSize = new AtomicLong(0);
+
     private ScheduledExecutorService periodExecutorService;
     private ExecutorService executorService = Executors.newFixedThreadPool(4);
 
     RemotePathAliasCache(int cacheSize) {
       super(cacheSize);
+      valueSizeThreshold = cacheSize * 100;
       periodExecutorService = Executors.newSingleThreadScheduledExecutor();
       periodExecutorService.scheduleWithFixedDelay(
           this::executeCacheUpdate, 1000, 1000, TimeUnit.MILLISECONDS);
+    }
+
+    protected Map<String, List<PartialPath>> initCache(int cacheSize) {
+      return new LinkedHashMap<String, List<PartialPath>>(cacheSize, 0.75f, true) {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry eldest) {
+          return size() > cacheSize || valueSize.get() > valueSizeThreshold;
+        }
+      };
+    }
+
+    public synchronized void put(String key, List<PartialPath> value) {
+      // Statistic value size
+      valueSize.set(valueSize.addAndGet(value.size()));
+      cache.put(key, value);
     }
 
     @Override
@@ -1189,8 +1210,13 @@ public class CMManager extends MManager {
       } else {
 
         if (withAlias && clusterConfig.isEnableQueryPathsCache()) {
-          List<PartialPath> partialPaths =
-              remotePathAliasCache.loadObjectByKey(sgPathEntry.getValue());
+          List<PartialPath> partialPaths = null;
+          try {
+            partialPaths = remotePathAliasCache.get(sgPathEntry.getValue());
+          } catch (IOException e) {
+            logger.warn(
+                "Failed to get partial Paths from cache, path is {}", sgPathEntry.getValue(), e);
+          }
           if (partialPaths != null) {
             result.addAll(partialPaths);
             continue;
