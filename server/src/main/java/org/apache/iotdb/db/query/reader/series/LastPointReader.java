@@ -105,7 +105,7 @@ public class LastPointReader {
 
   /** Pick up and cache the last sequence TimeseriesMetadata that satisfies timeFilter */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private void cacheLastFromSeqFiles() throws IOException {
+  protected void cacheLastFromSeqFiles() throws IOException {
     List<TsFileResource> seqFileResource = dataSource.getSeqResources();
     TimeseriesMetadata lastMetadata;
     for (int index = seqFileResource.size() - 1; index >= 0; index--) {
