@@ -26,9 +26,11 @@ import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.query.filter.SlotTsFileFilter;
 import org.apache.iotdb.cluster.query.manage.ClusterQueryManager;
 import org.apache.iotdb.cluster.query.reader.ClusterReaderFactory;
+import org.apache.iotdb.cluster.query.reader.mult.IMultBatchReader;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.LastQueryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.MultSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
@@ -70,6 +72,8 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -79,6 +83,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.apache.iotdb.session.Config.DEFAULT_FETCH_SIZE;
@@ -102,24 +107,19 @@ public class LocalQueryExecutor {
     return ((CMManager) IoTDB.metaManager);
   }
 
-  /**
-   * Return the data of the reader whose id is "readerId", using timestamps in "timeBuffer".
-   *
-   * @param readerId
-   * @param time
-   */
-  public ByteBuffer fetchSingleSeriesByTimestamp(long readerId, long time)
+  /** Return the data of the reader whose id is "readerId", using timestamps in "timeBuffer". */
+  public ByteBuffer fetchSingleSeriesByTimestamps(long readerId, long[] timestamps, int length)
       throws ReaderNotFoundException, IOException {
     IReaderByTimestamp reader = dataGroupMember.getQueryManager().getReaderByTimestamp(readerId);
     if (reader == null) {
       throw new ReaderNotFoundException(readerId);
     }
-    Object value = reader.getValueInTimestamp(time);
-    if (value != null) {
+    Object[] values = reader.getValuesInTimestamps(timestamps, length);
+    if (values != null) {
       ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
       DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
 
-      SerializeUtils.serializeObject(value, dataOutputStream);
+      SerializeUtils.serializeObjects(values, dataOutputStream);
       return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
     } else {
       return ByteBuffer.allocate(0);
@@ -153,6 +153,45 @@ public class LocalQueryExecutor {
     } else {
       return ByteBuffer.allocate(0);
     }
+  }
+
+  /**
+   * Fetch a batch from the reader whose id is "readerId".
+   *
+   * @param readerId reader id
+   * @param paths mult series path
+   */
+  public Map<String, ByteBuffer> fetchMultSeries(long readerId, List<String> paths)
+      throws ReaderNotFoundException, IOException {
+    IMultBatchReader reader =
+        (IMultBatchReader) dataGroupMember.getQueryManager().getReader(readerId);
+    if (reader == null) {
+      throw new ReaderNotFoundException(readerId);
+    }
+
+    Map<String, ByteBuffer> pathByteBuffers = Maps.newHashMap();
+
+    for (String path : paths) {
+      ByteBuffer byteBuffer = null;
+      if (reader.hasNextBatch(path)) {
+        BatchData batchData = reader.nextBatch(path);
+
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+
+        SerializeUtils.serializeBatchData(batchData, dataOutputStream);
+        logger.debug(
+            "{}: Send results of reader {}, size:{}",
+            dataGroupMember.getName(),
+            readerId,
+            batchData.length());
+        byteBuffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+      } else {
+        byteBuffer = ByteBuffer.allocate(0);
+      }
+      pathByteBuffers.put(path, byteBuffer);
+    }
+    return pathByteBuffers;
   }
 
   /**
@@ -231,6 +270,105 @@ public class LocalQueryExecutor {
           "{}: There is no data of {} for {}#{}",
           name,
           path,
+          request.getRequester(),
+          request.getQueryId());
+
+      if (batchReader != null) {
+        batchReader.close();
+      }
+      return -1;
+    }
+  }
+
+  /**
+   * Create an IBatchReader of a path, register it in the query manager to get a reader id for it
+   * and send the id back to the requester. If the reader does not have any data, an id of -1 will
+   * be returned.
+   *
+   * @param request
+   */
+  public long queryMultSeries(MultSeriesQueryRequest request)
+      throws CheckConsistencyException, QueryProcessException, StorageEngineException, IOException {
+    logger.debug(
+        "{}: {} is querying {}, queryId: {}",
+        name,
+        request.getRequester(),
+        request.getPath(),
+        request.getQueryId());
+    dataGroupMember.syncLeaderWithConsistencyCheck(false);
+
+    List<PartialPath> paths = Lists.newArrayList();
+    request
+        .getPath()
+        .forEach(
+            fullPath -> {
+              try {
+                paths.add(new PartialPath(fullPath));
+              } catch (IllegalPathException e) {
+                logger.warn("Failed to create partial path, fullPath is {}.", fullPath, e);
+              }
+            });
+
+    List<TSDataType> dataTypes = Lists.newArrayList();
+    request
+        .getDataTypeOrdinal()
+        .forEach(
+            dataType -> {
+              dataTypes.add(TSDataType.values()[dataType]);
+            });
+
+    Filter timeFilter = null;
+    Filter valueFilter = null;
+    if (request.isSetTimeFilterBytes()) {
+      timeFilter = FilterFactory.deserialize(request.timeFilterBytes);
+    }
+    if (request.isSetValueFilterBytes()) {
+      valueFilter = FilterFactory.deserialize(request.valueFilterBytes);
+    }
+    Map<String, Set<String>> deviceMeasurements = request.getDeviceMeasurements();
+
+    // the same query from a requester correspond to a context here
+    RemoteQueryContext queryContext =
+        queryManager.getQueryContext(
+            request.getRequester(),
+            request.getQueryId(),
+            request.getFetchSize(),
+            request.getDeduplicatedPathNum());
+    logger.debug(
+        "{}: local queryId for {}#{} is {}",
+        name,
+        request.getQueryId(),
+        request.getPath(),
+        queryContext.getQueryId());
+    IBatchReader batchReader =
+        readerFactory.getMultSeriesBatchReader(
+            paths,
+            deviceMeasurements,
+            dataTypes,
+            timeFilter,
+            valueFilter,
+            queryContext,
+            dataGroupMember,
+            request.ascending);
+
+    // if the reader contains no data, send a special id of -1 to prevent the requester from
+    // meaninglessly fetching data
+    if (batchReader != null && batchReader.hasNextBatch()) {
+      long readerId = queryManager.registerReader(batchReader);
+      queryContext.registerLocalReader(readerId);
+      logger.debug(
+          "{}: Build a reader of {} for {}#{}, readerId: {}",
+          name,
+          paths,
+          request.getRequester(),
+          request.getQueryId(),
+          readerId);
+      return readerId;
+    } else {
+      logger.debug(
+          "{}: There is no data of {} for {}#{}",
+          name,
+          paths,
           request.getRequester(),
           request.getQueryId());
 

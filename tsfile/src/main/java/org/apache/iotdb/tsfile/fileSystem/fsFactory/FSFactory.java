@@ -24,6 +24,7 @@ import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.IOException;
 import java.net.URI;
 
 public interface FSFactory {
@@ -128,4 +129,11 @@ public interface FSFactory {
    * @return list of files
    */
   File[] listFilesByPrefix(String fileFolder, String prefix);
+
+  /**
+   * delete the file if it exists
+   *
+   * @param file local file or HDFS file
+   */
+  boolean deleteIfExists(File file) throws IOException;
 }

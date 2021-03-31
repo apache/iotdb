@@ -126,6 +126,7 @@ public class TestUtils {
       Log log = new LargeTestLog();
       log.setCurrLogIndex(i);
       log.setCurrLogTerm(i);
+      log.setByteSize(8192);
       logList.add(log);
     }
     return logList;

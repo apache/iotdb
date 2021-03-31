@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.jdbc;
 
+import org.apache.iotdb.rpc.RpcUtils;
+
 public class IoTDBConnectionParams {
 
   private String host = Config.IOTDB_DEFAULT_HOST;
@@ -27,8 +29,8 @@ public class IoTDBConnectionParams {
   private String username = Config.DEFAULT_USER;
   private String password = Config.DEFAULT_PASSWORD;
 
-  private int initialBufferCapacity = Config.DEFAULT_INITIAL_BUFFER_CAPACITY;
-  private int maxFrameSize = Config.DEFAULT_MAX_FRAME_SIZE;
+  private int thriftDefaultBufferSize = RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY;
+  private int thriftMaxFrameSize = RpcUtils.THRIFT_FRAME_MAX_SIZE;
 
   public IoTDBConnectionParams(String url) {
     this.jdbcUriString = url;
@@ -82,19 +84,19 @@ public class IoTDBConnectionParams {
     this.password = password;
   }
 
-  public int getInitialBufferCapacity() {
-    return initialBufferCapacity;
+  public int getThriftDefaultBufferSize() {
+    return thriftDefaultBufferSize;
   }
 
-  public void setInitialBufferCapacity(int initialBufferCapacity) {
-    this.initialBufferCapacity = initialBufferCapacity;
+  public void setThriftDefaultBufferSize(int thriftDefaultBufferSize) {
+    this.thriftDefaultBufferSize = thriftDefaultBufferSize;
   }
 
-  public int getMaxFrameSize() {
-    return maxFrameSize;
+  public int getThriftMaxFrameSize() {
+    return thriftMaxFrameSize;
   }
 
-  public void setMaxFrameSize(int maxFrameSize) {
-    this.maxFrameSize = maxFrameSize;
+  public void setThriftMaxFrameSize(int thriftMaxFrameSize) {
+    this.thriftMaxFrameSize = thriftMaxFrameSize;
   }
 }
