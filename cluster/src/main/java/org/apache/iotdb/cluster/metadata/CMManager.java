@@ -144,7 +144,7 @@ public class CMManager extends MManager {
     int remoteCacheSize = config.getmRemoteSchemaCacheSize();
     mRemoteMetaCache = new RemoteMetaCache(remoteCacheSize);
     if (clusterConfig.isEnableQueryPathsCache()) {
-      remotePathAliasCache = new RemotePathAliasCache(remoteCacheSize);
+      remotePathAliasCache = new RemotePathAliasCache(clusterConfig.getQueryPathsCacheSize());
     }
   }
 
@@ -453,38 +453,48 @@ public class CMManager extends MManager {
     private long valueSizeThreshold;
     private AtomicLong valueSize = new AtomicLong(0);
 
+    // period executor thread
     private ScheduledExecutorService periodExecutorService;
+
+    // executor every partition group update cache
     private ExecutorService executorService = Executors.newFixedThreadPool(4);
+
+    private int cacheUpdateInteval;
 
     RemotePathAliasCache(int cacheSize) {
       super(cacheSize);
       valueSizeThreshold = cacheSize * 100;
       periodExecutorService = Executors.newSingleThreadScheduledExecutor();
+
+      cacheUpdateInteval = clusterConfig.getQueryPathsCacheUpdateInterval();
       periodExecutorService.scheduleWithFixedDelay(
-          this::executeCacheUpdate, 1000, 1000, TimeUnit.MILLISECONDS);
+          this::executeCacheUpdate, cacheUpdateInteval, cacheUpdateInteval, TimeUnit.MILLISECONDS);
     }
 
     protected Map<String, List<PartialPath>> initCache(int cacheSize) {
       return new LinkedHashMap<String, List<PartialPath>>(cacheSize, 0.75f, true) {
         @Override
         protected boolean removeEldestEntry(Map.Entry eldest) {
-          return size() > cacheSize || valueSize.get() > valueSizeThreshold;
+          boolean isRemoveEldest = size() > cacheSize || valueSize.get() > valueSizeThreshold;
+          if (isRemoveEldest) {
+            // get eldest Entry value
+            long size = cache.entrySet().iterator().next().getValue().size();
+            valueSize.addAndGet(size * -1);
+          }
+          return isRemoveEldest;
         }
       };
     }
 
     public synchronized void put(String key, List<PartialPath> value) {
       // Statistic value size
-      valueSize.set(valueSize.addAndGet(value.size()));
+      valueSize.addAndGet(value.size());
       cache.put(key, value);
     }
 
     @Override
-    protected synchronized List<PartialPath> loadObjectByKey(String key) {
-      if (cache.containsKey(key)) {
-        return cache.get(key);
-      }
-      return null;
+    protected List<PartialPath> loadObjectByKey(String key) {
+      return cache.get(key);
     }
 
     public void executeCacheUpdate() {
@@ -497,6 +507,7 @@ public class CMManager extends MManager {
           storageGroup = IoTDB.metaManager.getStorageGroupPath(new PartialPath(fullPath));
         } catch (StorageGroupNotSetException | IllegalPathException e) {
           logger.warn("Failed to get storage group path, fullPath is {}", fullPath, e);
+          continue;
         }
 
         PartitionGroup partitionGroup =
@@ -506,19 +517,19 @@ public class CMManager extends MManager {
       logger.debug("Start to execute cache updating");
 
       for (Map.Entry<PartitionGroup, List<String>> entry : partitionGroupListMap.entrySet()) {
-        this.executorService.execute(
-            new PeriodUpdateCache(entry.getKey(), entry.getValue(), getRemotePathAliasCache()));
+        this.executorService.submit(
+            new PeriodUpdateCacheTask(entry.getKey(), entry.getValue(), getRemotePathAliasCache()));
       }
     }
   }
 
-  class PeriodUpdateCache extends Thread {
+  class PeriodUpdateCacheTask implements Runnable {
     private PartitionGroup partitionGroup;
     private List<String> fullPaths;
 
     private RemotePathAliasCache remotePathAliasCache;
 
-    public PeriodUpdateCache(
+    public PeriodUpdateCacheTask(
         PartitionGroup partitionGroup,
         List<String> paths,
         RemotePathAliasCache remotePathAliasCache) {

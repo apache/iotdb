@@ -309,6 +309,17 @@ public class ClusterDescriptor {
             properties.getProperty(
                 "enable_query_paths_cache", String.valueOf(config.isEnableQueryPathsCache()))));
 
+    config.setQueryPathsCacheSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "query_paths_cache_size", String.valueOf(config.getQueryPathsCacheSize()))));
+
+    config.setQueryPathsCacheUpdateInterval(
+        Integer.parseInt(
+            properties.getProperty(
+                "query_paths_cache_update_interval",
+                String.valueOf(config.getQueryPathsCacheUpdateInterval()))));
+
     String consistencyLevel = properties.getProperty("consistency_level");
     if (consistencyLevel != null) {
       config.setConsistencyLevel(ConsistencyLevel.getConsistencyLevel(consistencyLevel));

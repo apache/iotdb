@@ -170,7 +170,19 @@ public class ClusterConfig {
    * If the path is not updated frequently, you can enable cache to update the path every 1s
    * improving the query performance by 14%
    */
-  private boolean enableQueryPathsCache = false;
+  private boolean enableQueryPathsCache = true;
+
+  /**
+   * When enable_query_paths_cache is true, this parameter effective. query paths cache size,
+   * default value is 1000
+   */
+  private int queryPathsCacheSize = 1000;
+
+  /**
+   * When enable_query_paths_cache is true, this parameter effective. cache update interval time,
+   * default value is 1000 ms
+   */
+  private int queryPathsCacheUpdateInterval = 1000;
 
   public int getSelectorNumOfClientPool() {
     return selectorNumOfClientPool;
@@ -490,5 +502,21 @@ public class ClusterConfig {
 
   public void setEnableQueryPathsCache(boolean enableQueryPathsCache) {
     this.enableQueryPathsCache = enableQueryPathsCache;
+  }
+
+  public int getQueryPathsCacheSize() {
+    return queryPathsCacheSize;
+  }
+
+  public void setQueryPathsCacheSize(int queryPathsCacheSize) {
+    this.queryPathsCacheSize = queryPathsCacheSize;
+  }
+
+  public int getQueryPathsCacheUpdateInterval() {
+    return queryPathsCacheUpdateInterval;
+  }
+
+  public void setQueryPathsCacheUpdateInterval(int queryPathsCacheUpdateInterval) {
+    this.queryPathsCacheUpdateInterval = queryPathsCacheUpdateInterval;
   }
 }
