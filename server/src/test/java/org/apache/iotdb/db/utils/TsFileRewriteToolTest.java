@@ -186,7 +186,7 @@ public class TsFileRewriteToolTest {
     TsFileResource tsFileResource = new TsFileResource(tsFile);
     List<TsFileResource> splitResource = new ArrayList<>();
     try {
-      TsFileRewriteTool.rewriteTsfile(tsFileResource, splitResource);
+      TsFileRewriteTool.rewriteTsFile(tsFileResource, splitResource);
     } catch (IOException | WriteProcessException e) {
       Assert.fail(e.getMessage());
     }

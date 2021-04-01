@@ -986,7 +986,7 @@ public class PlanExecutor implements IPlanExecutor {
         tsFileResource.getTimePartitionWithCheck();
       } catch (PartitionViolationException e) {
         logger.info("try to split the tsfile={}", tsFileResource.getTsFile().getPath());
-        TsFileRewriteTool.rewriteTsfile(tsFileResource, splitResources);
+        TsFileRewriteTool.rewriteTsFile(tsFileResource, splitResources);
         logger.info(
             "after split, the old tsfile was split to {} new tsfiles", splitResources.size());
       }

@@ -112,7 +112,7 @@ public class TsFileRewriteTool implements AutoCloseable {
    * @param resourceToBeRewritten the tsfile which to be rewrite
    * @param rewrittenResources the rewritten files
    */
-  public static void rewriteTsfile(
+  public static void rewriteTsFile(
       TsFileResource resourceToBeRewritten, List<TsFileResource> rewrittenResources)
       throws IOException, WriteProcessException {
     try (TsFileRewriteTool rewriteTool = new TsFileRewriteTool(resourceToBeRewritten)) {
