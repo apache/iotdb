@@ -1189,6 +1189,7 @@ public class MManagerBasicTest {
       SetDeviceTemplatePlan setDeviceTemplatePlan =
           new SetDeviceTemplatePlan("template1", "root.laptop.d1");
       manager.setDeviceTemplate(setDeviceTemplatePlan);
+      manager.getDeviceNode(new PartialPath("root.laptop.d1")).setUseTemplate(true);
 
       // show timeseries root.laptop.d1.s0
       ShowTimeSeriesPlan showTimeSeriesPlan =
