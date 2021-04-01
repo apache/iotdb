@@ -1239,7 +1239,7 @@ public class StorageGroupProcessor {
   }
 
   private String getNewTsFileName(long time, long version, int mergeCnt) {
-    return time + FILE_NAME_SEPARATOR + version + FILE_NAME_SEPARATOR + mergeCnt + TSFILE_SUFFIX;
+    return TsFileResource.getNewTsFileName(System.currentTimeMillis(), version, 0, 0);
   }
 
   public void syncCloseOneTsFileProcessor(boolean sequence, TsFileProcessor tsFileProcessor) {
@@ -2468,7 +2468,8 @@ public class StorageGroupProcessor {
       return tsfileName;
     }
 
-    return getNewTsFileName(preTime + ((subsequenceTime - preTime) >> 1), subsequenceVersion, 0);
+    return TsFileResource.getNewTsFileName(
+        preTime + ((subsequenceTime - preTime) >> 1), subsequenceVersion, 0, 0);
   }
 
   /**

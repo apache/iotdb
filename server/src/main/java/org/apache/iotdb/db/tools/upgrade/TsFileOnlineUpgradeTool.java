@@ -23,6 +23,11 @@ import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.tools.TsFileRewriteTool;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
+import org.apache.iotdb.tsfile.exception.write.PageException;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
@@ -68,7 +73,7 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool implements AutoCl
    * upgrade a single TsFile.
    *
    * @param resourceToBeUpgraded the old file's resource which need to be upgrade.
-   * @param upgradedResources new version tsFiles' resources
+   * @param upgradedResources    new version tsFiles' resources
    */
   public static void upgradeOneTsfile(
       TsFileResource resourceToBeUpgraded, List<TsFileResource> upgradedResources)
@@ -143,7 +148,7 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool implements AutoCl
                       // statistics bytes size
                       // new boolean StatsSize is 8 bytes larger than old one
                       + (pageHeader.getStatistics().getStatsSize()
-                          - (dataType == TSDataType.BOOLEAN ? 8 : 0))
+                      - (dataType == TSDataType.BOOLEAN ? 8 : 0))
                       // page data bytes
                       + pageHeader.getCompressedSize());
             }
@@ -236,6 +241,16 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool implements AutoCl
     }
   }
 
+
+  /**
+   * TsFileName is changing like from 1610635230693-1-0.tsfile to 1610635230693-1-0-0.tsfile
+   */
+  @Override
+  public String upgradeTsFileName(String oldTsFileName) {
+    String[] name = oldTsFileName.split(TsFileConstant.TSFILE_SUFFIX);
+    return name[0] + "-0" + TsFileConstant.TSFILE_SUFFIX;
+  }
+
   @Override
   protected void decodeAndWritePageInToFiles(
       MeasurementSchema schema,
@@ -249,7 +264,9 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool implements AutoCl
     rewritePageIntoFiles(batchData, schema, chunkWritersInChunkGroup);
   }
 
-  /** check if the file to be upgraded has correct magic strings and version number */
+  /**
+   * check if the file to be upgraded has correct magic strings and version number
+   */
   @Override
   protected boolean fileCheck() throws IOException {
     String magic = reader.readHeadMagic();

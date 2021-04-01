@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -69,7 +70,9 @@ public class TsFileRewriteTool implements AutoCloseable {
   protected List<Modification> oldModification;
   protected Iterator<Modification> modsIterator;
 
-  /** new tsFile writer -> list of new modification */
+  /**
+   * new tsFile writer -> list of new modification
+   */
   protected Map<TsFileIOWriter, ModificationFile> fileModificationMap;
 
   protected Deletion currentMod;
@@ -79,13 +82,19 @@ public class TsFileRewriteTool implements AutoCloseable {
           TSDataType.INT64);
   protected Decoder valueDecoder;
 
-  /** PartitionId -> TsFileIOWriter */
+  /**
+   * PartitionId -> TsFileIOWriter
+   */
   protected Map<Long, TsFileIOWriter> partitionWriterMap;
 
-  /** Maximum index of plans executed within this TsFile. */
+  /**
+   * Maximum index of plans executed within this TsFile.
+   */
   protected long maxPlanIndex = Long.MIN_VALUE;
 
-  /** Minimum index of plans executed within this TsFile. */
+  /**
+   * Minimum index of plans executed within this TsFile.
+   */
   protected long minPlanIndex = Long.MAX_VALUE;
 
   /**
@@ -110,7 +119,7 @@ public class TsFileRewriteTool implements AutoCloseable {
    * Rewrite an old file to the latest version
    *
    * @param resourceToBeRewritten the tsfile which to be rewrite
-   * @param rewrittenResources the rewritten files
+   * @param rewrittenResources    the rewritten files
    */
   public static void rewriteTsFile(
       TsFileResource resourceToBeRewritten, List<TsFileResource> rewrittenResources)
@@ -280,7 +289,7 @@ public class TsFileRewriteTool implements AutoCloseable {
         || dataType == TSDataType.TEXT
         || (dataType == TSDataType.INT32 && encoding == TSEncoding.PLAIN)
         || StorageEngine.getTimePartition(pageHeader.getStartTime())
-            != StorageEngine.getTimePartition(pageHeader.getEndTime());
+        != StorageEngine.getTimePartition(pageHeader.getEndTime());
   }
 
   /**
@@ -330,6 +339,10 @@ public class TsFileRewriteTool implements AutoCloseable {
     }
   }
 
+  public String upgradeTsFileName(String oldTsFileName) {
+    return oldTsFileName;
+  }
+
   protected TsFileIOWriter getOrDefaultTsFileIOWriter(File oldTsFile, long partition) {
     return partitionWriterMap.computeIfAbsent(
         partition,
@@ -342,7 +355,7 @@ public class TsFileRewriteTool implements AutoCloseable {
           }
           File newFile =
               FSFactoryProducer.getFSFactory()
-                  .getFile(partitionDir + File.separator + oldTsFile.getName());
+                  .getFile(partitionDir + File.separator + upgradeTsFileName(oldTsFile.getName()));
           try {
             if (newFile.exists()) {
               logger.debug("delete uncomplated file {}", newFile);
@@ -435,7 +448,9 @@ public class TsFileRewriteTool implements AutoCloseable {
     }
   }
 
-  /** check if the file has correct magic strings and version number */
+  /**
+   * check if the file has correct magic strings and version number
+   */
   protected boolean fileCheck() throws IOException {
     String magic = reader.readHeadMagic();
     if (!magic.equals(TSFileConfig.MAGIC_STRING)) {

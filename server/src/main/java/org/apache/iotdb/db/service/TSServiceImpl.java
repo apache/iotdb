@@ -83,8 +83,10 @@ import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
+import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
@@ -123,6 +125,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.thrift.TException;
@@ -170,6 +173,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private static final String INFO_QUERY_PROCESS_ERROR = "Error occurred in query process: ";
   private static final String INFO_NOT_ALLOWED_IN_BATCH_ERROR =
       "The query statement is not allowed in batch: ";
+
+  private static final String INFO_INTERRUPT_ERROR =
+      "Current Thread interrupted when dealing with request {}";
 
   private static final int MAX_SIZE =
       IoTDBDescriptor.getInstance().getConfig().getQueryCacheSizeInMetric();
@@ -446,7 +452,83 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         result.set(startIndex + entry.getKey(), entry.getValue());
       }
     }
-    return tsStatus.equals(RpcUtils.SUCCESS_STATUS);
+    return tsStatus.getCode() == RpcUtils.SUCCESS_STATUS.getCode();
+  }
+
+  private boolean executeMultiTimeSeriesPlan(
+      CreateMultiTimeSeriesPlan multiPlan, List<TSStatus> result) {
+    long t1 = System.currentTimeMillis();
+    TSStatus tsStatus = executeNonQueryPlan(multiPlan);
+    Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_MULTI_TIMESERIES_PLAN_IN_BATCH, t1);
+
+    int startIndex = result.size();
+    if (startIndex > 0) {
+      startIndex = startIndex - 1;
+    }
+    for (int k = 0; k < multiPlan.getPaths().size(); k++) {
+      result.add(RpcUtils.SUCCESS_STATUS);
+    }
+    if (tsStatus.subStatus != null) {
+      for (Entry<Integer, TSStatus> entry : multiPlan.getResults().entrySet()) {
+        result.set(startIndex + entry.getKey(), entry.getValue());
+      }
+    }
+    return tsStatus.getCode() == RpcUtils.SUCCESS_STATUS.getCode();
+  }
+
+  private void initMultiTimeSeriesPlan(CreateMultiTimeSeriesPlan multiPlan) {
+    if (multiPlan.getPaths() == null) {
+      List<PartialPath> paths = new ArrayList<>();
+      List<TSDataType> tsDataTypes = new ArrayList<>();
+      List<TSEncoding> tsEncodings = new ArrayList<>();
+      List<CompressionType> tsCompressionTypes = new ArrayList<>();
+      List<Map<String, String>> tagsList = new ArrayList<>();
+      List<Map<String, String>> attributesList = new ArrayList<>();
+      List<String> aliasList = new ArrayList<>();
+      multiPlan.setPaths(paths);
+      multiPlan.setDataTypes(tsDataTypes);
+      multiPlan.setEncodings(tsEncodings);
+      multiPlan.setCompressors(tsCompressionTypes);
+      multiPlan.setTags(tagsList);
+      multiPlan.setAttributes(attributesList);
+      multiPlan.setAlias(aliasList);
+    }
+  }
+
+  private void setMultiTimeSeriesPlan(
+      CreateMultiTimeSeriesPlan multiPlan, CreateTimeSeriesPlan createTimeSeriesPlan) {
+    PartialPath path = createTimeSeriesPlan.getPath();
+    TSDataType type = createTimeSeriesPlan.getDataType();
+    TSEncoding encoding = createTimeSeriesPlan.getEncoding();
+    CompressionType compressor = createTimeSeriesPlan.getCompressor();
+    Map<String, String> tags = createTimeSeriesPlan.getTags();
+    Map<String, String> attributes = createTimeSeriesPlan.getAttributes();
+    String alias = createTimeSeriesPlan.getAlias();
+
+    multiPlan.getPaths().add(path);
+    multiPlan.getDataTypes().add(type);
+    multiPlan.getEncodings().add(encoding);
+    multiPlan.getCompressors().add(compressor);
+    multiPlan.getTags().add(tags);
+    multiPlan.getAttributes().add(attributes);
+    multiPlan.getAlias().add(alias);
+  }
+
+  private boolean executeBatchList(List executeList, List<TSStatus> result) {
+    boolean isAllSuccessful = true;
+    for (int j = 0; j < executeList.size(); j++) {
+      Object planObject = executeList.get(j);
+      if (InsertRowsPlan.class.isInstance(planObject)) {
+        if (!executeInsertRowsPlan((InsertRowsPlan) planObject, result)) {
+          isAllSuccessful = false;
+        }
+      } else if (CreateMultiTimeSeriesPlan.class.isInstance(planObject)) {
+        if (!executeMultiTimeSeriesPlan((CreateMultiTimeSeriesPlan) planObject, result)) {
+          isAllSuccessful = false;
+        }
+      }
+    }
+    return isAllSuccessful;
   }
 
   @Override
@@ -458,8 +540,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
     }
 
-    InsertRowsPlan insertRowsPlan = new InsertRowsPlan();
+    InsertRowsPlan insertRowsPlan;
     int index = 0;
+    List executeList = new ArrayList();
+    OperatorType lastOperatorType = null;
+    CreateMultiTimeSeriesPlan multiPlan;
     for (int i = 0; i < req.getStatements().size(); i++) {
       String statement = req.getStatements().get(i);
       try {
@@ -471,19 +556,45 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         }
 
         if (physicalPlan.getOperatorType().equals(OperatorType.INSERT)) {
+          if (OperatorType.INSERT == lastOperatorType) {
+            insertRowsPlan = (InsertRowsPlan) executeList.get(executeList.size() - 1);
+          } else {
+            insertRowsPlan = new InsertRowsPlan();
+            executeList.add(insertRowsPlan);
+            index = 0;
+          }
+          lastOperatorType = OperatorType.INSERT;
           insertRowsPlan.addOneInsertRowPlan((InsertRowPlan) physicalPlan, index);
           index++;
-          if (i == req.getStatements().size() - 1
-              && !executeInsertRowsPlan(insertRowsPlan, result)) {
-            isAllSuccessful = false;
-          }
-        } else {
-          if (insertRowsPlan.getRowCount() > 0) {
-            if (!executeInsertRowsPlan(insertRowsPlan, result)) {
+          if (i == req.getStatements().size() - 1) {
+            if (!executeBatchList(executeList, result)) {
               isAllSuccessful = false;
             }
-            index = 0;
-            insertRowsPlan = new InsertRowsPlan();
+          }
+        } else if (physicalPlan.getOperatorType().equals(OperatorType.CREATE_TIMESERIES)) {
+          if (OperatorType.CREATE_TIMESERIES == lastOperatorType) {
+            multiPlan = (CreateMultiTimeSeriesPlan) executeList.get(executeList.size() - 1);
+          } else {
+            multiPlan = new CreateMultiTimeSeriesPlan();
+            executeList.add(multiPlan);
+          }
+          lastOperatorType = OperatorType.CREATE_TIMESERIES;
+          initMultiTimeSeriesPlan(multiPlan);
+
+          CreateTimeSeriesPlan createTimeSeriesPlan = (CreateTimeSeriesPlan) physicalPlan;
+          setMultiTimeSeriesPlan(multiPlan, createTimeSeriesPlan);
+          if (i == req.getStatements().size() - 1) {
+            if (!executeBatchList(executeList, result)) {
+              isAllSuccessful = false;
+            }
+          }
+        } else {
+          lastOperatorType = physicalPlan.getOperatorType();
+          if (executeList.size() > 0) {
+            if (!executeBatchList(executeList, result)) {
+              isAllSuccessful = false;
+            }
+            executeList.clear();
           }
           long t2 = System.currentTimeMillis();
           TSExecuteStatementResp resp = executeUpdateStatement(physicalPlan, req.getSessionId());
@@ -494,6 +605,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           }
         }
       } catch (Exception e) {
+        LOGGER.error("Error occurred when executing executeBatchStatement: ", e);
         TSStatus status = tryCatchQueryException(e);
         if (status != null) {
           result.add(status);
@@ -530,8 +642,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
               physicalPlan,
               req.fetchSize,
               req.timeout,
-              sessionIdUsernameMap.get(req.getSessionId()))
+              sessionIdUsernameMap.get(req.getSessionId()),
+              req.isEnableRedirectQuery())
           : executeUpdateStatement(physicalPlan, req.getSessionId());
+    } catch (InterruptedException e) {
+      LOGGER.error(INFO_INTERRUPT_ERROR, req, e);
+      Thread.currentThread().interrupt();
+      return RpcUtils.getTSExecuteStatementResp(onQueryException(e, "executing executeStatement"));
     } catch (Exception e) {
       return RpcUtils.getTSExecuteStatementResp(onQueryException(e, "executing executeStatement"));
     }
@@ -556,9 +673,15 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
               physicalPlan,
               req.fetchSize,
               req.timeout,
-              sessionIdUsernameMap.get(req.getSessionId()))
+              sessionIdUsernameMap.get(req.getSessionId()),
+              req.isEnableRedirectQuery())
           : RpcUtils.getTSExecuteStatementResp(
               TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement.");
+    } catch (InterruptedException e) {
+      LOGGER.error(INFO_INTERRUPT_ERROR, req, e);
+      Thread.currentThread().interrupt();
+      return RpcUtils.getTSExecuteStatementResp(
+          onQueryException(e, "executing executeQueryStatement"));
     } catch (Exception e) {
       return RpcUtils.getTSExecuteStatementResp(
           onQueryException(e, "executing executeQueryStatement"));
@@ -581,9 +704,15 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
               physicalPlan,
               req.fetchSize,
               config.getQueryTimeoutThreshold(),
-              sessionIdUsernameMap.get(req.getSessionId()))
+              sessionIdUsernameMap.get(req.getSessionId()),
+              req.isEnableRedirectQuery())
           : RpcUtils.getTSExecuteStatementResp(
               TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement.");
+    } catch (InterruptedException e) {
+      LOGGER.error(INFO_INTERRUPT_ERROR, req, e);
+      Thread.currentThread().interrupt();
+      return RpcUtils.getTSExecuteStatementResp(
+          onQueryException(e, "executing executeRawDataQuery"));
     } catch (Exception e) {
       return RpcUtils.getTSExecuteStatementResp(
           onQueryException(e, "executing executeRawDataQuery"));
@@ -594,14 +723,15 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    * @param plan must be a plan for Query: FillQueryPlan, AggregationPlan, GroupByTimePlan, UDFPlan,
    *     some AuthorPlan
    */
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  @SuppressWarnings({"squid:S3776", "squid:S1141"}) // Suppress high Cognitive Complexity warning
   private TSExecuteStatementResp internalExecuteQueryStatement(
       String statement,
       long statementId,
       PhysicalPlan plan,
       int fetchSize,
       long timeout,
-      String username)
+      String username,
+      boolean enableRedirect)
       throws QueryProcessException, SQLException, StorageEngineException,
           QueryFilterOptimizationException, MetadataException, IOException, InterruptedException,
           TException, AuthException {
@@ -611,45 +741,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     long queryId = -1;
     try {
 
-      // In case users forget to set this field in query, use the default value
-      fetchSize = fetchSize == 0 ? DEFAULT_FETCH_SIZE : fetchSize;
-
-      if (plan instanceof QueryPlan && !((QueryPlan) plan).isAlignByTime()) {
-        OperatorType operatorType = plan.getOperatorType();
-        if (operatorType == OperatorType.AGGREGATION
-            || operatorType == OperatorType.FILL
-            || operatorType == OperatorType.GROUPBYTIME) {
-          throw new QueryProcessException(
-              operatorType.name() + " doesn't support disable align clause.");
-        }
-      }
-      if (plan.getOperatorType() == OperatorType.AGGREGATION) {
-        // the actual row number of aggregation query is 1
-        fetchSize = 1;
-      }
-
-      if (plan instanceof GroupByTimePlan) {
-        fetchSize = Math.min(getFetchSizeForGroupByTimePlan((GroupByTimePlan) plan), fetchSize);
-      }
-
-      // get deduplicated path num
-      int deduplicatedPathNum = -1;
-      if (plan instanceof AlignByDevicePlan) {
-        deduplicatedPathNum = ((AlignByDevicePlan) plan).getMeasurements().size();
-      } else if (plan instanceof LastQueryPlan) {
-        // dataset of last query consists of three column: time column + value column = 1
-        // deduplicatedPathNum
-        // and we assume that the memory which sensor name takes equals to 1 deduplicatedPathNum
-        deduplicatedPathNum = 2;
-        // last query's actual row number should be the minimum between the number of series and
-        // fetchSize
-        fetchSize = Math.min(((LastQueryPlan) plan).getDeduplicatedPaths().size(), fetchSize);
-      } else if (plan instanceof RawDataQueryPlan) {
-        deduplicatedPathNum = ((RawDataQueryPlan) plan).getDeduplicatedPaths().size();
-      }
+      // pair.left = fetchSize, pair.right = deduplicatedNum
+      Pair<Integer, Integer> p = getMemoryParametersFromPhysicalPlan(plan, fetchSize);
+      fetchSize = p.left;
 
       // generate the queryId for the operation
-      queryId = generateQueryId(true, fetchSize, deduplicatedPathNum);
+      queryId = generateQueryId(true, fetchSize, p.right);
       // register query info to queryTimeManager
       if (!(plan instanceof ShowQueryProcesslistPlan)) {
         queryTimeManager.registerQuery(queryId, startTime, statement, timeout);
@@ -676,8 +773,25 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       if (plan instanceof QueryPlan && !(plan instanceof UDFPlan)) {
         resp = getQueryColumnHeaders(plan, username);
       }
+      if (plan instanceof QueryPlan) {
+        ((QueryPlan) plan).setEnableRedirect(enableRedirect);
+      }
       // create and cache dataset
-      QueryDataSet newDataSet = createQueryDataSet(queryId, plan);
+      QueryDataSet newDataSet = createQueryDataSet(queryId, plan, fetchSize);
+
+      if (newDataSet.getEndPoint() != null && enableRedirect) {
+        // redirect query
+        LOGGER.debug(
+            "need to redirect {} {} to node {}", statement, queryId, newDataSet.getEndPoint());
+        TSStatus status = new TSStatus();
+        status.setRedirectNode(
+            new EndPoint(newDataSet.getEndPoint().getIp(), newDataSet.getEndPoint().getPort()));
+        status.setCode(TSStatusCode.NEED_REDIRECTION.getStatusCode());
+        resp.setStatus(status);
+        resp.setQueryId(queryId);
+        return resp;
+      }
+
       if (plan instanceof ShowPlan || plan instanceof AuthorPlan) {
         resp = getListDataSetHeaders(newDataSet);
       } else if (plan instanceof UDFPlan) {
@@ -694,7 +808,27 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       if (newDataSet instanceof DirectNonAlignDataSet) {
         resp.setNonAlignQueryDataSet(fillRpcNonAlignReturnData(fetchSize, newDataSet, username));
       } else {
-        resp.setQueryDataSet(fillRpcReturnData(fetchSize, newDataSet, username));
+        try {
+          TSQueryDataSet tsQueryDataSet = fillRpcReturnData(fetchSize, newDataSet, username);
+          resp.setQueryDataSet(tsQueryDataSet);
+        } catch (RedirectException e) {
+          LOGGER.debug("need to redirect {} {} to {}", statement, queryId, e.getEndPoint());
+          if (enableRedirect) {
+            // redirect query
+            TSStatus status = new TSStatus();
+            status.setRedirectNode(e.getEndPoint());
+            status.setCode(TSStatusCode.NEED_REDIRECTION.getStatusCode());
+            resp.setStatus(status);
+            resp.setQueryId(queryId);
+            return resp;
+          } else {
+            LOGGER.error(
+                "execute {} error, if session does not support redirect,"
+                    + " should not throw redirection exception.",
+                statement,
+                e);
+          }
+        }
       }
       resp.setQueryId(queryId);
 
@@ -738,20 +872,49 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
   }
 
+  /**
+   * get fetchSize and deduplicatedPathNum that are used for memory estimation
+   *
+   * @return Pair - fetchSize, deduplicatedPathNum
+   */
+  private Pair<Integer, Integer> getMemoryParametersFromPhysicalPlan(
+      PhysicalPlan plan, int fetchSizeBefore) {
+    // In case users forget to set this field in query, use the default value
+    int fetchSize = fetchSizeBefore == 0 ? DEFAULT_FETCH_SIZE : fetchSizeBefore;
+    int deduplicatedPathNum = -1;
+    if (plan instanceof GroupByTimePlan) {
+      fetchSize = Math.min(getFetchSizeForGroupByTimePlan((GroupByTimePlan) plan), fetchSize);
+    } else if (plan.getOperatorType() == OperatorType.AGGREGATION) {
+      // the actual row number of aggregation query is 1
+      fetchSize = 1;
+    }
+    if (plan instanceof AlignByDevicePlan) {
+      deduplicatedPathNum = ((AlignByDevicePlan) plan).getMeasurements().size();
+    } else if (plan instanceof LastQueryPlan) {
+      // dataset of last query consists of three column: time column + value column = 1
+      // deduplicatedPathNum
+      // and we assume that the memory which sensor name takes equals to 1 deduplicatedPathNum
+      deduplicatedPathNum = 2;
+      // last query's actual row number should be the minimum between the number of series and
+      // fetchSize
+      fetchSize = Math.min(((LastQueryPlan) plan).getDeduplicatedPaths().size(), fetchSize);
+    } else if (plan instanceof RawDataQueryPlan) {
+      deduplicatedPathNum = ((RawDataQueryPlan) plan).getDeduplicatedPaths().size();
+    }
+    return new Pair<>(fetchSize, deduplicatedPathNum);
+  }
+
   /*
   calculate fetch size for group by time plan
    */
-  private int getFetchSizeForGroupByTimePlan(GroupByTimePlan groupByTimePlan) {
-    int rows =
-        (int)
-            ((groupByTimePlan.getEndTime() - groupByTimePlan.getStartTime())
-                / groupByTimePlan.getInterval());
+  private int getFetchSizeForGroupByTimePlan(GroupByTimePlan plan) {
+    int rows = (int) ((plan.getEndTime() - plan.getStartTime()) / plan.getInterval());
     // rows gets 0 is caused by: the end time - the start time < the time interval.
-    if (rows == 0 && groupByTimePlan.isIntervalByMonth()) {
+    if (rows == 0 && plan.isIntervalByMonth()) {
       Calendar calendar = Calendar.getInstance();
-      calendar.setTimeInMillis(groupByTimePlan.getStartTime());
-      calendar.add(Calendar.MONTH, (int) (groupByTimePlan.getInterval() / MS_TO_MONTH));
-      rows = calendar.getTimeInMillis() <= groupByTimePlan.getEndTime() ? 1 : 0;
+      calendar.setTimeInMillis(plan.getStartTime());
+      calendar.add(Calendar.MONTH, (int) (plan.getInterval() / MS_TO_MONTH));
+      rows = calendar.getTimeInMillis() <= plan.getEndTime() ? 1 : 0;
     }
     return rows;
   }
@@ -979,6 +1142,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         queryTimeManager.unRegisterQuery(req.queryId);
         return resp;
       }
+    } catch (InterruptedException e) {
+      LOGGER.error(INFO_INTERRUPT_ERROR, req, e);
+      Thread.currentThread().interrupt();
+      return RpcUtils.getTSFetchResultsResp(
+          onNPEOrUnexpectedException(
+              e, "executing fetchResults", TSStatusCode.INTERNAL_SERVER_ERROR));
     } catch (Exception e) {
       releaseQueryResourceNoExceptions(req.queryId);
       return RpcUtils.getTSFetchResultsResp(
@@ -1025,12 +1194,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   /** create QueryDataSet and buffer it for fetchResults */
-  private QueryDataSet createQueryDataSet(long queryId, PhysicalPlan physicalPlan)
+  private QueryDataSet createQueryDataSet(long queryId, PhysicalPlan physicalPlan, int fetchSize)
       throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException,
           IOException, MetadataException, SQLException, TException, InterruptedException {
 
     QueryContext context = genQueryContext(queryId);
     QueryDataSet queryDataSet = executor.processQuery(physicalPlan, context);
+    queryDataSet.setFetchSize(fetchSize);
     queryId2DataSet.put(queryId, queryDataSet);
     return queryDataSet;
   }
@@ -1281,9 +1451,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       try {
         plan.setDeviceId(new PartialPath(req.getDeviceIds().get(i)));
         plan.setTime(req.getTimestamps().get(i));
-        plan.setMeasurements(req.getMeasurementsList().get(i).toArray(new String[0]));
+        addMeasurementAndValue(plan, req.getMeasurementsList().get(i), req.getValuesList().get(i));
         plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
-        plan.setValues(req.getValuesList().get(i).toArray(new Object[0]));
         plan.setNeedInferType(true);
         TSStatus status = checkAuthority(plan, req.getSessionId());
         if (status != null) {
@@ -1305,6 +1474,24 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
     return judgeFinalTsStatus(
         allCheckSuccess, tsStatus, insertRowsPlan.getResults(), req.deviceIds.size());
+  }
+
+  private void addMeasurementAndValue(
+      InsertRowPlan insertRowPlan, List<String> measurements, List<String> values) {
+    List<String> newMeasurements = new ArrayList<>(measurements.size());
+    List<Object> newValues = new ArrayList<>(values.size());
+
+    for (int i = 0; i < measurements.size(); ++i) {
+      String value = values.get(i);
+      if (value.isEmpty()) {
+        continue;
+      }
+      newMeasurements.add(measurements.get(i));
+      newValues.add(value);
+    }
+
+    insertRowPlan.setValues(newValues.toArray(new Object[0]));
+    insertRowPlan.setMeasurements(newMeasurements.toArray(new String[0]));
   }
 
   @Override

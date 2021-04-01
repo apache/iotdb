@@ -68,4 +68,31 @@ public class MNodeTest {
     assertEquals("root.c.b", multiFullPaths.get(0));
     assertEquals("root.c.b", rootNode.getChild("c").getChild("aliasOfb").getFullPath());
   }
+
+  @Test
+  public void testAddChild() {
+    MNode rootNode = new MNode(null, "root");
+
+    MNode speedNode =
+        rootNode
+            .addChild(new MNode(null, "sg1"))
+            .addChild(new MNode(null, "a"))
+            .addChild(new MNode(null, "b"))
+            .addChild(new MNode(null, "c"))
+            .addChild(new MNode(null, "d"))
+            .addChild(new MNode(null, "device"))
+            .addChild(new MNode(null, "speed"));
+    assertEquals("root.sg1.a.b.c.d.device.speed", speedNode.getFullPath());
+
+    MNode temperatureNode =
+        rootNode
+            .getChild("sg1")
+            .addChild(new MNode(null, "aa"))
+            .addChild(new MNode(null, "bb"))
+            .addChild(new MNode(null, "cc"))
+            .addChild(new MNode(null, "dd"))
+            .addChild(new MNode(null, "device11"))
+            .addChild(new MNode(null, "temperature"));
+    assertEquals("root.sg1.aa.bb.cc.dd.device11.temperature", temperatureNode.getFullPath());
+  }
 }

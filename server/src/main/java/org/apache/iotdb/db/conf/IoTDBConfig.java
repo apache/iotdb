@@ -26,6 +26,7 @@ import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.rpc.RpcTransportFactory;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -156,7 +157,7 @@ public class IoTDBConfig {
 
   /**
    * The cycle when write ahead log is periodically forced to be written to disk(in milliseconds) If
-   * set this parameter to 0 it means call outputStream.force(true) after every each insert
+   * set this parameter to 0 it means call channel.force(true) after every each insert
    */
   private long forceWalPeriodInMs = 100;
 
@@ -616,11 +617,9 @@ public class IoTDBConfig {
   // time in nanosecond precision when starting up
   private long startUpNanosecond = System.nanoTime();
 
-  /** thrift max frame size, the default is 15MB, we change it to 64MB */
-  private int thriftMaxFrameSize = 67108864;
+  private int thriftMaxFrameSize = RpcUtils.THRIFT_FRAME_MAX_SIZE;
 
-  /** thrift init buffer size, the default is 1KB. */
-  private int thriftInitBufferSize = 1024;
+  private int thriftDefaultBufferSize = RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY;
 
   /** time interval in minute for calculating query frequency */
   private int frequencyIntervalInMinute = 1;
@@ -1945,12 +1944,12 @@ public class IoTDBConfig {
     this.thriftMaxFrameSize = thriftMaxFrameSize;
   }
 
-  public int getThriftInitBufferSize() {
-    return thriftInitBufferSize;
+  public int getThriftDefaultBufferSize() {
+    return thriftDefaultBufferSize;
   }
 
-  public void setThriftInitBufferSize(int thriftInitBufferSize) {
-    this.thriftInitBufferSize = thriftInitBufferSize;
+  public void setThriftDefaultBufferSize(int thriftDefaultBufferSize) {
+    this.thriftDefaultBufferSize = thriftDefaultBufferSize;
   }
 
   public int getMaxQueryDeduplicatedPathNum() {

@@ -66,6 +66,8 @@ public class Session {
   protected static final TSProtocolVersion protocolVersion =
       TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
   public static final String MSG_UNSUPPORTED_DATA_TYPE = "Unsupported data type:";
+  public static final String MSG_DONOT_ENABLE_REDIRECT =
+      "Query do not enable redirect," + " please confirm the session and server conf.";
   protected String username;
   protected String password;
   protected int fetchSize;
@@ -80,8 +82,8 @@ public class Session {
   protected int connectionTimeoutInMs;
   protected ZoneId zoneId;
 
-  protected int initialBufferCapacity;
-  protected int maxFrameSize;
+  protected int thriftDefaultBufferSize;
+  protected int thriftMaxFrameSize;
 
   protected EndPoint defaultEndPoint;
   protected SessionConnection defaultSessionConnection;
@@ -93,6 +95,8 @@ public class Session {
   protected Map<String, EndPoint> deviceIdToEndpoint;
   protected Map<EndPoint, SessionConnection> endPointToSessionConnection;
   private AtomicReference<IoTDBConnectionException> tmp = new AtomicReference<>();
+
+  protected boolean enableQueryRedirection = false;
 
   public Session(String host, int rpcPort) {
     this(
@@ -216,16 +220,16 @@ public class Session {
       String password,
       int fetchSize,
       ZoneId zoneId,
-      int initialBufferCapacity,
-      int maxFrameSize,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize,
       boolean enableCacheLeader) {
     this.defaultEndPoint = new EndPoint(host, rpcPort);
     this.username = username;
     this.password = password;
     this.fetchSize = fetchSize;
     this.zoneId = zoneId;
-    this.initialBufferCapacity = initialBufferCapacity;
-    this.maxFrameSize = maxFrameSize;
+    this.thriftDefaultBufferSize = thriftDefaultBufferSize;
+    this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.enableCacheLeader = enableCacheLeader;
   }
 
@@ -254,9 +258,10 @@ public class Session {
     this.enableRPCCompression = enableRPCCompression;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
     defaultSessionConnection = constructSessionConnection(this, defaultEndPoint, zoneId);
+    defaultSessionConnection.setEnableRedirect(enableQueryRedirection);
     metaSessionConnection = defaultSessionConnection;
     isClosed = false;
-    if (enableCacheLeader) {
+    if (enableCacheLeader || enableQueryRedirection) {
       deviceIdToEndpoint = new HashMap<>();
       endPointToSessionConnection = new HashMap<>();
       endPointToSessionConnection.put(defaultEndPoint, defaultSessionConnection);
@@ -452,7 +457,7 @@ public class Session {
    */
   public SessionDataSet executeQueryStatement(String sql)
       throws StatementExecutionException, IoTDBConnectionException {
-    return defaultSessionConnection.executeQueryStatement(sql, timeout);
+    return executeStatementMayRedirect(sql, timeout);
   }
 
   /**
@@ -467,7 +472,42 @@ public class Session {
     if (timeoutInMs < 0) {
       throw new StatementExecutionException("Timeout must be >= 0, please check and try again.");
     }
-    return defaultSessionConnection.executeQueryStatement(sql, timeoutInMs);
+    return executeStatementMayRedirect(sql, timeoutInMs);
+  }
+
+  /**
+   * execute the query, may redirect query to other node.
+   *
+   * @param sql the query statement
+   * @param timeoutInMs time in ms
+   * @return data set
+   * @throws StatementExecutionException statement is not right
+   * @throws IoTDBConnectionException the network is not good
+   */
+  private SessionDataSet executeStatementMayRedirect(String sql, long timeoutInMs)
+      throws StatementExecutionException, IoTDBConnectionException {
+    try {
+      logger.info("{} execute sql {}", defaultSessionConnection.getEndPoint(), sql);
+      return defaultSessionConnection.executeQueryStatement(sql, timeoutInMs);
+    } catch (RedirectException e) {
+      handleQueryRedirection(e.getEndPoint());
+      if (enableQueryRedirection) {
+        logger.debug(
+            "{} redirect query {} to {}",
+            defaultSessionConnection.getEndPoint(),
+            sql,
+            e.getEndPoint());
+        // retry
+        try {
+          return defaultSessionConnection.executeQueryStatement(sql, timeout);
+        } catch (RedirectException redirectException) {
+          logger.error("{} redirect twice", sql, redirectException);
+          throw new StatementExecutionException(sql + " redirect twice, please try again.");
+        }
+      } else {
+        throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
+      }
+    }
   }
 
   /**
@@ -484,16 +524,32 @@ public class Session {
    * query eg. select * from paths where time >= startTime and time < endTime time interval include
    * startTime and exclude endTime
    *
-   * @param paths
+   * @param paths series path
    * @param startTime included
    * @param endTime excluded
-   * @return
-   * @throws StatementExecutionException
-   * @throws IoTDBConnectionException
+   * @return data set
+   * @throws StatementExecutionException statement is not right
+   * @throws IoTDBConnectionException the network is not good
    */
   public SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
       throws StatementExecutionException, IoTDBConnectionException {
-    return defaultSessionConnection.executeRawDataQuery(paths, startTime, endTime);
+    try {
+      return defaultSessionConnection.executeRawDataQuery(paths, startTime, endTime);
+    } catch (RedirectException e) {
+      handleQueryRedirection(e.getEndPoint());
+      if (enableQueryRedirection) {
+        logger.debug("redirect query {} to {}", paths, e.getEndPoint());
+        // retry
+        try {
+          return defaultSessionConnection.executeRawDataQuery(paths, startTime, endTime);
+        } catch (RedirectException redirectException) {
+          logger.error("Redirect twice", redirectException);
+          throw new StatementExecutionException("Redirect twice, please try again.");
+        }
+      } else {
+        throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
+      }
+    }
   }
 
   /**
@@ -582,6 +638,29 @@ public class Session {
       if (connection == null) {
         throw new IoTDBConnectionException(tmp.get());
       }
+    }
+  }
+
+  private void handleQueryRedirection(EndPoint endPoint) throws IoTDBConnectionException {
+    if (enableQueryRedirection) {
+      SessionConnection connection =
+          endPointToSessionConnection.computeIfAbsent(
+              endPoint,
+              k -> {
+                try {
+                  SessionConnection sessionConnection =
+                      constructSessionConnection(this, endPoint, zoneId);
+                  sessionConnection.setEnableRedirect(enableQueryRedirection);
+                  return sessionConnection;
+                } catch (IoTDBConnectionException ex) {
+                  tmp.set(ex);
+                  return null;
+                }
+              });
+      if (connection == null) {
+        throw new IoTDBConnectionException(tmp.get());
+      }
+      defaultSessionConnection = connection;
     }
   }
 
@@ -1453,5 +1532,13 @@ public class Session {
       default:
         throw new UnSupportedDataTypeException(MSG_UNSUPPORTED_DATA_TYPE + dataType);
     }
+  }
+
+  public boolean isEnableQueryRedirection() {
+    return enableQueryRedirection;
+  }
+
+  public void setEnableQueryRedirection(boolean enableQueryRedirection) {
+    this.enableQueryRedirection = enableQueryRedirection;
   }
 }

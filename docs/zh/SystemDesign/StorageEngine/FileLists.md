@@ -34,7 +34,7 @@
 	timestamp_precision=ms
 	tsfile_storage_fs=LOCAL
 	enable_partition=false
-	max_degree_of_index_node=1024
+	max_degree_of_index_node=256
 	tag_attribute_total_size=700
 	iotdb_version=UNKNOWN
 	```
