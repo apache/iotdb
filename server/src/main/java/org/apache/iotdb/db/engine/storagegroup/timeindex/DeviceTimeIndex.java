@@ -241,38 +241,40 @@ public class DeviceTimeIndex implements ITimeIndex {
     }
   }
 
-  @Override
-  public long getTimePartitionWithCheck(String tsFilePath) throws PartitionViolationException {
-    long partitionId = -1;
+  /** @return the time partition id, if spans multi time partitions, return -1. */
+  private long getTimePartitionWithCheck() {
+    long partitionId = SPANS_MULTI_TIME_PARTITIONS_FLAG_ID;
     for (int index : deviceToIndex.values()) {
       long p = StorageEngine.getTimePartition(startTimes[index]);
-      if (partitionId == -1) {
+      if (partitionId == SPANS_MULTI_TIME_PARTITIONS_FLAG_ID) {
         partitionId = p;
       } else {
         if (partitionId != p) {
-          throw new PartitionViolationException(tsFilePath);
+          return SPANS_MULTI_TIME_PARTITIONS_FLAG_ID;
         }
       }
 
       p = StorageEngine.getTimePartition(endTimes[index]);
       if (partitionId != p) {
-        throw new PartitionViolationException(tsFilePath);
+        return SPANS_MULTI_TIME_PARTITIONS_FLAG_ID;
       }
     }
-    if (partitionId == -1) {
+    return partitionId;
+  }
+
+  @Override
+  public long getTimePartitionWithCheck(String tsFilePath) throws PartitionViolationException {
+    long partitionId = getTimePartitionWithCheck();
+    if (partitionId == SPANS_MULTI_TIME_PARTITIONS_FLAG_ID) {
       throw new PartitionViolationException(tsFilePath);
     }
     return partitionId;
   }
 
   @Override
-  public boolean isSpanMultiTimePartitions(String tsFilePath) {
-    try {
-      getTimePartitionWithCheck(tsFilePath);
-    } catch (PartitionViolationException e) {
-      return true;
-    }
-    return false;
+  public boolean isSpanMultiTimePartitions() {
+    long partitionId = getTimePartitionWithCheck();
+    return partitionId == SPANS_MULTI_TIME_PARTITIONS_FLAG_ID;
   }
 
   @Override

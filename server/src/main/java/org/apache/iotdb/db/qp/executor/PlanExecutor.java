@@ -983,11 +983,11 @@ public class PlanExecutor implements IPlanExecutor {
       List<TsFileResource> splitResources = new ArrayList();
       if (tsFileResource.isSpanMultiTimePartitions()) {
         logger.info(
-            "try to split the tsfile={} du to it spans multi partitions",
+            "try to split the tsFile={} du to it spans multi partitions",
             tsFileResource.getTsFile().getPath());
         TsFileRewriteTool.rewriteTsFile(tsFileResource, splitResources);
         logger.info(
-            "after split, the old tsfile was split to {} new tsfiles", splitResources.size());
+            "after split, the old tsFile was split to {} new tsFiles", splitResources.size());
       }
 
       if (splitResources.isEmpty()) {

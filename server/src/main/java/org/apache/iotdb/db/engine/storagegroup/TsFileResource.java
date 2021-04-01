@@ -633,7 +633,7 @@ public class TsFileResource {
 
   /** Check whether the tsFile spans multiple time partitions. */
   public boolean isSpanMultiTimePartitions() {
-    return timeIndex.isSpanMultiTimePartitions(file.toString());
+    return timeIndex.isSpanMultiTimePartitions();
   }
 
   /**

@@ -29,6 +29,8 @@ import java.util.Set;
 
 public interface ITimeIndex {
 
+  int SPANS_MULTI_TIME_PARTITIONS_FLAG_ID = -1;
+
   /**
    * serialize to outputStream
    *
@@ -102,10 +104,9 @@ public interface ITimeIndex {
   /**
    * Check whether the tsFile spans multiple time partitions.
    *
-   * @param tsFilePath the tsFile path
    * @return true if the tsFile spans multiple time partitions, otherwise false.
    */
-  boolean isSpanMultiTimePartitions(String tsFilePath);
+  boolean isSpanMultiTimePartitions();
 
   /**
    * update start time
