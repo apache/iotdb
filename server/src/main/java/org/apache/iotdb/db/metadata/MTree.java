@@ -1259,7 +1259,6 @@ public class MTree implements Serializable {
     }
 
     // we should use template when all child is measurement or this node has no child
-    boolean shouldUseTemplate = true;
     if (!nodeReg.contains(PATH_WILDCARD)) {
       MNode next = null;
       if (nodeReg.contains("(") && nodeReg.contains(",")) {
@@ -1268,9 +1267,6 @@ public class MTree implements Serializable {
         next = node.getChild(nodeReg);
       }
       if (next != null) {
-        if (!(next instanceof MeasurementMNode)) {
-          shouldUseTemplate = false;
-        }
         findPath(
             next,
             nodes,
@@ -1283,9 +1279,6 @@ public class MTree implements Serializable {
       }
     } else {
       for (MNode child : node.getDistinctMNodes()) {
-        if (!(child instanceof MeasurementMNode)) {
-          shouldUseTemplate = false;
-        }
         boolean continueSearch = false;
         if (child instanceof MeasurementMNode
             && ((MeasurementMNode) child).getSchema() instanceof VectorMeasurementSchema) {
@@ -1321,10 +1314,7 @@ public class MTree implements Serializable {
     }
 
     // template part
-    if (shouldUseTemplate
-        && !(node instanceof MeasurementMNode)
-        && node.getDeviceTemplate() == null
-        && node.getChildren().isEmpty()) {
+    if (!(node instanceof MeasurementMNode) && node.isUseTemplate()) {
       if (upperTemplate != null) {
         HashSet<IMeasurementSchema> set = new HashSet<>();
         for (IMeasurementSchema schema : upperTemplate.getSchemaMap().values()) {

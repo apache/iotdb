@@ -2210,13 +2210,18 @@ public class MManager {
   }
 
   private MeasurementMNode findTemplate(Pair<MNode, Template> deviceMNode, String measurement) {
-    if (deviceMNode.left.getDeviceTemplate() == null && deviceMNode.right != null) {
+    if (deviceMNode.right != null) {
       Map<String, IMeasurementSchema> templateMap = deviceMNode.right.getSchemaMap();
       List<String> measurements =
           Arrays.asList(measurement.replace("(", "").replace(")", "").split(","));
 
       String firstMeasurement = measurements.get(0);
       IMeasurementSchema schema = templateMap.get(firstMeasurement);
+      if (!deviceMNode.left.isUseTemplate()) {
+        // todo serialize
+        deviceMNode.left.setUseTemplate(true);
+      }
+
       if (schema != null) {
         if (schema instanceof MeasurementSchema) {
           return new MeasurementMNode(deviceMNode.left, firstMeasurement, schema, null);
