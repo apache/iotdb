@@ -21,7 +21,7 @@
 
 # Quick Start
 
-This short guide will walk you through the basic process of using IoTDB. For a more-complete guide, please visit our website's [User Guide](../Overview/What%20is%20IoTDB.md).
+This short guide will walk you through the basic process of using IoTDB. For a more-complete guide, please visit our website's [User Guide](../IoTDB-Introduction/What-is-IoTDB.md).
 
 ## Prerequisites
 
@@ -42,7 +42,7 @@ IoTDB provides you three installation methods, you can refer to the following su
 ## Download
 
 You can download the binary file from:
-[Here](/Download/)
+[Download Page](https://iotdb.apache.org/Download/)
 
 ## Configurations
 
@@ -52,7 +52,7 @@ configuration files are under "conf" folder
   * system config module (`iotdb-engine.properties`)
   * log config module (`logback.xml`). 
 
-For more, see [Config](../Server/Download.md) in detail.
+For more, see [Config](../Appendix/Config-Manual.md) in detail.
 
 ## Start
 
@@ -215,7 +215,7 @@ or
 IoTDB> exit
 ```
 
-For more on what commands are supported by IoTDB SQL, see [SQL Reference](../Operation%20Manual/SQL%20Reference.md).
+For more on what commands are supported by IoTDB SQL, see [SQL Reference](../Appendix/SQL-Reference.md).
 
 ### Stop IoTDB
 

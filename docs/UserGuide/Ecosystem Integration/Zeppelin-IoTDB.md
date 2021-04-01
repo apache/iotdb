@@ -37,7 +37,7 @@ Zeppelin is a web-based notebook that enables interactive data analytics. You ca
 | :-----------: | :-----------: | :--------------: |
 |  >=`0.12.0-SNAPSHOT`   | >=`1.8.0_271` |    `>=0.9.0`     |
 
-Install IoTDB: Reference to [IoTDB Quick Start](https://iotdb.apache.org/UserGuide/Master/Get%20Started/QuickStart.html). Suppose IoTDB is placed at `$IoTDB_HOME`.
+Install IoTDB: Reference to [IoTDB Quick Start](../QuickStart/QuickStart.html). Suppose IoTDB is placed at `$IoTDB_HOME`.
 
 Install Zeppelin:
 > Method A. Download directly: You can download [Zeppelin](https://zeppelin.apache.org/download.html#) and unpack the binary package. [netinst](http://www.apache.org/dyn/closer.cgi/zeppelin/zeppelin-0.9.0/zeppelin-0.9.0-bin-netinst.tgz) binary package is recommended since it's relatively small by excluding irrelevant interpreters.
@@ -87,7 +87,7 @@ or in Windows:
  .\bin\zeppelin.cmd
 ```
 
-Go to `$IoTDB_HOME` and [start IoTDB server](https://github.com/apache/iotdb#start-iotdb):
+Go to `$IoTDB_HOME` and start IoTDB server:
 
 ```
  # Unix/OS X
