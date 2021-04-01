@@ -148,7 +148,6 @@ public class VectorSessionExample {
       tablet.reset();
     }
 
-    System.out.println(bitMaps[1]);
     session.executeNonQueryStatement("flush");
   }
 }
