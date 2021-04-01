@@ -29,14 +29,23 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.Statement;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.TimeZone;
 
-import static org.apache.iotdb.db.constant.TestConstant.*;
+import static org.apache.iotdb.db.constant.TestConstant.avg;
+import static org.apache.iotdb.db.constant.TestConstant.count;
+import static org.apache.iotdb.db.constant.TestConstant.first_value;
+import static org.apache.iotdb.db.constant.TestConstant.last_value;
+import static org.apache.iotdb.db.constant.TestConstant.max_time;
+import static org.apache.iotdb.db.constant.TestConstant.max_value;
+import static org.apache.iotdb.db.constant.TestConstant.min_time;
+import static org.apache.iotdb.db.constant.TestConstant.min_value;
+import static org.apache.iotdb.db.constant.TestConstant.sum;
 import static org.junit.Assert.fail;
 
 public class IOTDBGroupByIT {
@@ -973,15 +982,14 @@ public class IOTDBGroupByIT {
         "11/30/2019:19:57:18",
         "10.0",
         "12/31/2019:19:57:18",
-        "9.0",
+        "10.0",
         "01/31/2020:19:57:18",
-        "8.0",
+        "10.0",
         "02/29/2020:19:57:18",
-        "9.0",
+        "10.0",
         "03/31/2020:19:57:18",
         "1.0"
       };
-      List<String> start = new ArrayList<>();
 
       for (long i = startTime; i <= endTime; i += 86400_000L) {
         statement.execute("insert into root.sg1.d1(timestamp, temperature) values (" + i + ", 1)");
