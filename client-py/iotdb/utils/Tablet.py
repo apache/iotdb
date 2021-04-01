@@ -16,17 +16,12 @@
 # under the License.
 #
 
-# for package
-from .IoTDBConstants import *
-
-# for debug
-# from IoTDBConstants import *
-
 import struct
+
+from iotdb.utils.IoTDBConstants import TSDataType
 
 
 class Tablet(object):
-
     def __init__(self, device_id, measurements, data_types, values, timestamps):
         """
         creating a tablet for insertion
@@ -88,7 +83,7 @@ class Tablet(object):
             format_str_list.append("q")
             values_tobe_packed.append(timestamp)
 
-        format_str = ''.join(format_str_list)
+        format_str = "".join(format_str_list)
         return struct.pack(format_str, *values_tobe_packed)
 
     def get_binary_values(self):
@@ -122,7 +117,7 @@ class Tablet(object):
                     values_tobe_packed.append(self.__values[j][i])
             elif self.__data_types[i] == TSDataType.TEXT:
                 for j in range(self.__row_number):
-                    value_bytes = bytes(self.__values[j][i], 'utf-8')
+                    value_bytes = bytes(self.__values[j][i], "utf-8")
                     format_str_list.append("i")
                     format_str_list.append(str(len(value_bytes)))
                     format_str_list.append("s")
@@ -133,6 +128,5 @@ class Tablet(object):
                 # could raise an error here.
                 return
 
-        format_str = ''.join(format_str_list)
+        format_str = "".join(format_str_list)
         return struct.pack(format_str, *values_tobe_packed)
-
