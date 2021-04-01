@@ -47,12 +47,17 @@
 * IOTDB-1188 Fix IoTDB 0.11 unable to delete data bug
 * Fix when covering a tsfile resource with HistoricalVersion = null, it’ll throw a NPE
 * fix the elimination unseq compaction may loss data bug after a delete operation is executed
+* Fix a bug of checking time partition in DeviceTimeIndex
+* Throw exeception when device to be queried is not in tsFileMetaData
+* Fix unseq compaction file selector conflicts with time partition bug
+* Fix high CPU usage during the compaction process
 
 ## Improvements
 * IOTDB-1140 optimize regular data encoding
 * Add more log for better tracing
 * Add backgroup exec for cli -e function
 * Add max direct memory size parameter to env.sh
+* Change last cache log to debug level
 
 ## New Features
 * Add explain sql support
