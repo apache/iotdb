@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.cluster.server.member;
 
+import static org.apache.iotdb.cluster.config.ClusterConstant.THREAD_POLL_WAIT_TERMINATION_TIME;
+
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import java.io.IOException;
 import java.net.SocketTimeoutException;
@@ -339,9 +341,9 @@ public abstract class RaftMember {
     catchUpService.shutdownNow();
     appendLogThreadPool.shutdownNow();
     try {
-      heartBeatService.awaitTermination(10, TimeUnit.SECONDS);
-      catchUpService.awaitTermination(10, TimeUnit.SECONDS);
-      appendLogThreadPool.awaitTermination(10, TimeUnit.SECONDS);
+      heartBeatService.awaitTermination(THREAD_POLL_WAIT_TERMINATION_TIME, TimeUnit.SECONDS);
+      catchUpService.awaitTermination(THREAD_POLL_WAIT_TERMINATION_TIME, TimeUnit.SECONDS);
+      appendLogThreadPool.awaitTermination(THREAD_POLL_WAIT_TERMINATION_TIME, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.error("Unexpected interruption when waiting for heartBeatService and catchUpService "
@@ -350,7 +352,7 @@ public abstract class RaftMember {
     if (serialToParallelPool != null) {
       serialToParallelPool.shutdownNow();
       try {
-        serialToParallelPool.awaitTermination(10, TimeUnit.SECONDS);
+        serialToParallelPool.awaitTermination(THREAD_POLL_WAIT_TERMINATION_TIME, TimeUnit.SECONDS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.error("Unexpected interruption when waiting for asyncThreadPool to end", e);
@@ -360,7 +362,7 @@ public abstract class RaftMember {
     if (commitLogPool != null) {
       commitLogPool.shutdownNow();
       try {
-        commitLogPool.awaitTermination(10, TimeUnit.SECONDS);
+        commitLogPool.awaitTermination(THREAD_POLL_WAIT_TERMINATION_TIME, TimeUnit.SECONDS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.error("Unexpected interruption when waiting for commitLogPool to end", e);
@@ -1138,12 +1140,6 @@ public abstract class RaftMember {
     long thatLastLogIndex = electionRequest.getLastLogIndex();
     long thatLastLogTerm = electionRequest.getLastLogTerm();
     Node elector = electionRequest.getElector();
-
-    // check if the node is in the group
-    if (!allNodes.contains(elector)) {
-      logger.info("{}: the elector {} is not in the group, so reject this election.", name, elector);
-      return Response.RESPONSE_NODE_IS_NOT_IN_GROUP;
-    }
 
     // check the log progress of the elector
     long resp = checkLogProgress(thatLastLogIndex, thatLastLogTerm);

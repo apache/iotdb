@@ -181,6 +181,7 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Void> {
       try {
         // sequentially pick up a node that may have this slot
         nodeIndex = (nodeIndex + 1) % descriptor.getPreviousHolders().size();
+        long startTime = System.currentTimeMillis();
         finished = pullSnapshot(nodeIndex);
         if (!finished) {
           if (logger.isDebugEnabled()) {
@@ -191,6 +192,7 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Void> {
               .sleep(
                   ClusterDescriptor.getInstance().getConfig().getPullSnapshotRetryIntervalMs());
         }
+        logger.debug("{}: Data migration ends, cost {}ms", newMember, (System.currentTimeMillis() - startTime));
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         finished = true;

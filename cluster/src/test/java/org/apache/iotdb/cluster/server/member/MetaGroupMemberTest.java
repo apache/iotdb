@@ -515,9 +515,10 @@ public class MetaGroupMemberTest extends MemberTest {
 
     dataClusterServer.setPartitionTable(partitionTable);
     for (PartitionGroup partitionGroup : partitionGroups) {
+      RaftNode header = new RaftNode(partitionGroup.getHeader(), partitionGroup.getId());
       DataGroupMember dataGroupMember = getDataGroupMember(partitionGroup, TestUtils.getNode(0));
       dataGroupMember.start();
-      dataClusterServer.addDataGroupMember(dataGroupMember);
+      dataClusterServer.addDataGroupMember(dataGroupMember, header);
     }
   }
 

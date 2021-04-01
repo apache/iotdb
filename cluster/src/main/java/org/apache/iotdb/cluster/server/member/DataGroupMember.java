@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.cluster.server.member;
 
+import static org.apache.iotdb.cluster.config.ClusterConstant.THREAD_POLL_WAIT_TERMINATION_TIME;
+
 import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
@@ -202,6 +203,10 @@ public class DataGroupMember extends RaftMember {
     heartBeatService.submit(new DataHeartbeatThread(this));
     pullSnapshotService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
     pullSnapshotHintService = new PullSnapshotHintService(this);
+    logger.info("{}: has inited pullSnapshotService and pullSnapshotHintService", name);
+    if (pullSnapshotHintService == null) {
+      logger.error("{}: pullSnapshotHintService is null", name);
+    }
     pullSnapshotHintService.start();
     resumePullSnapshotTasks();
   }
@@ -217,7 +222,7 @@ public class DataGroupMember extends RaftMember {
     if (pullSnapshotService != null) {
       pullSnapshotService.shutdownNow();
       try {
-        pullSnapshotService.awaitTermination(10, TimeUnit.SECONDS);
+        pullSnapshotService.awaitTermination(THREAD_POLL_WAIT_TERMINATION_TIME, TimeUnit.SECONDS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.error("Unexpected interruption when waiting for pullSnapshotService to end", e);
@@ -234,12 +239,24 @@ public class DataGroupMember extends RaftMember {
     logger.info("{}: stopped", name);
   }
 
-  /**
-   * The first node (on the hash ring) in this data group is the header. It determines the duty
-   * (what range on the ring do the group take responsibility for) of the group and although other
-   * nodes in this may change, this node is unchangeable unless the data group is dismissed. It is
-   * also the identifier of this data group.
-   */
+  @Override
+  long checkElectorLogProgress(ElectionRequest electionRequest) {
+    Node elector = electionRequest.getElector();
+    // check if the node is in the group
+    if (!allNodes.contains(elector)) {
+      logger.info("{}: the elector {} is not in the data group {}, so reject this election.", name,
+          getPartitionGroup(), elector);
+      return Response.RESPONSE_NODE_IS_NOT_IN_GROUP;
+    }
+    return super.checkElectorLogProgress(electionRequest);
+  }
+
+    /**
+     * The first node (on the hash ring) in this data group is the header. It determines the duty
+     * (what range on the ring do the group take responsibility for) of the group and although other
+     * nodes in this may change, this node is unchangeable unless the data group is dismissed. It is
+     * also the identifier of this data group.
+     */
   @Override
   public Node getHeader() {
     return allNodes.get(0);
@@ -370,7 +387,9 @@ public class DataGroupMember extends RaftMember {
     }
 
     // Make sure local data is complete.
-    if (lastAppliedPartitionTableVersion.getVersion() != metaGroupMember.getPartitionTable().getLastMetaLogIndex()) {
+    if (character != NodeCharacter.LEADER
+        && lastAppliedPartitionTableVersion.getVersion() != metaGroupMember.getPartitionTable()
+        .getLastMetaLogIndex()) {
       return null;
     }
 

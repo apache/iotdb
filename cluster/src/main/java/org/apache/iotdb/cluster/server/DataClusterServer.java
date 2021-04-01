@@ -119,17 +119,18 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
    *
    * @param dataGroupMember
    */
-  public void addDataGroupMember(DataGroupMember dataGroupMember) {
-    RaftNode header = new RaftNode(dataGroupMember.getHeader(),
-        dataGroupMember.getRaftGroupId());
-    if (headerGroupMap.containsKey(header)) {
-      logger.debug("group {} already exist.", dataGroupMember.getAllNodes());
-      return;
+  public DataGroupMember addDataGroupMember(DataGroupMember dataGroupMember, RaftNode header) {
+    synchronized (headerGroupMap) {
+      if (headerGroupMap.containsKey(header)) {
+        logger.debug("group {} already exist.", dataGroupMember.getAllNodes());
+        return headerGroupMap.get(header);
+      }
+      stoppedMemberManager.remove(header);
+      headerGroupMap.put(header, dataGroupMember);
+      resetServiceCache(header);
+      dataGroupMember.start();
+      return dataGroupMember;
     }
-    stoppedMemberManager.remove(header);
-    headerGroupMap.put(header, dataGroupMember);
-    resetServiceCache(header);
-    dataGroupMember.start();
   }
 
   private void resetServiceCache(RaftNode header) {
@@ -541,9 +542,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
    */
   public void addNode(Node node, NodeAdditionResult result) {
     // If the node executed adding itself to the cluster, it's unnecessary to add new groups because they already exist.
-    // Just pull snapshot.
     if (node.equals(thisNode)) {
-      pullSnapshots();
       return;
     }
     Iterator<Entry<RaftNode, DataGroupMember>> entryIterator = headerGroupMap.entrySet().iterator();
@@ -566,9 +565,10 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
       }
       for (PartitionGroup newGroup : result.getNewGroupList()) {
         if (newGroup.contains(thisNode)) {
+          RaftNode header = new RaftNode(newGroup.getHeader(), newGroup.getId());
           logger.info("Adding this node into a new group {}", newGroup);
           DataGroupMember dataGroupMember = dataMemberFactory.create(newGroup, thisNode);
-          addDataGroupMember(dataGroupMember);
+          dataGroupMember = addDataGroupMember(dataGroupMember, header);
           dataGroupMember
               .pullNodeAdditionSnapshots(((SlotPartitionTable) partitionTable).getNodeSlots(node,
                   newGroup.getId()), node);
@@ -631,13 +631,14 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
 
     List<PartitionGroup> partitionGroups = partitionTable.getLocalGroups();
     for (PartitionGroup partitionGroup : partitionGroups) {
-      DataGroupMember prevMember = headerGroupMap.get(new RaftNode(partitionGroup.getHeader(), partitionGroup.getId()));
+      RaftNode header = new RaftNode(partitionGroup.getHeader(), partitionGroup.getId());
+      DataGroupMember prevMember = headerGroupMap.get(header);
       if (prevMember == null || !prevMember.getAllNodes().equals(partitionGroup)) {
         logger.info("Building member of data group: {}", partitionGroup);
         // no previous member or member changed
         DataGroupMember dataGroupMember = dataMemberFactory.create(partitionGroup, thisNode);
         // the previous member will be replaced here
-        addDataGroupMember(dataGroupMember);
+        addDataGroupMember(dataGroupMember, header);
         dataGroupMember.setUnchanged(true);
       } else {
         prevMember.setUnchanged(true);
@@ -698,7 +699,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
         if (!headerGroupMap.containsKey(header)) {
           logger.info("{} should join a new group {}", thisNode, group);
           DataGroupMember dataGroupMember = dataMemberFactory.create(group, thisNode);
-          addDataGroupMember(dataGroupMember);
+          addDataGroupMember(dataGroupMember, header);
         }
         // pull new slots from the removed node
         headerGroupMap.get(header).pullSlots(removalResult);

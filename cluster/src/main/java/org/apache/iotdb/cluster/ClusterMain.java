@@ -86,7 +86,7 @@ public class ClusterMain {
     }
 
     IoTDBDescriptor.getInstance().getConfig().setSyncEnable(false);
-    IoTDBDescriptor.getInstance().getConfig().setEnablePartition(true);
+    IoTDBDescriptor.getInstance().getConfig().setEnablePartition(false);
     logger.info("Running mode {}", mode);
     if (MODE_START.equals(mode)) {
       try {

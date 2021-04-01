@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.server.member;
 
+import static org.apache.iotdb.cluster.config.ClusterConstant.THREAD_POLL_WAIT_TERMINATION_TIME;
 import static org.apache.iotdb.cluster.utils.ClusterUtils.WAIT_START_UP_CHECK_TIME_SEC;
 import static org.apache.iotdb.cluster.utils.ClusterUtils.analyseStartUpCheckResult;
 
@@ -94,6 +95,7 @@ import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.query.ClusterPlanRouter;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
+import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -379,7 +381,7 @@ public class MetaGroupMember extends RaftMember {
     if (reportThread != null) {
       reportThread.shutdownNow();
       try {
-        reportThread.awaitTermination(10, TimeUnit.SECONDS);
+        reportThread.awaitTermination(THREAD_POLL_WAIT_TERMINATION_TIME, TimeUnit.SECONDS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.error("Unexpected interruption when waiting for reportThread to end", e);
@@ -388,7 +390,7 @@ public class MetaGroupMember extends RaftMember {
     if (hardLinkCleanerThread != null) {
       hardLinkCleanerThread.shutdownNow();
       try {
-        hardLinkCleanerThread.awaitTermination(10, TimeUnit.SECONDS);
+        hardLinkCleanerThread.awaitTermination(THREAD_POLL_WAIT_TERMINATION_TIME, TimeUnit.SECONDS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.error("Unexpected interruption when waiting for hardlinkCleaner to end", e);
@@ -638,6 +640,19 @@ public class MetaGroupMember extends RaftMember {
     throw new ConfigInconsistentException();
   }
 
+
+  @Override
+  long checkElectorLogProgress(ElectionRequest electionRequest) {
+    Node elector = electionRequest.getElector();
+    // check if the node is in the group
+    if (partitionTable != null && !allNodes.contains(elector)) {
+      logger.info("{}: the elector {} is not in the data group {}, so reject this election.", name,
+          getPartitionGroup(), elector);
+      return Response.RESPONSE_NODE_IS_NOT_IN_GROUP;
+    }
+    return super.checkElectorLogProgress(electionRequest);
+  }
+
   /**
    * Process the heartbeat request from a valid leader. Generate and tell the leader the identifier
    * of the node if necessary. If the partition table is missing, use the one from the request or
@@ -704,6 +719,8 @@ public class MetaGroupMember extends RaftMember {
     updateNodeList(newTable.getAllNodes());
 
     startSubServers();
+
+    getDataClusterServer().pullSnapshots();
   }
 
   private void updateNodeList(Collection<Node> nodes) {
@@ -1955,7 +1972,7 @@ public class MetaGroupMember extends RaftMember {
         return collectMigrationStatusSync(node);
       }
     } catch (TException | InterruptedException e) {
-      logger.warn("Cannot get the status of all nodes", e);
+      logger.error("{}: Cannot get the status of node {}", name, node, e);
     }
     return null;
   }
@@ -2219,7 +2236,7 @@ public class MetaGroupMember extends RaftMember {
       } else if (thisNode.equals(leader.get())) {
         // as the old node is removed, it cannot know this by heartbeat or log, so it should be
         // directly kicked out of the cluster
-        exileNode(removeNodeLog);
+        getAppendLogThreadPool().submit(() -> exileNode(removeNodeLog));
       }
 
       if (logger.isDebugEnabled()) {
@@ -2291,6 +2308,9 @@ public class MetaGroupMember extends RaftMember {
     syncLeader();
     Map<PartitionGroup, Integer> res = new HashMap<>();
     for (Node node: allNodes) {
+      if (logger.isDebugEnabled()) {
+        logger.debug("{}: start to get migration status of {}", name, node);
+      }
       Map<PartitionGroup, Integer> oneNodeRes;
       if (node.equals(thisNode)) {
         oneNodeRes = collectMigrationStatus();
@@ -2312,8 +2332,11 @@ public class MetaGroupMember extends RaftMember {
    * @return key: data group; value: slot num in data migration
    */
   public Map<PartitionGroup, Integer> collectMigrationStatus() {
-    logger.info("{}: start to collect migration status.", name);
+    logger.info("{}: start to collect migration status locally.", name);
     Map<PartitionGroup, Integer> groupSlotMap = new HashMap<>();
+    if (getPartitionTable() == null) {
+      return groupSlotMap;
+    }
     Map<RaftNode, DataGroupMember> headerMap = getDataClusterServer().getHeaderGroupMap();
     waitUtil(getPartitionTable().getLastMetaLogIndex());
     synchronized (headerMap) {
