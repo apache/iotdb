@@ -26,11 +26,11 @@ public class BitMap {
       new byte[] {
         (byte) 0XFE,
         (byte) 0XFD,
-        (byte) 0XFA,
+        (byte) 0XFB,
         (byte) 0XF7,
         (byte) 0XEF,
         (byte) 0XDF,
-        (byte) 0XAF,
+        (byte) 0XBF,
         (byte) 0X7F
       };
 
@@ -58,7 +58,7 @@ public class BitMap {
 
   /** returns the value of the bit with the specified index. */
   public boolean get(int position) {
-    return (bits[position / Byte.SIZE] & BIT_UTIL[position % Byte.SIZE]) > 0;
+    return (bits[position / Byte.SIZE] & BIT_UTIL[position % Byte.SIZE]) != 0;
   }
 
   /** mark as 1 at the given bit position */
@@ -110,8 +110,8 @@ public class BitMap {
   @Override
   public String toString() {
     StringBuffer res = new StringBuffer();
-    for (int j = 0; j < size; j++) {
-      res.append((bits[j / Byte.SIZE] & BIT_UTIL[j % Byte.SIZE]) > 0 ? 1 : 0);
+    for (int i = 0; i < size; i++) {
+      res.append(get(i) ? 1 : 0);
     }
     return res.toString();
   }
