@@ -1346,6 +1346,32 @@ public class MManager {
         path, config.isAutoCreateSchemaEnabled(), config.getDefaultStorageGroupLevel());
   }
 
+  // attention: this path must be a device node
+  public List<IMeasurementSchema> getAllMeasurementByDevicePath(PartialPath path)
+      throws PathNotExistException {
+    Set<IMeasurementSchema> res = new HashSet<>();
+    try {
+      Pair<MNode, Template> mNodeTemplatePair = mNodeCache.get(path);
+      if (mNodeTemplatePair.left.getDeviceTemplate() != null) {
+        mNodeTemplatePair.right = mNodeTemplatePair.left.getDeviceTemplate();
+      }
+
+      for (MNode mNode : mNodeTemplatePair.left.getChildren().values()) {
+        MeasurementMNode measurementMNode = (MeasurementMNode) mNode;
+        res.add(measurementMNode.getSchema());
+      }
+
+      // template
+      if (mNodeTemplatePair.left.isUseTemplate() && mNodeTemplatePair.right != null) {
+        res.addAll(mNodeTemplatePair.right.getSchemaMap().values());
+      }
+    } catch (CacheException e) {
+      throw new PathNotExistException(path.getFullPath());
+    }
+
+    return new ArrayList<>(res);
+  }
+
   public MNode getDeviceNode(PartialPath path) throws MetadataException {
     MNode node;
     try {
