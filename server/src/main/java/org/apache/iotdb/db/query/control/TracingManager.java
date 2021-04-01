@@ -45,6 +45,10 @@ public class TracingManager {
   private Map<Long, Long> queryStartTime = new ConcurrentHashMap<>();
 
   public TracingManager(String dirName, String logFileName) {
+    initTracingManager(dirName, logFileName);
+  }
+
+  public void initTracingManager(String dirName, String logFileName) {
     File tracingDir = SystemFileFactory.INSTANCE.getFile(dirName);
     if (!tracingDir.exists()) {
       if (tracingDir.mkdirs()) {
@@ -54,7 +58,6 @@ public class TracingManager {
       }
     }
     File logFile = SystemFileFactory.INSTANCE.getFile(dirName + File.separator + logFileName);
-
     FileWriter fileWriter = null;
     try {
       fileWriter = new FileWriter(logFile, true);
@@ -216,28 +219,8 @@ public class TracingManager {
   }
 
   public void openTracingWriteStream() {
-    File tracingDir =
-        SystemFileFactory.INSTANCE.getFile(
-            IoTDBDescriptor.getInstance().getConfig().getTracingDir());
-    if (!tracingDir.exists()) {
-      if (tracingDir.mkdirs()) {
-        logger.info("create performance folder {}.", tracingDir);
-      } else {
-        logger.info("create performance folder {} failed.", tracingDir);
-      }
-    }
-    File logFile =
-        SystemFileFactory.INSTANCE.getFile(
-            IoTDBDescriptor.getInstance().getConfig().getTracingDir()
-                + File.separator
-                + IoTDBConstant.TRACING_LOG);
-    FileWriter fileWriter = null;
-    try {
-      fileWriter = new FileWriter(logFile, true);
-    } catch (IOException e) {
-      logger.error("Meeting error while creating TracingManager: {}", e.getMessage());
-    }
-    writer = new BufferedWriter(fileWriter);
+    initTracingManager(
+        IoTDBDescriptor.getInstance().getConfig().getTracingDir(), IoTDBConstant.TRACING_LOG);
   }
 
   private static class TracingManagerHelper {
