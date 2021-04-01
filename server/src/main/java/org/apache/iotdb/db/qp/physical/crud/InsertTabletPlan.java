@@ -157,6 +157,7 @@ public class InsertTabletPlan extends InsertPlan {
     writeMeasurements(stream);
     writeDataTypes(stream);
     writeTimes(stream);
+    writeBitMaps(stream);
     writeValues(stream);
   }
 
@@ -205,6 +206,18 @@ public class InsertTabletPlan extends InsertPlan {
     }
   }
 
+  private void writeBitMaps(DataOutputStream stream) throws IOException {
+    for (BitMap bitMap : bitMaps) {
+      if (bitMap == null) {
+        stream.writeBoolean(false);
+      }
+      else {
+        stream.writeBoolean(true);
+        stream.write(bitMap.getByteArray());
+      }
+    }
+  }
+
   private void writeValues(DataOutputStream stream) throws IOException {
     if (valueBuffer == null) {
       serializeValues(stream);
@@ -228,6 +241,7 @@ public class InsertTabletPlan extends InsertPlan {
     writeMeasurements(buffer);
     writeDataTypes(buffer);
     writeTimes(buffer);
+    writeBitMaps(buffer);
     writeValues(buffer);
   }
 
@@ -275,6 +289,18 @@ public class InsertTabletPlan extends InsertPlan {
     }
   }
 
+  private void writeBitMaps(ByteBuffer buffer) {
+    for (BitMap bitMap : bitMaps) {
+      if (bitMap == null) {
+        buffer.put(BytesUtils.boolToByte(false));
+      }
+      else {
+        buffer.put(BytesUtils.boolToByte(true));
+        buffer.put(bitMap.getByteArray());
+      }
+    }
+  }
+
   private void writeValues(ByteBuffer buffer) {
     if (valueBuffer == null) {
       serializeValues(buffer);
@@ -291,11 +317,6 @@ public class InsertTabletPlan extends InsertPlan {
       if (columns[i] == null) {
         continue;
       }
-      BitMap curBitMap = bitMaps[i];
-      byte[] curBytes = curBitMap.getByteArray();
-      for (int j = 0; j < curBytes.length; j++) {
-        outputStream.write(curBytes[j]);
-      }
       serializeColumn(dataTypes[i], columns[i], outputStream, start, end);
     }
   }
@@ -304,10 +325,6 @@ public class InsertTabletPlan extends InsertPlan {
     for (int i = 0; i < dataTypes.length; i++) {
       if (columns[i] == null) {
         continue;
-      }
-      byte[] curBytes = bitMaps[i].getByteArray();
-      for (int j = 0; j < curBytes.length; j++) {
-        buffer.put(curBytes[j]);
       }
       serializeColumn(dataTypes[i], columns[i], buffer, start, end);
     }
