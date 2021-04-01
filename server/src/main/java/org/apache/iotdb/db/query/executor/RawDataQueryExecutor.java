@@ -36,7 +36,6 @@ import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
@@ -146,8 +145,7 @@ public class RawDataQueryExecutor {
       return dataSet;
     }
 
-    TimeGenerator timestampGenerator =
-        getTimeGenerator(queryPlan.getExpression(), context, queryPlan);
+    TimeGenerator timestampGenerator = getTimeGenerator(context, queryPlan);
     List<Boolean> cached =
         markFilterdPaths(
             queryPlan.getExpression(),
@@ -204,10 +202,9 @@ public class RawDataQueryExecutor {
         queryPlan.isAscending());
   }
 
-  protected TimeGenerator getTimeGenerator(
-      IExpression expression, QueryContext context, RawDataQueryPlan queryPlan)
+  protected TimeGenerator getTimeGenerator(QueryContext context, RawDataQueryPlan queryPlan)
       throws StorageEngineException {
-    return new ServerTimeGenerator(expression, context, queryPlan);
+    return new ServerTimeGenerator(context, queryPlan);
   }
 
   /**

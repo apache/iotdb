@@ -58,8 +58,7 @@ public class UDTFQueryExecutor extends RawDataQueryExecutor {
 
   public QueryDataSet executeWithValueFilterAlignByTime(QueryContext context)
       throws StorageEngineException, QueryProcessException, IOException {
-    TimeGenerator timestampGenerator =
-        getTimeGenerator(udtfPlan.getExpression(), context, udtfPlan);
+    TimeGenerator timestampGenerator = getTimeGenerator(context, udtfPlan);
     List<Boolean> cached =
         markFilterdPaths(
             udtfPlan.getExpression(),
@@ -90,8 +89,7 @@ public class UDTFQueryExecutor extends RawDataQueryExecutor {
 
   public QueryDataSet executeWithValueFilterNonAlign(QueryContext context)
       throws QueryProcessException, StorageEngineException, IOException {
-    TimeGenerator timestampGenerator =
-        getTimeGenerator(udtfPlan.getExpression(), context, udtfPlan);
+    TimeGenerator timestampGenerator = getTimeGenerator(context, udtfPlan);
     List<Boolean> cached =
         markFilterdPaths(
             udtfPlan.getExpression(),

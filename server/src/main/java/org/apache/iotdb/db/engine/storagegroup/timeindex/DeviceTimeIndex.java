@@ -244,8 +244,8 @@ public class DeviceTimeIndex implements ITimeIndex {
   @Override
   public long getTimePartitionWithCheck(String tsfilePath) throws PartitionViolationException {
     long partitionId = -1;
-    for (Long startTime : startTimes) {
-      long p = StorageEngine.getTimePartition(startTime);
+    for (int index : deviceToIndex.values()) {
+      long p = StorageEngine.getTimePartition(startTimes[index]);
       if (partitionId == -1) {
         partitionId = p;
       } else {
@@ -253,15 +253,10 @@ public class DeviceTimeIndex implements ITimeIndex {
           throw new PartitionViolationException(tsfilePath);
         }
       }
-    }
-    for (Long endTime : endTimes) {
-      long p = StorageEngine.getTimePartition(endTime);
-      if (partitionId == -1) {
-        partitionId = p;
-      } else {
-        if (partitionId != p) {
-          throw new PartitionViolationException(tsfilePath);
-        }
+
+      p = StorageEngine.getTimePartition(endTimes[index]);
+      if (partitionId != p) {
+        throw new PartitionViolationException(tsfilePath);
       }
     }
     if (partitionId == -1) {

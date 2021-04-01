@@ -38,7 +38,6 @@ import org.apache.iotdb.db.query.executor.RawDataQueryExecutor;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
@@ -200,11 +199,9 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
   }
 
   @Override
-  protected TimeGenerator getTimeGenerator(
-      IExpression queryExpression, QueryContext context, RawDataQueryPlan rawDataQueryPlan)
+  protected TimeGenerator getTimeGenerator(QueryContext context, RawDataQueryPlan rawDataQueryPlan)
       throws StorageEngineException {
-    return new ClusterTimeGenerator(
-        queryExpression, context, metaGroupMember, rawDataQueryPlan, false);
+    return new ClusterTimeGenerator(context, metaGroupMember, rawDataQueryPlan, false);
   }
 
   @Override
@@ -214,8 +211,7 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
       if (hasValueFilter) {
         // 1. check time Generator has local data
         ClusterTimeGenerator clusterTimeGenerator =
-            new ClusterTimeGenerator(
-                queryPlan.getExpression(), context, metaGroupMember, queryPlan, true);
+            new ClusterTimeGenerator(context, metaGroupMember, queryPlan, true);
         if (clusterTimeGenerator.isHasLocalReader()) {
           this.hasLocalReader = true;
           this.endPoint = null;
