@@ -60,7 +60,7 @@ public class PullMeasurementSchemaHandlerTest {
                 try {
                   dataOutputStream.writeInt(measurementSchemas.size());
                   for (IMeasurementSchema measurementSchema : measurementSchemas) {
-                    measurementSchema.serializeTo(dataOutputStream);
+                    measurementSchema.partialSerializeTo(dataOutputStream);
                   }
                 } catch (IOException e) {
                   // ignore

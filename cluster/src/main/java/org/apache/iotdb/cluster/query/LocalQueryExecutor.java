@@ -43,6 +43,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
@@ -303,7 +304,16 @@ public class LocalQueryExecutor {
         .forEach(
             fullPath -> {
               try {
-                paths.add(new PartialPath(fullPath));
+                if (fullPath.contains("$#$")) {
+                  String[] array = fullPath.split(":");
+                  List<PartialPath> subSensorsPathList = new ArrayList<>();
+                  for (int i = 1; i < array.length; i++) {
+                    subSensorsPathList.add(new PartialPath(array[i]));
+                  }
+                  paths.add(new VectorPartialPath(array[0], subSensorsPathList));
+                } else {
+                  paths.add(new PartialPath(fullPath));
+                }
               } catch (IllegalPathException e) {
                 logger.warn("Failed to create partial path, fullPath is {}.", fullPath, e);
               }
@@ -460,7 +470,7 @@ public class LocalQueryExecutor {
     try {
       dataOutputStream.writeInt(measurementSchemas.size());
       for (IMeasurementSchema timeseriesSchema : measurementSchemas) {
-        timeseriesSchema.serializeTo(dataOutputStream);
+        timeseriesSchema.partialSerializeTo(dataOutputStream);
       }
     } catch (IOException ignored) {
       // unreachable for we are using a ByteArrayOutputStream

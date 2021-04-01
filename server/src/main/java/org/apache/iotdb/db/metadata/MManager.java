@@ -1966,12 +1966,7 @@ public class MManager {
       MNode node = nodeDeque.removeFirst();
       if (node instanceof MeasurementMNode) {
         IMeasurementSchema nodeSchema = ((MeasurementMNode) node).getSchema();
-        measurementSchemas.add(
-            new MeasurementSchema(
-                node.getName(),
-                nodeSchema.getType(),
-                nodeSchema.getEncodingType(),
-                nodeSchema.getCompressor()));
+        measurementSchemas.add(nodeSchema);
       } else if (!node.getChildren().isEmpty()) {
         nodeDeque.addAll(node.getChildren().values());
       }
