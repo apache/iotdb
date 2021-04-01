@@ -50,6 +50,7 @@ public abstract class IoTDBSource<T> extends RichSourceFunction<T> {
 
   /**
    * Convert raw data (in form of RowRecord) extracted from IoTDB to user-defined data type
+   *
    * @param rowRecord, row record from IoTDB
    * @return object in user-defined form
    */
