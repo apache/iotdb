@@ -190,10 +190,9 @@ public class LastQueryExecutor {
           if (CACHE_ENABLED) {
             cacheAccessors.get(i).write(resultContainer.get(i).right);
             DEBUG_LOGGER.info(
-                "[LastQueryExecutor] Update last cache for path: "
-                    + seriesPaths
-                    + " with timestamp: "
-                    + resultContainer.get(i).right.getTimestamp());
+                "[LastQueryExecutor] Update last cache for path: {} with timestamp: {}",
+                seriesPaths,
+                resultContainer.get(i).right.getTimestamp());
           }
         }
       }
@@ -229,17 +228,15 @@ public class LastQueryExecutor {
       } else if (!satisfyFilter(filter, tvPair)) {
         resultContainer.add(new Pair<>(true, null));
         DEBUG_LOGGER.info(
-            "[LastQueryExecutor] Last cache hit for path: "
-                + seriesPaths.get(i)
-                + " with timestamp: "
-                + tvPair.getTimestamp());
+            "[LastQueryExecutor] Last cache hit for path: {} with timestamp: {}",
+            seriesPaths.get(i),
+            tvPair.getTimestamp());
       } else {
         resultContainer.add(new Pair<>(true, tvPair));
         DEBUG_LOGGER.info(
-            "[LastQueryExecutor] Last cache hit for path: "
-                + seriesPaths.get(i)
-                + " with timestamp: "
-                + tvPair.getTimestamp());
+            "[LastQueryExecutor] Last cache hit for path: {} with timestamp: {}",
+            seriesPaths.get(i),
+            tvPair.getTimestamp());
       }
     }
     return resultContainer;

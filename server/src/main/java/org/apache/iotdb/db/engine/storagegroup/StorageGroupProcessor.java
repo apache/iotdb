@@ -1819,9 +1819,8 @@ public class StorageGroupProcessor {
               && lastPair.getTimestamp() <= endTime) {
             ((MeasurementMNode) measurementNode).resetCache();
             logger.info(
-                "[tryToDeleteLastCache] Last cache for path: "
-                    + measurementNode.getFullPath()
-                    + " is set to null");
+                "[tryToDeleteLastCache] Last cache for path: {} is set to null",
+                measurementNode.getFullPath());
           }
         }
       }
@@ -1876,7 +1875,7 @@ public class StorageGroupProcessor {
   }
 
   /**
-   * update latest flush time for partition id </>
+   * update latest flush time for partition id
    *
    * @param partitionId partition id
    * @param latestFlushTime lastest flush time
@@ -2153,9 +2152,8 @@ public class StorageGroupProcessor {
         if (measurementNode != null) {
           ((MeasurementMNode) measurementNode).resetCache();
           logger.info(
-              "[tryToDeleteLastCacheByDevice] Last cache for path: "
-                  + measurementNode.getFullPath()
-                  + " is set to null");
+              "[tryToDeleteLastCacheByDevice] Last cache for path: {} is set to null",
+              measurementNode.getFullPath());
         }
       }
     } catch (MetadataException e) {
