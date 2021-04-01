@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.conf;
 
+import java.io.File;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
@@ -32,13 +35,8 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
@@ -626,9 +624,6 @@ public class IoTDBConfig {
 
   /** time cost(ms) threshold for slow query */
   private long slowQueryThreshold = 5000;
-
-  /** if the debug_state is true, we will print more details about the process of query */
-  private boolean debugState = false;
 
   /**
    * whether enable the rpc service. This parameter has no a corresponding field in the
@@ -1990,14 +1985,6 @@ public class IoTDBConfig {
 
   public void setSlowQueryThreshold(long slowQueryThreshold) {
     this.slowQueryThreshold = slowQueryThreshold;
-  }
-
-  public boolean isDebugOn() {
-    return debugState;
-  }
-
-  public void setDebugState(boolean debugState) {
-    this.debugState = debugState;
   }
 
   public boolean isEnableIndex() {
