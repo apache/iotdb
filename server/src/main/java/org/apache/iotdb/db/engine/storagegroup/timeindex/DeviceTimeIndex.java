@@ -270,9 +270,9 @@ public class DeviceTimeIndex implements ITimeIndex {
     try {
       getTimePartitionWithCheck(tsFilePath);
     } catch (PartitionViolationException e) {
-      return false;
+      return true;
     }
-    return true;
+    return false;
   }
 
   @Override
