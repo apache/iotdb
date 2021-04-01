@@ -198,8 +198,46 @@ public class TracingManager {
     writer.flush();
   }
 
-  public void close() throws IOException {
-    writer.close();
+  public void close() {
+    try {
+      writer.close();
+    } catch (IOException e) {
+      logger.error("Meeting error while Close the tracing log stream : {}", e.getMessage());
+    }
+  }
+
+  public boolean getWriterStatus() {
+    try {
+      writer.flush();
+      return true;
+    } catch (IOException e) {
+      return false;
+    }
+  }
+
+  public void openTracingWriteStream() {
+    File tracingDir =
+        SystemFileFactory.INSTANCE.getFile(
+            IoTDBDescriptor.getInstance().getConfig().getTracingDir());
+    if (!tracingDir.exists()) {
+      if (tracingDir.mkdirs()) {
+        logger.info("create performance folder {}.", tracingDir);
+      } else {
+        logger.info("create performance folder {} failed.", tracingDir);
+      }
+    }
+    File logFile =
+        SystemFileFactory.INSTANCE.getFile(
+            IoTDBDescriptor.getInstance().getConfig().getTracingDir()
+                + File.separator
+                + IoTDBConstant.TRACING_LOG);
+    FileWriter fileWriter = null;
+    try {
+      fileWriter = new FileWriter(logFile, true);
+    } catch (IOException e) {
+      logger.error("Meeting error while creating TracingManager: {}", e.getMessage());
+    }
+    writer = new BufferedWriter(fileWriter);
   }
 
   private static class TracingManagerHelper {
