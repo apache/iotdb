@@ -81,6 +81,9 @@ public class InsertRowsPlan extends InsertPlan {
 
   @Override
   public void checkIntegrity() throws QueryProcessException {
+    if (insertRowPlanList.isEmpty()) {
+      throw new QueryProcessException("sub plan are empty.");
+    }
     for (InsertRowPlan insertRowPlan : insertRowPlanList) {
       insertRowPlan.checkIntegrity();
     }
