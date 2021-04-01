@@ -26,6 +26,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
+import java.util.Calendar;
 import java.util.Objects;
 
 public class GroupByFilter implements Filter, Serializable {
@@ -35,6 +36,14 @@ public class GroupByFilter implements Filter, Serializable {
   private long slidingStep;
   private long startTime;
   private long endTime;
+  private boolean isSlidingStepByMonth;
+  private static final long MS_TO_MONTH = 30 * 86400_000L;
+
+  public GroupByFilter(
+      long interval, long slidingStep, long startTime, long endTime, boolean isSlidingStepByMonth) {
+    this(interval, slidingStep, startTime, endTime);
+    this.isSlidingStepByMonth = isSlidingStepByMonth;
+  }
 
   public GroupByFilter(long interval, long slidingStep, long startTime, long endTime) {
     this.interval = interval;
@@ -53,7 +62,27 @@ public class GroupByFilter implements Filter, Serializable {
   @Override
   public boolean satisfy(long time, Object value) {
     if (time < startTime || time >= endTime) return false;
-    else return (time - startTime) % slidingStep < interval;
+    if (isSlidingStepByMonth) {
+      return (time - convertSlidingSteps(time)) < interval;
+    }
+    return (time - startTime) % slidingStep < interval;
+  }
+
+  // find the start time of current group by range
+  private long convertSlidingSteps(long time) {
+    Calendar calendar = Calendar.getInstance();
+
+    calendar.setTimeInMillis(time);
+    int endMonth = calendar.get(Calendar.MONTH);
+
+    calendar.setTimeInMillis(startTime);
+    int startMonth = calendar.get(Calendar.MONTH);
+
+    int slidingStepsInMo = (int) (slidingStep / MS_TO_MONTH);
+    int nums = (endMonth - startMonth) / slidingStepsInMo;
+
+    calendar.add(Calendar.MONTH, nums * slidingStepsInMo);
+    return calendar.getTimeInMillis();
   }
 
   @Override

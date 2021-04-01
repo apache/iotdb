@@ -1051,6 +1051,111 @@ public class IOTDBGroupByIT {
   }
 
   @Test
+  public void groupByNaturalMonth4() {
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      // 10/31/2019:19:57:18
+      long startTime = 1572523038000L;
+      // 04/01/2020:19:57:18
+      long endTime = 1585742238000L;
+
+      String[] retArray1 = {
+        "10/31/2019:19:57:18",
+        "1.0",
+        "11/30/2019:19:57:18",
+        "1.0",
+        "12/31/2019:19:57:18",
+        "1.0",
+        "01/31/2020:19:57:18",
+        "0.0",
+        "02/29/2020:19:57:18",
+        "0.0",
+        "03/31/2020:19:57:18",
+        "0.0"
+      };
+      List<String> start = new ArrayList<>();
+
+      for (long i = startTime; i <= endTime; i += 86400_000L) {
+        statement.execute("insert into root.sg1.d1(timestamp, temperature) values (" + i + ", 1)");
+      }
+
+      DateFormat df = new SimpleDateFormat("MM/dd/yyyy:HH:mm:ss");
+      df.setTimeZone(TimeZone.getTimeZone("GMT+8:00"));
+
+      boolean hasResultSet =
+          statement.execute(
+              "select sum(temperature) from "
+                  + "root.sg1.d1 "
+                  + "GROUP BY ([1572523038000, 1585742238000), 10m, 1mo)");
+
+      Assert.assertTrue(hasResultSet);
+      int cnt;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String time = resultSet.getString(TIMESTAMP_STR);
+          String ans = resultSet.getString(sum("root.sg1.d1.temperature"));
+          Assert.assertEquals(retArray1[cnt++], df.format(Long.parseLong(time)));
+          Assert.assertEquals(retArray1[cnt++], ans);
+        }
+        Assert.assertEquals(retArray1.length, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void groupByNaturalMonth5() {
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      // 10/31/2019:19:57:18
+      long startTime = 1572523038000L;
+      // 04/01/2020:19:57:18
+      long endTime = 1585742238000L;
+
+      String[] retArray1 = {
+        "10/31/2019:19:57:18", "1.0", "01/31/2020:19:57:18", "0.0",
+      };
+      List<String> start = new ArrayList<>();
+
+      for (long i = startTime; i <= endTime; i += 86400_000L) {
+        statement.execute("insert into root.sg1.d1(timestamp, temperature) values (" + i + ", 1)");
+      }
+
+      DateFormat df = new SimpleDateFormat("MM/dd/yyyy:HH:mm:ss");
+      df.setTimeZone(TimeZone.getTimeZone("GMT+8:00"));
+
+      boolean hasResultSet =
+          statement.execute(
+              "select sum(temperature) from "
+                  + "root.sg1.d1 "
+                  + "GROUP BY ([1572523038000, 1585742238000), 10m, 3mo)");
+
+      Assert.assertTrue(hasResultSet);
+      int cnt;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String time = resultSet.getString(TIMESTAMP_STR);
+          String ans = resultSet.getString(sum("root.sg1.d1.temperature"));
+          Assert.assertEquals(retArray1[cnt++], df.format(Long.parseLong(time)));
+          Assert.assertEquals(retArray1[cnt++], ans);
+        }
+        Assert.assertEquals(retArray1.length, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
   public void usingNowFunction() {
     System.out.println("usingNowFunction");
     try (Connection connection =

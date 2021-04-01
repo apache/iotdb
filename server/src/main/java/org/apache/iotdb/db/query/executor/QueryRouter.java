@@ -158,12 +158,14 @@ public class QueryRouter implements IQueryRouter {
     long slidingStep = groupByTimePlan.getSlidingStep();
     long startTime = groupByTimePlan.getStartTime();
     long endTime = groupByTimePlan.getEndTime();
+    boolean slidingStepByMonth = groupByTimePlan.isSlidingStepByMonth();
 
     IExpression expression = groupByTimePlan.getExpression();
     List<PartialPath> selectedSeries = groupByTimePlan.getDeduplicatedPaths();
 
     GlobalTimeExpression timeExpression =
-        new GlobalTimeExpression(new GroupByFilter(unit, slidingStep, startTime, endTime));
+        new GlobalTimeExpression(
+            new GroupByFilter(unit, slidingStep, startTime, endTime, slidingStepByMonth));
 
     if (expression == null) {
       expression = timeExpression;
