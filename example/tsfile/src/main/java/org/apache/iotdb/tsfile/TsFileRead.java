@@ -40,7 +40,7 @@ import java.util.ArrayList;
  */
 public class TsFileRead {
 
-  private static final String DEVICE1 = Constant.STORAGE_GROUP + ".device_1";
+  private static final String DEVICE1 = "device_1";
 
   private static void queryAndPrint(
       ArrayList<Path> paths, ReadOnlyTsFile readTsFile, IExpression statement) throws IOException {

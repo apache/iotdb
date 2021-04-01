@@ -27,6 +27,5 @@ public class Constant {
   static final String SENSOR_2 = "sensor_2";
   static final String SENSOR_3 = "sensor_3";
 
-  static final String STORAGE_GROUP = "root.group_0";
-  static final String DEVICE_PREFIX = STORAGE_GROUP + ".device_";
+  static final String DEVICE_PREFIX = "device_";
 }

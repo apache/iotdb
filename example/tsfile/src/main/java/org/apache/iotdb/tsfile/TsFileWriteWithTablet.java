@@ -50,7 +50,7 @@ public class TsFileWriteWithTablet {
 
       Schema schema = new Schema();
 
-      String device = "root.sg.device_1";
+      String device = "device_1";
       String sensorPrefix = "sensor_";
       // the number of rows to include in the tablet
       int rowNum = 1000000;
