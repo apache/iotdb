@@ -59,6 +59,7 @@ import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetUsingDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -395,6 +396,10 @@ public class MManager {
       case SET_DEVICE_TEMPLATE:
         SetDeviceTemplatePlan setDeviceTemplatePlan = (SetDeviceTemplatePlan) plan;
         setDeviceTemplate(setDeviceTemplatePlan);
+        break;
+      case SET_USING_DEVICE_TEMPLATE:
+        SetUsingDeviceTemplatePlan setUsingDeviceTemplatePlan = (SetUsingDeviceTemplatePlan) plan;
+        setUsingDeviceTemplate(setUsingDeviceTemplatePlan);
         break;
       case AUTO_CREATE_DEVICE_MNODE:
         AutoCreateDeviceMNodePlan autoCreateDeviceMNodePlan = (AutoCreateDeviceMNodePlan) plan;
@@ -1147,6 +1152,7 @@ public class MManager {
     List<PartialPath> measurements = ((VectorPartialPath) fullPath).getSubSensorsPathList();
     TSDataType[] types = new TSDataType[measurements.size()];
     TSEncoding[] encodings = new TSEncoding[measurements.size()];
+
     for (int i = 0; i < measurements.size(); i++) {
       int index = measurementsInLeaf.indexOf(measurements.get(i).getMeasurement());
       types[i] = schema.getValueTSDataTypeList().get(index);
@@ -2235,7 +2241,8 @@ public class MManager {
     return deviceMNode.getChild(measurementName);
   }
 
-  private MeasurementMNode findTemplate(Pair<MNode, Template> deviceMNode, String measurement) {
+  private MeasurementMNode findTemplate(Pair<MNode, Template> deviceMNode, String measurement)
+      throws MetadataException {
     if (deviceMNode.right != null) {
       Map<String, IMeasurementSchema> templateMap = deviceMNode.right.getSchemaMap();
       List<String> measurements =
@@ -2244,8 +2251,12 @@ public class MManager {
       String firstMeasurement = measurements.get(0);
       IMeasurementSchema schema = templateMap.get(firstMeasurement);
       if (!deviceMNode.left.isUseTemplate()) {
-        // todo serialize
         deviceMNode.left.setUseTemplate(true);
+        try {
+          logWriter.setUsingDeviceTemplate(deviceMNode.left.getPartialPath());
+        } catch (IOException e) {
+          throw new MetadataException(e);
+        }
       }
 
       if (schema != null) {
@@ -2389,5 +2400,9 @@ public class MManager {
 
   public void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) throws MetadataException {
     mtree.getDeviceNodeWithAutoCreating(plan.getPath(), config.getDefaultStorageGroupLevel());
+  }
+
+  private void setUsingDeviceTemplate(SetUsingDeviceTemplatePlan plan) throws MetadataException {
+    getDeviceNode(plan.getPrefixPath()).setUseTemplate(true);
   }
 }

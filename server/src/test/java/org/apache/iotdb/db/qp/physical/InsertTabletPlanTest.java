@@ -237,7 +237,6 @@ public class InsertTabletPlanTest {
     }
 
     // test recover
-    // we want to recover
     EnvironmentUtils.stopDaemon();
     IoTDB.metaManager.clear();
     // wait for close
@@ -251,12 +250,11 @@ public class InsertTabletPlanTest {
 
     queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
     dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    // todo serialize template set
-    // Assert.assertEquals(3, dataSet.getPaths().size());
-    //    while (dataSet.hasNext()) {
-    //      RowRecord record = dataSet.next();
-    //      Assert.assertEquals(6, record.getFields().size());
-    //    }
+    Assert.assertEquals(3, dataSet.getPaths().size());
+    while (dataSet.hasNext()) {
+      RowRecord record = dataSet.next();
+      Assert.assertEquals(6, record.getFields().size());
+    }
   }
 
   @Test
