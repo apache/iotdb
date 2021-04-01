@@ -1126,9 +1126,18 @@ public class MManager {
     return res;
   }
 
+  /**
+   * get MeasurementSchema or VectorMeasurementSchema which contains the measurement
+   *
+   * @param device device path
+   * @param measurement measurement name, could start with "$#$"
+   * @return MeasurementSchema or VectorMeasurementSchema
+   */
   public IMeasurementSchema getSeriesSchema(PartialPath device, String measurement)
       throws MetadataException {
-    return getSeriesSchema(new PartialPath(device.getFullPath(), measurement));
+    MNode deviceMNode = getDeviceNode(device);
+    MeasurementMNode measurementMNode = (MeasurementMNode) deviceMNode.getChild(measurement);
+    return measurementMNode.getSchema();
   }
 
   /**
