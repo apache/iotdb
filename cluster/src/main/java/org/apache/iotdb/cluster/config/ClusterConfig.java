@@ -41,11 +41,11 @@ public class ClusterConfig {
   @ClusterConsistent private boolean isRpcThriftCompressionEnabled = false;
   private int maxConcurrentClientNum = 10000;
 
-  @ClusterConsistent private int replicationNum = 3;
+  @ClusterConsistent private int replicationNum = 1;
 
   @ClusterConsistent private String clusterName = "default";
 
-  @ClusterConsistent private boolean useAsyncServer = true;
+  @ClusterConsistent private boolean useAsyncServer = false;
 
   private boolean useAsyncApplier = true;
 

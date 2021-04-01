@@ -112,6 +112,16 @@ public class VectorMeasurementSchemaStub implements IMeasurementSchema {
   }
 
   @Override
+  public int partialSerializeTo(OutputStream outputStream) {
+    return 0;
+  }
+
+  @Override
+  public int partialSerializeTo(ByteBuffer buffer) {
+    return 0;
+  }
+
+  @Override
   public int getMeasurementIdColumnIndex(String measurementId) {
     return 0;
   }

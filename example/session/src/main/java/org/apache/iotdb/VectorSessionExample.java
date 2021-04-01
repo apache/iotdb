@@ -60,7 +60,6 @@ public class VectorSessionExample {
     }
 
     dataSet.closeOperationHandle();
-
     dataSet = session.executeQueryStatement("select * from root.sg_1.d1");
     System.out.println(dataSet.getColumnNames());
     while (dataSet.hasNext()) {
@@ -98,12 +97,7 @@ public class VectorSessionExample {
 
     session.createDeviceTemplate(
         "template1", measurementList, dataTypeList, encodingList, compressionTypes);
-    try {
-      Thread.sleep(1000);
-    } catch (Exception e) {
-
-    }
-    session.setDeviceTemplate("template1", "root.sg_0");
+    session.setDeviceTemplate("template1", "root.sg_1");
   }
 
   private static void insertTabletWithAlignedTimeseries()

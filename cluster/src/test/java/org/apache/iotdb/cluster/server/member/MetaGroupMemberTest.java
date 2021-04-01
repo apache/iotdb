@@ -288,11 +288,11 @@ public class MetaGroupMemberTest extends BaseMember {
           IoTDB.metaManager.collectSeries(new PartialPath(prefixPath), schemas);
           dataOutputStream.writeInt(schemas.size());
           for (IMeasurementSchema schema : schemas) {
-            schema.serializeTo(dataOutputStream);
+            schema.partialSerializeTo(dataOutputStream);
           }
         } else {
           dataOutputStream.writeInt(1);
-          TestUtils.getTestMeasurementSchema(0).serializeTo(dataOutputStream);
+          TestUtils.getTestMeasurementSchema(0).partialSerializeTo(dataOutputStream);
         }
       }
     } catch (IOException | IllegalPathException e) {

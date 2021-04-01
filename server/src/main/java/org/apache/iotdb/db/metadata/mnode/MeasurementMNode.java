@@ -168,4 +168,13 @@ public class MeasurementMNode extends MNode {
 
     return node;
   }
+
+  public TSDataType getDataType(String measurementId) {
+    if (schema instanceof MeasurementSchema) {
+      return schema.getType();
+    } else {
+      int index = schema.getMeasurementIdColumnIndex(measurementId);
+      return schema.getValueTSDataTypeList().get(index);
+    }
+  }
 }
