@@ -90,5 +90,6 @@ public abstract class IoTDBSource<T> extends RichSourceFunction<T> {
             sourceOptions.getPort(),
             sourceOptions.getUser(),
             sourceOptions.getPassword());
+    session.open();
   }
 }
