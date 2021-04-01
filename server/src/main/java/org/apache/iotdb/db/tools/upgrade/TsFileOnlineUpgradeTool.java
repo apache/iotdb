@@ -23,11 +23,7 @@ import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.tools.TsFileRewriteTool;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
-import org.apache.iotdb.tsfile.exception.write.PageException;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
@@ -52,7 +48,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-public class TsFileOnlineUpgradeTool extends TsFileRewriteTool implements AutoCloseable {
+public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileOnlineUpgradeTool.class);
 
@@ -73,9 +69,9 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool implements AutoCl
    * upgrade a single TsFile.
    *
    * @param resourceToBeUpgraded the old file's resource which need to be upgrade.
-   * @param upgradedResources    new version tsFiles' resources
+   * @param upgradedResources new version tsFiles' resources
    */
-  public static void upgradeOneTsfile(
+  public static void upgradeOneTsFile(
       TsFileResource resourceToBeUpgraded, List<TsFileResource> upgradedResources)
       throws IOException, WriteProcessException {
     try (TsFileOnlineUpgradeTool updater = new TsFileOnlineUpgradeTool(resourceToBeUpgraded)) {
@@ -101,8 +97,6 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool implements AutoCl
         TSFileConfig.MAGIC_STRING.getBytes().length
             + TSFileConfig.VERSION_NUMBER_V2.getBytes().length;
     reader.position(headerLength);
-    // start to scan chunks and chunkGroups
-    boolean newChunkGroup = true;
     List<List<PageHeader>> pageHeadersInChunkGroup = new ArrayList<>();
     List<List<ByteBuffer>> pageDataInChunkGroup = new ArrayList<>();
     List<List<Boolean>> needToDecodeInfoInChunkGroup = new ArrayList<>();
@@ -112,10 +106,6 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool implements AutoCl
       while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
           case MetaMarker.CHUNK_HEADER:
-            // this is the first chunk of a new ChunkGroup.
-            if (newChunkGroup) {
-              newChunkGroup = false;
-            }
             ChunkHeader header = ((TsFileSequenceReaderForV2) reader).readChunkHeader();
             MeasurementSchema measurementSchema =
                 new MeasurementSchema(
@@ -148,7 +138,7 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool implements AutoCl
                       // statistics bytes size
                       // new boolean StatsSize is 8 bytes larger than old one
                       + (pageHeader.getStatistics().getStatsSize()
-                      - (dataType == TSDataType.BOOLEAN ? 8 : 0))
+                          - (dataType == TSDataType.BOOLEAN ? 8 : 0))
                       // page data bytes
                       + pageHeader.getCompressedSize());
             }
@@ -171,7 +161,6 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool implements AutoCl
             pageDataInChunkGroup.clear();
             measurementSchemaList.clear();
             needToDecodeInfoInChunkGroup.clear();
-            newChunkGroup = true;
             break;
           case MetaMarker.VERSION:
             long version = ((TsFileSequenceReaderForV2) reader).readVersion();
@@ -241,10 +230,7 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool implements AutoCl
     }
   }
 
-
-  /**
-   * TsFileName is changing like from 1610635230693-1-0.tsfile to 1610635230693-1-0-0.tsfile
-   */
+  /** TsFileName is changing like from 1610635230693-1-0.tsfile to 1610635230693-1-0-0.tsfile */
   @Override
   public String upgradeTsFileName(String oldTsFileName) {
     String[] name = oldTsFileName.split(TsFileConstant.TSFILE_SUFFIX);
@@ -264,9 +250,7 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool implements AutoCl
     rewritePageIntoFiles(batchData, schema, chunkWritersInChunkGroup);
   }
 
-  /**
-   * check if the file to be upgraded has correct magic strings and version number
-   */
+  /** check if the file to be upgraded has correct magic strings and version number */
   @Override
   protected boolean fileCheck() throws IOException {
     String magic = reader.readHeadMagic();

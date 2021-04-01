@@ -93,11 +93,19 @@ public interface ITimeIndex {
   /**
    * get time partition with check. If data of tsfile cross partitions, an exception will be thrown
    *
-   * @param tsfilePath tsfile path
+   * @param tsFilePath tsfile path
    * @return partition
    * @throws PartitionViolationException data of tsfile cross partitions
    */
-  long getTimePartitionWithCheck(String tsfilePath) throws PartitionViolationException;
+  long getTimePartitionWithCheck(String tsFilePath) throws PartitionViolationException;
+
+  /**
+   * Check whether the tsFile spans multiple time partitions.
+   *
+   * @param tsFilePath the tsFile path
+   * @return true if the tsFile spans multiple time partitions, otherwise false.
+   */
+  boolean isSpanMultiTimePartitions(String tsFilePath);
 
   /**
    * update start time

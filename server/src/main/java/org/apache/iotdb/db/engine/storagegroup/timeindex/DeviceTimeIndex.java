@@ -242,7 +242,7 @@ public class DeviceTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public long getTimePartitionWithCheck(String tsfilePath) throws PartitionViolationException {
+  public long getTimePartitionWithCheck(String tsFilePath) throws PartitionViolationException {
     long partitionId = -1;
     for (int index : deviceToIndex.values()) {
       long p = StorageEngine.getTimePartition(startTimes[index]);
@@ -250,19 +250,29 @@ public class DeviceTimeIndex implements ITimeIndex {
         partitionId = p;
       } else {
         if (partitionId != p) {
-          throw new PartitionViolationException(tsfilePath);
+          throw new PartitionViolationException(tsFilePath);
         }
       }
 
       p = StorageEngine.getTimePartition(endTimes[index]);
       if (partitionId != p) {
-        throw new PartitionViolationException(tsfilePath);
+        throw new PartitionViolationException(tsFilePath);
       }
     }
     if (partitionId == -1) {
-      throw new PartitionViolationException(tsfilePath);
+      throw new PartitionViolationException(tsFilePath);
     }
     return partitionId;
+  }
+
+  @Override
+  public boolean isSpanMultiTimePartitions(String tsFilePath) {
+    try {
+      getTimePartitionWithCheck(tsFilePath);
+    } catch (PartitionViolationException e) {
+      return false;
+    }
+    return true;
   }
 
   @Override

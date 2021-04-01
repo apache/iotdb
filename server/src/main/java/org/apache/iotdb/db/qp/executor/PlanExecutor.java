@@ -36,7 +36,6 @@ import org.apache.iotdb.db.engine.merge.manage.MergeManager.TaskStatus;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.BatchProcessException;
-import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.exception.QueryIdNotExsitException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.UDFRegistrationException;
@@ -982,10 +981,10 @@ public class PlanExecutor implements IPlanExecutor {
       }
 
       List<TsFileResource> splitResources = new ArrayList();
-      try {
-        tsFileResource.getTimePartitionWithCheck();
-      } catch (PartitionViolationException e) {
-        logger.info("try to split the tsfile={}", tsFileResource.getTsFile().getPath());
+      if (tsFileResource.isSpanMultiTimePartitions()) {
+        logger.info(
+            "try to split the tsfile={} du to it spans multi partitions",
+            tsFileResource.getTsFile().getPath());
         TsFileRewriteTool.rewriteTsFile(tsFileResource, splitResources);
         logger.info(
             "after split, the old tsfile was split to {} new tsfiles", splitResources.size());

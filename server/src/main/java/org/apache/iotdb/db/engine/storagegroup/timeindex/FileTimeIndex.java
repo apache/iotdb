@@ -153,13 +153,23 @@ public class FileTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public long getTimePartitionWithCheck(String tsfilePath) throws PartitionViolationException {
+  public long getTimePartitionWithCheck(String tsFilePath) throws PartitionViolationException {
     long startPartitionId = StorageEngine.getTimePartition(startTime);
     long endPartitionId = StorageEngine.getTimePartition(endTime);
     if (startPartitionId != endPartitionId) {
-      throw new PartitionViolationException(tsfilePath);
+      throw new PartitionViolationException(tsFilePath);
     }
     return startPartitionId;
+  }
+
+  @Override
+  public boolean isSpanMultiTimePartitions(String tsFilePath) {
+    try {
+      getTimePartitionWithCheck(tsFilePath);
+    } catch (PartitionViolationException e) {
+      return false;
+    }
+    return true;
   }
 
   @Override
