@@ -84,7 +84,7 @@ public class BitMap {
       }
     }
     for (j = 0; j < size % Byte.SIZE; j++) {
-      if ((bits[size / Byte.SIZE] & BIT_UTIL[j]) != BIT_UTIL[j]) {
+      if ((bits[size / Byte.SIZE] & BIT_UTIL[j]) != 0) {
         return false;
       }
     }
