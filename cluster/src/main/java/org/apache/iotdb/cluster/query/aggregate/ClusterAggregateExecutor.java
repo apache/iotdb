@@ -85,7 +85,7 @@ public class ClusterAggregateExecutor extends AggregationExecutor {
   @Override
   protected TimeGenerator getTimeGenerator(QueryContext context, RawDataQueryPlan rawDataQueryPlan)
       throws StorageEngineException {
-    return new ClusterTimeGenerator(expression, context, metaMember, rawDataQueryPlan, false);
+    return new ClusterTimeGenerator(context, metaMember, rawDataQueryPlan, false);
   }
 
   @Override
