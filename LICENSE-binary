@@ -294,8 +294,8 @@ org.slf4j:jcl-over-slf4j:1.7.25
 EPL 1.0
 ------------
 com.h2database:h2-mvstore:1.4.199
-ch.qos.logback:logback-classic:1.1.11
-ch.qos.logback:logback-core:1.1.11
+ch.qos.logback:logback-classic:1.2.3
+ch.qos.logback:logback-core:1.2.3
 
 
 CDDL 1.1
