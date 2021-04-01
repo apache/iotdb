@@ -29,7 +29,6 @@
     </parent>
     <groupId>org.apache.iotdb</groupId>
     <artifactId>client-cpp</artifactId>
-    <version>0.11.3-SNAPSHOT</version>
     <name>Client for cpp</name>
     <description>C++ client</description>
     <packaging>pom</packaging>
