@@ -210,8 +210,7 @@ public class InsertTabletPlan extends InsertPlan {
     for (BitMap bitMap : bitMaps) {
       if (bitMap == null) {
         stream.writeBoolean(false);
-      }
-      else {
+      } else {
         stream.writeBoolean(true);
         stream.write(bitMap.getByteArray());
       }
@@ -293,8 +292,7 @@ public class InsertTabletPlan extends InsertPlan {
     for (BitMap bitMap : bitMaps) {
       if (bitMap == null) {
         buffer.put(BytesUtils.boolToByte(false));
-      }
-      else {
+      } else {
         buffer.put(BytesUtils.boolToByte(true));
         buffer.put(bitMap.getByteArray());
       }
