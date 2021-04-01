@@ -170,7 +170,7 @@ public class ClusterConfig {
    * If the path is not updated frequently, you can enable cache to update the path every 1s
    * improving the query performance by 14%
    */
-  private boolean enableQueryPathsCache = true;
+  private boolean enableQueryPathsCache = false;
 
   /**
    * When enable_query_paths_cache is true, this parameter effective. query paths cache size,
