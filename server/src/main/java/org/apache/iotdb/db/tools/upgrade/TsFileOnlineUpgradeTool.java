@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -85,7 +86,7 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
    * file metadata size. Then the reader will skip the first TSFileConfig.OLD_MAGIC_STRING.length()
    * bytes of the file for preparing reading real data.
    *
-   * @param file the data file
+   * @param resourceToBeUpgraded old version tsFile's resource
    * @throws IOException If some I/O error occurs
    */
   public TsFileOnlineUpgradeTool(TsFileResource resourceToBeUpgraded) throws IOException {
@@ -103,7 +104,7 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
   /**
    * upgrade a single TsFile
    *
-   * @param tsFileName old version tsFile's absolute path
+   * @param resourceToBeUpgraded old version tsFile's resource
    * @param upgradedResources new version tsFiles' resources
    */
   public static void upgradeOneTsfile(
@@ -351,10 +352,10 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
           }
           File newFile =
               FSFactoryProducer.getFSFactory()
-                  .getFile(partitionDir + File.separator + oldTsFile.getName());
+                  .getFile(partitionDir + File.separator + upgradeTsFileName(oldTsFile.getName()));
           try {
             if (newFile.exists()) {
-              logger.debug("delete uncomplated file {}", newFile);
+              logger.debug("Delete uncompleted file {}", newFile);
               Files.delete(newFile.toPath());
             }
             if (!newFile.createNewFile()) {
@@ -371,6 +372,12 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
             return null;
           }
         });
+  }
+
+  // TsFileName is changing like from 1610635230693-1-0.tsfile to 1610635230693-1-0-0.tsfile
+  private String upgradeTsFileName(String oldTsFileName) {
+    String[] name = oldTsFileName.split(TsFileConstant.TSFILE_SUFFIX);
+    return name[0] + "-0" + TsFileConstant.TSFILE_SUFFIX;
   }
 
   private void writePageInToFile(
