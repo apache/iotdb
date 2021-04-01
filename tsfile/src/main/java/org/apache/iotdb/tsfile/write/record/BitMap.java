@@ -68,9 +68,7 @@ public class BitMap {
 
   /** mark as 0 at all positions */
   public void unmark() {
-    for (int i = 0; i < size / Byte.SIZE + 1; i++) {
-      bits[i] = (byte) 0;
-    }
+    Arrays.fill(bits, (byte) 0);
   }
 
   public void unmark(int position) {
@@ -107,5 +105,14 @@ public class BitMap {
       }
     }
     return true;
+  }
+
+  @Override
+  public String toString() {
+    StringBuffer res = new StringBuffer();
+    for (int j = 0; j < size; j++) {
+      res.append((bits[j / Byte.SIZE] & BIT_UTIL[j % Byte.SIZE]) > 0 ? 1 : 0);
+    }
+    return res.toString();
   }
 }
