@@ -46,15 +46,7 @@ public class ExportCsvTestIT extends AbstractScript {
 
   private final String EXPORT_FILE = "target" + File.separator + "dump0.csv";
 
-  private final String[] outputForWindows = {
-    "------------------------------------------",
-    "Starting IoTDB Client Export Script",
-    "------------------------------------------",
-    "Start to export data from sql statement",
-    "successfully",
-  };
-
-  private final String[] outputForUnix = {
+  private final String[] output = {
     "------------------------------------------",
     "Starting IoTDB Client Export Script",
     "------------------------------------------",
@@ -150,9 +142,9 @@ public class ExportCsvTestIT extends AbstractScript {
     String[] sql = {"select * from root"};
     assertTrue(generateSQLFile(sql));
     if (os.startsWith("windows")) {
-      testOnWindows(outputForWindows);
+      testOnWindows(output);
     } else {
-      testOnUnix(outputForUnix);
+      testOnUnix(output);
     }
     FileReader fileReader = new FileReader(EXPORT_FILE);
     BufferedReader br = new BufferedReader(fileReader);
@@ -186,9 +178,9 @@ public class ExportCsvTestIT extends AbstractScript {
     String[] sql = {"select count(*) from root"};
     generateSQLFile(sql);
     if (os.startsWith("windows")) {
-      testOnWindows(outputForWindows);
+      testOnWindows(output);
     } else {
-      testOnUnix(outputForUnix);
+      testOnUnix(output);
     }
     FileReader fileReader = new FileReader(EXPORT_FILE);
     BufferedReader br = new BufferedReader(fileReader);
