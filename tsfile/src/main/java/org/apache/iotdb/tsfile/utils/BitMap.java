@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.write.record;
+package org.apache.iotdb.tsfile.utils;
 
 import java.util.Arrays;
 

@@ -27,7 +27,7 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.write.record.BitMap;
+import org.apache.iotdb.tsfile.utils.BitMap;
 
 import java.io.IOException;
 import java.util.ArrayList;
