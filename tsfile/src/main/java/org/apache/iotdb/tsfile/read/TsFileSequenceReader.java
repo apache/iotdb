@@ -22,7 +22,6 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
-import org.apache.iotdb.tsfile.exception.TsFileRuntimeException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -66,10 +65,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.Set;
 import java.util.TreeMap;
@@ -1264,74 +1261,17 @@ public class TsFileSequenceReader implements AutoCloseable {
     return maxPlanIndex;
   }
 
-  /**
-   * @return An iterator of linked hashmaps ( measurement -> chunk metadata list ). When traversing
-   *     the linked hashmap, you will get chunk metadata lists according to the lexicographic order
-   *     of the measurements. The first measurement of the linked hashmap of each iteration is
-   *     always larger than the last measurement of the linked hashmap of the previous iteration in
-   *     lexicographic order.
-   */
-  public Iterator<Map<String, List<ChunkMetadata>>> getMeasurementChunkMetadataListMapIterator(
-      String device) throws IOException {
-    readFileMetadata();
-
-    MetadataIndexNode metadataIndexNode = tsFileMetaData.getMetadataIndex();
-    Pair<MetadataIndexEntry, Long> metadataIndexPair =
-        getMetadataAndEndOffset(metadataIndexNode, device, true, true);
-
-    if (metadataIndexPair == null) {
-      return new Iterator<Map<String, List<ChunkMetadata>>>() {
-
-        @Override
-        public boolean hasNext() {
-          return false;
-        }
-
-        @Override
-        public LinkedHashMap<String, List<ChunkMetadata>> next() {
-          throw new NoSuchElementException();
-        }
-      };
-    }
-
-    Queue<Pair<Long, Long>> queue = new LinkedList<>();
-    ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
-    collectEachLeafMeasurementNodeOffsetRange(buffer, queue);
-
-    return new Iterator<Map<String, List<ChunkMetadata>>>() {
-
+  public Iterator<LinkedHashMap<IMeasurementSchema, List<IChunkMetadata>>>
+      getMeasurementChunkMetadataListMapIterator(String device) throws IOException {
+    return new Iterator<LinkedHashMap<IMeasurementSchema, List<IChunkMetadata>>>() {
       @Override
       public boolean hasNext() {
-        return !queue.isEmpty();
+        return false;
       }
 
       @Override
-      public LinkedHashMap<String, List<ChunkMetadata>> next() {
-        if (!hasNext()) {
-          throw new NoSuchElementException();
-        }
-        Pair<Long, Long> startEndPair = queue.remove();
-        LinkedHashMap<String, List<ChunkMetadata>> measurementChunkMetadataList =
-            new LinkedHashMap<>();
-        try {
-          List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
-          ByteBuffer nextBuffer = readData(startEndPair.left, startEndPair.right);
-          while (nextBuffer.hasRemaining()) {
-            timeseriesMetadataList.add(TimeseriesMetadata.deserializeFrom(nextBuffer, true));
-          }
-          for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataList) {
-            List<ChunkMetadata> list =
-                measurementChunkMetadataList.computeIfAbsent(
-                    timeseriesMetadata.getMeasurementId(), m -> new ArrayList<>());
-            for (IChunkMetadata chunkMetadata : timeseriesMetadata.getChunkMetadataList()) {
-              list.add((ChunkMetadata) chunkMetadata);
-            }
-          }
-          return measurementChunkMetadataList;
-        } catch (IOException e) {
-          throw new TsFileRuntimeException(
-              "Error occurred while reading a time series metadata block.");
-        }
+      public LinkedHashMap<IMeasurementSchema, List<IChunkMetadata>> next() {
+        return null;
       }
     };
   }

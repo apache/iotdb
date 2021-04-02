@@ -25,20 +25,22 @@ import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
-import org.apache.iotdb.db.engine.merge.selector.IMergePathSelector;
-import org.apache.iotdb.db.engine.merge.selector.NaivePathSelector;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.db.utils.MergeUtils.MetaListEntry;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.VectorChunkMetadata;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
+import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -52,6 +54,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -73,11 +76,10 @@ public class MergeMultiChunkTask {
       IoTDBDescriptor.getInstance().getConfig().getMergeChunkPointNumberThreshold();
 
   private MergeLogger mergeLogger;
-  private List<PartialPath> unmergedSeries;
 
   private String taskName;
   private MergeResource resource;
-  private TimeValuePair[] currTimeValuePairs;
+  private List<TimeValuePair>[] currTimeValuePairs;
   private boolean fullMerge;
 
   private MergeContext mergeContext;
@@ -85,19 +87,21 @@ public class MergeMultiChunkTask {
   private AtomicInteger mergedChunkNum = new AtomicInteger();
   private AtomicInteger unmergedChunkNum = new AtomicInteger();
   private int mergedSeriesCnt;
+  private int totalSeriesCnt;
   private double progress;
 
-  private int concurrentMergeSeriesNum;
-  private List<PartialPath> currMergingPaths = new ArrayList<>();
+  private String currMeringDevice;
+  private List<IMeasurementSchema> currMergingPaths = new ArrayList<>();
   // need to be cleared every device
-  private final Map<TsFileSequenceReader, Iterator<Map<String, List<ChunkMetadata>>>>
+  private final Map<
+          TsFileSequenceReader, Iterator<LinkedHashMap<IMeasurementSchema, List<IChunkMetadata>>>>
       measurementChunkMetadataListMapIteratorCache =
           new TreeMap<>(
               (o1, o2) ->
                   TsFileManagement.compareFileName(
                       new File(o1.getFileName()), new File(o2.getFileName())));
   // need to be cleared every device
-  private final Map<TsFileSequenceReader, Map<String, List<ChunkMetadata>>>
+  private final Map<TsFileSequenceReader, LinkedHashMap<IMeasurementSchema, List<IChunkMetadata>>>
       chunkMetadataListCacheForMerge =
           new TreeMap<>(
               (o1, o2) ->
@@ -112,44 +116,44 @@ public class MergeMultiChunkTask {
       MergeLogger mergeLogger,
       MergeResource mergeResource,
       boolean fullMerge,
-      List<PartialPath> unmergedSeries,
-      int concurrentMergeSeriesNum,
       String storageGroupName) {
     this.mergeContext = context;
     this.taskName = taskName;
     this.mergeLogger = mergeLogger;
     this.resource = mergeResource;
     this.fullMerge = fullMerge;
-    this.unmergedSeries = unmergedSeries;
-    this.concurrentMergeSeriesNum = concurrentMergeSeriesNum;
     this.storageGroupName = storageGroupName;
   }
 
-  void mergeSeries() throws IOException {
+  void mergeSeries() throws IOException, IllegalPathException {
+    // calculate total series count for progress and log
+    totalSeriesCnt = 0;
+    for (List<IMeasurementSchema> measurementSchemas :
+        resource.getDeviceMeasurementSchemaMap().values()) {
+      totalSeriesCnt += measurementSchemas.size();
+    }
+
     if (logger.isInfoEnabled()) {
-      logger.info("{} starts to merge {} series", taskName, unmergedSeries.size());
+      logger.info("{} starts to merge {} devices", taskName, totalSeriesCnt);
     }
     long startTime = System.currentTimeMillis();
     for (TsFileResource seqFile : resource.getSeqFiles()) {
       mergeContext.getUnmergedChunkStartTimes().put(seqFile, new HashMap<>());
     }
     // merge each series and write data into each seqFile's corresponding temp merge file
-    List<List<PartialPath>> devicePaths = MergeUtils.splitPathsByDevice(unmergedSeries);
-    for (List<PartialPath> pathList : devicePaths) {
-      // TODO: use statistics of queries to better rearrange series
-      IMergePathSelector pathSelector = new NaivePathSelector(pathList, concurrentMergeSeriesNum);
-      while (pathSelector.hasNext()) {
-        currMergingPaths = pathSelector.next();
-        mergePaths();
-        resource.clearChunkWriterCache();
-        if (Thread.interrupted()) {
-          logger.info("MergeMultiChunkTask {} aborted", taskName);
-          Thread.currentThread().interrupt();
-          return;
-        }
-        mergedSeriesCnt += currMergingPaths.size();
-        logMergeProgress();
+    for (Entry<PartialPath, List<IMeasurementSchema>> deviceMeasurementSchemaEntry :
+        resource.getDeviceMeasurementSchemaMap().entrySet()) {
+      currMeringDevice = deviceMeasurementSchemaEntry.getKey().getDevice();
+      currMergingPaths = deviceMeasurementSchemaEntry.getValue();
+      mergePaths();
+      resource.clearChunkWriterCache();
+      if (Thread.interrupted()) {
+        logger.info("MergeMultiChunkTask {} aborted", taskName);
+        Thread.currentThread().interrupt();
+        return;
       }
+      mergedSeriesCnt += currMergingPaths.size();
+      logMergeProgress();
       measurementChunkMetadataListMapIteratorCache.clear();
       chunkMetadataListCacheForMerge.clear();
     }
@@ -162,7 +166,7 @@ public class MergeMultiChunkTask {
 
   private void logMergeProgress() {
     if (logger.isInfoEnabled()) {
-      double newProgress = 100 * mergedSeriesCnt / (double) (unmergedSeries.size());
+      double newProgress = 100 * mergedSeriesCnt / (double) totalSeriesCnt;
       if (newProgress - progress >= 10.0) {
         progress = newProgress;
         logger.info("{} has merged {}% series", taskName, progress);
@@ -171,16 +175,27 @@ public class MergeMultiChunkTask {
   }
 
   public String getProgress() {
-    return String.format("Processed %d/%d series", mergedSeriesCnt, unmergedSeries.size());
+    return String.format("Processed %d/%d series", mergedSeriesCnt, totalSeriesCnt);
   }
 
-  private void mergePaths() throws IOException {
+  private void mergePaths() throws IOException, IllegalPathException {
     mergeLogger.logTSStart(currMergingPaths);
-    IPointReader[] unseqReaders = resource.getUnseqReaders(currMergingPaths);
-    currTimeValuePairs = new TimeValuePair[currMergingPaths.size()];
+    List<IPointReader>[] unseqReaders =
+        resource.getUnseqReaders(currMeringDevice, currMergingPaths);
+    currTimeValuePairs = new List[currMergingPaths.size()];
     for (int i = 0; i < currMergingPaths.size(); i++) {
-      if (unseqReaders[i].hasNextTimeValuePair()) {
-        currTimeValuePairs[i] = unseqReaders[i].currentTimeValuePair();
+      // whether it is a vector or not, we just have to rank time by the first column -- time column
+      if (unseqReaders[i].get(0).hasNextTimeValuePair()) {
+        List<TimeValuePair> timeValuePairList = new ArrayList<>();
+        timeValuePairList.add(unseqReaders[i].get(0).currentTimeValuePair());
+        long time = timeValuePairList.get(0).getTimestamp();
+        for (int j = 1; j < unseqReaders[i].size(); j++) {
+          TimeValuePair timeValuePair = unseqReaders[i].get(j).currentTimeValuePair();
+          if (timeValuePair.getTimestamp() == time) {
+            timeValuePairList.add(unseqReaders[i].get(j).currentTimeValuePair());
+          }
+        }
+        currTimeValuePairs[i] = timeValuePairList;
       }
     }
 
@@ -195,57 +210,63 @@ public class MergeMultiChunkTask {
     mergeLogger.logTSEnd();
   }
 
-  private void pathsMergeOneFile(int seqFileIdx, IPointReader[] unseqReaders) throws IOException {
+  private void pathsMergeOneFile(int seqFileIdx, List<IPointReader>[] unseqReaders)
+      throws IOException, IllegalPathException {
     TsFileResource currTsFile = resource.getSeqFiles().get(seqFileIdx);
-    String deviceId = currMergingPaths.get(0).getDevice();
-    long currDeviceMinTime = currTsFile.getStartTime(deviceId);
+    long currDeviceMinTime = currTsFile.getStartTime(currMeringDevice);
     // all paths in one call are from the same device
     if (currDeviceMinTime == Long.MAX_VALUE) {
       return;
     }
 
-    for (PartialPath path : currMergingPaths) {
-      mergeContext.getUnmergedChunkStartTimes().get(currTsFile).put(path, new ArrayList<>());
+    for (IMeasurementSchema path : currMergingPaths) {
+      mergeContext
+          .getUnmergedChunkStartTimes()
+          .get(currTsFile)
+          .put(new PartialPath(currMeringDevice, path.getMeasurementId()), new ArrayList<>());
     }
 
     // if this TsFile receives data later than fileLimitTime, it will overlap the next TsFile,
     // which is forbidden
-    for (TimeValuePair timeValuePair : currTimeValuePairs) {
-      if (timeValuePair != null && timeValuePair.getTimestamp() < currDeviceMinTime) {
-        currDeviceMinTime = timeValuePair.getTimestamp();
+    for (List<TimeValuePair> timeValuePair : currTimeValuePairs) {
+      if (timeValuePair != null && timeValuePair.get(0).getTimestamp() < currDeviceMinTime) {
+        currDeviceMinTime = timeValuePair.get(0).getTimestamp();
       }
     }
     boolean isLastFile = seqFileIdx + 1 == resource.getSeqFiles().size();
 
     TsFileSequenceReader fileSequenceReader = resource.getFileReader(currTsFile);
     List<Modification>[] modifications = new List[currMergingPaths.size()];
-    List<ChunkMetadata>[] seqChunkMeta = new List[currMergingPaths.size()];
-    Iterator<Map<String, List<ChunkMetadata>>> measurementChunkMetadataListMapIterator =
-        measurementChunkMetadataListMapIteratorCache.computeIfAbsent(
-            fileSequenceReader,
-            (tsFileSequenceReader -> {
-              try {
-                return tsFileSequenceReader.getMeasurementChunkMetadataListMapIterator(deviceId);
-              } catch (IOException e) {
-                logger.error(
-                    "unseq compaction task {}, getMeasurementChunkMetadataListMapIterator meets error. iterator create failed.",
-                    taskName,
-                    e);
-                return null;
-              }
-            }));
+    List<IChunkMetadata>[] seqChunkMeta = new List[currMergingPaths.size()];
+    Iterator<LinkedHashMap<IMeasurementSchema, List<IChunkMetadata>>>
+        measurementChunkMetadataListMapIterator =
+            measurementChunkMetadataListMapIteratorCache.computeIfAbsent(
+                fileSequenceReader,
+                (tsFileSequenceReader -> {
+                  try {
+                    return tsFileSequenceReader.getMeasurementChunkMetadataListMapIterator(
+                        currMeringDevice);
+                  } catch (IOException e) {
+                    logger.error(
+                        "unseq compaction task {}, getMeasurementChunkMetadataListMapIterator meets error. iterator create failed.",
+                        taskName,
+                        e);
+                    return null;
+                  }
+                }));
     if (measurementChunkMetadataListMapIterator == null) {
       return;
     }
 
-    String lastSensor = currMergingPaths.get(currMergingPaths.size() - 1).getMeasurement();
-    String currSensor = null;
-    Map<String, List<ChunkMetadata>> measurementChunkMetadataListMap = new TreeMap<>();
+    String lastSensor = currMergingPaths.get(currMergingPaths.size() - 1).getMeasurementId();
+    IMeasurementSchema currSensor = null;
+    LinkedHashMap<IMeasurementSchema, List<IChunkMetadata>> measurementChunkMetadataListMap =
+        new LinkedHashMap<>();
     // find all sensor to merge in order, if exceed, then break
-    while (currSensor == null || currSensor.compareTo(lastSensor) < 0) {
+    while (currSensor == null || currSensor.getMeasurementId().compareTo(lastSensor) < 0) {
       measurementChunkMetadataListMap =
           chunkMetadataListCacheForMerge.computeIfAbsent(
-              fileSequenceReader, tsFileSequenceReader -> new TreeMap<>());
+              fileSequenceReader, tsFileSequenceReader -> new LinkedHashMap<>());
       // if empty, get measurementChunkMetadataList block to use later
       if (measurementChunkMetadataListMap.isEmpty()) {
         // if do not have more sensor, just break
@@ -256,22 +277,26 @@ public class MergeMultiChunkTask {
         }
       }
 
-      Iterator<Entry<String, List<ChunkMetadata>>> measurementChunkMetadataListEntryIterator =
-          measurementChunkMetadataListMap.entrySet().iterator();
+      Iterator<Entry<IMeasurementSchema, List<IChunkMetadata>>>
+          measurementChunkMetadataListEntryIterator =
+              measurementChunkMetadataListMap.entrySet().iterator();
       while (measurementChunkMetadataListEntryIterator.hasNext()) {
-        Entry<String, List<ChunkMetadata>> measurementChunkMetadataListEntry =
+        Entry<IMeasurementSchema, List<IChunkMetadata>> measurementChunkMetadataListEntry =
             measurementChunkMetadataListEntryIterator.next();
         currSensor = measurementChunkMetadataListEntry.getKey();
 
         // fill modifications and seqChunkMetas to be used later
         for (int i = 0; i < currMergingPaths.size(); i++) {
-          if (currMergingPaths.get(i).getMeasurement().equals(currSensor)) {
-            modifications[i] = resource.getModifications(currTsFile, currMergingPaths.get(i));
+          if (currMergingPaths.get(i).getMeasurementId().equals(currSensor.getMeasurementId())) {
+            modifications[i] =
+                resource.getModifications(
+                    currTsFile,
+                    new PartialPath(currMeringDevice, currMergingPaths.get(i).getMeasurementId()));
             seqChunkMeta[i] = measurementChunkMetadataListEntry.getValue();
             modifyChunkMetaData(seqChunkMeta[i], modifications[i]);
-            for (ChunkMetadata chunkMetadata : seqChunkMeta[i]) {
-              resource.updateStartTime(currTsFile, deviceId, chunkMetadata.getStartTime());
-              resource.updateEndTime(currTsFile, deviceId, chunkMetadata.getEndTime());
+            for (IChunkMetadata iChunkMetadata : seqChunkMeta[i]) {
+              resource.updateStartTime(currTsFile, currMeringDevice, iChunkMetadata.getStartTime());
+              resource.updateEndTime(currTsFile, currMeringDevice, iChunkMetadata.getEndTime());
             }
 
             if (Thread.interrupted()) {
@@ -283,7 +308,7 @@ public class MergeMultiChunkTask {
         }
 
         // current sensor larger than last needed sensor, just break out to outer loop
-        if (currSensor.compareTo(lastSensor) > 0) {
+        if (currSensor.getMeasurementId().compareTo(lastSensor) > 0) {
           break;
         } else {
           measurementChunkMetadataListEntryIterator.remove();
@@ -300,12 +325,11 @@ public class MergeMultiChunkTask {
     }
 
     RestorableTsFileIOWriter mergeFileWriter = resource.getMergeFileWriter(currTsFile);
-    for (PartialPath path : currMergingPaths) {
-      IMeasurementSchema schema = resource.getSchema(path);
-      mergeFileWriter.addSchema(path, schema);
+    for (IMeasurementSchema path : currMergingPaths) {
+      mergeFileWriter.addSchema(new PartialPath(currMeringDevice, path.getMeasurementId()), path);
     }
     // merge unseq data with seq data in this file or small chunks in this file into a larger chunk
-    mergeFileWriter.startChunkGroup(deviceId);
+    mergeFileWriter.startChunkGroup(currMeringDevice);
     boolean dataWritten =
         mergeChunks(
             seqChunkMeta,
@@ -317,7 +341,7 @@ public class MergeMultiChunkTask {
     if (dataWritten) {
       mergeFileWriter.endChunkGroup();
       mergeLogger.logFilePosition(mergeFileWriter.getFile());
-      currTsFile.updateStartTime(deviceId, currDeviceMinTime);
+      currTsFile.updateStartTime(currMeringDevice, currDeviceMinTime);
     }
   }
 
@@ -339,10 +363,10 @@ public class MergeMultiChunkTask {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private boolean mergeChunks(
-      List<ChunkMetadata>[] seqChunkMeta,
+      List<IChunkMetadata>[] seqChunkMeta,
       boolean isLastFile,
       TsFileSequenceReader reader,
-      IPointReader[] unseqReaders,
+      List<IPointReader>[] unseqReaders,
       RestorableTsFileIOWriter mergeFileWriter,
       TsFileResource currFile)
       throws IOException {
@@ -444,17 +468,17 @@ public class MergeMultiChunkTask {
    */
   @SuppressWarnings("java:S2445") // avoid writing the same writer concurrently
   private int mergeChunkV2(
-      ChunkMetadata currMeta,
+      IChunkMetadata currMeta,
       boolean chunkOverflowed,
       boolean chunkTooSmall,
-      Chunk chunk,
+      List<Chunk> chunk,
       int lastUnclosedChunkPoint,
       int pathIdx,
       TsFileIOWriter mergeFileWriter,
-      IPointReader unseqReader,
+      List<IPointReader> unseqReader,
       IChunkWriter chunkWriter,
       TsFileResource currFile)
-      throws IOException {
+      throws IOException, IllegalPathException {
 
     int unclosedChunkPoint = lastUnclosedChunkPoint;
     boolean chunkModified =
@@ -470,7 +494,7 @@ public class MergeMultiChunkTask {
       mergeContext
           .getUnmergedChunkStartTimes()
           .get(currFile)
-          .get(currMergingPaths.get(pathIdx))
+          .get(new PartialPath(currMeringDevice, currMergingPaths.get(pathIdx).getMeasurementId()))
           .add(currMeta.getStartTime());
       return 0;
     }
@@ -482,9 +506,21 @@ public class MergeMultiChunkTask {
         && !chunkOverflowed
         && !chunkModified) {
       synchronized (mergeFileWriter) {
-        mergeFileWriter.writeChunk(chunk, currMeta);
+        if (currMeta instanceof ChunkMetadata) {
+          mergeFileWriter.writeChunk(chunk.get(0), (ChunkMetadata) currMeta);
+        } else {
+          VectorChunkMetadata vectorChunkMetadata = (VectorChunkMetadata) currMeta;
+          IChunkMetadata timeChunkMetadata = vectorChunkMetadata.getTimeChunkMetadata();
+          mergeFileWriter.writeChunk(chunk.get(0), (ChunkMetadata) timeChunkMetadata);
+          List<IChunkMetadata> valueChunkMetadataList =
+              vectorChunkMetadata.getValueChunkMetadataList();
+          for (int i = 0; i < valueChunkMetadataList.size(); i++) {
+            mergeFileWriter.writeChunk(
+                chunk.get(i + 1), (ChunkMetadata) valueChunkMetadataList.get(i));
+          }
+        }
       }
-      mergeContext.incTotalPointWritten(currMeta.getNumOfPoints());
+      mergeContext.incTotalPointWritten(currMeta.getStatistics().getCount());
       mergeContext.incTotalChunkWritten();
       mergedChunkNum.incrementAndGet();
       return 0;
@@ -515,29 +551,66 @@ public class MergeMultiChunkTask {
   }
 
   private int writeRemainingUnseq(
-      IChunkWriter chunkWriter, IPointReader unseqReader, long timeLimit, int pathIdx)
+      IChunkWriter chunkWriter, List<IPointReader> unseqReader, long timeLimit, int pathIdx)
       throws IOException {
     int ptWritten = 0;
     while (currTimeValuePairs[pathIdx] != null
-        && currTimeValuePairs[pathIdx].getTimestamp() < timeLimit) {
-      writeTVPair(currTimeValuePairs[pathIdx], chunkWriter);
-      ptWritten++;
-      unseqReader.nextTimeValuePair();
-      currTimeValuePairs[pathIdx] =
-          unseqReader.hasNextTimeValuePair() ? unseqReader.currentTimeValuePair() : null;
+        && currTimeValuePairs[pathIdx].get(0).getTimestamp() < timeLimit) {
+      long time = currTimeValuePairs[pathIdx].get(0).getTimestamp();
+      if (chunkWriter instanceof ChunkWriterImpl) {
+        writeTVPair(
+            currTimeValuePairs[pathIdx].get(0).getTimestamp(),
+            currTimeValuePairs[pathIdx].get(0),
+            chunkWriter);
+        ptWritten++;
+        unseqReader.get(0).nextTimeValuePair();
+        List<TimeValuePair> newTimeValuePairs = new ArrayList<>();
+        if (unseqReader.get(0).hasNextTimeValuePair()) {
+          newTimeValuePairs.add(unseqReader.get(0).currentTimeValuePair());
+        } else {
+          newTimeValuePairs = null;
+        }
+        currTimeValuePairs[pathIdx] = newTimeValuePairs;
+      } else {
+        for (int j = 1; j < currTimeValuePairs[pathIdx].size(); j++) {
+          if (currTimeValuePairs[pathIdx].get(j).getTimestamp() == time) {
+            writeTVPair(time, currTimeValuePairs[pathIdx].get(j), chunkWriter);
+            unseqReader.get(j).nextTimeValuePair();
+            List<TimeValuePair> newTimeValuePairs = currTimeValuePairs[pathIdx];
+            if (unseqReader.get(j).hasNextTimeValuePair()) {
+              newTimeValuePairs.set(j, unseqReader.get(j).currentTimeValuePair());
+            } else {
+              newTimeValuePairs = null;
+            }
+            currTimeValuePairs[pathIdx] = newTimeValuePairs;
+          } else {
+            writeTVPair(time, null, chunkWriter);
+          }
+        }
+        chunkWriter.write(time);
+        ptWritten++;
+        unseqReader.get(0).nextTimeValuePair();
+        List<TimeValuePair> newTimeValuePairs = currTimeValuePairs[pathIdx];
+        if (unseqReader.get(0).hasNextTimeValuePair()) {
+          newTimeValuePairs.set(0, unseqReader.get(0).currentTimeValuePair());
+        } else {
+          newTimeValuePairs = null;
+        }
+        currTimeValuePairs[pathIdx] = newTimeValuePairs;
+      }
     }
     return ptWritten;
   }
 
   private int writeChunkWithUnseq(
-      Chunk chunk,
+      List<Chunk> chunk,
       IChunkWriter chunkWriter,
-      IPointReader unseqReader,
+      List<IPointReader> unseqReader,
       long chunkLimitTime,
       int pathIdx)
       throws IOException {
     int cnt = 0;
-    ChunkReader chunkReader = new ChunkReader(chunk, null);
+    ChunkReader chunkReader = new ChunkReader(chunk.get(0), null);
     while (chunkReader.hasNextSatisfiedPage()) {
       BatchData batchData = chunkReader.nextPageData();
       cnt += mergeWriteBatch(batchData, chunkWriter, unseqReader, pathIdx);
@@ -547,7 +620,7 @@ public class MergeMultiChunkTask {
   }
 
   private int mergeWriteBatch(
-      BatchData batchData, IChunkWriter chunkWriter, IPointReader unseqReader, int pathIdx)
+      BatchData batchData, IChunkWriter chunkWriter, List<IPointReader> unseqReader, int pathIdx)
       throws IOException {
     int cnt = 0;
     for (int i = 0; i < batchData.length(); i++) {
@@ -557,19 +630,62 @@ public class MergeMultiChunkTask {
       boolean overwriteSeqPoint = false;
       // unseq point.time <= sequence point.time, write unseq point
       while (currTimeValuePairs[pathIdx] != null
-          && currTimeValuePairs[pathIdx].getTimestamp() <= time) {
-        writeTVPair(currTimeValuePairs[pathIdx], chunkWriter);
-        if (currTimeValuePairs[pathIdx].getTimestamp() == time) {
-          overwriteSeqPoint = true;
+          && currTimeValuePairs[pathIdx].get(0).getTimestamp() <= time) {
+        if (chunkWriter instanceof ChunkWriterImpl) {
+          writeTVPair(
+              currTimeValuePairs[pathIdx].get(0).getTimestamp(),
+              currTimeValuePairs[pathIdx].get(0),
+              chunkWriter);
+          if (currTimeValuePairs[pathIdx].get(0).getTimestamp() == time) {
+            overwriteSeqPoint = true;
+          }
+          unseqReader.get(0).nextTimeValuePair();
+          List<TimeValuePair> newTimeValuePairs = new ArrayList<>();
+          if (unseqReader.get(0).hasNextTimeValuePair()) {
+            newTimeValuePairs.add(unseqReader.get(0).currentTimeValuePair());
+          } else {
+            newTimeValuePairs = null;
+          }
+          currTimeValuePairs[pathIdx] = newTimeValuePairs;
+        } else {
+          long unseqTime = currTimeValuePairs[pathIdx].get(0).getTimestamp();
+          for (int j = 1; j < currTimeValuePairs[pathIdx].size(); j++) {
+            if (currTimeValuePairs[pathIdx].get(j).getTimestamp() == unseqTime) {
+              writeTVPair(unseqTime, currTimeValuePairs[pathIdx].get(j), chunkWriter);
+              unseqReader.get(j).nextTimeValuePair();
+              List<TimeValuePair> newTimeValuePairs = currTimeValuePairs[pathIdx];
+              if (unseqReader.get(j).hasNextTimeValuePair()) {
+                newTimeValuePairs.set(j, unseqReader.get(j).currentTimeValuePair());
+              } else {
+                newTimeValuePairs = null;
+              }
+              currTimeValuePairs[pathIdx] = newTimeValuePairs;
+            } else {
+              writeTVPair(unseqTime, null, chunkWriter);
+            }
+          }
+          chunkWriter.write(unseqTime);
+          if (unseqTime == time) {
+            overwriteSeqPoint = true;
+          }
+          unseqReader.get(0).nextTimeValuePair();
+          List<TimeValuePair> newTimeValuePairs = currTimeValuePairs[pathIdx];
+          if (unseqReader.get(0).hasNextTimeValuePair()) {
+            newTimeValuePairs.set(0, unseqReader.get(0).currentTimeValuePair());
+          } else {
+            newTimeValuePairs = null;
+          }
+          currTimeValuePairs[pathIdx] = newTimeValuePairs;
         }
-        unseqReader.nextTimeValuePair();
-        currTimeValuePairs[pathIdx] =
-            unseqReader.hasNextTimeValuePair() ? unseqReader.currentTimeValuePair() : null;
         cnt++;
       }
       // unseq point.time > sequence point.time, write seq point
       if (!overwriteSeqPoint) {
-        writeBatchPoint(batchData, i, chunkWriter);
+        if (chunkWriter instanceof ChunkWriterImpl) {
+          writeBatchPoint(batchData, i, (ChunkWriterImpl) chunkWriter);
+        } else {
+
+        }
         cnt++;
       }
     }
@@ -583,7 +699,7 @@ public class MergeMultiChunkTask {
     private int[] ptWrittens;
     private TsFileSequenceReader reader;
     private RestorableTsFileIOWriter mergeFileWriter;
-    private IPointReader[] unseqReaders;
+    private List<IPointReader>[] unseqReaders;
     private TsFileResource currFile;
     private boolean isLastFile;
     private int taskNum;
@@ -596,7 +712,7 @@ public class MergeMultiChunkTask {
         int[] ptWrittens,
         TsFileSequenceReader reader,
         RestorableTsFileIOWriter mergeFileWriter,
-        IPointReader[] unseqReaders,
+        List<IPointReader>[] unseqReaders,
         TsFileResource currFile,
         boolean isLastFile,
         int taskNum) {
@@ -619,11 +735,10 @@ public class MergeMultiChunkTask {
     }
 
     @SuppressWarnings("java:S2445") // avoid reading the same reader concurrently
-    private void mergeChunkHeap() throws IOException {
+    private void mergeChunkHeap() throws IOException, IllegalPathException {
       while (!chunkIdxHeap.isEmpty()) {
         int pathIdx = chunkIdxHeap.poll();
-        PartialPath path = currMergingPaths.get(pathIdx);
-        IMeasurementSchema measurementSchema = resource.getSchema(path);
+        IMeasurementSchema measurementSchema = currMergingPaths.get(pathIdx);
         IChunkWriter chunkWriter = resource.getChunkWriter(measurementSchema);
         if (Thread.interrupted()) {
           Thread.currentThread().interrupt();
@@ -632,7 +747,7 @@ public class MergeMultiChunkTask {
 
         if (metaListEntries[pathIdx] != null) {
           MetaListEntry metaListEntry = metaListEntries[pathIdx];
-          ChunkMetadata currMeta = metaListEntry.current();
+          IChunkMetadata currMeta = metaListEntry.current();
           boolean isLastChunk = !metaListEntry.hasNext();
           boolean chunkOverflowed =
               MergeUtils.isChunkOverflowed(currTimeValuePairs[pathIdx], currMeta);
@@ -640,16 +755,22 @@ public class MergeMultiChunkTask {
               MergeUtils.isChunkTooSmall(
                   ptWrittens[pathIdx], currMeta, isLastChunk, minChunkPointNum);
 
-          Chunk chunk;
+          List<Chunk> chunks = new ArrayList<>();
           synchronized (reader) {
-            chunk = reader.readMemChunk(currMeta);
+            if (currMeta instanceof ChunkMetadata) {
+              chunks.add(reader.readMemChunk((ChunkMetadata) currMeta));
+            } else {
+              VectorChunkMetadata vectorChunkMetadata = (VectorChunkMetadata) currMeta;
+              chunks.add(vectorChunkMetadata.getTimeChunk());
+              chunks.addAll(vectorChunkMetadata.getValueChunkList());
+            }
           }
           ptWrittens[pathIdx] =
               mergeChunkV2(
                   currMeta,
                   chunkOverflowed,
                   chunkTooSmall,
-                  chunk,
+                  chunks,
                   ptWrittens[pathIdx],
                   pathIdx,
                   mergeFileWriter,

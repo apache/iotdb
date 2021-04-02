@@ -146,31 +146,23 @@ public class MergeTask implements Callable<Void> {
     mergeLogger.logFiles(resource);
 
     Set<PartialPath> devices = IoTDB.metaManager.getDevices(new PartialPath(storageGroupName));
-    Map<PartialPath, IMeasurementSchema> measurementSchemaMap = new HashMap<>();
-    List<PartialPath> unmergedSeries = new ArrayList<>();
+    Map<PartialPath, List<IMeasurementSchema>> measurementSchemaMap = new HashMap<>();
     for (PartialPath device : devices) {
       MNode deviceNode = IoTDB.metaManager.getNodeByPath(device);
+      List<IMeasurementSchema> iMeasurementSchemaList =
+          measurementSchemaMap.computeIfAbsent(device, k -> new ArrayList<>());
       // todo add template merge logic
       for (Entry<String, MNode> entry : deviceNode.getChildren().entrySet()) {
-        PartialPath path = device.concatNode(entry.getKey());
-        measurementSchemaMap.put(path, ((MeasurementMNode) entry.getValue()).getSchema());
-        unmergedSeries.add(path);
+        iMeasurementSchemaList.add(((MeasurementMNode) entry.getValue()).getSchema());
       }
     }
-    resource.setMeasurementSchemaMap(measurementSchemaMap);
+    resource.setDeviceMeasurementSchemaMap(measurementSchemaMap);
 
     mergeLogger.logMergeStart();
 
     chunkTask =
         new MergeMultiChunkTask(
-            mergeContext,
-            taskName,
-            mergeLogger,
-            resource,
-            fullMerge,
-            unmergedSeries,
-            concurrentMergeSeriesNum,
-            storageGroupName);
+            mergeContext, taskName, mergeLogger, resource, fullMerge, storageGroupName);
     states = States.MERGE_CHUNKS;
     chunkTask.mergeSeries();
     if (Thread.interrupted()) {
@@ -193,10 +185,15 @@ public class MergeTask implements Callable<Void> {
     states = States.CLEAN_UP;
     fileTask = null;
     cleanUp(true);
+    int totalSeriesCnt = 0;
+    for (List<IMeasurementSchema> measurementSchemas :
+        resource.getDeviceMeasurementSchemaMap().values()) {
+      totalSeriesCnt += measurementSchemas.size();
+    }
     if (logger.isInfoEnabled()) {
       double elapsedTime = (double) (System.currentTimeMillis() - startTime) / 1000.0;
       double byteRate = totalFileSize / elapsedTime / 1024 / 1024;
-      double seriesRate = unmergedSeries.size() / elapsedTime;
+      double seriesRate = totalSeriesCnt / elapsedTime;
       double chunkRate = mergeContext.getTotalChunkWritten() / elapsedTime;
       double fileRate =
           (resource.getSeqFiles().size() + resource.getUnseqFiles().size()) / elapsedTime;
