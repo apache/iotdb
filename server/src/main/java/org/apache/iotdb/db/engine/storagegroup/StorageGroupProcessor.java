@@ -2276,10 +2276,12 @@ public class StorageGroupProcessor {
     // find the position where the new file should be inserted
     for (int i = 0; i < sequenceList.size(); i++) {
       TsFileResource localFile = sequenceList.get(i);
-      if (localFile.getTsFile().getName().equals(tsfileToBeInserted.getName())) {
+      long localPartitionId = Long.parseLong(localFile.getTsFile().getParentFile().getName());
+      if (localPartitionId == newFilePartitionId
+          && localFile.getTsFile().getName().equals(tsfileToBeInserted.getName())) {
         return POS_ALREADY_EXIST;
       }
-      long localPartitionId = Long.parseLong(localFile.getTsFile().getParentFile().getName());
+
       if (i == sequenceList.size() - 1 && localFile.endTimeEmpty()
           || newFilePartitionId > localPartitionId) {
         // skip files that are in the previous partition and the last empty file, as the all data
