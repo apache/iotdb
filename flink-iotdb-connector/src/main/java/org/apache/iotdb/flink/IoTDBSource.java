@@ -70,9 +70,7 @@ public abstract class IoTDBSource<T> extends RichSourceFunction<T> {
   public void cancel() {
     try {
       dataSet.closeOperationHandle();
-    } catch (StatementExecutionException e) {
-      e.printStackTrace();
-    } catch (IoTDBConnectionException e) {
+    } catch (StatementExecutionException | IoTDBConnectionException e) {
       e.printStackTrace();
     }
   }
