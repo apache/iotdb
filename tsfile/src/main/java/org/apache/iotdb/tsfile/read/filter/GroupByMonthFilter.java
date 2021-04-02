@@ -33,7 +33,7 @@ public class GroupByMonthFilter extends GroupByFilter {
   private int slidingStepsInMo;
   private int intervalInMo;
   private final Calendar calendar = Calendar.getInstance();
-  private final long MS_TO_MONTH = 30 * 86400_000L;
+  private static final long MS_TO_MONTH = 30 * 86400_000L;
   private int intervalCnt = 0;
   /** 10.31 -> 11.30 -> 12.31, not 10.31 -> 11.30 -> 12.30 */
   private final long initialStartTime;
@@ -105,7 +105,9 @@ public class GroupByMonthFilter extends GroupByFilter {
   private boolean satisfyCurrentInterval(long startTime, long endTime) {
     if (endTime < this.startTime || startTime >= this.endTime) {
       return false;
-    } else return startTime <= this.startTime || startTime - this.startTime < interval;
+    } else {
+      return startTime <= this.startTime || startTime - this.startTime < interval;
+    }
   }
 
   @Override
@@ -135,6 +137,20 @@ public class GroupByMonthFilter extends GroupByFilter {
     } else {
       return startTime - this.startTime < interval && endTime - this.startTime < interval;
     }
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (!(obj instanceof GroupByMonthFilter)) {
+      return false;
+    }
+    GroupByMonthFilter other = (GroupByMonthFilter) obj;
+    return this.interval == other.interval
+        && this.slidingStep == other.slidingStep
+        && this.startTime == other.startTime
+        && this.endTime == other.endTime
+        && this.isSlidingStepByMonth == other.isSlidingStepByMonth
+        && this.isIntervalByMonth == other.isIntervalByMonth;
   }
 
   private void getNextIntervalAndSlidingStep() {
