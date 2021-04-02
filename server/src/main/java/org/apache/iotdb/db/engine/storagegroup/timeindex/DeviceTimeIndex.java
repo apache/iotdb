@@ -229,12 +229,12 @@ public class DeviceTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public long getTimePartition(String tsfilePath) {
+  public long getTimePartition(String tsFilePath) {
     try {
       if (deviceToIndex != null && !deviceToIndex.isEmpty()) {
         return StorageEngine.getTimePartition(startTimes[deviceToIndex.values().iterator().next()]);
       }
-      String[] filePathSplits = FilePathUtils.splitTsFilePath(tsfilePath);
+      String[] filePathSplits = FilePathUtils.splitTsFilePath(tsFilePath);
       return Long.parseLong(filePathSplits[filePathSplits.length - 2]);
     } catch (NumberFormatException e) {
       return 0;

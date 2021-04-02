@@ -140,12 +140,12 @@ public class FileTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public long getTimePartition(String tsfilePath) {
+  public long getTimePartition(String tsFilePath) {
     try {
       if (devices != null && !devices.isEmpty()) {
         return StorageEngine.getTimePartition(startTime);
       }
-      String[] filePathSplits = FilePathUtils.splitTsFilePath(tsfilePath);
+      String[] filePathSplits = FilePathUtils.splitTsFilePath(tsFilePath);
       return Long.parseLong(filePathSplits[filePathSplits.length - 2]);
     } catch (NumberFormatException e) {
       return 0;

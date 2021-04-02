@@ -87,17 +87,17 @@ public interface ITimeIndex {
   /**
    * get time partition
    *
-   * @param tsfilePath tsfile absolute path
+   * @param tsFilePath tsFile absolute path
    * @return partition
    */
-  long getTimePartition(String tsfilePath);
+  long getTimePartition(String tsFilePath);
 
   /**
-   * get time partition with check. If data of tsfile cross partitions, an exception will be thrown
+   * get time partition with check. If data of tsFile spans partitions, an exception will be thrown
    *
-   * @param tsFilePath tsfile path
+   * @param tsFilePath tsFile path
    * @return partition
-   * @throws PartitionViolationException data of tsfile cross partitions
+   * @throws PartitionViolationException data of tsFile spans partitions
    */
   long getTimePartitionWithCheck(String tsFilePath) throws PartitionViolationException;
 
