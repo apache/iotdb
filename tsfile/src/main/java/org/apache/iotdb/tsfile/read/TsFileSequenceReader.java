@@ -22,6 +22,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
+import org.apache.iotdb.tsfile.exception.TsFileRuntimeException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -63,8 +64,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -1261,19 +1261,23 @@ public class TsFileSequenceReader implements AutoCloseable {
     return maxPlanIndex;
   }
 
-  public Iterator<LinkedHashMap<IMeasurementSchema, List<IChunkMetadata>>>
-      getMeasurementChunkMetadataListMapIterator(String device) throws IOException {
-    return new Iterator<LinkedHashMap<IMeasurementSchema, List<IChunkMetadata>>>() {
-      @Override
-      public boolean hasNext() {
-        return false;
-      }
+  public Queue<Pair<Long, Long>> getTimeSeriesBufferOffsetRangeQueue(String device)
+      throws IOException {
+    readFileMetadata();
 
-      @Override
-      public LinkedHashMap<IMeasurementSchema, List<IChunkMetadata>> next() {
-        return null;
-      }
-    };
+    MetadataIndexNode metadataIndexNode = tsFileMetaData.getMetadataIndex();
+    Pair<MetadataIndexEntry, Long> metadataIndexPair =
+        getMetadataAndEndOffset(metadataIndexNode, device, true, true);
+
+    Queue<Pair<Long, Long>> bufferOffsetRange = new LinkedList<>();
+
+    if (metadataIndexPair == null) {
+      return bufferOffsetRange;
+    }
+
+    ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
+    collectEachLeafMeasurementNodeOffsetRange(buffer, bufferOffsetRange);
+    return bufferOffsetRange;
   }
 
   private void collectEachLeafMeasurementNodeOffsetRange(
@@ -1298,6 +1302,30 @@ public class TsFileSequenceReader implements AutoCloseable {
       logger.error(
           "Error occurred while collecting offset ranges of measurement nodes of file {}", file);
       throw e;
+    }
+  }
+
+  public boolean collectTimeSeriesMetadata(
+      Queue<Pair<Long, Long>> bufferOffsetRangeQueue,
+      Queue<TimeseriesMetadata> timeseriesMetadataQueue,
+      Map<String, TimeseriesMetadata> timeseriesMetadataCache) {
+    if (bufferOffsetRangeQueue.isEmpty()) {
+      return false;
+    }
+
+    try {
+      Pair<Long, Long> startEndPair = bufferOffsetRangeQueue.remove();
+      ByteBuffer nextBuffer = readData(startEndPair.left, startEndPair.right);
+      while (nextBuffer.hasRemaining()) {
+        TimeseriesMetadata timeseriesMetadata =
+            TimeseriesMetadata.deserializeFrom(nextBuffer, false);
+        timeseriesMetadataQueue.add(timeseriesMetadata);
+        timeseriesMetadataCache.put(timeseriesMetadata.getMeasurementId(), timeseriesMetadata);
+      }
+      return true;
+    } catch (IOException e) {
+      throw new TsFileRuntimeException(
+          "Error occurred while reading a time series metadata block.");
     }
   }
 }
