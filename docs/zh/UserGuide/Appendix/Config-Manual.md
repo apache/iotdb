@@ -121,6 +121,7 @@
 |默认值| 256 |
 |改后生效方式|仅允许在第一次启动服务前修改|
 
+
 * max\_string\_length
 
 |名字| max\_string\_length |

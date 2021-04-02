@@ -75,6 +75,8 @@ public abstract class PhysicalPlan {
   // a bridge from a cluster raft log to a physical plan
   protected long index;
 
+  private boolean debug;
+
   /** whether the plan can be split into more than one Plans. Only used in the cluster mode. */
   public boolean canBeSplit() {
     return canBeSplit;
@@ -115,6 +117,14 @@ public abstract class PhysicalPlan {
 
   public void setQuery(boolean query) {
     isQuery = query;
+  }
+
+  public boolean isDebug() {
+    return debug;
+  }
+
+  public void setDebug(boolean debug) {
+    this.debug = debug;
   }
 
   /**

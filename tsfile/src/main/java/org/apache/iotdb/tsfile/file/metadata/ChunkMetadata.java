@@ -93,8 +93,8 @@ public class ChunkMetadata implements Accountable {
   @Override
   public String toString() {
     return String.format(
-        "measurementId: %s, datatype: %s, version: %d, " + "Statistics: %s, deleteIntervalList: %s",
-        measurementUid, tsDataType, version, statistics, deleteIntervalList);
+        "measurementId: %s, datatype: %s, version: %d, Statistics: %s, deleteIntervalList: %s, filePath: %s",
+        measurementUid, tsDataType, version, statistics, deleteIntervalList, filePath);
   }
 
   public long getNumOfPoints() {

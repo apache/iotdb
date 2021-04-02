@@ -641,9 +641,6 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "slow_query_threshold", String.valueOf(conf.getSlowQueryThreshold()))));
 
-      conf.setDebugState(
-          Boolean.parseBoolean(
-              properties.getProperty("debug_state", String.valueOf(conf.isDebugOn()))));
       conf.setVirtualStorageGroupNum(
           Integer.parseInt(
               properties.getProperty(
@@ -1010,9 +1007,6 @@ public class IoTDBDescriptor {
 
       // update slow_query_threshold
       conf.setSlowQueryThreshold(Long.parseLong(properties.getProperty("slow_query_threshold")));
-
-      // update debug_state
-      conf.setDebugState(Boolean.parseBoolean(properties.getProperty("debug_state")));
 
     } catch (Exception e) {
       throw new QueryProcessException(String.format("Fail to reload configuration because %s", e));

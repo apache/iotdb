@@ -627,9 +627,6 @@ public class IoTDBConfig {
   /** time cost(ms) threshold for slow query */
   private long slowQueryThreshold = 5000;
 
-  /** if the debug_state is true, we will print more details about the process of query */
-  private boolean debugState = false;
-
   /**
    * whether enable the rpc service. This parameter has no a corresponding field in the
    * iotdb-engine.properties
@@ -1990,14 +1987,6 @@ public class IoTDBConfig {
 
   public void setSlowQueryThreshold(long slowQueryThreshold) {
     this.slowQueryThreshold = slowQueryThreshold;
-  }
-
-  public boolean isDebugOn() {
-    return debugState;
-  }
-
-  public void setDebugState(boolean debugState) {
-    this.debugState = debugState;
   }
 
   public boolean isEnableIndex() {
