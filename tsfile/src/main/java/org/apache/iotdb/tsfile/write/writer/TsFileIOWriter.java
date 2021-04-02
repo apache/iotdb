@@ -371,8 +371,8 @@ public class TsFileIOWriter {
     out.write(new byte[] {MetaMarker.SEPARATOR});
   }
 
-  void writeChunkMaskForTest() throws IOException {
-    out.write(new byte[] {MetaMarker.CHUNK_HEADER});
+  void writeChunkGroupMarkerForTest() throws IOException {
+    out.write(new byte[] {MetaMarker.CHUNK_GROUP_HEADER});
   }
 
   public File getFile() {

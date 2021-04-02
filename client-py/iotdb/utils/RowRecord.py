@@ -23,14 +23,11 @@ from .Field import Field
 # from IoTDBConstants import TSDataType
 # from Field import Field
 
-class RowRecord(object):
 
+class RowRecord(object):
     def __init__(self, timestamp, field_list=None):
         self.__timestamp = timestamp
         self.__field_list = field_list
-
-    def add_field(self, field):
-        self.__field_list.append(field)
 
     def add_field(self, value, data_type):
         self.__field_list.append(Field.get_field(value, data_type))

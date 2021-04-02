@@ -65,11 +65,21 @@ public class ClusterConfig {
   /** max number of committed logs in memory */
   private int maxNumOfLogsInMem = 1000;
 
+  /** max memory size of committed logs in memory, default 512M */
+  private long maxMemorySizeForRaftLog = 536870912;
+
   /** deletion check period of the submitted log */
   private int logDeleteCheckIntervalSecond = -1;
 
   /** max number of clients in a ClientPool of a member for one node. */
   private int maxClientPerNodePerMember = 1000;
+
+  /**
+   * If the number of connections created for a node exceeds `max_client_pernode_permember_number`,
+   * we need to wait so much time for other connections to be released until timeout, or a new
+   * connection will be created.
+   */
+  private long waitClientTimeoutMS = 5 * 1000L;
 
   /**
    * ClientPool will have so many selector threads (TAsyncClientManager) to distribute to its
@@ -153,6 +163,8 @@ public class ClusterConfig {
   private long maxReadLogLag = 1000L;
 
   private boolean openServerRpcPort = false;
+
+  private boolean enableQueryRedirect = false;
 
   public int getSelectorNumOfClientPool() {
     return selectorNumOfClientPool;
@@ -374,6 +386,14 @@ public class ClusterConfig {
     this.maxRaftLogIndexSizeInMemory = maxRaftLogIndexSizeInMemory;
   }
 
+  public long getMaxMemorySizeForRaftLog() {
+    return maxMemorySizeForRaftLog;
+  }
+
+  public void setMaxMemorySizeForRaftLog(long maxMemorySizeForRaftLog) {
+    this.maxMemorySizeForRaftLog = maxMemorySizeForRaftLog;
+  }
+
   public int getMaxRaftLogPersistDataSizePerFile() {
     return maxRaftLogPersistDataSizePerFile;
   }
@@ -440,5 +460,21 @@ public class ClusterConfig {
 
   public void setOpenServerRpcPort(boolean openServerRpcPort) {
     this.openServerRpcPort = openServerRpcPort;
+  }
+
+  public long getWaitClientTimeoutMS() {
+    return waitClientTimeoutMS;
+  }
+
+  public void setWaitClientTimeoutMS(long waitClientTimeoutMS) {
+    this.waitClientTimeoutMS = waitClientTimeoutMS;
+  }
+
+  public boolean isEnableQueryRedirect() {
+    return enableQueryRedirect;
+  }
+
+  public void setEnableQueryRedirect(boolean enableQueryRedirect) {
+    this.enableQueryRedirect = enableQueryRedirect;
   }
 }

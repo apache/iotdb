@@ -27,7 +27,7 @@
         <version>0.12.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
-    <artifactId>cluster</artifactId>
+    <artifactId>iotdb-cluster</artifactId>
     <name>cluster</name>
     <properties>
         <cluster.test.skip>false</cluster.test.skip>

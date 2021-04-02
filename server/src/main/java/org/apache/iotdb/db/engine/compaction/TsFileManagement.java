@@ -34,6 +34,7 @@ import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.CloseCompactionMergeCallBack;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,6 +48,7 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
+import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
 import static org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.MERGING_MODIFICATION_FILE_NAME;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
@@ -80,8 +82,16 @@ public abstract class TsFileManagement {
     isForceFullMerge = forceFullMerge;
   }
 
-  /** get the TsFile list in sequence */
+  /**
+   * get the TsFile list in sequence, not recommend to use this method, use
+   * getTsFileListByTimePartition instead
+   */
+  @Deprecated
   public abstract List<TsFileResource> getTsFileList(boolean sequence);
+
+  /** get the TsFile list in sequence by time partition */
+  public abstract List<TsFileResource> getTsFileListByTimePartition(
+      boolean sequence, long timePartition);
 
   /** get the TsFile list iterator in sequence */
   public abstract Iterator<TsFileResource> getIterator(boolean sequence);
@@ -383,19 +393,25 @@ public abstract class TsFileManagement {
       doubleWriteLock(seqFile);
 
       try {
-        updateMergeModification(seqFile);
-        if (i == seqFiles.size() - 1) {
-          // FIXME if there is an exception, the the modification file will be not closed.
-          removeMergingModification();
-          isUnseqMerging = false;
-          Files.delete(mergeLog.toPath());
+        // if meet error(like file not found) in merge task, the .merge file may not be deleted
+        File mergedFile =
+            FSFactoryProducer.getFSFactory().getFile(seqFile.getTsFilePath() + MERGE_SUFFIX);
+        if (mergedFile.exists()) {
+          mergedFile.delete();
         }
-      } catch (IOException e) {
-        logger.error(
-            "{} a merge task ends but cannot delete log {}", storageGroupName, mergeLog.toPath());
+        updateMergeModification(seqFile);
       } finally {
         doubleWriteUnlock(seqFile);
       }
+    }
+
+    try {
+      removeMergingModification();
+      isUnseqMerging = false;
+      Files.delete(mergeLog.toPath());
+    } catch (IOException e) {
+      logger.error(
+          "{} a merge task ends but cannot delete log {}", storageGroupName, mergeLog.toPath());
     }
 
     logger.info("{} a merge task ends", storageGroupName);

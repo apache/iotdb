@@ -152,6 +152,19 @@ public class CMManager extends MManager {
     return CMManager.MManagerHolder.INSTANCE;
   }
 
+  /**
+   * sync meta leader to get the newest partition table and storage groups.
+   *
+   * @throws MetadataException throws MetadataException if necessary
+   */
+  public void syncMetaLeader() throws MetadataException {
+    try {
+      metaGroupMember.syncLeaderWithConsistencyCheck(false);
+    } catch (CheckConsistencyException e) {
+      throw new MetadataException(e);
+    }
+  }
+
   @Override
   public String deleteTimeseries(PartialPath prefixPath) throws MetadataException {
     cacheLock.writeLock().lock();
@@ -272,6 +285,7 @@ public class CMManager extends MManager {
     List<MeasurementSchema> schemas = metaPuller.pullMeasurementSchemas(schemasToPull);
     for (MeasurementSchema schema : schemas) {
       // TODO-Cluster: also pull alias?
+      // take care, the pulled schema's measurement Id is only series name
       MeasurementMNode measurementMNode =
           new MeasurementMNode(null, schema.getMeasurementId(), schema, null);
       cacheMeta(deviceId.concatNode(schema.getMeasurementId()), measurementMNode);
@@ -319,17 +333,11 @@ public class CMManager extends MManager {
   @Override
   public MNode getSeriesSchemasAndReadLockDevice(InsertPlan plan) throws MetadataException {
     MeasurementMNode[] measurementMNodes = new MeasurementMNode[plan.getMeasurements().length];
-    try {
-      MNode deviceNode = getDeviceNode(plan.getDeviceId());
-
-      int nonExistSchemaIndex =
-          getMNodesLocally(plan.getDeviceId(), plan.getMeasurements(), measurementMNodes);
-      if (nonExistSchemaIndex == -1) {
-        plan.setMeasurementMNodes(measurementMNodes);
-        return deviceNode;
-      }
-    } catch (PathNotExistException exception) {
-      // ignore, so we could try local MTree
+    int nonExistSchemaIndex =
+        getMNodesLocally(plan.getDeviceId(), plan.getMeasurements(), measurementMNodes);
+    if (nonExistSchemaIndex == -1) {
+      plan.setMeasurementMNodes(measurementMNodes);
+      return new MNode(null, plan.getDeviceId().getDevice());
     }
     // auto-create schema in IoTDBConfig is always disabled in the cluster version, and we have
     // another config in ClusterConfig to do this
@@ -611,6 +619,9 @@ public class CMManager extends MManager {
     PartitionGroup partitionGroup =
         metaGroupMember.getPartitionTable().route(storageGroupName.getFullPath(), 0);
     List<String> unregisteredSeriesList = getUnregisteredSeriesList(seriesList, partitionGroup);
+    if (unregisteredSeriesList.isEmpty()) {
+      return true;
+    }
     logger.debug("Unregisterd series of {} are {}", seriesList, unregisteredSeriesList);
 
     return createTimeseries(unregisteredSeriesList, seriesList, insertPlan);
@@ -1020,12 +1031,6 @@ public class CMManager extends MManager {
    * @return all paths after removing wildcards in the path
    */
   public Set<PartialPath> getMatchedDevices(PartialPath originPath) throws MetadataException {
-    // make sure this node knows all storage groups
-    try {
-      metaGroupMember.syncLeaderWithConsistencyCheck(false);
-    } catch (CheckConsistencyException e) {
-      throw new MetadataException(e);
-    }
     // get all storage groups this path may belong to
     // the key is the storage group name and the value is the path to be queried with storage group
     // added, e.g:
@@ -1234,11 +1239,12 @@ public class CMManager extends MManager {
       try {
         Set<String> paths = getMatchedDevices(node, partitionGroup.getHeader(), pathsToQuery);
         logger.debug(
-            "{}: get matched paths of {} from {}, result {}",
+            "{}: get matched paths of {} from {}, result {} for {}",
             metaGroupMember.getName(),
             partitionGroup,
             node,
-            paths);
+            paths,
+            pathsToQuery);
         if (paths != null) {
           // query next group
           Set<PartialPath> partialPaths = new HashSet<>();
@@ -1283,12 +1289,7 @@ public class CMManager extends MManager {
   @Override
   public Pair<List<PartialPath>, Integer> getAllTimeseriesPathWithAlias(
       PartialPath prefixPath, int limit, int offset) throws MetadataException {
-    // make sure this node knows all storage groups
-    try {
-      metaGroupMember.syncLeaderWithConsistencyCheck(false);
-    } catch (CheckConsistencyException e) {
-      throw new MetadataException(e);
-    }
+
     // get all storage groups this path may belong to
     // the key is the storage group name and the value is the path to be queried with storage group
     // added, e.g:
@@ -1321,12 +1322,6 @@ public class CMManager extends MManager {
    * @return all paths after removing wildcards in the path
    */
   public List<PartialPath> getMatchedPaths(PartialPath originPath) throws MetadataException {
-    // make sure this node knows all storage groups
-    try {
-      metaGroupMember.syncLeaderWithConsistencyCheck(false);
-    } catch (CheckConsistencyException e) {
-      throw new MetadataException(e);
-    }
     // get all storage groups this path may belong to
     // the key is the storage group name and the value is the path to be queried with storage group
     // added, e.g:
@@ -1401,7 +1396,7 @@ public class CMManager extends MManager {
   public Set<String> getAllDevices(List<String> paths) throws MetadataException {
     Set<String> results = new HashSet<>();
     for (String path : paths) {
-      getAllTimeseriesPath(new PartialPath(path)).stream()
+      getDevices(new PartialPath(path)).stream()
           .map(PartialPath::getFullPath)
           .forEach(results::add);
     }
@@ -1421,6 +1416,10 @@ public class CMManager extends MManager {
         .collect(Collectors.toList());
   }
 
+  public Set<String> getChildNodeInNextLevel(String path) throws MetadataException {
+    return getChildNodeInNextLevel(new PartialPath(path));
+  }
+
   public Set<String> getChildNodePathInNextLevel(String path) throws MetadataException {
     return getChildNodePathInNextLevel(new PartialPath(path));
   }
@@ -1429,7 +1428,11 @@ public class CMManager extends MManager {
    * Replace partial paths (paths not containing measurements), and abstract paths (paths containing
    * wildcards) with full paths.
    */
-  public void convertToFullPaths(PhysicalPlan plan) throws PathNotExistException {
+  public void convertToFullPaths(PhysicalPlan plan)
+      throws PathNotExistException, CheckConsistencyException {
+    // make sure this node knows all storage groups
+    metaGroupMember.syncLeaderWithConsistencyCheck(false);
+
     Pair<List<PartialPath>, List<PartialPath>> getMatchedPathsRet =
         getMatchedPaths(plan.getPaths());
     List<PartialPath> fullPaths = getMatchedPathsRet.left;

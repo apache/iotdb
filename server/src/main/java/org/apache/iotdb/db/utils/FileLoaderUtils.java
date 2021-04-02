@@ -104,7 +104,8 @@ public class FileLoaderUtils {
                       resource.getTsFilePath(),
                       seriesPath.getDevice(),
                       seriesPath.getMeasurement()),
-                  allSensors);
+                  allSensors,
+                  context.isDebug());
       if (timeSeriesMetadata != null) {
         timeSeriesMetadata.setChunkMetadataLoader(
             new DiskChunkMetadataLoader(resource, seriesPath, context, filter));

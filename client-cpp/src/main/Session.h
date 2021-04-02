@@ -427,12 +427,12 @@ class RowRecord
 {
 public:
     int64_t timestamp;
-    std::vector<Field*> fields;
+    std::vector<Field> fields;
     RowRecord(int64_t timestamp)
     {
         this->timestamp = timestamp;
     }
-    RowRecord(int64_t timestamp, std::vector<Field*> fields) {
+    RowRecord(int64_t timestamp, std::vector<Field> &fields) {
         this->timestamp = timestamp;
         this->fields = fields;
     }
@@ -440,6 +440,11 @@ public:
     {
         this->timestamp = -1;
     }
+
+    void addField(Field &f) {
+        this->fields.push_back(f);
+    }
+
     std::string toString()
     {
         char buf[111];
@@ -448,40 +453,40 @@ public:
         for (int i = 0; i < fields.size(); i++)
         {
             ret.append("\t");
-            TSDataType::TSDataType dataType = fields[i]->dataType;
+            TSDataType::TSDataType dataType = fields[i].dataType;
             switch (dataType)
             {
                 case TSDataType::BOOLEAN:{
-                    if (fields[i]->boolV) ret.append("true");
+                    if (fields[i].boolV) ret.append("true");
                     else ret.append("false");
                     break;
                 }
                 case TSDataType::INT32:{
                     char buf[111];
-                    sprintf(buf,"%d",fields[i]->intV);
+                    sprintf(buf,"%d",fields[i].intV);
                     ret.append(buf);
                     break;
                 }
                 case TSDataType::INT64: {
                     char buf[111];
-                    sprintf(buf,"%lld",fields[i]->longV);
+                    sprintf(buf,"%lld",fields[i].longV);
                     ret.append(buf);
                     break;
                 }
                 case TSDataType::FLOAT:{
                     char buf[111];
-                    sprintf(buf,"%f",fields[i]->floatV);
+                    sprintf(buf,"%f",fields[i].floatV);
                     ret.append(buf);
                     break;
                 }
                 case TSDataType::DOUBLE:{
                     char buf[111];
-                    sprintf(buf,"%lf",fields[i]->doubleV);
+                    sprintf(buf,"%lf",fields[i].doubleV);
                     ret.append(buf);
                     break;
                 }
                 case TSDataType::TEXT: {
-                    ret.append(fields[i]->stringV);
+                    ret.append(fields[i].stringV);
                     break;
                 }
                 case TSDataType::NULLTYPE:{
@@ -659,6 +664,6 @@ class Session
         void createMultiTimeseries(std::vector<std::string> paths, std::vector<TSDataType::TSDataType> dataTypes, std::vector<TSEncoding::TSEncoding> encodings, std::vector<CompressionType::CompressionType> compressors,
             std::vector<std::map<std::string, std::string>>* propsList, std::vector<std::map<std::string, std::string>>* tagsList, std::vector<std::map<std::string, std::string>>* attributesList, std::vector<std::string>* measurementAliasList);
         bool checkTimeseriesExists(std::string path);
-        SessionDataSet* executeQueryStatement(std::string sql);
+        std::unique_ptr<SessionDataSet> executeQueryStatement(std::string sql);
         void executeNonQueryStatement(std::string sql);
 };

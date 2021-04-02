@@ -64,6 +64,9 @@ public class TracingManagerTest {
 
   @Test
   public void tracingQueryTest() throws IOException {
+    if (!tracingManager.getWriterStatus()) {
+      tracingManager.openTracingWriteStream();
+    }
     String[] ans = {
       "Query Id: 10 - Query Statement: " + sql,
       "Query Id: 10 - Start time: 2020-12-",

@@ -342,10 +342,10 @@ public class IoTDBDescriptor {
                   "unseq_file_num_in_each_level",
                   Integer.toString(conf.getUnseqFileNumInEachLevel()))));
 
-      conf.setQueryTimeThreshold(
+      conf.setQueryTimeoutThreshold(
           Integer.parseInt(
               properties.getProperty(
-                  "query_time_threshold", Integer.toString(conf.getQueryTimeThreshold()))));
+                  "query_timeout_threshold", Integer.toString(conf.getQueryTimeoutThreshold()))));
 
       conf.setSyncEnable(
           Boolean.parseBoolean(
@@ -625,10 +625,10 @@ public class IoTDBDescriptor {
         conf.setThriftMaxFrameSize(IoTDBConstant.LEFT_SIZE_IN_REQUEST * 2);
       }
 
-      conf.setThriftInitBufferSize(
+      conf.setThriftDefaultBufferSize(
           Integer.parseInt(
               properties.getProperty(
-                  "thrift_init_buffer_size", String.valueOf(conf.getThriftInitBufferSize()))));
+                  "thrift_init_buffer_size", String.valueOf(conf.getThriftDefaultBufferSize()))));
 
       conf.setFrequencyIntervalInMinute(
           Integer.parseInt(
@@ -641,9 +641,6 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "slow_query_threshold", String.valueOf(conf.getSlowQueryThreshold()))));
 
-      conf.setDebugState(
-          Boolean.parseBoolean(
-              properties.getProperty("debug_state", String.valueOf(conf.isDebugOn()))));
       conf.setVirtualStorageGroupNum(
           Integer.parseInt(
               properties.getProperty(
@@ -1010,9 +1007,6 @@ public class IoTDBDescriptor {
 
       // update slow_query_threshold
       conf.setSlowQueryThreshold(Long.parseLong(properties.getProperty("slow_query_threshold")));
-
-      // update debug_state
-      conf.setDebugState(Boolean.parseBoolean(properties.getProperty("debug_state")));
 
     } catch (Exception e) {
       throw new QueryProcessException(String.format("Fail to reload configuration because %s", e));

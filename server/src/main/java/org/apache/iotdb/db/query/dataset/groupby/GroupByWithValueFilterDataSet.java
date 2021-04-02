@@ -39,7 +39,6 @@ import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -81,8 +80,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   /** init reader and aggregate function. */
   protected void initGroupBy(QueryContext context, GroupByTimePlan groupByTimePlan)
       throws StorageEngineException, QueryProcessException {
-    this.timestampGenerator =
-        getTimeGenerator(groupByTimePlan.getExpression(), context, groupByTimePlan);
+    this.timestampGenerator = getTimeGenerator(context, groupByTimePlan);
     this.allDataReaderList = new ArrayList<>();
     this.groupByTimePlan = groupByTimePlan;
 
@@ -100,10 +98,9 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     }
   }
 
-  protected TimeGenerator getTimeGenerator(
-      IExpression expression, QueryContext context, RawDataQueryPlan queryPlan)
+  protected TimeGenerator getTimeGenerator(QueryContext context, RawDataQueryPlan queryPlan)
       throws StorageEngineException {
-    return new ServerTimeGenerator(expression, context, queryPlan);
+    return new ServerTimeGenerator(context, queryPlan);
   }
 
   protected IReaderByTimestamp getReaderByTime(

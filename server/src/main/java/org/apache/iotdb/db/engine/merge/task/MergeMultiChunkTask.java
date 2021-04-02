@@ -269,6 +269,10 @@ public class MergeMultiChunkTask {
             modifications[i] = resource.getModifications(currTsFile, currMergingPaths.get(i));
             seqChunkMeta[i] = measurementChunkMetadataListEntry.getValue();
             modifyChunkMetaData(seqChunkMeta[i], modifications[i]);
+            for (ChunkMetadata chunkMetadata : seqChunkMeta[i]) {
+              resource.updateStartTime(currTsFile, deviceId, chunkMetadata.getStartTime());
+              resource.updateEndTime(currTsFile, deviceId, chunkMetadata.getEndTime());
+            }
 
             if (Thread.interrupted()) {
               Thread.currentThread().interrupt();
@@ -549,7 +553,6 @@ public class MergeMultiChunkTask {
     for (int i = 0; i < batchData.length(); i++) {
       long time = batchData.getTimeByIndex(i);
       // merge data in batch and data in unseqReader
-
       boolean overwriteSeqPoint = false;
       // unseq point.time <= sequence point.time, write unseq point
       while (currTimeValuePairs[pathIdx] != null

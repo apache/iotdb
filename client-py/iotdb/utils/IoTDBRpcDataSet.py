@@ -17,18 +17,9 @@
 #
 
 # for package
-from .IoTDBConstants import *
-
-# for debug
-# from IoTDBConstants import *
-
-import sys
-from os.path import dirname, abspath
-path = dirname(dirname(abspath(__file__)))
-sys.path.append(path)
-
 from thrift.transport import TTransport
 from iotdb.thrift.rpc.TSIService import TSFetchResultsReq, TSCloseOperationReq
+from iotdb.utils.IoTDBConstants import TSDataType
 
 
 class IoTDBRpcDataSet(object):
@@ -37,8 +28,19 @@ class IoTDBRpcDataSet(object):
     START_INDEX = 2
     FLAG = 0x80
 
-    def __init__(self, sql, column_name_list, column_type_list, column_name_index, ignore_timestamp, query_id,
-        client, session_id, query_data_set, fetch_size):
+    def __init__(
+        self,
+        sql,
+        column_name_list,
+        column_type_list,
+        column_name_index,
+        ignore_timestamp,
+        query_id,
+        client,
+        session_id,
+        query_data_set,
+        fetch_size,
+    ):
         self.__session_id = session_id
         self.__ignore_timestamp = ignore_timestamp
         self.__sql = sql
@@ -57,15 +59,21 @@ class IoTDBRpcDataSet(object):
             self.__column_ordinal_dict[IoTDBRpcDataSet.TIMESTAMP_STR] = 1
 
         if column_name_index is not None:
-            self.__column_type_deduplicated_list = [None for _ in range(len(column_name_index))]
+            self.__column_type_deduplicated_list = [
+                None for _ in range(len(column_name_index))
+            ]
             for i in range(len(column_name_list)):
                 name = column_name_list[i]
                 self.__column_name_list.append(name)
                 self.__column_type_list.append(TSDataType[column_type_list[i]])
                 if name not in self.__column_ordinal_dict:
                     index = column_name_index[name]
-                    self.__column_ordinal_dict[name] = index + IoTDBRpcDataSet.START_INDEX
-                    self.__column_type_deduplicated_list[index] = TSDataType[column_type_list[i]]
+                    self.__column_ordinal_dict[name] = (
+                        index + IoTDBRpcDataSet.START_INDEX
+                    )
+                    self.__column_type_deduplicated_list[index] = TSDataType[
+                        column_type_list[i]
+                    ]
         else:
             index = IoTDBRpcDataSet.START_INDEX
             self.__column_type_deduplicated_list = []
@@ -76,10 +84,14 @@ class IoTDBRpcDataSet(object):
                 if name not in self.__column_ordinal_dict:
                     self.__column_ordinal_dict[name] = index
                     index += 1
-                    self.__column_type_deduplicated_list.append(TSDataType[column_type_list[i]])
+                    self.__column_type_deduplicated_list.append(
+                        TSDataType[column_type_list[i]]
+                    )
 
         self.__time_bytes = bytes(0)
-        self.__current_bitmap = [bytes(0) for _ in range(len(self.__column_type_deduplicated_list))]
+        self.__current_bitmap = [
+            bytes(0) for _ in range(len(self.__column_type_deduplicated_list))
+        ]
         self.__value = [None for _ in range(len(self.__column_type_deduplicated_list))]
         self.__query_data_set = query_data_set
         self.__is_closed = False
@@ -92,8 +104,14 @@ class IoTDBRpcDataSet(object):
             return
         if self.__client is not None:
             try:
-                status = self.__client.closeOperation(TSCloseOperationReq(self.__session_id, self.__query_id))
-                print("close session {}, message: {}".format(self.__session_id, status.message))
+                status = self.__client.closeOperation(
+                    TSCloseOperationReq(self.__session_id, self.__query_id)
+                )
+                print(
+                    "close session {}, message: {}".format(
+                        self.__session_id, status.message
+                    )
+                )
             except TTransport.TException as e:
                 print("close session {} failed because: ".format(self.__session_id), e)
                 raise Exception
@@ -113,7 +131,9 @@ class IoTDBRpcDataSet(object):
         return False
 
     def has_cached_result(self):
-        return (self.__query_data_set is not None) and (len(self.__query_data_set.time) != 0)
+        return (self.__query_data_set is not None) and (
+            len(self.__query_data_set.time) != 0
+        )
 
     def construct_one_row(self):
         # simulating buffer, read 8 bytes from data set and discard first 8 bytes which have been read.
@@ -147,9 +167,11 @@ class IoTDBRpcDataSet(object):
                     self.__value[i] = value_buffer[:8]
                     self.__query_data_set.valueList[i] = value_buffer[8:]
                 elif data_type == TSDataType.TEXT:
-                    length = int.from_bytes(value_buffer[:4], byteorder="big", signed=False)
-                    self.__value[i] = value_buffer[4: 4 + length]
-                    self.__query_data_set.valueList[i] = value_buffer[4 + length:]
+                    length = int.from_bytes(
+                        value_buffer[:4], byteorder="big", signed=False
+                    )
+                    self.__value[i] = value_buffer[4 : 4 + length]
+                    self.__query_data_set.valueList[i] = value_buffer[4 + length :]
                 else:
                     print("unsupported data type {}.".format(data_type))
                     # could raise exception here
@@ -158,7 +180,14 @@ class IoTDBRpcDataSet(object):
 
     def fetch_results(self):
         self.__rows_index = 0
-        request = TSFetchResultsReq(self.__session_id, self.__sql, self.__fetch_size, self.__query_id, True, self.__default_time_out)
+        request = TSFetchResultsReq(
+            self.__session_id,
+            self.__sql,
+            self.__fetch_size,
+            self.__query_id,
+            True,
+            self.__default_time_out,
+        )
         try:
             resp = self.__client.fetchResults(request)
             if not resp.hasResultSet:
@@ -172,10 +201,13 @@ class IoTDBRpcDataSet(object):
     def is_null(self, index, row_num):
         bitmap = self.__current_bitmap[index]
         shift = row_num % 8
-        return ((IoTDBRpcDataSet.FLAG >> shift) & (bitmap & 0xff)) == 0
+        return ((IoTDBRpcDataSet.FLAG >> shift) & (bitmap & 0xFF)) == 0
 
     def is_null_by_index(self, column_index):
-        index = self.__column_ordinal_dict[self.find_column_name_by_index(column_index)] - IoTDBRpcDataSet.START_INDEX
+        index = (
+            self.__column_ordinal_dict[self.find_column_name_by_index(column_index)]
+            - IoTDBRpcDataSet.START_INDEX
+        )
         # time column will never be None
         if index < 0:
             return True
@@ -192,7 +224,11 @@ class IoTDBRpcDataSet(object):
         if column_index <= 0:
             raise Exception("Column index should start from 1")
         if column_index > len(self.__column_name_list):
-            raise Exception("column index {} out of range {}".format(column_index, self.__column_size))
+            raise Exception(
+                "column index {} out of range {}".format(
+                    column_index, self.__column_size
+                )
+            )
         return self.__column_name_list[column_index - 1]
 
     def get_fetch_size(self):
