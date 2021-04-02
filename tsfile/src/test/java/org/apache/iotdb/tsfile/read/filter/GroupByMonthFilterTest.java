@@ -20,10 +20,13 @@ package org.apache.iotdb.tsfile.read.filter;
 
 import org.apache.iotdb.tsfile.file.metadata.statistics.LongStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import org.junit.Test;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 public class GroupByMonthFilterTest {
@@ -40,7 +43,7 @@ public class GroupByMonthFilterTest {
     GroupByMonthFilter filter =
         new GroupByMonthFilter(MS_TO_MONTH, 2 * MS_TO_MONTH, 0, END_TIME, true, true);
 
-    // 1970-01-01 08:00:00
+    // 1970-01-01 08:00:00, timezone = GMT+08:00
     assertTrue(filter.satisfy(0, null));
 
     // 1970-02-01 07:59:59
@@ -61,8 +64,8 @@ public class GroupByMonthFilterTest {
     // 1970-07-01 07:59:59
     assertFalse(filter.satisfy(15638399000L, null));
 
-    // 1970-12-31 23:59:58
-    assertFalse(filter.satisfy(31507198000L, null));
+    // 1970-11-30 23:59:59
+    assertTrue(filter.satisfy(28828799000L, null));
 
     // 1970-12-31 23:59:59
     assertFalse(filter.satisfy(31507199000L, null));
@@ -74,7 +77,7 @@ public class GroupByMonthFilterTest {
     GroupByMonthFilter filter =
         new GroupByMonthFilter(MS_TO_MONTH, MS_TO_MONTH, 0, END_TIME, true, true);
 
-    // 1970-01-01 08:00:00
+    // 1970-01-01 08:00:00, timezone = GMT+08:00
     assertTrue(filter.satisfy(0, null));
 
     // 1970-02-01 07:59:59
@@ -102,7 +105,7 @@ public class GroupByMonthFilterTest {
     GroupByMonthFilter filter =
         new GroupByMonthFilter(MS_TO_DAY, MS_TO_MONTH, 0, END_TIME, true, false);
 
-    // 1970-01-01 08:00:00
+    // 1970-01-01 08:00:00, timezone = GMT+08:00
     assertTrue(filter.satisfy(0, null));
 
     // 1970-01-02 07:59:59
@@ -133,16 +136,18 @@ public class GroupByMonthFilterTest {
     GroupByMonthFilter filter =
         new GroupByMonthFilter(MS_TO_DAY, MS_TO_MONTH, 0, END_TIME, true, false);
 
-    // 1970-01-01 08:00:00 - 1970-01-02 08:00:00
+    // 1970-01-01 08:00:00 - 1970-01-02 08:00:00, timezone = GMT+08:00
     Statistics statistics = new LongStatistics();
     statistics.setStartTime(0);
     statistics.setEndTime(MS_TO_DAY);
     assertTrue(filter.satisfy(statistics));
 
+    // 1970-01-01 20:00:00 - 1970-01-02 08:00:00
     statistics.setStartTime(MS_TO_DAY / 2);
     statistics.setEndTime(MS_TO_DAY);
     assertTrue(filter.satisfy(statistics));
 
+    // 1970-01-01 20:00:00 - 1970-01-03 08:00:00
     statistics.setStartTime(MS_TO_DAY / 2);
     statistics.setEndTime(MS_TO_DAY * 2);
     assertTrue(filter.satisfy(statistics));
@@ -162,12 +167,60 @@ public class GroupByMonthFilterTest {
     statistics.setEndTime(5104800000L);
     assertTrue(filter.satisfy(statistics));
 
-    // 1970-05-01 07:00:00 - 1970-05-01 10:00:00
+    // 1970-05-01 07:00:00 - 1970-05-01 08:00:00
     statistics.setStartTime(10364400000L);
-    statistics.setEndTime(10375200000L);
+    statistics.setEndTime(10368000000L);
     assertTrue(filter.satisfy(statistics));
 
     // 1970-01-02 07:59:59
     assertTrue(filter.satisfy(86399000L, null));
+  }
+
+  /** Test filter with slidingStep = 1 month, and timeInterval = 1 day */
+  @Test
+  public void TestContainStartEndTime() {
+    GroupByMonthFilter filter =
+        new GroupByMonthFilter(MS_TO_DAY, MS_TO_MONTH, 0, END_TIME, true, false);
+
+    // 1970-01-01 08:00:00 - 1970-01-02 08:00:00, timezone = GMT+08:00
+    assertFalse(filter.containStartEndTime(0, MS_TO_DAY));
+
+    // 1970-01-01 08:00:00 - 1970-01-02 07:59:59
+    assertTrue(filter.containStartEndTime(0, MS_TO_DAY - 1000));
+
+    // 1970-02-01 07:59:59 - 1970-02-02 07:59:59
+    assertFalse(filter.containStartEndTime(2678399000L, 2764799000L));
+
+    // 1970-02-01 08:00:00 - 1970-02-02 07:59:59
+    assertTrue(filter.containStartEndTime(2678400000L, 2764799000L));
+
+    // 1970-02-01 08:00:00 - 1970-02-02 08:00:00
+    assertFalse(filter.containStartEndTime(2678400000L, 2764800000L));
+
+    // 1970-02-10 08:00:00 - 1970-02-11 08:00:00
+    assertFalse(filter.containStartEndTime(3456000000L, 3542400000L));
+
+    // 1970-10-01 10:00:00 - 1970-10-01 12:00:00
+    assertTrue(filter.containStartEndTime(23594400000L, 23601600000L));
+
+    // 1970-05-01 08:00:00 - 1970-05-01 10:00:00
+    assertTrue(filter.containStartEndTime(10368000000L, 10375200000L));
+
+    // 1970-03-01 08:00:00 - 1970-05-01 10:00:00
+    assertFalse(filter.containStartEndTime(5097600000L, 10375200000L));
+
+    // 1970-01-02 07:59:59
+    assertTrue(filter.satisfy(86399000L, null));
+  }
+
+  @Test
+  public void TestEquals() {
+    GroupByMonthFilter filter =
+        new GroupByMonthFilter(MS_TO_DAY, MS_TO_MONTH, 0, END_TIME, true, false);
+    Filter filter2 = filter.copy();
+    assertEquals(filter, filter2);
+    GroupByMonthFilter filter3 =
+        new GroupByMonthFilter(MS_TO_MONTH, MS_TO_MONTH, 0, END_TIME, true, true);
+    assertNotEquals(filter, filter3);
   }
 }
