@@ -36,7 +36,7 @@ import java.util.Random;
 public class VectorSessionExample {
 
   private static Session session;
-  private static final String ROOT_SG1_D1 = "root.sg_0.d1";
+  private static final String ROOT_SG1_D1 = "root.sg_1.d1";
 
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -48,20 +48,19 @@ public class VectorSessionExample {
 
     createTemplate();
     insertTabletWithAlignedTimeseries();
-    //    selectTest();
+    selectTest();
     session.close();
   }
 
   private static void selectTest() throws StatementExecutionException, IoTDBConnectionException {
-    SessionDataSet dataSet = session.executeQueryStatement("select s1 from root.sg_0.d1");
+    SessionDataSet dataSet = session.executeQueryStatement("select s1 from root.sg_1.d1");
     System.out.println(dataSet.getColumnNames());
     while (dataSet.hasNext()) {
       System.out.println(dataSet.next());
     }
 
     dataSet.closeOperationHandle();
-
-    dataSet = session.executeQueryStatement("select * from root.sg_0.d1");
+    dataSet = session.executeQueryStatement("select * from root.sg_1.d1");
     System.out.println(dataSet.getColumnNames());
     while (dataSet.hasNext()) {
       System.out.println(dataSet.next());
@@ -98,7 +97,7 @@ public class VectorSessionExample {
 
     session.createDeviceTemplate(
         "template1", measurementList, dataTypeList, encodingList, compressionTypes);
-    session.setDeviceTemplate("template1", "root.sg_0");
+    session.setDeviceTemplate("template1", "root.sg_1");
   }
 
   private static void insertTabletWithAlignedTimeseries()

@@ -921,15 +921,11 @@ public class PhysicalGenerator {
 
     // support vector
     List<PartialPath> deduplicatedPaths = rawDataQueryPlan.getDeduplicatedPaths();
-    Pair<List<PartialPath>, Map<String, Integer>> pair =
-        IoTDB.metaManager.getSeriesSchemas(deduplicatedPaths);
+    Pair<List<PartialPath>, Map<String, Integer>> pair = getSeriesSchema(deduplicatedPaths);
 
     List<PartialPath> vectorizedDeduplicatedPaths = pair.left;
     List<TSDataType> vectorizedDeduplicatedDataTypes = new ArrayList<>();
-    for (PartialPath vectorizedDeduplicatedPath : vectorizedDeduplicatedPaths) {
-      vectorizedDeduplicatedDataTypes.add(
-          IoTDB.metaManager.getSeriesType(vectorizedDeduplicatedPath));
-    }
+    vectorizedDeduplicatedDataTypes.addAll(getSeriesTypes(vectorizedDeduplicatedPaths));
     rawDataQueryPlan.setDeduplicatedPaths(vectorizedDeduplicatedPaths);
     rawDataQueryPlan.setDeduplicatedDataTypes(vectorizedDeduplicatedDataTypes);
 
@@ -939,6 +935,11 @@ public class PhysicalGenerator {
       pathToIndex.put(columnForDisplay, columnForDisplayToQueryDataSetIndex.get(columnForDisplay));
     }
     queryPlan.setPathToIndex(pathToIndex);
+  }
+
+  protected Pair<List<PartialPath>, Map<String, Integer>> getSeriesSchema(List<PartialPath> paths)
+      throws MetadataException {
+    return IoTDB.metaManager.getSeriesSchemas(paths);
   }
 
   private List<String> slimitTrimColumn(List<String> columnList, int seriesLimit, int seriesOffset)

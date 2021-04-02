@@ -155,5 +155,6 @@ public abstract class Operator {
     STOP_TRIGGER,
     CREATE_TEMPLATE,
     SET_DEVICE_TEMPLATE,
+    SET_USING_DEVICE_TEMPLATE,
   }
 }

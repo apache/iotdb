@@ -49,6 +49,7 @@ import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetUsingDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
@@ -374,6 +375,10 @@ public abstract class PhysicalPlan {
           plan = new SetDeviceTemplatePlan();
           plan.deserialize(buffer);
           break;
+        case SET_USING_DEVICE_TEMPLATE:
+          plan = new SetUsingDeviceTemplatePlan();
+          plan.deserialize(buffer);
+          break;
         case AUTO_CREATE_DEVICE_MNODE:
           plan = new AutoCreateDeviceMNodePlan();
           plan.deserialize(buffer);
@@ -426,6 +431,7 @@ public abstract class PhysicalPlan {
     SHOW_DEVICES,
     CREATE_TEMPLATE,
     SET_DEVICE_TEMPLATE,
+    SET_USING_DEVICE_TEMPLATE,
     AUTO_CREATE_DEVICE_MNODE,
   }
 

@@ -62,4 +62,8 @@ public interface IMeasurementSchema {
   int serializeTo(ByteBuffer buffer);
 
   int serializeTo(OutputStream outputStream) throws IOException;
+
+  int partialSerializeTo(ByteBuffer buffer);
+
+  int partialSerializeTo(OutputStream outputStream) throws IOException;
 }

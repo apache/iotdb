@@ -204,7 +204,7 @@ public class SyncClientAdaptorTest {
             ByteBuffer byteBuffer = ByteBuffer.allocate(4096);
             byteBuffer.putInt(measurementSchemas.size());
             for (IMeasurementSchema schema : measurementSchemas) {
-              schema.serializeTo(byteBuffer);
+              schema.partialSerializeTo(byteBuffer);
             }
             byteBuffer.flip();
             resultHandler.onComplete(new PullSchemaResp(byteBuffer));

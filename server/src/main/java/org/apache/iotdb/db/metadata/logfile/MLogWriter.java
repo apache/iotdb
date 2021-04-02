@@ -41,6 +41,7 @@ import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetUsingDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 import org.apache.iotdb.db.writelog.io.LogWriter;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -200,6 +201,11 @@ public class MLogWriter implements AutoCloseable {
     StorageGroupMNodePlan plan =
         new StorageGroupMNodePlan(
             node.getName(), node.getDataTTL(), childSize, node.getAlignedTimeseriesIndex());
+    putLog(plan);
+  }
+
+  public void setUsingDeviceTemplate(PartialPath path) throws IOException {
+    SetUsingDeviceTemplatePlan plan = new SetUsingDeviceTemplatePlan(path);
     putLog(plan);
   }
 

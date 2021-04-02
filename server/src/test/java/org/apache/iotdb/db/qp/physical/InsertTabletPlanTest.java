@@ -129,16 +129,15 @@ public class InsertTabletPlanTest {
     executor.insertTablet(tabletPlan);
 
     Assert.assertEquals("[$#$0, $#$1, s6]", Arrays.toString(tabletPlan.getMeasurementMNodes()));
-    System.out.println(Arrays.toString(tabletPlan.getMeasurementMNodes()));
 
     QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertEquals(3, dataSet.getPaths().size());
-    //    while (dataSet.hasNext()) {
-    //      RowRecord record = dataSet.next();
-    //      System.out.println(record);
-    //      Assert.assertEquals(6, record.getFields().size());
-    //    }
+    while (dataSet.hasNext()) {
+      RowRecord record = dataSet.next();
+      System.out.println(record);
+      Assert.assertEquals(6, record.getFields().size());
+    }
   }
 
   @Test
@@ -148,22 +147,26 @@ public class InsertTabletPlanTest {
     CreateTemplatePlan plan = getCreateTemplatePlan();
 
     IoTDB.metaManager.createDeviceTemplate(plan);
-    IoTDB.metaManager.setDeviceTemplate(new SetDeviceTemplatePlan("template1", "root.isp.d1"));
-
-    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
+    IoTDB.metaManager.setDeviceTemplate(new SetDeviceTemplatePlan("template1", "root.isp"));
 
     InsertTabletPlan tabletPlan = getInsertTabletPlan();
 
     PlanExecutor executor = new PlanExecutor();
+
+    // nothing can be found when we not insert data
+    QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp");
+    QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    Assert.assertEquals(0, dataSet.getPaths().size());
+
     executor.insertTablet(tabletPlan);
 
-    QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
-    QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp");
+    dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertEquals(3, dataSet.getPaths().size());
-    //    while (dataSet.hasNext()) {
-    //      RowRecord record = dataSet.next();
-    //      Assert.assertEquals(6, record.getFields().size());
-    //    }
+    while (dataSet.hasNext()) {
+      RowRecord record = dataSet.next();
+      Assert.assertEquals(6, record.getFields().size());
+    }
   }
 
   private CreateTemplatePlan getCreateTemplatePlan() {
@@ -228,13 +231,12 @@ public class InsertTabletPlanTest {
     QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertEquals(3, dataSet.getPaths().size());
-    //    while (dataSet.hasNext()) {
-    //      RowRecord record = dataSet.next();
-    //      Assert.assertEquals(6, record.getFields().size());
-    //    }
+    while (dataSet.hasNext()) {
+      RowRecord record = dataSet.next();
+      Assert.assertEquals(6, record.getFields().size());
+    }
 
     // test recover
-    // we want to recover
     EnvironmentUtils.stopDaemon();
     IoTDB.metaManager.clear();
     // wait for close
@@ -249,10 +251,10 @@ public class InsertTabletPlanTest {
     queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
     dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertEquals(3, dataSet.getPaths().size());
-    //    while (dataSet.hasNext()) {
-    //      RowRecord record = dataSet.next();
-    //      Assert.assertEquals(6, record.getFields().size());
-    //    }
+    while (dataSet.hasNext()) {
+      RowRecord record = dataSet.next();
+      Assert.assertEquals(6, record.getFields().size());
+    }
   }
 
   @Test

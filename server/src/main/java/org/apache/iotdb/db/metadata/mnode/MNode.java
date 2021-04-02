@@ -75,6 +75,8 @@ public class MNode implements Serializable {
   // device template
   protected volatile Template deviceTemplate = null;
 
+  private volatile boolean useTemplate = false;
+
   /** Constructor of MNode. */
   public MNode(MNode parent, String name) {
     this.parent = parent;
@@ -386,5 +388,13 @@ public class MNode implements Serializable {
     } else {
       return Objects.hash(fullPath);
     }
+  }
+
+  public boolean isUseTemplate() {
+    return useTemplate;
+  }
+
+  public void setUseTemplate(boolean useTemplate) {
+    this.useTemplate = useTemplate;
   }
 }
