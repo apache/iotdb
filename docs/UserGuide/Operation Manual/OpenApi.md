@@ -19,16 +19,45 @@
 
 -->
 
-# OpenApi
+## Rest API
 
-OpenAPI interface uses basic authentication. Every URL request needs to carry 'authorization':'basic '+ Base64. Encode (user name +': '+ password) in the header
+IoTDB's Rest API is designed for supporting integration with Grafana and Prometheus. It uses OpenAPI standard to define the interfaces and generate framework source codes.
 
-## grafana interface
+Now, OpenAPI interface uses basic authentication. Every URL request needs to carry 'authorization':'basic '+ Base64. Encode (user name +': '+ password) in the header.
 
-##Check if the iotdb service is working
-Request method：get
-url：http://ip:port/ping
+### Configuration
+
+The configuration is located in `iotdb-engines.properties`, set `enable_openApi` to `true` to enable the module while `false` to disable it.
+By default, the value is `false`.
+
 ```
+enable_openApi=true
+```
+
+Only take effects when `enable_openApi=true`. Set `openApi_port` as a number (1025~65535) to customize your rest service socket port.
+
+By default, the value is `18080`.
+```
+openApi_port=18080
+```
+
+//TODO explain me.
+sg_count=5
+
+
+In the following doc, we suppose your IoTDB binds 127.0.0.1 and 18080 port.
+
+### Health check 
+
+Check if the iotdb service is working. 
+
+//TODO what returned message means "working" and what means not??
+
+Request method：get
+
+url：http://ip:port/ping
+
+```shell
 $ curl -H "Authorization:Basic cm9vdDpyb2901" http://127.0.0.1:18080/ping
 $ {"code":4,"type":"ok","message":"login success!"}
 ```
@@ -40,6 +69,7 @@ Response examples
 "message": "login success!"
 }
 ```
+
 Example of user name password authentication failure
 ```json
 {
@@ -48,7 +78,10 @@ Example of user name password authentication failure
   "message": "username or passowrd is incorrect!"
 }
 ```
-##Serve for getting time series name level by level by Grafana
+
+### grafana interface
+
+#### Serve for getting time series name level by level by Grafana
 Request method：post
 content-type：application/json
 url：http://ip:port/v1/grafana/node
