@@ -74,7 +74,7 @@ public class TSFileConfig implements Serializable {
   private int pageSizeInByte = 64 * 1024;
   /** The maximum number of data points in a page, default value is 1024 * 1024. */
   private int maxNumberOfPointsInPage = 1024 * 1024;
-  /** The maximum degree of a metadataIndex node, default value is 1024 */
+  /** The maximum degree of a metadataIndex node, default value is 256 */
   private int maxDegreeOfIndexNode = 256;
   /** Data type for input timestamp, TsFile supports INT32 or INT64. */
   private String timeSeriesDataType = "INT64";
