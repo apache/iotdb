@@ -368,4 +368,8 @@ public class VectorMeasurementSchema
     sc.addTail(CompressionType.deserialize(compressor).toString());
     return sc.toString();
   }
+
+  public String[] getMeasurements() {
+    return measurements;
+  }
 }

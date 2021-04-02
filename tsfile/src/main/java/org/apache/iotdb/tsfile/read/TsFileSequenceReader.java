@@ -64,12 +64,9 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.Set;
 import java.util.TreeMap;
@@ -1264,76 +1261,23 @@ public class TsFileSequenceReader implements AutoCloseable {
     return maxPlanIndex;
   }
 
-  /**
-   * @return An iterator of linked hashmaps ( measurement -> chunk metadata list ). When traversing
-   *     the linked hashmap, you will get chunk metadata lists according to the lexicographic order
-   *     of the measurements. The first measurement of the linked hashmap of each iteration is
-   *     always larger than the last measurement of the linked hashmap of the previous iteration in
-   *     lexicographic order.
-   */
-  public Iterator<Map<String, List<ChunkMetadata>>> getMeasurementChunkMetadataListMapIterator(
-      String device) throws IOException {
+  public Queue<Pair<Long, Long>> getTimeSeriesBufferOffsetRangeQueue(String device)
+      throws IOException {
     readFileMetadata();
 
     MetadataIndexNode metadataIndexNode = tsFileMetaData.getMetadataIndex();
     Pair<MetadataIndexEntry, Long> metadataIndexPair =
         getMetadataAndEndOffset(metadataIndexNode, device, true, true);
 
+    Queue<Pair<Long, Long>> bufferOffsetRange = new LinkedList<>();
+
     if (metadataIndexPair == null) {
-      return new Iterator<Map<String, List<ChunkMetadata>>>() {
-
-        @Override
-        public boolean hasNext() {
-          return false;
-        }
-
-        @Override
-        public LinkedHashMap<String, List<ChunkMetadata>> next() {
-          throw new NoSuchElementException();
-        }
-      };
+      return bufferOffsetRange;
     }
 
-    Queue<Pair<Long, Long>> queue = new LinkedList<>();
     ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
-    collectEachLeafMeasurementNodeOffsetRange(buffer, queue);
-
-    return new Iterator<Map<String, List<ChunkMetadata>>>() {
-
-      @Override
-      public boolean hasNext() {
-        return !queue.isEmpty();
-      }
-
-      @Override
-      public LinkedHashMap<String, List<ChunkMetadata>> next() {
-        if (!hasNext()) {
-          throw new NoSuchElementException();
-        }
-        Pair<Long, Long> startEndPair = queue.remove();
-        LinkedHashMap<String, List<ChunkMetadata>> measurementChunkMetadataList =
-            new LinkedHashMap<>();
-        try {
-          List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
-          ByteBuffer nextBuffer = readData(startEndPair.left, startEndPair.right);
-          while (nextBuffer.hasRemaining()) {
-            timeseriesMetadataList.add(TimeseriesMetadata.deserializeFrom(nextBuffer, true));
-          }
-          for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataList) {
-            List<ChunkMetadata> list =
-                measurementChunkMetadataList.computeIfAbsent(
-                    timeseriesMetadata.getMeasurementId(), m -> new ArrayList<>());
-            for (IChunkMetadata chunkMetadata : timeseriesMetadata.getChunkMetadataList()) {
-              list.add((ChunkMetadata) chunkMetadata);
-            }
-          }
-          return measurementChunkMetadataList;
-        } catch (IOException e) {
-          throw new TsFileRuntimeException(
-              "Error occurred while reading a time series metadata block.");
-        }
-      }
-    };
+    collectEachLeafMeasurementNodeOffsetRange(buffer, bufferOffsetRange);
+    return bufferOffsetRange;
   }
 
   private void collectEachLeafMeasurementNodeOffsetRange(
@@ -1358,6 +1302,30 @@ public class TsFileSequenceReader implements AutoCloseable {
       logger.error(
           "Error occurred while collecting offset ranges of measurement nodes of file {}", file);
       throw e;
+    }
+  }
+
+  public boolean collectTimeSeriesMetadata(
+      Queue<Pair<Long, Long>> bufferOffsetRangeQueue,
+      Queue<TimeseriesMetadata> timeseriesMetadataQueue,
+      Map<String, TimeseriesMetadata> timeseriesMetadataCache) {
+    if (bufferOffsetRangeQueue.isEmpty()) {
+      return false;
+    }
+
+    try {
+      Pair<Long, Long> startEndPair = bufferOffsetRangeQueue.remove();
+      ByteBuffer nextBuffer = readData(startEndPair.left, startEndPair.right);
+      while (nextBuffer.hasRemaining()) {
+        TimeseriesMetadata timeseriesMetadata =
+            TimeseriesMetadata.deserializeFrom(nextBuffer, false);
+        timeseriesMetadataQueue.add(timeseriesMetadata);
+        timeseriesMetadataCache.put(timeseriesMetadata.getMeasurementId(), timeseriesMetadata);
+      }
+      return true;
+    } catch (IOException e) {
+      throw new TsFileRuntimeException(
+          "Error occurred while reading a time series metadata block.");
     }
   }
 }

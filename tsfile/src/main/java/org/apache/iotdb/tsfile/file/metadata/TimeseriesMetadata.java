@@ -37,6 +37,7 @@ public class TimeseriesMetadata implements Accountable, ITimeSeriesMetadata {
 
   /** used for old version tsfile */
   private long startOffsetOfChunkMetaDataList;
+
   /**
    * 0 means this time series has only one chunk, no need to save the statistic again in chunk
    * metadata 1 means this time series has more than one chunk, should save the statistic again in
@@ -44,6 +45,12 @@ public class TimeseriesMetadata implements Accountable, ITimeSeriesMetadata {
    * 7th bit is 1, it means it is the value column of a vector series
    */
   private byte timeSeriesMetadataType;
+
+  public enum TimeSeriesType {
+    COMMON,
+    VECTOR_SERIES_TIME_COLUMN,
+    VECTOR_SERIES_VALUE_COLUMN,
+  }
 
   private int chunkMetaDataListDataSize;
 
@@ -135,6 +142,16 @@ public class TimeseriesMetadata implements Accountable, ITimeSeriesMetadata {
     chunkMetadataListBuffer.writeTo(outputStream);
     byteLen += chunkMetadataListBuffer.size();
     return byteLen;
+  }
+
+  public TimeSeriesType getTimeSeriesType() {
+    if ((timeSeriesMetadataType & 0b1000_0000) != 0) {
+      return TimeSeriesType.VECTOR_SERIES_TIME_COLUMN;
+    } else if ((timeSeriesMetadataType & 0b0100_0000) != 0) {
+      return TimeSeriesType.VECTOR_SERIES_VALUE_COLUMN;
+    } else {
+      return TimeSeriesType.COMMON;
+    }
   }
 
   public byte getTimeSeriesMetadataType() {
