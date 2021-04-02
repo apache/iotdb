@@ -19,7 +19,7 @@
 
 -->
 
-## IoTDB-Flink-Connector 
+## Flink-IoTDB-Connector 
 
 IoTDB integration for [Apache Flink](https://flink.apache.org/). This module includes the IoTDB sink that allows a flink job to write events into timeseries, and the IoTDB source allowing reading data from IoTDB.
 
@@ -112,11 +112,6 @@ public class FlinkIoTDBSink {
 }
 
 ```
-
-
-
-
-
 
 #### Usage
 
@@ -215,3 +210,4 @@ public class FlinkIoTDBSource {
 #### Usage
 Launch the IoTDB server.
 Run org.apache.iotdb.flink.FlinkIoTDBSource.java to run the flink job on local mini cluster.
+
