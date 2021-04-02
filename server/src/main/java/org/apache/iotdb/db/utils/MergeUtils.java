@@ -19,28 +19,36 @@
 
 package org.apache.iotdb.db.utils;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.PriorityQueue;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.VectorChunkMetadata;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.reader.BatchDataIterator;
+import org.apache.iotdb.tsfile.read.reader.IChunkReader;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
+import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
+import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
-
+import org.apache.iotdb.tsfile.write.chunk.VectorChunkWriterImpl;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-import java.util.PriorityQueue;
 
 public class MergeUtils {
 
@@ -50,31 +58,49 @@ public class MergeUtils {
     // util class
   }
 
-  public static void writeTVPair(TimeValuePair timeValuePair, IChunkWriter chunkWriter) {
-    switch (chunkWriter.getDataType()) {
-      case TEXT:
-        chunkWriter.write(
-            timeValuePair.getTimestamp(), timeValuePair.getValue().getBinary(), false);
-        break;
-      case DOUBLE:
-        chunkWriter.write(
-            timeValuePair.getTimestamp(), timeValuePair.getValue().getDouble(), false);
-        break;
-      case BOOLEAN:
-        chunkWriter.write(
-            timeValuePair.getTimestamp(), timeValuePair.getValue().getBoolean(), false);
-        break;
-      case INT64:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getLong(), false);
-        break;
-      case INT32:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getInt(), false);
-        break;
-      case FLOAT:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getFloat(), false);
-        break;
-      default:
-        throw new UnsupportedOperationException("Unknown data type " + chunkWriter.getDataType());
+  public static void writeTVPair(long time, TimeValuePair timeValuePair, IChunkWriter chunkWriter) {
+    if (timeValuePair == null) {
+      switch (chunkWriter.getDataType()) {
+        case TEXT:
+          chunkWriter.write(time, null, true);
+          break;
+        case DOUBLE:
+        case FLOAT:
+        case INT32:
+          chunkWriter.write(time, 0, true);
+          break;
+        case BOOLEAN:
+          chunkWriter.write(time, false, true);
+          break;
+        case INT64:
+          chunkWriter.write(time, 0L, true);
+          break;
+        default:
+          throw new UnsupportedOperationException("Unknown data type " + chunkWriter.getDataType());
+      }
+    } else {
+      switch (chunkWriter.getDataType()) {
+        case TEXT:
+          chunkWriter.write(time, timeValuePair.getValue().getBinary(), false);
+          break;
+        case DOUBLE:
+          chunkWriter.write(time, timeValuePair.getValue().getDouble(), false);
+          break;
+        case BOOLEAN:
+          chunkWriter.write(time, timeValuePair.getValue().getBoolean(), false);
+          break;
+        case INT64:
+          chunkWriter.write(time, timeValuePair.getValue().getLong(), false);
+          break;
+        case INT32:
+          chunkWriter.write(time, timeValuePair.getValue().getInt(), false);
+          break;
+        case FLOAT:
+          chunkWriter.write(time, timeValuePair.getValue().getFloat(), false);
+          break;
+        default:
+          throw new UnsupportedOperationException("Unknown data type " + chunkWriter.getDataType());
+      }
     }
   }
 
@@ -95,21 +121,75 @@ public class MergeUtils {
     return totalSize;
   }
 
-  public static int writeChunkWithoutUnseq(Chunk chunk, IChunkWriter chunkWriter)
+  public static int writeChunkWithoutUnseq(List<Chunk> chunk, IChunkWriter iChunkWriter)
       throws IOException {
-    ChunkReader chunkReader = new ChunkReader(chunk, null);
     int ptWritten = 0;
-    while (chunkReader.hasNextSatisfiedPage()) {
-      BatchData batchData = chunkReader.nextPageData();
-      for (int i = 0; i < batchData.length(); i++) {
-        writeBatchPoint(batchData, i, chunkWriter);
+    ChunkReader timeChunkReader = new ChunkReader(chunk.get(0), null);
+    if (iChunkWriter instanceof ChunkWriterImpl) {
+      ChunkWriterImpl chunkWriter = (ChunkWriterImpl) iChunkWriter;
+      while (timeChunkReader.hasNextSatisfiedPage()) {
+        BatchData batchData = timeChunkReader.nextPageData();
+        for (int i = 0; i < batchData.length(); i++) {
+          writeBatchPoint(batchData, i, chunkWriter);
+        }
+        ptWritten += batchData.length();
       }
-      ptWritten += batchData.length();
+    } else {
+      // write by VectorChunkWriterImpl
+      VectorChunkWriterImpl vectorChunkWriter = (VectorChunkWriterImpl) iChunkWriter;
+      // prepare for value chunk readers
+      List<IChunkReader> chunkReaders = new ArrayList<>();
+      // prepare for value point readers
+      List<IPointReader> pointReaders = new ArrayList<>();
+      for (Chunk valueChunk : chunk) {
+        ChunkReader sensorChunkReader = new ChunkReaderByTimestamp(valueChunk);
+        chunkReaders.add(sensorChunkReader);
+        if (sensorChunkReader.hasNextSatisfiedPage()) {
+          pointReaders.add(new BatchDataIterator(sensorChunkReader.nextPageData()));
+        } else {
+          pointReaders.add(null);
+        }
+      }
+      // read time chunk by loop, and for each timestamp, we read value chunk by loop
+      while (timeChunkReader.hasNextSatisfiedPage()) {
+        IPointReader iPointReader = new BatchDataIterator(timeChunkReader.nextPageData());
+        while (iPointReader.hasNextTimeValuePair()) {
+          TimeValuePair timeValuePair = iPointReader.nextTimeValuePair();
+          for (int i = 0; i < chunkReaders.size(); i++) {
+            IPointReader pointReader = pointReaders.get(i);
+            if (pointReader != null) {
+              TimeValuePair currentValueTimeValuePair = pointReader.currentTimeValuePair();
+              // if current time of time chunk == current time of value chunk, the time of
+              // value chunk is valid, else we add null value
+              if (timeValuePair.getTimestamp() == currentValueTimeValuePair.getTimestamp()) {
+                writeTVPair(timeValuePair.getTimestamp(), timeValuePair, vectorChunkWriter);
+                if (pointReader.hasNextTimeValuePair()) {
+                  pointReader.nextTimeValuePair();
+                } else {
+                  // cannot get next point reader, we have to load new point reader, if not
+                  // exists, put null means that there is not any point any more
+                  IChunkReader sensorChunkReader = chunkReaders.get(i);
+                  if (sensorChunkReader.hasNextSatisfiedPage()) {
+                    pointReader = new BatchDataIterator(sensorChunkReader.nextPageData());
+                  } else {
+                    pointReader = null;
+                  }
+                  pointReaders.set(i, pointReader);
+                }
+              } else {
+                writeTVPair(timeValuePair.getTimestamp(), null, vectorChunkWriter);
+              }
+              vectorChunkWriter.write(timeValuePair.getTimestamp());
+              ptWritten++;
+            }
+          }
+        }
+      }
     }
     return ptWritten;
   }
 
-  public static void writeBatchPoint(BatchData batchData, int i, IChunkWriter chunkWriter) {
+  public static void writeBatchPoint(BatchData batchData, int i, ChunkWriterImpl chunkWriter) {
     switch (chunkWriter.getDataType()) {
       case TEXT:
         chunkWriter.write(batchData.getTimeByIndex(i), batchData.getBinaryByIndex(i), false);
@@ -165,10 +245,13 @@ public class MergeUtils {
    *
    * @param paths names of the timeseries
    */
-  public static List<Chunk>[] collectUnseqChunks(
-      List<PartialPath> paths, List<TsFileResource> unseqResources, MergeResource mergeResource)
-      throws IOException {
-    List<Chunk>[] ret = new List[paths.size()];
+  public static List<List<Chunk>>[] collectUnseqChunks(
+      String device,
+      List<IMeasurementSchema> paths,
+      List<TsFileResource> unseqResources,
+      MergeResource mergeResource)
+      throws IOException, IllegalPathException {
+    List<List<Chunk>>[] ret = new List[paths.size()];
     for (int i = 0; i < paths.size(); i++) {
       ret[i] = new ArrayList<>();
     }
@@ -178,7 +261,7 @@ public class MergeUtils {
 
       TsFileSequenceReader tsFileReader = mergeResource.getFileReader(tsFileResource);
       // prepare metaDataList
-      buildMetaHeap(paths, tsFileReader, mergeResource, tsFileResource, chunkMetaHeap);
+      buildMetaHeap(device, paths, tsFileReader, mergeResource, tsFileResource, chunkMetaHeap);
 
       // read chunks order by their position
       collectUnseqChunks(chunkMetaHeap, tsFileReader, ret);
@@ -187,23 +270,51 @@ public class MergeUtils {
   }
 
   private static void buildMetaHeap(
-      List<PartialPath> paths,
+      String device,
+      List<IMeasurementSchema> paths,
       TsFileSequenceReader tsFileReader,
       MergeResource resource,
       TsFileResource tsFileResource,
       PriorityQueue<MetaListEntry> chunkMetaHeap)
-      throws IOException {
+      throws IOException, IllegalPathException {
     for (int i = 0; i < paths.size(); i++) {
-      PartialPath path = paths.get(i);
-      List<ChunkMetadata> metaDataList = tsFileReader.getChunkMetadataList(path);
+      IMeasurementSchema path = paths.get(i);
+      List<IChunkMetadata> metaDataList = new ArrayList<>();
+      if (path instanceof MeasurementSchema) {
+        // pack ChunkMetadata
+        metaDataList =
+            new ArrayList<>(
+                tsFileReader.getChunkMetadataList(
+                    new PartialPath(device, path.getMeasurementId())));
+      } else {
+        // pack VectorChunkMetadata
+        VectorMeasurementSchema vectorMeasurementSchema = (VectorMeasurementSchema) path;
+        List<ChunkMetadata> timeChunkMetaList =
+            tsFileReader.getChunkMetadataList(
+                new PartialPath(device, vectorMeasurementSchema.getMeasurementId()));
+        List<List<IChunkMetadata>> valueMetadataList = new ArrayList<>();
+        for (String valueMeasurementId : vectorMeasurementSchema.getValueMeasurementIdList()) {
+          List<ChunkMetadata> valueChunkMetadataList =
+              tsFileReader.getChunkMetadataList(new PartialPath(device, valueMeasurementId));
+          valueMetadataList.add(new ArrayList<>(valueChunkMetadataList));
+        }
+        for (int j = 0; j < timeChunkMetaList.size(); j++) {
+          metaDataList.add(
+              new VectorChunkMetadata(timeChunkMetaList.get(j), valueMetadataList.get(j)));
+        }
+      }
+
       if (metaDataList.isEmpty()) {
         continue;
       }
-      List<Modification> pathModifications = resource.getModifications(tsFileResource, path);
+      List<Modification> pathModifications =
+          resource.getModifications(
+              tsFileResource, new PartialPath(device, path.getMeasurementId()));
       if (!pathModifications.isEmpty()) {
         QueryUtils.modifyChunkMetaData(metaDataList, pathModifications);
       }
-      MetaListEntry entry = new MetaListEntry(i, metaDataList);
+      List<IChunkMetadata> iChunkMetadataList = new ArrayList<>(metaDataList);
+      MetaListEntry entry = new MetaListEntry(i, iChunkMetadataList);
       if (entry.hasNext()) {
         entry.next();
         chunkMetaHeap.add(entry);
@@ -214,13 +325,39 @@ public class MergeUtils {
   private static void collectUnseqChunks(
       PriorityQueue<MetaListEntry> chunkMetaHeap,
       TsFileSequenceReader tsFileReader,
-      List<Chunk>[] ret)
+      List<List<Chunk>>[] ret)
       throws IOException {
     while (!chunkMetaHeap.isEmpty()) {
       MetaListEntry metaListEntry = chunkMetaHeap.poll();
-      ChunkMetadata currMeta = metaListEntry.current();
-      Chunk chunk = tsFileReader.readMemChunk(currMeta);
-      ret[metaListEntry.pathId].add(chunk);
+      IChunkMetadata currMeta = metaListEntry.current();
+      List<List<Chunk>> currChunkList = ret[metaListEntry.pathId];
+      if (currMeta instanceof ChunkMetadata) {
+        // pack Chunk
+        ChunkMetadata currChunkMetadata = (ChunkMetadata) currMeta;
+        Chunk chunk = tsFileReader.readMemChunk(currChunkMetadata);
+        List<Chunk> chunkList;
+        if (currChunkList.size() == 0) {
+          chunkList = new ArrayList<>();
+          currChunkList.add(chunkList);
+        } else {
+          chunkList = currChunkList.get(0);
+        }
+        chunkList.add(chunk);
+      } else {
+        // pack VectorChunk list
+        VectorChunkMetadata currVectorChunkMetadata = (VectorChunkMetadata) currMeta;
+        Chunk timeChunk = currVectorChunkMetadata.getTimeChunk();
+        List<Chunk> valueChunkList = currVectorChunkMetadata.getValueChunkList();
+        if (currChunkList.size() == 0) {
+          for (int i = 0; i < 1 + valueChunkList.size(); i++) {
+            currChunkList.add(new ArrayList<>());
+          }
+        }
+        currChunkList.get(0).add(timeChunk);
+        for (int i = 0; i < valueChunkList.size(); i++) {
+          currChunkList.get(i + 1).add(valueChunkList.get(i));
+        }
+      }
       if (metaListEntry.hasNext()) {
         metaListEntry.next();
         chunkMetaHeap.add(metaListEntry);
@@ -228,52 +365,25 @@ public class MergeUtils {
     }
   }
 
-  public static boolean isChunkOverflowed(TimeValuePair timeValuePair, ChunkMetadata metaData) {
-    return timeValuePair != null && timeValuePair.getTimestamp() <= metaData.getEndTime();
+  public static boolean isChunkOverflowed(
+      List<TimeValuePair> timeValuePair, IChunkMetadata metaData) {
+    return timeValuePair != null && timeValuePair.get(0).getTimestamp() <= metaData.getEndTime();
   }
 
   public static boolean isChunkTooSmall(
-      int ptWritten, ChunkMetadata chunkMetaData, boolean isLastChunk, int minChunkPointNum) {
+      int ptWritten, IChunkMetadata chunkMetaData, boolean isLastChunk, int minChunkPointNum) {
+    long numOfPoints = chunkMetaData.getStatistics().getCount();
     return ptWritten > 0
-        || (minChunkPointNum >= 0
-            && chunkMetaData.getNumOfPoints() < minChunkPointNum
-            && !isLastChunk);
-  }
-
-  public static List<List<PartialPath>> splitPathsByDevice(List<PartialPath> paths) {
-    if (paths.isEmpty()) {
-      return Collections.emptyList();
-    }
-    paths.sort(Comparator.comparing(PartialPath::getFullPath));
-
-    String currDevice = null;
-    List<PartialPath> currList = null;
-    List<List<PartialPath>> ret = new ArrayList<>();
-    for (PartialPath path : paths) {
-      if (currDevice == null) {
-        currDevice = path.getDevice();
-        currList = new ArrayList<>();
-        currList.add(path);
-      } else if (path.getDevice().equals(currDevice)) {
-        currList.add(path);
-      } else {
-        ret.add(currList);
-        currDevice = path.getDevice();
-        currList = new ArrayList<>();
-        currList.add(path);
-      }
-    }
-    ret.add(currList);
-    return ret;
+        || (minChunkPointNum >= 0 && numOfPoints < minChunkPointNum && !isLastChunk);
   }
 
   public static class MetaListEntry implements Comparable<MetaListEntry> {
 
     private int pathId;
     private int listIdx;
-    private List<ChunkMetadata> chunkMetadataList;
+    private List<IChunkMetadata> chunkMetadataList;
 
-    public MetaListEntry(int pathId, List<ChunkMetadata> chunkMetadataList) {
+    public MetaListEntry(int pathId, List<IChunkMetadata> chunkMetadataList) {
       this.pathId = pathId;
       this.listIdx = -1;
       this.chunkMetadataList = chunkMetadataList;
@@ -285,7 +395,7 @@ public class MergeUtils {
           this.current().getOffsetOfChunkHeader(), o.current().getOffsetOfChunkHeader());
     }
 
-    public ChunkMetadata current() {
+    public IChunkMetadata current() {
       return chunkMetadataList.get(listIdx);
     }
 
@@ -293,7 +403,7 @@ public class MergeUtils {
       return listIdx + 1 < chunkMetadataList.size();
     }
 
-    public ChunkMetadata next() {
+    public IChunkMetadata next() {
       return chunkMetadataList.get(++listIdx);
     }
 

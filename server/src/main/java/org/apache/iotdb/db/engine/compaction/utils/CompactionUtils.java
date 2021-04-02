@@ -19,6 +19,25 @@
 
 package org.apache.iotdb.db.engine.compaction.utils;
 
+import static org.apache.iotdb.db.utils.MergeUtils.writeTVPair;
+import static org.apache.iotdb.db.utils.QueryUtils.modifyChunkMetaData;
+
+import com.google.common.util.concurrent.RateLimiter;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.TreeMap;
+import org.apache.commons.collections4.keyvalue.DefaultMapEntry;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.TsFileManagement;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
@@ -26,10 +45,10 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.VectorChunkMetadata;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
@@ -40,29 +59,13 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
+import org.apache.iotdb.tsfile.write.chunk.VectorChunkWriterImpl;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
-
-import com.google.common.util.concurrent.RateLimiter;
-import org.apache.commons.collections4.keyvalue.DefaultMapEntry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.TreeMap;
-
-import static org.apache.iotdb.db.utils.MergeUtils.writeTVPair;
-import static org.apache.iotdb.db.utils.QueryUtils.modifyChunkMetaData;
 
 public class CompactionUtils {
 
@@ -74,54 +77,157 @@ public class CompactionUtils {
     throw new IllegalStateException("Utility class");
   }
 
-  private static Pair<ChunkMetadata, Chunk> readByAppendMerge(
-      Map<TsFileSequenceReader, List<ChunkMetadata>> readerChunkMetadataMap,
+  private static Pair<List<ChunkMetadata>, List<Chunk>> readByAppendMerge(
+      Map<TsFileSequenceReader, List<IChunkMetadata>> readerChunkMetadataMap,
       Map<String, List<Modification>> modificationCache,
-      PartialPath seriesPath,
+      String device,
+      IMeasurementSchema iMeasurementSchema,
       List<Modification> modifications)
-      throws IOException {
-    ChunkMetadata newChunkMetadata = null;
-    Chunk newChunk = null;
-    for (Entry<TsFileSequenceReader, List<ChunkMetadata>> entry :
+      throws IOException, IllegalPathException {
+    List<ChunkMetadata> newChunkMetadataList = new ArrayList<>();
+    List<Chunk> newChunkList = new ArrayList<>();
+    for (Entry<TsFileSequenceReader, List<IChunkMetadata>> entry :
         readerChunkMetadataMap.entrySet()) {
       TsFileSequenceReader reader = entry.getKey();
-      List<ChunkMetadata> chunkMetadataList = entry.getValue();
+      List<IChunkMetadata> chunkMetadataList = entry.getValue();
       modifyChunkMetaDataWithCache(
-          reader, chunkMetadataList, modificationCache, seriesPath, modifications);
-      for (ChunkMetadata chunkMetadata : chunkMetadataList) {
-        Chunk chunk = reader.readMemChunk(chunkMetadata);
-        if (newChunkMetadata == null) {
-          newChunkMetadata = chunkMetadata;
-          newChunk = chunk;
+          reader,
+          chunkMetadataList,
+          modificationCache,
+          new PartialPath(device, iMeasurementSchema.getMeasurementId()),
+          modifications);
+      for (IChunkMetadata iChunkMetadata : chunkMetadataList) {
+        if (iChunkMetadata instanceof ChunkMetadata) {
+          ChunkMetadata chunkMetadata = (ChunkMetadata) iChunkMetadata;
+          Chunk chunk = reader.readMemChunk(chunkMetadata);
+          if (newChunkMetadataList.size() == 0) {
+            newChunkMetadataList.add(chunkMetadata);
+            newChunkList.add(chunk);
+          } else {
+            newChunkList.get(0).mergeChunk(chunk);
+            newChunkMetadataList.get(0).mergeChunkMetadata(chunkMetadata);
+          }
         } else {
-          newChunk.mergeChunk(chunk);
-          newChunkMetadata.mergeChunkMetadata(chunkMetadata);
+          // read by vector chunkMetadata, and merge by list
+          VectorChunkMetadata vectorChunkMetadata = (VectorChunkMetadata) iChunkMetadata;
+          IChunkMetadata timeChunkMetadata = vectorChunkMetadata.getTimeChunkMetadata();
+          Chunk timeChunk = vectorChunkMetadata.getTimeChunk();
+          List<IChunkMetadata> valueChunkMetadataList =
+              vectorChunkMetadata.getValueChunkMetadataList();
+          List<Chunk> valueChunkList = vectorChunkMetadata.getValueChunkList();
+          if (newChunkMetadataList.size() == 0) {
+            // first chunk, we do not merge
+            newChunkMetadataList.add((ChunkMetadata) timeChunkMetadata);
+            newChunkList.add(timeChunk);
+            for (int i = 0; i < valueChunkMetadataList.size(); i++) {
+              newChunkMetadataList.add((ChunkMetadata) valueChunkMetadataList.get(i));
+              newChunkList.add(valueChunkList.get(i));
+            }
+          } else {
+            // more chunk, we have to merge them with previous chunk
+            newChunkMetadataList.get(0).mergeChunkMetadata((ChunkMetadata) timeChunkMetadata);
+            newChunkList.get(0).mergeChunk(timeChunk);
+            for (int i = 0; i < valueChunkMetadataList.size(); i++) {
+              newChunkMetadataList
+                  .get(i + 1)
+                  .mergeChunkMetadata((ChunkMetadata) valueChunkMetadataList.get(i));
+              newChunkList.get(i + 1).mergeChunk(valueChunkList.get(i));
+            }
+          }
         }
       }
     }
-    return new Pair<>(newChunkMetadata, newChunk);
+    return new Pair<>(newChunkMetadataList, newChunkList);
   }
 
   private static void readByDeserializeMerge(
-      Map<TsFileSequenceReader, List<ChunkMetadata>> readerChunkMetadataMap,
-      Map<Long, TimeValuePair> timeValuePairMap,
+      Map<TsFileSequenceReader, List<IChunkMetadata>> readerChunkMetadataMap,
+      Map<Long, List<TimeValuePair>> timeValuePairMap,
       Map<String, List<Modification>> modificationCache,
-      PartialPath seriesPath,
+      String device,
+      IMeasurementSchema iMeasurementSchema,
       List<Modification> modifications)
-      throws IOException {
-    for (Entry<TsFileSequenceReader, List<ChunkMetadata>> entry :
+      throws IOException, IllegalPathException {
+    for (Entry<TsFileSequenceReader, List<IChunkMetadata>> entry :
         readerChunkMetadataMap.entrySet()) {
       TsFileSequenceReader reader = entry.getKey();
-      List<ChunkMetadata> chunkMetadataList = entry.getValue();
+      List<IChunkMetadata> iChunkMetadataList = entry.getValue();
       modifyChunkMetaDataWithCache(
-          reader, chunkMetadataList, modificationCache, seriesPath, modifications);
-      for (ChunkMetadata chunkMetadata : chunkMetadataList) {
-        IChunkReader chunkReader = new ChunkReaderByTimestamp(reader.readMemChunk(chunkMetadata));
-        while (chunkReader.hasNextSatisfiedPage()) {
-          IPointReader iPointReader = new BatchDataIterator(chunkReader.nextPageData());
-          while (iPointReader.hasNextTimeValuePair()) {
-            TimeValuePair timeValuePair = iPointReader.nextTimeValuePair();
-            timeValuePairMap.put(timeValuePair.getTimestamp(), timeValuePair);
+          reader,
+          iChunkMetadataList,
+          modificationCache,
+          new PartialPath(device, iMeasurementSchema.getMeasurementId()),
+          modifications);
+      if (iMeasurementSchema instanceof MeasurementSchema) {
+        for (IChunkMetadata iChunkMetadata : iChunkMetadataList) {
+          ChunkMetadata chunkMetadata = (ChunkMetadata) iChunkMetadata;
+          IChunkReader chunkReader = new ChunkReaderByTimestamp(reader.readMemChunk(chunkMetadata));
+          while (chunkReader.hasNextSatisfiedPage()) {
+            IPointReader iPointReader = new BatchDataIterator(chunkReader.nextPageData());
+            while (iPointReader.hasNextTimeValuePair()) {
+              TimeValuePair timeValuePair = iPointReader.nextTimeValuePair();
+              List<TimeValuePair> timeValuePairList = new ArrayList<>();
+              timeValuePairList.add(timeValuePair);
+              timeValuePairMap.put(timeValuePair.getTimestamp(), timeValuePairList);
+            }
+          }
+        }
+      } else {
+        if (iChunkMetadataList.size() > 0) {
+          // read vectorChunkMetadata by loop
+          for (IChunkMetadata iChunkMetadata : iChunkMetadataList) {
+            VectorChunkMetadata vectorChunkMetadata = (VectorChunkMetadata) iChunkMetadata;
+            IChunkReader chunkReader =
+                new ChunkReaderByTimestamp(vectorChunkMetadata.getTimeChunk());
+            // prepare for value chunk readers
+            List<IChunkReader> chunkReaders = new ArrayList<>();
+            // prepare for value point readers
+            List<IPointReader> pointReaders = new ArrayList<>();
+            for (Chunk chunk : vectorChunkMetadata.getValueChunkList()) {
+              IChunkReader sensorChunkReader = new ChunkReaderByTimestamp(chunk);
+              chunkReaders.add(sensorChunkReader);
+              if (sensorChunkReader.hasNextSatisfiedPage()) {
+                pointReaders.add(new BatchDataIterator(chunkReader.nextPageData()));
+              } else {
+                pointReaders.add(null);
+              }
+            }
+            // read time chunk by loop, and for each timestamp, we read value chunk by loop
+            while (chunkReader.hasNextSatisfiedPage()) {
+              IPointReader iPointReader = new BatchDataIterator(chunkReader.nextPageData());
+              while (iPointReader.hasNextTimeValuePair()) {
+                TimeValuePair timeValuePair = iPointReader.nextTimeValuePair();
+                List<TimeValuePair> timeValuePairList =
+                    timeValuePairMap.computeIfAbsent(
+                        timeValuePair.getTimestamp(), k -> new ArrayList<>());
+                for (int i = 0; i < chunkReaders.size(); i++) {
+                  IPointReader pointReader = pointReaders.get(i);
+                  if (pointReader != null) {
+                    TimeValuePair currentValueTimeValuePair = pointReader.currentTimeValuePair();
+                    // if current time of time chunk == current time of value chunk, the time of
+                    // value chunk is valid, else we add null value
+                    if (timeValuePair.getTimestamp() == currentValueTimeValuePair.getTimestamp()) {
+                      timeValuePairList.add(currentValueTimeValuePair);
+                      if (pointReader.hasNextTimeValuePair()) {
+                        pointReader.nextTimeValuePair();
+                      } else {
+                        // cannot get next point reader, we have to load new point reader, if not
+                        // exists, put null means that there is not any point any more
+                        IChunkReader sensorChunkReader = chunkReaders.get(i);
+                        if (sensorChunkReader.hasNextSatisfiedPage()) {
+                          pointReader = new BatchDataIterator(sensorChunkReader.nextPageData());
+                        } else {
+                          pointReader = null;
+                        }
+                        pointReaders.set(i, pointReader);
+                      }
+                    } else {
+                      timeValuePairList.add(null);
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -131,51 +237,53 @@ public class CompactionUtils {
   public static void writeByAppendMerge(
       String device,
       RateLimiter compactionWriteRateLimiter,
-      Entry<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> entry,
+      Entry<IMeasurementSchema, Map<TsFileSequenceReader, List<IChunkMetadata>>> entry,
       TsFileResource targetResource,
       RestorableTsFileIOWriter writer,
       Map<String, List<Modification>> modificationCache,
       List<Modification> modifications)
       throws IOException, IllegalPathException {
-    Pair<ChunkMetadata, Chunk> chunkPair =
+    Pair<List<ChunkMetadata>, List<Chunk>> chunkPair =
         readByAppendMerge(
-            entry.getValue(),
-            modificationCache,
-            new PartialPath(device, entry.getKey()),
-            modifications);
-    ChunkMetadata newChunkMetadata = chunkPair.left;
-    Chunk newChunk = chunkPair.right;
-    if (newChunkMetadata != null && newChunk != null) {
-      // wait for limit write
-      MergeManager.mergeRateLimiterAcquire(
-          compactionWriteRateLimiter,
-          (long) newChunk.getHeader().getDataSize() + newChunk.getData().position());
-      writer.writeChunk(newChunk, newChunkMetadata);
-      targetResource.updateStartTime(device, newChunkMetadata.getStartTime());
-      targetResource.updateEndTime(device, newChunkMetadata.getEndTime());
+            entry.getValue(), modificationCache, device, entry.getKey(), modifications);
+    List<ChunkMetadata> newChunkMetadataList = chunkPair.left;
+    List<Chunk> newChunkList = chunkPair.right;
+    if (newChunkMetadataList.size() > 0 && newChunkList.size() > 0) {
+      for (int i = 0; i < newChunkMetadataList.size(); i++) {
+        ChunkMetadata newChunkMetadata = newChunkMetadataList.get(i);
+        Chunk newChunk = newChunkList.get(i);
+        // wait for limit write
+        MergeManager.mergeRateLimiterAcquire(
+            compactionWriteRateLimiter,
+            (long) newChunk.getHeader().getDataSize() + newChunk.getData().position());
+        writer.writeChunk(newChunk, newChunkMetadata);
+        targetResource.updateStartTime(device, newChunkMetadata.getStartTime());
+        targetResource.updateEndTime(device, newChunkMetadata.getEndTime());
+      }
     }
   }
 
   public static void writeByDeserializeMerge(
       String device,
       RateLimiter compactionRateLimiter,
-      Entry<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> entry,
+      Entry<IMeasurementSchema, Map<TsFileSequenceReader, List<IChunkMetadata>>> entry,
       TsFileResource targetResource,
       RestorableTsFileIOWriter writer,
       Map<String, List<Modification>> modificationCache,
       List<Modification> modifications)
       throws IOException, IllegalPathException {
-    Map<Long, TimeValuePair> timeValuePairMap = new TreeMap<>();
-    Map<TsFileSequenceReader, List<ChunkMetadata>> readerChunkMetadataMap = entry.getValue();
+    Map<Long, List<TimeValuePair>> timeValuePairMap = new TreeMap<>();
+    Map<TsFileSequenceReader, List<IChunkMetadata>> readerChunkMetadataMap = entry.getValue();
     readByDeserializeMerge(
         readerChunkMetadataMap,
         timeValuePairMap,
         modificationCache,
-        new PartialPath(device, entry.getKey()),
+        device,
+        entry.getKey(),
         modifications);
     boolean isChunkMetadataEmpty = true;
-    for (List<ChunkMetadata> chunkMetadataList : readerChunkMetadataMap.values()) {
-      if (!chunkMetadataList.isEmpty()) {
+    for (List<IChunkMetadata> iChunkMetadataList : readerChunkMetadataMap.values()) {
+      if (!iChunkMetadataList.isEmpty()) {
         isChunkMetadataEmpty = false;
         break;
       }
@@ -183,20 +291,33 @@ public class CompactionUtils {
     if (isChunkMetadataEmpty) {
       return;
     }
+
     IChunkWriter chunkWriter;
-    try {
-      chunkWriter =
-          new ChunkWriterImpl(
-              IoTDB.metaManager.getSeriesSchema(new PartialPath(device), entry.getKey()), true);
-    } catch (MetadataException e) {
-      // this may caused in IT by restart
-      logger.error("{} get schema {} error, skip this sensor", device, entry.getKey(), e);
-      return;
-    }
-    for (TimeValuePair timeValuePair : timeValuePairMap.values()) {
-      writeTVPair(timeValuePair, chunkWriter);
-      targetResource.updateStartTime(device, timeValuePair.getTimestamp());
-      targetResource.updateEndTime(device, timeValuePair.getTimestamp());
+    if (entry.getKey() instanceof MeasurementSchema) {
+      // write with chunk writer
+      chunkWriter = new ChunkWriterImpl(entry.getKey());
+      for (Entry<Long, List<TimeValuePair>> timeValuePair : timeValuePairMap.entrySet()) {
+        writeTVPair(timeValuePair.getKey(), timeValuePair.getValue().get(0), chunkWriter);
+        targetResource.updateStartTime(device, timeValuePair.getKey());
+        targetResource.updateEndTime(device, timeValuePair.getKey());
+      }
+    } else {
+      // write with vector chunk writer
+      chunkWriter = new VectorChunkWriterImpl(entry.getKey());
+      for (Entry<Long, List<TimeValuePair>> timeValuePairsEntry : timeValuePairMap.entrySet()) {
+        long time = timeValuePairsEntry.getKey();
+        for (TimeValuePair timeValuePair : timeValuePairsEntry.getValue()) {
+          if (timeValuePair == null) {
+            writeTVPair(time, null, chunkWriter);
+          } else {
+            time = timeValuePair.getTimestamp();
+            writeTVPair(time, timeValuePair, chunkWriter);
+          }
+        }
+        chunkWriter.write(time);
+        targetResource.updateStartTime(device, time);
+        targetResource.updateEndTime(device, time);
+      }
     }
     // wait for limit write
     MergeManager.mergeRateLimiterAcquire(compactionRateLimiter, chunkWriter.getCurrentChunkSize());
@@ -221,9 +342,9 @@ public class CompactionUtils {
   }
 
   private static boolean hasNextChunkMetadataList(
-      Collection<Iterator<Map<String, List<ChunkMetadata>>>> iteratorSet) {
+      Collection<Iterator<LinkedHashMap<IMeasurementSchema, List<IChunkMetadata>>>> iteratorSet) {
     boolean hasNextChunkMetadataList = false;
-    for (Iterator<Map<String, List<ChunkMetadata>>> iterator : iteratorSet) {
+    for (Iterator<LinkedHashMap<IMeasurementSchema, List<IChunkMetadata>>> iterator : iteratorSet) {
       hasNextChunkMetadataList = hasNextChunkMetadataList || iterator.hasNext();
     }
     return hasNextChunkMetadataList;
@@ -257,12 +378,13 @@ public class CompactionUtils {
         continue;
       }
       writer.startChunkGroup(device);
-      Map<TsFileSequenceReader, Map<String, List<ChunkMetadata>>> chunkMetadataListCacheForMerge =
-          new TreeMap<>(
-              (o1, o2) ->
-                  TsFileManagement.compareFileName(
-                      new File(o1.getFileName()), new File(o2.getFileName())));
-      Map<TsFileSequenceReader, Iterator<Map<String, List<ChunkMetadata>>>>
+      Map<TsFileSequenceReader, LinkedHashMap<IMeasurementSchema, List<IChunkMetadata>>>
+          chunkMetadataListCacheForMerge =
+              new TreeMap<>(
+                  (o1, o2) ->
+                      TsFileManagement.compareFileName(
+                          new File(o1.getFileName()), new File(o2.getFileName())));
+      Map<TsFileSequenceReader, Iterator<LinkedHashMap<IMeasurementSchema, List<IChunkMetadata>>>>
           chunkMetadataListIteratorCache =
               new TreeMap<>(
                   (o1, o2) ->
@@ -274,77 +396,93 @@ public class CompactionUtils {
         if (reader == null) {
           throw new IOException();
         }
-        Iterator<Map<String, List<ChunkMetadata>>> iterator =
+        Iterator<LinkedHashMap<IMeasurementSchema, List<IChunkMetadata>>> iterator =
             reader.getMeasurementChunkMetadataListMapIterator(device);
         chunkMetadataListIteratorCache.put(reader, iterator);
-        chunkMetadataListCacheForMerge.put(reader, new TreeMap<>());
+        chunkMetadataListCacheForMerge.put(reader, new LinkedHashMap<>());
       }
       while (hasNextChunkMetadataList(chunkMetadataListIteratorCache.values())) {
-        String lastSensor = null;
-        Set<String> allSensors = new HashSet<>();
-        for (Entry<TsFileSequenceReader, Map<String, List<ChunkMetadata>>>
+        String lastMeasurementSchema = null;
+        Set<IMeasurementSchema> allMeasurementSchemas = new HashSet<>();
+        for (Entry<TsFileSequenceReader, LinkedHashMap<IMeasurementSchema, List<IChunkMetadata>>>
             chunkMetadataListCacheForMergeEntry : chunkMetadataListCacheForMerge.entrySet()) {
           TsFileSequenceReader reader = chunkMetadataListCacheForMergeEntry.getKey();
-          Map<String, List<ChunkMetadata>> sensorChunkMetadataListMap =
-              chunkMetadataListCacheForMergeEntry.getValue();
-          if (sensorChunkMetadataListMap.size() <= 0) {
+          LinkedHashMap<IMeasurementSchema, List<IChunkMetadata>>
+              measurementSchemaChunkMetadataListMap =
+                  chunkMetadataListCacheForMergeEntry.getValue();
+          if (measurementSchemaChunkMetadataListMap.size() <= 0) {
             if (chunkMetadataListIteratorCache.get(reader).hasNext()) {
-              sensorChunkMetadataListMap = chunkMetadataListIteratorCache.get(reader).next();
-              chunkMetadataListCacheForMerge.put(reader, sensorChunkMetadataListMap);
+              measurementSchemaChunkMetadataListMap =
+                  chunkMetadataListIteratorCache.get(reader).next();
+              chunkMetadataListCacheForMerge.put(reader, measurementSchemaChunkMetadataListMap);
             } else {
               continue;
             }
           }
           // get the min last sensor in the current chunkMetadata cache list for merge
-          String maxSensor = Collections.max(sensorChunkMetadataListMap.keySet());
-          if (lastSensor == null) {
-            lastSensor = maxSensor;
+          IMeasurementSchema maxMeasurementSchema =
+              getLastKeyOfLinkedHashMap(measurementSchemaChunkMetadataListMap);
+          if (lastMeasurementSchema == null) {
+            lastMeasurementSchema = maxMeasurementSchema.getMeasurementId();
           } else {
-            if (maxSensor.compareTo(lastSensor) < 0) {
-              lastSensor = maxSensor;
+            if (maxMeasurementSchema.getMeasurementId().compareTo(lastMeasurementSchema) < 0) {
+              lastMeasurementSchema = maxMeasurementSchema.getMeasurementId();
             }
           }
           // get all sensor used later
-          allSensors.addAll(sensorChunkMetadataListMap.keySet());
+          allMeasurementSchemas.addAll(measurementSchemaChunkMetadataListMap.keySet());
         }
 
-        for (String sensor : allSensors) {
-          if (sensor.compareTo(lastSensor) <= 0) {
-            Map<TsFileSequenceReader, List<ChunkMetadata>> readerChunkMetadataListMap =
+        for (IMeasurementSchema iMeasurementSchema : allMeasurementSchemas) {
+          if (iMeasurementSchema.getMeasurementId().compareTo(lastMeasurementSchema) <= 0) {
+            Map<TsFileSequenceReader, List<IChunkMetadata>> readerChunkMetadataListMap =
                 new TreeMap<>(
                     (o1, o2) ->
                         TsFileManagement.compareFileName(
                             new File(o1.getFileName()), new File(o2.getFileName())));
             // find all chunkMetadata of a sensor
-            for (Entry<TsFileSequenceReader, Map<String, List<ChunkMetadata>>>
+            for (Entry<
+                    TsFileSequenceReader, LinkedHashMap<IMeasurementSchema, List<IChunkMetadata>>>
                 chunkMetadataListCacheForMergeEntry : chunkMetadataListCacheForMerge.entrySet()) {
               TsFileSequenceReader reader = chunkMetadataListCacheForMergeEntry.getKey();
-              Map<String, List<ChunkMetadata>> sensorChunkMetadataListMap =
-                  chunkMetadataListCacheForMergeEntry.getValue();
-              if (sensorChunkMetadataListMap.containsKey(sensor)) {
-                readerChunkMetadataListMap.put(reader, sensorChunkMetadataListMap.get(sensor));
-                sensorChunkMetadataListMap.remove(sensor);
+              LinkedHashMap<IMeasurementSchema, List<IChunkMetadata>>
+                  measurementSchemaChunkMetadataListMap =
+                      chunkMetadataListCacheForMergeEntry.getValue();
+              if (measurementSchemaChunkMetadataListMap.containsKey(iMeasurementSchema)) {
+                readerChunkMetadataListMap.put(
+                    reader, measurementSchemaChunkMetadataListMap.get(iMeasurementSchema));
+                measurementSchemaChunkMetadataListMap.remove(iMeasurementSchema);
               }
             }
-            Entry<String, Map<TsFileSequenceReader, List<ChunkMetadata>>>
-                sensorReaderChunkMetadataListEntry =
-                    new DefaultMapEntry<>(sensor, readerChunkMetadataListMap);
+            Entry<IMeasurementSchema, Map<TsFileSequenceReader, List<IChunkMetadata>>>
+                measurementSchemaReaderChunkMetadataListEntry =
+                    new DefaultMapEntry<>(iMeasurementSchema, readerChunkMetadataListMap);
             if (!sequence) {
               writeByDeserializeMerge(
                   device,
                   compactionWriteRateLimiter,
-                  sensorReaderChunkMetadataListEntry,
+                  measurementSchemaReaderChunkMetadataListEntry,
                   targetResource,
                   writer,
                   modificationCache,
                   modifications);
             } else {
               boolean isPageEnoughLarge = true;
-              for (List<ChunkMetadata> chunkMetadatas : readerChunkMetadataListMap.values()) {
-                for (ChunkMetadata chunkMetadata : chunkMetadatas) {
-                  if (chunkMetadata.getNumOfPoints() < MERGE_PAGE_POINT_NUM) {
-                    isPageEnoughLarge = false;
-                    break;
+              for (List<IChunkMetadata> chunkMetadatas : readerChunkMetadataListMap.values()) {
+                for (IChunkMetadata iChunkMetadata : chunkMetadatas) {
+                  if (iChunkMetadata instanceof ChunkMetadata) {
+                    ChunkMetadata chunkMetadata = (ChunkMetadata) iChunkMetadata;
+                    if (chunkMetadata.getNumOfPoints() < MERGE_PAGE_POINT_NUM) {
+                      isPageEnoughLarge = false;
+                      break;
+                    }
+                  } else {
+                    VectorChunkMetadata vectorChunkMetadata = (VectorChunkMetadata) iChunkMetadata;
+                    if (vectorChunkMetadata.getTimeChunk().getChunkStatistic().getCount()
+                        < MERGE_PAGE_POINT_NUM) {
+                      isPageEnoughLarge = false;
+                      break;
+                    }
                   }
                 }
               }
@@ -354,7 +492,7 @@ public class CompactionUtils {
                 writeByAppendMerge(
                     device,
                     compactionWriteRateLimiter,
-                    sensorReaderChunkMetadataListEntry,
+                    measurementSchemaReaderChunkMetadataListEntry,
                     targetResource,
                     writer,
                     modificationCache,
@@ -365,7 +503,7 @@ public class CompactionUtils {
                 writeByDeserializeMerge(
                     device,
                     compactionWriteRateLimiter,
-                    sensorReaderChunkMetadataListEntry,
+                    measurementSchemaReaderChunkMetadataListEntry,
                     targetResource,
                     writer,
                     modificationCache,
@@ -391,6 +529,33 @@ public class CompactionUtils {
     targetResource.serialize();
     writer.endFile();
     targetResource.close();
+  }
+
+  /**
+   * VectorMeasurementSchema is always smaller then MeasurementSchema, otherwise we compare the
+   * measurementId
+   *
+   * @param measurementSchema1
+   * @param measurementSchema2
+   */
+  private static boolean compareIMeasurementSchema(
+      IMeasurementSchema measurementSchema1, IMeasurementSchema measurementSchema2) {
+    if (measurementSchema1 instanceof VectorMeasurementSchema
+        && measurementSchema2 instanceof MeasurementSchema) {
+      return false;
+    } else if (measurementSchema1 instanceof MeasurementSchema
+        && measurementSchema2 instanceof VectorMeasurementSchema) {
+      return true;
+    } else {
+      String timeMeasurementId1 = measurementSchema1.getMeasurementId();
+      String timeMeasurementId2 = measurementSchema2.getMeasurementId();
+      return timeMeasurementId1.compareTo(timeMeasurementId2) > 0;
+    }
+  }
+
+  private static IMeasurementSchema getLastKeyOfLinkedHashMap(
+      LinkedHashMap<IMeasurementSchema, List<IChunkMetadata>> sensorChunkMetadataListMap) {
+    return new LinkedList<>(sensorChunkMetadataListMap.keySet()).getLast();
   }
 
   private static TsFileSequenceReader buildReaderFromTsFileResource(
@@ -419,7 +584,7 @@ public class CompactionUtils {
 
   private static void modifyChunkMetaDataWithCache(
       TsFileSequenceReader reader,
-      List<ChunkMetadata> chunkMetadataList,
+      List<IChunkMetadata> chunkMetadataList,
       Map<String, List<Modification>> modificationCache,
       PartialPath seriesPath,
       List<Modification> usedModifications) {

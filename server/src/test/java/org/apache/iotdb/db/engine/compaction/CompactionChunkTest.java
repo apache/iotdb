@@ -19,6 +19,19 @@
 
 package org.apache.iotdb.db.engine.compaction;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
+import static org.junit.Assert.assertEquals;
+
+import com.google.common.util.concurrent.RateLimiter;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionUtils;
@@ -29,31 +42,19 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
-
-import com.google.common.util.concurrent.RateLimiter;
-import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
-import static org.junit.Assert.assertEquals;
 
 public class CompactionChunkTest extends LevelCompactionTest {
 
@@ -74,8 +75,8 @@ public class CompactionChunkTest extends LevelCompactionTest {
 
   @Test
   public void testAppendMerge() throws IOException, IllegalPathException {
-    Map<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> measurementChunkMetadataMap =
-        new HashMap<>();
+    Map<IMeasurementSchema, Map<TsFileSequenceReader, List<IChunkMetadata>>>
+        measurementChunkMetadataMap = new HashMap<>();
     List<TsFileResource> sourceTsfileResources = seqResources.subList(0, 2);
     File file =
         new File(
@@ -97,14 +98,15 @@ public class CompactionChunkTest extends LevelCompactionTest {
       Map<String, List<ChunkMetadata>> chunkMetadataMap = reader.readChunkMetadataInDevice(device);
       for (Entry<String, List<ChunkMetadata>> entry : chunkMetadataMap.entrySet()) {
         for (ChunkMetadata chunkMetadata : entry.getValue()) {
-          Map<TsFileSequenceReader, List<ChunkMetadata>> readerChunkMetadataMap;
-          String measurementUid = chunkMetadata.getMeasurementUid();
-          if (measurementChunkMetadataMap.containsKey(measurementUid)) {
-            readerChunkMetadataMap = measurementChunkMetadataMap.get(measurementUid);
+          Map<TsFileSequenceReader, List<IChunkMetadata>> readerChunkMetadataMap;
+          IMeasurementSchema measurementSchema =
+              new MeasurementSchema(chunkMetadata.getMeasurementUid(), chunkMetadata.getDataType());
+          if (measurementChunkMetadataMap.containsKey(measurementSchema)) {
+            readerChunkMetadataMap = measurementChunkMetadataMap.get(measurementSchema);
           } else {
             readerChunkMetadataMap = new LinkedHashMap<>();
           }
-          List<ChunkMetadata> chunkMetadataList;
+          List<IChunkMetadata> chunkMetadataList;
           if (readerChunkMetadataMap.containsKey(reader)) {
             chunkMetadataList = readerChunkMetadataMap.get(reader);
           } else {
@@ -112,11 +114,10 @@ public class CompactionChunkTest extends LevelCompactionTest {
           }
           chunkMetadataList.add(chunkMetadata);
           readerChunkMetadataMap.put(reader, chunkMetadataList);
-          measurementChunkMetadataMap.put(
-              chunkMetadata.getMeasurementUid(), readerChunkMetadataMap);
+          measurementChunkMetadataMap.put(measurementSchema, readerChunkMetadataMap);
         }
       }
-      for (Entry<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> entry :
+      for (Entry<IMeasurementSchema, Map<TsFileSequenceReader, List<IChunkMetadata>>> entry :
           measurementChunkMetadataMap.entrySet()) {
         CompactionUtils.writeByAppendMerge(
             device,
@@ -157,8 +158,8 @@ public class CompactionChunkTest extends LevelCompactionTest {
 
   @Test
   public void testDeserializeMerge() throws IOException, IllegalPathException {
-    Map<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> measurementChunkMetadataMap =
-        new HashMap<>();
+    Map<IMeasurementSchema, Map<TsFileSequenceReader, List<IChunkMetadata>>>
+        measurementChunkMetadataMap = new HashMap<>();
     List<TsFileResource> sourceTsfileResources = seqResources.subList(0, 2);
     File file =
         new File(
@@ -180,14 +181,15 @@ public class CompactionChunkTest extends LevelCompactionTest {
       Map<String, List<ChunkMetadata>> chunkMetadataMap = reader.readChunkMetadataInDevice(device);
       for (Entry<String, List<ChunkMetadata>> entry : chunkMetadataMap.entrySet()) {
         for (ChunkMetadata chunkMetadata : entry.getValue()) {
-          Map<TsFileSequenceReader, List<ChunkMetadata>> readerChunkMetadataMap;
-          String measurementUid = chunkMetadata.getMeasurementUid();
-          if (measurementChunkMetadataMap.containsKey(measurementUid)) {
-            readerChunkMetadataMap = measurementChunkMetadataMap.get(measurementUid);
+          Map<TsFileSequenceReader, List<IChunkMetadata>> readerChunkMetadataMap;
+          IMeasurementSchema measurementSchema =
+              new MeasurementSchema(chunkMetadata.getMeasurementUid(), chunkMetadata.getDataType());
+          if (measurementChunkMetadataMap.containsKey(measurementSchema)) {
+            readerChunkMetadataMap = measurementChunkMetadataMap.get(measurementSchema);
           } else {
             readerChunkMetadataMap = new LinkedHashMap<>();
           }
-          List<ChunkMetadata> chunkMetadataList;
+          List<IChunkMetadata> chunkMetadataList;
           if (readerChunkMetadataMap.containsKey(reader)) {
             chunkMetadataList = readerChunkMetadataMap.get(reader);
           } else {
@@ -195,11 +197,10 @@ public class CompactionChunkTest extends LevelCompactionTest {
           }
           chunkMetadataList.add(chunkMetadata);
           readerChunkMetadataMap.put(reader, chunkMetadataList);
-          measurementChunkMetadataMap.put(
-              chunkMetadata.getMeasurementUid(), readerChunkMetadataMap);
+          measurementChunkMetadataMap.put(measurementSchema, readerChunkMetadataMap);
         }
       }
-      for (Entry<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> entry :
+      for (Entry<IMeasurementSchema, Map<TsFileSequenceReader, List<IChunkMetadata>>> entry :
           measurementChunkMetadataMap.entrySet()) {
         CompactionUtils.writeByDeserializeMerge(
             device,

@@ -21,7 +21,7 @@ package org.apache.iotdb.db.engine.merge.recover;
 
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -53,10 +53,10 @@ public class MergeLogger {
     logStream.close();
   }
 
-  public void logTSStart(List<PartialPath> paths) throws IOException {
+  public void logTSStart(List<IMeasurementSchema> paths) throws IOException {
     logStream.write(STR_START);
-    for (PartialPath path : paths) {
-      logStream.write(" " + path);
+    for (IMeasurementSchema path : paths) {
+      logStream.write(" " + path.getMeasurementId());
     }
     logStream.newLine();
     logStream.flush();

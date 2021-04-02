@@ -165,4 +165,12 @@ public class VectorChunkMetadata implements IChunkMetadata {
     }
     return valueChunkList;
   }
+
+  public IChunkMetadata getTimeChunkMetadata() {
+    return timeChunkMetadata;
+  }
+
+  public List<IChunkMetadata> getValueChunkMetadataList() {
+    return valueChunkMetadataList;
+  }
 }

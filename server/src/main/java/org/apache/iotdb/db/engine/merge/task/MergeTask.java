@@ -19,31 +19,25 @@
 
 package org.apache.iotdb.db.engine.merge.task;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.Callable;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.concurrent.Callable;
 
 /**
  * MergeTask merges given seqFiles and unseqFiles into new ones, which basically consists of three
@@ -146,21 +140,20 @@ public class MergeTask implements Callable<Void> {
     mergeLogger.logFiles(resource);
 
     Set<PartialPath> devices = IoTDB.metaManager.getDevices(new PartialPath(storageGroupName));
-    Map<PartialPath, IMeasurementSchema> measurementSchemaMap = new HashMap<>();
-    List<PartialPath> unmergedSeries = new ArrayList<>();
+    Map<PartialPath, List<IMeasurementSchema>> measurementSchemaMap = new HashMap<>();
     for (PartialPath device : devices) {
-      MNode deviceNode = IoTDB.metaManager.getNodeByPath(device);
-      // todo add template merge logic
-      for (Entry<String, MNode> entry : deviceNode.getChildren().entrySet()) {
-        PartialPath path = device.concatNode(entry.getKey());
-        measurementSchemaMap.put(path, ((MeasurementMNode) entry.getValue()).getSchema());
-        unmergedSeries.add(path);
-      }
+      List<IMeasurementSchema> iMeasurementSchemaList =
+          IoTDB.metaManager.getAllMeasurementByDevicePath(device);
+      measurementSchemaMap.put(device, iMeasurementSchemaList);
     }
-    resource.setMeasurementSchemaMap(measurementSchemaMap);
+    resource.setDeviceMeasurementSchemaMap(measurementSchemaMap);
 
     mergeLogger.logMergeStart();
 
+    int totalSeriesCnt = 0;
+    for (List<IMeasurementSchema> measurementSchemas : measurementSchemaMap.values()) {
+      totalSeriesCnt += measurementSchemas.size();
+    }
     chunkTask =
         new MergeMultiChunkTask(
             mergeContext,
@@ -168,8 +161,8 @@ public class MergeTask implements Callable<Void> {
             mergeLogger,
             resource,
             fullMerge,
-            unmergedSeries,
-            concurrentMergeSeriesNum,
+            measurementSchemaMap,
+            totalSeriesCnt,
             storageGroupName);
     states = States.MERGE_CHUNKS;
     chunkTask.mergeSeries();
@@ -196,7 +189,7 @@ public class MergeTask implements Callable<Void> {
     if (logger.isInfoEnabled()) {
       double elapsedTime = (double) (System.currentTimeMillis() - startTime) / 1000.0;
       double byteRate = totalFileSize / elapsedTime / 1024 / 1024;
-      double seriesRate = unmergedSeries.size() / elapsedTime;
+      double seriesRate = totalSeriesCnt / elapsedTime;
       double chunkRate = mergeContext.getTotalChunkWritten() / elapsedTime;
       double fileRate =
           (resource.getSeqFiles().size() + resource.getUnseqFiles().size()) / elapsedTime;
