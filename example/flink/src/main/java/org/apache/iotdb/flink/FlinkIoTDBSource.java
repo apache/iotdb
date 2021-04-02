@@ -15,8 +15,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.iotdb.flink;
 
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.types.Row;
 import org.apache.iotdb.flink.options.IoTDBSourceOptions;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -26,11 +31,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
-
-import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public class FlinkIoTDBSource {
 
@@ -46,26 +46,25 @@ public class FlinkIoTDBSource {
 
     IoTDBSourceOptions ioTDBSourceOptions =
         new IoTDBSourceOptions(
-            "127.0.0.1",
+            LOCAL_HOST,
             6667,
             "root",
             "root",
             "select s1 from " + ROOT_SG1_D1 + " align by device");
 
-    env.addSource(
-            new IoTDBSource<RowRecord>(ioTDBSourceOptions) {
-              @Override
-              public RowRecord convert(RowRecord rowRecord) {
-                return rowRecord;
-              }
-            })
+    IoTDBSource<RowRecord> source = new IoTDBSource<RowRecord>(ioTDBSourceOptions) {
+      @Override
+      public RowRecord convert(RowRecord rowRecord) {
+        return rowRecord;
+      }
+    };
+    env.addSource(source)
         .name("sensor-source")
         .print()
         .setParallelism(2);
     env.execute();
   }
 
-  /** Write some data to IoTDB */
   private static void prepareData() throws IoTDBConnectionException, StatementExecutionException {
     Session session = new Session(LOCAL_HOST, 6667, "root", "root");
     session.open(false);
@@ -75,10 +74,10 @@ public class FlinkIoTDBSource {
         session.createTimeseries(
             ROOT_SG1_D1_S1, TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
         List<String> measurements = new ArrayList<>();
-        List<TSDataType> types = new ArrayList<>();
         measurements.add("s1");
         measurements.add("s2");
         measurements.add("s3");
+        List<TSDataType> types = new ArrayList<>();
         types.add(TSDataType.INT64);
         types.add(TSDataType.INT64);
         types.add(TSDataType.INT64);

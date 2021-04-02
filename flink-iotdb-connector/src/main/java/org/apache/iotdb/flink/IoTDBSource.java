@@ -15,6 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.iotdb.flink;
 
 import org.apache.iotdb.flink.options.IoTDBSourceOptions;
@@ -36,9 +37,9 @@ public abstract class IoTDBSource<T> extends RichSourceFunction<T> {
   private IoTDBSourceOptions sourceOptions;
 
   private transient Session session;
-  SessionDataSet dataSet;
+  private transient SessionDataSet dataSet;
 
-  public IoTDBSource(IoTDBSourceOptions ioTDBSourceOptions) {
+  protected IoTDBSource(IoTDBSourceOptions ioTDBSourceOptions) {
     this.sourceOptions = ioTDBSourceOptions;
   }
 
@@ -51,7 +52,7 @@ public abstract class IoTDBSource<T> extends RichSourceFunction<T> {
   /**
    * Convert raw data (in form of RowRecord) extracted from IoTDB to user-defined data type
    *
-   * @param rowRecord, row record from IoTDB
+   * @param rowRecord row record from IoTDB
    * @return object in user-defined form
    */
   public abstract T convert(RowRecord rowRecord);
@@ -71,7 +72,7 @@ public abstract class IoTDBSource<T> extends RichSourceFunction<T> {
     try {
       dataSet.closeOperationHandle();
     } catch (StatementExecutionException | IoTDBConnectionException e) {
-      e.printStackTrace();
+      LOG.error(e.getMessage());
     }
   }
 
@@ -81,12 +82,13 @@ public abstract class IoTDBSource<T> extends RichSourceFunction<T> {
     try {
       dataSet.closeOperationHandle();
     } catch (StatementExecutionException | IoTDBConnectionException e) {
-      e.printStackTrace();
+      throw e;
+    } finally {
+      session.close();
     }
-    session.close();
   }
 
-  void initSession() throws Exception {
+  void initSession() throws IoTDBConnectionException {
     session =
         new Session(
             sourceOptions.getHost(),
