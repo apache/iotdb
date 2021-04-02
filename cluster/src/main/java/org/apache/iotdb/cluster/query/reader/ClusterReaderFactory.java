@@ -110,18 +110,12 @@ public class ClusterReaderFactory {
       QueryContext context,
       boolean ascending)
       throws StorageEngineException, QueryProcessException {
-    // make sure the partition table is new
-    try {
-      metaGroupMember.syncLeaderWithConsistencyCheck(false);
-    } catch (CheckConsistencyException e) {
-      throw new QueryProcessException(e.getMessage());
-    }
     // get all data groups
     List<PartitionGroup> partitionGroups;
     try {
       partitionGroups = metaGroupMember.routeFilter(null, path);
     } catch (EmptyIntervalException e) {
-      logger.info(e.getMessage());
+      logger.warn(e.getMessage());
       partitionGroups = Collections.emptyList();
     }
     logger.debug(

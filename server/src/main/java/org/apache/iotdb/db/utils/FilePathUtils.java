@@ -251,7 +251,7 @@ public class FilePathUtils {
 
   public static long splitAndGetTsFileVersion(String tsFileName) {
     String[] names = tsFileName.split(FILE_NAME_SEPARATOR);
-    if (names.length != 3) {
+    if (names.length != 4) {
       return 0;
     }
     return Long.parseLong(names[1]);

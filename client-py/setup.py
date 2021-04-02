@@ -21,16 +21,16 @@ import io
 
 
 try:
-    with io.open('README.md', encoding='utf-8') as f:
+    with io.open("README.md", encoding="utf-8") as f:
         long_description = f.read()
 except FileNotFoundError:
-    long_description = ''
+    long_description = ""
 
 
 print(long_description)
 
 setuptools.setup(
-    name="apache-iotdb", # Replace with your own username
+    name="apache-iotdb",  # Replace with your own username
     version="0.12.0",
     author=" Apache Software Foundation",
     author_email="dev@iotdb.apache.org",
@@ -40,8 +40,10 @@ setuptools.setup(
     url="https://github.com/apache/iotdb",
     packages=setuptools.find_packages(),
     install_requires=[
-              'thrift>=0.13.0',
-          ],
+        "thrift>=0.13.0",
+        "pandas>=1.0.0,<1.99.99",
+        "testcontainers>=2.0.0",
+    ],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: Apache Software License",
@@ -49,7 +51,7 @@ setuptools.setup(
         "Topic :: Software Development :: Libraries",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
-    python_requires='>=3.7',
-    license='Apache License, Version 2.0',
-    website='https://iotdb.apache.org',
+    python_requires=">=3.7",
+    license="Apache License, Version 2.0",
+    website="https://iotdb.apache.org",
 )

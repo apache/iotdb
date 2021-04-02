@@ -199,6 +199,9 @@ public class InsertMultiTabletPlan extends InsertPlan {
 
   @Override
   public void checkIntegrity() throws QueryProcessException {
+    if (insertTabletPlanList.isEmpty()) {
+      throw new QueryProcessException("sub tablet is empty.");
+    }
     for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
       insertTabletPlan.checkIntegrity();
     }
