@@ -19,14 +19,17 @@
 
 package org.apache.iotdb.db.engine.merge.recover;
 
-import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_ALL_TS_END;
-import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_END;
-import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_MERGE_END;
-import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_MERGE_START;
-import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_SEQ_FILES;
-import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_START;
-import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_TIMESERIES;
-import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_UNSEQ_FILES;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.engine.merge.manage.MergeResource;
+import org.apache.iotdb.db.engine.merge.task.MergeTask;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -39,16 +42,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.engine.merge.task.MergeTask;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_ALL_TS_END;
+import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_END;
+import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_MERGE_END;
+import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_MERGE_START;
+import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_SEQ_FILES;
+import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_START;
+import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_TIMESERIES;
+import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_UNSEQ_FILES;
 
 /**
  * LogAnalyzer scans the "merge.log" file and recovers information such as files of last merge, the

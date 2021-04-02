@@ -19,10 +19,6 @@
 
 package org.apache.iotdb.db.utils;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.PriorityQueue;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -47,8 +43,14 @@ import org.apache.iotdb.tsfile.write.chunk.VectorChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.PriorityQueue;
 
 public class MergeUtils {
 

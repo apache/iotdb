@@ -19,25 +19,6 @@
 
 package org.apache.iotdb.db.engine.compaction.utils;
 
-import static org.apache.iotdb.db.utils.MergeUtils.writeTVPair;
-import static org.apache.iotdb.db.utils.QueryUtils.modifyChunkMetaData;
-
-import com.google.common.util.concurrent.RateLimiter;
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.TreeMap;
-import org.apache.commons.collections4.keyvalue.DefaultMapEntry;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.TsFileManagement;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
@@ -64,8 +45,29 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
+
+import com.google.common.util.concurrent.RateLimiter;
+import org.apache.commons.collections4.keyvalue.DefaultMapEntry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.TreeMap;
+
+import static org.apache.iotdb.db.utils.MergeUtils.writeTVPair;
+import static org.apache.iotdb.db.utils.QueryUtils.modifyChunkMetaData;
 
 public class CompactionUtils {
 
