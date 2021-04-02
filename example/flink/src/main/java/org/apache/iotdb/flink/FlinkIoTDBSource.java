@@ -45,7 +45,12 @@ public class FlinkIoTDBSource {
     StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
     IoTDBSourceOptions ioTDBSourceOptions =
-        new IoTDBSourceOptions("127.0.0.1", 6667, "root", "root", "select s1 from " + ROOT_SG1_D1);
+        new IoTDBSourceOptions(
+            "127.0.0.1",
+            6667,
+            "root",
+            "root",
+            "select s1 from " + ROOT_SG1_D1 + " align by device");
 
     env.addSource(
             new IoTDBSource<RowRecord>(ioTDBSourceOptions) {

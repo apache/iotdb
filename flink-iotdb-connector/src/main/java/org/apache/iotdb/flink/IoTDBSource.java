@@ -59,7 +59,7 @@ public abstract class IoTDBSource<T> extends RichSourceFunction<T> {
   @Override
   public void run(SourceContext<T> sourceContext) throws Exception {
     dataSet = session.executeQueryStatement(sourceOptions.getSql());
-    dataSet.setFetchSize(1024); // default is 10000
+    dataSet.setFetchSize(sourceOptions.getFetchSize());
     while (dataSet.hasNext()) {
       sourceContext.collect(convert(dataSet.next()));
     }
@@ -78,6 +78,11 @@ public abstract class IoTDBSource<T> extends RichSourceFunction<T> {
   @Override
   public void close() throws Exception {
     super.close();
+    try {
+      dataSet.closeOperationHandle();
+    } catch (StatementExecutionException | IoTDBConnectionException e) {
+      e.printStackTrace();
+    }
     session.close();
   }
 
