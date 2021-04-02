@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.tsfile.read.filter;
 
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+
 import java.util.Calendar;
 
 /**
@@ -92,6 +94,12 @@ public class GroupByMonthFilter extends GroupByFilter {
       getNextIntervalAndSlidingStep();
       return isSatisfy;
     }
+  }
+
+  @Override
+  public Filter copy() {
+    return new GroupByMonthFilter(
+        interval, slidingStep, startTime, endTime, isSlidingStepByMonth, isIntervalByMonth);
   }
 
   private boolean satisfyCurrentInterval(long startTime, long endTime) {
