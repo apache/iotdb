@@ -19,6 +19,25 @@
 
 package org.apache.iotdb.db.engine.merge.task;
 
+import static org.apache.iotdb.db.utils.MergeUtils.writeBatchPoint;
+import static org.apache.iotdb.db.utils.MergeUtils.writeTVPair;
+import static org.apache.iotdb.db.utils.QueryUtils.modifyChunkMetaData;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.PriorityQueue;
+import java.util.TreeMap;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.TsFileManagement;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
@@ -45,29 +64,8 @@ import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.PriorityQueue;
-import java.util.TreeMap;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import static org.apache.iotdb.db.utils.MergeUtils.writeBatchPoint;
-import static org.apache.iotdb.db.utils.MergeUtils.writeTVPair;
-import static org.apache.iotdb.db.utils.QueryUtils.modifyChunkMetaData;
 
 public class MergeMultiChunkTask {
 
@@ -86,8 +84,9 @@ public class MergeMultiChunkTask {
 
   private AtomicInteger mergedChunkNum = new AtomicInteger();
   private AtomicInteger unmergedChunkNum = new AtomicInteger();
-  private int mergedSeriesCnt;
+  private Map<PartialPath, List<IMeasurementSchema>> unmergedPaths;
   private int totalSeriesCnt;
+  private int mergedSeriesCnt;
   private double progress;
 
   private String currMeringDevice;
@@ -116,23 +115,21 @@ public class MergeMultiChunkTask {
       MergeLogger mergeLogger,
       MergeResource mergeResource,
       boolean fullMerge,
+      Map<PartialPath, List<IMeasurementSchema>> unmergedPaths,
+      int totalSeriesCnt,
       String storageGroupName) {
     this.mergeContext = context;
     this.taskName = taskName;
     this.mergeLogger = mergeLogger;
     this.resource = mergeResource;
     this.fullMerge = fullMerge;
+    this.unmergedPaths = unmergedPaths;
+    this.totalSeriesCnt = totalSeriesCnt;
     this.storageGroupName = storageGroupName;
   }
 
   void mergeSeries() throws IOException, IllegalPathException {
     // calculate total series count for progress and log
-    totalSeriesCnt = 0;
-    for (List<IMeasurementSchema> measurementSchemas :
-        resource.getDeviceMeasurementSchemaMap().values()) {
-      totalSeriesCnt += measurementSchemas.size();
-    }
-
     if (logger.isInfoEnabled()) {
       logger.info("{} starts to merge {} devices", taskName, totalSeriesCnt);
     }
@@ -142,9 +139,10 @@ public class MergeMultiChunkTask {
     }
     // merge each series and write data into each seqFile's corresponding temp merge file
     for (Entry<PartialPath, List<IMeasurementSchema>> deviceMeasurementSchemaEntry :
-        resource.getDeviceMeasurementSchemaMap().entrySet()) {
+        unmergedPaths.entrySet()) {
       currMeringDevice = deviceMeasurementSchemaEntry.getKey().getDevice();
       currMergingPaths = deviceMeasurementSchemaEntry.getValue();
+
       mergePaths();
       resource.clearChunkWriterCache();
       if (Thread.interrupted()) {

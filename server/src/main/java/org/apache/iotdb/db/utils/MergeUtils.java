@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.db.utils;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.PriorityQueue;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -43,16 +47,8 @@ import org.apache.iotdb.tsfile.write.chunk.VectorChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-import java.util.PriorityQueue;
 
 public class MergeUtils {
 
@@ -379,33 +375,6 @@ public class MergeUtils {
     long numOfPoints = chunkMetaData.getStatistics().getCount();
     return ptWritten > 0
         || (minChunkPointNum >= 0 && numOfPoints < minChunkPointNum && !isLastChunk);
-  }
-
-  public static List<List<PartialPath>> splitPathsByDevice(List<PartialPath> paths) {
-    if (paths.isEmpty()) {
-      return Collections.emptyList();
-    }
-    paths.sort(Comparator.comparing(PartialPath::getFullPath));
-
-    String currDevice = null;
-    List<PartialPath> currList = null;
-    List<List<PartialPath>> ret = new ArrayList<>();
-    for (PartialPath path : paths) {
-      if (currDevice == null) {
-        currDevice = path.getDevice();
-        currList = new ArrayList<>();
-        currList.add(path);
-      } else if (path.getDevice().equals(currDevice)) {
-        currList.add(path);
-      } else {
-        ret.add(currList);
-        currDevice = path.getDevice();
-        currList = new ArrayList<>();
-        currList.add(path);
-      }
-    }
-    ret.add(currList);
-    return ret;
   }
 
   public static class MetaListEntry implements Comparable<MetaListEntry> {

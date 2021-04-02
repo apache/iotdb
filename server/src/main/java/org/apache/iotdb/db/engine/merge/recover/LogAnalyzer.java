@@ -19,17 +19,14 @@
 
 package org.apache.iotdb.db.engine.merge.recover;
 
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.engine.merge.task.MergeTask;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.service.IoTDB;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_ALL_TS_END;
+import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_END;
+import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_MERGE_END;
+import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_MERGE_START;
+import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_SEQ_FILES;
+import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_START;
+import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_TIMESERIES;
+import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_UNSEQ_FILES;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -41,15 +38,17 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-
-import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_ALL_TS_END;
-import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_END;
-import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_MERGE_END;
-import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_MERGE_START;
-import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_SEQ_FILES;
-import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_START;
-import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_TIMESERIES;
-import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_UNSEQ_FILES;
+import java.util.Set;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.engine.merge.manage.MergeResource;
+import org.apache.iotdb.db.engine.merge.task.MergeTask;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * LogAnalyzer scans the "merge.log" file and recovers information such as files of last merge, the
@@ -71,8 +70,8 @@ public class LogAnalyzer {
   private Map<File, Long> fileLastPositions = new HashMap<>();
   private Map<File, Long> tempFileLastPositions = new HashMap<>();
 
-  private List<PartialPath> mergedPaths = new ArrayList<>();
-  private List<PartialPath> unmergedPaths;
+  private Map<PartialPath, List<IMeasurementSchema>> mergedPaths = new HashMap<>();
+  private Map<PartialPath, List<IMeasurementSchema>> unmergedPaths;
   private List<TsFileResource> unmergedFiles;
   private String currLine;
 
@@ -102,10 +101,12 @@ public class LogAnalyzer {
 
         analyzeUnseqFiles(bufferedReader);
 
-        List<PartialPath> storageGroupPaths =
-            IoTDB.metaManager.getAllTimeseriesPath(new PartialPath(storageGroupName + ".*"));
-        unmergedPaths = new ArrayList<>();
-        unmergedPaths.addAll(storageGroupPaths);
+        Set<PartialPath> devices = IoTDB.metaManager.getDevices(new PartialPath(storageGroupName));
+        for (PartialPath device : devices) {
+          List<IMeasurementSchema> iMeasurementSchemaList =
+              IoTDB.metaManager.getAllMeasurementByDevicePath(device);
+          unmergedPaths.put(device, iMeasurementSchemaList);
+        }
 
         analyzeMergedSeries(bufferedReader, unmergedPaths);
 
@@ -178,7 +179,8 @@ public class LogAnalyzer {
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private void analyzeMergedSeries(BufferedReader bufferedReader, List<PartialPath> unmergedPaths)
+  private void analyzeMergedSeries(
+      BufferedReader bufferedReader, Map<PartialPath, List<IMeasurementSchema>> unmergedPaths)
       throws IOException {
     if (!STR_MERGE_START.equals(currLine)) {
       return;
@@ -191,7 +193,7 @@ public class LogAnalyzer {
       fileLastPositions.put(mergeFile, 0L);
     }
 
-    List<PartialPath> currTSList = new ArrayList<>();
+    Map<PartialPath, List<IMeasurementSchema>> currTSList = new HashMap<>();
     long startTime = System.currentTimeMillis();
     while ((currLine = bufferedReader.readLine()) != null) {
       if (STR_ALL_TS_END.equals(currLine)) {
@@ -202,8 +204,11 @@ public class LogAnalyzer {
         String[] splits = currLine.split(" ");
         for (int i = 1; i < splits.length; i++) {
           try {
-            currTSList.add(new PartialPath(splits[i]));
-          } catch (IllegalPathException e) {
+            PartialPath path = new PartialPath(splits[i]);
+            List<IMeasurementSchema> measurementSchemas =
+                currTSList.computeIfAbsent(path, k -> new ArrayList<>());
+            measurementSchemas.add(IoTDB.metaManager.getSeriesSchema(new PartialPath(splits[i])));
+          } catch (MetadataException e) {
             throw new IOException(e.getMessage());
           }
         }
@@ -216,11 +221,19 @@ public class LogAnalyzer {
         tempFileLastPositions.put(file, position);
       } else {
         // a TS ends merging
-        unmergedPaths.removeAll(currTSList);
+        for (Entry<PartialPath, List<IMeasurementSchema>> deviceMeasurementSchemaEntry :
+            unmergedPaths.entrySet()) {
+          deviceMeasurementSchemaEntry
+              .getValue()
+              .removeAll(currTSList.get(deviceMeasurementSchemaEntry.getKey()));
+          List<IMeasurementSchema> measurementSchemas =
+              currTSList.computeIfAbsent(
+                  deviceMeasurementSchemaEntry.getKey(), k -> new ArrayList<>());
+          measurementSchemas.addAll(currTSList.get(deviceMeasurementSchemaEntry.getKey()));
+        }
         for (Entry<File, Long> entry : tempFileLastPositions.entrySet()) {
           fileLastPositions.put(entry.getKey(), entry.getValue());
         }
-        mergedPaths.addAll(currTSList);
       }
     }
     tempFileLastPositions = null;
@@ -281,11 +294,11 @@ public class LogAnalyzer {
     }
   }
 
-  public List<PartialPath> getUnmergedPaths() {
+  public Map<PartialPath, List<IMeasurementSchema>> getUnmergedPaths() {
     return unmergedPaths;
   }
 
-  public void setUnmergedPaths(List<PartialPath> unmergedPaths) {
+  public void setUnmergedPaths(Map<PartialPath, List<IMeasurementSchema>> unmergedPaths) {
     this.unmergedPaths = unmergedPaths;
   }
 
@@ -297,11 +310,11 @@ public class LogAnalyzer {
     this.unmergedFiles = unmergedFiles;
   }
 
-  public List<PartialPath> getMergedPaths() {
+  public Map<PartialPath, List<IMeasurementSchema>> getMergedPaths() {
     return mergedPaths;
   }
 
-  public void setMergedPaths(List<PartialPath> mergedPaths) {
+  public void setMergedPaths(Map<PartialPath, List<IMeasurementSchema>> mergedPaths) {
     this.mergedPaths = mergedPaths;
   }
 

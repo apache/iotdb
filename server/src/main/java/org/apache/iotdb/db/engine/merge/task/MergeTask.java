@@ -150,9 +150,20 @@ public class MergeTask implements Callable<Void> {
 
     mergeLogger.logMergeStart();
 
+    int totalSeriesCnt = 0;
+    for (List<IMeasurementSchema> measurementSchemas : measurementSchemaMap.values()) {
+      totalSeriesCnt += measurementSchemas.size();
+    }
     chunkTask =
         new MergeMultiChunkTask(
-            mergeContext, taskName, mergeLogger, resource, fullMerge, storageGroupName);
+            mergeContext,
+            taskName,
+            mergeLogger,
+            resource,
+            fullMerge,
+            measurementSchemaMap,
+            totalSeriesCnt,
+            storageGroupName);
     states = States.MERGE_CHUNKS;
     chunkTask.mergeSeries();
     if (Thread.interrupted()) {
@@ -175,11 +186,6 @@ public class MergeTask implements Callable<Void> {
     states = States.CLEAN_UP;
     fileTask = null;
     cleanUp(true);
-    int totalSeriesCnt = 0;
-    for (List<IMeasurementSchema> measurementSchemas :
-        resource.getDeviceMeasurementSchemaMap().values()) {
-      totalSeriesCnt += measurementSchemas.size();
-    }
     if (logger.isInfoEnabled()) {
       double elapsedTime = (double) (System.currentTimeMillis() - startTime) / 1000.0;
       double byteRate = totalFileSize / elapsedTime / 1024 / 1024;
