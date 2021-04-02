@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.iotdb.flink;
+package org.apache.iotdb.flink.options;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -26,61 +26,23 @@ import java.io.Serializable;
 import java.util.List;
 
 /** IoTDBOptions describes the configuration related information for IoTDB and timeseries. */
-public class IoTDBOptions implements Serializable {
-  private String host;
-  private int port;
-  private String user;
-  private String password;
+public class IoTDBSinkOptions extends IoTDBOptions {
+
   private String storageGroup;
   private List<TimeseriesOption> timeseriesOptionList;
 
-  public IoTDBOptions() {}
+  public IoTDBSinkOptions() {}
 
-  public IoTDBOptions(
+  public IoTDBSinkOptions(
       String host,
       int port,
       String user,
       String password,
       String storageGroup,
       List<TimeseriesOption> timeseriesOptionList) {
-    this.host = host;
-    this.port = port;
-    this.user = user;
-    this.password = password;
+    super(host, port, user, password);
     this.storageGroup = storageGroup;
     this.timeseriesOptionList = timeseriesOptionList;
-  }
-
-  public String getHost() {
-    return host;
-  }
-
-  public void setHost(String host) {
-    this.host = host;
-  }
-
-  public int getPort() {
-    return port;
-  }
-
-  public void setPort(int port) {
-    this.port = port;
-  }
-
-  public String getUser() {
-    return user;
-  }
-
-  public void setUser(String user) {
-    this.user = user;
-  }
-
-  public String getPassword() {
-    return password;
-  }
-
-  public void setPassword(String password) {
-    this.password = password;
   }
 
   public String getStorageGroup() {
@@ -100,6 +62,7 @@ public class IoTDBOptions implements Serializable {
   }
 
   public static class TimeseriesOption implements Serializable {
+
     private String path;
     private TSDataType dataType = TSDataType.TEXT;
     private TSEncoding encoding = TSEncoding.PLAIN;
