@@ -591,12 +591,11 @@ public class VectorTVList extends TVList {
         arrayCopy(value, idx, arrayIdx, elementIdx, inputRemaining);
         for (int i = 0; i < inputRemaining; i++) {
           indices.get(arrayIdx)[elementIdx + i] = size;
-          for (int j = 0; j < bitMaps.length; j++) {
-            if (bitMaps[j] == null) {
-              continue;
-            }
-            if (bitMaps[j].get(idx + i)) {
-              markNullValue(j, arrayIdx, elementIdx + i);
+          if (bitMaps != null) {
+            for (int j = 0; j < bitMaps.length; j++) {
+              if (bitMaps[j] != null && bitMaps[j].get(idx + i)) {
+                markNullValue(j, arrayIdx, elementIdx + i);
+              }
             }
           }
           size++;
@@ -609,12 +608,11 @@ public class VectorTVList extends TVList {
         arrayCopy(value, idx, arrayIdx, elementIdx, internalRemaining);
         for (int i = 0; i < internalRemaining; i++) {
           indices.get(arrayIdx)[elementIdx + i] = size;
-          for (int j = 0; j < bitMaps.length; j++) {
-            if (bitMaps[j] == null) {
-              continue;
-            }
-            if (bitMaps[j].get(idx + i)) {
-              markNullValue(j, arrayIdx, elementIdx + i);
+          if (bitMaps != null) {
+            for (int j = 0; j < bitMaps.length; j++) {
+              if (bitMaps[j] != null && bitMaps[j].get(idx + i)) {
+                markNullValue(j, arrayIdx, elementIdx + i);
+              }
             }
           }
           size++;

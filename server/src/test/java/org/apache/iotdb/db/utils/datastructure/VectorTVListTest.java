@@ -88,7 +88,27 @@ public class VectorTVListTest {
   }
 
   @Test
-  public void testVectorTVLists() {
+  public void testVectorTVLists1() {
+    List<TSDataType> dataTypes = new ArrayList<>();
+    VectorTVList tvList = new VectorTVList(dataTypes);
+    long[][] vectorArray = new long[5][1001];
+    List<Long> timeList = new ArrayList<>();
+    for (int i = 1000; i >= 0; i--) {
+      timeList.add((long) i);
+      for (int j = 0; j < 5; j++) {
+        vectorArray[j][i] = (long) i;
+      }
+    }
+
+    tvList.putVectors(
+        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), new BitMap[5], vectorArray, 0, 1000);
+    for (long i = 0; i < tvList.size; i++) {
+      Assert.assertEquals(tvList.size - i, tvList.getTime((int) i));
+    }
+  }
+
+  @Test
+  public void testVectorTVLists2() {
     List<TSDataType> dataTypes = new ArrayList<>();
     BitMap[] bitMaps = new BitMap[5];
     for (int i = 0; i < 5; i++) {

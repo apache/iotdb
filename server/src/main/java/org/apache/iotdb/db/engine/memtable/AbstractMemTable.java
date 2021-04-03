@@ -201,7 +201,9 @@ public abstract class AbstractMemTable implements IMemTable {
         BitMap[] bitMaps = new BitMap[vectorSchema.getValueMeasurementIdList().size()];
         for (int j = 0; j < vectorSchema.getValueMeasurementIdList().size(); j++) {
           columns[j] = insertTabletPlan.getColumns()[columnIndex];
-          bitMaps[j] = insertTabletPlan.getBitMaps()[columnIndex];
+          if (insertTabletPlan.getBitMaps() != null) {
+            bitMaps[j] = insertTabletPlan.getBitMaps()[columnIndex];
+          }
           columnIndex++;
         }
         memSeries.write(
@@ -209,7 +211,9 @@ public abstract class AbstractMemTable implements IMemTable {
       } else {
         memSeries.write(
             insertTabletPlan.getTimes(),
-            insertTabletPlan.getBitMaps()[columnIndex],
+            insertTabletPlan.getBitMaps() != null
+                ? insertTabletPlan.getBitMaps()[columnIndex]
+                : null,
             insertTabletPlan.getColumns()[columnIndex],
             insertTabletPlan.getDataTypes()[columnIndex],
             start,

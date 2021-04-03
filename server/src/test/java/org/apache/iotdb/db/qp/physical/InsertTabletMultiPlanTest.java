@@ -33,6 +33,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BitMap;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -83,6 +84,7 @@ public class InsertTabletMultiPlanTest extends InsertTabletPlanTest {
               new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
               dataTypes);
       tabletPlan.setTimes(times);
+      tabletPlan.setBitMaps(new BitMap[6]);
       tabletPlan.setColumns(columns);
       tabletPlan.setRowCount(times.length);
       insertTabletPlanList.add(tabletPlan);

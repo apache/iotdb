@@ -207,12 +207,15 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   private void writeBitMaps(DataOutputStream stream) throws IOException {
-    for (BitMap bitMap : bitMaps) {
-      if (bitMap == null) {
-        stream.writeBoolean(false);
-      } else {
-        stream.writeBoolean(true);
-        stream.write(bitMap.getByteArray());
+    stream.writeBoolean(bitMaps != null);
+    if (bitMaps != null) {
+      for (BitMap bitMap : bitMaps) {
+        if (bitMap == null) {
+          stream.writeBoolean(false);
+        } else {
+          stream.writeBoolean(true);
+          stream.write(bitMap.getByteArray());
+        }
       }
     }
   }
@@ -289,12 +292,15 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   private void writeBitMaps(ByteBuffer buffer) {
-    for (BitMap bitMap : bitMaps) {
-      if (bitMap == null) {
-        buffer.put(BytesUtils.boolToByte(false));
-      } else {
-        buffer.put(BytesUtils.boolToByte(true));
-        buffer.put(bitMap.getByteArray());
+    buffer.put(BytesUtils.boolToByte(bitMaps != null));
+    if (bitMaps != null) {
+      for (BitMap bitMap : bitMaps) {
+        if (bitMap == null) {
+          buffer.put(BytesUtils.boolToByte(false));
+        } else {
+          buffer.put(BytesUtils.boolToByte(true));
+          buffer.put(bitMap.getByteArray());
+        }
       }
     }
   }
