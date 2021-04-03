@@ -114,8 +114,10 @@ public class VectorSessionExample {
 
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
-    BitMap[] bitMaps = tablet.bitMaps;
+    BitMap[] bitMaps = new BitMap[values.length];
+    tablet.bitMaps = bitMaps;
 
+    bitMaps[1] = new BitMap(tablet.getMaxRowNumber());
     for (long time = 0; time < 100; time++) {
       int row = tablet.rowSize++;
       timestamps[row] = time;
@@ -133,7 +135,7 @@ public class VectorSessionExample {
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
         session.insertTablet(tablet, true);
         tablet.reset();
-        bitMaps[1].unmark();
+        bitMaps[1].unmarkAll();
       }
     }
 

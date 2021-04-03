@@ -43,8 +43,15 @@ public class SessionUtils {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static ByteBuffer getValueBuffer(Tablet tablet) {
     ByteBuffer valueBuffer = ByteBuffer.allocate(tablet.getValueBytesSize());
+    boolean hasBitMaps = (tablet.bitMaps != null);
+    valueBuffer.put(BytesUtils.boolToByte(hasBitMaps));
     for (BitMap bitMap : tablet.bitMaps) {
-      boolean columnHasNull = !bitMap.isAllZero();
+      boolean columnHasNull;
+      if (bitMap == null || bitMap.isAllZero()) {
+        columnHasNull = false;
+      } else {
+        columnHasNull = true;
+      }
       valueBuffer.put(BytesUtils.boolToByte(columnHasNull));
 
       if (columnHasNull) {

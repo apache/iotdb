@@ -133,13 +133,6 @@ public class Tablet {
   private void addValueOfDataType(
       TSDataType dataType, int rowIndex, int indexOfValue, Object value) {
 
-    // set bitmap
-    if (value == null) {
-      bitMaps[indexOfValue].mark(rowIndex);
-      return;
-    }
-    bitMaps[indexOfValue].unmark(rowIndex);
-
     switch (dataType) {
       case TEXT:
         {
@@ -208,16 +201,14 @@ public class Tablet {
       }
     }
 
-    // value column and bitset column
+    // value column
     values = new Object[valueColumnsSize];
-    bitMaps = new BitMap[valueColumnsSize];
     int columnIndex = 0;
     for (IMeasurementSchema schema : schemas) {
       TSDataType dataType = schema.getType();
       if (dataType.equals(TSDataType.VECTOR)) {
         columnIndex = buildVectorColumns((VectorMeasurementSchema) schema, columnIndex);
       } else {
-        bitMaps[columnIndex] = new BitMap(maxRowNumber);
         values[columnIndex] = createValueColumnOfDataType(dataType);
         columnIndex++;
       }
@@ -227,7 +218,6 @@ public class Tablet {
   private int buildVectorColumns(VectorMeasurementSchema schema, int idx) {
     for (int i = 0; i < schema.getValueMeasurementIdList().size(); i++) {
       TSDataType dataType = schema.getValueTSDataTypeList().get(i);
-      bitMaps[idx] = new BitMap(maxRowNumber);
       values[idx] = createValueColumnOfDataType(dataType);
       idx++;
     }
@@ -269,12 +259,16 @@ public class Tablet {
   /** @return total bytes of values */
   public int getValueBytesSize() {
     int valueOccupation = 0;
+    // marker byte
+    valueOccupation++;
     // bitmap size
-    for (BitMap bitMap : bitMaps) {
-      // marker byte
-      valueOccupation++;
-      if (bitMap != null && !bitMap.isAllZero()) {
-        valueOccupation += rowSize / Byte.SIZE + 1;
+    if (bitMaps != null) {
+      for (BitMap bitMap : bitMaps) {
+        // marker byte
+        valueOccupation++;
+        if (bitMap != null && !bitMap.isAllZero()) {
+          valueOccupation += rowSize / Byte.SIZE + 1;
+        }
       }
     }
     for (int i = 0; i < schemas.size(); i++) {
