@@ -88,8 +88,11 @@ public class VectorTVListTest {
   }
 
   @Test
-  public void testVectorTVLists1() {
+  public void testVectorTVLists() {
     List<TSDataType> dataTypes = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      dataTypes.add(TSDataType.INT64);
+    }
     VectorTVList tvList = new VectorTVList(dataTypes);
     long[][] vectorArray = new long[5][1001];
     List<Long> timeList = new ArrayList<>();
@@ -101,14 +104,14 @@ public class VectorTVListTest {
     }
 
     tvList.putVectors(
-        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), new BitMap[5], vectorArray, 0, 1000);
+        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), null, vectorArray, 0, 1000);
     for (long i = 0; i < tvList.size; i++) {
       Assert.assertEquals(tvList.size - i, tvList.getTime((int) i));
     }
   }
 
   @Test
-  public void testVectorTVLists2() {
+  public void testVectorTVListsWithBitMaps() {
     List<TSDataType> dataTypes = new ArrayList<>();
     BitMap[] bitMaps = new BitMap[5];
     for (int i = 0; i < 5; i++) {
@@ -122,6 +125,9 @@ public class VectorTVListTest {
       timeList.add((long) i);
       for (int j = 0; j < 5; j++) {
         vectorArray[j][i] = (long) i;
+        if (i % 100 == 0) {
+          bitMaps[j].mark(i);
+        }
       }
     }
 
@@ -129,6 +135,9 @@ public class VectorTVListTest {
         ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), bitMaps, vectorArray, 0, 1000);
     for (long i = 0; i < tvList.size; i++) {
       Assert.assertEquals(tvList.size - i, tvList.getTime((int) i));
+      if (i % 100 == 0) {
+        Assert.assertEquals("[null, null, null, null, null]", tvList.getVector((int) i).toString());
+      }
     }
   }
 }
