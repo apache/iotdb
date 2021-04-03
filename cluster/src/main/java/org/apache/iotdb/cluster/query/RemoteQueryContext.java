@@ -41,6 +41,10 @@ public class RemoteQueryContext extends QueryContext {
     super(jobId);
   }
 
+  public RemoteQueryContext(long jobId, boolean debug) {
+    super(jobId, debug);
+  }
+
   public void registerRemoteNode(Node node, Node header) {
     queriedNodesMap.computeIfAbsent(header, n -> new HashSet<>()).add(node);
   }

@@ -79,7 +79,7 @@ public class ClusterQueryManagerTest {
 
   @Test
   public void testRegisterReaderByTime() {
-    IReaderByTimestamp reader = timestamp -> null;
+    IReaderByTimestamp reader = (timestamp, length) -> null;
     long id = queryManager.registerReaderByTime(reader);
     assertSame(reader, queryManager.getReaderByTimestamp(id));
   }

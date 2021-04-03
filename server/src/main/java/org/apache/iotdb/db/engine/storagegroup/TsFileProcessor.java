@@ -417,6 +417,11 @@ public class TsFileProcessor {
         for (PartialPath device : devicePaths) {
           workMemTable.delete(
               deletion.getPath(), device, deletion.getStartTime(), deletion.getEndTime());
+          logger.info(
+              "[Deletion] Delete in-memory data with deletion path: {}, time:{}-{}.",
+              deletion.getPath(),
+              deletion.getStartTime(),
+              deletion.getEndTime());
         }
       }
       // flushing memTables are immutable, only record this deletion in these memTables for query
@@ -825,6 +830,11 @@ public class TsFileProcessor {
           this.tsFileResource.getModFile().write(entry.left);
           tsFileResource.getModFile().close();
           iterator.remove();
+          logger.info(
+              "[Deletion] Deletion with path: {}, time:{}-{} written when flush memtable",
+              entry.left.getPath(),
+              ((Deletion) (entry.left)).getStartTime(),
+              ((Deletion) (entry.left)).getEndTime());
         }
       }
     } catch (IOException e) {

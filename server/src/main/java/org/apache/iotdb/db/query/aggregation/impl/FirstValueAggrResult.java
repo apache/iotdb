@@ -94,11 +94,31 @@ public class FirstValueAggrResult extends AggregateResult {
     if (hasFinalResult()) {
       return;
     }
+    int currentPos = 0;
+    long[] timesForFirstValue = new long[TIME_LENGTH_FOR_FIRST_VALUE];
+    while (currentPos < length) {
+      int timeLength = Math.min(length - currentPos, TIME_LENGTH_FOR_FIRST_VALUE);
+      System.arraycopy(timestamps, currentPos, timesForFirstValue, 0, timeLength);
+      Object[] values = dataReader.getValuesInTimestamps(timesForFirstValue, timeLength);
+      for (int i = 0; i < timeLength; i++) {
+        if (values[i] != null) {
+          setValue(values[i]);
+          timestamp = timesForFirstValue[i];
+          return;
+        }
+      }
+      currentPos += timeLength;
+    }
+  }
 
+  @Override
+  public void updateResultUsingValues(long[] timestamps, int length, Object[] values) {
+    if (hasFinalResult()) {
+      return;
+    }
     for (int i = 0; i < length; i++) {
-      Object value = dataReader.getValueInTimestamp(timestamps[i]);
-      if (value != null) {
-        setValue(value);
+      if (values[i] != null) {
+        setValue(values[i]);
         timestamp = timestamps[i];
         break;
       }

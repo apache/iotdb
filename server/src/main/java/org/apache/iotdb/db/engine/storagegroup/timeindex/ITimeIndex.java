@@ -29,6 +29,8 @@ import java.util.Set;
 
 public interface ITimeIndex {
 
+  int SPANS_MULTI_TIME_PARTITIONS_FLAG_ID = -1;
+
   /**
    * serialize to outputStream
    *
@@ -85,19 +87,26 @@ public interface ITimeIndex {
   /**
    * get time partition
    *
-   * @param tsfilePath tsfile absolute path
+   * @param tsFilePath tsFile absolute path
    * @return partition
    */
-  long getTimePartition(String tsfilePath);
+  long getTimePartition(String tsFilePath);
 
   /**
-   * get time partition with check. If data of tsfile cross partitions, an exception will be thrown
+   * get time partition with check. If data of tsFile spans partitions, an exception will be thrown
    *
-   * @param tsfilePath tsfile path
+   * @param tsFilePath tsFile path
    * @return partition
-   * @throws PartitionViolationException data of tsfile cross partitions
+   * @throws PartitionViolationException data of tsFile spans partitions
    */
-  long getTimePartitionWithCheck(String tsfilePath) throws PartitionViolationException;
+  long getTimePartitionWithCheck(String tsFilePath) throws PartitionViolationException;
+
+  /**
+   * Check whether the tsFile spans multiple time partitions.
+   *
+   * @return true if the tsFile spans multiple time partitions, otherwise false.
+   */
+  boolean isSpanMultiTimePartitions();
 
   /**
    * update start time

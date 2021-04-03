@@ -118,4 +118,11 @@ public interface Row {
    * @return {@code true} if the value of the specified column is null
    */
   boolean isNull(int columnIndex);
+
+  /**
+   * Returns the number of columns
+   *
+   * @return the number of columns
+   */
+  int size();
 }

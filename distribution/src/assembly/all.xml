@@ -31,7 +31,7 @@
             <includes>
                 <include>*:iotdb-server:zip:*</include>
                 <include>*:iotdb-cli:zip:*</include>
-                <include>*:cluster:zip:*</include>
+                <include>*:iotdb-cluster:zip:*</include>
             </includes>
             <outputDirectory>${file.separator}</outputDirectory>
             <outputFileNameMapping>${artifact.artifactId}.${artifact.extension}</outputFileNameMapping>
