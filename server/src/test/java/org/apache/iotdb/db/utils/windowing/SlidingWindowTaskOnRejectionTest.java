@@ -30,12 +30,10 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.junit.Test;
 
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static org.awaitility.Awaitility.await;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class SlidingWindowTaskOnRejectionTest {
@@ -90,55 +88,6 @@ public class SlidingWindowTaskOnRejectionTest {
                         - IoTDBDescriptor.getInstance()
                             .getConfig()
                             .getConcurrentWindowEvaluationThread()));
-
-    try {
-      countDownLatch.await();
-    } catch (InterruptedException e) {
-      fail();
-    }
-  }
-
-  @Test
-  public void testOnDefaultRejection() throws WindowingException {
-    final int evaluationTasks =
-        IoTDBDescriptor.getInstance().getConfig().getMaxPendingWindowEvaluationTasks()
-            + IoTDBDescriptor.getInstance().getConfig().getConcurrentWindowEvaluationThread()
-            + 1
-            + 1;
-    CountDownLatch countDownLatch = new CountDownLatch(evaluationTasks - 1 - 1);
-
-    @SuppressWarnings("squid:S2925")
-    SlidingTimeWindowEvaluationHandler handler =
-        new SlidingTimeWindowEvaluationHandler(
-            new SlidingTimeWindowConfiguration(TSDataType.INT32, 1, 1),
-            new Evaluator() {
-              @SuppressWarnings("squid:S2925")
-              @Override
-              public void evaluate(Window window) {
-                try {
-                  Thread.sleep(1000);
-                } catch (InterruptedException ignored) {
-                  // ignored
-                } finally {
-                  countDownLatch.countDown();
-                }
-              }
-
-              @Override
-              public void onRejection(Window window) {
-                Evaluator.super.onRejection(window);
-                countDownLatch.countDown();
-              }
-            });
-
-    try {
-      for (int i = 0; i < evaluationTasks; ++i) {
-        handler.collect(i, i);
-      }
-      fail();
-    } catch (Exception e) {
-      assertTrue(e instanceof RejectedExecutionException);
-    }
 
     try {
       countDownLatch.await();
