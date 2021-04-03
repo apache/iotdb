@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.read.filter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.util.Calendar;
+import java.util.Objects;
 
 /**
  * GroupByMonthFilter is used to handle natural month slidingStep and interval by generating
@@ -151,6 +152,12 @@ public class GroupByMonthFilter extends GroupByFilter {
         && this.endTime == other.endTime
         && this.isSlidingStepByMonth == other.isSlidingStepByMonth
         && this.isIntervalByMonth == other.isIntervalByMonth;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(
+        interval, slidingStep, startTime, endTime, isSlidingStepByMonth, isIntervalByMonth);
   }
 
   private void getNextIntervalAndSlidingStep() {

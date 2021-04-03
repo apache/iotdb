@@ -85,6 +85,9 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     if (expression != null) {
       timeFilter = ((GlobalTimeExpression) expression).getFilter();
     }
+    if (timeFilter == null) {
+      throw new QueryProcessException("TimeFilter cannot be null in GroupBy query.");
+    }
 
     List<StorageGroupProcessor> list =
         StorageEngine.getInstance()
