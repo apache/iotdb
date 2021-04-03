@@ -224,6 +224,43 @@ public class SerializeUtils {
             outputStream.writeInt(batchData.getIntByIndex(i));
           }
           break;
+        case VECTOR:
+          for (int i = 0; i < length; i++) {
+            outputStream.writeLong(batchData.getTimeByIndex(i));
+            TsPrimitiveType[] values = batchData.getVectorByIndex(i);
+            outputStream.writeInt(values.length);
+            for (TsPrimitiveType value : values) {
+              outputStream.write(value == null ? 0 : 1);
+              if (value == null) {
+                outputStream.write(0);
+              } else {
+                outputStream.write(1);
+                outputStream.write(value.getDataType().serialize());
+                switch (value.getDataType()) {
+                  case BOOLEAN:
+                    outputStream.writeBoolean(value.getBoolean());
+                    break;
+                  case DOUBLE:
+                    outputStream.writeDouble(value.getDouble());
+                    break;
+                  case FLOAT:
+                    outputStream.writeFloat(value.getFloat());
+                    break;
+                  case TEXT:
+                    Binary binary = value.getBinary();
+                    outputStream.writeInt(binary.getLength());
+                    outputStream.write(binary.getValues());
+                    break;
+                  case INT64:
+                    outputStream.writeLong(value.getLong());
+                    break;
+                  case INT32:
+                    outputStream.writeInt(value.getInt());
+                    break;
+                }
+              }
+            }
+          }
       }
     } catch (IOException ignored) {
       // ignored
@@ -271,6 +308,42 @@ public class SerializeUtils {
       case BOOLEAN:
         for (int i = 0; i < length; i++) {
           batchData.putBoolean(buffer.getLong(), buffer.get() == 1);
+        }
+        break;
+      case VECTOR:
+        for (int i = 0; i < length; i++) {
+          long time = buffer.getLong();
+          int valuesLength = buffer.getInt();
+          TsPrimitiveType[] values = new TsPrimitiveType[valuesLength];
+          for (int j = 0; j < valuesLength; j++) {
+            boolean notNull = (buffer.get() == 1);
+            if (notNull) {
+              switch (TSDataType.values()[buffer.get()]) {
+                case BOOLEAN:
+                  values[j] = new TsPrimitiveType.TsBoolean(buffer.get() == 1);
+                  break;
+                case DOUBLE:
+                  values[j] = new TsPrimitiveType.TsDouble(buffer.getDouble());
+                  break;
+                case FLOAT:
+                  values[j] = new TsPrimitiveType.TsFloat(buffer.getFloat());
+                  break;
+                case TEXT:
+                  int len = buffer.getInt();
+                  byte[] bytes = new byte[len];
+                  buffer.get(bytes);
+                  values[j] = new TsPrimitiveType.TsBinary(new Binary(bytes));
+                  break;
+                case INT64:
+                  values[j] = new TsPrimitiveType.TsLong(buffer.getLong());
+                  break;
+                case INT32:
+                  values[j] = new TsPrimitiveType.TsInt(buffer.getInt());
+                  break;
+              }
+            }
+          }
+          batchData.putVector(time, values);
         }
         break;
     }

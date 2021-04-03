@@ -36,6 +36,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -237,7 +238,10 @@ public class MetaPuller {
         int size = buffer.getInt();
         schemas = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
-          schemas.add(MeasurementSchema.deserializeFrom(buffer));
+          schemas.add(
+              buffer.get() == 0
+                  ? MeasurementSchema.partialDeserializeFrom(buffer)
+                  : VectorMeasurementSchema.partialDeserializeFrom(buffer));
         }
       }
     }

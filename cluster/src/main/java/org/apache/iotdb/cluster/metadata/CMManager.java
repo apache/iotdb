@@ -193,7 +193,7 @@ public class CMManager extends MManager {
       cacheLock.readLock().lock();
       MeasurementMNode measurementMNode = mRemoteMetaCache.get(path);
       if (measurementMNode != null) {
-        return measurementMNode.getSchema().getType();
+        return measurementMNode.getDataType(path.getMeasurement());
       }
     } finally {
       cacheLock.readLock().unlock();
@@ -213,7 +213,7 @@ public class CMManager extends MManager {
             new MeasurementMNode(
                 null, measurementSchema.getMeasurementId(), measurementSchema, null);
         cacheMeta(path, measurementMNode);
-        return schemas.get(0).getType();
+        return measurementMNode.getDataType(path.getMeasurement());
       } else {
         throw e;
       }

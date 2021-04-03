@@ -250,11 +250,27 @@ public class VectorMeasurementSchema
     return byteLen;
   }
 
+  @Override
+  public int partialSerializeTo(OutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write((byte) 1, outputStream);
+    return 1 + serializeTo(outputStream);
+  }
+
+  @Override
+  public int partialSerializeTo(ByteBuffer buffer) {
+    ReadWriteIOUtils.write((byte) 1, buffer);
+    return 1 + serializeTo(buffer);
+  }
+
+  public static VectorMeasurementSchema partialDeserializeFrom(ByteBuffer buffer) {
+    return deserializeFrom(buffer);
+  }
+
   public static VectorMeasurementSchema deserializeFrom(InputStream inputStream)
       throws IOException {
     VectorMeasurementSchema vectorMeasurementSchema = new VectorMeasurementSchema();
     vectorMeasurementSchema.meausurementId =
-        ALIGN_TIMESERIES_PREFIX + ReadWriteIOUtils.readInt(inputStream);
+        ALIGN_TIMESERIES_PREFIX + ReadWriteIOUtils.readString(inputStream);
 
     int measurementSize = ReadWriteIOUtils.readInt(inputStream);
     String[] measurements = new String[measurementSize];
@@ -271,7 +287,7 @@ public class VectorMeasurementSchema
 
     byte[] encodings = new byte[measurementSize];
     for (int i = 0; i < measurementSize; i++) {
-      types[i] = ReadWriteIOUtils.readByte(inputStream);
+      encodings[i] = ReadWriteIOUtils.readByte(inputStream);
     }
     vectorMeasurementSchema.encodings = encodings;
 
@@ -282,7 +298,7 @@ public class VectorMeasurementSchema
   public static VectorMeasurementSchema deserializeFrom(ByteBuffer buffer) {
     VectorMeasurementSchema vectorMeasurementSchema = new VectorMeasurementSchema();
     vectorMeasurementSchema.meausurementId =
-        ALIGN_TIMESERIES_PREFIX + ReadWriteIOUtils.readInt(buffer);
+        ALIGN_TIMESERIES_PREFIX + ReadWriteIOUtils.readString(buffer);
     int measurementSize = ReadWriteIOUtils.readInt(buffer);
     String[] measurements = new String[measurementSize];
     for (int i = 0; i < measurementSize; i++) {
@@ -298,7 +314,7 @@ public class VectorMeasurementSchema
 
     byte[] encodings = new byte[measurementSize];
     for (int i = 0; i < measurementSize; i++) {
-      types[i] = ReadWriteIOUtils.readByte(buffer);
+      encodings[i] = ReadWriteIOUtils.readByte(buffer);
     }
     vectorMeasurementSchema.encodings = encodings;
 

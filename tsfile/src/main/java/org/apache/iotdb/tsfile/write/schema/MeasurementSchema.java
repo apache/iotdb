@@ -172,6 +172,20 @@ public class MeasurementSchema
     return measurementSchema;
   }
 
+  public static MeasurementSchema partialDeserializeFrom(ByteBuffer buffer) {
+    MeasurementSchema measurementSchema = new MeasurementSchema();
+
+    measurementSchema.measurementId = ReadWriteIOUtils.readString(buffer);
+
+    measurementSchema.type = ReadWriteIOUtils.readByte(buffer);
+
+    measurementSchema.encoding = ReadWriteIOUtils.readByte(buffer);
+
+    measurementSchema.compressor = ReadWriteIOUtils.readByte(buffer);
+
+    return measurementSchema;
+  }
+
   @Override
   public String getMeasurementId() {
     return measurementId;
@@ -303,6 +317,32 @@ public class MeasurementSchema
         byteLen += ReadWriteIOUtils.write(entry.getValue(), buffer);
       }
     }
+
+    return byteLen;
+  }
+
+  @Override
+  public int partialSerializeTo(OutputStream outputStream) throws IOException {
+    int byteLen = 0;
+
+    byteLen += ReadWriteIOUtils.write((byte) 0, outputStream);
+    byteLen += ReadWriteIOUtils.write(measurementId, outputStream);
+    byteLen += ReadWriteIOUtils.write(type, outputStream);
+    byteLen += ReadWriteIOUtils.write(encoding, outputStream);
+    byteLen += ReadWriteIOUtils.write(compressor, outputStream);
+
+    return byteLen;
+  }
+
+  @Override
+  public int partialSerializeTo(ByteBuffer buffer) {
+    int byteLen = 0;
+
+    byteLen += ReadWriteIOUtils.write((byte) 0, buffer);
+    byteLen += ReadWriteIOUtils.write(measurementId, buffer);
+    byteLen += ReadWriteIOUtils.write(type, buffer);
+    byteLen += ReadWriteIOUtils.write(encoding, buffer);
+    byteLen += ReadWriteIOUtils.write(compressor, buffer);
 
     return byteLen;
   }

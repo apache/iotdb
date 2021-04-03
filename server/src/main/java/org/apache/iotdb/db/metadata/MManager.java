@@ -59,6 +59,7 @@ import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetUsingDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -395,6 +396,10 @@ public class MManager {
       case SET_DEVICE_TEMPLATE:
         SetDeviceTemplatePlan setDeviceTemplatePlan = (SetDeviceTemplatePlan) plan;
         setDeviceTemplate(setDeviceTemplatePlan);
+        break;
+      case SET_USING_DEVICE_TEMPLATE:
+        SetUsingDeviceTemplatePlan setUsingDeviceTemplatePlan = (SetUsingDeviceTemplatePlan) plan;
+        setUsingDeviceTemplate(setUsingDeviceTemplatePlan);
         break;
       case AUTO_CREATE_DEVICE_MNODE:
         AutoCreateDeviceMNodePlan autoCreateDeviceMNodePlan = (AutoCreateDeviceMNodePlan) plan;
@@ -1121,9 +1126,18 @@ public class MManager {
     return res;
   }
 
+  /**
+   * get MeasurementSchema or VectorMeasurementSchema which contains the measurement
+   *
+   * @param device device path
+   * @param measurement measurement name, could start with "$#$"
+   * @return MeasurementSchema or VectorMeasurementSchema
+   */
   public IMeasurementSchema getSeriesSchema(PartialPath device, String measurement)
       throws MetadataException {
-    return getSeriesSchema(new PartialPath(device.getFullPath(), measurement));
+    MNode deviceMNode = getDeviceNode(device);
+    MeasurementMNode measurementMNode = (MeasurementMNode) deviceMNode.getChild(measurement);
+    return measurementMNode.getSchema();
   }
 
   /**
@@ -1147,6 +1161,7 @@ public class MManager {
     List<PartialPath> measurements = ((VectorPartialPath) fullPath).getSubSensorsPathList();
     TSDataType[] types = new TSDataType[measurements.size()];
     TSEncoding[] encodings = new TSEncoding[measurements.size()];
+
     for (int i = 0; i < measurements.size(); i++) {
       int index = measurementsInLeaf.indexOf(measurements.get(i).getMeasurement());
       types[i] = schema.getValueTSDataTypeList().get(index);
@@ -1344,6 +1359,32 @@ public class MManager {
       throws MetadataException, IOException {
     return getDeviceNodeWithAutoCreate(
         path, config.isAutoCreateSchemaEnabled(), config.getDefaultStorageGroupLevel());
+  }
+
+  // attention: this path must be a device node
+  public List<IMeasurementSchema> getAllMeasurementByDevicePath(PartialPath path)
+      throws PathNotExistException {
+    Set<IMeasurementSchema> res = new HashSet<>();
+    try {
+      Pair<MNode, Template> mNodeTemplatePair = mNodeCache.get(path);
+      if (mNodeTemplatePair.left.getDeviceTemplate() != null) {
+        mNodeTemplatePair.right = mNodeTemplatePair.left.getDeviceTemplate();
+      }
+
+      for (MNode mNode : mNodeTemplatePair.left.getChildren().values()) {
+        MeasurementMNode measurementMNode = (MeasurementMNode) mNode;
+        res.add(measurementMNode.getSchema());
+      }
+
+      // template
+      if (mNodeTemplatePair.left.isUseTemplate() && mNodeTemplatePair.right != null) {
+        res.addAll(mNodeTemplatePair.right.getSchemaMap().values());
+      }
+    } catch (CacheException e) {
+      throw new PathNotExistException(path.getFullPath());
+    }
+
+    return new ArrayList<>(res);
   }
 
   public MNode getDeviceNode(PartialPath path) throws MetadataException {
@@ -1925,12 +1966,7 @@ public class MManager {
       MNode node = nodeDeque.removeFirst();
       if (node instanceof MeasurementMNode) {
         IMeasurementSchema nodeSchema = ((MeasurementMNode) node).getSchema();
-        measurementSchemas.add(
-            new MeasurementSchema(
-                node.getName(),
-                nodeSchema.getType(),
-                nodeSchema.getEncodingType(),
-                nodeSchema.getCompressor()));
+        measurementSchemas.add(nodeSchema);
       } else if (!node.getChildren().isEmpty()) {
         nodeDeque.addAll(node.getChildren().values());
       }
@@ -2209,14 +2245,24 @@ public class MManager {
     return deviceMNode.getChild(measurementName);
   }
 
-  private MeasurementMNode findTemplate(Pair<MNode, Template> deviceMNode, String measurement) {
-    if (deviceMNode.left.getDeviceTemplate() == null && deviceMNode.right != null) {
+  private MeasurementMNode findTemplate(Pair<MNode, Template> deviceMNode, String measurement)
+      throws MetadataException {
+    if (deviceMNode.right != null) {
       Map<String, IMeasurementSchema> templateMap = deviceMNode.right.getSchemaMap();
       List<String> measurements =
           Arrays.asList(measurement.replace("(", "").replace(")", "").split(","));
 
       String firstMeasurement = measurements.get(0);
       IMeasurementSchema schema = templateMap.get(firstMeasurement);
+      if (!deviceMNode.left.isUseTemplate()) {
+        deviceMNode.left.setUseTemplate(true);
+        try {
+          logWriter.setUsingDeviceTemplate(deviceMNode.left.getPartialPath());
+        } catch (IOException e) {
+          throw new MetadataException(e);
+        }
+      }
+
       if (schema != null) {
         if (schema instanceof MeasurementSchema) {
           return new MeasurementMNode(deviceMNode.left, firstMeasurement, schema, null);
@@ -2358,5 +2404,9 @@ public class MManager {
 
   public void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) throws MetadataException {
     mtree.getDeviceNodeWithAutoCreating(plan.getPath(), config.getDefaultStorageGroupLevel());
+  }
+
+  private void setUsingDeviceTemplate(SetUsingDeviceTemplatePlan plan) throws MetadataException {
+    getDeviceNode(plan.getPrefixPath()).setUseTemplate(true);
   }
 }

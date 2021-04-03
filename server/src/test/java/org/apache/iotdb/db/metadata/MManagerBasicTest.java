@@ -35,6 +35,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
@@ -879,11 +880,21 @@ public class MManagerBasicTest {
     manager.setDeviceTemplate(setDeviceTemplatePlan);
 
     MNode node = manager.getDeviceNode(new PartialPath("root.sg1.d1"));
+    node.setUseTemplate(true);
 
     MeasurementSchema s11 =
         new MeasurementSchema("s11", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
     assertNotNull(node.getDeviceTemplate());
     assertEquals(node.getDeviceTemplate().getSchemaMap().get("s11"), s11);
+
+    Set<IMeasurementSchema> allSchema =
+        new HashSet<>(node.getDeviceTemplate().getSchemaMap().values());
+    for (IMeasurementSchema schema :
+        manager.getAllMeasurementByDevicePath(new PartialPath("root.sg1.d1"))) {
+      allSchema.remove(schema);
+    }
+
+    assertTrue(allSchema.isEmpty());
   }
 
   private CreateTemplatePlan getCreateTemplatePlan() {
@@ -1189,6 +1200,7 @@ public class MManagerBasicTest {
       SetDeviceTemplatePlan setDeviceTemplatePlan =
           new SetDeviceTemplatePlan("template1", "root.laptop.d1");
       manager.setDeviceTemplate(setDeviceTemplatePlan);
+      manager.getDeviceNode(new PartialPath("root.laptop.d1")).setUseTemplate(true);
 
       // show timeseries root.laptop.d1.s0
       ShowTimeSeriesPlan showTimeSeriesPlan =
