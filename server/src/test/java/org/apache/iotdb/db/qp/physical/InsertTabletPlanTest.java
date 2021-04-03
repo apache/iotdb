@@ -146,7 +146,7 @@ public class InsertTabletPlanTest {
       throws QueryProcessException, MetadataException, InterruptedException,
           QueryFilterOptimizationException, StorageEngineException, IOException {
     InsertTabletPlan tabletPlan = getInsertTabletPlan();
-
+    tabletPlan.setBitMaps(new BitMap[6]);
     BitMap[] bitMaps = tabletPlan.getBitMaps();
     for (int i = 0; i < 4; i++) {
       if (bitMaps[i] == null) {
@@ -154,7 +154,6 @@ public class InsertTabletPlanTest {
       }
       bitMaps[i].mark(i);
     }
-    tabletPlan.setBitMaps(bitMaps);
     PlanExecutor executor = new PlanExecutor();
     executor.insertTablet(tabletPlan);
 
@@ -164,11 +163,11 @@ public class InsertTabletPlanTest {
     QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertEquals(3, dataSet.getPaths().size());
-    //    while (dataSet.hasNext()) {
-    //      RowRecord record = dataSet.next();
-    //      System.out.println(record);
-    //      Assert.assertEquals(6, record.getFields().size());
-    //    }
+    while (dataSet.hasNext()) {
+      RowRecord record = dataSet.next();
+      System.out.println(record);
+      Assert.assertEquals(6, record.getFields().size());
+    }
   }
 
   @Test
@@ -307,6 +306,33 @@ public class InsertTabletPlanTest {
     Assert.assertEquals(plan1, plan2);
   }
 
+  @Test
+  public void testInsertTabletWithBitMapsSerialization()
+      throws IllegalPathException, QueryProcessException {
+    InsertTabletPlan plan1 = getInsertTabletPlan();
+    plan1.setBitMaps(new BitMap[6]);
+    BitMap[] bitMaps = plan1.getBitMaps();
+    for (int i = 0; i < 4; i++) {
+      if (bitMaps[i] == null) {
+        bitMaps[i] = new BitMap(4);
+      }
+      bitMaps[i].mark(i);
+    }
+    PlanExecutor executor = new PlanExecutor();
+    executor.insertTablet(plan1);
+
+    ByteBuffer byteBuffer = ByteBuffer.allocate(10000);
+    plan1.serialize(byteBuffer);
+    byteBuffer.flip();
+
+    Assert.assertEquals(PhysicalPlanType.BATCHINSERT.ordinal(), byteBuffer.get());
+
+    InsertTabletPlan plan2 = new InsertTabletPlan();
+    plan2.deserialize(byteBuffer);
+
+    Assert.assertEquals(plan1, plan2);
+  }
+
   private InsertTabletPlan getInsertTabletPlan() throws IllegalPathException {
     long[] times = new long[] {110L, 111L, 112L, 113L};
     List<Integer> dataTypes = new ArrayList<>();
@@ -317,7 +343,6 @@ public class InsertTabletPlanTest {
     dataTypes.add(TSDataType.BOOLEAN.ordinal());
     dataTypes.add(TSDataType.TEXT.ordinal());
 
-    BitMap[] bitMaps = new BitMap[6];
     Object[] columns = new Object[6];
     columns[0] = new double[4];
     columns[1] = new float[4];
@@ -341,7 +366,6 @@ public class InsertTabletPlanTest {
             new String[] {"(s1,s2,s3)", "(s4,s5)", "s6"},
             dataTypes);
     tabletPlan.setTimes(times);
-    tabletPlan.setBitMaps(bitMaps);
     tabletPlan.setColumns(columns);
     tabletPlan.setRowCount(times.length);
     return tabletPlan;

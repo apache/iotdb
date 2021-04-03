@@ -108,7 +108,6 @@ public class MemTableTestUtils {
       ((long[]) columns[1])[(int) r] = r;
     }
     insertTabletPlan.setTimes(times);
-    insertTabletPlan.setBitMaps(new BitMap[2]);
     insertTabletPlan.setColumns(columns);
     insertTabletPlan.setRowCount(times.length);
     insertTabletPlan.setMeasurementMNodes(mNodes);
@@ -118,7 +117,7 @@ public class MemTableTestUtils {
     return insertTabletPlan;
   }
 
-  public static void produceVectorDataWithNull(IMemTable iMemTable) throws IllegalPathException {
+  public static void produceNullableVectorData(IMemTable iMemTable) throws IllegalPathException {
     InsertTabletPlan plan = genInsertTablePlan();
     BitMap[] bitMaps = new BitMap[2];
     bitMaps[1] = new BitMap(101);

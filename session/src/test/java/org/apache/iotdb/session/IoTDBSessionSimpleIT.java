@@ -122,15 +122,9 @@ public class IoTDBSessionSimpleIT {
     for (long row = 0; row < 15; row++) {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, timestamp);
-      if (row % 5 == 0) {
-        tablet.addValue("s1", rowIndex, null);
-        tablet.addValue("s2", rowIndex, null);
-        tablet.addValue("s3", rowIndex, null);
-      } else {
-        tablet.addValue("s1", rowIndex, 1L);
-        tablet.addValue("s2", rowIndex, 1D);
-        tablet.addValue("s3", rowIndex, new Binary("1"));
-      }
+      tablet.addValue("s1", rowIndex, 1L);
+      tablet.addValue("s2", rowIndex, 1D);
+      tablet.addValue("s3", rowIndex, new Binary("1"));
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
         session.insertTablet(tablet, true);
         tablet.reset();

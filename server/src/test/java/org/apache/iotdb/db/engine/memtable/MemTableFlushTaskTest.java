@@ -134,7 +134,7 @@ public class MemTableFlushTaskTest {
   @Test
   public void testFlushNullableVectorMemTable()
       throws ExecutionException, InterruptedException, IllegalPathException, IOException {
-    MemTableTestUtils.produceVectorDataWithNull(memTable);
+    MemTableTestUtils.produceNullableVectorData(memTable);
     MemTableFlushTask memTableFlushTask = new MemTableFlushTask(memTable, writer, storageGroup);
     assertTrue(
         writer

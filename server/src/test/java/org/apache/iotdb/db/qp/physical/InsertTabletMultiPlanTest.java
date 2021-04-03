@@ -84,7 +84,6 @@ public class InsertTabletMultiPlanTest extends InsertTabletPlanTest {
               new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
               dataTypes);
       tabletPlan.setTimes(times);
-      tabletPlan.setBitMaps(new BitMap[6]);
       tabletPlan.setColumns(columns);
       tabletPlan.setRowCount(times.length);
       insertTabletPlanList.add(tabletPlan);
