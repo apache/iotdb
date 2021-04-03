@@ -33,7 +33,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static java.util.concurrent.TimeUnit.SECONDS;
+import static java.util.concurrent.TimeUnit.MINUTES;
 import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -81,7 +81,7 @@ public class SlidingWindowTaskOnRejectionTest {
     }
 
     await()
-        .atMost(30, SECONDS)
+        .atMost(1, MINUTES)
         .until(
             () ->
                 (rejectionCount.get()
@@ -111,12 +111,22 @@ public class SlidingWindowTaskOnRejectionTest {
     SlidingTimeWindowEvaluationHandler handler =
         new SlidingTimeWindowEvaluationHandler(
             new SlidingTimeWindowConfiguration(TSDataType.INT32, 1, 1),
-            window -> {
-              try {
-                Thread.sleep(1000);
-              } catch (InterruptedException ignored) {
-                // ignored
-              } finally {
+            new Evaluator() {
+              @SuppressWarnings("squid:S2925")
+              @Override
+              public void evaluate(Window window) {
+                try {
+                  Thread.sleep(1000);
+                } catch (InterruptedException ignored) {
+                  // ignored
+                } finally {
+                  countDownLatch.countDown();
+                }
+              }
+
+              @Override
+              public void onRejection(Window window) {
+                Evaluator.super.onRejection(window);
                 countDownLatch.countDown();
               }
             });
