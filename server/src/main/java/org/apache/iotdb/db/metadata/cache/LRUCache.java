@@ -7,12 +7,15 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class LRUCache implements MNodeCache {
 
   private final LinkedHashMap<String, MNode> map;
-  private final Lock lock = new ReentrantLock();
+  private final ReadWriteLock lock = new ReentrantReadWriteLock();
+  private final Lock          readLock  = lock.readLock();
+  private final Lock          writeLock = lock.writeLock();
   private static final float DEFAULT_LOAD_FACTOR = 0.75f;
 
   public LRUCache() {
@@ -31,50 +34,50 @@ public class LRUCache implements MNodeCache {
   @Override
   public void put(MNode mNode) {
     try {
-      lock.lock();
+      writeLock.lock();
       map.put(mNode.getFullPath(), mNode);
     } finally {
-      lock.unlock();
+      writeLock.unlock();
     }
   }
 
   @Override
   public MNode get(PartialPath path) {
     try {
-      lock.lock();
+      readLock.lock();
       return map.get(path.toString());
     } finally {
-      lock.unlock();
+      readLock.unlock();
     }
   }
 
   @Override
   public Collection<MNode> getAll() {
     try {
-      lock.lock();
+      readLock.lock();
       return map.values();
     } finally {
-      lock.unlock();
+      readLock.unlock();
     }
   }
 
   @Override
   public void remove(PartialPath path) {
     try {
-      lock.lock();
+      writeLock.lock();
       map.remove(path.toString());
     } finally {
-      lock.unlock();
+      writeLock.unlock();
     }
   }
 
   @Override
   public void clear() {
     try {
-      lock.lock();
+      writeLock.lock();
       map.clear();
     } finally {
-      lock.unlock();
+      writeLock.unlock();
     }
   }
 }

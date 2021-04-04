@@ -1,7 +1,10 @@
 package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.*;
+import org.apache.iotdb.db.metadata.cache.LRUCache;
 import org.apache.iotdb.db.metadata.cache.MNodeCache;
 import org.apache.iotdb.db.metadata.metafile.MetaFileAccess;
 import org.apache.iotdb.db.metadata.mnode.MNode;
@@ -35,22 +38,22 @@ public class MTreeDiskBased implements MTreeInterface {
 
   private static final Logger logger = LoggerFactory.getLogger(MTreeDiskBased.class);
 
-  private MNodeCache cache;
+  private MNodeCache cache=new LRUCache(1000000);
 
   private MetaFileAccess metaFile;
 
-  private MNode root;
+  private MNode root=new MNode(null, IoTDBConstant.PATH_ROOT);
 
   private ReadWriteLock lock = new ReentrantReadWriteLock();
   private Lock readLock = lock.readLock();
   private Lock writeLock = lock.writeLock();
 
-  public MNode getMNode(PartialPath path) throws Exception{
+  public MNode getMNode(PartialPath path) {
     MNode result=cache.get(path);
     if(result!=null){
       return result;
     }
-    result=metaFile.read(path);
+//    result=metaFile.read(path);
     return result;
   }
 
@@ -83,6 +86,7 @@ public class MTreeDiskBased implements MTreeInterface {
         cur.addChild(nodeName, new MNode(cur, nodeName));
       }
       cur = cur.getChild(nodeName);
+      cache.put(cur);
     }
 
     if (props != null && props.containsKey(LOSS) && props.get(LOSS).equals(SDT)) {
@@ -119,7 +123,7 @@ public class MTreeDiskBased implements MTreeInterface {
       if (alias != null) {
         cur.addAlias(alias, measurementMNode);
       }
-
+      cache.put(measurementMNode);
       return measurementMNode;
     }
   }
@@ -187,11 +191,55 @@ public class MTreeDiskBased implements MTreeInterface {
 
   @Override
   public boolean isPathExist(PartialPath path) {
-    return false;
+    return getMNode(path)==null;
   }
 
   @Override
-  public void setStorageGroup(PartialPath path) throws MetadataException {}
+  public void setStorageGroup(PartialPath path) throws MetadataException {
+    String[] nodeNames = path.getNodes();
+    checkStorageGroup(path.getFullPath());
+    MNode cur = root;
+    if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
+      throw new IllegalPathException(path.getFullPath());
+    }
+    int i = 1;
+    // e.g., path = root.a.b.sg, create internal nodes for a, b
+    while (i < nodeNames.length - 1) {
+      MNode temp = cur.getChild(nodeNames[i]);
+      if (temp == null) {
+        cur.addChild(nodeNames[i], new MNode(cur, nodeNames[i]));
+      } else if (temp instanceof StorageGroupMNode) {
+        // before set storage group, check whether the exists or not
+        throw new StorageGroupAlreadySetException(temp.getFullPath());
+      }
+      cur = cur.getChild(nodeNames[i]);
+      cache.put(cur);
+      i++;
+    }
+    if (cur.hasChild(nodeNames[i])) {
+      // node b has child sg
+      if (cur.getChild(nodeNames[i]) instanceof StorageGroupMNode) {
+        throw new StorageGroupAlreadySetException(path.getFullPath());
+      } else {
+        throw new StorageGroupAlreadySetException(path.getFullPath(), true);
+      }
+    } else {
+      StorageGroupMNode storageGroupMNode =
+              new StorageGroupMNode(
+                      cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
+      cur.addChild(nodeNames[i], storageGroupMNode);
+      cache.put(storageGroupMNode);
+    }
+  }
+
+  private void checkStorageGroup(String storageGroup) throws IllegalPathException {
+    if (!IoTDBConfig.STORAGE_GROUP_PATTERN.matcher(storageGroup).matches()) {
+      throw new IllegalPathException(
+              String.format(
+                      "The storage group name can only be characters, numbers and underscores. %s",
+                      storageGroup));
+    }
+  }
 
   @Override
   public List<MeasurementMNode> deleteStorageGroup(PartialPath path) throws MetadataException {
@@ -362,13 +410,13 @@ public class MTreeDiskBased implements MTreeInterface {
 
   private MNode getNode(PartialPath path) throws IOException {
     MNode node = cache.get(path);
-    readLock.lock();
-    if (node == null) {
-      node = metaFile.read(path);
-    } else if (!node.isLoaded()) {
-      node = metaFile.read(node.getPosition());
-    }
-    readLock.unlock();
+//    readLock.lock();
+//    if (node == null) {
+//      node = metaFile.read(path);
+//    } else if (!node.isLoaded()) {
+//      node = metaFile.read(node.getPosition());
+//    }
+//    readLock.unlock();
     return node;
   }
 }
