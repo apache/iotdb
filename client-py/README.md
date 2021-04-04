@@ -32,10 +32,10 @@
 [![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](https://iotdb.apache.org/)
 
 
-Apache IoTDB (Database for Internet of Things) is an IoT native database with high performance for 
-data management and analysis, deployable on the edge and the cloud. Due to its light-weight 
-architecture, high performance and rich feature set together with its deep integration with 
-Apache Hadoop, Spark and Flink, Apache IoTDB can meet the requirements of massive data storage, 
+Apache IoTDB (Database for Internet of Things) is an IoT native database with high performance for
+data management and analysis, deployable on the edge and the cloud. Due to its light-weight
+architecture, high performance and rich feature set together with its deep integration with
+Apache Hadoop, Spark and Flink, Apache IoTDB can meet the requirements of massive data storage,
 high-speed data ingestion and complex data analysis in the IoT industrial fields.
 
 
@@ -191,3 +191,19 @@ To do a release just ensure that you have the right set of generated thrift file
 Then run linting and auto-formatting.
 Then, ensure that all tests work (via `pytest .`).
 Then you are good to go to do a release!
+
+### Preparing your environment
+
+First, install all necessary dev dependencies via `pip install -r requirements_dev.txt`.
+
+### Doing the Release
+
+There is a convenient script `release.sh` to do all steps for a release.
+Namely, these are
+
+* Remove all transient directories from last release (if exists)
+* (Re-)generate all generated sources via mvn
+* Run Linting (flake8)
+* Run Tests via pytest
+* Build
+* Release to pypi

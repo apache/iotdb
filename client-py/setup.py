@@ -30,7 +30,7 @@ except FileNotFoundError:
 print(long_description)
 
 setuptools.setup(
-    name="apache-iotdb", # Replace with your own username
+    name="apache-iotdb",  # Replace with your own username
     version="0.11.3",
     author=" Apache Software Foundation",
     author_email="dev@iotdb.apache.org",

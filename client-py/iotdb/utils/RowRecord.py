@@ -17,7 +17,6 @@
 #
 
 # for package
-from .IoTDBConstants import TSDataType
 from .Field import Field
 
 # for debug

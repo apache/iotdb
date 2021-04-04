@@ -572,6 +572,10 @@
                             <exclude>LICENSE-binary</exclude>
                             <!-- json does not support comments-->
                             <exclude>**/*.json</exclude>
+                            <!-- python -->
+                            <exclude>.pytest_cache/**</exclude>
+                            <exclude>venv/**</exclude>
+                            <exclude>apache_iotdb.egg-info/**</exclude>
                         </excludes>
                     </configuration>
                 </plugin>
