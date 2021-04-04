@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-
+import logging
 import struct
 
 from iotdb.utils.Field import Field
@@ -26,6 +26,8 @@ from iotdb.utils.IoTDBRpcDataSet import IoTDBRpcDataSet
 from iotdb.utils.RowRecord import RowRecord
 
 import pandas as pd
+
+logger = logging.getLogger("IoTDB")
 
 
 class SessionDataSet(object):
@@ -114,8 +116,7 @@ class SessionDataSet(object):
                 elif data_type == TSDataType.TEXT:
                     field.set_binary_value(value_bytes)
                 else:
-                    print("unsupported data type {}.".format(data_type))
-                    # could raise exception here
+                    raise RuntimeError("unsupported data type {}.".format(data_type))
             else:
                 field = Field(None)
             out_fields.append(field)

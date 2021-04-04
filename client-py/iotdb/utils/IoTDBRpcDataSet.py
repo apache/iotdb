@@ -17,9 +17,13 @@
 #
 
 # for package
+import logging
+
 from thrift.transport import TTransport
 from iotdb.thrift.rpc.TSIService import TSFetchResultsReq, TSCloseOperationReq
 from iotdb.utils.IoTDBConstants import TSDataType
+
+logger = logging.getLogger("IoTDB")
 
 
 class IoTDBRpcDataSet(object):
@@ -107,14 +111,15 @@ class IoTDBRpcDataSet(object):
                 status = self.__client.closeOperation(
                     TSCloseOperationReq(self.__session_id, self.__query_id)
                 )
-                print(
+                logger.debug(
                     "close session {}, message: {}".format(
                         self.__session_id, status.message
                     )
                 )
             except TTransport.TException as e:
-                print("close session {} failed because: ".format(self.__session_id), e)
-                raise Exception
+                raise RuntimeError(
+                    "close session {} failed because: ".format(self.__session_id), e
+                )
 
             self.__is_closed = True
             self.__client = None
@@ -173,8 +178,7 @@ class IoTDBRpcDataSet(object):
                     self.__value[i] = value_buffer[4 : 4 + length]
                     self.__query_data_set.valueList[i] = value_buffer[4 + length :]
                 else:
-                    print("unsupported data type {}.".format(data_type))
-                    # could raise exception here
+                    raise RuntimeError("unsupported data type {}.".format(data_type))
         self.__rows_index += 1
         self.__has_cached_record = True
 
@@ -196,7 +200,9 @@ class IoTDBRpcDataSet(object):
                 self.__query_data_set = resp.queryDataSet
             return resp.hasResultSet
         except TTransport.TException as e:
-            print("Cannot fetch result from server, because of network connection: ", e)
+            raise RuntimeError(
+                "Cannot fetch result from server, because of network connection: ", e
+            )
 
     def is_null(self, index, row_num):
         bitmap = self.__current_bitmap[index]
