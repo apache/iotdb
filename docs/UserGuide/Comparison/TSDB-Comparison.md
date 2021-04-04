@@ -106,7 +106,7 @@ Legend:
   
 * Schema:
 
-  * IoTDB: IoTDB proposes a [Tree based schema](http://iotdb.apache.org/UserGuide/Master/Concept/Data%20Model%20and%20Terminology.html). 
+  * IoTDB: IoTDB proposes a [Tree based schema](http://iotdb.apache.org/UserGuide/Master/Data-Concept/Data-Model-and-Terminology.html). 
    It is quite different from other TSDBs. However, the kind of schema has the following advantages:
     
     * In many industrial scenarios, the management of devices are hierarchical, rather than flat.
@@ -231,7 +231,7 @@ I listed some interesting features that these systems may differ.
 
 * Compression: 
   * IoTDB supports many encoding and compression for time series, like RLE, 2DIFF, Gorilla, etc.. and Snappy compression.
-  In IoTDB, you can choose which encoding method you want, according to the data distribution. For more info, see [here](http://iotdb.apache.org/UserGuide/Master/Concept/Encoding.html).
+  In IoTDB, you can choose which encoding method you want, according to the data distribution. For more info, see [here](http://iotdb.apache.org/UserGuide/Master/Data-Concept/Encoding.html).
   * InfluxDB also supports encoding and compression, but you can not define which encoding method you want.
   It just depends on the data type. For more info, see [here](https://docs.influxdata.com/influxdb/v1.7/concepts/storage_engine/).
   * OpenTSDB and KairosDB use HBase and Cassandra in backend, and have no special encoding for time series.

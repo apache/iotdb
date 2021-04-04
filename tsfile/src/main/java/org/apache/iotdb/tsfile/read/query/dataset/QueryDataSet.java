@@ -35,6 +35,46 @@ public abstract class QueryDataSet {
   protected int alreadyReturnedRowNum = 0;
   protected int fetchSize = 10000;
   protected boolean ascending;
+  /*
+   *  whether current data group has data for query.
+   *  If not null(must be in cluster mode),
+   *  we need to redirect the query to any data group which has some data to speed up query.
+   */
+  protected EndPoint endPoint = null;
+
+  /** For redirect query. Need keep consistent with EndPoint in rpc.thrift. */
+  public static class EndPoint {
+    private String ip = null;
+    private int port = 0;
+
+    public EndPoint(String ip, int port) {
+      this.ip = ip;
+      this.port = port;
+    }
+
+    public EndPoint() {}
+
+    public String getIp() {
+      return ip;
+    }
+
+    public void setIp(String ip) {
+      this.ip = ip;
+    }
+
+    public int getPort() {
+      return port;
+    }
+
+    public void setPort(int port) {
+      this.port = port;
+    }
+
+    @Override
+    public String toString() {
+      return "ip:port=" + ip + ":" + port;
+    }
+  }
 
   public QueryDataSet() {}
 
@@ -118,5 +158,13 @@ public abstract class QueryDataSet {
 
   public boolean hasLimit() {
     return rowLimit > 0;
+  }
+
+  public EndPoint getEndPoint() {
+    return endPoint;
+  }
+
+  public void setEndPoint(EndPoint endPoint) {
+    this.endPoint = endPoint;
   }
 }

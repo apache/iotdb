@@ -76,7 +76,7 @@ public class RemoteGroupByExecutorTest extends BaseQueryTest {
       for (int i = 0; i < groupByExecutors.size(); i++) {
         GroupByExecutor groupByExecutor = groupByExecutors.get(i);
         Object[] answers;
-        if (i == 1) {
+        if (groupByExecutors.size() == 1) {
           // a series is only managed by one group
           List<AggregateResult> aggregateResults;
           answers = new Object[] {5.0, 2.0, 10.0, 0.0, 4.0, 4.0, 0.0, 4.0, 0.0};
@@ -138,7 +138,7 @@ public class RemoteGroupByExecutorTest extends BaseQueryTest {
       for (int i = 0; i < groupByExecutors.size(); i++) {
         GroupByExecutor groupByExecutor = groupByExecutors.get(i);
         Object[] answers;
-        if (i == 1) {
+        if (groupByExecutors.size() == 1) {
           // a series is only managed by one group
           List<AggregateResult> aggregateResults;
           answers = new Object[] {2.0, 3.5, 7.0, 3.0, 4.0, 4.0, 3.0, 4.0, 3.0};

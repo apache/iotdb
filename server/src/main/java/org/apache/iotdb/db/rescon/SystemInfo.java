@@ -77,7 +77,11 @@ public class SystemInfo {
       chooseTSPToMarkFlush();
     }
     if (totalSgMemCost >= REJECT_THERSHOLD) {
-      logger.info("Change system to reject status...");
+      logger.info(
+          "Change system to reject status. Triggered by: logical SG ({}), mem cost delta ({}), totalSgMemCost ({}).",
+          storageGroupInfo.getStorageGroupProcessor().getLogicalStorageGroupName(),
+          delta,
+          totalSgMemCost);
       rejected = true;
     }
   }
@@ -92,29 +96,46 @@ public class SystemInfo {
       StorageGroupInfo storageGroupInfo, boolean shouldInvokeFlush) {
     boolean needForceAsyncFlush = false;
     synchronized (this) {
+      long delta = 0;
+
       if (reportedSgMemCostMap.containsKey(storageGroupInfo)) {
-        this.totalSgMemCost -=
-            (reportedSgMemCostMap.get(storageGroupInfo) - storageGroupInfo.getMemCost());
+        delta = reportedSgMemCostMap.get(storageGroupInfo) - storageGroupInfo.getMemCost();
+        this.totalSgMemCost -= delta;
         storageGroupInfo.setLastReportedSize(storageGroupInfo.getMemCost());
         reportedSgMemCostMap.put(storageGroupInfo, storageGroupInfo.getMemCost());
       }
 
       if (totalSgMemCost >= FLUSH_THERSHOLD && totalSgMemCost < REJECT_THERSHOLD) {
-        logger.debug("Some sg memory released but still exceeding flush proportion, call flush.");
+        logger.debug(
+            "SG ({}) released memory (delta: {}) but still exceeding flush proportion (totalSgMemCost: {}), call flush.",
+            storageGroupInfo.getStorageGroupProcessor().getLogicalStorageGroupName(),
+            delta,
+            totalSgMemCost);
         if (rejected) {
-          logger.info("Some sg memory released, set system to normal status.");
+          logger.info(
+              "SG ({}) released memory (delta: {}), set system to normal status (totalSgMemCost: {}).",
+              storageGroupInfo.getStorageGroupProcessor().getLogicalStorageGroupName(),
+              delta,
+              totalSgMemCost);
         }
         logCurrentTotalSGMemory();
         rejected = false;
         needForceAsyncFlush = true;
       } else if (totalSgMemCost >= REJECT_THERSHOLD) {
-        logger.warn("Some sg memory released, but system is still in reject status.");
+        logger.warn(
+            "SG ({}) released memory (delta: {}), but system is still in reject status (totalSgMemCost: {}).",
+            storageGroupInfo.getStorageGroupProcessor().getLogicalStorageGroupName(),
+            delta,
+            totalSgMemCost);
         logCurrentTotalSGMemory();
         rejected = true;
         needForceAsyncFlush = true;
-
       } else {
-        logger.debug("Some sg memory released, system is in normal status.");
+        logger.debug(
+            "SG ({}) released memory (delta: {}), system is in normal status (totalSgMemCost: {}).",
+            storageGroupInfo.getStorageGroupProcessor().getLogicalStorageGroupName(),
+            delta,
+            totalSgMemCost);
         logCurrentTotalSGMemory();
         rejected = false;
       }

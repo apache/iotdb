@@ -92,6 +92,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 public class StorageEngine implements IService {
+  private static final Logger logger = LoggerFactory.getLogger(StorageEngine.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long TTL_CHECK_INTERVAL = 60 * 1000L;
@@ -105,7 +106,6 @@ public class StorageEngine implements IService {
   private static boolean enablePartition =
       IoTDBDescriptor.getInstance().getConfig().isEnablePartition();
 
-  private final Logger logger;
   /**
    * a folder (system/storage_groups/ by default) that persist system info. Each Storage Processor
    * will have a subfolder under the systemDir.
@@ -126,7 +126,6 @@ public class StorageEngine implements IService {
   private List<FlushListener> customFlushListeners = new ArrayList<>();
 
   private StorageEngine() {
-    logger = LoggerFactory.getLogger(StorageEngine.class);
     systemDir = FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
 
     // build time Interval to divide time partition
@@ -190,7 +189,6 @@ public class StorageEngine implements IService {
     return enablePartition ? time / timePartitionInterval : 0;
   }
 
-  @TestOnly
   public static boolean isEnablePartition() {
     return enablePartition;
   }

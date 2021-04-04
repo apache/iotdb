@@ -19,34 +19,21 @@
 
 -->
 
-# IoTDB-Grafana
+# 系统集成
 
-## 概览
+## Grafana-IoTDB
 
-- IoTDB-Grafana
-  - Grafana的安装与部署
-    - 安装
-    - simple-json-datasource数据源插件安装
-    - 启动Grafana
-  - IoTDB安装
-  - IoTDB-Grafana连接器安装
-    - 启动IoTDB-Grafana
-  - 使用Grafana
-    - 添加IoTDB数据源
-    - 操作Grafana
-
-<!-- /TOC -->
 
 Grafana是开源的指标量监测和可视化工具，可用于展示时序数据和应用程序运行分析。Grafana支持Graphite，InfluxDB等国际主流时序数据库作为数据源。在IoTDB项目中，我们开发了Grafana展现IoTDB中时序数据的连接器IoTDB-Grafana，为您提供使用Grafana展示IoTDB数据库中的时序数据的可视化方法。
 
-## Grafana的安装与部署
+### Grafana的安装与部署
 
-### 安装
+#### 安装
 
 * Grafana组件下载地址：https://grafana.com/grafana/download
 * 版本 >= 4.4.1
 
-### simple-json-datasource数据源插件安装
+#### simple-json-datasource数据源插件安装
 
 * 插件名称: simple-json-datasource
 * 下载地址: https://github.com/grafana/simple-json-datasource
@@ -60,7 +47,8 @@ Shell > git clone https://github.com/grafana/simple-json-datasource.git
 ```
 然后重启Grafana服务器，在浏览器中登录Grafana，在“Add data source”页面中“Type”选项出现“SimpleJson”即为安装成功。
 
-### 启动Grafana
+#### 启动Grafana
+
 进入Grafana的安装目录，使用以下命令启动Grafana：
 * Windows系统：
 ```
@@ -76,23 +64,23 @@ Shell > grafana-server --config=/usr/local/etc/grafana/grafana.ini --homepath /u
 ```
 更多安装详情，请点[这里](https://grafana.com/docs/grafana/latest/installation/)
 
-## IoTDB安装
+### IoTDB安装
 
 参见[https://github.com/apache/iotdb](https://github.com/apache/iotdb)
 
-## IoTDB-Grafana连接器安装
+### Grafana-IoTDB连接器安装
 
 ```shell
 git clone https://github.com/apache/iotdb.git
 ```
 
-### 启动IoTDB-Grafana
+### 启动Grafana-IoTDB
 
-#### 方案一（适合开发者）
+ * 方案一（适合开发者）
 
 导入整个项目，maven依赖安装完后，直接运行`iotdb/grafana/rc/main/java/org/apache/iotdb/web/grafana`目录下`TsfileWebDemoApplication.java`，这个grafana连接器采用springboot开发
 
-#### 方案二（适合使用者）
+ * 方案二（适合使用者）
 
 ```shell
 cd iotdb
@@ -111,7 +99,7 @@ java -jar iotdb-grafana-{version}.war
 
 如果您需要配置属性，将`grafana/src/main/resources/application.properties`移动到war包同级目录下（`grafana/target`）
 
-## 使用Grafana
+### 使用Grafana
 
 Grafana以网页的dashboard形式为您展示数据，在使用时请您打开浏览器，访问http://\<ip\>:\<port\>
 
@@ -119,7 +107,7 @@ Grafana以网页的dashboard形式为您展示数据，在使用时请您打开�
 
 注：IP为您的Grafana所在的服务器IP，Port为Grafana的运行端口（默认3000）。默认登录的用户名和密码都是“admin”。
 
-### 添加IoTDB数据源
+#### 添加IoTDB数据源
 
 点击左上角的“Grafana”图标，选择`Data Source`选项，然后再点击`Add data source`。
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51664777-2766ae00-1ff5-11e9-9d2f-7489f8ccbfc2.png">
@@ -127,13 +115,13 @@ Grafana以网页的dashboard形式为您展示数据，在使用时请您打开�
 在编辑数据源的时候，`Type`一栏选择`Simplejson`，`URL`一栏填写http://\<ip\>:\<port\>，IP为您的IoTDB-Grafana连接器所在的服务器IP，Port为运行端口（默认8888）。之后确保IoTDB已经启动，点击“Save & Test”，出现“Data Source is working”提示表示配置成功。
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51664842-554bf280-1ff5-11e9-97d2-54eebe0b2ca1.png">
 
-### 操作Grafana
+#### 操作Grafana
 
-进入Grafana可视化页面后，可以选择添加时间序列，如图 6.9。您也可以按照Grafana官方文档进行相应的操作，详情可参看Grafana官方文档：http://docs.grafana.org/guides/getting_started/。
+进入Grafana可视化页面后，可以选择添加时间序列，如下图。您也可以按照Grafana官方文档进行相应的操作，详情可参看Grafana官方文档：http://docs.grafana.org/guides/getting_started/。
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51664878-6e54a380-1ff5-11e9-9718-4d0e24627fa8.png">
 
-## 配置grafana
+### 配置grafana
 
 ```
 # IoTDB的IP和端口

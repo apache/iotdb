@@ -93,7 +93,7 @@ public abstract class AbstractScript {
         .getAbsolutePath();
   }
 
-  protected abstract void testOnWindows() throws IOException;
+  protected abstract void testOnWindows(String[] output) throws IOException;
 
-  protected abstract void testOnUnix() throws IOException;
+  protected abstract void testOnUnix(String[] output) throws IOException;
 }
