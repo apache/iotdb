@@ -21,7 +21,7 @@
 
 # QueryEngine
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/thulab/iotdb/files/6087969/query-engine.pdf">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/37140360/110063320-e4678f00-7da5-11eb-8d1b-6c804c1846ba.png">
 
 ## Design ideas
 
