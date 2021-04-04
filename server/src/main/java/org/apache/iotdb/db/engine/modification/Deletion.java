@@ -88,4 +88,20 @@ public class Deletion extends Modification {
   public int hashCode() {
     return Objects.hash(super.hashCode(), startTime, endTime);
   }
+
+  @Override
+  public String toString() {
+    return "Deletion{"
+        + "startTime="
+        + startTime
+        + ", endTime="
+        + endTime
+        + ", type="
+        + type
+        + ", path="
+        + path
+        + ", fileOffset="
+        + fileOffset
+        + '}';
+  }
 }

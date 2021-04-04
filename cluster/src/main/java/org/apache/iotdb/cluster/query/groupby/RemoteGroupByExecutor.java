@@ -26,7 +26,6 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
 import org.apache.iotdb.db.utils.SerializeUtils;
@@ -85,16 +84,13 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
             SyncClientAdaptor.getGroupByResult(
                 client, header, executorId, curStartTime, curEndTime);
       } else {
-        SyncDataClient syncDataClient = null;
-        try {
-          syncDataClient =
-              metaGroupMember
-                  .getClientProvider()
-                  .getSyncDataClient(source, RaftServer.getReadOperationTimeoutMS());
+        try (SyncDataClient syncDataClient =
+            metaGroupMember
+                .getClientProvider()
+                .getSyncDataClient(source, RaftServer.getReadOperationTimeoutMS())) {
+
           aggrBuffers =
               syncDataClient.getGroupByResult(header, executorId, curStartTime, curEndTime);
-        } finally {
-          ClientUtils.putBackSyncClient(syncDataClient);
         }
       }
     } catch (TException e) {
@@ -133,16 +129,13 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
             SyncClientAdaptor.peekNextNotNullValue(
                 client, header, executorId, nextStartTime, nextEndTime);
       } else {
-        SyncDataClient syncDataClient = null;
-        try {
-          syncDataClient =
-              metaGroupMember
-                  .getClientProvider()
-                  .getSyncDataClient(source, RaftServer.getReadOperationTimeoutMS());
+        try (SyncDataClient syncDataClient =
+            metaGroupMember
+                .getClientProvider()
+                .getSyncDataClient(source, RaftServer.getReadOperationTimeoutMS())) {
+
           aggrBuffer =
               syncDataClient.peekNextNotNullValue(header, executorId, nextStartTime, nextEndTime);
-        } finally {
-          ClientUtils.putBackSyncClient(syncDataClient);
         }
       }
     } catch (TException e) {

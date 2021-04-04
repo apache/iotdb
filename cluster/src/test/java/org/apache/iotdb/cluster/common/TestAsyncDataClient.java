@@ -26,13 +26,14 @@ import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
+import org.apache.iotdb.cluster.rpc.thrift.MultSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
+import org.apache.iotdb.cluster.server.member.BaseMember;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
-import org.apache.iotdb.cluster.server.member.MemberTest;
 import org.apache.iotdb.cluster.server.service.DataAsyncService;
 import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
@@ -44,6 +45,7 @@ import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
+import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 
 import java.io.File;
@@ -79,6 +81,24 @@ public class TestAsyncDataClient extends AsyncDataClient {
   }
 
   @Override
+  public void fetchMultSeries(
+      Node header,
+      long readerId,
+      List<String> paths,
+      AsyncMethodCallback<Map<String, ByteBuffer>> resultHandler) {
+    new Thread(
+            () -> {
+              try {
+                new DataAsyncService(dataGroupMemberMap.get(header))
+                    .fetchMultSeries(header, readerId, paths, resultHandler);
+              } catch (TException e) {
+                e.printStackTrace();
+              }
+            })
+        .start();
+  }
+
+  @Override
   public void getAggrResult(
       GetAggrResultRequest request, AsyncMethodCallback<List<ByteBuffer>> resultHandler) {
     new Thread(
@@ -99,12 +119,30 @@ public class TestAsyncDataClient extends AsyncDataClient {
   }
 
   @Override
-  public void fetchSingleSeriesByTimestamp(
-      Node header, long readerId, long time, AsyncMethodCallback<ByteBuffer> resultHandler) {
+  public void queryMultSeries(
+      MultSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler) {
+    new Thread(
+            () -> {
+              try {
+                new DataAsyncService(dataGroupMemberMap.get(request.getHeader()))
+                    .queryMultSeries(request, resultHandler);
+              } catch (TException e) {
+                e.printStackTrace();
+              }
+            })
+        .start();
+  }
+
+  @Override
+  public void fetchSingleSeriesByTimestamps(
+      Node header,
+      long readerId,
+      List<Long> timestamps,
+      AsyncMethodCallback<ByteBuffer> resultHandler) {
     new Thread(
             () ->
                 new DataAsyncService(dataGroupMemberMap.get(header))
-                    .fetchSingleSeriesByTimestamp(header, readerId, time, resultHandler))
+                    .fetchSingleSeriesByTimestamps(header, readerId, timestamps, resultHandler))
         .start();
   }
 
@@ -170,7 +208,7 @@ public class TestAsyncDataClient extends AsyncDataClient {
 
   @Override
   public void appendEntry(AppendEntryRequest request, AsyncMethodCallback<Long> resultHandler) {
-    new Thread(() -> resultHandler.onComplete(MemberTest.dummyResponse.get())).start();
+    new Thread(() -> resultHandler.onComplete(BaseMember.dummyResponse.get())).start();
   }
 
   @Override
