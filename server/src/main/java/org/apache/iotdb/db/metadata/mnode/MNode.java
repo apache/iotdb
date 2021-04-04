@@ -50,14 +50,14 @@ public class MNode implements Serializable {
   /** from root to this node, only be set when used once for InternalMNode */
   protected String fullPath;
 
-//  /** whether be loaded from file */
-//  protected boolean isLoaded;
-//
-//  /** whether the node has been modified and is different from the content in metafile */
-//  protected boolean isModified;
-//
-//  /** offset in metafile */
-//  protected long position;
+  /** whether be loaded from file */
+  protected boolean isLoaded;
+
+  /** whether the node has been modified and is different from the content in metafile */
+  protected boolean isModified;
+
+  /** offset in metafile */
+  protected long position;
 
   /**
    * use in Measurement Node so it's protected suppress warnings reason: volatile for double
@@ -313,27 +313,27 @@ public class MNode implements Serializable {
     this.addChild(newChildNode.getName(), newChildNode);
   }
 
-//  public boolean isLoaded() {
-//    return isLoaded;
-//  }
-//
-//  public void setLoaded(boolean loaded) {
-//    isLoaded = loaded;
-//  }
-//
-//  public boolean isModified() {
-//    return isModified;
-//  }
-//
-//  public void setModified(boolean modified) {
-//    isModified = modified;
-//  }
-//
-//  public long getPosition() {
-//    return position;
-//  }
-//
-//  public void setPosition(long position) {
-//    this.position = position;
-//  }
+  public boolean isLoaded() {
+    return isLoaded;
+  }
+
+  public void setLoaded(boolean loaded) {
+    isLoaded = loaded;
+  }
+
+  public boolean isModified() {
+    return isModified;
+  }
+
+  public void setModified(boolean modified) {
+    isModified = modified;
+  }
+
+  public long getPosition() {
+    return position;
+  }
+
+  public void setPosition(long position) {
+    this.position = position;
+  }
 }
