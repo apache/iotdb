@@ -19,11 +19,8 @@
 # for package
 from .IoTDBConstants import TSDataType
 
-# for debug
-# from IoTDBConstants import TSDataType
 
 class Field(object):
-
     def __init__(self, data_type):
         """
         :param data_type: TSDataType
@@ -53,7 +50,9 @@ class Field(object):
             elif output.get_data_type() == TSDataType.TEXT:
                 output.set_binary_value(field.get_binary_value())
             else:
-                raise Exception("unsupported data type {}".format(output.get_data_type()))
+                raise Exception(
+                    "unsupported data type {}".format(output.get_data_type())
+                )
         return output
 
     def get_data_type(self):
@@ -124,7 +123,7 @@ class Field(object):
         elif self.__data_type == TSDataType.DOUBLE:
             return str(self.__double_value)
         elif self.__data_type == TSDataType.TEXT:
-            return self.__binary_value.decode('utf-8')
+            return self.__binary_value.decode("utf-8")
         else:
             raise Exception("unsupported data type {}".format(self.__data_type))
 
@@ -176,4 +175,3 @@ class Field(object):
         else:
             raise Exception("unsupported data type {}".format(data_type))
         return field
-

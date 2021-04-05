@@ -94,3 +94,6 @@ node_identifier
 *.cmake
 Makefile
 **/CMakeFiles/
+
+# Exclude copied license
+/client-py/LICENSE
