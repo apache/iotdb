@@ -51,6 +51,7 @@ import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertSinglePointPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryFileManager;
@@ -532,6 +533,34 @@ public class StorageEngine implements IService {
     // TODO monitor: update statistics
     try {
       storageGroupProcessor.insert(insertRowsOfOneDevicePlan);
+    } catch (WriteProcessException e) {
+      throw new StorageEngineException(e);
+    }
+  }
+
+  /**
+   * insert an InsertSinglePointPlan to a storage group.
+   *
+   * @param insertSinglePointPlan physical plan of insertion
+   */
+  public void insertSinglePoint(InsertSinglePointPlan insertSinglePointPlan)
+      throws StorageEngineException {
+
+    StorageGroupProcessor storageGroupProcessor = getProcessor(insertSinglePointPlan.getDeviceId());
+    System.out.println("执行到了  Storge Engine");
+    try {
+      storageGroupProcessor.InsertSinglePoint(insertSinglePointPlan);
+      if (config.isEnableStatMonitor()) {
+        try {
+          StorageGroupMNode storageGroupMNode =
+              IoTDB.metaManager.getStorageGroupNodeByPath(insertSinglePointPlan.getDeviceId());
+          //          updateMonitorStatistics(
+          //              processorMap.get(storageGroupMNode.getPartialPath()),
+          // insertSinglePointPlan);
+        } catch (MetadataException e) {
+          logger.error("failed to record status", e);
+        }
+      }
     } catch (WriteProcessException e) {
       throw new StorageEngineException(e);
     }

@@ -88,6 +88,7 @@ public abstract class Operator {
     NULL,
     TABLESCAN,
     INSERT,
+    INSERTSINGLEPOINT,
     BATCHINSERT,
     DELETE,
     BASIC_FUNC,

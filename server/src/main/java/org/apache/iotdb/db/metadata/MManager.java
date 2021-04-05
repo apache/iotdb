@@ -43,6 +43,7 @@ import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertSinglePointPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
@@ -1918,6 +1919,95 @@ public class MManager {
     return deviceMNode;
   }
 
+  /** get schema for device. Attention!!! Only support insertPlan */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  public MNode getSeriesSchemasAndReadLockDevice(InsertSinglePointPlan plan) throws MetadataException {
+
+    PartialPath deviceId = plan.getDeviceId();
+    String measurement = plan.getMeasurement();
+    MeasurementMNode measurementMNode = plan.getMeasurementMNode();
+
+    // 1. get device node
+    MNode deviceMNode = getDeviceNodeWithAutoCreate(deviceId);
+
+    // 2. get schema of each measurement
+    // if do not has measurement
+//    MeasurementMNode measurementMNode;
+    TSDataType dataType;
+    try {
+      MNode child = getMNode(deviceMNode, measurement);
+      if (child instanceof MeasurementMNode) {
+        measurementMNode = (MeasurementMNode) child;
+      } else if (child instanceof StorageGroupMNode) {
+        throw new PathAlreadyExistException(deviceId + PATH_SEPARATOR + measurement);
+      } else {
+        if (!config.isAutoCreateSchemaEnabled()) {
+          throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurement);
+        } else {
+//            // child is null or child is type of MNode
+//            dataType = getTypeInLoc(plan);
+//            // create it, may concurrent created by multiple thread
+//            internalCreateTimeseries(deviceId.concatNode(measurement), dataType);
+//            measurementMNode = (MeasurementMNode) deviceMNode.getChild(measurement);
+        }
+      }
+
+      // check type is match
+      TSDataType insertDataType = null;
+      if (plan instanceof InsertSinglePointPlan) {
+        if (!((InsertSinglePointPlan) plan).isNeedInferType()) {
+          // only when InsertRowPlan's values is object[], we should check type
+          insertDataType = getType(plan);
+        } else {
+          insertDataType = measurementMNode.getSchema().getType();
+        }
+      }
+//        } else if (plan instanceof InsertTabletPlan) {
+//          insertDataType = getType(plan);
+//        }
+
+      if (measurementMNode.getSchema().getType() != insertDataType) {
+        logger.warn(
+            "DataType mismatch, Insert measurement {} type {}, metadata tree type {}",
+//              measurementList[i],
+            insertDataType,
+            measurementMNode.getSchema().getType());
+        DataTypeMismatchException mismatchException =
+            new DataTypeMismatchException(
+                measurement, insertDataType, measurementMNode.getSchema().getType());
+        if (!config.isEnablePartialInsert()) {
+          throw mismatchException;
+        } else {
+          // mark failed measurement
+          plan.markFailedMeasurementInsertion(mismatchException);
+//            continue;
+        }
+      }
+
+      measurementMNode = measurementMNode;
+
+      // set measurementName instead of alias
+      measurement = measurementMNode.getName();
+//
+    } catch (MetadataException e) {
+      logger.warn(
+          "meet error when check {}.{}, message: {}",
+          deviceId,
+//            measurementList[i],
+          e.getMessage());
+      if (config.isEnablePartialInsert()) {
+        // mark failed measurement
+//          plan.markFailedMeasurementInsertion(i, e);
+      } else {
+        throw e;
+      }
+    }
+
+    plan.setMeasurementMNode(measurementMNode);
+    return deviceMNode;
+  }
+
+
   public MNode getMNode(MNode deviceMNode, String measurementName) {
     return deviceMNode.getChild(measurementName);
   }
@@ -1942,6 +2032,22 @@ public class MManager {
           TypeInferenceUtils.getPredictedDataType(tPlan.getValues()[loc], tPlan.isNeedInferType());
     } else if (plan instanceof InsertTabletPlan) {
       dataType = (plan).getDataTypes()[loc];
+    } else {
+      throw new MetadataException(
+          String.format(
+              "Only support insert and insertTablet, plan is [%s]", plan.getOperatorType()));
+    }
+    return dataType;
+  }
+
+  private TSDataType getType(InsertSinglePointPlan plan) throws MetadataException {
+    TSDataType dataType;
+    if (plan instanceof InsertSinglePointPlan) {
+      InsertSinglePointPlan tPlan = (InsertSinglePointPlan) plan;
+      dataType =
+          TypeInferenceUtils.getPredictedDataType(tPlan.getValue(), tPlan.isNeedInferType());
+//    } else if (plan instanceof InsertTabletPlan) {
+//      dataType = (plan).getDataTypes()[loc];
     } else {
       throw new MetadataException(
           String.format(

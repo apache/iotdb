@@ -24,6 +24,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertSinglePointPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -79,6 +80,8 @@ public interface IMemTable {
   long getTotalPointsNum();
 
   void insert(InsertRowPlan insertRowPlan);
+
+  void InsertSinglePoint(InsertSinglePointPlan insertSinglePointPlan);
 
   /** [start, end) */
   void insertTablet(InsertTabletPlan insertTabletPlan, int start, int end)

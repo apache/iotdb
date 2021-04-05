@@ -26,6 +26,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertSinglePointPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.db.utils.MemUtils;
@@ -135,6 +136,28 @@ public abstract class AbstractMemTable implements IMemTable {
 
     totalPointsNum +=
         insertRowPlan.getMeasurements().length - insertRowPlan.getFailedMeasurementNumber();
+  }
+
+  @Override
+  public void InsertSinglePoint(InsertSinglePointPlan insertSinglePointPlan) {
+    //    updatePlanIndexes(insertSinglePointPlan.getIndex());
+    Object value = insertSinglePointPlan.getValue();
+
+    MeasurementMNode measurementMNode = insertSinglePointPlan.getMeasurementMNode();
+    String measurement = insertSinglePointPlan.getMeasurement();
+
+    memSize += 40;
+    //        MemUtils.getRecordSize(measurementMNode.getSchema().getType(), value,
+    // disableMemControl);
+    System.out.println("执行到了 AbstractMenTable" + insertSinglePointPlan.toString());
+
+    write(
+        insertSinglePointPlan.getDeviceId().getFullPath(),
+        measurement,
+        measurementMNode.getSchema(),
+        insertSinglePointPlan.getTime(),
+        value);
+    totalPointsNum += 1;
   }
 
   @Override

@@ -66,6 +66,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertSinglePointPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryIndexPlan;
@@ -235,6 +236,10 @@ public class PlanExecutor implements IPlanExecutor {
         return true;
       case INSERT:
         insert((InsertRowPlan) plan);
+        return true;
+      case INSERTSINGLEPOINT:
+        System.out.println("执行到了 plan executor ");
+        insertSinglePoint((InsertSinglePointPlan) plan);
         return true;
       case BATCH_INSERT_ONE_DEVICE:
         insert((InsertRowsOfOneDevicePlan) plan);
@@ -1120,6 +1125,10 @@ public class PlanExecutor implements IPlanExecutor {
     return IoTDB.metaManager.getSeriesSchemasAndReadLockDevice(insertPlan);
   }
 
+  protected MNode getSeriesSchemas(InsertSinglePointPlan insertSinglePointPlan) throws MetadataException {
+    return IoTDB.metaManager.getSeriesSchemasAndReadLockDevice(insertSinglePointPlan);
+  }
+
   private void checkFailedMeasurments(InsertPlan plan)
       throws PathNotExistException, StorageEngineException {
     // check if all path not exist exceptions
@@ -1219,6 +1228,35 @@ public class PlanExecutor implements IPlanExecutor {
       }
       if (!plan.getResults().isEmpty()) {
         throw new BatchProcessException(plan.getFailingStatus());
+      }
+    }
+  }
+
+  @Override
+  public void insertSinglePoint(InsertSinglePointPlan insertSinglePointPlan)
+      throws QueryProcessException {
+    try {
+      //      insertSinglePointPlan.setMeasurementMNode(
+      //          insertSinglePointPlan.getMeasurement());
+      //      // check whether types are match
+      getSeriesSchemas(insertSinglePointPlan);
+      insertSinglePointPlan.transferType();
+      System.out.println("执行到了  plan executor  insertSinglePoint ");
+      System.out.println("打印对象中的值" + insertSinglePointPlan.getDeviceId() + insertSinglePointPlan.getMeasurement() + insertSinglePointPlan.getValue());
+      System.out.println(insertSinglePointPlan.toString());
+      StorageEngine.getInstance().insertSinglePoint(insertSinglePointPlan);
+      //      if (insertSinglePointPlan.getFailedMeasurement() != null) {
+      //        checkFailedMeasurments(insertSinglePointPlan);
+      //      }
+    } catch (StorageEngineException e) {
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
+        StatMonitor.getInstance().updateFailedStatValue();
+      }
+      throw new QueryProcessException(e);
+    } catch (Exception e) {
+      // update failed statistics
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
+        StatMonitor.getInstance().updateFailedStatValue();
       }
     }
   }

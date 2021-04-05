@@ -56,6 +56,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertSinglePointPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
@@ -106,8 +107,10 @@ import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertSinglePointReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertStringSinglePointReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
@@ -1205,6 +1208,102 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return queryDataSet;
   }
 
+  @Override
+  public TSStatus insertSinglePoint(TSInsertSinglePointReq req) {
+    if (!checkLogin(req.getSessionId())) {
+      return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
+    }
+
+    if (AUDIT_LOGGER.isDebugEnabled()) {
+      AUDIT_LOGGER.debug(
+          "Session {} insertSingPoint, first device {}, first time {}",
+          currSessionId.get(),
+          req.deviceId,
+          req.getTimestamp());
+    }
+    boolean allCheckSuccess = true;
+    //    InsertSingPointPlan insertSingPointPlan = new InsertSingPointPlan();
+    InsertSinglePointPlan insertSinglePointPlan = null;
+    try {
+      insertSinglePointPlan =
+          new InsertSinglePointPlan(
+              new PartialPath(req.getDeviceId()),
+              req.getTimestamp(),
+              req.getMeasurement(),
+              ByteBuffer.wrap(req.getValue()));
+      TSStatus status = checkAuthority(insertSinglePointPlan, req.getSessionId());
+
+      System.out.println("接收到了数据  初始化plan之后" + insertSinglePointPlan.toString());
+      //        if (status != null) {
+      //          insertSingPointPlan.getResult().put(i, status);
+      //          allCheckSuccess = false;
+      //        }
+      //        insertRowsPlan.addOneInsertRowPlan(plan, i);
+    } catch (Exception e) {
+      allCheckSuccess = false;
+      //        insertRowsPlan
+      //            .getResults()
+      //            .put(
+      //                i,
+      //                onNPEOrUnexpectedException(
+      //                    e, "inserting records", TSStatusCode.INTERNAL_SERVER_ERROR));
+    }
+
+    TSStatus tsStatus = executeNonQueryPlan(insertSinglePointPlan);
+
+    //    return judgeFinalTsStatus(
+    //        allCheckSuccess, tsStatus, status, req.deviceId);
+    return tsStatus;
+  }
+
+  @Override
+  public TSStatus insertStringSinglePoint(TSInsertStringSinglePointReq req) {
+    if (!checkLogin(req.getSessionId())) {
+      return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
+    }
+
+    if (AUDIT_LOGGER.isDebugEnabled()) {
+      AUDIT_LOGGER.debug(
+          "Session {} insertSingPoint, first device {}, first time {}",
+          currSessionId.get(),
+          req.deviceId,
+          req.getTimestamp());
+    }
+    boolean allCheckSuccess = true;
+    //    InsertSingPointPlan insertSingPointPlan = new InsertSingPointPlan();
+    InsertSinglePointPlan insertSinglePointPlan = null;
+    try {
+      insertSinglePointPlan =
+          new InsertSinglePointPlan(
+              new PartialPath(req.getDeviceId()),
+              req.getTimestamp(),
+              req.getMeasurement(),
+              req.getValue());
+      TSStatus status = checkAuthority(insertSinglePointPlan, req.getSessionId());
+
+      System.out.println("接收到了数据  初始化plan之后" + insertSinglePointPlan.toString());
+      //        if (status != null) {
+      //          insertSingPointPlan.getResult().put(i, status);
+      //          allCheckSuccess = false;
+      //        }
+      //        insertRowsPlan.addOneInsertRowPlan(plan, i);
+    } catch (Exception e) {
+      allCheckSuccess = false;
+      //        insertRowsPlan
+      //            .getResults()
+      //            .put(
+      //                i,
+      //                onNPEOrUnexpectedException(
+      //                    e, "inserting records", TSStatusCode.INTERNAL_SERVER_ERROR));
+    }
+
+    TSStatus tsStatus = executeNonQueryPlan(insertSinglePointPlan);
+
+    //    return judgeFinalTsStatus(
+    //        allCheckSuccess, tsStatus, status, req.deviceId);
+    return tsStatus;
+  }
+
   protected QueryContext genQueryContext(long queryId, boolean debug) {
     return new QueryContext(queryId, debug);
   }
@@ -1320,6 +1419,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     properties.setTimestampPrecision(
         IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision());
     return properties;
+  }
+
+  @Override
+  public TSStatus testInsertSinglePoint(TSInsertSinglePointReq req) throws TException {
+    return null;
+  }
+
+  @Override
+  public TSStatus testInsertStringSinglePoint(TSInsertStringSinglePointReq req) throws TException {
+    return null;
   }
 
   @Override
