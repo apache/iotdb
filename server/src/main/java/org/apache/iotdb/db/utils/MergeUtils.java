@@ -32,11 +32,9 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.reader.BatchDataIterator;
-import org.apache.iotdb.tsfile.read.reader.IChunkReader;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
+import org.apache.iotdb.tsfile.read.reader.chunk.VectorChunkReader;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.chunk.VectorChunkWriterImpl;
@@ -60,6 +58,7 @@ public class MergeUtils {
     // util class
   }
 
+  // TODO pass datatype of value here if null
   public static void writeTVPair(long time, TimeValuePair timeValuePair, IChunkWriter chunkWriter) {
     if (timeValuePair == null) {
       switch (chunkWriter.getDataType()) {
@@ -81,7 +80,7 @@ public class MergeUtils {
           throw new UnsupportedOperationException("Unknown data type " + chunkWriter.getDataType());
       }
     } else {
-      switch (chunkWriter.getDataType()) {
+      switch (timeValuePair.getValue().getDataType()) {
         case TEXT:
           chunkWriter.write(time, timeValuePair.getValue().getBinary(), false);
           break;
@@ -139,80 +138,73 @@ public class MergeUtils {
     } else {
       // write by VectorChunkWriterImpl
       VectorChunkWriterImpl vectorChunkWriter = (VectorChunkWriterImpl) iChunkWriter;
-      // prepare for value chunk readers
-      List<IChunkReader> chunkReaders = new ArrayList<>();
-      // prepare for value point readers
-      List<IPointReader> pointReaders = new ArrayList<>();
-      for (Chunk valueChunk : chunk) {
-        ChunkReader sensorChunkReader = new ChunkReaderByTimestamp(valueChunk);
-        chunkReaders.add(sensorChunkReader);
-        if (sensorChunkReader.hasNextSatisfiedPage()) {
-          pointReaders.add(new BatchDataIterator(sensorChunkReader.nextPageData()));
-        } else {
-          pointReaders.add(null);
+      VectorChunkReader vectorChunkReader =
+          new VectorChunkReader(chunk.get(0), chunk.subList(0, chunk.size()), null);
+      while (vectorChunkReader.hasNextSatisfiedPage()) {
+        BatchData batchData = vectorChunkReader.nextPageData();
+        for (int i = 0; i < batchData.length(); i++) {
+          writeBatchPoint(batchData, i, vectorChunkWriter);
         }
-      }
-      // read time chunk by loop, and for each timestamp, we read value chunk by loop
-      while (timeChunkReader.hasNextSatisfiedPage()) {
-        IPointReader iPointReader = new BatchDataIterator(timeChunkReader.nextPageData());
-        while (iPointReader.hasNextTimeValuePair()) {
-          TimeValuePair timeValuePair = iPointReader.nextTimeValuePair();
-          for (int i = 0; i < chunkReaders.size(); i++) {
-            IPointReader pointReader = pointReaders.get(i);
-            if (pointReader != null) {
-              TimeValuePair currentValueTimeValuePair = pointReader.currentTimeValuePair();
-              // if current time of time chunk == current time of value chunk, the time of
-              // value chunk is valid, else we add null value
-              if (timeValuePair.getTimestamp() == currentValueTimeValuePair.getTimestamp()) {
-                writeTVPair(timeValuePair.getTimestamp(), timeValuePair, vectorChunkWriter);
-                if (pointReader.hasNextTimeValuePair()) {
-                  pointReader.nextTimeValuePair();
-                } else {
-                  // cannot get next point reader, we have to load new point reader, if not
-                  // exists, put null means that there is not any point any more
-                  IChunkReader sensorChunkReader = chunkReaders.get(i);
-                  if (sensorChunkReader.hasNextSatisfiedPage()) {
-                    pointReader = new BatchDataIterator(sensorChunkReader.nextPageData());
-                  } else {
-                    pointReader = null;
-                  }
-                  pointReaders.set(i, pointReader);
-                }
-              } else {
-                writeTVPair(timeValuePair.getTimestamp(), null, vectorChunkWriter);
-              }
-              vectorChunkWriter.write(timeValuePair.getTimestamp());
-              ptWritten++;
-            }
-          }
-        }
+        ptWritten += batchData.length();
       }
     }
     return ptWritten;
   }
 
-  public static void writeBatchPoint(BatchData batchData, int i, ChunkWriterImpl chunkWriter) {
-    switch (chunkWriter.getDataType()) {
-      case TEXT:
-        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getBinaryByIndex(i), false);
-        break;
-      case DOUBLE:
-        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), false);
-        break;
-      case BOOLEAN:
-        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getBooleanByIndex(i), false);
-        break;
-      case INT64:
-        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getLongByIndex(i), false);
-        break;
-      case INT32:
-        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getIntByIndex(i), false);
-        break;
-      case FLOAT:
-        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getFloatByIndex(i), false);
-        break;
-      default:
-        throw new UnsupportedOperationException("Unknown data type " + chunkWriter.getDataType());
+  public static void writeBatchPoint(BatchData batchData, int i, IChunkWriter chunkWriter) {
+    if (chunkWriter instanceof ChunkWriterImpl) {
+      switch (chunkWriter.getDataType()) {
+        case TEXT:
+          chunkWriter.write(batchData.getTimeByIndex(i), batchData.getBinaryByIndex(i), false);
+          break;
+        case DOUBLE:
+          chunkWriter.write(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), false);
+          break;
+        case BOOLEAN:
+          chunkWriter.write(batchData.getTimeByIndex(i), batchData.getBooleanByIndex(i), false);
+          break;
+        case INT64:
+          chunkWriter.write(batchData.getTimeByIndex(i), batchData.getLongByIndex(i), false);
+          break;
+        case INT32:
+          chunkWriter.write(batchData.getTimeByIndex(i), batchData.getIntByIndex(i), false);
+          break;
+        case FLOAT:
+          chunkWriter.write(batchData.getTimeByIndex(i), batchData.getFloatByIndex(i), false);
+          break;
+        default:
+          throw new UnsupportedOperationException("Unknown data type " + chunkWriter.getDataType());
+      }
+    } else {
+      long time = batchData.getTimeByIndex(i);
+      TsPrimitiveType[] values = batchData.getVectorByIndex(i);
+      for (TsPrimitiveType value : values) {
+        // TODO if value is null
+        switch (value.getDataType()) {
+          case TEXT:
+            chunkWriter.write(time, value.getBinary(), false);
+            break;
+          case DOUBLE:
+            chunkWriter.write(time, value.getDouble(), false);
+            break;
+          case BOOLEAN:
+            chunkWriter.write(time, value.getBoolean(), false);
+            break;
+          case INT64:
+            chunkWriter.write(time, value.getLong(), false);
+            break;
+          case INT32:
+            chunkWriter.write(time, value.getInt(), false);
+            break;
+          case FLOAT:
+            chunkWriter.write(time, value.getFloat(), false);
+            break;
+          default:
+            throw new UnsupportedOperationException(
+                "Unknown data type " + chunkWriter.getDataType());
+        }
+      }
+      chunkWriter.write(time);
     }
   }
 

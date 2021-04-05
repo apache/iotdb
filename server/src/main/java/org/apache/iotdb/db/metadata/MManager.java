@@ -1136,8 +1136,8 @@ public class MManager {
   public IMeasurementSchema getSeriesSchema(PartialPath device, String measurement)
       throws MetadataException {
     MNode deviceMNode = getDeviceNode(device);
-    MeasurementMNode measurementMNode = (MeasurementMNode) deviceMNode.getChild(measurement);
-    return measurementMNode.getSchema();
+    MNode measurementMNode = (MNode) deviceMNode.getChild(measurement);
+    return ((MeasurementMNode) measurementMNode).getSchema();
   }
 
   /**
@@ -2291,7 +2291,7 @@ public class MManager {
   }
 
   /** create aligned timeseries ignoring PathAlreadyExistException */
-  private void internalAlignedCreateTimeseries(
+  public void internalAlignedCreateTimeseries(
       PartialPath devicePath, List<String> measurements, List<TSDataType> dataTypes)
       throws MetadataException {
     List<TSEncoding> encodings = new ArrayList<>();

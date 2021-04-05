@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.merge.task;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.TsFileManagement;
+import org.apache.iotdb.db.engine.compaction.utils.MeasurementChunkMetadataListMapIterator;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
@@ -31,6 +32,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.db.utils.MergeUtils.MetaListEntry;
+import org.apache.iotdb.tsfile.exception.TsFileRuntimeException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.VectorChunkMetadata;
@@ -38,8 +40,10 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
+import org.apache.iotdb.tsfile.read.reader.chunk.VectorChunkReader;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -244,9 +248,9 @@ public class MergeMultiChunkTask {
                 fileSequenceReader,
                 (tsFileSequenceReader -> {
                   try {
-                    return tsFileSequenceReader.getMeasurementChunkMetadataListMapIterator(
-                        currMeringDevice);
-                  } catch (IOException e) {
+                    return new MeasurementChunkMetadataListMapIterator(
+                        tsFileSequenceReader, currMeringDevice);
+                  } catch (IOException | TsFileRuntimeException e) {
                     logger.error(
                         "unseq compaction task {}, getMeasurementChunkMetadataListMapIterator meets error. iterator create failed.",
                         taskName,
@@ -610,7 +614,12 @@ public class MergeMultiChunkTask {
       int pathIdx)
       throws IOException {
     int cnt = 0;
-    ChunkReader chunkReader = new ChunkReader(chunk.get(0), null);
+    IChunkReader chunkReader;
+    if (chunkWriter instanceof ChunkWriterImpl) {
+      chunkReader = new ChunkReader(chunk.get(0), null);
+    } else {
+      chunkReader = new VectorChunkReader(chunk.get(0), chunk.subList(1, chunk.size()), null);
+    }
     while (chunkReader.hasNextSatisfiedPage()) {
       BatchData batchData = chunkReader.nextPageData();
       cnt += mergeWriteBatch(batchData, chunkWriter, unseqReader, pathIdx);
@@ -681,11 +690,7 @@ public class MergeMultiChunkTask {
       }
       // unseq point.time > sequence point.time, write seq point
       if (!overwriteSeqPoint) {
-        if (chunkWriter instanceof ChunkWriterImpl) {
-          writeBatchPoint(batchData, i, (ChunkWriterImpl) chunkWriter);
-        } else {
-
-        }
+        writeBatchPoint(batchData, i, chunkWriter);
         cnt++;
       }
     }
@@ -761,8 +766,12 @@ public class MergeMultiChunkTask {
               chunks.add(reader.readMemChunk((ChunkMetadata) currMeta));
             } else {
               VectorChunkMetadata vectorChunkMetadata = (VectorChunkMetadata) currMeta;
-              chunks.add(vectorChunkMetadata.getTimeChunk());
-              chunks.addAll(vectorChunkMetadata.getValueChunkList());
+              chunks.add(
+                  reader.readMemChunk((ChunkMetadata) vectorChunkMetadata.getTimeChunkMetadata()));
+              for (IChunkMetadata valueChunkMetadata :
+                  vectorChunkMetadata.getValueChunkMetadataList()) {
+                chunks.add(reader.readMemChunk((ChunkMetadata) valueChunkMetadata));
+              }
             }
           }
           ptWrittens[pathIdx] =

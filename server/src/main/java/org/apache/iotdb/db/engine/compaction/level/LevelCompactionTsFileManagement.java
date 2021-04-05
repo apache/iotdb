@@ -553,7 +553,8 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
 
   @Override
   protected void merge(long timePartition) {
-    merge(forkedSequenceTsFileResources, true, timePartition, seqLevelNum, seqFileNumInEachLevel);
+    //    merge(forkedSequenceTsFileResources, true, timePartition, seqLevelNum,
+    // seqFileNumInEachLevel);
     if (enableUnseqCompaction && unseqLevelNum <= 1 && forkedUnSequenceTsFileResources.size() > 0) {
       merge(
           isForceFullMerge,

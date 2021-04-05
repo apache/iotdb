@@ -32,12 +32,15 @@ import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.VectorChunkMetadata;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.reader.BatchDataIterator;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
+import org.apache.iotdb.tsfile.read.reader.chunk.VectorChunkReader;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.chunk.VectorChunkWriterImpl;
@@ -113,10 +116,13 @@ public class CompactionUtils {
           // read by vector chunkMetadata, and merge by list
           VectorChunkMetadata vectorChunkMetadata = (VectorChunkMetadata) iChunkMetadata;
           IChunkMetadata timeChunkMetadata = vectorChunkMetadata.getTimeChunkMetadata();
-          Chunk timeChunk = vectorChunkMetadata.getTimeChunk();
+          Chunk timeChunk = reader.readMemChunk((ChunkMetadata) timeChunkMetadata);
           List<IChunkMetadata> valueChunkMetadataList =
               vectorChunkMetadata.getValueChunkMetadataList();
-          List<Chunk> valueChunkList = vectorChunkMetadata.getValueChunkList();
+          List<Chunk> valueChunkList = new ArrayList<>();
+          for (IChunkMetadata valueChunkMetadata : valueChunkMetadataList) {
+            valueChunkList.add(reader.readMemChunk((ChunkMetadata) valueChunkMetadata));
+          }
           if (newChunkMetadataList.size() == 0) {
             // first chunk, we do not merge
             newChunkMetadataList.add((ChunkMetadata) timeChunkMetadata);
@@ -127,13 +133,13 @@ public class CompactionUtils {
             }
           } else {
             // more chunk, we have to merge them with previous chunk
-            newChunkMetadataList.get(0).mergeChunkMetadata((ChunkMetadata) timeChunkMetadata);
             newChunkList.get(0).mergeChunk(timeChunk);
+            newChunkMetadataList.get(0).mergeChunkMetadata((ChunkMetadata) timeChunkMetadata);
             for (int i = 0; i < valueChunkMetadataList.size(); i++) {
+              newChunkList.get(i + 1).mergeChunk(valueChunkList.get(i));
               newChunkMetadataList
                   .get(i + 1)
                   .mergeChunkMetadata((ChunkMetadata) valueChunkMetadataList.get(i));
-              newChunkList.get(i + 1).mergeChunk(valueChunkList.get(i));
             }
           }
         }
@@ -179,53 +185,28 @@ public class CompactionUtils {
           // read vectorChunkMetadata by loop
           for (IChunkMetadata iChunkMetadata : iChunkMetadataList) {
             VectorChunkMetadata vectorChunkMetadata = (VectorChunkMetadata) iChunkMetadata;
-            IChunkReader chunkReader =
-                new ChunkReaderByTimestamp(vectorChunkMetadata.getTimeChunk());
-            // prepare for value chunk readers
-            List<IChunkReader> chunkReaders = new ArrayList<>();
-            // prepare for value point readers
-            List<IPointReader> pointReaders = new ArrayList<>();
-            for (Chunk chunk : vectorChunkMetadata.getValueChunkList()) {
-              IChunkReader sensorChunkReader = new ChunkReaderByTimestamp(chunk);
-              chunkReaders.add(sensorChunkReader);
-              if (sensorChunkReader.hasNextSatisfiedPage()) {
-                pointReaders.add(new BatchDataIterator(chunkReader.nextPageData()));
-              } else {
-                pointReaders.add(null);
-              }
+            Chunk timeChunk =
+                reader.readMemChunk((ChunkMetadata) vectorChunkMetadata.getTimeChunkMetadata());
+            // prepare for value chunks
+            List<Chunk> valueChunks = new ArrayList<>();
+            for (IChunkMetadata valueChunkMetadata :
+                vectorChunkMetadata.getValueChunkMetadataList()) {
+              valueChunks.add(reader.readMemChunk((ChunkMetadata) valueChunkMetadata));
             }
-            // read time chunk by loop, and for each timestamp, we read value chunk by loop
-            while (chunkReader.hasNextSatisfiedPage()) {
-              IPointReader iPointReader = new BatchDataIterator(chunkReader.nextPageData());
-              while (iPointReader.hasNextTimeValuePair()) {
-                TimeValuePair timeValuePair = iPointReader.nextTimeValuePair();
+            VectorChunkReader vectorChunkReader =
+                new VectorChunkReader(timeChunk, valueChunks, null);
+            while (vectorChunkReader.hasNextSatisfiedPage()) {
+              BatchData batchData = vectorChunkReader.nextPageData();
+              for (int i = 0; i < batchData.length(); i++) {
+                long time = batchData.getTimeByIndex(i);
+                TsPrimitiveType[] values = batchData.getVectorByIndex(i);
                 List<TimeValuePair> timeValuePairList =
-                    timeValuePairMap.computeIfAbsent(
-                        timeValuePair.getTimestamp(), k -> new ArrayList<>());
-                for (int i = 0; i < chunkReaders.size(); i++) {
-                  IPointReader pointReader = pointReaders.get(i);
-                  if (pointReader != null) {
-                    TimeValuePair currentValueTimeValuePair = pointReader.currentTimeValuePair();
-                    // if current time of time chunk == current time of value chunk, the time of
-                    // value chunk is valid, else we add null value
-                    if (timeValuePair.getTimestamp() == currentValueTimeValuePair.getTimestamp()) {
-                      timeValuePairList.add(currentValueTimeValuePair);
-                      if (pointReader.hasNextTimeValuePair()) {
-                        pointReader.nextTimeValuePair();
-                      } else {
-                        // cannot get next point reader, we have to load new point reader, if not
-                        // exists, put null means that there is not any point any more
-                        IChunkReader sensorChunkReader = chunkReaders.get(i);
-                        if (sensorChunkReader.hasNextSatisfiedPage()) {
-                          pointReader = new BatchDataIterator(sensorChunkReader.nextPageData());
-                        } else {
-                          pointReader = null;
-                        }
-                        pointReaders.set(i, pointReader);
-                      }
-                    } else {
-                      timeValuePairList.add(null);
-                    }
+                    timeValuePairMap.computeIfAbsent(time, k -> new ArrayList<>());
+                for (TsPrimitiveType value : values) {
+                  if (value != null) {
+                    timeValuePairList.add(new TimeValuePair(time, value));
+                  } else {
+                    timeValuePairList.add(null);
                   }
                 }
               }
@@ -399,7 +380,7 @@ public class CompactionUtils {
           throw new IOException();
         }
         Iterator<LinkedHashMap<IMeasurementSchema, List<IChunkMetadata>>> iterator =
-            reader.getMeasurementChunkMetadataListMapIterator(device);
+            new MeasurementChunkMetadataListMapIterator(reader, device);
         chunkMetadataListIteratorCache.put(reader, iterator);
         chunkMetadataListCacheForMerge.put(reader, new LinkedHashMap<>());
       }
@@ -480,8 +461,7 @@ public class CompactionUtils {
                     }
                   } else {
                     VectorChunkMetadata vectorChunkMetadata = (VectorChunkMetadata) iChunkMetadata;
-                    if (vectorChunkMetadata.getTimeChunk().getChunkStatistic().getCount()
-                        < MERGE_PAGE_POINT_NUM) {
+                    if (vectorChunkMetadata.getStatistics().getCount() < MERGE_PAGE_POINT_NUM) {
                       isPageEnoughLarge = false;
                       break;
                     }

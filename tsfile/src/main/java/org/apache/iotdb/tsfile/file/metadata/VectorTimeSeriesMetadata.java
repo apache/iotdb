@@ -86,6 +86,21 @@ public class VectorTimeSeriesMetadata implements ITimeSeriesMetadata {
 
   @Override
   public List<IChunkMetadata> getChunkMetadataList() {
-    return null;
+    List<IChunkMetadata> timeChunkMetadata = timeseriesMetadata.getChunkMetadataList();
+    List<List<IChunkMetadata>> valueChunkMetadataList = new ArrayList<>();
+    for (TimeseriesMetadata metadata : valueTimeseriesMetadataList) {
+      valueChunkMetadataList.add(metadata.getChunkMetadataList());
+    }
+
+    List<IChunkMetadata> res = new ArrayList<>();
+
+    for (int i = 0; i < timeChunkMetadata.size(); i++) {
+      List<IChunkMetadata> chunkMetadataList = new ArrayList<>();
+      for (List<IChunkMetadata> chunkMetadata : valueChunkMetadataList) {
+        chunkMetadataList.add(chunkMetadata.get(i));
+      }
+      res.add(new VectorChunkMetadata(timeChunkMetadata.get(i), chunkMetadataList));
+    }
+    return res;
   }
 }

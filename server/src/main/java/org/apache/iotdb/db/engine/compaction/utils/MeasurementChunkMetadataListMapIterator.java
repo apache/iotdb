@@ -87,7 +87,7 @@ public class MeasurementChunkMetadataListMapIterator
 
   @Override
   public boolean hasNext() {
-    return !timeseriesMetadataQueue.isEmpty() && !timeSeriesBufferOffsetRangeQueue.isEmpty();
+    return !timeseriesMetadataQueue.isEmpty() || !timeSeriesBufferOffsetRangeQueue.isEmpty();
   }
 
   @Override
@@ -138,9 +138,9 @@ public class MeasurementChunkMetadataListMapIterator
     List<IChunkMetadata> chunkMetadataList =
         measurementChunkMetadataList.computeIfAbsent(
             IoTDB.metaManager.getSeriesSchema(
-                new PartialPath(device, timeseriesMetadata.getMeasurementId())),
+                new PartialPath(device), timeseriesMetadata.getMeasurementId()),
             m -> new ArrayList<>());
-    chunkMetadataList.addAll(timeseriesMetadata.loadChunkMetadataList());
+    chunkMetadataList.addAll(timeseriesMetadata.getChunkMetadataList());
 
     return 1;
   }
@@ -153,7 +153,7 @@ public class MeasurementChunkMetadataListMapIterator
     VectorMeasurementSchema vectorMeasurementSchema =
         (VectorMeasurementSchema)
             IoTDB.metaManager.getSeriesSchema(
-                new PartialPath(device, timeseriesMetadata.getMeasurementId()));
+                new PartialPath(device), timeseriesMetadata.getMeasurementId());
     String[] measurements = vectorMeasurementSchema.getMeasurements();
     for (String measurement : measurements) {
       valueTimeseriesMetadataList.add(timeseriesMetadataCache.get(measurement));
@@ -164,7 +164,7 @@ public class MeasurementChunkMetadataListMapIterator
     List<IChunkMetadata> chunkMetadataList =
         measurementChunkMetadataList.computeIfAbsent(
             vectorMeasurementSchema, m -> new ArrayList<>());
-    chunkMetadataList.addAll(vectorTimeSeriesMetadata.loadChunkMetadataList());
+    chunkMetadataList.addAll(vectorTimeSeriesMetadata.getChunkMetadataList());
 
     return measurements.length + 1;
   }

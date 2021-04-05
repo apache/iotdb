@@ -1318,7 +1318,7 @@ public class TsFileSequenceReader implements AutoCloseable {
       ByteBuffer nextBuffer = readData(startEndPair.left, startEndPair.right);
       while (nextBuffer.hasRemaining()) {
         TimeseriesMetadata timeseriesMetadata =
-            TimeseriesMetadata.deserializeFrom(nextBuffer, false);
+            TimeseriesMetadata.deserializeFrom(nextBuffer, true);
         timeseriesMetadataQueue.add(timeseriesMetadata);
         timeseriesMetadataCache.put(timeseriesMetadata.getMeasurementId(), timeseriesMetadata);
       }
