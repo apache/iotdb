@@ -269,7 +269,6 @@ public class TsFileProcessor {
     //    tsFileResource.updatePlanIndexes(insertSinglePointPlan.getIndex());
   }
 
-
   /**
    * insert batch data of insertTabletPlan into the workingMemtable The rows to be inserted are in
    * the range [start, end)

@@ -840,8 +840,8 @@ public class StorageGroupProcessor {
       boolean isSequence =
           insertSinglePointPlan.getTime()
               > partitionLatestFlushedTimeForEachDevice
-              .get(timePartitionId)
-              .getOrDefault(insertSinglePointPlan.getDeviceId().getFullPath(), Long.MIN_VALUE);
+                  .get(timePartitionId)
+                  .getOrDefault(insertSinglePointPlan.getDeviceId().getFullPath(), Long.MIN_VALUE);
 
       // is unsequence and user set config to discard out of order data
       if (!isSequence
@@ -1118,8 +1118,8 @@ public class StorageGroupProcessor {
 
     // try to update the latest time of the device of this tsRecord
     if (latestTimeForEachDevice
-        .get(timePartitionId)
-        .getOrDefault(insertSinglePointPlan.getDeviceId().getFullPath(), Long.MIN_VALUE)
+            .get(timePartitionId)
+            .getOrDefault(insertSinglePointPlan.getDeviceId().getFullPath(), Long.MIN_VALUE)
         < insertSinglePointPlan.getTime()) {
       latestTimeForEachDevice
           .get(timePartitionId)

@@ -1125,7 +1125,8 @@ public class PlanExecutor implements IPlanExecutor {
     return IoTDB.metaManager.getSeriesSchemasAndReadLockDevice(insertPlan);
   }
 
-  protected MNode getSeriesSchemas(InsertSinglePointPlan insertSinglePointPlan) throws MetadataException {
+  protected MNode getSeriesSchemas(InsertSinglePointPlan insertSinglePointPlan)
+      throws MetadataException {
     return IoTDB.metaManager.getSeriesSchemasAndReadLockDevice(insertSinglePointPlan);
   }
 
@@ -1242,7 +1243,11 @@ public class PlanExecutor implements IPlanExecutor {
       getSeriesSchemas(insertSinglePointPlan);
       insertSinglePointPlan.transferType();
       System.out.println("执行到了  plan executor  insertSinglePoint ");
-      System.out.println("打印对象中的值" + insertSinglePointPlan.getDeviceId() + insertSinglePointPlan.getMeasurement() + insertSinglePointPlan.getValue());
+      System.out.println(
+          "打印对象中的值"
+              + insertSinglePointPlan.getDeviceId()
+              + insertSinglePointPlan.getMeasurement()
+              + insertSinglePointPlan.getValue());
       System.out.println(insertSinglePointPlan.toString());
       StorageEngine.getInstance().insertSinglePoint(insertSinglePointPlan);
       //      if (insertSinglePointPlan.getFailedMeasurement() != null) {

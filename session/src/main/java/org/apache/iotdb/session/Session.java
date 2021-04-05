@@ -744,12 +744,12 @@ public class Session {
     return request;
   }
 
-
-  public void insertSinglePoint(String deviceId, long time, String measurement,TSDataType type, Object value)
+  public void insertSinglePoint(
+      String deviceId, long time, String measurement, TSDataType type, Object value)
       throws IoTDBConnectionException, StatementExecutionException {
     TSInsertSinglePointReq request =
         //    TSInsertStringRecordReq request =
-        genTSInsertSinglePointReq(deviceId, time, measurement, type,value);
+        genTSInsertSinglePointReq(deviceId, time, measurement, type, value);
     insertSinglePoint(deviceId, request);
   }
 
@@ -771,9 +771,8 @@ public class Session {
     }
   }
 
-
   private TSInsertSinglePointReq genTSInsertSinglePointReq(
-      String deviceId, long time, String measurement,TSDataType type, Object value)
+      String deviceId, long time, String measurement, TSDataType type, Object value)
       throws IoTDBConnectionException {
     TSInsertSinglePointReq request = new TSInsertSinglePointReq();
     request.setDeviceId(deviceId);
@@ -784,9 +783,6 @@ public class Session {
     request.setValue(buffer);
     return request;
   }
-
-
-
 
   /**
    * Insert multiple rows, which can reduce the overhead of network. This method is just like jdbc
@@ -1455,8 +1451,7 @@ public class Session {
     return res;
   }
 
-  private int calculateLength(TSDataType type, Object value)
-      throws IoTDBConnectionException {
+  private int calculateLength(TSDataType type, Object value) throws IoTDBConnectionException {
     int res = 0;
     // types
     res += Byte.BYTES;
@@ -1490,8 +1485,8 @@ public class Session {
   /**
    * put value in buffer
    *
-   //   * @param types types list
-   //   * @param values values list
+   * <p>// * @param types types list // * @param values values list
+   *
    * @param buffer buffer to insert
    * @throws IoTDBConnectionException
    */
@@ -1525,7 +1520,6 @@ public class Session {
 
     buffer.flip();
   }
-
 
   /**
    * put value in buffer
