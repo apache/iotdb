@@ -40,8 +40,9 @@ class Tablet(object):
         :param timestamps: List.
         """
         if len(timestamps) != len(values):
-            print("Input error! len(timestamps) does not equal to len(values)!")
-            # could raise an error here.
+            raise RuntimeError(
+                "Input error! len(timestamps) does not equal to len(values)!"
+            )
 
         if not Tablet.check_sorted(timestamps):
             sorted_zipped = sorted(zip(timestamps, values))
@@ -124,9 +125,7 @@ class Tablet(object):
                     values_tobe_packed.append(len(value_bytes))
                     values_tobe_packed.append(value_bytes)
             else:
-                print("Unsupported data type:" + str(self.__data_types[i]))
-                # could raise an error here.
-                return
+                raise RuntimeError("Unsupported data type:" + str(self.__data_types[i]))
 
         format_str = "".join(format_str_list)
         return struct.pack(format_str, *values_tobe_packed)

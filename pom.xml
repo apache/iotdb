@@ -597,6 +597,10 @@
                             <!-- exclude go.mod and go.sum in iotdb-client-go submodule-->
                             <exclude>**/go.mod</exclude>
                             <exclude>**/go.sum</exclude>
+                            <!-- python -->
+                            <exclude>.pytest_cache/**</exclude>
+                            <exclude>venv/**</exclude>
+                            <exclude>apache_iotdb.egg-info/**</exclude>
                         </excludes>
                     </configuration>
                 </plugin>
