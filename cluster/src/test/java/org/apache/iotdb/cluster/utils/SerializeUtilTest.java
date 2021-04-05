@@ -34,6 +34,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
@@ -177,5 +178,17 @@ public class SerializeUtilTest {
 
     Log parsed = LogParser.getINSTANCE().parse(serialized);
     assertEquals(log, parsed);
+  }
+
+  @Test
+  public void serdesNodeTest() {
+    Node node = new Node("127.0.0.1", 6667, 1, 6535, 4678, "127.0.0.1");
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    DataOutputStream outputStream = new DataOutputStream(baos);
+    NodeSerializeUtils.serialize(node, outputStream);
+    ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
+    Node anotherNode = new Node("127.0.0.1", 6667, 1, 6535, 4678, "127.0.0.1");
+    NodeSerializeUtils.deserialize(anotherNode, buffer);
+    Assert.assertEquals(node, anotherNode);
   }
 }
