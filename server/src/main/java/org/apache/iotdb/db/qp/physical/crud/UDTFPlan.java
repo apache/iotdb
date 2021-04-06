@@ -138,4 +138,9 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
     }
     return columnForReader;
   }
+
+  @Override
+  public boolean isRawQuery() {
+    return false;
+  }
 }

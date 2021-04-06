@@ -31,6 +31,8 @@ import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
+import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 
 import org.junit.Test;
 
@@ -68,6 +70,7 @@ public class ClusterGroupByNoVFilterDataSetTest extends BaseQueryTest {
       groupByPlan.setEndTime(20);
       groupByPlan.setSlidingStep(5);
       groupByPlan.setInterval(5);
+      groupByPlan.setExpression(new GlobalTimeExpression(new GroupByFilter(5, 5, 0, 20)));
 
       ClusterGroupByNoVFilterDataSet dataSet =
           new ClusterGroupByNoVFilterDataSet(queryContext, groupByPlan, testMetaMember);

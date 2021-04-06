@@ -49,10 +49,17 @@ public class QueryContext {
 
   private long queryTimeLowerBound = Long.MIN_VALUE;
 
+  private boolean debug;
+
   public QueryContext() {}
 
   public QueryContext(long queryId) {
     this.queryId = queryId;
+  }
+
+  public QueryContext(long queryId, boolean debug) {
+    this.queryId = queryId;
+    this.debug = debug;
   }
 
   /**
@@ -85,6 +92,10 @@ public class QueryContext {
 
   public long getQueryId() {
     return queryId;
+  }
+
+  public boolean isDebug() {
+    return debug;
   }
 
   public long getQueryTimeLowerBound() {

@@ -86,7 +86,8 @@ public class VectorPageReader implements IPageReader {
           isNull = false;
         }
       }
-      if (!isNull && (filter == null || filter.satisfy(timeBatch[i], v))) {
+      // TODO fix value filter v[0].getValue()
+      if (!isNull && (filter == null || filter.satisfy(timeBatch[i], v[0].getValue()))) {
         pageData.putVector(timeBatch[i], v);
       }
     }

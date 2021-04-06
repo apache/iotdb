@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 
 import java.util.List;
+import java.util.Objects;
 
 public class VectorPartialPath extends PartialPath {
 
@@ -42,5 +43,25 @@ public class VectorPartialPath extends PartialPath {
 
   public void addSubSensor(PartialPath path) {
     this.subSensorsPathList.add(path);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    VectorPartialPath that = (VectorPartialPath) o;
+    return Objects.equals(subSensorsPathList, that.subSensorsPathList);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), subSensorsPathList);
   }
 }

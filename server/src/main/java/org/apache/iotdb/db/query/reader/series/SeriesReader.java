@@ -738,9 +738,12 @@ public class SeriesReader {
            */
           timeValuePair = mergeReader.nextTimeValuePair();
 
+          Object valueForFilter =
+              timeValuePair.getValue().getDataType() == TSDataType.VECTOR
+                  ? timeValuePair.getValue().getVector()[0].getValue()
+                  : timeValuePair.getValue().getValue();
           if (valueFilter == null
-              || valueFilter.satisfy(
-                  timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
+              || valueFilter.satisfy(timeValuePair.getTimestamp(), valueForFilter)) {
             cachedBatchData.putAnObject(
                 timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
           }

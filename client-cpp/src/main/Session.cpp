@@ -251,13 +251,12 @@ bool SessionDataSet::hasNext()
 }
 
 void SessionDataSet::constructOneRow() {
-    vector<Field*> outFields;
+    vector<Field> outFields;
     int loc = 0;
-    Field* field;
     for (int i = 0; i < columnSize; i++) {
-
+        Field field;
         if (duplicateLocation.find(i) != duplicateLocation.end()) {
-            field = new Field(*outFields[duplicateLocation[i]]);
+            field = outFields[duplicateLocation[i]];
         } else {
             MyStringBuffer *bitmapBuffer = bitmapBuffers[loc].get();
             // another new 8 row, should move the bitmap buffer position to next byte
@@ -268,36 +267,36 @@ void SessionDataSet::constructOneRow() {
             if (!isNull(loc, rowsIndex)) {
                 MyStringBuffer *valueBuffer = valueBuffers[loc].get();
                 TSDataType::TSDataType dataType = getTSDataTypeFromString(columnTypeDeduplicatedList[loc]);
-                field = new Field(dataType);
+                field.dataType = dataType;
                 switch (dataType) {
                 case TSDataType::BOOLEAN: {
                     bool booleanValue = valueBuffer->getBool();
-                    field->boolV = booleanValue;
+                    field.boolV = booleanValue;
                     break;
                 }
                 case TSDataType::INT32: {
                     int intValue = valueBuffer->getInt();
-                    field->intV = intValue;
+                    field.intV = intValue;
                     break;
                 }
                 case TSDataType::INT64: {
                     int64_t longValue = valueBuffer->getLong();
-                    field->longV = longValue;
+                    field.longV = longValue;
                     break;
                 }
                 case TSDataType::FLOAT: {
                     float floatValue = valueBuffer->getFloat();
-                    field->floatV = floatValue;
+                    field.floatV = floatValue;
                     break;
                 }
                 case TSDataType::DOUBLE: {
                     double doubleValue = valueBuffer->getDouble();
-                    field->doubleV = doubleValue;
+                    field.doubleV = doubleValue;
                     break;
                 }
                 case TSDataType::TEXT: {
                     string stringValue = valueBuffer->getString();
-                    field->stringV = stringValue;
+                    field.stringV = stringValue;
                     break;
                 }
                 default: {
@@ -307,7 +306,7 @@ void SessionDataSet::constructOneRow() {
                 }
                 }
             } else {
-                field = new Field(TSDataType::NULLTYPE);
+                field.dataType = TSDataType::NULLTYPE;
             }
             loc++;
         }
@@ -1125,7 +1124,7 @@ void Session::setTimeZone(string zoneId)
     this->zoneId = zoneId;
 }
 
-SessionDataSet* Session::executeQueryStatement(string sql)
+unique_ptr<SessionDataSet> Session::executeQueryStatement(string sql)
 {
     shared_ptr<TSExecuteStatementReq> req(new TSExecuteStatementReq());
     req->__set_sessionId(sessionId);
@@ -1143,7 +1142,8 @@ SessionDataSet* Session::executeQueryStatement(string sql)
         throw IoTDBConnectionException(e.what());
     }
     shared_ptr<TSQueryDataSet> queryDataSet(new TSQueryDataSet(resp->queryDataSet));
-    return new SessionDataSet(sql, resp->columns, resp->dataTypeList, resp->queryId, client, sessionId, queryDataSet);
+    return unique_ptr<SessionDataSet>(new SessionDataSet(
+        sql, resp->columns, resp->dataTypeList, resp->queryId, client, sessionId, queryDataSet));
 }
 
 void Session::executeNonQueryStatement(string sql)

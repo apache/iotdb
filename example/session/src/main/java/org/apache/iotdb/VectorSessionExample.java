@@ -51,6 +51,7 @@ public class VectorSessionExample {
     insertTabletWithAlignedTimeseries();
     insertNullableTabletWithAlignedTimeseries();
     selectTest();
+    selectWithValueFilterTest();
     session.close();
   }
 
@@ -63,6 +64,27 @@ public class VectorSessionExample {
 
     dataSet.closeOperationHandle();
     dataSet = session.executeQueryStatement("select * from root.sg_1.d1");
+    System.out.println(dataSet.getColumnNames());
+    while (dataSet.hasNext()) {
+      System.out.println(dataSet.next());
+    }
+
+    dataSet.closeOperationHandle();
+  }
+
+  private static void selectWithValueFilterTest()
+      throws StatementExecutionException, IoTDBConnectionException {
+    SessionDataSet dataSet =
+        session.executeQueryStatement("select s1 from root.sg_1.d1 where s1 > 0");
+    System.out.println(dataSet.getColumnNames());
+    while (dataSet.hasNext()) {
+      System.out.println(dataSet.next());
+    }
+
+    dataSet.closeOperationHandle();
+    dataSet =
+        session.executeQueryStatement(
+            "select * from root.sg_1.d1 where time > 50 and s1 > 0 and s2 > 10000");
     System.out.println(dataSet.getColumnNames());
     while (dataSet.hasNext()) {
       System.out.println(dataSet.next());

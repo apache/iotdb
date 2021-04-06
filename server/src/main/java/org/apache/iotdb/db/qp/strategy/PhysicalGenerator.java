@@ -141,8 +141,15 @@ import java.util.Set;
 /** Used to convert logical operator to physical plan */
 public class PhysicalGenerator {
 
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public PhysicalPlan transformToPhysicalPlan(Operator operator, int fetchSize)
+      throws QueryProcessException {
+    PhysicalPlan physicalPlan = doTransformation(operator, fetchSize);
+    physicalPlan.setDebug(operator.isDebug());
+    return physicalPlan;
+  }
+
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  private PhysicalPlan doTransformation(Operator operator, int fetchSize)
       throws QueryProcessException {
     List<PartialPath> paths;
     switch (operator.getType()) {
@@ -855,6 +862,7 @@ public class PhysicalGenerator {
           columnForReaderSet.add(column);
         }
       }
+      ((LastQueryPlan) queryPlan).transformPaths(IoTDB.metaManager);
       return;
     }
 
@@ -910,6 +918,10 @@ public class PhysicalGenerator {
       }
     }
 
+    if (!((RawDataQueryPlan) queryPlan).isRawQuery()) {
+      ((RawDataQueryPlan) queryPlan).transformPaths(IoTDB.metaManager);
+    }
+
     if (queryPlan instanceof UDTFPlan) {
       ((UDTFPlan) queryPlan).setPathNameToReaderIndex(pathNameToReaderIndex);
       return;
@@ -919,22 +931,25 @@ public class PhysicalGenerator {
       return;
     }
 
-    // support vector
-    List<PartialPath> deduplicatedPaths = rawDataQueryPlan.getDeduplicatedPaths();
-    Pair<List<PartialPath>, Map<String, Integer>> pair = getSeriesSchema(deduplicatedPaths);
+    if (((RawDataQueryPlan) queryPlan).isRawQuery()) {
+      // support vector
+      List<PartialPath> deduplicatedPaths = rawDataQueryPlan.getDeduplicatedPaths();
+      Pair<List<PartialPath>, Map<String, Integer>> pair = getSeriesSchema(deduplicatedPaths);
 
-    List<PartialPath> vectorizedDeduplicatedPaths = pair.left;
-    List<TSDataType> vectorizedDeduplicatedDataTypes = new ArrayList<>();
-    vectorizedDeduplicatedDataTypes.addAll(getSeriesTypes(vectorizedDeduplicatedPaths));
-    rawDataQueryPlan.setDeduplicatedPaths(vectorizedDeduplicatedPaths);
-    rawDataQueryPlan.setDeduplicatedDataTypes(vectorizedDeduplicatedDataTypes);
+      List<PartialPath> vectorizedDeduplicatedPaths = pair.left;
+      List<TSDataType> vectorizedDeduplicatedDataTypes =
+          new ArrayList<>(getSeriesTypes(vectorizedDeduplicatedPaths));
+      rawDataQueryPlan.setDeduplicatedVectorPaths(vectorizedDeduplicatedPaths);
+      rawDataQueryPlan.setDeduplicatedVectorDataTypes(vectorizedDeduplicatedDataTypes);
 
-    Map<String, Integer> columnForDisplayToQueryDataSetIndex = pair.right;
-    Map<String, Integer> pathToIndex = new HashMap<>();
-    for (String columnForDisplay : columnForDisplaySet) {
-      pathToIndex.put(columnForDisplay, columnForDisplayToQueryDataSetIndex.get(columnForDisplay));
+      Map<String, Integer> columnForDisplayToQueryDataSetIndex = pair.right;
+      Map<String, Integer> pathToIndex = new HashMap<>();
+      for (String columnForDisplay : columnForDisplaySet) {
+        pathToIndex.put(
+            columnForDisplay, columnForDisplayToQueryDataSetIndex.get(columnForDisplay));
+      }
+      queryPlan.setVectorPathToIndex(pathToIndex);
     }
-    queryPlan.setPathToIndex(pathToIndex);
   }
 
   protected Pair<List<PartialPath>, Map<String, Integer>> getSeriesSchema(List<PartialPath> paths)

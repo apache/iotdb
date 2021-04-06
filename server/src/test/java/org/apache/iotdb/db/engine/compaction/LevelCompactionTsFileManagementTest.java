@@ -83,6 +83,8 @@ public class LevelCompactionTsFileManagementTest extends LevelCompactionTest {
                             + 10
                             + IoTDBConstant.FILE_NAME_SEPARATOR
                             + 0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
                             + ".tsfile"))),
             false));
     assertTrue(levelCompactionTsFileManagement.contains(seqResources.get(0), false));
@@ -94,6 +96,8 @@ public class LevelCompactionTsFileManagementTest extends LevelCompactionTest {
                         10
                             + IoTDBConstant.FILE_NAME_SEPARATOR
                             + 10
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
                             + IoTDBConstant.FILE_NAME_SEPARATOR
                             + 0
                             + ".tsfile"))),
@@ -129,6 +133,8 @@ public class LevelCompactionTsFileManagementTest extends LevelCompactionTest {
                         + 10
                         + IoTDBConstant.FILE_NAME_SEPARATOR
                         + 10
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 0
                         + ".tsfile"))),
         true);
     levelCompactionTsFileManagement.add(
@@ -140,6 +146,8 @@ public class LevelCompactionTsFileManagementTest extends LevelCompactionTest {
                         + 10
                         + IoTDBConstant.FILE_NAME_SEPARATOR
                         + 10
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 0
                         + ".tsfile"))),
         false);
     assertEquals(1, levelCompactionTsFileManagement.size(true));

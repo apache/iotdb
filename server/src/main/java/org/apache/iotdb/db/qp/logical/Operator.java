@@ -27,12 +27,15 @@ public abstract class Operator {
   protected int tokenIntType;
   // operator type in String format
   protected String tokenName;
+  // flag of "explain"
+  protected boolean isDebug;
 
   protected OperatorType operatorType = OperatorType.NULL;
 
   protected Operator(int tokenIntType) {
     this.tokenIntType = tokenIntType;
     this.tokenName = SQLConstant.tokenNames.get(tokenIntType);
+    this.isDebug = false;
   }
 
   public OperatorType getType() {
@@ -53,6 +56,14 @@ public abstract class Operator {
 
   public void setOperatorType(OperatorType operatorType) {
     this.operatorType = operatorType;
+  }
+
+  public boolean isDebug() {
+    return isDebug;
+  }
+
+  public void setDebug(boolean debug) {
+    isDebug = debug;
   }
 
   @Override
