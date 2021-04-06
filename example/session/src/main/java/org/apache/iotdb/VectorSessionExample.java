@@ -46,7 +46,7 @@ public class VectorSessionExample {
     // set session fetchSize
     session.setFetchSize(10000);
 
-    //    createTemplate();
+    createTemplate();
     insertTabletWithAlignedTimeseries();
     selectTest();
     selectWithValueFilterTest();
