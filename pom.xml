@@ -508,6 +508,12 @@
             <artifactId>mockito-all</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+            <version>1.15.2</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
     <build>
         <pluginManagement>
@@ -898,6 +904,7 @@
                             <excludes>
                                 <!-- Exclude integration tests within (unit) test phase. -->
                                 <exclude>src/test/**/*IT.java</exclude>
+                                <exclude>src/test/**/*E2E.java</exclude>
                             </excludes>
                         </configuration>
                     </execution>
@@ -911,7 +918,12 @@
                             <includes>
                                 <!-- Include integration tests within integration-test phase. -->
                                 <include>src/test/**/*IT.java</include>
+                                <include>src/test/**/*E2E.java</include>
                             </includes>
+                            <excludes>
+                                <!-- Exclude unit tests within (unit) test phase. -->
+                                <exclude>src/test/**/*Test.java</exclude>
+                            </excludes>
                         </configuration>
                     </execution>
                 </executions>
@@ -990,6 +1002,30 @@
                 <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
                 <thrift.exec-cmd.args>+x ${project.build.directory}/tools/${thrift.executable}</thrift.exec-cmd.args>
             </properties>
+        </profile>
+        <!-- for TestContainer. As it requires docker, we have to detect whether docker exists.-->
+        <profile>
+            <!-- Mac and Unix-->
+            <id>unixDockerCheck</id>
+            <activation>
+                <file>
+                    <exists>/var/run/docker.sock</exists>
+                </file>
+            </activation>
+            <modules>
+                <module>testcontainer</module>
+            </modules>
+        </profile>
+        <profile>
+            <id>WinDockerCheck</id>
+            <activation>
+                <file>
+                    <exists>C:\Program Files\Docker\Docker\resources\bin\docker.exe</exists>
+                </file>
+            </activation>
+            <modules>
+                <module>testcontainer</module>
+            </modules>
         </profile>
         <!-- Some APIs were removed in Java 11, so we need to add replacements -->
         <profile>

@@ -21,22 +21,26 @@ package org.apache.iotdb.cluster.config;
 import org.apache.iotdb.cluster.utils.ClusterConsistent;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class ClusterConfig {
-
+  private static Logger logger = LoggerFactory.getLogger(ClusterConfig.class);
   static final String CONFIG_NAME = "iotdb-cluster.properties";
 
-  private String internalIp = "127.0.0.1";
+  private String internalIp;
   private int internalMetaPort = 9003;
   private int internalDataPort = 40010;
   private int clusterRpcPort = IoTDBDescriptor.getInstance().getConfig().getRpcPort();
 
   /** each one is a {internalIp | domain name}:{meta port} string tuple. */
-  private List<String> seedNodeUrls =
-      Arrays.asList(String.format("%s:%d", internalIp, internalMetaPort));
+  private List<String> seedNodeUrls;
 
   @ClusterConsistent private boolean isRpcThriftCompressionEnabled = false;
   private int maxConcurrentClientNum = 10000;
@@ -163,6 +167,16 @@ public class ClusterConfig {
   private long maxReadLogLag = 1000L;
 
   private boolean openServerRpcPort = false;
+
+  public ClusterConfig() {
+    try {
+      internalIp = InetAddress.getLocalHost().getHostAddress();
+    } catch (UnknownHostException e) {
+      logger.error(e.getMessage());
+      internalIp = "127.0.0.1";
+    }
+    seedNodeUrls = Arrays.asList(String.format("%s:%d", internalIp, internalMetaPort));
+  }
 
   public int getSelectorNumOfClientPool() {
     return selectorNumOfClientPool;
