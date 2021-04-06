@@ -26,7 +26,7 @@ public class MetaFile implements MetaFileAccess {
 
   @Override
   public MNode read(long position, boolean isMeasurement) throws IOException {
-    return readMNode(position,isMeasurement);
+    return readMNode(position, isMeasurement);
   }
 
   @Override
@@ -59,9 +59,10 @@ public class MetaFile implements MetaFileAccess {
   public MNode readMNode(String path) throws IOException {
     MNode mNode = mTreeFile.read(path);
     if (mNode instanceof MeasurementMNode) {
-      MeasurementMNode tmp=measurementFile.read(mNode.getPosition());
-      mNode.getParent().addChild(tmp.getName(),tmp);
-      mNode=tmp;
+      MeasurementMNode tmp = measurementFile.read(mNode.getPosition());
+      mNode.getParent().deleteChild(tmp.getName());
+      mNode.getParent().addChild(tmp.getName(), tmp);
+      mNode = tmp;
     }
     return mNode;
   }
@@ -78,19 +79,21 @@ public class MetaFile implements MetaFileAccess {
     MNode mNode = mTreeFile.read(position);
     for (MNode child : mNode.getChildren().values()) {
       if (child instanceof MeasurementMNode) {
-        mNode.addChild(child.getName(),measurementFile.read(child.getPosition()));
+        mNode.deleteChild(child.getName());
+        mNode.addChild(child.getName(), measurementFile.read(child.getPosition()));
       } else {
-        mNode.addChild(child.getName(),readRecursively(child.getPosition()));
+        mNode.deleteChild(child.getName());
+        mNode.addChild(child.getName(), readRecursively(child.getPosition()));
       }
     }
     return mNode;
   }
 
-  public void writeRecursively(MNode mNode) throws IOException{
-    List<MNode> mNodeList=new LinkedList<>();
-    flatten(mNode,mNodeList);
+  public void writeRecursively(MNode mNode) throws IOException {
+    List<MNode> mNodeList = new LinkedList<>();
+    flatten(mNode, mNodeList);
     allocateFreePos(mNodeList);
-    for(MNode node:mNodeList){
+    for (MNode node : mNodeList) {
       write(node);
     }
   }
@@ -107,9 +110,9 @@ public class MetaFile implements MetaFileAccess {
       if (mNode instanceof MeasurementMNode) {
         mNode.setPosition(measurementFile.getFreePos());
       } else {
-        if(mNode.getName().equals("root")){
+        if (mNode.getName().equals("root")) {
           mNode.setPosition(mTreeFile.getRootPosition());
-        }else {
+        } else {
           mNode.setPosition(mTreeFile.getFreePos());
         }
       }

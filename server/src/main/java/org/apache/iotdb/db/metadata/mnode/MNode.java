@@ -50,9 +50,6 @@ public class MNode implements Serializable {
   /** from root to this node, only be set when used once for InternalMNode */
   protected String fullPath;
 
-  /** whether be loaded from file */
-  protected boolean isLoaded;
-
   /** whether the node has been modified and is different from the content in metafile */
   protected boolean isModified;
 
@@ -313,12 +310,9 @@ public class MNode implements Serializable {
     this.addChild(newChildNode.getName(), newChildNode);
   }
 
+  /** whether be loaded from file */
   public boolean isLoaded() {
-    return isLoaded;
-  }
-
-  public void setLoaded(boolean loaded) {
-    isLoaded = loaded;
+    return children != null;
   }
 
   public boolean isModified() {

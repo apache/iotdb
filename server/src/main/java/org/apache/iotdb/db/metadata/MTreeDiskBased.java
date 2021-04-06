@@ -38,22 +38,22 @@ public class MTreeDiskBased implements MTreeInterface {
 
   private static final Logger logger = LoggerFactory.getLogger(MTreeDiskBased.class);
 
-  private MNodeCache cache=new LRUCache(1000000);
+  private MNodeCache cache = new LRUCache(1000000);
 
   private MetaFileAccess metaFile;
 
-  private MNode root=new MNode(null, IoTDBConstant.PATH_ROOT);
+  private MNode root = new MNode(null, IoTDBConstant.PATH_ROOT);
 
   private ReadWriteLock lock = new ReentrantReadWriteLock();
   private Lock readLock = lock.readLock();
   private Lock writeLock = lock.writeLock();
 
   public MNode getMNode(PartialPath path) {
-    MNode result=cache.get(path);
-    if(result!=null){
+    MNode result = cache.get(path);
+    if (result != null) {
       return result;
     }
-//    result=metaFile.read(path);
+    //    result=metaFile.read(path);
     return result;
   }
 
@@ -191,7 +191,7 @@ public class MTreeDiskBased implements MTreeInterface {
 
   @Override
   public boolean isPathExist(PartialPath path) {
-    return getMNode(path)==null;
+    return getMNode(path) == null;
   }
 
   @Override
@@ -225,8 +225,8 @@ public class MTreeDiskBased implements MTreeInterface {
       }
     } else {
       StorageGroupMNode storageGroupMNode =
-              new StorageGroupMNode(
-                      cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
+          new StorageGroupMNode(
+              cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
       cur.addChild(nodeNames[i], storageGroupMNode);
       cache.put(storageGroupMNode);
     }
@@ -235,9 +235,9 @@ public class MTreeDiskBased implements MTreeInterface {
   private void checkStorageGroup(String storageGroup) throws IllegalPathException {
     if (!IoTDBConfig.STORAGE_GROUP_PATTERN.matcher(storageGroup).matches()) {
       throw new IllegalPathException(
-              String.format(
-                      "The storage group name can only be characters, numbers and underscores. %s",
-                      storageGroup));
+          String.format(
+              "The storage group name can only be characters, numbers and underscores. %s",
+              storageGroup));
     }
   }
 
@@ -410,13 +410,13 @@ public class MTreeDiskBased implements MTreeInterface {
 
   private MNode getNode(PartialPath path) throws IOException {
     MNode node = cache.get(path);
-//    readLock.lock();
-//    if (node == null) {
-//      node = metaFile.read(path);
-//    } else if (!node.isLoaded()) {
-//      node = metaFile.read(node.getPosition());
-//    }
-//    readLock.unlock();
+    //    readLock.lock();
+    //    if (node == null) {
+    //      node = metaFile.read(path);
+    //    } else if (!node.isLoaded()) {
+    //      node = metaFile.read(node.getPosition());
+    //    }
+    //    readLock.unlock();
     return node;
   }
 }

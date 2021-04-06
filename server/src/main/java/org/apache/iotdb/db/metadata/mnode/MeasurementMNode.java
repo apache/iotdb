@@ -124,6 +124,11 @@ public class MeasurementMNode extends MNode {
   }
 
   @Override
+  public boolean isLoaded() {
+    return schema != null;
+  }
+
+  @Override
   public void serializeTo(MLogWriter logWriter) throws IOException {
     serializeChildren(logWriter);
 

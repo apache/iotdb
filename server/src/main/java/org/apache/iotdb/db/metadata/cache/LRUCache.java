@@ -14,8 +14,8 @@ public class LRUCache implements MNodeCache {
 
   private final LinkedHashMap<String, MNode> map;
   private final ReadWriteLock lock = new ReentrantReadWriteLock();
-  private final Lock          readLock  = lock.readLock();
-  private final Lock          writeLock = lock.writeLock();
+  private final Lock readLock = lock.readLock();
+  private final Lock writeLock = lock.writeLock();
   private static final float DEFAULT_LOAD_FACTOR = 0.75f;
 
   public LRUCache() {
