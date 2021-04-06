@@ -118,12 +118,9 @@ public abstract class AbstractMemTable implements IMemTable {
     MeasurementMNode[] measurementMNodes = insertRowPlan.getMeasurementMNodes();
     int columnIndex = 0;
     for (int i = 0; i < measurementMNodes.length; i++) {
-      if (values[columnIndex] == null) {
-        columnIndex++;
-        continue;
-      }
 
-      if (measurementMNodes[i].getSchema().getType() == TSDataType.VECTOR) {
+      if (measurementMNodes[i] != null
+          && measurementMNodes[i].getSchema().getType() == TSDataType.VECTOR) {
         // write vector
         Object[] vectorValue =
             new Object[measurementMNodes[i].getSchema().getValueTSDataTypeList().size()];
@@ -142,6 +139,10 @@ public abstract class AbstractMemTable implements IMemTable {
             insertRowPlan.getTime(),
             vectorValue);
       } else {
+        if (values[columnIndex] == null) {
+          columnIndex++;
+          continue;
+        }
         memSize +=
             MemUtils.getRecordSize(
                 measurementMNodes[i].getSchema().getType(), values[columnIndex], disableMemControl);

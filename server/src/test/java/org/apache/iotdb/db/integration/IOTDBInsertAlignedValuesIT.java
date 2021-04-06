@@ -99,6 +99,41 @@ public class IOTDBInsertAlignedValuesIT {
     st1.close();
   }
 
+  @Test
+  public void testInsertAlignedNullableValues() throws SQLException {
+    Statement st0 = connection.createStatement();
+    st0.execute(
+        "insert into root.t1.wf01.wt01(time, (status, temperature)) values (4000, (true, 17.1))");
+    st0.execute(
+        "insert into root.t1.wf01.wt01(time, (status, temperature)) values (5000, (true, null))");
+    st0.execute(
+        "insert into root.t1.wf01.wt01(time, (status, temperature)) values (6000, (null, 22))");
+    st0.close();
+
+    Statement st1 = connection.createStatement();
+
+    ResultSet rs1 = st1.executeQuery("select status from root.t1.wf01.wt01");
+    rs1.next();
+    Assert.assertEquals(true, rs1.getBoolean(2));
+
+    ResultSet rs2 = st1.executeQuery("select * from root.t1.wf01.wt01");
+    rs2.next();
+    Assert.assertEquals(4000, rs2.getLong(1));
+    Assert.assertEquals(true, rs2.getBoolean(2));
+    Assert.assertEquals(17.1, rs2.getFloat(3), 0.1);
+
+    rs2.next();
+    Assert.assertEquals(5000, rs2.getLong(1));
+    Assert.assertEquals(true, rs2.getObject(2));
+    Assert.assertEquals(null, rs2.getObject(3));
+
+    rs2.next();
+    Assert.assertEquals(6000, rs2.getLong(1));
+    Assert.assertEquals(null, rs2.getObject(2));
+    Assert.assertEquals(22.0f, rs2.getObject(3));
+    st1.close();
+  }
+
   @Test(expected = Exception.class)
   public void testInsertWithWrongMeasurementNum1() throws SQLException {
     Statement st1 = connection.createStatement();

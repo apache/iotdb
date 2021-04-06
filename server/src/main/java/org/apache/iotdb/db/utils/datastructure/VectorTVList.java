@@ -72,22 +72,28 @@ public class VectorTVList extends TVList {
       }
       switch (dataTypes.get(i)) {
         case TEXT:
-          ((Binary[]) columnValues.get(arrayIndex))[elementIndex] = (Binary) columnValue;
+          ((Binary[]) columnValues.get(arrayIndex))[elementIndex] =
+              columnValue != null ? (Binary) columnValue : new Binary("");
           break;
         case FLOAT:
-          ((float[]) columnValues.get(arrayIndex))[elementIndex] = (float) columnValue;
+          ((float[]) columnValues.get(arrayIndex))[elementIndex] =
+              columnValue != null ? (float) columnValue : Float.MIN_VALUE;
           break;
         case INT32:
-          ((int[]) columnValues.get(arrayIndex))[elementIndex] = (int) columnValue;
+          ((int[]) columnValues.get(arrayIndex))[elementIndex] =
+              columnValue != null ? (int) columnValue : Integer.MIN_VALUE;
           break;
         case INT64:
-          ((long[]) columnValues.get(arrayIndex))[elementIndex] = (long) columnValue;
+          ((long[]) columnValues.get(arrayIndex))[elementIndex] =
+              columnValue != null ? (long) columnValue : Long.MIN_VALUE;
           break;
         case DOUBLE:
-          ((double[]) columnValues.get(arrayIndex))[elementIndex] = (double) columnValue;
+          ((double[]) columnValues.get(arrayIndex))[elementIndex] =
+              columnValue != null ? (double) columnValue : Double.MIN_VALUE;
           break;
         case BOOLEAN:
-          ((boolean[]) columnValues.get(arrayIndex))[elementIndex] = (boolean) columnValue;
+          ((boolean[]) columnValues.get(arrayIndex))[elementIndex] =
+              columnValue != null ? (boolean) columnValue : false;
           break;
         default:
           break;
@@ -178,7 +184,7 @@ public class VectorTVList extends TVList {
             bitMaps.add(null);
           }
         }
-        bitMaps.add(columns.indexOf(column), this.bitMaps.get(column));
+        bitMaps.set(columns.indexOf(column), this.bitMaps.get(column));
       }
     }
     VectorTVList vectorTVList = new VectorTVList(types);
@@ -385,7 +391,7 @@ public class VectorTVList extends TVList {
         }
         if (cloneList.bitMaps.get(i) == null) {
           List<BitMap> cloneColumnBitMaps = new ArrayList<>();
-          cloneList.bitMaps.add(i, cloneColumnBitMaps);
+          cloneList.bitMaps.set(i, cloneColumnBitMaps);
         }
         for (BitMap bitMap : columnBitMaps) {
           cloneList.bitMaps.get(i).add(cloneBitMap(bitMap));
@@ -672,7 +678,7 @@ public class VectorTVList extends TVList {
       for (int i = 0; i < values.get(columnIndex).size(); i++) {
         columnBitMaps.add(new BitMap(ARRAY_SIZE));
       }
-      bitMaps.add(columnIndex, columnBitMaps);
+      bitMaps.set(columnIndex, columnBitMaps);
     }
     bitMaps.get(columnIndex).get(arrayIndex).mark(elementIndex);
   }

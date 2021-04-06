@@ -673,6 +673,7 @@ constant
     | MINUS? INT
     | stringLiteral
     | booleanClause
+    | NULL
     ;
 
 booleanClause
@@ -1356,6 +1357,8 @@ R_BRACKET : '}';
 UNDERLINE : '_';
 
 NaN : 'NaN';
+
+NULL : 'null';
 
 stringLiteral
    : SINGLE_QUOTE_STRING_LITERAL
