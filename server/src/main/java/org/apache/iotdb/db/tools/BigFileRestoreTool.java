@@ -78,6 +78,16 @@ public class BigFileRestoreTool {
     restoreResource.serialize();
     writer.endFile();
     restoreResource.close();
+
+    System.out.println("start to move file");
+    File originFile = new File(path);
+    originFile.delete();
+    restoreFile.renameTo(originFile);
+    File originFileResource = new File(path + ".resource");
+    originFileResource.delete();
+    File restoreFileResource = new File(restoreFile + ".resource");
+    restoreFileResource.renameTo(originFileResource);
+
     System.out.println("restore file done");
   }
 }
