@@ -20,32 +20,24 @@
 version: '3.8'
 
 services:
-  server-prototype:
-    build:
-      context: ../../..
-      dockerfile: ../../../docker/src/main/Dockerfile-single
-    ports:
-      - 6667:6667
+  iotdb-server:
+    image: apache/iotdb:cluster-maven-development
+    expose:
+      - 6667
+      - 9003
+      - 40010
     networks:
-      iotdb:
+      - iotdb
     healthcheck:
       test: [ "CMD", "bash", "-c", "cat < /dev/null > /dev/tcp/127.0.0.1/6667" ]
       interval: 5s
       timeout: 60s
       retries: 120
+    volumes:
+    - ./iotdb-cluster.properties:/iotdb/conf/iotdb-cluster.properties
+    scale: 3
 
-  initializer:
-    build:
-      context: ../../..
-      dockerfile: ../../../docker/src/main/Dockerfile-single
-    networks:
-      iotdb:
-    entrypoint:
-      - bash
-      - -c
-      - |
-        cat /res/init.sql | grep -v '^--' | xargs -I {} /iotdb/sbin/start-cli.sh -h server -e {}
-        echo "Ready to Run IoTDB E2E Tests"
 
 networks:
   iotdb:
+    driver: bridge
