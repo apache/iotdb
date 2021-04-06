@@ -82,6 +82,8 @@
         <module>tsfile</module>
         <module>antlr</module>
         <module>thrift</module>
+        <module>thrift-cluster</module>
+        <module>thrift-sync</module>
         <module>service-rpc</module>
         <module>jdbc</module>
         <module>session</module>
@@ -489,6 +491,14 @@
     </dependencyManagement>
     <dependencies>
         <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+        <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <scope>test</scope>
@@ -597,6 +607,10 @@
                             <!-- exclude go.mod and go.sum in iotdb-client-go submodule-->
                             <exclude>**/go.mod</exclude>
                             <exclude>**/go.sum</exclude>
+                            <!-- python -->
+                            <exclude>.pytest_cache/**</exclude>
+                            <exclude>venv/**</exclude>
+                            <exclude>apache_iotdb.egg-info/**</exclude>
                         </excludes>
                     </configuration>
                 </plugin>
@@ -642,6 +656,8 @@
                         <!-- put all source folders not in src/main/java here-->
                         <sourceDirectory>antlr/target/generated-sources/antlr4</sourceDirectory>
                         <sourceDirectory>thrift/target/generated-sources/thrift</sourceDirectory>
+                        <sourceDirectory>thrift-sync/target/generated-sources/thrift</sourceDirectory>
+                        <sourceDirectory>thrift-cluster/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>spark-iotdb-connector/src/main/scala</sourceDirectory>
                         <sourceDirectory>spark-tsfile/src/main/scala</sourceDirectory>
                     </sourceDirectories>
@@ -1197,6 +1213,12 @@
                         <artifactId>jacoco-maven-plugin</artifactId>
                         <version>0.8.5</version>
                         <configuration>
+                            <excludes>
+                                <exclude>org/apache/iotdb/service/sync/thrift/*</exclude>
+                                <exclude>org/apache/iotdb/service/rpc/thrift/*</exclude>
+                                <exclude>org/apache/iotdb/cluster/rpc/thrift/*</exclude>
+                                <exclude>org/apache/iotdb/db/qp/sql/*</exclude>
+                            </excludes>
                             <rules>
                                 <rule implementation="org.jacoco.maven.RuleConfiguration">
                                     <element>BUNDLE</element>
