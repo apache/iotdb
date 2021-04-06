@@ -198,7 +198,7 @@ public class MemTableFlushTask {
                 List<TSDataType> dataTypes = vectorTVPairs.getTsDataTypes();
                 int index = vectorTVPairs.getValueIndex(i);
                 for (int j = 0; j < dataTypes.size(); j++) {
-                  boolean isNull = vectorTVPairs.isValueNull(index, j);
+                  boolean isNull = vectorTVPairs.isValueMarked(index, j);
                   switch (dataTypes.get(j)) {
                     case BOOLEAN:
                       seriesWriterImpl.write(

@@ -67,7 +67,7 @@ public class VectorTVList extends TVList {
       List<Object> columnValues = values.get(i);
       if (columnValue == null) {
         markNullValue(i, arrayIndex, elementIndex);
-      } else if (isValueNull(indices.get(arrayIndex)[elementIndex], i)) {
+      } else if (isValueMarked(indices.get(arrayIndex)[elementIndex], i)) {
         bitMaps.get(i).get(arrayIndex).unmark(elementIndex);
       }
       switch (dataTypes.get(i)) {
@@ -328,9 +328,9 @@ public class VectorTVList extends TVList {
     return ((boolean[]) columnValues.get(arrayIndex))[elementIndex];
   }
 
-  public boolean isValueNull(int valueIndex, int column) {
+  public boolean isValueMarked(int valueIndex, int column) {
     if (valueIndex >= size) {
-      throw new ArrayIndexOutOfBoundsException(valueIndex);
+      return false;
     }
     if (bitMaps == null || bitMaps.get(column) == null) {
       return false;
