@@ -174,7 +174,7 @@ public class VectorSessionExample {
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
         session.insertTablet(tablet, true);
         tablet.reset();
-        bitMaps[1].unmarkAll();
+        bitMaps[1].reset();
       }
     }
 

@@ -67,7 +67,7 @@ public class BitMap {
   }
 
   /** mark as 0 at all positions */
-  public void unmarkAll() {
+  public void reset() {
     Arrays.fill(bits, (byte) 0);
   }
 
