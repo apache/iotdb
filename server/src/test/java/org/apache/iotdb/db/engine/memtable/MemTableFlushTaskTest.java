@@ -58,7 +58,7 @@ public class MemTableFlushTaskTest {
 
   @After
   public void tearDown() throws Exception {
-    //    writer.close();
+    writer.close();
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.cleanDir(TestConstant.OUTPUT_DATA_DIR);
   }
