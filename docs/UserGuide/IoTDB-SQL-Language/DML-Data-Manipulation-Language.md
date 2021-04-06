@@ -49,10 +49,16 @@ The INSERT statement can also support the insertion of multi-column data at the 
 IoTDB > insert into root.ln.wf02.wt02(timestamp, status, hardware) VALUES (2, false, 'v2')
 ```
 
+In addition, The INSERT statement support insert multi-rows at once. The sample code of inserting two rows as follows:
+
+```
+IoTDB > insert into root.ln.wf02.wt02(timestamp, status, hardware) VALUES (3, false, 'v3'),(4, true, 'v4')
+```
+
 After inserting the data, we can simply query the inserted data using the SELECT statement:
 
 ```
-IoTDB > select * from root.ln.wf02 where time < 3
+IoTDB > select * from root.ln.wf02 where time < 5
 ```
 
 The result is shown below. The query result shows that the insertion statements of single column and multi column data are performed correctly.
@@ -63,6 +69,8 @@ The result is shown below. The query result shows that the insertion statements 
 +-----------------------------+--------------------------+------------------------+
 |1970-01-01T08:00:00.001+08:00|                        v1|                    true|
 |1970-01-01T08:00:00.002+08:00|                        v2|                   false|
+|1970-01-01T08:00:00.003+08:00|                        v3|                   false|
+|1970-01-01T08:00:00.004+08:00|                        v4|                    true|
 +-----------------------------+--------------------------+------------------------+
 Total line number = 2
 It costs 0.170s
