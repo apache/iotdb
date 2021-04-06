@@ -44,16 +44,16 @@ public class TsFileCheckTool {
     for (String device : devices) {
       Map<String, List<ChunkMetadata>> sensorMeasurementMap =
           reader.readChunkMetadataInDevice(device);
+      System.out.println("start to restore device: " + device);
       for (Entry<String, List<ChunkMetadata>> sensorMeasurementEntry :
           sensorMeasurementMap.entrySet()) {
-        System.out.println("start to restore device: " + sensorMeasurementEntry.getKey());
         for (ChunkMetadata chunkMetadata : sensorMeasurementEntry.getValue()) {
           Chunk chunk = reader.readMemChunk(chunkMetadata);
           int dataSize = chunk.getHeader().getDataSize();
           totalSize += chunkMetadata.calculateRamSize();
           totalSize += dataSize;
           System.out.println(
-              "restore chunk points num: "
+              "read chunk points num: "
                   + chunkMetadata.getNumOfPoints()
                   + " startTime: "
                   + chunkMetadata.getStartTime()
