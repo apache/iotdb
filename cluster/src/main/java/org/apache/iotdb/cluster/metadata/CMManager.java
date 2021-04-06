@@ -1649,6 +1649,11 @@ public class CMManager extends MManager {
     // do not use limit and offset in sub-queries unless offset is 0, otherwise the results are
     // not combinable
     if (offset != 0) {
+      if (limit > Integer.MAX_VALUE - offset) {
+        plan.setLimit(0);
+      } else {
+        plan.setLimit(limit + offset);
+      }
       plan.setOffset(0);
     }
 
