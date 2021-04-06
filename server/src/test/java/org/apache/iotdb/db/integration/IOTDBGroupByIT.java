@@ -29,14 +29,20 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.sql.*;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.TimeZone;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.Statement;
 
-import static org.apache.iotdb.db.constant.TestConstant.*;
+import static org.apache.iotdb.db.constant.TestConstant.avg;
+import static org.apache.iotdb.db.constant.TestConstant.count;
+import static org.apache.iotdb.db.constant.TestConstant.first_value;
+import static org.apache.iotdb.db.constant.TestConstant.last_value;
+import static org.apache.iotdb.db.constant.TestConstant.max_time;
+import static org.apache.iotdb.db.constant.TestConstant.max_value;
+import static org.apache.iotdb.db.constant.TestConstant.min_time;
+import static org.apache.iotdb.db.constant.TestConstant.min_value;
+import static org.apache.iotdb.db.constant.TestConstant.sum;
 import static org.junit.Assert.fail;
 
 public class IOTDBGroupByIT {
@@ -893,157 +899,6 @@ public class IOTDBGroupByIT {
         }
         Assert.assertEquals(retArray1.length, cnt);
       }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  @Test
-  public void groupByNaturalMonth1() {
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-
-      // 10/31/2019:19:57:18
-      long startTime = 1572523038000L;
-      // 04/01/2020:19:57:18
-      long endTime = 1585742238000L;
-
-      String[] retArray1 = {
-        "10/31/2019:19:57:18",
-        "30.0",
-        "11/30/2019:19:57:18",
-        "31.0",
-        "12/31/2019:19:57:18",
-        "31.0",
-        "01/31/2020:19:57:18",
-        "29.0",
-        "02/29/2020:19:57:18",
-        "31.0",
-        "03/31/2020:19:57:18",
-        "1.0"
-      };
-
-      for (long i = startTime; i <= endTime; i += 86400_000L) {
-        statement.execute("insert into root.sg1.d1(timestamp, temperature) values (" + i + ", 1)");
-      }
-
-      DateFormat df = new SimpleDateFormat("MM/dd/yyyy:HH:mm:ss");
-      df.setTimeZone(TimeZone.getTimeZone("GMT+8:00"));
-
-      boolean hasResultSet =
-          statement.execute(
-              "select sum(temperature) from "
-                  + "root.sg1.d1 "
-                  + "GROUP BY ([1572523038000, 1585742238000), 1mo, 1mo)");
-
-      Assert.assertTrue(hasResultSet);
-      int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
-        cnt = 0;
-        while (resultSet.next()) {
-          String time = resultSet.getString(TIMESTAMP_STR);
-          String ans = resultSet.getString(sum("root.sg1.d1.temperature"));
-          Assert.assertEquals(retArray1[cnt++], df.format(Long.parseLong(time)));
-          Assert.assertEquals(retArray1[cnt++], ans);
-        }
-        Assert.assertEquals(retArray1.length, cnt);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  @Test
-  public void groupByNaturalMonth2() {
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-
-      // 10/31/2019:19:57:18
-      long startTime = 1572523038000L;
-      // 04/01/2020:19:57:18
-      long endTime = 1585742238000L;
-
-      String[] retArray1 = {
-        "10/31/2019:19:57:18",
-        "10.0",
-        "11/30/2019:19:57:18",
-        "10.0",
-        "12/31/2019:19:57:18",
-        "9.0",
-        "01/31/2020:19:57:18",
-        "8.0",
-        "02/29/2020:19:57:18",
-        "9.0",
-        "03/31/2020:19:57:18",
-        "1.0"
-      };
-      List<String> start = new ArrayList<>();
-
-      for (long i = startTime; i <= endTime; i += 86400_000L) {
-        statement.execute("insert into root.sg1.d1(timestamp, temperature) values (" + i + ", 1)");
-      }
-
-      DateFormat df = new SimpleDateFormat("MM/dd/yyyy:HH:mm:ss");
-      df.setTimeZone(TimeZone.getTimeZone("GMT+8:00"));
-
-      boolean hasResultSet =
-          statement.execute(
-              "select sum(temperature) from "
-                  + "root.sg1.d1 "
-                  + "GROUP BY ([1572523038000, 1585742238000), 10d, 1mo)");
-
-      Assert.assertTrue(hasResultSet);
-      int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
-        cnt = 0;
-        while (resultSet.next()) {
-          String time = resultSet.getString(TIMESTAMP_STR);
-          String ans = resultSet.getString(sum("root.sg1.d1.temperature"));
-          Assert.assertEquals(retArray1[cnt++], df.format(Long.parseLong(time)));
-          Assert.assertEquals(retArray1[cnt++], ans);
-        }
-        Assert.assertEquals(retArray1.length, cnt);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  @Test
-  public void groupByNaturalMonth3() {
-    // test when endtime - starttime = interval
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-
-      // 2/1/2021:15:20
-      long startTime = 1612164041000L;
-      // 3/1/2021:15:20
-      long endTime = 1614583241000L;
-
-      for (long i = startTime; i <= endTime; i += 86400_000L) {
-        statement.execute("insert into root.sg1.d1(timestamp, temperature) values (" + i + ", 1)");
-      }
-
-      DateFormat df = new SimpleDateFormat("MM/dd/yyyy:HH:mm:ss");
-      df.setTimeZone(TimeZone.getTimeZone("GMT+8:00"));
-
-      boolean hasResultSet =
-          statement.execute(
-              "select sum(temperature) from root.sg1.d1 "
-                  + "GROUP BY ([1612164041000, 1614583241000), 1mo)");
-
-      Assert.assertTrue(hasResultSet);
-      int cnt = 0;
-      try (ResultSet resultSet = statement.getResultSet()) {
-        cnt++;
-      }
-      Assert.assertEquals(1, cnt);
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

@@ -6,8 +6,8 @@ package org.apache.iotdb.cluster.partition.slot;
 
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.utils.NodeSerializeUtils;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.utils.SerializeUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -298,7 +298,7 @@ public class SlotManager {
     private void serialize(DataOutputStream outputStream) throws IOException {
       outputStream.writeInt(slotStatus.ordinal());
       if (slotStatus == SlotStatus.PULLING || slotStatus == SlotStatus.PULLING_WRITABLE) {
-        SerializeUtils.serialize(source, outputStream);
+        NodeSerializeUtils.serialize(source, outputStream);
       } else if (slotStatus == SlotStatus.SENDING) {
         outputStream.writeInt(snapshotReceivedCount);
       }
@@ -310,7 +310,7 @@ public class SlotManager {
       if (descriptor.slotStatus == SlotStatus.PULLING
           || descriptor.slotStatus == SlotStatus.PULLING_WRITABLE) {
         descriptor.source = new Node();
-        SerializeUtils.deserialize(descriptor.source, buffer);
+        NodeSerializeUtils.deserialize(descriptor.source, buffer);
       } else if (descriptor.slotStatus == SlotStatus.SENDING) {
         descriptor.snapshotReceivedCount = buffer.getInt();
       }

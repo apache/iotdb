@@ -141,8 +141,15 @@ import java.util.Set;
 /** Used to convert logical operator to physical plan */
 public class PhysicalGenerator {
 
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public PhysicalPlan transformToPhysicalPlan(Operator operator, int fetchSize)
+      throws QueryProcessException {
+    PhysicalPlan physicalPlan = doTransformation(operator, fetchSize);
+    physicalPlan.setDebug(operator.isDebug());
+    return physicalPlan;
+  }
+
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  private PhysicalPlan doTransformation(Operator operator, int fetchSize)
       throws QueryProcessException {
     List<PartialPath> paths;
     switch (operator.getType()) {

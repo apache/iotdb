@@ -230,7 +230,7 @@ public class RestorableTsFileIOWriterTest {
   }
 
   @Test
-  public void testOnlyOneChunkGroupAndOneMask() throws Exception {
+  public void testOnlyOneChunkGroupAndOneMarker() throws Exception {
     File file = fsFactory.getFile(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
     writer.registerTimeseries(
@@ -246,7 +246,7 @@ public class RestorableTsFileIOWriterTest {
             .addTuple(new FloatDataPoint("s1", 5))
             .addTuple(new FloatDataPoint("s2", 4)));
     writer.flushAllChunkGroups();
-    writer.getIOWriter().writeChunkMaskForTest();
+    writer.getIOWriter().writeChunkGroupMarkerForTest();
     writer.getIOWriter().close();
     RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);
     writer = new TsFileWriter(rWriter);
@@ -291,6 +291,7 @@ public class RestorableTsFileIOWriterTest {
             .addTuple(new FloatDataPoint("s1", 6))
             .addTuple(new FloatDataPoint("s2", 4)));
     writer.flushAllChunkGroups();
+    writer.getIOWriter().writeChunkGroupMarkerForTest();
     writer.getIOWriter().close();
     RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);
     writer = new TsFileWriter(rWriter);

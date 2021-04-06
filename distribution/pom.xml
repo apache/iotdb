@@ -130,7 +130,7 @@
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>cluster</artifactId>
+            <artifactId>iotdb-cluster</artifactId>
             <version>${project.version}</version>
             <type>zip</type>
         </dependency>

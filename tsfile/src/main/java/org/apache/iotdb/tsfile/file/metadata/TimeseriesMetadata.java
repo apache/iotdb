@@ -242,4 +242,29 @@ public class TimeseriesMetadata implements Accountable, ITimeSeriesMetadata {
   public void setChunkMetadataList(ArrayList<ChunkMetadata> chunkMetadataList) {
     this.chunkMetadataList = new ArrayList<>(chunkMetadataList);
   }
+
+  @Override
+  public String toString() {
+    return "TimeseriesMetadata{"
+        + "startOffsetOfChunkMetaDataList="
+        + startOffsetOfChunkMetaDataList
+        + ", timeSeriesMetadataType="
+        + timeSeriesMetadataType
+        + ", chunkMetaDataListDataSize="
+        + chunkMetaDataListDataSize
+        + ", measurementId='"
+        + measurementId
+        + '\''
+        + ", dataType="
+        + dataType
+        + ", statistics="
+        + statistics
+        + ", modified="
+        + modified
+        + ", isSeq="
+        + isSeq
+        + ", chunkMetadataList="
+        + chunkMetadataList
+        + '}';
+  }
 }

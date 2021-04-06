@@ -126,6 +126,8 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
                         + 0
                         + IoTDBConstant.FILE_NAME_SEPARATOR
                         + 1
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 0
                         + ".tsfile")));
     compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
     CompactionUtils.merge(
@@ -215,6 +217,8 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
                         + 0
                         + IoTDBConstant.FILE_NAME_SEPARATOR
                         + 1
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 0
                         + ".tsfile")));
     compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
     CompactionUtils.merge(
@@ -328,6 +332,8 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
                         + 0
                         + IoTDBConstant.FILE_NAME_SEPARATOR
                         + 1
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 0
                         + ".tsfile")));
     compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
     CompactionUtils.merge(
@@ -447,6 +453,8 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
                         + 0
                         + IoTDBConstant.FILE_NAME_SEPARATOR
                         + 1
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 0
                         + ".tsfile")));
     compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
     CompactionUtils.merge(
@@ -594,6 +602,8 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
                         + 0
                         + IoTDBConstant.FILE_NAME_SEPARATOR
                         + 1
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 0
                         + ".tsfile")));
     compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
     levelCompactionTsFileManagement.add(targetTsFileResource, true);
@@ -649,6 +659,8 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
                         + 0
                         + IoTDBConstant.FILE_NAME_SEPARATOR
                         + 1
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 0
                         + ".tsfile")));
     compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
     CompactionUtils.merge(

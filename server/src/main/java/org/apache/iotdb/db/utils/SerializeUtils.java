@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -30,7 +29,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -117,66 +115,6 @@ public class SerializeUtils {
     for (int i = 0; i < length; i++) {
       ints.add(buffer.getInt());
     }
-  }
-
-  public static void serialize(Node node, DataOutputStream dataOutputStream) {
-    try {
-      byte[] internalIpBytes = node.internalIp.getBytes();
-      dataOutputStream.writeInt(internalIpBytes.length);
-      dataOutputStream.write(internalIpBytes);
-      dataOutputStream.writeInt(node.metaPort);
-      dataOutputStream.writeInt(node.nodeIdentifier);
-      dataOutputStream.writeInt(node.dataPort);
-      dataOutputStream.writeInt(node.clientPort);
-      byte[] clientIpBytes = node.clientIp.getBytes();
-      dataOutputStream.writeInt(clientIpBytes.length);
-      dataOutputStream.write(clientIpBytes);
-    } catch (IOException e) {
-      // unreachable
-    }
-  }
-
-  public static void deserialize(Node node, ByteBuffer buffer) {
-    int internalIpLength = buffer.getInt();
-    byte[] internalIpBytes = new byte[internalIpLength];
-    buffer.get(internalIpBytes);
-    node.setInternalIp(new String(internalIpBytes));
-    node.setMetaPort(buffer.getInt());
-    node.setNodeIdentifier(buffer.getInt());
-    node.setDataPort(buffer.getInt());
-    node.setClientPort(buffer.getInt());
-    int clientIpLength = buffer.getInt();
-    byte[] clientIpBytes = new byte[clientIpLength];
-    buffer.get(clientIpBytes);
-    node.setClientIp(new String(clientIpBytes));
-  }
-
-  public static void deserialize(Node node, DataInputStream stream) throws IOException {
-    int ipLength = stream.readInt();
-    byte[] ipBytes = new byte[ipLength];
-    int readIpSize = stream.read(ipBytes);
-    if (readIpSize != ipLength) {
-      throw new IOException(
-          String.format(
-              "No sufficient bytes read when deserializing the ip of a node: %d/%d",
-              readIpSize, ipLength));
-    }
-    node.setInternalIp(new String(ipBytes));
-    node.setMetaPort(stream.readInt());
-    node.setNodeIdentifier(stream.readInt());
-    node.setDataPort(stream.readInt());
-    node.setClientPort(stream.readInt());
-
-    int clientIpLength = stream.readInt();
-    byte[] clientIpBytes = new byte[clientIpLength];
-    int readClientIpSize = stream.read(clientIpBytes);
-    if (readClientIpSize != clientIpLength) {
-      throw new IOException(
-          String.format(
-              "No sufficient bytes read when deserializing the clientIp of a node: %d/%d",
-              readClientIpSize, clientIpLength));
-    }
-    node.setClientIp(new String(clientIpBytes));
   }
 
   public static void serializeBatchData(BatchData batchData, DataOutputStream outputStream) {

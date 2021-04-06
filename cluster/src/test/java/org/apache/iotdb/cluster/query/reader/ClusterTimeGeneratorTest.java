@@ -62,7 +62,7 @@ public class ClusterTimeGeneratorTest extends BaseQueryTest {
       dataQueryPlan.addDeduplicatedPaths(new PartialPath(TestUtils.getTestSeries(1, 1)));
 
       ClusterTimeGenerator timeGenerator =
-          new ClusterTimeGenerator(expression, context, testMetaMember, dataQueryPlan, false);
+          new ClusterTimeGenerator(context, testMetaMember, dataQueryPlan, false);
       for (int i = 3; i <= 8; i++) {
         assertTrue(timeGenerator.hasNext());
         assertEquals(i, timeGenerator.next());
