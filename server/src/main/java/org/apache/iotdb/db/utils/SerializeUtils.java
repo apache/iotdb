@@ -230,7 +230,6 @@ public class SerializeUtils {
             TsPrimitiveType[] values = batchData.getVectorByIndex(i);
             outputStream.writeInt(values.length);
             for (TsPrimitiveType value : values) {
-              outputStream.write(value == null ? 0 : 1);
               if (value == null) {
                 outputStream.write(0);
               } else {

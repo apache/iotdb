@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -40,6 +42,9 @@ public class RawDataQueryPlan extends QueryPlan {
   private List<TSDataType> deduplicatedDataTypes = new ArrayList<>();
   private IExpression expression = null;
   private Map<String, Set<String>> deviceToMeasurements = new HashMap<>();
+
+  private List<PartialPath> deduplicatedVectorPaths = new ArrayList<>();
+  private List<TSDataType> deduplicatedVectorDataTypes = new ArrayList<>();
 
   public RawDataQueryPlan() {
     super();
@@ -116,5 +121,43 @@ public class RawDataQueryPlan extends QueryPlan {
 
   public Map<String, Set<String>> getDeviceToMeasurements() {
     return deviceToMeasurements;
+  }
+
+  public void transformPaths(MManager mManager) throws MetadataException {
+    for (int i = 0; i < deduplicatedPaths.size(); i++) {
+      PartialPath path = mManager.transformPath(deduplicatedPaths.get(i));
+      if (path instanceof VectorPartialPath) {
+        deduplicatedPaths.set(i, path);
+        deduplicatedDataTypes.set(i, TSDataType.VECTOR);
+      }
+    }
+  }
+
+  public List<PartialPath> getDeduplicatedVectorPaths() {
+    return deduplicatedVectorPaths;
+  }
+
+  public void setDeduplicatedVectorPaths(List<PartialPath> deduplicatedVectorPaths) {
+    this.deduplicatedVectorPaths = deduplicatedVectorPaths;
+  }
+
+  public List<TSDataType> getDeduplicatedVectorDataTypes() {
+    return deduplicatedVectorDataTypes;
+  }
+
+  public void setDeduplicatedVectorDataTypes(List<TSDataType> deduplicatedVectorDataTypes) {
+    this.deduplicatedVectorDataTypes = deduplicatedVectorDataTypes;
+  }
+
+  public void transformToVector() {
+    if (!this.deduplicatedVectorPaths.isEmpty()) {
+      this.deduplicatedPaths = this.deduplicatedVectorPaths;
+      this.deduplicatedDataTypes = this.deduplicatedVectorDataTypes;
+      setPathToIndex(getVectorPathToIndex());
+    }
+  }
+
+  public boolean isRawQuery() {
+    return true;
   }
 }

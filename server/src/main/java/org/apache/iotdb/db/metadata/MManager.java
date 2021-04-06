@@ -1176,6 +1176,22 @@ public class MManager {
   }
 
   /**
+   * transform the PartialPath to VectorPartialPath if it is a sub sensor of one vector otherwise,
+   * we don't change it.
+   */
+  public PartialPath transformPath(PartialPath partialPath) throws MetadataException {
+    MeasurementMNode node = (MeasurementMNode) getNodeByPath(partialPath);
+    if (node.getSchema() instanceof MeasurementSchema) {
+      return partialPath;
+    } else {
+      List<PartialPath> subSensorsPathList = new ArrayList<>();
+      subSensorsPathList.add(partialPath);
+      return new VectorPartialPath(
+          partialPath.getDevice() + "." + node.getName(), subSensorsPathList);
+    }
+  }
+
+  /**
    * Get schema of partialPaths, in which aligned timeseries should only organized to one schema.
    * This method should be called when logical plan converts to physical plan.
    *
