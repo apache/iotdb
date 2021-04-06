@@ -390,7 +390,7 @@ public class AggregationExecutor {
 
   protected TimeGenerator getTimeGenerator(QueryContext context, RawDataQueryPlan queryPlan)
       throws StorageEngineException {
-    return new ServerTimeGenerator(expression, context, queryPlan);
+    return new ServerTimeGenerator(context, queryPlan);
   }
 
   protected IReaderByTimestamp getReaderByTime(
