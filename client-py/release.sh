@@ -1,3 +1,6 @@
+#!/usr/bin/env bash
+#
+#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -16,12 +19,19 @@
 # under the License.
 #
 
--r requirements.txt
-# Pytest to run tests
-pytest==6.2.2
-thrift==0.13.0
-flake8==3.9.0
-black==20.8b1
-# For releases
-twine==3.4.1
-wheel==0.36.2
+rm -Rf build
+rm -Rf dist
+rm -Rf iotdb_session.egg_info
+
+# (Re-)build generated code
+(cd ..; mvn clean generate-sources -pl client-py -am)
+
+# Run Linting
+flake8
+
+# Run unit tests
+pytest .
+
+# See https://packaging.python.org/tutorials/packaging-projects/
+python setup.py sdist bdist_wheel
+twine upload --repository pypi dist/*
