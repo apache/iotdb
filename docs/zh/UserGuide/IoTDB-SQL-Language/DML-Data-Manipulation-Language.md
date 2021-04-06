@@ -73,7 +73,7 @@ IoTDB > select * from root.ln.wf02 where time < 5
 |1970-01-01T08:00:00.003+08:00|                        v3|                   false|
 |1970-01-01T08:00:00.004+08:00|                        v4|                    true|
 +-----------------------------+--------------------------+------------------------+
-Total line number = 2
+Total line number = 4
 It costs 0.170s
 ```
 
