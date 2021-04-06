@@ -7,11 +7,9 @@ import java.io.IOException;
 
 public interface MetaFileAccess {
 
-  long length() throws IOException;
-
   MNode read(PartialPath path) throws IOException;
 
-  MNode read(long position) throws IOException;
+  MNode read(long position, boolean isMeasurement) throws IOException;
 
   void write(MNode mNode) throws IOException;
 

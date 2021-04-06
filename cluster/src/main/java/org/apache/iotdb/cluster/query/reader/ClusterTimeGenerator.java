@@ -58,7 +58,6 @@ public class ClusterTimeGenerator extends ServerTimeGenerator {
 
   /** Constructor of EngineTimeGenerator. */
   public ClusterTimeGenerator(
-      IExpression expression,
       QueryContext context,
       MetaGroupMember metaGroupMember,
       RawDataQueryPlan rawDataQueryPlan,
@@ -70,9 +69,10 @@ public class ClusterTimeGenerator extends ServerTimeGenerator {
     try {
       readerFactory.syncMetaGroup();
       if (onlyCheckLocalData) {
-        whetherHasLocalDataGroup(expression, metaGroupMember, queryPlan.isAscending());
+        whetherHasLocalDataGroup(
+            queryPlan.getExpression(), metaGroupMember, queryPlan.isAscending());
       } else {
-        constructNode(expression);
+        constructNode(queryPlan.getExpression());
       }
     } catch (IOException | CheckConsistencyException e) {
       throw new StorageEngineException(e);

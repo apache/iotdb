@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -33,6 +34,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -322,5 +324,23 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
   @Override
   public int hashCode() {
     return Objects.hash(paths, dataTypes, encodings, compressors);
+  }
+
+  @Override
+  public void checkIntegrity() throws QueryProcessException {
+    if (paths == null || paths.isEmpty()) {
+      throw new QueryProcessException("sub timeseries are empty");
+    }
+    if (paths.size() != dataTypes.size()) {
+      throw new QueryProcessException(
+          String.format(
+              "Measurements length [%d] does not match " + " datatype length [%d]",
+              paths.size(), dataTypes.size()));
+    }
+    for (PartialPath path : paths) {
+      if (path == null) {
+        throw new QueryProcessException("Paths contain null: " + Arrays.toString(paths.toArray()));
+      }
+    }
   }
 }
