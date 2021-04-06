@@ -29,6 +29,7 @@ import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.ext.Provider;
 
 import java.io.IOException;
@@ -59,12 +60,18 @@ public class AuthorizationFilter implements ContainerRequestFilter {
                 .type(MediaType.APPLICATION_JSON)
                 .entity(
                     new ApiResponseMessage(
-                        ApiResponseMessage.ERROR, "username or passowrd is incorrect!"))
+                        ApiResponseMessage.INFO, "username or passowrd is incorrect!"))
                 .build();
         containerRequestContext.abortWith(resp);
       }
     } catch (AuthException e) {
       e.printStackTrace();
+      Response resp =
+          Response.status(Status.INTERNAL_SERVER_ERROR)
+              .type(MediaType.APPLICATION_JSON)
+              .entity(new ApiResponseMessage(ApiResponseMessage.ERROR, e.getMessage()))
+              .build();
+      containerRequestContext.abortWith(resp);
     }
   }
 }

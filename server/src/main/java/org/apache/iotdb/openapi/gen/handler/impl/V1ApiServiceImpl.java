@@ -115,8 +115,8 @@ public class V1ApiServiceImpl extends V1ApiService {
     String path = Joiner.on(".").join(pathList);
     String sql = "";
     List<Map> listtemp = new ArrayList<>();
-    long stime= (long)(groupByFillPlan.getStime().doubleValue()*timePrecision);
-    long etime= (long)(groupByFillPlan.getEtime().doubleValue()*timePrecision);
+    long stime = (long) (groupByFillPlan.getStime().doubleValue() * timePrecision);
+    long etime = (long) (groupByFillPlan.getEtime().doubleValue() * timePrecision);
     if (groupByFillPlan.getFills() != null && groupByFillPlan.getFills().size() > 0) {
       sql =
           String.format(
@@ -185,15 +185,11 @@ public class V1ApiServiceImpl extends V1ApiService {
         m.put("name", fullname);
         listtemp.add(m);
       }
-
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
         temlist.add(rowRecord.getTimestamp());
         List<org.apache.iotdb.tsfile.read.common.Field> fields = rowRecord.getFields();
         for (int i = 1; i < listtemp.size(); i++) {
-
-
-
           List listvalues = null;
           if (listtemp.get(i).get("values") != null) {
             listvalues = (List) listtemp.get(i).get("values");
@@ -206,9 +202,11 @@ public class V1ApiServiceImpl extends V1ApiService {
             listvalues.add(fields.get(i - 1).getObjectValue(fields.get(i - 1).getDataType()));
             listtemp.get(i).put("values", listvalues);
           }
-          if(listtemp.get(i).get("type")==null){
-            listtemp.get(i).put("type","");
-          }else if(listtemp.get(i).get("type").toString().length()==0&&fields.get(i - 1) != null&&fields.get(i - 1).getDataType() != null){
+          if (listtemp.get(i).get("type") == null) {
+            listtemp.get(i).put("type", "");
+          } else if (listtemp.get(i).get("type").toString().length() == 0
+              && fields.get(i - 1) != null
+              && fields.get(i - 1).getDataType() != null) {
             listtemp.get(i).put("type", fields.get(i - 1).getDataType());
           }
         }
@@ -250,8 +248,8 @@ public class V1ApiServiceImpl extends V1ApiService {
     List<String> pathList = groupByFillPlan.getPaths();
     String path = Joiner.on(".").join(pathList);
     String sql = "";
-   long stime= (long)(groupByFillPlan.getStime().doubleValue()*timePrecision);
-   long etime= (long)(groupByFillPlan.getEtime().doubleValue()*timePrecision);
+    long stime = (long) (groupByFillPlan.getStime().doubleValue() * timePrecision);
+    long etime = (long) (groupByFillPlan.getEtime().doubleValue() * timePrecision);
     if (groupByFillPlan.getFills() != null && groupByFillPlan.getFills().size() > 0) {
       sql =
           String.format(
@@ -304,9 +302,9 @@ public class V1ApiServiceImpl extends V1ApiService {
           temlist.add(rowRecord.getTimestamp());
         }
       }
-      if(dataSet!=null&&dataSet.getPaths().size()>0){
+      if (dataSet != null && dataSet.getPaths().size() > 0) {
         tmpmap.put("target", dataSet.getPaths().get(0).getFullPath());
-      }else{
+      } else {
         tmpmap.put("target", "");
       }
 
