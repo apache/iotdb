@@ -116,20 +116,16 @@ public abstract class AbstractMemTable implements IMemTable {
     Object[] values = insertRowPlan.getValues();
 
     MeasurementMNode[] measurementMNodes = insertRowPlan.getMeasurementMNodes();
-    int columnCount = 0;
+    int columnIndex = 0;
     for (int i = 0; i < measurementMNodes.length; i++) {
-      if (values[columnCount] == null) {
-        columnCount++;
-        continue;
-      }
 
       if (measurementMNodes[i].getSchema().getType() == TSDataType.VECTOR) {
         // write vector
         Object[] vectorValue =
             new Object[measurementMNodes[i].getSchema().getValueTSDataTypeList().size()];
         for (int j = 0; j < vectorValue.length; j++) {
-          vectorValue[j] = values[columnCount];
-          columnCount++;
+          vectorValue[j] = values[columnIndex];
+          columnIndex++;
         }
         memSize +=
             MemUtils.getVectorRecordSize(
@@ -142,16 +138,20 @@ public abstract class AbstractMemTable implements IMemTable {
             insertRowPlan.getTime(),
             vectorValue);
       } else {
+        if (values[columnIndex] == null) {
+          columnIndex++;
+          continue;
+        }
         memSize +=
             MemUtils.getRecordSize(
-                measurementMNodes[i].getSchema().getType(), values[columnCount], disableMemControl);
+                measurementMNodes[i].getSchema().getType(), values[columnIndex], disableMemControl);
 
         write(
             insertRowPlan.getDeviceId().getFullPath(),
             measurementMNodes[i].getSchema(),
             insertRowPlan.getTime(),
-            values[columnCount]);
-        columnCount++;
+            values[columnIndex]);
+        columnIndex++;
       }
     }
 

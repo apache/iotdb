@@ -1453,6 +1453,10 @@ public class Session {
   private void putValues(List<TSDataType> types, List<Object> values, ByteBuffer buffer)
       throws IoTDBConnectionException {
     for (int i = 0; i < values.size(); i++) {
+      if (values.get(i) == null) {
+        ReadWriteIOUtils.write((byte) -2, buffer);
+        continue;
+      }
       ReadWriteIOUtils.write(types.get(i), buffer);
       switch (types.get(i)) {
         case BOOLEAN:

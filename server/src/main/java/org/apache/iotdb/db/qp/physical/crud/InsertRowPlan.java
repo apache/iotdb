@@ -434,6 +434,10 @@ public class InsertRowPlan extends InsertPlan {
         continue;
       }
 
+      if (typeNum == -2) {
+        values[i] = null;
+        continue;
+      }
       dataTypes[i] = TSDataType.values()[typeNum];
       switch (dataTypes[i]) {
         case BOOLEAN:
