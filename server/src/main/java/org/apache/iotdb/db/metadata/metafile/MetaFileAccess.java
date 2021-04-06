@@ -4,6 +4,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 
 import java.io.IOException;
+import java.util.Collection;
 
 public interface MetaFileAccess {
 
@@ -11,7 +12,11 @@ public interface MetaFileAccess {
 
   MNode read(long position, boolean isMeasurement) throws IOException;
 
+  void readData(MNode mNode) throws IOException;
+
   void write(MNode mNode) throws IOException;
+
+  void write(Collection<MNode> mNodes) throws IOException;
 
   void remove(PartialPath path) throws IOException;
 

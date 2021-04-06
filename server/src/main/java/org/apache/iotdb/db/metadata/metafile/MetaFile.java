@@ -30,11 +30,28 @@ public class MetaFile implements MetaFileAccess {
   }
 
   @Override
+  public void readData(MNode mNode) throws IOException {
+    if(mNode instanceof MeasurementMNode){
+      measurementFile.readData((MeasurementMNode)mNode);
+    }else {
+      mTreeFile.readData(mNode);
+    }
+  }
+
+  @Override
   public void write(MNode mNode) throws IOException {
     if (mNode instanceof MeasurementMNode) {
       measurementFile.write((MeasurementMNode) mNode);
     } else {
       mTreeFile.write(mNode);
+    }
+  }
+
+  @Override
+  public void write(Collection<MNode> mNodes) throws IOException {
+    allocateFreePos(mNodes);
+    for(MNode mNode:mNodes){
+      write(mNode);
     }
   }
 
@@ -92,10 +109,7 @@ public class MetaFile implements MetaFileAccess {
   public void writeRecursively(MNode mNode) throws IOException {
     List<MNode> mNodeList = new LinkedList<>();
     flatten(mNode, mNodeList);
-    allocateFreePos(mNodeList);
-    for (MNode node : mNodeList) {
-      write(node);
-    }
+    write(mNodeList);
   }
 
   private void flatten(MNode mNode, Collection<MNode> mNodes) {
@@ -107,6 +121,9 @@ public class MetaFile implements MetaFileAccess {
 
   private void allocateFreePos(Collection<MNode> mNodes) throws IOException {
     for (MNode mNode : mNodes) {
+      if(mNode.getPosition()!=0){
+        continue;
+      }
       if (mNode instanceof MeasurementMNode) {
         mNode.setPosition(measurementFile.getFreePos());
       } else {

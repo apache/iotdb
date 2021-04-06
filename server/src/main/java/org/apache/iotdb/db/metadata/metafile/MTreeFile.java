@@ -120,8 +120,43 @@ public class MTreeFile {
     return mnode;
   }
 
-  public MNode read(long position) throws IOException {
+  public void readData(MNode mNode) throws IOException{
+    if(mNode instanceof MeasurementMNode){
+      throw new IOException("cannot read MeasurementMNode from MTreeFile.");
+    }
+    long position=mNode.getPosition();
+    ByteBuffer dataBuffer=readBytesFromFile(position);
+    boolean isDevice = dataBuffer.get()==1;
+    int type = dataBuffer.get();
+    if (type == 2) {
+      if(!(mNode instanceof StorageGroupMNode)){
+        throw new IOException("wrong node type");
+      }
+      readStorageGroupMNode(dataBuffer, (StorageGroupMNode) mNode,isDevice);
+    } else {
+      readMNode(dataBuffer, mNode,isDevice);
+    }
+    mNode.setModified(false);
+  }
 
+  public MNode read(long position) throws IOException {
+    ByteBuffer dataBuffer=readBytesFromFile(position);
+    boolean isDevice = dataBuffer.get()==1;
+    int type = dataBuffer.get();
+    MNode mNode;
+    if (type == 2) {
+      mNode=new StorageGroupMNode(null,null,0);
+      readStorageGroupMNode(dataBuffer, (StorageGroupMNode)mNode, isDevice);
+    } else {
+      mNode=new MNode(null,null);
+      readMNode(dataBuffer, mNode,isDevice);
+    }
+    mNode.setPosition(position);
+    mNode.setModified(false);
+    return mNode;
+  }
+
+  private ByteBuffer readBytesFromFile(long position) throws IOException{
     if (position < headerLength) {
       throw new IOException("wrong node position");
     }
@@ -137,15 +172,16 @@ public class MTreeFile {
     if (type > 2) {
       throw new IOException("file corrupted");
     }
-
     boolean isDevice = (bitmap & 0x08) != 0;
+    int num = bitmap & 0x07;
 
     long parentPosition = buffer.getLong();
     long prePosition;
     long extendPosition = buffer.getLong();
 
-    int num = bitmap & 0x07;
-    ByteBuffer dataBuffer = ByteBuffer.allocate(num * (nodeLength - 17));
+    ByteBuffer dataBuffer = ByteBuffer.allocate(2 + num * (nodeLength - 17));// isDevice + node type + node data
+    dataBuffer.put((byte)(isDevice?1:0));
+    dataBuffer.put((byte)type);
     dataBuffer.put(buffer);
     for (int i = 1; i < num; i++) {
       buffer.clear();
@@ -163,41 +199,31 @@ public class MTreeFile {
       dataBuffer.put(buffer);
     }
     dataBuffer.flip();
-
-    MNode mNode;
-    if (type == 2) {
-      mNode = readStorageGroupMNode(dataBuffer, isDevice);
-    } else {
-      mNode = readMNode(dataBuffer, isDevice);
-    }
-    mNode.setPosition(position);
-    mNode.setModified(false);
-    return mNode;
+    return dataBuffer;
   }
 
-  private MNode readMNode(ByteBuffer dataBuffer, boolean isDevice) {
+  private void readMNode(ByteBuffer dataBuffer, MNode mNode, boolean isDevice) {
     String name = BufferUtil.readString(dataBuffer);
-    MNode mNode = new MNode(null, name);
+    mNode.setName(name);
     readChildren(mNode, dataBuffer, isDevice);
-    return mNode;
   }
 
-  private StorageGroupMNode readStorageGroupMNode(ByteBuffer dataBuffer, boolean isDevice) {
+  private void readStorageGroupMNode(ByteBuffer dataBuffer, StorageGroupMNode mNode, boolean isDevice) {
     String name = BufferUtil.readString(dataBuffer);
     long ttl = dataBuffer.getLong();
-    StorageGroupMNode mNode = new StorageGroupMNode(null, name, ttl);
+    mNode.setName(name);
+    mNode.setDataTTL(ttl);
     readChildren(mNode, dataBuffer, isDevice);
-    return mNode;
   }
 
-  private void readChildren(MNode parent, ByteBuffer byteBuffer, boolean isDevice) {
+  private void readChildren(MNode mNode, ByteBuffer byteBuffer, boolean isDevice) {
     String name;
     MNode child;
     while (null != (name = BufferUtil.readString(byteBuffer))) {
-      child = isDevice ? new MeasurementMNode(parent, name, null, null) : new MNode(parent, name);
+      child = isDevice ? new MeasurementMNode(mNode, name, null, null) : new MNode(mNode, name);
       child.setPosition(byteBuffer.getLong());
       child.setModified(false);
-      parent.addChild(name, child);
+      mNode.addChild(name, child);
     }
   }
 

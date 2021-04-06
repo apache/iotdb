@@ -67,19 +67,17 @@ public class MeasurementFile {
   }
 
   public MeasurementMNode read(long position) throws IOException {
-    ByteBuffer buffer = ByteBuffer.allocate(MEASUREMENT_LENGTH);
-
-    fileAccess.readBytes(position, buffer);
-
-    byte bitmap = buffer.get();
-    if ((bitmap & 0x80) == 0) {
-      throw new IOException("file corrupted");
-    }
+    ByteBuffer buffer = readBytesFromFile(position);
 
     MeasurementMNode measurementMNode = readMeasurementMNode(buffer);
     measurementMNode.setPosition(position);
     measurementMNode.setModified(false);
     return measurementMNode;
+  }
+
+  public void readData(MeasurementMNode measurementMNode) throws IOException{
+    readData(measurementMNode,readBytesFromFile(measurementMNode.getPosition()));
+    measurementMNode.setModified(false);
   }
 
   private MeasurementMNode readMeasurementMNode(ByteBuffer dataBuffer) {
@@ -108,8 +106,43 @@ public class MeasurementFile {
     return mNode;
   }
 
+  private void readData(MeasurementMNode measurementMNode, ByteBuffer dataBuffer){
+    String name = BufferUtil.readString(dataBuffer);
+    String alias = BufferUtil.readString(dataBuffer);
+    long offset = dataBuffer.getLong();
+    byte type = dataBuffer.get();
+    byte encoding = dataBuffer.get();
+    byte compressor = dataBuffer.get();
+    Map<String, String> props = new HashMap<>();
+    String key, value;
+    while (null != (key = BufferUtil.readString(dataBuffer))) {
+      value = BufferUtil.readString(dataBuffer);
+      props.put(key, value);
+    }
+    MeasurementSchema schema=new MeasurementSchema(name,TSDataType.deserialize(type),
+            TSEncoding.deserialize(encoding),
+            CompressionType.deserialize(compressor),
+            props.size() == 0 ? null : props);
+
+    measurementMNode.setAlias(alias);
+    measurementMNode.setOffset(offset);
+    measurementMNode.setSchema(schema);
+  }
+
+  private ByteBuffer readBytesFromFile(long position) throws IOException{
+    ByteBuffer buffer = ByteBuffer.allocate(MEASUREMENT_LENGTH);
+
+    fileAccess.readBytes(position, buffer);
+
+    byte bitmap = buffer.get();
+    if ((bitmap & 0x80) == 0) {
+      throw new IOException("file corrupted");
+    }
+    return buffer;
+  }
+
   public void write(MeasurementMNode measurementMNode) throws IOException {
-    if (measurementMNode.getPosition() == -1) {
+    if (measurementMNode.getPosition() == 0) {
       measurementMNode.setPosition(getFreePos());
     }
     ByteBuffer byteBuffer = serializeMeasurementMNodeData(measurementMNode);
