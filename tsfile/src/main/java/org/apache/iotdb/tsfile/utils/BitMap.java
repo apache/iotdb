@@ -24,14 +24,14 @@ public class BitMap {
   private static final byte[] BIT_UTIL = new byte[] {1, 2, 4, 8, 16, 32, 64, -128};
   private static final byte[] UNMARK_BIT_UTIL =
       new byte[] {
-        (byte) 0XFE,
-        (byte) 0XFD,
-        (byte) 0XFB,
-        (byte) 0XF7,
-        (byte) 0XEF,
-        (byte) 0XDF,
-        (byte) 0XBF,
-        (byte) 0X7F
+        (byte) 0XFE, // 11111110
+        (byte) 0XFD, // 11111101
+        (byte) 0XFB, // 11111011
+        (byte) 0XF7, // 11110111
+        (byte) 0XEF, // 11101111
+        (byte) 0XDF, // 11011111
+        (byte) 0XBF, // 10111111
+        (byte) 0X7F // 01111111
       };
 
   private byte[] bits;

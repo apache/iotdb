@@ -43,6 +43,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -1532,12 +1533,18 @@ public class Session {
       IMeasurementSchema schema = tablet.getSchemas().get(i);
       if (schema instanceof MeasurementSchema) {
         tablet.values[columnIndex] = sortList(tablet.values[columnIndex], schema.getType(), index);
+        if (tablet.bitMaps != null && tablet.bitMaps[columnIndex] != null) {
+          tablet.bitMaps[columnIndex] = sortBitMap(tablet.bitMaps[columnIndex], index);
+        }
         columnIndex++;
       } else {
         int measurementSize = schema.getValueMeasurementIdList().size();
         for (int j = 0; j < measurementSize; j++) {
           tablet.values[columnIndex] =
               sortList(tablet.values[columnIndex], schema.getValueTSDataTypeList().get(i), index);
+          if (tablet.bitMaps != null && tablet.bitMaps[columnIndex] != null) {
+            tablet.bitMaps[columnIndex] = sortBitMap(tablet.bitMaps[columnIndex], index);
+          }
           columnIndex++;
         }
       }
@@ -1599,6 +1606,23 @@ public class Session {
       default:
         throw new UnSupportedDataTypeException(MSG_UNSUPPORTED_DATA_TYPE + dataType);
     }
+  }
+
+  /**
+   * sort BitMap by index
+   *
+   * @param bitMap BitMap to be sorted
+   * @param index index
+   * @return sorted bitMap
+   */
+  private BitMap sortBitMap(BitMap bitMap, Integer[] index) {
+    BitMap sortedBitMap = new BitMap(bitMap.getSize());
+    for (int i = 0; i < index.length; i++) {
+      if (bitMap.get(index[i])) {
+        sortedBitMap.mark(i);
+      }
+    }
+    return sortedBitMap;
   }
 
   public void setDeviceTemplate(String templateName, String prefixPath)
