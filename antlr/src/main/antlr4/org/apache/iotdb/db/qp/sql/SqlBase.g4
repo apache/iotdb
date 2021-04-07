@@ -1300,6 +1300,10 @@ EXPLAIN
     : E X P L A I N
     ;
 
+NULL
+    : N U L L
+    ;
+
 //============================
 // End of the keywords list
 //============================
@@ -1362,8 +1366,6 @@ R_BRACKET : '}';
 UNDERLINE : '_';
 
 NaN : 'NaN';
-
-NULL : 'null';
 
 stringLiteral
    : SINGLE_QUOTE_STRING_LITERAL

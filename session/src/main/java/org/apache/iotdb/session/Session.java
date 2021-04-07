@@ -76,7 +76,7 @@ public class Session {
   protected String username;
   protected String password;
   protected int fetchSize;
-
+  private static final byte TYPE_NULL = -2;
   /**
    * Timeout of query can be set by users. If not set, default value 0 will be used, which will use
    * server configuration.
@@ -1454,7 +1454,7 @@ public class Session {
       throws IoTDBConnectionException {
     for (int i = 0; i < values.size(); i++) {
       if (values.get(i) == null) {
-        ReadWriteIOUtils.write((byte) -2, buffer);
+        ReadWriteIOUtils.write(TYPE_NULL, buffer);
         continue;
       }
       ReadWriteIOUtils.write(types.get(i), buffer);

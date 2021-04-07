@@ -80,9 +80,9 @@ public class TypeInferenceUtils {
         } else {
           return floatingStringInferType;
         }
-        // "NaN" is returned if the NaN Literal is given in Parser
-      } else if ("null".equals(strValue)) {
+      } else if ("null".equals(strValue) || "NULL".equals(strValue)) {
         return null;
+        // "NaN" is returned if the NaN Literal is given in Parser
       } else if ("NaN".equals(strValue)) {
         return nanStringInferType;
       } else {
