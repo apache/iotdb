@@ -74,7 +74,7 @@ public class MTree implements MTreeInterface {
   private static transient ThreadLocal<Integer> curOffset = new ThreadLocal<>();
   private MNode root;
 
-  MTree() {
+  public MTree() {
     this.root = new MNode(null, IoTDBConstant.PATH_ROOT);
   }
 

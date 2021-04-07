@@ -75,8 +75,8 @@ public class MeasurementFile {
     return measurementMNode;
   }
 
-  public void readData(MeasurementMNode measurementMNode) throws IOException{
-    readData(measurementMNode,readBytesFromFile(measurementMNode.getPosition()));
+  public void readData(MeasurementMNode measurementMNode) throws IOException {
+    readData(measurementMNode, readBytesFromFile(measurementMNode.getPosition()));
     measurementMNode.setModified(false);
   }
 
@@ -106,7 +106,7 @@ public class MeasurementFile {
     return mNode;
   }
 
-  private void readData(MeasurementMNode measurementMNode, ByteBuffer dataBuffer){
+  private void readData(MeasurementMNode measurementMNode, ByteBuffer dataBuffer) {
     String name = BufferUtil.readString(dataBuffer);
     String alias = BufferUtil.readString(dataBuffer);
     long offset = dataBuffer.getLong();
@@ -119,7 +119,10 @@ public class MeasurementFile {
       value = BufferUtil.readString(dataBuffer);
       props.put(key, value);
     }
-    MeasurementSchema schema=new MeasurementSchema(name,TSDataType.deserialize(type),
+    MeasurementSchema schema =
+        new MeasurementSchema(
+            name,
+            TSDataType.deserialize(type),
             TSEncoding.deserialize(encoding),
             CompressionType.deserialize(compressor),
             props.size() == 0 ? null : props);
@@ -129,7 +132,7 @@ public class MeasurementFile {
     measurementMNode.setSchema(schema);
   }
 
-  private ByteBuffer readBytesFromFile(long position) throws IOException{
+  private ByteBuffer readBytesFromFile(long position) throws IOException {
     ByteBuffer buffer = ByteBuffer.allocate(MEASUREMENT_LENGTH);
 
     fileAccess.readBytes(position, buffer);

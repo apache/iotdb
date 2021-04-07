@@ -1,8 +1,9 @@
 package org.apache.iotdb.db.metadata.metafile;
 
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
-
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -20,7 +21,8 @@ public class MeasurementFileTest {
   private MeasurementFile measurementFile;
 
   @Before
-  public void setUp() throws IOException {
+  public void setUp() throws Exception {
+    EnvironmentUtils.envSetUp();
     File file = new File(MEASUREMENT_FILEPATH);
     if (file.exists()) {
       file.delete();
@@ -29,12 +31,13 @@ public class MeasurementFileTest {
   }
 
   @After
-  public void tearDown() throws IOException {
+  public void tearDown() throws Exception {
     measurementFile.close();
     File file = new File(MEASUREMENT_FILEPATH);
     if (file.exists()) {
       file.delete();
     }
+    EnvironmentUtils.cleanEnv();
   }
 
   @Test

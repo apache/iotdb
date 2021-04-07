@@ -30,12 +30,13 @@ public class MetaFile implements MetaFileAccess {
   }
 
   @Override
-  public void readData(MNode mNode) throws IOException {
-    if(mNode instanceof MeasurementMNode){
-      measurementFile.readData((MeasurementMNode)mNode);
-    }else {
-      mTreeFile.readData(mNode);
+  public MNode readData(MNode mNode) throws IOException {
+    if (mNode instanceof MeasurementMNode) {
+      measurementFile.readData((MeasurementMNode) mNode);
+    } else {
+      mNode=mTreeFile.readData(mNode);
     }
+    return mNode;
   }
 
   @Override
@@ -50,7 +51,7 @@ public class MetaFile implements MetaFileAccess {
   @Override
   public void write(Collection<MNode> mNodes) throws IOException {
     allocateFreePos(mNodes);
-    for(MNode mNode:mNodes){
+    for (MNode mNode : mNodes) {
       write(mNode);
     }
   }
@@ -76,10 +77,7 @@ public class MetaFile implements MetaFileAccess {
   public MNode readMNode(String path) throws IOException {
     MNode mNode = mTreeFile.read(path);
     if (mNode instanceof MeasurementMNode) {
-      MeasurementMNode tmp = measurementFile.read(mNode.getPosition());
-      mNode.getParent().deleteChild(tmp.getName());
-      mNode.getParent().addChild(tmp.getName(), tmp);
-      mNode = tmp;
+      measurementFile.readData((MeasurementMNode) mNode);
     }
     return mNode;
   }
@@ -95,15 +93,16 @@ public class MetaFile implements MetaFileAccess {
   public MNode readRecursively(long position) throws IOException {
     MNode mNode = mTreeFile.read(position);
     for (MNode child : mNode.getChildren().values()) {
-      if (child instanceof MeasurementMNode) {
-        mNode.deleteChild(child.getName());
-        mNode.addChild(child.getName(), measurementFile.read(child.getPosition()));
-      } else {
-        mNode.deleteChild(child.getName());
-        mNode.addChild(child.getName(), readRecursively(child.getPosition()));
-      }
+      readRecursively(child);
     }
     return mNode;
+  }
+
+  public void readRecursively(MNode mNode) throws IOException{
+    mNode=readData(mNode);
+    for (MNode child : mNode.getChildren().values()) {
+      readRecursively(child);
+    }
   }
 
   public void writeRecursively(MNode mNode) throws IOException {
@@ -121,7 +120,7 @@ public class MetaFile implements MetaFileAccess {
 
   private void allocateFreePos(Collection<MNode> mNodes) throws IOException {
     for (MNode mNode : mNodes) {
-      if(mNode.getPosition()!=0){
+      if (mNode.getPosition() != 0) {
         continue;
       }
       if (mNode instanceof MeasurementMNode) {

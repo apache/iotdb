@@ -3,8 +3,10 @@ package org.apache.iotdb.db.metadata.metafile;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
-
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -23,7 +25,8 @@ public class MetaFileTest {
   private MetaFile metaFile;
 
   @Before
-  public void setUp() throws IOException {
+  public void setUp() throws Exception {
+    EnvironmentUtils.envSetUp();
     File file = new File(MTREE_FILEPATH);
     if (file.exists()) {
       file.delete();
@@ -38,7 +41,7 @@ public class MetaFileTest {
   }
 
   @After
-  public void tearDown() throws IOException {
+  public void tearDown() throws Exception {
     metaFile.close();
     File file = new File(MTREE_FILEPATH);
     if (file.exists()) {
@@ -49,6 +52,7 @@ public class MetaFileTest {
     if (file.exists()) {
       file.delete();
     }
+    EnvironmentUtils.cleanEnv();
   }
 
   @Test
@@ -101,8 +105,8 @@ public class MetaFileTest {
     metaFile.writeRecursively(mNode);
     mNode = metaFile.readRecursively(mNode.getPosition());
     showTree(mNode);
-    StorageGroupMNode s1 = (StorageGroupMNode) mNode.getChild("p").getChild("s1");
-    StorageGroupMNode s2 = (StorageGroupMNode) mNode.getChild("p").getChild("s2");
+    StorageGroupMNode s1 = (StorageGroupMNode) (mNode.getChild("p").getChild("s1"));
+    StorageGroupMNode s2 = (StorageGroupMNode) (mNode.getChild("p").getChild("s2"));
     System.out.println("s1.TTL: " + s1.getDataTTL() + "; s2.TTL: " + s2.getDataTTL());
     MeasurementMNode t1 = (MeasurementMNode) mNode.getChild("p").getChild("s1").getChild("t1");
     MeasurementMNode t2 = (MeasurementMNode) mNode.getChild("p").getChild("s2").getChild("t2");
@@ -140,5 +144,49 @@ public class MetaFileTest {
     for (MNode child : mNode.getChildren().values()) {
       showTree(child);
     }
+  }
+
+  @Test
+  public void testIOPerformance() throws IOException {
+    int deviceNum = 100;
+    int schemaNum = 100;
+
+    long startTime, endTime;
+    startTime = System.currentTimeMillis();
+    MNode root = new MNode(null,"root");
+    StorageGroupMNode sg = new StorageGroupMNode(root,"sg",1000);
+    root.addChild("sg",sg);
+    String d, t;
+    MeasurementMNode m;
+    for (int i = 0; i < deviceNum; i++) {
+      d = "d" + i;
+      sg.addChild(d,new MNode(sg,d));
+      for (int j = 0; j < schemaNum; j++) {
+        t = "t" + j;
+        m = new MeasurementMNode(sg.getChild(d),t,new MeasurementSchema(t, TSDataType.INT32),null);
+        sg.getChild(d).addChild(t,m);
+      }
+    }
+    endTime = System.currentTimeMillis();
+    System.out.println("MTree creation time: " + (endTime - startTime) + "ms.");
+
+    startTime = System.currentTimeMillis();
+    metaFile.writeRecursively(root);
+    endTime = System.currentTimeMillis();
+    System.out.println("MTree persistence time: " + (endTime - startTime) + "ms.");
+
+    startTime = System.currentTimeMillis();
+    root=metaFile.readRecursively(root.getPosition());
+    endTime = System.currentTimeMillis();
+    System.out.println(count(root));
+    System.out.println("MTree read from file time: " + (endTime - startTime) + "ms.");
+  }
+
+  private int count(MNode mNode){
+    int num=1;
+    for(MNode child:mNode.getChildren().values()){
+      num+=count(child);
+    }
+    return num;
   }
 }

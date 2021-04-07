@@ -3,8 +3,9 @@ package org.apache.iotdb.db.metadata.metafile;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
-
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -23,6 +24,7 @@ public class MTreeFileTest {
 
   @Before
   public void setUp() throws IOException {
+    EnvironmentUtils.envSetUp();
     File file = new File(MTREE_FILEPATH);
     if (file.exists()) {
       file.delete();
@@ -31,12 +33,13 @@ public class MTreeFileTest {
   }
 
   @After
-  public void tearDown() throws IOException {
+  public void tearDown() throws Exception {
     mTreeFile.close();
     File file = new File(MTREE_FILEPATH);
     if (file.exists()) {
       file.delete();
     }
+    EnvironmentUtils.cleanEnv();
   }
 
   @Test

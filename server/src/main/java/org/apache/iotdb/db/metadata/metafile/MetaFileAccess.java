@@ -12,7 +12,7 @@ public interface MetaFileAccess {
 
   MNode read(long position, boolean isMeasurement) throws IOException;
 
-  void readData(MNode mNode) throws IOException;
+  MNode readData(MNode mNode) throws IOException;
 
   void write(MNode mNode) throws IOException;
 

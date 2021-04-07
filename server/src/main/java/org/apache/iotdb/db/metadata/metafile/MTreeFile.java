@@ -120,43 +120,46 @@ public class MTreeFile {
     return mnode;
   }
 
-  public void readData(MNode mNode) throws IOException{
-    if(mNode instanceof MeasurementMNode){
+  public MNode readData(MNode mNode) throws IOException {
+    if (mNode instanceof MeasurementMNode) {
       throw new IOException("cannot read MeasurementMNode from MTreeFile.");
     }
-    long position=mNode.getPosition();
-    ByteBuffer dataBuffer=readBytesFromFile(position);
-    boolean isDevice = dataBuffer.get()==1;
+    long position = mNode.getPosition();
+    ByteBuffer dataBuffer = readBytesFromFile(position);
+    boolean isDevice = dataBuffer.get() == 1;
     int type = dataBuffer.get();
     if (type == 2) {
-      if(!(mNode instanceof StorageGroupMNode)){
-        throw new IOException("wrong node type");
+      if (!(mNode instanceof StorageGroupMNode)) {
+        mNode=new StorageGroupMNode(mNode.getParent(),mNode.getName(),0);
+        mNode.getParent().deleteChild(mNode.getName());
+        mNode.getParent().addChild(mNode.getName(),mNode);
       }
-      readStorageGroupMNode(dataBuffer, (StorageGroupMNode) mNode,isDevice);
+      readStorageGroupMNode(dataBuffer, (StorageGroupMNode) mNode, isDevice);
     } else {
-      readMNode(dataBuffer, mNode,isDevice);
+      readMNode(dataBuffer, mNode, isDevice);
     }
     mNode.setModified(false);
+    return mNode;
   }
 
   public MNode read(long position) throws IOException {
-    ByteBuffer dataBuffer=readBytesFromFile(position);
-    boolean isDevice = dataBuffer.get()==1;
+    ByteBuffer dataBuffer = readBytesFromFile(position);
+    boolean isDevice = dataBuffer.get() == 1;
     int type = dataBuffer.get();
     MNode mNode;
     if (type == 2) {
-      mNode=new StorageGroupMNode(null,null,0);
-      readStorageGroupMNode(dataBuffer, (StorageGroupMNode)mNode, isDevice);
+      mNode = new StorageGroupMNode(null, null, 0);
+      readStorageGroupMNode(dataBuffer, (StorageGroupMNode) mNode, isDevice);
     } else {
-      mNode=new MNode(null,null);
-      readMNode(dataBuffer, mNode,isDevice);
+      mNode = new MNode(null, null);
+      readMNode(dataBuffer, mNode, isDevice);
     }
     mNode.setPosition(position);
     mNode.setModified(false);
     return mNode;
   }
 
-  private ByteBuffer readBytesFromFile(long position) throws IOException{
+  private ByteBuffer readBytesFromFile(long position) throws IOException {
     if (position < headerLength) {
       throw new IOException("wrong node position");
     }
@@ -179,9 +182,10 @@ public class MTreeFile {
     long prePosition;
     long extendPosition = buffer.getLong();
 
-    ByteBuffer dataBuffer = ByteBuffer.allocate(2 + num * (nodeLength - 17));// isDevice + node type + node data
-    dataBuffer.put((byte)(isDevice?1:0));
-    dataBuffer.put((byte)type);
+    ByteBuffer dataBuffer =
+        ByteBuffer.allocate(2 + num * (nodeLength - 17)); // isDevice + node type + node data
+    dataBuffer.put((byte) (isDevice ? 1 : 0));
+    dataBuffer.put((byte) type);
     dataBuffer.put(buffer);
     for (int i = 1; i < num; i++) {
       buffer.clear();
@@ -208,7 +212,8 @@ public class MTreeFile {
     readChildren(mNode, dataBuffer, isDevice);
   }
 
-  private void readStorageGroupMNode(ByteBuffer dataBuffer, StorageGroupMNode mNode, boolean isDevice) {
+  private void readStorageGroupMNode(
+      ByteBuffer dataBuffer, StorageGroupMNode mNode, boolean isDevice) {
     String name = BufferUtil.readString(dataBuffer);
     long ttl = dataBuffer.getLong();
     mNode.setName(name);
@@ -248,7 +253,7 @@ public class MTreeFile {
 
   public void writeRecursively(MNode mNode) throws IOException {
     write(mNode);
-    if(mNode.getChildren()==null){
+    if (mNode.getChildren() == null) {
       return;
     }
     for (MNode child : mNode.getChildren().values()) {
@@ -322,18 +327,19 @@ public class MTreeFile {
     bufferList[0] = ByteBuffer.allocate(nodeLength);
     bufferList[0].put(bitmap);
     MNode parent = mNode.getParent();
-    long prePos=parent == null ? 0 : parent.getPosition();
+    long prePos = parent == null ? 0 : parent.getPosition();
     bufferList[0].putLong(prePos);
     long extensionPos = 0 == bufferNum - 1 ? 0 : getFreePos();
     bufferList[0].putLong(extensionPos);
+    dataBuffer.limit(Math.min(dataBuffer.position()+nodeLength - 17,dataBuffer.capacity()));
     bufferList[0].put(dataBuffer);
     bufferList[0].position(0);
-    long currentPos=mNode.getPosition();
+    long currentPos = mNode.getPosition();
     result.put(currentPos, bufferList[0]);
 
     for (int i = 1; i < bufferNum; i++) {
-      prePos=currentPos;
-      currentPos=extensionPos;
+      prePos = currentPos;
+      currentPos = extensionPos;
       bufferList[i] = ByteBuffer.allocate(nodeLength);
       result.put(currentPos, bufferList[i]);
       bitmap = (byte) (0xB0 | (bufferNum - i));
@@ -341,6 +347,7 @@ public class MTreeFile {
       bufferList[i].putLong(prePos);
       extensionPos = i == bufferNum - 1 ? 0 : getFreePos();
       bufferList[i].putLong(extensionPos);
+      dataBuffer.limit(Math.min(dataBuffer.position()+nodeLength - 17,dataBuffer.capacity()));
       bufferList[i].put(dataBuffer);
       bufferList[i].position(0);
     }

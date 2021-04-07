@@ -1,10 +1,15 @@
-package org.apache.iotdb.db.metadata;
+package org.apache.iotdb.db.metadata.cache;
 
+import org.apache.iotdb.db.metadata.MTree;
+import org.apache.iotdb.db.metadata.MTreeDiskBased;
+import org.apache.iotdb.db.metadata.MTreeInterface;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
+import jdk.nashorn.internal.ir.debug.ObjectSizeCalculator;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -14,9 +19,9 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 
-public class MTreePerformanceTest {
+public class CachePerformanceTest {
 
-  private static Logger logger = LoggerFactory.getLogger(MTreePerformanceTest.class);
+  private static Logger logger = LoggerFactory.getLogger(CachePerformanceTest.class);
 
   private static final int TIMESERIES_NUM = 10000;
   private static final int DEVICE_NUM = 100;
@@ -26,6 +31,7 @@ public class MTreePerformanceTest {
   public static void initPath() throws Exception {
     long startTime = System.currentTimeMillis(), endTime;
     paths = new PartialPath[DEVICE_NUM][TIMESERIES_NUM];
+    StringBuilder stringBuilder=new StringBuilder();
     for (int i = 0; i < DEVICE_NUM; i++) {
       for (int j = 0; j < TIMESERIES_NUM; j++) {
         paths[i][j] = new PartialPath("root.t1.v1.d" + i + ".s" + j);
@@ -52,14 +58,13 @@ public class MTreePerformanceTest {
     mTreeMem = null;
     System.gc();
     MTreeInterface mTreeDisk = testMTreeDisk();
-
-    //        System.out.println(ObjectSizeCalculator.getObjectSize(paths));
-    //        System.out.println(ObjectSizeCalculator.getObjectSize(mTreeMem));
-    //        System.out.println(ObjectSizeCalculator.getObjectSize(mTreeDisk));
-
-    //        while (true){
-    //
-    //        }
+//    mTreeDisk=null;
+//    System.out.println(ObjectSizeCalculator.getObjectSize(paths));
+//    System.out.println(ObjectSizeCalculator.getObjectSize(mTreeMem));
+//    System.out.println(ObjectSizeCalculator.getObjectSize(mTreeDisk));
+    paths=null;
+    System.gc();
+    while (true) {}
   }
 
   private MTreeInterface testMTreeMem() throws Exception {
