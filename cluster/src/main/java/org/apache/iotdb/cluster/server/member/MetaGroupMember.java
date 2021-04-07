@@ -605,6 +605,7 @@ public class MetaGroupMember extends RaftMember {
       logger.info("Node {} admitted this node into the cluster", node);
       ByteBuffer partitionTableBuffer = resp.partitionTableBytes;
       acceptPartitionTable(partitionTableBuffer, true);
+      getDataClusterServer().pullSnapshots();
       return true;
     } else if (resp.getRespNum() == Response.RESPONSE_IDENTIFIER_CONFLICT) {
       logger.info("The identifier {} conflicts the existing ones, regenerate a new one",
@@ -719,8 +720,6 @@ public class MetaGroupMember extends RaftMember {
     updateNodeList(newTable.getAllNodes());
 
     startSubServers();
-
-    getDataClusterServer().pullSnapshots();
   }
 
   private void updateNodeList(Collection<Node> nodes) {
@@ -2219,20 +2218,31 @@ public class MetaGroupMember extends RaftMember {
       getDataClusterServer().removeNode(oldNode, result);
 
       // the leader is removed, start the next election ASAP
-      if (oldNode.equals(leader.get())) {
-        setCharacter(NodeCharacter.ELECTOR);
-        setLeader(ClusterConstant.EMPTY_NODE);
-        lastHeartbeatReceivedTime = Long.MIN_VALUE;
+      if (oldNode.equals(leader.get()) && !oldNode.equals(thisNode)) {
+        synchronized (term) {
+          setCharacter(NodeCharacter.ELECTOR);
+          setLeader(null);
+        }
+        synchronized (getHeartBeatWaitObject()) {
+          getHeartBeatWaitObject().notifyAll();
+        }
       }
 
       if (oldNode.equals(thisNode)) {
         // use super.stop() so that the data server will not be closed because other nodes may
         // want to pull data from this node
-        super.stop();
-        if (clientServer != null) {
-          clientServer.stop();
-        }
-        logger.info("{} has been removed from the cluster", name);
+        new Thread(() -> {
+          try {
+            Thread.sleep(RaftServer.getHeartBeatIntervalMs());
+          } catch (InterruptedException e) {
+            //ignore
+          }
+          super.stop();
+          if (clientServer != null) {
+            clientServer.stop();
+          }
+          logger.info("{} has been removed from the cluster", name);
+        }).start();
       } else if (thisNode.equals(leader.get())) {
         // as the old node is removed, it cannot know this by heartbeat or log, so it should be
         // directly kicked out of the cluster

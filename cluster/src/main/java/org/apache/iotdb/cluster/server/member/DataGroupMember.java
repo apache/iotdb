@@ -350,6 +350,8 @@ public class DataGroupMember extends RaftMember {
           synchronized (term) {
             setCharacter(NodeCharacter.ELECTOR);
             setLeader(null);
+          }
+          synchronized (getHeartBeatWaitObject()) {
             getHeartBeatWaitObject().notifyAll();
           }
         }
@@ -759,6 +761,8 @@ public class DataGroupMember extends RaftMember {
           synchronized (term) {
             setCharacter(NodeCharacter.ELECTOR);
             setLeader(null);
+          }
+          synchronized (getHeartBeatWaitObject()) {
             getHeartBeatWaitObject().notifyAll();
           }
         }
@@ -793,39 +797,6 @@ public class DataGroupMember extends RaftMember {
       }
     }
     return resp;
-  }
-
-  /**
-   * When the header of a partition group is removed, it needs to wait all followers to sync data
-   * because there has no new leader.
-   */
-  public void waitFollowersToSync() {
-    try {
-      for (Map.Entry<Node, Peer> entry : peerMap.entrySet()) {
-        Node node = entry.getKey();
-        if (node.equals(thisNode)) {
-          continue;
-        }
-        Peer peer = entry.getValue();
-        while (peer.getMatchIndex() < logManager.getCommitLogIndex()) {
-          try {
-            Thread.sleep(10);
-            if (character != NodeCharacter.LEADER) {
-              return;
-            }
-          } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            logger
-                .warn("{}: Unexpected interruption when waiting follower {} to sync, raft id is {}",
-                    name, node, getRaftGroupId());
-          }
-        }
-        logger.info("{}: Follower {} has synced with leader, raft id is {}", name, node,
-            getRaftGroupId());
-      }
-    } finally {
-      stop();
-    }
   }
 
   /**
@@ -864,7 +835,7 @@ public class DataGroupMember extends RaftMember {
   }
 
   public boolean onSnapshotInstalled(List<Integer> slots) {
-    if (!isHasSyncedLeaderBeforeRemoved()) {
+    if (getMetaGroupMember().getPartitionTable().getAllNodes().contains(thisNode)) {
       getMetaGroupMember().waitUtil(getMetaGroupMember().getPartitionTable().getLastMetaLogIndex());
     }
     if (logger.isDebugEnabled()) {
@@ -924,10 +895,6 @@ public class DataGroupMember extends RaftMember {
   public void setAndSaveLastAppliedPartitionTableVersion(long version) {
     lastAppliedPartitionTableVersion.setVersion(version);
     lastAppliedPartitionTableVersion.save();
-  }
-
-  public long getLastAppliedPartitionTableVersion() {
-    return lastAppliedPartitionTableVersion.getVersion();
   }
 
   private class LastAppliedPatitionTableVersion {

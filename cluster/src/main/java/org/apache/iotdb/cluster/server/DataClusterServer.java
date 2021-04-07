@@ -122,15 +122,18 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   public DataGroupMember addDataGroupMember(DataGroupMember dataGroupMember, RaftNode header) {
     synchronized (headerGroupMap) {
       if (headerGroupMap.containsKey(header)) {
-        logger.debug("group {} already exist.", dataGroupMember.getAllNodes());
+        logger.debug("Group {} already exist.", dataGroupMember.getAllNodes());
         return headerGroupMap.get(header);
       }
       stoppedMemberManager.remove(header);
       headerGroupMap.put(header, dataGroupMember);
-      resetServiceCache(header);
+
       dataGroupMember.start();
-      return dataGroupMember;
     }
+    logger.info("Add group {} successfully.", dataGroupMember.getName());
+    resetServiceCache(header); // avoid dead-lock
+
+    return dataGroupMember;
   }
 
   private void resetServiceCache(RaftNode header) {
@@ -597,12 +600,17 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
    * @param header
    * @param dataGroupMember
    */
-  private void removeMember(RaftNode header, DataGroupMember dataGroupMember, boolean waitFollowersToSync) {
+  private void removeMember(RaftNode header, DataGroupMember dataGroupMember, boolean removedGroup) {
     dataGroupMember.setReadOnly();
-    if (waitFollowersToSync && dataGroupMember.getCharacter() == NodeCharacter.LEADER) {
-      dataGroupMember.getAppendLogThreadPool().submit(() -> dataGroupMember.waitFollowersToSync());
-    } else {
+    if (!removedGroup) {
       dataGroupMember.stop();
+    } else {
+      if (dataGroupMember.getCharacter() != NodeCharacter.LEADER) {
+        new Thread(()-> {
+          dataGroupMember.syncLeader();
+          dataGroupMember.stop();
+        }).start();
+      }
     }
     stoppedMemberManager.put(header, dataGroupMember);
     logger.info("Data group member has removed, header {}, group is {}.", header,
