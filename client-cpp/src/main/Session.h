@@ -523,7 +523,7 @@ private:
     std::vector<std::unique_ptr<MyStringBuffer>> valueBuffers;
     std::vector<std::unique_ptr<MyStringBuffer>> bitmapBuffers;
     RowRecord rowRecord;
-    char* currentBitmap; // used to cache the current bitmap for every column
+    char* currentBitmap = NULL; // used to cache the current bitmap for every column
     static const int flag = 0x80; // used to do `or` operation with bitmap to judge whether the value is null
 
 public:
@@ -552,6 +552,13 @@ public:
             this->bitmapBuffers.push_back(std::unique_ptr<MyStringBuffer>(new MyStringBuffer(queryDataSet->bitmapList[i])));
         }
         this->tsQueryDataSet = queryDataSet;
+    }
+
+    ~SessionDataSet() {
+        if (currentBitmap != NULL) {
+            delete[] currentBitmap;
+            currentBitmap = NULL;
+        }
     }
 
     int getBatchSize();
