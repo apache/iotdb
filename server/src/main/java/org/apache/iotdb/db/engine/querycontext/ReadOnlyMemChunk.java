@@ -182,6 +182,9 @@ public class ReadOnlyMemChunk {
         TimeValuePair timeValuePair = iterator.nextTimeValuePair();
         timeStatistics.update(timeValuePair.getTimestamp());
         for (int i = 0; i < schema.getValueTSDataTypeList().size(); i++) {
+          if (timeValuePair.getValue().getVector()[i] == null) {
+            continue;
+          }
           switch (schema.getValueTSDataTypeList().get(i)) {
             case BOOLEAN:
               valueStatistics[i].update(

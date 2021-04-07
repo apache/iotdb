@@ -21,6 +21,7 @@ package org.apache.iotdb.session;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -42,6 +43,26 @@ public class SessionUtils {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static ByteBuffer getValueBuffer(Tablet tablet) {
     ByteBuffer valueBuffer = ByteBuffer.allocate(tablet.getValueBytesSize());
+    boolean hasBitMaps = (tablet.bitMaps != null);
+    valueBuffer.put(BytesUtils.boolToByte(hasBitMaps));
+    if (hasBitMaps) {
+      for (BitMap bitMap : tablet.bitMaps) {
+        boolean columnHasNull;
+        if (bitMap == null || bitMap.isAllZero()) {
+          columnHasNull = false;
+        } else {
+          columnHasNull = true;
+        }
+        valueBuffer.put(BytesUtils.boolToByte(columnHasNull));
+
+        if (columnHasNull) {
+          byte[] bytes = bitMap.getByteArray();
+          for (int j = 0; j < tablet.rowSize / Byte.SIZE + 1; j++) {
+            valueBuffer.put(bytes[j]);
+          }
+        }
+      }
+    }
     for (int i = 0; i < tablet.getSchemas().size(); i++) {
       IMeasurementSchema schema = tablet.getSchemas().get(i);
       if (schema instanceof MeasurementSchema) {
@@ -58,35 +79,66 @@ public class SessionUtils {
 
   private static void getValueBufferOfDataType(
       TSDataType dataType, Tablet tablet, int i, ByteBuffer valueBuffer) {
+
     switch (dataType) {
       case INT32:
         int[] intValues = (int[]) tablet.values[i];
         for (int index = 0; index < tablet.rowSize; index++) {
-          valueBuffer.putInt(intValues[index]);
+          if (tablet.bitMaps == null
+              || tablet.bitMaps[i] == null
+              || !tablet.bitMaps[i].get(index)) {
+            valueBuffer.putInt(intValues[index]);
+          } else {
+            valueBuffer.putInt(Integer.MIN_VALUE);
+          }
         }
         break;
       case INT64:
         long[] longValues = (long[]) tablet.values[i];
         for (int index = 0; index < tablet.rowSize; index++) {
-          valueBuffer.putLong(longValues[index]);
+          if (tablet.bitMaps == null
+              || tablet.bitMaps[i] == null
+              || !tablet.bitMaps[i].get(index)) {
+            valueBuffer.putLong(longValues[index]);
+          } else {
+            valueBuffer.putLong(Long.MIN_VALUE);
+          }
         }
         break;
       case FLOAT:
         float[] floatValues = (float[]) tablet.values[i];
         for (int index = 0; index < tablet.rowSize; index++) {
-          valueBuffer.putFloat(floatValues[index]);
+          if (tablet.bitMaps == null
+              || tablet.bitMaps[i] == null
+              || !tablet.bitMaps[i].get(index)) {
+            valueBuffer.putFloat(floatValues[index]);
+          } else {
+            valueBuffer.putFloat(Float.MIN_VALUE);
+          }
         }
         break;
       case DOUBLE:
         double[] doubleValues = (double[]) tablet.values[i];
         for (int index = 0; index < tablet.rowSize; index++) {
-          valueBuffer.putDouble(doubleValues[index]);
+          if (tablet.bitMaps == null
+              || tablet.bitMaps[i] == null
+              || !tablet.bitMaps[i].get(index)) {
+            valueBuffer.putDouble(doubleValues[index]);
+          } else {
+            valueBuffer.putDouble(Double.MIN_VALUE);
+          }
         }
         break;
       case BOOLEAN:
         boolean[] boolValues = (boolean[]) tablet.values[i];
         for (int index = 0; index < tablet.rowSize; index++) {
-          valueBuffer.put(BytesUtils.boolToByte(boolValues[index]));
+          if (tablet.bitMaps == null
+              || tablet.bitMaps[i] == null
+              || !tablet.bitMaps[i].get(index)) {
+            valueBuffer.put(BytesUtils.boolToByte(boolValues[index]));
+          } else {
+            valueBuffer.put(BytesUtils.boolToByte(false));
+          }
         }
         break;
       case TEXT:

@@ -2204,9 +2204,12 @@ public class MManager {
               TSDataType dataTypeInNode =
                   measurementMNode.getSchema().getValueTSDataTypeList().get(j);
               insertDataType = plan.getDataTypes()[loc];
+              if (insertDataType == null) {
+                insertDataType = dataTypeInNode;
+              }
               if (dataTypeInNode != insertDataType) {
                 mismatch = true;
-                insertDataType = measurementMNode.getSchema().getType();
+                insertDataType = dataTypeInNode;
                 break;
               }
               loc++;

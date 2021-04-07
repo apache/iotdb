@@ -509,9 +509,9 @@ public abstract class TsPrimitiveType implements Serializable {
     @Override
     public String getStringValue() {
       StringBuilder builder = new StringBuilder("[");
-      builder.append(value[0].getStringValue());
+      builder.append(value[0] == null ? "null" : value[0].getStringValue());
       for (int i = 1; i < value.length; i++) {
-        builder.append(", ").append(value[i].getStringValue());
+        builder.append(", ").append(value[i] == null ? "null" : value[i].getStringValue());
       }
       builder.append("]");
       return builder.toString();

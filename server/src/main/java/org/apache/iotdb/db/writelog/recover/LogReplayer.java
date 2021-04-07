@@ -202,7 +202,9 @@ public class LogReplayer {
       } else if (mNodes[i].getSchema().getType() == TSDataType.VECTOR) {
         List<TSDataType> datatypes = mNodes[i].getSchema().getValueTSDataTypeList();
         for (int j = 0; j < datatypes.size(); j++) {
-          if (datatypes.get(j) != tPlan.getDataTypes()[columnIndex]) {
+          if (tPlan.getDataTypes()[columnIndex] == null) {
+            tPlan.getDataTypes()[columnIndex] = datatypes.get(j);
+          } else if (datatypes.get(j) != tPlan.getDataTypes()[columnIndex]) {
             tPlan.markFailedMeasurementInsertion(
                 i,
                 new DataTypeMismatchException(

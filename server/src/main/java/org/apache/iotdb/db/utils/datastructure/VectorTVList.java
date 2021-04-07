@@ -23,6 +23,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.util.ArrayList;
@@ -38,15 +39,17 @@ public class VectorTVList extends TVList {
 
   private List<int[]> indices;
 
+  private List<List<BitMap>> bitMaps;
+
   private int[][] sortedIndices;
 
   private int pivotIndex;
 
   VectorTVList(List<TSDataType> types) {
     super();
-    indices = new ArrayList<>();
+    indices = new ArrayList<>(types.size());
     dataTypes = types;
-    values = new ArrayList<>();
+    values = new ArrayList<>(types.size());
     for (int i = 0; i < types.size(); i++) {
       values.add(new ArrayList<>());
     }
@@ -62,24 +65,35 @@ public class VectorTVList extends TVList {
     for (int i = 0; i < values.size(); i++) {
       Object columnValue = value[i];
       List<Object> columnValues = values.get(i);
+      if (columnValue == null) {
+        markNullValue(i, arrayIndex, elementIndex);
+      } else if (isValueMarked(indices.get(arrayIndex)[elementIndex], i)) {
+        bitMaps.get(i).get(arrayIndex).unmark(elementIndex);
+      }
       switch (dataTypes.get(i)) {
         case TEXT:
-          ((Binary[]) columnValues.get(arrayIndex))[elementIndex] = (Binary) columnValue;
+          ((Binary[]) columnValues.get(arrayIndex))[elementIndex] =
+              columnValue != null ? (Binary) columnValue : new Binary("");
           break;
         case FLOAT:
-          ((float[]) columnValues.get(arrayIndex))[elementIndex] = (float) columnValue;
+          ((float[]) columnValues.get(arrayIndex))[elementIndex] =
+              columnValue != null ? (float) columnValue : Float.MIN_VALUE;
           break;
         case INT32:
-          ((int[]) columnValues.get(arrayIndex))[elementIndex] = (int) columnValue;
+          ((int[]) columnValues.get(arrayIndex))[elementIndex] =
+              columnValue != null ? (int) columnValue : Integer.MIN_VALUE;
           break;
         case INT64:
-          ((long[]) columnValues.get(arrayIndex))[elementIndex] = (long) columnValue;
+          ((long[]) columnValues.get(arrayIndex))[elementIndex] =
+              columnValue != null ? (long) columnValue : Long.MIN_VALUE;
           break;
         case DOUBLE:
-          ((double[]) columnValues.get(arrayIndex))[elementIndex] = (double) columnValue;
+          ((double[]) columnValues.get(arrayIndex))[elementIndex] =
+              columnValue != null ? (double) columnValue : Double.MIN_VALUE;
           break;
         case BOOLEAN:
-          ((boolean[]) columnValues.get(arrayIndex))[elementIndex] = (boolean) columnValue;
+          ((boolean[]) columnValues.get(arrayIndex))[elementIndex] =
+              columnValue != null ? (boolean) columnValue : false;
           break;
         default:
           break;
@@ -112,6 +126,11 @@ public class VectorTVList extends TVList {
     TsPrimitiveType[] vector = new TsPrimitiveType[values.size()];
     for (int i = 0; i < values.size(); i++) {
       List<Object> columnValues = values.get(i);
+      if (bitMaps != null
+          && bitMaps.get(i) != null
+          && bitMaps.get(i).get(arrayIndex).get(elementIndex)) {
+        continue;
+      }
       switch (dataTypes.get(i)) {
         case TEXT:
           vector[i] =
@@ -144,7 +163,7 @@ public class VectorTVList extends TVList {
                   dataTypes.get(i), ((boolean[]) columnValues.get(arrayIndex))[elementIndex]);
           break;
         default:
-          break;
+          throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
       }
     }
     return TsPrimitiveType.getByType(TSDataType.VECTOR, vector);
@@ -154,14 +173,25 @@ public class VectorTVList extends TVList {
   public TVList getTVListByColumnIndex(List<Integer> columns) {
     List<TSDataType> types = new ArrayList<>();
     List<List<Object>> values = new ArrayList<>();
+    List<List<BitMap>> bitMaps = null;
     for (int column : columns) {
       types.add(this.dataTypes.get(column));
       values.add(this.values.get(column));
+      if (this.bitMaps != null && this.bitMaps.get(column) != null) {
+        if (bitMaps == null) {
+          bitMaps = new ArrayList<>(columns.size());
+          for (int i = 0; i < columns.size(); i++) {
+            bitMaps.add(null);
+          }
+        }
+        bitMaps.set(columns.indexOf(column), this.bitMaps.get(column));
+      }
     }
     VectorTVList vectorTVList = new VectorTVList(types);
     vectorTVList.timestamps = this.timestamps;
     vectorTVList.indices = this.indices;
     vectorTVList.values = values;
+    vectorTVList.bitMaps = bitMaps;
     vectorTVList.size = this.size;
     return vectorTVList;
   }
@@ -304,6 +334,19 @@ public class VectorTVList extends TVList {
     return ((boolean[]) columnValues.get(arrayIndex))[elementIndex];
   }
 
+  public boolean isValueMarked(int valueIndex, int column) {
+    if (valueIndex >= size) {
+      return false;
+    }
+    if (bitMaps == null || bitMaps.get(column) == null) {
+      return false;
+    }
+    int arrayIndex = valueIndex / ARRAY_SIZE;
+    int elementIndex = valueIndex % ARRAY_SIZE;
+    List<BitMap> columnBitMaps = bitMaps.get(column);
+    return columnBitMaps.get(arrayIndex).get(elementIndex);
+  }
+
   public List<List<Object>> getValues() {
     return values;
   }
@@ -330,13 +373,44 @@ public class VectorTVList extends TVList {
   public VectorTVList clone() {
     VectorTVList cloneList = new VectorTVList(dataTypes);
     cloneAs(cloneList);
+    for (int[] indicesArray : indices) {
+      cloneList.indices.add(cloneIndex(indicesArray));
+    }
     for (int i = 0; i < values.size(); i++) {
       List<Object> columnValues = values.get(i);
       for (Object valueArray : columnValues) {
         cloneList.values.get(i).add(cloneValue(dataTypes.get(i), valueArray));
       }
+      if (bitMaps != null && bitMaps.get(i) != null) {
+        List<BitMap> columnBitMaps = bitMaps.get(i);
+        if (cloneList.bitMaps == null) {
+          cloneList.bitMaps = new ArrayList<>(dataTypes.size());
+          for (int j = 0; j < dataTypes.size(); j++) {
+            cloneList.bitMaps.add(null);
+          }
+        }
+        if (cloneList.bitMaps.get(i) == null) {
+          List<BitMap> cloneColumnBitMaps = new ArrayList<>();
+          cloneList.bitMaps.set(i, cloneColumnBitMaps);
+        }
+        for (BitMap bitMap : columnBitMaps) {
+          cloneList.bitMaps.get(i).add(cloneBitMap(bitMap));
+        }
+      }
     }
     return cloneList;
+  }
+
+  private int[] cloneIndex(int[] array) {
+    int[] cloneArray = new int[array.length];
+    System.arraycopy(array, 0, cloneArray, 0, array.length);
+    return cloneArray;
+  }
+
+  private BitMap cloneBitMap(BitMap bitMap) {
+    byte[] cloneBytes = new byte[bitMap.getByteArray().length];
+    System.arraycopy(bitMap.getByteArray(), 0, cloneBytes, 0, bitMap.getByteArray().length);
+    return new BitMap(bitMap.getSize(), cloneBytes);
   }
 
   private Object cloneValue(TSDataType type, Object value) {
@@ -407,6 +481,12 @@ public class VectorTVList extends TVList {
         }
         columnValues.clear();
       }
+      if (bitMaps != null) {
+        List<BitMap> columnBitMaps = bitMaps.get(i);
+        if (columnBitMaps != null) {
+          columnBitMaps.clear();
+        }
+      }
     }
   }
 
@@ -455,6 +535,9 @@ public class VectorTVList extends TVList {
   protected void expandValues() {
     indices.add((int[]) getPrimitiveArraysByType(TSDataType.INT32));
     for (int i = 0; i < dataTypes.size(); i++) {
+      if (bitMaps != null && bitMaps.get(i) != null) {
+        bitMaps.get(i).add(new BitMap(ARRAY_SIZE));
+      }
       values.get(i).add(getPrimitiveArraysByType(dataTypes.get(i)));
     }
   }
@@ -499,7 +582,7 @@ public class VectorTVList extends TVList {
   }
 
   @Override
-  public void putVectors(long[] time, Object[] value, int start, int end) {
+  public void putVectors(long[] time, BitMap[] bitMaps, Object[] value, int start, int end) {
     checkExpansion();
     int idx = start;
 
@@ -516,6 +599,13 @@ public class VectorTVList extends TVList {
         arrayCopy(value, idx, arrayIdx, elementIdx, inputRemaining);
         for (int i = 0; i < inputRemaining; i++) {
           indices.get(arrayIdx)[elementIdx + i] = size;
+          if (bitMaps != null) {
+            for (int j = 0; j < bitMaps.length; j++) {
+              if (bitMaps[j] != null && bitMaps[j].get(idx + i)) {
+                markNullValue(j, arrayIdx, elementIdx + i);
+              }
+            }
+          }
           size++;
         }
         break;
@@ -524,11 +614,18 @@ public class VectorTVList extends TVList {
         // one and enter the next loop
         System.arraycopy(time, idx, timestamps.get(arrayIdx), elementIdx, internalRemaining);
         arrayCopy(value, idx, arrayIdx, elementIdx, internalRemaining);
-        idx += internalRemaining;
         for (int i = 0; i < internalRemaining; i++) {
           indices.get(arrayIdx)[elementIdx + i] = size;
+          if (bitMaps != null) {
+            for (int j = 0; j < bitMaps.length; j++) {
+              if (bitMaps[j] != null && bitMaps[j].get(idx + i)) {
+                markNullValue(j, arrayIdx, elementIdx + i);
+              }
+            }
+          }
           size++;
         }
+        idx += internalRemaining;
         checkExpansion();
       }
     }
@@ -566,6 +663,24 @@ public class VectorTVList extends TVList {
           break;
       }
     }
+  }
+
+  private void markNullValue(int columnIndex, int arrayIndex, int elementIndex) {
+    // init BitMaps if doesn't have
+    if (bitMaps == null) {
+      bitMaps = new ArrayList<>(dataTypes.size());
+      for (int i = 0; i < dataTypes.size(); i++) {
+        bitMaps.add(null);
+      }
+    }
+    if (bitMaps.get(columnIndex) == null) {
+      List<BitMap> columnBitMaps = new ArrayList<>();
+      for (int i = 0; i < values.get(columnIndex).size(); i++) {
+        columnBitMaps.add(new BitMap(ARRAY_SIZE));
+      }
+      bitMaps.set(columnIndex, columnBitMaps);
+    }
+    bitMaps.get(columnIndex).get(arrayIndex).mark(elementIndex);
   }
 
   @Override

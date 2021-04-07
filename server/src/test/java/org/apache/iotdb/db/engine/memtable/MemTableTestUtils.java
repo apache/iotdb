@@ -26,6 +26,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
@@ -114,6 +115,19 @@ public class MemTableTestUtils {
     insertTabletPlan.setEnd(100);
 
     return insertTabletPlan;
+  }
+
+  public static void produceNullableVectorData(IMemTable iMemTable) throws IllegalPathException {
+    InsertTabletPlan plan = genInsertTablePlan();
+    BitMap[] bitMaps = new BitMap[2];
+    bitMaps[1] = new BitMap(101);
+    for (int r = 0; r < 101; r++) {
+      if (r % 2 == 1) {
+        bitMaps[1].mark(r);
+      }
+    }
+    plan.setBitMaps(bitMaps);
+    iMemTable.write(plan, 1, 101);
   }
 
   public static Schema getSchema() {

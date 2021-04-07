@@ -33,6 +33,7 @@ import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
@@ -115,20 +116,17 @@ public abstract class AbstractMemTable implements IMemTable {
     Object[] values = insertRowPlan.getValues();
 
     MeasurementMNode[] measurementMNodes = insertRowPlan.getMeasurementMNodes();
-    int columnCount = 0;
+    int columnIndex = 0;
     for (int i = 0; i < measurementMNodes.length; i++) {
-      if (values[columnCount] == null) {
-        columnCount++;
-        continue;
-      }
 
-      if (measurementMNodes[i].getSchema().getType() == TSDataType.VECTOR) {
+      if (measurementMNodes[i] != null
+          && measurementMNodes[i].getSchema().getType() == TSDataType.VECTOR) {
         // write vector
         Object[] vectorValue =
             new Object[measurementMNodes[i].getSchema().getValueTSDataTypeList().size()];
         for (int j = 0; j < vectorValue.length; j++) {
-          vectorValue[j] = values[columnCount];
-          columnCount++;
+          vectorValue[j] = values[columnIndex];
+          columnIndex++;
         }
         memSize +=
             MemUtils.getVectorRecordSize(
@@ -141,16 +139,20 @@ public abstract class AbstractMemTable implements IMemTable {
             insertRowPlan.getTime(),
             vectorValue);
       } else {
+        if (values[columnIndex] == null) {
+          columnIndex++;
+          continue;
+        }
         memSize +=
             MemUtils.getRecordSize(
-                measurementMNodes[i].getSchema().getType(), values[columnCount], disableMemControl);
+                measurementMNodes[i].getSchema().getType(), values[columnIndex], disableMemControl);
 
         write(
             insertRowPlan.getDeviceId().getFullPath(),
             measurementMNodes[i].getSchema(),
             insertRowPlan.getTime(),
-            values[columnCount]);
-        columnCount++;
+            values[columnIndex]);
+        columnIndex++;
       }
     }
 
@@ -182,11 +184,11 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public void write(InsertTabletPlan insertTabletPlan, int start, int end) {
-    int columnCount = 0;
+    int columnIndex = 0;
     updatePlanIndexes(insertTabletPlan.getIndex());
     for (int i = 0; i < insertTabletPlan.getMeasurements().length; i++) {
-      if (insertTabletPlan.getColumns()[columnCount] == null) {
-        columnCount++;
+      if (insertTabletPlan.getColumns()[columnIndex] == null) {
+        columnIndex++;
         continue;
       }
       IWritableMemChunk memSeries =
@@ -197,18 +199,27 @@ public abstract class AbstractMemTable implements IMemTable {
         VectorMeasurementSchema vectorSchema =
             (VectorMeasurementSchema) insertTabletPlan.getMeasurementMNodes()[i].getSchema();
         Object[] columns = new Object[vectorSchema.getValueMeasurementIdList().size()];
+        BitMap[] bitMaps = new BitMap[vectorSchema.getValueMeasurementIdList().size()];
         for (int j = 0; j < vectorSchema.getValueMeasurementIdList().size(); j++) {
-          columns[j] = insertTabletPlan.getColumns()[columnCount++];
+          columns[j] = insertTabletPlan.getColumns()[columnIndex];
+          if (insertTabletPlan.getBitMaps() != null) {
+            bitMaps[j] = insertTabletPlan.getBitMaps()[columnIndex];
+          }
+          columnIndex++;
         }
-        memSeries.write(insertTabletPlan.getTimes(), columns, TSDataType.VECTOR, start, end);
+        memSeries.write(
+            insertTabletPlan.getTimes(), bitMaps, columns, TSDataType.VECTOR, start, end);
       } else {
         memSeries.write(
             insertTabletPlan.getTimes(),
-            insertTabletPlan.getColumns()[columnCount],
-            insertTabletPlan.getDataTypes()[columnCount],
+            insertTabletPlan.getBitMaps() != null
+                ? insertTabletPlan.getBitMaps()[columnIndex]
+                : null,
+            insertTabletPlan.getColumns()[columnIndex],
+            insertTabletPlan.getDataTypes()[columnIndex],
             start,
             end);
-        columnCount++;
+        columnIndex++;
       }
     }
   }

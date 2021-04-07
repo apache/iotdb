@@ -53,6 +53,7 @@ public class InsertRowPlan extends InsertPlan {
 
   private static final Logger logger = LoggerFactory.getLogger(InsertRowPlan.class);
   private static final byte TYPE_RAW_STRING = -1;
+  private static final byte TYPE_NULL = -2;
 
   private long time;
   private Object[] values;
@@ -244,8 +245,8 @@ public class InsertRowPlan extends InsertPlan {
                   "{}.{} data type is not consistent, input {}, registered {}",
                   deviceId,
                   measurements[i],
-                  values[i],
-                  dataTypes[i]);
+                  values[columnIndex],
+                  dataTypes[columnIndex]);
               if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
                 markFailedMeasurementInsertion(i, e);
                 measurementMNodes[i] = null;
@@ -355,6 +356,10 @@ public class InsertRowPlan extends InsertPlan {
 
   private void putValues(DataOutputStream outputStream) throws QueryProcessException, IOException {
     for (int i = 0; i < values.length; i++) {
+      if (values[i] == null) {
+        ReadWriteIOUtils.write(TYPE_NULL, outputStream);
+        continue;
+      }
       // types are not determined, the situation mainly occurs when the plan uses string values
       // and is forwarded to other nodes
       if (dataTypes == null || dataTypes[i] == null) {
@@ -390,6 +395,10 @@ public class InsertRowPlan extends InsertPlan {
 
   private void putValues(ByteBuffer buffer) throws QueryProcessException {
     for (int i = 0; i < values.length; i++) {
+      if (values[i] == null) {
+        ReadWriteIOUtils.write(TYPE_NULL, buffer);
+        continue;
+      }
       // types are not determined, the situation mainly occurs when the plan uses string values
       // and is forwarded to other nodes
       if (dataTypes == null || dataTypes[i] == null) {
@@ -433,7 +442,10 @@ public class InsertRowPlan extends InsertPlan {
         values[i] = ReadWriteIOUtils.readString(buffer);
         continue;
       }
-
+      if (typeNum == TYPE_NULL) {
+        values[i] = null;
+        continue;
+      }
       dataTypes[i] = TSDataType.values()[typeNum];
       switch (dataTypes[i]) {
         case BOOLEAN:

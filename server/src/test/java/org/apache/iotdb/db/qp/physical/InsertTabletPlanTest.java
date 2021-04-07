@@ -40,6 +40,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BitMap;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -129,6 +130,35 @@ public class InsertTabletPlanTest {
     executor.insertTablet(tabletPlan);
 
     Assert.assertEquals("[$#$0, $#$1, s6]", Arrays.toString(tabletPlan.getMeasurementMNodes()));
+
+    QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
+    QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    Assert.assertEquals(3, dataSet.getPaths().size());
+    while (dataSet.hasNext()) {
+      RowRecord record = dataSet.next();
+      System.out.println(record);
+      Assert.assertEquals(6, record.getFields().size());
+    }
+  }
+
+  @Test
+  public void testInsertNullableTabletPlanWithAlignedTimeseries()
+      throws QueryProcessException, MetadataException, InterruptedException,
+          QueryFilterOptimizationException, StorageEngineException, IOException {
+    InsertTabletPlan tabletPlan = getInsertTabletPlan();
+    tabletPlan.setBitMaps(new BitMap[6]);
+    BitMap[] bitMaps = tabletPlan.getBitMaps();
+    for (int i = 0; i < 4; i++) {
+      if (bitMaps[i] == null) {
+        bitMaps[i] = new BitMap(4);
+      }
+      bitMaps[i].mark(i);
+    }
+    PlanExecutor executor = new PlanExecutor();
+    executor.insertTablet(tabletPlan);
+
+    Assert.assertEquals("[$#$0, $#$1, s6]", Arrays.toString(tabletPlan.getMeasurementMNodes()));
+    System.out.println(Arrays.toString(tabletPlan.getMeasurementMNodes()));
 
     QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
@@ -261,6 +291,33 @@ public class InsertTabletPlanTest {
   public void testInsertTabletSerialization() throws IllegalPathException, QueryProcessException {
     InsertTabletPlan plan1 = getInsertTabletPlan();
 
+    PlanExecutor executor = new PlanExecutor();
+    executor.insertTablet(plan1);
+
+    ByteBuffer byteBuffer = ByteBuffer.allocate(10000);
+    plan1.serialize(byteBuffer);
+    byteBuffer.flip();
+
+    Assert.assertEquals(PhysicalPlanType.BATCHINSERT.ordinal(), byteBuffer.get());
+
+    InsertTabletPlan plan2 = new InsertTabletPlan();
+    plan2.deserialize(byteBuffer);
+
+    Assert.assertEquals(plan1, plan2);
+  }
+
+  @Test
+  public void testInsertTabletWithBitMapsSerialization()
+      throws IllegalPathException, QueryProcessException {
+    InsertTabletPlan plan1 = getInsertTabletPlan();
+    plan1.setBitMaps(new BitMap[6]);
+    BitMap[] bitMaps = plan1.getBitMaps();
+    for (int i = 0; i < 4; i++) {
+      if (bitMaps[i] == null) {
+        bitMaps[i] = new BitMap(4);
+      }
+      bitMaps[i].mark(i);
+    }
     PlanExecutor executor = new PlanExecutor();
     executor.insertTablet(plan1);
 
