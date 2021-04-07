@@ -125,11 +125,11 @@ public class MergeUtils {
   public static int writeChunkWithoutUnseq(List<Chunk> chunk, IChunkWriter iChunkWriter)
       throws IOException {
     int ptWritten = 0;
-    ChunkReader timeChunkReader = new ChunkReader(chunk.get(0), null);
     if (iChunkWriter instanceof ChunkWriterImpl) {
       ChunkWriterImpl chunkWriter = (ChunkWriterImpl) iChunkWriter;
-      while (timeChunkReader.hasNextSatisfiedPage()) {
-        BatchData batchData = timeChunkReader.nextPageData();
+      ChunkReader chunkReader = new ChunkReader(chunk.get(0), null);
+      while (chunkReader.hasNextSatisfiedPage()) {
+        BatchData batchData = chunkReader.nextPageData();
         for (int i = 0; i < batchData.length(); i++) {
           writeBatchPoint(batchData, i, chunkWriter);
         }
@@ -139,7 +139,7 @@ public class MergeUtils {
       // write by VectorChunkWriterImpl
       VectorChunkWriterImpl vectorChunkWriter = (VectorChunkWriterImpl) iChunkWriter;
       VectorChunkReader vectorChunkReader =
-          new VectorChunkReader(chunk.get(0), chunk.subList(0, chunk.size()), null);
+          new VectorChunkReader(chunk.get(0), chunk.subList(1, chunk.size()), null);
       while (vectorChunkReader.hasNextSatisfiedPage()) {
         BatchData batchData = vectorChunkReader.nextPageData();
         for (int i = 0; i < batchData.length(); i++) {
@@ -340,16 +340,22 @@ public class MergeUtils {
       } else {
         // pack VectorChunk list
         VectorChunkMetadata currVectorChunkMetadata = (VectorChunkMetadata) currMeta;
-        Chunk timeChunk = currVectorChunkMetadata.getTimeChunk();
-        List<Chunk> valueChunkList = currVectorChunkMetadata.getValueChunkList();
+        Chunk timeChunk =
+            tsFileReader.readMemChunk(
+                (ChunkMetadata) currVectorChunkMetadata.getTimeChunkMetadata());
         if (currChunkList.size() == 0) {
-          for (int i = 0; i < 1 + valueChunkList.size(); i++) {
-            currChunkList.add(new ArrayList<>());
-          }
+          currChunkList.add(new ArrayList<>());
         }
         currChunkList.get(0).add(timeChunk);
-        for (int i = 0; i < valueChunkList.size(); i++) {
-          currChunkList.get(i + 1).add(valueChunkList.get(i));
+        List<IChunkMetadata> valueChunkMetadataList =
+            currVectorChunkMetadata.getValueChunkMetadataList();
+        for (int i = 0; i < valueChunkMetadataList.size(); i++) {
+          if (currChunkList.size() <= i + 1) {
+            currChunkList.add(new ArrayList<>());
+          }
+          currChunkList
+              .get(i + 1)
+              .add(tsFileReader.readMemChunk((ChunkMetadata) valueChunkMetadataList.get(i)));
         }
       }
       if (metaListEntry.hasNext()) {

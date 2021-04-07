@@ -146,7 +146,7 @@ public class MergeMultiChunkTask {
     // merge each series and write data into each seqFile's corresponding temp merge file
     for (Entry<PartialPath, List<IMeasurementSchema>> deviceMeasurementSchemaEntry :
         unmergedPaths.entrySet()) {
-      currMeringDevice = deviceMeasurementSchemaEntry.getKey().getDevice();
+      currMeringDevice = deviceMeasurementSchemaEntry.getKey().getFullPath();
       currMergingPaths = deviceMeasurementSchemaEntry.getValue();
 
       mergePaths();
@@ -189,7 +189,7 @@ public class MergeMultiChunkTask {
     currTimeValuePairs = new List[currMergingPaths.size()];
     for (int i = 0; i < currMergingPaths.size(); i++) {
       // whether it is a vector or not, we just have to rank time by the first column -- time column
-      if (unseqReaders[i].get(0).hasNextTimeValuePair()) {
+      if (unseqReaders[i].size() > 0 && unseqReaders[i].get(0).hasNextTimeValuePair()) {
         List<TimeValuePair> timeValuePairList = new ArrayList<>();
         timeValuePairList.add(unseqReaders[i].get(0).currentTimeValuePair());
         long time = timeValuePairList.get(0).getTimestamp();
@@ -766,8 +766,9 @@ public class MergeMultiChunkTask {
               chunks.add(reader.readMemChunk((ChunkMetadata) currMeta));
             } else {
               VectorChunkMetadata vectorChunkMetadata = (VectorChunkMetadata) currMeta;
-              chunks.add(
-                  reader.readMemChunk((ChunkMetadata) vectorChunkMetadata.getTimeChunkMetadata()));
+              Chunk timeChunk =
+                  reader.readMemChunk((ChunkMetadata) vectorChunkMetadata.getTimeChunkMetadata());
+              chunks.add(timeChunk);
               for (IChunkMetadata valueChunkMetadata :
                   vectorChunkMetadata.getValueChunkMetadataList()) {
                 chunks.add(reader.readMemChunk((ChunkMetadata) valueChunkMetadata));
