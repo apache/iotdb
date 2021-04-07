@@ -45,7 +45,7 @@ public class ClusterConfig {
 
   @ClusterConsistent private String clusterName = "default";
 
-  @ClusterConsistent private boolean useAsyncServer = false;
+  @ClusterConsistent private boolean useAsyncServer = true;
 
   private boolean useAsyncApplier = true;
 
