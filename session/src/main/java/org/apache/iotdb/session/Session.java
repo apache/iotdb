@@ -1533,6 +1533,9 @@ public class Session {
       IMeasurementSchema schema = tablet.getSchemas().get(i);
       if (schema instanceof MeasurementSchema) {
         tablet.values[columnIndex] = sortList(tablet.values[columnIndex], schema.getType(), index);
+        if (tablet.bitMaps != null && tablet.bitMaps[columnIndex] != null) {
+          tablet.bitMaps[columnIndex] = sortBitMap(tablet.bitMaps[columnIndex], index);
+        }
         columnIndex++;
       } else {
         int measurementSize = schema.getValueMeasurementIdList().size();
@@ -1608,9 +1611,9 @@ public class Session {
   /**
    * sort BitMap by index
    *
-   * @param bitMap bitMap to be sort
+   * @param bitMap BitMap to be sorted
    * @param index index
-   * @return sorted BitMap
+   * @return sorted bitMap
    */
   private BitMap sortBitMap(BitMap bitMap, Integer[] index) {
     BitMap sortedBitMap = new BitMap(bitMap.getSize());
