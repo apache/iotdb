@@ -92,7 +92,7 @@ public class CommonUtils {
 
   public static Object parseValue(TSDataType dataType, String value) throws QueryProcessException {
     try {
-      if ("null".equals(value)) {
+      if ("null".equals(value) || "NULL".equals(value)) {
         return null;
       }
       switch (dataType) {

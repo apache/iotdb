@@ -107,7 +107,7 @@ public class IOTDBInsertAlignedValuesIT {
     st0.execute(
         "insert into root.t1.wf01.wt01(time, (status, temperature)) values (5000, (true, null))");
     st0.execute(
-        "insert into root.t1.wf01.wt01(time, (status, temperature)) values (6000, (null, 22))");
+        "insert into root.t1.wf01.wt01(time, (status, temperature)) values (6000, (NULL, 22))");
     st0.close();
 
     Statement st1 = connection.createStatement();
