@@ -23,7 +23,10 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
@@ -74,6 +77,57 @@ public class ValuePageReader {
     this.bitmap = new byte[(size + 7) / 8];
     pageData.get(bitmap);
     this.valueBuffer = pageData.slice();
+  }
+
+  public BatchData nextBatch(long[] timeBatch, boolean ascending, Filter filter) {
+    BatchData pageData = BatchDataFactory.createBatchData(dataType, ascending, false);
+    for (int i = 0; i < timeBatch.length; i++) {
+      if ((bitmap[i / 8] & (MASK >>> (i % 8))) == 0) {
+        continue;
+      }
+      long timestamp = timeBatch[i];
+      switch (dataType) {
+        case BOOLEAN:
+          boolean aBoolean = valueDecoder.readBoolean(valueBuffer);
+          if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aBoolean))) {
+            pageData.putBoolean(timestamp, aBoolean);
+          }
+          break;
+        case INT32:
+          int anInt = valueDecoder.readInt(valueBuffer);
+          if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, anInt))) {
+            pageData.putInt(timestamp, anInt);
+          }
+          break;
+        case INT64:
+          long aLong = valueDecoder.readLong(valueBuffer);
+          if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aLong))) {
+            pageData.putLong(timestamp, aLong);
+          }
+          break;
+        case FLOAT:
+          float aFloat = valueDecoder.readFloat(valueBuffer);
+          if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aFloat))) {
+            pageData.putFloat(timestamp, aFloat);
+          }
+          break;
+        case DOUBLE:
+          double aDouble = valueDecoder.readDouble(valueBuffer);
+          if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aDouble))) {
+            pageData.putDouble(timestamp, aDouble);
+          }
+          break;
+        case TEXT:
+          Binary aBinary = valueDecoder.readBinary(valueBuffer);
+          if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aBinary))) {
+            pageData.putBinary(timestamp, aBinary);
+          }
+          break;
+        default:
+          throw new UnSupportedDataTypeException(String.valueOf(dataType));
+      }
+    }
+    return pageData.flip();
   }
 
   public TsPrimitiveType[] nextValueBatch(long[] timeBatch) {
@@ -156,5 +210,9 @@ public class ValuePageReader {
       }
     }
     return false;
+  }
+
+  public TSDataType getDataType() {
+    return dataType;
   }
 }

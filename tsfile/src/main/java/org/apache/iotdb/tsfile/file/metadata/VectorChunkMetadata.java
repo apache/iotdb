@@ -42,7 +42,9 @@ public class VectorChunkMetadata implements IChunkMetadata {
 
   @Override
   public Statistics getStatistics() {
-    return timeChunkMetadata.getStatistics();
+    return valueChunkMetadataList.size() == 1
+        ? valueChunkMetadataList.get(0).getStatistics()
+        : timeChunkMetadata.getStatistics();
   }
 
   @Override
@@ -164,5 +166,13 @@ public class VectorChunkMetadata implements IChunkMetadata {
       valueChunkList.add(chunkMetadata.getChunkLoader().loadChunk((ChunkMetadata) chunkMetadata));
     }
     return valueChunkList;
+  }
+
+  public IChunkMetadata getTimeChunkMetadata() {
+    return timeChunkMetadata;
+  }
+
+  public List<IChunkMetadata> getValueChunkMetadataList() {
+    return valueChunkMetadataList;
   }
 }

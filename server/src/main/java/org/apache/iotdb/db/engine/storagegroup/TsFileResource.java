@@ -33,7 +33,10 @@ import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.VectorChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.VectorTimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -117,7 +120,7 @@ public class TsFileResource {
   private List<ReadOnlyMemChunk> readOnlyMemChunk;
 
   /** used for unsealed file to get TimeseriesMetadata */
-  private TimeseriesMetadata timeSeriesMetadata;
+  private ITimeSeriesMetadata timeSeriesMetadata;
 
   private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
@@ -214,33 +217,102 @@ public class TsFileResource {
   }
 
   private void generateTimeSeriesMetadata() throws IOException {
-    timeSeriesMetadata = new TimeseriesMetadata();
-    timeSeriesMetadata.setOffsetOfChunkMetaDataList(-1);
-    timeSeriesMetadata.setDataSizeOfChunkMetaDataList(-1);
+    TimeseriesMetadata timeTimeSeriesMetadata = new TimeseriesMetadata();
+    timeTimeSeriesMetadata.setOffsetOfChunkMetaDataList(-1);
+    timeTimeSeriesMetadata.setDataSizeOfChunkMetaDataList(-1);
 
     if (!(chunkMetadataList == null || chunkMetadataList.isEmpty())) {
-      timeSeriesMetadata.setMeasurementId(chunkMetadataList.get(0).getMeasurementUid());
+      timeTimeSeriesMetadata.setMeasurementId(chunkMetadataList.get(0).getMeasurementUid());
       TSDataType dataType = chunkMetadataList.get(0).getDataType();
-      timeSeriesMetadata.setTSDataType(dataType);
+      timeTimeSeriesMetadata.setTSDataType(dataType);
     } else if (!(readOnlyMemChunk == null || readOnlyMemChunk.isEmpty())) {
-      timeSeriesMetadata.setMeasurementId(readOnlyMemChunk.get(0).getMeasurementUid());
+      timeTimeSeriesMetadata.setMeasurementId(readOnlyMemChunk.get(0).getMeasurementUid());
       TSDataType dataType = readOnlyMemChunk.get(0).getDataType();
-      timeSeriesMetadata.setTSDataType(dataType);
+      timeTimeSeriesMetadata.setTSDataType(dataType);
     }
-    if (timeSeriesMetadata.getTSDataType() != null) {
-      Statistics<?> seriesStatistics =
-          Statistics.getStatsByType(timeSeriesMetadata.getTSDataType());
-      // flush chunkMetadataList one by one
-      for (IChunkMetadata chunkMetadata : chunkMetadataList) {
-        seriesStatistics.mergeStatistics(chunkMetadata.getStatistics());
-      }
+    if (timeTimeSeriesMetadata.getTSDataType() != null) {
+      if (timeTimeSeriesMetadata.getTSDataType() == TSDataType.VECTOR) {
+        Statistics<?> timeStatistics =
+            Statistics.getStatsByType(timeTimeSeriesMetadata.getTSDataType());
 
-      for (ReadOnlyMemChunk memChunk : readOnlyMemChunk) {
-        if (!memChunk.isEmpty()) {
-          seriesStatistics.mergeStatistics(memChunk.getChunkMetaData().getStatistics());
+        List<TimeseriesMetadata> valueTimeSeriesMetadataList = new ArrayList<>();
+
+        if (!(chunkMetadataList == null || chunkMetadataList.isEmpty())) {
+          VectorChunkMetadata vectorChunkMetadata = (VectorChunkMetadata) chunkMetadataList.get(0);
+          for (IChunkMetadata valueChunkMetadata :
+              vectorChunkMetadata.getValueChunkMetadataList()) {
+            TimeseriesMetadata valueMetadata = new TimeseriesMetadata();
+            valueMetadata.setOffsetOfChunkMetaDataList(-1);
+            valueMetadata.setDataSizeOfChunkMetaDataList(-1);
+            valueMetadata.setMeasurementId(valueChunkMetadata.getMeasurementUid());
+            valueMetadata.setTSDataType(valueChunkMetadata.getDataType());
+            valueTimeSeriesMetadataList.add(valueMetadata);
+            valueMetadata.setStatistics(
+                Statistics.getStatsByType(valueChunkMetadata.getDataType()));
+          }
+        } else if (!(readOnlyMemChunk == null || readOnlyMemChunk.isEmpty())) {
+          VectorChunkMetadata vectorChunkMetadata =
+              (VectorChunkMetadata) readOnlyMemChunk.get(0).getChunkMetaData();
+          for (IChunkMetadata valueChunkMetadata :
+              vectorChunkMetadata.getValueChunkMetadataList()) {
+            TimeseriesMetadata valueMetadata = new TimeseriesMetadata();
+            valueMetadata.setOffsetOfChunkMetaDataList(-1);
+            valueMetadata.setDataSizeOfChunkMetaDataList(-1);
+            valueMetadata.setMeasurementId(valueChunkMetadata.getMeasurementUid());
+            valueMetadata.setTSDataType(valueChunkMetadata.getDataType());
+            valueTimeSeriesMetadataList.add(valueMetadata);
+            valueMetadata.setStatistics(
+                Statistics.getStatsByType(valueChunkMetadata.getDataType()));
+          }
         }
+
+        for (IChunkMetadata chunkMetadata : chunkMetadataList) {
+          VectorChunkMetadata vectorChunkMetadata = (VectorChunkMetadata) chunkMetadata;
+          timeStatistics.mergeStatistics(
+              vectorChunkMetadata.getTimeChunkMetadata().getStatistics());
+          for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
+            valueTimeSeriesMetadataList
+                .get(i)
+                .getStatistics()
+                .mergeStatistics(
+                    vectorChunkMetadata.getValueChunkMetadataList().get(i).getStatistics());
+          }
+        }
+
+        for (ReadOnlyMemChunk memChunk : readOnlyMemChunk) {
+          if (!memChunk.isEmpty()) {
+            VectorChunkMetadata vectorChunkMetadata =
+                (VectorChunkMetadata) memChunk.getChunkMetaData();
+            timeStatistics.mergeStatistics(
+                vectorChunkMetadata.getTimeChunkMetadata().getStatistics());
+            for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
+              valueTimeSeriesMetadataList
+                  .get(i)
+                  .getStatistics()
+                  .mergeStatistics(
+                      vectorChunkMetadata.getValueChunkMetadataList().get(i).getStatistics());
+            }
+          }
+        }
+        timeTimeSeriesMetadata.setStatistics(timeStatistics);
+        timeSeriesMetadata =
+            new VectorTimeSeriesMetadata(timeTimeSeriesMetadata, valueTimeSeriesMetadataList);
+      } else {
+        Statistics<?> seriesStatistics =
+            Statistics.getStatsByType(timeTimeSeriesMetadata.getTSDataType());
+        // flush chunkMetadataList one by one
+        for (IChunkMetadata chunkMetadata : chunkMetadataList) {
+          seriesStatistics.mergeStatistics(chunkMetadata.getStatistics());
+        }
+
+        for (ReadOnlyMemChunk memChunk : readOnlyMemChunk) {
+          if (!memChunk.isEmpty()) {
+            seriesStatistics.mergeStatistics(memChunk.getChunkMetaData().getStatistics());
+          }
+        }
+        timeTimeSeriesMetadata.setStatistics(seriesStatistics);
+        this.timeSeriesMetadata = timeTimeSeriesMetadata;
       }
-      timeSeriesMetadata.setStatistics(seriesStatistics);
     } else {
       this.timeSeriesMetadata = null;
     }
@@ -590,7 +662,16 @@ public class TsFileResource {
   }
 
   public TimeseriesMetadata getTimeSeriesMetadata() {
-    return timeSeriesMetadata;
+    if (timeSeriesMetadata == null) {
+      return null;
+    }
+    if (timeSeriesMetadata instanceof TimeseriesMetadata) {
+      return (TimeseriesMetadata) timeSeriesMetadata;
+    } else {
+      return ((VectorTimeSeriesMetadata) timeSeriesMetadata)
+          .getValueTimeseriesMetadataList()
+          .get(0);
+    }
   }
 
   public void setUpgradedResources(List<TsFileResource> upgradedResources) {

@@ -819,7 +819,11 @@ public class MManager {
     }
 
     if (path instanceof VectorPartialPath) {
-      return TSDataType.VECTOR;
+      if (((VectorPartialPath) path).getSubSensorsPathList().size() != 1) {
+        return TSDataType.VECTOR;
+      } else {
+        path = ((VectorPartialPath) path).getSubSensorsPathList().get(0);
+      }
     }
     IMeasurementSchema schema = mtree.getSchema(path);
     if (schema instanceof MeasurementSchema) {

@@ -50,6 +50,11 @@ public class VectorSessionExample {
     insertTabletWithAlignedTimeseries();
     selectTest();
     selectWithValueFilterTest();
+
+    selectWithGroupByTest();
+    selectWithLastTest();
+
+    selectWithAggregationTest();
     session.close();
   }
 
@@ -83,6 +88,66 @@ public class VectorSessionExample {
     dataSet =
         session.executeQueryStatement(
             "select * from root.sg_1.d1 where time > 50 and s1 > 0 and s2 > 10000");
+    System.out.println(dataSet.getColumnNames());
+    while (dataSet.hasNext()) {
+      System.out.println(dataSet.next());
+    }
+
+    dataSet.closeOperationHandle();
+  }
+
+  private static void selectWithAggregationTest()
+      throws StatementExecutionException, IoTDBConnectionException {
+    SessionDataSet dataSet = session.executeQueryStatement("select count(s1) from root.sg_1.d1");
+    System.out.println(dataSet.getColumnNames());
+    while (dataSet.hasNext()) {
+      System.out.println(dataSet.next());
+    }
+
+    dataSet.closeOperationHandle();
+    dataSet =
+        session.executeQueryStatement(
+            "select sum(*) from root.sg_1.d1 where time > 50 and s1 > 0 and s2 > 10000");
+    System.out.println(dataSet.getColumnNames());
+    while (dataSet.hasNext()) {
+      System.out.println(dataSet.next());
+    }
+
+    dataSet.closeOperationHandle();
+  }
+
+  private static void selectWithGroupByTest()
+      throws StatementExecutionException, IoTDBConnectionException {
+    SessionDataSet dataSet =
+        session.executeQueryStatement(
+            "select count(s1) from root.sg_1.d1 GROUP BY ([1, 100), 20ms)");
+    System.out.println(dataSet.getColumnNames());
+    while (dataSet.hasNext()) {
+      System.out.println(dataSet.next());
+    }
+
+    dataSet.closeOperationHandle();
+    dataSet =
+        session.executeQueryStatement(
+            "select count(*) from root.sg_1.d1 where time > 50 and s1 > 0 and s2 > 10000  GROUP BY ([50, 100), 10ms)");
+    System.out.println(dataSet.getColumnNames());
+    while (dataSet.hasNext()) {
+      System.out.println(dataSet.next());
+    }
+
+    dataSet.closeOperationHandle();
+  }
+
+  private static void selectWithLastTest()
+      throws StatementExecutionException, IoTDBConnectionException {
+    SessionDataSet dataSet = session.executeQueryStatement("select last s1 from root.sg_1.d1");
+    System.out.println(dataSet.getColumnNames());
+    while (dataSet.hasNext()) {
+      System.out.println(dataSet.next());
+    }
+
+    dataSet.closeOperationHandle();
+    dataSet = session.executeQueryStatement("select last * from root.sg_1.d1");
     System.out.println(dataSet.getColumnNames());
     while (dataSet.hasNext()) {
       System.out.println(dataSet.next());

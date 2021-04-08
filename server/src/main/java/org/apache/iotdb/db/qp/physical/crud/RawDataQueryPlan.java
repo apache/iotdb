@@ -128,7 +128,6 @@ public class RawDataQueryPlan extends QueryPlan {
       PartialPath path = mManager.transformPath(deduplicatedPaths.get(i));
       if (path instanceof VectorPartialPath) {
         deduplicatedPaths.set(i, path);
-        deduplicatedDataTypes.set(i, TSDataType.VECTOR);
       }
     }
   }

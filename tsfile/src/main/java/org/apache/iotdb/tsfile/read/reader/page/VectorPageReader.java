@@ -71,6 +71,9 @@ public class VectorPageReader implements IPageReader {
   @Override
   public BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {
     long[] timeBatch = timePageReader.nexTimeBatch();
+    if (valuePageReaderList.size() == 1) {
+      return valuePageReaderList.get(0).nextBatch(timeBatch, ascending, filter);
+    }
     List<TsPrimitiveType[]> valueBatchList = new ArrayList<>(valueCount);
     for (ValuePageReader valuePageReader : valuePageReaderList) {
       valueBatchList.add(valuePageReader.nextValueBatch(timeBatch));
@@ -102,7 +105,9 @@ public class VectorPageReader implements IPageReader {
 
   @Override
   public Statistics getStatistics() {
-    return timePageReader.getStatistics();
+    return valuePageReaderList.size() == 1
+        ? valuePageReaderList.get(0).getStatistics()
+        : timePageReader.getStatistics();
   }
 
   @Override

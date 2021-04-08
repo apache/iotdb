@@ -37,7 +37,9 @@ public class VectorTimeSeriesMetadata implements ITimeSeriesMetadata {
 
   @Override
   public Statistics getStatistics() {
-    return timeseriesMetadata.getStatistics();
+    return valueTimeseriesMetadataList.size() == 1
+        ? valueTimeseriesMetadataList.get(0).getStatistics()
+        : timeseriesMetadata.getStatistics();
   }
 
   @Override
@@ -87,5 +89,9 @@ public class VectorTimeSeriesMetadata implements ITimeSeriesMetadata {
   @Override
   public List<IChunkMetadata> getChunkMetadataList() {
     return null;
+  }
+
+  public List<TimeseriesMetadata> getValueTimeseriesMetadataList() {
+    return valueTimeseriesMetadataList;
   }
 }
