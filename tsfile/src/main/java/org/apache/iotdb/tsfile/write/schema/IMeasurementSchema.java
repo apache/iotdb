@@ -63,7 +63,15 @@ public interface IMeasurementSchema {
 
   int serializeTo(OutputStream outputStream) throws IOException;
 
+  /*
+   1. used in cluster module to avoid useless field transfer(such as props in MeasurementSchema)
+   2. add a flag bit at the beginning to distinguish between MeasurementSchema(0) and VectorMeasurementSchema(1)
+  */
   int partialSerializeTo(ByteBuffer buffer);
 
+  /*
+   1. used in cluster module to avoid useless field transfer(such as props in MeasurementSchema)
+   2. add a flag bit at the beginning to distinguish between MeasurementSchema(0) and VectorMeasurementSchema(1)
+  */
   int partialSerializeTo(OutputStream outputStream) throws IOException;
 }
