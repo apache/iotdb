@@ -1618,7 +1618,7 @@ public class Session {
   private BitMap sortBitMap(BitMap bitMap, Integer[] index) {
     BitMap sortedBitMap = new BitMap(bitMap.getSize());
     for (int i = 0; i < index.length; i++) {
-      if (bitMap.get(index[i])) {
+      if (bitMap.isMarked(index[i])) {
         sortedBitMap.mark(i);
       }
     }

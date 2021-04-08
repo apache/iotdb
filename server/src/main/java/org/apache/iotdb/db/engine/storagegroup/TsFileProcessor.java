@@ -285,12 +285,12 @@ public class TsFileProcessor {
     long chunkMetadataIncrement = 0L;
     String deviceId = insertRowPlan.getDeviceId().getFullPath();
     long unsealedResourceIncrement = tsFileResource.estimateRamIncrement(deviceId);
-    int columnCount = 0;
+    int columnIndex = 0;
     for (int i = 0; i < insertRowPlan.getMeasurementMNodes().length; i++) {
       // skip failed Measurements
-      if (insertRowPlan.getDataTypes()[columnCount] == null
+      if (insertRowPlan.getDataTypes()[columnIndex] == null
           || insertRowPlan.getMeasurements()[i] == null) {
-        columnCount++;
+        columnIndex++;
         continue;
       }
       if (workMemTable.checkIfChunkDoesNotExist(deviceId, insertRowPlan.getMeasurements()[i])) {
@@ -306,8 +306,8 @@ public class TsFileProcessor {
         } else {
           chunkMetadataIncrement +=
               ChunkMetadata.calculateRamSize(
-                  insertRowPlan.getMeasurements()[i], insertRowPlan.getDataTypes()[columnCount]);
-          memTableIncrement += TVList.tvListArrayMemSize(insertRowPlan.getDataTypes()[columnCount]);
+                  insertRowPlan.getMeasurements()[i], insertRowPlan.getDataTypes()[columnIndex]);
+          memTableIncrement += TVList.tvListArrayMemSize(insertRowPlan.getDataTypes()[columnIndex]);
         }
       } else {
         // here currentChunkPointNum >= 1
@@ -315,13 +315,13 @@ public class TsFileProcessor {
             workMemTable.getCurrentChunkPointNum(deviceId, insertRowPlan.getMeasurements()[i]);
         memTableIncrement +=
             (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE) == 0
-                ? TVList.tvListArrayMemSize(insertRowPlan.getDataTypes()[columnCount])
+                ? TVList.tvListArrayMemSize(insertRowPlan.getDataTypes()[columnIndex])
                 : 0;
       }
       // TEXT data mem size
-      if (insertRowPlan.getDataTypes()[columnCount] == TSDataType.TEXT) {
+      if (insertRowPlan.getDataTypes()[columnIndex] == TSDataType.TEXT) {
         textDataIncrement +=
-            MemUtils.getBinarySize((Binary) insertRowPlan.getValues()[columnCount]);
+            MemUtils.getBinarySize((Binary) insertRowPlan.getValues()[columnIndex]);
       }
     }
     updateMemoryInfo(
@@ -338,7 +338,7 @@ public class TsFileProcessor {
     String deviceId = insertTabletPlan.getDeviceId().getFullPath();
     long unsealedResourceIncrement = tsFileResource.estimateRamIncrement(deviceId);
 
-    int columnCount = 0;
+    int columnIndex = 0;
     for (int i = 0; i < insertTabletPlan.getMeasurementMNodes().length; i++) {
       // for aligned timeseries
       if (insertTabletPlan.getMeasurementMNodes()[i].getSchema().getType() == TSDataType.VECTOR) {
@@ -346,17 +346,17 @@ public class TsFileProcessor {
             (VectorMeasurementSchema) insertTabletPlan.getMeasurementMNodes()[i].getSchema();
         Object[] columns = new Object[vectorSchema.getValueMeasurementIdList().size()];
         for (int j = 0; j < vectorSchema.getValueMeasurementIdList().size(); j++) {
-          columns[j] = insertTabletPlan.getColumns()[columnCount++];
+          columns[j] = insertTabletPlan.getColumns()[columnIndex++];
         }
         updateVectorMemCost(vectorSchema, deviceId, start, end, memIncrements, columns);
       }
       // for non aligned
       else {
         // skip failed Measurements
-        TSDataType dataType = insertTabletPlan.getDataTypes()[columnCount];
+        TSDataType dataType = insertTabletPlan.getDataTypes()[columnIndex];
         String measurement = insertTabletPlan.getMeasurements()[i];
-        Object column = insertTabletPlan.getColumns()[columnCount];
-        columnCount++;
+        Object column = insertTabletPlan.getColumns()[columnIndex];
+        columnIndex++;
         if (dataType == null || column == null || measurement == null) {
           continue;
         }

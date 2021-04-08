@@ -97,30 +97,30 @@ public class VectorSessionExample {
   private static void createTemplate()
       throws StatementExecutionException, IoTDBConnectionException {
     List<List<String>> measurementList = new ArrayList<>();
-    List<String> measurements = new ArrayList<>();
+    List<String> vectorMeasurement = new ArrayList<>();
     for (int i = 1; i <= 2; i++) {
-      measurements.add("s" + i);
+      vectorMeasurement.add("s" + i);
     }
-    measurementList.add(measurements);
+    measurementList.add(vectorMeasurement);
 
     List<List<TSDataType>> dataTypeList = new ArrayList<>();
-    List<TSDataType> dataTypes = new ArrayList<>();
-    dataTypes.add(TSDataType.INT64);
-    dataTypes.add(TSDataType.INT32);
-    dataTypeList.add(dataTypes);
+    List<TSDataType> vectorDatatype = new ArrayList<>();
+    vectorDatatype.add(TSDataType.INT64);
+    vectorDatatype.add(TSDataType.INT32);
+    dataTypeList.add(vectorDatatype);
 
     List<List<TSEncoding>> encodingList = new ArrayList<>();
-    List<TSEncoding> encodings = new ArrayList<>();
+    List<TSEncoding> vectorEncoding = new ArrayList<>();
     for (int i = 1; i <= 2; i++) {
-      encodings.add(TSEncoding.RLE);
+      vectorEncoding.add(TSEncoding.RLE);
     }
-    encodingList.add(encodings);
+    encodingList.add(vectorEncoding);
 
-    List<CompressionType> compressionTypes = new ArrayList<>();
-    compressionTypes.add(CompressionType.SNAPPY);
+    List<CompressionType> compressionTypeList = new ArrayList<>();
+    compressionTypeList.add(CompressionType.SNAPPY);
 
     session.createDeviceTemplate(
-        "template1", measurementList, dataTypeList, encodingList, compressionTypes);
+        "template1", measurementList, dataTypeList, encodingList, compressionTypeList);
     session.setDeviceTemplate("template1", "root.sg_1");
   }
 
@@ -190,7 +190,7 @@ public class VectorSessionExample {
       sensors[row] = new Random().nextInt();
 
       if (time % 5 == 0) {
-        bitMaps[1].mark((int) row);
+        bitMaps[1].mark(row);
       }
 
       if (tablet.rowSize == tablet.getMaxRowNumber()) {

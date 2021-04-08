@@ -161,68 +161,81 @@ public class MemTableFlushTask {
       new Runnable() {
         private void writeOneSeries(
             TVList tvPairs, IChunkWriter seriesWriterImpl, TSDataType dataType) {
-          for (int i = 0; i < tvPairs.size(); i++) {
-            long time = tvPairs.getTime(i);
+          for (int sortedRowIndex = 0; sortedRowIndex < tvPairs.size(); sortedRowIndex++) {
+            long time = tvPairs.getTime(sortedRowIndex);
 
             // skip duplicated data
-            if ((i + 1 < tvPairs.size() && (time == tvPairs.getTime(i + 1)))) {
+            if ((sortedRowIndex + 1 < tvPairs.size()
+                && (time == tvPairs.getTime(sortedRowIndex + 1)))) {
               continue;
             }
 
             // store last point for SDT
-            if (dataType != TSDataType.VECTOR && i + 1 == tvPairs.size()) {
+            if (dataType != TSDataType.VECTOR && sortedRowIndex + 1 == tvPairs.size()) {
               ((ChunkWriterImpl) seriesWriterImpl).setLastPoint(true);
             }
 
             switch (dataType) {
               case BOOLEAN:
-                seriesWriterImpl.write(time, tvPairs.getBoolean(i), false);
+                seriesWriterImpl.write(time, tvPairs.getBoolean(sortedRowIndex), false);
                 break;
               case INT32:
-                seriesWriterImpl.write(time, tvPairs.getInt(i), false);
+                seriesWriterImpl.write(time, tvPairs.getInt(sortedRowIndex), false);
                 break;
               case INT64:
-                seriesWriterImpl.write(time, tvPairs.getLong(i), false);
+                seriesWriterImpl.write(time, tvPairs.getLong(sortedRowIndex), false);
                 break;
               case FLOAT:
-                seriesWriterImpl.write(time, tvPairs.getFloat(i), false);
+                seriesWriterImpl.write(time, tvPairs.getFloat(sortedRowIndex), false);
                 break;
               case DOUBLE:
-                seriesWriterImpl.write(time, tvPairs.getDouble(i), false);
+                seriesWriterImpl.write(time, tvPairs.getDouble(sortedRowIndex), false);
                 break;
               case TEXT:
-                seriesWriterImpl.write(time, tvPairs.getBinary(i), false);
+                seriesWriterImpl.write(time, tvPairs.getBinary(sortedRowIndex), false);
                 break;
               case VECTOR:
                 VectorTVList vectorTVPairs = (VectorTVList) tvPairs;
                 List<TSDataType> dataTypes = vectorTVPairs.getTsDataTypes();
-                int index = vectorTVPairs.getValueIndex(i);
-                for (int j = 0; j < dataTypes.size(); j++) {
-                  boolean isNull = vectorTVPairs.isValueMarked(index, j);
-                  switch (dataTypes.get(j)) {
+                int originRowIndex = vectorTVPairs.getValueIndex(sortedRowIndex);
+                for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
+                  boolean isNull = vectorTVPairs.isValueMarked(originRowIndex, columnIndex);
+                  switch (dataTypes.get(columnIndex)) {
                     case BOOLEAN:
                       seriesWriterImpl.write(
-                          time, vectorTVPairs.getBooleanByValueIndex(index, j), isNull);
+                          time,
+                          vectorTVPairs.getBooleanByValueIndex(originRowIndex, columnIndex),
+                          isNull);
                       break;
                     case INT32:
                       seriesWriterImpl.write(
-                          time, vectorTVPairs.getIntByValueIndex(index, j), isNull);
+                          time,
+                          vectorTVPairs.getIntByValueIndex(originRowIndex, columnIndex),
+                          isNull);
                       break;
                     case INT64:
                       seriesWriterImpl.write(
-                          time, vectorTVPairs.getLongByValueIndex(index, j), isNull);
+                          time,
+                          vectorTVPairs.getLongByValueIndex(originRowIndex, columnIndex),
+                          isNull);
                       break;
                     case FLOAT:
                       seriesWriterImpl.write(
-                          time, vectorTVPairs.getFloatByValueIndex(index, j), isNull);
+                          time,
+                          vectorTVPairs.getFloatByValueIndex(originRowIndex, columnIndex),
+                          isNull);
                       break;
                     case DOUBLE:
                       seriesWriterImpl.write(
-                          time, vectorTVPairs.getDoubleByValueIndex(index, j), isNull);
+                          time,
+                          vectorTVPairs.getDoubleByValueIndex(originRowIndex, columnIndex),
+                          isNull);
                       break;
                     case TEXT:
                       seriesWriterImpl.write(
-                          time, vectorTVPairs.getBinaryByValueIndex(index, j), isNull);
+                          time,
+                          vectorTVPairs.getBinaryByValueIndex(originRowIndex, columnIndex),
+                          isNull);
                       break;
                     default:
                       LOGGER.error(
