@@ -27,7 +27,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -66,22 +65,6 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan {
                 + ", time:"
                 + insertTimes[i]);
       }
-    }
-  }
-
-  public InsertRowsOfOneDevicePlan(
-      PartialPath deviceId, Long[] insertTimes, String[] measurements, String[] insertValues) {
-    super(OperatorType.BATCH_INSERT_ONE_DEVICE);
-    this.deviceId = deviceId;
-    rowPlans = new InsertRowPlan[insertTimes.length];
-    for (int i = 0; i < insertTimes.length; i++) {
-      rowPlans[i] =
-          new InsertRowPlan(
-              deviceId,
-              insertTimes[i],
-              measurements,
-              Arrays.copyOfRange(
-                  insertValues, i * measurements.length, (i + 1) * measurements.length));
     }
   }
 

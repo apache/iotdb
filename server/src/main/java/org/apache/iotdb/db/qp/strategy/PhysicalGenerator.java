@@ -78,7 +78,7 @@ import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryIndexPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
@@ -131,6 +131,7 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -247,8 +248,20 @@ public class PhysicalGenerator {
               insert.getMeasurementList(),
               insert.getValueList());
         }
-        return new InsertRowsOfOneDevicePlan(
-            paths.get(0), insert.getTime(), insert.getMeasurementList(), insert.getValueList());
+        InsertRowsPlan insertRowsPlan = new InsertRowsPlan();
+        for (int i = 0; i < insert.getTime().length; i++) {
+          insertRowsPlan.addOneInsertRowPlan(
+              new InsertRowPlan(
+                  paths.get(0),
+                  insert.getTime()[i],
+                  insert.getMeasurementList(),
+                  Arrays.copyOfRange(
+                      insert.getValueList(),
+                      i * insert.getMeasurementList().length,
+                      (i + 1) * insert.getMeasurementList().length)),
+              i);
+        }
+        return insertRowsPlan;
       case MERGE:
         if (operator.getTokenIntType() == SQLConstant.TOK_FULL_MERGE) {
           return new MergePlan(OperatorType.FULL_MERGE);
