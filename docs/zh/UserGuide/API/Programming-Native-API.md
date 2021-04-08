@@ -96,6 +96,16 @@ void createMultiTimeseries(List<String> paths, List<TSDataType> dataTypes,
       List<Map<String, String>> attributesList, List<String> measurementAliasList)
 ```
 
+* 创建对齐时间序列
+
+```
+void createAlignedTimeseries(String devicePath, List<String> measurements,
+      List<TSDataType> dataTypes, List<TSEncoding> encodings,
+      CompressionType compressor, List<String> measurementAliasList);
+```
+
+注意：目前**暂不支持**使用传感器别名。
+
 * 删除一个或多个时间序列
 
 ```
@@ -257,6 +267,8 @@ void testInsertTablet(Tablet tablet)
 使用示例可以参见 `session/src/test/java/org/apache/iotdb/session/pool/SessionPoolTest.java`
 
 或 `example/session/src/main/java/org/apache/iotdb/SessionPoolExample.java`
+
+使用对齐时间序列和设备模板的示例可以参见 `example/session/src/main/java/org/apache/iotdb/VectorSessionExample.java`。
 
   
 ### 示例代码

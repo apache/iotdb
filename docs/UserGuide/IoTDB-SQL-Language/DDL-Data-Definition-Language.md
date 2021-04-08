@@ -91,10 +91,19 @@ IoTDB > create timeseries root.sgcc.wf03.wt01.status with datatype=BOOLEAN,encod
 IoTDB > create timeseries root.sgcc.wf03.wt01.temperature with datatype=FLOAT,encoding=RLE
 ```
 
-Notice that when in the CRATE TIMESERIES statement the encoding method conflicts with the data type, the system gives the corresponding error prompt as shown below:
+We could also create **aligned** timeseries:
 
 ```
-IoTDB> create timeseries root.ln.wf02.wt02.status WITH DATATYPE=BOOLEAN, ENCODING=TS_2DIFF
+IoTDB > create aligned timeseries root.sg.d1.(s1 FLOAT, s2 INT32)
+IoTDB > create aligned timeseries root.sg.d1.(s3 FLOAT, s4 INT32) with encoding=(RLE, Grollia), compression=SNAPPY
+```
+
+Attention: Aligned timeseries must have the same compression type.
+
+Notice that when in the CREATE TIMESERIES statement the encoding method conflicts with the data type, the system gives the corresponding error prompt as shown below:
+
+```
+IoTDB > create timeseries root.ln.wf02.wt02.status WITH DATATYPE=BOOLEAN, ENCODING=TS_2DIFF
 error: encoding TS_2DIFF does not support BOOLEAN
 ```
 
@@ -126,6 +135,19 @@ The usage are as follows:
 IoTDB> delete timeseries root.ln.wf01.wt01.status
 IoTDB> delete timeseries root.ln.wf01.wt01.temperature, root.ln.wf02.wt02.hardware
 IoTDB> delete timeseries root.ln.wf02.*
+```
+
+As for **aligned** timeseries, we could delete them by explicit declaration with parentheses.
+
+```
+IoTDB > delete timeseries root.sg.d1.(s1,s2)
+```
+
+Attention: Deleting part of aligned timeseries is **not supported** currently.
+
+```
+IoTDB > delete timeseries root.sg.d1.s1
+error: Not support deleting part of aligned timeseies!
 ```
 
 #### Show Timeseries

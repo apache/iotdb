@@ -96,6 +96,15 @@ void createMultiTimeseries(List<String> paths, List<TSDataType> dataTypes,
       List<Map<String, String>> attributesList, List<String> measurementAliasList)
 ```
 
+* Create aligned timeseries
+```
+void createAlignedTimeseries(String devicePath, List<String> measurements,
+      List<TSDataType> dataTypes, List<TSEncoding> encodings,
+      CompressionType compressor, List<String> measurementAliasList);
+```
+
+Attention: Alias of measurements are **not supported** currently.
+
 * Delete one or several timeseries
 
 ```
@@ -249,7 +258,7 @@ Examples: ```session/src/test/java/org/apache/iotdb/session/pool/SessionPoolTest
 
 Or `example/session/src/main/java/org/apache/iotdb/SessionPoolExample.java`
 
-For device template and vector using example, you can refer to `example/session/src/main/java/org/apache/iotdb/VectorSessionExample.java`
+For examples of aligned timeseries and device template, you can refer to `example/session/src/main/java/org/apache/iotdb/VectorSessionExample.java`
 
 
 ### New Interfaces
@@ -322,6 +331,15 @@ void createMultiTimeseries(List<String> paths, List<TSDataType> dataTypes, List<
 ```
 
 Create multiple timeseries with a single method. Users can provide props, tags, attributes and measurementAlias as well for detailed timeseries information.
+
+```
+void createAlignedTimeseries(String devicePath, List<String> measurements,
+      List<TSDataType> dataTypes, List<TSEncoding> encodings,
+      CompressionType compressor, List<String> measurementAliasList);
+```
+
+Create aligned timeseries with device path, measurements, data types, encodings, compression.
+Attention: Alias of measurements are **not supported** currently.
 
 ```
 boolean checkTimeseriesExists(String path)
