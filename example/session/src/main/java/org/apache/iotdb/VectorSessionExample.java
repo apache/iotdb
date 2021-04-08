@@ -57,6 +57,9 @@ public class VectorSessionExample {
     selectWithLastTest();
 
     selectWithAggregationTest();
+
+    selectWithAlignByDeviceTest();
+
     session.close();
   }
 
@@ -69,6 +72,18 @@ public class VectorSessionExample {
 
     dataSet.closeOperationHandle();
     dataSet = session.executeQueryStatement("select * from root.sg_1.d1");
+    System.out.println(dataSet.getColumnNames());
+    while (dataSet.hasNext()) {
+      System.out.println(dataSet.next());
+    }
+
+    dataSet.closeOperationHandle();
+  }
+
+  private static void selectWithAlignByDeviceTest()
+      throws StatementExecutionException, IoTDBConnectionException {
+    SessionDataSet dataSet =
+        session.executeQueryStatement("select * from root.sg_1 align by device");
     System.out.println(dataSet.getColumnNames());
     while (dataSet.hasNext()) {
       System.out.println(dataSet.next());

@@ -69,7 +69,6 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
@@ -1626,7 +1625,7 @@ public class MTree implements Serializable {
       }
     } else { // the node path contains '*'
       boolean deviceAdded = false;
-      Collection<MNode> children = node.getChildren().values();
+      List<MNode> children = new ArrayList<>(node.getChildren().values());
       // template part
       if (node.isUseTemplate()) {
         children.addAll(upperTemplate.getMeasurementMNode());

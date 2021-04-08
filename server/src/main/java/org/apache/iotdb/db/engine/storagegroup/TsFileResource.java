@@ -668,6 +668,8 @@ public class TsFileResource {
     if (timeSeriesMetadata instanceof TimeseriesMetadata) {
       return (TimeseriesMetadata) timeSeriesMetadata;
     } else {
+      // it's ok for us to return the first value timeseries metadata,
+      // because the MemChunkMetadataLoader is not depend on the timeseries metadata
       return ((VectorTimeSeriesMetadata) timeSeriesMetadata)
           .getValueTimeseriesMetadataList()
           .get(0);
