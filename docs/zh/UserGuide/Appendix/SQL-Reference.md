@@ -94,6 +94,27 @@ Note: For SDT, it is optional to set compression minimum COMPMINTIME, which is t
 Note: For SDT, it is optional to set compression maximum COMPMAXTIME, which is the maximum time difference between stored values regardless of COMPDEV.
 ```
 
+* 创建设备模板语句
+```
+CREATE device template <TemplateName> WITH <AttributeClauses>
+attributeClauses
+    : (MEASUREMENT_NAME DATATYPE OPERATOR_EQ dataType COMMA ENCODING OPERATOR_EQ encoding
+    (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor=propertyValue)?
+    (COMMA property)*)
+    attributeClause
+    ;
+Eg: create device template temp1(
+        (s1 INT32 with encoding=Gorilla, compression=SNAPPY),
+        (s2 FLOAT with encoding=RLE, compression=SNAPPY)
+       )  
+```
+
+* 挂载设备模板语句
+```
+set device template <TemplateName> to <STORAGE_GROUP_NAME>
+Eg: set device template temp1 to root.beijing
+```
+
 * 删除时间序列语句
 
 ```
