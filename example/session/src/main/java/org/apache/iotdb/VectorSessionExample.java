@@ -25,6 +25,7 @@ import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
@@ -48,6 +49,7 @@ public class VectorSessionExample {
 
     createTemplate();
     insertTabletWithAlignedTimeseries();
+    insertNullableTabletWithAlignedTimeseries();
     selectTest();
     selectWithValueFilterTest();
 
@@ -214,6 +216,52 @@ public class VectorSessionExample {
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
         session.insertTablet(tablet, true);
         tablet.reset();
+      }
+    }
+
+    if (tablet.rowSize != 0) {
+      session.insertTablet(tablet, true);
+      tablet.reset();
+    }
+
+    session.executeNonQueryStatement("flush");
+  }
+
+  private static void insertNullableTabletWithAlignedTimeseries()
+      throws IoTDBConnectionException, StatementExecutionException {
+    // The schema of measurements of one device
+    // only measurementId and data type in MeasurementSchema take effects in Tablet
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(
+        new VectorMeasurementSchema(
+            new String[] {"s1", "s2"}, new TSDataType[] {TSDataType.INT64, TSDataType.INT32}));
+
+    Tablet tablet = new Tablet(ROOT_SG1_D1, schemaList);
+
+    long[] timestamps = tablet.timestamps;
+    Object[] values = tablet.values;
+    BitMap[] bitMaps = new BitMap[values.length];
+    tablet.bitMaps = bitMaps;
+
+    bitMaps[1] = new BitMap(tablet.getMaxRowNumber());
+    for (long time = 100; time < 200; time++) {
+      int row = tablet.rowSize++;
+      timestamps[row] = time;
+
+      long[] sensor = (long[]) values[0];
+      sensor[row] = new Random().nextLong();
+
+      int[] sensors = (int[]) values[1];
+      sensors[row] = new Random().nextInt();
+
+      if (time % 5 == 0) {
+        bitMaps[1].mark((int) row);
+      }
+
+      if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        session.insertTablet(tablet, true);
+        tablet.reset();
+        bitMaps[1].reset();
       }
     }
 

@@ -198,30 +198,31 @@ public class MemTableFlushTask {
                 List<TSDataType> dataTypes = vectorTVPairs.getTsDataTypes();
                 int index = vectorTVPairs.getValueIndex(i);
                 for (int j = 0; j < dataTypes.size(); j++) {
+                  boolean isNull = vectorTVPairs.isValueMarked(index, j);
                   switch (dataTypes.get(j)) {
                     case BOOLEAN:
                       seriesWriterImpl.write(
-                          time, vectorTVPairs.getBooleanByValueIndex(index, j), false);
+                          time, vectorTVPairs.getBooleanByValueIndex(index, j), isNull);
                       break;
                     case INT32:
                       seriesWriterImpl.write(
-                          time, vectorTVPairs.getIntByValueIndex(index, j), false);
+                          time, vectorTVPairs.getIntByValueIndex(index, j), isNull);
                       break;
                     case INT64:
                       seriesWriterImpl.write(
-                          time, vectorTVPairs.getLongByValueIndex(index, j), false);
+                          time, vectorTVPairs.getLongByValueIndex(index, j), isNull);
                       break;
                     case FLOAT:
                       seriesWriterImpl.write(
-                          time, vectorTVPairs.getFloatByValueIndex(index, j), false);
+                          time, vectorTVPairs.getFloatByValueIndex(index, j), isNull);
                       break;
                     case DOUBLE:
                       seriesWriterImpl.write(
-                          time, vectorTVPairs.getDoubleByValueIndex(index, j), false);
+                          time, vectorTVPairs.getDoubleByValueIndex(index, j), isNull);
                       break;
                     case TEXT:
                       seriesWriterImpl.write(
-                          time, vectorTVPairs.getBinaryByValueIndex(index, j), false);
+                          time, vectorTVPairs.getBinaryByValueIndex(index, j), isNull);
                       break;
                     default:
                       LOGGER.error(

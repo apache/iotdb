@@ -20,6 +20,7 @@ package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BitMap;
 
 import org.apache.commons.lang3.ArrayUtils;
 import org.junit.Assert;
@@ -101,9 +102,42 @@ public class VectorTVListTest {
         vectorArray[j][i] = (long) i;
       }
     }
-    tvList.putVectors(ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), vectorArray, 0, 1000);
+
+    tvList.putVectors(
+        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), null, vectorArray, 0, 1000);
     for (long i = 0; i < tvList.size; i++) {
       Assert.assertEquals(tvList.size - i, tvList.getTime((int) i));
+    }
+  }
+
+  @Test
+  public void testVectorTVListsWithBitMaps() {
+    List<TSDataType> dataTypes = new ArrayList<>();
+    BitMap[] bitMaps = new BitMap[5];
+    for (int i = 0; i < 5; i++) {
+      dataTypes.add(TSDataType.INT64);
+      bitMaps[i] = new BitMap(1001);
+    }
+    VectorTVList tvList = new VectorTVList(dataTypes);
+    long[][] vectorArray = new long[5][1001];
+    List<Long> timeList = new ArrayList<>();
+    for (int i = 1000; i >= 0; i--) {
+      timeList.add((long) i);
+      for (int j = 0; j < 5; j++) {
+        vectorArray[j][i] = (long) i;
+        if (i % 100 == 0) {
+          bitMaps[j].mark(i);
+        }
+      }
+    }
+
+    tvList.putVectors(
+        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), bitMaps, vectorArray, 0, 1000);
+    for (long i = 0; i < tvList.size; i++) {
+      Assert.assertEquals(tvList.size - i, tvList.getTime((int) i));
+      if (i % 100 == 0) {
+        Assert.assertEquals("[null, null, null, null, null]", tvList.getVector((int) i).toString());
+      }
     }
   }
 }

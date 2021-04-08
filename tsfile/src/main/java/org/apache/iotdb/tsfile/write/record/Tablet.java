@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.write.record;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
@@ -58,6 +59,8 @@ public class Tablet {
   public long[] timestamps;
   /** each object is a primitive type array, which represents values of one measurement */
   public Object[] values;
+  /** each bitmap represents the existence of each value in the current column */
+  public BitMap[] bitMaps;
   /** the number of rows to include in this tablet */
   public int rowSize;
   /** the maximum number of rows for this tablet */
@@ -91,6 +94,11 @@ public class Tablet {
     measurementIndex = new HashMap<>();
 
     for (int i = 0; i < schemas.size(); i++) {
+      if (schemas.get(i).getType() == TSDataType.VECTOR) {
+        for (String measurementId : schemas.get(i).getValueMeasurementIdList()) {
+          measurementIndex.put(measurementId, i);
+        }
+      }
       measurementIndex.put(schemas.get(i).getMeasurementId(), i);
     }
 
@@ -124,6 +132,7 @@ public class Tablet {
 
   private void addValueOfDataType(
       TSDataType dataType, int rowIndex, int indexOfValue, Object value) {
+
     switch (dataType) {
       case TEXT:
         {
@@ -191,9 +200,10 @@ public class Tablet {
         valueColumnsSize++;
       }
     }
+
+    // value column
     values = new Object[valueColumnsSize];
     int columnIndex = 0;
-    // create value columns
     for (IMeasurementSchema schema : schemas) {
       TSDataType dataType = schema.getType();
       if (dataType.equals(TSDataType.VECTOR)) {
@@ -249,6 +259,18 @@ public class Tablet {
   /** @return total bytes of values */
   public int getValueBytesSize() {
     int valueOccupation = 0;
+    // marker byte
+    valueOccupation++;
+    // bitmap size
+    if (bitMaps != null) {
+      for (BitMap bitMap : bitMaps) {
+        // marker byte
+        valueOccupation++;
+        if (bitMap != null && !bitMap.isAllZero()) {
+          valueOccupation += rowSize / Byte.SIZE + 1;
+        }
+      }
+    }
     for (int i = 0; i < schemas.size(); i++) {
       IMeasurementSchema schema = schemas.get(i);
       if (schema instanceof MeasurementSchema) {

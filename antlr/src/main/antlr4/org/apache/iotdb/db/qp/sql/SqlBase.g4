@@ -673,6 +673,7 @@ constant
     | MINUS? INT
     | stringLiteral
     | booleanClause
+    | NULL
     ;
 
 booleanClause
@@ -1297,6 +1298,10 @@ TOLERANCE
 
 EXPLAIN
     : E X P L A I N
+    ;
+
+NULL
+    : N U L L
     ;
 
 //============================

@@ -8,12 +8,15 @@ import org.apache.iotdb.cluster.client.async.AsyncDataClient.FactoryAsync;
 import org.apache.iotdb.cluster.common.TestAsyncClient;
 import org.apache.iotdb.cluster.common.TestAsyncClientFactory;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 
@@ -31,6 +34,20 @@ import static org.junit.Assert.assertNull;
 public class AsyncClientPoolTest {
 
   @Mock private AsyncClientFactory testAsyncClientFactory;
+
+  private ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
+  private boolean isAsyncServer;
+
+  @Before
+  public void setUp() {
+    isAsyncServer = config.isUseAsyncServer();
+    config.setUseAsyncServer(true);
+  }
+
+  @After
+  public void tearDown() {
+    config.setUseAsyncServer(isAsyncServer);
+  }
 
   @Test
   public void testTestClient() throws IOException {
@@ -94,7 +111,7 @@ public class AsyncClientPoolTest {
   @Test
   public void testMaxClient() throws IOException {
     int maxClientNum = ClusterDescriptor.getInstance().getConfig().getMaxClientPerNodePerMember();
-    ClusterDescriptor.getInstance().getConfig().setMaxClientPerNodePerMember(5);
+    config.setMaxClientPerNodePerMember(5);
     testAsyncClientFactory = new TestAsyncClientFactory();
     AsyncClientPool asyncClientPool = new AsyncClientPool(testAsyncClientFactory);
 
@@ -114,7 +131,7 @@ public class AsyncClientPoolTest {
     t.start();
     t.interrupt();
     assertNull(reference.get());
-    ClusterDescriptor.getInstance().getConfig().setMaxClientPerNodePerMember(maxClientNum);
+    config.setMaxClientPerNodePerMember(maxClientNum);
   }
 
   @Test
@@ -122,7 +139,7 @@ public class AsyncClientPoolTest {
     int maxClientPerNodePerMember =
         ClusterDescriptor.getInstance().getConfig().getMaxClientPerNodePerMember();
     try {
-      ClusterDescriptor.getInstance().getConfig().setMaxClientPerNodePerMember(10);
+      config.setMaxClientPerNodePerMember(10);
       testAsyncClientFactory = new TestAsyncClientFactory();
       AsyncClientPool asyncClientPool = new AsyncClientPool(testAsyncClientFactory);
 
@@ -154,9 +171,7 @@ public class AsyncClientPoolTest {
       }
       assertNotNull(client);
     } finally {
-      ClusterDescriptor.getInstance()
-          .getConfig()
-          .setMaxClientPerNodePerMember(maxClientPerNodePerMember);
+      config.setMaxClientPerNodePerMember(maxClientPerNodePerMember);
     }
   }
 
@@ -165,7 +180,7 @@ public class AsyncClientPoolTest {
     int maxClientPerNodePerMember =
         ClusterDescriptor.getInstance().getConfig().getMaxClientPerNodePerMember();
     try {
-      ClusterDescriptor.getInstance().getConfig().setMaxClientPerNodePerMember(1);
+      config.setMaxClientPerNodePerMember(1);
       testAsyncClientFactory = new TestAsyncClientFactory();
       AsyncClientPool asyncClientPool = new AsyncClientPool(testAsyncClientFactory);
 
@@ -177,9 +192,7 @@ public class AsyncClientPoolTest {
 
       assertNotEquals(clients.get(0), clients.get(1));
     } finally {
-      ClusterDescriptor.getInstance()
-          .getConfig()
-          .setMaxClientPerNodePerMember(maxClientPerNodePerMember);
+      config.setMaxClientPerNodePerMember(maxClientPerNodePerMember);
     }
   }
 
