@@ -176,6 +176,35 @@ SessionDataSet executeQueryStatement(String sql)
 void executeNonQueryStatement(String sql)
 ```
 
+* 创建一个设备模板
+
+```
+* name: 设备模板名称
+* measurements: 工况名称列表，如果该工况是非对齐的，直接将其名称放入一个list中再放入measurements中，
+*               如果该工况是对齐的，将所有对齐工况名称放入一个list再放入measurements中
+* dataTypes: 数据类型名称列表，如果该工况是非对齐的，直接将其数据类型放入一个list中再放入dataTypes中，
+             如果该工况是对齐的，将所有对齐工况的数据类型放入一个list再放入dataTypes中
+* encodings: 编码类型名称列表，如果该工况是非对齐的，直接将其数据类型放入一个list中再放入encodings中，
+             如果该工况是对齐的，将所有对齐工况的编码类型放入一个list再放入encodings中
+* compressors: 压缩方式列表                          
+void createDeviceTemplate(
+      String name,
+      List<List<String>> measurements,
+      List<List<TSDataType>> dataTypes,
+      List<List<TSEncoding>> encodings,
+      List<CompressionType> compressors)
+```
+
+
+* 将名为'templateName'的设备模板挂载到'prefixPath'路径下，在执行这一步之前，你需要创建名为'templateName'的设备模板
+
+``` 
+void setDeviceTemplate(String templateName, String prefixPath)
+```
+
+
+
+
 ### 测试接口说明
 
 * 测试 testInsertRecords，不实际写入数据，只将数据传输到 server 即返回。

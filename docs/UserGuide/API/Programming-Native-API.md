@@ -249,6 +249,8 @@ Examples: ```session/src/test/java/org/apache/iotdb/session/pool/SessionPoolTest
 
 Or `example/session/src/main/java/org/apache/iotdb/SessionPoolExample.java`
 
+For device template and vector using example, you can refer to `example/session/src/main/java/org/apache/iotdb/VectorSessionExample.java`
+
 
 ### New Interfaces
 
@@ -333,3 +335,40 @@ public Session(String host, int rpcPort, String username, String password,
 ```
 
 Open a session and specifies whether the Leader cache is enabled. Note that this interface improves performance for distributed IoTDB, but adds less cost to the client for stand-alone IoTDB.
+
+```
+
+* name: template name
+* measurements: List of measurements, if it is a single measurement, just put it's name
+*     into a list and add to measurements if it is a vector measurement, put all measurements of
+*     the vector into a list and add to measurements
+* dataTypes: List of datatypes, if it is a single measurement, just put it's type into a
+*     list and add to dataTypes if it is a vector measurement, put all types of the vector
+*     into a list and add to dataTypes
+* encodings: List of encodings, if it is a single measurement, just put it's encoding into
+*     a list and add to encodings if it is a vector measurement, put all encodings of the
+*     vector into a list and add to encodings
+* compressors: List of compressors                            
+void createDeviceTemplate(
+      String name,
+      List<List<String>> measurements,
+      List<List<TSDataType>> dataTypes,
+      List<List<TSEncoding>> encodings,
+      List<CompressionType> compressors)
+```
+
+Create a device template, the param description at above
+
+``` 
+
+void setDeviceTemplate(String templateName, String prefixPath)
+
+```
+
+Set the device template named 'templateName' at path 'prefixPath'. You should firstly create the template using
+
+```
+
+void createDeviceTemplate
+
+```

@@ -101,6 +101,22 @@ error: encoding TS_2DIFF does not support BOOLEAN
 
 详细的数据类型与编码方式的对应列表请参见[编码方式](../Data-Concept/Encoding.md)。
 
+### 创建和挂载设备模板
+```
+
+IoTDB > set storage group root.beijing
+
+// 创建设备模板
+IoTDB > create device template temp1(
+  (s1 INT32 with encoding=Gorilla, compression=SNAPPY),
+  (s2 FLOAT with encoding=RLE, compression=SNAPPY)
+ )
+
+// 将设备模板挂载到root.beijing存储组上
+IoTDB > set device template temp1 to root.beijing
+
+```
+
 #### 删除时间序列
 
 我们可以使用`DELETE TimeSeries <PrefixPath>`语句来删除我们之前创建的时间序列。SQL语句如下所示：

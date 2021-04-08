@@ -18,6 +18,18 @@
  */
 package org.apache.iotdb.session;
 
+import java.nio.ByteBuffer;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RedirectException;
@@ -48,22 +60,8 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.nio.ByteBuffer;
-import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 
 @SuppressWarnings({"java:S107", "java:S1135"}) // need enough parameters, ignore todos
 public class Session {
@@ -1631,6 +1629,21 @@ public class Session {
     defaultSessionConnection.setDeviceTemplate(request);
   }
 
+  /**
+   * @param name template name
+   * @param measurements List of measurements, if it is a single measurement, just put it's name
+   *     into a list and add to measurements if it is a vector measurement, put all measurements of
+   *     the vector into a list and add to measurements
+   * @param dataTypes List of datatypes, if it is a single measurement, just put it's type into a
+   *     list and add to dataTypes if it is a vector measurement, put all types of the vector into a
+   *     list and add to dataTypes
+   * @param encodings List of encodings, if it is a single measurement, just put it's encoding into
+   *     a list and add to encodings if it is a vector measurement, put all encodings of the vector
+   *     into a list and add to encodings
+   * @param compressors List of compressors
+   * @throws IoTDBConnectionException
+   * @throws StatementExecutionException
+   */
   public void createDeviceTemplate(
       String name,
       List<List<String>> measurements,

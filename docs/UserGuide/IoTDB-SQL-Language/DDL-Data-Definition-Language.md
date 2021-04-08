@@ -100,6 +100,22 @@ error: encoding TS_2DIFF does not support BOOLEAN
 
 Please refer to [Encoding](../Data-Concept/Encoding.md) for correspondence between data type and encoding.
 
+### Create and set device template
+```
+
+IoTDB > set storage group root.beijing
+
+// create a device templat
+IoTDB > create device template temp1(
+  (s1 INT32 with encoding=Gorilla, compression=SNAPPY),
+  (s2 FLOAT with encoding=RLE, compression=SNAPPY)
+ )
+
+// set device template to storage group "root.beijing"
+IoTDB > set device template temp1 to root.beijing
+
+```
+
 #### Delete Timeseries
 
 To delete the timeseries we created before, we are able to use `DELETE TimeSeries <PrefixPath>` statement.
