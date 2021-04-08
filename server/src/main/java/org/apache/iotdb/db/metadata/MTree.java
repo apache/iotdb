@@ -69,6 +69,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
@@ -1555,7 +1556,7 @@ public class MTree implements Serializable {
       throw new IllegalPathException(prefixPath.getFullPath());
     }
     Set<PartialPath> devices = new TreeSet<>();
-    findDevices(root, nodes, 1, devices, false);
+    findDevices(root, nodes, 1, devices, false, null);
     return devices;
   }
 
@@ -1569,7 +1570,7 @@ public class MTree implements Serializable {
     offset.set(plan.getOffset());
     curOffset.set(-1);
     count.set(0);
-    findDevices(root, nodes, 1, devices, offset.get() != 0 || limit.get() != 0);
+    findDevices(root, nodes, 1, devices, offset.get() != 0 || limit.get() != 0, null);
     // avoid memory leaks
     limit.remove();
     offset.remove();
@@ -1597,7 +1598,13 @@ public class MTree implements Serializable {
    */
   @SuppressWarnings("squid:S3776")
   private void findDevices(
-      MNode node, String[] nodes, int idx, Set<PartialPath> res, boolean hasLimit) {
+      MNode node,
+      String[] nodes,
+      int idx,
+      Set<PartialPath> res,
+      boolean hasLimit,
+      Template upperTemplate) {
+    upperTemplate = node.getDeviceTemplate() == null ? upperTemplate : node.getDeviceTemplate();
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
     // the node path doesn't contains '*'
     if (!nodeReg.contains(PATH_WILDCARD)) {
@@ -1614,12 +1621,18 @@ public class MTree implements Serializable {
           }
           res.add(node.getPartialPath());
         } else {
-          findDevices(next, nodes, idx + 1, res, hasLimit);
+          findDevices(next, nodes, idx + 1, res, hasLimit, upperTemplate);
         }
       }
     } else { // the node path contains '*'
       boolean deviceAdded = false;
-      for (MNode child : node.getChildren().values()) {
+      Collection<MNode> children = node.getChildren().values();
+      // template part
+      if (node.isUseTemplate()) {
+        children.addAll(upperTemplate.getMeasurementMNode());
+      }
+
+      for (MNode child : children) {
         // use '.*' to replace '*' to form a regex to match
         // if the match failed, skip it.
         if (!Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
@@ -1637,7 +1650,7 @@ public class MTree implements Serializable {
           res.add(node.getPartialPath());
           deviceAdded = true;
         }
-        findDevices(child, nodes, idx + 1, res, hasLimit);
+        findDevices(child, nodes, idx + 1, res, hasLimit, upperTemplate);
       }
     }
   }
