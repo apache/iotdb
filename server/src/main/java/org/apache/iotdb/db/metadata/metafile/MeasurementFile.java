@@ -4,6 +4,7 @@ import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.File;
@@ -68,8 +69,8 @@ public class MeasurementFile {
 
   public MeasurementMNode read(long position) throws IOException {
     ByteBuffer buffer = readBytesFromFile(position);
-
-    MeasurementMNode measurementMNode = readMeasurementMNode(buffer);
+    MeasurementMNode measurementMNode = new MeasurementMNode(null,null,null,null);
+    readData(measurementMNode,buffer);
     measurementMNode.setPosition(position);
     measurementMNode.setModified(false);
     return measurementMNode;
@@ -80,44 +81,19 @@ public class MeasurementFile {
     measurementMNode.setModified(false);
   }
 
-  private MeasurementMNode readMeasurementMNode(ByteBuffer dataBuffer) {
-    String name = BufferUtil.readString(dataBuffer);
-    String alias = BufferUtil.readString(dataBuffer);
-    long offset = dataBuffer.getLong();
-    byte type = dataBuffer.get();
-    byte encoding = dataBuffer.get();
-    byte compressor = dataBuffer.get();
-    Map<String, String> props = new HashMap<>();
-    String key, value;
-    while (null != (key = BufferUtil.readString(dataBuffer))) {
-      value = BufferUtil.readString(dataBuffer);
-      props.put(key, value);
-    }
-    MeasurementMNode mNode =
-        new MeasurementMNode(
-            null,
-            name,
-            alias,
-            TSDataType.deserialize(type),
-            TSEncoding.deserialize(encoding),
-            CompressionType.deserialize(compressor),
-            props.size() == 0 ? null : props);
-    mNode.setOffset(offset);
-    return mNode;
-  }
-
   private void readData(MeasurementMNode measurementMNode, ByteBuffer dataBuffer) {
-    String name = BufferUtil.readString(dataBuffer);
-    String alias = BufferUtil.readString(dataBuffer);
+    String name = ReadWriteIOUtils.readVarIntString(dataBuffer);
+    String alias = ReadWriteIOUtils.readVarIntString(dataBuffer);
     long offset = dataBuffer.getLong();
     byte type = dataBuffer.get();
     byte encoding = dataBuffer.get();
     byte compressor = dataBuffer.get();
     Map<String, String> props = new HashMap<>();
-    String key, value;
-    while (null != (key = BufferUtil.readString(dataBuffer))) {
-      value = BufferUtil.readString(dataBuffer);
-      props.put(key, value);
+    String key;
+    key = ReadWriteIOUtils.readVarIntString(dataBuffer);
+    while (key!=null&&!key.equals("")) {
+      props.put(key, ReadWriteIOUtils.readVarIntString(dataBuffer));
+      key = ReadWriteIOUtils.readVarIntString(dataBuffer);
     }
     MeasurementSchema schema =
         new MeasurementSchema(
@@ -127,6 +103,7 @@ public class MeasurementFile {
             CompressionType.deserialize(compressor),
             props.size() == 0 ? null : props);
 
+    measurementMNode.setName(name);
     measurementMNode.setAlias(alias);
     measurementMNode.setOffset(offset);
     measurementMNode.setSchema(schema);
@@ -156,8 +133,8 @@ public class MeasurementFile {
   private ByteBuffer serializeMeasurementMNodeData(MeasurementMNode measurementMNode) {
     ByteBuffer dataBuffer = ByteBuffer.allocate(MEASUREMENT_LENGTH);
     dataBuffer.put((byte) 0x80);
-    BufferUtil.writeString(dataBuffer, measurementMNode.getName());
-    BufferUtil.writeString(dataBuffer, measurementMNode.getAlias());
+    ReadWriteIOUtils.writeVar(measurementMNode.getName(), dataBuffer);
+    ReadWriteIOUtils.writeVar(measurementMNode.getAlias(), dataBuffer);
     dataBuffer.putLong(measurementMNode.getOffset());
     MeasurementSchema schema = measurementMNode.getSchema();
     dataBuffer.put(schema.getType().serialize());
@@ -165,8 +142,8 @@ public class MeasurementFile {
     dataBuffer.put(schema.getCompressor().serialize());
     if (schema.getProps() != null) {
       for (Map.Entry<String, String> entry : schema.getProps().entrySet()) {
-        BufferUtil.writeString(dataBuffer, entry.getKey());
-        BufferUtil.writeString(dataBuffer, entry.getValue());
+        ReadWriteIOUtils.writeVar(entry.getKey(), dataBuffer);
+        ReadWriteIOUtils.writeVar(entry.getValue(), dataBuffer);
       }
     }
     dataBuffer.put((byte) 0);

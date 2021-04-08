@@ -3,6 +3,7 @@ package org.apache.iotdb.db.metadata.metafile;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -126,7 +127,6 @@ public class MTreeFile {
     }
     long position = mNode.getPosition();
     ByteBuffer dataBuffer = readBytesFromFile(position);
-    boolean isDevice = dataBuffer.get() == 1;
     int type = dataBuffer.get();
     if (type == 2) {
       if (!(mNode instanceof StorageGroupMNode)) {
@@ -134,9 +134,9 @@ public class MTreeFile {
         mNode.getParent().deleteChild(mNode.getName());
         mNode.getParent().addChild(mNode.getName(),mNode);
       }
-      readStorageGroupMNode(dataBuffer, (StorageGroupMNode) mNode, isDevice);
+      readStorageGroupMNode(dataBuffer, (StorageGroupMNode) mNode);
     } else {
-      readMNode(dataBuffer, mNode, isDevice);
+      readMNode(dataBuffer, mNode);
     }
     mNode.setModified(false);
     return mNode;
@@ -144,15 +144,14 @@ public class MTreeFile {
 
   public MNode read(long position) throws IOException {
     ByteBuffer dataBuffer = readBytesFromFile(position);
-    boolean isDevice = dataBuffer.get() == 1;
     int type = dataBuffer.get();
     MNode mNode;
     if (type == 2) {
       mNode = new StorageGroupMNode(null, null, 0);
-      readStorageGroupMNode(dataBuffer, (StorageGroupMNode) mNode, isDevice);
+      readStorageGroupMNode(dataBuffer, (StorageGroupMNode) mNode);
     } else {
       mNode = new MNode(null, null);
-      readMNode(dataBuffer, mNode, isDevice);
+      readMNode(dataBuffer, mNode);
     }
     mNode.setPosition(position);
     mNode.setModified(false);
@@ -175,7 +174,6 @@ public class MTreeFile {
     if (type > 2) {
       throw new IOException("file corrupted");
     }
-    boolean isDevice = (bitmap & 0x08) != 0;
     int num = bitmap & 0x07;
 
     long parentPosition = buffer.getLong();
@@ -183,8 +181,7 @@ public class MTreeFile {
     long extendPosition = buffer.getLong();
 
     ByteBuffer dataBuffer =
-        ByteBuffer.allocate(2 + num * (nodeLength - 17)); // isDevice + node type + node data
-    dataBuffer.put((byte) (isDevice ? 1 : 0));
+        ByteBuffer.allocate(2 + num * (nodeLength - 17)); // node type + node data
     dataBuffer.put((byte) type);
     dataBuffer.put(buffer);
     for (int i = 1; i < num; i++) {
@@ -206,29 +203,42 @@ public class MTreeFile {
     return dataBuffer;
   }
 
-  private void readMNode(ByteBuffer dataBuffer, MNode mNode, boolean isDevice) {
-    String name = BufferUtil.readString(dataBuffer);
+  private void readMNode(ByteBuffer dataBuffer, MNode mNode) {
+    String name = ReadWriteIOUtils.readVarIntString(dataBuffer);
     mNode.setName(name);
-    readChildren(mNode, dataBuffer, isDevice);
+    readChildren(mNode, dataBuffer);
   }
 
   private void readStorageGroupMNode(
-      ByteBuffer dataBuffer, StorageGroupMNode mNode, boolean isDevice) {
-    String name = BufferUtil.readString(dataBuffer);
+      ByteBuffer dataBuffer, StorageGroupMNode mNode) {
+    String name = ReadWriteIOUtils.readVarIntString(dataBuffer);
     long ttl = dataBuffer.getLong();
     mNode.setName(name);
     mNode.setDataTTL(ttl);
-    readChildren(mNode, dataBuffer, isDevice);
+    readChildren(mNode, dataBuffer);
   }
 
-  private void readChildren(MNode mNode, ByteBuffer byteBuffer, boolean isDevice) {
+  private void readChildren(MNode mNode, ByteBuffer byteBuffer) {
     String name;
     MNode child;
-    while (null != (name = BufferUtil.readString(byteBuffer))) {
-      child = isDevice ? new MeasurementMNode(mNode, name, null, null) : new MNode(mNode, name);
+    name = ReadWriteIOUtils.readVarIntString(byteBuffer);
+    while (name!=null&&!name.equals("")) {
+      child = new MNode(mNode, name);
       child.setPosition(byteBuffer.getLong());
       child.setModified(false);
       mNode.addChild(name, child);
+
+      name = ReadWriteIOUtils.readVarIntString(byteBuffer);
+    }
+
+    name = ReadWriteIOUtils.readVarIntString(byteBuffer);
+    while (name!=null&&!name.equals("")) {
+      child = new MeasurementMNode(mNode, name, null, null);
+      child.setPosition(byteBuffer.getLong());
+      child.setModified(false);
+      mNode.addChild(name, child);
+
+      name = ReadWriteIOUtils.readVarIntString(byteBuffer);
     }
   }
 
@@ -273,7 +283,7 @@ public class MTreeFile {
       for (String childName : mNode.getChildren().keySet()) {
         length += 1 + childName.length() + 8; // child name and child position
       }
-      length += 1; // children end tag
+      length += 2; // separator and children end tag
     }
     if (mNode instanceof StorageGroupMNode) {
       length += 8; // TTL
@@ -294,7 +304,7 @@ public class MTreeFile {
     int mNodeLength = evaluateNodeLength(mNode);
     int bufferNum =
         (mNodeLength / (nodeLength - 17)) + ((mNodeLength % (nodeLength - 17)) == 0 ? 0 : 1);
-    if (bufferNum > 7) {
+    if (bufferNum > 15) {
       return null;
     }
     ByteBuffer[] bufferList = new ByteBuffer[bufferNum];
@@ -312,16 +322,6 @@ public class MTreeFile {
       } else {
         bitmap = (byte) (0x80 | bitmap);
       }
-    }
-    boolean isDevice = false;
-    for (MNode child : mNode.getChildren().values()) {
-      if (child instanceof MeasurementMNode) {
-        isDevice = true;
-        break;
-      }
-    }
-    if (isDevice) {
-      bitmap = (byte) (0x08 | bitmap);
     }
 
     bufferList[0] = ByteBuffer.allocate(nodeLength);
@@ -357,29 +357,38 @@ public class MTreeFile {
 
   private ByteBuffer serializeMNodeData(MNode mNode) {
     ByteBuffer dataBuffer = ByteBuffer.allocate(evaluateNodeLength(mNode));
-    BufferUtil.writeString(dataBuffer, mNode.getName());
-    for (String childName : mNode.getChildren().keySet()) {
-      BufferUtil.writeString(dataBuffer, childName);
-      dataBuffer.putLong(mNode.getChild(childName).getPosition());
-    }
-    dataBuffer.put((byte) 0);
+    ReadWriteIOUtils.writeVar(mNode.getName(),dataBuffer);
+    serializeChildren(mNode.getChildren(),dataBuffer);
     dataBuffer.flip();
     return dataBuffer;
   }
 
   private ByteBuffer serializeStorageGroupMNodeData(StorageGroupMNode mNode) {
     ByteBuffer dataBuffer = ByteBuffer.allocate(evaluateNodeLength(mNode));
-    byte[] bytes = mNode.getName().getBytes();
-    dataBuffer.put((byte) bytes.length);
-    dataBuffer.put(bytes);
+    ReadWriteIOUtils.writeVar(mNode.getName(),dataBuffer);
     dataBuffer.putLong(mNode.getDataTTL());
-    for (String childName : mNode.getChildren().keySet()) {
-      BufferUtil.writeString(dataBuffer, childName);
-      dataBuffer.putLong(mNode.getChild(childName).getPosition());
-    }
-    dataBuffer.put((byte) 0);
+    serializeChildren(mNode.getChildren(),dataBuffer);
     dataBuffer.flip();
     return dataBuffer;
+  }
+
+  private void serializeChildren(Map<String, MNode> children, ByteBuffer dataBuffer){
+    List<MNode> measurementMNodes=new LinkedList<>();
+    for(MNode child:children.values()){
+      if(child instanceof MeasurementMNode){
+        measurementMNodes.add(child);
+        continue;
+      }
+      ReadWriteIOUtils.writeVar(child.getName(), dataBuffer);
+      dataBuffer.putLong(child.getPosition());
+    }
+    dataBuffer.put((byte) 0);
+
+    for(MNode measurementMNode:measurementMNodes){
+      ReadWriteIOUtils.writeVar(measurementMNode.getName(), dataBuffer);
+      dataBuffer.putLong(measurementMNode.getPosition());
+    }
+    dataBuffer.put((byte) 0);
   }
 
   public long getFreePos() throws IOException {
