@@ -245,4 +245,6 @@ When a group of sensors detects data at the same time, multiple timeseries with 
 
 Aligned timeseries can be created, inserted values, and deleted at the same time. However, when querying, each sensor can be queried separately.
 
+By using aligned timeseries, the timestamp column could be stored only once in memory and disk when inserting data, instead of stored as many times as the number of timeseries.
+
 In the following chapters of data definition language, data operation language and Java Native Interface, various operations related to aligned timeseries will be introduced one by one.
