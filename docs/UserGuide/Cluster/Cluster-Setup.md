@@ -43,15 +43,6 @@ To start the service of one of the nodes, you need to execute the following comm
 `printgc` means whether enable the gc and print gc logs when start the node,  
 `<conf_path>` use the configuration file in the `conf_path` folder to override the default configuration file.
 
-## Example of pseudo-distributed scaffolding for 3 nodes and 3 replicas
-```
-mvn clean package -DskipTests
-chmod -R 777 ./cluster/target/
-nohup ./cluster/target/iotdb-cluster-0.12.0-SNAPSHOT/sbin/start-node.sh ./cluster/target/test-classes/node1conf/ >/dev/null 2>&1 &
-nohup ./cluster/target/iotdb-cluster-0.12.0-SNAPSHOT/sbin/start-node.sh ./cluster/target/test-classes/node2conf/ >/dev/null 2>&1 &
-nohup ./cluster/target/iotdb-cluster-0.12.0-SNAPSHOT/sbin/start-node.sh ./cluster/target/test-classes/node3conf/ >/dev/null 2>&1 &
-```
-
 ## OverWrite the configurations of Stand-alone node
 
 Some configurations in the iotdb-engines.properties will be ignored
@@ -80,7 +71,7 @@ What's more, Users can configure settings of TsFile (the data files), such as th
 * `iotdb-cluster.properties`. Some configurations required by IoTDB cluster. Such as replication number(`default_replica_num`), etc.
 
 For detailed description of the two configuration files `iotdb-engine.properties`, `iotdb-env.sh`/`iotdb-env.bat`, please refer to [Configuration Manual](../Appendix/Config-Manual.md). 
-The configuration items described below are in the `iotdb-cluster.properties` file.
+The configuration items described below are in the `iotdb-cluster.properties` file, you can also review the comments in the [configuration file](https://github.com/apache/iotdb/blob/master/cluster/src/assembly/resources/conf/iotdb-cluster.properties) directly. 
 
 * internal\_ip
 

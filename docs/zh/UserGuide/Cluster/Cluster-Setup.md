@@ -39,15 +39,6 @@ __集群模式目前是测试版！请谨慎在生产环境中使用。__
 `printgc`表示在启动的时候，会开启GC日志。
 `<conf_path>`使用`conf_path`文件夹里面的配置文件覆盖默认配置文件。
 
-## 3节点3副本伪分布式搭建示例
-```
-mvn clean package -DskipTests
-chmod -R 777 ./cluster/target/
-nohup ./cluster/target/iotdb-cluster-0.12.0-SNAPSHOT/sbin/start-node.sh ./cluster/target/test-classes/node1conf/ >/dev/null 2>&1 &
-nohup ./cluster/target/iotdb-cluster-0.12.0-SNAPSHOT/sbin/start-node.sh ./cluster/target/test-classes/node2conf/ >/dev/null 2>&1 &
-nohup ./cluster/target/iotdb-cluster-0.12.0-SNAPSHOT/sbin/start-node.sh ./cluster/target/test-classes/node3conf/ >/dev/null 2>&1 &
-```
-
 ## 被覆盖的单机版选项
 
 iotdb-engines.properties配置文件中的部分内容会不再生效：
@@ -75,7 +66,7 @@ iotdb-engines.properties配置文件中的部分内容会不再生效：
 
 * `iotdb-cluster.properties`: IoTDB集群所需要的一些配置。
 
-`iotdb-engine.properties`、`iotdb-env.sh`/`iotdb-env.bat` 两个配置文件详细说明请参考[附录/配置手册](../Appendix/Config-Manual.md)，下面描述的配置项是在`iotdb-cluster.properties`文件中的。
+`iotdb-engine.properties`、`iotdb-env.sh`/`iotdb-env.bat` 两个配置文件详细说明请参考[附录/配置手册](../Appendix/Config-Manual.md)，下面描述的配置项是在`iotdb-cluster.properties`文件中的，也可以直接查看[配置文件](https://github.com/apache/iotdb/blob/master/cluster/src/assembly/resources/conf/iotdb-cluster.properties) 中的注释。
 
 * internal\_ip
 
