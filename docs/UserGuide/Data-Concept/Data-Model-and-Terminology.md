@@ -246,3 +246,11 @@ When a group of sensors detects data at the same time, multiple timeseries with 
 Aligned timeseries can be created, inserted values, and deleted at the same time. However, when querying, each sensor can be queried separately.
 
 In the following chapters of data definition language, data operation language and Java Native Interface, various operations related to aligned timeseries will be introduced one by one.
+
+* device template (From v0.13)
+
+In the actual scenario, there are many devices with the same model, that is, they have the same working condition name and type. To save system resources, you can declare a **device template** for the same type of device, mount it to the device group, All devices belong to the group can use the device template
+
+Currently you can only set one **device template** on a specific path. Device will use it's own device template or nearest ancestor's device template
+
+In the following chapters of data definition language, data operation language and Java Native Interface, various operations related to device template will be introduced one by one.
