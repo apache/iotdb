@@ -48,6 +48,7 @@ import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
+import org.apache.iotdb.cluster.rpc.thrift.RequestCommitIndexResponse;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.server.NodeCharacter;
@@ -244,11 +245,11 @@ public class DataGroupMemberTest extends BaseMember {
 
                 @Override
                 public void requestCommitIndex(
-                    Node header, AsyncMethodCallback<Long> resultHandler) {
+                    Node header, AsyncMethodCallback<RequestCommitIndexResponse> resultHandler) {
                   new Thread(
                           () -> {
                             if (enableSyncLeader) {
-                              resultHandler.onComplete(-1L);
+                              resultHandler.onComplete(new RequestCommitIndexResponse());
                             } else {
                               resultHandler.onError(new TestException());
                             }

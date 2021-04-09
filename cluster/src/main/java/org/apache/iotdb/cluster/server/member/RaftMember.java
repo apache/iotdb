@@ -47,6 +47,7 @@ import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
+import org.apache.iotdb.cluster.rpc.thrift.RequestCommitIndexResponse;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
@@ -872,8 +873,34 @@ public abstract class RaftMember {
   protected boolean waitUntilCatchUp(CheckConsistency checkConsistency)
       throws CheckConsistencyException {
     long leaderCommitId = Long.MIN_VALUE;
+    RequestCommitIndexResponse response;
     try {
-      leaderCommitId = config.isUseAsyncServer() ? requestCommitIdAsync() : requestCommitIdSync();
+      response = config.isUseAsyncServer() ? requestCommitIdAsync() : requestCommitIdSync();
+      leaderCommitId = response.getCommitLogIndex();
+      if (term.get() == response.getTerm() && logManager.getCommitLogIndex() < leaderCommitId) {
+        // there are more local logs that can be committed, commit them in a ThreadPool so the
+        // heartbeat response will not be blocked
+        CommitLogTask commitLogTask =
+            new CommitLogTask(logManager, leaderCommitId, response.getCommitLogTerm());
+        commitLogTask.registerCallback(new CommitLogCallback(this));
+        // if the log is not consistent, the commitment will be blocked until the leader makes the
+        // node catch up
+        if (commitLogPool != null && !commitLogPool.isShutdown()) {
+          commitLogPool.submit(commitLogTask);
+        }
+
+        logger.debug(
+            "{}: Inconsistent log found, leaderCommit: {}-{}, localCommit: {}-{}, "
+                + "localLast: {}-{}",
+            name,
+            response.getCommitLogIndex(),
+            response.getCommitLogTerm(),
+            logManager.getCommitLogIndex(),
+            logManager.getCommitLogTerm(),
+            logManager.getLastLogIndex(),
+            logManager.getLastLogTerm());
+      }
+
       return syncLocalApply(leaderCommitId);
     } catch (TException e) {
       logger.error(MSG_NO_LEADER_COMMIT_INDEX, name, leader.get(), e);
@@ -1057,9 +1084,12 @@ public abstract class RaftMember {
   }
 
   @SuppressWarnings("java:S2274") // enable timeout
-  protected long requestCommitIdAsync() throws TException, InterruptedException {
+  protected RequestCommitIndexResponse requestCommitIdAsync()
+      throws TException, InterruptedException {
     // use Long.MAX_VALUE to indicate a timeout
-    AtomicReference<Long> commitIdResult = new AtomicReference<>(Long.MAX_VALUE);
+    RequestCommitIndexResponse response =
+        new RequestCommitIndexResponse(Long.MAX_VALUE, Long.MAX_VALUE, Long.MAX_VALUE);
+    AtomicReference<RequestCommitIndexResponse> commitIdResult = new AtomicReference<>(response);
     AsyncClient client = getAsyncClient(leader.get());
     if (client == null) {
       // cannot connect to the leader
@@ -1073,24 +1103,25 @@ public abstract class RaftMember {
     return commitIdResult.get();
   }
 
-  private long requestCommitIdSync() throws TException {
+  private RequestCommitIndexResponse requestCommitIdSync() throws TException {
     Client client = getSyncClient(leader.get());
+    RequestCommitIndexResponse response;
     if (client == null) {
       // cannot connect to the leader
       logger.warn(MSG_NO_LEADER_IN_SYNC, name);
       // use Long.MAX_VALUE to indicate a timeouts
-      return Long.MAX_VALUE;
+      response = new RequestCommitIndexResponse(Long.MAX_VALUE, Long.MAX_VALUE, Long.MAX_VALUE);
+      return response;
     }
-    long commitIndex;
     try {
-      commitIndex = client.requestCommitIndex(getHeader());
+      response = client.requestCommitIndex(getHeader());
     } catch (TException e) {
       client.getInputProtocol().getTransport().close();
       throw e;
     } finally {
       ClientUtils.putBackSyncClient(client);
     }
-    return commitIndex;
+    return response;
   }
 
   /**

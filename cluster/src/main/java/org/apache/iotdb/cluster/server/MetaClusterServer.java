@@ -33,6 +33,7 @@ import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RequestCommitIndexResponse;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
@@ -224,7 +225,8 @@ public class MetaClusterServer extends RaftServer
   }
 
   @Override
-  public void requestCommitIndex(Node header, AsyncMethodCallback<Long> resultHandler) {
+  public void requestCommitIndex(
+      Node header, AsyncMethodCallback<RequestCommitIndexResponse> resultHandler) {
     asyncService.requestCommitIndex(header, resultHandler);
   }
 
@@ -331,7 +333,7 @@ public class MetaClusterServer extends RaftServer
   }
 
   @Override
-  public long requestCommitIndex(Node header) throws TException {
+  public RequestCommitIndexResponse requestCommitIndex(Node header) throws TException {
     return syncService.requestCommitIndex(header);
   }
 
