@@ -46,7 +46,7 @@ public class VectorSessionExample {
     // set session fetchSize
     session.setFetchSize(10000);
 
-    createTemplate();
+    //    createTemplate();
     insertTabletWithAlignedTimeseries();
     selectTest();
     session.close();
@@ -114,25 +114,45 @@ public class VectorSessionExample {
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
 
-    for (long time = 0; time < 100; time++) {
-      int row = tablet.rowSize++;
-      timestamps[row] = time;
+    for (long i = 0; i < 100; i++) {
+      for (long time = i * 10000; time < i * 10000 + 10000; time++) {
+        int row = tablet.rowSize++;
+        timestamps[row] = time;
 
-      long[] sensor = (long[]) values[0];
-      sensor[row] = new Random().nextLong();
+        long[] sensor = (long[]) values[0];
+        sensor[row] = new Random().nextLong();
 
-      int[] sensors = (int[]) values[1];
-      sensors[row] = new Random().nextInt();
+        int[] sensors = (int[]) values[1];
+        sensors[row] = new Random().nextInt();
 
-      if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+          session.insertTablet(tablet, true);
+          tablet.reset();
+        }
+      }
+      if (tablet.rowSize != 0) {
         session.insertTablet(tablet, true);
         tablet.reset();
       }
-    }
+      for (long time = i * 10000; time < i * 10000 + 10000; time++) {
+        int row = tablet.rowSize++;
+        timestamps[row] = time;
 
-    if (tablet.rowSize != 0) {
-      session.insertTablet(tablet, true);
-      tablet.reset();
+        long[] sensor = (long[]) values[0];
+        sensor[row] = new Random().nextLong();
+
+        int[] sensors = (int[]) values[1];
+        sensors[row] = new Random().nextInt();
+
+        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+          session.insertTablet(tablet, true);
+          tablet.reset();
+        }
+      }
+      if (tablet.rowSize != 0) {
+        session.insertTablet(tablet, true);
+        tablet.reset();
+      }
     }
 
     session.executeNonQueryStatement("flush");

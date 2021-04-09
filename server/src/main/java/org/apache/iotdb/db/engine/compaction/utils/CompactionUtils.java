@@ -307,15 +307,24 @@ public class CompactionUtils {
     chunkWriter.writeToFileWriter(writer);
   }
 
+  /**
+   * get add devices in the tsResources and update the tsFileSequenceReaderCache cache
+   *
+   * @param tsResources the resources to be merged
+   * @param tsFileSequenceReaderCache the cache for all tsResourceReader
+   * @param storageGroup the storage group to be merged
+   * @return all devices in the tsResources
+   * @throws IOException
+   */
   private static Set<String> getTsFileDevicesSet(
-      List<TsFileResource> subLevelResources,
-      Map<String, TsFileSequenceReader> tsFileSequenceReaderMap,
+      List<TsFileResource> tsResources,
+      Map<String, TsFileSequenceReader> tsFileSequenceReaderCache,
       String storageGroup)
       throws IOException {
     Set<String> tsFileDevicesSet = new HashSet<>();
-    for (TsFileResource levelResource : subLevelResources) {
+    for (TsFileResource tsFileResource : tsResources) {
       TsFileSequenceReader reader =
-          buildReaderFromTsFileResource(levelResource, tsFileSequenceReaderMap, storageGroup);
+          buildReaderFromTsFileResource(tsFileResource, tsFileSequenceReaderCache, storageGroup);
       if (reader == null) {
         continue;
       }
@@ -326,11 +335,12 @@ public class CompactionUtils {
 
   private static boolean hasNextChunkMetadataList(
       Collection<Iterator<LinkedHashMap<IMeasurementSchema, List<IChunkMetadata>>>> iteratorSet) {
-    boolean hasNextChunkMetadataList = false;
     for (Iterator<LinkedHashMap<IMeasurementSchema, List<IChunkMetadata>>> iterator : iteratorSet) {
-      hasNextChunkMetadataList = hasNextChunkMetadataList || iterator.hasNext();
+      if (iterator.hasNext()) {
+        return true;
+      }
     }
-    return hasNextChunkMetadataList;
+    return false;
   }
 
   /**
@@ -338,7 +348,9 @@ public class CompactionUtils {
    * @param tsFileResources the source resource to be merged
    * @param storageGroup the storage group name
    * @param compactionLogger the logger
-   * @param devices the devices to be skipped(used by recover)
+   * @param devicesForSkip the devices to be skipped(used by recover)
+   * @param sequence the files to be merged are sequence or unsequence
+   * @param modifications the modifications already used in merge process, for return
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static void merge(
@@ -346,33 +358,36 @@ public class CompactionUtils {
       List<TsFileResource> tsFileResources,
       String storageGroup,
       CompactionLogger compactionLogger,
-      Set<String> devices,
+      Set<String> devicesForSkip,
       boolean sequence,
       List<Modification> modifications)
       throws IOException, IllegalPathException {
+    // Cml : ChunkMetadataList
     RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(targetResource.getTsFile());
     Map<String, TsFileSequenceReader> tsFileSequenceReaderMap = new HashMap<>();
     Map<String, List<Modification>> modificationCache = new HashMap<>();
     RateLimiter compactionWriteRateLimiter = MergeManager.getINSTANCE().getMergeWriteRateLimiter();
-    Set<String> tsFileDevicesMap =
+    Set<String> allDevices =
         getTsFileDevicesSet(tsFileResources, tsFileSequenceReaderMap, storageGroup);
-    for (String device : tsFileDevicesMap) {
-      if (devices.contains(device)) {
+    for (String device : allDevices) {
+      if (devicesForSkip.contains(device)) {
         continue;
       }
       writer.startChunkGroup(device);
+
       Map<TsFileSequenceReader, LinkedHashMap<IMeasurementSchema, List<IChunkMetadata>>>
-          chunkMetadataListCacheForMerge =
+          cmlCacheForMerge =
               new TreeMap<>(
                   (o1, o2) ->
                       TsFileManagement.compareFileName(
                           new File(o1.getFileName()), new File(o2.getFileName())));
       Map<TsFileSequenceReader, Iterator<LinkedHashMap<IMeasurementSchema, List<IChunkMetadata>>>>
-          chunkMetadataListIteratorCache =
+          cmlIteratorCache =
               new TreeMap<>(
                   (o1, o2) ->
                       TsFileManagement.compareFileName(
                           new File(o1.getFileName()), new File(o2.getFileName())));
+      // init chunkMetadataListIterator of all tsfileResources
       for (TsFileResource tsFileResource : tsFileResources) {
         TsFileSequenceReader reader =
             buildReaderFromTsFileResource(tsFileResource, tsFileSequenceReaderMap, storageGroup);
@@ -381,30 +396,35 @@ public class CompactionUtils {
         }
         Iterator<LinkedHashMap<IMeasurementSchema, List<IChunkMetadata>>> iterator =
             new MeasurementChunkMetadataListMapIterator(reader, device);
-        chunkMetadataListIteratorCache.put(reader, iterator);
-        chunkMetadataListCacheForMerge.put(reader, new LinkedHashMap<>());
+        cmlIteratorCache.put(reader, iterator);
+        cmlCacheForMerge.put(reader, new LinkedHashMap<>());
       }
-      while (hasNextChunkMetadataList(chunkMetadataListIteratorCache.values())) {
+
+      // if the device has unmerged chunkMetadataList in any file
+      while (hasNextChunkMetadataList(cmlIteratorCache.values())) {
         String lastMeasurementSchema = null;
         Set<IMeasurementSchema> allMeasurementSchemas = new HashSet<>();
+        // find the last sensor to be merged in this task.
+        // And, for each file, get a bulk of sensors (256 by default) and union them into
+        // allMeasurementSchemas
         for (Entry<TsFileSequenceReader, LinkedHashMap<IMeasurementSchema, List<IChunkMetadata>>>
-            chunkMetadataListCacheForMergeEntry : chunkMetadataListCacheForMerge.entrySet()) {
-          TsFileSequenceReader reader = chunkMetadataListCacheForMergeEntry.getKey();
-          LinkedHashMap<IMeasurementSchema, List<IChunkMetadata>>
-              measurementSchemaChunkMetadataListMap =
-                  chunkMetadataListCacheForMergeEntry.getValue();
-          if (measurementSchemaChunkMetadataListMap.size() <= 0) {
-            if (chunkMetadataListIteratorCache.get(reader).hasNext()) {
-              measurementSchemaChunkMetadataListMap =
-                  chunkMetadataListIteratorCache.get(reader).next();
-              chunkMetadataListCacheForMerge.put(reader, measurementSchemaChunkMetadataListMap);
+            cmlCacheForMergeEntry : cmlCacheForMerge.entrySet()) {
+          TsFileSequenceReader reader = cmlCacheForMergeEntry.getKey();
+          LinkedHashMap<IMeasurementSchema, List<IChunkMetadata>> measurementCmlMapInFile =
+              cmlCacheForMergeEntry.getValue();
+          if (measurementCmlMapInFile.isEmpty()) {
+            if (cmlIteratorCache.get(reader).hasNext()) {
+              measurementCmlMapInFile = cmlIteratorCache.get(reader).next();
+              cmlCacheForMerge.put(reader, measurementCmlMapInFile);
             } else {
               continue;
             }
           }
-          // get the min last sensor in the current chunkMetadata cache list for merge
+          // decide the last sensor to be merged in this task
+          // it is the smaller sensor between the lastMeasurementSchema and the last measurement in
+          // measurementSchemaChunkMetadataListMap
           IMeasurementSchema maxMeasurementSchema =
-              getLastKeyOfLinkedHashMap(measurementSchemaChunkMetadataListMap);
+              getLastKeyOfLinkedHashMap(measurementCmlMapInFile);
           if (lastMeasurementSchema == null) {
             lastMeasurementSchema = maxMeasurementSchema.getMeasurementId();
           } else {
@@ -413,45 +433,46 @@ public class CompactionUtils {
             }
           }
           // get all sensor used later
-          allMeasurementSchemas.addAll(measurementSchemaChunkMetadataListMap.keySet());
+          allMeasurementSchemas.addAll(measurementCmlMapInFile.keySet());
         }
 
         for (IMeasurementSchema iMeasurementSchema : allMeasurementSchemas) {
           if (iMeasurementSchema.getMeasurementId().compareTo(lastMeasurementSchema) <= 0) {
-            Map<TsFileSequenceReader, List<IChunkMetadata>> readerChunkMetadataListMap =
+            Map<TsFileSequenceReader, List<IChunkMetadata>> readerCmlMap =
                 new TreeMap<>(
                     (o1, o2) ->
                         TsFileManagement.compareFileName(
                             new File(o1.getFileName()), new File(o2.getFileName())));
-            // find all chunkMetadata of a sensor
+            // get all chunkMetadata of the iMeasurementSchema from cmlCacheForMerge,
+            // and save into readerCmlMap
             for (Entry<
                     TsFileSequenceReader, LinkedHashMap<IMeasurementSchema, List<IChunkMetadata>>>
-                chunkMetadataListCacheForMergeEntry : chunkMetadataListCacheForMerge.entrySet()) {
-              TsFileSequenceReader reader = chunkMetadataListCacheForMergeEntry.getKey();
-              LinkedHashMap<IMeasurementSchema, List<IChunkMetadata>>
-                  measurementSchemaChunkMetadataListMap =
-                      chunkMetadataListCacheForMergeEntry.getValue();
-              if (measurementSchemaChunkMetadataListMap.containsKey(iMeasurementSchema)) {
-                readerChunkMetadataListMap.put(
-                    reader, measurementSchemaChunkMetadataListMap.get(iMeasurementSchema));
-                measurementSchemaChunkMetadataListMap.remove(iMeasurementSchema);
+                cmlCacheForMergeEntry : cmlCacheForMerge.entrySet()) {
+              TsFileSequenceReader reader = cmlCacheForMergeEntry.getKey();
+              LinkedHashMap<IMeasurementSchema, List<IChunkMetadata>> measurementCmlMap =
+                  cmlCacheForMergeEntry.getValue();
+              if (measurementCmlMap.containsKey(iMeasurementSchema)) {
+                readerCmlMap.put(reader, measurementCmlMap.get(iMeasurementSchema));
+                measurementCmlMap.remove(iMeasurementSchema);
               }
             }
+
             Entry<IMeasurementSchema, Map<TsFileSequenceReader, List<IChunkMetadata>>>
-                measurementSchemaReaderChunkMetadataListEntry =
-                    new DefaultMapEntry<>(iMeasurementSchema, readerChunkMetadataListMap);
+                measurementReaderCmlEntry = new DefaultMapEntry<>(iMeasurementSchema, readerCmlMap);
             if (!sequence) {
               writeByDeserializeMerge(
                   device,
                   compactionWriteRateLimiter,
-                  measurementSchemaReaderChunkMetadataListEntry,
+                  measurementReaderCmlEntry,
                   targetResource,
                   writer,
                   modificationCache,
                   modifications);
             } else {
               boolean isPageEnoughLarge = true;
-              for (List<IChunkMetadata> chunkMetadatas : readerChunkMetadataListMap.values()) {
+              // check if there is at least a chunk whose points number is smaller than
+              // MERGE_PAGE_POINT_NUM
+              for (List<IChunkMetadata> chunkMetadatas : readerCmlMap.values()) {
                 for (IChunkMetadata iChunkMetadata : chunkMetadatas) {
                   if (iChunkMetadata instanceof ChunkMetadata) {
                     ChunkMetadata chunkMetadata = (ChunkMetadata) iChunkMetadata;
@@ -474,7 +495,7 @@ public class CompactionUtils {
                 writeByAppendMerge(
                     device,
                     compactionWriteRateLimiter,
-                    measurementSchemaReaderChunkMetadataListEntry,
+                    measurementReaderCmlEntry,
                     targetResource,
                     writer,
                     modificationCache,
@@ -485,7 +506,7 @@ public class CompactionUtils {
                 writeByDeserializeMerge(
                     device,
                     compactionWriteRateLimiter,
-                    measurementSchemaReaderChunkMetadataListEntry,
+                    measurementReaderCmlEntry,
                     targetResource,
                     writer,
                     modificationCache,
@@ -540,15 +561,24 @@ public class CompactionUtils {
     return new LinkedList<>(sensorChunkMetadataListMap.keySet()).getLast();
   }
 
+  /**
+   * get the tefileReader of the tsfileResource from the cache, or create a new one and put it into
+   * the cache
+   *
+   * @param tsFileResource
+   * @param tsFileSequenceReaderCache
+   * @param storageGroup
+   * @return
+   */
   private static TsFileSequenceReader buildReaderFromTsFileResource(
-      TsFileResource levelResource,
-      Map<String, TsFileSequenceReader> tsFileSequenceReaderMap,
+      TsFileResource tsFileResource,
+      Map<String, TsFileSequenceReader> tsFileSequenceReaderCache,
       String storageGroup) {
-    return tsFileSequenceReaderMap.computeIfAbsent(
-        levelResource.getTsFile().getAbsolutePath(),
+    return tsFileSequenceReaderCache.computeIfAbsent(
+        tsFileResource.getTsFile().getAbsolutePath(),
         path -> {
           try {
-            if (levelResource.getTsFile().exists()) {
+            if (tsFileResource.getTsFile().exists()) {
               return new TsFileSequenceReader(path);
             } else {
               logger.info("{} tsfile does not exist", path);

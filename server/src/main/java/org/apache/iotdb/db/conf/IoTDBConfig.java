@@ -236,7 +236,7 @@ public class IoTDBConfig {
   private int concurrentQueryThread = Runtime.getRuntime().availableProcessors();
 
   /** Is the write mem control for writing enable. */
-  private boolean enableMemControl = true;
+  private boolean enableMemControl = false;
 
   /** Is the write ahead log enable. */
   private boolean enableIndex = false;
@@ -268,7 +268,7 @@ public class IoTDBConfig {
   private long tsFileSizeThreshold = 1L;
 
   /** When a memTable's size (in byte) exceeds this, the memtable is flushed to disk. */
-  private long memtableSizeThreshold = 1024 * 1024 * 1024L;
+  private long memtableSizeThreshold = 1 * 1024 * 1024L;
 
   /** When average series point number reaches this, flush the memtable to disk */
   private int avgSeriesPointNumberThreshold = 100000;
