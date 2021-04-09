@@ -238,3 +238,11 @@ Relative time refers to the time relative to the server time ```now()``` and ```
   ```
   > Note：There must be spaces on the left and right of '+' and '-'.
 
+
+* Aligned timeseries (From v0.13)
+
+When a group of sensors detects data at the same time, multiple timeseries with the same timestamp will be produced, which are called **aligned timeseries** in IoTDB (and are also called **multivariate timeseries** academically. It contains multiple unary timeseries as components, and the sampling time of each unary timeseries is the same.)
+
+Aligned timeseries can be created, inserted values, and deleted at the same time. However, when querying, each sensor can be queried separately.
+
+In the following chapters of data definition language, data operation language and Java Native Interface, various operations related to aligned timeseries will be introduced one by one.

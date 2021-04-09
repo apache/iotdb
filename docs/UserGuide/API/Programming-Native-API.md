@@ -339,6 +339,7 @@ void createAlignedTimeseries(String devicePath, List<String> measurements,
 ```
 
 Create aligned timeseries with device path, measurements, data types, encodings, compression.
+
 Attention: Alias of measurements are **not supported** currently.
 
 ```
