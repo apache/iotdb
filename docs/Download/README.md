@@ -63,7 +63,7 @@ Legacy version are available here: [https://archive.apache.org/dist/iotdb/](http
   * stop the old vesion instance, and start the new one.
 
 - How to upgrade from v.11.x or v0.10.x to v0.12.x?
-  * Upgrading from v0.11 or v0.10 to v0.12 is similar as v0.9 to v0.10. We the upgrade tool will rewrite the data files.
+  * Upgrading from v0.11 or v0.10 to v0.12 is similar as v0.9 to v0.10. The upgrade tool will rewrite the data files automatically.
   * Stop writing new data.
   * Call `flush` command using sbin/start-cli.sh in original version to close all TsFiles.
   * We recommend to backup the data file (also the wal files and mlog.txt) before upgrading for rolling back.
