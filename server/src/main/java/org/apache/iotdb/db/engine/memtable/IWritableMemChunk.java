@@ -83,17 +83,11 @@ public interface IWritableMemChunk {
   TVList getSortedTVListForQuery();
 
   /**
-   * served for query requests.
-   *
-   * <p>if tv list has been sorted, just return reference of it
-   *
-   * <p>if tv list hasn't been sorted and has no reference, sort and return reference of it
-   *
-   * <p>if tv list hasn't been sorted and has reference we should copy and sort it, then return ths
-   * list
+   * served for vector query requests.
    *
    * <p>the mechanism is just like copy on write
    *
+   * @param columnIndexList indices of queried columns in the full VectorTVList
    * @return sorted tv list
    */
   TVList getSortedTVListForQuery(List<Integer> columnIndexList);

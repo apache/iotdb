@@ -57,7 +57,7 @@ public class BitMap {
   }
 
   /** returns the value of the bit with the specified index. */
-  public boolean get(int position) {
+  public boolean isMarked(int position) {
     return (bits[position / Byte.SIZE] & BIT_UTIL[position % Byte.SIZE]) != 0;
   }
 
@@ -75,8 +75,8 @@ public class BitMap {
     bits[position / Byte.SIZE] &= UNMARK_BIT_UTIL[position % Byte.SIZE];
   }
 
-  /** whether all bits are zero */
-  public boolean isAllZero() {
+  /** whether all bits are zero, i.e., no Null value */
+  public boolean isAllUnmarked() {
     int j;
     for (j = 0; j < size / Byte.SIZE; j++) {
       if (bits[j] != (byte) 0) {
@@ -91,8 +91,8 @@ public class BitMap {
     return true;
   }
 
-  /** whether all bits are one */
-  public boolean isAllOne() {
+  /** whether all bits are one, i.e., all are Null */
+  public boolean isAllMarked() {
     int j;
     for (j = 0; j < size / Byte.SIZE; j++) {
       if (bits[j] != (byte) 0XFF) {
@@ -111,7 +111,7 @@ public class BitMap {
   public String toString() {
     StringBuffer res = new StringBuffer();
     for (int i = 0; i < size; i++) {
-      res.append(get(i) ? 1 : 0);
+      res.append(isMarked(i) ? 1 : 0);
     }
     return res.toString();
   }

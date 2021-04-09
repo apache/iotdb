@@ -30,24 +30,24 @@ public class BitMapTest {
   public void testMarkAndUnMark() {
     BitMap bitmap = new BitMap(100);
     assertEquals(100, bitmap.getSize());
-    assertTrue(bitmap.isAllZero());
-    assertFalse(bitmap.isAllOne());
+    assertTrue(bitmap.isAllUnmarked());
+    assertFalse(bitmap.isAllMarked());
     for (int i = 0; i < 100; i++) {
       bitmap.mark(i);
-      assertTrue(bitmap.get(i));
+      assertTrue(bitmap.isMarked(i));
       if (i == 50) {
-        assertFalse(bitmap.isAllOne());
-        assertFalse(bitmap.isAllZero());
+        assertFalse(bitmap.isAllMarked());
+        assertFalse(bitmap.isAllUnmarked());
       }
     }
-    assertTrue(bitmap.isAllOne());
-    assertFalse(bitmap.isAllZero());
+    assertTrue(bitmap.isAllMarked());
+    assertFalse(bitmap.isAllUnmarked());
     for (int i = 0; i < 100; i++) {
       bitmap.unmark(i);
-      assertFalse(bitmap.get(i));
+      assertFalse(bitmap.isMarked(i));
     }
-    assertTrue(bitmap.isAllZero());
-    assertFalse(bitmap.isAllOne());
+    assertTrue(bitmap.isAllUnmarked());
+    assertFalse(bitmap.isAllMarked());
   }
 
   @Test
@@ -61,7 +61,7 @@ public class BitMapTest {
     BitMap bitmap2 = new BitMap(bitmap1.getSize(), bitmap1.getByteArray());
     assertEquals(100, bitmap2.getSize());
     for (int i = 0; i < 100; i++) {
-      assertEquals(bitmap1.get(i), bitmap2.get(i));
+      assertEquals(bitmap1.isMarked(i), bitmap2.isMarked(i));
     }
   }
 }

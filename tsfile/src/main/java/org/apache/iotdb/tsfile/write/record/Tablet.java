@@ -115,6 +115,7 @@ public class Tablet {
     timestamps[rowIndex] = timestamp;
   }
 
+  // (s1, s2)  s3
   public void addValue(String measurementId, int rowIndex, Object value) {
     int indexOfValue = measurementIndex.get(measurementId);
     IMeasurementSchema measurementSchema = schemas.get(indexOfValue);
@@ -192,6 +193,8 @@ public class Tablet {
   private void createColumns() {
     // create timestamp column
     timestamps = new long[maxRowNumber];
+
+    // calculate total value column size
     int valueColumnsSize = 0;
     for (IMeasurementSchema schema : schemas) {
       if (schema instanceof VectorMeasurementSchema) {
@@ -257,7 +260,7 @@ public class Tablet {
   }
 
   /** @return total bytes of values */
-  public int getValueBytesSize() {
+  public int getTotalValueOccupation() {
     int valueOccupation = 0;
     // marker byte
     valueOccupation++;
@@ -266,7 +269,7 @@ public class Tablet {
       for (BitMap bitMap : bitMaps) {
         // marker byte
         valueOccupation++;
-        if (bitMap != null && !bitMap.isAllZero()) {
+        if (bitMap != null && !bitMap.isAllUnmarked()) {
           valueOccupation += rowSize / Byte.SIZE + 1;
         }
       }
@@ -274,18 +277,17 @@ public class Tablet {
     for (int i = 0; i < schemas.size(); i++) {
       IMeasurementSchema schema = schemas.get(i);
       if (schema instanceof MeasurementSchema) {
-        valueOccupation += calCalOccupation(schema.getType(), i);
+        valueOccupation += calOccupationOfOneColumn(schema.getType(), i);
       } else {
         for (TSDataType dataType : schema.getValueTSDataTypeList()) {
-          valueOccupation += calCalOccupation(dataType, i);
+          valueOccupation += calOccupationOfOneColumn(dataType, i);
         }
       }
     }
     return valueOccupation;
   }
 
-  /** total byte size that values occupies */
-  private int calCalOccupation(TSDataType dataType, int i) {
+  private int calOccupationOfOneColumn(TSDataType dataType, int i) {
     int valueOccupation = 0;
     switch (dataType) {
       case BOOLEAN:

@@ -42,9 +42,10 @@ import java.util.Objects;
 public class VectorMeasurementSchema
     implements IMeasurementSchema, Comparable<VectorMeasurementSchema>, Serializable {
 
-  public static final String ALIGN_TIMESERIES_PREFIX = "$#$";
+  public static final String VECTOR_NAME_PREFIX = "$#$";
 
-  private String meausurementId;
+  // this is equal to the time id in this vector
+  private String vectorMeausurementId;
   private String[] measurements;
   private byte[] types;
   private byte[] encodings;
@@ -59,7 +60,7 @@ public class VectorMeasurementSchema
       TSDataType[] types,
       TSEncoding[] encodings,
       CompressionType compressionType) {
-    this.meausurementId = measurementId;
+    this.vectorMeausurementId = measurementId;
     this.measurements = measurements;
     byte[] typesInByte = new byte[types.length];
     for (int i = 0; i < types.length; i++) {
@@ -87,19 +88,17 @@ public class VectorMeasurementSchema
 
   public VectorMeasurementSchema(String[] measurements, TSDataType[] types) {
     this.measurements = measurements;
-    byte[] typesInByte = new byte[types.length];
+    this.types = new byte[types.length];
     for (int i = 0; i < types.length; i++) {
-      typesInByte[i] = types[i].serialize();
+      this.types[i] = types[i].serialize();
     }
-    this.types = typesInByte;
 
-    byte[] encodings = new byte[types.length];
+    this.encodings = new byte[types.length];
     for (int i = 0; i < types.length; i++) {
-      encodings[i] =
+      this.encodings[i] =
           TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder())
               .serialize();
     }
-    this.encodings = encodings;
     this.encodingConverters = new TSEncodingBuilder[measurements.length];
     this.compressor = TSFileDescriptor.getInstance().getConfig().getCompressor().serialize();
   }
@@ -116,7 +115,7 @@ public class VectorMeasurementSchema
 
   @Override
   public String getMeasurementId() {
-    return meausurementId;
+    return vectorMeausurementId;
   }
 
   @Override
@@ -211,7 +210,7 @@ public class VectorMeasurementSchema
   public int serializeTo(ByteBuffer buffer) {
     int byteLen = 0;
     byteLen +=
-        ReadWriteIOUtils.write(meausurementId.substring(ALIGN_TIMESERIES_PREFIX.length()), buffer);
+        ReadWriteIOUtils.write(vectorMeausurementId.substring(VECTOR_NAME_PREFIX.length()), buffer);
     byteLen += ReadWriteIOUtils.write(measurements.length, buffer);
 
     for (String measurementId : measurements) {
@@ -233,7 +232,7 @@ public class VectorMeasurementSchema
     int byteLen = 0;
     byteLen +=
         ReadWriteIOUtils.write(
-            meausurementId.substring(ALIGN_TIMESERIES_PREFIX.length()), outputStream);
+            vectorMeausurementId.substring(VECTOR_NAME_PREFIX.length()), outputStream);
     byteLen += ReadWriteIOUtils.write(measurements.length, outputStream);
 
     for (String measurementId : measurements) {
@@ -269,8 +268,8 @@ public class VectorMeasurementSchema
   public static VectorMeasurementSchema deserializeFrom(InputStream inputStream)
       throws IOException {
     VectorMeasurementSchema vectorMeasurementSchema = new VectorMeasurementSchema();
-    vectorMeasurementSchema.meausurementId =
-        ALIGN_TIMESERIES_PREFIX + ReadWriteIOUtils.readString(inputStream);
+    vectorMeasurementSchema.vectorMeausurementId =
+        VECTOR_NAME_PREFIX + ReadWriteIOUtils.readString(inputStream);
 
     int measurementSize = ReadWriteIOUtils.readInt(inputStream);
     String[] measurements = new String[measurementSize];
@@ -297,8 +296,8 @@ public class VectorMeasurementSchema
 
   public static VectorMeasurementSchema deserializeFrom(ByteBuffer buffer) {
     VectorMeasurementSchema vectorMeasurementSchema = new VectorMeasurementSchema();
-    vectorMeasurementSchema.meausurementId =
-        ALIGN_TIMESERIES_PREFIX + ReadWriteIOUtils.readString(buffer);
+    vectorMeasurementSchema.vectorMeausurementId =
+        VECTOR_NAME_PREFIX + ReadWriteIOUtils.readString(buffer);
     int measurementSize = ReadWriteIOUtils.readInt(buffer);
     String[] measurements = new String[measurementSize];
     for (int i = 0; i < measurementSize; i++) {

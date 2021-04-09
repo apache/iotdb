@@ -73,7 +73,7 @@ public class VectorTVList extends TVList {
       switch (dataTypes.get(i)) {
         case TEXT:
           ((Binary[]) columnValues.get(arrayIndex))[elementIndex] =
-              columnValue != null ? (Binary) columnValue : new Binary("");
+              columnValue != null ? (Binary) columnValue : Binary.EMPTY_VALUE;
           break;
         case FLOAT:
           ((float[]) columnValues.get(arrayIndex))[elementIndex] =
@@ -93,7 +93,7 @@ public class VectorTVList extends TVList {
           break;
         case BOOLEAN:
           ((boolean[]) columnValues.get(arrayIndex))[elementIndex] =
-              columnValue != null ? (boolean) columnValue : false;
+              columnValue != null && (boolean) columnValue;
           break;
         default:
           break;
@@ -128,7 +128,7 @@ public class VectorTVList extends TVList {
       List<Object> columnValues = values.get(i);
       if (bitMaps != null
           && bitMaps.get(i) != null
-          && bitMaps.get(i).get(arrayIndex).get(elementIndex)) {
+          && bitMaps.get(i).get(arrayIndex).isMarked(elementIndex)) {
         continue;
       }
       switch (dataTypes.get(i)) {
@@ -196,155 +196,64 @@ public class VectorTVList extends TVList {
     return vectorTVList;
   }
 
-  public int getInt(int index, int column) {
-    if (index >= size) {
-      throw new ArrayIndexOutOfBoundsException(index);
-    }
-    int arrayIndex = index / ARRAY_SIZE;
-    int elementIndex = index % ARRAY_SIZE;
-    int valueIndex = indices.get(arrayIndex)[elementIndex];
-    return getIntByValueIndex(valueIndex, column);
-  }
-
-  public int getIntByValueIndex(int valueIndex, int column) {
-    if (dataTypes.get(column) != TSDataType.INT32) {
-      throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-    }
-    if (valueIndex >= size) {
-      throw new ArrayIndexOutOfBoundsException(valueIndex);
-    }
-    int arrayIndex = valueIndex / ARRAY_SIZE;
-    int elementIndex = valueIndex % ARRAY_SIZE;
-    List<Object> columnValues = values.get(column);
+  /**
+   * @param rowIndex value index inside this column
+   * @param columnIndex index of the column
+   * @return
+   */
+  public int getIntByValueIndex(int rowIndex, int columnIndex) {
+    int arrayIndex = rowIndex / ARRAY_SIZE;
+    int elementIndex = rowIndex % ARRAY_SIZE;
+    List<Object> columnValues = values.get(columnIndex);
     return ((int[]) columnValues.get(arrayIndex))[elementIndex];
   }
 
-  public long getLong(int index, int column) {
-    if (index >= size) {
-      throw new ArrayIndexOutOfBoundsException(index);
-    }
-    int arrayIndex = index / ARRAY_SIZE;
-    int elementIndex = index % ARRAY_SIZE;
-    int valueIndex = indices.get(arrayIndex)[elementIndex];
-    return getLongByValueIndex(valueIndex, column);
-  }
-
-  public long getLongByValueIndex(int valueIndex, int column) {
-    if (dataTypes.get(column) != TSDataType.INT64) {
-      throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-    }
-    if (valueIndex >= size) {
-      throw new ArrayIndexOutOfBoundsException(valueIndex);
-    }
-    int arrayIndex = valueIndex / ARRAY_SIZE;
-    int elementIndex = valueIndex % ARRAY_SIZE;
-    List<Object> columnValues = values.get(column);
+  public long getLongByValueIndex(int rowIndex, int columnIndex) {
+    int arrayIndex = rowIndex / ARRAY_SIZE;
+    int elementIndex = rowIndex % ARRAY_SIZE;
+    List<Object> columnValues = values.get(columnIndex);
     return ((long[]) columnValues.get(arrayIndex))[elementIndex];
   }
 
-  public float getFloat(int index, int column) {
-    if (index >= size) {
-      throw new ArrayIndexOutOfBoundsException(index);
-    }
-    int arrayIndex = index / ARRAY_SIZE;
-    int elementIndex = index % ARRAY_SIZE;
-    int valueIndex = indices.get(arrayIndex)[elementIndex];
-    return getFloatByValueIndex(valueIndex, column);
-  }
-
-  public float getFloatByValueIndex(int valueIndex, int column) {
-    if (dataTypes.get(column) != TSDataType.FLOAT) {
-      throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-    }
-    if (valueIndex >= size) {
-      throw new ArrayIndexOutOfBoundsException(valueIndex);
-    }
-    int arrayIndex = valueIndex / ARRAY_SIZE;
-    int elementIndex = valueIndex % ARRAY_SIZE;
-    List<Object> columnValues = values.get(column);
+  public float getFloatByValueIndex(int rowIndex, int columnIndex) {
+    int arrayIndex = rowIndex / ARRAY_SIZE;
+    int elementIndex = rowIndex % ARRAY_SIZE;
+    List<Object> columnValues = values.get(columnIndex);
     return ((float[]) columnValues.get(arrayIndex))[elementIndex];
   }
 
-  public double getDouble(int index, int column) {
-    if (index >= size) {
-      throw new ArrayIndexOutOfBoundsException(index);
-    }
-    int arrayIndex = index / ARRAY_SIZE;
-    int elementIndex = index % ARRAY_SIZE;
-    int valueIndex = indices.get(arrayIndex)[elementIndex];
-    return getDoubleByValueIndex(valueIndex, column);
-  }
-
-  public double getDoubleByValueIndex(int valueIndex, int column) {
-    if (dataTypes.get(column) != TSDataType.DOUBLE) {
-      throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-    }
-    if (valueIndex >= size) {
-      throw new ArrayIndexOutOfBoundsException(valueIndex);
-    }
-    int arrayIndex = valueIndex / ARRAY_SIZE;
-    int elementIndex = valueIndex % ARRAY_SIZE;
-    List<Object> columnValues = values.get(column);
+  public double getDoubleByValueIndex(int rowIndex, int columnIndex) {
+    int arrayIndex = rowIndex / ARRAY_SIZE;
+    int elementIndex = rowIndex % ARRAY_SIZE;
+    List<Object> columnValues = values.get(columnIndex);
     return ((double[]) columnValues.get(arrayIndex))[elementIndex];
   }
 
-  public Binary getBinary(int index, int column) {
-    if (index >= size) {
-      throw new ArrayIndexOutOfBoundsException(index);
-    }
-    int arrayIndex = index / ARRAY_SIZE;
-    int elementIndex = index % ARRAY_SIZE;
-    int valueIndex = indices.get(arrayIndex)[elementIndex];
-    return getBinaryByValueIndex(valueIndex, column);
-  }
-
-  public Binary getBinaryByValueIndex(int valueIndex, int column) {
-    if (dataTypes.get(column) != TSDataType.TEXT) {
-      throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-    }
-    if (valueIndex >= size) {
-      throw new ArrayIndexOutOfBoundsException(valueIndex);
-    }
-    int arrayIndex = valueIndex / ARRAY_SIZE;
-    int elementIndex = valueIndex % ARRAY_SIZE;
-    List<Object> columnValues = values.get(column);
+  public Binary getBinaryByValueIndex(int rowIndex, int columnIndex) {
+    int arrayIndex = rowIndex / ARRAY_SIZE;
+    int elementIndex = rowIndex % ARRAY_SIZE;
+    List<Object> columnValues = values.get(columnIndex);
     return ((Binary[]) columnValues.get(arrayIndex))[elementIndex];
   }
 
-  public boolean getBoolean(int index, int column) {
-    if (index >= size) {
-      throw new ArrayIndexOutOfBoundsException(index);
-    }
-    int arrayIndex = index / ARRAY_SIZE;
-    int elementIndex = index % ARRAY_SIZE;
-    int valueIndex = indices.get(arrayIndex)[elementIndex];
-    return getBooleanByValueIndex(valueIndex, column);
-  }
-
-  public boolean getBooleanByValueIndex(int valueIndex, int column) {
-    if (dataTypes.get(column) != TSDataType.BOOLEAN) {
-      throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-    }
-    if (valueIndex >= size) {
-      throw new ArrayIndexOutOfBoundsException(valueIndex);
-    }
-    int arrayIndex = valueIndex / ARRAY_SIZE;
-    int elementIndex = valueIndex % ARRAY_SIZE;
-    List<Object> columnValues = values.get(column);
+  public boolean getBooleanByValueIndex(int rowIndex, int columnIndex) {
+    int arrayIndex = rowIndex / ARRAY_SIZE;
+    int elementIndex = rowIndex % ARRAY_SIZE;
+    List<Object> columnValues = values.get(columnIndex);
     return ((boolean[]) columnValues.get(arrayIndex))[elementIndex];
   }
 
-  public boolean isValueMarked(int valueIndex, int column) {
-    if (valueIndex >= size) {
+  public boolean isValueMarked(int rowIndex, int columnIndex) {
+    if (rowIndex >= size) {
       return false;
     }
-    if (bitMaps == null || bitMaps.get(column) == null) {
+    if (bitMaps == null || bitMaps.get(columnIndex) == null) {
       return false;
     }
-    int arrayIndex = valueIndex / ARRAY_SIZE;
-    int elementIndex = valueIndex % ARRAY_SIZE;
-    List<BitMap> columnBitMaps = bitMaps.get(column);
-    return columnBitMaps.get(arrayIndex).get(elementIndex);
+    int arrayIndex = rowIndex / ARRAY_SIZE;
+    int elementIndex = rowIndex % ARRAY_SIZE;
+    List<BitMap> columnBitMaps = bitMaps.get(columnIndex);
+    return columnBitMaps.get(arrayIndex).isMarked(elementIndex);
   }
 
   public List<List<Object>> getValues() {
@@ -355,18 +264,11 @@ public class VectorTVList extends TVList {
     return dataTypes;
   }
 
-  public List<int[]> getIndices() {
-    return indices;
-  }
-
-  protected void set(int index, long timestamp, int valueIndex) {
-    if (index >= size) {
-      throw new ArrayIndexOutOfBoundsException(index);
-    }
+  protected void set(int index, long timestamp, int value) {
     int arrayIndex = index / ARRAY_SIZE;
     int elementIndex = index % ARRAY_SIZE;
     timestamps.get(arrayIndex)[elementIndex] = timestamp;
-    indices.get(arrayIndex)[elementIndex] = valueIndex;
+    indices.get(arrayIndex)[elementIndex] = value;
   }
 
   @Override
@@ -601,7 +503,7 @@ public class VectorTVList extends TVList {
           indices.get(arrayIdx)[elementIdx + i] = size;
           if (bitMaps != null) {
             for (int j = 0; j < bitMaps.length; j++) {
-              if (bitMaps[j] != null && bitMaps[j].get(idx + i)) {
+              if (bitMaps[j] != null && bitMaps[j].isMarked(idx + i)) {
                 markNullValue(j, arrayIdx, elementIdx + i);
               }
             }
@@ -618,7 +520,7 @@ public class VectorTVList extends TVList {
           indices.get(arrayIdx)[elementIdx + i] = size;
           if (bitMaps != null) {
             for (int j = 0; j < bitMaps.length; j++) {
-              if (bitMaps[j] != null && bitMaps[j].get(idx + i)) {
+              if (bitMaps[j] != null && bitMaps[j].isMarked(idx + i)) {
                 markNullValue(j, arrayIdx, elementIdx + i);
               }
             }
@@ -673,6 +575,8 @@ public class VectorTVList extends TVList {
         bitMaps.add(null);
       }
     }
+
+    // if the bitmap in columnIndex is null, init the bitmap of this column from the beginning
     if (bitMaps.get(columnIndex) == null) {
       List<BitMap> columnBitMaps = new ArrayList<>();
       for (int i = 0; i < values.get(columnIndex).size(); i++) {
@@ -680,6 +584,8 @@ public class VectorTVList extends TVList {
       }
       bitMaps.set(columnIndex, columnBitMaps);
     }
+
+    // mark the null value in the current bitmap
     bitMaps.get(columnIndex).get(arrayIndex).mark(elementIndex);
   }
 

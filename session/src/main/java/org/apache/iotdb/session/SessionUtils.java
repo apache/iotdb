@@ -42,17 +42,12 @@ public class SessionUtils {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static ByteBuffer getValueBuffer(Tablet tablet) {
-    ByteBuffer valueBuffer = ByteBuffer.allocate(tablet.getValueBytesSize());
-    boolean hasBitMaps = (tablet.bitMaps != null);
+    ByteBuffer valueBuffer = ByteBuffer.allocate(tablet.getTotalValueOccupation());
+    boolean hasBitMaps = tablet.bitMaps != null;
     valueBuffer.put(BytesUtils.boolToByte(hasBitMaps));
     if (hasBitMaps) {
       for (BitMap bitMap : tablet.bitMaps) {
-        boolean columnHasNull;
-        if (bitMap == null || bitMap.isAllZero()) {
-          columnHasNull = false;
-        } else {
-          columnHasNull = true;
-        }
+        boolean columnHasNull = bitMap != null && !bitMap.isAllUnmarked();
         valueBuffer.put(BytesUtils.boolToByte(columnHasNull));
 
         if (columnHasNull) {
@@ -86,7 +81,7 @@ public class SessionUtils {
         for (int index = 0; index < tablet.rowSize; index++) {
           if (tablet.bitMaps == null
               || tablet.bitMaps[i] == null
-              || !tablet.bitMaps[i].get(index)) {
+              || !tablet.bitMaps[i].isMarked(index)) {
             valueBuffer.putInt(intValues[index]);
           } else {
             valueBuffer.putInt(Integer.MIN_VALUE);
@@ -98,7 +93,7 @@ public class SessionUtils {
         for (int index = 0; index < tablet.rowSize; index++) {
           if (tablet.bitMaps == null
               || tablet.bitMaps[i] == null
-              || !tablet.bitMaps[i].get(index)) {
+              || !tablet.bitMaps[i].isMarked(index)) {
             valueBuffer.putLong(longValues[index]);
           } else {
             valueBuffer.putLong(Long.MIN_VALUE);
@@ -110,7 +105,7 @@ public class SessionUtils {
         for (int index = 0; index < tablet.rowSize; index++) {
           if (tablet.bitMaps == null
               || tablet.bitMaps[i] == null
-              || !tablet.bitMaps[i].get(index)) {
+              || !tablet.bitMaps[i].isMarked(index)) {
             valueBuffer.putFloat(floatValues[index]);
           } else {
             valueBuffer.putFloat(Float.MIN_VALUE);
@@ -122,7 +117,7 @@ public class SessionUtils {
         for (int index = 0; index < tablet.rowSize; index++) {
           if (tablet.bitMaps == null
               || tablet.bitMaps[i] == null
-              || !tablet.bitMaps[i].get(index)) {
+              || !tablet.bitMaps[i].isMarked(index)) {
             valueBuffer.putDouble(doubleValues[index]);
           } else {
             valueBuffer.putDouble(Double.MIN_VALUE);
@@ -134,7 +129,7 @@ public class SessionUtils {
         for (int index = 0; index < tablet.rowSize; index++) {
           if (tablet.bitMaps == null
               || tablet.bitMaps[i] == null
-              || !tablet.bitMaps[i].get(index)) {
+              || !tablet.bitMaps[i].isMarked(index)) {
             valueBuffer.put(BytesUtils.boolToByte(boolValues[index]));
           } else {
             valueBuffer.put(BytesUtils.boolToByte(false));
