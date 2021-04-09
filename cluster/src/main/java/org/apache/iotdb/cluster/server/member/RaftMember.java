@@ -407,36 +407,38 @@ public abstract class RaftMember {
           response.setLastLogTerm(logManager.getLastLogTerm());
         }
 
-        if (logManager.getCommitLogIndex() < request.getCommitLogIndex()) {
-          // there are more local logs that can be committed, commit them in a ThreadPool so the
-          // heartbeat response will not be blocked
-          CommitLogTask commitLogTask =
-              new CommitLogTask(
-                  logManager, request.getCommitLogIndex(), request.getCommitLogTerm());
-          commitLogTask.registerCallback(new CommitLogCallback(this));
-          // if the log is not consistent, the commitment will be blocked until the leader makes the
-          // node catch up
-          if (commitLogPool != null && !commitLogPool.isShutdown()) {
-            commitLogPool.submit(commitLogTask);
-          }
-
-          logger.debug(
-              "{}: Inconsistent log found, leaderCommit: {}-{}, localCommit: {}-{}, "
-                  + "localLast: {}-{}",
-              name,
-              request.getCommitLogIndex(),
-              request.getCommitLogTerm(),
-              logManager.getCommitLogIndex(),
-              logManager.getCommitLogTerm(),
-              logManager.getLastLogIndex(),
-              logManager.getLastLogTerm());
-        }
+        tryUpdateCommitIndex(leaderTerm, request.getCommitLogIndex(), request.getCommitLogTerm());
 
         if (logger.isTraceEnabled()) {
           logger.trace("{} received heartbeat from a valid leader {}", name, request.getLeader());
         }
       }
       return response;
+    }
+  }
+
+  private void tryUpdateCommitIndex(long leaderTerm, long commitIndex, long commitTerm) {
+    if (term.get() == leaderTerm && logManager.getCommitLogIndex() < commitIndex) {
+      // there are more local logs that can be committed, commit them in a ThreadPool so the
+      // heartbeat response will not be blocked
+      CommitLogTask commitLogTask = new CommitLogTask(logManager, commitIndex, commitTerm);
+      commitLogTask.registerCallback(new CommitLogCallback(this));
+      // if the log is not consistent, the commitment will be blocked until the leader makes the
+      // node catch up
+      if (commitLogPool != null && !commitLogPool.isShutdown()) {
+        commitLogPool.submit(commitLogTask);
+      }
+
+      logger.debug(
+          "{}: Inconsistent log found, leaderCommit: {}-{}, localCommit: {}-{}, "
+              + "localLast: {}-{}",
+          name,
+          commitIndex,
+          commitTerm,
+          logManager.getCommitLogIndex(),
+          logManager.getCommitLogTerm(),
+          logManager.getLastLogIndex(),
+          logManager.getLastLogTerm());
     }
   }
 
@@ -877,29 +879,9 @@ public abstract class RaftMember {
     try {
       response = config.isUseAsyncServer() ? requestCommitIdAsync() : requestCommitIdSync();
       leaderCommitId = response.getCommitLogIndex();
-      if (term.get() == response.getTerm() && logManager.getCommitLogIndex() < leaderCommitId) {
-        // there are more local logs that can be committed, commit them in a ThreadPool so the
-        // heartbeat response will not be blocked
-        CommitLogTask commitLogTask =
-            new CommitLogTask(logManager, leaderCommitId, response.getCommitLogTerm());
-        commitLogTask.registerCallback(new CommitLogCallback(this));
-        // if the log is not consistent, the commitment will be blocked until the leader makes the
-        // node catch up
-        if (commitLogPool != null && !commitLogPool.isShutdown()) {
-          commitLogPool.submit(commitLogTask);
-        }
 
-        logger.debug(
-            "{}: Inconsistent log found, leaderCommit: {}-{}, localCommit: {}-{}, "
-                + "localLast: {}-{}",
-            name,
-            response.getCommitLogIndex(),
-            response.getCommitLogTerm(),
-            logManager.getCommitLogIndex(),
-            logManager.getCommitLogTerm(),
-            logManager.getLastLogIndex(),
-            logManager.getLastLogTerm());
-      }
+      tryUpdateCommitIndex(
+          response.getTerm(), response.getCommitLogIndex(), response.getCommitLogTerm());
 
       return syncLocalApply(leaderCommitId);
     } catch (TException e) {
