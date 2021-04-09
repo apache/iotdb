@@ -1631,6 +1631,21 @@ public class Session {
     defaultSessionConnection.setDeviceTemplate(request);
   }
 
+  /**
+   * @param name template name
+   * @param measurements List of measurements, if it is a single measurement, just put it's name
+   *     into a list and add to measurements if it is a vector measurement, put all measurements of
+   *     the vector into a list and add to measurements
+   * @param dataTypes List of datatypes, if it is a single measurement, just put it's type into a
+   *     list and add to dataTypes if it is a vector measurement, put all types of the vector into a
+   *     list and add to dataTypes
+   * @param encodings List of encodings, if it is a single measurement, just put it's encoding into
+   *     a list and add to encodings if it is a vector measurement, put all encodings of the vector
+   *     into a list and add to encodings
+   * @param compressors List of compressors
+   * @throws IoTDBConnectionException
+   * @throws StatementExecutionException
+   */
   public void createDeviceTemplate(
       String name,
       List<List<String>> measurements,
