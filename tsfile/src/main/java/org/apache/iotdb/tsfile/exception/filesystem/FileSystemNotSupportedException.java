@@ -16,30 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.read;
+package org.apache.iotdb.tsfile.exception.filesystem;
 
-import org.apache.iotdb.tsfile.exception.NotImplementedException;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
-
-import java.io.File;
-import java.io.IOException;
-
-/** A class for reading unclosed tsfile. */
-public class UnClosedTsFileReader extends TsFileSequenceReader {
-
-  public UnClosedTsFileReader(File file) throws IOException {
-    super(file, false);
+public class FileSystemNotSupportedException extends RuntimeException {
+  public FileSystemNotSupportedException(String message, Throwable cause) {
+    super("Unsupported file system: " + message, cause);
   }
 
-  /** unclosed file has no tail magic data. */
-  @Override
-  public String readTailMagic() {
-    throw new NotImplementedException();
+  public FileSystemNotSupportedException(String message) {
+    super("Unsupported file system: " + message);
   }
 
-  /** unclosed file has no file metadata. */
-  @Override
-  public TsFileMetadata readFileMetadata() {
-    throw new NotImplementedException();
+  public FileSystemNotSupportedException(Throwable cause) {
+    super(cause);
   }
 }

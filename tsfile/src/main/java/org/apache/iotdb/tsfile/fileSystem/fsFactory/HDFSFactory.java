@@ -32,7 +32,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URI;
 
-public class HDFSFactory implements FSFactory {
+public class HDFSFactory extends AbstractFSFactory {
 
   private static final Logger logger = LoggerFactory.getLogger(HDFSFactory.class);
   private static Constructor constructorWithPathname;
@@ -46,6 +46,8 @@ public class HDFSFactory implements FSFactory {
   private static Method listFilesBySuffix;
   private static Method listFilesByPrefix;
   private static Method renameTo;
+  private static Method moveFromLocalFile;
+  private static Method moveToLocalFile;
 
   static {
     try {
@@ -61,6 +63,8 @@ public class HDFSFactory implements FSFactory {
       listFilesBySuffix = clazz.getMethod("listFilesBySuffix", String.class, String.class);
       listFilesByPrefix = clazz.getMethod("listFilesByPrefix", String.class, String.class);
       renameTo = clazz.getMethod("renameTo", File.class);
+      moveFromLocalFile = clazz.getMethod("moveFromLocalFile", File.class);
+      moveToLocalFile = clazz.getMethod("moveToLocalFile", File.class);
     } catch (ClassNotFoundException | NoSuchMethodException e) {
       logger.error(
           "Failed to get Hadoop file system. Please check your dependency of Hadoop module.", e);
@@ -187,18 +191,6 @@ public class HDFSFactory implements FSFactory {
   }
 
   @Override
-  public void moveFile(File srcFile, File destFile) {
-    try {
-      renameTo.invoke(constructorWithPathname.newInstance(srcFile.getAbsolutePath()), destFile);
-    } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
-      logger.error(
-          "Failed to rename file from {} to {}. Please check your dependency of Hadoop module.",
-          srcFile.getName(),
-          destFile.getName());
-    }
-  }
-
-  @Override
   public File[] listFilesBySuffix(String fileFolder, String suffix) {
     try {
       return (File[])
@@ -233,5 +225,43 @@ public class HDFSFactory implements FSFactory {
   @Override
   public boolean deleteIfExists(File file) {
     return file.delete();
+  }
+
+  @Override
+  void moveFileInSameFS(File srcFile, File destFile) {
+    try {
+      renameTo.invoke(constructorWithPathname.newInstance(srcFile.getAbsolutePath()), destFile);
+    } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
+      logger.error(
+          "Failed to rename file from {} to {}. Please check your dependency of Hadoop module.",
+          srcFile.getName(),
+          destFile.getName());
+    }
+  }
+
+  void moveFromLocalFile(File srcFile, File destFile) {
+    try {
+      moveFromLocalFile.invoke(
+          constructorWithPathname.newInstance(destFile.getAbsolutePath()), srcFile);
+    } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
+      logger.error(
+          "Failed to move hdfs file {} to local {}. Please check your dependency of Hadoop module.",
+          srcFile,
+          destFile,
+          e);
+    }
+  }
+
+  void moveToLocalFile(File srcFile, File destFile) {
+    try {
+      moveToLocalFile.invoke(
+          constructorWithPathname.newInstance(srcFile.getAbsolutePath()), destFile);
+    } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
+      logger.error(
+          "Failed to move local file {} to hdfs {}. Please check your dependency of Hadoop module.",
+          srcFile,
+          destFile,
+          e);
+    }
   }
 }

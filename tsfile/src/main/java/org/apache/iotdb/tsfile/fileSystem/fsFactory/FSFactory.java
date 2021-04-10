@@ -80,11 +80,11 @@ public interface FSFactory {
   BufferedReader getBufferedReader(String filePath);
 
   /**
-   * get buffered reader
+   * get buffered writer
    *
    * @param filePath file path
    * @param append whether is append
-   * @return buffered reader
+   * @return buffered writer
    */
   BufferedWriter getBufferedWriter(String filePath, boolean append);
 
@@ -105,7 +105,7 @@ public interface FSFactory {
   BufferedOutputStream getBufferedOutputStream(String filePath);
 
   /**
-   * move file
+   * move file, when the destination file is on another file system, do a "copy and delete".
    *
    * @param srcFile src file
    * @param destFile dest file
