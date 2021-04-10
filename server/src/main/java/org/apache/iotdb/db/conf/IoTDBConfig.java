@@ -31,6 +31,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.fileSystem.FSPath;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 
 import org.slf4j.Logger;
@@ -231,13 +232,16 @@ public class IoTDBConfig {
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TRIGGER_FOLDER_NAME;
 
   /** Data directory of data. It can be settled as dataDirs = {"data1", "data2", "data3"}; */
-  private String[] dataDirs = {"data" + File.separator + "data"};
+  private FSPath[] dataDirs = {
+    new FSPath(FSType.LOCAL, DEFAULT_BASE_DIR + File.separator + "data"),
+    new FSPath(FSType.HDFS, DEFAULT_BASE_DIR + File.separator + "data")
+  };
 
   /** Strategy of multiple directories. */
   private String multiDirStrategyClassName = null;
 
   /** Wal directory. */
-  private String walDir = DEFAULT_BASE_DIR + File.separator + "wal";
+  private String walDir = DEFAULT_BASE_DIR + File.separator + IoTDBConstant.WAL_FOLDER_NAME;
 
   /** Maximum MemTable number. Invalid when enableMemControl is true. */
   private int maxMemtableNumber = 0;
@@ -287,7 +291,8 @@ public class IoTDBConfig {
   private int defaultIndexWindowRange = 10;
 
   /** index directory. */
-  private String indexRootFolder = "data" + File.separator + "index";
+  private String indexRootFolder =
+      DEFAULT_BASE_DIR + File.separator + IoTDBConstant.INDEX_FOLDER_NAME;
 
   /** When a TsFile's file size (in byte) exceed this, the TsFile is forced closed. Unit: byte */
   private long tsFileSizeThreshold = 1L;
@@ -522,7 +527,7 @@ public class IoTDBConfig {
   private FSType systemFileStorageFs = FSType.LOCAL;
 
   /** Default TSfile storage is in local file system */
-  private FSType tsFileStorageFs = FSType.LOCAL;
+  private FSType[] tsFileStorageFs = {FSType.LOCAL};
 
   /** Default core-site.xml file path is /etc/hadoop/conf/core-site.xml */
   private String coreSitePath = "/etc/hadoop/conf/core-site.xml";
@@ -794,33 +799,30 @@ public class IoTDBConfig {
     extDir = addHomeDir(extDir);
     udfDir = addHomeDir(udfDir);
     triggerDir = addHomeDir(triggerDir);
+    queryDir = addHomeDir(queryDir);
 
-    if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
-      String hdfsDir = getHdfsDir();
-      queryDir = hdfsDir + File.separatorChar + queryDir;
-      for (int i = 0; i < dataDirs.length; i++) {
-        dataDirs[i] = hdfsDir + File.separatorChar + dataDirs[i];
-      }
-    } else {
-      queryDir = addHomeDir(queryDir);
-      for (int i = 0; i < dataDirs.length; i++) {
-        dataDirs[i] = addHomeDir(dataDirs[i]);
+    String hdfsDir = getHdfsDir();
+    for (int i = 0; i < dataDirs.length; i++) {
+      if (dataDirs[i].getFsType().equals(FSType.HDFS)) {
+        dataDirs[i] = dataDirs[i].preConcat(hdfsDir + File.separatorChar);
+      } else {
+        dataDirs[i] = new FSPath(dataDirs[i].getFsType(), addHomeDir(dataDirs[i].getPath()));
       }
     }
   }
 
   void reloadDataDirs(String[] dataDirs) throws LoadConfigurationException {
-    if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
-      String hdfsDir = getHdfsDir();
-      for (int i = 0; i < dataDirs.length; i++) {
-        dataDirs[i] = hdfsDir + File.separatorChar + dataDirs[i];
-      }
-    } else {
-      for (int i = 0; i < dataDirs.length; i++) {
-        dataDirs[i] = addHomeDir(dataDirs[i]);
+    FSPath[] fsDataDirs = new FSPath[dataDirs.length];
+    String hdfsDir = getHdfsDir();
+    for (int i = 0; i < dataDirs.length; i++) {
+      fsDataDirs[i] = FSPath.parse(dataDirs[i]);
+      if (fsDataDirs[i].getFsType().equals(FSType.HDFS)) {
+        fsDataDirs[i] = fsDataDirs[i].preConcat(hdfsDir + File.separatorChar);
+      } else {
+        fsDataDirs[i] = new FSPath(fsDataDirs[i].getFsType(), addHomeDir(fsDataDirs[i].getPath()));
       }
     }
-    this.dataDirs = dataDirs;
+    this.dataDirs = fsDataDirs;
     DirectoryManager.getInstance().updateFileFolders();
   }
 
@@ -866,8 +868,12 @@ public class IoTDBConfig {
     return hdfsDir;
   }
 
-  public String[] getDataDirs() {
+  public FSPath[] getDataDirs() {
     return dataDirs;
+  }
+
+  void setDataDirs(FSPath[] dataDirs) {
+    this.dataDirs = dataDirs;
   }
 
   public int getMetricsPort() {
@@ -884,10 +890,6 @@ public class IoTDBConfig {
 
   public void setEnableMetricService(boolean enableMetricService) {
     this.enableMetricService = enableMetricService;
-  }
-
-  void setDataDirs(String[] dataDirs) {
-    this.dataDirs = dataDirs;
   }
 
   public String getRpcAddress() {
@@ -1768,12 +1770,27 @@ public class IoTDBConfig {
     this.systemFileStorageFs = FSType.valueOf(systemFileStorageFs);
   }
 
-  FSType getTsFileStorageFs() {
+  public FSType[] getTsFileStorageFs() {
     return tsFileStorageFs;
   }
 
-  void setTsFileStorageFs(String tsFileStorageFs) {
-    this.tsFileStorageFs = FSType.valueOf(tsFileStorageFs);
+  public String getRawTsFileStorageFs() {
+    String[] tsFileStorageFsStr = new String[tsFileStorageFs.length];
+    for (int i = 0; i < tsFileStorageFs.length; ++i) {
+      tsFileStorageFsStr[i] = tsFileStorageFs[i].name();
+    }
+    return String.join(",", tsFileStorageFsStr);
+  }
+
+  public void setTsFileStorageFs(FSType[] tsFileStorageFs) {
+    this.tsFileStorageFs = tsFileStorageFs;
+  }
+
+  void setTsFileStorageFs(String[] tsFileStorageFs) {
+    this.tsFileStorageFs = new FSType[tsFileStorageFs.length];
+    for (int i = 0; i < tsFileStorageFs.length; ++i) {
+      this.tsFileStorageFs[i] = FSType.valueOf(tsFileStorageFs[i]);
+    }
   }
 
   String getCoreSitePath() {

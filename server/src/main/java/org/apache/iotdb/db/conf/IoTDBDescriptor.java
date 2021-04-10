@@ -25,7 +25,7 @@ import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.fileSystem.FSType;
+import org.apache.iotdb.tsfile.fileSystem.FSPath;
 
 import com.google.common.net.InetAddresses;
 import org.slf4j.Logger;
@@ -202,32 +202,6 @@ public class IoTDBDescriptor {
       initMemoryAllocate(properties);
 
       loadWALProps(properties);
-
-      String systemDir = properties.getProperty("system_dir");
-      if (systemDir == null) {
-        systemDir = properties.getProperty("base_dir");
-        if (systemDir != null) {
-          systemDir = FilePathUtils.regularizePath(systemDir) + IoTDBConstant.SYSTEM_FOLDER_NAME;
-        } else {
-          systemDir = conf.getSystemDir();
-        }
-      }
-      conf.setSystemDir(systemDir);
-
-      conf.setSchemaDir(
-          FilePathUtils.regularizePath(conf.getSystemDir()) + IoTDBConstant.SCHEMA_FOLDER_NAME);
-
-      conf.setSyncDir(
-          FilePathUtils.regularizePath(conf.getSystemDir()) + IoTDBConstant.SYNC_FOLDER_NAME);
-
-      conf.setQueryDir(
-          FilePathUtils.regularizePath(conf.getSystemDir() + IoTDBConstant.QUERY_FOLDER_NAME));
-
-      conf.setTracingDir(properties.getProperty("tracing_dir", conf.getTracingDir()));
-
-      conf.setDataDirs(properties.getProperty("data_dirs", conf.getDataDirs()[0]).split(","));
-
-      conf.setWalDir(properties.getProperty("wal_dir", conf.getWalDir()));
 
       int mlogBufferSize =
           Integer.parseInt(
@@ -555,7 +529,7 @@ public class IoTDBDescriptor {
       conf.setRpcMaxConcurrentClientNum(maxConcurrentClientNum);
 
       conf.setTsFileStorageFs(
-          properties.getProperty("tsfile_storage_fs", conf.getTsFileStorageFs().toString()));
+          properties.getProperty("tsfile_storage_fs", conf.getRawTsFileStorageFs()).split(","));
       conf.setCoreSitePath(properties.getProperty("core_site_path", conf.getCoreSitePath()));
       conf.setHdfsSitePath(properties.getProperty("hdfs_site_path", conf.getHdfsSitePath()));
       conf.setHdfsIp(properties.getProperty("hdfs_ip", conf.getRawHDFSIp()).split(","));
@@ -707,8 +681,7 @@ public class IoTDBDescriptor {
       TSFileDescriptor.getInstance()
           .getConfig()
           .setTSFileStorageFs(
-              FSType.valueOf(
-                  properties.getProperty("tsfile_storage_fs", conf.getTsFileStorageFs().name())));
+              properties.getProperty("tsfile_storage_fs", conf.getRawTsFileStorageFs()).split(","));
       TSFileDescriptor.getInstance()
           .getConfig()
           .setCoreSitePath(properties.getProperty("core_site_path", conf.getCoreSitePath()));
@@ -758,6 +731,9 @@ public class IoTDBDescriptor {
               properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
       TSFileDescriptor.getInstance().getConfig().setBatchSize(conf.getBatchSize());
 
+      // load directory config
+      loadDirProps(properties);
+
       // set tsfile-format config
       loadTsFileProps(properties);
 
@@ -787,6 +763,66 @@ public class IoTDBDescriptor {
       getConfig().setRpcAddress(address.getHostAddress());
     }
     logger.debug("after replace, the rpc_address={},", conf.getRpcAddress());
+  }
+
+  private void loadDirProps(Properties properties) {
+    String systemDir = properties.getProperty("system_dir");
+    if (systemDir == null) {
+      systemDir = properties.getProperty("base_dir");
+      if (systemDir != null) {
+        systemDir = FilePathUtils.regularizePath(systemDir) + IoTDBConstant.SYSTEM_FOLDER_NAME;
+      } else {
+        systemDir = conf.getSystemDir();
+      }
+    }
+    conf.setSystemDir(systemDir);
+
+    conf.setSchemaDir(
+        FilePathUtils.regularizePath(conf.getSystemDir()) + IoTDBConstant.SCHEMA_FOLDER_NAME);
+
+    conf.setSyncDir(
+        FilePathUtils.regularizePath(conf.getSystemDir()) + IoTDBConstant.SYNC_FOLDER_NAME);
+
+    conf.setQueryDir(
+        FilePathUtils.regularizePath(conf.getSystemDir() + IoTDBConstant.QUERY_FOLDER_NAME));
+
+    conf.setTracingDir(properties.getProperty("tracing_dir", conf.getTracingDir()));
+
+    String dataDirs = properties.getProperty("data_dirs");
+    FSPath[] fsDataDirs;
+    if (dataDirs == null) {
+      fsDataDirs = conf.getDataDirs();
+    } else {
+      String[] dirs = dataDirs.split(",");
+      fsDataDirs = new FSPath[dirs.length];
+      for (int i = 0; i < dirs.length; ++i) {
+        fsDataDirs[i] = FSPath.parse(dirs[i]);
+      }
+    }
+    int cnt = 0;
+    for (int i = 0; i < fsDataDirs.length; ++i) {
+      if (TSFileDescriptor.getInstance().getConfig().isFSSupported(fsDataDirs[i].getFsType())) {
+        cnt++;
+      } else {
+        fsDataDirs[i] = null;
+      }
+    }
+    FSPath[] validDirs;
+    if (cnt == fsDataDirs.length) {
+      validDirs = fsDataDirs;
+    } else {
+      validDirs = new FSPath[cnt];
+      int idx = 0;
+      for (FSPath fsPath : fsDataDirs) {
+        if (fsPath != null) {
+          validDirs[idx] = fsPath;
+          ++idx;
+        }
+      }
+    }
+    conf.setDataDirs(validDirs);
+
+    conf.setWalDir(properties.getProperty("wal_dir", conf.getWalDir()));
   }
 
   private void loadWALProps(Properties properties) {

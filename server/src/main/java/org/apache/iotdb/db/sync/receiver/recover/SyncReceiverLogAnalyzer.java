@@ -26,6 +26,7 @@ import org.apache.iotdb.db.sync.receiver.load.IFileLoader;
 import org.apache.iotdb.db.sync.receiver.load.LoadLogger;
 import org.apache.iotdb.db.sync.receiver.load.LoadType;
 import org.apache.iotdb.db.utils.FilePathUtils;
+import org.apache.iotdb.tsfile.fileSystem.FSPath;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -48,15 +49,15 @@ public class SyncReceiverLogAnalyzer implements ISyncReceiverLogAnalyzer {
 
   @Override
   public void recoverAll() throws IOException {
-    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+    FSPath[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
     LOGGER.info("Start to recover all sync state for sync receiver.");
-    for (String dataDir : dataDirs) {
-      if (!new File(FilePathUtils.regularizePath(dataDir) + SyncConstant.SYNC_RECEIVER).exists()) {
+    for (FSPath dataDir : dataDirs) {
+      String path = FilePathUtils.regularizePath(dataDir.getPath()) + SyncConstant.SYNC_RECEIVER;
+      File file = new FSPath(dataDir.getFsType(), path).getFile();
+      if (!file.exists()) {
         continue;
       }
-      for (File syncFolder :
-          new File(FilePathUtils.regularizePath(dataDir) + SyncConstant.SYNC_RECEIVER)
-              .listFiles()) {
+      for (File syncFolder : file.listFiles()) {
         recover(syncFolder);
       }
     }
@@ -89,15 +90,15 @@ public class SyncReceiverLogAnalyzer implements ISyncReceiverLogAnalyzer {
 
   @Override
   public boolean recover(String senderName) throws IOException {
-    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+    FSPath[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
     boolean recoverComplete = true;
-    for (String dataDir : dataDirs) {
-      if (!new File(FilePathUtils.regularizePath(dataDir) + SyncConstant.SYNC_RECEIVER).exists()) {
+    for (FSPath dataDir : dataDirs) {
+      String path = FilePathUtils.regularizePath(dataDir.getPath()) + SyncConstant.SYNC_RECEIVER;
+      File file = new FSPath(dataDir.getFsType(), path).getFile();
+      if (!file.exists()) {
         continue;
       }
-      for (File syncFolder :
-          new File(FilePathUtils.regularizePath(dataDir) + SyncConstant.SYNC_RECEIVER)
-              .listFiles()) {
+      for (File syncFolder : file.listFiles()) {
         if (syncFolder.getName().equals(senderName)) {
           recoverComplete &= recover(syncFolder);
         }

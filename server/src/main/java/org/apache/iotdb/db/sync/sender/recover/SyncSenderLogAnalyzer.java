@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.sync.sender.recover;
 
 import org.apache.iotdb.db.sync.conf.SyncConstant;
+import org.apache.iotdb.tsfile.fileSystem.FSPath;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -36,16 +37,16 @@ import java.util.Set;
 public class SyncSenderLogAnalyzer implements ISyncSenderLogAnalyzer {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SyncSenderLogAnalyzer.class);
-  private String senderPath;
+  private FSPath senderPath;
   private File currentLocalFile;
   private File lastLocalFile;
   private File syncLogFile;
 
-  public SyncSenderLogAnalyzer(String senderPath) {
+  public SyncSenderLogAnalyzer(FSPath senderPath) {
     this.senderPath = senderPath;
-    this.currentLocalFile = new File(senderPath, SyncConstant.CURRENT_LOCAL_FILE_NAME);
-    this.lastLocalFile = new File(senderPath, SyncConstant.LAST_LOCAL_FILE_NAME);
-    this.syncLogFile = new File(senderPath, SyncConstant.SYNC_LOG_NAME);
+    this.currentLocalFile = senderPath.getChildFile(SyncConstant.CURRENT_LOCAL_FILE_NAME);
+    this.lastLocalFile = senderPath.getChildFile(SyncConstant.LAST_LOCAL_FILE_NAME);
+    this.syncLogFile = senderPath.getChildFile(SyncConstant.SYNC_LOG_NAME);
   }
 
   @Override
@@ -62,7 +63,7 @@ public class SyncSenderLogAnalyzer implements ISyncSenderLogAnalyzer {
       lastLocalFiles.addAll(newFiles);
       updateLastLocalFile(lastLocalFiles);
     }
-    FileUtils.deleteDirectory(new File(senderPath, SyncConstant.DATA_SNAPSHOT_NAME));
+    FileUtils.deleteDirectory(senderPath.getChildFile(SyncConstant.DATA_SNAPSHOT_NAME));
     syncLogFile.delete();
   }
 

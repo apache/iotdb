@@ -25,6 +25,10 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.sync.conf.SyncSenderDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.fileSystem.FSPath;
+import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
+import org.apache.iotdb.tsfile.utils.FSUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -91,17 +95,18 @@ public class SyncFileManager implements ISyncFileManager {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
-  public void getCurrentLocalFiles(String dataDir) {
+  public void getCurrentLocalFiles(FSPath dataDir) {
     LOGGER.info("Start to get current local files in data folder {}", dataDir);
 
     currentSealedLocalFilesMap = new HashMap<>();
     // get all files in data dir sequence folder
     Map<String, Map<Long, Map<Long, Set<File>>>> currentAllLocalFiles = new HashMap<>();
-    if (!new File(dataDir + File.separatorChar + IoTDBConstant.SEQUENCE_FLODER_NAME).exists()) {
+    File seqFolder =
+        dataDir.postConcat(File.separatorChar + IoTDBConstant.SEQUENCE_FLODER_NAME).getFile();
+    if (!seqFolder.exists()) {
       return;
     }
-    File[] allSgFolders =
-        new File(dataDir + File.separatorChar + IoTDBConstant.SEQUENCE_FLODER_NAME).listFiles();
+    File[] allSgFolders = seqFolder.listFiles();
     for (File sgFolder : allSgFolders) {
       if (!sgFolder.getName().startsWith(IoTDBConstant.PATH_ROOT)
           || sgFolder.getName().equals(TsFileConstant.TMP_SUFFIX)) {
@@ -165,9 +170,10 @@ public class SyncFileManager implements ISyncFileManager {
   }
 
   private boolean checkFileValidity(File file) {
-    return new File(file.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).exists()
-        && !new File(file.getAbsolutePath() + ModificationFile.FILE_SUFFIX).exists()
-        && !new File(file.getAbsolutePath() + MergeTask.MERGE_SUFFIX).exists();
+    FSFactory fsFactory = FSFactoryProducer.getFSFactory(FSUtils.getFSType(file));
+    return fsFactory.getFile(file.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).exists()
+        && !fsFactory.getFile(file.getAbsolutePath() + ModificationFile.FILE_SUFFIX).exists()
+        && !fsFactory.getFile(file.getAbsolutePath() + MergeTask.MERGE_SUFFIX).exists();
   }
 
   @Override
@@ -199,11 +205,11 @@ public class SyncFileManager implements ISyncFileManager {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
-  public void getValidFiles(String dataDir) throws IOException {
+  public void getValidFiles(FSPath dataDir) throws IOException {
     allSGs = new HashMap<>();
     getCurrentLocalFiles(dataDir);
     getLastLocalFiles(
-        new File(SyncSenderDescriptor.getInstance().getConfig().getLastFileInfoPath()));
+        SyncSenderDescriptor.getInstance().getConfig().getLastFileInfoPath().getFile());
     toBeSyncedFilesMap = new HashMap<>();
     deletedFilesMap = new HashMap<>();
     for (String sgName : allSGs.keySet()) {

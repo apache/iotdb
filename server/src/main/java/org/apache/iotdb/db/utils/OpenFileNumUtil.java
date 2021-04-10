@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
+import org.apache.iotdb.tsfile.fileSystem.FSPath;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -203,8 +204,8 @@ public class OpenFileNumUtil {
       if (openFileNumStatistics.path == null) {
         continue;
       }
-      for (String path : openFileNumStatistics.path) {
-        if (temp[8].contains(path)) {
+      for (FSPath path : openFileNumStatistics.path) {
+        if (temp[8].contains(path.getPath())) {
           oldValue = resultMap.get(openFileNumStatistics);
           resultMap.put(openFileNumStatistics, oldValue + 1);
         }
@@ -264,19 +265,22 @@ public class OpenFileNumUtil {
     TOTAL_OPEN_FILE_NUM(null),
     SEQUENCE_FILE_OPEN_NUM(directoryManager.getAllSequenceFileFolders()),
     UNSEQUENCE_FILE_OPEN_NUM(directoryManager.getAllUnSequenceFileFolders()),
-    WAL_OPEN_FILE_NUM(Collections.singletonList(config.getWalDir())),
-    DIGEST_OPEN_FILE_NUM(Collections.singletonList(config.getSystemDir())),
+    WAL_OPEN_FILE_NUM(
+        Collections.singletonList(new FSPath(config.getSystemFileStorageFs(), config.getWalDir()))),
+    DIGEST_OPEN_FILE_NUM(
+        Collections.singletonList(
+            new FSPath(config.getSystemFileStorageFs(), config.getSystemDir()))),
     SOCKET_OPEN_FILE_NUM(null);
 
     // path is a list of directory corresponding to the OpenFileNumStatistics enum element,
     // e.g. data/data/ for SEQUENCE_FILE_OPEN_NUM
-    private List<String> path;
+    private List<FSPath> path;
 
-    OpenFileNumStatistics(List<String> path) {
+    OpenFileNumStatistics(List<FSPath> path) {
       this.path = path;
     }
 
-    public List<String> getPath() {
+    public List<FSPath> getPath() {
       return path;
     }
   }

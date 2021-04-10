@@ -23,7 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.strategy.DirectoryStrategy;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.fileSystem.FSPath;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,8 +38,8 @@ public class DirectoryManager {
 
   private static final Logger logger = LoggerFactory.getLogger(DirectoryManager.class);
 
-  private List<String> sequenceFileFolders;
-  private List<String> unsequenceFileFolders;
+  private List<FSPath> sequenceFileFolders;
+  private List<FSPath> unsequenceFileFolders;
   private DirectoryStrategy sequenceStrategy;
   private DirectoryStrategy unsequenceStrategy;
 
@@ -48,7 +48,10 @@ public class DirectoryManager {
         new ArrayList<>(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
     for (int i = 0; i < sequenceFileFolders.size(); i++) {
       sequenceFileFolders.set(
-          i, sequenceFileFolders.get(i) + File.separator + IoTDBConstant.SEQUENCE_FLODER_NAME);
+          i,
+          sequenceFileFolders
+              .get(i)
+              .postConcat(File.separator + IoTDBConstant.SEQUENCE_FLODER_NAME));
     }
     mkDataDirs(sequenceFileFolders);
 
@@ -56,7 +59,10 @@ public class DirectoryManager {
         new ArrayList<>(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
     for (int i = 0; i < unsequenceFileFolders.size(); i++) {
       unsequenceFileFolders.set(
-          i, unsequenceFileFolders.get(i) + File.separator + IoTDBConstant.UNSEQUENCE_FLODER_NAME);
+          i,
+          unsequenceFileFolders
+              .get(i)
+              .postConcat(File.separator + IoTDBConstant.UNSEQUENCE_FLODER_NAME));
     }
     mkDataDirs(unsequenceFileFolders);
 
@@ -77,11 +83,11 @@ public class DirectoryManager {
 
   public void updateFileFolders() throws LoadConfigurationException {
     try {
-      List<String> sequenceFileFolders =
+      List<FSPath> sequenceFileFolders =
           new ArrayList<>(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
       mkDataDirs(sequenceFileFolders);
 
-      List<String> unsequenceFileFolders =
+      List<FSPath> unsequenceFileFolders =
           new ArrayList<>(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
       mkDataDirs(unsequenceFileFolders);
       sequenceStrategy.setFolders(sequenceFileFolders);
@@ -119,9 +125,9 @@ public class DirectoryManager {
     return DirectoriesHolder.INSTANCE;
   }
 
-  private void mkDataDirs(List<String> folders) {
-    for (String folder : folders) {
-      File file = FSFactoryProducer.getFSFactory().getFile(folder);
+  private void mkDataDirs(List<FSPath> folders) {
+    for (FSPath folder : folders) {
+      File file = folder.getFile();
       if (file.mkdirs()) {
         logger.info("folder {} doesn't exist, create it", file.getPath());
       } else {
@@ -131,7 +137,7 @@ public class DirectoryManager {
     }
   }
 
-  public String getNextFolderForSequenceFile() throws DiskSpaceInsufficientException {
+  public FSPath getNextFolderForSequenceFile() throws DiskSpaceInsufficientException {
     return getSequenceFileFolder(getNextFolderIndexForSequenceFile());
   }
 
@@ -144,11 +150,11 @@ public class DirectoryManager {
     return sequenceStrategy.nextFolderIndex();
   }
 
-  public String getSequenceFileFolder(int index) {
+  public FSPath getSequenceFileFolder(int index) {
     return sequenceFileFolders.get(index);
   }
 
-  public List<String> getAllSequenceFileFolders() {
+  public List<FSPath> getAllSequenceFileFolders() {
     return new ArrayList<>(sequenceFileFolders);
   }
 
@@ -157,15 +163,7 @@ public class DirectoryManager {
     private static final DirectoryManager INSTANCE = new DirectoryManager();
   }
 
-  public String getWALFolder() {
-    return IoTDBDescriptor.getInstance().getConfig().getWalDir();
-  }
-
-  public String getIndexRootFolder() {
-    return IoTDBDescriptor.getInstance().getConfig().getIndexRootFolder();
-  }
-
-  public String getNextFolderForUnSequenceFile() throws DiskSpaceInsufficientException {
+  public FSPath getNextFolderForUnSequenceFile() throws DiskSpaceInsufficientException {
     return getUnSequenceFileFolder(getNextFolderIndexForUnSequenceFile());
   }
 
@@ -178,7 +176,7 @@ public class DirectoryManager {
     return unsequenceStrategy.nextFolderIndex();
   }
 
-  public String getUnSequenceFileFolder(int index) {
+  public FSPath getUnSequenceFileFolder(int index) {
     return unsequenceFileFolders.get(index);
   }
 
@@ -186,7 +184,7 @@ public class DirectoryManager {
     return unsequenceFileFolders.indexOf(folder);
   }
 
-  public List<String> getAllUnSequenceFileFolders() {
+  public List<FSPath> getAllUnSequenceFileFolders() {
     return new ArrayList<>(unsequenceFileFolders);
   }
 }

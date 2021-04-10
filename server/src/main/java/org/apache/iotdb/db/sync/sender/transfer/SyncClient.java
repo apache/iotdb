@@ -40,6 +40,7 @@ import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.service.sync.thrift.ConfirmInfo;
 import org.apache.iotdb.service.sync.thrift.SyncService;
 import org.apache.iotdb.service.sync.thrift.SyncStatus;
+import org.apache.iotdb.tsfile.fileSystem.FSPath;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
@@ -243,10 +244,10 @@ public class SyncClient implements ISyncClient {
     syncSchema();
 
     // 3. Sync all data
-    String[] dataDirs = ioTDBConfig.getDataDirs();
+    FSPath[] dataDirs = ioTDBConfig.getDataDirs();
     logger.info("There are {} data dirs to be synced.", dataDirs.length);
     for (int i = 0; i < dataDirs.length; i++) {
-      String dataDir = dataDirs[i];
+      FSPath dataDir = dataDirs[i];
       logger.info(
           "Start to sync data in data dir {}, the process is {}/{}",
           dataDir,
@@ -669,7 +670,7 @@ public class SyncClient implements ISyncClient {
 
   private void endSync() throws IOException {
     File currentLocalFile = getCurrentLogFile();
-    File lastLocalFile = new File(config.getLastFileInfoPath());
+    File lastLocalFile = config.getLastFileInfoPath().getFile();
 
     // 1. Write file list to currentLocalFile
     try (BufferedWriter bw = new BufferedWriter(new FileWriter(currentLocalFile))) {
@@ -694,7 +695,7 @@ public class SyncClient implements ISyncClient {
 
     // 3. delete snapshot directory
     try {
-      FileUtils.deleteDirectory(new File(config.getSnapshotPath()));
+      FileUtils.deleteDirectory(config.getSnapshotPath().getFile());
     } catch (IOException e) {
       logger.error("Can not clear snapshot directory {}", config.getSnapshotPath(), e);
     }
@@ -729,11 +730,11 @@ public class SyncClient implements ISyncClient {
   }
 
   private File getSyncLogFile() {
-    return new File(config.getSenderFolderPath(), SyncConstant.SYNC_LOG_NAME);
+    return config.getSenderFolderPath().getChildFile(SyncConstant.SYNC_LOG_NAME);
   }
 
   private File getCurrentLogFile() {
-    return new File(config.getSenderFolderPath(), SyncConstant.CURRENT_LOCAL_FILE_NAME);
+    return config.getSenderFolderPath().getChildFile(SyncConstant.CURRENT_LOCAL_FILE_NAME);
   }
 
   public void setConfig(SyncSenderConfig config) {
