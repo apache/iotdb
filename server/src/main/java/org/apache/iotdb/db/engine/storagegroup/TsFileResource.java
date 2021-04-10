@@ -548,6 +548,7 @@ public class TsFileResource {
   /** Remove the data file, its resource file, and its modification file physically. */
   public void remove() {
     try {
+      FSFactory fsFactory = getFSFactory();
       fsFactory.deleteIfExists(file);
     } catch (IOException e) {
       logger.error("TsFile {} cannot be deleted: {}", file, e.getMessage());

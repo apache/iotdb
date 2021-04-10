@@ -36,6 +36,7 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.CloseCompac
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.utils.FSUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -405,7 +406,8 @@ public abstract class TsFileManagement {
       try {
         // if meet error(like file not found) in merge task, the .merge file may not be deleted
         File mergedFile =
-            FSFactoryProducer.getFSFactory().getFile(seqFile.getTsFilePath() + MERGE_SUFFIX);
+            FSFactoryProducer.getFSFactory(FSUtils.getFSType(seqFile.getTsFile()))
+                .getFile(seqFile.getTsFilePath() + MERGE_SUFFIX);
         if (mergedFile.exists()) {
           mergedFile.delete();
         }

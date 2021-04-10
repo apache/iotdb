@@ -25,7 +25,8 @@ import org.apache.iotdb.tsfile.utils.FSUtils;
 import java.io.File;
 
 /**
- * The {@code AbstractFSFactory} class gives default implements for some methods of  {@code FSFactory}.
+ * The {@code AbstractFSFactory} class gives default implements for some methods of {@code
+ * FSFactory}.
  */
 public abstract class AbstractFSFactory implements FSFactory {
   @Override

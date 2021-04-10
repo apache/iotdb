@@ -224,6 +224,7 @@ public class FileLoaderTest {
     // add some tsfiles
     Random r = new Random(0);
     long time = System.currentTimeMillis();
+    FSPath seqFolder = DirectoryManager.getInstance().getNextFolderForSequenceFile();
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 25; j++) {
         allFileList.putIfAbsent(SG_NAME + i, new ArrayList<>());
@@ -247,21 +248,17 @@ public class FileLoaderTest {
 
         File syncFile = new File(fileName);
         File dataFile =
-            DirectoryManager.getInstance()
-                .getNextFolderForSequenceFile()
-                .getChildFile(
-                    syncFile.getParentFile().getName() + File.separator + syncFile.getName());
+            seqFolder.getChildFile(
+                syncFile.getParentFile().getName() + File.separator + syncFile.getName());
         File loadDataFile =
-            DirectoryManager.getInstance()
-                .getNextFolderForSequenceFile()
-                .getChildFile(
-                    syncFile.getParentFile().getParentFile().getParentFile().getName()
-                        + File.separator
-                        + "0"
-                        + File.separator
-                        + fromTimeToTimePartition(i)
-                        + File.separator
-                        + syncFile.getName());
+            seqFolder.getChildFile(
+                syncFile.getParentFile().getParentFile().getParentFile().getName()
+                    + File.separator
+                    + "0"
+                    + File.separator
+                    + fromTimeToTimePartition(i)
+                    + File.separator
+                    + syncFile.getName());
         correctLoadedFileMap.get(SG_NAME + i).add(loadDataFile.getAbsolutePath());
         allFileList.get(SG_NAME + i).add(syncFile);
         if (!syncFile.getParentFile().exists()) {
@@ -343,11 +340,14 @@ public class FileLoaderTest {
       for (File snapFile : files) {
         if (!snapFile.getName().endsWith(TsFileResource.RESOURCE_SUFFIX)) {
           File dataFile =
-              new File(
-                  DirectoryManager.getInstance().getNextFolderForSequenceFile()
+              seqFolder.getChildFile(
+                  snapFile.getParentFile().getParentFile().getParentFile().getName()
                       + File.separator
-                      + snapFile.getParentFile().getParentFile().getParentFile().getName(),
-                  "0" + File.separator + "0" + File.separator + snapFile.getName());
+                      + "0"
+                      + File.separator
+                      + "0"
+                      + File.separator
+                      + snapFile.getName());
           correctLoadedFileMap.get(sg).remove(dataFile.getAbsolutePath());
           snapFile.delete();
           fileLoader.addDeletedFileName(snapFile);

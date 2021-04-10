@@ -20,6 +20,7 @@ package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -210,7 +211,7 @@ public class TsFileRewriteToolTest {
 
     for (int i = 0; i < splitResource.size(); i++) {
       try {
-        queryAndCheckTsFileWithOneDevice(splitResource.get(i).getTsFilePath(), i, deviceSensorsMap);
+        queryAndCheckTsFileWithOneDevice(splitResource.get(i).getTsFile(), i, deviceSensorsMap);
         long partitionId = splitResource.get(i).getTimePartition();
         Assert.assertEquals(i, partitionId);
       } catch (IOException e) {
@@ -262,7 +263,7 @@ public class TsFileRewriteToolTest {
 
   private void createOneTsFile(HashMap<String, List<String>> deviceSensorsMap) {
     try {
-      File f = FSFactoryProducer.getFSFactory().getFile(path);
+      File f = FSFactoryProducer.getFSFactory(TestConstant.DEFAULT_TEST_FS).getFile(path);
       TsFileWriter tsFileWriter = new TsFileWriter(f);
       // add measurements into file schema
       try {
@@ -297,9 +298,8 @@ public class TsFileRewriteToolTest {
   }
 
   public void queryAndCheckTsFileWithOneDevice(
-      String tsFilePath, int index, HashMap<String, List<String>> deviceSensorsMap)
-      throws IOException {
-    try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFilePath);
+      File tsFile, int index, HashMap<String, List<String>> deviceSensorsMap) throws IOException {
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFile);
         ReadOnlyTsFile readTsFile = new ReadOnlyTsFile(reader)) {
       ArrayList<Path> paths = new ArrayList<>();
 

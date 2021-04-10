@@ -96,7 +96,7 @@ public class ChunkMetadata implements Accountable, IChunkMetadata {
   public String toString() {
     return String.format(
         "measurementId: %s, datatype: %s, version: %d, Statistics: %s, deleteIntervalList: %s, filePath: %s",
-        measurementUid, tsDataType, version, statistics, deleteIntervalList, filePath);
+        measurementUid, tsDataType, version, statistics, deleteIntervalList, file);
   }
 
   public long getNumOfPoints() {

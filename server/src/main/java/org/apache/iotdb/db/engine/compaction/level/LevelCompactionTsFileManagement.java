@@ -841,8 +841,8 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   /** restore the files back to the status before the compaction task is submitted */
   private void restoreCompaction() {
     File logFile =
-        SystemFileFactory.INSTANCE
-            .getFile(storageGroupSysDir, storageGroupName + COMPACTION_LOG_NAME);
+        SystemFileFactory.INSTANCE.getFile(
+            storageGroupSysDir, storageGroupName + COMPACTION_LOG_NAME);
     try {
       if (logFile.exists()) {
         CompactionLogAnalyzer logAnalyzer = new CompactionLogAnalyzer(logFile);
