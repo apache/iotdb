@@ -23,6 +23,7 @@ import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.tsfile.fileSystem.FSPath;
 
 import org.junit.After;
 import org.junit.Before;
@@ -41,15 +42,13 @@ import static org.junit.Assert.assertTrue;
 public class SyncReceiverLoggerTest {
 
   private ISyncReceiverLogger receiverLogger;
-  private String dataDir;
+  private FSPath dataDir;
 
   @Before
   public void setUp() throws DiskSpaceInsufficientException {
     EnvironmentUtils.envSetUp();
-    dataDir =
-        new File(DirectoryManager.getInstance().getNextFolderForSequenceFile())
-            .getParentFile()
-            .getAbsolutePath();
+    FSPath seqDir = DirectoryManager.getInstance().getNextFolderForSequenceFile();
+    dataDir = new FSPath(seqDir.getFsType(), seqDir.getFile().getParentFile().getAbsolutePath());
   }
 
   @After
@@ -105,11 +104,9 @@ public class SyncReceiverLoggerTest {
   }
 
   private File getReceiverFolderFile() {
-    return new File(
-        dataDir
-            + File.separatorChar
-            + SyncConstant.SYNC_RECEIVER
-            + File.separatorChar
-            + "127.0.0.1_5555");
+    return dataDir
+        .postConcat(
+            File.separatorChar + SyncConstant.SYNC_RECEIVER + File.separatorChar + "127.0.0.1_5555")
+        .getFile();
   }
 }

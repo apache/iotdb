@@ -290,8 +290,9 @@ public class TTLTest {
     storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
 
     // files before ttl
-    File seqDir = new File(DirectoryManager.getInstance().getNextFolderForSequenceFile(), sg1);
-    File unseqDir = new File(DirectoryManager.getInstance().getNextFolderForUnSequenceFile(), sg1);
+    File seqDir = DirectoryManager.getInstance().getNextFolderForSequenceFile().getChildFile(sg1);
+    File unseqDir =
+        DirectoryManager.getInstance().getNextFolderForUnSequenceFile().getChildFile(sg1);
 
     List<File> seqFiles = new ArrayList<>();
     for (File directory : seqDir.listFiles()) {

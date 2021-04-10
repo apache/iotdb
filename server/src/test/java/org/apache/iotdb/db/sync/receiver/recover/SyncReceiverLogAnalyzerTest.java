@@ -37,6 +37,7 @@ import org.apache.iotdb.db.sync.receiver.load.FileLoaderManager;
 import org.apache.iotdb.db.sync.receiver.load.FileLoaderTest;
 import org.apache.iotdb.db.sync.receiver.load.IFileLoader;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.tsfile.fileSystem.FSPath;
 
 import org.junit.After;
 import org.junit.Before;
@@ -62,7 +63,7 @@ public class SyncReceiverLogAnalyzerTest {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FileLoaderTest.class);
   private static final String SG_NAME = "root.sg";
-  private String dataDir;
+  private FSPath dataDir;
   private IFileLoader fileLoader;
   private ISyncReceiverLogAnalyzer logAnalyze;
   private ISyncReceiverLogger receiverLogger;
@@ -72,10 +73,8 @@ public class SyncReceiverLogAnalyzerTest {
     IoTDBDescriptor.getInstance().getConfig().setSyncEnable(true);
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
-    dataDir =
-        new File(DirectoryManager.getInstance().getNextFolderForSequenceFile())
-            .getParentFile()
-            .getAbsolutePath();
+    FSPath seqDir = DirectoryManager.getInstance().getNextFolderForSequenceFile();
+    dataDir = new FSPath(seqDir.getFsType(), seqDir.getFile().getParentFile().getAbsolutePath());
     logAnalyze = SyncReceiverLogAnalyzer.getInstance();
     initMetadata();
   }
@@ -132,9 +131,10 @@ public class SyncReceiverLogAnalyzerTest {
         receiverLogger.finishSyncTsfile(syncFile);
         toBeSyncedFiles.add(syncFile.getAbsolutePath());
         File dataFile =
-            new File(
-                DirectoryManager.getInstance().getNextFolderForSequenceFile(),
-                syncFile.getParentFile().getName() + File.separatorChar + syncFile.getName());
+            DirectoryManager.getInstance()
+                .getNextFolderForSequenceFile()
+                .getChildFile(
+                    syncFile.getParentFile().getName() + File.separatorChar + syncFile.getName());
         correctSequenceLoadedFileMap.get(SG_NAME + i).add(dataFile);
         allFileList.get(SG_NAME + i).add(syncFile);
         if (!syncFile.getParentFile().exists()) {
@@ -218,12 +218,10 @@ public class SyncReceiverLogAnalyzerTest {
   }
 
   private File getReceiverFolderFile() {
-    return new File(
-        dataDir
-            + File.separatorChar
-            + SyncConstant.SYNC_RECEIVER
-            + File.separatorChar
-            + "127.0.0.1_5555");
+    return dataDir
+        .postConcat(
+            File.separatorChar + SyncConstant.SYNC_RECEIVER + File.separatorChar + "127.0.0.1_5555")
+        .getFile();
   }
 
   private File getSnapshotFolder() {

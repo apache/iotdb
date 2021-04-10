@@ -33,6 +33,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.tsfile.fileSystem.FSPath;
 
 import org.junit.After;
 import org.junit.Before;
@@ -59,7 +60,7 @@ public class FileLoaderTest {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FileLoaderTest.class);
   private static final String SG_NAME = "root.sg";
-  private String dataDir;
+  private FSPath dataDir;
   private IFileLoader fileLoader;
 
   @Before
@@ -68,10 +69,8 @@ public class FileLoaderTest {
     HashVirtualPartitioner.getInstance().setStorageGroupNum(1);
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
-    dataDir =
-        new File(DirectoryManager.getInstance().getNextFolderForSequenceFile())
-            .getParentFile()
-            .getAbsolutePath();
+    FSPath seqDir = DirectoryManager.getInstance().getNextFolderForSequenceFile();
+    dataDir = new FSPath(seqDir.getFsType(), seqDir.getFile().getParentFile().getAbsolutePath());
     initMetadata();
   }
 
@@ -248,19 +247,21 @@ public class FileLoaderTest {
 
         File syncFile = new File(fileName);
         File dataFile =
-            new File(
-                DirectoryManager.getInstance().getNextFolderForSequenceFile(),
-                syncFile.getParentFile().getName() + File.separator + syncFile.getName());
+            DirectoryManager.getInstance()
+                .getNextFolderForSequenceFile()
+                .getChildFile(
+                    syncFile.getParentFile().getName() + File.separator + syncFile.getName());
         File loadDataFile =
-            new File(
-                DirectoryManager.getInstance().getNextFolderForSequenceFile(),
-                syncFile.getParentFile().getParentFile().getParentFile().getName()
-                    + File.separator
-                    + "0"
-                    + File.separator
-                    + fromTimeToTimePartition(i)
-                    + File.separator
-                    + syncFile.getName());
+            DirectoryManager.getInstance()
+                .getNextFolderForSequenceFile()
+                .getChildFile(
+                    syncFile.getParentFile().getParentFile().getParentFile().getName()
+                        + File.separator
+                        + "0"
+                        + File.separator
+                        + fromTimeToTimePartition(i)
+                        + File.separator
+                        + syncFile.getName());
         correctLoadedFileMap.get(SG_NAME + i).add(loadDataFile.getAbsolutePath());
         allFileList.get(SG_NAME + i).add(syncFile);
         if (!syncFile.getParentFile().exists()) {
@@ -393,12 +394,10 @@ public class FileLoaderTest {
   }
 
   private File getReceiverFolderFile() {
-    return new File(
-        dataDir
-            + File.separatorChar
-            + SyncConstant.SYNC_RECEIVER
-            + File.separatorChar
-            + "127.0.0.1_5555");
+    return dataDir
+        .postConcat(
+            File.separatorChar + SyncConstant.SYNC_RECEIVER + File.separatorChar + "127.0.0.1_5555")
+        .getFile();
   }
 
   private File getSnapshotFolder() {

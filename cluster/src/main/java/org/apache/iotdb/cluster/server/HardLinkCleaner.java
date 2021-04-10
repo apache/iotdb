@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.server;
 
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
+import org.apache.iotdb.tsfile.fileSystem.FSPath;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,14 +45,14 @@ public class HardLinkCleaner implements Runnable {
     scanFolders(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
   }
 
-  private void scanFolders(List<String> folders) {
-    for (String folder : folders) {
+  private void scanFolders(List<FSPath> folders) {
+    for (FSPath folder : folders) {
       scanFolder(folder);
     }
   }
 
-  private void scanFolder(String folder) {
-    File folderFile = new File(folder);
+  private void scanFolder(FSPath folder) {
+    File folderFile = folder.getFile();
     scanFile(folderFile);
   }
 

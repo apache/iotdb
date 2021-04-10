@@ -182,7 +182,7 @@ public class DeletionFileNodeTest {
         };
 
     File fileNodeDir =
-        new File(DirectoryManager.getInstance().getSequenceFileFolder(0), processorName);
+        DirectoryManager.getInstance().getSequenceFileFolder(0).getChildFile(processorName);
     List<File> modFiles = new ArrayList<>();
     for (File directory : fileNodeDir.listFiles()) {
       assertTrue(directory.isDirectory());
@@ -201,8 +201,7 @@ public class DeletionFileNodeTest {
 
     assertEquals(1, modFiles.size());
 
-    LocalTextModificationAccessor accessor =
-        new LocalTextModificationAccessor(modFiles.get(0).getPath());
+    LocalTextModificationAccessor accessor = new LocalTextModificationAccessor(modFiles.get(0));
     try {
       Collection<Modification> modifications = accessor.read();
       assertEquals(3, modifications.size());
@@ -319,7 +318,7 @@ public class DeletionFileNodeTest {
         };
 
     File fileNodeDir =
-        new File(DirectoryManager.getInstance().getNextFolderForUnSequenceFile(), processorName);
+        DirectoryManager.getInstance().getNextFolderForUnSequenceFile().getChildFile(processorName);
     List<File> modFiles = new ArrayList<>();
     for (File directory : fileNodeDir.listFiles()) {
       assertTrue(directory.isDirectory());
@@ -337,8 +336,7 @@ public class DeletionFileNodeTest {
     }
     assertEquals(1, modFiles.size());
 
-    LocalTextModificationAccessor accessor =
-        new LocalTextModificationAccessor(modFiles.get(0).getPath());
+    LocalTextModificationAccessor accessor = new LocalTextModificationAccessor(modFiles.get(0));
     Collection<Modification> modifications = accessor.read();
     assertEquals(3, modifications.size());
     int i = 0;

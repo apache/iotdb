@@ -46,6 +46,7 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.MetricsService;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.tsfile.fileSystem.FSPath;
 import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -135,25 +136,25 @@ public class EnvironmentUtils {
 
   public static void cleanAllDir() throws IOException {
     // delete sequential files
-    for (String path : directoryManager.getAllSequenceFileFolders()) {
-      cleanDir(path);
+    for (FSPath path : directoryManager.getAllSequenceFileFolders()) {
+      cleanDir(path.getFile());
     }
     // delete unsequence files
-    for (String path : directoryManager.getAllUnSequenceFileFolders()) {
-      cleanDir(path);
+    for (FSPath path : directoryManager.getAllUnSequenceFileFolders()) {
+      cleanDir(path.getFile());
     }
     // delete system info
-    cleanDir(config.getSystemDir());
+    cleanDir(new File(config.getSystemDir()));
     // delete wal
-    cleanDir(config.getWalDir());
+    cleanDir(new File(config.getWalDir()));
     // delete data files
-    for (String dataDir : config.getDataDirs()) {
-      cleanDir(dataDir);
+    for (FSPath dataDir : config.getDataDirs()) {
+      cleanDir(dataDir.getFile());
     }
   }
 
-  public static void cleanDir(String dir) throws IOException {
-    FileUtils.deleteDirectory(new File(dir));
+  public static void cleanDir(File dir) throws IOException {
+    FileUtils.deleteDirectory(dir);
   }
 
   /**
@@ -191,11 +192,11 @@ public class EnvironmentUtils {
 
   private static void createAllDir() {
     // create sequential files
-    for (String path : directoryManager.getAllSequenceFileFolders()) {
+    for (FSPath path : directoryManager.getAllSequenceFileFolders()) {
       createDir(path);
     }
     // create unsequential files
-    for (String path : directoryManager.getAllUnSequenceFileFolders()) {
+    for (FSPath path : directoryManager.getAllUnSequenceFileFolders()) {
       createDir(path);
     }
     // create storage group
@@ -203,13 +204,18 @@ public class EnvironmentUtils {
     // create wal
     createDir(config.getWalDir());
     // create data
-    for (String dataDir : config.getDataDirs()) {
+    for (FSPath dataDir : config.getDataDirs()) {
       createDir(dataDir);
     }
   }
 
   private static void createDir(String dir) {
     File file = new File(dir);
+    file.mkdirs();
+  }
+
+  private static void createDir(FSPath dir) {
+    File file = dir.getFile();
     file.mkdirs();
   }
 
