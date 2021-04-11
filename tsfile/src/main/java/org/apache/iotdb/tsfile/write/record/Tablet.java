@@ -121,13 +121,11 @@ public class Tablet {
     IMeasurementSchema measurementSchema = schemas.get(indexOfValue);
 
     if (measurementSchema.getType().equals(TSDataType.VECTOR)) {
-      for (int i = 0; i < measurementSchema.getValueMeasurementIdList().size(); i++) {
-        TSDataType dataType = measurementSchema.getValueTSDataTypeList().get(i);
-        addValueOfDataType(dataType, rowIndex, measurementIndex.get(measurementId), value);
-      }
+      int indexInVector = measurementSchema.getMeasurementIdColumnIndex(measurementId);
+      TSDataType dataType = measurementSchema.getValueTSDataTypeList().get(indexInVector);
+      addValueOfDataType(dataType, rowIndex, indexOfValue + indexInVector, value);
     } else {
-      addValueOfDataType(
-          measurementSchema.getType(), rowIndex, measurementIndex.get(measurementId), value);
+      addValueOfDataType(measurementSchema.getType(), rowIndex, indexOfValue, value);
     }
   }
 

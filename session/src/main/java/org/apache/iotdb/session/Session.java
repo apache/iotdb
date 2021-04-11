@@ -1541,7 +1541,7 @@ public class Session {
         int measurementSize = schema.getValueMeasurementIdList().size();
         for (int j = 0; j < measurementSize; j++) {
           tablet.values[columnIndex] =
-              sortList(tablet.values[columnIndex], schema.getValueTSDataTypeList().get(i), index);
+              sortList(tablet.values[columnIndex], schema.getValueTSDataTypeList().get(j), index);
           if (tablet.bitMaps != null && tablet.bitMaps[columnIndex] != null) {
             tablet.bitMaps[columnIndex] = sortBitMap(tablet.bitMaps[columnIndex], index);
           }

@@ -215,6 +215,30 @@ public class VectorSessionExample {
 
     Tablet tablet = new Tablet(ROOT_SG1_D1, schemaList);
 
+    // Method 1 to add tablet data
+    long timestamp = System.currentTimeMillis();
+
+    for (long row = 0; row < 100; row++) {
+      int rowIndex = tablet.rowSize++;
+      tablet.addTimestamp(rowIndex, timestamp);
+      tablet.addValue(
+          schemaList.get(0).getValueMeasurementIdList().get(0), rowIndex, new Random().nextLong());
+      tablet.addValue(
+          schemaList.get(0).getValueMeasurementIdList().get(1), rowIndex, new Random().nextInt());
+
+      if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        session.insertTablet(tablet, true);
+        tablet.reset();
+      }
+      timestamp++;
+    }
+
+    if (tablet.rowSize != 0) {
+      session.insertTablet(tablet);
+      tablet.reset();
+    }
+
+    // Method 2 to add tablet data
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
 
@@ -222,11 +246,11 @@ public class VectorSessionExample {
       int row = tablet.rowSize++;
       timestamps[row] = time;
 
-      long[] sensor = (long[]) values[0];
-      sensor[row] = new Random().nextLong();
+      long[] sensor1 = (long[]) values[0];
+      sensor1[row] = new Random().nextLong();
 
-      int[] sensors = (int[]) values[1];
-      sensors[row] = new Random().nextInt();
+      int[] sensor2 = (int[]) values[1];
+      sensor2[row] = new Random().nextInt();
 
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
         session.insertTablet(tablet, true);
@@ -263,11 +287,11 @@ public class VectorSessionExample {
       int row = tablet.rowSize++;
       timestamps[row] = time;
 
-      long[] sensor = (long[]) values[0];
-      sensor[row] = new Random().nextLong();
+      long[] sensor1 = (long[]) values[0];
+      sensor1[row] = new Random().nextLong();
 
-      int[] sensors = (int[]) values[1];
-      sensors[row] = new Random().nextInt();
+      int[] sensor2 = (int[]) values[1];
+      sensor2[row] = new Random().nextInt();
 
       if (time % 5 == 0) {
         bitMaps[1].mark(row);
