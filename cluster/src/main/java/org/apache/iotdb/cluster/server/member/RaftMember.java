@@ -418,7 +418,7 @@ public abstract class RaftMember {
   }
 
   private void tryUpdateCommitIndex(long leaderTerm, long commitIndex, long commitTerm) {
-    if (term.get() == leaderTerm && logManager.getCommitLogIndex() < commitIndex) {
+    if (leaderTerm >= term.get() && logManager.getCommitLogIndex() < commitIndex) {
       // there are more local logs that can be committed, commit them in a ThreadPool so the
       // heartbeat response will not be blocked
       CommitLogTask commitLogTask = new CommitLogTask(logManager, commitIndex, commitTerm);
