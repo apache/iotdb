@@ -662,7 +662,11 @@ public class TsFileResource {
     this.processor = processor;
   }
 
-  /** @return TimeseriesMetadata or VectorTimeseriesMetadata */
+  /**
+   * Get a timeseriesMetadata.
+   *
+   * @return TimeseriesMetadata or the first ValueTimeseriesMetadata in VectorTimeseriesMetadata
+   */
   public TimeseriesMetadata getTimeSeriesMetadata() {
     if (timeSeriesMetadata == null) {
       return null;

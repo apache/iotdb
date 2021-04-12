@@ -1238,7 +1238,7 @@ public class PlanExecutor implements IPlanExecutor {
         throw new StorageEngineException(
             "failed to insert points "
                 + failedMeasurements
-                + (" caused by " + exception.getMessage()));
+                + (exception != null ? (" caused by " + exception.getMessage()) : ""));
       }
 
     } catch (StorageEngineException | MetadataException e) {
