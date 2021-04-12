@@ -73,7 +73,7 @@ public class MNode implements Serializable {
   private transient volatile Map<String, MNode> aliasChildren = null;
 
   // device template
-  protected volatile Template deviceTemplate = null;
+  protected Template deviceTemplate = null;
 
   private volatile boolean useTemplate = false;
 
