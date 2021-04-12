@@ -83,7 +83,8 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
   /**
    * upgrade file resource
    *
-   * @throws IOException, WriteProcessException
+   * @throws IOException
+   * @throws WriteProcessException
    */
   @SuppressWarnings({"squid:S3776", "deprecation"}) // Suppress high Cognitive Complexity warning
   private void upgradeFile(List<TsFileResource> upgradedResources)

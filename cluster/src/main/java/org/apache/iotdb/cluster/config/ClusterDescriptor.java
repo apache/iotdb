@@ -299,11 +299,6 @@ public class ClusterDescriptor {
             properties.getProperty(
                 "wait_client_timeout_ms", String.valueOf(config.getWaitClientTimeoutMS()))));
 
-    config.setEnableQueryRedirect(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "enable_query_redirect", String.valueOf(config.isEnableQueryRedirect()))));
-
     String consistencyLevel = properties.getProperty("consistency_level");
     if (consistencyLevel != null) {
       config.setConsistencyLevel(ConsistencyLevel.getConsistencyLevel(consistencyLevel));

@@ -35,7 +35,7 @@ import java.util.List;
 
 public class SetUsingDeviceTemplatePlan extends PhysicalPlan {
 
-  private static final Logger logger = LoggerFactory.getLogger(AutoCreateDeviceMNodePlan.class);
+  private static final Logger logger = LoggerFactory.getLogger(SetUsingDeviceTemplatePlan.class);
   PartialPath prefixPath;
 
   public SetUsingDeviceTemplatePlan() {

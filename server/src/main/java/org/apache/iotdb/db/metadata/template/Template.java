@@ -29,6 +29,8 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
+import org.apache.commons.lang3.builder.HashCodeBuilder;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -164,6 +166,6 @@ public class Template {
 
   @Override
   public int hashCode() {
-    return Objects.hash(name, schemaMap);
+    return new HashCodeBuilder(17, 37).append(name).append(schemaMap).toHashCode();
   }
 }

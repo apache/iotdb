@@ -56,6 +56,7 @@ public class TVListAllocator implements TVListAllocatorMBean, IService {
     return TVList.newVectorList(dataTypes);
   }
 
+  /** For non-vector types */
   public synchronized void release(TSDataType dataType, TVList list) {
     list.clear();
     if (dataType != TSDataType.VECTOR) {
@@ -63,6 +64,7 @@ public class TVListAllocator implements TVListAllocatorMBean, IService {
     }
   }
 
+  /** For VECTOR type only */
   public synchronized void release(TVList list) {
     list.clear();
     if (list.getDataType() != TSDataType.VECTOR) {

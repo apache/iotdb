@@ -114,7 +114,7 @@ public class MemTableFlushTask {
         long startTime = System.currentTimeMillis();
         IWritableMemChunk series = iWritableMemChunkEntry.getValue();
         IMeasurementSchema desc = series.getSchema();
-        TVList tvList = series.getSortedTVListForFlush();
+        TVList tvList = series.getSortedTvListForFlush();
         sortTime += System.currentTimeMillis() - startTime;
         encodingTaskQueue.put(new Pair<>(tvList, desc));
       }
@@ -195,46 +195,46 @@ public class MemTableFlushTask {
                 seriesWriterImpl.write(time, tvPairs.getBinary(sortedRowIndex), false);
                 break;
               case VECTOR:
-                VectorTVList vectorTVPairs = (VectorTVList) tvPairs;
-                List<TSDataType> dataTypes = vectorTVPairs.getTsDataTypes();
-                int originRowIndex = vectorTVPairs.getValueIndex(sortedRowIndex);
+                VectorTVList vectorTvPairs = (VectorTVList) tvPairs;
+                List<TSDataType> dataTypes = vectorTvPairs.getTsDataTypes();
+                int originRowIndex = vectorTvPairs.getValueIndex(sortedRowIndex);
                 for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
-                  boolean isNull = vectorTVPairs.isValueMarked(originRowIndex, columnIndex);
+                  boolean isNull = vectorTvPairs.isValueMarked(originRowIndex, columnIndex);
                   switch (dataTypes.get(columnIndex)) {
                     case BOOLEAN:
                       seriesWriterImpl.write(
                           time,
-                          vectorTVPairs.getBooleanByValueIndex(originRowIndex, columnIndex),
+                          vectorTvPairs.getBooleanByValueIndex(originRowIndex, columnIndex),
                           isNull);
                       break;
                     case INT32:
                       seriesWriterImpl.write(
                           time,
-                          vectorTVPairs.getIntByValueIndex(originRowIndex, columnIndex),
+                          vectorTvPairs.getIntByValueIndex(originRowIndex, columnIndex),
                           isNull);
                       break;
                     case INT64:
                       seriesWriterImpl.write(
                           time,
-                          vectorTVPairs.getLongByValueIndex(originRowIndex, columnIndex),
+                          vectorTvPairs.getLongByValueIndex(originRowIndex, columnIndex),
                           isNull);
                       break;
                     case FLOAT:
                       seriesWriterImpl.write(
                           time,
-                          vectorTVPairs.getFloatByValueIndex(originRowIndex, columnIndex),
+                          vectorTvPairs.getFloatByValueIndex(originRowIndex, columnIndex),
                           isNull);
                       break;
                     case DOUBLE:
                       seriesWriterImpl.write(
                           time,
-                          vectorTVPairs.getDoubleByValueIndex(originRowIndex, columnIndex),
+                          vectorTvPairs.getDoubleByValueIndex(originRowIndex, columnIndex),
                           isNull);
                       break;
                     case TEXT:
                       seriesWriterImpl.write(
                           time,
-                          vectorTVPairs.getBinaryByValueIndex(originRowIndex, columnIndex),
+                          vectorTvPairs.getBinaryByValueIndex(originRowIndex, columnIndex),
                           isNull);
                       break;
                     default:

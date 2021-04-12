@@ -93,7 +93,13 @@ public abstract class TVList {
     return size;
   }
 
-  public static long vectorTVListArrayMemSize(List<TSDataType> types) {
+  /**
+   * For Vector data type
+   *
+   * @param types the types in the vector
+   * @return VectorTvListArrayMemSize
+   */
+  public static long vectorTvListArrayMemSize(List<TSDataType> types) {
     long size = 0;
     // time size
     size += (long) PrimitiveArrayManager.ARRAY_SIZE * 8L;
@@ -215,7 +221,7 @@ public abstract class TVList {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public TVList getTVListByColumnIndex(List<Integer> columnIndexList) {
+  public TVList getTvListByColumnIndex(List<Integer> columnIndexList) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 

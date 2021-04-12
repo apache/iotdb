@@ -216,6 +216,7 @@ public class TsFileResource {
     this.timeIndexType = 1;
   }
 
+  @SuppressWarnings("squid:S3776") // high Cognitive Complexity
   private void generateTimeSeriesMetadata() throws IOException {
     TimeseriesMetadata timeTimeSeriesMetadata = new TimeseriesMetadata();
     timeTimeSeriesMetadata.setOffsetOfChunkMetaDataList(-1);
@@ -661,6 +662,7 @@ public class TsFileResource {
     this.processor = processor;
   }
 
+  /** @return TimeseriesMetadata or VectorTimeseriesMetadata */
   public TimeseriesMetadata getTimeSeriesMetadata() {
     if (timeSeriesMetadata == null) {
       return null;

@@ -30,6 +30,7 @@ import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
+import org.apache.iotdb.cluster.rpc.thrift.RequestCommitIndexResponse;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.utils.IOUtils;
@@ -85,10 +86,22 @@ public abstract class BaseAsyncService implements RaftService.AsyncIface {
   }
 
   @Override
-  public void requestCommitIndex(Node header, AsyncMethodCallback<Long> resultHandler) {
-    long commitIndex = member.getCommitIndex();
+  public void requestCommitIndex(
+      Node header, AsyncMethodCallback<RequestCommitIndexResponse> resultHandler) {
+    long commitIndex;
+    long commitTerm;
+    long curTerm;
+    synchronized (member.getTerm()) {
+      commitIndex = member.getLogManager().getCommitLogIndex();
+      commitTerm = member.getLogManager().getCommitLogTerm();
+      curTerm = member.getTerm().get();
+    }
+
+    RequestCommitIndexResponse response =
+        new RequestCommitIndexResponse(curTerm, commitIndex, commitTerm);
+
     if (commitIndex != Long.MIN_VALUE) {
-      resultHandler.onComplete(commitIndex);
+      resultHandler.onComplete(response);
       return;
     }
 
