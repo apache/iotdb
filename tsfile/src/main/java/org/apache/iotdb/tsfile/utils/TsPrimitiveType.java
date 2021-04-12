@@ -77,7 +77,7 @@ public abstract class TsPrimitiveType implements Serializable {
   }
 
   public TsPrimitiveType[] getVector() {
-    throw new UnsupportedOperationException("setDouble() is not supported for current sub-class");
+    throw new UnsupportedOperationException("getVector() is not supported for current sub-class");
   }
 
   public void setBoolean(boolean val) {
@@ -105,7 +105,7 @@ public abstract class TsPrimitiveType implements Serializable {
   }
 
   public void setVector(TsPrimitiveType[] val) {
-    throw new UnsupportedOperationException("setDouble() is not supported for current sub-class");
+    throw new UnsupportedOperationException("setVector() is not supported for current sub-class");
   }
 
   /**
@@ -475,27 +475,29 @@ public abstract class TsPrimitiveType implements Serializable {
 
   public static class TsVector extends TsPrimitiveType {
 
-    private TsPrimitiveType[] value;
+    private TsPrimitiveType[] values;
 
-    public TsVector(TsPrimitiveType[] value) {
-      this.value = value;
+    public TsVector(TsPrimitiveType[] values) {
+      this.values = values;
     }
 
     @Override
     public TsPrimitiveType[] getVector() {
-      return value;
+      return values;
     }
 
     @Override
-    public void setVector(TsPrimitiveType[] val) {
-      this.value = val;
+    public void setVector(TsPrimitiveType[] vals) {
+      this.values = vals;
     }
 
     @Override
     public int getSize() {
       int size = 0;
-      for (TsPrimitiveType type : value) {
-        size += type.getSize();
+      for (TsPrimitiveType type : values) {
+        if (type != null) {
+          size += type.getSize();
+        }
       }
       // object header + array object header
       return 4 + 4 + size;
@@ -509,9 +511,9 @@ public abstract class TsPrimitiveType implements Serializable {
     @Override
     public String getStringValue() {
       StringBuilder builder = new StringBuilder("[");
-      builder.append(value[0] == null ? "null" : value[0].getStringValue());
-      for (int i = 1; i < value.length; i++) {
-        builder.append(", ").append(value[i] == null ? "null" : value[i].getStringValue());
+      builder.append(values[0] == null ? "null" : values[0].getStringValue());
+      for (int i = 1; i < values.length; i++) {
+        builder.append(", ").append(values[i] == null ? "null" : values[i].getStringValue());
       }
       builder.append("]");
       return builder.toString();
@@ -520,6 +522,31 @@ public abstract class TsPrimitiveType implements Serializable {
     @Override
     public TSDataType getDataType() {
       return TSDataType.VECTOR;
+    }
+
+    @Override
+    public int hashCode() {
+      return values.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object anObject) {
+      if (this == anObject) {
+        return true;
+      }
+      if (anObject instanceof TsVector) {
+        TsVector anotherTs = (TsVector) anObject;
+        if (anotherTs.values.length != this.values.length) {
+          return false;
+        }
+        for (int i = 0; i < this.values.length; i++) {
+          if (!values[i].equals(anotherTs.values[i])) {
+            return false;
+          }
+        }
+        return true;
+      }
+      return false;
     }
   }
 }

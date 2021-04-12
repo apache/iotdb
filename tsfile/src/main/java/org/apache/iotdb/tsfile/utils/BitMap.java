@@ -38,12 +38,14 @@ public class BitMap {
   private byte[] bits;
   private int size;
 
+  /** Initialize a BitMap with given size. */
   public BitMap(int size) {
     this.size = size;
     bits = new byte[size / Byte.SIZE + 1];
     Arrays.fill(bits, (byte) 0);
   }
 
+  /** Initialize a BitMap with given size and bytes. */
   public BitMap(int size, byte[] bits) {
     this.size = size;
     this.bits = bits;
@@ -62,12 +64,12 @@ public class BitMap {
     return (bits[position / Byte.SIZE] & BIT_UTIL[position % Byte.SIZE]) != 0;
   }
 
-  /** mark as 1 at the given bit position */
+  /** mark as 1 at the given bit position. */
   public void mark(int position) {
     bits[position / Byte.SIZE] |= BIT_UTIL[position % Byte.SIZE];
   }
 
-  /** mark as 0 at all positions */
+  /** mark as 0 at all positions. */
   public void reset() {
     Arrays.fill(bits, (byte) 0);
   }
