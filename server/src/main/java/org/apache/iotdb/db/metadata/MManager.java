@@ -2271,12 +2271,12 @@ public class MManager {
   private MeasurementMNode findTemplate(Pair<MNode, Template> deviceMNode, String measurement)
       throws MetadataException {
     if (deviceMNode.right != null) {
-      Map<String, IMeasurementSchema> templateMap = deviceMNode.right.getSchemaMap();
+      Map<String, IMeasurementSchema> curTemplateMap = deviceMNode.right.getSchemaMap();
       List<String> measurements =
           Arrays.asList(measurement.replace("(", "").replace(")", "").split(","));
 
       String firstMeasurement = measurements.get(0);
-      IMeasurementSchema schema = templateMap.get(firstMeasurement);
+      IMeasurementSchema schema = curTemplateMap.get(firstMeasurement);
       if (!deviceMNode.left.isUseTemplate()) {
         deviceMNode.left.setUseTemplate(true);
         try {
