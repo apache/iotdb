@@ -39,6 +39,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
+import org.apache.iotdb.db.layoutoptimize.DiskEvaluator;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metrics.server.SqlArgument;
 import org.apache.iotdb.db.qp.Planner;
@@ -133,6 +134,7 @@ import org.apache.thrift.server.ServerContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
@@ -2005,5 +2007,20 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-  public void myTest() throws TException {}
+  public void myTest() throws TException {
+    DiskEvaluator evaluator = DiskEvaluator.getInstance();
+    try {
+      File generatedFile = evaluator.generateFile(1024 * 1024 * 1024 * 20, "/data/test.tmp");
+      long[] seekCost = new long[10];
+      // seek 50KB for 10 times
+      if (evaluator.performSeek(seekCost, generatedFile, 10, 512, 50 * 1024) != -1) {
+        for (long cost : seekCost) {
+          System.out.println(cost);
+        }
+      }
+      generatedFile.delete();
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
 }

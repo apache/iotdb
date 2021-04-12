@@ -71,25 +71,29 @@ public class SessionExample {
     insertTablet();
     insertTablets();
     insertRecords();
-    nonQuery();
-    query();
-    queryWithTimeout();
-    rawDataQuery();
-    queryByIterator();
+    //    nonQuery();
+    //    query();
+    //    queryWithTimeout();
+    //    rawDataQuery();
+    //    queryByIterator();
+    SessionDataSet dataSet = session.executeQueryStatement("select count(d1.s1) from root.sg1");
+    while (dataSet.hasNext()) {
+      dataSet.next();
+    }
     deleteData();
     deleteTimeseries();
-    setTimeout();
-
-    sessionEnableRedirect = new Session(LOCAL_HOST, 6667, "root", "root");
-    sessionEnableRedirect.setEnableQueryRedirection(true);
-    sessionEnableRedirect.open(false);
-
-    // set session fetchSize
-    sessionEnableRedirect.setFetchSize(10000);
-
-    insertRecord4Redirect();
-    query4Redirect();
-    sessionEnableRedirect.close();
+    //    setTimeout();
+    //
+    //    sessionEnableRedirect = new Session(LOCAL_HOST, 6667, "root", "root");
+    //    sessionEnableRedirect.setEnableQueryRedirection(true);
+    //    sessionEnableRedirect.open(false);
+    //
+    //    // set session fetchSize
+    //    sessionEnableRedirect.setFetchSize(10000);
+    //
+    //    insertRecord4Redirect();
+    //    query4Redirect();
+    //    sessionEnableRedirect.close();
     session.close();
   }
 
