@@ -225,9 +225,13 @@ public class VectorSessionExample {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, timestamp);
       tablet.addValue(
-          schemaList.get(0).getValueMeasurementIdList().get(0), rowIndex, new Random().nextLong());
+          schemaList.get(0).getValueMeasurementIdList().get(0),
+          rowIndex,
+          new SecureRandom().nextLong());
       tablet.addValue(
-          schemaList.get(0).getValueMeasurementIdList().get(1), rowIndex, new Random().nextInt());
+          schemaList.get(0).getValueMeasurementIdList().get(1),
+          rowIndex,
+          new SecureRandom().nextInt());
 
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
         session.insertTablet(tablet, true);
