@@ -132,41 +132,52 @@ public class Tablet {
   private void addValueOfDataType(
       TSDataType dataType, int rowIndex, int indexOfValue, Object value) {
 
+    if (value == null) {
+      // init the bitMap to mark null value
+      if (bitMaps == null) {
+        bitMaps = new BitMap[values.length];
+      }
+      if (bitMaps[indexOfValue] == null) {
+        bitMaps[indexOfValue] = new BitMap(maxRowNumber);
+      }
+      // mark the null value position
+      bitMaps[indexOfValue].mark(rowIndex);
+    }
     switch (dataType) {
       case TEXT:
         {
           Binary[] sensor = (Binary[]) values[indexOfValue];
-          sensor[rowIndex] = (Binary) value;
+          sensor[rowIndex] = value != null ? (Binary) value : Binary.EMPTY_VALUE;
           break;
         }
       case FLOAT:
         {
           float[] sensor = (float[]) values[indexOfValue];
-          sensor[rowIndex] = (float) value;
+          sensor[rowIndex] = value != null ? (float) value : Float.MIN_VALUE;
           break;
         }
       case INT32:
         {
           int[] sensor = (int[]) values[indexOfValue];
-          sensor[rowIndex] = (int) value;
+          sensor[rowIndex] = value != null ? (int) value : Integer.MIN_VALUE;
           break;
         }
       case INT64:
         {
           long[] sensor = (long[]) values[indexOfValue];
-          sensor[rowIndex] = (long) value;
+          sensor[rowIndex] = value != null ? (long) value : Long.MIN_VALUE;
           break;
         }
       case DOUBLE:
         {
           double[] sensor = (double[]) values[indexOfValue];
-          sensor[rowIndex] = (double) value;
+          sensor[rowIndex] = value != null ? (double) value : Double.MIN_VALUE;
           break;
         }
       case BOOLEAN:
         {
           boolean[] sensor = (boolean[]) values[indexOfValue];
-          sensor[rowIndex] = (boolean) value;
+          sensor[rowIndex] = value != null && (boolean) value;
           break;
         }
       default:
