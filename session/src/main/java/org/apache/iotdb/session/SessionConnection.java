@@ -686,4 +686,8 @@ public class SessionConnection {
   public void setEndPoint(EndPoint endPoint) {
     this.endPoint = endPoint;
   }
+
+  public void myTest() throws TException {
+    client.myTest();
+  }
 }
