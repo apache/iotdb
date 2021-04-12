@@ -249,10 +249,10 @@ public class VectorSessionExample {
       int row = tablet.rowSize++;
       timestamps[row] = time;
 
-      long[] sensor = (long[]) values[0];
+      long[] sensor1 = (long[]) values[0];
       sensor1[row] = new SecureRandom().nextLong();
 
-      int[] sensors = (int[]) values[1];
+      int[] sensor2 = (int[]) values[1];
       sensor2[row] = new SecureRandom().nextInt();
 
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
@@ -292,10 +292,10 @@ public class VectorSessionExample {
       timestamps[row] = time;
 
       long[] sensor1 = (long[]) values[0];
-      sensor[row] = new SecureRandom().nextLong();
+      sensor1[row] = new SecureRandom().nextLong();
 
       int[] sensor2 = (int[]) values[1];
-      sensors[row] = new SecureRandom().nextInt();
+      sensor2[row] = new SecureRandom().nextInt();
 
       // mark this point as null value
       if (time % 5 == 0) {
