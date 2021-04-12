@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
@@ -55,6 +56,7 @@ public class VectorTVList extends TVList {
     }
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   public void putVector(long timestamp, Object[] value) {
     checkExpansion();
@@ -170,7 +172,7 @@ public class VectorTVList extends TVList {
   }
 
   @Override
-  public TVList getTVListByColumnIndex(List<Integer> columns) {
+  public TVList getTvListByColumnIndex(List<Integer> columns) {
     List<TSDataType> types = new ArrayList<>();
     List<List<Object>> values = new ArrayList<>();
     List<List<BitMap>> bitMaps = null;
@@ -197,9 +199,11 @@ public class VectorTVList extends TVList {
   }
 
   /**
+   * Get the int value at this position in VectorTvList
+   *
    * @param rowIndex value index inside this column
    * @param columnIndex index of the column
-   * @return
+   * @return the value at this position in VectorTvList
    */
   public int getIntByValueIndex(int rowIndex, int columnIndex) {
     int arrayIndex = rowIndex / ARRAY_SIZE;
@@ -208,6 +212,13 @@ public class VectorTVList extends TVList {
     return ((int[]) columnValues.get(arrayIndex))[elementIndex];
   }
 
+  /**
+   * Get the long value at this position in VectorTvList
+   *
+   * @param rowIndex value index inside this column
+   * @param columnIndex index of the column
+   * @return the value at this position in VectorTvList
+   */
   public long getLongByValueIndex(int rowIndex, int columnIndex) {
     int arrayIndex = rowIndex / ARRAY_SIZE;
     int elementIndex = rowIndex % ARRAY_SIZE;
@@ -215,6 +226,13 @@ public class VectorTVList extends TVList {
     return ((long[]) columnValues.get(arrayIndex))[elementIndex];
   }
 
+  /**
+   * Get the float value at this position in VectorTvList
+   *
+   * @param rowIndex value index inside this column
+   * @param columnIndex index of the column
+   * @return the value at this position in VectorTvList
+   */
   public float getFloatByValueIndex(int rowIndex, int columnIndex) {
     int arrayIndex = rowIndex / ARRAY_SIZE;
     int elementIndex = rowIndex % ARRAY_SIZE;
@@ -222,6 +240,13 @@ public class VectorTVList extends TVList {
     return ((float[]) columnValues.get(arrayIndex))[elementIndex];
   }
 
+  /**
+   * Get the double value at this position in VectorTvList
+   *
+   * @param rowIndex value index inside this column
+   * @param columnIndex index of the column
+   * @return the value at this position in VectorTvList
+   */
   public double getDoubleByValueIndex(int rowIndex, int columnIndex) {
     int arrayIndex = rowIndex / ARRAY_SIZE;
     int elementIndex = rowIndex % ARRAY_SIZE;
@@ -229,6 +254,13 @@ public class VectorTVList extends TVList {
     return ((double[]) columnValues.get(arrayIndex))[elementIndex];
   }
 
+  /**
+   * Get the Binary value at this position in VectorTvList
+   *
+   * @param rowIndex value index inside this column
+   * @param columnIndex index of the column
+   * @return the value at this position in VectorTvList
+   */
   public Binary getBinaryByValueIndex(int rowIndex, int columnIndex) {
     int arrayIndex = rowIndex / ARRAY_SIZE;
     int elementIndex = rowIndex % ARRAY_SIZE;
@@ -236,6 +268,13 @@ public class VectorTVList extends TVList {
     return ((Binary[]) columnValues.get(arrayIndex))[elementIndex];
   }
 
+  /**
+   * Get the boolean value at this position in VectorTvList
+   *
+   * @param rowIndex value index inside this column
+   * @param columnIndex index of the column
+   * @return the value at this position in VectorTvList
+   */
   public boolean getBooleanByValueIndex(int rowIndex, int columnIndex) {
     int arrayIndex = rowIndex / ARRAY_SIZE;
     int elementIndex = rowIndex % ARRAY_SIZE;
@@ -243,6 +282,13 @@ public class VectorTVList extends TVList {
     return ((boolean[]) columnValues.get(arrayIndex))[elementIndex];
   }
 
+  /**
+   * Get whether value is marked at this position in VectorTvList
+   *
+   * @param rowIndex value index inside this column
+   * @param columnIndex index of the column
+   * @return boolean
+   */
   public boolean isValueMarked(int rowIndex, int columnIndex) {
     if (rowIndex >= size) {
       return false;
@@ -271,6 +317,7 @@ public class VectorTVList extends TVList {
     indices.get(arrayIndex)[elementIndex] = value;
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   public VectorTVList clone() {
     VectorTVList cloneList = new VectorTVList(dataTypes);
@@ -478,11 +525,12 @@ public class VectorTVList extends TVList {
   @Override
   protected void releaseLastValueArray() {
     PrimitiveArrayManager.release(indices.remove(indices.size() - 1));
-    for (int i = 0; i < dataTypes.size(); i++) {
-      PrimitiveArrayManager.release(values.get(i).remove(values.get(i).size() - 1));
+    for (List<Object> valueList : values) {
+      PrimitiveArrayManager.release(valueList.remove(valueList.size() - 1));
     }
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   public void putVectors(long[] time, BitMap[] bitMaps, Object[] value, int start, int end) {
     checkExpansion();
@@ -539,27 +587,27 @@ public class VectorTVList extends TVList {
       switch (dataTypes.get(i)) {
         case TEXT:
           Binary[] arrayT = ((Binary[]) columnValues.get(arrayIndex));
-          System.arraycopy((Binary[]) value[i], idx, arrayT, elementIndex, remaining);
+          System.arraycopy(value[i], idx, arrayT, elementIndex, remaining);
           break;
         case FLOAT:
           float[] arrayF = ((float[]) columnValues.get(arrayIndex));
-          System.arraycopy((float[]) value[i], idx, arrayF, elementIndex, remaining);
+          System.arraycopy(value[i], idx, arrayF, elementIndex, remaining);
           break;
         case INT32:
           int[] arrayI = ((int[]) columnValues.get(arrayIndex));
-          System.arraycopy((int[]) value[i], idx, arrayI, elementIndex, remaining);
+          System.arraycopy(value[i], idx, arrayI, elementIndex, remaining);
           break;
         case INT64:
           long[] arrayL = ((long[]) columnValues.get(arrayIndex));
-          System.arraycopy((long[]) value[i], idx, arrayL, elementIndex, remaining);
+          System.arraycopy(value[i], idx, arrayL, elementIndex, remaining);
           break;
         case DOUBLE:
           double[] arrayD = ((double[]) columnValues.get(arrayIndex));
-          System.arraycopy((double[]) value[i], idx, arrayD, elementIndex, remaining);
+          System.arraycopy(value[i], idx, arrayD, elementIndex, remaining);
           break;
         case BOOLEAN:
           boolean[] arrayB = ((boolean[]) columnValues.get(arrayIndex));
-          System.arraycopy((boolean[]) value[i], idx, arrayB, elementIndex, remaining);
+          System.arraycopy(value[i], idx, arrayB, elementIndex, remaining);
           break;
         default:
           break;

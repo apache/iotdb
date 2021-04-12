@@ -130,6 +130,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -652,6 +653,8 @@ public class PlanExecutor implements IPlanExecutor {
       case BOOLEAN:
         field.setBoolV(((boolean) val));
         break;
+      default:
+        throw new UnSupportedDataTypeException("Unsupported data type" + columnType);
     }
     RowRecord record = new RowRecord(0);
     record.addField(field);
@@ -1420,6 +1423,7 @@ public class PlanExecutor implements IPlanExecutor {
     return true;
   }
 
+  @SuppressWarnings("squid:S3776") // high Cognitive Complexity
   private boolean createMultiTimeSeries(CreateMultiTimeSeriesPlan multiPlan)
       throws BatchProcessException {
     int dataTypeIdx = 0;
@@ -1851,7 +1855,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   /**
    * @param storageGroups the storage groups to check
-   * @return List<PartialPath> the storage groups that not exist
+   * @return List of PartialPath the storage groups that not exist
    */
   List<PartialPath> checkStorageGroupExist(List<PartialPath> storageGroups) {
     List<PartialPath> noExistSg = new ArrayList<>();

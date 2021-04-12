@@ -139,7 +139,16 @@ public class ReadOnlyMemChunk {
     cachedMetaData = metaData;
   }
 
-  // For vector type
+  /**
+   * The constructor for VECTOR type
+   *
+   * @param schema VectorMeasurementSchema
+   * @param tvList VectorTvList
+   * @param size The Number of Chunk data points
+   * @param deletionList The timeRange of deletionList
+   * @throws IOException
+   * @throws QueryProcessException
+   */
   public ReadOnlyMemChunk(
       IMeasurementSchema schema, TVList tvList, int size, List<TimeRange> deletionList)
       throws IOException, QueryProcessException {
@@ -155,6 +164,7 @@ public class ReadOnlyMemChunk {
     initVectorChunkMeta(schema);
   }
 
+  @SuppressWarnings("squid:S3776") // high Cognitive Complexity
   private void initVectorChunkMeta(IMeasurementSchema schema)
       throws IOException, QueryProcessException {
     Statistics timeStatistics = Statistics.getStatsByType(TSDataType.VECTOR);

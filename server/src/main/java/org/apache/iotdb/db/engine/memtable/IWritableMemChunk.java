@@ -80,7 +80,7 @@ public interface IWritableMemChunk {
    *
    * @return sorted tv list
    */
-  TVList getSortedTVListForQuery();
+  TVList getSortedTvListForQuery();
 
   /**
    * served for vector query requests.
@@ -90,7 +90,7 @@ public interface IWritableMemChunk {
    * @param columnIndexList indices of queried columns in the full VectorTVList
    * @return sorted tv list
    */
-  TVList getSortedTVListForQuery(List<Integer> columnIndexList);
+  TVList getSortedTvListForQuery(List<Integer> columnIndexList);
 
   /**
    * served for flush requests. The logic is just same as getSortedTVListForQuery, but without add
@@ -98,7 +98,7 @@ public interface IWritableMemChunk {
    *
    * @return sorted tv list
    */
-  TVList getSortedTVListForFlush();
+  TVList getSortedTvListForFlush();
 
   default TVList getTVList() {
     return null;

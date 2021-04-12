@@ -56,6 +56,10 @@ public class MemUtils {
     return 8L + dataType.getDataTypeSize();
   }
 
+  /**
+   * function for getting the vector value size. If mem control enabled, do not add text data size
+   * here, the size will be added to memtable before inserting.
+   */
   public static long getVectorRecordSize(
       List<TSDataType> dataTypes, Object[] value, boolean addingTextDataSize) {
     // time and index size
@@ -87,6 +91,7 @@ public class MemUtils {
    * If mem control enabled, do not add text data size here, the size will be added to memtable
    * before inserting.
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static long getRecordSize(
       InsertTabletPlan insertTabletPlan, int start, int end, boolean addingTextDataSize) {
     if (insertTabletPlan.getMeasurementMNodes() == null) {
@@ -133,6 +138,10 @@ public class MemUtils {
     return memSize;
   }
 
+  /**
+   * This method is for test only. This reason is the InsertTabletPlan in tests may doesn't have
+   * MeasurementMNodes
+   */
   public static long getRecordSizeForTest(
       InsertTabletPlan insertTabletPlan, int start, int end, boolean addingTextDataSize) {
     if (start >= end) {

@@ -31,6 +31,7 @@ public class WritableMemChunk implements IWritableMemChunk {
 
   private IMeasurementSchema schema;
   private TVList list;
+  private static final String UNSUPPORTED_TYPE = "Unsupported data type:";
 
   public WritableMemChunk(IMeasurementSchema schema, TVList list) {
     this.schema = schema;
@@ -62,7 +63,7 @@ public class WritableMemChunk implements IWritableMemChunk {
         putVector(insertTime, (Object[]) objectValue);
         break;
       default:
-        throw new UnSupportedDataTypeException("Unsupported data type:" + schema.getType());
+        throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + schema.getType());
     }
   }
 
@@ -99,7 +100,7 @@ public class WritableMemChunk implements IWritableMemChunk {
         putVectors(times, (BitMap[]) bitMap, vectorValues, start, end);
         break;
       default:
-        throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
+        throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + dataType);
     }
   }
 
@@ -174,7 +175,7 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public synchronized TVList getSortedTVListForQuery() {
+  public synchronized TVList getSortedTvListForQuery() {
     sortTVList();
     // increase reference count
     list.increaseReferenceCount();
@@ -182,14 +183,14 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public synchronized TVList getSortedTVListForQuery(List<Integer> columnIndexList) {
+  public synchronized TVList getSortedTvListForQuery(List<Integer> columnIndexList) {
     if (list.getDataType() != TSDataType.VECTOR) {
-      throw new UnSupportedDataTypeException("Unsupported data type:" + list.getDataType());
+      throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + list.getDataType());
     }
     sortTVList();
     // increase reference count
     list.increaseReferenceCount();
-    return list.getTVListByColumnIndex(columnIndexList);
+    return list.getTvListByColumnIndex(columnIndexList);
   }
 
   private void sortTVList() {
@@ -204,7 +205,7 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public synchronized TVList getSortedTVListForFlush() {
+  public synchronized TVList getSortedTvListForFlush() {
     sortTVList();
     return list;
   }
@@ -242,15 +243,15 @@ public class WritableMemChunk implements IWritableMemChunk {
 
   @Override
   public String toString() {
-    int size = getSortedTVListForQuery().size();
+    int size = getSortedTvListForQuery().size();
     StringBuilder out = new StringBuilder("MemChunk Size: " + size + System.lineSeparator());
     if (size != 0) {
       out.append("Data type:").append(schema.getType()).append(System.lineSeparator());
       out.append("First point:")
-          .append(getSortedTVListForQuery().getTimeValuePair(0))
+          .append(getSortedTvListForQuery().getTimeValuePair(0))
           .append(System.lineSeparator());
       out.append("Last point:")
-          .append(getSortedTVListForQuery().getTimeValuePair(size - 1))
+          .append(getSortedTvListForQuery().getTimeValuePair(size - 1))
           .append(System.lineSeparator());
     }
     return out.toString();

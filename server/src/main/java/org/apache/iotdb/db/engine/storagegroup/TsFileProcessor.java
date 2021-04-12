@@ -277,6 +277,7 @@ public class TsFileProcessor {
     tsFileResource.updatePlanIndexes(insertTabletPlan.getIndex());
   }
 
+  @SuppressWarnings("squid:S3776") // high Cognitive Complexity
   private void checkMemCostAndAddToTspInfo(InsertRowPlan insertRowPlan)
       throws WriteProcessException {
     // memory of increased PrimitiveArray and TEXT values, e.g., add a long[128], add 128*8
@@ -302,7 +303,7 @@ public class TsFileProcessor {
                   * ChunkMetadata.calculateRamSize(
                       schema.getValueMeasurementIdList().get(0),
                       schema.getValueTSDataTypeList().get(0));
-          memTableIncrement += TVList.vectorTVListArrayMemSize(schema.getValueTSDataTypeList());
+          memTableIncrement += TVList.vectorTvListArrayMemSize(schema.getValueTSDataTypeList());
         } else {
           chunkMetadataIncrement +=
               ChunkMetadata.calculateRamSize(
@@ -425,20 +426,20 @@ public class TsFileProcessor {
               * ChunkMetadata.calculateRamSize(measurementIds.get(0), dataTypes.get(0));
       memIncrements[0] +=
           ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
-              * TVList.vectorTVListArrayMemSize(dataTypes);
+              * TVList.vectorTvListArrayMemSize(dataTypes);
     } else {
       int currentChunkPointNum =
           workMemTable.getCurrentChunkPointNum(deviceId, vectorSchema.getMeasurementId());
       if (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE == 0) {
         memIncrements[0] +=
             ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
-                * TVList.vectorTVListArrayMemSize(dataTypes);
+                * TVList.vectorTvListArrayMemSize(dataTypes);
       } else {
         int acquireArray =
             (end - start - 1 + (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE))
                 / PrimitiveArrayManager.ARRAY_SIZE;
         memIncrements[0] +=
-            acquireArray == 0 ? 0 : acquireArray * TVList.vectorTVListArrayMemSize(dataTypes);
+            acquireArray == 0 ? 0 : acquireArray * TVList.vectorTvListArrayMemSize(dataTypes);
       }
     }
     // TEXT data size

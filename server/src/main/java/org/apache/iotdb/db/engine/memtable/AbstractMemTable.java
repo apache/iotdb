@@ -181,6 +181,7 @@ public abstract class AbstractMemTable implements IMemTable {
     memSeries.write(insertTime, objectValue);
   }
 
+  @SuppressWarnings("squid:S3776") // high Cognitive Complexity
   @Override
   public void write(InsertTabletPlan insertTabletPlan, int start, int end) {
     int columnIndex = 0;
@@ -312,9 +313,9 @@ public abstract class AbstractMemTable implements IMemTable {
         columns.add(vectorSchema.getValueMeasurementIdList().indexOf(queryingMeasurement));
       }
       // get sorted tv list is synchronized so different query can get right sorted list reference
-      TVList vectorTVListCopy = vectorMemChunk.getSortedTVListForQuery(columns);
-      int curSize = vectorTVListCopy.size();
-      return new ReadOnlyMemChunk(partialVectorSchema, vectorTVListCopy, curSize, deletionList);
+      TVList vectorTvListCopy = vectorMemChunk.getSortedTvListForQuery(columns);
+      int curSize = vectorTvListCopy.size();
+      return new ReadOnlyMemChunk(partialVectorSchema, vectorTvListCopy, curSize, deletionList);
     } else {
       if (!checkPath(deviceId, measurement)) {
         return null;
@@ -322,7 +323,7 @@ public abstract class AbstractMemTable implements IMemTable {
       IWritableMemChunk memChunk =
           memTableMap.get(deviceId).get(partialVectorSchema.getMeasurementId());
       // get sorted tv list is synchronized so different query can get right sorted list reference
-      TVList chunkCopy = memChunk.getSortedTVListForQuery();
+      TVList chunkCopy = memChunk.getSortedTvListForQuery();
       int curSize = chunkCopy.size();
       return new ReadOnlyMemChunk(
           measurement,
@@ -335,6 +336,7 @@ public abstract class AbstractMemTable implements IMemTable {
     }
   }
 
+  @SuppressWarnings("squid:S3776") // high Cognitive Complexity
   @Override
   public void delete(
       PartialPath originalPath, PartialPath devicePath, long startTimestamp, long endTimestamp) {

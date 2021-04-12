@@ -240,6 +240,7 @@ public class MManagerBasicTest {
     assertFalse(manager.isPathExist(new PartialPath("root.1")));
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Test
   public void testCreateAlignedTimeseries() throws IllegalPathException {
     MManager manager = IoTDB.metaManager;

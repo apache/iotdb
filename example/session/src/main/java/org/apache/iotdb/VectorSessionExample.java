@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -34,6 +35,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+@SuppressWarnings("squid:S106")
 public class VectorSessionExample {
 
   private static Session session;
@@ -146,7 +148,8 @@ public class VectorSessionExample {
     dataSet.closeOperationHandle();
     dataSet =
         session.executeQueryStatement(
-            "select count(*) from root.sg_1.d1 where time > 50 and s1 > 0 and s2 > 10000  GROUP BY ([50, 100), 10ms)");
+            "select count(*) from root.sg_1.d1 where time > 50 and s1 > 0 and s2 > 10000"
+                + " GROUP BY ([50, 100), 10ms)");
     System.out.println(dataSet.getColumnNames());
     while (dataSet.hasNext()) {
       System.out.println(dataSet.next());

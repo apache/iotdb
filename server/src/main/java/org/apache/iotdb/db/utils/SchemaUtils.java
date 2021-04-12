@@ -158,7 +158,6 @@ public class SchemaUtils {
    * @param measurementDataType
    * @param aggregation
    * @return
-   * @throws MetadataException
    */
   public static List<TSDataType> getAggregatedDataTypes(
       List<TSDataType> measurementDataType, String aggregation) {

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.rescon;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -36,7 +37,7 @@ import java.util.concurrent.atomic.AtomicLong;
 /** Manage all primitive data list in memory, including get and release operation. */
 public class PrimitiveArrayManager {
 
-  /** data type -> ArrayDeque<Array> */
+  /** data type -> ArrayDeque\<Array\> */
   private static final Map<TSDataType, ArrayDeque<Object>> bufferedArraysMap =
       new EnumMap<>(TSDataType.class);
 
