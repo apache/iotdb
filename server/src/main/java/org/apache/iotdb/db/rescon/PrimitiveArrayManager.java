@@ -37,7 +37,7 @@ import java.util.concurrent.atomic.AtomicLong;
 /** Manage all primitive data list in memory, including get and release operation. */
 public class PrimitiveArrayManager {
 
-  /** data type -> ArrayDeque\<Array\> */
+  /** data type -> ArrayDeque of primitive arrays. */
   private static final Map<TSDataType, ArrayDeque<Object>> bufferedArraysMap =
       new EnumMap<>(TSDataType.class);
 

@@ -189,17 +189,17 @@ public class VectorTVList extends TVList {
         bitMaps.set(columns.indexOf(column), this.bitMaps.get(column));
       }
     }
-    VectorTVList vectorTVList = new VectorTVList(types);
-    vectorTVList.timestamps = this.timestamps;
-    vectorTVList.indices = this.indices;
-    vectorTVList.values = values;
-    vectorTVList.bitMaps = bitMaps;
-    vectorTVList.size = this.size;
-    return vectorTVList;
+    VectorTVList vectorTvList = new VectorTVList(types);
+    vectorTvList.timestamps = this.timestamps;
+    vectorTvList.indices = this.indices;
+    vectorTvList.values = values;
+    vectorTvList.bitMaps = bitMaps;
+    vectorTvList.size = this.size;
+    return vectorTvList;
   }
 
   /**
-   * Get the int value at this position in VectorTvList
+   * Get the int value at the given position in VectorTvList.
    *
    * @param rowIndex value index inside this column
    * @param columnIndex index of the column
@@ -213,7 +213,7 @@ public class VectorTVList extends TVList {
   }
 
   /**
-   * Get the long value at this position in VectorTvList
+   * Get the long value at the given position in VectorTvList.
    *
    * @param rowIndex value index inside this column
    * @param columnIndex index of the column
@@ -227,7 +227,7 @@ public class VectorTVList extends TVList {
   }
 
   /**
-   * Get the float value at this position in VectorTvList
+   * Get the float value at the given position in VectorTvList.
    *
    * @param rowIndex value index inside this column
    * @param columnIndex index of the column
@@ -241,7 +241,7 @@ public class VectorTVList extends TVList {
   }
 
   /**
-   * Get the double value at this position in VectorTvList
+   * Get the double value at the given position in VectorTvList.
    *
    * @param rowIndex value index inside this column
    * @param columnIndex index of the column
@@ -255,7 +255,7 @@ public class VectorTVList extends TVList {
   }
 
   /**
-   * Get the Binary value at this position in VectorTvList
+   * Get the Binary value at the given position in VectorTvList.
    *
    * @param rowIndex value index inside this column
    * @param columnIndex index of the column
@@ -269,7 +269,7 @@ public class VectorTVList extends TVList {
   }
 
   /**
-   * Get the boolean value at this position in VectorTvList
+   * Get the boolean value at the given position in VectorTvList.
    *
    * @param rowIndex value index inside this column
    * @param columnIndex index of the column
@@ -283,7 +283,7 @@ public class VectorTVList extends TVList {
   }
 
   /**
-   * Get whether value is marked at this position in VectorTvList
+   * Get whether value is marked at the given position in VectorTvList.
    *
    * @param rowIndex value index inside this column
    * @param columnIndex index of the column
@@ -497,6 +497,7 @@ public class VectorTVList extends TVList {
     pivotIndex = getValueIndex(pos);
   }
 
+  /* Get the row index value in index column. */
   public int getValueIndex(int index) {
     if (index >= size) {
       throw new ArrayIndexOutOfBoundsException(index);
