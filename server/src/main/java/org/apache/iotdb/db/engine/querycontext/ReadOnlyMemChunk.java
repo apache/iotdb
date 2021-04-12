@@ -140,14 +140,12 @@ public class ReadOnlyMemChunk {
   }
 
   /**
-   * The constructor for VECTOR type
+   * The constructor for VECTOR type.
    *
    * @param schema VectorMeasurementSchema
    * @param tvList VectorTvList
    * @param size The Number of Chunk data points
    * @param deletionList The timeRange of deletionList
-   * @throws IOException
-   * @throws QueryProcessException
    */
   public ReadOnlyMemChunk(
       IMeasurementSchema schema, TVList tvList, int size, List<TimeRange> deletionList)

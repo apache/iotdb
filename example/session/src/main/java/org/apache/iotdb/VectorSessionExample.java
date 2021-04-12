@@ -31,9 +31,9 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
 @SuppressWarnings("squid:S106")
 public class VectorSessionExample {
@@ -249,11 +249,11 @@ public class VectorSessionExample {
       int row = tablet.rowSize++;
       timestamps[row] = time;
 
-      long[] sensor1 = (long[]) values[0];
-      sensor1[row] = new Random().nextLong();
+      long[] sensor = (long[]) values[0];
+      sensor1[row] = new SecureRandom().nextLong();
 
-      int[] sensor2 = (int[]) values[1];
-      sensor2[row] = new Random().nextInt();
+      int[] sensors = (int[]) values[1];
+      sensor2[row] = new SecureRandom().nextInt();
 
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
         session.insertTablet(tablet, true);
@@ -282,6 +282,7 @@ public class VectorSessionExample {
 
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
+    // Use the bitMap to mark the null value point
     BitMap[] bitMaps = new BitMap[values.length];
     tablet.bitMaps = bitMaps;
 
@@ -291,11 +292,12 @@ public class VectorSessionExample {
       timestamps[row] = time;
 
       long[] sensor1 = (long[]) values[0];
-      sensor1[row] = new Random().nextLong();
+      sensor[row] = new SecureRandom().nextLong();
 
       int[] sensor2 = (int[]) values[1];
-      sensor2[row] = new Random().nextInt();
+      sensors[row] = new SecureRandom().nextInt();
 
+      // mark this point as null value
       if (time % 5 == 0) {
         bitMaps[1].mark(row);
       }
