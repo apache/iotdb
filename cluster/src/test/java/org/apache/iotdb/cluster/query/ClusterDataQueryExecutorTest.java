@@ -20,7 +20,6 @@
 package org.apache.iotdb.cluster.query;
 
 import org.apache.iotdb.cluster.common.TestUtils;
-import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -52,14 +51,12 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
   @Before
   public void setUp() throws Exception {
     super.setUp();
-    ClusterDescriptor.getInstance().getConfig().setEnableQueryRedirect(true);
   }
 
   @Override
   @After
   public void tearDown() throws Exception {
     super.tearDown();
-    ClusterDescriptor.getInstance().getConfig().setEnableQueryRedirect(false);
   }
 
   @Test
