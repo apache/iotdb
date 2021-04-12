@@ -22,6 +22,7 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.Serializable;
+import java.util.Arrays;
 
 public abstract class TsPrimitiveType implements Serializable {
 
@@ -526,7 +527,7 @@ public abstract class TsPrimitiveType implements Serializable {
 
     @Override
     public int hashCode() {
-      return values.hashCode();
+      return Arrays.hashCode(values);
     }
 
     @Override

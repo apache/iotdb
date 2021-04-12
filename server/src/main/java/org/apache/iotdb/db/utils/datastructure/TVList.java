@@ -94,7 +94,7 @@ public abstract class TVList {
   }
 
   /**
-   * For Vector data type
+   * For Vector data type.
    *
    * @param types the types in the vector
    * @return VectorTvListArrayMemSize
