@@ -58,6 +58,12 @@ struct HeartBeatResponse {
   7: optional Node header
 }
 
+struct RequestCommitIndexResponse {
+  1: required long term // leader's meta log
+  2: required long commitLogIndex  // leader's meta log
+  3: required long commitLogTerm
+}
+
 // node -> node
 struct ElectionRequest {
   1: required long term
@@ -311,7 +317,7 @@ service RaftService {
   * Ask the leader for its commit index, used to check whether the node has caught up with the
   * leader.
   **/
-  long requestCommitIndex(1:Node header)
+  RequestCommitIndexResponse requestCommitIndex(1:Node header)
 
 
   /**
