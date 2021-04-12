@@ -1627,7 +1627,7 @@ public class MTree implements Serializable {
       boolean deviceAdded = false;
       List<MNode> children = new ArrayList<>(node.getChildren().values());
       // template part
-      if (node.isUseTemplate()) {
+      if (upperTemplate != null && node.isUseTemplate()) {
         children.addAll(upperTemplate.getMeasurementMNode());
       }
 
