@@ -438,12 +438,8 @@ public class InsertRowPlan extends InsertPlan {
       // types are not determined, the situation mainly occurs when the plan uses string values
       // and is forwarded to other nodes
       byte typeNum = (byte) ReadWriteIOUtils.read(buffer);
-      if (typeNum == TYPE_RAW_STRING) {
-        values[i] = ReadWriteIOUtils.readString(buffer);
-        continue;
-      }
-      if (typeNum == TYPE_NULL) {
-        values[i] = null;
+      if (typeNum == TYPE_RAW_STRING || typeNum == TYPE_NULL) {
+        values[i] = typeNum == TYPE_RAW_STRING ? ReadWriteIOUtils.readString(buffer) : null;
         continue;
       }
       dataTypes[i] = TSDataType.values()[typeNum];

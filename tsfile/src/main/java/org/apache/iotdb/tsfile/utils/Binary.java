@@ -30,7 +30,7 @@ import java.util.Arrays;
 public class Binary implements Comparable<Binary>, Serializable {
 
   private static final long serialVersionUID = 6394197743397020735L;
-  public static Binary EMPTY_VALUE = new Binary("");
+  public static final Binary EMPTY_VALUE = new Binary("");
 
   private byte[] values;
 

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.utils;
 
 import java.util.Arrays;
@@ -109,7 +110,7 @@ public class BitMap {
 
   @Override
   public String toString() {
-    StringBuffer res = new StringBuffer();
+    StringBuilder res = new StringBuilder();
     for (int i = 0; i < size; i++) {
       res.append(isMarked(i) ? 1 : 0);
     }

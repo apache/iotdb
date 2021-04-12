@@ -117,6 +117,7 @@ public class SerializeUtils {
     }
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static void serializeBatchData(BatchData batchData, DataOutputStream outputStream) {
     try {
       int length = batchData.length();
@@ -204,6 +205,7 @@ public class SerializeUtils {
     }
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static BatchData deserializeBatchData(ByteBuffer buffer) {
     if (buffer == null || (buffer.limit() - buffer.position()) == 0) {
       return null;
