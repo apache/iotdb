@@ -516,6 +516,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
   }
 
   /** for spark/hadoop/hive integration and test */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   public RowRecord nextWithoutConstraint() throws IOException {
     long minTime = timeHeap.pollFirst();

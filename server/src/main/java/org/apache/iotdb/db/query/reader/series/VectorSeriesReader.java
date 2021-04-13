@@ -90,6 +90,7 @@ public class VectorSeriesReader extends SeriesReader {
     this.vectorPartialPath = (VectorPartialPath) seriesPath;
   }
 
+  @Override
   protected void unpackSeqTsFileResource() throws IOException {
     TsFileResource resource = orderUtils.getNextSeqFileResource(seqFileResource, true);
     TimeseriesMetadata timeseriesMetadata =
@@ -114,6 +115,7 @@ public class VectorSeriesReader extends SeriesReader {
     }
   }
 
+  @Override
   protected void unpackUnseqTsFileResource() throws IOException {
     TsFileResource resource = unseqFileResource.remove(0);
     TimeseriesMetadata timeseriesMetadata =
