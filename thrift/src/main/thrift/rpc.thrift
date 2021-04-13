@@ -369,4 +369,6 @@ service TSIService {
   TSExecuteStatementResp executeRawDataQuery(1:TSRawDataQueryReq req);
 
   i64 requestStatementId(1:i64 sessionId);
+
+  void myTest();
 }

@@ -2003,4 +2003,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
     return e.getMessage();
   }
+
+  @Override
+  public void myTest() throws TException {}
 }
