@@ -82,7 +82,7 @@ public class ValuePageReader {
   public BatchData nextBatch(long[] timeBatch, boolean ascending, Filter filter) {
     BatchData pageData = BatchDataFactory.createBatchData(dataType, ascending, false);
     for (int i = 0; i < timeBatch.length; i++) {
-      if ((bitmap[i / 8] & (MASK >>> (i % 8))) == 0) {
+      if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
         continue;
       }
       long timestamp = timeBatch[i];
@@ -136,7 +136,7 @@ public class ValuePageReader {
       return valueBatch;
     }
     for (int i = 0; i < size; i++) {
-      if ((bitmap[i / 8] & (MASK >>> (i % 8))) == 0) {
+      if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
         continue;
       }
       switch (dataType) {

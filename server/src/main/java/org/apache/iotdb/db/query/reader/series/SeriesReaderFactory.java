@@ -33,6 +33,8 @@ import java.util.Set;
 
 public class SeriesReaderFactory {
 
+  private SeriesReaderFactory() {}
+
   public static SeriesReader createSeriesReader(
       PartialPath seriesPath,
       Set<String> allSensors,
