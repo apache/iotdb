@@ -4,6 +4,7 @@ import java.io.*;
 
 public class DiskEvaluator {
   private static final DiskEvaluator INSTANCE = new DiskEvaluator();
+  private final String sudoPassword = "601tif";
 
   public static DiskEvaluator getInstance() {
     return INSTANCE;
@@ -90,6 +91,7 @@ public class DiskEvaluator {
     int i = 0;
     for (; i < numSeeks && curPos < fileLen; ++i) {
       readSize = 0;
+      CmdExecutor.builder(sudoPassword).sudoCmd("echo 3 | tee /proc/sys/vm/drop_caches");
       long startTime = System.nanoTime();
       raf.seek(curPos);
       while (readSize < readLength) {
@@ -111,6 +113,9 @@ public class DiskEvaluator {
    * @throws IOException throw the IOException if the file doesn't exist
    */
   public double performRead(final File file) throws IOException {
+    // clean the caches
+    CmdExecutor.builder(sudoPassword).sudoCmd("echo 3 | tee /proc/sys/vm/drop_caches");
+
     long dataSize = file.length();
     // 1MB buffer size
     final int bufferSize = 1 * 1024 * 1024;
