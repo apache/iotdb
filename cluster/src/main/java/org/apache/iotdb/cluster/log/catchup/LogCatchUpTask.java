@@ -266,7 +266,7 @@ public class LogCatchUpTask implements Callable<Boolean> {
     }
     // do append entries
     if (logger.isInfoEnabled()) {
-      logger.info("{}: sending {} logs to {}", raftMember.getName(), node, logList.size());
+      logger.info("{}: sending {} logs to {}", raftMember.getName(), logList.size(), node);
     }
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       abort = !appendEntriesAsync(logList, request);
@@ -274,7 +274,7 @@ public class LogCatchUpTask implements Callable<Boolean> {
       abort = !appendEntriesSync(logList, request);
     }
     if (!abort && logger.isInfoEnabled()) {
-      logger.info("{}: sent {} logs to {}", raftMember.getName(), node, logList.size());
+      logger.info("{}: sent {} logs to {}", raftMember.getName(), logList.size(), node);
     }
     logList.clear();
   }
