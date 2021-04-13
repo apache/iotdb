@@ -91,7 +91,10 @@ public class DiskEvaluator {
     int i = 0;
     for (; i < numSeeks && curPos < fileLen; ++i) {
       readSize = 0;
-      CmdExecutor.builder(sudoPassword).errRedirect(false).sudoCmd("echo 3 | tee /proc/sys/vm/drop_caches").exec();
+      CmdExecutor.builder(sudoPassword)
+          .errRedirect(false)
+          .sudoCmd("echo 3 | tee /proc/sys/vm/drop_caches")
+          .exec();
       long startTime = System.nanoTime();
       raf.seek(curPos);
       while (readSize < readLength) {
