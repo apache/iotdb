@@ -58,13 +58,17 @@ public class SessionUtils {
         }
       }
     }
+    int indexOfValues = 0;
     for (int i = 0; i < tablet.getSchemas().size(); i++) {
       IMeasurementSchema schema = tablet.getSchemas().get(i);
       if (schema instanceof MeasurementSchema) {
-        getValueBufferOfDataType(schema.getType(), tablet, i, valueBuffer);
+        getValueBufferOfDataType(schema.getType(), tablet, indexOfValues, valueBuffer);
+        indexOfValues++;
       } else {
         for (int j = 0; j < schema.getValueTSDataTypeList().size(); j++) {
-          getValueBufferOfDataType(schema.getValueTSDataTypeList().get(j), tablet, j, valueBuffer);
+          getValueBufferOfDataType(
+              schema.getValueTSDataTypeList().get(j), tablet, indexOfValues, valueBuffer);
+          indexOfValues++;
         }
       }
     }

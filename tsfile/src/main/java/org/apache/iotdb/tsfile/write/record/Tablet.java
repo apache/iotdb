@@ -53,7 +53,10 @@ public class Tablet {
   private List<IMeasurementSchema> schemas;
 
   /** measurementId->indexOf(measurementSchema) */
-  private Map<String, Integer> measurementIndex;
+  private Map<String, Integer> measurementIndexInSchema;
+
+  /** measurementId->indexOf(values) */
+  private Map<String, Integer> measurementIndexInValues;
 
   /** timestamps in this tablet */
   public long[] timestamps;
@@ -91,15 +94,24 @@ public class Tablet {
     this.deviceId = deviceId;
     this.schemas = new ArrayList<>(schemas);
     this.maxRowNumber = maxRowNumber;
-    measurementIndex = new HashMap<>();
+    measurementIndexInSchema = new HashMap<>();
+    measurementIndexInValues = new HashMap<>();
 
-    for (int i = 0; i < schemas.size(); i++) {
-      if (schemas.get(i).getType() == TSDataType.VECTOR) {
-        for (String measurementId : schemas.get(i).getValueMeasurementIdList()) {
-          measurementIndex.put(measurementId, i);
+    int indexInValues = 0;
+    int indexInSchema = 0;
+    for (IMeasurementSchema schema : schemas) {
+      if (schema.getType() == TSDataType.VECTOR) {
+        for (String measurementId : schema.getValueMeasurementIdList()) {
+          measurementIndexInValues.put(measurementId, indexInValues);
+          measurementIndexInSchema.put(measurementId, indexInSchema);
+          indexInValues++;
         }
+      } else {
+        measurementIndexInValues.put(schema.getMeasurementId(), indexInValues);
+        measurementIndexInSchema.put(schema.getMeasurementId(), indexInSchema);
+        indexInValues++;
       }
-      measurementIndex.put(schemas.get(i).getMeasurementId(), i);
+      indexInSchema++;
     }
 
     createColumns();
@@ -117,15 +129,16 @@ public class Tablet {
 
   // (s1, s2)  s3
   public void addValue(String measurementId, int rowIndex, Object value) {
-    int indexOfValue = measurementIndex.get(measurementId);
-    IMeasurementSchema measurementSchema = schemas.get(indexOfValue);
+    int indexOfValues = measurementIndexInValues.get(measurementId);
+    int indexOfSchema = measurementIndexInSchema.get(measurementId);
+    IMeasurementSchema measurementSchema = schemas.get(indexOfSchema);
 
     if (measurementSchema.getType().equals(TSDataType.VECTOR)) {
       int indexInVector = measurementSchema.getMeasurementIdColumnIndex(measurementId);
       TSDataType dataType = measurementSchema.getValueTSDataTypeList().get(indexInVector);
-      addValueOfDataType(dataType, rowIndex, indexOfValue + indexInVector, value);
+      addValueOfDataType(dataType, rowIndex, indexOfValues, value);
     } else {
-      addValueOfDataType(measurementSchema.getType(), rowIndex, indexOfValue, value);
+      addValueOfDataType(measurementSchema.getType(), rowIndex, indexOfValues, value);
     }
   }
 

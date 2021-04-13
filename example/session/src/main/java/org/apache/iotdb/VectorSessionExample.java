@@ -50,7 +50,9 @@ public class VectorSessionExample {
     session.setFetchSize(10000);
 
     createTemplate();
-    insertTabletWithAlignedTimeseries();
+    insertTabletWithAlignedTimeseriesMethod1();
+    insertTabletWithAlignedTimeseriesMethod2();
+
     insertNullableTabletWithAlignedTimeseries();
     selectTest();
     selectWithValueFilterTest();
@@ -207,7 +209,8 @@ public class VectorSessionExample {
     session.setDeviceTemplate("template1", "root.sg_1");
   }
 
-  private static void insertTabletWithAlignedTimeseries()
+  /** Method 1 for insert tablet with aligned timeseries */
+  private static void insertTabletWithAlignedTimeseriesMethod1()
       throws IoTDBConnectionException, StatementExecutionException {
     // The schema of measurements of one device
     // only measurementId and data type in MeasurementSchema take effects in Tablet
@@ -217,8 +220,6 @@ public class VectorSessionExample {
             new String[] {"s1", "s2"}, new TSDataType[] {TSDataType.INT64, TSDataType.INT32}));
 
     Tablet tablet = new Tablet(ROOT_SG1_D1, schemaList);
-
-    // Method 1 to add tablet data
     long timestamp = System.currentTimeMillis();
 
     for (long row = 0; row < 100; row++) {
@@ -245,7 +246,20 @@ public class VectorSessionExample {
       tablet.reset();
     }
 
-    // Method 2 to add tablet data
+    session.executeNonQueryStatement("flush");
+  }
+
+  /** Method 2 for insert tablet with aligned timeseries */
+  private static void insertTabletWithAlignedTimeseriesMethod2()
+      throws IoTDBConnectionException, StatementExecutionException {
+    // The schema of measurements of one device
+    // only measurementId and data type in MeasurementSchema take effects in Tablet
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(
+        new VectorMeasurementSchema(
+            new String[] {"s1", "s2"}, new TSDataType[] {TSDataType.INT64, TSDataType.INT32}));
+
+    Tablet tablet = new Tablet(ROOT_SG1_D1, schemaList);
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
 
