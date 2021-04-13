@@ -244,7 +244,8 @@ public class RpcUtils {
           digits.insert(0, "0");
         }
       }
-      return datetime.substring(0, 19) + "." + digits + datetime.substring(19);
+      String timeZoneStr = datetime.substring(datetime.length() - 6);
+      return datetime.substring(0, datetime.length() - 6) + "." + digits + timeZoneStr;
     } else if (timestampPrecision.equals("us")) {
       long integerofDate = timestamp / 1000_000;
       StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000_000));
