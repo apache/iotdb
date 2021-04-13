@@ -46,6 +46,7 @@ import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
+import org.apache.iotdb.cluster.rpc.thrift.RequestCommitIndexResponse;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
@@ -307,7 +308,8 @@ public class DataClusterServer extends RaftServer
   }
 
   @Override
-  public void requestCommitIndex(Node header, AsyncMethodCallback<Long> resultHandler) {
+  public void requestCommitIndex(
+      Node header, AsyncMethodCallback<RequestCommitIndexResponse> resultHandler) {
     DataAsyncService service = getDataAsyncService(header, resultHandler, "Request commit index");
     if (service != null) {
       service.requestCommitIndex(header, resultHandler);
@@ -919,7 +921,7 @@ public class DataClusterServer extends RaftServer
   }
 
   @Override
-  public long requestCommitIndex(Node header) throws TException {
+  public RequestCommitIndexResponse requestCommitIndex(Node header) throws TException {
     return getDataSyncService(header).requestCommitIndex(header);
   }
 

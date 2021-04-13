@@ -208,13 +208,19 @@ public class CommittedEntryManager {
       throw new EntryUnavailableException(compactIndex, getLastIndex());
     }
     int index = (int) (compactIndex - dummyIndex);
+    for (int i = 1; i <= index; i++) {
+      entryTotalMemSize -= entries.get(i).getByteSize();
+    }
+    // The following two lines of code should be tightly linked,
+    // because the check apply thread will read the entry also, and there will be concurrency
+    // problems,
+    // but please rest assured that we have done concurrency security check in the check apply
+    // thread.
+    // They are put together just to reduce the probability of concurrency.
     entries.set(
         0,
         new EmptyContentLog(
             entries.get(index).getCurrLogIndex(), entries.get(index).getCurrLogTerm()));
-    for (int i = 1; i <= index; i++) {
-      entryTotalMemSize -= entries.get(i).getByteSize();
-    }
     entries.subList(1, index + 1).clear();
   }
 
