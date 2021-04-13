@@ -1546,5 +1546,4 @@ public class Session {
   public void myTest() throws TException {
     defaultSessionConnection.myTest();
   }
-
 }

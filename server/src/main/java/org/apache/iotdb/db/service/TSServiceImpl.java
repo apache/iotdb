@@ -2008,17 +2008,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public void myTest() throws TException {
-    DiskEvaluator evaluator = DiskEvaluator.getInstance();
+    DiskEvaluator diskEvaluator = DiskEvaluator.getInstance();
+    String path = "/data/test.tmp";
+    File file = new File(path);
     try {
-      File generatedFile = evaluator.generateFile(1024 * 1024 * 1024 * 20, "/data/test.tmp");
-      long[] seekCost = new long[10];
-      // seek 50KB for 10 times
-      if (evaluator.performSeek(seekCost, generatedFile, 10, 512, 50 * 1024) != -1) {
-        for (long cost : seekCost) {
-          System.out.println(cost);
-        }
+      if (!file.exists()) {
+        file = diskEvaluator.generateFile(8l * 1024l * 1024l * 1024l, path);
       }
-      generatedFile.delete();
+      diskEvaluator.performRead(file);
     } catch (Exception e) {
       e.printStackTrace();
     }
