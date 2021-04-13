@@ -45,9 +45,10 @@ public class DiskEvaluator {
     os.flush();
     os.close();
     long endTime = System.nanoTime();
-    double lastTime = ((double)(endTime - startTime)) / 1000 / 1000;
-    double writeSpeed = ((double)fileSize) / lastTime / 1024;
-    System.out.println(String.format("Write %d KB in %.2f s, %.2f MB/s", fileSize / 1024, lastTime, writeSpeed));
+    double lastTime = ((double) (endTime - startTime)) / 1000 / 1000;
+    double writeSpeed = ((double) fileSize) / lastTime / 1024;
+    System.out.println(
+        String.format("Write %d KB in %.2f s, %.2f MB/s", fileSize / 1024, lastTime, writeSpeed));
     return file;
   }
 
@@ -128,7 +129,9 @@ public class DiskEvaluator {
     double readTime = ((double) (endTime - startTime)) / 1000 / 1000 / 1000;
     // read speed in KB
     double readSpeed = ((double) dataSize) / readTime / 1024;
-    System.out.println(String.format("Read %d KB in %.2f seconds, %.2f KB/s", dataSize / 1024, readTime, readSpeed));
+    System.out.println(
+        String.format(
+            "Read %d KB in %.2f seconds, %.2f KB/s", dataSize / 1024, readTime, readSpeed));
 
     return readSpeed;
   }
@@ -137,14 +140,17 @@ public class DiskEvaluator {
     DiskEvaluator evaluator = DiskEvaluator.getInstance();
     try {
       File generatedFile = evaluator.generateFile(1024l * 1024l * 1024l * 8l, "E:\\test.tmp");
-      long[] seekCost = new long[10];
+      CmdExecutor.builder("tif601").sudoCmd("echo 3 | sudo tee /proc/sys/vm/drop_caches").exec();
+      //      long[] seekCost = new long[10];
       // seek 1MB for 10 times
-      if (evaluator.performSeek(seekCost, generatedFile, 10, 512, 50 * 1024, 8000l * 1024l * 1024l) != -1) {
-        for (long cost : seekCost) {
-          System.out.println(cost);
-        }
-      }
-//      System.out.println(evaluator.performRead(generatedFile));
+      //      if (evaluator.performSeek(seekCost, generatedFile, 10, 512, 50 * 1024, 8000l * 1024l *
+      // 1024l)
+      //          != -1) {
+      //        for (long cost : seekCost) {
+      //          System.out.println(cost);
+      //        }
+      //      }
+      System.out.println(evaluator.performRead(generatedFile));
     } catch (Exception e) {
       e.printStackTrace();
     }
