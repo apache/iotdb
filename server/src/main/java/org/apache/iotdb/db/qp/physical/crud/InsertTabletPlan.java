@@ -446,11 +446,11 @@ public class InsertTabletPlan extends InsertPlan {
 
   @Override
   public long getMinTime() {
-    return times[0];
+    return times.length != 0 ? times[0] : Long.MIN_VALUE;
   }
 
   public long getMaxTime() {
-    return times[times.length - 1];
+    return times.length != 0 ? times[times.length - 1] : Long.MAX_VALUE;
   }
 
   public TimeValuePair composeLastTimeValuePair(int measurementIndex) {
