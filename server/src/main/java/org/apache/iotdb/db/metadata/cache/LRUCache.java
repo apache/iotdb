@@ -26,23 +26,33 @@ public class LRUCache implements MNodeCache {
     map =
         new LinkedHashMap<String, MNode>(maxCapacity, DEFAULT_LOAD_FACTOR, true) {
           protected boolean removeEldestEntry(Map.Entry<String, MNode> eldest) {
-            return maxCapacity + 1 == map.size();
+            return maxCapacity < map.size();
           }
         };
   }
 
   @Override
-  public void put(MNode mNode) {
+  public void put(String path,MNode mNode) {
     try {
       writeLock.lock();
-      map.put(mNode.getFullPath(), mNode);
+      map.put(path.toString(), mNode);
     } finally {
       writeLock.unlock();
     }
   }
 
   @Override
-  public MNode get(PartialPath path) {
+  public boolean contains(String path) {
+    try {
+      readLock.lock();
+      return map.containsKey(path.toString());
+    } finally {
+      readLock.unlock();
+    }
+  }
+
+  @Override
+  public MNode get(String path) {
     try {
       readLock.lock();
       return map.get(path.toString());
@@ -62,7 +72,7 @@ public class LRUCache implements MNodeCache {
   }
 
   @Override
-  public void remove(PartialPath path) {
+  public void remove(String path) {
     try {
       writeLock.lock();
       map.remove(path.toString());

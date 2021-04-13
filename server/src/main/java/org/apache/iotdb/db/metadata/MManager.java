@@ -131,7 +131,7 @@ public class MManager {
   private String logFilePath;
   private String mtreeSnapshotPath;
   private String mtreeSnapshotTmpPath;
-  private MTree mtree;
+  private MTreeInterface mtree;
   private MLogWriter logWriter;
   private TagLogFile tagLogFile;
   private boolean isRecovering;

@@ -42,6 +42,8 @@ public class MNode implements Serializable {
   private static Map<String, String> cachedPathPool =
       CachedStringPool.getInstance().getCachedPool();
 
+  private static final MNode evictionPlaceHolder=new MNode(null,null);
+
   /** Name of the MNode */
   protected String name;
 
@@ -135,7 +137,10 @@ public class MNode implements Serializable {
     }
 
     child.parent = this;
-    children.putIfAbsent(child.getName(), child);
+    if(isNull(getChild(child.getName()))){
+      children.put(child.getName(),child);
+    }
+//    children.putIfAbsent(child.getName(), child);
     return child;
   }
 
@@ -159,10 +164,18 @@ public class MNode implements Serializable {
     if (children != null) {
       child = children.get(name);
     }
-    if (child != null) {
+    if (!isNull(child)) {
       return child;
     }
-    return aliasChildren == null ? null : aliasChildren.get(name);
+    if(aliasChildren!=null){
+      child=aliasChildren.get(name);
+    }
+    if (!isNull(child)) {
+      return child;
+    }else {
+      return null;
+    }
+//    return aliasChildren == null ? null : aliasChildren.get(name);
   }
 
   /** get the count of all MeasurementMNode whose ancestor is current node */
@@ -329,5 +342,22 @@ public class MNode implements Serializable {
 
   public void setPosition(long position) {
     this.position = position;
+  }
+
+  public void evictChild(String name){
+    if(children!=null&&children.containsKey(name)){
+      MNode mNode=children.get(name);
+      children.put(name,evictionPlaceHolder);
+      if(mNode instanceof MeasurementMNode){
+        String alias=((MeasurementMNode) mNode).getAlias();
+        if(alias!=null&&aliasChildren!=null&&aliasChildren.containsKey(alias)){
+          aliasChildren.put(alias,evictionPlaceHolder);
+        }
+      }
+    }
+  }
+
+  public static boolean isNull(MNode mNode){
+    return mNode==null||mNode.equals(evictionPlaceHolder);
   }
 }

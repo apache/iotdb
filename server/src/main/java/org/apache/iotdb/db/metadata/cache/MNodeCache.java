@@ -6,17 +6,19 @@ import org.apache.iotdb.tsfile.common.cache.Cache;
 
 import java.util.Collection;
 
-public interface MNodeCache extends Cache<PartialPath, MNode> {
+public interface MNodeCache extends Cache<String, MNode> {
 
   int DEFAULT_MAX_CAPACITY = 10000;
 
-  void put(MNode mNode);
+  void put(String path,MNode mNode);
 
-  MNode get(PartialPath path);
+  boolean contains(String path);
+
+  MNode get(String path);
 
   Collection<MNode> getAll();
 
-  void remove(PartialPath path);
+  void remove(String path);
 
   void clear();
 }

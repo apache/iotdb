@@ -64,7 +64,7 @@ public class CachePerformanceTest {
 //    System.out.println(ObjectSizeCalculator.getObjectSize(mTreeDisk));
     paths=null;
     System.gc();
-    while (true) {}
+//    while (true) {}
   }
 
   private MTreeInterface testMTreeMem() throws Exception {
