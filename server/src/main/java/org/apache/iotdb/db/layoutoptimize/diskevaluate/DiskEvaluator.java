@@ -218,7 +218,7 @@ public class DiskEvaluator {
 
   public static void main(String[] args) {
     DiskEvaluator diskEvaluator = DiskEvaluator.getInstance();
-    String path = "/media/lau/TOSHIBA EXT/test";
+    String path = "/data/tmp";
     File file = new File(path);
     try {
       if (!file.exists()) {
