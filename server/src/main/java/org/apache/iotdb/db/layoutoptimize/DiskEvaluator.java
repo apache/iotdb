@@ -182,12 +182,13 @@ public class DiskEvaluator {
   public static void main(String[] args) {
     DiskEvaluator evaluator = DiskEvaluator.getInstance();
     try {
-       File file = new File("/media/lau/TOSHIBA EXT/test.tmp");
-       double[] seekResult = new double[1000];
-       evaluator.performMultiSegmentSeek(512, 1000, 100, file, 100, seekResult);
-       for(int i = 0; i < 1000; ++i) {
-         System.out.println(String.format("Size:%d bytes, seek time: %.2f ms", 512 * (i+1), seekResult[i]));
-       }
+      File file = new File("/media/lau/TOSHIBA EXT/test.tmp");
+      double[] seekResult = new double[1000];
+      evaluator.performMultiSegmentSeek(512, 1000, 100, file, 100, seekResult);
+      for (int i = 0; i < 1000; ++i) {
+        System.out.println(
+            String.format("Size:%d bytes, seek time: %.2f ms", 512 * (i + 1), seekResult[i]));
+      }
     } catch (Exception e) {
       e.printStackTrace();
     }

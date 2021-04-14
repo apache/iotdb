@@ -2015,13 +2015,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       if (!file.exists()) {
         file = diskEvaluator.generateFile(8l * 1024l * 1024l * 1024l, path);
       }
-      long[] seekTime = new long[10];
-      if (diskEvaluator.performSeek(
-              seekTime, file, 10, 512, 8l * 1024l * 1024l, 512l * 1024l * 1024l)
-          != -1) {
-        for (long time : seekTime) {
-          System.out.println(time);
-        }
+      double[] seekTime = new double[100];
+      diskEvaluator.performMultiSegmentSeek(512, 100, 50, file, 100, seekTime);
+      for (int i = 0; i < 100; ++i) {
+        System.out.println(
+            String.format("Size:%d bytes, seek time: %.2f ms", 512 * (i + 1), seekTime[i]));
       }
     } catch (Exception e) {
       e.printStackTrace();
