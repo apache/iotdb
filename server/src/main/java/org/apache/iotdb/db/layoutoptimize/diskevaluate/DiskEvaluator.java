@@ -198,11 +198,7 @@ public class DiskEvaluator {
         long[] seekCosts = new long[seekNumForPerSegment];
         int realNumSeeks =
             performLocalSeeks(
-                seekCosts,
-                curFile,
-                seekNumForPerSegment,
-                readLength,
-                curSeekDistance);
+                seekCosts, curFile, seekNumForPerSegment, readLength, curSeekDistance);
         double avgCost = getAvgCost(seekCosts, realNumSeeks);
         totalSeekCost += avgCost / 1000;
       }
@@ -215,11 +211,14 @@ public class DiskEvaluator {
     logWriter.close();
   }
 
-  public int performLocalSeeks (long[] seekCosts, final File file,
-                                final int numSeeks, final int readLength, final long seekDistance) throws IOException
-  {
-    if (seekCosts.length < numSeeks)
-    {
+  public int performLocalSeeks(
+      long[] seekCosts,
+      final File file,
+      final int numSeeks,
+      final int readLength,
+      final long seekDistance)
+      throws IOException {
+    if (seekCosts.length < numSeeks) {
       return -1;
     }
     long fileLen = file.length();
@@ -229,24 +228,21 @@ public class DiskEvaluator {
 
     long pos = 0;
     raf.seek(pos);
-    while (readSize < readLength)
-    {
-      readSize += raf.read(buffer, readSize, readLength-readSize);
+    while (readSize < readLength) {
+      readSize += raf.read(buffer, readSize, readLength - readSize);
     }
     pos += seekDistance;
 
     int i = 0;
-    for (; i < numSeeks && pos < fileLen; ++i)
-    {
+    for (; i < numSeeks && pos < fileLen; ++i) {
       readSize = 0;
       long startNanoTime = System.nanoTime();
       raf.seek(pos);
-      while (readSize < readLength)
-      {
-        readSize += raf.read(buffer, readSize, readLength-readSize);
+      while (readSize < readLength) {
+        readSize += raf.read(buffer, readSize, readLength - readSize);
       }
       long endNanoTime = System.nanoTime();
-      seekCosts[i] = (endNanoTime-startNanoTime) / 1000;
+      seekCosts[i] = (endNanoTime - startNanoTime) / 1000;
       pos += seekDistance;
     }
     raf.close();
