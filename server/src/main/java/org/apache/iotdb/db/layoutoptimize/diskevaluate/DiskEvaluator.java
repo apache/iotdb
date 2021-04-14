@@ -64,61 +64,6 @@ public class DiskEvaluator {
     return file;
   }
 
-  /**
-   * perform the seek test on the given file
-   *
-   * @param seekCosts the array to record the seek cost,tt is millisecond
-   * @param file the file to perform seek test
-   * @param numSeeks the number of seek that needs to be performed
-   * @param readLength the length of data to be read after each seek
-   * @param seekDistance the distance of each seek
-   * @param interval the interval between each seek
-   * @return -1 if the seek doesn't perform, else the number of performed seeks
-   * @throws IOException throw the IOException if the file doesn't exist
-   */
-  public int performSeek(
-      long[] seekCosts,
-      final File file,
-      final int numSeeks,
-      final int readLength,
-      final long seekDistance,
-      final long interval)
-      throws IOException {
-    if (seekCosts.length < numSeeks) {
-      return -1;
-    }
-    RandomAccessFile raf = new RandomAccessFile(file, "r");
-    int readSize = 0;
-    byte[] buffer = new byte[readLength];
-
-    long fileLen = file.length();
-    long curPos = 0;
-    raf.seek(curPos);
-    while (readSize < readLength) {
-      readSize += raf.read(buffer, readSize, readLength - readSize);
-    }
-    curPos += seekDistance;
-
-    int i = 0;
-    for (; i < numSeeks && curPos < fileLen; ++i) {
-      readSize = 0;
-      CmdExecutor.builder(sudoPassword)
-          .errRedirect(false)
-          .verbose(false)
-          .sudoCmd("echo 3 | tee /proc/sys/vm/drop_caches")
-          .exec();
-      long startTime = System.nanoTime();
-      raf.seek(curPos);
-      while (readSize < readLength) {
-        readSize += raf.read(buffer, readSize, readLength - readSize);
-      }
-      curPos += interval;
-      long endTime = System.nanoTime();
-      seekCosts[i] = (endTime - startTime) / 1000;
-    }
-
-    return i;
-  }
 
   /**
    * perform the read test on the given file, to get the read speed of the disk
@@ -167,49 +112,6 @@ public class DiskEvaluator {
     return totalCost.divide(BigDecimal.valueOf(costs.length)).doubleValue();
   }
 
-  public void performMultiSegmentSeek(
-      final long seekDistance,
-      final long seekNum,
-      final int seekNumForPerSegment,
-      File file,
-      final int readLength,
-      double[] seekResult)
-      throws IOException {
-    File[] files = InputFactory.Instance().getFiles(file.getPath());
-    final String logPath = IoTDBDescriptor.getInstance().getConfig().getSystemDir() + "/seek.txt";
-    final File logFile = new File(logPath);
-    if (!logFile.exists()) {
-      logFile.createNewFile();
-    }
-    BufferedWriter logWriter = new BufferedWriter(new FileWriter(logFile));
-    for (int j = 1; j <= seekNum; ++j) {
-      logger.info(String.format("Seeking test %.2f%%", ((double) j) / seekNum * 100.0d));
-      long curSeekDistance = seekDistance * j;
-
-      // drop caches before seeks
-      CmdExecutor.builder(sudoPassword)
-          .errRedirect(false)
-          .verbose(false)
-          .sudoCmd("echo 3 | sudo tee /proc/sys/vm/drop_caches");
-
-      double totalSeekCost = 0;
-      for (int i = 0; i < files.length; i += 2) {
-        File curFile = files[i];
-        long[] seekCosts = new long[seekNumForPerSegment];
-        int realNumSeeks =
-            performLocalSeeks(
-                seekCosts, curFile, seekNumForPerSegment, readLength, curSeekDistance);
-        double avgCost = getAvgCost(seekCosts, realNumSeeks);
-        totalSeekCost += avgCost / 1000;
-      }
-      double realAvgCost = totalSeekCost / ((files.length) / 2);
-      logWriter.write(
-          String.format("Seek distance: %d byte, %.3f ms\n", curSeekDistance, realAvgCost));
-      seekResult[j - 1] = realAvgCost;
-    }
-    logWriter.flush();
-    logWriter.close();
-  }
 
   public int performLocalSeeks(
       long[] seekCosts,
