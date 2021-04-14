@@ -250,6 +250,53 @@ public class DiskEvaluator {
     return i;
   }
 
+  public void performLocalSeek() {
+    try {
+      File[] files = InputFactory.Instance().getFiles(dataPath);
+
+      BufferedWriter seekCostWriter = new BufferedWriter(new FileWriter(logDir + "seek_cost.txt"));
+      seekCostWriter.write(seekDistInterval + "\n");
+      seekCostWriter.write("0\t0\n");
+
+      for (int j = 1; j <= numInvervals; ++j) {
+        long seekDistance = seekDistInterval * j;
+
+        // drop caches before seeks.
+        CmdExecutor.builder("tif601").errRedirect(false).sudoCmd("echo 3 | sudo tee /proc/sys/vm/drop_caches").exec();
+
+        File subdir = new File(logDir + "seek_dist_" + seekDistance);
+        subdir.mkdir();
+
+        BufferedWriter summaryWriter = new BufferedWriter(new FileWriter(subdir.getPath() + "/summary.csv"));
+        summaryWriter.write("\"file number\",\t\"seek distance\",\t\"read length\",\t\"seek time(us)\"\n");
+        double totalSeekCost = 0;
+
+        for (int i = 0; i < files.length; i += 2) {
+          // get the local file
+          File file = files[i];
+          long[] seekCosts = new long[numSeeks];
+          int realNumSeeks = performLocalSeeks(
+              seekCosts, file, numSeeks, readLength, seekDistance);
+          double fileMedCost = seekPerformer.logSeekCost(seekCosts, realNumSeeks, subdir.getPath() + "/file_num_" + i + ".txt");
+          summaryWriter.write(i + "," + seekDistance + "," + readLength + "," + fileMedCost + "\n");
+          totalSeekCost += fileMedCost / 1000;
+        }
+        summaryWriter.flush();
+        summaryWriter.close();
+
+        double avgSeekCost = totalSeekCost / ((endFileNumber - startFileNumber) / numSkippedFiles);
+        // seek cost in seek_cost.txt is in ms
+        seekCostWriter.write(seekDistance + "\t" + avgSeekCost + "\n");
+        seekCostWriter.flush();
+
+        progressListener.setPercentage(1.0 * j / numInvervals);
+      }
+      seekCostWriter.close();
+    } catch (IOException e) {
+      ExceptionHandler.Instance().log(ExceptionType.ERROR, "local seek evaluation error", e);
+    }
+  }
+
   public static void main(String[] args) {
     DiskEvaluator diskEvaluator = DiskEvaluator.getInstance();
     String path = "/data/tmp";
