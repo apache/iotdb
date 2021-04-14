@@ -290,6 +290,7 @@ public class DiskEvaluator {
         summaryWriter.close();
 
         double avgSeekCost = totalSeekCost / ((files.length) / 2);
+        System.out.println(avgSeekCost);
         // seek cost in seek_cost.txt is in ms
         seekCostWriter.write(seekDistance + "\t" + avgSeekCost + "\n");
         seekCostWriter.flush();
