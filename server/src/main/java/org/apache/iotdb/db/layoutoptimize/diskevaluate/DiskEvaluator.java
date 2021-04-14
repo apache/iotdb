@@ -297,11 +297,11 @@ public class DiskEvaluator {
     String path = "/data/tmp";
     File file = new File(path);
     try {
-      //      if (!file.exists()) {
-      //        file = diskEvaluator.generateFile(4l * 1024l * 1024l * 1024l, path, 20);
-      //      }
-      double[] seekTime = new double[100];
-      diskEvaluator.performLocalSeek(path, 512, 1000, 100, 100);
+      if (!file.exists()) {
+        file = diskEvaluator.generateFile(4l * 1024l * 1024l * 1024l, path, 20);
+      }
+      //      double[] seekTime = new double[100];
+      //      diskEvaluator.performLocalSeek(path, 512, 1000, 100, 100);
     } catch (Exception e) {
       e.printStackTrace();
     }
