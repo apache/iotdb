@@ -300,7 +300,7 @@ public class DiskEvaluator {
         file = diskEvaluator.generateFile(4l * 1024l * 1024l * 1024l, path, 20);
       }
       double[] seekTime = new double[100];
-      diskEvaluator.performLocalSeek(path, 512, 1000, 100, 100);
+      diskEvaluator.performLocalSeek(path, 51200, 1, 100, 100);
     } catch (Exception e) {
       e.printStackTrace();
     }
