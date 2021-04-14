@@ -262,22 +262,28 @@ public class DiskEvaluator {
         long seekDistance = seekDistInterval * j;
 
         // drop caches before seeks.
-        CmdExecutor.builder("tif601").errRedirect(false).sudoCmd("echo 3 | sudo tee /proc/sys/vm/drop_caches").exec();
+        CmdExecutor.builder("tif601")
+            .errRedirect(false)
+            .sudoCmd("echo 3 | sudo tee /proc/sys/vm/drop_caches")
+            .exec();
 
         File subdir = new File(logDir + "seek_dist_" + seekDistance);
         subdir.mkdir();
 
-        BufferedWriter summaryWriter = new BufferedWriter(new FileWriter(subdir.getPath() + "/summary.csv"));
-        summaryWriter.write("\"file number\",\t\"seek distance\",\t\"read length\",\t\"seek time(us)\"\n");
+        BufferedWriter summaryWriter =
+            new BufferedWriter(new FileWriter(subdir.getPath() + "/summary.csv"));
+        summaryWriter.write(
+            "\"file number\",\t\"seek distance\",\t\"read length\",\t\"seek time(us)\"\n");
         double totalSeekCost = 0;
 
         for (int i = 0; i < files.length; i += 2) {
           // get the local file
           File file = files[i];
           long[] seekCosts = new long[numSeeks];
-          int realNumSeeks = performLocalSeeks(
-              seekCosts, file, numSeeks, readLength, seekDistance);
-          double fileMedCost = seekPerformer.logSeekCost(seekCosts, realNumSeeks, subdir.getPath() + "/file_num_" + i + ".txt");
+          int realNumSeeks = performLocalSeeks(seekCosts, file, numSeeks, readLength, seekDistance);
+          double fileMedCost =
+              seekPerformer.logSeekCost(
+                  seekCosts, realNumSeeks, subdir.getPath() + "/file_num_" + i + ".txt");
           summaryWriter.write(i + "," + seekDistance + "," + readLength + "," + fileMedCost + "\n");
           totalSeekCost += fileMedCost / 1000;
         }
