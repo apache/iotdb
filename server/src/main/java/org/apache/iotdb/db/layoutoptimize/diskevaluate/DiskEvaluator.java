@@ -209,7 +209,7 @@ public class DiskEvaluator {
       }
       double realAvgCost = totalSeekCost / ((files.length) / 2);
       logWriter.write(
-          String.format("Seek distance: %d byte, %.3f ms", curSeekDistance, realAvgCost));
+          String.format("Seek distance: %d byte, %.3f ms\n", curSeekDistance, realAvgCost));
       seekResult[j - 1] = realAvgCost;
     }
     logWriter.flush();
@@ -218,7 +218,7 @@ public class DiskEvaluator {
 
   public static void main(String[] args) {
     DiskEvaluator diskEvaluator = DiskEvaluator.getInstance();
-    String path = "/data/tmp";
+    String path = "/media/lau/TOSHIBA EXT/test";
     File file = new File(path);
     try {
       if (!file.exists()) {
