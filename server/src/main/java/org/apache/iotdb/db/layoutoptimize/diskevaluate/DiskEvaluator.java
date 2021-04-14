@@ -197,13 +197,12 @@ public class DiskEvaluator {
         File curFile = files[i];
         long[] seekCosts = new long[seekNumForPerSegment];
         int realNumSeeks =
-            performSeek(
+            performLocalSeeks(
                 seekCosts,
                 curFile,
                 seekNumForPerSegment,
                 readLength,
-                curSeekDistance,
-                curSeekDistance * 10l);
+                curSeekDistance);
         double avgCost = getAvgCost(seekCosts, realNumSeeks);
         totalSeekCost += avgCost / 1000;
       }
@@ -214,6 +213,45 @@ public class DiskEvaluator {
     }
     logWriter.flush();
     logWriter.close();
+  }
+
+  public int performLocalSeeks (long[] seekCosts, final File file,
+                                final int numSeeks, final int readLength, final long seekDistance) throws IOException
+  {
+    if (seekCosts.length < numSeeks)
+    {
+      return -1;
+    }
+    long fileLen = file.length();
+    RandomAccessFile raf = new RandomAccessFile(file, "r");
+    int readSize = 0;
+    byte[] buffer = new byte[readLength];
+
+    long pos = 0;
+    raf.seek(pos);
+    while (readSize < readLength)
+    {
+      readSize += raf.read(buffer, readSize, readLength-readSize);
+    }
+    pos += seekDistance;
+
+    int i = 0;
+    for (; i < numSeeks && pos < fileLen; ++i)
+    {
+      readSize = 0;
+      long startNanoTime = System.nanoTime();
+      raf.seek(pos);
+      while (readSize < readLength)
+      {
+        readSize += raf.read(buffer, readSize, readLength-readSize);
+      }
+      long endNanoTime = System.nanoTime();
+      seekCosts[i] = (endNanoTime-startNanoTime) / 1000;
+      pos += seekDistance;
+    }
+    raf.close();
+
+    return i;
   }
 
   public static void main(String[] args) {
