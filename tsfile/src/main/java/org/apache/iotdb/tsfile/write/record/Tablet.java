@@ -53,7 +53,10 @@ public class Tablet {
   private List<IMeasurementSchema> schemas;
 
   /** measurementId->indexOf(measurementSchema) */
-  private Map<String, Integer> measurementIndex;
+  private Map<String, Integer> measurementIndexInSchema;
+
+  /** measurementId->indexOf(values) */
+  private Map<String, Integer> measurementIndexInValues;
 
   /** timestamps in this tablet */
   public long[] timestamps;
@@ -91,15 +94,24 @@ public class Tablet {
     this.deviceId = deviceId;
     this.schemas = new ArrayList<>(schemas);
     this.maxRowNumber = maxRowNumber;
-    measurementIndex = new HashMap<>();
+    measurementIndexInSchema = new HashMap<>();
+    measurementIndexInValues = new HashMap<>();
 
-    for (int i = 0; i < schemas.size(); i++) {
-      if (schemas.get(i).getType() == TSDataType.VECTOR) {
-        for (String measurementId : schemas.get(i).getValueMeasurementIdList()) {
-          measurementIndex.put(measurementId, i);
+    int indexInValues = 0;
+    int indexInSchema = 0;
+    for (IMeasurementSchema schema : schemas) {
+      if (schema.getType() == TSDataType.VECTOR) {
+        for (String measurementId : schema.getValueMeasurementIdList()) {
+          measurementIndexInValues.put(measurementId, indexInValues);
+          measurementIndexInSchema.put(measurementId, indexInSchema);
+          indexInValues++;
         }
+      } else {
+        measurementIndexInValues.put(schema.getMeasurementId(), indexInValues);
+        measurementIndexInSchema.put(schema.getMeasurementId(), indexInSchema);
+        indexInValues++;
       }
-      measurementIndex.put(schemas.get(i).getMeasurementId(), i);
+      indexInSchema++;
     }
 
     createColumns();
@@ -117,58 +129,68 @@ public class Tablet {
 
   // (s1, s2)  s3
   public void addValue(String measurementId, int rowIndex, Object value) {
-    int indexOfValue = measurementIndex.get(measurementId);
-    IMeasurementSchema measurementSchema = schemas.get(indexOfValue);
+    int indexOfValues = measurementIndexInValues.get(measurementId);
+    int indexOfSchema = measurementIndexInSchema.get(measurementId);
+    IMeasurementSchema measurementSchema = schemas.get(indexOfSchema);
 
     if (measurementSchema.getType().equals(TSDataType.VECTOR)) {
-      for (int i = 0; i < measurementSchema.getValueMeasurementIdList().size(); i++) {
-        TSDataType dataType = measurementSchema.getValueTSDataTypeList().get(i);
-        addValueOfDataType(dataType, rowIndex, measurementIndex.get(measurementId), value);
-      }
+      int indexInVector = measurementSchema.getMeasurementIdColumnIndex(measurementId);
+      TSDataType dataType = measurementSchema.getValueTSDataTypeList().get(indexInVector);
+      addValueOfDataType(dataType, rowIndex, indexOfValues, value);
     } else {
-      addValueOfDataType(
-          measurementSchema.getType(), rowIndex, measurementIndex.get(measurementId), value);
+      addValueOfDataType(measurementSchema.getType(), rowIndex, indexOfValues, value);
     }
   }
 
   private void addValueOfDataType(
       TSDataType dataType, int rowIndex, int indexOfValue, Object value) {
 
+    if (value == null) {
+      // init the bitMap to mark null value
+      if (bitMaps == null) {
+        bitMaps = new BitMap[values.length];
+      }
+      if (bitMaps[indexOfValue] == null) {
+        bitMaps[indexOfValue] = new BitMap(maxRowNumber);
+      }
+      // mark the null value position
+      bitMaps[indexOfValue].mark(rowIndex);
+    }
     switch (dataType) {
       case TEXT:
         {
           Binary[] sensor = (Binary[]) values[indexOfValue];
-          sensor[rowIndex] = (Binary) value;
+          sensor[rowIndex] = value != null ? (Binary) value : Binary.EMPTY_VALUE;
           break;
         }
       case FLOAT:
         {
           float[] sensor = (float[]) values[indexOfValue];
-          sensor[rowIndex] = (float) value;
+          sensor[rowIndex] = value != null ? (float) value : Float.MIN_VALUE;
           break;
         }
       case INT32:
         {
           int[] sensor = (int[]) values[indexOfValue];
-          sensor[rowIndex] = (int) value;
+          sensor[rowIndex] = value != null ? (int) value : Integer.MIN_VALUE;
           break;
         }
       case INT64:
         {
           long[] sensor = (long[]) values[indexOfValue];
-          sensor[rowIndex] = (long) value;
+          sensor[rowIndex] = value != null ? (long) value : Long.MIN_VALUE;
           break;
         }
       case DOUBLE:
         {
           double[] sensor = (double[]) values[indexOfValue];
-          sensor[rowIndex] = (double) value;
+          sensor[rowIndex] = value != null ? (double) value : Double.MIN_VALUE;
           break;
         }
       case BOOLEAN:
         {
           boolean[] sensor = (boolean[]) values[indexOfValue];
-          sensor[rowIndex] = (boolean) value;
+          sensor[rowIndex] = value != null && (boolean) value;
           break;
         }
       default:

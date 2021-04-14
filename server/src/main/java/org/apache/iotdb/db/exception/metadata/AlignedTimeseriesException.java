@@ -23,6 +23,10 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 public class AlignedTimeseriesException extends MetadataException {
 
+  /**
+   * @param message excepetion message
+   * @param path related timeseries path
+   */
   public AlignedTimeseriesException(String message, String path) {
     super(String.format("%s (Path: %s)", message, path));
     errorCode = TSStatusCode.ALIGNED_TIMESERIES_ERROR.getStatusCode();

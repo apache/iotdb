@@ -50,7 +50,9 @@ public class VectorSessionExample {
     session.setFetchSize(10000);
 
     createTemplate();
-    insertTabletWithAlignedTimeseries();
+    insertTabletWithAlignedTimeseriesMethod1();
+    insertTabletWithAlignedTimeseriesMethod2();
+
     insertNullableTabletWithAlignedTimeseries();
     selectTest();
     selectWithValueFilterTest();
@@ -207,7 +209,8 @@ public class VectorSessionExample {
     session.setDeviceTemplate("template1", "root.sg_1");
   }
 
-  private static void insertTabletWithAlignedTimeseries()
+  /** Method 1 for insert tablet with aligned timeseries */
+  private static void insertTabletWithAlignedTimeseriesMethod1()
       throws IoTDBConnectionException, StatementExecutionException {
     // The schema of measurements of one device
     // only measurementId and data type in MeasurementSchema take effects in Tablet
@@ -217,7 +220,46 @@ public class VectorSessionExample {
             new String[] {"s1", "s2"}, new TSDataType[] {TSDataType.INT64, TSDataType.INT32}));
 
     Tablet tablet = new Tablet(ROOT_SG1_D1, schemaList);
+    long timestamp = System.currentTimeMillis();
 
+    for (long row = 0; row < 100; row++) {
+      int rowIndex = tablet.rowSize++;
+      tablet.addTimestamp(rowIndex, timestamp);
+      tablet.addValue(
+          schemaList.get(0).getValueMeasurementIdList().get(0),
+          rowIndex,
+          new SecureRandom().nextLong());
+      tablet.addValue(
+          schemaList.get(0).getValueMeasurementIdList().get(1),
+          rowIndex,
+          new SecureRandom().nextInt());
+
+      if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        session.insertTablet(tablet, true);
+        tablet.reset();
+      }
+      timestamp++;
+    }
+
+    if (tablet.rowSize != 0) {
+      session.insertTablet(tablet);
+      tablet.reset();
+    }
+
+    session.executeNonQueryStatement("flush");
+  }
+
+  /** Method 2 for insert tablet with aligned timeseries */
+  private static void insertTabletWithAlignedTimeseriesMethod2()
+      throws IoTDBConnectionException, StatementExecutionException {
+    // The schema of measurements of one device
+    // only measurementId and data type in MeasurementSchema take effects in Tablet
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(
+        new VectorMeasurementSchema(
+            new String[] {"s1", "s2"}, new TSDataType[] {TSDataType.INT64, TSDataType.INT32}));
+
+    Tablet tablet = new Tablet(ROOT_SG1_D1, schemaList);
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
 
@@ -225,11 +267,11 @@ public class VectorSessionExample {
       int row = tablet.rowSize++;
       timestamps[row] = time;
 
-      long[] sensor = (long[]) values[0];
-      sensor[row] = new SecureRandom().nextLong();
+      long[] sensor1 = (long[]) values[0];
+      sensor1[row] = new SecureRandom().nextLong();
 
-      int[] sensors = (int[]) values[1];
-      sensors[row] = new SecureRandom().nextInt();
+      int[] sensor2 = (int[]) values[1];
+      sensor2[row] = new SecureRandom().nextInt();
 
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
         session.insertTablet(tablet, true);
@@ -267,11 +309,11 @@ public class VectorSessionExample {
       int row = tablet.rowSize++;
       timestamps[row] = time;
 
-      long[] sensor = (long[]) values[0];
-      sensor[row] = new SecureRandom().nextLong();
+      long[] sensor1 = (long[]) values[0];
+      sensor1[row] = new SecureRandom().nextLong();
 
-      int[] sensors = (int[]) values[1];
-      sensors[row] = new SecureRandom().nextInt();
+      int[] sensor2 = (int[]) values[1];
+      sensor2[row] = new SecureRandom().nextInt();
 
       // mark this point as null value
       if (time % 5 == 0) {
