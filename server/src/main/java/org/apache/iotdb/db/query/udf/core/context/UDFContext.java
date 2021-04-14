@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.udf.core.context;
 
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
@@ -138,5 +139,32 @@ public class UDFContext {
       columnParameterPart = builder.toString();
     }
     return columnParameterPart;
+  }
+
+  public UDFContext copy() {
+
+    UDFContext ret = new UDFContext(this.name);
+
+    for (Map.Entry<String, String> attribute : attributes.entrySet()) {
+      ret.attributes.put(attribute.getKey(), attribute.getValue());
+    }
+
+    try {
+      for (PartialPath path : paths) {
+        ret.paths.add(new PartialPath(path.getFullPath()));
+      }
+    } catch (IllegalPathException e) {
+      e.printStackTrace();
+    }
+
+    for (TSDataType type : dataTypes) {
+      ret.dataTypes.add(type);
+    }
+
+    ret.columnParameterPart = this.columnParameterPart;
+
+    ret.column = this.column;
+
+    return ret;
   }
 }

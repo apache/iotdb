@@ -22,14 +22,7 @@ import org.apache.iotdb.db.metadata.MLogTxtWriter;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
-import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
-import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
-import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
-import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
+import org.apache.iotdb.db.qp.physical.sys.*;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -197,6 +190,12 @@ public class MLogParser {
             break;
           case MNODE:
             mLogTxtWriter.serializeMNode((MNodePlan) plan);
+            break;
+          case CREATE_CONTINUOUS_QUERY:
+            mLogTxtWriter.createContinuousQuery((CreateContinuousQueryPlan) plan);
+            break;
+          case DROP_CONTINUOUS_QUERY:
+            mLogTxtWriter.dropContinuousQuery((DropContinuousQueryPlan) plan);
             break;
           default:
             logger.warn("unknown plan {}", plan);

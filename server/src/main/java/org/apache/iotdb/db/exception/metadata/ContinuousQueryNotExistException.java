@@ -16,23 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata;
 
-public class MetadataOperationType {
+package org.apache.iotdb.db.exception.metadata;
 
-  private MetadataOperationType() {
-    // allowed to do nothing
+import org.apache.iotdb.rpc.TSStatusCode;
+
+public class ContinuousQueryNotExistException extends MetadataException {
+
+  private static final long serialVersionUID = -6713847897890531438L;
+
+  public ContinuousQueryNotExistException(String continuousQueryName) {
+    super(
+        String.format("Continuous Query [%s] does not exist", continuousQueryName),
+        TSStatusCode.CONTINUOUS_QUERY_NOT_EXIST.getStatusCode());
+    this.isUserException = true;
   }
-
-  public static final String CREATE_TIMESERIES = "0";
-  public static final String DELETE_TIMESERIES = "1";
-  public static final String SET_STORAGE_GROUP = "2";
-  public static final String SET_TTL = "10";
-  public static final String DELETE_STORAGE_GROUP = "11";
-  public static final String CREATE_INDEX = "31";
-  public static final String DROP_INDEX = "32";
-  public static final String CHANGE_OFFSET = "12";
-  public static final String CHANGE_ALIAS = "13";
-  public static final String CREATE_CONTINUOUS_QUERY = "14";
-  public static final String DROP_CONTINUOUS_QUERY = "15";
 }

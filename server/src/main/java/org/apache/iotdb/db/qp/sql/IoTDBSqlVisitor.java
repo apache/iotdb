@@ -35,7 +35,7 @@ import org.apache.iotdb.db.qp.logical.crud.InOperator;
 import org.apache.iotdb.db.qp.logical.crud.InsertOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
-import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator;
+import org.apache.iotdb.db.qp.logical.sys.*;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator.AlterType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
@@ -225,6 +225,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 
+import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.misc.Interval;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.io.File;
@@ -1035,6 +1037,193 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   }
 
   @Override
+  public Operator visitDropContinuousQueryStatement(
+      SqlBaseParser.DropContinuousQueryStatementContext ctx) {
+    DropContinuousQueryOperator operator =
+        new DropContinuousQueryOperator(SQLConstant.TOK_CONTINUOUS_QUERY_DROP);
+    operator.setContinuousQueryName(ctx.continuousQueryName.getText());
+    return operator;
+  }
+
+  @Override
+  public Operator visitShowContinuousQueriesStatement(
+      SqlBaseParser.ShowContinuousQueriesStatementContext ctx) {
+    return new ShowContinuousQueriesOperator(SQLConstant.TOK_SHOW_CONTINUOUS_QUERIES);
+  }
+
+  @Override
+  public Operator visitCreateContinuousQueryStatement(
+      SqlBaseParser.CreateContinuousQueryStatementContext ctx) {
+    CreateContinuousQueryOperator createContinuousQueryOperator =
+        new CreateContinuousQueryOperator(SQLConstant.TOK_CONTINUOUS_QUERY_CREATE);
+
+    createContinuousQueryOperator.setQuerySql(ctx.getText());
+
+    createContinuousQueryOperator.setContinuousQueryName(ctx.continuousQueryName.getText());
+
+    if (ctx.resampleClause() != null) {
+      parseResampleClause(ctx.resampleClause(), createContinuousQueryOperator);
+    }
+
+    parseCqSelectIntoClause(ctx.cqSelectIntoClause(), createContinuousQueryOperator);
+
+    QueryOperator queryOperator = createContinuousQueryOperator.getQueryOperator();
+
+    StringBuilder sb = new StringBuilder();
+    sb.append("select ");
+    sb.append(ctx.cqSelectIntoClause().selectElements().getText());
+    sb.append(" from ");
+    sb.append(ctx.cqSelectIntoClause().fromClause().prefixPath(0).getText());
+    if (ctx.cqSelectIntoClause().whereClause() != null) {
+      sb.append(" ");
+      sb.append(getFullText(ctx.cqSelectIntoClause().whereClause()).toLowerCase());
+    }
+    sb.append(" group by ([now() - ");
+    String groupByInterval = ctx.cqSelectIntoClause().cqGroupByTimeClause().DURATION().getText();
+    if (createContinuousQueryOperator.getForInterval() == 0) {
+      sb.append(groupByInterval);
+    } else {
+      List<TerminalNode> durations = ctx.resampleClause().DURATION();
+      sb.append(durations.get(durations.size() - 1).getText());
+    }
+    sb.append(", now()), ");
+    sb.append(groupByInterval);
+    sb.append(")");
+    if (queryOperator.isGroupByLevel()) {
+      sb.append(", level = ");
+      sb.append(queryOperator.getLevel());
+    }
+    createContinuousQueryOperator.setQuerySql(sb.toString());
+
+    if (createContinuousQueryOperator.getEveryInterval() == 0) {
+      if (createContinuousQueryOperator.getForInterval() == 0) {
+        createContinuousQueryOperator.setEveryInterval(queryOperator.getUnit());
+        createContinuousQueryOperator.setForInterval(queryOperator.getUnit());
+      } else {
+        createContinuousQueryOperator.setEveryInterval(
+            createContinuousQueryOperator.getForInterval());
+      }
+    } else {
+      if (createContinuousQueryOperator.getForInterval() == 0) {
+        createContinuousQueryOperator.setForInterval(
+            createContinuousQueryOperator.getEveryInterval());
+      }
+    }
+
+    return createContinuousQueryOperator;
+  }
+
+  private String getFullText(ParserRuleContext context) {
+    if (context.start == null
+        || context.stop == null
+        || context.start.getStartIndex() < 0
+        || context.stop.getStopIndex() < 0) return context.getText();
+
+    return context
+        .start
+        .getInputStream()
+        .getText(Interval.of(context.start.getStartIndex(), context.stop.getStopIndex()));
+  }
+
+  public void parseResampleClause(
+      SqlBaseParser.ResampleClauseContext ctx, CreateContinuousQueryOperator operator) {
+
+    if (ctx.DURATION().size() == 1) {
+      if (ctx.EVERY() != null) {
+        operator.setEveryInterval(parseDuration(ctx.DURATION(0).getText()));
+      } else if (ctx.FOR() != null) {
+        operator.setForInterval(parseDuration(ctx.DURATION(0).getText()));
+      }
+    } else if (ctx.DURATION().size() == 2) {
+      operator.setEveryInterval(parseDuration(ctx.DURATION(0).getText()));
+      operator.setForInterval(parseDuration(ctx.DURATION(1).getText()));
+    }
+  }
+
+  public void parseCqSelectIntoClause(
+      SqlBaseParser.CqSelectIntoClauseContext ctx,
+      CreateContinuousQueryOperator createContinuousQueryOperator) {
+
+    QueryOperator queryOperator = new QueryOperator(SQLConstant.TOK_QUERY);
+
+    SelectOperator selectOp = (SelectOperator) visit(ctx.selectElements());
+    if (selectOp.getSuffixPaths().size() > 1) {
+      throw new SQLParserException("Cq Select Into currently does not support multiple suffixes.");
+    }
+    queryOperator.setSelectOperator(selectOp);
+
+    FromOperator fromOp = (FromOperator) visit(ctx.fromClause());
+    if (fromOp.getPrefixPaths().size() > 1) {
+      throw new SQLParserException("Cq Select Into currently does not support multiple prefixes.");
+    }
+    queryOperator.setFromOperator(fromOp);
+
+    if (ctx.whereClause() != null) {
+      Operator operator = visit(ctx.whereClause());
+      if (operator instanceof FilterOperator) {
+        FilterOperator whereOp = (FilterOperator) operator;
+        queryOperator.setFilterOperator(whereOp.getChildren().get(0));
+      }
+    }
+
+    parseCqGroupByTimeClause(ctx.cqGroupByTimeClause(), queryOperator);
+
+    int fromLen = queryOperator.getFromOperator().getPrefixPaths().get(0).getNodeLength();
+    if (queryOperator.getLevel() >= fromLen) {
+      throw new SQLParserException(
+          "Cq Select Into: Level should not exceed the <from_prefix> length.");
+    }
+
+    PartialPath targetPath = null;
+    if (ctx.fullPath() != null) {
+      targetPath = parseFullPath(ctx.fullPath());
+    } else if (ctx.suffixPath() != null) {
+      List<String> targetNodes = new ArrayList<>();
+      int trueLevel = queryOperator.getLevel();
+      if (trueLevel == -1) {
+        trueLevel = fromLen - 1;
+      }
+      for (int i = 0; i <= trueLevel; i++) {
+        targetNodes.add("${" + i + "}");
+      }
+      targetNodes.add(ctx.suffixPath().getText());
+      targetPath = new PartialPath(targetNodes.toArray(new String[0]));
+    }
+
+    createContinuousQueryOperator.setTargetPath(targetPath);
+    createContinuousQueryOperator.setQueryOperator(queryOperator);
+  }
+
+  public void parseCqGroupByTimeClause(
+      SqlBaseParser.CqGroupByTimeClauseContext ctx, QueryOperator queryOperator) {
+    queryOperator.setGroupByTime(true);
+    queryOperator.setLeftCRightO(true);
+
+    queryOperator.setUnit(parseDuration(ctx.DURATION().getText()));
+    queryOperator.setSlidingStep(queryOperator.getUnit());
+
+    if (ctx.LEVEL() != null && ctx.INT() != null) {
+      queryOperator.setGroupByLevel(true);
+      queryOperator.setLevel(Integer.parseInt(ctx.INT().getText()));
+    }
+  }
+
+  @Override
+  public Operator visitResampleClause(SqlBaseParser.ResampleClauseContext ctx) {
+    return visitChildren(ctx);
+  }
+
+  @Override
+  public Operator visitCqSelectIntoClause(SqlBaseParser.CqSelectIntoClauseContext ctx) {
+    return visitChildren(ctx);
+  }
+
+  @Override
+  public Operator visitCqGroupByTimeClause(SqlBaseParser.CqGroupByTimeClauseContext ctx) {
+    return visitChildren(ctx);
+  }
+
+  @Override
   public Operator visitAggregationElement(AggregationElementContext ctx) {
     SelectOperator selectOp = new SelectOperator(SQLConstant.TOK_SELECT, zoneId);
 
@@ -1077,7 +1266,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     SelectOperator selectOp = new SelectOperator(SQLConstant.TOK_SELECT, zoneId);
     selectOp.setLastQuery();
     LastClauseContext lastClauseContext = ctx.lastClause();
-    if (lastClauseContext.asClause().size() != 0) {
+    if (!lastClauseContext.asClause().isEmpty()) {
       parseAsClause(lastClauseContext.asClause(), selectOp);
     } else {
       List<SuffixPathContext> suffixPaths = lastClauseContext.suffixPath();
