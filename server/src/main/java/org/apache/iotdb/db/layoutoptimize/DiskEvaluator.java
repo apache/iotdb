@@ -1,6 +1,7 @@
 package org.apache.iotdb.db.layoutoptimize;
 
 import java.io.*;
+import java.math.BigDecimal;
 
 public class DiskEvaluator {
   private static final DiskEvaluator INSTANCE = new DiskEvaluator();
@@ -93,6 +94,7 @@ public class DiskEvaluator {
       readSize = 0;
       CmdExecutor.builder(sudoPassword)
           .errRedirect(false)
+          .verbose(false)
           .sudoCmd("echo 3 | tee /proc/sys/vm/drop_caches")
           .exec();
       long startTime = System.nanoTime();
@@ -144,21 +146,48 @@ public class DiskEvaluator {
     return readSpeed;
   }
 
+  private double getAvgCost(long[] costs) {
+    BigDecimal totalCost = BigDecimal.valueOf(0);
+    for (long cost : costs) {
+      totalCost = totalCost.add(BigDecimal.valueOf(cost));
+    }
+    return totalCost.divide(BigDecimal.valueOf(costs.length)).doubleValue();
+  }
+
+  public void performMultiSegmentSeek(
+      final long seekDistance,
+      final long seekNum,
+      final int seekNumForPerSegment,
+      File file,
+      final int readLength,
+      double[] seekResult)
+      throws IOException {
+    long curSeekDistance = seekDistance;
+    for (int i = 0; i < seekNum; ++i) {
+      curSeekDistance = seekDistance * (i + 1);
+      long[] seekTimeForCurDistance = new long[seekNumForPerSegment];
+      if (performSeek(
+              seekTimeForCurDistance,
+              file,
+              seekNumForPerSegment,
+              readLength,
+              curSeekDistance,
+              10 * curSeekDistance)
+          != -1) {
+        seekResult[i] = getAvgCost(seekTimeForCurDistance);
+      }
+    }
+  }
+
   public static void main(String[] args) {
     DiskEvaluator evaluator = DiskEvaluator.getInstance();
     try {
-      File generatedFile = evaluator.generateFile(1024l * 1024l * 1024l * 8l, "E:\\test.tmp");
-      CmdExecutor.builder("tif601").sudoCmd("echo 3 | sudo tee /proc/sys/vm/drop_caches").exec();
-      //      long[] seekCost = new long[10];
-      // seek 1MB for 10 times
-      //      if (evaluator.performSeek(seekCost, generatedFile, 10, 512, 50 * 1024, 8000l * 1024l *
-      // 1024l)
-      //          != -1) {
-      //        for (long cost : seekCost) {
-      //          System.out.println(cost);
-      //        }
-      //      }
-      System.out.println(evaluator.performRead(generatedFile));
+       File file = new File("/media/lau/TOSHIBA EXT/test.tmp");
+       double[] seekResult = new double[1000];
+       evaluator.performMultiSegmentSeek(512, 1000, 100, file, 100, seekResult);
+       for(int i = 0; i < 1000; ++i) {
+         System.out.println(String.format("Size:%d bytes, seek time: %.2f ms", 512 * (i+1), seekResult[i]));
+       }
     } catch (Exception e) {
       e.printStackTrace();
     }
