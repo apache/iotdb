@@ -130,9 +130,9 @@ public class MTreeFile {
     int type = dataBuffer.get();
     if (type == 2) {
       if (!(mNode instanceof StorageGroupMNode)) {
-        mNode=new StorageGroupMNode(mNode.getParent(),mNode.getName(),0);
+        mNode = new StorageGroupMNode(mNode.getParent(), mNode.getName(), 0);
         mNode.getParent().deleteChild(mNode.getName());
-        mNode.getParent().addChild(mNode.getName(),mNode);
+        mNode.getParent().addChild(mNode.getName(), mNode);
       }
       readStorageGroupMNode(dataBuffer, (StorageGroupMNode) mNode);
     } else {
@@ -209,8 +209,7 @@ public class MTreeFile {
     readChildren(mNode, dataBuffer);
   }
 
-  private void readStorageGroupMNode(
-      ByteBuffer dataBuffer, StorageGroupMNode mNode) {
+  private void readStorageGroupMNode(ByteBuffer dataBuffer, StorageGroupMNode mNode) {
     String name = ReadWriteIOUtils.readVarIntString(dataBuffer);
     long ttl = dataBuffer.getLong();
     mNode.setName(name);
@@ -222,7 +221,7 @@ public class MTreeFile {
     String name;
     MNode child;
     name = ReadWriteIOUtils.readVarIntString(byteBuffer);
-    while (name!=null&&!name.equals("")) {
+    while (name != null && !name.equals("")) {
       child = new MNode(mNode, name);
       child.setPosition(byteBuffer.getLong());
       child.setModified(false);
@@ -232,7 +231,7 @@ public class MTreeFile {
     }
 
     name = ReadWriteIOUtils.readVarIntString(byteBuffer);
-    while (name!=null&&!name.equals("")) {
+    while (name != null && !name.equals("")) {
       child = new MeasurementMNode(mNode, name, null, null);
       child.setPosition(byteBuffer.getLong());
       child.setModified(false);
@@ -331,7 +330,7 @@ public class MTreeFile {
     bufferList[0].putLong(prePos);
     long extensionPos = 0 == bufferNum - 1 ? 0 : getFreePos();
     bufferList[0].putLong(extensionPos);
-    dataBuffer.limit(Math.min(dataBuffer.position()+nodeLength - 17,dataBuffer.capacity()));
+    dataBuffer.limit(Math.min(dataBuffer.position() + nodeLength - 17, dataBuffer.capacity()));
     bufferList[0].put(dataBuffer);
     bufferList[0].position(0);
     long currentPos = mNode.getPosition();
@@ -347,7 +346,7 @@ public class MTreeFile {
       bufferList[i].putLong(prePos);
       extensionPos = i == bufferNum - 1 ? 0 : getFreePos();
       bufferList[i].putLong(extensionPos);
-      dataBuffer.limit(Math.min(dataBuffer.position()+nodeLength - 17,dataBuffer.capacity()));
+      dataBuffer.limit(Math.min(dataBuffer.position() + nodeLength - 17, dataBuffer.capacity()));
       bufferList[i].put(dataBuffer);
       bufferList[i].position(0);
     }
@@ -357,25 +356,25 @@ public class MTreeFile {
 
   private ByteBuffer serializeMNodeData(MNode mNode) {
     ByteBuffer dataBuffer = ByteBuffer.allocate(evaluateNodeLength(mNode));
-    ReadWriteIOUtils.writeVar(mNode.getName(),dataBuffer);
-    serializeChildren(mNode.getChildren(),dataBuffer);
+    ReadWriteIOUtils.writeVar(mNode.getName(), dataBuffer);
+    serializeChildren(mNode.getChildren(), dataBuffer);
     dataBuffer.flip();
     return dataBuffer;
   }
 
   private ByteBuffer serializeStorageGroupMNodeData(StorageGroupMNode mNode) {
     ByteBuffer dataBuffer = ByteBuffer.allocate(evaluateNodeLength(mNode));
-    ReadWriteIOUtils.writeVar(mNode.getName(),dataBuffer);
+    ReadWriteIOUtils.writeVar(mNode.getName(), dataBuffer);
     dataBuffer.putLong(mNode.getDataTTL());
-    serializeChildren(mNode.getChildren(),dataBuffer);
+    serializeChildren(mNode.getChildren(), dataBuffer);
     dataBuffer.flip();
     return dataBuffer;
   }
 
-  private void serializeChildren(Map<String, MNode> children, ByteBuffer dataBuffer){
-    List<MNode> measurementMNodes=new LinkedList<>();
-    for(MNode child:children.values()){
-      if(child instanceof MeasurementMNode){
+  private void serializeChildren(Map<String, MNode> children, ByteBuffer dataBuffer) {
+    List<MNode> measurementMNodes = new LinkedList<>();
+    for (MNode child : children.values()) {
+      if (child instanceof MeasurementMNode) {
         measurementMNodes.add(child);
         continue;
       }
@@ -384,7 +383,7 @@ public class MTreeFile {
     }
     dataBuffer.put((byte) 0);
 
-    for(MNode measurementMNode:measurementMNodes){
+    for (MNode measurementMNode : measurementMNodes) {
       ReadWriteIOUtils.writeVar(measurementMNode.getName(), dataBuffer);
       dataBuffer.putLong(measurementMNode.getPosition());
     }

@@ -153,18 +153,20 @@ public class MetaFileTest {
 
     long startTime, endTime;
     startTime = System.currentTimeMillis();
-    MNode root = new MNode(null,"root");
-    StorageGroupMNode sg = new StorageGroupMNode(root,"sg",1000);
-    root.addChild("sg",sg);
+    MNode root = new MNode(null, "root");
+    StorageGroupMNode sg = new StorageGroupMNode(root, "sg", 1000);
+    root.addChild("sg", sg);
     String d, t;
     MeasurementMNode m;
     for (int i = 0; i < deviceNum; i++) {
       d = "d" + i;
-      sg.addChild(d,new MNode(sg,d));
+      sg.addChild(d, new MNode(sg, d));
       for (int j = 0; j < schemaNum; j++) {
         t = "t" + j;
-        m = new MeasurementMNode(sg.getChild(d),t,new MeasurementSchema(t, TSDataType.INT32),null);
-        sg.getChild(d).addChild(t,m);
+        m =
+            new MeasurementMNode(
+                sg.getChild(d), t, new MeasurementSchema(t, TSDataType.INT32), null);
+        sg.getChild(d).addChild(t, m);
       }
     }
     endTime = System.currentTimeMillis();
@@ -176,16 +178,16 @@ public class MetaFileTest {
     System.out.println("MTree persistence time: " + (endTime - startTime) + "ms.");
 
     startTime = System.currentTimeMillis();
-    root=metaFile.readRecursively(root.getPosition());
+    root = metaFile.readRecursively(root.getPosition());
     endTime = System.currentTimeMillis();
     System.out.println(count(root));
     System.out.println("MTree read from file time: " + (endTime - startTime) + "ms.");
   }
 
-  private int count(MNode mNode){
-    int num=1;
-    for(MNode child:mNode.getChildren().values()){
-      num+=count(child);
+  private int count(MNode mNode) {
+    int num = 1;
+    for (MNode child : mNode.getChildren().values()) {
+      num += count(child);
     }
     return num;
   }

@@ -69,8 +69,8 @@ public class MeasurementFile {
 
   public MeasurementMNode read(long position) throws IOException {
     ByteBuffer buffer = readBytesFromFile(position);
-    MeasurementMNode measurementMNode = new MeasurementMNode(null,null,null,null);
-    readData(measurementMNode,buffer);
+    MeasurementMNode measurementMNode = new MeasurementMNode(null, null, null, null);
+    readData(measurementMNode, buffer);
     measurementMNode.setPosition(position);
     measurementMNode.setModified(false);
     return measurementMNode;
@@ -91,7 +91,7 @@ public class MeasurementFile {
     Map<String, String> props = new HashMap<>();
     String key;
     key = ReadWriteIOUtils.readVarIntString(dataBuffer);
-    while (key!=null&&!key.equals("")) {
+    while (key != null && !key.equals("")) {
       props.put(key, ReadWriteIOUtils.readVarIntString(dataBuffer));
       key = ReadWriteIOUtils.readVarIntString(dataBuffer);
     }

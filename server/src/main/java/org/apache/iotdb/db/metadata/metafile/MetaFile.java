@@ -34,7 +34,7 @@ public class MetaFile implements MetaFileAccess {
     if (mNode instanceof MeasurementMNode) {
       measurementFile.readData((MeasurementMNode) mNode);
     } else {
-      mNode=mTreeFile.readData(mNode);
+      mNode = mTreeFile.readData(mNode);
     }
     return mNode;
   }
@@ -98,8 +98,8 @@ public class MetaFile implements MetaFileAccess {
     return mNode;
   }
 
-  public void readRecursively(MNode mNode) throws IOException{
-    mNode=readData(mNode);
+  public void readRecursively(MNode mNode) throws IOException {
+    mNode = readData(mNode);
     for (MNode child : mNode.getChildren().values()) {
       readRecursively(child);
     }

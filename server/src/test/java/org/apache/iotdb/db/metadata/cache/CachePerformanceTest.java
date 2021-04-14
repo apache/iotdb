@@ -9,7 +9,6 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
-import jdk.nashorn.internal.ir.debug.ObjectSizeCalculator;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -25,13 +24,14 @@ public class CachePerformanceTest {
 
   private static final int TIMESERIES_NUM = 10000;
   private static final int DEVICE_NUM = 100;
+  private static final int NODE_NUM = TIMESERIES_NUM * DEVICE_NUM + DEVICE_NUM + 3;
+
   private static PartialPath[][] paths = new PartialPath[DEVICE_NUM][TIMESERIES_NUM];
 
   @BeforeClass
   public static void initPath() throws Exception {
     long startTime = System.currentTimeMillis(), endTime;
     paths = new PartialPath[DEVICE_NUM][TIMESERIES_NUM];
-    StringBuilder stringBuilder=new StringBuilder();
     for (int i = 0; i < DEVICE_NUM; i++) {
       for (int j = 0; j < TIMESERIES_NUM; j++) {
         paths[i][j] = new PartialPath("root.t1.v1.d" + i + ".s" + j);
@@ -58,13 +58,13 @@ public class CachePerformanceTest {
     mTreeMem = null;
     System.gc();
     MTreeInterface mTreeDisk = testMTreeDisk();
-//    mTreeDisk=null;
-//    System.out.println(ObjectSizeCalculator.getObjectSize(paths));
-//    System.out.println(ObjectSizeCalculator.getObjectSize(mTreeMem));
-//    System.out.println(ObjectSizeCalculator.getObjectSize(mTreeDisk));
-    paths=null;
+    //    mTreeDisk=null;
+    //    System.out.println(ObjectSizeCalculator.getObjectSize(paths));
+    //    System.out.println(ObjectSizeCalculator.getObjectSize(mTreeMem));
+    //    System.out.println(ObjectSizeCalculator.getObjectSize(mTreeDisk));
+    //    paths=null;
     System.gc();
-//    while (true) {}
+    //    while (true) {}
   }
 
   private MTreeInterface testMTreeMem() throws Exception {
@@ -75,7 +75,7 @@ public class CachePerformanceTest {
   }
 
   private MTreeInterface testMTreeDisk() throws Exception {
-    MTreeInterface mTreeDisk = new MTreeDiskBased();
+    MTreeInterface mTreeDisk = new MTreeDiskBased(null, NODE_NUM, null, null);
     System.out.println("MTreeDisk TS creation time cost: " + generateMTree(mTreeDisk) + "ms");
     System.out.println("MTreeDisk TS access time cost: " + accessMTree(mTreeDisk) + "ms");
     return mTreeDisk;
@@ -106,7 +106,7 @@ public class CachePerformanceTest {
     createCostTime = 0;
     readCostTime = 0;
     for (int i = 0; i < times; i++) {
-      MTreeDiskBased mTreeDisk = new MTreeDiskBased();
+      MTreeDiskBased mTreeDisk = new MTreeDiskBased(null, NODE_NUM, null, null);
       createCostTime += generateMTree(mTreeDisk);
       readCostTime += accessMTree(mTreeDisk);
       mTreeDisk = null;
@@ -140,9 +140,12 @@ public class CachePerformanceTest {
 
   private long accessMTree(MTreeInterface mTree) throws Exception {
     long startTime = System.currentTimeMillis();
+    int missNum = 0;
     for (int i = 0; i < DEVICE_NUM; i++) {
       for (int j = 0; j < TIMESERIES_NUM; j++) {
-        mTree.isPathExist(paths[i][j]);
+        if (!mTree.isPathExist(paths[i][j])) {
+          missNum++;
+        }
       }
     }
     long endTime = System.currentTimeMillis();
