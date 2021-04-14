@@ -225,7 +225,7 @@ public class DiskEvaluator {
         file = diskEvaluator.generateFile(4l * 1024l * 1024l * 1024l, path, 20);
       }
       double[] seekTime = new double[100];
-      diskEvaluator.performMultiSegmentSeek(51200, 100, 50, file, 100, seekTime);
+      diskEvaluator.performMultiSegmentSeek(506880, 1, 100, file, 100, seekTime);
       for (int i = 0; i < 100; ++i) {
         System.out.println(
             String.format("Size:%d bytes, seek time: %f ms", 51200 * (i + 1), seekTime[i]));
