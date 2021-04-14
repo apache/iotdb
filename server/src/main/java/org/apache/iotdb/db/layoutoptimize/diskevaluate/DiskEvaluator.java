@@ -250,10 +250,11 @@ public class DiskEvaluator {
     return i;
   }
 
-  public void performLocalSeek() {
+  public void performLocalSeek(
+      String dataPath, long seekDistInterval, int numInvervals, int numSeeks, int readLength) {
     try {
       File[] files = InputFactory.Instance().getFiles(dataPath);
-
+      String logDir = ".\\log\\";
       BufferedWriter seekCostWriter = new BufferedWriter(new FileWriter(logDir + "seek_cost.txt"));
       seekCostWriter.write(seekDistInterval + "\n");
       seekCostWriter.write("0\t0\n");
@@ -281,25 +282,20 @@ public class DiskEvaluator {
           File file = files[i];
           long[] seekCosts = new long[numSeeks];
           int realNumSeeks = performLocalSeeks(seekCosts, file, numSeeks, readLength, seekDistance);
-          double fileMedCost =
-              seekPerformer.logSeekCost(
-                  seekCosts, realNumSeeks, subdir.getPath() + "/file_num_" + i + ".txt");
+          double fileMedCost = getAvgCost(seekCosts, realNumSeeks);
           summaryWriter.write(i + "," + seekDistance + "," + readLength + "," + fileMedCost + "\n");
           totalSeekCost += fileMedCost / 1000;
         }
         summaryWriter.flush();
         summaryWriter.close();
 
-        double avgSeekCost = totalSeekCost / ((endFileNumber - startFileNumber) / numSkippedFiles);
+        double avgSeekCost = totalSeekCost / ((files.length) / 2);
         // seek cost in seek_cost.txt is in ms
         seekCostWriter.write(seekDistance + "\t" + avgSeekCost + "\n");
         seekCostWriter.flush();
-
-        progressListener.setPercentage(1.0 * j / numInvervals);
       }
       seekCostWriter.close();
     } catch (IOException e) {
-      ExceptionHandler.Instance().log(ExceptionType.ERROR, "local seek evaluation error", e);
     }
   }
 
@@ -312,7 +308,7 @@ public class DiskEvaluator {
         file = diskEvaluator.generateFile(4l * 1024l * 1024l * 1024l, path, 20);
       }
       double[] seekTime = new double[100];
-      diskEvaluator.performMultiSegmentSeek(506880, 1, 100, file, 100, seekTime);
+      diskEvaluator.performLocalSeek(path, 508928, 1, 100, 100);
       for (int i = 0; i < 100; ++i) {
         System.out.println(
             String.format("Size:%d bytes, seek time: %f ms", 51200 * (i + 1), seekTime[i]));
