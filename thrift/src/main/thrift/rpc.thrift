@@ -117,6 +117,8 @@ struct TSExecuteStatementReq {
   4: optional i32 fetchSize
 
   5: optional i64 timeout
+
+  6: optional bool enableRedirectQuery;
 }
 
 struct TSExecuteBatchStatementReq{
@@ -276,6 +278,7 @@ struct TSRawDataQueryReq {
   4: required i64 startTime
   5: required i64 endTime
   6: required i64 statementId
+  7: optional bool enableRedirectQuery;
 }
 
 struct TSCreateMultiTimeseriesReq {

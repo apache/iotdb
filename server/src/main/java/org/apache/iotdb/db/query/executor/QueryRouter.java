@@ -44,6 +44,7 @@ import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
+import org.apache.iotdb.tsfile.read.filter.GroupByMonthFilter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 import org.slf4j.Logger;
@@ -154,16 +155,9 @@ public class QueryRouter implements IQueryRouter {
     }
 
     GroupByEngineDataSet dataSet = null;
-    long unit = groupByTimePlan.getInterval();
-    long slidingStep = groupByTimePlan.getSlidingStep();
-    long startTime = groupByTimePlan.getStartTime();
-    long endTime = groupByTimePlan.getEndTime();
-
     IExpression expression = groupByTimePlan.getExpression();
     List<PartialPath> selectedSeries = groupByTimePlan.getDeduplicatedPaths();
-
-    GlobalTimeExpression timeExpression =
-        new GlobalTimeExpression(new GroupByFilter(unit, slidingStep, startTime, endTime));
+    GlobalTimeExpression timeExpression = getTimeExpression(groupByTimePlan);
 
     if (expression == null) {
       expression = timeExpression;
@@ -189,6 +183,23 @@ public class QueryRouter implements IQueryRouter {
       return groupByLevelWithoutTimeIntervalDataSet(context, groupByTimePlan, dataSet);
     }
     return dataSet;
+  }
+
+  private GlobalTimeExpression getTimeExpression(GroupByTimePlan plan) {
+    if (plan.isSlidingStepByMonth() || plan.isIntervalByMonth()) {
+      return new GlobalTimeExpression(
+          (new GroupByMonthFilter(
+              plan.getInterval(),
+              plan.getSlidingStep(),
+              plan.getStartTime(),
+              plan.getEndTime(),
+              plan.isSlidingStepByMonth(),
+              plan.isIntervalByMonth())));
+    } else {
+      return new GlobalTimeExpression(
+          new GroupByFilter(
+              plan.getInterval(), plan.getSlidingStep(), plan.getStartTime(), plan.getEndTime()));
+    }
   }
 
   protected GroupByWithoutValueFilterDataSet getGroupByWithoutValueFilterDataSet(

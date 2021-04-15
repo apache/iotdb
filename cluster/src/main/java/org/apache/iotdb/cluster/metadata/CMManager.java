@@ -285,6 +285,7 @@ public class CMManager extends MManager {
     List<MeasurementSchema> schemas = metaPuller.pullMeasurementSchemas(schemasToPull);
     for (MeasurementSchema schema : schemas) {
       // TODO-Cluster: also pull alias?
+      // take care, the pulled schema's measurement Id is only series name
       MeasurementMNode measurementMNode =
           new MeasurementMNode(null, schema.getMeasurementId(), schema, null);
       cacheMeta(deviceId.concatNode(schema.getMeasurementId()), measurementMNode);
@@ -332,17 +333,11 @@ public class CMManager extends MManager {
   @Override
   public MNode getSeriesSchemasAndReadLockDevice(InsertPlan plan) throws MetadataException {
     MeasurementMNode[] measurementMNodes = new MeasurementMNode[plan.getMeasurements().length];
-    try {
-      MNode deviceNode = getDeviceNode(plan.getDeviceId());
-
-      int nonExistSchemaIndex =
-          getMNodesLocally(plan.getDeviceId(), plan.getMeasurements(), measurementMNodes);
-      if (nonExistSchemaIndex == -1) {
-        plan.setMeasurementMNodes(measurementMNodes);
-        return deviceNode;
-      }
-    } catch (PathNotExistException exception) {
-      // ignore, so we could try local MTree
+    int nonExistSchemaIndex =
+        getMNodesLocally(plan.getDeviceId(), plan.getMeasurements(), measurementMNodes);
+    if (nonExistSchemaIndex == -1) {
+      plan.setMeasurementMNodes(measurementMNodes);
+      return new MNode(null, plan.getDeviceId().getDevice());
     }
     // auto-create schema in IoTDBConfig is always disabled in the cluster version, and we have
     // another config in ClusterConfig to do this
@@ -624,6 +619,9 @@ public class CMManager extends MManager {
     PartitionGroup partitionGroup =
         metaGroupMember.getPartitionTable().route(storageGroupName.getFullPath(), 0);
     List<String> unregisteredSeriesList = getUnregisteredSeriesList(seriesList, partitionGroup);
+    if (unregisteredSeriesList.isEmpty()) {
+      return true;
+    }
     logger.debug("Unregisterd series of {} are {}", seriesList, unregisteredSeriesList);
 
     return createTimeseries(unregisteredSeriesList, seriesList, insertPlan);
@@ -1241,11 +1239,12 @@ public class CMManager extends MManager {
       try {
         Set<String> paths = getMatchedDevices(node, partitionGroup.getHeader(), pathsToQuery);
         logger.debug(
-            "{}: get matched paths of {} from {}, result {}",
+            "{}: get matched paths of {} from {}, result {} for {}",
             metaGroupMember.getName(),
             partitionGroup,
             node,
-            paths);
+            paths,
+            pathsToQuery);
         if (paths != null) {
           // query next group
           Set<PartialPath> partialPaths = new HashSet<>();
@@ -1397,7 +1396,7 @@ public class CMManager extends MManager {
   public Set<String> getAllDevices(List<String> paths) throws MetadataException {
     Set<String> results = new HashSet<>();
     for (String path : paths) {
-      getAllTimeseriesPath(new PartialPath(path)).stream()
+      getDevices(new PartialPath(path)).stream()
           .map(PartialPath::getFullPath)
           .forEach(results::add);
     }
@@ -1415,6 +1414,10 @@ public class CMManager extends MManager {
     return getNodesList(new PartialPath(path), nodeLevel).stream()
         .map(PartialPath::getFullPath)
         .collect(Collectors.toList());
+  }
+
+  public Set<String> getChildNodeInNextLevel(String path) throws MetadataException {
+    return getChildNodeInNextLevel(new PartialPath(path));
   }
 
   public Set<String> getChildNodePathInNextLevel(String path) throws MetadataException {
@@ -1761,8 +1764,6 @@ public class CMManager extends MManager {
     if (withAlias) {
       alias = new ArrayList<>();
     }
-    // make sure this node knows all storage groups
-    syncMetaLeader();
 
     if (withAlias) {
       for (String path : paths) {
