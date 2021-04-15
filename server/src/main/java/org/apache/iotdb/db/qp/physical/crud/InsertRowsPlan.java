@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.Objects;
 
 public class InsertRowsPlan extends InsertPlan {
+
   /**
    * Suppose there is an InsertRowsPlan, which contains 5 InsertRowPlans,
    * insertRowPlanList={InsertRowPlan_0, InsertRowPlan_1, InsertRowPlan_2, InsertRowPlan_3,
@@ -148,6 +149,8 @@ public class InsertRowsPlan extends InsertPlan {
     buffer.put((byte) type);
     buffer.putInt(insertRowPlanList.size());
     for (InsertRowPlan insertRowPlan : insertRowPlanList) {
+      // use the InsertRowsPlan's index as the sub InsertRowPlan's index
+      insertRowPlan.setIndex(super.index);
       insertRowPlan.subSerialize(buffer);
     }
     for (Integer index : insertRowPlanIndexList) {
@@ -161,6 +164,8 @@ public class InsertRowsPlan extends InsertPlan {
     stream.writeByte((byte) type);
     stream.writeInt(insertRowPlanList.size());
     for (InsertRowPlan insertRowPlan : insertRowPlanList) {
+      // use the InsertRowsPlan's index as the sub InsertRowPlan's index
+      insertRowPlan.setIndex(super.index);
       insertRowPlan.subSerialize(stream);
     }
     for (Integer index : insertRowPlanIndexList) {

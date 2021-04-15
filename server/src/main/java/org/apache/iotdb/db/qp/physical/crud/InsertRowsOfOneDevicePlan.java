@@ -101,6 +101,8 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan {
 
     stream.writeInt(rowPlans.length);
     for (InsertRowPlan plan : rowPlans) {
+      // use the InsertRowsOfOneDevicePlan's index as the sub InsertRowPlan's index
+      plan.setIndex(super.index);
       stream.writeLong(plan.getTime());
       plan.serializeMeasurementsAndValues(stream);
     }
@@ -114,6 +116,8 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan {
     putString(buffer, deviceId.getFullPath());
     buffer.putInt(rowPlans.length);
     for (InsertRowPlan plan : rowPlans) {
+      // use the InsertRowsOfOneDevicePlan's index as the sub InsertRowPlan's index
+      plan.setIndex(super.index);
       buffer.putLong(plan.getTime());
       plan.serializeMeasurementsAndValues(buffer);
     }
