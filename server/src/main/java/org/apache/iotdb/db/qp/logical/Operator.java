@@ -32,7 +32,7 @@ public abstract class Operator {
 
   protected OperatorType operatorType = OperatorType.NULL;
 
-  public Operator(int tokenIntType) {
+  protected Operator(int tokenIntType) {
     this.tokenIntType = tokenIntType;
     this.tokenName = SQLConstant.tokenNames.get(tokenIntType);
     this.isDebug = false;
@@ -74,35 +74,22 @@ public abstract class Operator {
   /** If you want to add new OperatorType, you must add it in the last. */
   public enum OperatorType {
     SFW,
-    JOIN,
-    UNION,
     FILTER,
     GROUPBYTIME,
-    ORDERBY,
-    LIMIT,
     SELECT,
-    SEQTABLESCAN,
-    HASHTABLESCAN,
-    MERGEJOIN,
-    FILEREAD,
     NULL,
-    TABLESCAN,
-    UPDATE,
     INSERT,
     BATCHINSERT,
     DELETE,
     BASIC_FUNC,
     IN,
     QUERY,
-    MERGEQUERY,
     AGGREGATION,
     AUTHOR,
     FROM,
     FUNC,
     LOADDATA,
     METADATA,
-    INDEX,
-    INDEXQUERY,
     FILL,
     SET_STORAGE_GROUP,
     CREATE_TIMESERIES,
@@ -144,7 +131,26 @@ public abstract class Operator {
     CREATE_SCHEMA_SNAPSHOT,
     TRACING,
     DELETE_PARTITION,
+    UDAF,
+    UDTF,
+    CREATE_FUNCTION,
+    DROP_FUNCTION,
     CREATE_MULTI_TIMESERIES,
+    CREATE_INDEX,
+    DROP_INDEX,
+    QUERY_INDEX,
+    KILL,
+    CHANGE_TAG_OFFSET,
+    CHANGE_ALIAS,
+    MNODE,
+    MEASUREMENT_MNODE,
+    STORAGE_GROUP_MNODE,
     BATCH_INSERT_ONE_DEVICE,
+    MULTI_BATCH_INSERT,
+    BATCH_INSERT_ROWS,
+    CREATE_TRIGGER,
+    DROP_TRIGGER,
+    START_TRIGGER,
+    STOP_TRIGGER
   }
 }
