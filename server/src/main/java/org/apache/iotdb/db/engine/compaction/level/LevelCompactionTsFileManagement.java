@@ -115,6 +115,9 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
       try (ModificationFile modificationFile =
           new ModificationFile(targetTsFile.getTsFilePath() + ModificationFile.FILE_SUFFIX)) {
         for (Modification modification : modifications) {
+          // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
+          // change after compaction
+          modification.setFileOffset(Long.MAX_VALUE);
           modificationFile.write(modification);
         }
       }
