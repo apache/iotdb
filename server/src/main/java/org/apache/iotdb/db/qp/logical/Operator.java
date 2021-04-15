@@ -84,6 +84,7 @@ public abstract class Operator {
     BASIC_FUNC,
     IN,
     QUERY,
+    UPDATE,
     AGGREGATION,
     AUTHOR,
     FROM,

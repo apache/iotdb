@@ -111,13 +111,6 @@ public class AuthorityCheckerTest {
             OperatorType.QUERY,
             user.getName()));
 
-    Assert.assertTrue(
-        AuthorityChecker.check(
-            user.getName(),
-            Collections.singletonList(new PartialPath(nodeName)),
-            OperatorType.DROP_INDEX,
-            user.getName()));
-
     // check empty list
     Assert.assertFalse(
         AuthorityChecker.check(
