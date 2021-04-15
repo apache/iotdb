@@ -117,7 +117,6 @@ public class SystemInfo {
               storageGroupInfo.getStorageGroupProcessor().getLogicalStorageGroupName(),
               delta,
               totalSgMemCost);
-          storageGroupInfo.getStorageGroupProcessor().rejectConditionSignal();
         }
         logCurrentTotalSGMemory();
         rejected = false;

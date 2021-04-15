@@ -1104,6 +1104,7 @@ public class StorageGroupProcessor {
       }
     } finally {
       writeUnlock();
+      rejectConditionSignal();
     }
   }
 
@@ -1590,7 +1591,7 @@ public class StorageGroupProcessor {
   }
 
   public void rejectConditionAwait() throws InterruptedException {
-    rejectCondition.await();
+    rejectCondition.await(config.getCheckPeriodWhenInsertBlocked(), TimeUnit.MILLISECONDS);
   }
 
   public void rejectConditionSignal() {

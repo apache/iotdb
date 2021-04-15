@@ -36,6 +36,7 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpdateEndTimeCallBack;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -389,8 +390,18 @@ public class TsFileProcessor {
       while (SystemInfo.getInstance().isRejected()) {
         try {
           storageGroupInfo.getStorageGroupProcessor().rejectConditionAwait();
+          if (System.currentTimeMillis() - startTime
+              > config.getMaxWaitingTimeWhenInsertBlocked()) {
+            throw new WriteProcessRejectException(
+                "System rejected over " + config.getMaxWaitingTimeWhenInsertBlocked() + "ms");
+          }
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
+        } catch (WriteProcessRejectException e) {
+          storageGroupInfo.releaseStorageGroupMemCost(memTableIncrement);
+          tsFileProcessorInfo.releaseTSPMemCost(unsealedResourceIncrement + chunkMetadataIncrement);
+          SystemInfo.getInstance().resetStorageGroupStatus(storageGroupInfo, false);
+          throw e;
         }
       }
       logger.debug("Time for Waiting memory release is {}", System.currentTimeMillis() - startTime);
