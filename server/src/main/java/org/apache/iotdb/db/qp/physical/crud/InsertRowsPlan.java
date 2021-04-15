@@ -187,9 +187,10 @@ public class InsertRowsPlan extends InsertPlan {
 
   @Override
   public void setIndex(long index) {
+    super.setIndex(index);
     for (InsertRowPlan insertRowPlan : insertRowPlanList) {
       // use the InsertRowsPlan's index as the sub InsertRowPlan's index
-      insertRowPlan.setIndex(super.index);
+      insertRowPlan.setIndex(index);
     }
   }
 
