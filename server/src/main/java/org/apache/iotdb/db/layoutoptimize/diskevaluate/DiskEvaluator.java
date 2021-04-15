@@ -64,7 +64,6 @@ public class DiskEvaluator {
     return file;
   }
 
-
   /**
    * perform the read test on the given file, to get the read speed of the disk
    *
@@ -111,7 +110,6 @@ public class DiskEvaluator {
     }
     return totalCost.divide(BigDecimal.valueOf(costs.length)).doubleValue();
   }
-
 
   public int performLocalSeeks(
       long[] seekCosts,
