@@ -33,6 +33,8 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 
+import static org.junit.Assert.fail;
+
 public class IoTDBAggregationByLevelIT {
 
   private Planner planner = new Planner();
@@ -319,6 +321,25 @@ public class IoTDBAggregationByLevelIT {
       } catch (Exception e) {
         Assert.assertEquals("Aggregate among unmatched data types", e.getMessage());
       }
+    }
+  }
+
+  /**
+   * Test group by level without aggregation function used in select clause. The expected situation
+   * is throwing an exception.
+   */
+  @Test
+  public void TestGroupByLevelWithoutAggregationFunc() {
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      statement.execute("select temperature from root.sg1.* group by level = 2");
+
+      fail("No expected exception thrown");
+    } catch (Exception e) {
+      Assert.assertTrue(
+          e.getMessage().contains("There is no aggregation function with group by query"));
     }
   }
 
