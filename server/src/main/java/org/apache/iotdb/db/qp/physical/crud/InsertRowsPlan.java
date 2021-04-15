@@ -149,8 +149,6 @@ public class InsertRowsPlan extends InsertPlan {
     buffer.put((byte) type);
     buffer.putInt(insertRowPlanList.size());
     for (InsertRowPlan insertRowPlan : insertRowPlanList) {
-      // use the InsertRowsPlan's index as the sub InsertRowPlan's index
-      insertRowPlan.setIndex(super.index);
       insertRowPlan.subSerialize(buffer);
     }
     for (Integer index : insertRowPlanIndexList) {
@@ -164,8 +162,6 @@ public class InsertRowsPlan extends InsertPlan {
     stream.writeByte((byte) type);
     stream.writeInt(insertRowPlanList.size());
     for (InsertRowPlan insertRowPlan : insertRowPlanList) {
-      // use the InsertRowsPlan's index as the sub InsertRowPlan's index
-      insertRowPlan.setIndex(super.index);
       insertRowPlan.subSerialize(stream);
     }
     for (Integer index : insertRowPlanIndexList) {
@@ -186,6 +182,14 @@ public class InsertRowsPlan extends InsertPlan {
 
     for (int i = 0; i < size; i++) {
       insertRowPlanIndexList.add(buffer.getInt());
+    }
+  }
+
+  @Override
+  public void setIndex(long index) {
+    for (InsertRowPlan insertRowPlan : insertRowPlanList) {
+      // use the InsertRowsPlan's index as the sub InsertRowPlan's index
+      insertRowPlan.setIndex(super.index);
     }
   }
 
