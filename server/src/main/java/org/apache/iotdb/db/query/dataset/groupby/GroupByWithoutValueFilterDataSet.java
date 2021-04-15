@@ -91,6 +91,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
             .mergeLock(paths.stream().map(p -> (PartialPath) p).collect(Collectors.toList()));
     try {
       // init resultIndexes, group result indexes by path
+      Map<String, List<Integer>> deviceQueryIdxMap = new HashMap<>();
       for (int i = 0; i < paths.size(); i++) {
         PartialPath path = (PartialPath) paths.get(i);
         if (!pathExecutors.containsKey(path)) {
@@ -112,6 +113,21 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
             AggregateResultFactory.getAggrResultByName(
                 groupByTimePlan.getDeduplicatedAggregations().get(i), dataTypes.get(i), ascending);
         pathExecutors.get(path).addAggregateResult(aggrResult);
+        // Map the device id to the corresponding query indexes
+        if (deviceQueryIdxMap.containsKey(path.getDevice())) {
+          deviceQueryIdxMap.put(path.getDevice(), new ArrayList<>());
+        }
+        deviceQueryIdxMap.get(path.getDevice()).add(i);
+      }
+      // Add the query record to the workload manager
+      for (String deviceId : deviceQueryIdxMap.keySet()) {
+        List<Integer> pathIndexes = deviceQueryIdxMap.get(deviceId);
+        List<String> sensors = new ArrayList<>();
+        for (int idx : pathIndexes) {
+          PartialPath path = (PartialPath) paths.get(idx);
+          sensors.add(path.getMeasurement());
+        }
+        // TODO: add to WorkloadManager
       }
     } finally {
       StorageEngine.getInstance().mergeUnLock(list);

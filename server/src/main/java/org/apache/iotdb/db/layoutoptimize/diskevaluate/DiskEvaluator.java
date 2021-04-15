@@ -33,7 +33,8 @@ public class DiskEvaluator {
    * @return return the instance of the created file
    * @throws IOException throw the IOException if the file already exists or cannot create it
    */
-  public File generateFile(final long fileSize, String dataPath, int fileNum) throws IOException {
+  public synchronized File generateFile(final long fileSize, String dataPath, int fileNum)
+      throws IOException {
     File file = new File(dataPath);
     if (file.exists()) {
       throw new IOException(String.format("%s already exists", dataPath));
@@ -77,7 +78,7 @@ public class DiskEvaluator {
    * @return the read speed of the disk in KB/s
    * @throws IOException throw the IOException if the file doesn't exist
    */
-  public double performRead(final File file) throws IOException {
+  public synchronized double performRead(final File file) throws IOException {
     // clean the caches
     CmdExecutor.builder(sudoPassword).sudoCmd("echo 3 | tee /proc/sys/vm/drop_caches");
 
@@ -91,7 +92,7 @@ public class DiskEvaluator {
             new FileWriter(
                 IoTDBDescriptor.getInstance().getConfig().getSystemDir()
                     + File.separator
-                    + "seek_cost.txt",
+                    + "disk_info.txt",
                 true));
     RandomAccessFile raf = new RandomAccessFile(file, "r");
     raf.seek(0);
@@ -136,7 +137,7 @@ public class DiskEvaluator {
    * @return if the seek doesn't perform , return -1; else return the actual time of seek
    * @throws IOException throws IOException if the file doesn't exist
    */
-  public int performLocalSeekInSingleFile(
+  public synchronized int performLocalSeekInSingleFile(
       long[] seekCosts,
       final File file,
       final int numSeeks,
@@ -185,7 +186,7 @@ public class DiskEvaluator {
    * @param numSeeks the seek time for each interval in each file
    * @param readLength the length of data after each seek
    */
-  public void performLocalSeekInMultiFiles(
+  public synchronized void performLocalSeekInMultiFiles(
       String DiskId,
       String dataPath,
       long seekDistInterval,
@@ -197,7 +198,7 @@ public class DiskEvaluator {
       BufferedWriter seekCostWriter =
           new BufferedWriter(
               new FileWriter(
-                  IoTDBDescriptor.getInstance().getConfig().getSystemDir() + "/seek_cost.txt",
+                  IoTDBDescriptor.getInstance().getConfig().getSystemDir() + "/disk_info.txt",
                   true));
       seekCostWriter.write(DiskId + "\n");
 
@@ -223,7 +224,7 @@ public class DiskEvaluator {
         }
 
         double avgSeekCost = totalSeekCost / ((files.length) / 2);
-        // seek cost in seek_cost.txt is in ms
+        // seek cost in disk_info.txt is in ms
         seekCostWriter.write(seekDistance + "\t" + avgSeekCost + "\n");
         seekCostWriter.flush();
       }
@@ -235,11 +236,11 @@ public class DiskEvaluator {
 
   /**
    * evaluate the disk performance both in seek and read, and store the result in
-   * SystemDir/seek_cost.txt
+   * SystemDir/disk_info.txt
    *
    * @throws IOException throw IOException if fail to create the test file
    */
-  public void performDiskEvaluation() throws IOException {
+  public synchronized void performDiskEvaluation() throws IOException {
     String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
     for (String dataDir : dataDirs) {
       String tmpDirPath = dataDir + File.separator + "seek_test";
