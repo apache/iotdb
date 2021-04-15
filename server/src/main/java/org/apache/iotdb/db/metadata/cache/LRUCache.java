@@ -1,93 +1,187 @@
 package org.apache.iotdb.db.metadata.cache;
 
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 
 import java.util.Collection;
-import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 public class LRUCache implements MNodeCache {
 
-  private final LinkedHashMap<String, MNode> map;
-  private final ReadWriteLock lock = new ReentrantReadWriteLock();
-  private final Lock readLock = lock.readLock();
-  private final Lock writeLock = lock.writeLock();
-  private static final float DEFAULT_LOAD_FACTOR = 0.75f;
+  private final int CacheCapacity;
+  private final Map<String, CacheEntry> map;
+  private CacheEntry first;
+  private CacheEntry last;
 
-  public LRUCache() {
-    this(MNodeCache.DEFAULT_MAX_CAPACITY);
+  private final Lock lock = new ReentrantLock();
+
+  public LRUCache(int size) {
+    this.CacheCapacity = size;
+    map = new HashMap<>(size);
   }
 
-  public LRUCache(int maxCapacity) {
-    map =
-        new LinkedHashMap<String, MNode>(maxCapacity, DEFAULT_LOAD_FACTOR, true) {
-          protected boolean removeEldestEntry(Map.Entry<String, MNode> eldest) {
-            return maxCapacity < map.size();
-          }
-        };
-  }
-
-  @Override
-  public void put(String path,MNode mNode) {
+  public void put(String path, MNode mNode) {
     try {
-      writeLock.lock();
-      map.put(path.toString(), mNode);
+      lock.lock();
+      CacheEntry node = map.get(path);
+      if (node == null) {
+        if (map.size() >= CacheCapacity) {
+          evictLast();
+        }
+        node = new CacheEntry(mNode);
+      }
+      node.value = mNode;
+      moveToFirst(node);
+      map.put(path, node);
     } finally {
-      writeLock.unlock();
+      lock.unlock();
     }
   }
 
   @Override
   public boolean contains(String path) {
     try {
-      readLock.lock();
-      return map.containsKey(path.toString());
+      lock.lock();
+      return map.containsKey(path);
     } finally {
-      readLock.unlock();
+      lock.unlock();
     }
   }
 
-  @Override
   public MNode get(String path) {
     try {
-      readLock.lock();
-      return map.get(path.toString());
+      lock.lock();
+      CacheEntry node = map.get(path);
+      if (node == null) {
+        return null;
+      }
+      moveToFirst(node);
+      return node.value;
     } finally {
-      readLock.unlock();
+      lock.unlock();
     }
   }
 
   @Override
   public Collection<MNode> getAll() {
     try {
-      readLock.lock();
-      return map.values();
+      lock.lock();
+      return map.values().stream().map(o -> o.value).collect(Collectors.toList());
     } finally {
-      readLock.unlock();
+      lock.unlock();
     }
   }
 
   @Override
   public void remove(String path) {
     try {
-      writeLock.lock();
-      map.remove(path.toString());
+      lock.lock();
+      CacheEntry entry = map.get(path);
+      if (entry != null) {
+        removeEntryFromLinkedList(entry);
+        map.remove(path);
+        removeRecursively(entry.value);
+      }
     } finally {
-      writeLock.unlock();
+      lock.unlock();
     }
   }
 
   @Override
+  public int size() {
+    try {
+      lock.lock();
+      return map.size();
+    } finally {
+      lock.unlock();
+    }
+  }
+
   public void clear() {
     try {
-      writeLock.lock();
+      lock.lock();
+      first = null;
+      last = null;
       map.clear();
     } finally {
-      writeLock.unlock();
+      lock.unlock();
+    }
+  }
+
+  private void moveToFirst(CacheEntry node) {
+    if (first == null || last == null) { // empty linked list
+      first = last = node;
+      return;
+    }
+
+    if (first == node) {
+      return;
+    }
+    if (node.pre != null) {
+      node.pre.next = node.next;
+    }
+    if (node.next != null) {
+      node.next.pre = node.pre;
+    }
+
+    if (node == last) {
+      last = last.pre;
+    }
+
+    node.next = first;
+    first.pre = node;
+    first = node;
+    first.pre = null;
+  }
+
+  private void removeEntryFromLinkedList(CacheEntry entry) {
+    if (entry != null) {
+      if (entry.pre != null) {
+        entry.pre.next = entry.next;
+      }
+      if (entry.next != null) {
+        entry.next.pre = entry.pre;
+      }
+      if (entry == first) {
+        first = entry.next;
+      }
+      if (entry == last) {
+        last = entry.pre;
+      }
+    }
+  }
+
+  private void evictLast() {
+    if (last != null) {
+      MNode mNode = last.value;
+      if (!MNode.isNull(mNode.getParent())) {
+        mNode.getParent().evictChild(mNode.getName());
+      }
+      remove(last.getKey());
+    }
+  }
+
+  private void removeRecursively(MNode mNode) {
+    remove(mNode.getFullPath());
+    for (MNode child : mNode.getChildren().values()) {
+      removeRecursively(child);
+    }
+  }
+
+  private static class CacheEntry {
+    CacheEntry pre;
+    CacheEntry next;
+    MNode value;
+
+    CacheEntry(MNode mNode) {
+      value = mNode;
+    }
+
+    String getKey() {
+      return value.getFullPath();
     }
   }
 }

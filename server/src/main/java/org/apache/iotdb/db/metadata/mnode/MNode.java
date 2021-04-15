@@ -20,6 +20,7 @@ package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.cache.EvictionEntry;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.rescon.CachedStringPool;
 
@@ -52,11 +53,13 @@ public class MNode implements Serializable {
   /** from root to this node, only be set when used once for InternalMNode */
   protected String fullPath;
 
+  /** offset in metafile */
+  protected long position;
+
   /** whether the node has been modified and is different from the content in metafile */
   protected boolean isModified;
 
-  /** offset in metafile */
-  protected long position;
+  protected transient EvictionEntry evictionEntry;
 
   /**
    * use in Measurement Node so it's protected suppress warnings reason: volatile for double
@@ -345,6 +348,14 @@ public class MNode implements Serializable {
 
   public void setPosition(long position) {
     this.position = position;
+  }
+
+  public EvictionEntry getEvictionEntry() {
+    return evictionEntry;
+  }
+
+  public void setEvictionEntry(EvictionEntry evictionEntry) {
+    this.evictionEntry = evictionEntry;
   }
 
   public void evictChild(String name) {

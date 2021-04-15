@@ -43,4 +43,7 @@ public class MetadataConstant {
   public static final short MNODE_TYPE = 0;
   public static final short STORAGE_GROUP_MNODE_TYPE = 1;
   public static final short MEASUREMENT_MNODE_TYPE = 2;
+
+  public static final String MTREE_FILE_PATH = "mtreefile.bin";
+  public static final String MEASUREMENT_FILE_PATH = "measurementfile.bin";
 }

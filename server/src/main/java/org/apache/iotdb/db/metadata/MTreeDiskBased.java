@@ -5,10 +5,12 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.metadata.*;
-import org.apache.iotdb.db.metadata.cache.LRUCache;
+import org.apache.iotdb.db.metadata.cache.EvictionStrategy;
+import org.apache.iotdb.db.metadata.cache.LRUEviction;
 import org.apache.iotdb.db.metadata.cache.MNodeCache;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.metafile.MetaFileAccess;
+import org.apache.iotdb.db.metadata.metafile.MockMetaFile;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
@@ -31,8 +33,10 @@ import com.google.gson.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -46,12 +50,23 @@ public class MTreeDiskBased implements MTreeInterface {
   private static final String NO_CHILDNODE_MSG = " does not have the child node ";
   public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
-  private final MNodeCache cache;
-  private MetaFileAccess metaFile;
+  private int capacity;
+  private AtomicInteger size;
+  private EvictionStrategy evictionStrategy;
 
-  private final MNode root;
-  private final PartialPath rootPath;
-  private final String rootName;
+  private MetaFileAccess metaFile;
+  private final String mTreeFilePath =
+      IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
+          + File.separator
+          + MetadataConstant.MTREE_FILE_PATH;
+  private final String measurementFilePath =
+      IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
+          + File.separator
+          + MetadataConstant.MEASUREMENT_FILE_PATH;
+
+  private MNode root;
+  private PartialPath rootPath;
+  private String rootName;
 
   private static transient ThreadLocal<Integer> limit = new ThreadLocal<>();
   private static transient ThreadLocal<Integer> offset = new ThreadLocal<>();
@@ -74,9 +89,15 @@ public class MTreeDiskBased implements MTreeInterface {
     this.root = root;
     rootName = root.getName();
     rootPath = new PartialPath(rootName);
-    cache = new LRUCache(cacheSize);
-    cache.put(root.getFullPath(), root);
-    //    metaFile=new MetaFile(mTreeFilePath,measurementFilePath);
+
+    capacity = cacheSize;
+    size = new AtomicInteger();
+    size.getAndIncrement();
+    evictionStrategy = new LRUEviction();
+    evictionStrategy.applyChange(root);
+
+    metaFile = new MockMetaFile(this.mTreeFilePath, this.measurementFilePath);
+    metaFile.write(root);
   }
 
   static long getLastTimeStamp(MeasurementMNode node, QueryContext queryContext) {
@@ -111,27 +132,28 @@ public class MTreeDiskBased implements MTreeInterface {
     }
   }
 
-  private MNode getRoot() throws MetadataException {
-    return getMNode(rootPath);
+  public MNode getMNodeFromDisk(PartialPath path) throws MetadataException {
+    try {
+      return metaFile.read(path);
+    } catch (IOException e) {
+      throw new MetadataException(e.getMessage());
+    }
   }
 
-  public MNode getMNode(PartialPath path) throws MetadataException {
-    MNode result = cache.get(path.getFullPath());
-    //    if (result == null) {
-    //      try {
-    //        result=metaFile.read(path);
-    //      }catch (IOException e){
-    //        throw new MetadataException(e.getCause());
-    //      }
-    //      cache.put(path,result);
-    //    }
-    return result;
+  public MNode getRoot() throws MetadataException {
+    if (MNode.isNull(root)) {
+      root = getMNodeFromDisk(rootPath);
+    }
+    evictionStrategy.applyChange(root);
+    return root;
   }
 
   public Map<String, MNode> getChildren(MNode parent) throws MetadataException {
     for (String childName : parent.getChildren().keySet()) {
-      if (MNode.isNull(parent.getChild(childName))) {
-        MNode mNode = getMNode(new PartialPath(parent.getFullPath().concat(childName)));
+      MNode mNode = parent.getChild(childName);
+      if (MNode.isNull(mNode)) {
+        mNode =
+            getMNodeFromDisk(new PartialPath(parent.getFullPath() + PATH_SEPARATOR + childName));
         parent.addChild(childName, mNode);
       }
     }
@@ -144,51 +166,65 @@ public class MTreeDiskBased implements MTreeInterface {
     }
     MNode result = parent.getChild(name);
     if (MNode.isNull(result)) {
-      // todo add getChild method to MetaFile
-      result = getMNode(new PartialPath(parent.getFullPath().concat(name)));
+      result = getMNodeFromDisk(new PartialPath(parent.getFullPath() + PATH_SEPARATOR + name));
       parent.addChild(name, result);
+    } else {
+      evictionStrategy.applyChange(result);
     }
     return result;
   }
 
   public void addChild(MNode parent, String childName, MNode child) throws MetadataException {
+    size.getAndIncrement();
     parent.addChild(childName, child);
     parent.setModified(true);
-    cache.put(child.getFullPath(), child);
+    evictionStrategy.applyChange(child);
+    try {
+      metaFile.write(child);
+    } catch (IOException e) {
+      throw new MetadataException(e.getMessage());
+    }
   }
 
   public void addAlias(MNode parent, String alias, MNode child) throws MetadataException {
     parent.addAlias(alias, child);
     parent.setModified(true);
-    cache.put(child.getFullPath(), child);
+    evictionStrategy.applyChange(child);
+    try {
+      metaFile.write(parent);
+      metaFile.write(child);
+    } catch (IOException e) {
+      throw new MetadataException(e.getMessage());
+    }
   }
 
-  public void replaceChild(MNode parent, String measurement, MNode newChildNode)
+  public void replaceChild(MNode parent, String measurement, MNode newChild)
       throws MetadataException {
-    String path = newChildNode.getFullPath();
-    if (cache.contains(path)) {
-      cache.remove(path);
-    }
-    parent.replaceChild(measurement, newChildNode);
+    MNode oldChild = parent.getChild(measurement);
+    evictionStrategy.remove(oldChild);
+    parent.replaceChild(measurement, newChild);
     parent.setModified(true);
-    cache.put(path, newChildNode);
+    evictionStrategy.applyChange(newChild);
+    try {
+      metaFile.write(newChild);
+    } catch (IOException e) {
+      throw new MetadataException(e.getMessage());
+    }
   }
 
   public void deleteChild(MNode parent, String childName) throws MetadataException {
-    cache.remove(parent.getChild(childName).getFullPath());
+    MNode child = parent.getChild(childName);
+    evictionStrategy.remove(child);
     parent.deleteChild(childName);
+    try {
+      metaFile.remove(new PartialPath(child.getFullPath()));
+    } catch (IOException e) {
+      throw new MetadataException(e.getMessage());
+    }
   }
 
   public void deleteAliasChild(MNode parent, String alias) {
     parent.deleteAliasChild(alias);
-  }
-
-  private String[] parsePath(PartialPath path) throws IllegalPathException {
-    String[] nodeNames = path.getNodes();
-    if (nodeNames.length <= 2 || !nodeNames[0].equals(rootName)) {
-      throw new IllegalPathException(path.getFullPath());
-    }
-    return nodeNames;
   }
 
   @Override

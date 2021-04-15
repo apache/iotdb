@@ -24,7 +24,7 @@ public class CachePerformanceTest {
 
   private static final int TIMESERIES_NUM = 10000;
   private static final int DEVICE_NUM = 100;
-  private static final int NODE_NUM = TIMESERIES_NUM * DEVICE_NUM + DEVICE_NUM + 3;
+  private static final int NODE_NUM = TIMESERIES_NUM * DEVICE_NUM + DEVICE_NUM + 2;
 
   private static PartialPath[][] paths = new PartialPath[DEVICE_NUM][TIMESERIES_NUM];
 
@@ -62,9 +62,9 @@ public class CachePerformanceTest {
     //    System.out.println(ObjectSizeCalculator.getObjectSize(paths));
     //    System.out.println(ObjectSizeCalculator.getObjectSize(mTreeMem));
     //    System.out.println(ObjectSizeCalculator.getObjectSize(mTreeDisk));
-    //    paths=null;
+    paths = null;
     System.gc();
-    //    while (true) {}
+    //        while (true) {}
   }
 
   private MTreeInterface testMTreeMem() throws Exception {
