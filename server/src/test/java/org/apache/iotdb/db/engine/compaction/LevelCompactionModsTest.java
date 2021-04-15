@@ -73,7 +73,7 @@ public class LevelCompactionModsTest extends LevelCompactionTest {
     try (ModificationFile sourceModificationFile =
         new ModificationFile(sourceTsFileResource.getTsFilePath() + ModificationFile.FILE_SUFFIX)) {
       modification1 = new Deletion(new PartialPath(deviceIds[0], "sensor0"), 0, 0);
-      modification2 = new Deletion(new PartialPath(deviceIds[0], "sensor1"), 0, 0);
+      modification2 = new Deletion(new PartialPath(deviceIds[0], "sensor1"), Long.MAX_VALUE, 0);
       sourceModificationFile.write(modification1);
       sourceModificationFile.write(modification2);
       filterModifications.add(modification1);
