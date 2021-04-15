@@ -240,8 +240,6 @@ public class InsertMultiTabletPlan extends InsertPlan {
     buffer.put((byte) type);
     buffer.putInt(insertTabletPlanList.size());
     for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
-      // use the InsertMultiTabletPlan's index as the sub InsertTabletPlan's index
-      insertTabletPlan.setIndex(super.index);
       insertTabletPlan.subSerialize(buffer);
     }
 
@@ -257,8 +255,6 @@ public class InsertMultiTabletPlan extends InsertPlan {
     stream.writeByte((byte) type);
     stream.writeInt(insertTabletPlanList.size());
     for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
-      // use the InsertMultiTabletPlan's index as the sub InsertTabletPlan's index
-      insertTabletPlan.setIndex(super.index);
       insertTabletPlan.subSerialize(stream);
     }
 
@@ -282,6 +278,14 @@ public class InsertMultiTabletPlan extends InsertPlan {
     this.parentInsertTabletPlanIndexList = new ArrayList<>(tmpParentInsetTablePlanIndexListSize);
     for (int i = 0; i < tmpParentInsetTablePlanIndexListSize; i++) {
       this.parentInsertTabletPlanIndexList.add(buffer.getInt());
+    }
+  }
+
+  @Override
+  public void setIndex(long index) {
+    for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
+      // use the InsertMultiTabletPlan's index as the sub InsertTabletPlan's index
+      insertTabletPlan.setIndex(super.index);
     }
   }
 
