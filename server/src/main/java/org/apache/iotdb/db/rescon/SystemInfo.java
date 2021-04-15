@@ -117,6 +117,7 @@ public class SystemInfo {
               storageGroupInfo.getStorageGroupProcessor().getLogicalStorageGroupName(),
               delta,
               totalSgMemCost);
+          storageGroupInfo.getStorageGroupProcessor().rejectConditionSignal();
         }
         logCurrentTotalSGMemory();
         rejected = false;
@@ -139,9 +140,6 @@ public class SystemInfo {
         logCurrentTotalSGMemory();
         rejected = false;
       }
-    }
-    if (!rejected) {
-      storageGroupInfo.getStorageGroupProcessor().rejectConditionSignal();
     }
     if (shouldInvokeFlush && needForceAsyncFlush) {
       forceAsyncFlush();
