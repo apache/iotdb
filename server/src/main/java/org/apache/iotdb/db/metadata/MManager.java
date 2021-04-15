@@ -1340,7 +1340,7 @@ public class MManager {
    * @param path path
    */
   public Pair<MNode, Template> getDeviceNodeWithAutoCreate(
-      PartialPath path, boolean autoCreateSchema, int sgLevel)
+      PartialPath path, boolean autoCreateSchema, boolean allowCreateSg, int sgLevel)
       throws IOException, MetadataException {
     Pair<MNode, Template> node;
     boolean shouldSetStorageGroup;
@@ -1356,8 +1356,12 @@ public class MManager {
 
     try {
       if (shouldSetStorageGroup) {
-        PartialPath storageGroupPath = MetaUtils.getStorageGroupPathByLevel(path, sgLevel);
-        setStorageGroup(storageGroupPath);
+        if (allowCreateSg) {
+          PartialPath storageGroupPath = MetaUtils.getStorageGroupPathByLevel(path, sgLevel);
+          setStorageGroup(storageGroupPath);
+        } else {
+          throw new StorageGroupNotSetException(path.getFullPath());
+        }
       }
       node = mtree.getDeviceNodeWithAutoCreating(path, sgLevel);
       if (!(node.left instanceof StorageGroupMNode)) {
@@ -1378,7 +1382,7 @@ public class MManager {
   public Pair<MNode, Template> getDeviceNodeWithAutoCreate(PartialPath path)
       throws MetadataException, IOException {
     return getDeviceNodeWithAutoCreate(
-        path, config.isAutoCreateSchemaEnabled(), config.getDefaultStorageGroupLevel());
+        path, config.isAutoCreateSchemaEnabled(), true, config.getDefaultStorageGroupLevel());
   }
 
   // attention: this path must be a device node

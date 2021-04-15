@@ -1061,7 +1061,8 @@ public class PlanExecutor implements IPlanExecutor {
     for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
       String device = chunkGroupMetadata.getDevice();
       MNode node =
-          IoTDB.metaManager.getDeviceNodeWithAutoCreate(new PartialPath(device), true, sgLevel)
+          IoTDB.metaManager.getDeviceNodeWithAutoCreate(
+                  new PartialPath(device), true, true, sgLevel)
               .left;
       for (ChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
         PartialPath series =

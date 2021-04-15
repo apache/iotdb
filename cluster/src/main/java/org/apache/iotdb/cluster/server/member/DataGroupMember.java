@@ -76,7 +76,6 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
@@ -145,8 +144,6 @@ public class DataGroupMember extends RaftMember {
 
   private LocalQueryExecutor localQueryExecutor;
 
-  IPlanExecutor executor;
-
   /**
    * When a new partition table is installed, all data members will be checked if unchanged. If not,
    * such members will be removed.
@@ -188,10 +185,6 @@ public class DataGroupMember extends RaftMember {
     term.set(logManager.getHardState().getCurrentTerm());
     voteFor = logManager.getHardState().getVoteFor();
     localQueryExecutor = new LocalQueryExecutor(this);
-    try {
-      executor = new PlanExecutor();
-    } catch (Exception e) {
-    }
   }
 
   /**
@@ -704,7 +697,7 @@ public class DataGroupMember extends RaftMember {
   public TSStatus executeNonQueryPlan(PhysicalPlan plan) {
     if (ClusterDescriptor.getInstance().getConfig().getReplicationNum() == 1) {
       try {
-        executor.processNonQuery(plan);
+        getLocalExecutor().processNonQuery(plan);
         return StatusUtils.OK;
       } catch (Exception e) {
         Throwable cause = IOUtils.getRootCause(e);
@@ -712,7 +705,7 @@ public class DataGroupMember extends RaftMember {
             || cause instanceof UndefinedTemplateException) {
           try {
             metaGroupMember.syncLeaderWithConsistencyCheck(true);
-            executor.processNonQuery(plan);
+            getLocalExecutor().processNonQuery(plan);
           } catch (CheckConsistencyException ce) {
             return StatusUtils.getStatus(StatusUtils.CONSISTENCY_FAILURE, ce.getMessage());
           } catch (Exception ne) {
