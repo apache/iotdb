@@ -118,13 +118,6 @@ public class AuthorityCheckerTest {
             OperatorType.DROP_INDEX,
             user.getName()));
 
-    Assert.assertFalse(
-        AuthorityChecker.check(
-            user.getName(),
-            Collections.singletonList(new PartialPath(nodeName)),
-            OperatorType.UNION,
-            user.getName()));
-
     // check empty list
     Assert.assertFalse(
         AuthorityChecker.check(
