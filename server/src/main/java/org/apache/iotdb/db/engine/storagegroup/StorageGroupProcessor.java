@@ -1019,8 +1019,8 @@ public class StorageGroupProcessor {
         fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
       }
     } finally {
-      writeUnlock();
       rejectConditionSignal();
+      writeUnlock();
     }
   }
 
