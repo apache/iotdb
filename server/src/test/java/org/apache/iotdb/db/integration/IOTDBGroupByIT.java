@@ -938,7 +938,7 @@ public class IOTDBGroupByIT {
   @Test
   public void TestGroupByWithoutAggregationFunc() {
     try (Connection connection =
-        DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       statement.execute("select temperature from root.ln.wf01.wt01 group by ([0, 100), 5ms)");

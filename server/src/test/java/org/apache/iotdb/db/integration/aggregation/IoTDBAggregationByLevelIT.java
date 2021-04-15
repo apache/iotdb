@@ -329,7 +329,7 @@ public class IoTDBAggregationByLevelIT {
   @Test
   public void TestGroupByLevelWithoutAggregationFunc() {
     try (Connection connection =
-        DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       statement.execute("select temperature from root.sg1.* group by level = 2");

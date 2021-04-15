@@ -819,7 +819,7 @@ public class IoTDBGroupByFillIT {
   @Test
   public void TestGroupByFillWithoutAggregationFunc() {
     try (Connection connection =
-        DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       statement.execute(
