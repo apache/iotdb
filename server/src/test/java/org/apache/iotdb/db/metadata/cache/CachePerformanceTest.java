@@ -22,9 +22,9 @@ public class CachePerformanceTest {
 
   private static Logger logger = LoggerFactory.getLogger(CachePerformanceTest.class);
 
-  private static final int TIMESERIES_NUM = 10000;
-  private static final int DEVICE_NUM = 100;
-  private static final int NODE_NUM = TIMESERIES_NUM * DEVICE_NUM + DEVICE_NUM + 2;
+  private static final int TIMESERIES_NUM = 100;
+  private static final int DEVICE_NUM = 10;
+  private static final int NODE_NUM = TIMESERIES_NUM * (DEVICE_NUM-1) + DEVICE_NUM + 2;
 
   private static PartialPath[][] paths = new PartialPath[DEVICE_NUM][TIMESERIES_NUM];
 

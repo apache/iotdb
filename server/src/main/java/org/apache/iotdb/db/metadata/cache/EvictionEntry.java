@@ -6,7 +6,7 @@ public class EvictionEntry {
 
   private EvictionEntry pre;
   private EvictionEntry next;
-  private final MNode value;
+  private MNode value;
 
   public EvictionEntry(MNode mNode) {
     value = mNode;
@@ -31,5 +31,9 @@ public class EvictionEntry {
 
   void setNext(EvictionEntry next) {
     this.next = next;
+  }
+
+  void setValue(MNode mNode){
+    value=mNode;
   }
 }

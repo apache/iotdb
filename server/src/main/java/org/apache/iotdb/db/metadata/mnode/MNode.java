@@ -331,7 +331,7 @@ public class MNode implements Serializable {
 
   /** whether be loaded from file */
   public boolean isLoaded() {
-    return children != null;
+    return children != null&&children.containsValue(evictionPlaceHolder);
   }
 
   public boolean isModified() {

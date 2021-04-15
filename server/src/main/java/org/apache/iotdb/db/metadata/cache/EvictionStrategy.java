@@ -8,7 +8,9 @@ public interface EvictionStrategy {
 
   void applyChange(MNode mNode);
 
-  void remove(MNode mNode);
+  int remove(MNode mNode);
+
+  void replace(MNode oldMNode, MNode newMNode);
 
   Collection<MNode> evict();
 }

@@ -74,7 +74,7 @@ public class MTreeDiskBased implements MTreeInterface {
   private static transient ThreadLocal<Integer> curOffset = new ThreadLocal<>();
 
   public MTreeDiskBased() throws Exception {
-    this(null, MNodeCache.DEFAULT_MAX_CAPACITY, null, null);
+    this(null, 1, null, null);
   }
 
   private MTreeDiskBased(MNode root) throws Exception {
@@ -141,23 +141,41 @@ public class MTreeDiskBased implements MTreeInterface {
   }
 
   public MNode getRoot() throws MetadataException {
+    MNode root=this.root;
     if (MNode.isNull(root)) {
       root = getMNodeFromDisk(rootPath);
+      if(checkSizeAndEviction()){
+        this.root=root;
+        size.getAndIncrement();
+        evictionStrategy.applyChange(root);
+      }
+    }else {
+      evictionStrategy.applyChange(root);
     }
-    evictionStrategy.applyChange(root);
     return root;
   }
 
   public Map<String, MNode> getChildren(MNode parent) throws MetadataException {
+    Map<String, MNode> result=new HashMap<>();
     for (String childName : parent.getChildren().keySet()) {
       MNode mNode = parent.getChild(childName);
       if (MNode.isNull(mNode)) {
         mNode =
             getMNodeFromDisk(new PartialPath(parent.getFullPath() + PATH_SEPARATOR + childName));
-        parent.addChild(childName, mNode);
+        if(checkSizeAndEviction()){
+          parent.addChild(childName,mNode);
+          size.getAndIncrement();
+          evictionStrategy.applyChange(mNode);
+        }
+      }else {
+        if(checkSizeAndEviction()){
+          evictionStrategy.applyChange(mNode);
+        }
       }
+      result.put(childName, mNode);
+
     }
-    return parent.getChildren();
+    return result;
   }
 
   public MNode getChild(MNode parent, String name) throws MetadataException {
@@ -167,19 +185,31 @@ public class MTreeDiskBased implements MTreeInterface {
     MNode result = parent.getChild(name);
     if (MNode.isNull(result)) {
       result = getMNodeFromDisk(new PartialPath(parent.getFullPath() + PATH_SEPARATOR + name));
-      parent.addChild(name, result);
+      if(checkSizeAndEviction()){
+        parent.addChild(name, result);
+        size.getAndIncrement();
+        evictionStrategy.applyChange(result);
+      }
     } else {
-      evictionStrategy.applyChange(result);
+      if(checkSizeAndEviction()){
+        evictionStrategy.applyChange(result);
+      }
     }
     return result;
   }
 
   public void addChild(MNode parent, String childName, MNode child) throws MetadataException {
-    size.getAndIncrement();
     parent.addChild(childName, child);
     parent.setModified(true);
-    evictionStrategy.applyChange(child);
+    size.getAndIncrement();
+    if(checkSizeAndEviction()){
+      evictionStrategy.applyChange(child);
+    }else {
+      parent.evictChild(childName);
+      size.getAndDecrement();
+    }
     try {
+      metaFile.write(parent);
       metaFile.write(child);
     } catch (IOException e) {
       throw new MetadataException(e.getMessage());
@@ -189,7 +219,9 @@ public class MTreeDiskBased implements MTreeInterface {
   public void addAlias(MNode parent, String alias, MNode child) throws MetadataException {
     parent.addAlias(alias, child);
     parent.setModified(true);
-    evictionStrategy.applyChange(child);
+    if(checkSizeAndEviction()){
+      evictionStrategy.applyChange(child);
+    }
     try {
       metaFile.write(parent);
       metaFile.write(child);
@@ -201,10 +233,11 @@ public class MTreeDiskBased implements MTreeInterface {
   public void replaceChild(MNode parent, String measurement, MNode newChild)
       throws MetadataException {
     MNode oldChild = parent.getChild(measurement);
-    evictionStrategy.remove(oldChild);
     parent.replaceChild(measurement, newChild);
     parent.setModified(true);
-    evictionStrategy.applyChange(newChild);
+    if(checkSizeAndEviction()){
+      evictionStrategy.replace(oldChild,newChild);
+    }
     try {
       metaFile.write(newChild);
     } catch (IOException e) {
@@ -214,17 +247,49 @@ public class MTreeDiskBased implements MTreeInterface {
 
   public void deleteChild(MNode parent, String childName) throws MetadataException {
     MNode child = parent.getChild(childName);
-    evictionStrategy.remove(child);
+    if(checkSizeAndEviction()){
+      size.getAndAdd(-evictionStrategy.remove(child));
+    }
     parent.deleteChild(childName);
+    parent.setModified(true);
     try {
-      metaFile.remove(new PartialPath(child.getFullPath()));
+      metaFile.write(parent);
+      metaFile.remove(new PartialPath(parent.getFullPath()+PATH_SEPARATOR+childName));
     } catch (IOException e) {
       throw new MetadataException(e.getMessage());
     }
   }
 
-  public void deleteAliasChild(MNode parent, String alias) {
+  public void deleteAliasChild(MNode parent, String alias) throws MetadataException{
     parent.deleteAliasChild(alias);
+    parent.setModified(true);
+    try {
+      metaFile.write(parent);
+    } catch (IOException e) {
+      throw new MetadataException(e.getMessage());
+    }
+  }
+
+  private boolean checkSizeAndEviction()throws MetadataException{
+    if(capacity==0){
+      return false;
+    }
+    int num=0;
+    while (size.addAndGet(-num)>=capacity){
+      Collection<MNode> evictedMNode=evictionStrategy.evict();
+      num=evictedMNode.size();
+      for(MNode mNode:evictedMNode){
+        if(!mNode.isModified()){
+          continue;
+        }
+        try {
+          metaFile.write(mNode);
+        } catch (IOException e) {
+          throw new MetadataException(e.getMessage());
+        }
+      }
+    }
+    return true;
   }
 
   @Override
