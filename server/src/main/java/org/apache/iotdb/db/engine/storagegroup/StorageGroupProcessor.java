@@ -106,6 +106,7 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -160,6 +161,9 @@ public class StorageGroupProcessor {
    * partitionLatestFlushedTimeForEachDevice)
    */
   private final ReadWriteLock insertLock = new ReentrantReadWriteLock();
+
+  private final Condition rejectCondition = insertLock.writeLock().newCondition();
+
   /** closeStorageGroupCondition is used to wait for all currently closing TsFiles to be done. */
   private final Object closeStorageGroupCondition = new Object();
   /**
@@ -979,6 +983,7 @@ public class StorageGroupProcessor {
 
     try {
       tsFileProcessor.insertTablet(insertTabletPlan, start, end, results);
+      writeLock();
     } catch (WriteProcessRejectException e) {
       logger.warn("insert to TsFileProcessor rejected, {}", e.getMessage());
       return false;
@@ -1583,6 +1588,14 @@ public class StorageGroupProcessor {
 
   public void writeUnlock() {
     insertLock.writeLock().unlock();
+  }
+
+  public void rejectConditionAwait() throws InterruptedException {
+    rejectCondition.await();
+  }
+
+  public void rejectConditionSignal() {
+    rejectCondition.signal();
   }
 
   /**

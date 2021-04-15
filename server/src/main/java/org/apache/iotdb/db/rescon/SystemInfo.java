@@ -140,6 +140,9 @@ public class SystemInfo {
         rejected = false;
       }
     }
+    if (!rejected) {
+      storageGroupInfo.getStorageGroupProcessor().rejectConditionSignal();
+    }
     if (shouldInvokeFlush && needForceAsyncFlush) {
       forceAsyncFlush();
     }
