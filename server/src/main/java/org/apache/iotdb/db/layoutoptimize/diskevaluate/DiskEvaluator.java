@@ -261,19 +261,4 @@ public class DiskEvaluator {
       tmpDir.delete();
     }
   }
-
-  public static void main(String[] args) {
-    DiskEvaluator diskEvaluator = DiskEvaluator.getInstance();
-    String path = "/data/tmp";
-    File file = new File(path);
-    try {
-      if (!file.exists()) {
-        //        file = diskEvaluator.generateFile(4l * 1024l * 1024l * 1024l, path, 20);
-      }
-      double[] seekTime = new double[100];
-      //      diskEvaluator.performLocalSeekInMultiFiles(path, 512, 1000, 100, 100);
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
-  }
 }
