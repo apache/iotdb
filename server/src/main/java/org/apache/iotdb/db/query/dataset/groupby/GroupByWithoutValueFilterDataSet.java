@@ -23,6 +23,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.layoutoptimize.workloadmanager.WorkloadManager;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
@@ -120,6 +121,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         deviceQueryIdxMap.get(path.getDevice()).add(i);
       }
       // Add the query record to the workload manager
+      WorkloadManager manager = WorkloadManager.getInstance();
       for (String deviceId : deviceQueryIdxMap.keySet()) {
         List<Integer> pathIndexes = deviceQueryIdxMap.get(deviceId);
         List<String> sensors = new ArrayList<>();
@@ -127,7 +129,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
           PartialPath path = (PartialPath) paths.get(idx);
           sensors.add(path.getMeasurement());
         }
-        // TODO: add to WorkloadManager
+        manager.addQueryRecord(deviceId, sensors, groupByTimePlan.getEndTime() - groupByTimePlan.getStartTime());
       }
     } finally {
       StorageEngine.getInstance().mergeUnLock(list);
