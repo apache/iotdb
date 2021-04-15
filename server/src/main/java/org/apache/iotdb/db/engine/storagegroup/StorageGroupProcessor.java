@@ -40,6 +40,8 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.commons.io.FileUtils;
@@ -147,6 +149,8 @@ public class StorageGroupProcessor {
    * partitionLatestFlushedTimeForEachDevice)
    */
   private final ReadWriteLock insertLock = new ReentrantReadWriteLock();
+
+  private final Condition rejectCondition = insertLock.writeLock().newCondition();
   /** closeStorageGroupCondition is used to wait for all currently closing TsFiles to be done. */
   private final Object closeStorageGroupCondition = new Object();
   /**
@@ -1016,6 +1020,7 @@ public class StorageGroupProcessor {
       }
     } finally {
       writeUnlock();
+      rejectConditionSignal();
     }
   }
 
@@ -1487,6 +1492,14 @@ public class StorageGroupProcessor {
 
   public void writeUnlock() {
     insertLock.writeLock().unlock();
+  }
+
+  public void rejectConditionAwait() throws InterruptedException {
+    rejectCondition.await(config.getCheckPeriodWhenInsertBlocked(), TimeUnit.MILLISECONDS);
+  }
+
+  public void rejectConditionSignal() {
+    rejectCondition.signal();
   }
 
   /**

@@ -362,15 +362,25 @@ public class TsFileProcessor {
     storageGroupInfo.addStorageGroupMemCost(memTableIncrement);
     tsFileProcessorInfo.addTSPMemCost(unsealedResourceIncrement + chunkMetadataIncrement);
     if (storageGroupInfo.needToReportToSystem()) {
-      SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
-      try {
-        StorageEngine.blockInsertionIfReject();
-      } catch (WriteProcessRejectException e) {
-        storageGroupInfo.releaseStorageGroupMemCost(memTableIncrement);
-        tsFileProcessorInfo.releaseTSPMemCost(unsealedResourceIncrement + chunkMetadataIncrement);
-        SystemInfo.getInstance().resetStorageGroupStatus(storageGroupInfo, false);
-        throw e;
+      long startTime = System.currentTimeMillis();
+      while (SystemInfo.getInstance().isRejected()) {
+        try {
+          storageGroupInfo.getStorageGroupProcessor().rejectConditionAwait();
+          if (System.currentTimeMillis() - startTime
+              > config.getMaxWaitingTimeWhenInsertBlocked()) {
+            throw new WriteProcessRejectException(
+                "System rejected over " + config.getMaxWaitingTimeWhenInsertBlocked() + "ms");
+          }
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+        } catch (WriteProcessRejectException e) {
+          storageGroupInfo.releaseStorageGroupMemCost(memTableIncrement);
+          tsFileProcessorInfo.releaseTSPMemCost(unsealedResourceIncrement + chunkMetadataIncrement);
+          SystemInfo.getInstance().resetStorageGroupStatus(storageGroupInfo, false);
+          throw e;
+        }
       }
+      logger.debug("Time for Waiting memory release is {}", System.currentTimeMillis() - startTime);
     }
     workMemTable.addTVListRamCost(memTableIncrement);
     workMemTable.addTextDataSize(textDataIncrement);
