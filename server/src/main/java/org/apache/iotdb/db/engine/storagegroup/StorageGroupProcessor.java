@@ -1102,8 +1102,8 @@ public class StorageGroupProcessor {
           && !closingUnSequenceTsFileProcessor.contains(tsFileProcessor)) {
         fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
       }
-    } finally {
       rejectConditionSignal();
+    } finally {
       writeUnlock();
     }
   }
