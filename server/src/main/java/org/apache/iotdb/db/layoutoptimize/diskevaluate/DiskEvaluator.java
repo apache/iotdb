@@ -12,6 +12,12 @@ public class DiskEvaluator {
   private static final DiskEvaluator INSTANCE = new DiskEvaluator();
   private static final Logger logger = LoggerFactory.getLogger(DiskEvaluator.class);
   private final String sudoPassword = "601tif";
+  public int GENERATE_FILE_NUM = 20;
+  public long GENERATE_FILE_SIZE = 8l * 1024l * 1024l * 1024l; // 8 GB
+  public long SEEK_INTERVAL = 1024;
+  public int SEEK_NUM = 5000;
+  public int SEEK_NUM_PER_SEGMENT = 50;
+  public int READ_LENGTH = 100;
 
   public static DiskEvaluator getInstance() {
     return INSTANCE;
@@ -80,7 +86,13 @@ public class DiskEvaluator {
     final int bufferSize = 1 * 1024 * 1024;
     byte[] buffer = new byte[bufferSize];
     long readSize = 0;
-
+    BufferedWriter logWriter =
+        new BufferedWriter(
+            new FileWriter(
+                IoTDBDescriptor.getInstance().getConfig().getSystemDir()
+                    + File.separator
+                    + "seek_cost.txt",
+                true));
     RandomAccessFile raf = new RandomAccessFile(file, "r");
     raf.seek(0);
 
@@ -92,11 +104,13 @@ public class DiskEvaluator {
     // read time in seconds
     double readTime = ((double) (endTime - startTime)) / 1000 / 1000 / 1000;
     // read speed in KB
-    double readSpeed = ((double) dataSize) / readTime / 1024;
-    System.out.println(
+    double readSpeed = ((double) dataSize) / readTime;
+    logger.info(
         String.format(
-            "Read %d KB in %.2f seconds, %.2f KB/s", dataSize / 1024, readTime, readSpeed));
-
+            "Read %d KB in %.2f seconds, %.2f KB/s", dataSize / 1024, readTime, readSpeed / 1024));
+    logWriter.write(String.format("Read speed: %.2f bytes/s\n", readSpeed));
+    logWriter.flush();
+    logWriter.close();
     return readSpeed;
   }
 
@@ -111,7 +125,18 @@ public class DiskEvaluator {
     return totalCost.divide(BigDecimal.valueOf(costs.length)).doubleValue();
   }
 
-  public int performLocalSeeks(
+  /**
+   * perform seek evaluation in a single given file
+   *
+   * @param seekCosts the array of the seek time
+   * @param file the file to test on
+   * @param numSeeks the number of seek
+   * @param readLength the data length to be read after each seek
+   * @param seekDistance the distance of each seek
+   * @return if the seek doesn't perform , return -1; else return the actual time of seek
+   * @throws IOException throws IOException if the file doesn't exist
+   */
+  public int performLocalSeekInSingleFile(
       long[] seekCosts,
       final File file,
       final int numSeeks,
@@ -150,22 +175,37 @@ public class DiskEvaluator {
     return i;
   }
 
-  public void performLocalSeek(
-      String dataPath, long seekDistInterval, int numInvervals, int numSeeks, int readLength) {
+  /**
+   * perform seek evaluation on multiple files to obtain a relatively accurate disk seek time
+   *
+   * @param DiskId the id of the disk, usually the directory where the data is stored
+   * @param dataPath the temporary dir where store the test file
+   * @param seekDistInterval the interval between each seek
+   * @param numIntervals the total multiple of disk seek interval growth
+   * @param numSeeks the seek time for each interval in each file
+   * @param readLength the length of data after each seek
+   */
+  public void performLocalSeekInMultiFiles(
+      String DiskId,
+      String dataPath,
+      long seekDistInterval,
+      int numIntervals,
+      int numSeeks,
+      int readLength) {
     try {
       File[] files = InputFactory.Instance().getFiles(dataPath);
       BufferedWriter seekCostWriter =
           new BufferedWriter(
               new FileWriter(
-                  IoTDBDescriptor.getInstance().getConfig().getSystemDir() + "/seek_cost.txt"));
-      seekCostWriter.write(seekDistInterval + "\n");
-      seekCostWriter.write("0\t0\n");
+                  IoTDBDescriptor.getInstance().getConfig().getSystemDir() + "/seek_cost.txt",
+                  true));
+      seekCostWriter.write(DiskId + "\n");
 
-      for (int j = 1; j <= numInvervals; ++j) {
+      for (int j = 1; j <= numIntervals; ++j) {
         long seekDistance = seekDistInterval * j;
 
         // drop caches before seeks.
-        CmdExecutor.builder("tif601")
+        CmdExecutor.builder(sudoPassword)
             .errRedirect(false)
             .sudoCmd("echo 3 | sudo tee /proc/sys/vm/drop_caches")
             .exec();
@@ -176,7 +216,8 @@ public class DiskEvaluator {
           // get the local file
           File file = files[i];
           long[] seekCosts = new long[numSeeks];
-          int realNumSeeks = performLocalSeeks(seekCosts, file, numSeeks, readLength, seekDistance);
+          int realNumSeeks =
+              performLocalSeekInSingleFile(seekCosts, file, numSeeks, readLength, seekDistance);
           double fileMedCost = getAvgCost(seekCosts, realNumSeeks);
           totalSeekCost += fileMedCost / 1000;
         }
@@ -192,16 +233,45 @@ public class DiskEvaluator {
     }
   }
 
+  /**
+   * evaluate the disk performance both in seek and read, and store the result in
+   * SystemDir/seek_cost.txt
+   *
+   * @throws IOException throw IOException if fail to create the test file
+   */
+  public void performDiskEvaluation() throws IOException {
+    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+    for (String dataDir : dataDirs) {
+      String tmpDirPath = dataDir + File.separator + "seek_test";
+      File tmpDir = new File(tmpDirPath);
+      if (tmpDir.exists()) {
+        continue;
+      }
+      generateFile(GENERATE_FILE_SIZE, tmpDirPath, GENERATE_FILE_NUM);
+      performLocalSeekInMultiFiles(
+          dataDir, tmpDirPath, SEEK_INTERVAL, SEEK_NUM, SEEK_NUM_PER_SEGMENT, READ_LENGTH);
+      File[] files = tmpDir.listFiles();
+      if (files.length != 0) {
+        File file = files[0];
+        performRead(file);
+      }
+      for (File file : files) {
+        file.delete();
+      }
+      tmpDir.delete();
+    }
+  }
+
   public static void main(String[] args) {
     DiskEvaluator diskEvaluator = DiskEvaluator.getInstance();
     String path = "/data/tmp";
     File file = new File(path);
     try {
       if (!file.exists()) {
-        file = diskEvaluator.generateFile(4l * 1024l * 1024l * 1024l, path, 20);
+        //        file = diskEvaluator.generateFile(4l * 1024l * 1024l * 1024l, path, 20);
       }
       double[] seekTime = new double[100];
-      diskEvaluator.performLocalSeek(path, 512, 1000, 100, 100);
+      //      diskEvaluator.performLocalSeekInMultiFiles(path, 512, 1000, 100, 100);
     } catch (Exception e) {
       e.printStackTrace();
     }
