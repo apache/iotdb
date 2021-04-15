@@ -220,5 +220,19 @@ public class AuthorityCheckerTest {
             Collections.singletonList(new PartialPath(nodeName)),
             OperatorType.DELETE_TIMESERIES,
             user.getName()));
+
+    Assert.assertTrue(
+        AuthorityChecker.check(
+            user.getName(),
+            Collections.singletonList(new PartialPath(nodeName)),
+            OperatorType.FILL,
+            user.getName()));
+
+    Assert.assertTrue(
+        AuthorityChecker.check(
+            user.getName(),
+            Collections.singletonList(new PartialPath(nodeName)),
+            OperatorType.GROUP_BY_FILL,
+            user.getName()));
   }
 }
