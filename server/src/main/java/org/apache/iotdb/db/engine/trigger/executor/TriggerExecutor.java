@@ -86,6 +86,10 @@ public class TriggerExecutor {
       onTriggerExecutionError("onConfig(TriggerAttributes)", e);
     }
 
+    // The field isStopped in the registrationInformation is volatile, so the method
+    // registrationInformation.markAsStarted() is always invoked after the method
+    // trigger.onCreate(attributes) is invoked. It guarantees that the trigger will not be triggered
+    // before trigger.onCreate(attributes) is called.
     registrationInformation.markAsStarted();
   }
 
