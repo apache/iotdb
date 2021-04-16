@@ -229,6 +229,68 @@ public class IoTDBTriggerExecutionIT {
   }
 
   @Test
+  public void testCreateAndDropTriggersMultipleTimesWhileInserting() throws InterruptedException {
+    startDataGenerator();
+
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      Thread.sleep(500);
+
+      statement.execute(
+          "create trigger trigger-1 before insert on root.vehicle.d1.s1 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+      statement.execute(
+          "create trigger trigger-2 after insert on root.vehicle.d1.s2 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+      statement.execute(
+          "create trigger trigger-3 before insert on root.vehicle.d1.s3 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+
+      Thread.sleep(500);
+
+      int[] counters1 = getCounters(3);
+      LOGGER.info(Arrays.toString(counters1));
+      for (int i = 0; i < 3; ++i) {
+        assertTrue(Counter.BASE < counters1[i]);
+      }
+
+      Thread.sleep(100);
+      statement.execute("drop trigger trigger-1");
+      statement.execute("drop trigger trigger-2");
+      statement.execute("drop trigger trigger-3");
+      Thread.sleep(100);
+      statement.execute(
+          "create trigger trigger-1 before insert on root.vehicle.d1.s1 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+      statement.execute(
+          "create trigger trigger-2 after insert on root.vehicle.d1.s2 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+      statement.execute(
+          "create trigger trigger-3 before insert on root.vehicle.d1.s3 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+      Thread.sleep(100);
+      statement.execute("drop trigger trigger-1");
+      statement.execute("drop trigger trigger-2");
+      statement.execute("drop trigger trigger-3");
+      Thread.sleep(100);
+      statement.execute(
+          "create trigger trigger-1 before insert on root.vehicle.d1.s1 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+      statement.execute(
+          "create trigger trigger-2 after insert on root.vehicle.d1.s2 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+      statement.execute(
+          "create trigger trigger-3 before insert on root.vehicle.d1.s3 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+
+      Thread.sleep(500);
+
+      int[] counters2 = getCounters(3);
+      LOGGER.info(Arrays.toString(counters2));
+      for (int i = 0; i < 3; ++i) {
+        assertTrue(Counter.BASE < counters1[i]);
+      }
+    } catch (SQLException | TriggerManagementException e) {
+      fail(e.getMessage());
+    }
+
+    stopDataGenerator();
+  }
+
+  @Test
   public void testStopAndStartTriggersWhileInserting() throws InterruptedException {
     startDataGenerator();
 
