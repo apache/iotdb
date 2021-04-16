@@ -17,11 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.qp.logical.sys;
+package org.apache.iotdb.db.exception;
 
-public class ShowTriggersOperator extends ShowOperator {
+public class TriggerExecutionException extends StorageEngineException {
 
-  public ShowTriggersOperator(int tokenIntType) {
-    super(tokenIntType);
+  public TriggerExecutionException(String message, Throwable cause) {
+    super(message);
+    this.initCause(cause);
+  }
+
+  public TriggerExecutionException(String message) {
+    super(message);
   }
 }

@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.qp.sql;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.trigger.api.TriggerEvent;
+import org.apache.iotdb.db.engine.trigger.executor.TriggerEvent;
 import org.apache.iotdb.db.exception.index.UnsupportedIndexTypeException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.index.common.IndexType;
@@ -511,12 +511,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   @Override
   public Operator visitShowTriggers(ShowTriggersContext ctx) {
-    ShowTriggersOperator showTriggersOperator =
-        new ShowTriggersOperator(SQLConstant.TOK_SHOW_TRIGGERS);
-    if (ctx.fullPath() != null) {
-      showTriggersOperator.setPath(parseFullPath(ctx.fullPath()));
-    }
-    return showTriggersOperator;
+    return new ShowTriggersOperator(SQLConstant.TOK_SHOW_TRIGGERS);
   }
 
   @Override

@@ -17,11 +17,32 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.qp.logical.sys;
+package org.apache.iotdb.db.engine.trigger.service;
 
-public class ShowTriggersOperator extends ShowOperator {
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.writelog.io.SingleFileLogReader;
 
-  public ShowTriggersOperator(int tokenIntType) {
-    super(tokenIntType);
+import java.io.File;
+import java.io.IOException;
+
+public class TriggerLogReader implements AutoCloseable {
+
+  private final SingleFileLogReader logReader;
+
+  public TriggerLogReader(File logFile) throws IOException {
+    logReader = new SingleFileLogReader(logFile);
+  }
+
+  public boolean hasNext() {
+    return !logReader.isFileCorrupted() && logReader.hasNext();
+  }
+
+  public PhysicalPlan next() {
+    return logReader.next();
+  }
+
+  @Override
+  public void close() {
+    logReader.close();
   }
 }

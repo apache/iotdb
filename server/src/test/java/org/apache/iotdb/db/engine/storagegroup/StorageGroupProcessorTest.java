@@ -28,6 +28,7 @@ import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
+import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -89,14 +90,14 @@ public class StorageGroupProcessorTest {
   }
 
   private void insertToStorageGroupProcessor(TSRecord record)
-      throws WriteProcessException, IllegalPathException {
+      throws WriteProcessException, IllegalPathException, TriggerExecutionException {
     InsertRowPlan insertRowPlan = new InsertRowPlan(record);
     processor.insert(insertRowPlan);
   }
 
   @Test
   public void testUnseqUnsealedDelete()
-      throws WriteProcessException, IOException, MetadataException {
+      throws WriteProcessException, IOException, MetadataException, TriggerExecutionException {
     TSRecord record = new TSRecord(10000, deviceId);
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
     processor.insert(new InsertRowPlan(record));
@@ -147,7 +148,8 @@ public class StorageGroupProcessorTest {
 
   @Test
   public void testSequenceSyncClose()
-      throws WriteProcessException, QueryProcessException, IllegalPathException {
+      throws WriteProcessException, QueryProcessException, IllegalPathException,
+          TriggerExecutionException {
     for (int j = 1; j <= 10; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
@@ -171,7 +173,8 @@ public class StorageGroupProcessorTest {
 
   @Test
   public void testInsertDataAndRemovePartitionAndInsert()
-      throws WriteProcessException, QueryProcessException, IllegalPathException {
+      throws WriteProcessException, QueryProcessException, IllegalPathException,
+          TriggerExecutionException {
     for (int j = 0; j < 10; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
@@ -197,7 +200,7 @@ public class StorageGroupProcessorTest {
 
   @Test
   public void testIoTDBTabletWriteAndSyncClose()
-      throws QueryProcessException, IllegalPathException {
+      throws QueryProcessException, IllegalPathException, TriggerExecutionException {
     String[] measurements = new String[2];
     measurements[0] = "s0";
     measurements[1] = "s1";
@@ -263,7 +266,8 @@ public class StorageGroupProcessorTest {
 
   @Test
   public void testSeqAndUnSeqSyncClose()
-      throws WriteProcessException, QueryProcessException, IllegalPathException {
+      throws WriteProcessException, QueryProcessException, IllegalPathException,
+          TriggerExecutionException {
     for (int j = 21; j <= 30; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
@@ -295,7 +299,8 @@ public class StorageGroupProcessorTest {
 
   @Test
   public void testEnableDiscardOutOfOrderDataForInsertRowPlan()
-      throws WriteProcessException, QueryProcessException, IllegalPathException, IOException {
+      throws WriteProcessException, QueryProcessException, IllegalPathException, IOException,
+          TriggerExecutionException {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     boolean defaultValue = config.isEnableDiscardOutOfOrderData();
     config.setEnableDiscardOutOfOrderData(true);
@@ -337,7 +342,7 @@ public class StorageGroupProcessorTest {
 
   @Test
   public void testEnableDiscardOutOfOrderDataForInsertTablet1()
-      throws QueryProcessException, IllegalPathException, IOException {
+      throws QueryProcessException, IllegalPathException, IOException, TriggerExecutionException {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
     long defaultTimePartition = config.getPartitionInterval();
@@ -419,7 +424,7 @@ public class StorageGroupProcessorTest {
 
   @Test
   public void testEnableDiscardOutOfOrderDataForInsertTablet2()
-      throws QueryProcessException, IllegalPathException, IOException {
+      throws QueryProcessException, IllegalPathException, IOException, TriggerExecutionException {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
     long defaultTimePartition = config.getPartitionInterval();
@@ -501,7 +506,7 @@ public class StorageGroupProcessorTest {
 
   @Test
   public void testEnableDiscardOutOfOrderDataForInsertTablet3()
-      throws QueryProcessException, IllegalPathException, IOException {
+      throws QueryProcessException, IllegalPathException, IOException, TriggerExecutionException {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
     long defaultTimePartition = config.getPartitionInterval();
@@ -583,7 +588,8 @@ public class StorageGroupProcessorTest {
 
   @Test
   public void testMerge()
-      throws WriteProcessException, QueryProcessException, IllegalPathException {
+      throws WriteProcessException, QueryProcessException, IllegalPathException,
+          TriggerExecutionException {
     for (int j = 21; j <= 30; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));

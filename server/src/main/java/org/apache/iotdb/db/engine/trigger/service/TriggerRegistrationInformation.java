@@ -17,47 +17,43 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.qp.logical.sys;
+package org.apache.iotdb.db.engine.trigger.service;
 
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEvent;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
 
-import java.util.HashMap;
 import java.util.Map;
 
-public class CreateTriggerOperator extends RootOperator {
+public class TriggerRegistrationInformation {
 
-  private String triggerName;
-  private TriggerEvent event;
-  private PartialPath fullPath;
-  private String className;
+  private final String triggerName;
+  private final TriggerEvent event;
+  private final PartialPath fullPath;
+  private final String className;
   private final Map<String, String> attributes;
 
-  public CreateTriggerOperator(int tokenIntType) {
-    super(tokenIntType);
-    operatorType = OperatorType.CREATE_TRIGGER;
-    attributes = new HashMap<>();
+  private volatile boolean isStopped;
+
+  public TriggerRegistrationInformation(CreateTriggerPlan plan) {
+    this.triggerName = plan.getTriggerName();
+    this.event = plan.getEvent();
+    this.fullPath = plan.getFullPath();
+    this.className = plan.getClassName();
+    this.attributes = plan.getAttributes();
+    this.isStopped = plan.isStopped();
   }
 
-  public void setTriggerName(String triggerName) {
-    this.triggerName = triggerName;
+  public CreateTriggerPlan convertToCreateTriggerPlan() {
+    return new CreateTriggerPlan(triggerName, event, fullPath, className, attributes);
   }
 
-  public void setEvent(TriggerEvent event) {
-    this.event = event;
+  public void markAsStarted() {
+    isStopped = false;
   }
 
-  public void setClassName(String className) {
-    this.className = className;
-  }
-
-  public void setFullPath(PartialPath fullPath) {
-    this.fullPath = fullPath;
-  }
-
-  public void addAttribute(String key, String value) {
-    attributes.put(key, value);
+  public void markAsStopped() {
+    isStopped = true;
   }
 
   public String getTriggerName() {
@@ -68,15 +64,19 @@ public class CreateTriggerOperator extends RootOperator {
     return event;
   }
 
-  public String getClassName() {
-    return className;
-  }
-
   public PartialPath getFullPath() {
     return fullPath;
   }
 
+  public String getClassName() {
+    return className;
+  }
+
   public Map<String, String> getAttributes() {
     return attributes;
+  }
+
+  public boolean isStopped() {
+    return isStopped;
   }
 }
