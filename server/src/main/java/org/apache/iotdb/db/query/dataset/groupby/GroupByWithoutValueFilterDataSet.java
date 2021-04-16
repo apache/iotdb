@@ -129,7 +129,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
           PartialPath path = (PartialPath) paths.get(idx);
           sensors.add(path.getMeasurement());
         }
-        manager.addQueryRecord(deviceId, sensors, groupByTimePlan.getEndTime() - groupByTimePlan.getStartTime());
+        manager.addQueryRecord(
+            deviceId, sensors, groupByTimePlan.getEndTime() - groupByTimePlan.getStartTime());
       }
     } finally {
       StorageEngine.getInstance().mergeUnLock(list);

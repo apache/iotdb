@@ -24,6 +24,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.layoutoptimize.workloadmanager.WorkloadManager;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
@@ -43,9 +44,7 @@ import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
@@ -87,11 +86,30 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     List<StorageGroupProcessor> list =
         StorageEngine.getInstance()
             .mergeLock(paths.stream().map(p -> (PartialPath) p).collect(Collectors.toList()));
+    WorkloadManager manager = WorkloadManager.getInstance();
+    Map<String, List<Integer>> deviceQueryIdxMap = new HashMap<>();
     try {
       for (int i = 0; i < paths.size(); i++) {
         PartialPath path = (PartialPath) paths.get(i);
         allDataReaderList.add(
             getReaderByTime(path, groupByTimePlan, dataTypes.get(i), context, null));
+        // record the map: device -> path idx
+        if (!deviceQueryIdxMap.containsKey(path.getDevice())) {
+          deviceQueryIdxMap.put(path.getDevice(), new ArrayList<>());
+        }
+        deviceQueryIdxMap.get(path.getDevice()).add(i);
+      }
+
+      // add the record to the workload manager
+      for (String deviceID : deviceQueryIdxMap.keySet()) {
+        List<Integer> pathIndexes = deviceQueryIdxMap.get(deviceID);
+        List<String> measurements = new ArrayList<>();
+        for (int idx : pathIndexes) {
+          PartialPath path = (PartialPath) paths.get(idx);
+          measurements.add(path.getMeasurement());
+        }
+        manager.addQueryRecord(
+            deviceID, measurements, groupByTimePlan.getEndTime() - groupByTimePlan.getStartTime());
       }
     } finally {
       StorageEngine.getInstance().mergeUnLock(list);
