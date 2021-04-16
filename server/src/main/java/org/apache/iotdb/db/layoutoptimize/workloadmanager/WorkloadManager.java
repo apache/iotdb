@@ -35,6 +35,7 @@ public class WorkloadManager {
    * @return
    */
   public boolean isWorkloadChanged(String deviceId) {
+    workloadList.dropExpiredRecord();
     return false;
   }
 

@@ -28,4 +28,13 @@ public class WorkloadList {
     }
     curItem.addRecord(deviceId, measurement, span);
   }
+
+  /**
+   * Drop the records that are expired
+   *
+   * @return true if some records has been drop else false
+   */
+  public boolean dropExpiredRecord() {
+    return false;
+  }
 }
