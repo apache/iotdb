@@ -19,13 +19,13 @@ public class WorkloadList {
     curItem = new WorkloadItem(curTimestamp, curTimestamp + ITEM_RANGE, timeGrainSize, threadPool);
   }
 
-  public void addRecord(String deviceId, List<String> measurement, long interval) {
+  public void addRecord(String deviceId, List<String> measurement, long span) {
     if (curItem.isExpired()) {
       curItem.encapsulate();
       workloadItems.add(curItem);
       long curTime = System.currentTimeMillis();
       curItem = new WorkloadItem(curTime, curTime + ITEM_RANGE, timeGrainSize, threadPool);
     }
-    curItem.addRecord(deviceId, measurement, interval);
+    curItem.addRecord(deviceId, measurement, span);
   }
 }

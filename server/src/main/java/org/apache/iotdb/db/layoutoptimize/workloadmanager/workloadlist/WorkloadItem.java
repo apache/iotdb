@@ -1,6 +1,6 @@
 package org.apache.iotdb.db.layoutoptimize.workloadmanager.workloadlist;
 
-import org.apache.iotdb.db.layoutoptimize.workloadmanager.queryrecord.QueryRecord;
+import org.apache.iotdb.db.layoutoptimize.workloadmanager.queryrecord.VisitedMeasurements;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -16,10 +16,10 @@ public class WorkloadItem {
   private long startTime;
   private long endTime;
   // record the query measurements
-  private List<QueryRecord> queryList = new ArrayList<>();
-  // record the query interval, interval -> query frequency
-  private Map<Long, Long> intervalMap = new HashMap<>();
-  private Map<QueryRecord, Long> measurementMap = new HashMap<>();
+  private List<VisitedMeasurements> queryList = new ArrayList<>();
+  // record the query span, span -> query frequency
+  private Map<Long, Long> spanMap = new HashMap<>();
+  private Map<VisitedMeasurements, Long> measurementMap = new HashMap<>();
   private ExecutorService threadPool;
   private long timeGrainSize;
   private ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock();
@@ -35,16 +35,15 @@ public class WorkloadItem {
     this.threadPool = threadPool;
   }
 
-  public void addRecord(String device, List<String> measurements, long interval) {
-    long grainedInterval =
-        interval < timeGrainSize ? timeGrainSize : interval / timeGrainSize * timeGrainSize;
-    QueryRecord record = new QueryRecord(device, measurements);
+  public void addRecord(String device, List<String> measurements, long span) {
+    long grainedSpan = span < timeGrainSize ? timeGrainSize : span / timeGrainSize * timeGrainSize;
+    VisitedMeasurements record = new VisitedMeasurements(device, measurements);
     writeLock.lock();
     try {
-      if (!intervalMap.containsKey(grainedInterval)) {
-        intervalMap.put(grainedInterval, 0L);
+      if (!spanMap.containsKey(grainedSpan)) {
+        spanMap.put(grainedSpan, 0L);
       }
-      intervalMap.replace(grainedInterval, intervalMap.get(grainedInterval) + 1L);
+      spanMap.replace(grainedSpan, spanMap.get(grainedSpan) + 1L);
 
       queryList.add(record);
       if (queryList.size() >= RECORD_THRESHOLD) {
@@ -71,11 +70,12 @@ public class WorkloadItem {
   }
 
   private static class ListToMapTask implements Runnable {
-    Map<QueryRecord, Long> measurementMap;
-    List<QueryRecord> measurementList;
+    Map<VisitedMeasurements, Long> measurementMap;
+    List<VisitedMeasurements> measurementList;
     private static Lock transferLock = new ReentrantLock();
 
-    public ListToMapTask(Map<QueryRecord, Long> measurementMap, List<QueryRecord> measurementList) {
+    public ListToMapTask(
+        Map<VisitedMeasurements, Long> measurementMap, List<VisitedMeasurements> measurementList) {
       this.measurementMap = measurementMap;
       this.measurementList = measurementList;
     }
@@ -84,7 +84,7 @@ public class WorkloadItem {
     public void run() {
       transferLock.lock();
       try {
-        for (QueryRecord record : measurementList) {
+        for (VisitedMeasurements record : measurementList) {
           record.calHashCode();
           if (!measurementMap.containsKey(record)) {
             measurementMap.put(record, 1L);

@@ -1,5 +1,6 @@
 package org.apache.iotdb.db.layoutoptimize.workloadmanager;
 
+import org.apache.iotdb.db.layoutoptimize.workloadmanager.queryrecord.QueryRecord;
 import org.apache.iotdb.db.layoutoptimize.workloadmanager.workloadlist.WorkloadList;
 
 import java.util.List;
@@ -25,5 +26,26 @@ public class WorkloadManager {
     } finally {
       writeLock.unlock();
     }
+  }
+
+  /**
+   * TODO: using statistic info to test if the query workload has change
+   *
+   * @param deviceId
+   * @return
+   */
+  public boolean isWorkloadChanged(String deviceId) {
+    return false;
+  }
+
+  /**
+   * TODO: return a sample of query record
+   *
+   * @param deviceId
+   * @param sampleNum
+   * @return
+   */
+  public List<QueryRecord> getSampledQueryRecord(String deviceId, int sampleNum) {
+    return null;
   }
 }
