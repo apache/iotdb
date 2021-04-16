@@ -58,6 +58,46 @@ public class ImportCsvTestIT extends AbstractScript {
         "CREATE TIMESERIES root.fit.p.s1 WITH DATATYPE=INT32,ENCODING=RLE",
       };
 
+  private final String[] noDataOutputForWindows = {
+    "````````````````````````````````````````````````",
+    "Starting IoTDB Client Import Script",
+    "````````````````````````````````````````````````",
+    "Start to import data from: test.csv",
+    "",
+    "Import from: test.csv   0% │         │ 0/2 (0:00:00 / ?) Importing...",
+    "Meet error when insert csv because 411: sub plan are empty."
+  };
+
+  private final String[] noDataOutputForUnix = {
+    "------------------------------------------",
+    "Starting IoTDB Client Import Script",
+    "------------------------------------------",
+    "Start to import data from: test.csv",
+    "",
+    "Import from: test.csv   0% │         │ 0/2 (0:00:00 / ?) Importing...",
+    "Meet error when insert csv because 411: sub plan are empty."
+  };
+
+  private final String[] hasDataOutputForWindows = {
+    "````````````````````````````````````````````````",
+    "Starting IoTDB Client Import Script",
+    "````````````````````````````````````````````````",
+    "Start to import data from: test.csv",
+    "",
+    "Import from: test.csv",
+    "Import from: test.csv 100%"
+  };
+
+  private final String[] hasDataOutputForUnix = {
+    "------------------------------------------",
+    "Starting IoTDB Client Import Script",
+    "------------------------------------------",
+    "Start to import data from: test.csv",
+    "",
+    "Import from: test.csv",
+    "Import from: test.csv 100%"
+  };
+
   @Before
   public void setUp() {
     EnvironmentUtils.closeStatMonitor();
@@ -90,9 +130,9 @@ public class ImportCsvTestIT extends AbstractScript {
     String os = System.getProperty("os.name").toLowerCase();
     assertTrue(generateTestCSV());
     if (os.startsWith("windows")) {
-      testOnWindows();
+      testOnWindows(hasDataOutputForWindows);
     } else {
-      testOnUnix();
+      testOnUnix(hasDataOutputForUnix);
     }
     File file = new File(CSV_FILE);
     if (file.exists()) {
@@ -105,9 +145,9 @@ public class ImportCsvTestIT extends AbstractScript {
     String os = System.getProperty("os.name").toLowerCase();
     assertTrue(generateTestCSV());
     if (os.startsWith("windows")) {
-      testOnWindows();
+      testOnWindows(hasDataOutputForWindows);
     } else {
-      testOnUnix();
+      testOnUnix(hasDataOutputForUnix);
     }
     File file = new File(CSV_FILE);
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -132,9 +172,9 @@ public class ImportCsvTestIT extends AbstractScript {
     String os = System.getProperty("os.name").toLowerCase();
     assertTrue(generateBigCsvFile());
     if (os.startsWith("windows")) {
-      testOnWindows();
+      testOnWindows(hasDataOutputForWindows);
     } else {
-      testOnUnix();
+      testOnUnix(hasDataOutputForUnix);
     }
     File file = new File(CSV_FILE);
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -173,9 +213,9 @@ public class ImportCsvTestIT extends AbstractScript {
     String os = System.getProperty("os.name").toLowerCase();
     assertTrue(generateHeaderTestCSV());
     if (os.startsWith("windows")) {
-      testOnWindows();
+      testOnWindows(noDataOutputForWindows);
     } else {
-      testOnUnix();
+      testOnUnix(noDataOutputForUnix);
     }
     File file = new File(CSV_FILE);
     if (file.exists()) {
@@ -252,16 +292,7 @@ public class ImportCsvTestIT extends AbstractScript {
   }
 
   @Override
-  protected void testOnWindows() throws IOException {
-    final String[] output = {
-      "````````````````````````````````````````````````",
-      "Starting IoTDB Client Import Script",
-      "````````````````````````````````````````````````",
-      "Start to import data from: test.csv",
-      "",
-      "Import from: test.csv",
-      "Import from: test.csv 100%"
-    };
+  protected void testOnWindows(String[] output) throws IOException {
     String dir = getCliPath();
     ProcessBuilder builder =
         new ProcessBuilder(
@@ -282,16 +313,8 @@ public class ImportCsvTestIT extends AbstractScript {
   }
 
   @Override
-  protected void testOnUnix() throws IOException {
-    final String[] output = {
-      "------------------------------------------",
-      "Starting IoTDB Client Import Script",
-      "------------------------------------------",
-      "Start to import data from: test.csv",
-      "",
-      "Import from: test.csv",
-      "Import from: test.csv 100%"
-    };
+  protected void testOnUnix(String[] output) throws IOException {
+
     String dir = getCliPath();
     ProcessBuilder builder =
         new ProcessBuilder(

@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.Objects;
 
 public class InsertRowsPlan extends InsertPlan {
+
   /**
    * Suppose there is an InsertRowsPlan, which contains 5 InsertRowPlans,
    * insertRowPlanList={InsertRowPlan_0, InsertRowPlan_1, InsertRowPlan_2, InsertRowPlan_3,
@@ -81,6 +82,9 @@ public class InsertRowsPlan extends InsertPlan {
 
   @Override
   public void checkIntegrity() throws QueryProcessException {
+    if (insertRowPlanList.isEmpty()) {
+      throw new QueryProcessException("sub plan are empty.");
+    }
     for (InsertRowPlan insertRowPlan : insertRowPlanList) {
       insertRowPlan.checkIntegrity();
     }
@@ -178,6 +182,15 @@ public class InsertRowsPlan extends InsertPlan {
 
     for (int i = 0; i < size; i++) {
       insertRowPlanIndexList.add(buffer.getInt());
+    }
+  }
+
+  @Override
+  public void setIndex(long index) {
+    super.setIndex(index);
+    for (InsertRowPlan insertRowPlan : insertRowPlanList) {
+      // use the InsertRowsPlan's index as the sub InsertRowPlan's index
+      insertRowPlan.setIndex(index);
     }
   }
 

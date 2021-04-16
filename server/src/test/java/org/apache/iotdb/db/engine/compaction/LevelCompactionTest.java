@@ -132,6 +132,8 @@ abstract class LevelCompactionTest {
                       + i
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + 0
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 0
                       + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
       tsFileResource.setClosed(true);
@@ -148,10 +150,12 @@ abstract class LevelCompactionTest {
                       + (10000 + i)
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + 0
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 0
                       + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
       tsFileResource.setClosed(true);
-      tsFileResource.updatePlanIndexes((long) (i + seqFileNum));
+      tsFileResource.updatePlanIndexes(i + seqFileNum);
       unseqResources.add(tsFileResource);
       prepareFile(tsFileResource, i * ptNum, ptNum * (i + 1) / unseqFileNum, 10000);
     }
@@ -164,10 +168,12 @@ abstract class LevelCompactionTest {
                     + unseqFileNum
                     + IoTDBConstant.FILE_NAME_SEPARATOR
                     + 0
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 0
                     + ".tsfile"));
     TsFileResource tsFileResource = new TsFileResource(file);
     tsFileResource.setClosed(true);
-    tsFileResource.updatePlanIndexes((long) (seqFileNum + unseqFileNum));
+    tsFileResource.updatePlanIndexes(seqFileNum + unseqFileNum);
     unseqResources.add(tsFileResource);
     prepareFile(tsFileResource, 0, ptNum * unseqFileNum, 20000);
   }

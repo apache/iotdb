@@ -42,6 +42,8 @@ public abstract class QueryPlan extends PhysicalPlan {
 
   private Map<String, Integer> pathToIndex = new HashMap<>();
 
+  private boolean enableRedirect = false;
+
   public QueryPlan() {
     super(true);
     setOperatorType(Operator.OperatorType.QUERY);
@@ -125,5 +127,13 @@ public abstract class QueryPlan extends PhysicalPlan {
   public String getColumnForDisplay(String columnForReader, int pathIndex)
       throws IllegalPathException {
     return columnForReader;
+  }
+
+  public boolean isEnableRedirect() {
+    return enableRedirect;
+  }
+
+  public void setEnableRedirect(boolean enableRedirect) {
+    this.enableRedirect = enableRedirect;
   }
 }

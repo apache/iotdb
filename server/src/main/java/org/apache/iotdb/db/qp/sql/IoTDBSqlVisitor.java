@@ -260,7 +260,11 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   @Override
   public Operator visitSingleStatement(SingleStatementContext ctx) {
-    return visit(ctx.statement());
+    Operator operator = visit(ctx.statement());
+    if (ctx.EXPLAIN() != null) {
+      operator.setDebug(true);
+    }
+    return operator;
   }
 
   @Override

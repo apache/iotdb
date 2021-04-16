@@ -199,6 +199,9 @@ public class InsertMultiTabletPlan extends InsertPlan {
 
   @Override
   public void checkIntegrity() throws QueryProcessException {
+    if (insertTabletPlanList.isEmpty()) {
+      throw new QueryProcessException("sub tablet is empty.");
+    }
     for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
       insertTabletPlan.checkIntegrity();
     }
@@ -275,6 +278,15 @@ public class InsertMultiTabletPlan extends InsertPlan {
     this.parentInsertTabletPlanIndexList = new ArrayList<>(tmpParentInsetTablePlanIndexListSize);
     for (int i = 0; i < tmpParentInsetTablePlanIndexListSize; i++) {
       this.parentInsertTabletPlanIndexList.add(buffer.getInt());
+    }
+  }
+
+  @Override
+  public void setIndex(long index) {
+    super.setIndex(index);
+    for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
+      // use the InsertMultiTabletPlan's index as the sub InsertTabletPlan's index
+      insertTabletPlan.setIndex(index);
     }
   }
 
