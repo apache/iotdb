@@ -362,6 +362,7 @@ public class TsFileProcessor {
     storageGroupInfo.addStorageGroupMemCost(memTableIncrement);
     tsFileProcessorInfo.addTSPMemCost(unsealedResourceIncrement + chunkMetadataIncrement);
     if (storageGroupInfo.needToReportToSystem()) {
+      SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
       long startTime = System.currentTimeMillis();
       while (SystemInfo.getInstance().isRejected()) {
         try {
