@@ -52,3 +52,7 @@ jobs:
       - name: Clean Up
         if: ${{ always() }}
         run: bash test/e2e/cases/${{ matrix.case }}/cleanup.sh
+
+      - name: TestContainer
+        run: |
+          mvn integration-test -pl testcontainer

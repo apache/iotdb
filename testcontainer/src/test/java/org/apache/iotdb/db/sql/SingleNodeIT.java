@@ -24,9 +24,11 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
-import org.testcontainers.containers.DockerComposeContainer;
-import org.testcontainers.containers.NoProjectNameDockerComposeContainer;
+import org.testcontainers.containers.BindMode;
+import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.images.PullPolicy;
+import org.testcontainers.utility.DockerImageName;
 
 import java.io.File;
 import java.sql.Connection;
@@ -34,29 +36,32 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-public class ClusterE2E {
+public class SingleNodeIT {
   private Statement statement;
   private Connection connection;
 
   @Rule
-  public DockerComposeContainer environment =
-      new NoProjectNameDockerComposeContainer(
-              "3nodes", new File("src/test/resources/3nodes/docker-compose.yaml"))
-          .withExposedService("iotdb-server_1", 6667, Wait.forListeningPort())
-          .withExposedService("iotdb-server_2", 6667, Wait.forListeningPort())
-          .withExposedService("iotdb-server_3", 6667, Wait.forListeningPort())
-          .withLocalCompose(true);
+  public GenericContainer dslContainer =
+      new GenericContainer(DockerImageName.parse("apache/iotdb:maven-development"))
+          .withImagePullPolicy(PullPolicy.defaultPolicy())
+          // mount another properties for changing parameters, e.g., open 5555 port (sync module)
+          .withFileSystemBind(
+              new File("src/test/resources/iotdb-engine.properties").getAbsolutePath(),
+              "/iotdb/conf/iotdb-engine.properties",
+              BindMode.READ_ONLY)
+          .withExposedPorts(6667)
+          .waitingFor(Wait.forListeningPort());
 
   int rpcPort = 6667;
+  int syncPort = 5555;
 
   @Before
   public void setUp() throws Exception {
+    rpcPort = dslContainer.getMappedPort(6667);
 
-    String ip = environment.getServiceHost("iotdb-server_1", 6667);
-    rpcPort = environment.getServicePort("iotdb-server_1", 6667);
-
+    syncPort = dslContainer.getMappedPort(5555);
     Class.forName(Config.JDBC_DRIVER_NAME);
-    connection = DriverManager.getConnection("jdbc:iotdb://" + ip + ":" + rpcPort, "root", "root");
+    connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:" + rpcPort, "root", "root");
     statement = connection.createStatement();
   }
 
