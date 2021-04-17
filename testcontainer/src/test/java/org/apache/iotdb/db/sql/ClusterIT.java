@@ -38,6 +38,8 @@ public class ClusterIT {
   private Statement statement;
   private Connection connection;
 
+  // in TestContainer's document, it is @ClassRule, and the environment is `public static`
+  // I am not sure the difference now.
   @Rule
   public DockerComposeContainer environment =
       new NoProjectNameDockerComposeContainer(
@@ -68,6 +70,7 @@ public class ClusterIT {
 
   @Test
   public void testSimplePutAndGet() throws SQLException {
+
     String[] timeSeriesArray = {"root.sg1.aa.bb", "root.sg1.aa.bb.cc", "root.sg1.aa"};
 
     for (String timeSeries : timeSeriesArray) {

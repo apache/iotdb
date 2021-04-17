@@ -904,7 +904,6 @@
                             <excludes>
                                 <!-- Exclude integration tests within (unit) test phase. -->
                                 <exclude>src/test/**/*IT.java</exclude>
-                                <exclude>src/test/**/*E2E.java</exclude>
                             </excludes>
                         </configuration>
                     </execution>
@@ -918,7 +917,6 @@
                             <includes>
                                 <!-- Include integration tests within integration-test phase. -->
                                 <include>src/test/**/*IT.java</include>
-                                <include>src/test/**/*E2E.java</include>
                             </includes>
                             <excludes>
                                 <!-- Exclude unit tests within (unit) test phase. -->
