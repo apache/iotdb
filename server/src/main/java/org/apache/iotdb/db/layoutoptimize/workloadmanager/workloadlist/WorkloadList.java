@@ -35,6 +35,16 @@ public class WorkloadList {
    * @return true if some records has been drop else false
    */
   public boolean dropExpiredRecord() {
-    return false;
+    long curTime = System.currentTimeMillis();
+    boolean flag = false;
+    for (WorkloadItem item : workloadItems) {
+      if (curTime - item.getEndTime() > ITEM_VALID_PERIOD) {
+        workloadItems.remove(curItem);
+        flag = true;
+      } else {
+        break;
+      }
+    }
+    return flag;
   }
 }

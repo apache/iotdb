@@ -1,6 +1,7 @@
 package org.apache.iotdb.db.layoutoptimize.workloadmanager.workloadlist;
 
 import org.apache.iotdb.db.layoutoptimize.workloadmanager.queryrecord.VisitedMeasurements;
+import org.apache.iotdb.db.layoutoptimize.workloadmanager.workloadlist.statisitc.ItemStatistic;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -25,7 +26,8 @@ public class WorkloadItem {
   private ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock();
   private ReentrantReadWriteLock.ReadLock readLock = readWriteLock.readLock();
   private ReentrantReadWriteLock.WriteLock writeLock = readWriteLock.writeLock();
-  private final int RECORD_THRESHOLD = 100000;
+  private final long RECORD_THRESHOLD = 100000L;
+  private final ItemStatistic statistic = new ItemStatistic();
 
   public WorkloadItem(
       long startTime, long endTime, long timeGrainSize, ExecutorService threadPool) {
@@ -40,11 +42,13 @@ public class WorkloadItem {
     VisitedMeasurements record = new VisitedMeasurements(device, measurements);
     writeLock.lock();
     try {
+      statistic.addSpan(span);
       if (!spanMap.containsKey(grainedSpan)) {
         spanMap.put(grainedSpan, 0L);
       }
       spanMap.replace(grainedSpan, spanMap.get(grainedSpan) + 1L);
 
+      statistic.addVisitedMeasurement(device, measurements);
       queryList.add(record);
       if (queryList.size() >= RECORD_THRESHOLD) {
         threadPool.submit(new ListToMapTask(measurementMap, queryList));
@@ -67,6 +71,10 @@ public class WorkloadItem {
     } finally {
       writeLock.unlock();
     }
+  }
+
+  public long getEndTime() {
+    return endTime;
   }
 
   private static class ListToMapTask implements Runnable {
