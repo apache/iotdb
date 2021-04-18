@@ -56,6 +56,12 @@ public class V1ApiServiceImpl extends V1ApiService {
   }
 
   @Override
+  public Response postV1NonQuery(ReadData readData, SecurityContext securityContext)
+      throws NotFoundException {
+    return null;
+  }
+
+  @Override
   public Response postV1PrometheusQuery(
       String userAgent,
       String xPrometheusRemoteReadVersion,
@@ -71,6 +77,18 @@ public class V1ApiServiceImpl extends V1ApiService {
       String xPrometheusRemoteWriteVersion,
       byte[] body,
       SecurityContext securityContext)
+      throws NotFoundException {
+    return null;
+  }
+
+  @Override
+  public Response postV1RestDataRead(ReadData readData, SecurityContext securityContext)
+      throws NotFoundException {
+    return null;
+  }
+
+  @Override
+  public Response postV1RestDataWrite(WriteData writeData, SecurityContext securityContext)
       throws NotFoundException {
     return null;
   }

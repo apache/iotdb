@@ -56,7 +56,7 @@ public class AuthorizationFilter implements ContainerRequestFilter {
       boolean b = authorizer.login(split[0], split[1]);
       if (!b) {
         Response resp =
-            Response.status(Response.Status.FORBIDDEN)
+            Response.status(Status.FORBIDDEN)
                 .type(MediaType.APPLICATION_JSON)
                 .entity(
                     new ApiResponseMessage(

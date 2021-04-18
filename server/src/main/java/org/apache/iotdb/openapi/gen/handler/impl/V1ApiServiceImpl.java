@@ -31,7 +31,6 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -41,6 +40,8 @@ import org.apache.iotdb.db.query.executor.QueryRouter;
 import org.apache.iotdb.openapi.gen.handler.NotFoundException;
 import org.apache.iotdb.openapi.gen.handler.V1ApiService;
 import org.apache.iotdb.openapi.gen.model.GroupByFillPlan;
+import org.apache.iotdb.openapi.gen.model.ReadData;
+import org.apache.iotdb.openapi.gen.model.WriteData;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -143,9 +144,8 @@ public class V1ApiServiceImpl extends V1ApiService {
               etime,
               groupByFillPlan.getInterval());
     }
-    Planner planner = new Planner();
-
     try {
+      Planner planner = new Planner();
       PhysicalPlan physicalPlan = planner.parseSQLToPhysicalPlan(sql);
       if (!AuthorityChecker.check(
           securityContext.getUserPrincipal().getName(),
@@ -156,27 +156,13 @@ public class V1ApiServiceImpl extends V1ApiService {
             .entity("No permissions for this operation " + physicalPlan.getOperatorType())
             .build();
       }
-      int fetchSize =
-          Math.min(getFetchSizeForGroupByTimePlan((GroupByTimePlan) physicalPlan), 10000);
-      QueryRouter qr = new QueryRouter();
-      Long quertId = QueryResourceManager.getInstance().assignQueryId(true, fetchSize, -1);
-      QueryContext context = new QueryContext(quertId);
-
-      QueryDataSet dataSet = null;
-      if (physicalPlan instanceof GroupByTimeFillPlan) {
-        GroupByTimeFillPlan groupByTimeFillPlan = (GroupByTimeFillPlan) physicalPlan;
-        dataSet = qr.groupByFill(groupByTimeFillPlan, context);
-      } else if (physicalPlan instanceof GroupByTimePlan) {
-        GroupByTimePlan groupByTimePlan = (GroupByTimePlan) physicalPlan;
-        dataSet = qr.groupBy(groupByTimePlan, context);
-      }
-
+      QueryDataSet dataSet = getDataBySelect(securityContext, physicalPlan);
       Map<String, Object> tmpmap = new HashMap<String, Object>();
       List<Object> temlist = new ArrayList<Object>();
       List<Path> listpaths = dataSet.getPaths();
 
       timemap.put("name", "Time");
-      timemap.put("type", "time");
+      timemap.put("type", "INT64");
       timemap.put("values", temlist);
       listtemp.add(timemap);
       for (Path pathResult : listpaths) {
@@ -212,10 +198,6 @@ public class V1ApiServiceImpl extends V1ApiService {
         }
       }
     } catch (QueryProcessException e) {
-      e.printStackTrace();
-    } catch (StorageEngineException e) {
-      e.printStackTrace();
-    } catch (QueryFilterOptimizationException e) {
       e.printStackTrace();
     } catch (IOException e) {
       e.printStackTrace();
@@ -287,7 +269,7 @@ public class V1ApiServiceImpl extends V1ApiService {
 
         return Response.ok().entity(NOPERMSSION + physicalPlan.getOperatorType()).build();
       }
-      QueryDataSet dataSet = getDataBySelect(securityContext, sql, physicalPlan);
+      QueryDataSet dataSet = getDataBySelect(securityContext, physicalPlan);
       Map<String, Object> tmpmap = new HashMap<String, Object>();
       List<Object> temlist = new ArrayList<Object>();
       while (dataSet.hasNext()) {
@@ -383,6 +365,31 @@ public class V1ApiServiceImpl extends V1ApiService {
   }
 
   @Override
+  public Response postV1NonQuery(ReadData readData, SecurityContext securityContext)
+      throws NotFoundException {
+    boolean b=false;
+    try {
+      Planner planner = new Planner();
+      PhysicalPlan physicalPlan = planner.parseSQLToPhysicalPlan(readData.getSql());
+      PlanExecutor executor = new PlanExecutor();
+      b= executor.processNonQuery(physicalPlan);
+
+    } catch (QueryProcessException e) {
+      e.printStackTrace();
+    } catch (MetadataException e) {
+      e.printStackTrace();
+    } catch (StorageEngineException e) {
+      e.printStackTrace();
+    }
+    Gson result = new Gson();
+    String restr="execute fail";
+    if(b){
+      restr="execute sucessfully";
+    }
+    return Response.ok().entity(result.toJson(restr)).build();
+  }
+
+  @Override
   public Response postV1PrometheusQuery(
       String userAgent,
       String xPrometheusRemoteReadVersion,
@@ -420,8 +427,6 @@ public class V1ApiServiceImpl extends V1ApiService {
         }
         if (bigmap == null || bigmap.get(merticName) == null) {
           continue;
-          // return Response.ok().entity(new ApiResponseMessage(ApiResponseMessage.OK,
-          // "magic!")).build();
         }
         for (int i = 0; i < bigmap.get(merticName).size(); i++) {
           pathList.add("*");
@@ -487,7 +492,7 @@ public class V1ApiServiceImpl extends V1ApiService {
 
           return Response.ok().entity(NOPERMSSION + physicalPlan.getOperatorType()).build();
         }
-        QueryDataSet dataSet = getDataBySelect(securityContext, sql, physicalPlan);
+        QueryDataSet dataSet = getDataBySelect(securityContext, physicalPlan);
 
         Map<String, Object> tmpmap = new HashMap<String, Object>();
         List<Object> temlist = new ArrayList<Object>();
@@ -569,8 +574,7 @@ public class V1ApiServiceImpl extends V1ApiService {
     return null;
   }
 
-  private QueryDataSet getDataBySelect(
-      SecurityContext securityContext, String sql, PhysicalPlan physicalPlan) {
+  private QueryDataSet getDataBySelect(SecurityContext securityContext, PhysicalPlan physicalPlan) {
     try {
       PlanExecutor executor = new PlanExecutor();
       int fetchSize = 10000;
@@ -707,6 +711,108 @@ public class V1ApiServiceImpl extends V1ApiService {
     return Response.ok().entity(result.toJson(resultMap)).build();
   }
 
+  @Override
+  public Response postV1RestDataRead(ReadData readData, SecurityContext securityContext)
+      throws NotFoundException {
+    Gson result = new Gson();
+    Map timemap = new HashMap();
+    List<Map> listtemp = new ArrayList<>();
+    try {
+      Planner planner = new Planner();
+      PhysicalPlan physicalPlan = planner.parseSQLToPhysicalPlan(readData.getSql());
+      if (!AuthorityChecker.check(
+          securityContext.getUserPrincipal().getName(),
+          physicalPlan.getPaths(),
+          physicalPlan.getOperatorType(),
+          null)) {
+        return Response.ok()
+            .entity("No permissions for this operation " + physicalPlan.getOperatorType())
+            .build();
+      }
+      QueryDataSet dataSet = getDataBySelect(securityContext, physicalPlan);
+      Map<String, Object> tmpmap = new HashMap<String, Object>();
+      List<Object> temlist = new ArrayList<Object>();
+      List<Path> listpaths = dataSet.getPaths();
+
+      timemap.put("name", "Time");
+      timemap.put("type", "INT64");
+      timemap.put("values", temlist);
+      listtemp.add(timemap);
+      for (Path pathResult : listpaths) {
+        Map m = new HashMap();
+        String fullname = pathResult.getFullPath();
+        m.put("name", fullname);
+        listtemp.add(m);
+      }
+      while (dataSet.hasNext()) {
+        RowRecord rowRecord = dataSet.next();
+        temlist.add(rowRecord.getTimestamp());
+        List<org.apache.iotdb.tsfile.read.common.Field> fields = rowRecord.getFields();
+        for (int i = 1; i < listtemp.size(); i++) {
+          List listvalues = null;
+          if (listtemp.get(i).get("values") != null) {
+            listvalues = (List) listtemp.get(i).get("values");
+          } else {
+            listvalues = new ArrayList<>();
+          }
+          if (fields.get(i - 1) == null || fields.get(i - 1).getDataType() == null) {
+            listvalues.add(null);
+          } else {
+            listvalues.add(fields.get(i - 1).getObjectValue(fields.get(i - 1).getDataType()));
+            listtemp.get(i).put("values", listvalues);
+          }
+          if (listtemp.get(i).get("type") == null) {
+            listtemp.get(i).put("type", "");
+          } else if (listtemp.get(i).get("type").toString().length() == 0
+              && fields.get(i - 1) != null
+              && fields.get(i - 1).getDataType() != null) {
+            listtemp.get(i).put("type", fields.get(i - 1).getDataType());
+          }
+        }
+      }
+    } catch (QueryProcessException e) {
+      e.printStackTrace();
+    } catch (IOException e) {
+      e.printStackTrace();
+    } catch (AuthException e) {
+      e.printStackTrace();
+    }
+    return Response.ok().entity(result.toJson(listtemp)).build();
+  }
+
+  @Override
+  public Response postV1RestDataWrite(WriteData writeData, SecurityContext securityContext)
+      throws NotFoundException {
+    Map resultMap = new HashMap<String, Object>();
+    List<String> listParam = writeData.getParams();
+    List<String> listValues = writeData.getValuses();
+    List<String> pathList = writeData.getPaths();
+    StringBuilder sql = new StringBuilder();
+    String path = Joiner.on(".").join(pathList);
+    String s = Joiner.on(",").join(listValues);
+    String param = Joiner.on(",").join(listParam);
+    sql.append("insert into ")
+        .append(path)
+        .append("(")
+        .append(param)
+        .append(") values (")
+        .append(s)
+        .append(")");
+    String resultValue = insertDb(securityContext, sql.toString());
+    if (resultValue.equals("success")) {
+      resultMap.put("code", 200);
+      resultMap.put("message", "write data success");
+    } else if (resultValue.equals("fail")) {
+      resultMap.put("code", 500);
+      resultMap.put("message", "write data failed");
+    } else {
+      resultMap.put("code", 401);
+      resultMap.put("message", resultValue);
+    }
+    Gson result = new Gson();
+    return Response.ok().entity(result.toJson(resultMap)).build();
+  }
+
   public String insertDb(SecurityContext securityContext, String sql) {
     String result = "fail";
     try {
@@ -811,7 +917,7 @@ public class V1ApiServiceImpl extends V1ApiService {
           null)) {
         return;
       }
-      QueryDataSet dataSet = getDataBySelect(securityContext, sql, physicalPlan);
+      QueryDataSet dataSet = getDataBySelect(securityContext, physicalPlan);
 
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();

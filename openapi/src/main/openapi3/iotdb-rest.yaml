@@ -135,6 +135,105 @@ paths:
               examples:
                 example-1:
                   value: passowrd is incorrect;
+  /v1/rest/write:
+    post:
+      summary: Serve for writing data by OpenApi
+      description:
+      operationId: post-v1-rest-data-write
+      parameters: []
+      requestBody:
+        description: Insert Plan
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WriteData'
+            examples: {}
+      responses:
+        "200":
+          description: Return data status
+          content:
+            application/json:
+              schema:
+                type: string
+                description: "reason: \nnot login\nno permission"
+              examples:
+                example-1:
+                  value: success;
+        "401":
+          description: Example response
+          content:
+            application/json:
+              schema:
+                type: string
+                description: "reason: \nnot login\nno permission"
+              examples:
+                example-1:
+                  value: passowrd is incorrect;
+  /v1/rest/nonQuery:
+    post:
+      summary: Serve for non query by OpenApi
+      description:
+      operationId: post-v1-non-query
+      parameters: [ ]
+      requestBody:
+        description: non query Plan
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReadData'
+            examples: { }
+      responses:
+        "200":
+          description: return executed status
+          content:
+            application/json:
+              schema:
+                type: string
+                description: "return executed status"
+              examples:
+                example-1:
+                  value: executed success;
+        "401":
+          description: Example response
+          content:
+            application/json:
+              schema:
+                type: string
+                description: "reason: \nnot login\nno permission"
+              examples:
+                example-1:
+                  value: passowrd is incorrect;
+  /v1/rest/read:
+    post:
+      summary: Serve for read data by OpenApi
+      description:
+      operationId: post-v1-rest-data-read
+      parameters: []
+      requestBody:
+        description: Read Plan
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReadData'
+            examples: {}
+      responses:
+        "200":
+          description: return data in wide table format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GrafanaDataFrame'
+              examples: {}
+        "401":
+          description: Example response
+          content:
+            application/json:
+              schema:
+                type: string
+                description: "reason: \nnot login\nno permission"
+              examples:
+                example-1:
+                  value: passowrd is incorrect;
   /v1/prometheus/write:
     post:
       summary: Serve for writing data by Prometheus
@@ -338,6 +437,41 @@ paths:
                   value: passowrd is incorrect;
 components:
   schemas:
+    WriteData:
+      title: Write Data
+      type: object
+      properties:
+        params:
+          type: array
+          items:
+            type: string
+        valuses:
+          type: array
+          items:
+            type: string
+        paths:
+          type: array
+          items:
+            type: string
+      description: write data in IoTDB
+      x-examples:
+        example-1:
+          params:
+            []
+          valuses:
+            - - string
+          paths:
+            - - string
+    ReadData:
+      title: Read Data
+      type: object
+      properties:
+        sql:
+          type: string
+      description: read data in IoTDB
+      x-examples:
+        example-1:
+          sql: string
     GroupByFillPlan:
       title: GroupByTimeFillPlan
       type: object

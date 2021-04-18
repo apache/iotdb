@@ -18,23 +18,25 @@ package org.apache.iotdb.openapi.gen.handler;
 
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletContextHandler;
-import org.eclipse.jetty.webapp.WebAppContext;
+import org.eclipse.jetty.servlet.ServletHolder;
+import org.glassfish.jersey.servlet.ServletContainer;
 
 public class OpenApiServer {
-
-  public static void main(String[] args) {}
-
-  public void start() {
-    Server server = new Server(8080);
-
+  public void start(int port) {
+    Server server = new Server(port);
     ServletContextHandler context = new ServletContextHandler(ServletContextHandler.NO_SESSIONS);
 
+    ServletHolder holder = context.addServlet(ServletContainer.class, "/*");
+    holder.setInitOrder(1);
+    holder.setInitParameter(
+        "jersey.config.server.provider.packages",
+        "io.swagger.jaxrs.listing, io.swagger.sample.resource, org.apache.iotdb.openapi.gen.handler");
+    holder.setInitParameter(
+        "jersey.config.server.provider.classnames",
+        "org.glassfish.jersey.media.multipart.MultiPartFeature");
+    holder.setInitParameter("jersey.config.server.wadl.disableWadl", "true");
     context.setContextPath("/");
     server.setHandler(context);
-    String rootPath = server.getClass().getClassLoader().getResource(".").toString();
-    WebAppContext webapp = new WebAppContext(rootPath + "../../src/main/webapp", "");
-    server.setHandler(webapp);
-
     try {
       server.start();
       server.join();
@@ -43,5 +45,5 @@ public class OpenApiServer {
     } finally {
       server.destroy();
     }
-  };
+  }
 }
