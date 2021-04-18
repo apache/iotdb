@@ -40,7 +40,7 @@ public class WorkloadManager {
     workloadList.dropExpiredRecord();
     workloadList.updateStatistic();
     ListStatistic newStatistic = workloadList.getStatistic();
-    return false;
+    return !oriStatistic.isTheSame(newStatistic);
   }
 
   /**
