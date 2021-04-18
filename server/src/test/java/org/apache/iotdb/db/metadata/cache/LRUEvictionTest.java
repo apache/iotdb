@@ -4,6 +4,8 @@ import org.apache.iotdb.db.metadata.mnode.MNode;
 
 import org.junit.Test;
 
+import java.util.Collection;
+
 public class LRUEvictionTest {
 
   @Test
@@ -30,6 +32,11 @@ public class LRUEvictionTest {
       entry = entry.getPre();
     }
     System.out.println(stringBuilder.toString());
+
+    Collection<MNode> collection=lruEviction.evict();
+    for(MNode mNode:collection){
+      System.out.println(mNode.getFullPath());
+    }
   }
 
   private MNode getSimpleTree() {

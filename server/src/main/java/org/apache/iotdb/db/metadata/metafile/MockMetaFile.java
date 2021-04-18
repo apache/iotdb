@@ -18,7 +18,11 @@ public class MockMetaFile implements MetaFileAccess {
 
   @Override
   public MNode read(PartialPath path) throws IOException {
-    return mockFile.get(path.getFullPath());
+    MNode mNode=mockFile.get(path.getFullPath());
+    for(String childName:mNode.getChildren().keySet()){
+      mNode.evictChild(childName);
+    }
+    return mNode;
   }
 
   @Override
@@ -34,6 +38,7 @@ public class MockMetaFile implements MetaFileAccess {
   @Override
   public void write(MNode mNode) throws IOException {
     mNode.setModified(false);
+    mNode.setPosition(-1);
     mockFile.put(mNode.getFullPath(), mNode);
     if (mNode instanceof MeasurementMNode) {
       mockFile.put(

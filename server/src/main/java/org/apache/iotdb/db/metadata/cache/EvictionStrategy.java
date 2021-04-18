@@ -6,11 +6,11 @@ import java.util.Collection;
 
 public interface EvictionStrategy {
 
+  int getSize();
+
   void applyChange(MNode mNode);
 
-  int remove(MNode mNode);
-
-  void replace(MNode oldMNode, MNode newMNode);
+  void remove(MNode mNode);
 
   Collection<MNode> evict();
 }

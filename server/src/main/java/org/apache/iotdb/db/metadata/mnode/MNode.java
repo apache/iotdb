@@ -57,7 +57,7 @@ public class MNode implements Serializable {
   protected long position;
 
   /** whether the node has been modified and is different from the content in metafile */
-  protected boolean isModified;
+  protected boolean isModified=true;
 
   protected transient EvictionEntry evictionEntry;
 
@@ -111,8 +111,8 @@ public class MNode implements Serializable {
     }
 
     child.parent = this;
-    if (isNull(getChild(child.getName()))) {
-      children.put(child.getName(), child);
+    if (isNull(getChild(name))) {
+      children.put(name, child);
     }
     //    children.putIfAbsent(name, child);
   }
@@ -316,14 +316,17 @@ public class MNode implements Serializable {
     Map<String, MNode> grandChildren = oldChildNode.getChildren();
     newChildNode.setChildren(grandChildren);
     grandChildren.forEach(
-        (grandChildName, grandChildNode) -> grandChildNode.setParent(newChildNode));
+        (grandChildName, grandChildNode) -> {if(!MNode.isNull(grandChildNode))grandChildNode.setParent(newChildNode);});
 
     Map<String, MNode> grandAliasChildren = oldChildNode.getAliasChildren();
     newChildNode.setAliasChildren(grandAliasChildren);
     grandAliasChildren.forEach(
-        (grandAliasChildName, grandAliasChild) -> grandAliasChild.setParent(newChildNode));
+        (grandAliasChildName, grandAliasChild) -> {if(!MNode.isNull(grandAliasChild))grandAliasChild.setParent(newChildNode);});
 
     newChildNode.setParent(this);
+
+    newChildNode.position=oldChildNode.position;
+    newChildNode.evictionEntry=oldChildNode.evictionEntry;
 
     this.deleteChild(measurement);
     this.addChild(newChildNode.getName(), newChildNode);
@@ -331,7 +334,7 @@ public class MNode implements Serializable {
 
   /** whether be loaded from file */
   public boolean isLoaded() {
-    return children != null&&children.containsValue(evictionPlaceHolder);
+    return children != null;
   }
 
   public boolean isModified() {
@@ -340,6 +343,10 @@ public class MNode implements Serializable {
 
   public void setModified(boolean modified) {
     isModified = modified;
+  }
+
+  public boolean isPersisted(){
+    return position==0;
   }
 
   public long getPosition() {
@@ -356,6 +363,10 @@ public class MNode implements Serializable {
 
   public void setEvictionEntry(EvictionEntry evictionEntry) {
     this.evictionEntry = evictionEntry;
+  }
+
+  public boolean isCached(){
+    return evictionEntry!=null;
   }
 
   public void evictChild(String name) {

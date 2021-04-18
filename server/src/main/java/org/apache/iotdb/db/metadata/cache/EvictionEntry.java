@@ -4,9 +4,9 @@ import org.apache.iotdb.db.metadata.mnode.MNode;
 
 public class EvictionEntry {
 
-  private EvictionEntry pre;
-  private EvictionEntry next;
-  private MNode value;
+  EvictionEntry pre;
+  EvictionEntry next;
+  MNode value;
 
   public EvictionEntry(MNode mNode) {
     value = mNode;
