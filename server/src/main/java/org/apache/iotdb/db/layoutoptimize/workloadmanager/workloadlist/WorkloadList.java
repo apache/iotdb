@@ -1,5 +1,7 @@
 package org.apache.iotdb.db.layoutoptimize.workloadmanager.workloadlist;
 
+import org.apache.iotdb.db.layoutoptimize.workloadmanager.workloadlist.statisitc.ListStatistic;
+
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -12,11 +14,13 @@ public class WorkloadList {
   private final long ITEM_RANGE = 1L * 24L * 60L * 60L * 1000L;
   private final long ITEM_VALID_PERIOD = 30 * ITEM_RANGE;
   private long timeGrainSize = 1000L * 60L;
+  ListStatistic statistic;
   WorkloadItem curItem;
 
   public WorkloadList() {
     long curTimestamp = System.currentTimeMillis();
     curItem = new WorkloadItem(curTimestamp, curTimestamp + ITEM_RANGE, timeGrainSize, threadPool);
+    statistic = new ListStatistic();
   }
 
   public void addRecord(String deviceId, List<String> measurement, long span) {
@@ -46,5 +50,16 @@ public class WorkloadList {
       }
     }
     return flag;
+  }
+
+  public ListStatistic getStatistic() {
+    return statistic;
+  }
+
+  public void updateStatistic() {
+    statistic = new ListStatistic();
+    for (WorkloadItem item : workloadItems) {
+      statistic.addItemStatistic(item.getStatistic());
+    }
   }
 }

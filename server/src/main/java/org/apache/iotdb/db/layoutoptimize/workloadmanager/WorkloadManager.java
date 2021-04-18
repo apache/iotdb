@@ -2,6 +2,7 @@ package org.apache.iotdb.db.layoutoptimize.workloadmanager;
 
 import org.apache.iotdb.db.layoutoptimize.workloadmanager.queryrecord.QueryRecord;
 import org.apache.iotdb.db.layoutoptimize.workloadmanager.workloadlist.WorkloadList;
+import org.apache.iotdb.db.layoutoptimize.workloadmanager.workloadlist.statisitc.ListStatistic;
 
 import java.util.List;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -35,8 +36,10 @@ public class WorkloadManager {
    * @return
    */
   public boolean isWorkloadChanged(String deviceId) {
-
+    ListStatistic oriStatistic = workloadList.getStatistic();
     workloadList.dropExpiredRecord();
+    workloadList.updateStatistic();
+    ListStatistic newStatistic = workloadList.getStatistic();
     return false;
   }
 

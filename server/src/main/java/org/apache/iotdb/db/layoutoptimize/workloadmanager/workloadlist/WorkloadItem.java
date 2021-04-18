@@ -77,6 +77,10 @@ public class WorkloadItem {
     return endTime;
   }
 
+  public ItemStatistic getStatistic() {
+    return statistic;
+  }
+
   private static class ListToMapTask implements Runnable {
     Map<VisitedMeasurements, Long> measurementMap;
     List<VisitedMeasurements> measurementList;
