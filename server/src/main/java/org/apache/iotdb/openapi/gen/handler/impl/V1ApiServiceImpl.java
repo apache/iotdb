@@ -32,6 +32,7 @@ import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -720,6 +721,11 @@ public class V1ApiServiceImpl extends V1ApiService {
     try {
       Planner planner = new Planner();
       PhysicalPlan physicalPlan = planner.parseSQLToPhysicalPlan(readData.getSql());
+      if(!(physicalPlan instanceof QueryPlan)){
+        return Response.ok()
+            .entity("only support for this operation select")
+            .build();
+      }
       if (!AuthorityChecker.check(
           securityContext.getUserPrincipal().getName(),
           physicalPlan.getPaths(),
