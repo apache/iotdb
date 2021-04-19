@@ -32,10 +32,10 @@ public class WorkloadManager {
   }
 
   /**
-   * TODO: using statistic info to test if the query workload has change
+   * using the statistic info to judge if the workload is changed
    *
-   * @param deviceId
-   * @return
+   * @param deviceId the id of the device to judge on
+   * @return true if the workload changes else false
    */
   public boolean isWorkloadChanged(String deviceId) {
     ListStatistic oriStatistic = workloadList.getStatistic();
@@ -46,11 +46,11 @@ public class WorkloadManager {
   }
 
   /**
-   * TODO: return a sample of query record
+   * generate a sample of query record according to the collected info in workload manager
    *
-   * @param deviceId
-   * @param sampleNum
-   * @return
+   * @param deviceId the id of the device to sample on
+   * @param sampleNum the number of the sampled query record
+   * @return the list of the query record
    */
   public List<QueryRecord> getSampledQueryRecord(String deviceId, int sampleNum) {
     WorkloadInfo info = workloadList.getWorkloadInfo(deviceId);

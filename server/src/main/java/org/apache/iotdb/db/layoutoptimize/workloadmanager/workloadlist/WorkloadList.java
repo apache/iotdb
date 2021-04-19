@@ -35,30 +35,24 @@ public class WorkloadList {
     curItem.addRecord(deviceId, measurement, span);
   }
 
-  /**
-   * Drop the records that are expired
-   *
-   * @return true if some records has been drop else false
-   */
-  public boolean dropExpiredRecord() {
+  /** Drop the records that are expired */
+  public void dropExpiredRecord() {
     long curTime = System.currentTimeMillis();
-    boolean flag = false;
     while (true) {
       WorkloadItem item = workloadItems.getFirst();
       if (curTime - item.getEndTime() > ITEM_VALID_PERIOD) {
         workloadItems.removeFirst();
-        flag = true;
       } else {
         break;
       }
     }
-    return flag;
   }
 
   public ListStatistic getStatistic() {
     return statistic;
   }
 
+  /** update the statistic info of the workload list */
   public void updateStatistic() {
     statistic = new ListStatistic();
     for (WorkloadItem item : workloadItems) {
@@ -67,9 +61,9 @@ public class WorkloadList {
   }
 
   /**
-   * return the workload info in valid
+   * return the workload info of the valid workload item
    *
-   * @param deviceId
+   * @param deviceId the id of the device to get the info
    * @return
    */
   public WorkloadInfo getWorkloadInfo(String deviceId) {

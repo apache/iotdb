@@ -13,4 +13,8 @@ public class QueryRecord {
     this.measurements = new ArrayList<>(measurements);
     this.span = span;
   }
+
+  public List<String> getMeasurements() {
+    return measurements;
+  }
 }
