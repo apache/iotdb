@@ -18,8 +18,8 @@ public class MockMetaFile implements MetaFileAccess {
 
   @Override
   public MNode read(PartialPath path) throws IOException {
-    MNode mNode=mockFile.get(path.getFullPath());
-    for(String childName:mNode.getChildren().keySet()){
+    MNode mNode = mockFile.get(path.getFullPath());
+    for (String childName : mNode.getChildren().keySet()) {
       mNode.evictChild(childName);
     }
     return mNode;

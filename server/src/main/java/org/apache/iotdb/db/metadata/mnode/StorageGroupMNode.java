@@ -46,6 +46,10 @@ public class StorageGroupMNode extends MNode {
     this.dataTTL = dataTTL;
   }
 
+  public boolean isStorageGroup() {
+    return true;
+  }
+
   @Override
   public void serializeTo(MLogWriter logWriter) throws IOException {
     serializeChildren(logWriter);

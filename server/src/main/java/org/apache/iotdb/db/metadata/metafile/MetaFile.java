@@ -31,7 +31,7 @@ public class MetaFile implements MetaFileAccess {
 
   @Override
   public MNode readData(MNode mNode) throws IOException {
-    if (mNode instanceof MeasurementMNode) {
+    if (mNode.isMeasurement()) {
       measurementFile.readData((MeasurementMNode) mNode);
     } else {
       mNode = mTreeFile.readData(mNode);
@@ -41,7 +41,7 @@ public class MetaFile implements MetaFileAccess {
 
   @Override
   public void write(MNode mNode) throws IOException {
-    if (mNode instanceof MeasurementMNode) {
+    if (mNode.isMeasurement()) {
       measurementFile.write((MeasurementMNode) mNode);
     } else {
       mTreeFile.write(mNode);
@@ -76,7 +76,7 @@ public class MetaFile implements MetaFileAccess {
 
   public MNode readMNode(String path) throws IOException {
     MNode mNode = mTreeFile.read(path);
-    if (mNode instanceof MeasurementMNode) {
+    if (mNode.isMeasurement()) {
       measurementFile.readData((MeasurementMNode) mNode);
     }
     return mNode;
@@ -123,7 +123,7 @@ public class MetaFile implements MetaFileAccess {
       if (mNode.getPosition() != 0) {
         continue;
       }
-      if (mNode instanceof MeasurementMNode) {
+      if (mNode.isMeasurement()) {
         mNode.setPosition(measurementFile.getFreePos());
       } else {
         if (mNode.getName().equals("root")) {

@@ -18,27 +18,24 @@ public class LRUCacheStrategyTest {
     lruEviction.applyChange(root.getChild("s2"));
     lruEviction.applyChange(root.getChild("s1").getChild("t2"));
     StringBuilder stringBuilder = new StringBuilder();
-    CacheEntry entry = root.getEvictionEntry();
+    CacheEntry entry = root.getCacheEntry();
     while (entry != null) {
       stringBuilder.append(entry.getValue().getFullPath()).append("\r\n");
       entry = entry.getPre();
     }
-    Assert.assertEquals("root\r\n" +
-            "root.s1\r\n" +
-            "root.s2\r\n" +
-            "root.s1.t2\r\n",stringBuilder.toString());
+    Assert.assertEquals(
+        "root\r\n" + "root.s1\r\n" + "root.s2\r\n" + "root.s1.t2\r\n", stringBuilder.toString());
 
     lruEviction.remove(root.getChild("s1"));
     stringBuilder = new StringBuilder();
-    entry = root.getEvictionEntry();
+    entry = root.getCacheEntry();
     while (entry != null) {
       stringBuilder.append(entry.getValue().getFullPath()).append("\r\n");
       entry = entry.getPre();
     }
-    Assert.assertEquals("root\r\n" +
-            "root.s2\r\n",stringBuilder.toString());
+    Assert.assertEquals("root\r\n" + "root.s2\r\n", stringBuilder.toString());
 
-    Collection<MNode> collection=lruEviction.evict();
+    Collection<MNode> collection = lruEviction.evict();
     Assert.assertTrue(collection.contains(root));
     Assert.assertTrue(collection.contains(root.getChild("s2")));
     Assert.assertFalse(collection.contains(root.getChild("s1")));

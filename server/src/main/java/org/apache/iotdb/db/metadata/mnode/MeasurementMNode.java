@@ -123,6 +123,10 @@ public class MeasurementMNode extends MNode {
     this.schema = schema;
   }
 
+  public boolean isMeasurement() {
+    return true;
+  }
+
   @Override
   public boolean isLoaded() {
     return schema != null;

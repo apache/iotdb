@@ -50,11 +50,11 @@ public class MeasurementFileTest {
     m1.getSchema().setProps(props);
     measurementFile.write(m1);
     MeasurementMNode temp = measurementFile.read(m1.getPosition());
-    Assert.assertEquals("ts1",temp.getName());
-    Assert.assertEquals("1",m1.getSchema().getProps().get("a"));
+    Assert.assertEquals("ts1", temp.getName());
+    Assert.assertEquals("1", m1.getSchema().getProps().get("a"));
     measurementFile.write(m2);
     temp = measurementFile.read(m2.getPosition());
-    Assert.assertEquals("ts2",temp.getName());
+    Assert.assertEquals("ts2", temp.getName());
     Assert.assertNull(m2.getSchema().getProps());
   }
 }

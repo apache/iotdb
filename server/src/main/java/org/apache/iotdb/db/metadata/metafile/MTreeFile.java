@@ -92,7 +92,7 @@ public class MTreeFile {
     }
     MNode mNode = read(rootPosition, null);
     for (int i = 1; i < nodes.length; i++) {
-      if (mNode.getChild(nodes[i]) instanceof MeasurementMNode) {
+      if (mNode.getChild(nodes[i]).isMeasurement()) {
         mNode = mNode.getChild(nodes[i]);
         break;
       }
@@ -113,7 +113,7 @@ public class MTreeFile {
   public MNode readRecursively(long position, MNode parent) throws IOException {
     MNode mnode = read(position, parent);
     for (MNode child : mnode.getChildren().values()) {
-      if (child instanceof MeasurementMNode) {
+      if (child.isMeasurement()) {
         continue;
       }
       readRecursively(child.getPosition(), mnode);
@@ -122,14 +122,14 @@ public class MTreeFile {
   }
 
   public MNode readData(MNode mNode) throws IOException {
-    if (mNode instanceof MeasurementMNode) {
+    if (mNode.isMeasurement()) {
       throw new IOException("cannot read MeasurementMNode from MTreeFile.");
     }
     long position = mNode.getPosition();
     ByteBuffer dataBuffer = readBytesFromFile(position);
     int type = dataBuffer.get();
     if (type == 2) {
-      if (!(mNode instanceof StorageGroupMNode)) {
+      if (!mNode.isStorageGroup()) {
         mNode = new StorageGroupMNode(mNode.getParent(), mNode.getName(), 0);
         mNode.getParent().deleteChild(mNode.getName());
         mNode.getParent().addChild(mNode.getName(), mNode);
@@ -242,7 +242,7 @@ public class MTreeFile {
   public void write(MNode mNode) throws IOException {
     if (mNode == null) {
       throw new IOException("MNode is null and cannot be persist.");
-    } else if (mNode instanceof MeasurementMNode) {
+    } else if (mNode.isMeasurement()) {
       throw new IOException("Cannot persist Measurement in mtree file.");
     }
 
@@ -263,7 +263,7 @@ public class MTreeFile {
       return;
     }
     for (MNode child : mNode.getChildren().values()) {
-      if (child instanceof MeasurementMNode) {
+      if (child.isMeasurement()) {
         return;
       }
       writeRecursively(child);
@@ -281,7 +281,7 @@ public class MTreeFile {
       }
       length += 2; // separator and children end tag
     }
-    if (mNode instanceof StorageGroupMNode) {
+    if (mNode.isStorageGroup()) {
       length += 8; // TTL
     }
     return length;
@@ -308,7 +308,7 @@ public class MTreeFile {
 
     byte bitmap = (byte) bufferNum;
     ByteBuffer dataBuffer;
-    if (mNode instanceof StorageGroupMNode) {
+    if (mNode.isStorageGroup()) {
       dataBuffer = serializeStorageGroupMNodeData((StorageGroupMNode) mNode);
       bitmap = (byte) (0xA0 | bitmap);
     } else {
@@ -371,7 +371,7 @@ public class MTreeFile {
   private void serializeChildren(Map<String, MNode> children, ByteBuffer dataBuffer) {
     List<MNode> measurementMNodes = new LinkedList<>();
     for (MNode child : children.values()) {
-      if (child instanceof MeasurementMNode) {
+      if (child.isMeasurement()) {
         measurementMNodes.add(child);
         continue;
       }

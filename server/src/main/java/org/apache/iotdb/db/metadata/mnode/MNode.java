@@ -56,6 +56,7 @@ public class MNode implements Serializable {
   /** offset in metafile */
   protected long position;
 
+  /** used for cache implementation */
   protected transient CacheEntry cacheEntry;
 
   /**
@@ -313,20 +314,32 @@ public class MNode implements Serializable {
     Map<String, MNode> grandChildren = oldChildNode.getChildren();
     newChildNode.setChildren(grandChildren);
     grandChildren.forEach(
-        (grandChildName, grandChildNode) -> {if(!MNode.isNull(grandChildNode))grandChildNode.setParent(newChildNode);});
+        (grandChildName, grandChildNode) -> {
+          if (!MNode.isNull(grandChildNode)) grandChildNode.setParent(newChildNode);
+        });
 
     Map<String, MNode> grandAliasChildren = oldChildNode.getAliasChildren();
     newChildNode.setAliasChildren(grandAliasChildren);
     grandAliasChildren.forEach(
-        (grandAliasChildName, grandAliasChild) -> {if(!MNode.isNull(grandAliasChild))grandAliasChild.setParent(newChildNode);});
+        (grandAliasChildName, grandAliasChild) -> {
+          if (!MNode.isNull(grandAliasChild)) grandAliasChild.setParent(newChildNode);
+        });
 
     newChildNode.setParent(this);
 
-    newChildNode.position=oldChildNode.position;
-    newChildNode.cacheEntry =oldChildNode.cacheEntry;
+    newChildNode.position = oldChildNode.position;
+    newChildNode.setCacheEntry(oldChildNode.getCacheEntry());
 
     this.deleteChild(measurement);
     this.addChild(newChildNode.getName(), newChildNode);
+  }
+
+  public boolean isStorageGroup() {
+    return false;
+  }
+
+  public boolean isMeasurement() {
+    return false;
   }
 
   /** whether be loaded from file */
@@ -334,8 +347,8 @@ public class MNode implements Serializable {
     return children != null;
   }
 
-  public boolean isPersisted(){
-    return position==0;
+  public boolean isPersisted() {
+    return position != 0;
   }
 
   public long getPosition() {
@@ -346,16 +359,16 @@ public class MNode implements Serializable {
     this.position = position;
   }
 
-  public CacheEntry getEvictionEntry() {
+  public CacheEntry getCacheEntry() {
     return cacheEntry;
   }
 
-  public void setEvictionEntry(CacheEntry cacheEntry) {
+  public void setCacheEntry(CacheEntry cacheEntry) {
     this.cacheEntry = cacheEntry;
   }
 
-  public boolean isCached(){
-    return cacheEntry !=null;
+  public boolean isCached() {
+    return cacheEntry != null;
   }
 
   public void evictChild(String name) {

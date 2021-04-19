@@ -9,11 +9,11 @@ public class CacheEntry {
   MNode value;
 
   /** whether the node in memory cache has been modified. default value is true */
-  boolean isModified=true;
+  boolean isModified = true;
 
   CacheEntry(MNode mNode) {
     value = mNode;
-    mNode.setEvictionEntry(this);
+    mNode.setCacheEntry(this);
   }
 
   CacheEntry getPre() {
@@ -36,8 +36,8 @@ public class CacheEntry {
     this.next = next;
   }
 
-  void setValue(MNode mNode){
-    value=mNode;
+  void setValue(MNode mNode) {
+    value = mNode;
   }
 
   boolean isModified() {

@@ -1,6 +1,5 @@
 package org.apache.iotdb.db.metadata.metafile;
 
-import jdk.nashorn.internal.AssertsEnabled;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
@@ -61,9 +60,9 @@ public class MetaFileTest {
   public void testSimpleMNodeRW() throws IOException {
     MNode mNode = new MNode(null, "root");
     metaFile.write(mNode);
-    Assert.assertNotEquals(0,mNode.getPosition());
+    Assert.assertNotEquals(0, mNode.getPosition());
     mNode = metaFile.readMNode(mNode.getPosition(), false);
-    Assert.assertEquals("root",mNode.getName());
+    Assert.assertEquals("root", mNode.getName());
   }
 
   @Test
@@ -76,7 +75,7 @@ public class MetaFileTest {
     s.addChild("t", new MeasurementMNode(null, "t", new MeasurementSchema(), null));
     metaFile.writeRecursively(root);
     MNode mNode = metaFile.readMNode("root.p.s.t");
-    Assert.assertEquals("root.p.s.t",mNode.getFullPath());
+    Assert.assertEquals("root.p.s.t", mNode.getFullPath());
     Assert.assertTrue(mNode.isLoaded());
   }
 
@@ -85,14 +84,16 @@ public class MetaFileTest {
     MNode mNode = getSimpleTree();
     metaFile.writeRecursively(mNode);
     mNode = metaFile.readRecursively(mNode.getPosition());
-    Assert.assertEquals("root\r\n" +
-            "root.s1\r\n" +
-            "root.s1.t1\r\n" +
-            "root.s1.t2\r\n" +
-            "root.s1.t2.z1\r\n" +
-            "root.s2\r\n" +
-            "root.s2.t1\r\n" +
-            "root.s2.t2\r\n",treeToStringDFT(mNode));
+    Assert.assertEquals(
+        "root\r\n"
+            + "root.s1\r\n"
+            + "root.s1.t1\r\n"
+            + "root.s1.t2\r\n"
+            + "root.s1.t2.z1\r\n"
+            + "root.s2\r\n"
+            + "root.s2.t1\r\n"
+            + "root.s2.t2\r\n",
+        treeToStringDFT(mNode));
   }
 
   private MNode getSimpleTree() {
@@ -114,23 +115,25 @@ public class MetaFileTest {
     MNode mNode = getMTree();
     metaFile.writeRecursively(mNode);
     mNode = metaFile.readRecursively(mNode.getPosition());
-    Assert.assertEquals("root\r\n" +
-            "root.p\r\n" +
-            "root.p.s1\r\n" +
-            "root.p.s1.t1\r\n" +
-            "root.p.s1.t2\r\n" +
-            "root.p.s2\r\n" +
-            "root.p.s2.t1\r\n" +
-            "root.p.s2.t2\r\n",treeToStringDFT(mNode));
+    Assert.assertEquals(
+        "root\r\n"
+            + "root.p\r\n"
+            + "root.p.s1\r\n"
+            + "root.p.s1.t1\r\n"
+            + "root.p.s1.t2\r\n"
+            + "root.p.s2\r\n"
+            + "root.p.s2.t1\r\n"
+            + "root.p.s2.t2\r\n",
+        treeToStringDFT(mNode));
     StorageGroupMNode s1 = (StorageGroupMNode) (mNode.getChild("p").getChild("s1"));
     StorageGroupMNode s2 = (StorageGroupMNode) (mNode.getChild("p").getChild("s2"));
-    Assert.assertEquals(1000,s1.getDataTTL());
-    Assert.assertEquals(2000,s2.getDataTTL());
+    Assert.assertEquals(1000, s1.getDataTTL());
+    Assert.assertEquals(2000, s2.getDataTTL());
     MeasurementMNode t1 = (MeasurementMNode) mNode.getChild("p").getChild("s1").getChild("t1");
     MeasurementMNode t2 = (MeasurementMNode) mNode.getChild("p").getChild("s2").getChild("t2");
-    Assert.assertEquals(t1.getSchema().getProps(),t2.getSchema().getProps());
-    Assert.assertEquals(1,t1.getSchema().getProps().size());
-    Assert.assertEquals("1",t1.getSchema().getProps().get("a"));
+    Assert.assertEquals(t1.getSchema().getProps(), t2.getSchema().getProps());
+    Assert.assertEquals(1, t1.getSchema().getProps().size());
+    Assert.assertEquals("1", t1.getSchema().getProps().get("a"));
   }
 
   private MNode getMTree() {
@@ -162,7 +165,7 @@ public class MetaFileTest {
     }
   }
 
-//  @Test
+  //  @Test
   public void testIOPerformance() throws IOException {
     int deviceNum = 100;
     int schemaNum = 100;
@@ -208,19 +211,19 @@ public class MetaFileTest {
     return num;
   }
 
-  private String treeToStringDFT(MNode mNode){
-    StringBuilder stringBuilder=new StringBuilder();
-    dft(mNode,stringBuilder);
+  private String treeToStringDFT(MNode mNode) {
+    StringBuilder stringBuilder = new StringBuilder();
+    dft(mNode, stringBuilder);
     return stringBuilder.toString();
   }
 
-  private void dft(MNode mNode, StringBuilder stringBuilder){
+  private void dft(MNode mNode, StringBuilder stringBuilder) {
     if (mNode == null) {
       return;
     }
     stringBuilder.append(mNode.getFullPath()).append("\r\n");
     for (MNode child : mNode.getChildren().values()) {
-      dft(child,stringBuilder);
+      dft(child, stringBuilder);
     }
   }
 }

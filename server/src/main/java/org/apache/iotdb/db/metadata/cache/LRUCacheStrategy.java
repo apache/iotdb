@@ -10,7 +10,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class LRUCacheStrategy implements CacheStrategy {
 
-  private int size=0;
+  private int size = 0;
 
   private CacheEntry first;
   private CacheEntry last;
@@ -32,10 +32,10 @@ public class LRUCacheStrategy implements CacheStrategy {
       if (MNode.isNull(mNode)) {
         return;
       }
-      if(!MNode.isNull(mNode.getParent())&&!mNode.getParent().isCached()){
+      if (!MNode.isNull(mNode.getParent()) && !mNode.getParent().isCached()) {
         return;
       }
-      CacheEntry entry = mNode.getEvictionEntry();
+      CacheEntry entry = mNode.getCacheEntry();
       if (entry == null) {
         size++;
         entry = new CacheEntry(mNode);
@@ -47,14 +47,14 @@ public class LRUCacheStrategy implements CacheStrategy {
   }
 
   @Override
-  public void setModified(MNode mNode,boolean modified) {
-    if (MNode.isNull(mNode)||mNode.getEvictionEntry()==null) {
+  public void setModified(MNode mNode, boolean modified) {
+    if (MNode.isNull(mNode) || mNode.getCacheEntry() == null) {
       return;
     }
-    mNode.getEvictionEntry().setModified(modified);
+    mNode.getCacheEntry().setModified(modified);
   }
 
-  private void moveToFirst(CacheEntry entry){
+  private void moveToFirst(CacheEntry entry) {
 
     if (first == null || last == null) { // empty linked list
       first = last = entry;
@@ -65,20 +65,20 @@ public class LRUCacheStrategy implements CacheStrategy {
       return;
     }
     if (entry.pre != null) {
-      entry.pre.next=entry.next;
+      entry.pre.next = entry.next;
     }
     if (entry.next != null) {
-      entry.next.pre=entry.pre;
+      entry.next.pre = entry.pre;
     }
 
     if (entry == last) {
       last = last.pre;
     }
 
-    entry.next=first;
-    first.pre=entry;
+    entry.next = first;
+    first.pre = entry;
     first = entry;
-    first.pre=null;
+    first.pre = null;
   }
 
   @Override
@@ -88,18 +88,18 @@ public class LRUCacheStrategy implements CacheStrategy {
     }
     try {
       lock.lock();
-      removeRecursivelyAndCollectModified(mNode,null);
-    }finally {
+      removeRecursivelyAndCollectModified(mNode, null);
+    } finally {
       lock.unlock();
     }
   }
 
-  private void removeOne(CacheEntry entry){
+  private void removeOne(CacheEntry entry) {
     if (entry.pre != null) {
-      entry.pre.next=entry.next;
+      entry.pre.next = entry.next;
     }
     if (entry.next != null) {
-      entry.next.pre=entry.pre;
+      entry.next.pre = entry.pre;
     }
     if (entry == first) {
       first = entry.next;
@@ -110,36 +110,36 @@ public class LRUCacheStrategy implements CacheStrategy {
     size--;
   }
 
-  private void removeRecursively(MNode mNode){
+  private void removeRecursively(MNode mNode) {
     if (MNode.isNull(mNode)) {
       return;
     }
-    CacheEntry entry = mNode.getEvictionEntry();
+    CacheEntry entry = mNode.getCacheEntry();
     if (entry == null) {
       return;
     }
     removeOne(entry);
-    mNode.setEvictionEntry(null);
+    mNode.setCacheEntry(null);
     for (MNode child : mNode.getChildren().values()) {
       removeRecursively(child);
     }
   }
 
-  private void removeRecursivelyAndCollectModified(MNode mNode, Collection<MNode> removedMNodes){
+  private void removeRecursivelyAndCollectModified(MNode mNode, Collection<MNode> removedMNodes) {
     if (MNode.isNull(mNode)) {
       return;
     }
-    CacheEntry entry = mNode.getEvictionEntry();
+    CacheEntry entry = mNode.getCacheEntry();
     if (entry == null) {
       return;
     }
     removeOne(entry);
-    mNode.setEvictionEntry(null);
-    if(removedMNodes!=null&&entry.isModified){
+    mNode.setCacheEntry(null);
+    if (removedMNodes != null && entry.isModified) {
       removedMNodes.add(mNode);
     }
     for (MNode child : mNode.getChildren().values()) {
-      removeRecursivelyAndCollectModified(child,removedMNodes);
+      removeRecursivelyAndCollectModified(child, removedMNodes);
     }
   }
 
@@ -147,19 +147,18 @@ public class LRUCacheStrategy implements CacheStrategy {
   public Collection<MNode> evict() {
     try {
       lock.lock();
-      List<MNode> evictedMNode=new LinkedList<>();
-      if(last==null){
+      List<MNode> evictedMNode = new LinkedList<>();
+      if (last == null) {
         return evictedMNode;
       }
-      MNode mNode=last.value;
-      if(mNode.getParent()!=null){
+      MNode mNode = last.value;
+      if (mNode.getParent() != null) {
         mNode.getParent().evictChild(mNode.getName());
       }
-      removeRecursivelyAndCollectModified(mNode,evictedMNode);
+      removeRecursivelyAndCollectModified(mNode, evictedMNode);
       return evictedMNode;
-    }finally {
+    } finally {
       lock.unlock();
     }
   }
-
 }
