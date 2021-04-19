@@ -1367,7 +1367,7 @@ var config = {
 						title: '系统工具',
 						children: [
 							['System-Tools/Load-External-Tsfile','加载 TsFile'],
-							['System-Tools/Performance-Tracing-Tool','查询性API/Programming-Native-API能追踪'],
+							['System-Tools/Performance-Tracing-Tool','查询性能追踪'],
 							['System-Tools/CSV-Tool','导入导出 CSV'],
 							['System-Tools/Monitor-and-Log-Tools','监控工具和系统日志'],
 							['System-Tools/JMX-Tool','JMX 工具'],
@@ -1502,7 +1502,7 @@ var config = {
 						title: '系统工具',
 						children: [
 							['System-Tools/Load-External-Tsfile','加载 TsFile'],
-							['System-Tools/Performance-Tracing-Tool','查询性API/Programming-Native-API能追踪'],
+							['System-Tools/Performance-Tracing-Tool','查询性能追踪'],
 							['System-Tools/CSV-Tool','导入导出 CSV'],
 							['System-Tools/Monitor-and-Log-Tools','监控工具和系统日志'],
 							['System-Tools/JMX-Tool','JMX 工具'],
