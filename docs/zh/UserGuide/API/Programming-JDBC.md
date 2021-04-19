@@ -19,25 +19,27 @@
 
 -->
 
-# 应用编程接口
+# JDBC
 
-## JDBC
-
-### 依赖
+## 依赖
 
 * JDK >= 1.8
 * Maven >= 3.6
 
-### 安装方法
+
+
+## 安装方法
 
 在根目录下执行下面的命令:
-```
+```shell
 mvn clean install -pl jdbc -am -Dmaven.test.skip=true
 ```
 
+
+
 ### 在MAVEN中使用 IoTDB JDBC
 
-```
+```xml
 <dependencies>
     <dependency>
       <groupId>org.apache.iotdb</groupId>
@@ -46,6 +48,8 @@ mvn clean install -pl jdbc -am -Dmaven.test.skip=true
     </dependency>
 </dependencies>
 ```
+
+
 
 ### 示例代码
 
