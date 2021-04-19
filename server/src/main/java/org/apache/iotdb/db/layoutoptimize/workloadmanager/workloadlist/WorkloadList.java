@@ -66,6 +66,12 @@ public class WorkloadList {
     }
   }
 
+  /**
+   * return the workload info in valid
+   *
+   * @param deviceId
+   * @return
+   */
   public WorkloadInfo getWorkloadInfo(String deviceId) {
     WorkloadInfo info = new WorkloadInfo(deviceId);
     dropExpiredRecord();
