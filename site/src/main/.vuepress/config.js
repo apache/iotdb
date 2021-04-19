@@ -563,14 +563,6 @@ var config = {
 							['UDF/UDF-User-Defined-Function','UDF (User Defined Function)']
 						]
 					},
-					// The trigger module has not been implemented yet,
-					// so the website should not show users how to use it to avoid misleading.
-					// {
-					// 	title: 'Trigger',
-					// 	children: [
-					// 		['UDF/Triggers','Trigger']
-					// 	]
-					// },
 					{
 						title: 'Communication Service Protocol',
 						children: [
@@ -702,19 +694,14 @@ var config = {
 						]
 					},
 					{
-						title: 'UDF',
+						title: 'Advanced Features',
 						children: [
-							['UDF/UDF-User-Defined-Function','UDF (User Defined Function)']
+							['Advanced-Features/UDF-User-Defined-Function','UDF (User Defined Function)'],
+							// The trigger module has not been implemented yet,
+							// so the website should not show users how to use it to avoid misleading.
+							// ['Advanced-Features/Triggers','Trigger']
 						]
 					},
-					// The trigger module has not been implemented yet,
-					// so the website should not show users how to use it to avoid misleading.
-					// {
-					// 	title: 'Trigger',
-					// 	children: [
-					// 		['UDF/Triggers','Trigger']
-					// 	]
-					// },
 					{
 						title: 'Communication Service Protocol',
 						children: [
@@ -1367,14 +1354,6 @@ var config = {
 							['UDF/UDF-User-Defined-Function','用户定义函数(UDF)']
 						]
 					},
-					// The trigger module has not been implemented yet,
-					// so the website should not show users how to use it to avoid misleading.
-					// {
-					// 	title: 'Trigger',
-					// 	children: [
-					// 		['UDF/Triggers','Trigger']
-					// 	]
-					// },
 					{
 						title: '通信服务协议',
 						children: [
@@ -1500,19 +1479,14 @@ var config = {
 						]
 					},
 					{
-						title: '用户定义函数(UDF)',
+						title: '高级功能',
 						children: [
-							['UDF/UDF-User-Defined-Function','用户定义函数(UDF)']
+							['Advanced-Features/UDF-User-Defined-Function','用户定义函数(UDF)'],
+              // The trigger module has not been implemented yet,
+              // so the website should not show users how to use it to avoid misleading.
+              // ['Advanced-Features/Triggers','触发器']
 						]
 					},
-					// The trigger module has not been implemented yet,
-					// so the website should not show users how to use it to avoid misleading.
-					// {
-					// 	title: 'Trigger',
-					// 	children: [
-					// 		['UDF/Triggers','Trigger']
-					// 	]
-					// },
 					{
 						title: '通信服务协议',
 						children: [

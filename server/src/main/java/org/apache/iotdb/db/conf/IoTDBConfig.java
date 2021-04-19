@@ -247,6 +247,15 @@ public class IoTDBConfig {
   /** How many threads can concurrently query. When <= 0, use CPU core number. */
   private int concurrentQueryThread = Runtime.getRuntime().availableProcessors();
 
+  /** How many threads can concurrently evaluate windows. When <= 0, use CPU core number. */
+  private int concurrentWindowEvaluationThread = Runtime.getRuntime().availableProcessors();
+
+  /**
+   * Max number of window evaluation tasks that can be pending for execution. When <= 0, the value
+   * is 64 by default.
+   */
+  private int maxPendingWindowEvaluationTasks = 64;
+
   /** Is the write mem control for writing enable. */
   private boolean enableMemControl = true;
 
@@ -1045,6 +1054,22 @@ public class IoTDBConfig {
 
   void setConcurrentQueryThread(int concurrentQueryThread) {
     this.concurrentQueryThread = concurrentQueryThread;
+  }
+
+  public int getConcurrentWindowEvaluationThread() {
+    return concurrentWindowEvaluationThread;
+  }
+
+  public void setConcurrentWindowEvaluationThread(int concurrentWindowEvaluationThread) {
+    this.concurrentWindowEvaluationThread = concurrentWindowEvaluationThread;
+  }
+
+  public int getMaxPendingWindowEvaluationTasks() {
+    return maxPendingWindowEvaluationTasks;
+  }
+
+  public void setMaxPendingWindowEvaluationTasks(int maxPendingWindowEvaluationTasks) {
+    this.maxPendingWindowEvaluationTasks = maxPendingWindowEvaluationTasks;
   }
 
   public long getTsFileSizeThreshold() {

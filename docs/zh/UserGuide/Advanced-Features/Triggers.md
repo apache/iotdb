@@ -326,7 +326,187 @@ SHOW TRIGGERS
 
 
 
-### 重要注意事项
+
+## 实用工具类
+
+实用工具类为常见的需求提供了编程范式和执行框架，它能够简化您编写触发器的一部分工作。
+
+
+
+### 窗口工具类
+
+窗口工具类能够辅助您定义滑动窗口以及窗口上的数据处理逻辑。它能够构造两类滑动窗口：一种滑动窗口是固定窗口内时间长度的（`SlidingTimeWindowEvaluationHandler`），另一种滑动窗口是固定窗口内数据点数的（`SlidingSizeWindowEvaluationHandler`）。
+
+窗口工具类允许您在窗口（`Window`）上定义侦听钩子（`Evaluator`）。每当一个新的窗口形成，您定义的侦听钩子就会被调用一次。您可以在这个侦听钩子内定义任何数据处理相关的逻辑。侦听钩子的调用是异步的，因此，在执行钩子内窗口处理逻辑的时候，是不会阻塞当前线程的。
+
+值得注意的是，不论是`SlidingTimeWindowEvaluationHandler`还是`SlidingSizeWindowEvaluationHandler`，他们都**只能够处理时间戳严格单调递增的序列**，传入的不符合要求的数据点会被工具类抛弃。
+
+`Window`与`Evaluator`接口的定义见`org.apache.iotdb.db.utils.windowing.api`包。
+
+
+
+#### 固定窗口内数据点数的滑动窗口
+
+##### 窗口构造
+
+共两种构造方法。
+
+第一种方法需要您提供窗口接受数据点的类型、窗口大小、滑动步长和一个侦听钩子（`Evaluator`）。
+
+``` java
+final TSDataType dataType = TSDataType.INT32;
+final int windowSize = 10;
+final int slidingStep = 5;
+
+SlidingSizeWindowEvaluationHandler handler =
+    new SlidingSizeWindowEvaluationHandler(
+        new SlidingSizeWindowConfiguration(dataType, windowSize, slidingStep),
+        window -> {
+          // do something
+        });
+```
+
+第二种方法需要您提供窗口接受数据点的类型、窗口大小和一个侦听钩子（`Evaluator`）。这种构造方法下的窗口滑动步长等于窗口大小。
+
+``` java
+final TSDataType dataType = TSDataType.INT32;
+final int windowSize = 10;
+
+SlidingSizeWindowEvaluationHandler handler =
+    new SlidingSizeWindowEvaluationHandler(
+        new SlidingSizeWindowConfiguration(dataType, windowSize),
+        window -> {
+          // do something
+        });
+```
+
+窗口大小、滑动步长必须为正数。
+
+
+
+#####  数据接收
+
+``` java
+final long timestamp = 0;
+final int value = 0;
+hander.collect(timestamp, value);
+```
+
+注意，`collect`方法接受的第二个参数类型需要与构造时传入的`dataType`声明一致。
+
+此外，`collect`方法只会对时间戳是单调递增的数据点产生响应。如果某一次`collect`方法采集到的数据点的时间戳小于等于上一次`collect`方法采集到的数据点时间戳，那么这一次采集的数据点将会被抛弃。
+
+还需要注意的是，`collect`方法不是线程安全的。
+
+
+
+#### 固定窗口内时间长度的滑动窗口
+
+##### 窗口构造
+
+共两种构造方法。
+
+第一种方法需要您提供窗口接受数据点的类型、窗口内时间长度、滑动步长和一个侦听钩子（`Evaluator`）。
+
+``` java
+final TSDataType dataType = TSDataType.INT32;
+final long timeInterval = 1000;
+final long slidingStep = 500;
+
+SlidingTimeWindowEvaluationHandler handler =
+    new SlidingTimeWindowEvaluationHandler(
+        new SlidingTimeWindowConfiguration(dataType, timeInterval, slidingStep),
+        window -> {
+          // do something
+        });
+```
+
+第二种方法需要您提供窗口接受数据点的类型、窗口内时间长度和一个侦听钩子（`Evaluator`）。这种构造方法下的窗口滑动步长等于窗口内时间长度。
+
+``` java
+final TSDataType dataType = TSDataType.INT32;
+final long timeInterval = 1000;
+
+SlidingTimeWindowEvaluationHandler handler =
+    new SlidingTimeWindowEvaluationHandler(
+        new SlidingTimeWindowConfiguration(dataType, timeInterval),
+        window -> {
+          // do something
+        });
+```
+
+窗口内时间长度、滑动步长必须为正数。
+
+
+
+#####  数据接收
+
+``` java
+final long timestamp = 0;
+final int value = 0;
+hander.collect(timestamp, value);
+```
+
+注意，`collect`方法接受的第二个参数类型需要与构造时传入的`dataType`声明一致。
+
+此外，`collect`方法只会对时间戳是单调递增的数据点产生响应。如果某一次`collect`方法采集到的数据点的时间戳小于等于上一次`collect`方法采集到的数据点时间戳，那么这一次采集的数据点将会被抛弃。
+
+还需要注意的是，`collect`方法不是线程安全的。
+
+
+
+#### 拒绝策略
+
+窗口计算的任务执行是异步的。
+
+当异步任务无法被执行线程池及时消费时，会产生任务堆积。在极端情况下，异步任务的堆积会导致系统OOM。因此，窗口计算线程池允许堆积的任务数量被设定为有限值。
+
+当堆积的任务数量超出限值时，新提交的任务将无法进入线程池执行，此时，系统会调用您在侦听钩子（`Evaluator`）中制定的拒绝策略钩子`onRejection`进行处理。
+
+`onRejection`的默认行为如下。
+
+````java
+default void onRejection(Window window) {
+  throw new RejectedExecutionException();
+}
+````
+
+制定拒绝策略钩子的方式如下。
+
+```java
+SlidingTimeWindowEvaluationHandler handler =
+    new SlidingTimeWindowEvaluationHandler(
+        new SlidingTimeWindowConfiguration(TSDataType.INT32, 1, 1),
+        new Evaluator() {
+          @Override
+          public void evaluate(Window window) {
+            // do something
+          }
+          
+          @Override
+          public void onRejection(Window window) {
+            // do something
+          }
+    });
+```
+
+
+
+#### 配置参数
+
+##### concurrent_window_evaluation_thread
+
+窗口计算线程池的默认线程数。默认为CPU核数。
+
+
+
+##### max_pending_window_evaluation_tasks
+
+最多允许堆积的窗口计算任务。默认为64个。
+
+
+
+## 重要注意事项
 
 * 触发器是通过反射技术动态装载的，因此您在装载过程中无需启停服务器。
 

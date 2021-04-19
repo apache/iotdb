@@ -646,6 +646,24 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "virtual_storage_group_num", String.valueOf(conf.getVirtualStorageGroupNum()))));
 
+      conf.setConcurrentWindowEvaluationThread(
+          Integer.parseInt(
+              properties.getProperty(
+                  "concurrent_window_evaluation_thread",
+                  Integer.toString(conf.getConcurrentWindowEvaluationThread()))));
+      if (conf.getConcurrentWindowEvaluationThread() <= 0) {
+        conf.setConcurrentWindowEvaluationThread(Runtime.getRuntime().availableProcessors());
+      }
+
+      conf.setMaxPendingWindowEvaluationTasks(
+          Integer.parseInt(
+              properties.getProperty(
+                  "max_pending_window_evaluation_tasks",
+                  Integer.toString(conf.getMaxPendingWindowEvaluationTasks()))));
+      if (conf.getMaxPendingWindowEvaluationTasks() <= 0) {
+        conf.setMaxPendingWindowEvaluationTasks(64);
+      }
+
       // mqtt
       if (properties.getProperty(IoTDBConstant.MQTT_HOST_NAME) != null) {
         conf.setMqttHost(properties.getProperty(IoTDBConstant.MQTT_HOST_NAME));

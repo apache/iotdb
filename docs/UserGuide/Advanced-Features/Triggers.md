@@ -310,7 +310,186 @@ For more information, refer to [Authority Management Statement](../Operation%20M
 
 
 
-### Important Notes
+## Utilities
+
+Utility classes provide programming paradigms and execution frameworks for the common requirements, which can simplify part of your work of implementing triggers.
+
+
+
+### Windowing Utility
+
+The windowing utility can help you define sliding windows and the data processing logic on them. It can construct two types of sliding windows: one has a fixed time interval (`SlidingTimeWindowEvaluationHandler`), and the other has fixed number of data points (`SlidingSizeWindowEvaluationHandler`).
+
+The windowing utility allows you to define a hook (`Evaluator`) on the window (`Window`). Whenever a new window is formed, the hook you defined will be called once. You can define any data processing-related logic in the hook. The call of the hook is asynchronous. Therefore, the current thread will not be blocked when the window processing logic is executed.
+
+It is worth noting that whether it is `SlidingTimeWindowEvaluationHandler` or `SlidingSizeWindowEvaluationHandler`, **they can only handle sequences with strictly monotonically increasing timestamps**, and incoming data points that do not meet the requirements will be discarded.
+
+For the definition of `Window` and `Evaluator`, please refer to the `org.apache.iotdb.db.utils.windowing.api` package.
+
+
+
+#### SlidingSizeWindowEvaluationHandler
+
+##### Window Construction
+
+There are two construction methods.
+
+The first method requires you to provide the type of data points that the window collects, the window size, the sliding step, and a hook (`Evaluator`).
+
+``` java
+final TSDataType dataType = TSDataType.INT32;
+final int windowSize = 10;
+final int slidingStep = 5;
+
+SlidingSizeWindowEvaluationHandler handler =
+    new SlidingSizeWindowEvaluationHandler(
+        new SlidingSizeWindowConfiguration(dataType, windowSize, slidingStep),
+        window -> {
+          // do something
+        });
+```
+
+The second method requires you to provide the type of data points that the window collects, the window size, and a hook (`Evaluator`). The sliding step is equal to the window size by default.
+
+``` java
+final TSDataType dataType = TSDataType.INT32;
+final int windowSize = 10;
+
+SlidingSizeWindowEvaluationHandler handler =
+    new SlidingSizeWindowEvaluationHandler(
+        new SlidingSizeWindowConfiguration(dataType, windowSize),
+        window -> {
+          // do something
+        });
+```
+
+The window size and the sliding step must be positive.
+
+
+
+#####  Datapoint Collection
+
+``` java
+final long timestamp = 0;
+final int value = 0;
+hander.collect(timestamp, value);
+```
+
+Note that the type of the second parameter accepted by the `collect` method needs to be consistent with the `dataType` parameter provided during construction.
+
+In addition, the `collect` method will only respond to data points whose timestamps are monotonically increasing. If the time stamp of the data point collected by the `collect` method is less than or equal to the time stamp of the data point collected by the previous `collect` method call, the data point collected this time will be discarded.
+
+Also note that the `collect` method is not thread-safe.
+
+
+
+#### SlidingTimeWindowEvaluationHandler
+
+##### Window Construction
+
+There are two construction methods.
+
+The first method requires you to provide the type of data points that the window collects, the time interval, the sliding step, and a hook (`Evaluator`).
+
+``` java
+final TSDataType dataType = TSDataType.INT32;
+final long timeInterval = 1000;
+final long slidingStep = 500;
+
+SlidingTimeWindowEvaluationHandler handler =
+    new SlidingTimeWindowEvaluationHandler(
+        new SlidingTimeWindowConfiguration(dataType, timeInterval, slidingStep),
+        window -> {
+          // do something
+        });
+```
+
+The second method requires you to provide the type of data points that the window collects, the time interval, and a hook (`Evaluator`). The sliding step is equal to the time interval by default.
+
+``` java
+final TSDataType dataType = TSDataType.INT32;
+final long timeInterval = 1000;
+
+SlidingTimeWindowEvaluationHandler handler =
+    new SlidingTimeWindowEvaluationHandler(
+        new SlidingTimeWindowConfiguration(dataType, timeInterval),
+        window -> {
+          // do something
+        });
+```
+
+The time interval and the sliding step must be positive.
+
+
+
+#####  Datapoint Collection
+
+``` java
+final long timestamp = 0;
+final int value = 0;
+hander.collect(timestamp, value);
+```
+
+Note that the type of the second parameter accepted by the `collect` method needs to be consistent with the `dataType` parameter provided during construction.
+
+In addition, the `collect` method will only respond to data points whose timestamps are monotonically increasing. If the time stamp of the data point collected by the `collect` method is less than or equal to the time stamp of the data point collected by the previous `collect` method call, the data point collected this time will be discarded.
+
+Also note that the `collect` method is not thread-safe.
+
+
+
+#### Rejection Policy
+
+The execution of window evaluation tasks is asynchronous.
+
+When asynchronous tasks cannot be consumed by the execution thread pool in time, tasks will accumulate. In extreme cases, the accumulation of asynchronous tasks can cause the system OOM. Therefore, the number of tasks that the window evaluation thread pool allows to accumulate is set to a finite value.
+
+When the number of accumulated tasks exceeds the limit, the newly submitted tasks will not be able to enter the thread pool for execution. At this time, the system will call the rejection policy hook `onRejection` that you have implemented in the listening hook (`Evaluator`) for processing.
+
+The default behavior of `onRejection` is as follows.
+
+````java
+default void onRejection(Window window) {
+  throw new RejectedExecutionException();
+}
+````
+
+The way to implement a rejection strategy hook is as follows.
+
+```java
+SlidingTimeWindowEvaluationHandler handler =
+    new SlidingTimeWindowEvaluationHandler(
+        new SlidingTimeWindowConfiguration(TSDataType.INT32, 1, 1),
+        new Evaluator() {
+          @Override
+          public void evaluate(Window window) {
+            // do something
+          }
+          
+          @Override
+          public void onRejection(Window window) {
+            // do something
+          }
+    });
+```
+
+
+
+#### Configurable Properties
+
+##### concurrent_window_evaluation_thread
+
+The number of threads that can be used for evaluating sliding windows. The value is equals to CPU core number by default.
+
+
+
+##### max_pending_window_evaluation_tasks
+
+The maximum number of window evaluation tasks that can be pending for execution. The value is 64 by default.
+
+
+
+## Important Notes
 
 * The trigger is implemented based on the reflection mechanism. Triggers can be dynamically registered and dropped without restarting the server.
 
