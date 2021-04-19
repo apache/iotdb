@@ -379,6 +379,8 @@ Note that the type of the second parameter accepted by the `collect` method need
 
 In addition, the `collect` method will only respond to data points whose timestamps are monotonically increasing. If the time stamp of the data point collected by the `collect` method is less than or equal to the time stamp of the data point collected by the previous `collect` method call, the data point collected this time will be discarded.
 
+Also note that the `collect` method is not thread-safe.
+
 
 
 #### SlidingTimeWindowEvaluationHandler
@@ -431,6 +433,8 @@ hander.collect(timestamp, value);
 Note that the type of the second parameter accepted by the `collect` method needs to be consistent with the `dataType` parameter provided during construction.
 
 In addition, the `collect` method will only respond to data points whose timestamps are monotonically increasing. If the time stamp of the data point collected by the `collect` method is less than or equal to the time stamp of the data point collected by the previous `collect` method call, the data point collected this time will be discarded.
+
+Also note that the `collect` method is not thread-safe.
 
 
 

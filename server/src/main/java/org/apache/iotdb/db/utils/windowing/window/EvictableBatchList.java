@@ -47,7 +47,7 @@ public class EvictableBatchList {
     actualOuterIndexAt0 = 0;
   }
 
-  public synchronized void putInt(long t, int v) {
+  public void putInt(long t, int v) {
     if (size % internalBatchSize == 0) {
       batchList.add(new BatchData(dataType));
     }
@@ -56,7 +56,7 @@ public class EvictableBatchList {
     ++size;
   }
 
-  public synchronized void putLong(long t, long v) {
+  public void putLong(long t, long v) {
     if (size % internalBatchSize == 0) {
       batchList.add(new BatchData(dataType));
     }
@@ -65,7 +65,7 @@ public class EvictableBatchList {
     ++size;
   }
 
-  public synchronized void putFloat(long t, float v) {
+  public void putFloat(long t, float v) {
     if (size % internalBatchSize == 0) {
       batchList.add(new BatchData(dataType));
     }
@@ -74,7 +74,7 @@ public class EvictableBatchList {
     ++size;
   }
 
-  public synchronized void putDouble(long t, double v) {
+  public void putDouble(long t, double v) {
     if (size % internalBatchSize == 0) {
       batchList.add(new BatchData(dataType));
     }
@@ -83,7 +83,7 @@ public class EvictableBatchList {
     ++size;
   }
 
-  public synchronized void putBoolean(long t, boolean v) {
+  public void putBoolean(long t, boolean v) {
     if (size % internalBatchSize == 0) {
       batchList.add(new BatchData(dataType));
     }
@@ -92,7 +92,7 @@ public class EvictableBatchList {
     ++size;
   }
 
-  public synchronized void putBinary(long t, Binary v) {
+  public void putBinary(long t, Binary v) {
     if (size % internalBatchSize == 0) {
       batchList.add(new BatchData(dataType));
     }
@@ -101,43 +101,43 @@ public class EvictableBatchList {
     ++size;
   }
 
-  public synchronized long getTimeByIndex(int index) {
+  public long getTimeByIndex(int index) {
     return batchList
         .get(index / internalBatchSize - actualOuterIndexAt0)
         .getTimeByIndex(index % internalBatchSize);
   }
 
-  public synchronized int getIntByIndex(int index) {
+  public int getIntByIndex(int index) {
     return batchList
         .get(index / internalBatchSize - actualOuterIndexAt0)
         .getIntByIndex(index % internalBatchSize);
   }
 
-  public synchronized long getLongByIndex(int index) {
+  public long getLongByIndex(int index) {
     return batchList
         .get(index / internalBatchSize - actualOuterIndexAt0)
         .getLongByIndex(index % internalBatchSize);
   }
 
-  public synchronized float getFloatByIndex(int index) {
+  public float getFloatByIndex(int index) {
     return batchList
         .get(index / internalBatchSize - actualOuterIndexAt0)
         .getFloatByIndex(index % internalBatchSize);
   }
 
-  public synchronized double getDoubleByIndex(int index) {
+  public double getDoubleByIndex(int index) {
     return batchList
         .get(index / internalBatchSize - actualOuterIndexAt0)
         .getDoubleByIndex(index % internalBatchSize);
   }
 
-  public synchronized boolean getBooleanByIndex(int index) {
+  public boolean getBooleanByIndex(int index) {
     return batchList
         .get(index / internalBatchSize - actualOuterIndexAt0)
         .getBooleanByIndex(index % internalBatchSize);
   }
 
-  public synchronized Binary getBinaryByIndex(int index) {
+  public Binary getBinaryByIndex(int index) {
     return batchList
         .get(index / internalBatchSize - actualOuterIndexAt0)
         .getBinaryByIndex(index % internalBatchSize);
@@ -151,7 +151,7 @@ public class EvictableBatchList {
     }
   }
 
-  private synchronized void doEviction(int outerEvictionUpperBound) {
+  private void doEviction(int outerEvictionUpperBound) {
     batchList =
         new ArrayList<>(
             batchList.subList(outerEvictionUpperBound - actualOuterIndexAt0, batchList.size()));
