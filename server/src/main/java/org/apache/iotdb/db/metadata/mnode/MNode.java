@@ -188,7 +188,7 @@ public class MNode implements Serializable {
       return 1;
     }
     int measurementMNodeCount = 0;
-    if (this instanceof MeasurementMNode) {
+    if (isMeasurement()) {
       measurementMNodeCount += 1; // current node itself may be MeasurementMNode
     }
     for (MNode child : children.values()) {
@@ -334,6 +334,10 @@ public class MNode implements Serializable {
     this.addChild(newChildNode.getName(), newChildNode);
   }
 
+  public boolean isInternal(){
+    return true;
+  }
+
   public boolean isStorageGroup() {
     return false;
   }
@@ -375,7 +379,7 @@ public class MNode implements Serializable {
     if (children != null && children.containsKey(name)) {
       MNode mNode = children.get(name);
       children.put(name, evictionPlaceHolder);
-      if (mNode instanceof MeasurementMNode) {
+      if (mNode.isMeasurement()) {
         String alias = ((MeasurementMNode) mNode).getAlias();
         if (alias != null && aliasChildren != null && aliasChildren.containsKey(alias)) {
           aliasChildren.put(alias, evictionPlaceHolder);

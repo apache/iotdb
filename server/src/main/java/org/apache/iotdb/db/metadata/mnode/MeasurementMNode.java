@@ -123,6 +123,12 @@ public class MeasurementMNode extends MNode {
     this.schema = schema;
   }
 
+  @Override
+  public boolean isInternal(){
+    return false;
+  }
+
+  @Override
   public boolean isMeasurement() {
     return true;
   }
