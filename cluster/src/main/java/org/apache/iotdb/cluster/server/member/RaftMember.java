@@ -124,7 +124,7 @@ public abstract class RaftMember {
    * when there is no leader, wait for waitLeaderTimeMs before return a NoLeader response to the
    * client.
    **/
-  private static long waitLeaderTimeMs = 60 * 1000L;
+  private static long waitLeaderTimeMs = 2 * 1000L;
 
   /**
    * when the leader of this node changes, the condition will be notified so other threads that wait
@@ -243,8 +243,6 @@ public abstract class RaftMember {
    * logs.
    */
   private LogDispatcher logDispatcher;
-
-  private volatile boolean hasSyncedLeaderBeforeRemoved = false;
 
   /**
    * If this node can not be the leader, this parameter will be set true.
@@ -799,9 +797,6 @@ public abstract class RaftMember {
    * Wait until the leader of this node becomes known or time out.
    */
   public void waitLeader() {
-    if (hasSyncedLeaderBeforeRemoved) {
-      return;
-    }
     long startTime = System.currentTimeMillis();
     while (leader.get() == null || ClusterConstant.EMPTY_NODE.equals(leader.get())) {
       synchronized (waitLeaderCondition) {
@@ -845,6 +840,12 @@ public abstract class RaftMember {
       return false;
     }
     logger.debug("Start to sync with leader, leader commit id is {}", leaderCommitId);
+
+    // If the leader and follower logs differ too much, local query is not allowed
+    if (leaderCommitId - logManager.getMaxHaveAppliedCommitIndex() > 1000) {
+      logger.info("{}: The raft log of this member is too backward to provide service directly.", name);
+      return false;
+    }
     return waitUtil(leaderCommitId);
   }
 
@@ -1912,14 +1913,6 @@ public abstract class RaftMember {
 
   enum AppendLogResult {
     OK, TIME_OUT, LEADERSHIP_STALE
-  }
-
-  public boolean isHasSyncedLeaderBeforeRemoved() {
-    return hasSyncedLeaderBeforeRemoved;
-  }
-
-  public void setHasSyncedLeaderBeforeRemoved(boolean hasSyncedLeaderAfterRemoved) {
-    this.hasSyncedLeaderBeforeRemoved = hasSyncedLeaderAfterRemoved;
   }
 
   public Object getHeartBeatWaitObject() {
