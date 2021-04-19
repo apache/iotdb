@@ -31,7 +31,7 @@ You have to install thrift (>=0.13) before using the package.
 
 First, download the package: `pip3 install apache-iotdb`
 
-You can get an example of using the package to read and write data at here: [Example](https://github.com/apache/iotdb/blob/rel/0.11/client-py/src/SessionExample.py)
+You can get an example of using the package to read and write data at here: [Example](https://github.com/apache/iotdb/blob/master/client-py/SessionExample.py)
 
 (you need to add `import iotdb` in the head of the file)
 
@@ -81,7 +81,6 @@ the SessionDataSet has a method `.todf()` which consumes the dataset and transfo
 Example:
 
 ```python
-
 from iotdb.Session import Session
 
 ip = "127.0.0.1"
