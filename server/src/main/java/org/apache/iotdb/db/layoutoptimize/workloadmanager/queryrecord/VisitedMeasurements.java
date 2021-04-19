@@ -24,6 +24,14 @@ public class VisitedMeasurements {
     _hashCode = sb.toString().hashCode();
   }
 
+  public String getDeviceId() {
+    return deviceID;
+  }
+
+  public List<String> getMeasurements() {
+    return measurements;
+  }
+
   @Override
   public int hashCode() {
     return _hashCode;

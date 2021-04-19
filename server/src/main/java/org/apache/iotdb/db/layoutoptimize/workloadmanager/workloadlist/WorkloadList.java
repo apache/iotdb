@@ -1,14 +1,16 @@
 package org.apache.iotdb.db.layoutoptimize.workloadmanager.workloadlist;
 
+import org.apache.iotdb.db.layoutoptimize.workloadmanager.queryrecord.VisitedMeasurements;
 import org.apache.iotdb.db.layoutoptimize.workloadmanager.workloadlist.statisitc.ListStatistic;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class WorkloadList {
-  private final List<WorkloadItem> workloadItems = new LinkedList<>();
+  private final LinkedList<WorkloadItem> workloadItems = new LinkedList<>();
   private final ExecutorService threadPool = Executors.newFixedThreadPool(1);
   // the range of each item
   private final long ITEM_RANGE = 1L * 24L * 60L * 60L * 1000L;
@@ -41,9 +43,10 @@ public class WorkloadList {
   public boolean dropExpiredRecord() {
     long curTime = System.currentTimeMillis();
     boolean flag = false;
-    for (WorkloadItem item : workloadItems) {
+    while (true) {
+      WorkloadItem item = workloadItems.getFirst();
       if (curTime - item.getEndTime() > ITEM_VALID_PERIOD) {
-        workloadItems.remove(curItem);
+        workloadItems.removeFirst();
         flag = true;
       } else {
         break;
@@ -61,5 +64,26 @@ public class WorkloadList {
     for (WorkloadItem item : workloadItems) {
       statistic.addItemStatistic(item.getStatistic());
     }
+  }
+
+  public WorkloadInfo getWorkloadInfo(String deviceId) {
+    WorkloadInfo info = new WorkloadInfo(deviceId);
+    dropExpiredRecord();
+    for (WorkloadItem item : workloadItems) {
+      Map<VisitedMeasurements, Long> measurementMap = item.getMeasurementMap();
+      for (Map.Entry<VisitedMeasurements, Long> measurementEntry : measurementMap.entrySet()) {
+        if (measurementEntry.getKey().getDeviceId().equals(deviceId)) {
+          for (String measurement : measurementEntry.getKey().getMeasurements()) {
+            info.addMeasurementVisit(measurement);
+          }
+        }
+      }
+
+      Map<Long, Long> spanMap = item.getSpanMap(deviceId);
+      for (Map.Entry<Long, Long> spanEntry : spanMap.entrySet()) {
+        info.addSpanVisit(spanEntry.getKey(), spanEntry.getValue());
+      }
+    }
+    return info;
   }
 }

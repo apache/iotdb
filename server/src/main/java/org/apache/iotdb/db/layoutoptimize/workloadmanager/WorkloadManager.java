@@ -1,9 +1,11 @@
 package org.apache.iotdb.db.layoutoptimize.workloadmanager;
 
 import org.apache.iotdb.db.layoutoptimize.workloadmanager.queryrecord.QueryRecord;
+import org.apache.iotdb.db.layoutoptimize.workloadmanager.workloadlist.WorkloadInfo;
 import org.apache.iotdb.db.layoutoptimize.workloadmanager.workloadlist.WorkloadList;
 import org.apache.iotdb.db.layoutoptimize.workloadmanager.workloadlist.statisitc.ListStatistic;
 
+import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -51,6 +53,11 @@ public class WorkloadManager {
    * @return
    */
   public List<QueryRecord> getSampledQueryRecord(String deviceId, int sampleNum) {
-    return null;
+    WorkloadInfo info = workloadList.getWorkloadInfo(deviceId);
+    List<QueryRecord> records = new LinkedList<>();
+    for (int i = 0; i < sampleNum; i++) {
+      records.add(info.sample());
+    }
+    return records;
   }
 }
