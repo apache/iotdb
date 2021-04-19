@@ -381,8 +381,9 @@ public class IoTDBSessionSimpleIT {
     schemaList.add(new MeasurementSchema("s0", TSDataType.INT64));
     schemaList.add(
         new VectorMeasurementSchema(
-            new String[] {"s1", "s2"}, new TSDataType[] {TSDataType.INT64, TSDataType.INT32}));
-    schemaList.add(new MeasurementSchema("s3", TSDataType.INT32));
+            new String[] {"s1", "s2", "s3"},
+            new TSDataType[] {TSDataType.INT64, TSDataType.INT32, TSDataType.TEXT}));
+    schemaList.add(new MeasurementSchema("s4", TSDataType.INT32));
 
     Tablet tablet = new Tablet("root.sg1.d1", schemaList);
     long timestamp = System.currentTimeMillis();
@@ -400,6 +401,8 @@ public class IoTDBSessionSimpleIT {
           schemaList.get(1).getValueMeasurementIdList().get(1),
           rowIndex,
           new SecureRandom().nextInt());
+      tablet.addValue(
+          schemaList.get(1).getValueMeasurementIdList().get(2), rowIndex, new Binary("test"));
       tablet.addValue(schemaList.get(2).getMeasurementId(), rowIndex, new SecureRandom().nextInt());
       timestamp++;
     }
@@ -416,6 +419,7 @@ public class IoTDBSessionSimpleIT {
       Assert.assertEquals(10L, rowRecord.getFields().get(1).getLongV());
       Assert.assertEquals(10L, rowRecord.getFields().get(2).getLongV());
       Assert.assertEquals(10L, rowRecord.getFields().get(3).getLongV());
+      Assert.assertEquals(10L, rowRecord.getFields().get(4).getLongV());
     }
     session.close();
   }

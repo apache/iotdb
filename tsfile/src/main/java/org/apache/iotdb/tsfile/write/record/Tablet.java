@@ -296,20 +296,24 @@ public class Tablet {
         }
       }
     }
+    int columnIndex = 0;
     for (int i = 0; i < schemas.size(); i++) {
       IMeasurementSchema schema = schemas.get(i);
       if (schema instanceof MeasurementSchema) {
-        valueOccupation += calOccupationOfOneColumn(schema.getType(), i);
+        valueOccupation += calOccupationOfOneColumn(schema.getType(), columnIndex);
+        columnIndex++;
       } else {
-        for (TSDataType dataType : schema.getValueTSDataTypeList()) {
-          valueOccupation += calOccupationOfOneColumn(dataType, i);
+        for (int j = 0; j < schema.getValueTSDataTypeList().size(); j++) {
+          TSDataType dataType = schema.getValueTSDataTypeList().get(j);
+          valueOccupation += calOccupationOfOneColumn(dataType, columnIndex);
+          columnIndex++;
         }
       }
     }
     return valueOccupation;
   }
 
-  private int calOccupationOfOneColumn(TSDataType dataType, int i) {
+  private int calOccupationOfOneColumn(TSDataType dataType, int columnIndex) {
     int valueOccupation = 0;
     switch (dataType) {
       case BOOLEAN:
@@ -325,7 +329,7 @@ public class Tablet {
         break;
       case TEXT:
         valueOccupation += rowSize * 4;
-        Binary[] binaries = (Binary[]) values[i];
+        Binary[] binaries = (Binary[]) values[columnIndex];
         for (int rowIndex = 0; rowIndex < rowSize; rowIndex++) {
           valueOccupation += binaries[rowIndex].getLength();
         }
