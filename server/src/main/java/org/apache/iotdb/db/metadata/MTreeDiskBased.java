@@ -72,22 +72,26 @@ public class MTreeDiskBased implements MTreeInterface {
   private static transient ThreadLocal<Integer> count = new ThreadLocal<>();
   private static transient ThreadLocal<Integer> curOffset = new ThreadLocal<>();
 
-  public MTreeDiskBased() throws Exception {
+  public MTreeDiskBased() throws IOException {
     this(null, 4, null, null);
   }
 
-  private MTreeDiskBased(MNode root) throws Exception {
+  private MTreeDiskBased(MNode root) throws IOException {
     this(root, DEFAULT_MAX_CAPACITY, null, null);
   }
 
   public MTreeDiskBased(MNode root, int cacheSize, String mTreeFilePath, String measurementFilePath)
-      throws Exception {
+      throws IOException {
     if (MNode.isNull(root)) {
       root = new MNode(null, IoTDBConstant.PATH_ROOT);
     }
 
     rootName = root.getName();
-    rootPath = new PartialPath(rootName);
+    try {
+      rootPath = new PartialPath(rootName);
+    }catch (IllegalPathException e){
+      e.printStackTrace();
+    }
 
     capacity = cacheSize;
     cacheStrategy = new LRUCacheStrategy();
