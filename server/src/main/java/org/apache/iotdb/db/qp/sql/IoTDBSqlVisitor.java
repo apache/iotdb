@@ -1338,7 +1338,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   public void parseGroupByLevelClause(GroupByLevelClauseContext ctx, QueryOperator queryOp) {
     if (!queryOp.hasAggregation()) {
-      throw new SQLParserException("There is no aggregation function with group by query");
+      throw new SQLParserException("Lack aggregation function with group by query");
     }
     queryOp.setGroupByLevel(true);
     queryOp.setLevel(Integer.parseInt(ctx.INT().getText()));
@@ -1432,7 +1432,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   private void parseGroupByTimeClause(GroupByTimeClauseContext ctx, QueryOperator queryOp) {
     if (!queryOp.hasAggregation()) {
-      throw new SQLParserException("There is no aggregation function with group by query");
+      throw new SQLParserException("Lack aggregation function with group by query");
     }
     queryOp.setGroupByTime(true);
     queryOp.setLeftCRightO(ctx.timeInterval().LS_BRACKET() != null);
@@ -1460,7 +1460,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   private void parseGroupByFillClause(GroupByFillClauseContext ctx, QueryOperator queryOp) {
     if (!queryOp.hasAggregation()) {
-      throw new SQLParserException("There is no aggregation function with group by query");
+      throw new SQLParserException("Lack aggregation function with group by query");
     }
     queryOp.setGroupByTime(true);
     queryOp.setFill(true);
