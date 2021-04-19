@@ -803,8 +803,7 @@ public class IoTDBGroupByFillIT {
 
       fail("No expected exception thrown");
     } catch (Exception e) {
-      Assert.assertTrue(
-          e.getMessage().contains("There is no aggregation function with group by query"));
+      Assert.assertTrue(e.getMessage().contains("Lack aggregation function in group by query"));
     }
   }
 
