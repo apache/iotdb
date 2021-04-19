@@ -381,7 +381,8 @@ public class IoTDBSessionSimpleIT {
     schemaList.add(new MeasurementSchema("s0", TSDataType.INT64));
     schemaList.add(
         new VectorMeasurementSchema(
-            new String[] {"s1", "s2", "s3"}, new TSDataType[] {TSDataType.INT64, TSDataType.INT32, TSDataType.TEXT}));
+            new String[] {"s1", "s2", "s3"},
+            new TSDataType[] {TSDataType.INT64, TSDataType.INT32, TSDataType.TEXT}));
     schemaList.add(new MeasurementSchema("s4", TSDataType.INT32));
 
     Tablet tablet = new Tablet("root.sg1.d1", schemaList);
@@ -401,9 +402,7 @@ public class IoTDBSessionSimpleIT {
           rowIndex,
           new SecureRandom().nextInt());
       tablet.addValue(
-          schemaList.get(1).getValueMeasurementIdList().get(2),
-          rowIndex,
-          new Binary("test"));
+          schemaList.get(1).getValueMeasurementIdList().get(2), rowIndex, new Binary("test"));
       tablet.addValue(schemaList.get(2).getMeasurementId(), rowIndex, new SecureRandom().nextInt());
       timestamp++;
     }
