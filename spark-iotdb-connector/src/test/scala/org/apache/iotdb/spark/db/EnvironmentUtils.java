@@ -18,6 +18,13 @@
  */
 package org.apache.iotdb.spark.db;
 
+import java.io.File;
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.Locale;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
@@ -26,7 +33,8 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
+import org.apache.iotdb.db.engine.cache.ChunkCache;
+import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -41,14 +49,6 @@ import org.apache.iotdb.jdbc.Config;
 import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.Locale;
 
 /**
  * <p>
@@ -120,7 +120,8 @@ public class EnvironmentUtils {
     MultiFileLogNodeManager.getInstance().stop();
     // clean cache
     if (config.isMetaDataCacheEnable()) {
-      ChunkMetadataCache.getInstance().clear();
+      ChunkCache.getInstance().clear();
+      TimeSeriesMetadataCache.getInstance().clear();
     }
     // close metadata
     IoTDB.metaManager.clear();
@@ -165,7 +166,7 @@ public class EnvironmentUtils {
   /**
    * disable memory control</br> this function should be called before all code in the setup
    */
-  public static void envSetUp() throws StartupException, IOException {
+  public static void envSetUp() throws StartupException {
     IoTDB.metaManager.init();
     createAllDir();
     // disable the system monitor
@@ -229,35 +230,35 @@ public class EnvironmentUtils {
       // prepare BufferWrite file
       for (int i = 5000; i < 7000; i++) {
         statement.execute(String
-            .format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "\'" + i + "\'", "true"));
+            .format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "true"));
       }
       statement.execute("flush");
       for (int i = 7500; i < 8500; i++) {
         statement.execute(String
-            .format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "\'" + i + "\'", "false"));
+            .format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "false"));
       }
       statement.execute("flush");
       // prepare Unseq-File
       for (int i = 500; i < 1500; i++) {
         statement.execute(String
-            .format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "\'" + i + "\'", "true"));
+            .format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "true"));
       }
       statement.execute("flush");
       for (int i = 3000; i < 6500; i++) {
         statement.execute(String
-            .format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "\'" + i + "\'", "false"));
+            .format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "false"));
       }
       statement.execute("merge");
 
       // prepare BufferWrite cache
       for (int i = 9000; i < 10000; i++) {
         statement.execute(String
-            .format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "\'" + i + "\'", "true"));
+            .format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "true"));
       }
       // prepare Overflow cache
       for (int i = 2000; i < 2500; i++) {
         statement.execute(String
-            .format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "\'" + i + "\'", "false"));
+            .format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "false"));
       }
 
     } catch (Exception e) {

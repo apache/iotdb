@@ -18,10 +18,6 @@
  */
 package org.apache.iotdb.db.utils;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.Map.Entry;
-import java.util.Set;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -44,18 +40,20 @@ import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
+import java.io.IOException;
+import java.util.List;
+import java.util.Map.Entry;
+import java.util.Set;
+
 public class FileLoaderUtils {
 
-  private FileLoaderUtils() {
+  private FileLoaderUtils() {}
 
-  }
-
-  public static void checkTsFileResource(TsFileResource tsFileResource)
-      throws IOException {
+  public static void checkTsFileResource(TsFileResource tsFileResource) throws IOException {
     if (!tsFileResource.resourceFileExists()) {
       // .resource file does not exist, read file metadata and recover tsfile resource
-      try (TsFileSequenceReader reader = new TsFileSequenceReader(
-          tsFileResource.getTsFile().getAbsolutePath())) {
+      try (TsFileSequenceReader reader =
+          new TsFileSequenceReader(tsFileResource.getTsFile().getAbsolutePath())) {
         updateTsFileResource(reader, tsFileResource);
       }
       // write .resource file
@@ -66,17 +64,19 @@ public class FileLoaderUtils {
     tsFileResource.setClosed(true);
   }
 
-  public static void updateTsFileResource(TsFileSequenceReader reader,
-      TsFileResource tsFileResource) throws IOException {
-    for (Entry<String, List<TimeseriesMetadata>> entry : reader.getAllTimeseriesMetadata()
-        .entrySet()) {
+  public static void updateTsFileResource(
+      TsFileSequenceReader reader, TsFileResource tsFileResource) throws IOException {
+    for (Entry<String, List<TimeseriesMetadata>> entry :
+        reader.getAllTimeseriesMetadata().entrySet()) {
       for (TimeseriesMetadata timeseriesMetaData : entry.getValue()) {
-        tsFileResource
-            .updateStartTime(entry.getKey(), timeseriesMetaData.getStatistics().getStartTime());
-        tsFileResource
-            .updateEndTime(entry.getKey(), timeseriesMetaData.getStatistics().getEndTime());
+        tsFileResource.updateStartTime(
+            entry.getKey(), timeseriesMetaData.getStatistics().getStartTime());
+        tsFileResource.updateEndTime(
+            entry.getKey(), timeseriesMetaData.getStatistics().getEndTime());
       }
     }
+    tsFileResource.updatePlanIndexes(reader.getMinPlanIndex());
+    tsFileResource.updatePlanIndexes(reader.getMaxPlanIndex());
   }
 
   /**
@@ -85,16 +85,27 @@ public class FileLoaderUtils {
    * @param allSensors measurements queried at the same time of this device
    * @param filter any filter, only used to check time range
    */
-  public static TimeseriesMetadata loadTimeSeriesMetadata(TsFileResource resource, PartialPath seriesPath,
-      QueryContext context, Filter filter, Set<String> allSensors) throws IOException {
+  public static TimeseriesMetadata loadTimeSeriesMetadata(
+      TsFileResource resource,
+      PartialPath seriesPath,
+      QueryContext context,
+      Filter filter,
+      Set<String> allSensors)
+      throws IOException {
     TimeseriesMetadata timeSeriesMetadata;
     if (resource.isClosed()) {
       if (!resource.getTsFile().exists()) {
         return null;
       }
-      timeSeriesMetadata = TimeSeriesMetadataCache.getInstance()
-          .get(new TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey(resource.getTsFilePath(),
-              seriesPath.getDevice(), seriesPath.getMeasurement()), allSensors);
+      timeSeriesMetadata =
+          TimeSeriesMetadataCache.getInstance()
+              .get(
+                  new TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey(
+                      resource.getTsFilePath(),
+                      seriesPath.getDevice(),
+                      seriesPath.getMeasurement()),
+                  allSensors,
+                  context.isDebug());
       if (timeSeriesMetadata != null) {
         timeSeriesMetadata.setChunkMetadataLoader(
             new DiskChunkMetadataLoader(resource, seriesPath, context, filter));
@@ -111,12 +122,13 @@ public class FileLoaderUtils {
       List<Modification> pathModifications =
           context.getPathModifications(resource.getModFile(), seriesPath);
       timeSeriesMetadata.setModified(!pathModifications.isEmpty());
-      if (timeSeriesMetadata.getStatistics().getStartTime() > timeSeriesMetadata.getStatistics()
-          .getEndTime()) {
+      if (timeSeriesMetadata.getStatistics().getStartTime()
+          > timeSeriesMetadata.getStatistics().getEndTime()) {
         return null;
       }
-      if (filter != null && !filter
-          .satisfyStartEndTime(timeSeriesMetadata.getStatistics().getStartTime(),
+      if (filter != null
+          && !filter.satisfyStartEndTime(
+              timeSeriesMetadata.getStatistics().getStartTime(),
               timeSeriesMetadata.getStatistics().getEndTime())) {
         return null;
       }
@@ -152,7 +164,8 @@ public class FileLoaderUtils {
       chunkReader = new MemChunkReader(memChunkLoader.getChunk(), timeFilter);
     } else {
       Chunk chunk = chunkLoader.loadChunk(chunkMetaData);
-      chunkReader = new ChunkReader(chunk, timeFilter, chunkMetaData.isFromOldTsFile());
+      chunk.setFromOldFile(chunkMetaData.isFromOldTsFile());
+      chunkReader = new ChunkReader(chunk, timeFilter);
       chunkReader.hasNextSatisfiedPage();
     }
     return chunkReader.loadPageReaderList();

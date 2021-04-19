@@ -18,18 +18,10 @@
  */
 package org.apache.iotdb.web.grafana.dao.impl;
 
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.time.Duration;
-import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.web.grafana.bean.TimeValues;
 import org.apache.iotdb.web.grafana.dao.BasicDao;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,9 +32,17 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
-/**
- * Created by dell on 2017/7/17.
- */
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.time.Duration;
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+/** Created by dell on 2017/7/17. */
 @Repository
 @PropertySource("classpath:application.properties")
 public class BasicDaoImpl implements BasicDao {
@@ -68,7 +68,6 @@ public class BasicDaoImpl implements BasicDao {
   @Value("${interval}")
   private String interval;
 
-
   @Autowired
   public BasicDaoImpl(JdbcTemplate jdbcTemplate) {
     this.jdbcTemplate = jdbcTemplate;
@@ -76,22 +75,24 @@ public class BasicDaoImpl implements BasicDao {
 
   @Override
   public List<String> getMetaData() {
-    ConnectionCallback<Object> connectionCallback = new ConnectionCallback<Object>() {
-      public Object doInConnection(Connection connection) throws SQLException {
-        try (Statement statement = connection.createStatement()) {
-          statement.execute("show timeseries root.*");
-          try(ResultSet resultSet = statement.getResultSet()) {
-            logger.info("Start to get timeseries");
-            List<String> columnsName = new ArrayList<>();
-            while (resultSet.next()) {
-              String timeseries = resultSet.getString(1);
-              columnsName.add(timeseries.substring(5));
+    ConnectionCallback<Object> connectionCallback =
+        new ConnectionCallback<Object>() {
+          @Override
+          public Object doInConnection(Connection connection) throws SQLException {
+            try (Statement statement = connection.createStatement()) {
+              statement.execute("show timeseries root.*");
+              try (ResultSet resultSet = statement.getResultSet()) {
+                logger.info("Start to get timeseries");
+                List<String> columnsName = new ArrayList<>();
+                while (resultSet.next()) {
+                  String timeseries = resultSet.getString(1);
+                  columnsName.add(timeseries.substring(5));
+                }
+                return columnsName;
+              }
             }
-            return columnsName;
           }
-        }
-      }
-    };
+        };
     return (List<String>) jdbcTemplate.execute(connectionCallback);
   }
 
@@ -110,10 +111,9 @@ public class BasicDaoImpl implements BasicDao {
   }
 
   /**
-  * Note: If the query fails this could be due to AGGREGATIION like AVG on booleayn field.
-  * Thus, we then do a retry with FIRST aggregation.
-  * This should be solved better in the long run.
-  */
+   * Note: If the query fails this could be due to AGGREGATIION like AVG on booleayn field. Thus, we
+   * then do a retry with FIRST aggregation. This should be solved better in the long run.
+   */
   @Override
   public List<TimeValues> querySeries(String s, Pair<ZonedDateTime, ZonedDateTime> timeRange) {
     if (timestampRadioX == -1) {
@@ -132,30 +132,54 @@ public class BasicDaoImpl implements BasicDao {
     }
   }
 
-  public List<TimeValues> querySeriesInternal(String s, Pair<ZonedDateTime, ZonedDateTime> timeRange, String function) {
-      Long from = zonedCovertToLong(timeRange.left);
+  public List<TimeValues> querySeriesInternal(
+      String s, Pair<ZonedDateTime, ZonedDateTime> timeRange, String function) {
+    Long from = zonedCovertToLong(timeRange.left);
     Long to = zonedCovertToLong(timeRange.right);
     final long hours = Duration.between(timeRange.left, timeRange.right).toHours();
-    String sql = String.format("SELECT %s FROM root.%s WHERE time > %d and time < %d",
-        s.substring(s.lastIndexOf('.') + 1), s.substring(0, s.lastIndexOf('.')),
-        from * timestampRadioX, to * timestampRadioX);
+
+    String sql =
+        String.format(
+            "SELECT %s FROM root.%s WHERE time > %d and time < %d",
+            s.substring(s.lastIndexOf('.') + 1),
+            s.substring(0, s.lastIndexOf('.')),
+            from * timestampRadioX,
+            to * timestampRadioX);
     String columnName = "root." + s;
-    if (isDownSampling && (hours > 1)) {
-      if (hours < 30 * 24 && hours > 24) {
-        interval = "1h";
-      } else if (hours > 30 * 24) {
-        interval = "1d";
-      }
-      sql = String.format(
-          "SELECT " + function
-              + "(%s) FROM root.%s WHERE time > %d and time < %d group by ([%d, %d),%s)",
-          s.substring(s.lastIndexOf('.') + 1), s.substring(0, s.lastIndexOf('.')),
-          from * timestampRadioX, to * timestampRadioX,
-          from * timestampRadioX, to * timestampRadioX, interval);
+
+    String intervalLocal = getInterval(hours);
+    if (!intervalLocal.equals("")) {
+      sql =
+          String.format(
+              "SELECT "
+                  + function
+                  + "(%s) FROM root.%s WHERE time > %d and time < %d group by ([%d, %d),%s)",
+              s.substring(s.lastIndexOf('.') + 1),
+              s.substring(0, s.lastIndexOf('.')),
+              from * timestampRadioX,
+              to * timestampRadioX,
+              from * timestampRadioX,
+              to * timestampRadioX,
+              intervalLocal);
       columnName = function + "(root." + s + ")";
     }
+
     logger.info(sql);
     return jdbcTemplate.query(sql, new TimeValuesRowMapper(columnName));
+  }
+
+  public String getInterval(final long hours) {
+    if (!isDownSampling || !(hours > 1)) {
+      return "";
+    }
+
+    if (hours < 30 * 24 && hours > 24) {
+      return "1h";
+    } else if (hours > 30 * 24) {
+      return "1d";
+    }
+
+    return this.interval;
   }
 
   private Long zonedCovertToLong(ZonedDateTime time) {
@@ -185,5 +209,4 @@ public class BasicDaoImpl implements BasicDao {
       return tv;
     }
   }
-
 }

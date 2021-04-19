@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.service;
 
-import java.io.IOException;
 import org.apache.iotdb.db.concurrent.IoTDBDefaultThreadExceptionHandler;
 import org.apache.iotdb.db.conf.IoTDBConfigCheck;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -29,23 +28,30 @@ import org.apache.iotdb.db.engine.cache.CacheHitRatioMonitor;
 import org.apache.iotdb.db.engine.compaction.CompactionMergeTaskPoolManager;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
+import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.query.control.TracingManager;
+import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
+import org.apache.iotdb.db.query.udf.service.UDFClassLoaderManager;
+import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.db.sync.receiver.SyncServerManager;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
 
 public class IoTDB implements IoTDBMBean {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDB.class);
-  private final String mbeanName = String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE,
-      IoTDBConstant.JMX_TYPE, "IoTDB");
+  private final String mbeanName =
+      String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, "IoTDB");
   private RegisterManager registerManager = new RegisterManager();
   public static MManager metaManager = MManager.getInstance();
 
@@ -54,9 +60,6 @@ public class IoTDB implements IoTDBMBean {
   }
 
   public static void main(String[] args) {
-    if (args.length > 0) {
-      IoTDBDescriptor.getInstance().replaceProps(args);
-    }
     try {
       IoTDBConfigCheck.getInstance().checkConfig();
     } catch (IOException e) {
@@ -76,8 +79,8 @@ public class IoTDB implements IoTDBMBean {
       checks.verify();
     } catch (StartupException e) {
       // TODO: what are some checks
-      logger.error("{}: failed to start because some checks failed. ",
-          IoTDBConstant.GLOBAL_DB_NAME, e);
+      logger.error(
+          "{}: failed to start because some checks failed. ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return;
     }
     try {
@@ -108,8 +111,16 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(CompactionMergeTaskPoolManager.getInstance());
     JMXService.registerMBean(getInstance(), mbeanName);
     registerManager.register(StorageEngine.getInstance());
+    registerManager.register(TemporaryQueryDataFileService.getInstance());
+    registerManager.register(UDFClassLoaderManager.getInstance());
+    registerManager.register(UDFRegistrationService.getInstance());
+    registerManager.register(TriggerRegistrationService.getInstance());
 
-    registerManager.register(RPCService.getInstance());
+    // in cluster mode, RPC service is not enabled.
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableRpcService()) {
+      registerManager.register(RPCService.getInstance());
+    }
+
     if (IoTDBDescriptor.getInstance().getConfig().isEnableMetricService()) {
       registerManager.register(MetricsService.getInstance());
     }
@@ -153,7 +164,6 @@ public class IoTDB implements IoTDBMBean {
         "After initializing, tsFile threshold is {}, memtableSize is {}",
         IoTDBDescriptor.getInstance().getConfig().getTsFileSizeThreshold(),
         IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold());
-
   }
 
   @Override
@@ -163,8 +173,9 @@ public class IoTDB implements IoTDBMBean {
 
   public void shutdown() throws Exception {
     logger.info("Deactivating IoTDB...");
-    IoTDB.metaManager.clear();
-    TracingManager.getInstance().close();
+    if (IoTDBDescriptor.getInstance().getConfig().isEnablePerformanceTracing()) {
+      TracingManager.getInstance().close();
+    }
     registerManager.shutdownAll();
     PrimitiveArrayManager.close();
     SystemInfo.getInstance().close();
@@ -180,9 +191,6 @@ public class IoTDB implements IoTDBMBean {
 
     private static final IoTDB INSTANCE = new IoTDB();
 
-    private IoTDBHolder() {
-
-    }
+    private IoTDBHolder() {}
   }
-
 }

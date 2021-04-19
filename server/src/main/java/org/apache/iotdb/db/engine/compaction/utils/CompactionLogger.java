@@ -19,13 +19,12 @@
 
 package org.apache.iotdb.db.engine.compaction.utils;
 
-import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogAnalyzer.STR_DEVICE_OFFSET_SEPERATOR;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 
 public class CompactionLogger {
 
@@ -40,9 +39,12 @@ public class CompactionLogger {
   private BufferedWriter logStream;
 
   public CompactionLogger(String storageGroupDir, String storageGroupName) throws IOException {
-    logStream = new BufferedWriter(
-        new FileWriter(SystemFileFactory.INSTANCE.getFile(storageGroupDir,
-            storageGroupName + COMPACTION_LOG_NAME), true));
+    logStream =
+        new BufferedWriter(
+            new FileWriter(
+                SystemFileFactory.INSTANCE.getFile(
+                    storageGroupDir, storageGroupName + COMPACTION_LOG_NAME),
+                true));
   }
 
   public void close() throws IOException {
@@ -50,7 +52,7 @@ public class CompactionLogger {
   }
 
   public void logDevice(String device, long offset) throws IOException {
-    logStream.write(device + STR_DEVICE_OFFSET_SEPERATOR + offset);
+    logStream.write(device + CompactionLogAnalyzer.STR_DEVICE_OFFSET_SEPARATOR + offset);
     logStream.newLine();
     logStream.flush();
   }
@@ -58,19 +60,7 @@ public class CompactionLogger {
   public void logFile(String prefix, File file) throws IOException {
     logStream.write(prefix);
     logStream.newLine();
-    logStream.write(file.getAbsolutePath());
-    logStream.newLine();
-    logStream.flush();
-  }
-
-  public void logMergeFinish() throws IOException {
-    logStream.write(MERGE_FINISHED);
-    logStream.newLine();
-    logStream.flush();
-  }
-
-  public void logFullMerge() throws IOException {
-    logStream.write(FULL_MERGE);
+    logStream.write(file.getPath());
     logStream.newLine();
     logStream.flush();
   }

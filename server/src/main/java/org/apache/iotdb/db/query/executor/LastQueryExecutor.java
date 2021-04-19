@@ -19,14 +19,6 @@
 
 package org.apache.iotdb.db.query.executor;
 
-
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -54,13 +46,27 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
+
 public class LastQueryExecutor {
 
   private List<PartialPath> selectedSeries;
   private List<TSDataType> dataTypes;
-  private IExpression expression;
+  protected IExpression expression;
   private static final boolean CACHE_ENABLED =
-          IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled();
+      IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled();
+  private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
 
   public LastQueryExecutor(LastQueryPlan lastQueryPlan) {
     this.selectedSeries = lastQueryPlan.getDeduplicatedPaths();
@@ -78,25 +84,28 @@ public class LastQueryExecutor {
    *
    * @param context query context
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public QueryDataSet execute(QueryContext context, LastQueryPlan lastQueryPlan)
       throws StorageEngineException, IOException, QueryProcessException {
 
-    ListDataSet dataSet = new ListDataSet(
-        Arrays.asList(new PartialPath(COLUMN_TIMESERIES, false), new PartialPath(COLUMN_VALUE, false)),
-        Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
+    ListDataSet dataSet =
+        new ListDataSet(
+            Arrays.asList(
+                new PartialPath(COLUMN_TIMESERIES, false), new PartialPath(COLUMN_VALUE, false)),
+            Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
 
-    List<Pair<Boolean, TimeValuePair>> lastPairList = calculateLastPairForSeriesLocally(
-            selectedSeries, dataTypes, context, expression, lastQueryPlan);
+    List<Pair<Boolean, TimeValuePair>> lastPairList =
+        calculateLastPairForSeries(selectedSeries, dataTypes, context, expression, lastQueryPlan);
 
     for (int i = 0; i < lastPairList.size(); i++) {
-      if (lastPairList.get(i).right != null) {
+      if (lastPairList.get(i).right != null && lastPairList.get(i).right.getValue() != null) {
         TimeValuePair lastTimeValuePair = lastPairList.get(i).right;
         RowRecord resultRecord = new RowRecord(lastTimeValuePair.getTimestamp());
         Field pathField = new Field(TSDataType.TEXT);
-        if (selectedSeries.get(i).getTsAlias() != null) {
+        if (selectedSeries.get(i).isTsAliasExists()) {
           pathField.setBinaryV(new Binary(selectedSeries.get(i).getTsAlias()));
         } else {
-          if (selectedSeries.get(i).getMeasurementAlias() != null) {
+          if (selectedSeries.get(i).isMeasurementAliasExists()) {
             pathField.setBinaryV(new Binary(selectedSeries.get(i).getFullPathWithAlias()));
           } else {
             pathField.setBinaryV(new Binary(selectedSeries.get(i).getFullPath()));
@@ -118,30 +127,53 @@ public class LastQueryExecutor {
     return dataSet;
   }
 
+  protected List<Pair<Boolean, TimeValuePair>> calculateLastPairForSeries(
+      List<PartialPath> seriesPaths,
+      List<TSDataType> dataTypes,
+      QueryContext context,
+      IExpression expression,
+      RawDataQueryPlan lastQueryPlan)
+      throws QueryProcessException, StorageEngineException, IOException {
+    return calculateLastPairForSeriesLocally(
+        seriesPaths, dataTypes, context, expression, lastQueryPlan.getDeviceToMeasurements());
+  }
+
   public static List<Pair<Boolean, TimeValuePair>> calculateLastPairForSeriesLocally(
-          List<PartialPath> seriesPaths, List<TSDataType> dataTypes, QueryContext context,
-          IExpression expression, RawDataQueryPlan lastQueryPlan)
-          throws QueryProcessException, StorageEngineException, IOException {
+      List<PartialPath> seriesPaths,
+      List<TSDataType> dataTypes,
+      QueryContext context,
+      IExpression expression,
+      Map<String, Set<String>> deviceMeasurementsMap)
+      throws QueryProcessException, StorageEngineException, IOException {
     List<LastCacheAccessor> cacheAccessors = new ArrayList<>();
     Filter filter = (expression == null) ? null : ((GlobalTimeExpression) expression).getFilter();
 
-    List<PartialPath> restPaths = new ArrayList<>();
+    List<PartialPath> nonCachedPaths = new ArrayList<>();
+    List<TSDataType> nonCachedDataTypes = new ArrayList<>();
     List<Pair<Boolean, TimeValuePair>> resultContainer =
-            readLastPairsFromCache(seriesPaths, filter, cacheAccessors, restPaths);
-    if (restPaths.isEmpty()) {
+        readLastPairsFromCache(
+            seriesPaths, dataTypes, filter, cacheAccessors, nonCachedPaths, nonCachedDataTypes);
+    if (nonCachedPaths.isEmpty()) {
       return resultContainer;
     }
 
     // Acquire query resources for the rest series paths
     List<LastPointReader> readerList = new ArrayList<>();
-    List<StorageGroupProcessor> list = StorageEngine.getInstance().mergeLock(restPaths);
+    List<StorageGroupProcessor> list = StorageEngine.getInstance().mergeLock(nonCachedPaths);
     try {
-      for (int i = 0; i < restPaths.size(); i++) {
+      for (int i = 0; i < nonCachedPaths.size(); i++) {
         QueryDataSource dataSource =
-                QueryResourceManager.getInstance().getQueryDataSource(seriesPaths.get(i), context, null);
-        LastPointReader lastReader = new LastPointReader(seriesPaths.get(i), dataTypes.get(i),
-                lastQueryPlan.getAllMeasurementsInDevice(seriesPaths.get(i).getDevice()),
-                context, dataSource, Long.MAX_VALUE, null);
+            QueryResourceManager.getInstance()
+                .getQueryDataSource(nonCachedPaths.get(i), context, null);
+        LastPointReader lastReader =
+            new LastPointReader(
+                nonCachedPaths.get(i),
+                nonCachedDataTypes.get(i),
+                deviceMeasurementsMap.get(nonCachedPaths.get(i).getDevice()),
+                context,
+                dataSource,
+                Long.MAX_VALUE,
+                null);
         readerList.add(lastReader);
       }
     } finally {
@@ -152,18 +184,29 @@ public class LastQueryExecutor {
     int index = 0;
     for (int i = 0; i < resultContainer.size(); i++) {
       if (Boolean.FALSE.equals(resultContainer.get(i).left)) {
-        resultContainer.get(i).left = true;
         resultContainer.get(i).right = readerList.get(index++).readLastPoint();
-        if (CACHE_ENABLED) {
-          cacheAccessors.get(i).write(resultContainer.get(i).right);
+        if (resultContainer.get(i).right.getValue() != null) {
+          resultContainer.get(i).left = true;
+          if (CACHE_ENABLED) {
+            cacheAccessors.get(i).write(resultContainer.get(i).right);
+            DEBUG_LOGGER.info(
+                "[LastQueryExecutor] Update last cache for path: {} with timestamp: {}",
+                seriesPaths,
+                resultContainer.get(i).right.getTimestamp());
+          }
         }
       }
     }
     return resultContainer;
   }
 
-  private static List<Pair<Boolean, TimeValuePair>> readLastPairsFromCache(List<PartialPath> seriesPaths,
-          Filter filter, List<LastCacheAccessor> cacheAccessors, List<PartialPath> restPaths) {
+  private static List<Pair<Boolean, TimeValuePair>> readLastPairsFromCache(
+      List<PartialPath> seriesPaths,
+      List<TSDataType> dataTypes,
+      Filter filter,
+      List<LastCacheAccessor> cacheAccessors,
+      List<PartialPath> restPaths,
+      List<TSDataType> restDataType) {
     List<Pair<Boolean, TimeValuePair>> resultContainer = new ArrayList<>();
     if (CACHE_ENABLED) {
       for (PartialPath path : seriesPaths) {
@@ -171,6 +214,7 @@ public class LastQueryExecutor {
       }
     } else {
       restPaths.addAll(seriesPaths);
+      restDataType.addAll(dataTypes);
       for (int i = 0; i < seriesPaths.size(); i++) {
         resultContainer.add(new Pair<>(false, null));
       }
@@ -180,10 +224,19 @@ public class LastQueryExecutor {
       if (tvPair == null) {
         resultContainer.add(new Pair<>(false, null));
         restPaths.add(seriesPaths.get(i));
+        restDataType.add(dataTypes.get(i));
       } else if (!satisfyFilter(filter, tvPair)) {
         resultContainer.add(new Pair<>(true, null));
+        DEBUG_LOGGER.info(
+            "[LastQueryExecutor] Last cache hit for path: {} with timestamp: {}",
+            seriesPaths.get(i),
+            tvPair.getTimestamp());
       } else {
         resultContainer.add(new Pair<>(true, tvPair));
+        DEBUG_LOGGER.info(
+            "[LastQueryExecutor] Last cache hit for path: {} with timestamp: {}",
+            seriesPaths.get(i),
+            tvPair.getTimestamp());
       }
     }
     return resultContainer;
@@ -216,11 +269,9 @@ public class LastQueryExecutor {
     public void write(TimeValuePair pair) {
       IoTDB.metaManager.updateLastCache(path, pair, false, Long.MIN_VALUE, node);
     }
-
   }
 
   private static boolean satisfyFilter(Filter filter, TimeValuePair tvPair) {
-    return filter == null ||
-            filter.satisfy(tvPair.getTimestamp(), tvPair.getValue().getValue());
+    return filter == null || filter.satisfy(tvPair.getTimestamp(), tvPair.getValue().getValue());
   }
 }

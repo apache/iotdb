@@ -18,7 +18,13 @@
  */
 package org.apache.iotdb.tsfile.encoding.decoder;
 
-import static org.junit.Assert.assertEquals;
+import org.apache.iotdb.tsfile.encoding.encoder.IntRleEncoder;
+import org.apache.iotdb.tsfile.encoding.encoder.RleEncoder;
+import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -27,29 +33,17 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
-import org.apache.iotdb.tsfile.encoding.common.EndianType;
-import org.apache.iotdb.tsfile.encoding.decoder.IntRleDecoder;
-import org.apache.iotdb.tsfile.encoding.decoder.RleDecoder;
-import org.apache.iotdb.tsfile.encoding.encoder.IntRleEncoder;
-import org.apache.iotdb.tsfile.encoding.encoder.RleEncoder;
-import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
+import static org.junit.Assert.assertEquals;
 
 public class IntRleDecoderTest {
 
   private List<Integer> rleList;
   private List<Integer> bpList;
   private List<Integer> hybridList;
-  private int rleBitWidth;
-  private int bpBitWidth;
-  private int hybridWidth;
 
   @Before
-  public void setUp() throws Exception {
-    rleList = new ArrayList<Integer>();
+  public void setUp() {
+    rleList = new ArrayList<>();
     int rleCount = 11;
     int rleNum = 18;
     int rleStart = 11;
@@ -63,9 +57,8 @@ public class IntRleDecoderTest {
       rleCount += 2;
       rleStart *= -3;
     }
-    rleBitWidth = ReadWriteForEncodingUtils.getIntMaxBitWidth(rleList);
 
-    bpList = new ArrayList<Integer>();
+    bpList = new ArrayList<>();
     int bpCount = 100000;
     int bpStart = 11;
     for (int i = 0; i < bpCount; i++) {
@@ -76,9 +69,8 @@ public class IntRleDecoderTest {
         bpList.add(bpStart);
       }
     }
-    bpBitWidth = ReadWriteForEncodingUtils.getIntMaxBitWidth(bpList);
 
-    hybridList = new ArrayList<Integer>();
+    hybridList = new ArrayList<>();
     int hybridCount = 11;
     int hybridNum = 1000;
     int hybridStart = 20;
@@ -101,12 +93,10 @@ public class IntRleDecoderTest {
       }
       hybridCount += 2;
     }
-    hybridWidth = ReadWriteForEncodingUtils.getIntMaxBitWidth(hybridList);
   }
 
   @After
-  public void tearDown() throws Exception {
-  }
+  public void tearDown() {}
 
   @Test
   public void testRleReadBigInt() throws IOException {
@@ -114,17 +104,16 @@ public class IntRleDecoderTest {
     for (int i = 7000000; i < 10000000; i++) {
       list.add(i);
     }
-    int width = ReadWriteForEncodingUtils.getIntMaxBitWidth(list);
-    testLength(list, width, false, 1);
+    testLength(list, false, 1);
     for (int i = 1; i < 10; i++) {
-      testLength(list, width, false, i);
+      testLength(list, false, i);
     }
   }
 
   @Test
   public void testRleReadInt() throws IOException {
     for (int i = 1; i < 10; i++) {
-      testLength(rleList, rleBitWidth, false, i);
+      testLength(rleList, false, i);
     }
   }
 
@@ -144,30 +133,29 @@ public class IntRleDecoderTest {
       rleCount *= 7;
       rleStart *= -3;
     }
-    int bitWidth = ReadWriteForEncodingUtils.getIntMaxBitWidth(repeatList);
     for (int i = 1; i < 10; i++) {
-      testLength(repeatList, bitWidth, false, i);
+      testLength(repeatList, false, i);
     }
   }
 
   @Test
   public void testBitPackingReadInt() throws IOException {
     for (int i = 1; i < 10; i++) {
-      testLength(bpList, bpBitWidth, false, i);
+      testLength(bpList, false, i);
     }
   }
 
   @Test
   public void testHybridReadInt() throws IOException {
     for (int i = 1; i < 3; i++) {
-      testLength(hybridList, hybridWidth, false, i);
+      testLength(hybridList, false, i);
     }
   }
 
   @Test
   public void testHybridReadBoolean() throws IOException {
     for (int i = 1; i < 10; i++) {
-      testLength(hybridList, hybridWidth, false, i);
+      testLength(hybridList, false, i);
     }
   }
 
@@ -178,44 +166,9 @@ public class IntRleDecoderTest {
     }
   }
 
-  public void testBooleanLength(List<Integer> list, int bitWidth, boolean isDebug, int repeatCount)
-      throws IOException {
+  public void testLength(List<Integer> list, boolean isDebug, int repeatCount) throws IOException {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    RleEncoder<Integer> encoder = new IntRleEncoder(EndianType.BIG_ENDIAN);
-    for (int i = 0; i < repeatCount; i++) {
-      for (int value : list) {
-        if (value % 2 == 0) {
-          encoder.encode(false, baos);
-        } else {
-          encoder.encode(true, baos);
-        }
-
-      }
-      encoder.flush(baos);
-    }
-
-    ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
-    RleDecoder decoder = new IntRleDecoder(EndianType.BIG_ENDIAN);
-    for (int i = 0; i < repeatCount; i++) {
-      for (int value : list) {
-        boolean value_ = decoder.readBoolean(buffer);
-        if (isDebug) {
-          System.out.println(value_ + "/" + value);
-        }
-        if (value % 2 == 0) {
-          assertEquals(false, value_);
-        } else {
-          assertEquals(true, value_);
-        }
-
-      }
-    }
-  }
-
-  public void testLength(List<Integer> list, int bitWidth, boolean isDebug, int repeatCount)
-      throws IOException {
-    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    RleEncoder<Integer> encoder = new IntRleEncoder(EndianType.BIG_ENDIAN);
+    RleEncoder<Integer> encoder = new IntRleEncoder();
     for (int i = 0; i < repeatCount; i++) {
       for (int value : list) {
         encoder.encode(value, baos);
@@ -224,7 +177,7 @@ public class IntRleDecoderTest {
     }
 
     ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
-    RleDecoder decoder = new IntRleDecoder(EndianType.BIG_ENDIAN);
+    RleDecoder decoder = new IntRleDecoder();
     for (int i = 0; i < repeatCount; i++) {
       for (int value : list) {
         int value_ = decoder.readInt(buffer);
@@ -237,14 +190,14 @@ public class IntRleDecoderTest {
   }
 
   private void testBitPackedReadHeader(int num) throws IOException {
-    List<Integer> list = new ArrayList<Integer>();
+    List<Integer> list = new ArrayList<>();
 
     for (int i = 0; i < num; i++) {
       list.add(i);
     }
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     int bitWidth = ReadWriteForEncodingUtils.getIntMaxBitWidth(list);
-    RleEncoder<Integer> encoder = new IntRleEncoder(EndianType.BIG_ENDIAN);
+    RleEncoder<Integer> encoder = new IntRleEncoder();
     for (int value : list) {
       encoder.encode(value, baos);
     }

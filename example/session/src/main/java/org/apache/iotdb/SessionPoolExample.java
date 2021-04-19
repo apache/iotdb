@@ -18,16 +18,17 @@
  */
 package org.apache.iotdb;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.SessionDataSet.DataIterator;
 import org.apache.iotdb.session.pool.SessionDataSetWrapper;
 import org.apache.iotdb.session.pool.SessionPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class SessionPoolExample {
 
@@ -70,50 +71,51 @@ public class SessionPoolExample {
 
   private static void queryByRowRecord() {
     for (int i = 0; i < 1; i++) {
-      service.submit(() -> {
-        SessionDataSetWrapper wrapper = null;
-        try {
-          wrapper = pool.executeQueryStatement("select * from root.sg1.d1");
-          System.out.println(wrapper.getColumnNames());
-          System.out.println(wrapper.getColumnTypes());
-          while (wrapper.hasNext()) {
-            System.out.println(wrapper.next());
-          }
-        } catch (IoTDBConnectionException | StatementExecutionException e) {
-          e.printStackTrace();
-        } finally {
-          // remember to close data set finally!
-          pool.closeResultSet(wrapper);
-        }
-      });
+      service.submit(
+          () -> {
+            SessionDataSetWrapper wrapper = null;
+            try {
+              wrapper = pool.executeQueryStatement("select * from root.sg1.d1");
+              System.out.println(wrapper.getColumnNames());
+              System.out.println(wrapper.getColumnTypes());
+              while (wrapper.hasNext()) {
+                System.out.println(wrapper.next());
+              }
+            } catch (IoTDBConnectionException | StatementExecutionException e) {
+              e.printStackTrace();
+            } finally {
+              // remember to close data set finally!
+              pool.closeResultSet(wrapper);
+            }
+          });
     }
   }
 
   private static void queryByIterator() {
     for (int i = 0; i < 1; i++) {
-      service.submit(() -> {
-        SessionDataSetWrapper wrapper = null;
-        try {
-          wrapper = pool.executeQueryStatement("select * from root.sg1.d1");
-          // get DataIterator like JDBC
-          DataIterator dataIterator = wrapper.iterator();
-          System.out.println(wrapper.getColumnNames());
-          System.out.println(wrapper.getColumnTypes());
-          while (dataIterator.next()) {
-            StringBuilder builder = new StringBuilder();
-            for (String columnName: wrapper.getColumnNames()) {
-              builder.append(dataIterator.getString(columnName) + " ");
+      service.submit(
+          () -> {
+            SessionDataSetWrapper wrapper = null;
+            try {
+              wrapper = pool.executeQueryStatement("select * from root.sg1.d1");
+              // get DataIterator like JDBC
+              DataIterator dataIterator = wrapper.iterator();
+              System.out.println(wrapper.getColumnNames());
+              System.out.println(wrapper.getColumnTypes());
+              while (dataIterator.next()) {
+                StringBuilder builder = new StringBuilder();
+                for (String columnName : wrapper.getColumnNames()) {
+                  builder.append(dataIterator.getString(columnName) + " ");
+                }
+                System.out.println(builder);
+              }
+            } catch (IoTDBConnectionException | StatementExecutionException e) {
+              e.printStackTrace();
+            } finally {
+              // remember to close data set finally!
+              pool.closeResultSet(wrapper);
             }
-            System.out.println(builder.toString());
-          }
-        } catch (IoTDBConnectionException | StatementExecutionException e) {
-          e.printStackTrace();
-        } finally {
-          // remember to close data set finally!
-          pool.closeResultSet(wrapper);
-        }
-      });
+          });
     }
   }
-
 }

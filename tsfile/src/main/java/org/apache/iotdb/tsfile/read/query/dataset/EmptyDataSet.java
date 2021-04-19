@@ -18,8 +18,9 @@
  */
 package org.apache.iotdb.tsfile.read.query.dataset;
 
-import java.util.Collections;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+
+import java.util.Collections;
 
 public class EmptyDataSet extends QueryDataSet {
 
@@ -28,12 +29,12 @@ public class EmptyDataSet extends QueryDataSet {
   }
 
   @Override
-  protected boolean hasNextWithoutConstraint() {
+  public boolean hasNextWithoutConstraint() {
     return false;
   }
 
   @Override
-  protected RowRecord nextWithoutConstraint() {
+  public RowRecord nextWithoutConstraint() {
     return null;
   }
 }

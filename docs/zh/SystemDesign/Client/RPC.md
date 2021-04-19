@@ -38,7 +38,6 @@ mvn clean compile -pl service-rpc -am -DskipTests
 
 ```
 mvn clean compile -pl thrift
-
 ```
 
 生成代码位置：

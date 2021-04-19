@@ -18,6 +18,15 @@
  */
 package org.apache.iotdb.db.auth.role;
 
+import org.apache.iotdb.db.auth.entity.PathPrivilege;
+import org.apache.iotdb.db.auth.entity.Role;
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.utils.IOUtils;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
@@ -30,22 +39,15 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import org.apache.iotdb.db.auth.entity.PathPrivilege;
-import org.apache.iotdb.db.auth.entity.Role;
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.utils.IOUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
- * This class store each role in a separate sequential file. Role file schema : Int32 role name
- * size Utf-8 role name bytes Int32 seriesPath privilege number n Int32 seriesPath[1] size Utf-8
+ * This class store each role in a separate sequential file. Role file schema : Int32 role name size
+ * Utf-8 role name bytes Int32 seriesPath privilege number n Int32 seriesPath[1] size Utf-8
  * seriesPath[1] bytes Int32 privilege num k1 Int32 privilege[1][1] Int32 privilege[1][2] ... Int32
- * privilege[1][k1] Int32 seriesPath[2] size Utf-8 seriesPath[2] bytes Int32 privilege num yk2
- * Int32 privilege[2][1] Int32 privilege[2][2] ... Int32 privilege[2][k2] ... Int32 seriesPath[n]
- * size Utf-8 seriesPath[n] bytes Int32 privilege num kn Int32 privilege[n][1] Int32
- * privilege[n][2] ... Int32 privilege[n][kn]
+ * privilege[1][k1] Int32 seriesPath[2] size Utf-8 seriesPath[2] bytes Int32 privilege num yk2 Int32
+ * privilege[2][1] Int32 privilege[2][2] ... Int32 privilege[2][k2] ... Int32 seriesPath[n] size
+ * Utf-8 seriesPath[n] bytes Int32 privilege num kn Int32 privilege[n][1] Int32 privilege[n][2] ...
+ * Int32 privilege[n][kn]
  */
 public class LocalFileRoleAccessor implements IRoleAccessor {
   private static final Logger logger = LoggerFactory.getLogger(LocalFileRoleAccessor.class);
@@ -59,6 +61,7 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
    * ThreadLocal for thread safety.
    */
   private ThreadLocal<ByteBuffer> encodingBufferLocal = new ThreadLocal<>();
+
   private ThreadLocal<byte[]> strBufferLocal = new ThreadLocal<>();
 
   public LocalFileRoleAccessor(String roleDirPath) {
@@ -67,12 +70,14 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
 
   @Override
   public Role loadRole(String rolename) throws IOException {
-    File roleProfile = SystemFileFactory.INSTANCE.getFile(
-        roleDirPath + File.separator + rolename + IoTDBConstant.PROFILE_SUFFIX);
+    File roleProfile =
+        SystemFileFactory.INSTANCE.getFile(
+            roleDirPath + File.separator + rolename + IoTDBConstant.PROFILE_SUFFIX);
     if (!roleProfile.exists() || !roleProfile.isFile()) {
       // System may crush before a newer file is written, so search for back-up file.
-      File backProfile = SystemFileFactory.INSTANCE.getFile(
-          roleDirPath + File.separator + rolename + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
+      File backProfile =
+          SystemFileFactory.INSTANCE.getFile(
+              roleDirPath + File.separator + rolename + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
       if (backProfile.exists() && backProfile.isFile()) {
         roleProfile = backProfile;
       } else {
@@ -80,16 +85,16 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
       }
     }
     FileInputStream inputStream = new FileInputStream(roleProfile);
-    try (DataInputStream dataInputStream = new DataInputStream(
-        new BufferedInputStream(inputStream))) {
+    try (DataInputStream dataInputStream =
+        new DataInputStream(new BufferedInputStream(inputStream))) {
       Role role = new Role();
       role.setName(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
 
       int privilegeNum = dataInputStream.readInt();
       List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
       for (int i = 0; i < privilegeNum; i++) {
-        pathPrivilegeList
-            .add(IOUtils.readPathPrivilege(dataInputStream, STRING_ENCODING, strBufferLocal));
+        pathPrivilegeList.add(
+            IOUtils.readPathPrivilege(dataInputStream, STRING_ENCODING, strBufferLocal));
       }
       role.setPrivilegeList(pathPrivilegeList);
 
@@ -103,9 +108,15 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
 
   @Override
   public void saveRole(Role role) throws IOException {
-    File roleProfile = SystemFileFactory.INSTANCE.getFile(
-        roleDirPath + File.separator + role.getName() + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
-    try (BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(roleProfile))) {
+    File roleProfile =
+        SystemFileFactory.INSTANCE.getFile(
+            roleDirPath
+                + File.separator
+                + role.getName()
+                + IoTDBConstant.PROFILE_SUFFIX
+                + TEMP_SUFFIX);
+    try (BufferedOutputStream outputStream =
+        new BufferedOutputStream(new FileOutputStream(roleProfile))) {
       try {
         IOUtils.writeString(outputStream, role.getName(), STRING_ENCODING, encodingBufferLocal);
 
@@ -114,9 +125,8 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
         IOUtils.writeInt(outputStream, privilegeNum, encodingBufferLocal);
         for (int i = 0; i < privilegeNum; i++) {
           PathPrivilege pathPrivilege = role.getPrivilegeList().get(i);
-          IOUtils
-              .writePathPrivilege(outputStream, pathPrivilege, STRING_ENCODING,
-                  encodingBufferLocal);
+          IOUtils.writePathPrivilege(
+              outputStream, pathPrivilege, STRING_ENCODING, encodingBufferLocal);
         }
         outputStream.flush();
       } catch (Exception e) {
@@ -126,22 +136,25 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
       encodingBufferLocal.remove();
     }
 
-    File oldFile = SystemFileFactory.INSTANCE.getFile(
-        roleDirPath + File.separator + role.getName() + IoTDBConstant.PROFILE_SUFFIX);
+    File oldFile =
+        SystemFileFactory.INSTANCE.getFile(
+            roleDirPath + File.separator + role.getName() + IoTDBConstant.PROFILE_SUFFIX);
     IOUtils.replaceFile(roleProfile, oldFile);
   }
 
   @Override
   public boolean deleteRole(String rolename) throws IOException {
-    File roleProfile = SystemFileFactory.INSTANCE.getFile(
-        roleDirPath + File.separator + rolename + IoTDBConstant.PROFILE_SUFFIX);
-    File backFile = SystemFileFactory.INSTANCE.getFile(
-        roleDirPath + File.separator + rolename + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
+    File roleProfile =
+        SystemFileFactory.INSTANCE.getFile(
+            roleDirPath + File.separator + rolename + IoTDBConstant.PROFILE_SUFFIX);
+    File backFile =
+        SystemFileFactory.INSTANCE.getFile(
+            roleDirPath + File.separator + rolename + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
     if (!roleProfile.exists() && !backFile.exists()) {
       return false;
     }
-    if ((roleProfile.exists() && !roleProfile.delete()) || (backFile.exists() && !backFile
-        .delete())) {
+    if ((roleProfile.exists() && !roleProfile.delete())
+        || (backFile.exists() && !backFile.delete())) {
       throw new IOException(String.format("Cannot delete role file of %s", rolename));
     }
     return true;
@@ -150,9 +163,10 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
   @Override
   public List<String> listAllRoles() {
     File roleDir = SystemFileFactory.INSTANCE.getFile(roleDirPath);
-    String[] names = roleDir
-        .list((dir, name) -> name.endsWith(IoTDBConstant.PROFILE_SUFFIX) || name
-            .endsWith(TEMP_SUFFIX));
+    String[] names =
+        roleDir.list(
+            (dir, name) ->
+                name.endsWith(IoTDBConstant.PROFILE_SUFFIX) || name.endsWith(TEMP_SUFFIX));
     List<String> retList = new ArrayList<>();
     if (names != null) {
       // in very rare situations, normal file and backup file may exist at the same time

@@ -19,39 +19,39 @@
 
 package org.apache.iotdb.db.engine.modification;
 
-import java.util.Objects;
 import org.apache.iotdb.db.metadata.PartialPath;
 
-/**
- * Deletion is a delete operation on a timeseries.
- */
+import java.util.Objects;
+
+/** Deletion is a delete operation on a timeseries. */
 public class Deletion extends Modification {
 
-  /**
-   * data within the interval [startTime, endTime] are to be deleted.
-   */
+  /** data within the interval [startTime, endTime] are to be deleted. */
   private long startTime;
+
   private long endTime;
 
   /**
    * constructor of Deletion, the start time is set to Long.MIN_VALUE
+   *
    * @param endTime end time of delete interval
    * @param path time series path
    */
-  public Deletion(PartialPath path, long versionNum, long endTime) {
-    super(Type.DELETION, path, versionNum);
+  public Deletion(PartialPath path, long fileOffset, long endTime) {
+    super(Type.DELETION, path, fileOffset);
     this.startTime = Long.MIN_VALUE;
     this.endTime = endTime;
   }
 
   /**
    * constructor of Deletion
+   *
    * @param startTime start time of delete interval
    * @param endTime end time of delete interval
    * @param path time series path
    */
-  public Deletion(PartialPath path, long versionNum, long startTime, long endTime) {
-    super(Type.DELETION, path, versionNum);
+  public Deletion(PartialPath path, long fileOffset, long startTime, long endTime) {
+    super(Type.DELETION, path, fileOffset);
     this.startTime = startTime;
     this.endTime = endTime;
   }
@@ -87,5 +87,21 @@ public class Deletion extends Modification {
   @Override
   public int hashCode() {
     return Objects.hash(super.hashCode(), startTime, endTime);
+  }
+
+  @Override
+  public String toString() {
+    return "Deletion{"
+        + "startTime="
+        + startTime
+        + ", endTime="
+        + endTime
+        + ", type="
+        + type
+        + ", path="
+        + path
+        + ", fileOffset="
+        + fileOffset
+        + '}';
   }
 }

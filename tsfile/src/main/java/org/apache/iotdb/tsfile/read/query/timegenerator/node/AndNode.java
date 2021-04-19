@@ -26,33 +26,33 @@ public class AndNode implements Node {
   private Node leftChild;
   private Node rightChild;
 
-  private long cachedValue;
-  private boolean hasCachedValue;
+  private long cachedTime;
+  private boolean hasCachedTime;
   private boolean ascending = true;
 
   /**
    * Constructor of AndNode.
    *
-   * @param leftChild  left child
+   * @param leftChild left child
    * @param rightChild right child
    */
   public AndNode(Node leftChild, Node rightChild) {
     this.leftChild = leftChild;
     this.rightChild = rightChild;
-    this.hasCachedValue = false;
+    this.hasCachedTime = false;
   }
 
   public AndNode(Node leftChild, Node rightChild, boolean ascending) {
     this.leftChild = leftChild;
     this.rightChild = rightChild;
-    this.hasCachedValue = false;
+    this.hasCachedTime = false;
     this.ascending = ascending;
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   public boolean hasNext() throws IOException {
-    if (hasCachedValue) {
+    if (hasCachedTime) {
       return true;
     }
     if (leftChild.hasNext() && rightChild.hasNext()) {
@@ -69,8 +69,8 @@ public class AndNode implements Node {
     long rightValue = rightChild.next();
     while (true) {
       if (leftValue == rightValue) {
-        this.hasCachedValue = true;
-        this.cachedValue = leftValue;
+        this.hasCachedTime = true;
+        this.cachedTime = leftValue;
         return true;
       }
       if (seekRight.test(leftValue, rightValue)) {
@@ -92,8 +92,8 @@ public class AndNode implements Node {
   @Override
   public long next() throws IOException {
     if (hasNext()) {
-      hasCachedValue = false;
-      return cachedValue;
+      hasCachedTime = false;
+      return cachedTime;
     }
     throw new IOException("no more data");
   }

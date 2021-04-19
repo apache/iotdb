@@ -18,9 +18,7 @@
  */
 package org.apache.iotdb.db.qp.executor;
 
-import java.io.IOException;
-import java.sql.SQLException;
-import org.apache.iotdb.db.exception.BatchInsertionException;
+import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -28,12 +26,19 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+
 import org.apache.thrift.TException;
+
+import java.io.IOException;
+import java.sql.SQLException;
 
 public interface IPlanExecutor {
 
@@ -44,8 +49,8 @@ public interface IPlanExecutor {
    * @return QueryDataSet
    */
   QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context)
-      throws IOException, StorageEngineException,
-      QueryFilterOptimizationException, QueryProcessException, MetadataException, SQLException, TException, InterruptedException;
+      throws IOException, StorageEngineException, QueryFilterOptimizationException,
+          QueryProcessException, MetadataException, SQLException, TException, InterruptedException;
 
   /**
    * Process Non-Query Physical plan, including insert/update/delete operation of
@@ -59,10 +64,10 @@ public interface IPlanExecutor {
   /**
    * execute update command and return whether the operator is successful.
    *
-   * @param path      : update series seriesPath
+   * @param path : update series seriesPath
    * @param startTime start time in update command
-   * @param endTime   end time in update command
-   * @param value     - in type of string
+   * @param endTime end time in update command
+   * @param value - in type of string
    */
   void update(PartialPath path, long startTime, long endTime, String value)
       throws QueryProcessException;
@@ -77,12 +82,13 @@ public interface IPlanExecutor {
   /**
    * execute delete command and return whether the operator is successful.
    *
-   * @param path       : delete series seriesPath
+   * @param path delete series seriesPath
    * @param startTime start time in delete command
    * @param endTime end time in delete command
    * @param planIndex index of the deletion plan
    */
-  void delete(PartialPath path, long startTime, long endTime, long planIndex) throws QueryProcessException;
+  void delete(PartialPath path, long startTime, long endTime, long planIndex)
+      throws QueryProcessException;
 
   /**
    * execute insert command and return whether the operator is successful.
@@ -92,10 +98,30 @@ public interface IPlanExecutor {
   void insert(InsertRowPlan insertRowPlan) throws QueryProcessException;
 
   /**
+   * execute insert command and return whether the operator is successful.
+   *
+   * @param insertRowsPlan physical insert rows plan, which contains multi insertRowPlans
+   */
+  void insert(InsertRowsPlan insertRowsPlan) throws QueryProcessException;
+
+  /**
+   * execute insert command and return whether the operator is successful.
+   *
+   * @param insertRowsOfOneDevicePlan physical insert plan
+   */
+  void insert(InsertRowsOfOneDevicePlan insertRowsOfOneDevicePlan) throws QueryProcessException;
+
+  /**
    * execute batch insert plan
    *
-   * @return result of each row
-   * @throws BatchInsertionException when some of the rows failed
+   * @throws BatchProcessException when some of the rows failed
    */
   void insertTablet(InsertTabletPlan insertTabletPlan) throws QueryProcessException;
+
+  /**
+   * execute multi batch insert plan
+   *
+   * @throws QueryProcessException when some of the rows failed
+   */
+  void insertTablet(InsertMultiTabletPlan insertMultiTabletPlan) throws QueryProcessException;
 }

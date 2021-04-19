@@ -19,13 +19,6 @@
 
 package org.apache.iotdb.rpc;
 
-import java.nio.ByteBuffer;
-import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
@@ -36,8 +29,17 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import org.apache.thrift.TException;
 
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 public class IoTDBRpcDataSet {
 
@@ -49,13 +51,14 @@ public class IoTDBRpcDataSet {
   public TSIService.Iface client;
   public List<String> columnNameList; // no deduplication
   public List<TSDataType> columnTypeList; // no deduplication
-  public Map<String, Integer> columnOrdinalMap; // used because the server returns deduplicated columns
+  public Map<String, Integer>
+      columnOrdinalMap; // used because the server returns deduplicated columns
   public List<TSDataType> columnTypeDeduplicatedList; // deduplicated from columnTypeList
   public int fetchSize;
+  public final long timeout;
   public boolean emptyResultSet = false;
   public boolean hasCachedRecord = false;
   public boolean lastReadWasNull;
-
 
   public byte[][] values; // used to cache the current row record value
   // column size
@@ -63,6 +66,7 @@ public class IoTDBRpcDataSet {
 
   public long sessionId;
   public long queryId;
+  public long statementId;
   public boolean ignoreTimeStamp;
 
   public int rowsIndex = 0; // used to record the row index in current TSQueryDataSet
@@ -70,19 +74,31 @@ public class IoTDBRpcDataSet {
   public TSQueryDataSet tsQueryDataSet = null;
   public byte[] time; // used to cache the current time value
   public byte[] currentBitmap; // used to cache the current bitmap for every column
-  public static final int FLAG = 0x80; // used to do `and` operation with bitmap to judge whether the value is null
+  public static final int FLAG =
+      0x80; // used to do `and` operation with bitmap to judge whether the value is null
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public IoTDBRpcDataSet(String sql, List<String> columnNameList, List<String> columnTypeList,
-      Map<String, Integer> columnNameIndex, boolean ignoreTimeStamp,
-      long queryId, TSIService.Iface client, long sessionId, TSQueryDataSet queryDataSet,
-      int fetchSize) {
+  public IoTDBRpcDataSet(
+      String sql,
+      List<String> columnNameList,
+      List<String> columnTypeList,
+      Map<String, Integer> columnNameIndex,
+      boolean ignoreTimeStamp,
+      long queryId,
+      long statementId,
+      TSIService.Iface client,
+      long sessionId,
+      TSQueryDataSet queryDataSet,
+      int fetchSize,
+      long timeout) {
     this.sessionId = sessionId;
+    this.statementId = statementId;
     this.ignoreTimeStamp = ignoreTimeStamp;
     this.sql = sql;
     this.queryId = queryId;
     this.client = client;
     this.fetchSize = fetchSize;
+    this.timeout = timeout;
     columnSize = columnNameList.size();
 
     this.columnNameList = new ArrayList<>();
@@ -153,11 +169,11 @@ public class IoTDBRpcDataSet {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String
-                  .format("Data type %s is not supported.", columnTypeDeduplicatedList.get(i)));
+              String.format("Data type %s is not supported.", columnTypeDeduplicatedList.get(i)));
       }
     }
     this.tsQueryDataSet = queryDataSet;
+    this.emptyResultSet = (queryDataSet == null || !queryDataSet.time.hasRemaining());
   }
 
   public void close() throws StatementExecutionException, TException {
@@ -167,6 +183,7 @@ public class IoTDBRpcDataSet {
     if (client != null) {
       try {
         TSCloseOperationReq closeReq = new TSCloseOperationReq(sessionId);
+        closeReq.setStatementId(statementId);
         closeReq.setQueryId(queryId);
         TSStatus closeResp = client.closeOperation(closeReq);
         RpcUtils.verifySuccess(closeResp);
@@ -199,6 +216,7 @@ public class IoTDBRpcDataSet {
   public boolean fetchResults() throws StatementExecutionException, IoTDBConnectionException {
     rowsIndex = 0;
     TSFetchResultsReq req = new TSFetchResultsReq(sessionId, sql, fetchSize, queryId, true);
+    req.setTimeout(timeout);
     try {
       TSFetchResultsResp resp = client.fetchResults(req);
 
@@ -244,8 +262,7 @@ public class IoTDBRpcDataSet {
             break;
           default:
             throw new UnSupportedDataTypeException(
-                String
-                    .format("Data type %s is not supported.", columnTypeDeduplicatedList.get(i)));
+                String.format("Data type %s is not supported.", columnTypeDeduplicatedList.get(i)));
         }
       }
     }
@@ -262,7 +279,7 @@ public class IoTDBRpcDataSet {
     return isNull(index, rowsIndex - 1);
   }
 
-  public boolean isNull(String columnName) throws StatementExecutionException {
+  public boolean isNull(String columnName) {
     int index = columnOrdinalMap.get(columnName) - START_INDEX;
     // time column will never be null
     if (index < 0) {
@@ -365,7 +382,7 @@ public class IoTDBRpcDataSet {
   }
 
   public Object getObject(String columnName) throws StatementExecutionException {
-    return getValueByName(columnName);
+    return getObjectByName(columnName);
   }
 
   public String getString(int columnIndex) throws StatementExecutionException {
@@ -415,7 +432,40 @@ public class IoTDBRpcDataSet {
       case DOUBLE:
         return String.valueOf(BytesUtils.bytesToDouble(values[index]));
       case TEXT:
-        return new String(values[index]);
+        return new String(values[index], StandardCharsets.UTF_8);
+      default:
+        return null;
+    }
+  }
+
+  public Object getObjectByName(String columnName) throws StatementExecutionException {
+    checkRecord();
+    if (columnName.equals(TIMESTAMP_STR)) {
+      return BytesUtils.bytesToLong(time);
+    }
+    int index = columnOrdinalMap.get(columnName) - START_INDEX;
+    if (index < 0 || index >= values.length || isNull(index, rowsIndex - 1)) {
+      lastReadWasNull = true;
+      return null;
+    }
+    lastReadWasNull = false;
+    return getObject(index, columnTypeDeduplicatedList.get(index), values);
+  }
+
+  public Object getObject(int index, TSDataType tsDataType, byte[][] values) {
+    switch (tsDataType) {
+      case BOOLEAN:
+        return BytesUtils.bytesToBool(values[index]);
+      case INT32:
+        return BytesUtils.bytesToInt(values[index]);
+      case INT64:
+        return BytesUtils.bytesToLong(values[index]);
+      case FLOAT:
+        return BytesUtils.bytesToFloat(values[index]);
+      case DOUBLE:
+        return BytesUtils.bytesToDouble(values[index]);
+      case TEXT:
+        return new String(values[index], StandardCharsets.UTF_8);
       default:
         return null;
     }
@@ -440,5 +490,6 @@ public class IoTDBRpcDataSet {
 
   public void setTsQueryDataSet(TSQueryDataSet tsQueryDataSet) {
     this.tsQueryDataSet = tsQueryDataSet;
+    this.emptyResultSet = (tsQueryDataSet == null || !tsQueryDataSet.time.hasRemaining());
   }
 }

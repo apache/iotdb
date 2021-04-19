@@ -34,11 +34,12 @@ public class LastQueryPlan extends RawDataQueryPlan {
     setOperatorType(Operator.OperatorType.LAST);
   }
 
+  @Override
   public void setExpression(IExpression expression) throws QueryProcessException {
     if (isValidExpression(expression)) {
       super.setExpression(expression);
     } else {
-      throw new QueryProcessException("Only \'>\' and \'>=\' are supported in LAST query");
+      throw new QueryProcessException("Only '>' and '>=' are supported in LAST query");
     }
   }
 

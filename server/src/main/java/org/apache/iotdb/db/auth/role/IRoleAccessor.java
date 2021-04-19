@@ -18,20 +18,18 @@
  */
 package org.apache.iotdb.db.auth.role;
 
-import java.io.IOException;
-import java.util.List;
 import org.apache.iotdb.db.auth.entity.Role;
 
-/**
- * This interface manages the serialization/deserialization of the role objects.
- */
+import java.io.IOException;
+import java.util.List;
+
+/** This interface manages the serialization/deserialization of the role objects. */
 public interface IRoleAccessor {
 
   /**
    * Deserialize a role from lower storage.
    *
-   * @param rolename
-   *            The name of the role to be deserialized.
+   * @param rolename The name of the role to be deserialized.
    * @return The role object or null if no such role.
    * @throws IOException if IOException is raised when interacting with lower storage.
    */
@@ -40,8 +38,7 @@ public interface IRoleAccessor {
   /**
    * Serialize the role object to lower storage.
    *
-   * @param role
-   *            The role object that is to be saved.
+   * @param role The role object that is to be saved.
    * @throws IOException if IOException is raised when interacting with lower storage.
    */
   void saveRole(Role role) throws IOException;
@@ -49,8 +46,7 @@ public interface IRoleAccessor {
   /**
    * Delete a role's in lower storage.
    *
-   * @param rolename
-   *            The name of the role to be deleted.
+   * @param rolename The name of the role to be deleted.
    * @return True if the role is successfully deleted, false if the role does not exists.
    * @throws IOException if IOException is raised when interacting with lower storage.
    */
@@ -58,12 +54,11 @@ public interface IRoleAccessor {
 
   /**
    * List all roles in this database.
+   *
    * @return A list contains all names of the roles.
    */
   List<String> listAllRoles();
 
-  /**
-   * Re-initialize this object.
-   */
+  /** Re-initialize this object. */
   void reset();
 }

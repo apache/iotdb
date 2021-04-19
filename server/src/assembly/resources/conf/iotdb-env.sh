@@ -21,6 +21,15 @@
 # You can put your env variable here
 # export JAVA_HOME=$JAVA_HOME
 
+# Set max number of open files
+max_num=$(ulimit -n)
+if [ $max_num -le 65535 ]; then
+    ulimit -n 65535
+    if [ $? -ne 0 ]; then
+        echo "Warning: Failed to set max number of files to be 65535, maybe you need to use 'sudo ulimit -n 65535' to set it when you use iotdb in production environments."
+    fi
+fi
+
 calculate_heap_sizes()
 {
     case "`uname`" in
@@ -57,9 +66,9 @@ calculate_heap_sizes()
     fi
 
     # set max heap size based on the following
-    # max(min(1/2 ram, 1024MB), min(1/4 ram, 8GB))
+    # max(min(1/2 ram, 1024MB), min(1/4 ram, 64GB))
     # calculate 1/2 ram and cap to 1024MB
-    # calculate 1/4 ram and cap to 8192MB
+    # calculate 1/4 ram and cap to 65536MB
     # pick the max
     half_system_memory_in_mb=`expr $system_memory_in_mb / 2`
     quarter_system_memory_in_mb=`expr $half_system_memory_in_mb / 2`
@@ -67,9 +76,9 @@ calculate_heap_sizes()
     then
         half_system_memory_in_mb="1024"
     fi
-    if [ "$quarter_system_memory_in_mb" -gt "8192" ]
+    if [ "$quarter_system_memory_in_mb" -gt "65536" ]
     then
-        quarter_system_memory_in_mb="8192"
+        quarter_system_memory_in_mb="65536"
     fi
     if [ "$half_system_memory_in_mb" -gt "$quarter_system_memory_in_mb" ]
     then
@@ -169,6 +178,8 @@ calculate_heap_sizes
 #MAX_HEAP_SIZE="2G"
 # Minimum heap size
 #HEAP_NEWSIZE="2G"
+# maximum direct memory size
+MAX_DIRECT_MEMORY_SIZE=${MAX_HEAP_SIZE}
 
 #true or false
 #DO NOT FORGET TO MODIFY THE PASSWORD FOR SECURITY (${IOTDB_CONF}/jmx.password and ${IOTDB_CONF}/jmx.access)
@@ -189,7 +200,6 @@ if [ ${JMX_LOCAL} = "false" ]; then
   IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dcom.sun.management.jmxremote.port=$JMX_PORT"
   IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dcom.sun.management.jmxremote.rmi.port=$JMX_PORT"
   IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Djava.rmi.server.randomIDs=true"
-  IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dcom.sun.management.jmxremote.authenticate=true"
   IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dcom.sun.management.jmxremote.ssl=false"
   IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dcom.sun.management.jmxremote.authenticate=true"
   IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dcom.sun.management.jmxremote.password.file=${IOTDB_CONF}/jmx.password"
@@ -202,6 +212,7 @@ fi
 
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xms${HEAP_NEWSIZE}"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xmx${MAX_HEAP_SIZE}"
+IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:MaxDirectMemorySize=${MAX_DIRECT_MEMORY_SIZE}"
 
 echo "Maximum memory allocation pool = ${MAX_HEAP_SIZE}B, initial memory allocation pool = ${HEAP_NEWSIZE}B"
 echo "If you want to change this configuration, please check conf/iotdb-env.sh(Unix or OS X, if you use Windows, check conf/iotdb-env.bat)."

@@ -29,6 +29,7 @@
 ![](https://img.shields.io/github/downloads/apache/iotdb/total.svg)
 ![](https://img.shields.io/badge/platform-win10%20%7C%20macox%20%7C%20linux-yellow.svg)
 ![](https://img.shields.io/badge/java--language-1.8-blue.svg)
+[![Language grade: Java](https://img.shields.io/lgtm/grade/java/g/apache/iotdb.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/apache/iotdb/context:java)
 [![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](https://iotdb.apache.org/)
 [![Maven Version](https://maven-badges.herokuapp.com/maven-central/org.apache.iotdb/iotdb-parent/badge.svg)](http://search.maven.org/#search|gav|1|g:"org.apache.iotdb")
 
@@ -82,7 +83,7 @@ IoTDB的主要特点如下:
 
 要使用IoTDB，您需要:
 1. Java >= 1.8 (目前 1.8、11和13 已经被验证可用。请确保环变量境路径已正确设置)。
-2. Maven >= 3.1 (如果希望从源代码编译和安装IoTDB)。
+2. Maven >= 3.6 (如果希望从源代码编译和安装IoTDB)。
 3. 设置 max open files 为 65535，以避免"too many open files"错误。
 
 ## 安装
@@ -93,11 +94,31 @@ IoTDB提供了三种安装方法，您可以参考以下建议，选择最适合
 
 * 从二进制文件安装。推荐的方法是从官方网站下载二进制文件，您将获得一个开箱即用的二进制发布包。
 
-* 使用Docker: dockerfile的路径是https://github.com/apache/incubat-iotdb/tree/master/docker/src/main
+* 使用Docker: dockerfile的路径是https://github.com/apache/iotdb/tree/master/docker/src/main
 
 在这篇《快速入门》中，我们简要介绍如何使用源代码安装IoTDB。如需进一步资料，请参阅《用户指南》第3章。
 
 ## 从源码构建
+
+### 关于准备Thrift编译器
+
+如果您使用Windows，请跳过此段。
+
+我们使用Thrift作为RPC模块来提供客户端-服务器间的通信和协议支持，因此在编译阶段我们需要使用Thrift 0.13.0
+（或更高）编译器生成对应的Java代码。 Thrift只提供了Windows下的二进制编译器，Unix下需要通过源码自行编译。
+
+如果你有安装权限，可以通过`apt install`, `yum install`, `brew install`来安装thrift编译器，然后在下面的编译命令中
+都添加如下参数即可：`-Dthrift.download-url=http://apache.org/licenses/LICENSE-2.0.txt -Dthrift.exec.absolute.path=<你的thrift可执行文件路径>`。
+
+
+同时我们预先编译了一个Thrift编译器，并将其上传到了GitHub ，借助一个Maven插件，在编译时可以自动将其下载。
+该预编译的Thrift编译器在gcc8，Ubuntu, CentOS, MacOS下可以工作，但是在更低的gcc
+版本以及其他操作系统上尚未确认。
+如果您发现因为网络问题总是提示下载不到thrift文件，那么您需要手动下载，并并将编译器放置到目录`{project_root}\thrift\target\tools\thrift_0.12.0_0.13.0_linux.exe`。
+如果您放到其他地方，就需要在运行maven的命令中添加：`-Dthrift.download-url=http://apache.org/licenses/LICENSE-2.0.txt -Dthrift.exec.absolute.path=<你的thrift可执行文件路径>`。
+
+如果您对Maven足够熟悉，您也可以直接修改我们的根pom文件来避免每次编译都使用上述参数。
+Thrift官方网址为：https://thrift.apache.org/
 
 从 git 克隆源代码:
 
@@ -111,15 +132,23 @@ git clone https://github.com/apache/iotdb.git
 git checkout release/x.x.x
 ```
 
+从0.11.3开始，版本的标签风格改为vx.x.x：
+```
+git checkout vx.x.x
+```
+
 在 iotdb 根目录下执行 maven 编译:
 
 ```
 > mvn clean package -DskipTests
 ```
 
-执行完成之后，可以在**distribution/target/apache-iotdb-{project.version}-incubating-bin.zip**找到编译完成的二进制版本(包括服务器和客户端)
+通过添加 `-P compile-cpp` 可以进行c++客户端API的编译。
+
+执行完成之后，可以在**distribution/target/apache-iotdb-{project.version}-all-bin.zip**找到编译完成的二进制版本(包括服务器和客户端)
 
 > 注意:"thrift/target/generated-sources/thrift" 和 "antlr/target/generated-sources/antlr4" 目录需要添加到源代码根中，以免在 IDE 中产生编译错误。
+> IDEA的操作方法：在上述maven命令编译好后，右键项目名称，选择"Maven->Reload project"，即可。
 
 ### 配置
 
@@ -328,7 +357,7 @@ server 可以使用 "ctrl-C" 或者执行下面的脚本:
 
 # 导入导出CSV工具
 
-查看 [导入导出CSV工具](https://iotdb.apache.org/zh/UserGuide/System%20Tools/CSV%20Tool.html)
+查看 [导入导出CSV工具](https://iotdb.apache.org/zh/UserGuide/Master/System%20Tools/CSV%20Tool.html)
 
 # 常见编译错误
 查看 [常见编译错误](https://iotdb.apache.org/zh/Development/ContributeGuide.html#%E5%B8%B8%E8%A7%81%E7%BC%96%E8%AF%91%E9%94%99%E8%AF%AF)

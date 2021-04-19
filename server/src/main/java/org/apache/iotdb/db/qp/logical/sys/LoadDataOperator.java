@@ -28,9 +28,7 @@ public class LoadDataOperator extends RootOperator {
   private final String inputFilePath;
   private final String measureType;
 
-  /**
-   * Constructor of LoadDataOperator.
-   */
+  /** Constructor of LoadDataOperator. */
   public LoadDataOperator(int tokenIntType, String inputFilePath, String measureType) {
     super(tokenIntType);
     operatorType = OperatorType.LOADDATA;

@@ -29,6 +29,7 @@
 ![](https://img.shields.io/github/downloads/apache/iotdb/total.svg)
 ![](https://img.shields.io/badge/platform-win10%20%7C%20macox%20%7C%20linux-yellow.svg)
 ![](https://img.shields.io/badge/java--language-1.8-blue.svg)
+[![Language grade: Java](https://img.shields.io/lgtm/grade/java/g/apache/iotdb.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/apache/iotdb/context:java)
 [![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](https://iotdb.apache.org/)
 [![Maven Version](https://maven-badges.herokuapp.com/maven-central/org.apache.iotdb/iotdb-parent/badge.svg)](http://search.maven.org/#search|gav|1|g:"org.apache.iotdb")
 [![Gitpod Ready-to-Code](https://img.shields.io/badge/Gitpod-Ready--to--Code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/apache/iotdb) 
@@ -85,7 +86,7 @@ This short guide will walk you through the basic process of using IoTDB. For a m
 To use IoTDB, you need to have:
 
 1. Java >= 1.8 (1.8, 11, and 13 are verified. Please make sure the environment path has been set accordingly).
-2. Maven >= 3.1 (If you want to compile and install IoTDB from source code).
+2. Maven >= 3.6 (If you want to compile and install IoTDB from source code).
 3. Set the max open files num as 65535 to avoid "too many open files" error.
 
 ## Installation
@@ -101,6 +102,34 @@ Here in the Quick Start, we give a brief introduction of using source code to in
 
 ## Build from source
 
+### Prepare Thrift compiler
+
+Skip this chapter if you are using Windows. 
+
+As we use Thrift for our RPC module (communication and
+protocol definition), we involve Thrift during the compilation, so Thrift compiler 0.13.0 (or
+higher) is required to generate Thrift Java code. Thrift officially provides binary compiler for
+Windows, but unfortunately, they do not provide that for Unix OSs. 
+
+If you have permission to install new softwares, use `apt install` or `yum install` or `brew install`
+to install the Thrift compiler (If you already have installed the thrift compiler, skip this step).
+Then, you may add the following parameter
+when running Maven: `-Dthrift.download-url=http://apache.org/licenses/LICENSE-2.0.txt -Dthrift.exec.absolute.path=<YOUR LOCAL THRIFT BINARY FILE>`.
+
+If not, then you have to compile the thrift compiler, and it requires you install a boost library first.
+Therefore, we compiled a Unix  compiler ourselves and put it onto GitHub, and with the help of a
+maven plugin, it will be  downloaded automatically during compilation. 
+This compiler works fine with gcc8 or later, Ubuntu  MacOS, and CentOS, but previous versions 
+and other OSs are not guaranteed.
+
+If you can not download the thrift compiler automatically because of network problem, you can download 
+it yourself, and then either:
+rename your thrift file to `{project_root}\thrift\target\tools\thrift_0.12.0_0.13.0_linux.exe`;
+or, add Maven commands:
+`-Dthrift.download-url=http://apache.org/licenses/LICENSE-2.0.txt -Dthrift.exec.absolute.path=<YOUR LOCAL THRIFT BINARY FILE>`.
+
+### Compile IoTDB
+
 You can download the source code from:
 
 ```
@@ -113,6 +142,11 @@ The default master branch is the dev branch, If you want to use a released versi
 git checkout release/x.x.x
 ```
 
+From v0.11.3 on, the tag name format is change to: vx.x.x:
+
+```
+git checkout vx.x.x
+```
 
 Under the root path of iotdb:
 
@@ -120,10 +154,15 @@ Under the root path of iotdb:
 > mvn clean package -DskipTests
 ```
 
-Then the binary version (including both server and cli) can be found at **distribution/target/apache-iotdb-{project.version}-bin.zip**
+Using `-P compile-cpp` for compiling cpp client (For more details, read client-cpp's Readme file.)
 
-> NOTE: Directories "thrift/target/generated-sources/thrift" and "antlr/target/generated-sources/antlr4" need to be added to sources roots to avoid compilation errors in the IDE.
+Then the binary version (including both server and cli) can be found at **distribution/target/apache-iotdb-{project.version}-all-bin.zip**
 
+NOTE: Directories `thrift/target/generated-sources/thrift`,  `thrift-sync/target/generated-sources/thrift`,
+`thrift-cluster/target/generated-sources/thrift`
+and `antlr/target/generated-sources/antlr4` need to be added to sources roots to avoid compilation errors in the IDE.
+In IDEAJ, you just need to right click on the root project name and choose "Maven->Reload Project" after 
+you run `mvn package` successfully.
 
 ### Configurations
 
@@ -328,7 +367,7 @@ After being built, the IoTDB cli is located at the folder "cli/target/iotdb-cli-
 
 # Usage of CSV Import and Export Tool
 
-see [Usage of CSV Import and Export Tool](https://iotdb.apache.org/UserGuide/System%20Tools/CSV%20Tool.html)
+see [Usage of CSV Import and Export Tool](https://iotdb.apache.org/UserGuide/Master/System%20Tools/CSV%20Tool.html)
 
 # Frequent Questions for Compiling
 see [Frequent Questions when Compiling the Source Code](https://iotdb.apache.org/Development/ContributeGuide.html#_Frequent-Questions-when-Compiling-the-Source-Code)

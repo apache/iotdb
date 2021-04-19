@@ -19,27 +19,22 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
-import java.io.IOException;
-import java.util.List;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import java.io.IOException;
+import java.util.List;
 
-/**
- * Each executor calculates results of all aggregations on this series
- */
+/** Each executor calculates results of all aggregations on this series */
 public interface GroupByExecutor {
 
-  /**
-   * add reusable result cache in executor
-   */
+  /** add reusable result cache in executor */
   void addAggregateResult(AggregateResult aggrResult);
 
-  /**
-   * calculate result in [curStartTime, curEndTime)
-   */
-  List<AggregateResult> calcResult(long curStartTime, long curEndTime) throws IOException, QueryProcessException;
+  /** calculate result in [curStartTime, curEndTime) */
+  List<AggregateResult> calcResult(long curStartTime, long curEndTime)
+      throws IOException, QueryProcessException;
 
   Pair<Long, Object> peekNextNotNullValue(long nextStartTime, long nextEndTime) throws IOException;
 }

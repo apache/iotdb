@@ -18,17 +18,17 @@
  */
 package org.apache.iotdb.db.utils.datastructure;
 
-import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
-
-import java.util.ArrayList;
-import java.util.List;
-
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 
 public class FloatTVList extends TVList {
 
@@ -93,12 +93,15 @@ public class FloatTVList extends TVList {
     return cloneArray;
   }
 
+  @Override
   public void sort() {
     if (sortedTimestamps == null || sortedTimestamps.length < size) {
-      sortedTimestamps = (long[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT64, size);
+      sortedTimestamps =
+          (long[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT64, size);
     }
     if (sortedValues == null || sortedValues.length < size) {
-      sortedValues = (float[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.FLOAT, size);
+      sortedValues =
+          (float[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.FLOAT, size);
     }
     sort(0, size);
     clearSortedValue();
@@ -125,21 +128,26 @@ public class FloatTVList extends TVList {
 
   @Override
   protected void setFromSorted(int src, int dest) {
-    set(dest, sortedTimestamps[src / ARRAY_SIZE][src % ARRAY_SIZE],
+    set(
+        dest,
+        sortedTimestamps[src / ARRAY_SIZE][src % ARRAY_SIZE],
         sortedValues[src / ARRAY_SIZE][src % ARRAY_SIZE]);
   }
 
+  @Override
   protected void set(int src, int dest) {
     long srcT = getTime(src);
     float srcV = getFloat(src);
     set(dest, srcT, srcV);
   }
 
+  @Override
   protected void setToSorted(int src, int dest) {
     sortedTimestamps[dest / ARRAY_SIZE][dest % ARRAY_SIZE] = getTime(src);
     sortedValues[dest / ARRAY_SIZE][dest % ARRAY_SIZE] = getFloat(src);
   }
 
+  @Override
   protected void reverseRange(int lo, int hi) {
     hi--;
     while (lo < hi) {
@@ -170,15 +178,15 @@ public class FloatTVList extends TVList {
 
   @Override
   public TimeValuePair getTimeValuePair(int index) {
-    return new TimeValuePair(getTime(index),
-        TsPrimitiveType.getByType(TSDataType.FLOAT, getFloat(index)));
+    return new TimeValuePair(
+        getTime(index), TsPrimitiveType.getByType(TSDataType.FLOAT, getFloat(index)));
   }
 
   @Override
-  protected TimeValuePair getTimeValuePair(int index, long time, Integer floatPrecision,
-      TSEncoding encoding) {
+  protected TimeValuePair getTimeValuePair(
+      int index, long time, Integer floatPrecision, TSEncoding encoding) {
     float value = getFloat(index);
-    if (encoding == TSEncoding.RLE || encoding == TSEncoding.TS_2DIFF) {
+    if (!Float.isNaN(value) && (encoding == TSEncoding.RLE || encoding == TSEncoding.TS_2DIFF)) {
       value = MathUtils.roundWithGivenPrecision(value, floatPrecision);
     }
     return new TimeValuePair(time, TsPrimitiveType.getByType(TSDataType.FLOAT, value));

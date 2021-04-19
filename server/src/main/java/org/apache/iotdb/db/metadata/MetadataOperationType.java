@@ -20,8 +20,8 @@ package org.apache.iotdb.db.metadata;
 
 public class MetadataOperationType {
 
-  private MetadataOperationType(){
-    //allowed to do nothing
+  private MetadataOperationType() {
+    // allowed to do nothing
   }
 
   public static final String CREATE_TIMESERIES = "0";

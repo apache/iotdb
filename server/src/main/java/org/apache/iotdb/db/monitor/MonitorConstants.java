@@ -28,12 +28,10 @@ public class MonitorConstants {
   public static final String[] STAT_STORAGE_GROUP_ARRAY = {"root", "stats"};
   public static final String[] STAT_GLOBAL_ARRAY = {"root", "stats", "\"global\""};
 
-
-  /**
-   * Stat information.
-   */
+  /** Stat information. */
   public enum StatMeasurementConstants {
-    TOTAL_POINTS("TOTAL_POINTS"), TOTAL_REQ_SUCCESS("TOTAL_REQ_SUCCESS"),
+    TOTAL_POINTS("TOTAL_POINTS"),
+    TOTAL_REQ_SUCCESS("TOTAL_REQ_SUCCESS"),
     TOTAL_REQ_FAIL("TOTAL_REQ_FAIL");
 
     StatMeasurementConstants(String measurement) {
@@ -45,10 +43,5 @@ public class MonitorConstants {
     public String getMeasurement() {
       return measurement;
     }
-  }
-
-  public enum OsStatConstants {
-    NETWORK_REC, NETWORK_SEND, CPU_USAGE, MEM_USAGE, IOTDB_MEM_SIZE, DISK_USAGE, DISK_READ_SPEED,
-    DISK_WRITE_SPEED, DISK_TPS
   }
 }

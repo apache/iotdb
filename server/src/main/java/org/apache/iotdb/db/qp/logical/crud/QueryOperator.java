@@ -18,15 +18,14 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
-import java.util.Map;
 import org.apache.iotdb.db.index.common.IndexType;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-/**
- * this class extends {@code RootOperator} and process getIndex statement
- */
+import java.util.Map;
+
+/** this class extends {@code RootOperator} and process getIndex statement */
 public class QueryOperator extends SFWOperator {
 
   private long startTime;
@@ -36,6 +35,8 @@ public class QueryOperator extends SFWOperator {
   // sliding step
   private long slidingStep;
   private boolean isGroupByTime = false;
+  private boolean isIntervalByMonth = false;
+  private boolean isSlidingStepByMonth = false;
   // if it is left close and right open interval
   private boolean leftCRightO;
 
@@ -216,6 +217,22 @@ public class QueryOperator extends SFWOperator {
 
   public void setGroupByTime(boolean groupByTime) {
     isGroupByTime = groupByTime;
+  }
+
+  public boolean isSlidingStepByMonth() {
+    return isSlidingStepByMonth;
+  }
+
+  public void setSlidingStepByMonth(boolean isSlidingStepByMonth) {
+    this.isSlidingStepByMonth = isSlidingStepByMonth;
+  }
+
+  public boolean isIntervalByMonth() {
+    return isIntervalByMonth;
+  }
+
+  public void setIntervalByMonth(boolean isIntervalByMonth) {
+    this.isIntervalByMonth = isIntervalByMonth;
   }
 
   public String getColumn() {

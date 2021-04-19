@@ -18,9 +18,6 @@
  */
 package org.apache.iotdb.db.query.reader.chunk.metadata;
 
-import java.io.IOException;
-import java.util.List;
-import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -32,16 +29,23 @@ import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.List;
+
 public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
 
-  private TsFileResource resource;
-  private PartialPath seriesPath;
-  private QueryContext context;
+  private final TsFileResource resource;
+  private final PartialPath seriesPath;
+  private final QueryContext context;
   // time filter or value filter, only used to check time range
-  private Filter filter;
+  private final Filter filter;
 
-  public DiskChunkMetadataLoader(TsFileResource resource, PartialPath seriesPath,
-      QueryContext context, Filter filter) {
+  private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
+
+  public DiskChunkMetadataLoader(
+      TsFileResource resource, PartialPath seriesPath, QueryContext context, Filter filter) {
     this.resource = resource;
     this.seriesPath = seriesPath;
     this.context = context;
@@ -49,46 +53,70 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
   }
 
   @Override
-  public List<ChunkMetadata> loadChunkMetadataList(TimeseriesMetadata timeseriesMetadata)
-      throws IOException {
-    List<ChunkMetadata> chunkMetadataList = ChunkMetadataCache
-        .getInstance().get(resource.getTsFilePath(), seriesPath, timeseriesMetadata);
+  public List<ChunkMetadata> loadChunkMetadataList(TimeseriesMetadata timeseriesMetadata) {
+    List<ChunkMetadata> chunkMetadataList = timeseriesMetadata.getChunkMetadataList();
 
     setDiskChunkLoader(chunkMetadataList, resource, seriesPath, context);
 
     /*
      * remove not satisfied ChunkMetaData
      */
-    chunkMetadataList.removeIf(chunkMetaData -> (filter != null && !filter
-        .satisfyStartEndTime(chunkMetaData.getStartTime(), chunkMetaData.getEndTime()))
-        || chunkMetaData.getStartTime() > chunkMetaData.getEndTime());
+    chunkMetadataList.removeIf(
+        chunkMetaData ->
+            (filter != null
+                    && !filter.satisfyStartEndTime(
+                        chunkMetaData.getStartTime(), chunkMetaData.getEndTime()))
+                || chunkMetaData.getStartTime() > chunkMetaData.getEndTime());
+
+    // For chunkMetadata from old TsFile, do not set version
+    for (ChunkMetadata metadata : chunkMetadataList) {
+      if (!metadata.isFromOldTsFile()) {
+        metadata.setVersion(resource.getVersion());
+      }
+    }
+
+    if (context.isDebug()) {
+      DEBUG_LOGGER.info("After removed by filter Chunk meta data list is: ");
+      chunkMetadataList.forEach(c -> DEBUG_LOGGER.info(c.toString()));
+    }
+
     return chunkMetadataList;
   }
 
-  /**
-   * For query v0.9/v1 tsfile only When generate temporary timeseriesMetadata set DiskChunkLoader to
-   * each chunkMetadata in the List
-   *
-   * @param chunkMetadataList
-   * @throws IOException
-   */
-  @Override
-  public void setDiskChunkLoader(List<ChunkMetadata> chunkMetadataList) {
-    setDiskChunkLoader(chunkMetadataList, resource, seriesPath, context);
-  }
-
-  public static void setDiskChunkLoader(List<ChunkMetadata> chunkMetadataList,
-      TsFileResource resource, PartialPath seriesPath, QueryContext context) {
+  public static void setDiskChunkLoader(
+      List<ChunkMetadata> chunkMetadataList,
+      TsFileResource resource,
+      PartialPath seriesPath,
+      QueryContext context) {
     List<Modification> pathModifications =
         context.getPathModifications(resource.getModFile(), seriesPath);
+
+    if (context.isDebug()) {
+      DEBUG_LOGGER.info(
+          "Modifications size is {} for file Path: {} ",
+          pathModifications.size(),
+          resource.getTsFilePath());
+      pathModifications.forEach(c -> DEBUG_LOGGER.info(c.toString()));
+    }
 
     if (!pathModifications.isEmpty()) {
       QueryUtils.modifyChunkMetaData(chunkMetadataList, pathModifications);
     }
 
-    for (ChunkMetadata data : chunkMetadataList) {
-      data.setChunkLoader(new DiskChunkLoader(resource));
+    if (context.isDebug()) {
+      DEBUG_LOGGER.info("After modification Chunk meta data list is: ");
+      chunkMetadataList.forEach(c -> DEBUG_LOGGER.info(c.toString()));
     }
-  }
 
+    // it is ok, even if it is not thread safe, because the cost of creating a DiskChunkLoader is
+    // very cheap.
+    chunkMetadataList.forEach(
+        chunkMetadata -> {
+          if (chunkMetadata.getChunkLoader() == null) {
+            chunkMetadata.setFilePath(resource.getTsFilePath());
+            chunkMetadata.setClosed(resource.isClosed());
+            chunkMetadata.setChunkLoader(new DiskChunkLoader(context));
+          }
+        });
+  }
 }

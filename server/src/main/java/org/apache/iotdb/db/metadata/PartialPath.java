@@ -18,31 +18,37 @@
  */
 package org.apache.iotdb.db.metadata;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.read.common.Path;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
 /**
- * A prefix path, suffix path or fullPath generated from SQL.
- * Usually used in the IoTDB server module
+ * A prefix path, suffix path or fullPath generated from SQL. Usually used in the IoTDB server
+ * module
  */
 public class PartialPath extends Path implements Comparable<Path> {
 
+  private static final Logger logger = LoggerFactory.getLogger(PartialPath.class);
+
   private String[] nodes;
-  // alias of measurement
-  private String measurementAlias = null;
+  // alias of measurement, null pointer cannot be serialized in thrift so empty string is instead
+  private String measurementAlias = "";
   // alias of time series used in SELECT AS
-  private String tsAlias = null;
+  private String tsAlias = "";
 
   /**
-   * Construct the PartialPath using a String, will split the given String into String[]
-   * E.g., path = "root.sg.\"d.1\".\"s.1\""
-   * nodes = {"root", "sg", "\"d.1\"", "\"s.1\""}
+   * Construct the PartialPath using a String, will split the given String into String[] E.g., path
+   * = "root.sg.\"d.1\".\"s.1\"" nodes = {"root", "sg", "\"d.1\"", "\"s.1\""}
    *
    * @param path a full String of a time series path
    * @throws IllegalPathException
@@ -57,16 +63,15 @@ public class PartialPath extends Path implements Comparable<Path> {
     this.nodes = MetaUtils.splitPathToDetachedPath(fullPath);
   }
 
-  /**
-   * @param partialNodes nodes of a time series path
-   */
+  /** @param partialNodes nodes of a time series path */
   public PartialPath(String[] partialNodes) {
     nodes = partialNodes;
   }
 
   /**
    * @param path path
-   * @param needSplit needSplit is basically false, whether need to be split to device and measurement, doesn't support escape character yet.
+   * @param needSplit needSplit is basically false, whether need to be split to device and
+   *     measurement, doesn't support escape character yet.
    */
   public PartialPath(String path, boolean needSplit) {
     super(path, needSplit);
@@ -120,6 +125,7 @@ public class PartialPath extends Path implements Comparable<Path> {
 
   /**
    * Construct a new PartialPath by resetting the prefix nodes to prefixPath
+   *
    * @param prefixPath the prefix path used to replace current nodes
    * @return A new PartialPath with altered prefix
    */
@@ -131,9 +137,9 @@ public class PartialPath extends Path implements Comparable<Path> {
 
   /**
    * Test if this PartialPath matches a full path. rPath is supposed to be a full timeseries path
-   * without wildcards.
-   * e.g. "root.sg.device.*" matches path "root.sg.device.s1"
-   * whereas it does not match "root.sg.device" and "root.sg.vehicle.s1"
+   * without wildcards. e.g. "root.sg.device.*" matches path "root.sg.device.s1" whereas it does not
+   * match "root.sg.device" and "root.sg.vehicle.s1"
+   *
    * @param rPath a plain full path of a timeseries
    * @return true if a successful match, otherwise return false
    */
@@ -182,6 +188,7 @@ public class PartialPath extends Path implements Comparable<Path> {
     return true;
   }
 
+  @Override
   public boolean equals(String obj) {
     return this.getFullPath().equals(obj);
   }
@@ -226,12 +233,20 @@ public class PartialPath extends Path implements Comparable<Path> {
     this.measurementAlias = measurementAlias;
   }
 
+  public boolean isMeasurementAliasExists() {
+    return measurementAlias != null && !measurementAlias.isEmpty();
+  }
+
   public String getTsAlias() {
     return tsAlias;
   }
 
   public void setTsAlias(String tsAlias) {
     this.tsAlias = tsAlias;
+  }
+
+  public boolean isTsAliasExists() {
+    return tsAlias != null && !tsAlias.isEmpty();
   }
 
   @Override
@@ -272,6 +287,28 @@ public class PartialPath extends Path implements Comparable<Path> {
     List<String> ret = new ArrayList<>();
     for (PartialPath path : pathList) {
       ret.add(path.getFullPath());
+    }
+    return ret;
+  }
+
+  /**
+   * Convert a list of Strings to a list of PartialPaths, ignoring all illegal paths
+   *
+   * @param pathList
+   * @return
+   */
+  public static List<PartialPath> fromStringList(List<String> pathList) {
+    if (pathList == null || pathList.isEmpty()) {
+      return Collections.emptyList();
+    }
+
+    List<PartialPath> ret = new ArrayList<>();
+    for (String s : pathList) {
+      try {
+        ret.add(new PartialPath(s));
+      } catch (IllegalPathException e) {
+        logger.warn("Encountered an illegal path {}", s);
+      }
     }
     return ret;
   }

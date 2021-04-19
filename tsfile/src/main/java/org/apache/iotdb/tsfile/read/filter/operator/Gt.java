@@ -34,8 +34,7 @@ public class Gt<T extends Comparable<T>> extends UnaryFilter<T> {
 
   private static final long serialVersionUID = -2088181659871608986L;
 
-  public Gt() {
-  }
+  public Gt() {}
 
   public Gt(T value, FilterType filterType) {
     super(value, filterType);

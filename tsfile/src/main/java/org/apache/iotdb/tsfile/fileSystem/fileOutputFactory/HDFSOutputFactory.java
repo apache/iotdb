@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.tsfile.fileSystem.fileOutputFactory;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
+import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 
 public class HDFSOutputFactory implements FileOutputFactory {
 
@@ -50,7 +50,8 @@ public class HDFSOutputFactory implements FileOutputFactory {
     } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
       logger.error(
           "Failed to get TsFile output of file: {}. Please check your dependency of Hadoop module.",
-          filePath, e);
+          filePath,
+          e);
       return null;
     }
   }

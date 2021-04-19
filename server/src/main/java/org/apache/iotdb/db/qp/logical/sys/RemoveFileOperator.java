@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
-import java.io.File;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.RootOperator;
+
+import java.io.File;
 
 public class RemoveFileOperator extends RootOperator {
 
@@ -30,11 +31,6 @@ public class RemoveFileOperator extends RootOperator {
     super(SQLConstant.TOK_REMOVE_FILE);
     this.file = file;
     this.operatorType = OperatorType.REMOVE_FILE;
-  }
-
-  public RemoveFileOperator(int tokenIntType, File file) {
-    super(tokenIntType);
-    this.file = file;
   }
 
   public File getFile() {

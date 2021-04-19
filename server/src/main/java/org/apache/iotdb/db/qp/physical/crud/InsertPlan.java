@@ -19,17 +19,16 @@
 
 package org.apache.iotdb.db.qp.physical.crud;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 public abstract class InsertPlan extends PhysicalPlan {
 
@@ -43,7 +42,7 @@ public abstract class InsertPlan extends PhysicalPlan {
   // record the failed measurements, their reasons, and positions in "measurements"
   List<String> failedMeasurements;
   private List<Exception> failedExceptions;
-  private List<Integer> failedIndices;
+  List<Integer> failedIndices;
 
   public InsertPlan(Operator.OperatorType operatorType) {
     super(false, operatorType);
@@ -96,9 +95,7 @@ public abstract class InsertPlan extends PhysicalPlan {
 
   public abstract long getMinTime();
 
-  /**
-   * @param index failed measurement index
-   */
+  /** @param index failed measurement index */
   public void markFailedMeasurementInsertion(int index, Exception e) {
     if (measurements[index] == null) {
       return;
@@ -112,11 +109,11 @@ public abstract class InsertPlan extends PhysicalPlan {
     failedExceptions.add(e);
     failedIndices.add(index);
     measurements[index] = null;
-    dataTypes[index] = null;
   }
 
   /**
    * Reconstruct this plan with the failed measurements.
+   *
    * @return the plan itself, with measurements replaced with the previously failed ones.
    */
   public InsertPlan getPlanFromFailed() {
@@ -145,6 +142,21 @@ public abstract class InsertPlan extends PhysicalPlan {
     return this;
   }
 
+  /** Reset measurements from failed measurements (if any), as if no failure had ever happened. */
+  public void recoverFromFailure() {
+    if (failedMeasurements == null) {
+      return;
+    }
+
+    for (int i = 0; i < failedMeasurements.size(); i++) {
+      int index = failedIndices.get(i);
+      measurements[index] = failedMeasurements.get(i);
+    }
+    failedIndices = null;
+    failedExceptions = null;
+    failedMeasurements = null;
+  }
+
   @Override
   public void checkIntegrity() throws QueryProcessException {
     if (deviceId == null) {
@@ -155,7 +167,8 @@ public abstract class InsertPlan extends PhysicalPlan {
     }
     for (String measurement : measurements) {
       if (measurement == null || measurement.isEmpty()) {
-        throw new QueryProcessException("Measurement contains null or empty string: " + Arrays.toString(measurements));
+        throw new QueryProcessException(
+            "Measurement contains null or empty string: " + Arrays.toString(measurements));
       }
     }
   }

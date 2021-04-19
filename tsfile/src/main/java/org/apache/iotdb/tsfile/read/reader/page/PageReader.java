@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.tsfile.read.reader.page;
 
-import java.util.List;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
@@ -27,56 +26,57 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
+import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 
 public class PageReader implements IPageReader {
 
   private PageHeader pageHeader;
 
-  private TSDataType dataType;
+  protected TSDataType dataType;
 
-  /**
-   * decoder for value column
-   */
-  private Decoder valueDecoder;
+  /** decoder for value column */
+  protected Decoder valueDecoder;
 
-  /**
-   * decoder for time column
-   */
-  private Decoder timeDecoder;
+  /** decoder for time column */
+  protected Decoder timeDecoder;
 
-  /**
-   * time column in memory
-   */
-  private ByteBuffer timeBuffer;
+  /** time column in memory */
+  protected ByteBuffer timeBuffer;
 
-  /**
-   * value column in memory
-   */
-  private ByteBuffer valueBuffer;
+  /** value column in memory */
+  protected ByteBuffer valueBuffer;
 
-  private Filter filter;
+  protected Filter filter;
 
-  /**
-   * A list of deleted intervals.
-   */
+  /** A list of deleted intervals. */
   private List<TimeRange> deleteIntervalList;
 
   private int deleteCursor = 0;
 
-  public PageReader(ByteBuffer pageData, TSDataType dataType, Decoder valueDecoder,
-      Decoder timeDecoder, Filter filter) {
+  public PageReader(
+      ByteBuffer pageData,
+      TSDataType dataType,
+      Decoder valueDecoder,
+      Decoder timeDecoder,
+      Filter filter) {
     this(null, pageData, dataType, valueDecoder, timeDecoder, filter);
   }
 
-  public PageReader(PageHeader pageHeader, ByteBuffer pageData, TSDataType dataType,
-      Decoder valueDecoder, Decoder timeDecoder, Filter filter) {
+  public PageReader(
+      PageHeader pageHeader,
+      ByteBuffer pageData,
+      TSDataType dataType,
+      Decoder valueDecoder,
+      Decoder timeDecoder,
+      Filter filter) {
     this.dataType = dataType;
     this.valueDecoder = valueDecoder;
     this.timeDecoder = timeDecoder;
@@ -100,14 +100,12 @@ public class PageReader implements IPageReader {
     valueBuffer.position(timeBufferLength);
   }
 
-  /**
-   * @return the returned BatchData may be empty, but never be null
-   */
+  /** @return the returned BatchData may be empty, but never be null */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   public BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {
 
-    BatchData pageData = BatchDataFactory.createBatchData(dataType, ascending);
+    BatchData pageData = BatchDataFactory.createBatchData(dataType, ascending, false);
 
     while (timeDecoder.hasNext(timeBuffer)) {
       long timestamp = timeDecoder.readLong(timeBuffer);
@@ -162,7 +160,11 @@ public class PageReader implements IPageReader {
 
   @Override
   public void setFilter(Filter filter) {
-    this.filter = filter;
+    if (this.filter == null) {
+      this.filter = filter;
+    } else {
+      this.filter = new AndFilter(this.filter, filter);
+    }
   }
 
   public void setDeleteIntervalList(List<TimeRange> list) {
@@ -178,7 +180,7 @@ public class PageReader implements IPageReader {
     return pageHeader.isModified();
   }
 
-  private boolean isDeleted(long timestamp) {
+  protected boolean isDeleted(long timestamp) {
     while (deleteIntervalList != null && deleteCursor < deleteIntervalList.size()) {
       if (deleteIntervalList.get(deleteCursor).contains(timestamp)) {
         return true;

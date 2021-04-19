@@ -19,24 +19,42 @@
 
 package org.apache.iotdb.jdbc;
 
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.List;
+import java.util.Map;
+
 public class IoTDBJDBCResultSet extends AbstractIoTDBJDBCResultSet {
 
-  public IoTDBJDBCResultSet(Statement statement, List<String> columnNameList,
-      List<String> columnTypeList, Map<String, Integer> columnNameIndex, boolean ignoreTimeStamp,
+  public IoTDBJDBCResultSet(
+      Statement statement,
+      List<String> columnNameList,
+      List<String> columnTypeList,
+      Map<String, Integer> columnNameIndex,
+      boolean ignoreTimeStamp,
       TSIService.Iface client,
-      String sql, long queryId, long sessionId, TSQueryDataSet dataset)
+      String sql,
+      long queryId,
+      long sessionId,
+      TSQueryDataSet dataset,
+      long timeout)
       throws SQLException {
-    super(statement, columnNameList, columnTypeList, columnNameIndex, ignoreTimeStamp, client, sql,
-        queryId, sessionId);
+    super(
+        statement,
+        columnNameList,
+        columnTypeList,
+        columnNameIndex,
+        ignoreTimeStamp,
+        client,
+        sql,
+        queryId,
+        sessionId,
+        timeout);
     ioTDBRpcDataSet.setTsQueryDataSet(dataset);
   }
 
@@ -68,7 +86,6 @@ public class IoTDBJDBCResultSet extends AbstractIoTDBJDBCResultSet {
     ioTDBRpcDataSet.constructOneRow();
   }
 
-
   @Override
   protected void checkRecord() throws SQLException {
     try {
@@ -82,6 +99,15 @@ public class IoTDBJDBCResultSet extends AbstractIoTDBJDBCResultSet {
   protected String getValueByName(String columnName) throws SQLException {
     try {
       return ioTDBRpcDataSet.getValueByName(columnName);
+    } catch (StatementExecutionException e) {
+      throw new SQLException(e.getMessage());
+    }
+  }
+
+  @Override
+  protected Object getObjectByName(String columnName) throws SQLException {
+    try {
+      return ioTDBRpcDataSet.getObjectByName(columnName);
     } catch (StatementExecutionException e) {
       throw new SQLException(e.getMessage());
     }

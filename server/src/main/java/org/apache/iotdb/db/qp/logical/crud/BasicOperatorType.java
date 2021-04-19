@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.TIME;
-
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -31,9 +29,9 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-/**
- * all basic operator in filter.
- */
+import static org.apache.iotdb.db.conf.IoTDBConstant.TIME;
+
+/** all basic operator in filter. */
 public enum BasicOperatorType {
   EQ {
     @Override
@@ -163,8 +161,7 @@ public enum BasicOperatorType {
    * @return basic operator type
    * @throws LogicalOperatorException Logical Operator Exception
    */
-  public static BasicOperatorType getBasicOpBySymbol(int tokenIntType)
-      throws SQLParserException {
+  public static BasicOperatorType getBasicOpBySymbol(int tokenIntType) throws SQLParserException {
     switch (tokenIntType) {
       case SQLConstant.EQUAL:
         return EQ;

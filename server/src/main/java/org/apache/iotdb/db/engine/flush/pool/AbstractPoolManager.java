@@ -19,22 +19,21 @@
 
 package org.apache.iotdb.db.engine.flush.pool;
 
+import org.slf4j.Logger;
+
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import org.slf4j.Logger;
 
 public abstract class AbstractPoolManager {
-  
+
   private static final int WAIT_TIMEOUT = 2000;
 
   protected ExecutorService pool;
 
-  /**
-   * Block new flush submits and exit when all RUNNING THREADS AND TASKS IN THE QUEUE end.
-   */
+  /** Block new flush submits and exit when all RUNNING THREADS AND TASKS IN THE QUEUE end. */
   public void close() {
     Logger logger = getLogger();
     pool.shutdownNow();
@@ -43,8 +42,7 @@ public abstract class AbstractPoolManager {
     while (!pool.isTerminated()) {
       try {
         if (!pool.awaitTermination(WAIT_TIMEOUT, TimeUnit.MILLISECONDS)) {
-          logger.info("{} thread pool doesn't exit after {}ms.", getName(),
-              + totalWaitTime);
+          logger.info("{} thread pool doesn't exit after {}ms.", getName(), +totalWaitTime);
         }
         totalWaitTime += WAIT_TIMEOUT;
       } catch (InterruptedException e) {
@@ -90,5 +88,4 @@ public abstract class AbstractPoolManager {
   }
 
   public abstract String getName();
-
 }

@@ -19,23 +19,37 @@
 
 package org.apache.iotdb.db.utils;
 
-import static org.junit.Assert.assertEquals;
-
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
 import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
 
 public class TypeInferenceUtilsTest {
 
   @Test
   public void isNumberTest() {
-    String[] values = {"123", "123.123", "-123.123", "+123.123", ".123", String.valueOf(Integer.MAX_VALUE),
-        String.valueOf(Integer.MIN_VALUE), String.valueOf(Double.MAX_VALUE), String.valueOf(Double.MIN_VALUE),
-        "abc", "123.", "123a", TsFileConstant.PATH_SEPARATOR, "123.1.23"};
-    boolean[] results = {true, true, true, true, true, true,
-        true, true, true,
-        false, true, false, false, false};
+    String[] values = {
+      "123",
+      "123.123",
+      "-123.123",
+      "+123.123",
+      ".123",
+      String.valueOf(Integer.MAX_VALUE),
+      String.valueOf(Integer.MIN_VALUE),
+      String.valueOf(Double.MAX_VALUE),
+      String.valueOf(Double.MIN_VALUE),
+      "abc",
+      "123.",
+      "123a",
+      TsFileConstant.PATH_SEPARATOR,
+      "123.1.23"
+    };
+    boolean[] results = {
+      true, true, true, true, true, true, true, true, true, false, true, false, false, false
+    };
 
     for (int i = 0; i < values.length; i++) {
       assertEquals(TypeInferenceUtils.isNumber(values[i]), results[i]);
@@ -44,15 +58,19 @@ public class TypeInferenceUtilsTest {
 
   @Test
   public void testInferType() {
-    Object[] values = {123, "abc", 123.123d, true, 123.1f, "123", "12.2", "9999999999999999",
-        "true"};
-    TSDataType[] encodings = {IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType(),
-        TSDataType.TEXT, IoTDBDescriptor.getInstance().getConfig().getFloatingStringInferType(),
-        TSDataType.BOOLEAN, TSDataType.FLOAT,
-        IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType(),
-        IoTDBDescriptor.getInstance().getConfig().getFloatingStringInferType(),
-        IoTDBDescriptor.getInstance().getConfig().getLongStringInferType(),
-        IoTDBDescriptor.getInstance().getConfig().getBooleanStringInferType()
+    Object[] values = {
+      123, "abc", 123.123d, true, 123.1f, "123", "12.2", "9999999999999999", "true"
+    };
+    TSDataType[] encodings = {
+      IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType(),
+      TSDataType.TEXT,
+      IoTDBDescriptor.getInstance().getConfig().getFloatingStringInferType(),
+      TSDataType.BOOLEAN,
+      TSDataType.FLOAT,
+      IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType(),
+      IoTDBDescriptor.getInstance().getConfig().getFloatingStringInferType(),
+      IoTDBDescriptor.getInstance().getConfig().getLongStringInferType(),
+      IoTDBDescriptor.getInstance().getConfig().getBooleanStringInferType()
     };
 
     for (int i = 0; i < values.length; i++) {
@@ -63,8 +81,15 @@ public class TypeInferenceUtilsTest {
   @Test
   public void testNotInferType() {
     Object[] values = {123, "abc", 123.123d, true, 123.1f, "123", "12.2", "true"};
-    TSDataType[] encodings = {TSDataType.INT32, TSDataType.TEXT, TSDataType.DOUBLE,
-        TSDataType.BOOLEAN, TSDataType.FLOAT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT
+    TSDataType[] encodings = {
+      TSDataType.INT32,
+      TSDataType.TEXT,
+      TSDataType.DOUBLE,
+      TSDataType.BOOLEAN,
+      TSDataType.FLOAT,
+      TSDataType.TEXT,
+      TSDataType.TEXT,
+      TSDataType.TEXT
     };
 
     for (int i = 0; i < values.length; i++) {

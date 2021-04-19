@@ -18,13 +18,14 @@
  */
 package org.apache.iotdb.tsfile.read.query.dataset;
 
-import java.io.IOException;
-import java.util.List;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderByTimestamp;
+
+import java.io.IOException;
+import java.util.List;
 
 /**
  * query processing: (1) generate time by series that has filter (2) get value of series that does
@@ -45,9 +46,12 @@ public class DataSetWithTimeGenerator extends QueryDataSet {
    * @param timeGenerator TimeGenerator object
    * @param readers readers in List(FileSeriesReaderByTimestamp) structure
    */
-  public DataSetWithTimeGenerator(List<Path> paths, List<Boolean> cached,
+  public DataSetWithTimeGenerator(
+      List<Path> paths,
+      List<Boolean> cached,
       List<TSDataType> dataTypes,
-      TimeGenerator timeGenerator, List<FileSeriesReaderByTimestamp> readers) {
+      TimeGenerator timeGenerator,
+      List<FileSeriesReaderByTimestamp> readers) {
     super(paths, dataTypes);
     this.cached = cached;
     this.timeGenerator = timeGenerator;
@@ -55,12 +59,12 @@ public class DataSetWithTimeGenerator extends QueryDataSet {
   }
 
   @Override
-  protected boolean hasNextWithoutConstraint() throws IOException {
+  public boolean hasNextWithoutConstraint() throws IOException {
     return timeGenerator.hasNext();
   }
 
   @Override
-  protected RowRecord nextWithoutConstraint() throws IOException {
+  public RowRecord nextWithoutConstraint() throws IOException {
     long timestamp = timeGenerator.next();
     RowRecord rowRecord = new RowRecord(timestamp);
 
@@ -68,7 +72,7 @@ public class DataSetWithTimeGenerator extends QueryDataSet {
 
       // get value from readers in time generator
       if (cached.get(i)) {
-        Object value = timeGenerator.getValue(paths.get(i), timestamp);
+        Object value = timeGenerator.getValue(paths.get(i));
         rowRecord.addField(value, dataTypes.get(i));
         continue;
       }
