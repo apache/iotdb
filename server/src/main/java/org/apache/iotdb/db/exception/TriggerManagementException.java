@@ -17,19 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.trigger.api;
+package org.apache.iotdb.db.exception;
 
-public enum TriggerEvent {
-  BEFORE_INSERT((byte) 0),
-  AFTER_INSERT((byte) 1);
+public class TriggerManagementException extends StorageEngineException {
 
-  private final byte id;
-
-  TriggerEvent(byte id) {
-    this.id = id;
+  public TriggerManagementException(String message, Throwable cause) {
+    super(message);
+    this.initCause(cause);
   }
 
-  public byte getId() {
-    return id;
+  public TriggerManagementException(String message) {
+    super(message);
   }
 }

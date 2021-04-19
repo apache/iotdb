@@ -136,11 +136,16 @@ public class ElasticSerializableRowRecordList {
     if (!disableMemoryControl) {
       totalByteArrayLengthLimit +=
           (long) indexListOfTextFields.length * byteArrayLengthForMemoryControl;
-      for (int indexListOfTextField : indexListOfTextFields) {
-        Binary binary = (Binary) rowRecord[indexListOfTextField];
-        totalByteArrayLength += binary == null ? 0 : binary.getLength();
+
+      if (rowRecord == null) {
+        totalByteArrayLength += indexListOfTextFields.length * byteArrayLengthForMemoryControl;
+      } else {
+        for (int indexListOfTextField : indexListOfTextFields) {
+          Binary binary = (Binary) rowRecord[indexListOfTextField];
+          totalByteArrayLength += binary == null ? 0 : binary.getLength();
+        }
+        checkMemoryUsage();
       }
-      checkMemoryUsage();
     }
   }
 

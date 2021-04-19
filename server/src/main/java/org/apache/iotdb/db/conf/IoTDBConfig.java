@@ -180,6 +180,13 @@ public class IoTDBConfig {
    */
   private int mlogBufferSize = 1024 * 1024;
 
+  /**
+   * The size of log buffer for every trigger management operation plan. If the size of a trigger
+   * management operation plan is larger than this parameter, the trigger management operation plan
+   * will be rejected by TriggerManager.
+   */
+  private int tlogBufferSize = 1024 * 1024;
+
   /** default base dir, stores all IoTDB runtime files */
   private static final String DEFAULT_BASE_DIR = "data";
 
@@ -214,6 +221,10 @@ public class IoTDBConfig {
   /** External lib directory for UDF, stores user-uploaded JAR files */
   private String udfDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.UDF_FOLDER_NAME;
+
+  /** External lib directory for trigger, stores user-uploaded JAR files */
+  private String triggerDir =
+      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TRIGGER_FOLDER_NAME;
 
   /** Data directory of data. It can be settled as dataDirs = {"data1", "data2", "data3"}; */
   private String[] dataDirs = {"data" + File.separator + "data"};
@@ -772,6 +783,7 @@ public class IoTDBConfig {
     indexRootFolder = addHomeDir(indexRootFolder);
     extDir = addHomeDir(extDir);
     udfDir = addHomeDir(udfDir);
+    triggerDir = addHomeDir(triggerDir);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
       String hdfsDir = getHdfsDir();
@@ -994,6 +1006,14 @@ public class IoTDBConfig {
 
   public void setUdfDir(String udfDir) {
     this.udfDir = udfDir;
+  }
+
+  public String getTriggerDir() {
+    return triggerDir;
+  }
+
+  public void setTriggerDir(String triggerDir) {
+    this.triggerDir = triggerDir;
   }
 
   public String getMultiDirStrategyClassName() {
@@ -2077,6 +2097,14 @@ public class IoTDBConfig {
 
   public void setMlogBufferSize(int mlogBufferSize) {
     this.mlogBufferSize = mlogBufferSize;
+  }
+
+  public int getTlogBufferSize() {
+    return tlogBufferSize;
+  }
+
+  public void setTlogBufferSize(int tlogBufferSize) {
+    this.tlogBufferSize = tlogBufferSize;
   }
 
   public boolean isEnableRpcService() {

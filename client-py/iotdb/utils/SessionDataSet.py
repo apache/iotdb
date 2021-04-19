@@ -144,18 +144,24 @@ def resultset_to_pandas(result_set: SessionDataSet) -> pd.DataFrame:
 
     value_dict = {}
 
+    if "Time" in column_names:
+        offset = 1
+    else:
+        offset = 0
+
     for i in range(len(column_names)):
         value_dict[column_names[i]] = []
 
     while result_set.has_next():
         record = result_set.next()
 
-        value_dict["Time"].append(record.get_timestamp())
+        if "Time" in column_names:
+            value_dict["Time"].append(record.get_timestamp())
 
         for col in range(len(record.get_fields())):
             field: Field = record.get_fields()[col]
 
-            value_dict[column_names[col + 1]].append(get_typed_point(field))
+            value_dict[column_names[col + offset]].append(get_typed_point(field))
 
     return pd.DataFrame(value_dict)
 
