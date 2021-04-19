@@ -339,6 +339,8 @@ SHOW TRIGGERS
 
 窗口工具类允许您在窗口（`Window`）上定义侦听钩子（`Evaluator`）。每当一个新的窗口形成，您定义的侦听钩子就会被调用一次。您可以在这个侦听钩子内定义任何数据处理相关的逻辑。侦听钩子的调用是异步的，因此，在执行钩子内窗口处理逻辑的时候，是不会阻塞当前线程的。
 
+值得注意的是，不论是`SlidingTimeWindowEvaluationHandler`还是`SlidingSizeWindowEvaluationHandler`，他们都**只能够处理时间戳严格单调递增的序列**，传入的不符合要求的数据点会被工具类抛弃。
+
 `Window`与`Evaluator`接口的定义见`org.apache.iotdb.db.utils.windowing.api`包。
 
 
@@ -392,6 +394,8 @@ hander.collect(timestamp, value);
 
 注意，`collect`方法接受的第二个参数类型需要与构造时传入的`dataType`声明一致。
 
+此外，`collect`方法只会对时间戳是单调递增的数据点产生响应。如果某一次`collect`方法采集到的数据点的时间戳小于等于上一次`collect`方法采集到的数据点时间戳，那么这一次采集的数据点将会被抛弃。
+
 
 
 #### 固定窗口内时间长度的滑动窗口
@@ -442,6 +446,8 @@ hander.collect(timestamp, value);
 ```
 
 注意，`collect`方法接受的第二个参数类型需要与构造时传入的`dataType`声明一致。
+
+此外，`collect`方法只会对时间戳是单调递增的数据点产生响应。如果某一次`collect`方法采集到的数据点的时间戳小于等于上一次`collect`方法采集到的数据点时间戳，那么这一次采集的数据点将会被抛弃。
 
 
 

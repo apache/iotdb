@@ -322,6 +322,8 @@ The windowing utility can help you define sliding windows and the data processin
 
 The windowing utility allows you to define a hook (`Evaluator`) on the window (`Window`). Whenever a new window is formed, the hook you defined will be called once. You can define any data processing-related logic in the hook. The call of the hook is asynchronous. Therefore, the current thread will not be blocked when the window processing logic is executed.
 
+It is worth noting that whether it is `SlidingTimeWindowEvaluationHandler` or `SlidingSizeWindowEvaluationHandler`, **they can only handle sequences with strictly monotonically increasing timestamps**, and incoming data points that do not meet the requirements will be discarded.
+
 For the definition of `Window` and `Evaluator`, please refer to the `org.apache.iotdb.db.utils.windowing.api` package.
 
 
@@ -375,6 +377,8 @@ hander.collect(timestamp, value);
 
 Note that the type of the second parameter accepted by the `collect` method needs to be consistent with the `dataType` parameter provided during construction.
 
+In addition, the `collect` method will only respond to data points whose timestamps are monotonically increasing. If the time stamp of the data point collected by the `collect` method is less than or equal to the time stamp of the data point collected by the previous `collect` method call, the data point collected this time will be discarded.
+
 
 
 #### SlidingTimeWindowEvaluationHandler
@@ -425,6 +429,8 @@ hander.collect(timestamp, value);
 ```
 
 Note that the type of the second parameter accepted by the `collect` method needs to be consistent with the `dataType` parameter provided during construction.
+
+In addition, the `collect` method will only respond to data points whose timestamps are monotonically increasing. If the time stamp of the data point collected by the `collect` method is less than or equal to the time stamp of the data point collected by the previous `collect` method call, the data point collected this time will be discarded.
 
 
 
