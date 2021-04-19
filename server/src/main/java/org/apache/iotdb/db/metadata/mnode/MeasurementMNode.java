@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
+import org.apache.iotdb.db.engine.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -43,6 +44,8 @@ public class MeasurementMNode extends MNode {
   private long offset = -1;
 
   private TimeValuePair cachedLastValuePair = null;
+
+  private TriggerExecutor triggerExecutor = null;
 
   /** @param alias alias of measurementName */
   public MeasurementMNode(
@@ -115,12 +118,20 @@ public class MeasurementMNode extends MNode {
     return alias;
   }
 
+  public TriggerExecutor getTriggerExecutor() {
+    return triggerExecutor;
+  }
+
   public void setAlias(String alias) {
     this.alias = alias;
   }
 
   public void setSchema(MeasurementSchema schema) {
     this.schema = schema;
+  }
+
+  public void setTriggerExecutor(TriggerExecutor triggerExecutor) {
+    this.triggerExecutor = triggerExecutor;
   }
 
   @Override

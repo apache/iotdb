@@ -17,19 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.trigger.api;
+package org.apache.iotdb.db.utils.windowing.exception;
 
-public enum TriggerEvent {
-  BEFORE_INSERT((byte) 0),
-  AFTER_INSERT((byte) 1);
+public class WindowingException extends Exception {
 
-  private final byte id;
-
-  TriggerEvent(byte id) {
-    this.id = id;
+  public WindowingException(String message) {
+    super(message);
   }
 
-  public byte getId() {
-    return id;
+  public WindowingException(String message, Throwable cause) {
+    super(message, cause);
   }
 }
