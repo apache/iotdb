@@ -138,7 +138,7 @@ public class MTreeFile {
     } else {
       readMNode(dataBuffer, mNode);
     }
-    mNode.setModified(false);
+
     return mNode;
   }
 
@@ -154,7 +154,7 @@ public class MTreeFile {
       readMNode(dataBuffer, mNode);
     }
     mNode.setPosition(position);
-    mNode.setModified(false);
+
     return mNode;
   }
 
@@ -224,7 +224,6 @@ public class MTreeFile {
     while (name != null && !name.equals("")) {
       child = new MNode(mNode, name);
       child.setPosition(byteBuffer.getLong());
-      child.setModified(false);
       mNode.addChild(name, child);
 
       name = ReadWriteIOUtils.readVarIntString(byteBuffer);
@@ -234,7 +233,6 @@ public class MTreeFile {
     while (name != null && !name.equals("")) {
       child = new MeasurementMNode(mNode, name, null, null);
       child.setPosition(byteBuffer.getLong());
-      child.setModified(false);
       mNode.addChild(name, child);
 
       name = ReadWriteIOUtils.readVarIntString(byteBuffer);
@@ -257,7 +255,6 @@ public class MTreeFile {
       byteBuffer = mNodeBytes.get(position);
       fileAccess.writeBytes(position, byteBuffer);
     }
-    mNode.setModified(false);
   }
 
   public void writeRecursively(MNode mNode) throws IOException {

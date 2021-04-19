@@ -5,6 +5,7 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -49,11 +50,11 @@ public class MeasurementFileTest {
     m1.getSchema().setProps(props);
     measurementFile.write(m1);
     MeasurementMNode temp = measurementFile.read(m1.getPosition());
-    System.out.println(m1.getName());
-    System.out.println(m1.getSchema().getProps().get("a"));
+    Assert.assertEquals("ts1",temp.getName());
+    Assert.assertEquals("1",m1.getSchema().getProps().get("a"));
     measurementFile.write(m2);
     temp = measurementFile.read(m2.getPosition());
-    System.out.println(m2.getName());
-    System.out.println(m2.getSchema().getProps());
+    Assert.assertEquals("ts2",temp.getName());
+    Assert.assertNull(m2.getSchema().getProps());
   }
 }

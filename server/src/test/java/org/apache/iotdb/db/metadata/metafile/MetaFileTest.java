@@ -1,5 +1,6 @@
 package org.apache.iotdb.db.metadata.metafile;
 
+import jdk.nashorn.internal.AssertsEnabled;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
@@ -8,6 +9,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -59,9 +61,9 @@ public class MetaFileTest {
   public void testSimpleMNodeRW() throws IOException {
     MNode mNode = new MNode(null, "root");
     metaFile.write(mNode);
-    System.out.println(mNode.getPosition());
+    Assert.assertNotEquals(0,mNode.getPosition());
     mNode = metaFile.readMNode(mNode.getPosition(), false);
-    System.out.println(mNode.getName());
+    Assert.assertEquals("root",mNode.getName());
   }
 
   @Test
@@ -74,7 +76,8 @@ public class MetaFileTest {
     s.addChild("t", new MeasurementMNode(null, "t", new MeasurementSchema(), null));
     metaFile.writeRecursively(root);
     MNode mNode = metaFile.readMNode("root.p.s.t");
-    System.out.println(mNode.getFullPath() + " " + mNode.isLoaded());
+    Assert.assertEquals("root.p.s.t",mNode.getFullPath());
+    Assert.assertTrue(mNode.isLoaded());
   }
 
   @Test
@@ -82,7 +85,14 @@ public class MetaFileTest {
     MNode mNode = getSimpleTree();
     metaFile.writeRecursively(mNode);
     mNode = metaFile.readRecursively(mNode.getPosition());
-    showTree(mNode);
+    Assert.assertEquals("root\r\n" +
+            "root.s1\r\n" +
+            "root.s1.t1\r\n" +
+            "root.s1.t2\r\n" +
+            "root.s1.t2.z1\r\n" +
+            "root.s2\r\n" +
+            "root.s2.t1\r\n" +
+            "root.s2.t2\r\n",treeToStringDFT(mNode));
   }
 
   private MNode getSimpleTree() {
@@ -104,17 +114,23 @@ public class MetaFileTest {
     MNode mNode = getMTree();
     metaFile.writeRecursively(mNode);
     mNode = metaFile.readRecursively(mNode.getPosition());
-    showTree(mNode);
+    Assert.assertEquals("root\r\n" +
+            "root.p\r\n" +
+            "root.p.s1\r\n" +
+            "root.p.s1.t1\r\n" +
+            "root.p.s1.t2\r\n" +
+            "root.p.s2\r\n" +
+            "root.p.s2.t1\r\n" +
+            "root.p.s2.t2\r\n",treeToStringDFT(mNode));
     StorageGroupMNode s1 = (StorageGroupMNode) (mNode.getChild("p").getChild("s1"));
     StorageGroupMNode s2 = (StorageGroupMNode) (mNode.getChild("p").getChild("s2"));
-    System.out.println("s1.TTL: " + s1.getDataTTL() + "; s2.TTL: " + s2.getDataTTL());
+    Assert.assertEquals(1000,s1.getDataTTL());
+    Assert.assertEquals(2000,s2.getDataTTL());
     MeasurementMNode t1 = (MeasurementMNode) mNode.getChild("p").getChild("s1").getChild("t1");
     MeasurementMNode t2 = (MeasurementMNode) mNode.getChild("p").getChild("s2").getChild("t2");
-    System.out.println((t1.getSchema().getProps()).equals(t2.getSchema().getProps()));
-    System.out.println("Props: ");
-    for (Map.Entry<String, String> entry : t1.getSchema().getProps().entrySet()) {
-      System.out.println(entry.getKey() + ": " + entry.getValue());
-    }
+    Assert.assertEquals(t1.getSchema().getProps(),t2.getSchema().getProps());
+    Assert.assertEquals(1,t1.getSchema().getProps().size());
+    Assert.assertEquals("1",t1.getSchema().getProps().get("a"));
   }
 
   private MNode getMTree() {
@@ -146,7 +162,7 @@ public class MetaFileTest {
     }
   }
 
-  @Test
+//  @Test
   public void testIOPerformance() throws IOException {
     int deviceNum = 100;
     int schemaNum = 100;
@@ -190,5 +206,21 @@ public class MetaFileTest {
       num += count(child);
     }
     return num;
+  }
+
+  private String treeToStringDFT(MNode mNode){
+    StringBuilder stringBuilder=new StringBuilder();
+    dft(mNode,stringBuilder);
+    return stringBuilder.toString();
+  }
+
+  private void dft(MNode mNode, StringBuilder stringBuilder){
+    if (mNode == null) {
+      return;
+    }
+    stringBuilder.append(mNode.getFullPath()).append("\r\n");
+    for (MNode child : mNode.getChildren().values()) {
+      dft(child,stringBuilder);
+    }
   }
 }

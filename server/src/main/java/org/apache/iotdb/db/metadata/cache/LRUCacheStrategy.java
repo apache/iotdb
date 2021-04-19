@@ -1,6 +1,5 @@
 package org.apache.iotdb.db.metadata.cache;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 
 import java.util.Collection;
@@ -9,12 +8,12 @@ import java.util.List;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class LRUEviction implements EvictionStrategy {
+public class LRUCacheStrategy implements CacheStrategy {
 
   private int size=0;
 
-  private EvictionEntry first;
-  private EvictionEntry last;
+  private CacheEntry first;
+  private CacheEntry last;
 
   private final Lock lock = new ReentrantLock();
 
@@ -36,10 +35,10 @@ public class LRUEviction implements EvictionStrategy {
       if(!MNode.isNull(mNode.getParent())&&!mNode.getParent().isCached()){
         return;
       }
-      EvictionEntry entry = mNode.getEvictionEntry();
+      CacheEntry entry = mNode.getEvictionEntry();
       if (entry == null) {
         size++;
-        entry = new EvictionEntry(mNode);
+        entry = new CacheEntry(mNode);
       }
       moveToFirst(entry);
     } finally {
@@ -47,7 +46,15 @@ public class LRUEviction implements EvictionStrategy {
     }
   }
 
-  private void moveToFirst(EvictionEntry entry){
+  @Override
+  public void setModified(MNode mNode,boolean modified) {
+    if (MNode.isNull(mNode)||mNode.getEvictionEntry()==null) {
+      return;
+    }
+    mNode.getEvictionEntry().setModified(modified);
+  }
+
+  private void moveToFirst(CacheEntry entry){
 
     if (first == null || last == null) { // empty linked list
       first = last = entry;
@@ -81,13 +88,13 @@ public class LRUEviction implements EvictionStrategy {
     }
     try {
       lock.lock();
-      size-=removeRecursively(mNode,null);
+      removeRecursivelyAndCollectModified(mNode,null);
     }finally {
       lock.unlock();
     }
   }
 
-  private void removeOne(EvictionEntry entry){
+  private void removeOne(CacheEntry entry){
     if (entry.pre != null) {
       entry.pre.next=entry.next;
     }
@@ -100,26 +107,40 @@ public class LRUEviction implements EvictionStrategy {
     if (entry == last) {
       last = entry.pre;
     }
+    size--;
   }
 
-  private int removeRecursively(MNode mNode, Collection<MNode> removedMNodes){
+  private void removeRecursively(MNode mNode){
     if (MNode.isNull(mNode)) {
-      return 0;
+      return;
     }
-    EvictionEntry entry = mNode.getEvictionEntry();
+    CacheEntry entry = mNode.getEvictionEntry();
     if (entry == null) {
-      return 0;
+      return;
     }
     removeOne(entry);
     mNode.setEvictionEntry(null);
-    if(removedMNodes!=null){
+    for (MNode child : mNode.getChildren().values()) {
+      removeRecursively(child);
+    }
+  }
+
+  private void removeRecursivelyAndCollectModified(MNode mNode, Collection<MNode> removedMNodes){
+    if (MNode.isNull(mNode)) {
+      return;
+    }
+    CacheEntry entry = mNode.getEvictionEntry();
+    if (entry == null) {
+      return;
+    }
+    removeOne(entry);
+    mNode.setEvictionEntry(null);
+    if(removedMNodes!=null&&entry.isModified){
       removedMNodes.add(mNode);
     }
-    int num=1;
     for (MNode child : mNode.getChildren().values()) {
-      num+=removeRecursively(child,removedMNodes);
+      removeRecursivelyAndCollectModified(child,removedMNodes);
     }
-    return num;
   }
 
   @Override
@@ -134,7 +155,7 @@ public class LRUEviction implements EvictionStrategy {
       if(mNode.getParent()!=null){
         mNode.getParent().evictChild(mNode.getName());
       }
-      size-=removeRecursively(mNode,evictedMNode);
+      removeRecursivelyAndCollectModified(mNode,evictedMNode);
       return evictedMNode;
     }finally {
       lock.unlock();

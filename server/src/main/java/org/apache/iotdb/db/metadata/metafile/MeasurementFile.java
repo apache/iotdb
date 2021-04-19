@@ -72,13 +72,11 @@ public class MeasurementFile {
     MeasurementMNode measurementMNode = new MeasurementMNode(null, null, null, null);
     readData(measurementMNode, buffer);
     measurementMNode.setPosition(position);
-    measurementMNode.setModified(false);
     return measurementMNode;
   }
 
   public void readData(MeasurementMNode measurementMNode) throws IOException {
     readData(measurementMNode, readBytesFromFile(measurementMNode.getPosition()));
-    measurementMNode.setModified(false);
   }
 
   private void readData(MeasurementMNode measurementMNode, ByteBuffer dataBuffer) {
@@ -127,7 +125,6 @@ public class MeasurementFile {
     }
     ByteBuffer byteBuffer = serializeMeasurementMNodeData(measurementMNode);
     fileAccess.writeBytes(measurementMNode.getPosition(), byteBuffer);
-    measurementMNode.setModified(false);
   }
 
   private ByteBuffer serializeMeasurementMNodeData(MeasurementMNode measurementMNode) {

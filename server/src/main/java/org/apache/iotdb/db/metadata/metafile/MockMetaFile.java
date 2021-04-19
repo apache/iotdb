@@ -37,7 +37,6 @@ public class MockMetaFile implements MetaFileAccess {
 
   @Override
   public void write(MNode mNode) throws IOException {
-    mNode.setModified(false);
     mNode.setPosition(-1);
     mockFile.put(mNode.getFullPath(), mNode);
     if (mNode instanceof MeasurementMNode) {

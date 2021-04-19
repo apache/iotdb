@@ -20,7 +20,7 @@ package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.cache.EvictionEntry;
+import org.apache.iotdb.db.metadata.cache.CacheEntry;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.rescon.CachedStringPool;
 
@@ -56,10 +56,7 @@ public class MNode implements Serializable {
   /** offset in metafile */
   protected long position;
 
-  /** whether the node has been modified and is different from the content in metafile */
-  protected boolean isModified=true;
-
-  protected transient EvictionEntry evictionEntry;
+  protected transient CacheEntry cacheEntry;
 
   /**
    * use in Measurement Node so it's protected suppress warnings reason: volatile for double
@@ -326,7 +323,7 @@ public class MNode implements Serializable {
     newChildNode.setParent(this);
 
     newChildNode.position=oldChildNode.position;
-    newChildNode.evictionEntry=oldChildNode.evictionEntry;
+    newChildNode.cacheEntry =oldChildNode.cacheEntry;
 
     this.deleteChild(measurement);
     this.addChild(newChildNode.getName(), newChildNode);
@@ -335,14 +332,6 @@ public class MNode implements Serializable {
   /** whether be loaded from file */
   public boolean isLoaded() {
     return children != null;
-  }
-
-  public boolean isModified() {
-    return isModified;
-  }
-
-  public void setModified(boolean modified) {
-    isModified = modified;
   }
 
   public boolean isPersisted(){
@@ -357,16 +346,16 @@ public class MNode implements Serializable {
     this.position = position;
   }
 
-  public EvictionEntry getEvictionEntry() {
-    return evictionEntry;
+  public CacheEntry getEvictionEntry() {
+    return cacheEntry;
   }
 
-  public void setEvictionEntry(EvictionEntry evictionEntry) {
-    this.evictionEntry = evictionEntry;
+  public void setEvictionEntry(CacheEntry cacheEntry) {
+    this.cacheEntry = cacheEntry;
   }
 
   public boolean isCached(){
-    return evictionEntry!=null;
+    return cacheEntry !=null;
   }
 
   public void evictChild(String name) {

@@ -2,27 +2,31 @@ package org.apache.iotdb.db.metadata.cache;
 
 import org.apache.iotdb.db.metadata.mnode.MNode;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.Collection;
 
-public class LRUEvictionTest {
+public class LRUCacheStrategyTest {
 
   @Test
   public void testLRUEviction() {
     MNode root = getSimpleTree();
-    LRUEviction lruEviction = new LRUEviction();
+    LRUCacheStrategy lruEviction = new LRUCacheStrategy();
     lruEviction.applyChange(root);
     lruEviction.applyChange(root.getChild("s1"));
     lruEviction.applyChange(root.getChild("s2"));
     lruEviction.applyChange(root.getChild("s1").getChild("t2"));
     StringBuilder stringBuilder = new StringBuilder();
-    EvictionEntry entry = root.getEvictionEntry();
+    CacheEntry entry = root.getEvictionEntry();
     while (entry != null) {
       stringBuilder.append(entry.getValue().getFullPath()).append("\r\n");
       entry = entry.getPre();
     }
-    System.out.println(stringBuilder.toString());
+    Assert.assertEquals("root\r\n" +
+            "root.s1\r\n" +
+            "root.s2\r\n" +
+            "root.s1.t2\r\n",stringBuilder.toString());
 
     lruEviction.remove(root.getChild("s1"));
     stringBuilder = new StringBuilder();
@@ -31,12 +35,13 @@ public class LRUEvictionTest {
       stringBuilder.append(entry.getValue().getFullPath()).append("\r\n");
       entry = entry.getPre();
     }
-    System.out.println(stringBuilder.toString());
+    Assert.assertEquals("root\r\n" +
+            "root.s2\r\n",stringBuilder.toString());
 
     Collection<MNode> collection=lruEviction.evict();
-    for(MNode mNode:collection){
-      System.out.println(mNode.getFullPath());
-    }
+    Assert.assertTrue(collection.contains(root));
+    Assert.assertTrue(collection.contains(root.getChild("s2")));
+    Assert.assertFalse(collection.contains(root.getChild("s1")));
   }
 
   private MNode getSimpleTree() {

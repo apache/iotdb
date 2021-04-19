@@ -7,6 +7,7 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -47,7 +48,7 @@ public class MTreeFileTest {
     MNode mNode = new MNode(null, "root");
     mTreeFile.write(mNode);
     mNode = mTreeFile.read(mNode.getPosition(), null);
-    System.out.println(mNode.getName());
+    Assert.assertEquals("root",mNode.getName());
   }
 
   @Test
@@ -60,7 +61,8 @@ public class MTreeFileTest {
     s.addChild("t", new MeasurementMNode(null, "t", new MeasurementSchema(), null));
     mTreeFile.writeRecursively(root);
     MNode mNode = mTreeFile.read("root.p.s.t");
-    System.out.println(mNode.getFullPath() + " " + mNode.isLoaded());
+    Assert.assertEquals("root.p.s.t",mNode.getFullPath());
+    Assert.assertFalse(mNode.isLoaded());
   }
 
   @Test
@@ -68,7 +70,14 @@ public class MTreeFileTest {
     MNode mNode = getSimpleTree();
     mTreeFile.writeRecursively(mNode);
     mNode = mTreeFile.readRecursively(mNode.getPosition(), null);
-    showTree(mNode);
+    Assert.assertEquals("root\r\n" +
+            "root.s1\r\n" +
+            "root.s1.t1\r\n" +
+            "root.s1.t2\r\n" +
+            "root.s1.t2.z1\r\n" +
+            "root.s2\r\n" +
+            "root.s2.t1\r\n" +
+            "root.s2.t2\r\n",treeToStringDFT(mNode));
   }
 
   private MNode getSimpleTree() {
@@ -90,12 +99,22 @@ public class MTreeFileTest {
     MNode mNode = getMTree();
     mTreeFile.writeRecursively(mNode);
     mNode = mTreeFile.readRecursively(mNode.getPosition(), null);
-    showTree(mNode);
+    Assert.assertEquals("root\r\n" +
+            "root.p\r\n" +
+            "root.p.s1\r\n" +
+            "root.p.s1.t1\r\n" +
+            "root.p.s1.t2\r\n" +
+            "root.p.s2\r\n" +
+            "root.p.s2.t1\r\n" +
+            "root.p.s2.t2\r\n",treeToStringDFT(mNode));
     StorageGroupMNode s1 = (StorageGroupMNode) mNode.getChild("p").getChild("s1");
     StorageGroupMNode s2 = (StorageGroupMNode) mNode.getChild("p").getChild("s2");
-    System.out.println("s1.TTL: " + s1.getDataTTL() + "; s2.TTL: " + s2.getDataTTL());
+    Assert.assertEquals(1000,s1.getDataTTL());
+    Assert.assertEquals(2000,s2.getDataTTL());
     MeasurementMNode t1 = (MeasurementMNode) mNode.getChild("p").getChild("s1").getChild("t1");
     MeasurementMNode t2 = (MeasurementMNode) mNode.getChild("p").getChild("s2").getChild("t2");
+    Assert.assertFalse(t1.isLoaded());
+    Assert.assertFalse(t2.isLoaded());
   }
 
   private MNode getMTree() {
@@ -126,4 +145,21 @@ public class MTreeFileTest {
       showTree(child);
     }
   }
+
+  private String treeToStringDFT(MNode mNode){
+    StringBuilder stringBuilder=new StringBuilder();
+    dft(mNode,stringBuilder);
+    return stringBuilder.toString();
+  }
+
+  private void dft(MNode mNode, StringBuilder stringBuilder){
+    if (mNode == null) {
+      return;
+    }
+    stringBuilder.append(mNode.getFullPath()).append("\r\n");
+    for (MNode child : mNode.getChildren().values()) {
+      dft(child,stringBuilder);
+    }
+  }
+
 }
