@@ -152,6 +152,10 @@ public class SlidingSizeWindowEvaluationHandlerTest {
 
     for (int i = 0; i < totalPointNumber; ++i) {
       handler.collect(i, i);
+
+      // the following data points will be ignored
+      handler.collect(i, i);
+      handler.collect(i - 1, i);
     }
 
     await()

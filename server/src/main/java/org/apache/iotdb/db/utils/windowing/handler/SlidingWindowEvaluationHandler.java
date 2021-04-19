@@ -36,6 +36,8 @@ public abstract class SlidingWindowEvaluationHandler {
 
   protected final EvictableBatchList data;
 
+  private long maxTime;
+
   protected SlidingWindowEvaluationHandler(Configuration configuration, Evaluator evaluator)
       throws WindowingException {
     this.configuration = configuration;
@@ -44,41 +46,78 @@ public abstract class SlidingWindowEvaluationHandler {
     configuration.check();
 
     data = new EvictableBatchList(configuration.getDataType());
+
+    maxTime = Long.MIN_VALUE;
   }
 
   protected abstract void createEvaluationTaskIfNecessary(long timestamp);
 
   public final void collect(long timestamp, int value) {
+    if (timestamp <= maxTime) {
+      return;
+    }
+    maxTime = timestamp;
+
     data.putInt(timestamp, value);
     createEvaluationTaskIfNecessary(timestamp);
   }
 
   public final void collect(long timestamp, long value) {
+    if (timestamp <= maxTime) {
+      return;
+    }
+    maxTime = timestamp;
+
     data.putLong(timestamp, value);
     createEvaluationTaskIfNecessary(timestamp);
   }
 
   public final void collect(long timestamp, float value) {
+    if (timestamp <= maxTime) {
+      return;
+    }
+    maxTime = timestamp;
+
     data.putFloat(timestamp, value);
     createEvaluationTaskIfNecessary(timestamp);
   }
 
   public final void collect(long timestamp, double value) {
+    if (timestamp <= maxTime) {
+      return;
+    }
+    maxTime = timestamp;
+
     data.putDouble(timestamp, value);
     createEvaluationTaskIfNecessary(timestamp);
   }
 
   public final void collect(long timestamp, boolean value) {
+    if (timestamp <= maxTime) {
+      return;
+    }
+    maxTime = timestamp;
+
     data.putBoolean(timestamp, value);
     createEvaluationTaskIfNecessary(timestamp);
   }
 
   public final void collect(long timestamp, String value) {
+    if (timestamp <= maxTime) {
+      return;
+    }
+    maxTime = timestamp;
+
     data.putBinary(timestamp, Binary.valueOf(value));
     createEvaluationTaskIfNecessary(timestamp);
   }
 
   public final void collect(long timestamp, Binary value) {
+    if (timestamp <= maxTime) {
+      return;
+    }
+    maxTime = timestamp;
+
     data.putBinary(timestamp, value);
     createEvaluationTaskIfNecessary(timestamp);
   }
