@@ -139,7 +139,7 @@ public class DataSizeEstimator {
       Pair<Long, Long> lastData = dataPointList.get(dataPointList.size() - 1);
       pointNum = (long) ((double) (chunkSize / lastData.right) * lastData.left);
     }
-    return 0L;
+    return pointNum;
   }
 
   public void addDataInfo(String storageGroup, long dataPointNum, long dataSizeInMem) {

@@ -38,11 +38,16 @@ public class WorkloadManager {
    * @return true if the workload changes else false
    */
   public boolean isWorkloadChanged(String deviceId) {
-    ListStatistic oriStatistic = workloadList.getStatistic();
-    workloadList.dropExpiredRecord();
-    workloadList.updateStatistic();
-    ListStatistic newStatistic = workloadList.getStatistic();
-    return !oriStatistic.isTheSame(newStatistic);
+    readLock.lock();
+    try {
+      ListStatistic oriStatistic = workloadList.getStatistic();
+      workloadList.dropExpiredRecord();
+      workloadList.updateStatistic();
+      ListStatistic newStatistic = workloadList.getStatistic();
+      return !oriStatistic.isTheSame(newStatistic);
+    } finally {
+      readLock.unlock();
+    }
   }
 
   /**
@@ -53,11 +58,16 @@ public class WorkloadManager {
    * @return the list of the query record
    */
   public List<QueryRecord> getSampledQueryRecord(String deviceId, int sampleNum) {
-    WorkloadInfo info = workloadList.getWorkloadInfo(deviceId);
-    List<QueryRecord> records = new LinkedList<>();
-    for (int i = 0; i < sampleNum; i++) {
-      records.add(info.sample());
+    readLock.lock();
+    try {
+      WorkloadInfo info = workloadList.getWorkloadInfo(deviceId);
+      List<QueryRecord> records = new LinkedList<>();
+      for (int i = 0; i < sampleNum; i++) {
+        records.add(info.sample());
+      }
+      return records;
+    } finally {
+      readLock.unlock();
     }
-    return records;
   }
 }

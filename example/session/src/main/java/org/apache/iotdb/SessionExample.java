@@ -29,6 +29,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.thrift.TException;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -50,7 +51,7 @@ public class SessionExample {
   private static final String LOCAL_HOST = "127.0.0.1";
 
   public static void main(String[] args)
-      throws IoTDBConnectionException, StatementExecutionException {
+          throws IoTDBConnectionException, StatementExecutionException, TException {
     session = new Session(LOCAL_HOST, 6667, "root", "root");
     session.open(false);
 
@@ -64,25 +65,26 @@ public class SessionExample {
         throw e;
       }
     }
-
-    createTimeseries();
-    createMultiTimeseries();
-    insertRecord();
-    insertTablet();
-    insertTablets();
-    insertRecords();
-    session.executeNonQueryStatement("flush");
+    //
+    //    createTimeseries();
+    //    createMultiTimeseries();
+    //    insertRecord();
+    //    insertTablet();
+    //    insertTablets();
+    //    insertRecords();
+    //    session.executeNonQueryStatement("flush");
+    session.myTest();
+//    SessionDataSet dataSet = session.executeQueryStatement("select count(*) from root.sg1.d1");
+//    while (dataSet.hasNext()) {
+//      dataSet.next();
+//    }
     //    nonQuery();
     //    query();
     //    queryWithTimeout();
     //    rawDataQuery();
     //    queryByIterator();
-    SessionDataSet dataSet = session.executeQueryStatement("select count(d1.s1) from root.sg1");
-    while (dataSet.hasNext()) {
-      dataSet.next();
-    }
-    deleteData();
-    deleteTimeseries();
+    //    deleteData();
+    //    deleteTimeseries();
     //    setTimeout();
     //
     //    sessionEnableRedirect = new Session(LOCAL_HOST, 6667, "root", "root");
