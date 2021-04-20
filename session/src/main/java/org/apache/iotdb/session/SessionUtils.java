@@ -43,21 +43,6 @@ public class SessionUtils {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static ByteBuffer getValueBuffer(Tablet tablet) {
     ByteBuffer valueBuffer = ByteBuffer.allocate(tablet.getTotalValueOccupation());
-    boolean hasBitMaps = tablet.bitMaps != null;
-    valueBuffer.put(BytesUtils.boolToByte(hasBitMaps));
-    if (hasBitMaps) {
-      for (BitMap bitMap : tablet.bitMaps) {
-        boolean columnHasNull = bitMap != null && !bitMap.isAllUnmarked();
-        valueBuffer.put(BytesUtils.boolToByte(columnHasNull));
-
-        if (columnHasNull) {
-          byte[] bytes = bitMap.getByteArray();
-          for (int j = 0; j < tablet.rowSize / Byte.SIZE + 1; j++) {
-            valueBuffer.put(bytes[j]);
-          }
-        }
-      }
-    }
     int indexOfValues = 0;
     for (int i = 0; i < tablet.getSchemas().size(); i++) {
       IMeasurementSchema schema = tablet.getSchemas().get(i);
@@ -69,6 +54,18 @@ public class SessionUtils {
           getValueBufferOfDataType(
               schema.getValueTSDataTypeList().get(j), tablet, indexOfValues, valueBuffer);
           indexOfValues++;
+        }
+      }
+    }
+    if (tablet.bitMaps != null) {
+      for (BitMap bitMap : tablet.bitMaps) {
+        boolean columnHasNull = bitMap != null && !bitMap.isAllUnmarked();
+        valueBuffer.put(BytesUtils.boolToByte(columnHasNull));
+        if (columnHasNull) {
+          byte[] bytes = bitMap.getByteArray();
+          for (int j = 0; j < tablet.rowSize / Byte.SIZE + 1; j++) {
+            valueBuffer.put(bytes[j]);
+          }
         }
       }
     }

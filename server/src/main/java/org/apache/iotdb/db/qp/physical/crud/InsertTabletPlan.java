@@ -157,8 +157,8 @@ public class InsertTabletPlan extends InsertPlan {
     writeMeasurements(stream);
     writeDataTypes(stream);
     writeTimes(stream);
-    writeBitMaps(stream);
     writeValues(stream);
+    writeBitMaps(stream);
   }
 
   private void writeMeasurements(DataOutputStream stream) throws IOException {
@@ -207,7 +207,6 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   private void writeBitMaps(DataOutputStream stream) throws IOException {
-    stream.writeBoolean(bitMaps != null);
     if (bitMaps != null) {
       for (BitMap bitMap : bitMaps) {
         if (bitMap == null) {
@@ -243,8 +242,8 @@ public class InsertTabletPlan extends InsertPlan {
     writeMeasurements(buffer);
     writeDataTypes(buffer);
     writeTimes(buffer);
-    writeBitMaps(buffer);
     writeValues(buffer);
+    writeBitMaps(buffer);
   }
 
   private void writeMeasurements(ByteBuffer buffer) {
@@ -292,7 +291,6 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   private void writeBitMaps(ByteBuffer buffer) {
-    buffer.put(BytesUtils.boolToByte(bitMaps != null));
     if (bitMaps != null) {
       for (BitMap bitMap : bitMaps) {
         if (bitMap == null) {
@@ -461,9 +459,9 @@ public class InsertTabletPlan extends InsertPlan {
     times = QueryDataSetUtils.readTimesFromBuffer(buffer, rows);
     updateTimesCache();
 
-    bitMaps = QueryDataSetUtils.readBitMapsFromBuffer(buffer, dataTypeSize, rows);
     columns = QueryDataSetUtils.readValuesFromBuffer(buffer, dataTypes, dataTypeSize, rows);
     this.index = buffer.getLong();
+    bitMaps = QueryDataSetUtils.readBitMapsFromBuffer(buffer, dataTypeSize, rows);
   }
 
   public void setDataTypes(List<Integer> dataTypes) {
