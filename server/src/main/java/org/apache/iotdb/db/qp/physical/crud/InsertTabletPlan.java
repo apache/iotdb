@@ -457,7 +457,10 @@ public class InsertTabletPlan extends InsertPlan {
     this.times = new long[rows];
     times = QueryDataSetUtils.readTimesFromBuffer(buffer, rows);
 
-    bitMaps = QueryDataSetUtils.readBitMapsFromBuffer(buffer, dataTypeSize, rows);
+    boolean hasBitMaps = BytesUtils.byteToBool(buffer.get());
+    if (hasBitMaps) {
+      bitMaps = QueryDataSetUtils.readBitMapsFromBuffer(buffer, dataTypeSize, rows);
+    }
     columns = QueryDataSetUtils.readValuesFromBuffer(buffer, dataTypes, dataTypeSize, rows);
     this.index = buffer.getLong();
   }

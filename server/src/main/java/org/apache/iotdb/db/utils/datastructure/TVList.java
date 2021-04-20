@@ -571,10 +571,13 @@ public abstract class TVList {
           cur++;
           continue;
         }
-        cachedTimeValuePair = getTimeValuePair(cur, time, floatPrecision, encoding);
-        hasCachedPair = true;
+        TimeValuePair tvPair = getTimeValuePair(cur, time, floatPrecision, encoding);
         cur++;
-        return true;
+        if (tvPair.getValue() != null) {
+          cachedTimeValuePair = tvPair;
+          hasCachedPair = true;
+          return true;
+        }
       }
 
       return false;
