@@ -36,6 +36,8 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
+import org.apache.iotdb.db.engine.trigger.executor.TriggerEvent;
 import org.apache.iotdb.db.engine.upgrade.UpgradeCheckStatus;
 import org.apache.iotdb.db.engine.upgrade.UpgradeLog;
 import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
@@ -44,6 +46,7 @@ import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
+import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
@@ -780,7 +783,8 @@ public class StorageGroupProcessor {
     }
   }
 
-  public void insert(InsertRowPlan insertRowPlan) throws WriteProcessException {
+  public void insert(InsertRowPlan insertRowPlan)
+      throws WriteProcessException, TriggerExecutionException {
     // reject insertions that are out of ttl
     if (!isAlive(insertRowPlan.getTime())) {
       throw new OutOfTTLException(insertRowPlan.getTime(), (System.currentTimeMillis() - dataTTL));
@@ -809,9 +813,13 @@ public class StorageGroupProcessor {
       }
 
       latestTimeForEachDevice.computeIfAbsent(timePartitionId, l -> new HashMap<>());
+
+      // fire trigger before insertion
+      TriggerEngine.fire(TriggerEvent.BEFORE_INSERT, insertRowPlan);
       // insert to sequence or unSequence file
       insertToTsFileProcessor(insertRowPlan, isSequence, timePartitionId);
-
+      // fire trigger after insertion
+      TriggerEngine.fire(TriggerEvent.AFTER_INSERT, insertRowPlan);
     } finally {
       writeUnlock();
     }
@@ -823,7 +831,8 @@ public class StorageGroupProcessor {
    * @throws BatchProcessException if some of the rows failed to be inserted
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public void insertTablet(InsertTabletPlan insertTabletPlan) throws BatchProcessException {
+  public void insertTablet(InsertTabletPlan insertTabletPlan)
+      throws BatchProcessException, TriggerExecutionException {
     if (enableMemControl) {
       try {
         StorageEngine.blockInsertionIfReject();
@@ -862,6 +871,11 @@ public class StorageGroupProcessor {
       if (loc == insertTabletPlan.getRowCount()) {
         throw new BatchProcessException(results);
       }
+
+      // fire trigger before insertion
+      final int firePosition = loc;
+      TriggerEngine.fire(TriggerEvent.BEFORE_INSERT, insertTabletPlan, firePosition);
+
       // before is first start point
       int before = loc;
       // before time partition
@@ -932,6 +946,9 @@ public class StorageGroupProcessor {
       if (!noFailure) {
         throw new BatchProcessException(results);
       }
+
+      // fire trigger after insertion
+      TriggerEngine.fire(TriggerEvent.AFTER_INSERT, insertTabletPlan, firePosition);
     } finally {
       writeUnlock();
     }
@@ -2863,7 +2880,7 @@ public class StorageGroupProcessor {
   }
 
   public void insert(InsertRowsOfOneDevicePlan insertRowsOfOneDevicePlan)
-      throws WriteProcessException {
+      throws WriteProcessException, TriggerExecutionException {
     if (enableMemControl) {
       StorageEngine.blockInsertionIfReject();
     }
@@ -2896,8 +2913,13 @@ public class StorageGroupProcessor {
           return;
         }
         latestTimeForEachDevice.computeIfAbsent(timePartitionId, l -> new HashMap<>());
+
+        // fire trigger before insertion
+        TriggerEngine.fire(TriggerEvent.BEFORE_INSERT, plan);
         // insert to sequence or unSequence file
         insertToTsFileProcessor(plan, isSequence, timePartitionId);
+        // fire trigger before insertion
+        TriggerEngine.fire(TriggerEvent.AFTER_INSERT, plan);
       }
     } finally {
       writeUnlock();

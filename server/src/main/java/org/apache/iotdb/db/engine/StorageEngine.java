@@ -504,7 +504,6 @@ public class StorageEngine implements IService {
    * @param insertRowPlan physical plan of insertion
    */
   public void insert(InsertRowPlan insertRowPlan) throws StorageEngineException {
-
     StorageGroupProcessor storageGroupProcessor = getProcessor(insertRowPlan.getDeviceId());
 
     try {
@@ -551,6 +550,7 @@ public class StorageEngine implements IService {
     }
 
     storageGroupProcessor.insertTablet(insertTabletPlan);
+
     if (config.isEnableStatMonitor()) {
       try {
         StorageGroupMNode storageGroupMNode =

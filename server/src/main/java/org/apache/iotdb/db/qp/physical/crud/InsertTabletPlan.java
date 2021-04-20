@@ -60,9 +60,6 @@ public class InsertTabletPlan extends InsertPlan {
   // indicate whether this plan has been set 'start' or 'end' in order to support plan transmission
   // without data loss in cluster version
   boolean isExecuting = false;
-  // cached values
-  private Long maxTime = Long.MIN_VALUE;
-  private Long minTime = Long.MAX_VALUE;
   private List<PartialPath> paths;
   private int start;
   private int end;
@@ -459,7 +456,6 @@ public class InsertTabletPlan extends InsertPlan {
     rowCount = rows;
     this.times = new long[rows];
     times = QueryDataSetUtils.readTimesFromBuffer(buffer, rows);
-    updateTimesCache();
 
     bitMaps = QueryDataSetUtils.readBitMapsFromBuffer(buffer, dataTypeSize, rows);
     columns = QueryDataSetUtils.readValuesFromBuffer(buffer, dataTypes, dataTypeSize, rows);
@@ -495,11 +491,11 @@ public class InsertTabletPlan extends InsertPlan {
 
   @Override
   public long getMinTime() {
-    return minTime;
+    return times.length != 0 ? times[0] : Long.MIN_VALUE;
   }
 
   public long getMaxTime() {
-    return maxTime;
+    return times.length != 0 ? times[times.length - 1] : Long.MAX_VALUE;
   }
 
   public TimeValuePair composeLastTimeValuePair(int measurementIndex) {
@@ -545,18 +541,6 @@ public class InsertTabletPlan extends InsertPlan {
 
   public void setTimes(long[] times) {
     this.times = times;
-    updateTimesCache();
-  }
-
-  private void updateTimesCache() {
-    for (Long time : times) {
-      if (time > maxTime) {
-        maxTime = time;
-      }
-      if (time < minTime) {
-        minTime = time;
-      }
-    }
   }
 
   public int getRowCount() {
@@ -618,15 +602,13 @@ public class InsertTabletPlan extends InsertPlan {
         && Arrays.equals(times, that.times)
         && Objects.equals(timeBuffer, that.timeBuffer)
         && Objects.equals(valueBuffer, that.valueBuffer)
-        && Objects.equals(maxTime, that.maxTime)
-        && Objects.equals(minTime, that.minTime)
         && Objects.equals(paths, that.paths)
         && Objects.equals(range, that.range);
   }
 
   @Override
   public int hashCode() {
-    int result = Objects.hash(timeBuffer, valueBuffer, rowCount, maxTime, minTime, paths, range);
+    int result = Objects.hash(timeBuffer, valueBuffer, rowCount, paths, range);
     result = 31 * result + Arrays.hashCode(times);
     return result;
   }

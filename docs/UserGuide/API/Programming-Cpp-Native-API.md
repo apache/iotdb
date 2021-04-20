@@ -18,47 +18,7 @@
     under the License.
 
 -->
-
-
-## Python Native Dependencies
-
-
-### Dependencies
-
-python3.7 or later is preferred.
-
-You have to install Thrift (0.11.0 or later) to compile our thrift file into python code. Below is the official
-tutorial of installation: 
-
-```
-http://thrift.apache.org/docs/install/
-```
-
-### Installation
-
-* Option 1: pip install
-
-You can find the Apache IoTDB Python Client API package on https://pypi.org/project/apache-iotdb/.
-
-The download command is:
-
-```
-pip install apache-iotdb
-```
-
-* Option 2: basic usage of thrift
-
-Optionally, if you know the basic usage of thrift, you can download the thrift source file in
-`thrift\src\main\thrift\rpc.thrift`, and simply run `thrift -gen py -out ./target/iotdb rpc.thrift` 
-to generate the Python library.
-
-### Coding Example
-
-We provided an example of how to use the thrift library to connect to IoTDB in `client-py/src
-/SessionExample.py`, please read it carefully before you write your own code.
-
-
-## C++ Native Interfaces
+## C++ Native API
 
 ### Dependencies
 - Java 8+
@@ -68,48 +28,54 @@ We provided an example of how to use the thrift library to connect to IoTDB in `
 - Boost
 - OpenSSL 1.0+
 
+
+
 ### Installation
 
 The compilation of CPP client requires the module "compile-tools" to be built first. 
 "compile-tools" is mainly responsible for building Thrift libraries locally.
 
+
+
 #### Build Thrift on MacOS
 
 - Bison
 
- Bison 2.3 is preinstalled on OSX, but this version is too low.
- When building Thrift with Bison 2.3, the following error would pop out:
+Bison 2.3 is preinstalled on OSX, but this version is too low.
 
- 
-```
+When building Thrift with Bison 2.3, the following error would pop out:
+
+
+```shell
 invalid directive: '%code'
 ```
-	
-For such case, please update `Bison`:		
-		
+
+For such case, please update `Bison`:
 ```		
 brew install bison		
 brew link bison --force		
 ```
-		
- Then, you need to tell the OS where the new bison is.		
-		
- For Bash users:		
-```    		
+
+Then, you need to tell the OS where the new bison is.
+
+For Bash users:		
+
+```    		shell
 echo 'export PATH="/usr/local/opt/bison/bin:$PATH"' >> ~/.bash_profile		
 ```
-		
- For zsh users:		
-```    		
+
+For zsh users:		
+```    		shell
 echo 'export PATH="/usr/local/opt/bison/bin:$PATH"' >> ~/.zshrc
 ```
 
 - Boost
 
 Please make sure a relative new version of Boost is ready on your machine.
+
 If no Boost available, install the latest version of Boost:
 
-```
+```shell
 brew install boost
 brew link boost
 ```
@@ -125,20 +91,24 @@ If Openssl header files can not be found when building Thrift, please add option
 
 to specify the OpenSSL installation directory on your Mac.
 
+
+
 #### Build Thrift on Linux
 
 To install all dependencies, run:
 
 Debian/Ubuntu:
 
-```
+```shell
 sudo apt-get install gcc g++ bison flex libboost-all-dev
 ```
 
 CentOS:
-```
+```shell
 yum install gcc g++ bison flex boost-devel
 ```
+
+
 
 #### Build Thrift on Windows
 
@@ -156,13 +126,15 @@ After downloaded, please rename the executables to flex.exe and bison.exe and ad
 For Boost, please download from the official website: https://www.boost.org/users/download/
 
 Then build Boost by executing bootstrap.bat and b2.exe.
-```
+```powershell
 bootstrap.bat
 .\b2.exe
 ```
 
 To help CMake find your Boost libraries on windows, you should set `-Dboost.include.dir=${your boost header folder} -Dboost.library.dir=${your boost lib (stage) folder}`
 to your mvn build command.
+
+
 
 #### Cmake generator on Windows
 
@@ -198,13 +170,13 @@ There is a long list of supported Cmake generators on Windows environment.
   Watcom WMake                 = Generates Watcom WMake makefiles.
   CodeBlocks - MinGW Makefiles = Generates CodeBlocks project files.
   CodeBlocks - NMake Makefiles = Generates CodeBlocks project files.
-  CodeBlocks - NMake Makefiles = Generates CodeBlocks project fi
-
 ```
 the list is available via command: `cmake --help`
 
 When building client-cpp project, use -Dcmake.generator="" option to specify a Cmake generator.
 E.g., `mvn package -Dcmake.generator="Visual Studio 15 2017 [arch]"`
+
+
 
 
 #### Building C++ Client
@@ -214,18 +186,20 @@ To compile cpp client, add "-P compile-cpp" option to maven build command.
 
 The compiling requires the module "compile-tools" to be built first.
 
-#### Compile and Test:
+
+
+#### Compile and Test
 
 `mvn package -P compile-cpp  -pl example/client-cpp-example -am -DskipTest`
 
 To compile on Windows, please install Boost first and add following Maven settings:
-```
+```shell
 -Dboost.include.dir=${your boost header folder} -Dboost.library.dir=${your boost lib (stage) folder}` 
 ```
 
 e.g.,
 
-```
+```shell
 mvn package -P compile-cpp -pl client-cpp,server,example/client-cpp-example -am 
 -D"boost.include.dir"="D:\boost_1_75_0" -D"boost.library.dir"="D:\boost_1_75_0\stage\lib" -DskipTests
 ```
@@ -235,7 +209,7 @@ If the compilation finishes successfully, the packaged zip file will be placed u
 
 On Mac machines, the hierarchy of the package should look like this:
 
-```
+```shell
 .
 +-- client
 |   +-- include
@@ -259,13 +233,16 @@ If errors occur when compiling thrift source code, try to downgrade your xcode-c
 
 see https://stackoverflow.com/questions/63592445/ld-unsupported-tapi-file-type-tapi-tbd-in-yaml-file/65518087#65518087
 
+
+
 #### on Windows
 
 When Building Thrift and downloading packages via "wget", a possible annoying issue may occur with
 error message looks like:
-```
+```shell
 Failed to delete cached file C:\Users\Administrator\.m2\repository\.cache\download-maven-plugin\index.ser
 ```
 Possible fixes:
 - Try to delete the ".m2\repository\\.cache\" directory and try again.
 - Add "\<skipCache>true\</skipCache>" configuration to the download-maven-plugin maven phase that complains this error.
+

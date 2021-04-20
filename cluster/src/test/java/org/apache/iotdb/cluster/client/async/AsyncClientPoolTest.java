@@ -33,6 +33,20 @@ import static org.junit.Assert.assertNull;
 
 public class AsyncClientPoolTest {
 
+  private final ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
+  private boolean isAsyncServer;
+
+  @Before
+  public void setUp() {
+    isAsyncServer = config.isUseAsyncServer();
+    config.setUseAsyncServer(true);
+  }
+
+  @After
+  public void tearDown() {
+    config.setUseAsyncServer(isAsyncServer);
+  }
+
   @Mock private AsyncClientFactory testAsyncClientFactory;
 
   private ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
@@ -110,7 +124,7 @@ public class AsyncClientPoolTest {
 
   @Test
   public void testMaxClient() throws IOException {
-    int maxClientNum = ClusterDescriptor.getInstance().getConfig().getMaxClientPerNodePerMember();
+    int maxClientNum = config.getMaxClientPerNodePerMember();
     config.setMaxClientPerNodePerMember(5);
     testAsyncClientFactory = new TestAsyncClientFactory();
     AsyncClientPool asyncClientPool = new AsyncClientPool(testAsyncClientFactory);
@@ -136,8 +150,7 @@ public class AsyncClientPoolTest {
 
   @Test
   public void testWaitClient() throws IOException {
-    int maxClientPerNodePerMember =
-        ClusterDescriptor.getInstance().getConfig().getMaxClientPerNodePerMember();
+    int maxClientPerNodePerMember = config.getMaxClientPerNodePerMember();
     try {
       config.setMaxClientPerNodePerMember(10);
       testAsyncClientFactory = new TestAsyncClientFactory();
@@ -177,8 +190,7 @@ public class AsyncClientPoolTest {
 
   @Test
   public void testWaitClientTimeOut() throws IOException {
-    int maxClientPerNodePerMember =
-        ClusterDescriptor.getInstance().getConfig().getMaxClientPerNodePerMember();
+    int maxClientPerNodePerMember = config.getMaxClientPerNodePerMember();
     try {
       config.setMaxClientPerNodePerMember(1);
       testAsyncClientFactory = new TestAsyncClientFactory();

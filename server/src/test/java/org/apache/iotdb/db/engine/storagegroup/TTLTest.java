@@ -27,6 +27,7 @@ import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
+import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -103,7 +104,7 @@ public class TTLTest {
   }
 
   private void insertToStorageGroupProcessor(InsertRowPlan insertPlan)
-      throws WriteProcessException {
+      throws WriteProcessException, TriggerExecutionException {
     storageGroupProcessor.insert(insertPlan);
   }
 
@@ -149,7 +150,8 @@ public class TTLTest {
 
   @Test
   public void testTTLWrite()
-      throws WriteProcessException, QueryProcessException, IllegalPathException {
+      throws WriteProcessException, QueryProcessException, IllegalPathException,
+          TriggerExecutionException {
     InsertRowPlan plan = new InsertRowPlan();
     plan.setDeviceId(new PartialPath(sg1));
     plan.setTime(System.currentTimeMillis());
@@ -181,7 +183,8 @@ public class TTLTest {
   }
 
   private void prepareData()
-      throws WriteProcessException, QueryProcessException, IllegalPathException {
+      throws WriteProcessException, QueryProcessException, IllegalPathException,
+          TriggerExecutionException {
     InsertRowPlan plan = new InsertRowPlan();
     plan.setDeviceId(new PartialPath(sg1));
     plan.setTime(System.currentTimeMillis());
@@ -421,7 +424,8 @@ public class TTLTest {
 
   @Test
   public void testTTLCleanFile()
-      throws WriteProcessException, QueryProcessException, IllegalPathException {
+      throws WriteProcessException, QueryProcessException, IllegalPathException,
+          TriggerExecutionException {
     prepareData();
     storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
 

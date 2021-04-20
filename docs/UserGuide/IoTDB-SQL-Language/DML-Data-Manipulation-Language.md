@@ -379,7 +379,7 @@ It costs 0.014s
 
 #### User Defined Timeseries Generating Functions
 
-Please refer to [UDF (User Defined Function)](../UDF/UDF-User-Defined-Function.md).
+Please refer to [UDF (User Defined Function)](../Advanced-Features/UDF-User-Defined-Function.md).
 
 ### Aggregate Query
 
@@ -473,7 +473,7 @@ This section mainly introduces the related examples of down-frequency aggregatio
 using the [GROUP BY clause](../Appendix/SQL-Reference.md), 
 which is used to partition the result set according to the user's given partitioning conditions and aggregate the partitioned result set. 
 IoTDB supports partitioning result sets according to time interval and customized sliding step which should not be smaller than the time interval and defaults to equal the time interval if not set. And by default results are sorted by time in ascending order. 
-You can also use the [Java JDBC](../API/Programming-Native-API.md) standard interface to execute related queries.
+You can also use the [Java JDBC](../API/Programming-JDBC.md) standard interface to execute related queries.
 
 The GROUP BY statement provides users with three types of specified parameters:
 

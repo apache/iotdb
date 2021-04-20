@@ -19,8 +19,6 @@
 
 -->
 
-# 应用编程接口
-
 ## JDBC
 
 ### 依赖
@@ -28,16 +26,20 @@
 * JDK >= 1.8
 * Maven >= 3.6
 
+
+
 ### 安装方法
 
 在根目录下执行下面的命令:
-```
+```shell
 mvn clean install -pl jdbc -am -Dmaven.test.skip=true
 ```
 
-### 在MAVEN中使用 IoTDB JDBC
 
-```
+
+#### 在MAVEN中使用 IoTDB JDBC
+
+```xml
 <dependencies>
     <dependency>
       <groupId>org.apache.iotdb</groupId>
@@ -47,7 +49,9 @@ mvn clean install -pl jdbc -am -Dmaven.test.skip=true
 </dependencies>
 ```
 
-### 示例代码
+
+
+#### 示例代码
 
 本章提供了如何建立数据库连接、执行 SQL 和显示查询结果的示例。
 

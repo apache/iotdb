@@ -39,10 +39,12 @@ import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateIndexPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropIndexPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
@@ -52,6 +54,8 @@ import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetUsingDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
+import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -231,27 +235,21 @@ public abstract class PhysicalPlan {
       switch (type) {
         case INSERT:
           plan = new InsertRowPlan();
-          plan.deserialize(buffer);
           break;
         case BATCHINSERT:
           plan = new InsertTabletPlan();
-          plan.deserialize(buffer);
           break;
         case MULTI_BATCH_INSERT:
           plan = new InsertMultiTabletPlan();
-          plan.deserialize(buffer);
           break;
         case DELETE:
           plan = new DeletePlan();
-          plan.deserialize(buffer);
           break;
         case SET_STORAGE_GROUP:
           plan = new SetStorageGroupPlan();
-          plan.deserialize(buffer);
           break;
         case CREATE_TIMESERIES:
           plan = new CreateTimeSeriesPlan();
-          plan.deserialize(buffer);
           break;
         case CREATE_ALIGNED_TIMESERIES:
           plan = new CreateAlignedTimeSeriesPlan();
@@ -259,123 +257,105 @@ public abstract class PhysicalPlan {
           break;
         case DELETE_TIMESERIES:
           plan = new DeleteTimeSeriesPlan();
-          plan.deserialize(buffer);
           break;
         case CREATE_INDEX:
           plan = new CreateIndexPlan();
-          plan.deserialize(buffer);
           break;
         case DROP_INDEX:
           plan = new DropIndexPlan();
-          plan.deserialize(buffer);
           break;
         case TTL:
           plan = new SetTTLPlan();
-          plan.deserialize(buffer);
           break;
         case GRANT_WATERMARK_EMBEDDING:
           plan = new DataAuthPlan(OperatorType.GRANT_WATERMARK_EMBEDDING);
-          plan.deserialize(buffer);
           break;
         case REVOKE_WATERMARK_EMBEDDING:
           plan = new DataAuthPlan(OperatorType.REVOKE_WATERMARK_EMBEDDING);
-          plan.deserialize(buffer);
           break;
         case CREATE_ROLE:
           plan = new AuthorPlan(OperatorType.CREATE_ROLE);
-          plan.deserialize(buffer);
           break;
         case DELETE_ROLE:
           plan = new AuthorPlan(OperatorType.DELETE_ROLE);
-          plan.deserialize(buffer);
           break;
         case CREATE_USER:
           plan = new AuthorPlan(OperatorType.CREATE_USER);
-          plan.deserialize(buffer);
           break;
         case REVOKE_USER_ROLE:
           plan = new AuthorPlan(OperatorType.REVOKE_USER_ROLE);
-          plan.deserialize(buffer);
           break;
         case REVOKE_ROLE_PRIVILEGE:
           plan = new AuthorPlan(OperatorType.REVOKE_ROLE_PRIVILEGE);
-          plan.deserialize(buffer);
           break;
         case REVOKE_USER_PRIVILEGE:
           plan = new AuthorPlan(OperatorType.REVOKE_USER_PRIVILEGE);
-          plan.deserialize(buffer);
           break;
         case GRANT_ROLE_PRIVILEGE:
           plan = new AuthorPlan(OperatorType.GRANT_ROLE_PRIVILEGE);
-          plan.deserialize(buffer);
           break;
         case GRANT_USER_PRIVILEGE:
           plan = new AuthorPlan(OperatorType.GRANT_USER_PRIVILEGE);
-          plan.deserialize(buffer);
           break;
         case GRANT_USER_ROLE:
           plan = new AuthorPlan(OperatorType.GRANT_USER_ROLE);
-          plan.deserialize(buffer);
           break;
         case MODIFY_PASSWORD:
           plan = new AuthorPlan(OperatorType.MODIFY_PASSWORD);
-          plan.deserialize(buffer);
           break;
         case DELETE_USER:
           plan = new AuthorPlan(OperatorType.DELETE_USER);
-          plan.deserialize(buffer);
           break;
         case DELETE_STORAGE_GROUP:
           plan = new DeleteStorageGroupPlan();
-          plan.deserialize(buffer);
           break;
         case SHOW_TIMESERIES:
           plan = new ShowTimeSeriesPlan();
-          plan.deserialize(buffer);
           break;
         case SHOW_DEVICES:
           plan = new ShowDevicesPlan();
-          plan.deserialize(buffer);
           break;
         case LOAD_CONFIGURATION:
           plan = new LoadConfigurationPlan();
-          plan.deserialize(buffer);
           break;
         case ALTER_TIMESERIES:
           plan = new AlterTimeSeriesPlan();
-          plan.deserialize(buffer);
           break;
         case FLUSH:
           plan = new FlushPlan();
-          plan.deserialize(buffer);
           break;
         case CREATE_MULTI_TIMESERIES:
           plan = new CreateMultiTimeSeriesPlan();
-          plan.deserialize(buffer);
           break;
         case CHANGE_ALIAS:
           plan = new ChangeAliasPlan();
-          plan.deserialize(buffer);
           break;
         case CHANGE_TAG_OFFSET:
           plan = new ChangeTagOffsetPlan();
-          plan.deserialize(buffer);
           break;
         case MNODE:
           plan = new MNodePlan();
-          plan.deserialize(buffer);
           break;
         case MEASUREMENT_MNODE:
           plan = new MeasurementMNodePlan();
-          plan.deserialize(buffer);
           break;
         case STORAGE_GROUP_MNODE:
           plan = new StorageGroupMNodePlan();
-          plan.deserialize(buffer);
           break;
         case BATCH_INSERT_ROWS:
           plan = new InsertRowsPlan();
-          plan.deserialize(buffer);
+          break;
+        case CREATE_TRIGGER:
+          plan = new CreateTriggerPlan();
+          break;
+        case DROP_TRIGGER:
+          plan = new DropTriggerPlan();
+          break;
+        case START_TRIGGER:
+          plan = new StartTriggerPlan();
+          break;
+        case STOP_TRIGGER:
+          plan = new StopTriggerPlan();
           break;
         case CREATE_TEMPLATE:
           plan = new CreateTemplatePlan();
@@ -396,6 +376,7 @@ public abstract class PhysicalPlan {
         default:
           throw new IOException("unrecognized log type " + type);
       }
+      plan.deserialize(buffer);
       return plan;
     }
   }
@@ -443,6 +424,10 @@ public abstract class PhysicalPlan {
     SET_DEVICE_TEMPLATE,
     SET_USING_DEVICE_TEMPLATE,
     AUTO_CREATE_DEVICE_MNODE,
+    CREATE_TRIGGER,
+    DROP_TRIGGER,
+    START_TRIGGER,
+    STOP_TRIGGER
   }
 
   public long getIndex() {

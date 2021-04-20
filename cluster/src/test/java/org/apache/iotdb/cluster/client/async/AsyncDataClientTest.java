@@ -29,7 +29,7 @@ import static org.junit.Assert.assertTrue;
 
 public class AsyncDataClientTest {
 
-  private ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
+  private final ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
   private boolean isAsyncServer;
 
   @Before

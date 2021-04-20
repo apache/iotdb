@@ -514,13 +514,21 @@ public class VectorTVList extends TVList {
 
   @Override
   public TimeValuePair getTimeValuePair(int index) {
-    return new TimeValuePair(getTime(index), (TsPrimitiveType) getVector(index));
+    if (this.dataTypes.size() == 1) {
+      return new TimeValuePair(getTime(index), ((TsPrimitiveType) getVector(index)).getVector()[0]);
+    } else {
+      return new TimeValuePair(getTime(index), (TsPrimitiveType) getVector(index));
+    }
   }
 
   @Override
   protected TimeValuePair getTimeValuePair(
       int index, long time, Integer floatPrecision, TSEncoding encoding) {
-    return new TimeValuePair(getTime(index), (TsPrimitiveType) getVector(index));
+    if (this.dataTypes.size() == 1) {
+      return new TimeValuePair(getTime(index), ((TsPrimitiveType) getVector(index)).getVector()[0]);
+    } else {
+      return new TimeValuePair(getTime(index), (TsPrimitiveType) getVector(index));
+    }
   }
 
   @Override
