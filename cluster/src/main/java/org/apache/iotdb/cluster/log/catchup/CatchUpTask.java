@@ -133,6 +133,10 @@ public class CatchUpTask implements Runnable {
             logsInDisk.get(0).getCurrLogIndex());
         logs = logsInDisk;
         index = findLastMatchIndex(logs);
+        // the follower's matchIndex may have been updated
+        if (index == -1) {
+          return false;
+        }
       } else {
         logger.info(
             "{}, Cannot find matched of {} within [{}, {}] in disk",
