@@ -253,7 +253,6 @@ public abstract class PhysicalPlan {
           break;
         case CREATE_ALIGNED_TIMESERIES:
           plan = new CreateAlignedTimeSeriesPlan();
-          plan.deserialize(buffer);
           break;
         case DELETE_TIMESERIES:
           plan = new DeleteTimeSeriesPlan();
@@ -359,19 +358,15 @@ public abstract class PhysicalPlan {
           break;
         case CREATE_TEMPLATE:
           plan = new CreateTemplatePlan();
-          plan.deserialize(buffer);
           break;
         case SET_DEVICE_TEMPLATE:
           plan = new SetDeviceTemplatePlan();
-          plan.deserialize(buffer);
           break;
         case SET_USING_DEVICE_TEMPLATE:
           plan = new SetUsingDeviceTemplatePlan();
-          plan.deserialize(buffer);
           break;
         case AUTO_CREATE_DEVICE_MNODE:
           plan = new AutoCreateDeviceMNodePlan();
-          plan.deserialize(buffer);
           break;
         default:
           throw new IOException("unrecognized log type " + type);
