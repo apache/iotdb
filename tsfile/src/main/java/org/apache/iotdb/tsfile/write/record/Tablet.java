@@ -284,18 +284,6 @@ public class Tablet {
   /** @return total bytes of values */
   public int getTotalValueOccupation() {
     int valueOccupation = 0;
-    // marker byte
-    valueOccupation++;
-    // bitmap size
-    if (bitMaps != null) {
-      for (BitMap bitMap : bitMaps) {
-        // marker byte
-        valueOccupation++;
-        if (bitMap != null && !bitMap.isAllUnmarked()) {
-          valueOccupation += rowSize / Byte.SIZE + 1;
-        }
-      }
-    }
     int columnIndex = 0;
     for (int i = 0; i < schemas.size(); i++) {
       IMeasurementSchema schema = schemas.get(i);
@@ -307,6 +295,16 @@ public class Tablet {
           TSDataType dataType = schema.getValueTSDataTypeList().get(j);
           valueOccupation += calOccupationOfOneColumn(dataType, columnIndex);
           columnIndex++;
+        }
+      }
+    }
+    // add bitmap size if the tablet has bitMaps
+    if (bitMaps != null) {
+      for (BitMap bitMap : bitMaps) {
+        // marker byte
+        valueOccupation++;
+        if (bitMap != null && !bitMap.isAllUnmarked()) {
+          valueOccupation += rowSize / Byte.SIZE + 1;
         }
       }
     }
