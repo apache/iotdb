@@ -20,8 +20,7 @@ import java.util.Map;
 public class MetaFileTest {
 
   private static String BASE_PATH = MetaFileTest.class.getResource("").getPath();
-  private static String MTREE_FILEPATH = BASE_PATH + "mtree.txt";
-  private static String MEASUREMENT_FILEPATH = BASE_PATH + "measurement.txt";
+  private static String MTREE_FILEPATH = BASE_PATH + "metafile.bin";
 
   private MetaFile metaFile;
 
@@ -32,24 +31,13 @@ public class MetaFileTest {
     if (file.exists()) {
       file.delete();
     }
-
-    file = new File(MEASUREMENT_FILEPATH);
-    if (file.exists()) {
-      file.delete();
-    }
-
-    metaFile = new MetaFile(MTREE_FILEPATH, MEASUREMENT_FILEPATH);
+    metaFile = new MetaFile(MTREE_FILEPATH);
   }
 
   @After
   public void tearDown() throws Exception {
     metaFile.close();
     File file = new File(MTREE_FILEPATH);
-    if (file.exists()) {
-      file.delete();
-    }
-
-    file = new File(MEASUREMENT_FILEPATH);
     if (file.exists()) {
       file.delete();
     }
@@ -75,7 +63,7 @@ public class MetaFileTest {
     s.addChild("t", new MeasurementMNode(null, "t", new MeasurementSchema(), null));
     metaFile.writeRecursively(root);
     MNode mNode = metaFile.readMNode("root.p.s.t");
-    Assert.assertEquals("root.p.s.t", mNode.getFullPath());
+    Assert.assertEquals("t", mNode.getName());
     Assert.assertTrue(mNode.isLoaded());
   }
 
@@ -165,10 +153,10 @@ public class MetaFileTest {
     }
   }
 
-  //  @Test
+    @Test
   public void testIOPerformance() throws IOException {
-    int deviceNum = 100;
-    int schemaNum = 100;
+    int deviceNum = 1000;
+    int schemaNum = 1000;
 
     long startTime, endTime;
     startTime = System.currentTimeMillis();
@@ -176,16 +164,18 @@ public class MetaFileTest {
     StorageGroupMNode sg = new StorageGroupMNode(root, "sg", 1000);
     root.addChild("sg", sg);
     String d, t;
+    MNode device;
     MeasurementMNode m;
     for (int i = 0; i < deviceNum; i++) {
       d = "d" + i;
-      sg.addChild(d, new MNode(sg, d));
+      device=new MNode(sg,d);
+      sg.addChild(d, device);
       for (int j = 0; j < schemaNum; j++) {
         t = "t" + j;
         m =
             new MeasurementMNode(
-                sg.getChild(d), t, new MeasurementSchema(t, TSDataType.INT32), null);
-        sg.getChild(d).addChild(t, m);
+                device, t, new MeasurementSchema(t, TSDataType.INT32), null);
+        device.addChild(t, m);
       }
     }
     endTime = System.currentTimeMillis();

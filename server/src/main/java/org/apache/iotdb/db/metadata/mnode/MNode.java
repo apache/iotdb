@@ -334,10 +334,6 @@ public class MNode implements Serializable {
     this.addChild(newChildNode.getName(), newChildNode);
   }
 
-  public boolean isInternal(){
-    return true;
-  }
-
   public boolean isStorageGroup() {
     return false;
   }

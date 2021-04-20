@@ -54,14 +54,10 @@ public class MTreeDiskBased implements MTreeInterface {
   private static final int DEFAULT_MAX_CAPACITY = 10000;
 
   private MetaFileAccess metaFile;
-  private final String mTreeFilePath =
-      IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
+  private final String metaFilePath;
+  private static final String DEFAULT_METAFILE_PATH=IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
           + File.separator
-          + MetadataConstant.MTREE_FILE_PATH;
-  private final String measurementFilePath =
-      IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
-          + File.separator
-          + MetadataConstant.MEASUREMENT_FILE_PATH;
+          + MetadataConstant.METAFILE_PATH;
 
   private MNode root;
   private PartialPath rootPath;
@@ -73,14 +69,14 @@ public class MTreeDiskBased implements MTreeInterface {
   private static transient ThreadLocal<Integer> curOffset = new ThreadLocal<>();
 
   public MTreeDiskBased() throws IOException {
-    this(null, 4, null, null);
+    this(null, 4, DEFAULT_METAFILE_PATH);
   }
 
   private MTreeDiskBased(MNode root) throws IOException {
-    this(root, DEFAULT_MAX_CAPACITY, null, null);
+    this(root, DEFAULT_MAX_CAPACITY, DEFAULT_METAFILE_PATH);
   }
 
-  public MTreeDiskBased(MNode root, int cacheSize, String mTreeFilePath, String measurementFilePath)
+  public MTreeDiskBased(MNode root, int cacheSize, String metaFilePath)
       throws IOException {
     if (MNode.isNull(root)) {
       root = new MNode(null, IoTDBConstant.PATH_ROOT);
@@ -100,8 +96,8 @@ public class MTreeDiskBased implements MTreeInterface {
       cacheStrategy.applyChange(root);
       cacheStrategy.setModified(root, false);
     }
-
-    metaFile = new MockMetaFile(this.mTreeFilePath, this.measurementFilePath);
+    this.metaFilePath=metaFilePath;
+    metaFile = new MockMetaFile(metaFilePath);
     metaFile.write(root);
   }
 

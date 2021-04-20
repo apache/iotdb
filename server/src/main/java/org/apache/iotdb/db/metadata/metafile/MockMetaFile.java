@@ -14,7 +14,7 @@ public class MockMetaFile implements MetaFileAccess {
 
   private final Map<String, MNode> mockFile = new ConcurrentHashMap<>();
 
-  public MockMetaFile(String mTreeFilePath, String measurementFilePath) {}
+  public MockMetaFile(String metaFilePath) {}
 
   @Override
   public MNode read(PartialPath path) throws IOException {

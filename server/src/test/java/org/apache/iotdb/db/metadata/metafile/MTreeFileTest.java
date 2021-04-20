@@ -19,7 +19,7 @@ import java.util.Map;
 public class MTreeFileTest {
 
   private static String BASE_PATH = MTreeFileTest.class.getResource("").getPath();
-  private static String MTREE_FILEPATH = BASE_PATH + "mtree.txt";
+  private static String MTREE_FILEPATH = BASE_PATH + "mtreefile.bin";
 
   private MTreeFile mTreeFile;
 
@@ -47,7 +47,7 @@ public class MTreeFileTest {
   public void testSimpleMNodeRW() throws IOException {
     MNode mNode = new MNode(null, "root");
     mTreeFile.write(mNode);
-    mNode = mTreeFile.read(mNode.getPosition(), null);
+    mNode = mTreeFile.read(mNode.getPosition());
     Assert.assertEquals("root", mNode.getName());
   }
 
@@ -61,15 +61,15 @@ public class MTreeFileTest {
     s.addChild("t", new MeasurementMNode(null, "t", new MeasurementSchema(), null));
     mTreeFile.writeRecursively(root);
     MNode mNode = mTreeFile.read("root.p.s.t");
-    Assert.assertEquals("root.p.s.t", mNode.getFullPath());
-    Assert.assertFalse(mNode.isLoaded());
+    Assert.assertEquals("t", mNode.getName());
+    Assert.assertTrue(mNode.isMeasurement());
   }
 
   @Test
   public void testSimpleTreeRW() throws IOException {
     MNode mNode = getSimpleTree();
     mTreeFile.writeRecursively(mNode);
-    mNode = mTreeFile.readRecursively(mNode.getPosition(), null);
+    mNode = mTreeFile.readRecursively(mNode.getPosition());
     Assert.assertEquals(
         "root\r\n"
             + "root.s1\r\n"
@@ -100,7 +100,7 @@ public class MTreeFileTest {
   public void testMTreeRW() throws IOException {
     MNode mNode = getMTree();
     mTreeFile.writeRecursively(mNode);
-    mNode = mTreeFile.readRecursively(mNode.getPosition(), null);
+    mNode = mTreeFile.readRecursively(mNode.getPosition());
     Assert.assertEquals(
         "root\r\n"
             + "root.p\r\n"
@@ -111,14 +111,14 @@ public class MTreeFileTest {
             + "root.p.s2.t1\r\n"
             + "root.p.s2.t2\r\n",
         treeToStringDFT(mNode));
+    Assert.assertTrue(mNode.getChild("p").getChild("s1").isStorageGroup());
+    Assert.assertTrue(mNode.getChild("p").getChild("s2").isStorageGroup());
     StorageGroupMNode s1 = (StorageGroupMNode) mNode.getChild("p").getChild("s1");
     StorageGroupMNode s2 = (StorageGroupMNode) mNode.getChild("p").getChild("s2");
     Assert.assertEquals(1000, s1.getDataTTL());
     Assert.assertEquals(2000, s2.getDataTTL());
-    MeasurementMNode t1 = (MeasurementMNode) mNode.getChild("p").getChild("s1").getChild("t1");
-    MeasurementMNode t2 = (MeasurementMNode) mNode.getChild("p").getChild("s2").getChild("t2");
-    Assert.assertFalse(t1.isLoaded());
-    Assert.assertFalse(t2.isLoaded());
+    Assert.assertTrue(mNode.getChild("p").getChild("s1").getChild("t1").isMeasurement());
+    Assert.assertTrue(mNode.getChild("p").getChild("s2").getChild("t2").isMeasurement());
   }
 
   private MNode getMTree() {

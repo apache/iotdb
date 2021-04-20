@@ -75,7 +75,7 @@ public class CachePerformanceTest {
   }
 
   private MTreeInterface testMTreeDisk() throws Exception {
-    MTreeInterface mTreeDisk = new MTreeDiskBased(null, NODE_NUM, null, null);
+    MTreeInterface mTreeDisk = new MTreeDiskBased(null, NODE_NUM, null);
     System.out.println("MTreeDisk TS creation time cost: " + generateMTree(mTreeDisk) + "ms");
     System.out.println("MTreeDisk TS access time cost: " + accessMTree(mTreeDisk) + "ms");
     return mTreeDisk;
@@ -106,7 +106,7 @@ public class CachePerformanceTest {
     createCostTime = 0;
     readCostTime = 0;
     for (int i = 0; i < times; i++) {
-      MTreeDiskBased mTreeDisk = new MTreeDiskBased(null, NODE_NUM, null, null);
+      MTreeDiskBased mTreeDisk = new MTreeDiskBased(null, NODE_NUM, null);
       createCostTime += generateMTree(mTreeDisk);
       readCostTime += accessMTree(mTreeDisk);
       mTreeDisk = null;
@@ -141,8 +141,15 @@ public class CachePerformanceTest {
   private long accessMTree(MTreeInterface mTree) throws Exception {
     long startTime = System.currentTimeMillis();
     int missNum = 0;
-    for (int i = 0; i < DEVICE_NUM; i++) {
-      for (int j = 0; j < TIMESERIES_NUM; j++) {
+//    for (int i = 0; i < DEVICE_NUM; i++) {
+//      for (int j = 0; j < TIMESERIES_NUM; j++) {
+//        if (!mTree.isPathExist(paths[i][j])) {
+//          missNum++;
+//        }
+//      }
+//    }
+    for (int i = DEVICE_NUM - 1; i >= 0; i--) {
+      for (int j = TIMESERIES_NUM - 1; j >= 0 ; j--) {
         if (!mTree.isPathExist(paths[i][j])) {
           missNum++;
         }

@@ -135,11 +135,6 @@ public class MeasurementMNode extends MNode {
   }
 
   @Override
-  public boolean isInternal(){
-    return false;
-  }
-
-  @Override
   public boolean isMeasurement() {
     return true;
   }
