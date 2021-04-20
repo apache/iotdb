@@ -208,7 +208,28 @@ public class PrimitiveMemTableTest {
       tvPair.hasNextTimeValuePair();
       TimeValuePair next = tvPair.nextTimeValuePair();
       Assert.assertEquals(i, next.getTimestamp());
-      Assert.assertEquals(i, next.getValue().getVector()[0].getLong());
+      Assert.assertEquals(i, next.getValue().getLong());
+    }
+
+    tvPair =
+        memTable
+            .query(
+                "root.sg.device5",
+                "$#$1",
+                new VectorMeasurementSchema(
+                    IoTDBConstant.ALIGN_TIMESERIES_PREFIX + 0,
+                    new String[] {"sensor0", "sensor1"},
+                    new TSDataType[] {TSDataType.BOOLEAN, TSDataType.INT64},
+                    new TSEncoding[] {TSEncoding.PLAIN, TSEncoding.GORILLA},
+                    CompressionType.UNCOMPRESSED),
+                Long.MIN_VALUE,
+                null)
+            .getPointReader();
+    for (int i = 0; i < 100; i++) {
+      tvPair.hasNextTimeValuePair();
+      TimeValuePair next = tvPair.nextTimeValuePair();
+      Assert.assertEquals(i, next.getTimestamp());
+      Assert.assertEquals(i, next.getValue().getVector()[1].getLong());
     }
   }
 
