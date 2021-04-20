@@ -27,12 +27,15 @@ public abstract class Operator {
   protected int tokenIntType;
   // operator type in String format
   protected String tokenName;
+  // flag of "explain"
+  protected boolean isDebug;
 
   protected OperatorType operatorType = OperatorType.NULL;
 
   protected Operator(int tokenIntType) {
     this.tokenIntType = tokenIntType;
     this.tokenName = SQLConstant.tokenNames.get(tokenIntType);
+    this.isDebug = false;
   }
 
   public OperatorType getType() {
@@ -55,6 +58,14 @@ public abstract class Operator {
     this.operatorType = operatorType;
   }
 
+  public boolean isDebug() {
+    return isDebug;
+  }
+
+  public void setDebug(boolean debug) {
+    isDebug = debug;
+  }
+
   @Override
   public String toString() {
     return tokenName;
@@ -63,26 +74,16 @@ public abstract class Operator {
   /** If you want to add new OperatorType, you must add it in the last. */
   public enum OperatorType {
     SFW,
-    JOIN,
-    UNION,
     FILTER,
     GROUPBYTIME,
-    ORDERBY,
-    LIMIT,
     SELECT,
-    SEQTABLESCAN,
-    HASHTABLESCAN,
-    MERGEJOIN,
-    FILEREAD,
     NULL,
-    TABLESCAN,
     INSERT,
     BATCHINSERT,
     DELETE,
     BASIC_FUNC,
     IN,
     QUERY,
-    MERGEQUERY,
     AGGREGATION,
     AUTHOR,
     FROM,

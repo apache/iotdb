@@ -146,6 +146,7 @@ public class MergeTaskTest extends MergeTest {
     smallUnseqTsFileResource.setMaxPlanIndex(10);
     smallUnseqTsFileResource.setVersion(10);
     prepareFile(smallUnseqTsFileResource, 0, 50, 0);
+    unseqResources.add(smallUnseqTsFileResource);
 
     // remove all data of first file
     for (String deviceId : deviceIds) {

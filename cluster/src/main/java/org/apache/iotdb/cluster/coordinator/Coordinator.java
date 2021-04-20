@@ -291,6 +291,7 @@ public class Coordinator {
     } catch (MetadataException e) {
       logger.error("Cannot route plan {}", plan, e);
     }
+    logger.debug("route plan {} with partitionGroup {}", plan, planGroupMap);
     return planGroupMap;
   }
 

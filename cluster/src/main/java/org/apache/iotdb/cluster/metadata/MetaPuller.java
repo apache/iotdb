@@ -230,7 +230,8 @@ public class MetaPuller {
               .getClientProvider()
               .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
 
-        PullSchemaResp pullSchemaResp = syncDataClient.pullTimeSeriesSchema(request);
+        // only need measurement name
+        PullSchemaResp pullSchemaResp = syncDataClient.pullMeasurementSchema(request);
         ByteBuffer buffer = pullSchemaResp.schemaBytes;
         int size = buffer.getInt();
         schemas = new ArrayList<>(size);

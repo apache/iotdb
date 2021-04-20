@@ -80,10 +80,19 @@ public class SumAggrResult extends AggregateResult {
   @Override
   public void updateResultUsingTimestamps(
       long[] timestamps, int length, IReaderByTimestamp dataReader) throws IOException {
+    Object[] values = dataReader.getValuesInTimestamps(timestamps, length);
     for (int i = 0; i < length; i++) {
-      Object value = dataReader.getValueInTimestamp(timestamps[i]);
-      if (value != null) {
-        updateSum(value);
+      if (values[i] != null) {
+        updateSum(values[i]);
+      }
+    }
+  }
+
+  @Override
+  public void updateResultUsingValues(long[] timestamps, int length, Object[] values) {
+    for (int i = 0; i < length; i++) {
+      if (values[i] != null) {
+        updateSum(values[i]);
       }
     }
   }

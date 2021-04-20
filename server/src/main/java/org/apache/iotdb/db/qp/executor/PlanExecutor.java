@@ -35,9 +35,12 @@ import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager.TaskStatus;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.QueryIdNotExsitException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.TriggerExecutionException;
+import org.apache.iotdb.db.exception.TriggerManagementException;
 import org.apache.iotdb.db.exception.UDFRegistrationException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -99,13 +102,13 @@ import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowTriggersPlan;
 import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.control.QueryTimeManager.QueryInfo;
+import org.apache.iotdb.db.query.control.TracingManager;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.query.dataset.ShowDevicesDataSet;
@@ -116,6 +119,7 @@ import org.apache.iotdb.db.query.executor.QueryRouter;
 import org.apache.iotdb.db.query.udf.service.UDFRegistrationInformation;
 import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.tools.TsFileRewriteTool;
 import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
@@ -136,6 +140,9 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -168,12 +175,6 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PROGRESS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ROLE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TASK_NAME;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_ATTRIBUTES;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_CLASS;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_EVENT;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_NAME;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_PATH;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TRIGGER_STATUS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
@@ -186,9 +187,9 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.QUERY_ID;
 import static org.apache.iotdb.db.conf.IoTDBConstant.STATEMENT;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
-@SuppressWarnings("java:S1135") // ignore todos
 public class PlanExecutor implements IPlanExecutor {
 
+  private static final Logger logger = LoggerFactory.getLogger(PlanExecutor.class);
   // for data query
   protected IQueryRouter queryRouter;
   // for administration
@@ -352,20 +353,26 @@ public class PlanExecutor implements IPlanExecutor {
     return true;
   }
 
-  private boolean operateCreateTrigger(CreateTriggerPlan plan) {
-    return false;
+  private boolean operateCreateTrigger(CreateTriggerPlan plan)
+      throws TriggerManagementException, TriggerExecutionException {
+    TriggerRegistrationService.getInstance().register(plan);
+    return true;
   }
 
-  private boolean operateDropTrigger(DropTriggerPlan plan) {
-    return false;
+  private boolean operateDropTrigger(DropTriggerPlan plan) throws TriggerManagementException {
+    TriggerRegistrationService.getInstance().deregister(plan);
+    return true;
   }
 
-  private boolean operateStartTrigger(StartTriggerPlan plan) {
-    return false;
+  private boolean operateStartTrigger(StartTriggerPlan plan)
+      throws TriggerManagementException, TriggerExecutionException {
+    TriggerRegistrationService.getInstance().activate(plan);
+    return true;
   }
 
-  private boolean operateStopTrigger(StopTriggerPlan plan) {
-    return false;
+  private boolean operateStopTrigger(StopTriggerPlan plan) throws TriggerManagementException {
+    TriggerRegistrationService.getInstance().inactivate(plan);
+    return true;
   }
 
   private void operateMerge(MergePlan plan) throws StorageEngineException {
@@ -409,8 +416,16 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
+  /** when tracing off need Close the stream */
   private void operateTracing(TracingPlan plan) {
     IoTDBDescriptor.getInstance().getConfig().setEnablePerformanceTracing(plan.isTracingOn());
+    if (!plan.isTracingOn()) {
+      TracingManager.getInstance().close();
+    } else {
+      if (!TracingManager.getInstance().getWriterStatus()) {
+        TracingManager.getInstance().openTracingWriteStream();
+      }
+    }
   }
 
   private void operateFlush(FlushPlan plan) throws StorageGroupNotSetException {
@@ -538,7 +553,7 @@ public class PlanExecutor implements IPlanExecutor {
       case FUNCTIONS:
         return processShowFunctions((ShowFunctionsPlan) showPlan);
       case TRIGGERS:
-        return processShowTriggers((ShowTriggersPlan) showPlan);
+        return processShowTriggers();
       default:
         throw new QueryProcessException(String.format("Unrecognized show plan %s", showPlan));
     }
@@ -875,22 +890,8 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  private QueryDataSet processShowTriggers(ShowTriggersPlan showPlan) {
-    return new ListDataSet(
-        Arrays.asList(
-            new PartialPath(COLUMN_TRIGGER_NAME, false),
-            new PartialPath(COLUMN_TRIGGER_STATUS, false),
-            new PartialPath(COLUMN_TRIGGER_EVENT, false),
-            new PartialPath(COLUMN_TRIGGER_PATH, false),
-            new PartialPath(COLUMN_TRIGGER_CLASS, false),
-            new PartialPath(COLUMN_TRIGGER_ATTRIBUTES, false)),
-        Arrays.asList(
-            TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.TEXT,
-            TSDataType.TEXT));
+  private QueryDataSet processShowTriggers() {
+    return TriggerRegistrationService.getInstance().show();
   }
 
   private void addRowRecordForShowQuery(
@@ -975,7 +976,23 @@ public class PlanExecutor implements IPlanExecutor {
         createSchemaAutomatically(chunkGroupMetadataList, schemaMap, plan.getSgLevel());
       }
 
-      StorageEngine.getInstance().loadNewTsFile(tsFileResource);
+      List<TsFileResource> splitResources = new ArrayList();
+      if (tsFileResource.isSpanMultiTimePartitions()) {
+        logger.info(
+            "try to split the tsFile={} du to it spans multi partitions",
+            tsFileResource.getTsFile().getPath());
+        TsFileRewriteTool.rewriteTsFile(tsFileResource, splitResources);
+        logger.info(
+            "after split, the old tsFile was split to {} new tsFiles", splitResources.size());
+      }
+
+      if (splitResources.isEmpty()) {
+        splitResources.add(tsFileResource);
+      }
+
+      for (TsFileResource resource : splitResources) {
+        StorageEngine.getInstance().loadNewTsFile(resource);
+      }
     } catch (Exception e) {
       throw new QueryProcessException(
           String.format("Cannot load file %s because %s", file.getAbsolutePath(), e.getMessage()));

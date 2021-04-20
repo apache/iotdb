@@ -20,7 +20,7 @@
 package org.apache.iotdb.cluster.log;
 
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.db.utils.SerializeUtils;
+import org.apache.iotdb.cluster.utils.NodeSerializeUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.commons.lang3.builder.EqualsBuilder;
@@ -46,7 +46,7 @@ public class HardState {
     int isNull = buffer.get();
     if (isNull == 1) {
       Node node = new Node();
-      SerializeUtils.deserialize(node, buffer);
+      NodeSerializeUtils.deserialize(node, buffer);
       res.setVoteFor(node);
     } else {
       res.setVoteFor(null);
@@ -63,7 +63,7 @@ public class HardState {
         dataOutputStream.writeByte(0);
       } else {
         dataOutputStream.writeByte(1);
-        SerializeUtils.serialize(voteFor, dataOutputStream);
+        NodeSerializeUtils.serialize(voteFor, dataOutputStream);
       }
     } catch (IOException e) {
       // unreachable

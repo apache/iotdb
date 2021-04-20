@@ -625,10 +625,10 @@ public class IoTDBDescriptor {
         conf.setThriftMaxFrameSize(IoTDBConstant.LEFT_SIZE_IN_REQUEST * 2);
       }
 
-      conf.setThriftInitBufferSize(
+      conf.setThriftDefaultBufferSize(
           Integer.parseInt(
               properties.getProperty(
-                  "thrift_init_buffer_size", String.valueOf(conf.getThriftInitBufferSize()))));
+                  "thrift_init_buffer_size", String.valueOf(conf.getThriftDefaultBufferSize()))));
 
       conf.setFrequencyIntervalInMinute(
           Integer.parseInt(
@@ -641,13 +641,28 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "slow_query_threshold", String.valueOf(conf.getSlowQueryThreshold()))));
 
-      conf.setDebugState(
-          Boolean.parseBoolean(
-              properties.getProperty("debug_state", String.valueOf(conf.isDebugOn()))));
       conf.setVirtualStorageGroupNum(
           Integer.parseInt(
               properties.getProperty(
                   "virtual_storage_group_num", String.valueOf(conf.getVirtualStorageGroupNum()))));
+
+      conf.setConcurrentWindowEvaluationThread(
+          Integer.parseInt(
+              properties.getProperty(
+                  "concurrent_window_evaluation_thread",
+                  Integer.toString(conf.getConcurrentWindowEvaluationThread()))));
+      if (conf.getConcurrentWindowEvaluationThread() <= 0) {
+        conf.setConcurrentWindowEvaluationThread(Runtime.getRuntime().availableProcessors());
+      }
+
+      conf.setMaxPendingWindowEvaluationTasks(
+          Integer.parseInt(
+              properties.getProperty(
+                  "max_pending_window_evaluation_tasks",
+                  Integer.toString(conf.getMaxPendingWindowEvaluationTasks()))));
+      if (conf.getMaxPendingWindowEvaluationTasks() <= 0) {
+        conf.setMaxPendingWindowEvaluationTasks(64);
+      }
 
       // mqtt
       if (properties.getProperty(IoTDBConstant.MQTT_HOST_NAME) != null) {
@@ -748,6 +763,9 @@ public class IoTDBDescriptor {
 
       // UDF
       loadUDFProps(properties);
+
+      // trigger
+      loadTriggerProps(properties);
 
     } catch (FileNotFoundException e) {
       logger.warn("Fail to find config file {}", url, e);
@@ -1011,9 +1029,6 @@ public class IoTDBDescriptor {
       // update slow_query_threshold
       conf.setSlowQueryThreshold(Long.parseLong(properties.getProperty("slow_query_threshold")));
 
-      // update debug_state
-      conf.setDebugState(Boolean.parseBoolean(properties.getProperty("debug_state")));
-
     } catch (Exception e) {
       throw new QueryProcessException(String.format("Fail to reload configuration because %s", e));
     }
@@ -1136,6 +1151,17 @@ public class IoTDBDescriptor {
                 + " should be an integer, which is "
                 + readerTransformerCollectorMemoryProportion);
       }
+    }
+  }
+
+  private void loadTriggerProps(Properties properties) {
+    conf.setTriggerDir(properties.getProperty("trigger_root_dir", conf.getTriggerDir()));
+
+    int tlogBufferSize =
+        Integer.parseInt(
+            properties.getProperty("tlog_buffer_size", Integer.toString(conf.getTlogBufferSize())));
+    if (tlogBufferSize > 0) {
+      conf.setTlogBufferSize(tlogBufferSize);
     }
   }
 

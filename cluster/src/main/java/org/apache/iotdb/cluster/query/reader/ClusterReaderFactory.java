@@ -33,7 +33,14 @@ import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.query.filter.SlotTsFileFilter;
 import org.apache.iotdb.cluster.query.groupby.RemoteGroupByExecutor;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
+import org.apache.iotdb.cluster.query.reader.mult.AbstractMultPointReader;
+import org.apache.iotdb.cluster.query.reader.mult.MultBatchReader;
+import org.apache.iotdb.cluster.query.reader.mult.MultDataSourceInfo;
+import org.apache.iotdb.cluster.query.reader.mult.MultEmptyReader;
+import org.apache.iotdb.cluster.query.reader.mult.MultSeriesRawDataPointReader;
+import org.apache.iotdb.cluster.query.reader.mult.RemoteMultSeriesReader;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
+import org.apache.iotdb.cluster.rpc.thrift.MultSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.server.RaftServer;
@@ -64,6 +71,9 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,6 +82,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @SuppressWarnings("java:S107")
@@ -99,18 +110,12 @@ public class ClusterReaderFactory {
       QueryContext context,
       boolean ascending)
       throws StorageEngineException, QueryProcessException {
-    // make sure the partition table is new
-    try {
-      metaGroupMember.syncLeaderWithConsistencyCheck(false);
-    } catch (CheckConsistencyException e) {
-      throw new QueryProcessException(e.getMessage());
-    }
     // get all data groups
     List<PartitionGroup> partitionGroups;
     try {
       partitionGroups = metaGroupMember.routeFilter(null, path);
     } catch (EmptyIntervalException e) {
-      logger.info(e.getMessage());
+      logger.warn(e.getMessage());
       partitionGroups = Collections.emptyList();
     }
     logger.debug(
@@ -121,11 +126,11 @@ public class ClusterReaderFactory {
     List<IReaderByTimestamp> readers = new ArrayList<>(partitionGroups.size());
     for (PartitionGroup partitionGroup : partitionGroups) {
       // query each group to get a reader in that group
-      readers.add(
+      IReaderByTimestamp readerByTimestamp =
           getSeriesReaderByTime(
-              partitionGroup, path, deviceMeasurements, context, dataType, ascending));
+              partitionGroup, path, deviceMeasurements, context, dataType, ascending);
+      readers.add(readerByTimestamp);
     }
-    // merge the readers
     return new MergedReaderByTime(readers);
   }
 
@@ -199,6 +204,140 @@ public class ClusterReaderFactory {
 
     throw new StorageEngineException(
         new RequestTimeOutException("Query by timestamp: " + path + " in " + partitionGroup));
+  }
+
+  /**
+   * Create a MultSeriesReader that can read the data of "path" with filters in the whole cluster.
+   * The data groups that should be queried will be determined by the timeFilter, then for each
+   * group a series reader will be created, and finally all such readers will be merged into one.
+   *
+   * @param paths all path
+   * @param deviceMeasurements device to measurements
+   * @param dataTypes data type
+   * @param timeFilter time filter
+   * @param valueFilter value filter
+   * @param context query context
+   * @param ascending asc or aesc
+   * @return
+   * @throws StorageEngineException
+   * @throws EmptyIntervalException
+   */
+  public List<AbstractMultPointReader> getMultSeriesReader(
+      List<PartialPath> paths,
+      Map<String, Set<String>> deviceMeasurements,
+      List<TSDataType> dataTypes,
+      Filter timeFilter,
+      Filter valueFilter,
+      QueryContext context,
+      boolean ascending)
+      throws StorageEngineException, EmptyIntervalException, QueryProcessException {
+
+    Map<PartitionGroup, List<PartialPath>> partitionGroupListMap = Maps.newHashMap();
+    for (PartialPath partialPath : paths) {
+      List<PartitionGroup> partitionGroups = metaGroupMember.routeFilter(timeFilter, partialPath);
+      partitionGroups.forEach(
+          partitionGroup -> {
+            partitionGroupListMap
+                .computeIfAbsent(partitionGroup, n -> new ArrayList<>())
+                .add(partialPath);
+          });
+    }
+
+    List<AbstractMultPointReader> multPointReaders = Lists.newArrayList();
+
+    // different path of the same partition group are constructed as a AbstractMultPointReader
+    // if be local partition, constructed a MultBatchReader
+    // if be a remote partition, constructed a RemoteMultSeriesReader
+    for (Map.Entry<PartitionGroup, List<PartialPath>> entityPartitionGroup :
+        partitionGroupListMap.entrySet()) {
+      List<PartialPath> partialPaths = entityPartitionGroup.getValue();
+      Map<String, Set<String>> partitionGroupDeviceMeasurements = Maps.newHashMap();
+      List<TSDataType> partitionGroupTSDataType = Lists.newArrayList();
+      partialPaths.forEach(
+          partialPath -> {
+            Set<String> measurements =
+                deviceMeasurements.getOrDefault(partialPath.getDevice(), Collections.emptySet());
+            partitionGroupDeviceMeasurements.put(partialPath.getFullPath(), measurements);
+            partitionGroupTSDataType.add(dataTypes.get(paths.lastIndexOf(partialPath)));
+          });
+
+      AbstractMultPointReader abstractMultPointReader =
+          getMultSeriesReader(
+              entityPartitionGroup.getKey(),
+              partialPaths,
+              partitionGroupTSDataType,
+              partitionGroupDeviceMeasurements,
+              timeFilter,
+              valueFilter,
+              context,
+              ascending);
+      multPointReaders.add(abstractMultPointReader);
+    }
+    return multPointReaders;
+  }
+
+  /**
+   * Query one node in "partitionGroup" for data of "path" with "timeFilter" and "valueFilter". If
+   * "partitionGroup" contains the local node, a local reader will be returned. Otherwise a remote
+   * reader will be returned.
+   *
+   * @param timeFilter nullable
+   * @param valueFilter nullable
+   */
+  private AbstractMultPointReader getMultSeriesReader(
+      PartitionGroup partitionGroup,
+      List<PartialPath> partialPaths,
+      List<TSDataType> dataTypes,
+      Map<String, Set<String>> deviceMeasurements,
+      Filter timeFilter,
+      Filter valueFilter,
+      QueryContext context,
+      boolean ascending)
+      throws StorageEngineException, QueryProcessException {
+    if (partitionGroup.contains(metaGroupMember.getThisNode())) {
+      // the target storage group contains this node, perform a local query
+      DataGroupMember dataGroupMember =
+          metaGroupMember.getLocalDataMember(
+              partitionGroup.getHeader(),
+              String.format(
+                  "Query: %s, time filter: %s, queryId: %d",
+                  partialPaths, timeFilter, context.getQueryId()));
+      Map<String, IPointReader> partialPathPointReaderMap = Maps.newHashMap();
+      for (int i = 0; i < partialPaths.size(); i++) {
+        PartialPath partialPath = partialPaths.get(i);
+        IPointReader seriesPointReader =
+            getSeriesPointReader(
+                partialPath,
+                deviceMeasurements.get(partialPath.getFullPath()),
+                dataTypes.get(i),
+                timeFilter,
+                valueFilter,
+                context,
+                dataGroupMember,
+                ascending);
+        partialPathPointReaderMap.put(partialPath.getFullPath(), seriesPointReader);
+      }
+
+      if (logger.isDebugEnabled()) {
+        logger.debug(
+            "{}: creating a local reader for {}#{} of {}",
+            metaGroupMember.getName(),
+            partialPaths,
+            context.getQueryId(),
+            partitionGroup.getHeader());
+      }
+      return new MultSeriesRawDataPointReader(partialPathPointReaderMap);
+    } else {
+      return getRemoteMultSeriesPointReader(
+          timeFilter,
+          valueFilter,
+          dataTypes,
+          partialPaths,
+          deviceMeasurements,
+          partitionGroup,
+          context,
+          ascending);
+    }
   }
 
   /**
@@ -311,13 +450,13 @@ public class ClusterReaderFactory {
    * Create an IPointReader of "path" with “timeFilter” and "valueFilter". A synchronization with
    * the leader will be performed according to consistency level
    *
-   * @param path
-   * @param dataType
+   * @param path series path
+   * @param dataType data type
    * @param timeFilter nullable
    * @param valueFilter nullable
-   * @param context
-   * @return
-   * @throws StorageEngineException
+   * @param context query context
+   * @return reader
+   * @throws StorageEngineException encounter exception
    */
   public IPointReader getSeriesPointReader(
       PartialPath path,
@@ -351,13 +490,13 @@ public class ClusterReaderFactory {
    * Create a SeriesReader of "path" with “timeFilter” and "valueFilter". The consistency is not
    * guaranteed here and only data slots managed by the member will be queried.
    *
-   * @param path
-   * @param dataType
+   * @param path series path
+   * @param dataType data type
    * @param timeFilter nullable
    * @param valueFilter nullable
-   * @param context
-   * @return
-   * @throws StorageEngineException
+   * @param context query context
+   * @return reader for series
+   * @throws StorageEngineException encounter exception
    */
   private SeriesReader getSeriesReader(
       PartialPath path,
@@ -384,6 +523,68 @@ public class ClusterReaderFactory {
         valueFilter,
         new SlotTsFileFilter(nodeSlots),
         ascending);
+  }
+
+  /**
+   * Query a remote node in "partitionGroup" to get the reader of "path" with "timeFilter" and
+   * "valueFilter". Firstly, a request will be sent to that node to construct a reader there, then
+   * the id of the reader will be returned so that we can fetch data from that node using the reader
+   * id.
+   *
+   * @param timeFilter nullable
+   * @param valueFilter nullable
+   */
+  private AbstractMultPointReader getRemoteMultSeriesPointReader(
+      Filter timeFilter,
+      Filter valueFilter,
+      List<TSDataType> dataType,
+      List<PartialPath> paths,
+      Map<String, Set<String>> deviceMeasurements,
+      PartitionGroup partitionGroup,
+      QueryContext context,
+      boolean ascending)
+      throws StorageEngineException {
+    MultSeriesQueryRequest request =
+        constructMultQueryRequest(
+            timeFilter,
+            valueFilter,
+            dataType,
+            paths,
+            deviceMeasurements,
+            partitionGroup,
+            context,
+            ascending);
+
+    // reorder the nodes such that the nodes that suit the query best (have lowest latenct or
+    // highest throughput) will be put to the front
+    List<Node> orderedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
+
+    MultDataSourceInfo dataSourceInfo =
+        new MultDataSourceInfo(
+            partitionGroup,
+            paths,
+            dataType,
+            request,
+            (RemoteQueryContext) context,
+            metaGroupMember,
+            orderedNodes);
+
+    boolean hasClient = dataSourceInfo.hasNextDataClient(Long.MIN_VALUE);
+    if (hasClient) {
+      return new RemoteMultSeriesReader(dataSourceInfo);
+    } else if (dataSourceInfo.isNoData()) {
+      // there is no satisfying data on the remote node
+      Set<String> fullPaths = Sets.newHashSet();
+      dataSourceInfo
+          .getPartialPaths()
+          .forEach(
+              partialPath -> {
+                fullPaths.add(partialPath.getFullPath());
+              });
+      return new MultEmptyReader(fullPaths);
+    }
+    throw new StorageEngineException(
+        new RequestTimeOutException("Query " + paths + " in " + partitionGroup));
   }
 
   /**
@@ -439,6 +640,45 @@ public class ClusterReaderFactory {
 
     throw new StorageEngineException(
         new RequestTimeOutException("Query " + path + " in " + partitionGroup));
+  }
+
+  private MultSeriesQueryRequest constructMultQueryRequest(
+      Filter timeFilter,
+      Filter valueFilter,
+      List<TSDataType> dataTypes,
+      List<PartialPath> paths,
+      Map<String, Set<String>> deviceMeasurements,
+      PartitionGroup partitionGroup,
+      QueryContext context,
+      boolean ascending) {
+    MultSeriesQueryRequest request = new MultSeriesQueryRequest();
+    if (timeFilter != null) {
+      request.setTimeFilterBytes(SerializeUtils.serializeFilter(timeFilter));
+    }
+    if (valueFilter != null) {
+      request.setValueFilterBytes(SerializeUtils.serializeFilter(valueFilter));
+    }
+
+    List<String> fullPaths = Lists.newArrayList();
+    paths.forEach(
+        path -> {
+          fullPaths.add(path.getFullPath());
+        });
+
+    List<Integer> dataTypeOrdinals = Lists.newArrayList();
+    dataTypes.forEach(
+        dataType -> {
+          dataTypeOrdinals.add(dataType.ordinal());
+        });
+
+    request.setPath(fullPaths);
+    request.setHeader(partitionGroup.getHeader());
+    request.setQueryId(context.getQueryId());
+    request.setRequester(metaGroupMember.getThisNode());
+    request.setDataTypeOrdinal(dataTypeOrdinals);
+    request.setDeviceMeasurements(deviceMeasurements);
+    request.setAscending(ascending);
+    return request;
   }
 
   private SingleSeriesQueryRequest constructSingleQueryRequest(
@@ -708,6 +948,55 @@ public class ClusterReaderFactory {
       return null;
     }
     return new SeriesRawDataBatchReader(seriesReader);
+  }
+
+  /**
+   * Create an IBatchReader of "path" with “timeFilter” and "valueFilter". A synchronization with
+   * the leader will be performed according to consistency level
+   *
+   * @param paths
+   * @param dataTypes
+   * @param timeFilter nullable
+   * @param valueFilter nullable
+   * @param context
+   * @return an IBatchReader or null if there is no satisfying data
+   * @throws StorageEngineException
+   */
+  public IBatchReader getMultSeriesBatchReader(
+      List<PartialPath> paths,
+      Map<String, Set<String>> allSensors,
+      List<TSDataType> dataTypes,
+      Filter timeFilter,
+      Filter valueFilter,
+      QueryContext context,
+      DataGroupMember dataGroupMember,
+      boolean ascending)
+      throws StorageEngineException, QueryProcessException, IOException {
+    // pull the newest data
+    try {
+      dataGroupMember.syncLeaderWithConsistencyCheck(false);
+    } catch (CheckConsistencyException e) {
+      throw new StorageEngineException(e);
+    }
+
+    Map<String, IBatchReader> partialPathBatchReaderMap = Maps.newHashMap();
+
+    for (int i = 0; i < paths.size(); i++) {
+      PartialPath partialPath = paths.get(i);
+      SeriesReader seriesReader =
+          getSeriesReader(
+              partialPath,
+              allSensors.get(partialPath.getFullPath()),
+              dataTypes.get(i),
+              timeFilter,
+              valueFilter,
+              context,
+              dataGroupMember.getHeader(),
+              ascending);
+      partialPathBatchReaderMap.put(
+          partialPath.getFullPath(), new SeriesRawDataBatchReader(seriesReader));
+    }
+    return new MultBatchReader(partialPathBatchReaderMap);
   }
 
   /**

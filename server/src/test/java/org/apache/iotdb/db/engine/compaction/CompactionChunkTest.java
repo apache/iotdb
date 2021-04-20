@@ -85,6 +85,8 @@ public class CompactionChunkTest extends LevelCompactionTest {
                     + 0
                     + IoTDBConstant.FILE_NAME_SEPARATOR
                     + 1
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 0
                     + ".tsfile"));
     TsFileResource targetTsfileResource = new TsFileResource(file);
     RateLimiter compactionWriteRateLimiter = MergeManager.getINSTANCE().getMergeWriteRateLimiter();
@@ -119,13 +121,7 @@ public class CompactionChunkTest extends LevelCompactionTest {
       for (Entry<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> entry :
           measurementChunkMetadataMap.entrySet()) {
         CompactionUtils.writeByAppendMerge(
-            device,
-            compactionWriteRateLimiter,
-            entry,
-            targetTsfileResource,
-            writer,
-            new HashMap<>(),
-            new ArrayList<>());
+            device, compactionWriteRateLimiter, entry, targetTsfileResource, writer);
       }
       reader.close();
     }
@@ -168,6 +164,8 @@ public class CompactionChunkTest extends LevelCompactionTest {
                     + 0
                     + IoTDBConstant.FILE_NAME_SEPARATOR
                     + 1
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 0
                     + ".tsfile"));
     TsFileResource targetTsfileResource = new TsFileResource(file);
     RateLimiter compactionWriteRateLimiter = MergeManager.getINSTANCE().getMergeWriteRateLimiter();

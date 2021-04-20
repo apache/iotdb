@@ -46,6 +46,9 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -63,6 +66,7 @@ public class LastQueryExecutor {
   protected IExpression expression;
   private static final boolean CACHE_ENABLED =
       IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled();
+  private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
 
   public LastQueryExecutor(LastQueryPlan lastQueryPlan) {
     this.selectedSeries = lastQueryPlan.getDeduplicatedPaths();
@@ -185,6 +189,10 @@ public class LastQueryExecutor {
           resultContainer.get(i).left = true;
           if (CACHE_ENABLED) {
             cacheAccessors.get(i).write(resultContainer.get(i).right);
+            DEBUG_LOGGER.info(
+                "[LastQueryExecutor] Update last cache for path: {} with timestamp: {}",
+                seriesPaths,
+                resultContainer.get(i).right.getTimestamp());
           }
         }
       }
@@ -219,8 +227,16 @@ public class LastQueryExecutor {
         restDataType.add(dataTypes.get(i));
       } else if (!satisfyFilter(filter, tvPair)) {
         resultContainer.add(new Pair<>(true, null));
+        DEBUG_LOGGER.info(
+            "[LastQueryExecutor] Last cache hit for path: {} with timestamp: {}",
+            seriesPaths.get(i),
+            tvPair.getTimestamp());
       } else {
         resultContainer.add(new Pair<>(true, tvPair));
+        DEBUG_LOGGER.info(
+            "[LastQueryExecutor] Last cache hit for path: {} with timestamp: {}",
+            seriesPaths.get(i),
+            tvPair.getTimestamp());
       }
     }
     return resultContainer;

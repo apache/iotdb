@@ -67,6 +67,12 @@
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <version>0.8.5</version>
                 <configuration>
+                    <excludes>
+                        <exclude>org/apache/iotdb/service/sync/thrift/*</exclude>
+                        <exclude>org/apache/iotdb/service/rpc/thrift/*</exclude>
+                        <exclude>org/apache/iotdb/cluster/rpc/thrift/*</exclude>
+                        <exclude>org/apache/iotdb/db/qp/sql/*</exclude>
+                    </excludes>
                     <rules>
                         <rule implementation="org.jacoco.maven.RuleConfiguration">
                             <element>BUNDLE</element>

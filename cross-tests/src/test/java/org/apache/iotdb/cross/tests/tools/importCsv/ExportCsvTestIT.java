@@ -46,6 +46,14 @@ public class ExportCsvTestIT extends AbstractScript {
 
   private final String EXPORT_FILE = "target" + File.separator + "dump0.csv";
 
+  private final String[] output = {
+    "------------------------------------------",
+    "Starting IoTDB Client Export Script",
+    "------------------------------------------",
+    "Start to export data from sql statement",
+    "successfully",
+  };
+
   @Before
   public void setUp() {
     EnvironmentUtils.closeStatMonitor();
@@ -58,14 +66,8 @@ public class ExportCsvTestIT extends AbstractScript {
   }
 
   @Override
-  protected void testOnWindows() throws IOException {
-    final String[] output = {
-      "------------------------------------------",
-      "Starting IoTDB Client Export Script",
-      "------------------------------------------",
-      "Start to export data from sql statement",
-      "successfully",
-    };
+  protected void testOnWindows(String[] output) throws IOException {
+
     String dir = getCliPath();
     ProcessBuilder builder =
         new ProcessBuilder(
@@ -88,14 +90,8 @@ public class ExportCsvTestIT extends AbstractScript {
   }
 
   @Override
-  protected void testOnUnix() throws IOException {
-    final String[] output = {
-      "------------------------------------------",
-      "Starting IoTDB Client Export Script",
-      "------------------------------------------",
-      "Start to export data from sql statement",
-      "successfully",
-    };
+  protected void testOnUnix(String[] output) throws IOException {
+
     String dir = getCliPath();
     ProcessBuilder builder =
         new ProcessBuilder(
@@ -146,9 +142,9 @@ public class ExportCsvTestIT extends AbstractScript {
     String[] sql = {"select * from root"};
     assertTrue(generateSQLFile(sql));
     if (os.startsWith("windows")) {
-      testOnWindows();
+      testOnWindows(output);
     } else {
-      testOnUnix();
+      testOnUnix(output);
     }
     FileReader fileReader = new FileReader(EXPORT_FILE);
     BufferedReader br = new BufferedReader(fileReader);
@@ -182,9 +178,9 @@ public class ExportCsvTestIT extends AbstractScript {
     String[] sql = {"select count(*) from root"};
     generateSQLFile(sql);
     if (os.startsWith("windows")) {
-      testOnWindows();
+      testOnWindows(output);
     } else {
-      testOnUnix();
+      testOnUnix(output);
     }
     FileReader fileReader = new FileReader(EXPORT_FILE);
     BufferedReader br = new BufferedReader(fileReader);

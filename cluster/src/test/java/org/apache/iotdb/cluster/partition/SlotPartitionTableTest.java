@@ -350,7 +350,7 @@ public class SlotPartitionTableTest {
     assertTrue(PartitionUtils.isGlobalMetaPlan(globalLoadConfigPlan));
     PhysicalPlan localLoadConfigPlan = new LoadConfigurationPlan(LoadConfigurationPlanType.LOCAL);
     assertFalse(PartitionUtils.isGlobalMetaPlan(localLoadConfigPlan));
-    PhysicalPlan operateFilePlan = new OperateFilePlan(new File(""), OperatorType.TABLESCAN);
+    PhysicalPlan operateFilePlan = new OperateFilePlan(new File(""), OperatorType.LOAD_FILES);
     assertTrue(PartitionUtils.isLocalNonQueryPlan(operateFilePlan));
 
     PhysicalPlan setStorageGroupPlan = new SetStorageGroupPlan();

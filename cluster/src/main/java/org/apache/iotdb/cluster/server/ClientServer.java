@@ -167,7 +167,7 @@ public class ClientServer extends TSServiceImpl {
 
               @Override
               public Thread newThread(Runnable r) {
-                return new Thread(r, "ClusterClient" + threadIndex.incrementAndGet());
+                return new Thread(r, "ClusterClient-" + threadIndex.incrementAndGet());
               }
             }));
     // ClientServer will do the following processing when the HsHaServer has parsed a request
@@ -281,8 +281,8 @@ public class ClientServer extends TSServiceImpl {
    * @return a RemoteQueryContext using queryId
    */
   @Override
-  protected QueryContext genQueryContext(long queryId) {
-    RemoteQueryContext context = new RemoteQueryContext(queryId);
+  protected QueryContext genQueryContext(long queryId, boolean debug) {
+    RemoteQueryContext context = new RemoteQueryContext(queryId, debug);
     queryContextMap.put(queryId, context);
     return context;
   }

@@ -31,14 +31,14 @@ public class RpcTransportFactory extends TTransportFactory {
   public static boolean USE_SNAPPY = false;
   public static final RpcTransportFactory INSTANCE;
 
-  private static int initialBufferCapacity = RpcUtils.DEFAULT_BUF_CAPACITY;
-  private static int maxLength = RpcUtils.DEFAULT_MAX_LENGTH;
+  private static int thriftDefaultBufferSize = RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY;
+  private static int thriftMaxFrameSize = RpcUtils.THRIFT_FRAME_MAX_SIZE;
 
   static {
     INSTANCE =
         USE_SNAPPY
             ? new RpcTransportFactory(new TimeoutChangeableTSnappyFramedTransport.Factory())
-            : new RpcTransportFactory(new Factory(initialBufferCapacity, maxLength));
+            : new RpcTransportFactory(new Factory(thriftDefaultBufferSize, thriftMaxFrameSize));
   }
 
   private TTransportFactory inner;
@@ -60,11 +60,11 @@ public class RpcTransportFactory extends TTransportFactory {
     USE_SNAPPY = useSnappy;
   }
 
-  public static void setInitialBufferCapacity(int initialBufferCapacity) {
-    RpcTransportFactory.initialBufferCapacity = initialBufferCapacity;
+  public static void setDefaultBufferCapacity(int thriftDefaultBufferSize) {
+    RpcTransportFactory.thriftDefaultBufferSize = thriftDefaultBufferSize;
   }
 
-  public static void setMaxLength(int maxLength) {
-    RpcTransportFactory.maxLength = maxLength;
+  public static void setThriftMaxFrameSize(int thriftMaxFrameSize) {
+    RpcTransportFactory.thriftMaxFrameSize = thriftMaxFrameSize;
   }
 }

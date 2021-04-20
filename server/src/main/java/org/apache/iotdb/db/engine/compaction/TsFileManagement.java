@@ -82,8 +82,16 @@ public abstract class TsFileManagement {
     isForceFullMerge = forceFullMerge;
   }
 
-  /** get the TsFile list in sequence */
+  /**
+   * get the TsFile list in sequence, not recommend to use this method, use
+   * getTsFileListByTimePartition instead
+   */
+  @Deprecated
   public abstract List<TsFileResource> getTsFileList(boolean sequence);
+
+  /** get the TsFile list in sequence by time partition */
+  public abstract List<TsFileResource> getTsFileListByTimePartition(
+      boolean sequence, long timePartition);
 
   /** get the TsFile list iterator in sequence */
   public abstract Iterator<TsFileResource> getIterator(boolean sequence);
@@ -338,6 +346,9 @@ public abstract class TsFileManagement {
       seqFile.removeModFile();
       if (mergingModification != null) {
         for (Modification modification : mergingModification.getModifications()) {
+          // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
+          // change after compaction
+          modification.setFileOffset(Long.MAX_VALUE);
           seqFile.getModFile().write(modification);
         }
         try {
@@ -392,18 +403,18 @@ public abstract class TsFileManagement {
           mergedFile.delete();
         }
         updateMergeModification(seqFile);
-        if (i == seqFiles.size() - 1) {
-          // FIXME if there is an exception, the the modification file will be not closed.
-          removeMergingModification();
-          isUnseqMerging = false;
-          Files.delete(mergeLog.toPath());
-        }
-      } catch (IOException e) {
-        logger.error(
-            "{} a merge task ends but cannot delete log {}", storageGroupName, mergeLog.toPath());
       } finally {
         doubleWriteUnlock(seqFile);
       }
+    }
+
+    try {
+      removeMergingModification();
+      isUnseqMerging = false;
+      Files.delete(mergeLog.toPath());
+    } catch (IOException e) {
+      logger.error(
+          "{} a merge task ends but cannot delete log {}", storageGroupName, mergeLog.toPath());
     }
 
     logger.info("{} a merge task ends", storageGroupName);
