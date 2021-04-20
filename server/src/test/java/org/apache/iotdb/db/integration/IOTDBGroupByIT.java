@@ -21,6 +21,7 @@ package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 
@@ -928,6 +929,24 @@ public class IOTDBGroupByIT {
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
+    }
+  }
+
+  /**
+   * Test group by without aggregation function used in select clause. The expected situation is
+   * throwing an exception.
+   */
+  @Test
+  public void TestGroupByWithoutAggregationFunc() {
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      statement.execute("select temperature from root.ln.wf01.wt01 group by ([0, 100), 5ms)");
+
+      fail("No expected exception thrown");
+    } catch (Exception e) {
+      Assert.assertTrue(e.getMessage().contains(GroupByTimePlan.LACK_FUNC_ERROR_MESSAGE));
     }
   }
 
