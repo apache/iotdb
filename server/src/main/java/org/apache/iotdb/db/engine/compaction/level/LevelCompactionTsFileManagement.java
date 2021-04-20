@@ -48,6 +48,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -214,7 +215,107 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
 
   @Override
   public Iterator<TsFileResource> getIterator(boolean sequence) {
-    return getTsFileList(sequence).iterator();
+    if (sequence) {
+      return new Iterator<TsFileResource>() {
+        private Iterator<List<SortedSet<TsFileResource>>> sequenceTsFileResourcesIterator =
+            sequenceTsFileResources.values().iterator();
+        private Iterator<SortedSet<TsFileResource>> levelTsFileResourcesIterator = null;
+        private Iterator<TsFileResource> subTsFileResourcesIterator = null;
+
+        @Override
+        public boolean hasNext() {
+          if (levelTsFileResourcesIterator == null || subTsFileResourcesIterator == null) {
+            if (sequenceTsFileResourcesIterator.hasNext()) {
+              levelTsFileResourcesIterator = sequenceTsFileResourcesIterator.next().iterator();
+              if (levelTsFileResourcesIterator.hasNext()) {
+                subTsFileResourcesIterator = levelTsFileResourcesIterator.next().iterator();
+              } else {
+                return false;
+              }
+            } else {
+              return false;
+            }
+          }
+
+          while (!subTsFileResourcesIterator.hasNext()) {
+            if (!levelTsFileResourcesIterator.hasNext()) {
+              if (!sequenceTsFileResourcesIterator.hasNext()) {
+                break;
+              } else {
+                levelTsFileResourcesIterator = sequenceTsFileResourcesIterator.next().iterator();
+              }
+            } else {
+              subTsFileResourcesIterator = levelTsFileResourcesIterator.next().iterator();
+            }
+          }
+
+          return subTsFileResourcesIterator.hasNext();
+        }
+
+        @Override
+        public TsFileResource next() {
+          if (!hasNext()) {
+            throw new NoSuchElementException();
+          }
+          return subTsFileResourcesIterator.next();
+        }
+
+        @Override
+        public void remove() {
+          subTsFileResourcesIterator.remove();
+        }
+      };
+    } else {
+      return new Iterator<TsFileResource>() {
+        private Iterator<List<List<TsFileResource>>> unSequenceTsFileResourcesIterator =
+            unSequenceTsFileResources.values().iterator();
+        private Iterator<List<TsFileResource>> levelTsFileResourcesIterator = null;
+        private Iterator<TsFileResource> subTsFileResourcesIterator = null;
+
+        @Override
+        public boolean hasNext() {
+          if (levelTsFileResourcesIterator == null || subTsFileResourcesIterator == null) {
+            if (unSequenceTsFileResourcesIterator.hasNext()) {
+              levelTsFileResourcesIterator = unSequenceTsFileResourcesIterator.next().iterator();
+              if (levelTsFileResourcesIterator.hasNext()) {
+                subTsFileResourcesIterator = levelTsFileResourcesIterator.next().iterator();
+              } else {
+                return false;
+              }
+            } else {
+              return false;
+            }
+          }
+
+          while (!subTsFileResourcesIterator.hasNext()) {
+            if (!levelTsFileResourcesIterator.hasNext()) {
+              if (!unSequenceTsFileResourcesIterator.hasNext()) {
+                break;
+              } else {
+                levelTsFileResourcesIterator = unSequenceTsFileResourcesIterator.next().iterator();
+              }
+            } else {
+              subTsFileResourcesIterator = levelTsFileResourcesIterator.next().iterator();
+            }
+          }
+
+          return subTsFileResourcesIterator.hasNext();
+        }
+
+        @Override
+        public TsFileResource next() {
+          if (!hasNext()) {
+            throw new NoSuchElementException();
+          }
+          return subTsFileResourcesIterator.next();
+        }
+
+        @Override
+        public void remove() {
+          subTsFileResourcesIterator.remove();
+        }
+      };
+    }
   }
 
   @Override
@@ -744,7 +845,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   private List<List<TsFileResource>> newUnSequenceTsFileResources(Long k) {
     List<List<TsFileResource>> newUnSequenceTsFileResources = new CopyOnWriteArrayList<>();
     for (int i = 0; i < unseqLevelNum; i++) {
-      newUnSequenceTsFileResources.add(new CopyOnWriteArrayList<>());
+      newUnSequenceTsFileResources.add(new ArrayList<>());
     }
     return newUnSequenceTsFileResources;
   }

@@ -30,6 +30,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -83,7 +84,87 @@ public class NoCompactionTsFileManagement extends TsFileManagement {
 
   @Override
   public Iterator<TsFileResource> getIterator(boolean sequence) {
-    return getTsFileList(sequence).iterator();
+    if (sequence) {
+      return new Iterator<TsFileResource>() {
+        private Iterator<TreeSet<TsFileResource>> sequenceFileTreeSetMapIterator =
+            sequenceFileTreeSetMap.values().iterator();
+        private Iterator<TsFileResource> tsFileResourcesIterator = null;
+
+        @Override
+        public boolean hasNext() {
+          if (tsFileResourcesIterator == null) {
+            if (sequenceFileTreeSetMapIterator.hasNext()) {
+              tsFileResourcesIterator = sequenceFileTreeSetMapIterator.next().iterator();
+            } else {
+              return false;
+            }
+          }
+
+          while (!tsFileResourcesIterator.hasNext()) {
+            if (!sequenceFileTreeSetMapIterator.hasNext()) {
+              break;
+            } else {
+              tsFileResourcesIterator = sequenceFileTreeSetMapIterator.next().iterator();
+            }
+          }
+
+          return tsFileResourcesIterator.hasNext();
+        }
+
+        @Override
+        public TsFileResource next() {
+          if (!hasNext()) {
+            throw new NoSuchElementException();
+          }
+          return tsFileResourcesIterator.next();
+        }
+
+        @Override
+        public void remove() {
+          tsFileResourcesIterator.remove();
+        }
+      };
+    } else {
+      return new Iterator<TsFileResource>() {
+        private Iterator<List<TsFileResource>> unSequenceFileListMapIterator =
+            unSequenceFileListMap.values().iterator();
+        private Iterator<TsFileResource> tsFileResourcesIterator = null;
+
+        @Override
+        public boolean hasNext() {
+          if (tsFileResourcesIterator == null) {
+            if (unSequenceFileListMapIterator.hasNext()) {
+              tsFileResourcesIterator = unSequenceFileListMapIterator.next().iterator();
+            } else {
+              return false;
+            }
+          }
+
+          while (!tsFileResourcesIterator.hasNext()) {
+            if (!unSequenceFileListMapIterator.hasNext()) {
+              break;
+            } else {
+              tsFileResourcesIterator = unSequenceFileListMapIterator.next().iterator();
+            }
+          }
+
+          return tsFileResourcesIterator.hasNext();
+        }
+
+        @Override
+        public TsFileResource next() {
+          if (!hasNext()) {
+            throw new NoSuchElementException();
+          }
+          return tsFileResourcesIterator.next();
+        }
+
+        @Override
+        public void remove() {
+          tsFileResourcesIterator.remove();
+        }
+      };
+    }
   }
 
   @Override
