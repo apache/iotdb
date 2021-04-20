@@ -917,21 +917,14 @@ public class PhysicalGenerator {
         columnForDisplaySet.add(columnForDisplay);
       }
     }
-
-    if (!((RawDataQueryPlan) queryPlan).isRawQuery()) {
-      ((RawDataQueryPlan) queryPlan).transformPaths(IoTDB.metaManager);
-    }
-
     if (queryPlan instanceof UDTFPlan) {
       ((UDTFPlan) queryPlan).setPathNameToReaderIndex(pathNameToReaderIndex);
       return;
     }
 
-    if (queryPlan instanceof AggregationPlan) {
-      return;
-    }
-
-    if (((RawDataQueryPlan) queryPlan).isRawQuery()) {
+    if (!rawDataQueryPlan.isRawQuery()) {
+      rawDataQueryPlan.transformPaths(IoTDB.metaManager);
+    } else {
       // support vector
       List<PartialPath> deduplicatedPaths = rawDataQueryPlan.getDeduplicatedPaths();
       Pair<List<PartialPath>, Map<String, Integer>> pair = getSeriesSchema(deduplicatedPaths);
