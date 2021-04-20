@@ -18,9 +18,9 @@
     under the License.
 
 -->
-# C++ Native API
+## C++ Native API
 
-## Dependencies
+### Dependencies
 - Java 8+
 - Maven 3.5+
 - Flex
@@ -30,14 +30,14 @@
 
 
 
-## Installation
+### Installation
 
 The compilation of CPP client requires the module "compile-tools" to be built first. 
 "compile-tools" is mainly responsible for building Thrift libraries locally.
 
 
 
-### Build Thrift on MacOS
+#### Build Thrift on MacOS
 
 - Bison
 
@@ -93,7 +93,7 @@ to specify the OpenSSL installation directory on your Mac.
 
 
 
-### Build Thrift on Linux
+#### Build Thrift on Linux
 
 To install all dependencies, run:
 
@@ -110,7 +110,7 @@ yum install gcc g++ bison flex boost-devel
 
 
 
-### Build Thrift on Windows
+#### Build Thrift on Windows
 
 Make sure a complete Windows C++ building environment is prepared on your machine. 
 MSVC, MinGW... are supported.
@@ -136,7 +136,7 @@ to your mvn build command.
 
 
 
-### Cmake generator on Windows
+#### Cmake generator on Windows
 
 There is a long list of supported Cmake generators on Windows environment. 
 
@@ -179,7 +179,7 @@ E.g., `mvn package -Dcmake.generator="Visual Studio 15 2017 [arch]"`
 
 
 
-### Building C++ Client
+#### Building C++ Client
 
 
 To compile cpp client, add "-P compile-cpp" option to maven build command.
@@ -188,7 +188,7 @@ The compiling requires the module "compile-tools" to be built first.
 
 
 
-### Compile and Test
+#### Compile and Test
 
 `mvn package -P compile-cpp  -pl example/client-cpp-example -am -DskipTest`
 
@@ -225,9 +225,9 @@ On Mac machines, the hierarchy of the package should look like this:
 
 
 
-## Q&A
+### Q&A
 
-### on Mac
+#### on Mac
 
 If errors occur when compiling thrift source code, try to downgrade your xcode-commandline from 12 to 11.5
 
@@ -235,7 +235,7 @@ see https://stackoverflow.com/questions/63592445/ld-unsupported-tapi-file-type-t
 
 
 
-### on Windows
+#### on Windows
 
 When Building Thrift and downloading packages via "wget", a possible annoying issue may occur with
 error message looks like:

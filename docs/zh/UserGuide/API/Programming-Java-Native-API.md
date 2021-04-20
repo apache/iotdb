@@ -19,16 +19,16 @@
 
 -->
 
-# Java 原生接口
+## Java 原生接口
 
-## 依赖
+### 依赖
 
 * JDK >= 1.8
 * Maven >= 3.6
 
 
 
-## 安装方法
+### 安装方法
 
 在根目录下运行:
 
@@ -38,7 +38,7 @@ mvn clean install -pl session -am -Dmaven.test.skip=true
 
 
 
-## 在MAVEN中使用原生接口
+### 在MAVEN中使用原生接口
 
 ```xml
 <dependencies>
@@ -52,7 +52,7 @@ mvn clean install -pl session -am -Dmaven.test.skip=true
 
 
 
-## 原生接口说明
+### 原生接口说明
 
 下面将给出Session对应的接口的简要介绍和对应参数：
 
@@ -184,7 +184,7 @@ void executeNonQueryStatement(String sql)
 
 
 
-## 测试接口说明
+### 测试接口说明
 
 * 测试 testInsertRecords，不实际写入数据，只将数据传输到 server 即返回。
 
@@ -220,7 +220,7 @@ void testInsertTablet(Tablet tablet)
 
 
 
-## 针对原生接口的连接池
+### 针对原生接口的连接池
 
 我们提供了一个针对原生接口的连接池(`SessionPool`)，使用该接口时，你只需要指定连接池的大小，就可以在使用时从池中获取连接。
 如果超过60s都没得到一个连接的话，那么会打印一条警告日志，但是程序仍将继续等待。
@@ -241,7 +241,7 @@ void testInsertTablet(Tablet tablet)
 
 
 
-## 示例代码
+### 示例代码
 
 浏览上述接口的详细信息，请参阅代码 ```session/src/main/java/org/apache/iotdb/session/Session.java```
 

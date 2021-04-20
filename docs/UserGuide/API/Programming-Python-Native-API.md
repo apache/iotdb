@@ -19,15 +19,15 @@
 
 -->
 
-# Python Native API
+## Python Native API
 
-## Requirements
+### Requirements
 
 You have to install thrift (>=0.13) before using the package.
 
 
 
-## How to use (Example)
+### How to use (Example)
 
 First, download the package: `pip3 install apache-iotdb`
 
@@ -52,7 +52,7 @@ session.close()
 
 
 
-## IoTDB Testcontainer
+### IoTDB Testcontainer
 
 The Test Support is based on the lib `testcontainers` (https://testcontainers-python.readthedocs.io/en/latest/index.html) which you need to install in your project if you want to use the feature.
 
@@ -73,7 +73,7 @@ by default it will load the image `apache/iotdb:latest`, if you want a specific 
 
 
 
-## Pandas Support
+### Pandas Support
 
 To easily transform a query result to a [Pandas Dataframe](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html)
 the SessionDataSet has a method `.todf()` which consumes the dataset and transforms it to a pandas dataframe.
@@ -102,15 +102,15 @@ df = ...
 
 
 
-## Developers
+### Developers
 
-### Introduction
+#### Introduction
 
 This is an example of how to connect to IoTDB with python, using the thrift rpc interfaces. Things are almost the same on Windows or Linux, but pay attention to the difference like path separator.
 
 
 
-### Prerequisites
+#### Prerequisites
 
 Python3.7 or later is preferred.
 
@@ -127,7 +127,7 @@ pip install -r requirements_dev.txt
 
 
 
-### Compile the thrift library and Debug
+#### Compile the thrift library and Debug
 
 In the root of IoTDB's source code folder,  run `mvn clean generate-sources -pl client-py -am`.
 
@@ -139,7 +139,7 @@ This folder is ignored from git and should **never be pushed to git!**
 
 
 
-### Session Client & Example
+#### Session Client & Example
 
 We packed up the Thrift interface in `client-py/src/iotdb/Session.py` (similar with its Java counterpart), also provided an example file `client-py/src/SessionExample.py` of how to use the session module. please read it carefully.
 
@@ -161,7 +161,7 @@ session.close()
 
 
 
-### Tests
+#### Tests
 
 Please add your custom tests in `tests` folder.
 
@@ -171,14 +171,14 @@ To run all defined tests just type `pytest .` in the root folder.
 
 
 
-### Futher Tools
+#### Futher Tools
 
 [black](https://pypi.org/project/black/) and [flake8](https://pypi.org/project/flake8/) are installed for autoformatting and linting.
 Both can be run by `black .` or `flake8 .` respectively.
 
 
 
-## Releasing
+### Releasing
 
 To do a release just ensure that you have the right set of generated thrift files.
 Then run linting and auto-formatting.
@@ -187,13 +187,13 @@ Then you are good to go to do a release!
 
 
 
-### Preparing your environment
+#### Preparing your environment
 
 First, install all necessary dev dependencies via `pip install -r requirements_dev.txt`.
 
 
 
-### Doing the Release
+#### Doing the Release
 
 There is a convenient script `release.sh` to do all steps for a release.
 Namely, these are

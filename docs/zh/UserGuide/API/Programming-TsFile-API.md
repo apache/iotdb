@@ -19,13 +19,13 @@
 
 -->
 
-# TsFile API 
+## TsFile API 
 
 TsFile 是在 IoTDB 中使用的时间序列的文件格式。在这个章节中，我们将介绍这种文件格式的用法。 
 
 
 
-## 安装 TsFile library
+### 安装 TsFile library
 
 
 在您自己的项目中有两种方法使用 TsFile .
@@ -101,7 +101,7 @@ mvn clean install -Dmaven.test.skip=true
 
 
 
-## TsFile 的使用
+### TsFile 的使用
 
 本章节演示TsFile的详细用法。
 
@@ -134,7 +134,7 @@ device_1, 1490860659000, m1, 10, m2, 12.12
 
 
 
-### 写入 TsFile
+#### 写入 TsFile
 
 TsFile可以通过以下三个步骤生成，完整的代码参见"写入 TsFile 示例"章节。
 
@@ -277,7 +277,7 @@ TsFile可以通过以下三个步骤生成，完整的代码参见"写入 TsFile
 
 
 
-### 写入 TsFile 示例
+#### 写入 TsFile 示例
 
 您需要安装 TsFile 到本地的 Maven 仓库中。
 
@@ -314,7 +314,7 @@ mvn clean install -pl tsfile -am -DskipTests
 
 
 
-### 读取 TsFile 接口
+#### 读取 TsFile 接口
 
 
  * 路径的定义
@@ -487,7 +487,7 @@ public QueryDataSet query(QueryExpression queryExpression, long partitionStartOf
 
 
 
-### 读取现有 TsFile 示例
+#### 读取现有 TsFile 示例
 
 
 您需要安装 TsFile 到本地的 Maven 仓库中。
@@ -552,7 +552,7 @@ public class TsFileRead {
 
 
 
-## 修改 TsFile 配置项
+### 修改 TsFile 配置项
 
 ```java
 TSFileConfig config = TSFileDescriptor.getInstance().getConfig();

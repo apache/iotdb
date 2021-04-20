@@ -19,23 +19,23 @@
 
 -->
 
-# Java Native API
+## Java Native API
 
-## Dependencies
+### Dependencies
 
 * JDK >= 1.8
 * Maven >= 3.6
 
 
 
-## Installation
+### Installation
 
 In root directory:
 > mvn clean install -pl session -am -DskipTests
 
 
 
-## Using IoTDB Java Native API with Maven
+### Using IoTDB Java Native API with Maven
 
 ```xml
 <dependencies>
@@ -49,7 +49,7 @@ In root directory:
 
 
 
-## Native APIs
+### Native APIs
 
 Here we show the commonly used interfaces and their parameters in the Native API:
 
@@ -183,7 +183,7 @@ void executeNonQueryStatement(String sql)
 
 
 
-## Native APIs for profiling network cost
+### Native APIs for profiling network cost
 
 * Test the network and client cost of insertRecords. This method NOT insert data into database and server just return after accept the request, this method should be used to test other time cost in client
 
@@ -227,7 +227,7 @@ void testInsertTablet(Tablet tablet)
 
 
 
-## Coding Examples
+### Coding Examples
 
 To get more information of the following interfaces, please view session/src/main/java/org/apache/iotdb/session/Session.java
 
@@ -236,7 +236,7 @@ The sample code of using these interfaces is in example/session/src/main/java/or
 
 
 
-## Session Pool for Native API
+### Session Pool for Native API
 
 We provide a connection pool (`SessionPool) for Native API.
 Using the interface, you need to define the pool size.
@@ -263,7 +263,7 @@ Or `example/session/src/main/java/org/apache/iotdb/SessionPoolExample.java`
 
 
 
-## New Interfaces
+### New Interfaces
 
 ```java
 void open(boolean enableRPCCompression)

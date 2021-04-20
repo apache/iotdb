@@ -19,9 +19,9 @@
 
 -->
 
-# Go Native API
+## Go Native API
 
-## Dependencies
+### Dependencies
 
  * golang >= 1.13
  * make   >= 3.0
@@ -33,7 +33,7 @@
 
 
 
-## Installation
+### Installation
 
  * go mod
 

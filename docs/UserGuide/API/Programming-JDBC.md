@@ -19,16 +19,16 @@
 
 -->
 
-# JDBC
+## JDBC
 
-## Dependencies
+### Dependencies
 
 * JDK >= 1.8
 * Maven >= 3.6
 
 
 
-## Installation
+### Installation
 
 In root directory:
 
@@ -38,7 +38,7 @@ mvn clean install -pl jdbc -am -Dmaven.test.skip=true
 
 
 
-## Use IoTDB JDBC with Maven
+### Use IoTDB JDBC with Maven
 
 ```xml
 <dependencies>
@@ -52,7 +52,7 @@ mvn clean install -pl jdbc -am -Dmaven.test.skip=true
 
 
 
-## Coding Examples
+### Coding Examples
 
 This chapter provides an example of how to open a database connection, execute a SQL query, and display the results.
 

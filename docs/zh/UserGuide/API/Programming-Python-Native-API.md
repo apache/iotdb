@@ -19,15 +19,15 @@
 
 -->
 
-# Python 原生接口
+## Python 原生接口
 
-## 依赖
+### 依赖
 
 在使用Python原生接口包前，您需要安装 thrift (>=0.13) 依赖。
 
 
 
-## 如何使用 (示例)
+### 如何使用 (示例)
 
 首先下载包：`pip3 install apache-iotdb`
 
@@ -52,7 +52,7 @@ session.close()
 
 
 
-## IoTDB Testcontainer
+### IoTDB Testcontainer
 
 Python客户端对测试的支持是基于`testcontainers`库 (https://testcontainers-python.readthedocs.io/en/latest/index.html)的，如果您想使用该特性，就需要将其安装到您的项目中。
 
@@ -74,7 +74,7 @@ class MyTestCase(unittest.TestCase):
 
 
 
-## 对 Pandas 的支持
+### 对 Pandas 的支持
 
 我们支持将查询结果轻松地转换为[Pandas Dataframe](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html)。
 
@@ -104,15 +104,15 @@ df = ...
 
 
 
-## 给开发人员
+### 给开发人员
 
-### 介绍
+#### 介绍
 
 这是一个使用thrift rpc接口连接到IoTDB的示例。在Windows和Linux上操作几乎是一样的，但要注意路径分隔符等不同之处。
 
 
 
-### 依赖
+#### 依赖
 
 首选Python3.7或更高版本。
 
@@ -129,7 +129,7 @@ pip install -r requirements_dev.txt
 
 
 
-### 编译thrift库并调试
+#### 编译thrift库并调试
 
 在IoTDB源代码文件夹的根目录下，运行`mvn clean generate-sources -pl client-py -am`，
 
@@ -142,7 +142,7 @@ pip install -r requirements_dev.txt
 
 
 
-### Session 客户端 & 使用示例 
+#### Session 客户端 & 使用示例 
 
 我们将thrift接口打包到`client-py/src/iotdb/session.py `中（与Java版本类似），还提供了一个示例文件`client-py/src/SessionExample.py`来说明如何使用Session模块。请仔细阅读。
 
@@ -163,7 +163,7 @@ session.close()
 
 
 
-### 测试
+#### 测试
 
 请在`tests`文件夹中添加自定义测试。
 
@@ -173,14 +173,14 @@ session.close()
 
 
 
-### 其他工具
+#### 其他工具
 
 [black](https://pypi.org/project/black/) 和 [flake8](https://pypi.org/project/flake8/) 分别用于自动格式化和 linting。
 它们可以通过 `black .` 或 `flake8 .` 分别运行。
 
 
 
-## 发版
+### 发版
 
 要进行发版，
 
@@ -194,13 +194,13 @@ session.close()
 
 
 
-### 准备您的环境
+#### 准备您的环境
 
 首先，通过`pip install -r requirements_dev.txt`安装所有必要的开发依赖。
 
 
 
-### 发版
+#### 发版
 
 有一个脚本`release.sh`可以用来执行发版的所有步骤。
 
