@@ -45,6 +45,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -81,6 +82,7 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -189,6 +191,19 @@ public class CMManager extends MManager {
 
   @Override
   public TSDataType getSeriesType(PartialPath path) throws MetadataException {
+
+    if (path.equals(SQLConstant.TIME_PATH)) {
+      return TSDataType.INT64;
+    }
+
+    if (path instanceof VectorPartialPath) {
+      if (((VectorPartialPath) path).getSubSensorsPathList().size() != 1) {
+        return TSDataType.VECTOR;
+      } else {
+        path = ((VectorPartialPath) path).getSubSensorsPathList().get(0);
+      }
+    }
+
     // try remote cache first
     try {
       cacheLock.readLock().lock();
@@ -213,7 +228,16 @@ public class CMManager extends MManager {
         MeasurementMNode measurementMNode =
             new MeasurementMNode(
                 null, measurementSchema.getMeasurementId(), measurementSchema, null);
-        cacheMeta(path, measurementMNode);
+        if (measurementSchema instanceof VectorMeasurementSchema) {
+          for (String subSensorId : measurementSchema.getValueMeasurementIdList()) {
+            cacheMeta(new PartialPath(path.getDevice(), subSensorId), measurementMNode);
+          }
+          cacheMeta(
+              new PartialPath(path.getDevice(), measurementSchema.getMeasurementId()),
+              measurementMNode);
+        } else {
+          cacheMeta(path, measurementMNode);
+        }
         return measurementMNode.getDataType(path.getMeasurement());
       } else {
         throw e;
