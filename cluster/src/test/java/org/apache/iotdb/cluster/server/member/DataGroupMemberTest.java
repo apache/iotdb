@@ -65,6 +65,7 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -458,7 +459,7 @@ public class DataGroupMemberTest extends BaseMember {
   @Test
   public void testApplySnapshot()
       throws IOException, WriteProcessException, SnapshotInstallationException,
-          QueryProcessException, IllegalPathException {
+          QueryProcessException, IllegalPathException, TriggerExecutionException {
     System.out.println("Start testApplySnapshot()");
     FileSnapshot snapshot = new FileSnapshot();
     List<TimeseriesSchema> schemaList = new ArrayList<>();

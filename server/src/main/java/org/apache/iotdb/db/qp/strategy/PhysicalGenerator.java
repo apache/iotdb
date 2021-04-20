@@ -64,7 +64,6 @@ import org.apache.iotdb.db.qp.logical.sys.ShowFunctionsOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowTriggersOperator;
 import org.apache.iotdb.db.qp.logical.sys.StartTriggerOperator;
 import org.apache.iotdb.db.qp.logical.sys.StopTriggerOperator;
 import org.apache.iotdb.db.qp.logical.sys.TracingOperator;
@@ -255,8 +254,7 @@ public class PhysicalGenerator {
         TracingOperator tracingOperator = (TracingOperator) operator;
         return new TracingPlan(tracingOperator.isTracingOn());
       case QUERY:
-        QueryOperator query = (QueryOperator) operator;
-        return transformQuery(query, fetchSize);
+        return transformQuery((QueryOperator) operator);
       case TTL:
         switch (operator.getTokenIntType()) {
           case SQLConstant.TOK_SET:
@@ -337,7 +335,7 @@ public class PhysicalGenerator {
           case SQLConstant.TOK_SHOW_FUNCTIONS:
             return new ShowFunctionsPlan(((ShowFunctionsOperator) operator).showTemporary());
           case SQLConstant.TOK_SHOW_TRIGGERS:
-            return new ShowTriggersPlan(((ShowTriggersOperator) operator).getPath());
+            return new ShowTriggersPlan();
           default:
             throw new LogicalOperatorException(
                 String.format(
@@ -435,15 +433,14 @@ public class PhysicalGenerator {
   }
 
   interface Transfrom {
-    QueryPlan transform(QueryOperator queryOperator, int fetchSize) throws QueryProcessException;
+    QueryPlan transform(QueryOperator queryOperator) throws QueryProcessException;
   }
 
   /** agg physical plan transform */
   public static class AggPhysicalPlanRule implements Transfrom {
 
     @Override
-    public QueryPlan transform(QueryOperator queryOperator, int fetchSize)
-        throws QueryProcessException {
+    public QueryPlan transform(QueryOperator queryOperator) throws QueryProcessException {
       QueryPlan queryPlan;
       if (queryOperator.hasUdf()) {
         throw new QueryProcessException(
@@ -460,17 +457,18 @@ public class PhysicalGenerator {
           .setAggregations(queryOperator.getSelectOperator().getAggregations());
 
       if (queryOperator.isGroupByTime()) {
-        ((GroupByTimePlan) queryPlan).setInterval(queryOperator.getUnit());
-        ((GroupByTimePlan) queryPlan).setIntervalByMonth(queryOperator.isIntervalByMonth());
-        ((GroupByTimePlan) queryPlan).setSlidingStep(queryOperator.getSlidingStep());
-        ((GroupByTimePlan) queryPlan).setSlidingStepByMonth(queryOperator.isSlidingStepByMonth());
-        ((GroupByTimePlan) queryPlan).setLeftCRightO(queryOperator.isLeftCRightO());
+        GroupByTimePlan groupByTimePlan = (GroupByTimePlan) queryPlan;
+        groupByTimePlan.setInterval(queryOperator.getUnit());
+        groupByTimePlan.setIntervalByMonth(queryOperator.isIntervalByMonth());
+        groupByTimePlan.setSlidingStep(queryOperator.getSlidingStep());
+        groupByTimePlan.setSlidingStepByMonth(queryOperator.isSlidingStepByMonth());
+        groupByTimePlan.setLeftCRightO(queryOperator.isLeftCRightO());
         if (!queryOperator.isLeftCRightO()) {
-          ((GroupByTimePlan) queryPlan).setStartTime(queryOperator.getStartTime() + 1);
-          ((GroupByTimePlan) queryPlan).setEndTime(queryOperator.getEndTime() + 1);
+          groupByTimePlan.setStartTime(queryOperator.getStartTime() + 1);
+          groupByTimePlan.setEndTime(queryOperator.getEndTime() + 1);
         } else {
-          ((GroupByTimePlan) queryPlan).setStartTime(queryOperator.getStartTime());
-          ((GroupByTimePlan) queryPlan).setEndTime(queryOperator.getEndTime());
+          groupByTimePlan.setStartTime(queryOperator.getStartTime());
+          groupByTimePlan.setEndTime(queryOperator.getEndTime());
         }
       }
       if (queryOperator.isFill()) {
@@ -498,33 +496,30 @@ public class PhysicalGenerator {
   public static class FillPhysicalPlanRule implements Transfrom {
 
     @Override
-    public QueryPlan transform(QueryOperator queryOperator, int fetchSize)
-        throws QueryProcessException {
-      QueryPlan queryPlan;
+    public QueryPlan transform(QueryOperator queryOperator) throws QueryProcessException {
       if (queryOperator.hasUdf()) {
         throw new QueryProcessException("Fill functions are not supported in UDF queries.");
       }
-      queryPlan = new FillQueryPlan();
+      FillQueryPlan queryPlan = new FillQueryPlan();
       FilterOperator timeFilter = queryOperator.getFilterOperator();
       if (!timeFilter.isSingle()) {
         throw new QueryProcessException("Slice query must select a single time point");
       }
       long time = Long.parseLong(((BasicFunctionOperator) timeFilter).getValue());
-      ((FillQueryPlan) queryPlan).setQueryTime(time);
-      ((FillQueryPlan) queryPlan).setFillType(queryOperator.getFillTypes());
+      queryPlan.setQueryTime(time);
+      queryPlan.setFillType(queryOperator.getFillTypes());
       return queryPlan;
     }
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private PhysicalPlan transformQuery(QueryOperator queryOperator, int fetchSize)
-      throws QueryProcessException {
+  private PhysicalPlan transformQuery(QueryOperator queryOperator) throws QueryProcessException {
     QueryPlan queryPlan = null;
 
     if (queryOperator.hasAggregation()) {
-      queryPlan = new AggPhysicalPlanRule().transform(queryOperator, fetchSize);
+      queryPlan = new AggPhysicalPlanRule().transform(queryOperator);
     } else if (queryOperator.isFill()) {
-      queryPlan = new FillPhysicalPlanRule().transform(queryOperator, fetchSize);
+      queryPlan = new FillPhysicalPlanRule().transform(queryOperator);
     } else if (queryOperator.isLastQuery()) {
       queryPlan = new LastQueryPlan();
     } else if (queryOperator.getIndexType() != null) {
@@ -537,7 +532,7 @@ public class PhysicalGenerator {
     }
 
     if (queryOperator.isAlignByDevice()) {
-      queryPlan = getAlignQueryPlan(queryOperator, fetchSize, queryPlan);
+      queryPlan = getAlignQueryPlan(queryOperator, queryPlan);
     } else {
       queryPlan.setPaths(queryOperator.getSelectedPaths());
       // Last query result set will not be affected by alignment
@@ -587,8 +582,7 @@ public class PhysicalGenerator {
   }
 
   @SuppressWarnings("squid:S3777") // Suppress high Cognitive Complexity warning
-  private QueryPlan getAlignQueryPlan(
-      QueryOperator queryOperator, int fetchSize, QueryPlan queryPlan)
+  private QueryPlan getAlignQueryPlan(QueryOperator queryOperator, QueryPlan queryPlan)
       throws QueryProcessException {
     // below is the core realization of ALIGN_BY_DEVICE sql logic
     AlignByDevicePlan alignByDevicePlan = new AlignByDevicePlan();

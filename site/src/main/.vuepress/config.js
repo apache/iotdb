@@ -563,14 +563,6 @@ var config = {
 							['UDF/UDF-User-Defined-Function','UDF (User Defined Function)']
 						]
 					},
-					// The trigger module has not been implemented yet,
-					// so the website should not show users how to use it to avoid misleading.
-					// {
-					// 	title: 'Trigger',
-					// 	children: [
-					// 		['UDF/Triggers','Trigger']
-					// 	]
-					// },
 					{
 						title: 'Communication Service Protocol',
 						children: [
@@ -696,25 +688,22 @@ var config = {
 						title: 'API',
 						children: [
 							['API/Programming-JDBC','JDBC'],
-							['API/Programming-Native-API','Native API'],
-							['API/Programming-Other-Languages','Other Languages'],
+							['API/Programming-Java-Native-API','Java Native API'],
+							['API/Programming-Python-Native-API','Python Native API'],
+							['API/Programming-Cpp-Native-API','C++ Native API'],
+							['API/Programming-Go-Native-API','Go Native API'],
 							['API/Programming-TsFile-API','TsFile API']
 						]
 					},
 					{
-						title: 'UDF',
+						title: 'Advanced Features',
 						children: [
-							['UDF/UDF-User-Defined-Function','UDF (User Defined Function)']
+							['Advanced-Features/UDF-User-Defined-Function','UDF (User Defined Function)'],
+							// The trigger module has not been implemented yet,
+							// so the website should not show users how to use it to avoid misleading.
+							// ['Advanced-Features/Triggers','Trigger']
 						]
 					},
-					// The trigger module has not been implemented yet,
-					// so the website should not show users how to use it to avoid misleading.
-					// {
-					// 	title: 'Trigger',
-					// 	children: [
-					// 		['UDF/Triggers','Trigger']
-					// 	]
-					// },
 					{
 						title: 'Communication Service Protocol',
 						children: [
@@ -1367,14 +1356,6 @@ var config = {
 							['UDF/UDF-User-Defined-Function','用户定义函数(UDF)']
 						]
 					},
-					// The trigger module has not been implemented yet,
-					// so the website should not show users how to use it to avoid misleading.
-					// {
-					// 	title: 'Trigger',
-					// 	children: [
-					// 		['UDF/Triggers','Trigger']
-					// 	]
-					// },
 					{
 						title: '通信服务协议',
 						children: [
@@ -1386,7 +1367,7 @@ var config = {
 						title: '系统工具',
 						children: [
 							['System-Tools/Load-External-Tsfile','加载 TsFile'],
-							['System-Tools/Performance-Tracing-Tool','查询性API/Programming-Native-API能追踪'],
+							['System-Tools/Performance-Tracing-Tool','查询性能追踪'],
 							['System-Tools/CSV-Tool','导入导出 CSV'],
 							['System-Tools/Monitor-and-Log-Tools','监控工具和系统日志'],
 							['System-Tools/JMX-Tool','JMX 工具'],
@@ -1494,25 +1475,22 @@ var config = {
 						title: '应用编程接口',
 						children: [
 							['API/Programming-JDBC','JDBC'],
-							['API/Programming-Native-API','Java 原生接口'],
-							['API/Programming-Other-Languages','其他语言原生接口'],
+							['API/Programming-Java-Native-API','Java 原生接口'],
+							['API/Programming-Python-Native-API','Python 原生接口'],
+							['API/Programming-Cpp-Native-API','C++ 原生接口'],
+							['API/Programming-Go-Native-API','Go 原生接口'],
 							['API/Programming-TsFile-API','TsFile API']
 						]
 					},
 					{
-						title: '用户定义函数(UDF)',
+						title: '高级功能',
 						children: [
-							['UDF/UDF-User-Defined-Function','用户定义函数(UDF)']
+							['Advanced-Features/UDF-User-Defined-Function','用户定义函数(UDF)'],
+              // The trigger module has not been implemented yet,
+              // so the website should not show users how to use it to avoid misleading.
+              // ['Advanced-Features/Triggers','触发器']
 						]
 					},
-					// The trigger module has not been implemented yet,
-					// so the website should not show users how to use it to avoid misleading.
-					// {
-					// 	title: 'Trigger',
-					// 	children: [
-					// 		['UDF/Triggers','Trigger']
-					// 	]
-					// },
 					{
 						title: '通信服务协议',
 						children: [
@@ -1524,7 +1502,7 @@ var config = {
 						title: '系统工具',
 						children: [
 							['System-Tools/Load-External-Tsfile','加载 TsFile'],
-							['System-Tools/Performance-Tracing-Tool','查询性API/Programming-Native-API能追踪'],
+							['System-Tools/Performance-Tracing-Tool','查询性能追踪'],
 							['System-Tools/CSV-Tool','导入导出 CSV'],
 							['System-Tools/Monitor-and-Log-Tools','监控工具和系统日志'],
 							['System-Tools/JMX-Tool','JMX 工具'],

@@ -118,13 +118,6 @@ public class AuthorityCheckerTest {
             OperatorType.DROP_INDEX,
             user.getName()));
 
-    Assert.assertFalse(
-        AuthorityChecker.check(
-            user.getName(),
-            Collections.singletonList(new PartialPath(nodeName)),
-            OperatorType.UNION,
-            user.getName()));
-
     // check empty list
     Assert.assertFalse(
         AuthorityChecker.check(
@@ -226,6 +219,20 @@ public class AuthorityCheckerTest {
             user.getName(),
             Collections.singletonList(new PartialPath(nodeName)),
             OperatorType.DELETE_TIMESERIES,
+            user.getName()));
+
+    Assert.assertTrue(
+        AuthorityChecker.check(
+            user.getName(),
+            Collections.singletonList(new PartialPath(nodeName)),
+            OperatorType.FILL,
+            user.getName()));
+
+    Assert.assertTrue(
+        AuthorityChecker.check(
+            user.getName(),
+            Collections.singletonList(new PartialPath(nodeName)),
+            OperatorType.GROUP_BY_FILL,
             user.getName()));
   }
 }
