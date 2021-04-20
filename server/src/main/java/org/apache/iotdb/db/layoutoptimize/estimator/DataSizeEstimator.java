@@ -21,11 +21,12 @@ public class DataSizeEstimator {
   }
 
   /**
-   * TODO: return the chunkSize in disk according to the measurement point num
+   * get the chunk size in the disk according to the number of data point
    *
-   * @param storageGroup
-   * @param pointNum
-   * @return
+   * @param storageGroup the storage group where the measurement is located
+   * @param pointNum the number of data point
+   * @return the chunk size in the disk in byte
+   * @throws DataSizeInfoNotExistsException
    */
   public long getChunkSizeInDisk(String storageGroup, long pointNum)
       throws DataSizeInfoNotExistsException {
@@ -35,22 +36,48 @@ public class DataSizeEstimator {
   }
 
   /**
-   * TODO: return the number of data point according to the chunk size in disk
+   * get the number of data point in the disk according to the data chunk size
    *
-   * @param storageGroup
-   * @param chunkSize
-   * @return
+   * @param storageGroup the storage group where the measurement is located
+   * @param chunkSize the data chunk size in the disk in byte
+   * @return the number of data point
+   * @throws DataSizeInfoNotExistsException
    */
-  public long getPointNumInDisk(String storageGroup, long chunkSize) {
-    return 0L;
+  public long getPointNumInDisk(String storageGroup, long chunkSize)
+      throws DataSizeInfoNotExistsException {
+    List<Pair<Long, Long>> dataPointList = dataPointToMemSize.getOrDefault(storageGroup, null);
+    if (dataPointList == null || dataPointList.size() == 0) {
+      throw new DataSizeInfoNotExistsException(
+          String.format(
+              "the data info of storage group %s does not exist in DataSizeEstimator",
+              storageGroup));
+    }
+    double compressionRatio = CompressionRatio.getInstance().getRatio();
+    long pointNum = -1L;
+    for (int i = 0; i < dataPointList.size() - 1; i++) {
+      if (dataPointList.get(i).right <= chunkSize && dataPointList.get(i + 1).right > chunkSize) {
+        double deltaX = dataPointList.get(i + 1).right - dataPointList.get(i).right;
+        double deltaY = dataPointList.get(i + 1).left - dataPointList.get(i).left;
+        pointNum =
+            (long)
+                ((chunkSize * compressionRatio - dataPointList.get(i).right) / deltaX * deltaY
+                    + dataPointList.get(i).left);
+      }
+    }
+    if (pointNum == -1L) {
+      Pair<Long, Long> lastData = dataPointList.get(dataPointList.size() - 1);
+      pointNum = (long) ((double) (chunkSize * compressionRatio / lastData.right) * lastData.left);
+    }
+    return pointNum;
   }
 
   /**
-   * TODO: return the data size in the memory according to the number of data point
+   * get the data chunk size in memory according to the number of data point
    *
-   * @param storageGroup
-   * @param pointNum
-   * @return
+   * @param storageGroup the storage group where the measurement is located
+   * @param pointNum the number of data point
+   * @return the size of data chunk in the memory in byte
+   * @throws DataSizeInfoNotExistsException
    */
   public long getChunkSizeInMemory(String storageGroup, long pointNum)
       throws DataSizeInfoNotExistsException {
@@ -81,13 +108,37 @@ public class DataSizeEstimator {
   }
 
   /**
-   * return the number of data point according to the data size in the memory
+   * get the number of data point according to the size of data chunk in memory
    *
-   * @param storageGroup
-   * @param chunkSize
-   * @return
+   * @param storageGroup the storage group where the measurement is located
+   * @param chunkSize the size of the data chunk in memory
+   * @return the number of data point
+   * @throws DataSizeInfoNotExistsException
    */
-  public long getPointNumInMemory(String storageGroup, long chunkSize) {
+  public long getPointNumInMemory(String storageGroup, long chunkSize)
+      throws DataSizeInfoNotExistsException {
+    List<Pair<Long, Long>> dataPointList = dataPointToMemSize.getOrDefault(storageGroup, null);
+    if (dataPointList == null || dataPointList.size() == 0) {
+      throw new DataSizeInfoNotExistsException(
+          String.format(
+              "the data info of storage group %s does not exist in DataSizeEstimator",
+              storageGroup));
+    }
+    long pointNum = -1L;
+    for (int i = 0; i < dataPointList.size() - 1; i++) {
+      if (dataPointList.get(i).right <= chunkSize && dataPointList.get(i + 1).right > chunkSize) {
+        double deltaX = dataPointList.get(i + 1).right - dataPointList.get(i).right;
+        double deltaY = dataPointList.get(i + 1).left - dataPointList.get(i).left;
+        pointNum =
+            (long)
+                ((chunkSize - dataPointList.get(i).right) / deltaX * deltaY
+                    + dataPointList.get(i).left);
+      }
+    }
+    if (pointNum == -1L) {
+      Pair<Long, Long> lastData = dataPointList.get(dataPointList.size() - 1);
+      pointNum = (long) ((double) (chunkSize / lastData.right) * lastData.left);
+    }
     return 0L;
   }
 
