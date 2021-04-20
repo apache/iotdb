@@ -77,6 +77,7 @@ public class CompactionMergeTaskPoolManager implements IService {
       pool.shutdownNow();
       logger.info("Waiting for task pool to shut down");
       waitTermination();
+      storageGroupTasks.clear();
     }
   }
 
@@ -86,6 +87,7 @@ public class CompactionMergeTaskPoolManager implements IService {
       awaitTermination(pool, milliseconds);
       logger.info("Waiting for task pool to shut down");
       waitTermination();
+      storageGroupTasks.clear();
     }
   }
 
@@ -112,6 +114,7 @@ public class CompactionMergeTaskPoolManager implements IService {
           }
         }
       }
+      storageGroupTasks.clear();
       logger.info("All compaction task finish");
     }
   }
@@ -136,6 +139,7 @@ public class CompactionMergeTaskPoolManager implements IService {
       }
     }
     pool = null;
+    storageGroupTasks.clear();
     logger.info("CompactionManager stopped");
   }
 
