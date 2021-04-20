@@ -479,6 +479,10 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
             // complete compaction and delete source file
             writeLock();
             try {
+              if (Thread.currentThread().isInterrupted()) {
+                throw new InterruptedException(
+                    String.format("%s [Compaction] abort", storageGroupName));
+              }
               int targetLevel = getMergeLevel(targetResource.getTsFile());
               if (isSeq) {
                 sequenceTsFileResources.get(timePartition).get(targetLevel).add(targetResource);
@@ -499,7 +503,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           }
         }
       }
-    } catch (IOException | IllegalPathException e) {
+    } catch (IOException | IllegalPathException | InterruptedException e) {
       logger.error("recover level tsfile management error ", e);
     } finally {
       if (logFile.exists()) {
@@ -664,6 +668,11 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                 toMergeTsFiles.size());
             writeLock();
             try {
+              if (Thread.currentThread().isInterrupted()) {
+                throw new InterruptedException(
+                    String.format("%s [Compaction] abort", storageGroupName));
+              }
+
               if (sequence) {
                 sequenceTsFileResources.get(timePartition).get(i + 1).add(newResource);
               } else {
