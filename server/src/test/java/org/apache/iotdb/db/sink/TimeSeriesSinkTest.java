@@ -193,13 +193,25 @@ public class TimeSeriesSinkTest {
   }
 
   @Test(expected = QueryProcessException.class)
-  public void onEventWithWrongType() throws Exception {
+  public void onEventWithWrongType1() throws Exception {
     TimeSeriesHandler timeSeriesHandler = new TimeSeriesHandler();
     timeSeriesHandler.open(
         new TimeSeriesConfiguration(
             "root.sg1.d1", new String[] {"s1"}, new TSDataType[] {TSDataType.INT32}));
 
     timeSeriesHandler.onEvent(new TimeSeriesEvent(0, Binary.valueOf(String.valueOf(0))));
+
+    timeSeriesHandler.close();
+  }
+
+  @Test(expected = ClassCastException.class)
+  public void onEventWithWrongType2() throws Exception {
+    TimeSeriesHandler timeSeriesHandler = new TimeSeriesHandler();
+    timeSeriesHandler.open(
+        new TimeSeriesConfiguration(
+            "root.sg1.d1", new String[] {"s1"}, new TSDataType[] {TSDataType.TEXT}));
+
+    timeSeriesHandler.onEvent(new TimeSeriesEvent(0, String.valueOf(0)));
 
     timeSeriesHandler.close();
   }
