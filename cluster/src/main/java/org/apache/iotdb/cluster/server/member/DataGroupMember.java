@@ -706,6 +706,7 @@ public class DataGroupMember extends RaftMember {
           try {
             metaGroupMember.syncLeaderWithConsistencyCheck(true);
             getLocalExecutor().processNonQuery(plan);
+            return StatusUtils.OK;
           } catch (CheckConsistencyException ce) {
             return StatusUtils.getStatus(StatusUtils.CONSISTENCY_FAILURE, ce.getMessage());
           } catch (Exception ne) {
