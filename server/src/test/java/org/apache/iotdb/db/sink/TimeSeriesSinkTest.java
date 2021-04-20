@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.sink;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.sink.ts.TimeSeriesConfiguration;
 import org.apache.iotdb.db.sink.ts.TimeSeriesEvent;
 import org.apache.iotdb.db.sink.ts.TimeSeriesHandler;
@@ -189,5 +190,17 @@ public class TimeSeriesSinkTest {
       Assert.assertNotNull(typeIndex);
       Assert.assertEquals(expectedTypes[typeIndex], resultSetMetaData.getColumnType(i));
     }
+  }
+
+  @Test(expected = QueryProcessException.class)
+  public void onEventWithWrongType() throws Exception {
+    TimeSeriesHandler timeSeriesHandler = new TimeSeriesHandler();
+    timeSeriesHandler.open(
+        new TimeSeriesConfiguration(
+            "root.sg1.d1", new String[] {"s1"}, new TSDataType[] {TSDataType.INT32}));
+
+    timeSeriesHandler.onEvent(new TimeSeriesEvent(0, Binary.valueOf(String.valueOf(0))));
+
+    timeSeriesHandler.close();
   }
 }
