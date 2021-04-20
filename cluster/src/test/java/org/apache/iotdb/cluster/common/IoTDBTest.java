@@ -148,9 +148,8 @@ public abstract class IoTDBTest {
               Collections.emptyMap(),
               null));
     } catch (QueryProcessException
-        | StorageGroupNotSetException
-        | StorageEngineException
-        | IllegalPathException e) {
+        | MetadataException
+        | StorageEngineException e) {
       // ignore
     }
   }
