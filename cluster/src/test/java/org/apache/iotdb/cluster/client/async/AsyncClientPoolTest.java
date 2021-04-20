@@ -33,20 +33,6 @@ import static org.junit.Assert.assertNull;
 
 public class AsyncClientPoolTest {
 
-  private final ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
-  private boolean isAsyncServer;
-
-  @Before
-  public void setUp() {
-    isAsyncServer = config.isUseAsyncServer();
-    config.setUseAsyncServer(true);
-  }
-
-  @After
-  public void tearDown() {
-    config.setUseAsyncServer(isAsyncServer);
-  }
-
   @Mock private AsyncClientFactory testAsyncClientFactory;
 
   private ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
