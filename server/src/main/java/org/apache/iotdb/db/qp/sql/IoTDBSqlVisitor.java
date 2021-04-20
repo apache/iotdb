@@ -77,6 +77,7 @@ import org.apache.iotdb.db.qp.logical.sys.ShowTriggersOperator;
 import org.apache.iotdb.db.qp.logical.sys.StartTriggerOperator;
 import org.apache.iotdb.db.qp.logical.sys.StopTriggerOperator;
 import org.apache.iotdb.db.qp.logical.sys.TracingOperator;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.AggregationCallContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.AggregationElementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.AliasClauseContext;
@@ -1338,7 +1339,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   public void parseGroupByLevelClause(GroupByLevelClauseContext ctx, QueryOperator queryOp) {
     if (!queryOp.hasAggregation()) {
-      throw new SQLParserException("Lack aggregation function in group by query");
+      throw new SQLParserException(GroupByTimePlan.LACK_FUNC_ERROR_MESSAGE);
     }
     queryOp.setGroupByLevel(true);
     queryOp.setLevel(Integer.parseInt(ctx.INT().getText()));
@@ -1432,7 +1433,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   private void parseGroupByTimeClause(GroupByTimeClauseContext ctx, QueryOperator queryOp) {
     if (!queryOp.hasAggregation()) {
-      throw new SQLParserException("Lack aggregation function in group by query");
+      throw new SQLParserException(GroupByTimePlan.LACK_FUNC_ERROR_MESSAGE);
     }
     queryOp.setGroupByTime(true);
     queryOp.setLeftCRightO(ctx.timeInterval().LS_BRACKET() != null);
@@ -1460,7 +1461,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   private void parseGroupByFillClause(GroupByFillClauseContext ctx, QueryOperator queryOp) {
     if (!queryOp.hasAggregation()) {
-      throw new SQLParserException("Lack aggregation function in group by query");
+      throw new SQLParserException(GroupByTimePlan.LACK_FUNC_ERROR_MESSAGE);
     }
     queryOp.setGroupByTime(true);
     queryOp.setFill(true);

@@ -20,6 +20,7 @@ package org.apache.iotdb.db.integration.aggregation;
 
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.qp.Planner;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 
@@ -338,7 +339,7 @@ public class IoTDBAggregationByLevelIT {
 
       fail("No expected exception thrown");
     } catch (Exception e) {
-      Assert.assertTrue(e.getMessage().contains("Lack aggregation function in group by query"));
+      Assert.assertTrue(e.getMessage().contains(GroupByTimePlan.LACK_FUNC_ERROR_MESSAGE));
     }
   }
 
