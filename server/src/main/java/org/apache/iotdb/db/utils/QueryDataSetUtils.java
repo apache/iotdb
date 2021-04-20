@@ -185,7 +185,7 @@ public class QueryDataSetUtils {
   }
 
   public static BitMap[] readBitMapsFromBuffer(ByteBuffer buffer, int columns, int size) {
-    if (!buffer.hasRemaining()) {
+    if (!buffer.hasRemaining() || !BytesUtils.byteToBool(buffer.get())) {
       return null;
     }
     BitMap[] bitMaps = new BitMap[columns];
