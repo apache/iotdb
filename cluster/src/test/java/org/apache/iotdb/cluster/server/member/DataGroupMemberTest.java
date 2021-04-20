@@ -66,6 +66,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -695,7 +696,7 @@ public class DataGroupMemberTest extends BaseMember {
 
   @Test
   public void testQuerySingleSeries()
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException,
+      throws QueryProcessException, MetadataException, StorageEngineException,
           IllegalPathException {
     System.out.println("Start testQuerySingleSeries()");
     InsertRowPlan insertPlan = new InsertRowPlan();
@@ -757,7 +758,7 @@ public class DataGroupMemberTest extends BaseMember {
 
   @Test
   public void testQuerySingleSeriesWithValueFilter()
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException,
+      throws QueryProcessException, MetadataException, StorageEngineException,
           IllegalPathException {
     System.out.println("Start testQuerySingleSeriesWithValueFilter()");
     InsertRowPlan insertPlan = new InsertRowPlan();
@@ -819,7 +820,7 @@ public class DataGroupMemberTest extends BaseMember {
 
   @Test
   public void testQuerySingleSeriesByTimestamp()
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException,
+      throws QueryProcessException, MetadataException, StorageEngineException,
           IllegalPathException {
     System.out.println("Start testQuerySingleSeriesByTimestamp()");
     InsertRowPlan insertPlan = new InsertRowPlan();
@@ -882,7 +883,7 @@ public class DataGroupMemberTest extends BaseMember {
 
   @Test
   public void testQuerySingleSeriesByTimestampWithValueFilter()
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException,
+      throws QueryProcessException, MetadataException, StorageEngineException,
           IllegalPathException {
     System.out.println("Start testQuerySingleSeriesByTimestampWithValueFilter()");
     InsertRowPlan insertPlan = new InsertRowPlan();
@@ -1092,8 +1093,7 @@ public class DataGroupMemberTest extends BaseMember {
 
   @Test
   public void testGroupBy()
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException,
-          IllegalPathException {
+      throws QueryProcessException, MetadataException, StorageEngineException {
     System.out.println("Start testGroupBy()");
     TestUtils.prepareData();
 
