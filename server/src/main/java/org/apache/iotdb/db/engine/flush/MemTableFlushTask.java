@@ -24,6 +24,7 @@ import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.exception.runtime.FlushRunTimeException;
+import org.apache.iotdb.db.layoutoptimize.estimator.DataSizeEstimator;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -91,6 +92,9 @@ public class MemTableFlushTask {
         memTable.memSize(),
         memTable.getTotalPointsNum() / memTable.getSeriesNumber(),
         memTable.getSeriesNumber());
+
+    DataSizeEstimator.getInstance()
+        .addDataInfo(storageGroup, memTable.getTotalPointsNum(), memTable.memSize());
 
     long estimatedTemporaryMemSize = 0L;
     if (config.isEnableMemControl() && SystemInfo.getInstance().isEncodingFasterThanIo()) {

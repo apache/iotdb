@@ -1,5 +1,6 @@
 package org.apache.iotdb.db.layoutoptimize.estimator;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.layoutoptimize.workloadmanager.queryrecord.QueryRecord;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -29,6 +30,18 @@ public class CostEstimator {
    * @return the cost in milliseconds
    */
   public double estimate(QueryRecord query, List<String> physicalOrder, long chunkSize) {
+    if (!diskInfo.hasInit) {
+      File diskInfoFile =
+          new File(
+              IoTDBDescriptor.getInstance().getConfig().getSystemDir()
+                  + File.separator
+                  + "disk.info");
+      try {
+        diskInfo.readDiskInfo(diskInfoFile);
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    }
     // TODO: get the sample rate, get the chunk group num
     int chunkGroupNum = 1;
     double readCost =
@@ -77,7 +90,7 @@ public class CostEstimator {
   }
 
   private static class DiskInfo {
-    public CsvReader reader;
+    public DiskInfoReader reader;
     public List<Pair<Long, Long>> seekData;
     public double READ_SPEED;
     boolean hasInit = false;
@@ -89,10 +102,11 @@ public class CostEstimator {
      * @throws IOException
      */
     public void readDiskInfo(File infoFile) throws IOException {
-      reader = new CsvReader(infoFile);
+      reader = new DiskInfoReader(infoFile);
+      READ_SPEED = reader.getReadSpeed();
       seekData = new ArrayList<>();
       while (reader.hasNext()) {
-        String[] nextLine = reader.readNext();
+        String[] nextLine = reader.getNextSeekData();
         seekData.add(new Pair<>(Long.valueOf(nextLine[0]), Long.valueOf(nextLine[1])));
       }
       hasInit = true;

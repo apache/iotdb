@@ -71,6 +71,7 @@ public class SessionExample {
     insertTablet();
     insertTablets();
     insertRecords();
+    session.executeNonQueryStatement("flush");
     //    nonQuery();
     //    query();
     //    queryWithTimeout();

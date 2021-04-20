@@ -4,16 +4,16 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Scanner;
 
-public class CsvReader {
+public class DiskInfoReader {
   File csvFile;
   Scanner scanner;
 
-  public CsvReader(File file) throws IOException {
+  public DiskInfoReader(File file) throws IOException {
     csvFile = file;
     scanner = new Scanner(csvFile);
   }
 
-  public String[] readNext() throws IOException {
+  public String[] getNextSeekData() throws IOException {
     if (!scanner.hasNext()) return null;
     String line = scanner.nextLine();
     String[] splitLine = null;
@@ -23,6 +23,13 @@ public class CsvReader {
       splitLine = line.split(" ");
     }
     return splitLine;
+  }
+
+  public double getReadSpeed() throws IOException {
+    if (!scanner.hasNext()) {
+      throw new IOException("Out of file range");
+    }
+    return Double.parseDouble(scanner.nextLine());
   }
 
   public boolean hasNext() {
