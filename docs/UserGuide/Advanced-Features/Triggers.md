@@ -508,7 +508,7 @@ Example:
 ```java
 final String device = "root.alerting";
 final String[] measurements = new String[] {"local"};
-final TSDataType[] dataTypes = new TSDataType[] {TSDataType.BOOLEAN};
+final TSDataType[] dataTypes = new TSDataType[] {TSDataType.DOUBLE};
 
 TimeSeriesHandler timeSeriesHandler = new TimeSeriesHandler();
 timeSeriesHandler.open(new TimeSeriesConfiguration(device, measurements, dataTypes));
