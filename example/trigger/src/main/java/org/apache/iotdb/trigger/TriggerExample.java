@@ -40,6 +40,11 @@ public class TriggerExample implements Trigger {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TriggerExample.class);
 
+  private static final String TARGET_DEVICE = "root.alerting";
+
+  private final TimeSeriesHandler timeSeriesHandler = new TimeSeriesHandler();
+  private final MQTTHandler mqttHandler = new MQTTHandler();
+
   private SlidingSizeWindowEvaluationHandler windowEvaluationHandler;
 
   @Override
@@ -49,20 +54,7 @@ public class TriggerExample implements Trigger {
     double lo = attributes.getDouble("lo");
     double hi = attributes.getDouble("hi");
 
-    TimeSeriesHandler timeSeriesHandler = new TimeSeriesHandler();
-    timeSeriesHandler.open(
-        new TimeSeriesConfiguration(
-            "root.alerting", new String[] {"local"}, new TSDataType[] {TSDataType.DOUBLE}));
-
-    MQTTHandler mqttHandler = new MQTTHandler();
-    mqttHandler.open(
-        new MQTTConfiguration(
-            "127.0.0.1",
-            1883,
-            "root",
-            "root",
-            new PartialPath("root.alerting"),
-            new String[] {"remote"}));
+    openSinkHandlers();
 
     windowEvaluationHandler =
         new SlidingSizeWindowEvaluationHandler(
@@ -83,18 +75,21 @@ public class TriggerExample implements Trigger {
   }
 
   @Override
-  public void onDrop() {
+  public void onDrop() throws Exception {
     LOGGER.info("onDrop()");
+    closeSinkHandlers();
   }
 
   @Override
-  public void onStart() {
+  public void onStart() throws Exception {
     LOGGER.info("onStart()");
+    openSinkHandlers();
   }
 
   @Override
-  public void onStop() {
+  public void onStop() throws Exception {
     LOGGER.info("onStop()");
+    closeSinkHandlers();
   }
 
   @Override
@@ -109,5 +104,24 @@ public class TriggerExample implements Trigger {
       windowEvaluationHandler.collect(timestamps[i], values[i]);
     }
     return values;
+  }
+
+  private void openSinkHandlers() throws Exception {
+    timeSeriesHandler.open(
+        new TimeSeriesConfiguration(
+            TARGET_DEVICE, new String[] {"local"}, new TSDataType[] {TSDataType.DOUBLE}));
+    mqttHandler.open(
+        new MQTTConfiguration(
+            "127.0.0.1",
+            1883,
+            "root",
+            "root",
+            new PartialPath(TARGET_DEVICE),
+            new String[] {"remote"}));
+  }
+
+  private void closeSinkHandlers() throws Exception {
+    timeSeriesHandler.close();
+    mqttHandler.close();
   }
 }

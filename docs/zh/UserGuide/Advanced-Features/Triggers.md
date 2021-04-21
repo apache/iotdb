@@ -587,6 +587,190 @@ for (int i = 0; i < 100; ++i) {
 * 如何使用窗口工具类
 * 如何使用Sink工具类
 
+```java
+package org.apache.iotdb.trigger;
+
+import org.apache.iotdb.db.engine.trigger.api.Trigger;
+import org.apache.iotdb.db.engine.trigger.api.TriggerAttributes;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.sink.mqtt.MQTTConfiguration;
+import org.apache.iotdb.db.sink.mqtt.MQTTEvent;
+import org.apache.iotdb.db.sink.mqtt.MQTTHandler;
+import org.apache.iotdb.db.sink.ts.TimeSeriesConfiguration;
+import org.apache.iotdb.db.sink.ts.TimeSeriesEvent;
+import org.apache.iotdb.db.sink.ts.TimeSeriesHandler;
+import org.apache.iotdb.db.utils.windowing.configuration.SlidingSizeWindowConfiguration;
+import org.apache.iotdb.db.utils.windowing.handler.SlidingSizeWindowEvaluationHandler;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import org.fusesource.mqtt.client.QoS;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class TriggerExample implements Trigger {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(TriggerExample.class);
+
+  private static final String TARGET_DEVICE = "root.alerting";
+
+  private final TimeSeriesHandler timeSeriesHandler = new TimeSeriesHandler();
+  private final MQTTHandler mqttHandler = new MQTTHandler();
+
+  private SlidingSizeWindowEvaluationHandler windowEvaluationHandler;
+
+  @Override
+  public void onCreate(TriggerAttributes attributes) throws Exception {
+    LOGGER.info("onCreate(TriggerAttributes attributes)");
+
+    double lo = attributes.getDouble("lo");
+    double hi = attributes.getDouble("hi");
+
+    openSinkHandlers();
+
+    windowEvaluationHandler =
+        new SlidingSizeWindowEvaluationHandler(
+            new SlidingSizeWindowConfiguration(TSDataType.DOUBLE, 5, 5),
+            window -> {
+              double avg = 0;
+              for (int i = 0; i < window.size(); ++i) {
+                avg += window.getDouble(i);
+              }
+              avg /= window.size();
+
+              if (avg < lo || hi < avg) {
+                timeSeriesHandler.onEvent(new TimeSeriesEvent(window.getTime(0), avg));
+                mqttHandler.onEvent(
+                    new MQTTEvent("test", QoS.EXACTLY_ONCE, false, window.getTime(0), avg));
+              }
+            });
+  }
+
+  @Override
+  public void onDrop() throws Exception {
+    LOGGER.info("onDrop()");
+    closeSinkHandlers();
+  }
+
+  @Override
+  public void onStart() throws Exception {
+    LOGGER.info("onStart()");
+    openSinkHandlers();
+  }
+
+  @Override
+  public void onStop() throws Exception {
+    LOGGER.info("onStop()");
+    closeSinkHandlers();
+  }
+
+  @Override
+  public Double fire(long timestamp, Double value) {
+    windowEvaluationHandler.collect(timestamp, value);
+    return value;
+  }
+
+  @Override
+  public double[] fire(long[] timestamps, double[] values) {
+    for (int i = 0; i < timestamps.length; ++i) {
+      windowEvaluationHandler.collect(timestamps[i], values[i]);
+    }
+    return values;
+  }
+
+  private void openSinkHandlers() throws Exception {
+    timeSeriesHandler.open(
+        new TimeSeriesConfiguration(
+            TARGET_DEVICE, new String[] {"local"}, new TSDataType[] {TSDataType.DOUBLE}));
+    mqttHandler.open(
+        new MQTTConfiguration(
+            "127.0.0.1",
+            1883,
+            "root",
+            "root",
+            new PartialPath(TARGET_DEVICE),
+            new String[] {"remote"}));
+  }
+
+  private void closeSinkHandlers() throws Exception {
+    timeSeriesHandler.close();
+    mqttHandler.close();
+  }
+}
+```
+
+您可以按照下面的步骤试用这个触发器：
+
+* 在`iotdb-engine.properties`中启用MQTT服务
+
+  ``` properties
+  # whether to enable the mqtt service.
+  enable_mqtt_service=true
+  ```
+
+* 启动 IoTDB 服务器
+
+* 通过 cli 创建时间序列
+
+  ``` sql
+  CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=DOUBLE, ENCODING=PLAIN;
+  ```
+
+* 将 **trigger-example** 中打包好的JAR（`trigger-example-0.12.0-SNAPSHOT.jar`）放置到目录 `iotdb-server-0.12.0-SNAPSHOT/ext/trigger` （也可以是`iotdb-server-0.12.0-SNAPSHOT/ext/trigger`的子目录）下
+
+  > 您可以通过修改配置文件中的`trigger_root_dir`来指定加载触发器JAR包的根路径。
+
+* 使用SQL语句注册该触发器，假定赋予该触发器的名字为`window-avg-alerter`
+
+* 使用`CREATE TRIGGER`语句注册该触发器
+
+  ```sql
+  CREATE TRIGGER window-avg-alerter
+  AFTER INSERT
+  ON root.sg1.d1.s1
+  AS "org.apache.iotdb.trigger.TriggerExample"
+  WITH (
+    "lo" = "0", 
+    "hi" = "10.0"
+  )
+  ```
+
+* 使用 cli 插入测试数据
+
+  ``` sql
+  INSERT INTO root.sg1.d1(timestamp, s1) VALUES (1, 0);
+  INSERT INTO root.sg1.d1(timestamp, s1) VALUES (2, 2);
+  INSERT INTO root.sg1.d1(timestamp, s1) VALUES (3, 4);
+  INSERT INTO root.sg1.d1(timestamp, s1) VALUES (4, 6);
+  INSERT INTO root.sg1.d1(timestamp, s1) VALUES (5, 8);
+  
+  INSERT INTO root.sg1.d1(timestamp, s1) VALUES (6, 10);
+  INSERT INTO root.sg1.d1(timestamp, s1) VALUES (7, 12);
+  INSERT INTO root.sg1.d1(timestamp, s1) VALUES (8, 14);
+  INSERT INTO root.sg1.d1(timestamp, s1) VALUES (9, 16);
+  INSERT INTO root.sg1.d1(timestamp, s1) VALUES (10, 18);
+  ```
+
+* 使用 cli 查询数据以验证触发器的行为
+
+  ``` sql
+  SELECT * FROM root.alerting;
+  ```
+
+* 正常情况下，得到如下结果
+
+  ``` sql
+  IoTDB> SELECT * FROM root.alerting;
+  +-----------------------------+--------------------+-------------------+
+  |                         Time|root.alerting.remote|root.alerting.local|
+  +-----------------------------+--------------------+-------------------+
+  |1970-01-01T08:00:00.006+08:00|                14.0|               14.0|
+  +-----------------------------+--------------------+-------------------+
+  Total line number = 1
+  It costs 0.006s
+  ```
+
+以上就是基本的使用方法，希望您能喜欢 :D
+
 
 
 ## 重要注意事项

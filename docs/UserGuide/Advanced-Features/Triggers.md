@@ -570,6 +570,190 @@ It shows:
 * How to use the windowing utility
 * How to use the sink utility
 
+```java
+package org.apache.iotdb.trigger;
+
+import org.apache.iotdb.db.engine.trigger.api.Trigger;
+import org.apache.iotdb.db.engine.trigger.api.TriggerAttributes;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.sink.mqtt.MQTTConfiguration;
+import org.apache.iotdb.db.sink.mqtt.MQTTEvent;
+import org.apache.iotdb.db.sink.mqtt.MQTTHandler;
+import org.apache.iotdb.db.sink.ts.TimeSeriesConfiguration;
+import org.apache.iotdb.db.sink.ts.TimeSeriesEvent;
+import org.apache.iotdb.db.sink.ts.TimeSeriesHandler;
+import org.apache.iotdb.db.utils.windowing.configuration.SlidingSizeWindowConfiguration;
+import org.apache.iotdb.db.utils.windowing.handler.SlidingSizeWindowEvaluationHandler;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import org.fusesource.mqtt.client.QoS;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class TriggerExample implements Trigger {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(TriggerExample.class);
+
+  private static final String TARGET_DEVICE = "root.alerting";
+
+  private final TimeSeriesHandler timeSeriesHandler = new TimeSeriesHandler();
+  private final MQTTHandler mqttHandler = new MQTTHandler();
+
+  private SlidingSizeWindowEvaluationHandler windowEvaluationHandler;
+
+  @Override
+  public void onCreate(TriggerAttributes attributes) throws Exception {
+    LOGGER.info("onCreate(TriggerAttributes attributes)");
+
+    double lo = attributes.getDouble("lo");
+    double hi = attributes.getDouble("hi");
+
+    openSinkHandlers();
+
+    windowEvaluationHandler =
+        new SlidingSizeWindowEvaluationHandler(
+            new SlidingSizeWindowConfiguration(TSDataType.DOUBLE, 5, 5),
+            window -> {
+              double avg = 0;
+              for (int i = 0; i < window.size(); ++i) {
+                avg += window.getDouble(i);
+              }
+              avg /= window.size();
+
+              if (avg < lo || hi < avg) {
+                timeSeriesHandler.onEvent(new TimeSeriesEvent(window.getTime(0), avg));
+                mqttHandler.onEvent(
+                    new MQTTEvent("test", QoS.EXACTLY_ONCE, false, window.getTime(0), avg));
+              }
+            });
+  }
+
+  @Override
+  public void onDrop() throws Exception {
+    LOGGER.info("onDrop()");
+    closeSinkHandlers();
+  }
+
+  @Override
+  public void onStart() throws Exception {
+    LOGGER.info("onStart()");
+    openSinkHandlers();
+  }
+
+  @Override
+  public void onStop() throws Exception {
+    LOGGER.info("onStop()");
+    closeSinkHandlers();
+  }
+
+  @Override
+  public Double fire(long timestamp, Double value) {
+    windowEvaluationHandler.collect(timestamp, value);
+    return value;
+  }
+
+  @Override
+  public double[] fire(long[] timestamps, double[] values) {
+    for (int i = 0; i < timestamps.length; ++i) {
+      windowEvaluationHandler.collect(timestamps[i], values[i]);
+    }
+    return values;
+  }
+
+  private void openSinkHandlers() throws Exception {
+    timeSeriesHandler.open(
+        new TimeSeriesConfiguration(
+            TARGET_DEVICE, new String[] {"local"}, new TSDataType[] {TSDataType.DOUBLE}));
+    mqttHandler.open(
+        new MQTTConfiguration(
+            "127.0.0.1",
+            1883,
+            "root",
+            "root",
+            new PartialPath(TARGET_DEVICE),
+            new String[] {"remote"}));
+  }
+
+  private void closeSinkHandlers() throws Exception {
+    timeSeriesHandler.close();
+    mqttHandler.close();
+  }
+}
+```
+
+You can try this trigger by following the steps below:
+
+* Enable MQTT service by modifying `iotdb-engine.properties`
+
+  ``` properties
+  # whether to enable the mqtt service.
+  enable_mqtt_service=true
+  ```
+
+* Start the IoTDB server
+
+* Create time series via cli
+
+  ``` sql
+  CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=DOUBLE, ENCODING=PLAIN;
+  ```
+
+* Place the JAR (`trigger-example-0.12.0-SNAPSHOT.jar`) of **trigger-example** in the directory `iotdb-server-0.12.0-SNAPSHOT/ext/trigger` (or in a subdirectory of `iotdb-server-0.12.0-SNAPSHOT/ext/trigger`)
+
+  > You can specify the root path to load the trigger JAR package by modifying the `trigger_root_dir` in the configuration file.
+
+* Use the SQL statement to register the trigger, assuming that the name given to the trigger is `window-avg-alerter`
+
+* Use the `CREATE TRIGGER` statement to register the trigger via cli
+
+  ```sql
+  CREATE TRIGGER window-avg-alerter
+  AFTER INSERT
+  ON root.sg1.d1.s1
+  AS "org.apache.iotdb.trigger.TriggerExample"
+  WITH (
+    "lo" = "0",
+    "hi" = "10.0"
+  )
+  ```
+
+* Use cli to insert test data
+
+  ``` sql
+  INSERT INTO root.sg1.d1(timestamp, s1) VALUES (1, 0);
+  INSERT INTO root.sg1.d1(timestamp, s1) VALUES (2, 2);
+  INSERT INTO root.sg1.d1(timestamp, s1) VALUES (3, 4);
+  INSERT INTO root.sg1.d1(timestamp, s1) VALUES (4, 6);
+  INSERT INTO root.sg1.d1(timestamp, s1) VALUES (5, 8);
+  
+  INSERT INTO root.sg1.d1(timestamp, s1) VALUES (6, 10);
+  INSERT INTO root.sg1.d1(timestamp, s1) VALUES (7, 12);
+  INSERT INTO root.sg1.d1(timestamp, s1) VALUES (8, 14);
+  INSERT INTO root.sg1.d1(timestamp, s1) VALUES (9, 16);
+  INSERT INTO root.sg1.d1(timestamp, s1) VALUES (10, 18);
+  ```
+
+* Use cli to query data to verify the behavior of the trigger
+
+  ``` sql
+  SELECT * FROM root.alerting;
+  ```
+
+* Under normal circumstances, the following results should be shown
+
+  ``` sql
+  IoTDB> SELECT * FROM root.alerting;
+  +-----------------------------+--------------------+-------------------+
+  |                         Time|root.alerting.remote|root.alerting.local|
+  +-----------------------------+--------------------+-------------------+
+  |1970-01-01T08:00:00.006+08:00|                14.0|               14.0|
+  +-----------------------------+--------------------+-------------------+
+  Total line number = 1
+  It costs 0.006s
+  ```
+
+That's all, please enjoy it :D
+
 
 
 ## Important Notes
