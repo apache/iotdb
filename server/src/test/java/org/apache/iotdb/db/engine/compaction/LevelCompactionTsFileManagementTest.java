@@ -170,8 +170,12 @@ public class LevelCompactionTsFileManagementTest extends LevelCompactionTest {
     Iterator<TsFileResource> tsFileResourceIterator =
         levelCompactionTsFileManagement.getIterator(true);
     tsFileResourceIterator.next();
-    tsFileResourceIterator.remove();
-    assertEquals(5, levelCompactionTsFileManagement.getTsFileList(true).size());
+    try {
+      tsFileResourceIterator.remove();
+    } catch (UnsupportedOperationException e) {
+      // pass
+    }
+    assertEquals(6, levelCompactionTsFileManagement.getTsFileList(true).size());
 
     TsFileResource tsFileResource1 =
         new TsFileResource(
@@ -219,6 +223,6 @@ public class LevelCompactionTsFileManagementTest extends LevelCompactionTest {
       count++;
       tsFileResourceIterator2.next();
     }
-    assertEquals(8, count);
+    assertEquals(9, count);
   }
 }

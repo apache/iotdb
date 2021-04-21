@@ -130,11 +130,11 @@ public abstract class TsFileManagement {
   /** fork current TsFile list (call this before merge) */
   public abstract void forkCurrentFileList(long timePartition) throws IOException;
 
-  public void readLock() {
+  protected void readLock() {
     compactionMergeLock.readLock().lock();
   }
 
-  public void readUnLock() {
+  protected void readUnLock() {
     compactionMergeLock.readLock().unlock();
   }
 
