@@ -52,7 +52,7 @@ public class TriggerExample implements Trigger {
     TimeSeriesHandler timeSeriesHandler = new TimeSeriesHandler();
     timeSeriesHandler.open(
         new TimeSeriesConfiguration(
-            "root.alerting", new String[] {"local"}, new TSDataType[] {TSDataType.BOOLEAN}));
+            "root.alerting", new String[] {"local"}, new TSDataType[] {TSDataType.DOUBLE}));
 
     MQTTHandler mqttHandler = new MQTTHandler();
     mqttHandler.open(

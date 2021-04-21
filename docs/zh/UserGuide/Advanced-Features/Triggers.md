@@ -506,6 +506,85 @@ SlidingTimeWindowEvaluationHandler handler =
 
 
 
+### Sink工具类
+
+Sink工具类为触发器提供了连接外部系统的能力。
+
+它提供了一套编程范式。每一个Sink工具都包含一个用于处理数据发送的`Handler`、一个用于配置`Handler`的`Configuration`，还有一个用于描述发送数据的`Event`。
+
+
+
+#### TimeSeriesSink
+
+`TimeSeriesSink`用于向本地序列写入数据点。
+
+**注意**，在触发器场景中，侦听的时间序列和写入的目标时间序列不要在同一个存储组下。
+
+使用示例：
+
+```java
+final String device = "root.alerting";
+final String[] measurements = new String[] {"local"};
+final TSDataType[] dataTypes = new TSDataType[] {TSDataType.BOOLEAN};
+
+TimeSeriesHandler timeSeriesHandler = new TimeSeriesHandler();
+timeSeriesHandler.open(new TimeSeriesConfiguration(device, measurements, dataTypes));
+
+// insert 100 data points
+for (int i = 0; i < 100; ++i) {
+  final long timestamp = i;
+  final double value = i;
+  timeSeriesHandler.onEvent(new TimeSeriesEvent(timestamp, value));
+}
+```
+
+
+
+#### MQTTSink
+
+触发器可以使用`MQTTSink`向其他的 IoTDB 实例发送数据点。
+
+使用示例：
+
+```java
+final String host = "127.0.0.1";
+final int port = 1883;
+final String username = "root";
+final String password = "root";
+final PartialPath device = new PartialPath("root.alerting");
+final String[] measurements = new String[] {"remote"};
+
+MQTTHandler mqttHandler = new MQTTHandler();
+mqttHandler.open(new MQTTConfiguration(host, port, username, password, device, measurements));
+
+final String topic = "test";
+final QoS qos = QoS.EXACTLY_ONCE;
+final boolean retain = false;
+// send 100 data points
+for (int i = 0; i < 100; ++i) {
+  final long timestamp = i;
+  final double value = i;
+  mqttHandler.onEvent(new MQTTEvent(topic, qos, retain, timestamp, value));
+}
+```
+
+
+
+## 完整的Maven示例项目
+
+如果您使用[Maven](http://search.maven.org/)，可以参考我们编写的示例项目**trigger-example**。
+
+您可以在[这里](https://github.com/apache/iotdb/tree/master/example/trigger)找到它。
+
+它展示了：
+
+* 如何使用Maven管理您的trigger项目
+* 如何基于触发器的用户编程接口实现数据侦听
+* 如何使用窗口工具类
+* 如何使用Sink工具类
+
+
+
 ## 重要注意事项
 
 * 触发器是通过反射技术动态装载的，因此您在装载过程中无需启停服务器。

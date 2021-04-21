@@ -489,6 +489,85 @@ The maximum number of window evaluation tasks that can be pending for execution.
 
 
 
+### Sink Utility
+
+The sink utility provides the ability for triggers to connect to external systems.
+
+It provides a programming paradigm. Each sink utility contains a `Handler` for processing data sending, a `Configuration` for configuring `Handler`, and an `Event` for describing the sending data.
+
+
+
+#### TimeSeriesSink
+
+`TimeSeriesSink` is used to insert data points to the local sequence.
+
+**Note**, in the scenario used for triggers, the listening time series and the written target time series should not be in the same storage group.
+
+Example:
+
+```java
+final String device = "root.alerting";
+final String[] measurements = new String[] {"local"};
+final TSDataType[] dataTypes = new TSDataType[] {TSDataType.BOOLEAN};
+
+TimeSeriesHandler timeSeriesHandler = new TimeSeriesHandler();
+timeSeriesHandler.open(new TimeSeriesConfiguration(device, measurements, dataTypes));
+
+// insert 100 data points
+for (int i = 0; i < 100; ++i) {
+  final long timestamp = i;
+  final double value = i;
+  timeSeriesHandler.onEvent(new TimeSeriesEvent(timestamp, value));
+}
+```
+
+
+
+#### MQTTSink
+
+In triggers, you can use `MQTTSink` to send data points to other IoTDB instances.
+
+Example:
+
+```java
+final String host = "127.0.0.1";
+final int port = 1883;
+final String username = "root";
+final String password = "root";
+final PartialPath device = new PartialPath("root.alerting");
+final String[] measurements = new String[] {"remote"};
+
+MQTTHandler mqttHandler = new MQTTHandler();
+mqttHandler.open(new MQTTConfiguration(host, port, username, password, device, measurements));
+
+final String topic = "test";
+final QoS qos = QoS.EXACTLY_ONCE;
+final boolean retain = false;
+// send 100 data points
+for (int i = 0; i < 100; ++i) {
+  final long timestamp = i;
+  final double value = i;
+  mqttHandler.onEvent(new MQTTEvent(topic, qos, retain, timestamp, value));
+}
+```
+
+
+
+## Maven Project Example
+
+If you use [Maven](http://search.maven.org/), you can refer to our sample project **trigger-example**.
+
+You can find it [here](https://github.com/apache/iotdb/tree/master/example/trigger).
+
+It shows:
+
+* How to use Maven to manage your trigger project
+* How to listen to data changes based on the user programming interface
+* How to use the windowing utility
+* How to use the sink utility
+
+
+
 ## Important Notes
 
 * The trigger is implemented based on the reflection mechanism. Triggers can be dynamically registered and dropped without restarting the server.
