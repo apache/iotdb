@@ -311,7 +311,7 @@ struct ServerProperties {
 
 struct TSSetDeviceTemplateReq {
   1: required i64 sessionId
-  2: required string template
+  2: required string templateName
   3: required string prefixPath
 }
 
