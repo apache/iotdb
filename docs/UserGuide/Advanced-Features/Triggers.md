@@ -501,6 +501,8 @@ It provides a programming paradigm. Each sink utility contains a `Handler` for p
 
 `TimeSeriesSink` is used to insert data points to the local sequence.
 
+Before writing data, it is not required that the time series have been created.
+
 **Note**, in the scenario used for triggers, the listening time series and the written target time series should not be in the same storage group.
 
 Example:
@@ -526,6 +528,8 @@ for (int i = 0; i < 100; ++i) {
 #### MQTTSink
 
 In triggers, you can use `MQTTSink` to send data points to other IoTDB instances.
+
+Before sending data, it is not required that the time series have been created.
 
 Example:
 
