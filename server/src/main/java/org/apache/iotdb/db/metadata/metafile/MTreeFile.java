@@ -2,6 +2,7 @@ package org.apache.iotdb.db.metadata.metafile;
 
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.PersistenceMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -97,14 +98,14 @@ public class MTreeFile {
       if(!mNode.hasChild(nodes[i])){
         return null;
       }
-      mNode = read(mNode.getChild(nodes[i]).getPosition());
+      mNode = read(mNode.getChild(nodes[i]).getPersistenceInfo().getPosition());
     }
     return mNode;
   }
 
   public MNode readRecursively(long position) throws IOException{
     MNode mNode=new MNode(null,null);
-    mNode.setPosition(position);
+    mNode.setPersistenceInfo(new PersistenceMNode(position));
     readDataRecursively(mNode);
     return mNode;
   }
@@ -117,7 +118,8 @@ public class MTreeFile {
   }
 
   public MNode readData(MNode mNode) throws IOException {
-    long position = mNode.getPosition();
+    PersistenceInfo persistenceInfo=mNode.getPersistenceInfo();
+    long position = persistenceInfo.getPosition();
     ByteBuffer dataBuffer = readBytesFromFile(position);
     int type = dataBuffer.get();
     if(type>3){
@@ -135,7 +137,7 @@ public class MTreeFile {
         readMeasurementGroupMNode(dataBuffer,(MeasurementMNode) mNode);
       }
       mNode.getParent().getChildren().replace(mNode.getName(),mNode);
-      mNode.setPosition(position);
+      mNode.setPersistenceInfo(persistenceInfo);
     }else {
       readMNode(dataBuffer, mNode);
     }
@@ -156,7 +158,7 @@ public class MTreeFile {
       mNode = new MNode(null, null);
       readMNode(dataBuffer, mNode);
     }
-    mNode.setPosition(position);
+    mNode.setPersistenceInfo(new PersistenceMNode(position));
 
     return mNode;
   }
@@ -268,7 +270,7 @@ public class MTreeFile {
       }else {
         child = new MNode(mNode, children.get(position));
       }
-      child.setPosition(position);
+      child.setPersistenceInfo(new PersistenceMNode(position));
       mNode.addChild(child.getName(), child);
     }
   }
@@ -341,11 +343,11 @@ public class MTreeFile {
 
   private Map<Long, ByteBuffer> serializeMNode(MNode mNode) throws IOException {
 
-    if (mNode.getPosition() == 0) {
+    if (mNode.getPersistenceInfo() == null) {
       if (mNode.getName().equals("root")) {
-        mNode.setPosition(rootPosition);
+        mNode.setPersistenceInfo(new PersistenceMNode(rootPosition));
       } else {
-        mNode.setPosition(getFreePos());
+        mNode.setPersistenceInfo(new PersistenceMNode(getFreePos()));
       }
     }
 
@@ -378,14 +380,14 @@ public class MTreeFile {
     bufferList[0] = ByteBuffer.allocate(nodeLength);
     bufferList[0].put(bitmap);
     MNode parent = mNode.getParent();
-    long prePos = parent == null ? 0 : parent.getPosition();
+    long prePos = parent == null ? 0 : parent.getPersistenceInfo().getPosition();
     bufferList[0].putLong(prePos);
     long extensionPos = (0 == bufferNum - 1) ? 0 : getFreePos();
     bufferList[0].putLong(extensionPos);
     dataBuffer.limit(Math.min(dataBuffer.position() + nodeLength - 17, dataBuffer.capacity()));
     bufferList[0].put(dataBuffer);
     bufferList[0].position(0);
-    long currentPos = mNode.getPosition();
+    long currentPos = mNode.getPersistenceInfo().getPosition();
     result.put(currentPos, bufferList[0]);
 
     for (int i = 1; i < bufferNum; i++) {
@@ -442,9 +444,11 @@ public class MTreeFile {
   }
 
   private void serializeChildren(Map<String, MNode> children, ByteBuffer dataBuffer) {
+    PersistenceInfo persistenceInfo;
     for (MNode child : children.values()) {
       ReadWriteIOUtils.writeVar(child.getName(), dataBuffer);
-      dataBuffer.putLong(child.getPosition());
+      persistenceInfo=child.getPersistenceInfo();
+      dataBuffer.putLong(persistenceInfo==null?0:persistenceInfo.getPosition());
     }
     dataBuffer.put((byte) 0);
   }

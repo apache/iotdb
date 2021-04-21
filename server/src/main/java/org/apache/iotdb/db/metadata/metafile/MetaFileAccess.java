@@ -10,9 +10,7 @@ public interface MetaFileAccess {
 
   MNode read(PartialPath path) throws IOException;
 
-  MNode read(long position, boolean isMeasurement) throws IOException;
-
-  MNode readData(MNode mNode) throws IOException;
+  MNode read(PersistenceInfo persistenceInfo) throws IOException;
 
   void write(MNode mNode) throws IOException;
 
@@ -20,7 +18,7 @@ public interface MetaFileAccess {
 
   void remove(PartialPath path) throws IOException;
 
-  void remove(long position) throws IOException;
+  void remove(PersistenceInfo persistenceInfo) throws IOException;
 
   void close() throws IOException;
 

@@ -4,6 +4,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.PersistenceMNode;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -13,6 +14,9 @@ import java.util.concurrent.ConcurrentHashMap;
 public class MockMetaFile implements MetaFileAccess {
 
   private final Map<String, MNode> mockFile = new ConcurrentHashMap<>();
+
+  private static final PersistenceInfo PERSISTENCE_INFO_PLACEHOLDER=new PersistenceMNode();
+
 
   public MockMetaFile(String metaFilePath) {}
 
@@ -26,18 +30,13 @@ public class MockMetaFile implements MetaFileAccess {
   }
 
   @Override
-  public MNode read(long position, boolean isMeasurement) throws IOException {
-    return null;
-  }
-
-  @Override
-  public MNode readData(MNode mNode) throws IOException {
+  public MNode read(PersistenceInfo persistenceInfo) throws IOException {
     return null;
   }
 
   @Override
   public void write(MNode mNode) throws IOException {
-    mNode.setPosition(-1);
+    mNode.setPersistenceInfo(PERSISTENCE_INFO_PLACEHOLDER);
     mockFile.put(mNode.getFullPath(), mNode);
     if (mNode instanceof MeasurementMNode) {
       mockFile.put(
@@ -57,7 +56,7 @@ public class MockMetaFile implements MetaFileAccess {
   }
 
   @Override
-  public void remove(long position) throws IOException {}
+  public void remove(PersistenceInfo persistenceInfo) throws IOException {}
 
   @Override
   public void close() throws IOException {}

@@ -2,6 +2,7 @@ package org.apache.iotdb.db.metadata.metafile;
 
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.PersistenceMNode;
 
 import java.io.IOException;
 import java.util.*;
@@ -20,12 +21,11 @@ public class MetaFile implements MetaFileAccess {
   }
 
   @Override
-  public MNode read(long position, boolean isMeasurement) throws IOException {
-    return readMNode(position, isMeasurement);
+  public MNode read(PersistenceInfo persistenceInfo) throws IOException {
+    return readMNode(persistenceInfo);
   }
 
-  @Override
-  public MNode readData(MNode mNode) throws IOException {
+  private MNode readData(MNode mNode) throws IOException {
     return mTreeFile.readData(mNode);
   }
 
@@ -46,7 +46,7 @@ public class MetaFile implements MetaFileAccess {
   public void remove(PartialPath path) throws IOException {}
 
   @Override
-  public void remove(long position) throws IOException {}
+  public void remove(PersistenceInfo persistenceInfo) throws IOException {}
 
   @Override
   public void close() throws IOException {
@@ -62,12 +62,12 @@ public class MetaFile implements MetaFileAccess {
     return mTreeFile.read(path);
   }
 
-  public MNode readMNode(long position, boolean isMeasurement) throws IOException {
-    return mTreeFile.read(position);
+  public MNode readMNode(PersistenceInfo persistenceInfo) throws IOException {
+    return mTreeFile.read(persistenceInfo.getPosition());
   }
 
-  public MNode readRecursively(long position) throws IOException {
-    return mTreeFile.readRecursively(position);
+  public MNode readRecursively(PersistenceInfo persistenceInfo) throws IOException {
+    return mTreeFile.readRecursively(persistenceInfo.getPosition());
   }
 
   public void writeRecursively(MNode mNode) throws IOException {
@@ -85,13 +85,13 @@ public class MetaFile implements MetaFileAccess {
 
   private void allocateFreePos(Collection<MNode> mNodes) throws IOException {
     for (MNode mNode : mNodes) {
-      if (mNode.getPosition() != 0) {
+      if (mNode.getPersistenceInfo() != null) {
         continue;
       }
       if (mNode.getName().equals("root")) {
-        mNode.setPosition(mTreeFile.getRootPosition());
+        mNode.setPersistenceInfo(new PersistenceMNode(mTreeFile.getRootPosition()));
       } else {
-        mNode.setPosition(mTreeFile.getFreePos());
+        mNode.setPersistenceInfo(new PersistenceMNode(mTreeFile.getFreePos()));
       }
     }
   }

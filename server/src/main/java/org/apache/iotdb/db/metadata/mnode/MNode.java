@@ -22,6 +22,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.cache.CacheEntry;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
+import org.apache.iotdb.db.metadata.metafile.PersistenceInfo;
 import org.apache.iotdb.db.rescon.CachedStringPool;
 
 import java.io.IOException;
@@ -53,8 +54,8 @@ public class MNode implements Serializable {
   /** from root to this node, only be set when used once for InternalMNode */
   protected String fullPath;
 
-  /** offset in metafile */
-  protected long position;
+  /** persistence information in metafile */
+  protected PersistenceInfo persistenceInfo;
 
   /** used for cache implementation */
   protected transient CacheEntry cacheEntry;
@@ -327,7 +328,7 @@ public class MNode implements Serializable {
 
     newChildNode.setParent(this);
 
-    newChildNode.position = oldChildNode.position;
+    newChildNode.setPersistenceInfo(oldChildNode.getPersistenceInfo());
     newChildNode.setCacheEntry(oldChildNode.getCacheEntry());
 
     this.deleteChild(measurement);
@@ -344,19 +345,19 @@ public class MNode implements Serializable {
 
   /** whether be loaded from file */
   public boolean isLoaded() {
-    return children != null;
+    return true;
   }
 
   public boolean isPersisted() {
-    return position != 0;
+    return persistenceInfo==null;
   }
 
-  public long getPosition() {
-    return position;
+  public PersistenceInfo getPersistenceInfo() {
+    return persistenceInfo;
   }
 
-  public void setPosition(long position) {
-    this.position = position;
+  public void setPersistenceInfo(PersistenceInfo persistenceInfo) {
+    this.persistenceInfo = persistenceInfo;
   }
 
   public CacheEntry getCacheEntry() {

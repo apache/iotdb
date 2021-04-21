@@ -47,7 +47,7 @@ public class MTreeFileTest {
   public void testSimpleMNodeRW() throws IOException {
     MNode mNode = new MNode(null, "root");
     mTreeFile.write(mNode);
-    mNode = mTreeFile.read(mNode.getPosition());
+    mNode = mTreeFile.read(mNode.getPersistenceInfo().getPosition());
     Assert.assertEquals("root", mNode.getName());
   }
 
@@ -69,7 +69,7 @@ public class MTreeFileTest {
   public void testSimpleTreeRW() throws IOException {
     MNode mNode = getSimpleTree();
     mTreeFile.writeRecursively(mNode);
-    mNode = mTreeFile.readRecursively(mNode.getPosition());
+    mNode = mTreeFile.readRecursively(mNode.getPersistenceInfo().getPosition());
     Assert.assertEquals(
         "root\r\n"
             + "root.s1\r\n"
@@ -100,7 +100,7 @@ public class MTreeFileTest {
   public void testMTreeRW() throws IOException {
     MNode mNode = getMTree();
     mTreeFile.writeRecursively(mNode);
-    mNode = mTreeFile.readRecursively(mNode.getPosition());
+    mNode = mTreeFile.readRecursively(mNode.getPersistenceInfo().getPosition());
     Assert.assertEquals(
         "root\r\n"
             + "root.p\r\n"

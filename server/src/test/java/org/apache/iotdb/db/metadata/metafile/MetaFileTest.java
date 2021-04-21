@@ -48,8 +48,8 @@ public class MetaFileTest {
   public void testSimpleMNodeRW() throws IOException {
     MNode mNode = new MNode(null, "root");
     metaFile.write(mNode);
-    Assert.assertNotEquals(0, mNode.getPosition());
-    mNode = metaFile.readMNode(mNode.getPosition(), false);
+    Assert.assertNotEquals(0, mNode.getPersistenceInfo().getPosition());
+    mNode = metaFile.readMNode(mNode.getPersistenceInfo());
     Assert.assertEquals("root", mNode.getName());
   }
 
@@ -71,7 +71,7 @@ public class MetaFileTest {
   public void testSimpleTreeRW() throws IOException {
     MNode mNode = getSimpleTree();
     metaFile.writeRecursively(mNode);
-    mNode = metaFile.readRecursively(mNode.getPosition());
+    mNode = metaFile.readRecursively(mNode.getPersistenceInfo());
     Assert.assertEquals(
         "root\r\n"
             + "root.s1\r\n"
@@ -102,7 +102,7 @@ public class MetaFileTest {
   public void testMTreeRW() throws IOException {
     MNode mNode = getMTree();
     metaFile.writeRecursively(mNode);
-    mNode = metaFile.readRecursively(mNode.getPosition());
+    mNode = metaFile.readRecursively(mNode.getPersistenceInfo());
     Assert.assertEquals(
         "root\r\n"
             + "root.p\r\n"
@@ -187,7 +187,7 @@ public class MetaFileTest {
     System.out.println("MTree persistence time: " + (endTime - startTime) + "ms.");
 
     startTime = System.currentTimeMillis();
-    root = metaFile.readRecursively(root.getPosition());
+    root = metaFile.readRecursively(root.getPersistenceInfo());
     endTime = System.currentTimeMillis();
     System.out.println(count(root));
     System.out.println("MTree read from file time: " + (endTime - startTime) + "ms.");
