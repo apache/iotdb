@@ -2008,11 +2008,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       AUDIT_LOGGER.debug(
           "Session-{} set device template {}.{}",
           currSessionId.get(),
-          req.getTemplate(),
+          req.getTemplateName(),
           req.getPrefixPath());
     }
 
-    SetDeviceTemplatePlan plan = new SetDeviceTemplatePlan(req.template, req.prefixPath);
+    SetDeviceTemplatePlan plan = new SetDeviceTemplatePlan(req.templateName, req.prefixPath);
 
     TSStatus status = checkAuthority(plan, req.getSessionId());
     return status != null ? status : executeNonQueryPlan(plan);
