@@ -99,8 +99,10 @@ public class ProtoIndexRouterTest {
     this.infoFull = new IndexInfo(NO_INDEX, 5, props_full);
     this.fakeCreateFunc =
         (indexSeries, indexInfoMap) ->
-            new IndexProcessor(indexSeries, IndexUtils.removeIllegalStarInDir(
-                testRouterDir + File.separator + "index_fake_" + indexSeries));
+            new IndexProcessor(
+                indexSeries,
+                IndexUtils.removeIllegalStarInDir(
+                    testRouterDir + File.separator + "index_fake_" + indexSeries));
   }
 
   private static final String testRouterDir = "test_protoIndexRouter";
