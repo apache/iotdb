@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sink.ts;
+package org.apache.iotdb.db.sink.local;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -39,7 +39,7 @@ import java.util.Collections;
 
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 
-public class TimeSeriesHandler implements Handler<TimeSeriesConfiguration, TimeSeriesEvent> {
+public class LocalIoTDBHandler implements Handler<LocalIoTDBConfiguration, LocalIoTDBEvent> {
 
   private IPlanExecutor executor;
 
@@ -48,7 +48,7 @@ public class TimeSeriesHandler implements Handler<TimeSeriesConfiguration, TimeS
   private TSDataType[] dataTypes;
 
   @Override
-  public void open(TimeSeriesConfiguration configuration) throws Exception {
+  public void open(LocalIoTDBConfiguration configuration) throws Exception {
     executor = new PlanExecutor();
 
     device = configuration.getDevice();
@@ -81,7 +81,7 @@ public class TimeSeriesHandler implements Handler<TimeSeriesConfiguration, TimeS
   }
 
   @Override
-  public void onEvent(TimeSeriesEvent event)
+  public void onEvent(LocalIoTDBEvent event)
       throws QueryProcessException, StorageEngineException, StorageGroupNotSetException {
     InsertRowPlan plan = new InsertRowPlan();
     plan.setNeedInferType(false);

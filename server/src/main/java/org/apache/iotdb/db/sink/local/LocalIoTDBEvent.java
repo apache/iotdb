@@ -17,16 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sink.ts;
+package org.apache.iotdb.db.sink.local;
 
 import org.apache.iotdb.db.sink.api.Event;
 
-public class TimeSeriesEvent implements Event {
+public class LocalIoTDBEvent implements Event {
 
   private final long timestamp;
   private final Object[] values;
 
-  public TimeSeriesEvent(long timestamp, Object... values) {
+  public LocalIoTDBEvent(long timestamp, Object... values) {
     this.timestamp = timestamp;
     this.values = values;
   }

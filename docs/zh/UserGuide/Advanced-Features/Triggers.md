@@ -529,14 +529,14 @@ final String device = "root.alerting";
 final String[] measurements = new String[] {"local"};
 final TSDataType[] dataTypes = new TSDataType[] {TSDataType.DOUBLE};
 
-TimeSeriesHandler timeSeriesHandler = new TimeSeriesHandler();
-timeSeriesHandler.open(new TimeSeriesConfiguration(device, measurements, dataTypes));
+LocalIoTDBHandler localIoTDBHandler = new LocalIoTDBHandler();
+localIoTDBHandler.open(new LocalIoTDBConfiguration(device, measurements, dataTypes));
 
 // insert 100 data points
 for (int i = 0; i < 100; ++i) {
   final long timestamp = i;
   final double value = i;
-  timeSeriesHandler.onEvent(new TimeSeriesEvent(timestamp, value));
+  localIoTDBHandler.onEvent(new LocalIoTDBEvent(timestamp, value));
 }
 ```
 
@@ -596,9 +596,9 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.sink.mqtt.MQTTConfiguration;
 import org.apache.iotdb.db.sink.mqtt.MQTTEvent;
 import org.apache.iotdb.db.sink.mqtt.MQTTHandler;
-import org.apache.iotdb.db.sink.ts.TimeSeriesConfiguration;
-import org.apache.iotdb.db.sink.ts.TimeSeriesEvent;
-import org.apache.iotdb.db.sink.ts.TimeSeriesHandler;
+import org.apache.iotdb.db.sink.local.LocalIoTDBConfiguration;
+import org.apache.iotdb.db.sink.local.LocalIoTDBEvent;
+import org.apache.iotdb.db.sink.local.LocalIoTDBHandler;
 import org.apache.iotdb.db.utils.windowing.configuration.SlidingSizeWindowConfiguration;
 import org.apache.iotdb.db.utils.windowing.handler.SlidingSizeWindowEvaluationHandler;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -613,7 +613,7 @@ public class TriggerExample implements Trigger {
 
   private static final String TARGET_DEVICE = "root.alerting";
 
-  private final TimeSeriesHandler timeSeriesHandler = new TimeSeriesHandler();
+  private final LocalIoTDBHandler localIoTDBHandler = new LocalIoTDBHandler();
   private final MQTTHandler mqttHandler = new MQTTHandler();
 
   private SlidingSizeWindowEvaluationHandler windowEvaluationHandler;
@@ -638,7 +638,7 @@ public class TriggerExample implements Trigger {
               avg /= window.size();
 
               if (avg < lo || hi < avg) {
-                timeSeriesHandler.onEvent(new TimeSeriesEvent(window.getTime(0), avg));
+                localIoTDBHandler.onEvent(new LocalIoTDBEvent(window.getTime(0), avg));
                 mqttHandler.onEvent(
                     new MQTTEvent("test", QoS.EXACTLY_ONCE, false, window.getTime(0), avg));
               }
@@ -678,8 +678,8 @@ public class TriggerExample implements Trigger {
   }
 
   private void openSinkHandlers() throws Exception {
-    timeSeriesHandler.open(
-        new TimeSeriesConfiguration(
+    localIoTDBHandler.open(
+        new LocalIoTDBConfiguration(
             TARGET_DEVICE, new String[] {"local"}, new TSDataType[] {TSDataType.DOUBLE}));
     mqttHandler.open(
         new MQTTConfiguration(
@@ -692,7 +692,7 @@ public class TriggerExample implements Trigger {
   }
 
   private void closeSinkHandlers() throws Exception {
-    timeSeriesHandler.close();
+    localIoTDBHandler.close();
     mqttHandler.close();
   }
 }

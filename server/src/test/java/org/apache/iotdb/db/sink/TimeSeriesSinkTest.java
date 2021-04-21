@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.sink;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.sink.ts.TimeSeriesConfiguration;
-import org.apache.iotdb.db.sink.ts.TimeSeriesEvent;
-import org.apache.iotdb.db.sink.ts.TimeSeriesHandler;
+import org.apache.iotdb.db.sink.local.LocalIoTDBConfiguration;
+import org.apache.iotdb.db.sink.local.LocalIoTDBEvent;
+import org.apache.iotdb.db.sink.local.LocalIoTDBHandler;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -60,16 +60,16 @@ public class TimeSeriesSinkTest {
 
   @Test
   public void onEventUsingSingleSensorHandler() throws Exception {
-    TimeSeriesHandler timeSeriesHandler = new TimeSeriesHandler();
-    timeSeriesHandler.open(
-        new TimeSeriesConfiguration(
+    LocalIoTDBHandler localIoTDBHandler = new LocalIoTDBHandler();
+    localIoTDBHandler.open(
+        new LocalIoTDBConfiguration(
             "root.sg1.d1", new String[] {"s1"}, new TSDataType[] {TSDataType.INT32}));
 
     for (int i = 0; i < 10000; ++i) {
-      timeSeriesHandler.onEvent(new TimeSeriesEvent(i, i));
+      localIoTDBHandler.onEvent(new LocalIoTDBEvent(i, i));
     }
 
-    timeSeriesHandler.close();
+    localIoTDBHandler.close();
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
@@ -105,9 +105,9 @@ public class TimeSeriesSinkTest {
 
   @Test
   public void onEventUsingMultiSensorsHandler() throws Exception {
-    TimeSeriesHandler timeSeriesHandler = new TimeSeriesHandler();
-    timeSeriesHandler.open(
-        new TimeSeriesConfiguration(
+    LocalIoTDBHandler localIoTDBHandler = new LocalIoTDBHandler();
+    localIoTDBHandler.open(
+        new LocalIoTDBConfiguration(
             "root.sg1.d1",
             new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
             new TSDataType[] {
@@ -120,8 +120,8 @@ public class TimeSeriesSinkTest {
             }));
 
     for (int i = 0; i < 10000; ++i) {
-      timeSeriesHandler.onEvent(
-          new TimeSeriesEvent(
+      localIoTDBHandler.onEvent(
+          new LocalIoTDBEvent(
               i,
               i,
               (long) i,
@@ -131,7 +131,7 @@ public class TimeSeriesSinkTest {
               Binary.valueOf(String.valueOf(i))));
     }
 
-    timeSeriesHandler.close();
+    localIoTDBHandler.close();
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
@@ -194,25 +194,25 @@ public class TimeSeriesSinkTest {
 
   @Test(expected = QueryProcessException.class)
   public void onEventWithWrongType1() throws Exception {
-    TimeSeriesHandler timeSeriesHandler = new TimeSeriesHandler();
-    timeSeriesHandler.open(
-        new TimeSeriesConfiguration(
+    LocalIoTDBHandler localIoTDBHandler = new LocalIoTDBHandler();
+    localIoTDBHandler.open(
+        new LocalIoTDBConfiguration(
             "root.sg1.d1", new String[] {"s1"}, new TSDataType[] {TSDataType.INT32}));
 
-    timeSeriesHandler.onEvent(new TimeSeriesEvent(0, Binary.valueOf(String.valueOf(0))));
+    localIoTDBHandler.onEvent(new LocalIoTDBEvent(0, Binary.valueOf(String.valueOf(0))));
 
-    timeSeriesHandler.close();
+    localIoTDBHandler.close();
   }
 
   @Test(expected = ClassCastException.class)
   public void onEventWithWrongType2() throws Exception {
-    TimeSeriesHandler timeSeriesHandler = new TimeSeriesHandler();
-    timeSeriesHandler.open(
-        new TimeSeriesConfiguration(
+    LocalIoTDBHandler localIoTDBHandler = new LocalIoTDBHandler();
+    localIoTDBHandler.open(
+        new LocalIoTDBConfiguration(
             "root.sg1.d1", new String[] {"s1"}, new TSDataType[] {TSDataType.TEXT}));
 
-    timeSeriesHandler.onEvent(new TimeSeriesEvent(0, String.valueOf(0)));
+    localIoTDBHandler.onEvent(new LocalIoTDBEvent(0, String.valueOf(0)));
 
-    timeSeriesHandler.close();
+    localIoTDBHandler.close();
   }
 }

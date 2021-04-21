@@ -17,20 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sink.ts;
+package org.apache.iotdb.db.sink.local;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.sink.api.Configuration;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class TimeSeriesConfiguration implements Configuration {
+public class LocalIoTDBConfiguration implements Configuration {
 
   private final PartialPath device;
   private final String[] measurements;
   private final TSDataType[] dataTypes;
 
-  public TimeSeriesConfiguration(String device, String[] measurements, TSDataType[] dataTypes)
+  public LocalIoTDBConfiguration(String device, String[] measurements, TSDataType[] dataTypes)
       throws IllegalPathException {
     this.device = new PartialPath(device);
     this.measurements = measurements;
