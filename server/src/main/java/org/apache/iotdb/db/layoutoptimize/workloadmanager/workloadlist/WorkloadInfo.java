@@ -1,6 +1,7 @@
 package org.apache.iotdb.db.layoutoptimize.workloadmanager.workloadlist;
 
 import org.apache.iotdb.db.layoutoptimize.workloadmanager.queryrecord.QueryRecord;
+import org.apache.iotdb.db.metadata.PartialPath;
 
 import java.util.*;
 
@@ -67,6 +68,9 @@ public class WorkloadInfo {
         randNum -= spanEntry.getValue();
       }
     }
-    return new QueryRecord(deviceId, new ArrayList<>(visitMeasurement), span);
+    return new QueryRecord(
+        PartialPath.fromStringList(Arrays.asList(new String[] {deviceId})).get(0),
+        new ArrayList<>(visitMeasurement),
+        span);
   }
 }

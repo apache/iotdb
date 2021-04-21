@@ -102,9 +102,7 @@ public class SampleRateKeeper {
       }
       sampleRateMap
           .get(deviceId)
-          .put(
-              paths.get(i).getMeasurement(),
-              (double) dataPointNum / queryRangeForMeasurement[i] * 1000.0);
+          .put(paths.get(i).getMeasurement(), (double) dataPointNum / queryRangeForMeasurement[i]);
     }
   }
 

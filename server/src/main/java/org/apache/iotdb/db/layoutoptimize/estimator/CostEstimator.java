@@ -1,7 +1,11 @@
 package org.apache.iotdb.db.layoutoptimize.estimator;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.layoutoptimize.DataSizeInfoNotExistsException;
+import org.apache.iotdb.db.exception.layoutoptimize.SampleRateNoExistsException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.layoutoptimize.workloadmanager.queryrecord.QueryRecord;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.File;
@@ -42,36 +46,57 @@ public class CostEstimator {
         e.printStackTrace();
       }
     }
-    // TODO: get the sample rate, get the chunk group num
-    int chunkGroupNum = 1;
-    double readCost =
-        ((double) chunkSize) * query.getMeasurements().size() / diskInfo.READ_SPEED * chunkGroupNum;
-    Set<String> measurements = new HashSet<>(query.getMeasurements());
-    int firstMeasurementPos = -1;
-    for (int i = 0; i < physicalOrder.size(); i++) {
-      if (measurements.contains(physicalOrder.get(i))) {
-        firstMeasurementPos = i;
-        break;
+    try {
+      MManager metadataManager = MManager.getInstance();
+      String storageGroup = metadataManager.getStorageGroupPath(query.getDevice()).getFullPath();
+      long dataPoint = DataSizeEstimator.getInstance().getPointNumInDisk(storageGroup, chunkSize);
+      double maxSampleRate = -1;
+      for (String measurement : query.getMeasurements()) {
+        maxSampleRate =
+            Math.max(
+                maxSampleRate,
+                SampleRateKeeper.getInstance()
+                    .getSampleRate(query.getDevice().getDevice(), measurement));
       }
-    }
-    double initSeekCost = getSeekCost(firstMeasurementPos * chunkSize);
-    double intermediateSeekCost = 0.0d;
-    int seekCount = 0;
-    int lastIdx = 0;
-    for (int i = firstMeasurementPos + 1; i < physicalOrder.size(); i++) {
-      if (measurements.contains(physicalOrder.get(i))) {
-        intermediateSeekCost += getSeekCost(chunkSize * seekCount);
-        seekCount = 0;
-        lastIdx = i;
-      } else {
-        seekCount++;
+      long visitPointNum = (long) (query.getSpan() * maxSampleRate);
+      int chunkGroupNum = (int) (visitPointNum / dataPoint + 1);
+      double readCost =
+          ((double) chunkSize)
+              * query.getMeasurements().size()
+              / diskInfo.READ_SPEED
+              * chunkGroupNum;
+      Set<String> measurements = new HashSet<>(query.getMeasurements());
+      int firstMeasurementPos = -1;
+      for (int i = 0; i < physicalOrder.size(); i++) {
+        if (measurements.contains(physicalOrder.get(i))) {
+          firstMeasurementPos = i;
+          break;
+        }
       }
+      double initSeekCost = getSeekCost(firstMeasurementPos * chunkSize);
+      double intermediateSeekCost = 0.0d;
+      int seekCount = 0;
+      int lastIdx = 0;
+      for (int i = firstMeasurementPos + 1; i < physicalOrder.size(); i++) {
+        if (measurements.contains(physicalOrder.get(i))) {
+          intermediateSeekCost += getSeekCost(chunkSize * seekCount);
+          seekCount = 0;
+          lastIdx = i;
+        } else {
+          seekCount++;
+        }
+      }
+      double fromLastToFirstSeek =
+          getSeekCost((physicalOrder.size() - lastIdx - 1 + firstMeasurementPos) * chunkSize);
+      intermediateSeekCost += fromLastToFirstSeek;
+      intermediateSeekCost *= chunkGroupNum;
+      return intermediateSeekCost + initSeekCost + readCost;
+    } catch (DataSizeInfoNotExistsException
+        | SampleRateNoExistsException
+        | StorageGroupNotSetException e) {
+      e.printStackTrace();
+      return -1L;
     }
-    double fromLastToFirstSeek =
-        getSeekCost((physicalOrder.size() - lastIdx - 1 + firstMeasurementPos) * chunkSize);
-    intermediateSeekCost += fromLastToFirstSeek;
-    intermediateSeekCost *= chunkGroupNum;
-    return intermediateSeekCost + initSeekCost + readCost;
   }
 
   private double getSeekCost(long seekDistance) {
