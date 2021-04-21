@@ -37,6 +37,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.File;
@@ -167,7 +168,7 @@ public class SeriesReaderTestUtil {
       List<String> deviceIds)
       throws IOException, WriteProcessException {
     TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getTsFile());
-    Map<String, MeasurementSchema> template = new HashMap<>();
+    Map<String, IMeasurementSchema> template = new HashMap<>();
     for (MeasurementSchema measurementSchema : measurementSchemas) {
       template.put(measurementSchema.getMeasurementId(), measurementSchema);
     }

@@ -65,4 +65,8 @@ public class SingleSeriesExpression implements IUnaryExpression, Serializable {
   public Path getSeriesPath() {
     return this.seriesPath;
   }
+
+  public void setSeriesPath(Path seriesPath) {
+    this.seriesPath = seriesPath;
+  }
 }

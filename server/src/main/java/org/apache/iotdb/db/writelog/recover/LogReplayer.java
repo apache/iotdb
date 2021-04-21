@@ -40,6 +40,7 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.writelog.io.ILogReader;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 import org.slf4j.Logger;
@@ -187,6 +188,7 @@ public class LogReplayer {
   }
 
   private void checkDataTypeAndMarkFailed(final MeasurementMNode[] mNodes, InsertPlan tPlan) {
+    int columnIndex = 0;
     for (int i = 0; i < mNodes.length; i++) {
       if (mNodes[i] == null) {
         tPlan.markFailedMeasurementInsertion(
@@ -195,11 +197,32 @@ public class LogReplayer {
                 tPlan.getDeviceId().getFullPath()
                     + IoTDBConstant.PATH_SEPARATOR
                     + tPlan.getMeasurements()[i]));
-      } else if (mNodes[i].getSchema().getType() != tPlan.getDataTypes()[i]) {
+        columnIndex++;
+      } else if (mNodes[i].getSchema().getType() == TSDataType.VECTOR) {
+        List<TSDataType> datatypes = mNodes[i].getSchema().getValueTSDataTypeList();
+        for (int j = 0; j < datatypes.size(); j++) {
+          if (tPlan.getDataTypes()[columnIndex] == null) {
+            tPlan.getDataTypes()[columnIndex] = datatypes.get(j);
+          } else if (datatypes.get(j) != tPlan.getDataTypes()[columnIndex]) {
+            tPlan.markFailedMeasurementInsertion(
+                i,
+                new DataTypeMismatchException(
+                    mNodes[i].getSchema().getValueMeasurementIdList().get(j),
+                    tPlan.getDataTypes()[columnIndex],
+                    datatypes.get(j)));
+          }
+          columnIndex++;
+        }
+      } else if (mNodes[i].getSchema().getType() != tPlan.getDataTypes()[columnIndex]) {
         tPlan.markFailedMeasurementInsertion(
             i,
             new DataTypeMismatchException(
-                mNodes[i].getName(), tPlan.getDataTypes()[i], mNodes[i].getSchema().getType()));
+                mNodes[i].getName(),
+                tPlan.getDataTypes()[columnIndex],
+                mNodes[i].getSchema().getType()));
+        columnIndex++;
+      } else {
+        columnIndex++;
       }
     }
   }

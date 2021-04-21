@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BitMap;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -38,7 +39,7 @@ import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 public abstract class TVList {
 
   protected static final int SMALL_ARRAY_LENGTH = 32;
-  private static final String ERR_DATATYPE_NOT_CONSISTENT = "DataType not consistent";
+  protected static final String ERR_DATATYPE_NOT_CONSISTENT = "DataType not consistent";
   protected List<long[]> timestamps;
   protected int size;
 
@@ -79,12 +80,35 @@ public abstract class TVList {
     return null;
   }
 
+  public static TVList newVectorList(List<TSDataType> datatypes) {
+    return new VectorTVList(datatypes);
+  }
+
   public static long tvListArrayMemSize(TSDataType type) {
     long size = 0;
     // time size
     size += (long) PrimitiveArrayManager.ARRAY_SIZE * 8L;
     // value size
     size += (long) PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
+    return size;
+  }
+
+  /**
+   * For Vector data type.
+   *
+   * @param types the types in the vector
+   * @return VectorTvListArrayMemSize
+   */
+  public static long vectorTvListArrayMemSize(List<TSDataType> types) {
+    long size = 0;
+    // time size
+    size += (long) PrimitiveArrayManager.ARRAY_SIZE * 8L;
+    // index size
+    size += (long) PrimitiveArrayManager.ARRAY_SIZE * 4L;
+    // value size
+    for (TSDataType type : types) {
+      size += (long) PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
+    }
     return size;
   }
 
@@ -137,6 +161,10 @@ public abstract class TVList {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
+  public void putVector(long time, Object[] value) {
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  }
+
   public void putLongs(long[] time, long[] value, int start, int end) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
@@ -161,6 +189,10 @@ public abstract class TVList {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
+  public void putVectors(long[] time, BitMap[] bitMaps, Object[] value, int start, int end) {
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  }
+
   public long getLong(int index) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
@@ -182,6 +214,14 @@ public abstract class TVList {
   }
 
   public boolean getBoolean(int index) {
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  }
+
+  public Object getVector(int index) {
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  }
+
+  public TVList getTvListByColumnIndex(List<Integer> columnIndexList) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
@@ -240,7 +280,15 @@ public abstract class TVList {
       releaseLastTimeArray();
       releaseLastValueArray();
     }
+    if (getDataType() == TSDataType.VECTOR) {
+      return deletedNumber * ((VectorTVList) this).getTsDataTypes().size();
+    }
     return deletedNumber;
+  }
+
+  // TODO: THIS METHOLD IS FOR DELETING ONE COLUMN OF A VECTOR
+  public int delete(long lowerBound, long upperBound, int columnIndex) {
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
   protected void cloneAs(TVList cloneList) {
@@ -523,10 +571,13 @@ public abstract class TVList {
           cur++;
           continue;
         }
-        cachedTimeValuePair = getTimeValuePair(cur, time, floatPrecision, encoding);
-        hasCachedPair = true;
+        TimeValuePair tvPair = getTimeValuePair(cur, time, floatPrecision, encoding);
         cur++;
-        return true;
+        if (tvPair.getValue() != null) {
+          cachedTimeValuePair = tvPair;
+          hasCachedPair = true;
+          return true;
+        }
       }
 
       return false;

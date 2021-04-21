@@ -23,8 +23,10 @@ import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
@@ -97,7 +99,8 @@ public class PartitionUtils {
         || plan instanceof AuthorPlan
         || plan instanceof DeleteStorageGroupPlan
         // DataAuthPlan is global because all nodes must have all user info
-        || plan instanceof DataAuthPlan;
+        || plan instanceof DataAuthPlan
+        || plan instanceof CreateTemplatePlan;
   }
 
   /**
@@ -112,7 +115,8 @@ public class PartitionUtils {
     plan instanceof DeletePlan
         || plan instanceof DeleteTimeSeriesPlan
         || plan instanceof MergePlan
-        || plan instanceof FlushPlan;
+        || plan instanceof FlushPlan
+        || plan instanceof SetDeviceTemplatePlan;
   }
 
   public static int calculateStorageGroupSlotByTime(

@@ -94,6 +94,27 @@ Note: For SDT, it is optional to set compression minimum COMPMINTIME, which is t
 Note: For SDT, it is optional to set compression maximum COMPMAXTIME, which is the maximum time difference between stored values regardless of COMPDEV.
 ```
 
+* 创建设备模板语句
+```
+CREATE device template <TemplateName> WITH <AttributeClauses>
+attributeClauses
+    : (MEASUREMENT_NAME DATATYPE OPERATOR_EQ dataType COMMA ENCODING OPERATOR_EQ encoding
+    (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor=propertyValue)?
+    (COMMA property)*)
+    attributeClause
+    ;
+Eg: create device template temp1(
+        (s1 INT32 with encoding=Gorilla, compression=SNAPPY),
+        (s2 FLOAT with encoding=RLE, compression=SNAPPY)
+       )  
+```
+
+* 挂载设备模板语句
+```
+set device template <TemplateName> to <STORAGE_GROUP_NAME>
+Eg: set device template temp1 to root.beijing
+```
+
 * 删除时间序列语句
 
 ```
@@ -297,12 +318,13 @@ CREATE SNAPSHOT FOR SCHEMA
 * 插入记录语句
 
 ```
-INSERT INTO <PrefixPath> LPAREN TIMESTAMP COMMA <Sensor> [COMMA <Sensor>]* RPAREN VALUES LPAREN <TimeValue>, <PointValue> [COMMA <PointValue>]* RPAREN
-Sensor : Identifier
+INSERT INTO <PrefixPath> LPAREN TIMESTAMP COMMA <MeasurementName> [COMMA <MeasurementName>]* RPAREN VALUES LPAREN <TimeValue>, <PointValue> [COMMA <PointValue>]* RPAREN
+MeasurementName : Identifier | LPAREN Identifier (COMMA Identifier)+ RPAREN
 Eg: IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)
 Eg: IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp,status) VALUES(NOW(), false)
 Eg: IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp,temperature) VALUES(2017-11-01T00:17:00.000+08:00,24.22028)
-Eg: IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp, status, temperature) VALUES (1509466680000, false, 20.060787);
+Eg: IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp,status,temperature) VALUES (1509466680000,false,20.060787)
+Eg: IoTDB > INSERT INTO root.sg.d1(timestamp,(s1,s2),(s3,s4)) VALUES (1509466680000,(1.0,2),(NULL,4))
 Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 Note: The order of Sensor and PointValue need one-to-one correspondence
 ```

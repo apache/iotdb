@@ -21,8 +21,8 @@ package org.apache.iotdb.db.engine.memtable;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -31,11 +31,13 @@ import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.utils.BitMap;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -92,13 +94,12 @@ public abstract class AbstractMemTable implements IMemTable {
     return memTableMap.containsKey(deviceId) && memTableMap.get(deviceId).containsKey(measurement);
   }
 
-  private IWritableMemChunk createIfNotExistAndGet(
-      String deviceId, String measurement, MeasurementSchema schema) {
+  private IWritableMemChunk createIfNotExistAndGet(String deviceId, IMeasurementSchema schema) {
     Map<String, IWritableMemChunk> memSeries =
         memTableMap.computeIfAbsent(deviceId, k -> new HashMap<>());
 
     return memSeries.computeIfAbsent(
-        measurement,
+        schema.getMeasurementId(),
         k -> {
           seriesNumber++;
           totalPointsNumThreshold += avgSeriesPointNumThreshold;
@@ -106,7 +107,7 @@ public abstract class AbstractMemTable implements IMemTable {
         });
   }
 
-  protected abstract IWritableMemChunk genMemSeries(MeasurementSchema schema);
+  protected abstract IWritableMemChunk genMemSeries(IMeasurementSchema schema);
 
   @Override
   public void insert(InsertRowPlan insertRowPlan) {
@@ -114,23 +115,44 @@ public abstract class AbstractMemTable implements IMemTable {
     Object[] values = insertRowPlan.getValues();
 
     MeasurementMNode[] measurementMNodes = insertRowPlan.getMeasurementMNodes();
-    String[] measurements = insertRowPlan.getMeasurements();
-    for (int i = 0; i < values.length; i++) {
-      Object value = values[i];
-      if (value == null) {
-        continue;
+    int columnIndex = 0;
+    for (int i = 0; i < measurementMNodes.length; i++) {
+
+      if (measurementMNodes[i] != null
+          && measurementMNodes[i].getSchema().getType() == TSDataType.VECTOR) {
+        // write vector
+        Object[] vectorValue =
+            new Object[measurementMNodes[i].getSchema().getValueTSDataTypeList().size()];
+        for (int j = 0; j < vectorValue.length; j++) {
+          vectorValue[j] = values[columnIndex];
+          columnIndex++;
+        }
+        memSize +=
+            MemUtils.getVectorRecordSize(
+                measurementMNodes[i].getSchema().getValueTSDataTypeList(),
+                vectorValue,
+                disableMemControl);
+        write(
+            insertRowPlan.getDeviceId().getFullPath(),
+            measurementMNodes[i].getSchema(),
+            insertRowPlan.getTime(),
+            vectorValue);
+      } else {
+        if (values[columnIndex] == null) {
+          columnIndex++;
+          continue;
+        }
+        memSize +=
+            MemUtils.getRecordSize(
+                measurementMNodes[i].getSchema().getType(), values[columnIndex], disableMemControl);
+
+        write(
+            insertRowPlan.getDeviceId().getFullPath(),
+            measurementMNodes[i].getSchema(),
+            insertRowPlan.getTime(),
+            values[columnIndex]);
+        columnIndex++;
       }
-
-      memSize +=
-          MemUtils.getRecordSize(
-              measurementMNodes[i].getSchema().getType(), value, disableMemControl);
-
-      write(
-          insertRowPlan.getDeviceId().getFullPath(),
-          measurements[i],
-          measurementMNodes[i].getSchema(),
-          insertRowPlan.getTime(),
-          value);
     }
 
     totalPointsNum +=
@@ -145,8 +167,7 @@ public abstract class AbstractMemTable implements IMemTable {
       write(insertTabletPlan, start, end);
       memSize += MemUtils.getRecordSize(insertTabletPlan, start, end, disableMemControl);
       totalPointsNum +=
-          (insertTabletPlan.getMeasurements().length
-                  - insertTabletPlan.getFailedMeasurementNumber())
+          (insertTabletPlan.getDataTypes().length - insertTabletPlan.getFailedMeasurementNumber())
               * (end - start);
     } catch (RuntimeException e) {
       throw new WriteProcessException(e);
@@ -155,33 +176,51 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public void write(
-      String deviceId,
-      String measurement,
-      MeasurementSchema schema,
-      long insertTime,
-      Object objectValue) {
-    IWritableMemChunk memSeries = createIfNotExistAndGet(deviceId, measurement, schema);
+      String deviceId, IMeasurementSchema schema, long insertTime, Object objectValue) {
+    IWritableMemChunk memSeries = createIfNotExistAndGet(deviceId, schema);
     memSeries.write(insertTime, objectValue);
   }
 
+  @SuppressWarnings("squid:S3776") // high Cognitive Complexity
   @Override
   public void write(InsertTabletPlan insertTabletPlan, int start, int end) {
+    int columnIndex = 0;
     updatePlanIndexes(insertTabletPlan.getIndex());
     for (int i = 0; i < insertTabletPlan.getMeasurements().length; i++) {
-      if (insertTabletPlan.getColumns()[i] == null) {
+      if (insertTabletPlan.getColumns()[columnIndex] == null) {
+        columnIndex++;
         continue;
       }
       IWritableMemChunk memSeries =
           createIfNotExistAndGet(
               insertTabletPlan.getDeviceId().getFullPath(),
-              insertTabletPlan.getMeasurements()[i],
               insertTabletPlan.getMeasurementMNodes()[i].getSchema());
-      memSeries.write(
-          insertTabletPlan.getTimes(),
-          insertTabletPlan.getColumns()[i],
-          insertTabletPlan.getDataTypes()[i],
-          start,
-          end);
+      if (insertTabletPlan.getMeasurementMNodes()[i].getSchema().getType() == TSDataType.VECTOR) {
+        VectorMeasurementSchema vectorSchema =
+            (VectorMeasurementSchema) insertTabletPlan.getMeasurementMNodes()[i].getSchema();
+        Object[] columns = new Object[vectorSchema.getValueMeasurementIdList().size()];
+        BitMap[] bitMaps = new BitMap[vectorSchema.getValueMeasurementIdList().size()];
+        for (int j = 0; j < vectorSchema.getValueMeasurementIdList().size(); j++) {
+          columns[j] = insertTabletPlan.getColumns()[columnIndex];
+          if (insertTabletPlan.getBitMaps() != null) {
+            bitMaps[j] = insertTabletPlan.getBitMaps()[columnIndex];
+          }
+          columnIndex++;
+        }
+        memSeries.write(
+            insertTabletPlan.getTimes(), bitMaps, columns, TSDataType.VECTOR, start, end);
+      } else {
+        memSeries.write(
+            insertTabletPlan.getTimes(),
+            insertTabletPlan.getBitMaps() != null
+                ? insertTabletPlan.getBitMaps()[columnIndex]
+                : null,
+            insertTabletPlan.getColumns()[columnIndex],
+            insertTabletPlan.getDataTypes()[columnIndex],
+            start,
+            end);
+        columnIndex++;
+      }
     }
   }
 
@@ -256,24 +295,59 @@ public abstract class AbstractMemTable implements IMemTable {
   public ReadOnlyMemChunk query(
       String deviceId,
       String measurement,
-      TSDataType dataType,
-      TSEncoding encoding,
-      Map<String, String> props,
+      IMeasurementSchema partialVectorSchema,
       long timeLowerBound,
       List<TimeRange> deletionList)
-      throws IOException, QueryProcessException, MetadataException {
-    if (!checkPath(deviceId, measurement)) {
-      return null;
-    }
-    IWritableMemChunk memChunk = memTableMap.get(deviceId).get(measurement);
-    // get sorted tv list is synchronized so different query can get right sorted list reference
-    TVList chunkCopy = memChunk.getSortedTVListForQuery();
-    int curSize = chunkCopy.size();
+      throws IOException, QueryProcessException {
+    if (partialVectorSchema.getType() == TSDataType.VECTOR) {
+      if (!memTableMap.containsKey(deviceId)) {
+        return null;
+      }
+      IWritableMemChunk vectorMemChunk =
+          memTableMap.get(deviceId).get(partialVectorSchema.getMeasurementId());
 
-    return new ReadOnlyMemChunk(
-        measurement, dataType, encoding, chunkCopy, props, curSize, deletionList);
+      List<String> measurementIdList = partialVectorSchema.getValueMeasurementIdList();
+      List<Integer> columns = new ArrayList<>();
+      IMeasurementSchema vectorSchema = vectorMemChunk.getSchema();
+      for (String queryingMeasurement : measurementIdList) {
+        columns.add(vectorSchema.getValueMeasurementIdList().indexOf(queryingMeasurement));
+      }
+      // get sorted tv list is synchronized so different query can get right sorted list reference
+      TVList vectorTvListCopy = vectorMemChunk.getSortedTvListForQuery(columns);
+      int curSize = vectorTvListCopy.size();
+      // return normal ReadOnlyMemChunk for query one measurement in vector
+      if (columns.size() == 1) {
+        return new ReadOnlyMemChunk(
+            measurementIdList.get(0),
+            partialVectorSchema.getValueTSDataTypeList().get(0),
+            partialVectorSchema.getValueTSEncodingList().get(0),
+            vectorTvListCopy,
+            null,
+            curSize,
+            deletionList);
+      }
+      return new ReadOnlyMemChunk(partialVectorSchema, vectorTvListCopy, curSize, deletionList);
+    } else {
+      if (!checkPath(deviceId, measurement)) {
+        return null;
+      }
+      IWritableMemChunk memChunk =
+          memTableMap.get(deviceId).get(partialVectorSchema.getMeasurementId());
+      // get sorted tv list is synchronized so different query can get right sorted list reference
+      TVList chunkCopy = memChunk.getSortedTvListForQuery();
+      int curSize = chunkCopy.size();
+      return new ReadOnlyMemChunk(
+          measurement,
+          partialVectorSchema.getType(),
+          partialVectorSchema.getEncodingType(),
+          chunkCopy,
+          partialVectorSchema.getProps(),
+          curSize,
+          deletionList);
+    }
   }
 
+  @SuppressWarnings("squid:S3776") // high Cognitive Complexity
   @Override
   public void delete(
       PartialPath originalPath, PartialPath devicePath, long startTimestamp, long endTimestamp) {
@@ -287,12 +361,24 @@ public abstract class AbstractMemTable implements IMemTable {
       Entry<String, IWritableMemChunk> entry = iter.next();
       IWritableMemChunk chunk = entry.getValue();
       PartialPath fullPath = devicePath.concatNode(entry.getKey());
+      IMeasurementSchema schema = chunk.getSchema();
       if (originalPath.matchFullPath(fullPath)) {
         if (startTimestamp == Long.MIN_VALUE && endTimestamp == Long.MAX_VALUE) {
           iter.remove();
         }
         int deletedPointsNumber = chunk.delete(startTimestamp, endTimestamp);
         totalPointsNum -= deletedPointsNumber;
+      }
+      // for vector type
+      else if (schema.getType() == TSDataType.VECTOR) {
+        List<String> measurements = MetaUtils.getMeasurementsInPartialPath(originalPath);
+        if (measurements.containsAll(schema.getValueMeasurementIdList())) {
+          if (startTimestamp == Long.MIN_VALUE && endTimestamp == Long.MAX_VALUE) {
+            iter.remove();
+          }
+          int deletedPointsNumber = chunk.delete(startTimestamp, endTimestamp);
+          totalPointsNum -= deletedPointsNumber;
+        }
       }
     }
   }
