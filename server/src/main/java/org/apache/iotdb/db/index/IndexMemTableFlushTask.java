@@ -51,7 +51,7 @@ public class IndexMemTableFlushTask {
   }
 
   /**
-   * insert sorted time series
+   * insert sorted time series.
    *
    * @param path the path of time series
    * @param tvList the sorted data

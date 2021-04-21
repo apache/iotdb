@@ -57,7 +57,7 @@ public abstract class IoTDBIndex {
   protected final Map<String, String> props;
   protected IndexFeatureExtractor indexFeatureExtractor;
 
-  public IoTDBIndex(PartialPath indexSeries, TSDataType tsDataType, IndexInfo indexInfo) {
+  protected IoTDBIndex(PartialPath indexSeries, TSDataType tsDataType, IndexInfo indexInfo) {
     this.indexSeries = indexSeries;
     this.indexType = indexInfo.getIndexType();
     this.props = indexInfo.getProps();
@@ -65,7 +65,7 @@ public abstract class IoTDBIndex {
   }
 
   /**
-   * An index should determine which FeatureExtractor it uses and hook it to {@linkplain *
+   * An index should determine which FeatureExtractor it uses and hook it to {@linkplain
    * IoTDBIndex}.indexFeatureExtractor. This method is called when IoTDBIndex is created.
    *
    * @param previous the status data saved in the last closing of the FeatureExtractor
@@ -83,7 +83,7 @@ public abstract class IoTDBIndex {
    * execute index query and return the result.
    *
    * @param queryProps query conditions
-   * @param iIndexUsable the information of index usability
+   * @param indexUsable the information of index usability
    * @param context query context provided by IoTDB.
    * @param candidateOrderOptimize an optimizer for the order of visiting candidates
    * @param alignedByTime true if the result series need to aligned by timestamp, otherwise they
@@ -92,7 +92,7 @@ public abstract class IoTDBIndex {
    */
   public abstract QueryDataSet query(
       Map<String, Object> queryProps,
-      IIndexUsable iIndexUsable,
+      IIndexUsable indexUsable,
       QueryContext context,
       IIndexCandidateOrderOptimize candidateOrderOptimize,
       boolean alignedByTime)
@@ -145,37 +145,37 @@ public abstract class IoTDBIndex {
   }
 
   protected QueryDataSet constructSearchDataset(
-      List<DistSeries> res, boolean alignedByTime, int nMaxReturnSeries)
+      List<DistSeries> res, boolean alignedByTime, int numMaxReturnSeries)
       throws QueryIndexException {
     if (alignedByTime) {
       throw new QueryIndexException("Unsupported alignedByTime result");
     }
     // make result paths and types
-    nMaxReturnSeries = Math.min(nMaxReturnSeries, res.size());
+    numMaxReturnSeries = Math.min(numMaxReturnSeries, res.size());
     List<PartialPath> paths = new ArrayList<>();
     List<TSDataType> types = new ArrayList<>();
     Map<String, Integer> pathToIndex = new HashMap<>();
-    int nMinLength = Integer.MAX_VALUE;
-    for (int i = 0; i < nMaxReturnSeries; i++) {
+    int numMinLength = Integer.MAX_VALUE;
+    for (int i = 0; i < numMaxReturnSeries; i++) {
       PartialPath series = res.get(i).partialPath;
       paths.add(series);
       pathToIndex.put(series.getFullPath(), i);
       types.add(tsDataType);
-      if (res.get(i).tvList.size() < nMinLength) {
-        nMinLength = res.get(i).tvList.size();
+      if (res.get(i).tvList.size() < numMinLength) {
+        numMinLength = res.get(i).tvList.size();
       }
     }
     IndexQueryDataSet dataSet = new IndexQueryDataSet(paths, types, pathToIndex);
-    if (nMaxReturnSeries == 0) {
+    if (numMaxReturnSeries == 0) {
       return dataSet;
     }
-    for (int row = 0; row < nMinLength; row++) {
-      RowRecord record = new RowRecord(row);
-      for (int col = 0; col < nMaxReturnSeries; col++) {
+    for (int row = 0; row < numMinLength; row++) {
+      RowRecord rowRecord = new RowRecord(row);
+      for (int col = 0; col < numMaxReturnSeries; col++) {
         TVList tvList = res.get(col).tvList;
-        record.addField(IndexUtils.getValue(tvList, row), tsDataType);
+        rowRecord.addField(IndexUtils.getValue(tvList, row), tsDataType);
       }
-      dataSet.putRecord(record);
+      dataSet.putRecord(rowRecord);
     }
     return dataSet;
   }

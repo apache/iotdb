@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.index.common;
 
-import org.apache.iotdb.db.metadata.MetadataOperationType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -61,54 +60,6 @@ public class IndexInfo implements Cloneable {
 
   public IndexType getIndexType() {
     return indexType;
-  }
-
-  @Deprecated
-  public String serializeCreateIndex(String path) {
-    StringBuilder res = new StringBuilder();
-    res.append(
-        String.format(
-            "%s,%s,%s,%s", MetadataOperationType.CREATE_INDEX, path, indexType.serialize(), time));
-    if (props != null && !props.isEmpty()) {
-      for (Map.Entry entry : props.entrySet()) {
-        res.append(String.format(",%s=%s", entry.getKey(), entry.getValue()));
-      }
-    }
-    return res.toString();
-  }
-
-  /**
-   * @param args [0] is the MetadataType, [1] is the path, the rest is to be parsed.
-   * @return parsed IndexInfo
-   */
-  @Deprecated
-  public static IndexInfo deserializeCreateIndex(String[] args) {
-    IndexType indexType = IndexType.deserialize(Short.parseShort(args[2]));
-    long time = Long.parseLong(args[3]);
-    HashMap<String, String> indexProps = null;
-    if (args.length > 4) {
-      String[] kv;
-      indexProps = new HashMap<>(args.length - 4 + 1, 1);
-      for (int k = 4; k < args.length; k++) {
-        kv = args[k].split("=");
-        indexProps.put(kv[0], kv[1]);
-      }
-    }
-    return new IndexInfo(indexType, time, indexProps);
-  }
-
-  @Deprecated
-  public static String serializeDropIndex(String path, IndexType indexType) {
-    return String.format("%s,%s,%s", MetadataOperationType.DROP_INDEX, path, indexType.serialize());
-  }
-
-  /**
-   * @param args [0] is the MetadataType, [1] is the path, the rest is to be parsed.
-   * @return parsed IndexInfo
-   */
-  @Deprecated
-  public static IndexType deserializeDropIndex(String[] args) {
-    return IndexType.deserialize(Short.parseShort(args[2]));
   }
 
   public void serialize(OutputStream outputStream) throws IOException {

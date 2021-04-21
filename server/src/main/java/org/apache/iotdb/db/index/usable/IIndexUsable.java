@@ -34,7 +34,7 @@ import java.io.OutputStream;
  * <p>A natural solution is to put the data in the "index unusable" range into the post-processing
  * phase (or called refinement phase) directly.
  *
- * <p>TODO The IIndexUsable's update due to the "merge" finishing hasn't been taken in account.
+ * <p>TODO Updating IIndexUsable when "merge" finishing hasn't been taken in account.
  */
 public interface IIndexUsable {
 
@@ -58,7 +58,7 @@ public interface IIndexUsable {
 
   /**
    * The result format depends on "sub-matching" ({@linkplain SubMatchIndexUsability}) or
-   * "whole-matching" ({@linkplain WholeMatchIndexUsability})
+   * "whole-matching" ({@linkplain WholeMatchIndexUsability}.)
    *
    * @return the range where index is unusable.
    */

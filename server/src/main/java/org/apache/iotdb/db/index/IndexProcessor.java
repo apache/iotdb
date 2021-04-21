@@ -52,6 +52,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
@@ -96,7 +97,7 @@ public class IndexProcessor implements Comparable<IndexProcessor> {
    */
   private AtomicInteger numIndexBuildTasks;
 
-  /** Whether the processor has been closed */
+  /** Whether the processor has been closed. */
   private volatile boolean closed;
 
   /** The map of index instances. */
@@ -118,6 +119,12 @@ public class IndexProcessor implements Comparable<IndexProcessor> {
   /** The optimizer for the post-processing phase (refinement phase). Unused yet. */
   private final IIndexCandidateOrderOptimize refinePhaseOptimizer;
 
+  /**
+   * The constructor.
+   *
+   * @param indexSeries the index series.
+   * @param indexSeriesDirPath the specified directory.
+   */
   public IndexProcessor(PartialPath indexSeries, String indexSeriesDirPath) {
     this.indexBuildPoolManager = IndexBuildTaskPoolManager.getInstance();
 
@@ -262,8 +269,10 @@ public class IndexProcessor implements Comparable<IndexProcessor> {
             closed = true;
             if (deleteFiles) {
               File dir = IndexUtils.getIndexFile(indexSeriesDirPath);
-              dir.delete();
+              Files.delete(dir.toPath());
             }
+          } catch (IOException e) {
+            logger.error("Remove index files failed", e);
           } finally {
             lock.writeLock().unlock();
           }
@@ -281,7 +290,7 @@ public class IndexProcessor implements Comparable<IndexProcessor> {
           Thread.sleep(waitingInterval);
         } catch (InterruptedException e) {
           logger.error("interrupted, index insert may not complete.", e);
-          return;
+          Thread.currentThread().interrupt();
         }
         waitingTime = System.currentTimeMillis() - st;
         // wait for too long time.
@@ -453,12 +462,15 @@ public class IndexProcessor implements Comparable<IndexProcessor> {
           try {
             allPathsIndexMap.get(indexType).closeAndRelease();
           } catch (IOException e) {
-            logger.warn(
-                "Meet error when close {} before removing index, {}", indexType, e.getMessage());
+            logger.error("Meet error when close {} before removing index", indexType, e);
           }
           // remove index file directories
           File dir = IndexUtils.getIndexFile(getIndexDir(indexType));
-          dir.delete();
+          try {
+            Files.delete(dir.toPath());
+          } catch (IOException e) {
+            logger.error("Remove index dir {} failed.", dir, e);
+          }
           allPathsIndexMap.remove(indexType);
           usableMap.remove(indexType);
         }
@@ -468,7 +480,7 @@ public class IndexProcessor implements Comparable<IndexProcessor> {
     }
   }
 
-  /** For unsequence data, mark them as "index-unusable" in corresponding IIndexUsable */
+  /** For unsequence data, mark them as "index-unusable" in corresponding IIndexUsable. */
   void updateUnsequenceData(PartialPath path, TVList tvList) {
     this.usableMap.forEach(
         (indexType, usable) ->

@@ -327,7 +327,11 @@ public class PartialPath extends Path implements Comparable<Path> {
       nodes[i] = nodes[i].toLowerCase();
     }
     fullPath = String.join(TsFileConstant.PATH_SEPARATOR, nodes);
-    if (measurementAlias != null) measurementAlias = measurementAlias.toLowerCase();
-    if (tsAlias != null) tsAlias = tsAlias.toLowerCase();
+    if (measurementAlias != null) {
+      measurementAlias = measurementAlias.toLowerCase();
+    }
+    if (tsAlias != null) {
+      tsAlias = tsAlias.toLowerCase();
+    }
   }
 }

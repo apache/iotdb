@@ -52,7 +52,7 @@ public class SubMatchIndexUsability implements IIndexUsable {
   }
 
   /**
-   * Construction
+   * constructor.
    *
    * @param maxSizeOfUsableSegments the max size of usable segments
    * @param initAllUsable true if the entire time range is set to "usable".
@@ -79,8 +79,14 @@ public class SubMatchIndexUsability implements IIndexUsable {
     RangeNode node = locateIdxByTime(startTime);
     RangeNode prevNode = node;
     while (node != null && node.start <= endTime) {
-      assert node.start <= node.end;
-      assert startTime <= endTime;
+      if (node.start > node.end) {
+        throw new IllegalArgumentException(
+            String.format("Meet error. node.start=%d, node.end=%d.", node.start, node.end));
+      }
+      if (startTime > endTime) {
+        throw new IllegalArgumentException(
+            String.format("Meet error. startTime=%d, endTime=%d.", startTime, endTime));
+      }
       if (node.end < startTime) {
         prevNode = node;
         node = node.next;
@@ -137,7 +143,7 @@ public class SubMatchIndexUsability implements IIndexUsable {
       endTime = endTime - 1;
     }
     RangeNode node = locateIdxByTime(startTime);
-    if (endTime <= node.end) {
+    if (node == null || endTime <= node.end) {
       return;
     }
     // add the unusable range into the list

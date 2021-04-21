@@ -21,21 +21,22 @@ import java.util.Random;
 
 public class UniformProba extends Probability {
 
-  private final double upBound;
   private final double downBound;
   private final double range;
-  private Random r;
+  private Random random;
 
-  public UniformProba(double upBound, double downBound, Random r) {
-    assert upBound > downBound;
-    this.upBound = upBound;
+  public UniformProba(double upBound, double downBound, Random random) {
+    if (upBound < downBound) {
+      throw new IllegalArgumentException(
+          String.format("Invalid up bound and down bound: %f, %f: ", upBound, downBound));
+    }
     this.downBound = downBound;
     this.range = upBound - downBound;
-    this.r = r;
+    this.random = random;
   }
 
   @Override
   public double getNextRandom() {
-    return r.nextDouble() * range + downBound;
+    return random.nextDouble() * range + downBound;
   }
 }

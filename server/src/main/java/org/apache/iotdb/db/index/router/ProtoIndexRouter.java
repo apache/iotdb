@@ -45,7 +45,6 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -70,9 +69,9 @@ public class ProtoIndexRouter implements IIndexRouter {
 
   private static final Logger logger = LoggerFactory.getLogger(ProtoIndexRouter.class);
 
-  /** for subsequence matching indexes */
+  /** for subsequence matching indexes. */
   private Map<String, IndexProcessorStruct> fullPathProcessorMap;
-  /** for whole matching indexes */
+  /** for whole matching indexes. */
   private Map<PartialPath, IndexProcessorStruct> wildCardProcessorMap;
 
   private Map<String, Set<String>> sgToFullPathMap;
@@ -374,7 +373,7 @@ public class ProtoIndexRouter implements IIndexRouter {
     } finally {
       lock.readLock().unlock();
     }
-    return new HashMap<>();
+    return new EnumMap<>(IndexType.class);
   }
 
   @Override

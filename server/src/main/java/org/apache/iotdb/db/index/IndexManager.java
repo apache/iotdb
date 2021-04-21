@@ -230,7 +230,7 @@ public class IndexManager implements IndexManagerMBean, IService {
     }
   }
 
-  private void deleteDroppedIndexData() throws IOException, IllegalPathException {
+  private void deleteDroppedIndexData() throws IllegalPathException {
     for (File processorDataDir :
         Objects.requireNonNull(IndexUtils.getIndexFile(indexDataDirPath).listFiles())) {
       String processorName = processorDataDir.getName();
@@ -301,8 +301,9 @@ public class IndexManager implements IndexManagerMBean, IService {
     private static IndexManager instance = new IndexManager();
   }
 
+  /** Delete all index directories. */
   @TestOnly
-  public synchronized void deleteAll() throws IOException {
+  public synchronized void deleteAll() {
     logger.info("Start deleting all storage groups' timeseries");
     close();
 

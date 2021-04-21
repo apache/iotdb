@@ -58,7 +58,7 @@ public class NoIndex extends IoTDBIndex {
   @Override
   public QueryDataSet query(
       Map<String, Object> queryProps,
-      IIndexUsable iIndexUsable,
+      IIndexUsable indexUsable,
       QueryContext context,
       IIndexCandidateOrderOptimize candidateOrderOptimize,
       boolean alignedByTime) {
