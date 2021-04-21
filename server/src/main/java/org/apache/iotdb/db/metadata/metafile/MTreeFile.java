@@ -94,6 +94,9 @@ public class MTreeFile {
     }
     MNode mNode = read(rootPosition);
     for (int i = 1; i < nodes.length; i++) {
+      if(!mNode.hasChild(nodes[i])){
+        return null;
+      }
       mNode = read(mNode.getChild(nodes[i]).getPosition());
     }
     return mNode;

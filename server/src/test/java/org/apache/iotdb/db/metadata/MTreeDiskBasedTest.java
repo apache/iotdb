@@ -22,20 +22,14 @@ import static org.junit.Assert.*;
 
 public class MTreeDiskBasedTest {
 
-  private static final int cacheSize = 10000;
+  private static final int CACHE_SIZE = 0;
   private static final String BASE_PATH = MTreeDiskBasedTest.class.getResource("").getPath();
-  private static final String MTREE_FILEPATH = BASE_PATH + "mtree.txt";
-  private static final String MEASUREMENT_FILEPATH = BASE_PATH + "measurement.txt";
+  private static final String METAFILE_FILEPATH = BASE_PATH + "metafile.bin";
 
   @Before
   public void setUp() {
     EnvironmentUtils.envSetUp();
-    File file = new File(MTREE_FILEPATH);
-    if (file.exists()) {
-      file.delete();
-    }
-
-    file = new File(MEASUREMENT_FILEPATH);
+    File file = new File(METAFILE_FILEPATH);
     if (file.exists()) {
       file.delete();
     }
@@ -43,12 +37,7 @@ public class MTreeDiskBasedTest {
 
   @After
   public void tearDown() throws Exception {
-    File file = new File(MTREE_FILEPATH);
-    if (file.exists()) {
-      file.delete();
-    }
-
-    file = new File(MEASUREMENT_FILEPATH);
+    File file = new File(METAFILE_FILEPATH);
     if (file.exists()) {
       file.delete();
     }
@@ -57,7 +46,7 @@ public class MTreeDiskBasedTest {
 
   @Test
   public void testSetStorageGroupExceptionMessage() throws Exception {
-    MTreeDiskBased root = new MTreeDiskBased();
+    MTreeDiskBased root = new MTreeDiskBased(CACHE_SIZE,METAFILE_FILEPATH);
     try {
       root.setStorageGroup(new PartialPath("root.edge1.access"));
       root.setStorageGroup(new PartialPath("root.edge1"));
@@ -83,7 +72,7 @@ public class MTreeDiskBasedTest {
 
   @Test
   public void testAddLeftNodePathWithAlias() throws Exception {
-    MTreeDiskBased root = new MTreeDiskBased();
+    MTreeDiskBased root = new MTreeDiskBased(CACHE_SIZE,METAFILE_FILEPATH);
     root.setStorageGroup(new PartialPath("root.laptop"));
     try {
       root.createTimeseries(
@@ -112,7 +101,7 @@ public class MTreeDiskBasedTest {
 
   @Test
   public void testAddAndPathExist() throws Exception {
-    MTreeDiskBased root = new MTreeDiskBased();
+    MTreeDiskBased root = new MTreeDiskBased(CACHE_SIZE,METAFILE_FILEPATH);
     String path1 = "root";
     root.setStorageGroup(new PartialPath("root.laptop"));
     assertTrue(root.isPathExist(new PartialPath(path1)));
@@ -146,7 +135,7 @@ public class MTreeDiskBasedTest {
 
   @Test
   public void testAddAndQueryPath() throws Exception {
-    MTreeDiskBased root = new MTreeDiskBased();
+    MTreeDiskBased root = new MTreeDiskBased(CACHE_SIZE,METAFILE_FILEPATH);
     try {
       assertFalse(root.isPathExist(new PartialPath("root.a.d0")));
       assertFalse(root.checkStorageGroupByPath(new PartialPath("root.a.d0")));
@@ -213,7 +202,7 @@ public class MTreeDiskBasedTest {
 
   @Test
   public void testAddAndQueryPathWithAlias() throws Exception {
-    MTreeDiskBased root = new MTreeDiskBased();
+    MTreeDiskBased root = new MTreeDiskBased(CACHE_SIZE,METAFILE_FILEPATH);
     try {
       assertFalse(root.isPathExist(new PartialPath("root.a.d0")));
       assertFalse(root.checkStorageGroupByPath(new PartialPath("root.a.d0")));
@@ -296,7 +285,7 @@ public class MTreeDiskBasedTest {
 
   @Test
   public void testGetAllChildNodeNamesByPath() throws Exception {
-    MTreeDiskBased root = new MTreeDiskBased();
+    MTreeDiskBased root = new MTreeDiskBased(CACHE_SIZE,METAFILE_FILEPATH);
     try {
       root.setStorageGroup(new PartialPath("root.a.d0"));
       root.createTimeseries(
@@ -340,7 +329,7 @@ public class MTreeDiskBasedTest {
   @Test
   public void testSetStorageGroup() throws Exception {
     // set storage group first
-    MTreeDiskBased root = new MTreeDiskBased();
+    MTreeDiskBased root = new MTreeDiskBased(CACHE_SIZE,METAFILE_FILEPATH);
     try {
       root.setStorageGroup(new PartialPath("root.laptop.d1"));
       assertTrue(root.isPathExist(new PartialPath("root.laptop.d1")));
@@ -442,7 +431,7 @@ public class MTreeDiskBasedTest {
   @Test
   public void testCheckStorageGroup() throws Exception {
     // set storage group first
-    MTreeDiskBased root = new MTreeDiskBased();
+    MTreeDiskBased root = new MTreeDiskBased(CACHE_SIZE,METAFILE_FILEPATH);
     try {
       assertFalse(root.isStorageGroup(new PartialPath("root")));
       assertFalse(root.isStorageGroup(new PartialPath("root1.laptop.d2")));
@@ -469,7 +458,7 @@ public class MTreeDiskBasedTest {
   @Test
   public void testGetAllFileNamesByPath() throws Exception {
     // set storage group first
-    MTreeDiskBased root = new MTreeDiskBased();
+    MTreeDiskBased root = new MTreeDiskBased(CACHE_SIZE,METAFILE_FILEPATH);
     try {
       root.setStorageGroup(new PartialPath("root.laptop.d1"));
       root.setStorageGroup(new PartialPath("root.laptop.d2"));
@@ -506,7 +495,7 @@ public class MTreeDiskBasedTest {
   @Test
   public void testCheckStorageExistOfPath() throws Exception {
     // set storage group first
-    MTreeDiskBased root = new MTreeDiskBased();
+    MTreeDiskBased root = new MTreeDiskBased(CACHE_SIZE,METAFILE_FILEPATH);
     try {
       assertTrue(root.getStorageGroupByPath(new PartialPath("root")).isEmpty());
       assertTrue(root.getStorageGroupByPath(new PartialPath("root.vehicle")).isEmpty());
@@ -536,7 +525,7 @@ public class MTreeDiskBasedTest {
   @Test
   public void testGetAllTimeseriesCount() throws Exception {
     // set storage group first
-    MTreeDiskBased root = new MTreeDiskBased();
+    MTreeDiskBased root = new MTreeDiskBased(CACHE_SIZE,METAFILE_FILEPATH);
     try {
       root.setStorageGroup(new PartialPath("root.laptop"));
       root.createTimeseries(
@@ -592,7 +581,7 @@ public class MTreeDiskBasedTest {
 
   @Test
   public void testAddSubDevice() throws Exception {
-    MTreeDiskBased root = new MTreeDiskBased();
+    MTreeDiskBased root = new MTreeDiskBased(CACHE_SIZE,METAFILE_FILEPATH);
     root.setStorageGroup(new PartialPath("root.laptop"));
     root.createTimeseries(
         new PartialPath("root.laptop.d1.s1"),
@@ -617,7 +606,7 @@ public class MTreeDiskBasedTest {
 
   @Test
   public void testIllegalStorageGroup() throws Exception {
-    MTreeDiskBased root = new MTreeDiskBased();
+    MTreeDiskBased root = new MTreeDiskBased(CACHE_SIZE,METAFILE_FILEPATH);
     try {
       root.setStorageGroup(new PartialPath("root.\"sg.ln\""));
     } catch (MetadataException e) {
@@ -629,7 +618,7 @@ public class MTreeDiskBasedTest {
 
   @Test
   public void testSearchStorageGroup() throws Exception {
-    MTreeDiskBased root = new MTreeDiskBased();
+    MTreeDiskBased root = new MTreeDiskBased(CACHE_SIZE,METAFILE_FILEPATH);
     String path1 = "root";
     String sgPath1 = "root.vehicle";
     root.setStorageGroup(new PartialPath(sgPath1));
@@ -660,7 +649,7 @@ public class MTreeDiskBasedTest {
 
   @Test
   public void testDeleteChildOfMeasurementMNode() throws Exception {
-    MTreeDiskBased root = new MTreeDiskBased();
+    MTreeDiskBased root = new MTreeDiskBased(CACHE_SIZE,METAFILE_FILEPATH);
     String sgPath = "root.sg1";
     root.setStorageGroup(new PartialPath(sgPath));
     try {
@@ -693,7 +682,7 @@ public class MTreeDiskBasedTest {
 
   @Test
   public void testGetMeasurementMNodeCount() throws Exception {
-    MTreeDiskBased root = new MTreeDiskBased();
+    MTreeDiskBased root = new MTreeDiskBased(CACHE_SIZE,METAFILE_FILEPATH);
     PartialPath sgPath = new PartialPath("root.sg1");
     root.setStorageGroup(sgPath);
     try {
@@ -737,7 +726,7 @@ public class MTreeDiskBasedTest {
 
   @Test
   public void testCreateTimeseries() throws Exception {
-    MTreeDiskBased root = new MTreeDiskBased();
+    MTreeDiskBased root = new MTreeDiskBased(CACHE_SIZE,METAFILE_FILEPATH);
     String sgPath = "root.sg1";
     root.setStorageGroup(new PartialPath(sgPath));
 

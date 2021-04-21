@@ -88,7 +88,7 @@ public class LRUCacheStrategy implements CacheStrategy {
     }
     try {
       lock.lock();
-      removeRecursivelyAndCollectModified(mNode, null);
+      removeRecursively(mNode);
     } finally {
       lock.unlock();
     }
@@ -125,7 +125,7 @@ public class LRUCacheStrategy implements CacheStrategy {
     }
   }
 
-  private void removeRecursivelyAndCollectModified(MNode mNode, Collection<MNode> removedMNodes) {
+  private void evictRecursivelyAndCollectModified(MNode mNode, Collection<MNode> removedMNodes) {
     if (MNode.isNull(mNode)) {
       return;
     }
@@ -139,7 +139,7 @@ public class LRUCacheStrategy implements CacheStrategy {
       removedMNodes.add(mNode);
     }
     for (MNode child : mNode.getChildren().values()) {
-      removeRecursivelyAndCollectModified(child, removedMNodes);
+      evictRecursivelyAndCollectModified(child, removedMNodes);
     }
   }
 
@@ -155,7 +155,12 @@ public class LRUCacheStrategy implements CacheStrategy {
       if (mNode.getParent() != null) {
         mNode.getParent().evictChild(mNode.getName());
       }
-      removeRecursivelyAndCollectModified(mNode, evictedMNode);
+      MNode parent=mNode.getParent();
+      while(parent!=null&&parent.getCacheEntry().isModified){
+        evictedMNode.add(parent);
+        parent=parent.getParent();
+      }
+      evictRecursivelyAndCollectModified(mNode, evictedMNode);
       return evictedMNode;
     } finally {
       lock.unlock();

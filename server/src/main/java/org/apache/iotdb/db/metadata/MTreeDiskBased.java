@@ -8,6 +8,7 @@ import org.apache.iotdb.db.exception.metadata.*;
 import org.apache.iotdb.db.metadata.cache.CacheStrategy;
 import org.apache.iotdb.db.metadata.cache.LRUCacheStrategy;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
+import org.apache.iotdb.db.metadata.metafile.MetaFile;
 import org.apache.iotdb.db.metadata.metafile.MetaFileAccess;
 import org.apache.iotdb.db.metadata.metafile.MockMetaFile;
 import org.apache.iotdb.db.metadata.mnode.MNode;
@@ -69,7 +70,11 @@ public class MTreeDiskBased implements MTreeInterface {
   private static transient ThreadLocal<Integer> curOffset = new ThreadLocal<>();
 
   public MTreeDiskBased() throws IOException {
-    this(null, 4, DEFAULT_METAFILE_PATH);
+    this(null, DEFAULT_MAX_CAPACITY, DEFAULT_METAFILE_PATH);
+  }
+
+  public MTreeDiskBased(int cachesize, String metaFilePath) throws IOException{
+    this(null,cachesize,metaFilePath);
   }
 
   private MTreeDiskBased(MNode root) throws IOException {
@@ -98,6 +103,7 @@ public class MTreeDiskBased implements MTreeInterface {
     }
     this.metaFilePath=metaFilePath;
     metaFile = new MockMetaFile(metaFilePath);
+//    metaFile=new MetaFile(metaFilePath);
     metaFile.write(root);
   }
 
@@ -135,11 +141,7 @@ public class MTreeDiskBased implements MTreeInterface {
 
   private MNode getMNodeFromDisk(PartialPath path) throws MetadataException {
     try {
-      MNode mNode = metaFile.read(path);
-      if (mNode == null) {
-        throw new PathNotExistException(path.getFullPath());
-      }
-      return mNode;
+      return metaFile.read(path);
     } catch (IOException e) {
       throw new MetadataException(e.getMessage());
     }
@@ -167,6 +169,9 @@ public class MTreeDiskBased implements MTreeInterface {
     MNode result = parent.getChild(name);
     if (MNode.isNull(result)) {
       result = getMNodeFromDisk(new PartialPath(parent.getFullPath() + PATH_SEPARATOR + name));
+      if(result==null){
+        return null;
+      }
       parent.addChild(name, result);
       if (parent.isCached() && checkSizeAndEviction()) {
         cacheStrategy.applyChange(result);
