@@ -21,7 +21,7 @@ public class CostEstimator {
 
   private CostEstimator() {}
 
-  public CostEstimator getInstance() {
+  public static CostEstimator getInstance() {
     return INSTANCE;
   }
 
@@ -112,6 +112,23 @@ public class CostEstimator {
       }
     }
     return -1.0d;
+  }
+
+  /**
+   * Estimate the cost of a list of queries
+   *
+   * @param records the list of queries
+   * @param physicalOrder the physical order of chunk in tsfile
+   * @param averageChunkSize the average chunk size
+   * @return the cost in milliseconds
+   */
+  public double estimate(
+      List<QueryRecord> records, List<String> physicalOrder, long averageChunkSize) {
+    double totalCost = 0;
+    for (QueryRecord record : records) {
+      totalCost += estimate(record, physicalOrder, averageChunkSize);
+    }
+    return totalCost;
   }
 
   private static class DiskInfo {
