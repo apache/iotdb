@@ -1014,8 +1014,9 @@ public class StorageGroupProcessor {
   public void asyncFlushMemTableInTsFileProcessor(TsFileProcessor tsFileProcessor) {
     writeLock();
     try {
-      if (!tsFileProcessor.isAwaiting()
-          && !closingSequenceTsFileProcessor.contains(tsFileProcessor)
+      if (tsFileProcessor.isAwaiting()) {
+        tsFileProcessor.setFlush();
+      } else if (!closingSequenceTsFileProcessor.contains(tsFileProcessor)
           && !closingUnSequenceTsFileProcessor.contains(tsFileProcessor)) {
         fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
       }
