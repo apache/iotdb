@@ -34,7 +34,6 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.CompressionRatio;
-import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.flush.FlushManager;
@@ -117,6 +116,7 @@ public class TsFileProcessor {
   private WriteLogNode logNode;
   private final boolean sequence;
   private long totalMemTableSize;
+  private boolean isAwaiting = false;
   private boolean shouldFlush = false;
 
   private static final String FLUSH_QUERY_WRITE_LOCKED = "{}: {} get flushQueryLock write lock";
@@ -366,11 +366,13 @@ public class TsFileProcessor {
       long startTime = System.currentTimeMillis();
       while (SystemInfo.getInstance().isRejected()) {
         try {
+          isAwaiting = true;
           storageGroupInfo.getStorageGroupProcessor().rejectConditionAwait();
+          isAwaiting = false;
           if (System.currentTimeMillis() - startTime
               > config.getMaxWaitingTimeWhenInsertBlocked()) {
             throw new WriteProcessRejectException(
-                "System rejected over " + config.getMaxWaitingTimeWhenInsertBlocked() + "ms");
+                "System rejected over " + (System.currentTimeMillis() - startTime) + "ms");
           }
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
@@ -448,6 +450,10 @@ public class TsFileProcessor {
       return true;
     }
     return false;
+  }
+
+  public boolean isAwaiting() {
+    return isAwaiting;
   }
 
   private long getMemtableSizeThresholdBasedOnSeriesNum() {
