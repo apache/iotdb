@@ -29,6 +29,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
 import org.apache.thrift.TException;
 
 import java.util.ArrayList;
@@ -66,20 +67,21 @@ public class SessionExample {
       }
     }
 
-//    createTimeseries();
-//    createMultiTimeseries();
-//    insertRecord();
-//    insertTablet();
-//    insertTablets();
-//    insertRecords();
-//    session.executeNonQueryStatement("flush");
+    //    createTimeseries();
+    //    createMultiTimeseries();
+    //    insertRecord();
+    //    insertTablet();
+    //    insertTablets();
+    //    insertRecords();
+    //    session.executeNonQueryStatement("flush");
     session.myTest();
-//    SessionDataSet dataSet = session.executeQueryStatement("select count(*) from root.sg1.d1");
-//    while (dataSet.hasNext()) {
-//      dataSet.next();
-//    }
+    //    SessionDataSet dataSet = session.executeQueryStatement("select count(*) from
+    // root.sg1.d1");
+    //    while (dataSet.hasNext()) {
+    //      dataSet.next();
+    //    }
     //    nonQuery();
-    //    query();
+    //        query();
     //    queryWithTimeout();
     //    rawDataQuery();
     //    queryByIterator();
