@@ -109,7 +109,8 @@ public class MemTableFlushTaskTest {
   public void testFlushVectorMemTable()
       throws ExecutionException, InterruptedException, IllegalPathException, IOException {
     MemTableTestUtils.produceVectorData(memTable);
-    MemTableFlushTask memTableFlushTask = new MemTableFlushTask(memTable, writer, storageGroup);
+    MemTableFlushTask memTableFlushTask =
+        new MemTableFlushTask(memTable, writer, storageGroup, true);
     assertTrue(
         writer
             .getVisibleMetadataList(MemTableTestUtils.deviceId0, "sensor0", TSDataType.BOOLEAN)
@@ -136,7 +137,8 @@ public class MemTableFlushTaskTest {
   public void testFlushNullableVectorMemTable()
       throws ExecutionException, InterruptedException, IllegalPathException, IOException {
     MemTableTestUtils.produceNullableVectorData(memTable);
-    MemTableFlushTask memTableFlushTask = new MemTableFlushTask(memTable, writer, storageGroup);
+    MemTableFlushTask memTableFlushTask =
+        new MemTableFlushTask(memTable, writer, storageGroup, true);
     assertTrue(
         writer
             .getVisibleMetadataList(MemTableTestUtils.deviceId0, "sensor0", TSDataType.BOOLEAN)
