@@ -51,7 +51,7 @@ public class SessionExample {
   private static final String LOCAL_HOST = "127.0.0.1";
 
   public static void main(String[] args)
-          throws IoTDBConnectionException, StatementExecutionException, TException {
+      throws IoTDBConnectionException, StatementExecutionException, TException {
     session = new Session(LOCAL_HOST, 6667, "root", "root");
     session.open(false);
 
@@ -65,14 +65,14 @@ public class SessionExample {
         throw e;
       }
     }
-    //
-    //    createTimeseries();
-    //    createMultiTimeseries();
-    //    insertRecord();
-    //    insertTablet();
-    //    insertTablets();
-    //    insertRecords();
-    //    session.executeNonQueryStatement("flush");
+
+//    createTimeseries();
+//    createMultiTimeseries();
+//    insertRecord();
+//    insertTablet();
+//    insertTablets();
+//    insertRecords();
+//    session.executeNonQueryStatement("flush");
     session.myTest();
 //    SessionDataSet dataSet = session.executeQueryStatement("select count(*) from root.sg1.d1");
 //    while (dataSet.hasNext()) {
