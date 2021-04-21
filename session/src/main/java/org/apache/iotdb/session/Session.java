@@ -1660,7 +1660,7 @@ public class Session {
 
   private TSSetDeviceTemplateReq getTSSetDeviceTemplateReq(String templateName, String prefixPath) {
     TSSetDeviceTemplateReq request = new TSSetDeviceTemplateReq();
-    request.setTemplate(templateName);
+    request.setTemplateName(templateName);
     request.setPrefixPath(prefixPath);
     return request;
   }
