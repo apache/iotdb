@@ -15,8 +15,7 @@ public class MockMetaFile implements MetaFileAccess {
 
   private final Map<String, MNode> mockFile = new ConcurrentHashMap<>();
 
-  private static final PersistenceInfo PERSISTENCE_INFO_PLACEHOLDER=new PersistenceMNode();
-
+  private static final PersistenceInfo PERSISTENCE_INFO_PLACEHOLDER = new PersistenceMNode();
 
   public MockMetaFile(String metaFilePath) {}
 

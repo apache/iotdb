@@ -1,6 +1,7 @@
 package org.apache.iotdb.db.metadata.cache;
 
 import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.MNodeImpl;
 
 import java.util.Collection;
 import java.util.LinkedList;
@@ -24,15 +25,15 @@ public class LRUCacheStrategy implements CacheStrategy {
 
   @Override
   public void applyChange(MNode mNode) {
-    if (MNode.isNull(mNode)) {
+    if (MNodeImpl.isNull(mNode)) {
       return;
     }
     try {
       lock.lock();
-      if (MNode.isNull(mNode)) {
+      if (MNodeImpl.isNull(mNode)) {
         return;
       }
-      if (!MNode.isNull(mNode.getParent()) && !mNode.getParent().isCached()) {
+      if (!MNodeImpl.isNull(mNode.getParent()) && !mNode.getParent().isCached()) {
         return;
       }
       CacheEntry entry = mNode.getCacheEntry();
@@ -48,7 +49,7 @@ public class LRUCacheStrategy implements CacheStrategy {
 
   @Override
   public void setModified(MNode mNode, boolean modified) {
-    if (MNode.isNull(mNode) || mNode.getCacheEntry() == null) {
+    if (MNodeImpl.isNull(mNode) || mNode.getCacheEntry() == null) {
       return;
     }
     mNode.getCacheEntry().setModified(modified);
@@ -83,7 +84,7 @@ public class LRUCacheStrategy implements CacheStrategy {
 
   @Override
   public void remove(MNode mNode) {
-    if (MNode.isNull(mNode)) {
+    if (MNodeImpl.isNull(mNode)) {
       return;
     }
     try {
@@ -111,7 +112,7 @@ public class LRUCacheStrategy implements CacheStrategy {
   }
 
   private void removeRecursively(MNode mNode) {
-    if (MNode.isNull(mNode)) {
+    if (MNodeImpl.isNull(mNode)) {
       return;
     }
     CacheEntry entry = mNode.getCacheEntry();
@@ -126,7 +127,7 @@ public class LRUCacheStrategy implements CacheStrategy {
   }
 
   private void evictRecursivelyAndCollectModified(MNode mNode, Collection<MNode> removedMNodes) {
-    if (MNode.isNull(mNode)) {
+    if (MNodeImpl.isNull(mNode)) {
       return;
     }
     CacheEntry entry = mNode.getCacheEntry();
@@ -155,10 +156,10 @@ public class LRUCacheStrategy implements CacheStrategy {
       if (mNode.getParent() != null) {
         mNode.getParent().evictChild(mNode.getName());
       }
-      MNode parent=mNode.getParent();
-      while(parent!=null&&parent.getCacheEntry().isModified){
+      MNode parent = mNode.getParent();
+      while (parent != null && parent.getCacheEntry().isModified) {
         evictedMNode.add(parent);
-        parent=parent.getParent();
+        parent = parent.getParent();
       }
       evictRecursivelyAndCollectModified(mNode, evictedMNode);
       return evictedMNode;

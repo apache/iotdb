@@ -2,6 +2,7 @@ package org.apache.iotdb.db.metadata.metafile;
 
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.MNodeImpl;
 import org.apache.iotdb.db.metadata.mnode.PersistenceMNode;
 
 import java.io.IOException;
@@ -25,7 +26,7 @@ public class MetaFile implements MetaFileAccess {
     return readMNode(persistenceInfo);
   }
 
-  private MNode readData(MNode mNode) throws IOException {
+  private MNode readData(MNodeImpl mNode) throws IOException {
     return mTreeFile.readData(mNode);
   }
 

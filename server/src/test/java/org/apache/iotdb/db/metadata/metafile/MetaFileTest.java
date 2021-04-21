@@ -1,6 +1,7 @@
 package org.apache.iotdb.db.metadata.metafile;
 
 import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.MNodeImpl;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -46,7 +47,7 @@ public class MetaFileTest {
 
   @Test
   public void testSimpleMNodeRW() throws IOException {
-    MNode mNode = new MNode(null, "root");
+    MNode mNode = new MNodeImpl(null, "root");
     metaFile.write(mNode);
     Assert.assertNotEquals(0, mNode.getPersistenceInfo().getPosition());
     mNode = metaFile.readMNode(mNode.getPersistenceInfo());
@@ -55,8 +56,8 @@ public class MetaFileTest {
 
   @Test
   public void testPathRW() throws IOException {
-    MNode root = new MNode(null, "root");
-    MNode p = new MNode(root, "p");
+    MNode root = new MNodeImpl(null, "root");
+    MNode p = new MNodeImpl(root, "p");
     root.addChild("p", p);
     StorageGroupMNode s = new StorageGroupMNode(root.getChild("p"), "s", 0);
     p.addChild("s", s);
@@ -85,16 +86,16 @@ public class MetaFileTest {
   }
 
   private MNode getSimpleTree() {
-    MNode root = new MNode(null, "root");
-    root.addChild("s1", new MNode(null, "s1"));
-    root.addChild("s2", new MNode(null, "s2"));
-    root.getChild("s1").addChild("t1", new MNode(root.getChild("s1"), "t1"));
-    root.getChild("s1").addChild("t2", new MNode(root.getChild("s1"), "t2"));
+    MNode root = new MNodeImpl(null, "root");
+    root.addChild("s1", new MNodeImpl(null, "s1"));
+    root.addChild("s2", new MNodeImpl(null, "s2"));
+    root.getChild("s1").addChild("t1", new MNodeImpl(root.getChild("s1"), "t1"));
+    root.getChild("s1").addChild("t2", new MNodeImpl(root.getChild("s1"), "t2"));
     root.getChild("s1")
         .getChild("t2")
-        .addChild("z1", new MNode(root.getChild("s1").getChild("t2"), "z1"));
-    root.getChild("s2").addChild("t1", new MNode(root.getChild("s2"), "t1"));
-    root.getChild("s2").addChild("t2", new MNode(root.getChild("s2"), "t2"));
+        .addChild("z1", new MNodeImpl(root.getChild("s1").getChild("t2"), "z1"));
+    root.getChild("s2").addChild("t1", new MNodeImpl(root.getChild("s2"), "t1"));
+    root.getChild("s2").addChild("t2", new MNodeImpl(root.getChild("s2"), "t2"));
     return root;
   }
 
@@ -125,8 +126,8 @@ public class MetaFileTest {
   }
 
   private MNode getMTree() {
-    MNode root = new MNode(null, "root");
-    MNode p = new MNode(root, "p");
+    MNode root = new MNodeImpl(null, "root");
+    MNode p = new MNodeImpl(root, "p");
     root.addChild("p", p);
     StorageGroupMNode s1 = new StorageGroupMNode(null, "s1", 1000);
     StorageGroupMNode s2 = new StorageGroupMNode(null, "s2", 2000);
@@ -153,14 +154,14 @@ public class MetaFileTest {
     }
   }
 
-    @Test
+  @Test
   public void testIOPerformance() throws IOException {
     int deviceNum = 1000;
     int schemaNum = 1000;
 
     long startTime, endTime;
     startTime = System.currentTimeMillis();
-    MNode root = new MNode(null, "root");
+    MNode root = new MNodeImpl(null, "root");
     StorageGroupMNode sg = new StorageGroupMNode(root, "sg", 1000);
     root.addChild("sg", sg);
     String d, t;
@@ -168,13 +169,11 @@ public class MetaFileTest {
     MeasurementMNode m;
     for (int i = 0; i < deviceNum; i++) {
       d = "d" + i;
-      device=new MNode(sg,d);
+      device = new MNodeImpl(sg, d);
       sg.addChild(d, device);
       for (int j = 0; j < schemaNum; j++) {
         t = "t" + j;
-        m =
-            new MeasurementMNode(
-                device, t, new MeasurementSchema(t, TSDataType.INT32), null);
+        m = new MeasurementMNode(device, t, new MeasurementSchema(t, TSDataType.INT32), null);
         device.addChild(t, m);
       }
     }

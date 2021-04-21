@@ -262,7 +262,7 @@ public class MManager {
     long time = System.currentTimeMillis();
     if (!mtreeSnapshot.exists()) {
       mtree = new MTree();
-//      mtree = new MTreeDiskBased();
+      //      mtree = new MTreeDiskBased();
     } else {
       mtree = MTree.deserializeFrom(mtreeSnapshot);
       logger.debug(
@@ -310,7 +310,7 @@ public class MManager {
   public void clear() {
     try {
       this.mtree = new MTree();
-//      this.mtree = new MTreeDiskBased();
+      //      this.mtree = new MTreeDiskBased();
       this.mNodeCache.clear();
       this.tagIndex.clear();
       this.totalSeriesNumber.set(0);

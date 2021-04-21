@@ -141,15 +141,15 @@ public class CachePerformanceTest {
   private long accessMTree(MTreeInterface mTree) throws Exception {
     long startTime = System.currentTimeMillis();
     int missNum = 0;
-//    for (int i = 0; i < DEVICE_NUM; i++) {
-//      for (int j = 0; j < TIMESERIES_NUM; j++) {
-//        if (!mTree.isPathExist(paths[i][j])) {
-//          missNum++;
-//        }
-//      }
-//    }
+    //    for (int i = 0; i < DEVICE_NUM; i++) {
+    //      for (int j = 0; j < TIMESERIES_NUM; j++) {
+    //        if (!mTree.isPathExist(paths[i][j])) {
+    //          missNum++;
+    //        }
+    //      }
+    //    }
     for (int i = DEVICE_NUM - 1; i >= 0; i--) {
-      for (int j = TIMESERIES_NUM - 1; j >= 0 ; j--) {
+      for (int j = TIMESERIES_NUM - 1; j >= 0; j--) {
         if (!mTree.isPathExist(paths[i][j])) {
           missNum++;
         }

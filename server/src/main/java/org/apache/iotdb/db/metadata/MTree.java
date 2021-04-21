@@ -27,6 +27,7 @@ import org.apache.iotdb.db.metadata.MManager.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.MNodeImpl;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -75,7 +76,7 @@ public class MTree implements MTreeInterface {
   private MNode root;
 
   public MTree() {
-    this.root = new MNode(null, IoTDBConstant.PATH_ROOT);
+    this.root = new MNodeImpl(null, IoTDBConstant.PATH_ROOT);
   }
 
   private MTree(MNode root) {
@@ -199,7 +200,7 @@ public class MTree implements MTreeInterface {
         if (!hasSetStorageGroup) {
           throw new StorageGroupNotSetException("Storage group should be created first");
         }
-        cur.addChild(nodeName, new MNode(cur, nodeName));
+        cur.addChild(nodeName, new MNodeImpl(cur, nodeName));
       }
       cur = cur.getChild(nodeName);
     }
@@ -318,7 +319,7 @@ public class MTree implements MTreeInterface {
               new StorageGroupMNode(
                   cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL()));
         } else {
-          cur.addChild(nodeNames[i], new MNode(cur, nodeNames[i]));
+          cur.addChild(nodeNames[i], new MNodeImpl(cur, nodeNames[i]));
         }
       }
       cur = cur.getChild(nodeNames[i]);
@@ -364,7 +365,7 @@ public class MTree implements MTreeInterface {
     while (i < nodeNames.length - 1) {
       MNode temp = cur.getChild(nodeNames[i]);
       if (temp == null) {
-        cur.addChild(nodeNames[i], new MNode(cur, nodeNames[i]));
+        cur.addChild(nodeNames[i], new MNodeImpl(cur, nodeNames[i]));
       } else if (temp instanceof StorageGroupMNode) {
         // before set storage group, check whether the exists or not
         throw new StorageGroupAlreadySetException(temp.getFullPath());
@@ -1449,7 +1450,7 @@ public class MTree implements MTreeInterface {
           node = MeasurementMNode.deserializeFrom((MeasurementMNodePlan) plan);
           childrenSize = ((MeasurementMNodePlan) plan).getChildSize();
         } else if (plan instanceof MNodePlan) {
-          node = new MNode(null, ((MNodePlan) plan).getName());
+          node = new MNodeImpl(null, ((MNodePlan) plan).getName());
           childrenSize = ((MNodePlan) plan).getChildSize();
         }
 

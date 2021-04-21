@@ -8,10 +8,10 @@ import org.apache.iotdb.db.exception.metadata.*;
 import org.apache.iotdb.db.metadata.cache.CacheStrategy;
 import org.apache.iotdb.db.metadata.cache.LRUCacheStrategy;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
-import org.apache.iotdb.db.metadata.metafile.MetaFile;
 import org.apache.iotdb.db.metadata.metafile.MetaFileAccess;
 import org.apache.iotdb.db.metadata.metafile.MockMetaFile;
 import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.MNodeImpl;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
@@ -56,7 +56,8 @@ public class MTreeDiskBased implements MTreeInterface {
 
   private MetaFileAccess metaFile;
   private final String metaFilePath;
-  private static final String DEFAULT_METAFILE_PATH=IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
+  private static final String DEFAULT_METAFILE_PATH =
+      IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
           + File.separator
           + MetadataConstant.METAFILE_PATH;
 
@@ -73,24 +74,23 @@ public class MTreeDiskBased implements MTreeInterface {
     this(null, DEFAULT_MAX_CAPACITY, DEFAULT_METAFILE_PATH);
   }
 
-  public MTreeDiskBased(int cachesize, String metaFilePath) throws IOException{
-    this(null,cachesize,metaFilePath);
+  public MTreeDiskBased(int cachesize, String metaFilePath) throws IOException {
+    this(null, cachesize, metaFilePath);
   }
 
   private MTreeDiskBased(MNode root) throws IOException {
     this(root, DEFAULT_MAX_CAPACITY, DEFAULT_METAFILE_PATH);
   }
 
-  public MTreeDiskBased(MNode root, int cacheSize, String metaFilePath)
-      throws IOException {
-    if (MNode.isNull(root)) {
-      root = new MNode(null, IoTDBConstant.PATH_ROOT);
+  public MTreeDiskBased(MNode root, int cacheSize, String metaFilePath) throws IOException {
+    if (MNodeImpl.isNull(root)) {
+      root = new MNodeImpl(null, IoTDBConstant.PATH_ROOT);
     }
 
     rootName = root.getName();
     try {
       rootPath = new PartialPath(rootName);
-    }catch (IllegalPathException e){
+    } catch (IllegalPathException e) {
       e.printStackTrace();
     }
 
@@ -101,9 +101,9 @@ public class MTreeDiskBased implements MTreeInterface {
       cacheStrategy.applyChange(root);
       cacheStrategy.setModified(root, false);
     }
-    this.metaFilePath=metaFilePath;
+    this.metaFilePath = metaFilePath;
     metaFile = new MockMetaFile(metaFilePath);
-//    metaFile=new MetaFile(metaFilePath);
+    //    metaFile=new MetaFile(metaFilePath);
     metaFile.write(root);
   }
 
@@ -149,7 +149,7 @@ public class MTreeDiskBased implements MTreeInterface {
 
   private MNode getRoot() throws MetadataException {
     MNode root = this.root;
-    if (MNode.isNull(root)) {
+    if (MNodeImpl.isNull(root)) {
       root = getMNodeFromDisk(rootPath);
       if (checkSizeAndEviction()) {
         this.root = root;
@@ -167,9 +167,9 @@ public class MTreeDiskBased implements MTreeInterface {
       return null;
     }
     MNode result = parent.getChild(name);
-    if (MNode.isNull(result)) {
+    if (MNodeImpl.isNull(result)) {
       result = getMNodeFromDisk(new PartialPath(parent.getFullPath() + PATH_SEPARATOR + name));
-      if(result==null){
+      if (result == null) {
         return null;
       }
       parent.addChild(name, result);
@@ -189,7 +189,7 @@ public class MTreeDiskBased implements MTreeInterface {
     Map<String, MNode> result = new ConcurrentHashMap<>();
     for (String childName : parent.getChildren().keySet()) {
       MNode mNode = parent.getChild(childName);
-      if (MNode.isNull(mNode)) {
+      if (MNodeImpl.isNull(mNode)) {
         mNode =
             getMNodeFromDisk(new PartialPath(parent.getFullPath() + PATH_SEPARATOR + childName));
         parent.addChild(childName, mNode);
@@ -358,7 +358,7 @@ public class MTreeDiskBased implements MTreeInterface {
         if (!hasSetStorageGroup) {
           throw new StorageGroupNotSetException("Storage group should be created first");
         }
-        addChild(cur, nodeName, new MNode(cur, nodeName));
+        addChild(cur, nodeName, new MNodeImpl(cur, nodeName));
       }
       cur = getChild(cur, nodeName);
     }
@@ -473,7 +473,7 @@ public class MTreeDiskBased implements MTreeInterface {
               new StorageGroupMNode(
                   cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL()));
         } else {
-          addChild(cur, nodeNames[i], new MNode(cur, nodeNames[i]));
+          addChild(cur, nodeNames[i], new MNodeImpl(cur, nodeNames[i]));
         }
       }
       cur = getChild(cur, nodeNames[i]);
@@ -521,7 +521,7 @@ public class MTreeDiskBased implements MTreeInterface {
     while (i < nodeNames.length - 1) {
       MNode temp = getChild(cur, nodeNames[i]);
       if (temp == null) {
-        addChild(cur, nodeNames[i], new MNode(cur, nodeNames[i]));
+        addChild(cur, nodeNames[i], new MNodeImpl(cur, nodeNames[i]));
       } else if (temp.isStorageGroup()) {
         // before set storage group, check whether the exists or not
         throw new StorageGroupAlreadySetException(temp.getFullPath());

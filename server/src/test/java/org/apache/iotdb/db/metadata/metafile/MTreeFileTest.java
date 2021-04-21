@@ -1,6 +1,7 @@
 package org.apache.iotdb.db.metadata.metafile;
 
 import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.MNodeImpl;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -45,7 +46,7 @@ public class MTreeFileTest {
 
   @Test
   public void testSimpleMNodeRW() throws IOException {
-    MNode mNode = new MNode(null, "root");
+    MNode mNode = new MNodeImpl(null, "root");
     mTreeFile.write(mNode);
     mNode = mTreeFile.read(mNode.getPersistenceInfo().getPosition());
     Assert.assertEquals("root", mNode.getName());
@@ -53,8 +54,8 @@ public class MTreeFileTest {
 
   @Test
   public void testPathRW() throws IOException {
-    MNode root = new MNode(null, "root");
-    MNode p = new MNode(root, "p");
+    MNode root = new MNodeImpl(null, "root");
+    MNode p = new MNodeImpl(root, "p");
     root.addChild("p", p);
     StorageGroupMNode s = new StorageGroupMNode(root.getChild("p"), "s", 0);
     p.addChild("s", s);
@@ -83,16 +84,16 @@ public class MTreeFileTest {
   }
 
   private MNode getSimpleTree() {
-    MNode root = new MNode(null, "root");
-    root.addChild("s1", new MNode(root, "s1"));
-    root.addChild("s2", new MNode(root, "s2"));
-    root.getChild("s1").addChild("t1", new MNode(root.getChild("s1"), "t1"));
-    root.getChild("s1").addChild("t2", new MNode(root.getChild("s1"), "t2"));
+    MNode root = new MNodeImpl(null, "root");
+    root.addChild("s1", new MNodeImpl(root, "s1"));
+    root.addChild("s2", new MNodeImpl(root, "s2"));
+    root.getChild("s1").addChild("t1", new MNodeImpl(root.getChild("s1"), "t1"));
+    root.getChild("s1").addChild("t2", new MNodeImpl(root.getChild("s1"), "t2"));
     root.getChild("s1")
         .getChild("t2")
-        .addChild("z1", new MNode(root.getChild("s1").getChild("t2"), "z1"));
-    root.getChild("s2").addChild("t1", new MNode(root.getChild("s2"), "t1"));
-    root.getChild("s2").addChild("t2", new MNode(root.getChild("s2"), "t2"));
+        .addChild("z1", new MNodeImpl(root.getChild("s1").getChild("t2"), "z1"));
+    root.getChild("s2").addChild("t1", new MNodeImpl(root.getChild("s2"), "t1"));
+    root.getChild("s2").addChild("t2", new MNodeImpl(root.getChild("s2"), "t2"));
     return root;
   }
 
@@ -122,8 +123,8 @@ public class MTreeFileTest {
   }
 
   private MNode getMTree() {
-    MNode root = new MNode(null, "root");
-    MNode p = new MNode(root, "p");
+    MNode root = new MNodeImpl(null, "root");
+    MNode p = new MNodeImpl(root, "p");
     root.addChild("p", p);
     StorageGroupMNode s1 = new StorageGroupMNode(p, "s1", 1000);
     StorageGroupMNode s2 = new StorageGroupMNode(p, "s2", 2000);

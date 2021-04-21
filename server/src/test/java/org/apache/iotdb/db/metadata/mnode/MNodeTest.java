@@ -45,18 +45,18 @@ public class MNodeTest {
   @Test
   public void testReplaceChild() throws InterruptedException {
     // after replacing a with c, the timeseries root.a.b becomes root.c.b
-    MNode rootNode = new MNode(null, "root");
+    MNode rootNode = new MNodeImpl(null, "root");
 
-    MNode aNode = new MNode(rootNode, "a");
+    MNode aNode = new MNodeImpl(rootNode, "a");
     rootNode.addChild(aNode.getName(), aNode);
 
-    MNode bNode = new MNode(aNode, "b");
+    MNode bNode = new MNodeImpl(aNode, "b");
     aNode.addChild(bNode.getName(), bNode);
     aNode.addAlias("aliasOfb", bNode);
 
     for (int i = 0; i < 500; i++) {
       service.submit(
-          new Thread(() -> rootNode.replaceChild(aNode.getName(), new MNode(null, "c"))));
+          new Thread(() -> rootNode.replaceChild(aNode.getName(), new MNodeImpl(null, "c"))));
     }
 
     if (!service.isShutdown()) {
@@ -71,28 +71,28 @@ public class MNodeTest {
 
   @Test
   public void testAddChild() {
-    MNode rootNode = new MNode(null, "root");
+    MNode rootNode = new MNodeImpl(null, "root");
 
     MNode speedNode =
         rootNode
-            .addChild(new MNode(null, "sg1"))
-            .addChild(new MNode(null, "a"))
-            .addChild(new MNode(null, "b"))
-            .addChild(new MNode(null, "c"))
-            .addChild(new MNode(null, "d"))
-            .addChild(new MNode(null, "device"))
-            .addChild(new MNode(null, "speed"));
+            .addChild(new MNodeImpl(null, "sg1"))
+            .addChild(new MNodeImpl(null, "a"))
+            .addChild(new MNodeImpl(null, "b"))
+            .addChild(new MNodeImpl(null, "c"))
+            .addChild(new MNodeImpl(null, "d"))
+            .addChild(new MNodeImpl(null, "device"))
+            .addChild(new MNodeImpl(null, "speed"));
     assertEquals("root.sg1.a.b.c.d.device.speed", speedNode.getFullPath());
 
     MNode temperatureNode =
         rootNode
             .getChild("sg1")
-            .addChild(new MNode(null, "aa"))
-            .addChild(new MNode(null, "bb"))
-            .addChild(new MNode(null, "cc"))
-            .addChild(new MNode(null, "dd"))
-            .addChild(new MNode(null, "device11"))
-            .addChild(new MNode(null, "temperature"));
+            .addChild(new MNodeImpl(null, "aa"))
+            .addChild(new MNodeImpl(null, "bb"))
+            .addChild(new MNodeImpl(null, "cc"))
+            .addChild(new MNodeImpl(null, "dd"))
+            .addChild(new MNodeImpl(null, "device11"))
+            .addChild(new MNodeImpl(null, "temperature"));
     assertEquals("root.sg1.aa.bb.cc.dd.device11.temperature", temperatureNode.getFullPath());
   }
 }
