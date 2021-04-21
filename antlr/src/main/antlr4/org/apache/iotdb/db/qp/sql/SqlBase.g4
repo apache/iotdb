@@ -374,12 +374,21 @@ comparisonOperator
     ;
 
 insertColumnsSpec
-    : LR_BRACKET (TIMESTAMP|TIME) (COMMA nodeNameWithoutStar)+ RR_BRACKET
+    : LR_BRACKET (TIMESTAMP|TIME) (COMMA measurementName)+ RR_BRACKET
+    ;
+measurementName
+    : nodeNameWithoutStar
+    | LR_BRACKET nodeNameWithoutStar (COMMA nodeNameWithoutStar)+ RR_BRACKET
     ;
 
 insertValuesSpec
-    : LR_BRACKET dateFormat (COMMA constant)+ RR_BRACKET
-    | LR_BRACKET INT (COMMA constant)+ RR_BRACKET
+    : LR_BRACKET dateFormat (COMMA measurementValue)+ RR_BRACKET
+    | LR_BRACKET INT (COMMA measurementValue)+ RR_BRACKET
+    ;
+
+measurementValue
+    : constant
+    | LR_BRACKET constant (COMMA constant)+ RR_BRACKET
     ;
 
 setCol
@@ -664,6 +673,7 @@ constant
     | MINUS? INT
     | stringLiteral
     | booleanClause
+    | NULL
     ;
 
 booleanClause
@@ -1288,6 +1298,10 @@ TOLERANCE
 
 EXPLAIN
     : E X P L A I N
+    ;
+
+NULL
+    : N U L L
     ;
 
 //============================

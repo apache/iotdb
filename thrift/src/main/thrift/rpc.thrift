@@ -271,6 +271,16 @@ struct TSCreateTimeseriesReq {
   9: optional string measurementAlias
 }
 
+struct TSCreateAlignedTimeseriesReq {
+  1: required i64 sessionId
+  2: required string devicePath
+  3: required list<string> measurements
+  4: required list<i32> dataTypes
+  5: required list<i32> encodings
+  6: required i32 compressor
+  7: optional list<string> measurementAlias
+}
+
 struct TSRawDataQueryReq {
   1: required i64 sessionId
   2: required list<string> paths
@@ -297,6 +307,21 @@ struct ServerProperties {
   1: required string version;
   2: required list<string> supportedTimeAggregationOperations;
   3: required string timestampPrecision;
+}
+
+struct TSSetDeviceTemplateReq {
+  1: required i64 sessionId
+  2: required string templateName
+  3: required string prefixPath
+}
+
+struct TSCreateDeviceTemplateReq {
+  1: required i64 sessionId
+  2: required string name
+  3: required list<list<string>> measurements
+  4: required list<list<i32>> dataTypes
+  5: required list<list<i32>> encodings
+  6: required list<i32> compressors
 }
 
 service TSIService {
@@ -329,6 +354,8 @@ service TSIService {
   TSStatus setStorageGroup(1:i64 sessionId, 2:string storageGroup);
 
   TSStatus createTimeseries(1:TSCreateTimeseriesReq req);
+
+  TSStatus createAlignedTimeseries(1:TSCreateAlignedTimeseriesReq req);
 
   TSStatus createMultiTimeseries(1:TSCreateMultiTimeseriesReq req);
 
@@ -369,4 +396,8 @@ service TSIService {
   TSExecuteStatementResp executeRawDataQuery(1:TSRawDataQueryReq req);
 
   i64 requestStatementId(1:i64 sessionId);
+
+  TSStatus createDeviceTemplate(1:TSCreateDeviceTemplateReq req);
+
+  TSStatus setDeviceTemplate(1:TSSetDeviceTemplateReq req);
 }

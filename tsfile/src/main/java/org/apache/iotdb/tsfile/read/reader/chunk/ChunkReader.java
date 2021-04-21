@@ -84,7 +84,7 @@ public class ChunkReader implements IChunkReader {
     while (chunkDataBuffer.remaining() > 0) {
       // deserialize a PageHeader from chunkDataBuffer
       PageHeader pageHeader;
-      if (chunkHeader.getChunkType() == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
+      if (((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
         pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkStatistic);
       } else {
         pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
@@ -118,11 +118,11 @@ public class ChunkReader implements IChunkReader {
     return pageReaderList.remove(0).getAllSatisfiedPageData();
   }
 
-  private void skipBytesInStreamByLength(long length) {
-    chunkDataBuffer.position(chunkDataBuffer.position() + (int) length);
+  private void skipBytesInStreamByLength(int length) {
+    chunkDataBuffer.position(chunkDataBuffer.position() + length);
   }
 
-  public boolean pageSatisfied(PageHeader pageHeader) {
+  protected boolean pageSatisfied(PageHeader pageHeader) {
     if (deleteIntervalList != null) {
       for (TimeRange range : deleteIntervalList) {
         if (range.contains(pageHeader.getStartTime(), pageHeader.getEndTime())) {

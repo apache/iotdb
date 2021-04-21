@@ -45,6 +45,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
@@ -65,6 +66,12 @@ public class ClusterPhysicalGenerator extends PhysicalGenerator {
   @Override
   protected List<TSDataType> getSeriesTypes(List<PartialPath> paths) throws MetadataException {
     return getCMManager().getSeriesTypesByPaths(paths, null).left;
+  }
+
+  @Override
+  protected Pair<List<PartialPath>, Map<String, Integer>> getSeriesSchema(List<PartialPath> paths)
+      throws MetadataException {
+    return getCMManager().getSeriesSchemas(paths);
   }
 
   @Override

@@ -40,12 +40,14 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
@@ -181,10 +183,29 @@ public class Coordinator {
       metaGroupMember.waitLeader();
       return metaGroupMember.forwardPlan(plan, metaGroupMember.getLeader(), null);
     }
-
+    try {
+      createSchemaIfNecessary(plan);
+    } catch (MetadataException | CheckConsistencyException e) {
+      logger.error("{}: Cannot find storage groups for {}", name, plan);
+      return StatusUtils.NO_STORAGE_GROUP;
+    }
     List<PartitionGroup> globalGroups = metaGroupMember.getPartitionTable().getGlobalGroups();
     logger.debug("Forwarding global data plan {} to {} groups", plan, globalGroups.size());
     return forwardPlan(globalGroups, plan);
+  }
+
+  public void createSchemaIfNecessary(PhysicalPlan plan)
+      throws MetadataException, CheckConsistencyException {
+    if (plan instanceof SetDeviceTemplatePlan) {
+      try {
+        IoTDB.metaManager.getStorageGroupPath(
+            new PartialPath(((SetDeviceTemplatePlan) plan).getPrefixPath()));
+      } catch (IllegalPathException e) {
+        // the plan has been checked
+      } catch (StorageGroupNotSetException e) {
+        ((CMManager) IoTDB.metaManager).createSchema(plan);
+      }
+    }
   }
 
   /**
@@ -244,19 +265,29 @@ public class Coordinator {
     for (PartitionGroup partitionGroup : partitionGroups) {
       if (partitionGroup.contains(thisNode)) {
         // the query should be handled by a group the local node is in, handle it with in the group
-        logger.debug("Execute {} in a local group of {}", plan, partitionGroup.getHeader());
         status =
             metaGroupMember
                 .getLocalDataMember(partitionGroup.getHeader())
                 .executeNonQueryPlan(plan);
+        logger.debug(
+            "Execute {} in a local group of {} with status {}",
+            plan,
+            partitionGroup.getHeader(),
+            status);
       } else {
         // forward the query to the group that should handle it
-        logger.debug("Forward {} to a remote group of {}", plan, partitionGroup.getHeader());
         status = forwardPlan(plan, partitionGroup);
+        logger.debug(
+            "Forward {} to a remote group of {} with status {}",
+            plan,
+            partitionGroup.getHeader(),
+            status);
       }
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          && (!(plan instanceof DeleteTimeSeriesPlan)
-              || status.getCode() != TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode())) {
+          && !(plan instanceof SetDeviceTemplatePlan
+              && status.getCode() == TSStatusCode.DUPLICATED_TEMPLATE.getStatusCode())
+          && !(plan instanceof DeleteTimeSeriesPlan
+              && status.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode())) {
         // execution failed, record the error message
         errorCodePartitionGroups.add(
             String.format(
@@ -324,13 +355,19 @@ public class Coordinator {
         status = forwardToMultipleGroup(planGroupMap);
       }
     }
-    if (plan instanceof InsertPlan
-        && status.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()
-        && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
-      TSStatus tmpStatus = createTimeseriesForFailedInsertion(planGroupMap, ((InsertPlan) plan));
-      if (tmpStatus != null) {
-        status = tmpStatus;
+    boolean hasCreated = false;
+    try {
+      if (plan instanceof InsertPlan
+          && status.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()
+          && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
+        hasCreated = createTimeseriesForFailedInsertion(((InsertPlan) plan));
       }
+    } catch (MetadataException | CheckConsistencyException e) {
+      logger.error("{}: Cannot auto-create timeseries for {}", name, plan, e);
+      return StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
+    if (hasCreated) {
+      status = forwardPlan(planGroupMap, plan);
     }
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         && status.isSetRedirectNode()) {
@@ -340,24 +377,13 @@ public class Coordinator {
     return status;
   }
 
-  private TSStatus createTimeseriesForFailedInsertion(
-      Map<PhysicalPlan, PartitionGroup> planGroupMap, InsertPlan plan) {
+  private boolean createTimeseriesForFailedInsertion(InsertPlan plan)
+      throws CheckConsistencyException, IllegalPathException {
     // try to create timeseries
     if (plan.getFailedMeasurements() != null) {
       plan.getPlanFromFailed();
     }
-    boolean hasCreate;
-    try {
-      hasCreate = ((CMManager) IoTDB.metaManager).createTimeseries(plan);
-    } catch (IllegalPathException | CheckConsistencyException e) {
-      return StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, e.getMessage());
-    }
-    if (hasCreate) {
-      return forwardPlan(planGroupMap, plan);
-    } else {
-      logger.error("{}, Cannot auto create timeseries.", thisNode);
-    }
-    return null;
+    return ((CMManager) IoTDB.metaManager).createTimeseries(plan);
   }
 
   private TSStatus forwardToSingleGroup(Map.Entry<PhysicalPlan, PartitionGroup> entry) {

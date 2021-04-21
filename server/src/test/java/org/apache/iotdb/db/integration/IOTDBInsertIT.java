@@ -91,7 +91,7 @@ public class IOTDBInsertIT {
   }
 
   @Test
-  public void testNormalInset() throws SQLException {
+  public void testNormalInsert() throws SQLException {
     Statement st0 = connection.createStatement();
     st0.execute("insert into root.t1.wf01.wt01(timestamp, status) values (1000, true)");
     st0.execute("insert into root.t1.wf01.wt01(timestamp, status) values (2000, false)");

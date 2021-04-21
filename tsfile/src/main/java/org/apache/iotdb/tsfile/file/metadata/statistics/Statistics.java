@@ -77,6 +77,8 @@ public abstract class Statistics<T> {
         return new DoubleStatistics();
       case FLOAT:
         return new FloatStatistics();
+      case VECTOR:
+        return new TimeStatistics();
       default:
         throw new UnknownColumnTypeException(type.toString());
     }
@@ -96,6 +98,8 @@ public abstract class Statistics<T> {
         return DoubleStatistics.DOUBLE_STATISTICS_FIXED_RAM_SIZE;
       case FLOAT:
         return FloatStatistics.FLOAT_STATISTICS_FIXED_RAM_SIZE;
+      case VECTOR:
+        return TimeStatistics.TIME_STATISTICS_FIXED_RAM_SIZE;
       default:
         throw new UnknownColumnTypeException(type.toString());
     }
@@ -189,61 +193,36 @@ public abstract class Statistics<T> {
   }
 
   public void update(long time, boolean value) {
-    if (time < this.startTime) {
-      startTime = time;
-    }
-    if (time > this.endTime) {
-      endTime = time;
-    }
-    count++;
+    update(time);
     updateStats(value);
   }
 
   public void update(long time, int value) {
-    if (time < this.startTime) {
-      startTime = time;
-    }
-    if (time > this.endTime) {
-      endTime = time;
-    }
-    count++;
+    update(time);
     updateStats(value);
   }
 
   public void update(long time, long value) {
-    if (time < this.startTime) {
-      startTime = time;
-    }
-    if (time > this.endTime) {
-      endTime = time;
-    }
-    count++;
+    update(time);
     updateStats(value);
   }
 
   public void update(long time, float value) {
-    if (time < this.startTime) {
-      startTime = time;
-    }
-    if (time > this.endTime) {
-      endTime = time;
-    }
-    count++;
+    update(time);
     updateStats(value);
   }
 
   public void update(long time, double value) {
-    if (time < this.startTime) {
-      startTime = time;
-    }
-    if (time > this.endTime) {
-      endTime = time;
-    }
-    count++;
+    update(time);
     updateStats(value);
   }
 
   public void update(long time, Binary value) {
+    update(time);
+    updateStats(value);
+  }
+
+  public void update(long time) {
     if (time < startTime) {
       startTime = time;
     }
@@ -251,65 +230,39 @@ public abstract class Statistics<T> {
       endTime = time;
     }
     count++;
-    updateStats(value);
   }
 
   public void update(long[] time, boolean[] values, int batchSize) {
-    if (time[0] < startTime) {
-      startTime = time[0];
-    }
-    if (time[batchSize - 1] > this.endTime) {
-      endTime = time[batchSize - 1];
-    }
-    count += batchSize;
+    update(time, batchSize);
     updateStats(values, batchSize);
   }
 
   public void update(long[] time, int[] values, int batchSize) {
-    if (time[0] < startTime) {
-      startTime = time[0];
-    }
-    if (time[batchSize - 1] > this.endTime) {
-      endTime = time[batchSize - 1];
-    }
-    count += batchSize;
+    update(time, batchSize);
     updateStats(values, batchSize);
   }
 
   public void update(long[] time, long[] values, int batchSize) {
-    if (time[0] < startTime) {
-      startTime = time[0];
-    }
-    if (time[batchSize - 1] > this.endTime) {
-      endTime = time[batchSize - 1];
-    }
-    count += batchSize;
+    update(time, batchSize);
     updateStats(values, batchSize);
   }
 
   public void update(long[] time, float[] values, int batchSize) {
-    if (time[0] < startTime) {
-      startTime = time[0];
-    }
-    if (time[batchSize - 1] > this.endTime) {
-      endTime = time[batchSize - 1];
-    }
-    count += batchSize;
+    update(time, batchSize);
     updateStats(values, batchSize);
   }
 
   public void update(long[] time, double[] values, int batchSize) {
-    if (time[0] < startTime) {
-      startTime = time[0];
-    }
-    if (time[batchSize - 1] > this.endTime) {
-      endTime = time[batchSize - 1];
-    }
-    count += batchSize;
+    update(time, batchSize);
     updateStats(values, batchSize);
   }
 
   public void update(long[] time, Binary[] values, int batchSize) {
+    update(time, batchSize);
+    updateStats(values, batchSize);
+  }
+
+  public void update(long[] time, int batchSize) {
     if (time[0] < startTime) {
       startTime = time[0];
     }
@@ -317,7 +270,6 @@ public abstract class Statistics<T> {
       endTime = time[batchSize - 1];
     }
     count += batchSize;
-    updateStats(values, batchSize);
   }
 
   protected abstract void mergeStatisticsValue(Statistics stats);

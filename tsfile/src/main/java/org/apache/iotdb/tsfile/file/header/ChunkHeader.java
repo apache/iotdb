@@ -58,8 +58,21 @@ public class ChunkHeader {
       CompressionType compressionType,
       TSEncoding encoding,
       int numOfPages) {
+    this(measurementID, dataSize, dataType, compressionType, encoding, numOfPages, 0);
+  }
+
+  public ChunkHeader(
+      String measurementID,
+      int dataSize,
+      TSDataType dataType,
+      CompressionType compressionType,
+      TSEncoding encoding,
+      int numOfPages,
+      int mask) {
     this(
-        numOfPages <= 1 ? MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER : MetaMarker.CHUNK_HEADER,
+        (byte)
+            ((numOfPages <= 1 ? MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER : MetaMarker.CHUNK_HEADER)
+                | (byte) mask),
         measurementID,
         dataSize,
         getSerializedSize(measurementID, dataSize),
