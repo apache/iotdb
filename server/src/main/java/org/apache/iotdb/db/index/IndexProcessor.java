@@ -272,7 +272,7 @@ public class IndexProcessor implements Comparable<IndexProcessor> {
               Files.delete(dir.toPath());
             }
           } catch (IOException e) {
-            logger.error("Remove index files failed", e);
+            logger.warn("Remove index files failed", e);
           } finally {
             lock.writeLock().unlock();
           }
@@ -469,7 +469,7 @@ public class IndexProcessor implements Comparable<IndexProcessor> {
           try {
             Files.delete(dir.toPath());
           } catch (IOException e) {
-            logger.error("Remove index dir {} failed.", dir, e);
+            logger.warn("Remove index dir {} failed.", dir, e);
           }
           allPathsIndexMap.remove(indexType);
           usableMap.remove(indexType);

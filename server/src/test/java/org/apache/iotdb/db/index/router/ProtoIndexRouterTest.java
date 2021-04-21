@@ -21,6 +21,7 @@ package org.apache.iotdb.db.index.router;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.index.IndexProcessor;
 import org.apache.iotdb.db.index.common.IndexInfo;
+import org.apache.iotdb.db.index.common.IndexUtils;
 import org.apache.iotdb.db.index.common.func.CreateIndexProcessorFunc;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -98,8 +99,8 @@ public class ProtoIndexRouterTest {
     this.infoFull = new IndexInfo(NO_INDEX, 5, props_full);
     this.fakeCreateFunc =
         (indexSeries, indexInfoMap) ->
-            new IndexProcessor(
-                indexSeries, testRouterDir + File.separator + "index_fake_" + indexSeries);
+            new IndexProcessor(indexSeries, IndexUtils.removeIllegalStarInDir(
+                testRouterDir + File.separator + "index_fake_" + indexSeries));
   }
 
   private static final String testRouterDir = "test_protoIndexRouter";
