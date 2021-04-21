@@ -10,6 +10,7 @@ import java.io.Serializable;
 import java.util.Map;
 
 public interface MNode extends Serializable {
+
   boolean hasChild(String name);
 
   void addChild(String name, MNode child);
@@ -69,4 +70,6 @@ public interface MNode extends Serializable {
   boolean isCached();
 
   void evictChild(String name);
+
+  MNode clone();
 }

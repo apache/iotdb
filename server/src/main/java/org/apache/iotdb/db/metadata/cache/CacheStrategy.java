@@ -2,7 +2,7 @@ package org.apache.iotdb.db.metadata.cache;
 
 import org.apache.iotdb.db.metadata.mnode.MNode;
 
-import java.util.Collection;
+import java.util.List;
 
 public interface CacheStrategy {
 
@@ -14,5 +14,5 @@ public interface CacheStrategy {
 
   void remove(MNode mNode);
 
-  Collection<MNode> evict();
+  List<MNode> evict();
 }

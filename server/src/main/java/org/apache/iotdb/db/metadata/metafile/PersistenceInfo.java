@@ -1,6 +1,8 @@
 package org.apache.iotdb.db.metadata.metafile;
 
-public interface PersistenceInfo {
+import org.apache.iotdb.db.metadata.mnode.MNode;
+
+public interface PersistenceInfo extends MNode {
 
   long getPosition();
 

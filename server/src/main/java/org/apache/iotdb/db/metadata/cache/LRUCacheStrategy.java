@@ -1,7 +1,6 @@
 package org.apache.iotdb.db.metadata.cache;
 
 import org.apache.iotdb.db.metadata.mnode.MNode;
-import org.apache.iotdb.db.metadata.mnode.MNodeImpl;
 
 import java.util.Collection;
 import java.util.LinkedList;
@@ -25,15 +24,12 @@ public class LRUCacheStrategy implements CacheStrategy {
 
   @Override
   public void applyChange(MNode mNode) {
-    if (MNodeImpl.isNull(mNode)) {
+    if (mNode==null) {
       return;
     }
     try {
       lock.lock();
-      if (MNodeImpl.isNull(mNode)) {
-        return;
-      }
-      if (!MNodeImpl.isNull(mNode.getParent()) && !mNode.getParent().isCached()) {
+      if (mNode.getParent()!=null && !mNode.getParent().isCached()) {
         return;
       }
       CacheEntry entry = mNode.getCacheEntry();
@@ -49,7 +45,7 @@ public class LRUCacheStrategy implements CacheStrategy {
 
   @Override
   public void setModified(MNode mNode, boolean modified) {
-    if (MNodeImpl.isNull(mNode) || mNode.getCacheEntry() == null) {
+    if (mNode==null || mNode.getCacheEntry() == null) {
       return;
     }
     mNode.getCacheEntry().setModified(modified);
@@ -84,7 +80,7 @@ public class LRUCacheStrategy implements CacheStrategy {
 
   @Override
   public void remove(MNode mNode) {
-    if (MNodeImpl.isNull(mNode)) {
+    if (mNode==null||!mNode.isCached()) {
       return;
     }
     try {
@@ -112,9 +108,6 @@ public class LRUCacheStrategy implements CacheStrategy {
   }
 
   private void removeRecursively(MNode mNode) {
-    if (MNodeImpl.isNull(mNode)) {
-      return;
-    }
     CacheEntry entry = mNode.getCacheEntry();
     if (entry == null) {
       return;
@@ -127,41 +120,41 @@ public class LRUCacheStrategy implements CacheStrategy {
   }
 
   private void evictRecursivelyAndCollectModified(MNode mNode, Collection<MNode> removedMNodes) {
-    if (MNodeImpl.isNull(mNode)) {
-      return;
-    }
-    CacheEntry entry = mNode.getCacheEntry();
-    if (entry == null) {
-      return;
-    }
-    removeOne(entry);
-    mNode.setCacheEntry(null);
-    if (removedMNodes != null && entry.isModified) {
-      removedMNodes.add(mNode);
-    }
     for (MNode child : mNode.getChildren().values()) {
+      CacheEntry entry = child.getCacheEntry();
+      if (entry == null) {
+        continue;
+      }
+      removeOne(entry);
+      child.setCacheEntry(null);
       evictRecursivelyAndCollectModified(child, removedMNodes);
+      if (entry.isModified) {
+        removedMNodes.add(child);
+      }
     }
   }
 
   @Override
-  public Collection<MNode> evict() {
+  public List<MNode> evict() {
     try {
       lock.lock();
       List<MNode> evictedMNode = new LinkedList<>();
       if (last == null) {
         return evictedMNode;
       }
+
       MNode mNode = last.value;
-      if (mNode.getParent() != null) {
-        mNode.getParent().evictChild(mNode.getName());
-      }
+
       MNode parent = mNode.getParent();
-      while (parent != null && parent.getCacheEntry().isModified) {
-        evictedMNode.add(parent);
+      while (parent != null && parent.isCached()&& parent.getCacheEntry().isModified) {
+//        evictedMNode.add(parent);
+        mNode=parent;
         parent = parent.getParent();
       }
+
+      removeOne(mNode.getCacheEntry());
       evictRecursivelyAndCollectModified(mNode, evictedMNode);
+      evictedMNode.add(mNode);
       return evictedMNode;
     } finally {
       lock.unlock();

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
+import com.sun.javafx.collections.MappingChange;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.cache.CacheEntry;
@@ -37,13 +38,11 @@ import java.util.concurrent.ConcurrentHashMap;
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the
  * Metadata Tree
  */
-public class MNodeImpl implements MNode {
+public class InternalMNode implements MNode {
 
   private static final long serialVersionUID = -770028375899514063L;
   private static Map<String, String> cachedPathPool =
       CachedStringPool.getInstance().getCachedPool();
-
-  private static final MNode evictionPlaceHolder = new MNodeImpl(null, null);
 
   /** Name of the MNode */
   protected String name;
@@ -77,7 +76,7 @@ public class MNodeImpl implements MNode {
   private transient volatile Map<String, MNode> aliasChildren = null;
 
   /** Constructor of MNode. */
-  public MNodeImpl(MNode parent, String name) {
+  public InternalMNode(MNode parent, String name) {
     this.parent = parent;
     this.name = name;
   }
@@ -111,7 +110,8 @@ public class MNodeImpl implements MNode {
     }
 
     child.setParent(this);
-    if (isNull(getChild(name))) {
+    MNode oldChild=getChild(name);
+    if (oldChild==null||!oldChild.isLoaded()) {
       children.put(name, child);
     }
     //    children.putIfAbsent(name, child);
@@ -143,7 +143,8 @@ public class MNodeImpl implements MNode {
     }
 
     child.setParent(this);
-    if (isNull(getChild(child.getName()))) {
+    MNode oldChild=getChild(child.getName());
+    if (oldChild==null||!oldChild.isLoaded()) {
       children.put(child.getName(), child);
     }
     //    children.putIfAbsent(child.getName(), child);
@@ -173,18 +174,11 @@ public class MNodeImpl implements MNode {
     if (children != null) {
       child = children.get(name);
     }
-    if (!isNull(child)) {
+    if (child!=null) {
       return child;
     }
-    if (aliasChildren != null) {
-      child = aliasChildren.get(name);
-    }
-    if (!isNull(child)) {
-      return child;
-    } else {
-      return null;
-    }
-    //    return aliasChildren == null ? null : aliasChildren.get(name);
+
+    return aliasChildren == null ? null : aliasChildren.get(name);
   }
 
   /** get the count of all MeasurementMNode whose ancestor is current node */
@@ -332,16 +326,12 @@ public class MNodeImpl implements MNode {
     Map<String, MNode> grandChildren = oldChildNode.getChildren();
     newChildNode.setChildren(grandChildren);
     grandChildren.forEach(
-        (grandChildName, grandChildNode) -> {
-          if (!MNodeImpl.isNull(grandChildNode)) grandChildNode.setParent(newChildNode);
-        });
+        (grandChildName, grandChildNode) -> grandChildNode.setParent(newChildNode));
 
     Map<String, MNode> grandAliasChildren = oldChildNode.getAliasChildren();
     newChildNode.setAliasChildren(grandAliasChildren);
     grandAliasChildren.forEach(
-        (grandAliasChildName, grandAliasChild) -> {
-          if (!MNodeImpl.isNull(grandAliasChild)) grandAliasChild.setParent(newChildNode);
-        });
+        (grandAliasChildName, grandAliasChild) -> grandAliasChild.setParent(newChildNode));
 
     newChildNode.setParent(this);
 
@@ -370,7 +360,7 @@ public class MNodeImpl implements MNode {
 
   @Override
   public boolean isPersisted() {
-    return persistenceInfo == null;
+    return persistenceInfo != null;
   }
 
   @Override
@@ -402,17 +392,51 @@ public class MNodeImpl implements MNode {
   public void evictChild(String name) {
     if (children != null && children.containsKey(name)) {
       MNode mNode = children.get(name);
-      children.put(name, evictionPlaceHolder);
+      if(!mNode.isLoaded()){
+        return;
+      }
+      children.put(name, mNode.getPersistenceInfo()); // child must be persisted first
       if (mNode.isMeasurement()) {
         String alias = ((MeasurementMNode) mNode).getAlias();
         if (alias != null && aliasChildren != null && aliasChildren.containsKey(alias)) {
-          aliasChildren.put(alias, evictionPlaceHolder);
+          aliasChildren.put(alias, mNode.getPersistenceInfo());
         }
       }
     }
   }
 
-  public static boolean isNull(MNode mNode) {
-    return mNode == null || mNode.equals(evictionPlaceHolder);
+  @Override
+  public MNode clone() {
+    InternalMNode result=new InternalMNode(this.parent,this.name);
+    copyData(result);
+    return result;
   }
+
+  protected void copyData(MNode mNode){
+    mNode.setParent(parent);
+    mNode.setCacheEntry(cacheEntry);
+    mNode.setPersistenceInfo(persistenceInfo);
+
+    Map<String,MNode> newChildren=new ConcurrentHashMap<>();
+    if(children!=null){
+      for(Entry<String,MNode> entry:children.entrySet()){
+        newChildren.put(entry.getKey(),entry.getValue());
+      }
+    }
+    if(newChildren.size()!=0){
+      mNode.setChildren(newChildren);
+    }
+
+    Map<String,MNode> newAliasChildren=new ConcurrentHashMap<>();
+    if(aliasChildren!=null){
+      for(Entry<String,MNode> entry:aliasChildren.entrySet()){
+        newAliasChildren.put(entry.getKey(),entry.getValue());
+      }
+    }
+    if(newAliasChildren.size()!=0){
+      mNode.setAliasChildren(newAliasChildren);
+    }
+
+  }
+
 }

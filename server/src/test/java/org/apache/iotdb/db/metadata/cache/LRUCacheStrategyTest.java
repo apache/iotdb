@@ -1,7 +1,7 @@
 package org.apache.iotdb.db.metadata.cache;
 
 import org.apache.iotdb.db.metadata.mnode.MNode;
-import org.apache.iotdb.db.metadata.mnode.MNodeImpl;
+import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -43,16 +43,16 @@ public class LRUCacheStrategyTest {
   }
 
   private MNode getSimpleTree() {
-    MNode root = new MNodeImpl(null, "root");
-    root.addChild("s1", new MNodeImpl(root, "s1"));
-    root.addChild("s2", new MNodeImpl(root, "s2"));
-    root.getChild("s1").addChild("t1", new MNodeImpl(root.getChild("s1"), "t1"));
-    root.getChild("s1").addChild("t2", new MNodeImpl(root.getChild("s1"), "t2"));
+    MNode root = new InternalMNode(null, "root");
+    root.addChild("s1", new InternalMNode(root, "s1"));
+    root.addChild("s2", new InternalMNode(root, "s2"));
+    root.getChild("s1").addChild("t1", new InternalMNode(root.getChild("s1"), "t1"));
+    root.getChild("s1").addChild("t2", new InternalMNode(root.getChild("s1"), "t2"));
     root.getChild("s1")
         .getChild("t2")
-        .addChild("z1", new MNodeImpl(root.getChild("s1").getChild("t2"), "z1"));
-    root.getChild("s2").addChild("t1", new MNodeImpl(root.getChild("s2"), "t1"));
-    root.getChild("s2").addChild("t2", new MNodeImpl(root.getChild("s2"), "t2"));
+        .addChild("z1", new InternalMNode(root.getChild("s1").getChild("t2"), "z1"));
+    root.getChild("s2").addChild("t1", new InternalMNode(root.getChild("s2"), "t1"));
+    root.getChild("s2").addChild("t2", new InternalMNode(root.getChild("s2"), "t2"));
     return root;
   }
 }

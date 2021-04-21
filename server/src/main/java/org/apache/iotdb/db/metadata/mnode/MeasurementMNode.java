@@ -32,7 +32,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /** Represents an MNode which has a Measurement or Sensor attached to it. */
-public class MeasurementMNode extends MNodeImpl {
+public class MeasurementMNode extends InternalMNode {
 
   private static final long serialVersionUID = -1199657856921206435L;
 
@@ -140,15 +140,19 @@ public class MeasurementMNode extends MNodeImpl {
   }
 
   @Override
-  public boolean isLoaded() {
-    return schema != null;
-  }
-
-  @Override
   public void serializeTo(MLogWriter logWriter) throws IOException {
     serializeChildren(logWriter);
 
     logWriter.serializeMeasurementMNode(this);
+  }
+
+  public MNode clone(){
+    MeasurementMNode result=new MeasurementMNode(parent,name,schema,alias);
+    copyData(result);
+    result.setOffset(offset);
+    result.cachedLastValuePair=cachedLastValuePair;
+    result.setTriggerExecutor(triggerExecutor);
+    return result;
   }
 
   /**

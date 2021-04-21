@@ -23,7 +23,7 @@ import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 
 import java.io.IOException;
 
-public class StorageGroupMNode extends MNodeImpl {
+public class StorageGroupMNode extends InternalMNode {
 
   private static final long serialVersionUID = 7999036474525817732L;
 
@@ -55,6 +55,12 @@ public class StorageGroupMNode extends MNodeImpl {
     serializeChildren(logWriter);
 
     logWriter.serializeStorageGroupMNode(this);
+  }
+
+  public MNode clone(){
+    StorageGroupMNode result=new StorageGroupMNode(parent,name,dataTTL);
+    copyData(result);
+    return result;
   }
 
   public static StorageGroupMNode deserializeFrom(StorageGroupMNodePlan plan) {

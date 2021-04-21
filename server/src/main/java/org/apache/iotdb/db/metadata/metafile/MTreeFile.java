@@ -101,7 +101,7 @@ public class MTreeFile {
   }
 
   public MNode readRecursively(long position) throws IOException {
-    MNode mNode = new MNodeImpl(null, null);
+    MNode mNode = new InternalMNode(null, null);
     mNode.setPersistenceInfo(new PersistenceMNode(position));
     readDataRecursively(mNode);
     return mNode;
@@ -152,7 +152,7 @@ public class MTreeFile {
       mNode = new MeasurementMNode(null, null, null, null);
       readMeasurementGroupMNode(dataBuffer, (MeasurementMNode) mNode);
     } else {
-      mNode = new MNodeImpl(null, null);
+      mNode = new InternalMNode(null, null);
       readMNode(dataBuffer, mNode);
     }
     mNode.setPersistenceInfo(new PersistenceMNode(position));
@@ -266,7 +266,7 @@ public class MTreeFile {
             new MeasurementMNode(mNode, children.get(position), null, aliasChildren.get(position));
         mNode.addAlias(aliasChildren.get(position), mNode);
       } else {
-        child = new MNodeImpl(mNode, children.get(position));
+        child = new InternalMNode(mNode, children.get(position));
       }
       child.setPersistenceInfo(new PersistenceMNode(position));
       mNode.addChild(child.getName(), child);

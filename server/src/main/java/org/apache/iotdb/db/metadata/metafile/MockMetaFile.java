@@ -1,10 +1,7 @@
 package org.apache.iotdb.db.metadata.metafile;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.PersistenceMNode;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -13,53 +10,71 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class MockMetaFile implements MetaFileAccess {
 
-  private final Map<String, MNode> mockFile = new ConcurrentHashMap<>();
+  private final Map<Long, MNode> positionFile=new ConcurrentHashMap<>();
+  private final long rootPosition=1;
+  private long freePosition=2;
 
-  private static final PersistenceInfo PERSISTENCE_INFO_PLACEHOLDER = new PersistenceMNode();
 
   public MockMetaFile(String metaFilePath) {}
 
   @Override
   public MNode read(PartialPath path) throws IOException {
-    MNode mNode = mockFile.get(path.getFullPath());
-    for (String childName : mNode.getChildren().keySet()) {
-      mNode.evictChild(childName);
-    }
-    return mNode;
+    return getMNodeByPath(path);
   }
 
   @Override
   public MNode read(PersistenceInfo persistenceInfo) throws IOException {
-    return null;
+    return positionFile.get(persistenceInfo.getPosition());
   }
 
   @Override
   public void write(MNode mNode) throws IOException {
-    mNode.setPersistenceInfo(PERSISTENCE_INFO_PLACEHOLDER);
-    mockFile.put(mNode.getFullPath(), mNode);
-    if (mNode instanceof MeasurementMNode) {
-      mockFile.put(
-          mNode.getParent().getFullPath()
-              + IoTDBConstant.PATH_SEPARATOR
-              + ((MeasurementMNode) mNode).getAlias(),
-          mNode);
+    if(!mNode.isPersisted()){
+      if(mNode.getFullPath().equals("root")){
+        mNode.setPersistenceInfo(new PersistenceMNode(rootPosition));
+      }{
+        mNode.setPersistenceInfo(new PersistenceMNode(freePosition++));
+      }
+    }
+    MNode persistedMNode=mNode.clone();
+    for(Map.Entry<String,MNode> entry:persistedMNode.getChildren().entrySet()){
+      // todo require child be written before parent
+      persistedMNode.evictChild(entry.getKey());
+    }
+    positionFile.put(persistedMNode.getPersistenceInfo().getPosition(),persistedMNode);
+  }
+
+  @Override
+  public void write(Collection<MNode> mNodes) throws IOException {
+    for(MNode mNode:mNodes){
+      write(mNode);
     }
   }
 
   @Override
-  public void write(Collection<MNode> mNodes) throws IOException {}
-
-  @Override
   public void remove(PartialPath path) throws IOException {
-    mockFile.remove(path.getFullPath());
+    positionFile.remove(getMNodeByPath(path).getPersistenceInfo().getPosition());
   }
 
   @Override
-  public void remove(PersistenceInfo persistenceInfo) throws IOException {}
+  public void remove(PersistenceInfo persistenceInfo) throws IOException {
+    positionFile.remove(persistenceInfo.getPosition());
+  }
 
   @Override
   public void close() throws IOException {}
 
   @Override
   public void sync() throws IOException {}
+
+  // todo require all node in the path be persist, which means when write child, the parent should also be written
+  private MNode getMNodeByPath(PartialPath path){
+    String[] nodes=path.getNodes();
+    MNode cur=positionFile.get(rootPosition);
+    for(int i=1;i<nodes.length;i++){
+      cur=positionFile.get(cur.getChild(nodes[i]).getPersistenceInfo().getPosition());
+    }
+    return cur;
+  }
+
 }
