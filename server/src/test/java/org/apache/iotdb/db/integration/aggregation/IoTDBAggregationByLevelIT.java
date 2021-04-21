@@ -20,6 +20,7 @@ package org.apache.iotdb.db.integration.aggregation;
 
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.qp.Planner;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 
@@ -32,6 +33,8 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
+
+import static org.junit.Assert.fail;
 
 public class IoTDBAggregationByLevelIT {
 
@@ -319,6 +322,24 @@ public class IoTDBAggregationByLevelIT {
       } catch (Exception e) {
         Assert.assertEquals("Aggregate among unmatched data types", e.getMessage());
       }
+    }
+  }
+
+  /**
+   * Test group by level without aggregation function used in select clause. The expected situation
+   * is throwing an exception.
+   */
+  @Test
+  public void TestGroupByLevelWithoutAggregationFunc() {
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      statement.execute("select temperature from root.sg1.* group by level = 2");
+
+      fail("No expected exception thrown");
+    } catch (Exception e) {
+      Assert.assertTrue(e.getMessage().contains(GroupByTimePlan.LACK_FUNC_ERROR_MESSAGE));
     }
   }
 

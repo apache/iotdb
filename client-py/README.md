@@ -191,3 +191,19 @@ To do a release just ensure that you have the right set of generated thrift file
 Then run linting and auto-formatting.
 Then, ensure that all tests work (via `pytest .`).
 Then you are good to go to do a release!
+
+### Preparing your environment
+
+First, install all necessary dev dependencies via `pip install -r requirements_dev.txt`.
+
+### Doing the Release
+
+There is a convenient script `release.sh` to do all steps for a release.
+Namely, these are
+
+* Remove all transient directories from last release (if exists)
+* (Re-)generate all generated sources via mvn
+* Run Linting (flake8)
+* Run Tests via pytest
+* Build
+* Release to pypi

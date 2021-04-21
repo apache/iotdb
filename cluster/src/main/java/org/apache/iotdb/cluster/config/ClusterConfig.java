@@ -45,7 +45,7 @@ public class ClusterConfig {
 
   @ClusterConsistent private String clusterName = "default";
 
-  @ClusterConsistent private boolean useAsyncServer = true;
+  @ClusterConsistent private boolean useAsyncServer = false;
 
   private boolean useAsyncApplier = true;
 
@@ -163,8 +163,6 @@ public class ClusterConfig {
   private long maxReadLogLag = 1000L;
 
   private boolean openServerRpcPort = false;
-
-  private boolean enableQueryRedirect = false;
 
   public int getSelectorNumOfClientPool() {
     return selectorNumOfClientPool;
@@ -468,13 +466,5 @@ public class ClusterConfig {
 
   public void setWaitClientTimeoutMS(long waitClientTimeoutMS) {
     this.waitClientTimeoutMS = waitClientTimeoutMS;
-  }
-
-  public boolean isEnableQueryRedirect() {
-    return enableQueryRedirect;
-  }
-
-  public void setEnableQueryRedirect(boolean enableQueryRedirect) {
-    this.enableQueryRedirect = enableQueryRedirect;
   }
 }

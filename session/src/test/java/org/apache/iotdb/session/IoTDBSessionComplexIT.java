@@ -20,6 +20,9 @@ package org.apache.iotdb.session;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.trigger.example.Counter;
+import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
+import org.apache.iotdb.db.exception.TriggerManagementException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -799,5 +802,57 @@ public class IoTDBSessionComplexIT {
       }
       Assert.assertEquals(700, count);
     }
+  }
+
+  @Test
+  public void testInsertTabletWithTriggers()
+      throws StatementExecutionException, IoTDBConnectionException, TriggerManagementException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+    session.setStorageGroup("root.sg1");
+    createTimeseries();
+
+    session.executeNonQueryStatement(
+        "create trigger d1s1 after insert on root.sg1.d1.s1 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+    session.executeNonQueryStatement(
+        "create trigger d1s2 before insert on root.sg1.d1.s2 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+
+    assertEquals(
+        Counter.BASE,
+        ((Counter) TriggerRegistrationService.getInstance().getTriggerInstance("d1s1"))
+            .getCounter());
+    assertEquals(
+        Counter.BASE,
+        ((Counter) TriggerRegistrationService.getInstance().getTriggerInstance("d1s2"))
+            .getCounter());
+    try {
+      int counter =
+          ((Counter) TriggerRegistrationService.getInstance().getTriggerInstance("d1s3"))
+              .getCounter();
+      fail(String.valueOf(counter - Counter.BASE));
+    } catch (TriggerManagementException e) {
+      assertEquals("Trigger d1s3 does not exist.", e.getMessage());
+    }
+
+    insertTablet("root.sg1.d1");
+
+    assertEquals(
+        Counter.BASE + 200,
+        ((Counter) TriggerRegistrationService.getInstance().getTriggerInstance("d1s1"))
+            .getCounter());
+    assertEquals(
+        Counter.BASE + 200,
+        ((Counter) TriggerRegistrationService.getInstance().getTriggerInstance("d1s2"))
+            .getCounter());
+    try {
+      int counter =
+          ((Counter) TriggerRegistrationService.getInstance().getTriggerInstance("d1s3"))
+              .getCounter();
+      fail(String.valueOf(counter - Counter.BASE));
+    } catch (TriggerManagementException e) {
+      assertEquals("Trigger d1s3 does not exist.", e.getMessage());
+    }
+
+    session.close();
   }
 }
