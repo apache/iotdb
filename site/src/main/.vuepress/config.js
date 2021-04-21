@@ -615,7 +615,8 @@ var config = {
 					{
 						title: 'Cluster Setup',
 						children: [
-							['Cluster/Cluster-Setup','Cluster Setup']
+							['Cluster/Cluster-Setup','Cluster Setup'],
+							['Cluster/Cluster-Setup-Example','Cluster Setup Example']
 						]
 					},
 					{
@@ -759,7 +760,8 @@ var config = {
 					{
 						title: 'Cluster Setup',
 						children: [
-							['Cluster/Cluster-Setup','Cluster Setup']
+							['Cluster/Cluster-Setup','Cluster Setup'],
+							['Cluster/Cluster-Setup-Example','Cluster Setup Example']
 						]
 					},
 					{
@@ -1419,7 +1421,8 @@ var config = {
 					{
 						title: '集群搭建',
 						children: [
-							['Cluster/Cluster-Setup','集群搭建']
+							['Cluster/Cluster-Setup','集群搭建'],
+							['Cluster/Cluster-Setup-Example','集群搭建示例']
 						]
 					},
 					{
@@ -1557,7 +1560,8 @@ var config = {
 					{
 						title: '集群搭建',
 						children: [
-							['Cluster/Cluster-Setup','集群搭建']
+							['Cluster/Cluster-Setup','集群搭建'],
+							['Cluster/Cluster-Setup-Example','集群搭建示例']
 						]
 					},
 					{
