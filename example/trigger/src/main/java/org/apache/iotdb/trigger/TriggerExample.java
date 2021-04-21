@@ -66,7 +66,7 @@ public class TriggerExample implements Trigger {
 
     windowEvaluationHandler =
         new SlidingSizeWindowEvaluationHandler(
-            new SlidingSizeWindowConfiguration(TSDataType.DOUBLE, 100, 100),
+            new SlidingSizeWindowConfiguration(TSDataType.DOUBLE, 5, 5),
             window -> {
               double avg = 0;
               for (int i = 0; i < window.size(); ++i) {
