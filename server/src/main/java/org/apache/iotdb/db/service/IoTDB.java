@@ -28,6 +28,7 @@ import org.apache.iotdb.db.engine.cache.CacheHitRatioMonitor;
 import org.apache.iotdb.db.engine.compaction.CompactionMergeTaskPoolManager;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
+import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.index.IndexManager;
 import org.apache.iotdb.db.metadata.MManager;
@@ -60,9 +61,6 @@ public class IoTDB implements IoTDBMBean {
   }
 
   public static void main(String[] args) {
-    if (args.length > 0) {
-      IoTDBDescriptor.getInstance().replaceProps(args);
-    }
     try {
       IoTDBConfigCheck.getInstance().checkConfig();
     } catch (IOException e) {
@@ -117,9 +115,14 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(TemporaryQueryDataFileService.getInstance());
     registerManager.register(UDFClassLoaderManager.getInstance());
     registerManager.register(UDFRegistrationService.getInstance());
+    registerManager.register(TriggerRegistrationService.getInstance());
     registerManager.register(IndexManager.getInstance());
 
-    registerManager.register(RPCService.getInstance());
+    // in cluster mode, RPC service is not enabled.
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableRpcService()) {
+      registerManager.register(RPCService.getInstance());
+    }
+
     if (IoTDBDescriptor.getInstance().getConfig().isEnableMetricService()) {
       registerManager.register(MetricsService.getInstance());
     }

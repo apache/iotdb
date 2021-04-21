@@ -19,40 +19,62 @@
 
 package org.apache.iotdb.cluster.query.reader;
 
+import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.metadata.CMManager;
+import org.apache.iotdb.cluster.partition.PartitionGroup;
+import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.expression.ExpressionType;
+import org.apache.iotdb.tsfile.read.expression.IBinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.read.query.timegenerator.node.AndNode;
+import org.apache.iotdb.tsfile.read.query.timegenerator.node.LeafNode;
+import org.apache.iotdb.tsfile.read.query.timegenerator.node.Node;
+import org.apache.iotdb.tsfile.read.query.timegenerator.node.OrNode;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.List;
 
 public class ClusterTimeGenerator extends ServerTimeGenerator {
 
   private ClusterReaderFactory readerFactory;
+  private boolean hasLocalReader = false;
+  private QueryDataSet.EndPoint endPoint = null;
 
   /** Constructor of EngineTimeGenerator. */
   public ClusterTimeGenerator(
-      IExpression expression,
       QueryContext context,
       MetaGroupMember metaGroupMember,
-      RawDataQueryPlan rawDataQueryPlan)
+      RawDataQueryPlan rawDataQueryPlan,
+      boolean onlyCheckLocalData)
       throws StorageEngineException {
     super(context);
     this.queryPlan = rawDataQueryPlan;
     this.readerFactory = new ClusterReaderFactory(metaGroupMember);
     try {
-      constructNode(expression);
-    } catch (IOException e) {
+      readerFactory.syncMetaGroup();
+      if (onlyCheckLocalData) {
+        whetherHasLocalDataGroup(
+            queryPlan.getExpression(), metaGroupMember, queryPlan.isAscending());
+      } else {
+        constructNode(queryPlan.getExpression());
+      }
+    } catch (IOException | CheckConsistencyException e) {
       throw new StorageEngineException(e);
     }
   }
@@ -63,20 +85,125 @@ public class ClusterTimeGenerator extends ServerTimeGenerator {
     Filter filter = expression.getFilter();
     PartialPath path = (PartialPath) expression.getSeriesPath();
     TSDataType dataType;
+    ManagedSeriesReader mergeReader = null;
     try {
       dataType =
           ((CMManager) IoTDB.metaManager)
               .getSeriesTypesByPaths(Collections.singletonList(path), null)
               .left
               .get(0);
-      return readerFactory.getSeriesReader(
-          path,
-          queryPlan.getAllMeasurementsInDevice(path.getDevice()),
-          dataType,
-          null,
-          filter,
-          context,
-          queryPlan.isAscending());
+      mergeReader =
+          readerFactory.getSeriesReader(
+              path,
+              queryPlan.getAllMeasurementsInDevice(path.getDevice()),
+              dataType,
+              null,
+              filter,
+              context,
+              queryPlan.isAscending());
+    } catch (Exception e) {
+      throw new IOException(e);
+    }
+    return mergeReader;
+  }
+
+  public boolean isHasLocalReader() {
+    return hasLocalReader;
+  }
+
+  public void setHasLocalReader(boolean hasLocalReader) {
+    this.hasLocalReader = hasLocalReader;
+  }
+
+  public QueryDataSet.EndPoint getEndPoint() {
+    return endPoint;
+  }
+
+  public void setEndPoint(QueryDataSet.EndPoint endPoint) {
+    this.endPoint = endPoint;
+  }
+
+  @Override
+  public String toString() {
+    return super.toString() + ", has local reader:" + hasLocalReader;
+  }
+
+  public void whetherHasLocalDataGroup(
+      IExpression expression, MetaGroupMember metaGroupMember, boolean isAscending)
+      throws IOException {
+    this.hasLocalReader = false;
+    constructNode(expression, metaGroupMember, isAscending);
+  }
+
+  private Node constructNode(
+      IExpression expression, MetaGroupMember metaGroupMember, boolean isAscending)
+      throws IOException {
+    if (expression.getType() == ExpressionType.SERIES) {
+      SingleSeriesExpression singleSeriesExp = (SingleSeriesExpression) expression;
+      checkHasLocalReader(singleSeriesExp, metaGroupMember);
+      return new LeafNode(null);
+    } else {
+      Node leftChild =
+          constructNode(((IBinaryExpression) expression).getLeft(), metaGroupMember, isAscending);
+      Node rightChild =
+          constructNode(((IBinaryExpression) expression).getRight(), metaGroupMember, isAscending);
+
+      if (expression.getType() == ExpressionType.OR) {
+        return new OrNode(leftChild, rightChild, isAscending);
+      } else if (expression.getType() == ExpressionType.AND) {
+        return new AndNode(leftChild, rightChild, isAscending);
+      }
+      throw new UnSupportedDataTypeException(
+          "Unsupported ExpressionType when construct OperatorNode: " + expression.getType());
+    }
+  }
+
+  private void checkHasLocalReader(
+      SingleSeriesExpression expression, MetaGroupMember metaGroupMember) throws IOException {
+    Filter filter = expression.getFilter();
+    PartialPath path = (PartialPath) expression.getSeriesPath();
+    TSDataType dataType;
+    try {
+      dataType =
+          ((CMManager) IoTDB.metaManager)
+              .getSeriesTypesByPaths(Collections.singletonList(path), null)
+              .left
+              .get(0);
+
+      List<PartitionGroup> partitionGroups = metaGroupMember.routeFilter(null, path);
+      for (PartitionGroup partitionGroup : partitionGroups) {
+        if (partitionGroup.contains(metaGroupMember.getThisNode())) {
+          DataGroupMember dataGroupMember =
+              metaGroupMember.getLocalDataMember(
+                  partitionGroup.getHeader(),
+                  String.format(
+                      "Query: %s, time filter: %s, queryId: %d", path, null, context.getQueryId()));
+
+          IPointReader pointReader =
+              readerFactory.getSeriesPointReader(
+                  path,
+                  queryPlan.getAllMeasurementsInDevice(path.getDevice()),
+                  dataType,
+                  null,
+                  filter,
+                  context,
+                  dataGroupMember,
+                  queryPlan.isAscending());
+
+          if (pointReader.hasNextTimeValuePair()) {
+            this.hasLocalReader = true;
+            this.endPoint = null;
+            pointReader.close();
+            break;
+          }
+          pointReader.close();
+        } else if (endPoint == null) {
+          endPoint =
+              new QueryDataSet.EndPoint(
+                  partitionGroup.getHeader().getClientIp(),
+                  partitionGroup.getHeader().getClientPort());
+        }
+      }
     } catch (Exception e) {
       throw new IOException(e);
     }

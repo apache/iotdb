@@ -55,7 +55,8 @@ public class CachedPriorityMergeReader extends PriorityMergeReader {
     while (!heap.isEmpty() && cacheLimit < CACHE_SIZE) {
       Element top = heap.peek();
       if (lastTimestamp == null || top.currTime() != lastTimestamp) {
-        TimeValuePairUtils.setTimeValuePair(top.timeValuePair, timeValuePairCache[cacheLimit++]);
+        TimeValuePairUtils.setTimeValuePair(
+            top.getTimeValuePair(), timeValuePairCache[cacheLimit++]);
         lastTimestamp = top.currTime();
       }
       // remove duplicates

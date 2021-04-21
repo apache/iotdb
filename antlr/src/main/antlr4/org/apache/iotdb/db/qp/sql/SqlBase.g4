@@ -20,7 +20,7 @@
 grammar SqlBase;
 
 singleStatement
-    : statement EOF
+    : EXPLAIN? statement (';')? EOF
     ;
 
 /*
@@ -102,7 +102,7 @@ statement
     | DROP TRIGGER triggerName=ID #dropTrigger
     | START TRIGGER triggerName=ID #startTrigger
     | STOP TRIGGER triggerName=ID #stopTrigger
-    | SHOW TRIGGERS (ON fullPath)? #showTriggers
+    | SHOW TRIGGERS #showTriggers
     | SELECT topClause? selectElements
     fromClause
     whereClause?
@@ -1285,6 +1285,11 @@ LIKE
 TOLERANCE
     : T O L E R A N C E
     ;
+
+EXPLAIN
+    : E X P L A I N
+    ;
+
 //============================
 // End of the keywords list
 //============================

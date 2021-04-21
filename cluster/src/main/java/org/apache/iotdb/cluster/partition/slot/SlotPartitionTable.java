@@ -12,6 +12,7 @@ import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotStrategy.DefaultStrategy;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.utils.NodeSerializeUtils;
 import org.apache.iotdb.db.utils.SerializeUtils;
 
 import org.slf4j.Logger;
@@ -303,7 +304,6 @@ public class SlotPartitionTable implements PartitionTable {
 
   @Override
   public ByteBuffer serialize() {
-
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream(4096);
     DataOutputStream dataOutputStream = new DataOutputStream(outputStream);
 
@@ -311,7 +311,7 @@ public class SlotPartitionTable implements PartitionTable {
       dataOutputStream.writeInt(totalSlotNumbers);
       dataOutputStream.writeInt(nodeSlotMap.size());
       for (Entry<Node, List<Integer>> entry : nodeSlotMap.entrySet()) {
-        SerializeUtils.serialize(entry.getKey(), dataOutputStream);
+        NodeSerializeUtils.serialize(entry.getKey(), dataOutputStream);
         SerializeUtils.serializeIntList(entry.getValue(), dataOutputStream);
       }
 
@@ -326,7 +326,6 @@ public class SlotPartitionTable implements PartitionTable {
           dataOutputStream.writeInt(integerNodeEntry.getValue().getNodeIdentifier());
         }
       }
-
       dataOutputStream.writeLong(lastLogIndex);
     } catch (IOException ignored) {
       // not reachable
@@ -336,7 +335,6 @@ public class SlotPartitionTable implements PartitionTable {
 
   @Override
   public void deserialize(ByteBuffer buffer) {
-
     logger.info("Initializing the partition table from buffer");
     totalSlotNumbers = buffer.getInt();
     int size = buffer.getInt();
@@ -344,7 +342,7 @@ public class SlotPartitionTable implements PartitionTable {
     for (int i = 0; i < size; i++) {
       Node node = new Node();
       List<Integer> slots = new ArrayList<>();
-      SerializeUtils.deserialize(node, buffer);
+      NodeSerializeUtils.deserialize(node, buffer);
       SerializeUtils.deserializeIntList(slots, buffer);
       nodeSlotMap.put(node, slots);
       idNodeMap.put(node.getNodeIdentifier(), node);

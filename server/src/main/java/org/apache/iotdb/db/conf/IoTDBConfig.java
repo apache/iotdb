@@ -27,6 +27,7 @@ import org.apache.iotdb.db.index.IndexProcessor;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.rpc.RpcTransportFactory;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -54,7 +55,7 @@ public class IoTDBConfig {
 
   // e.g., a31+/$%#&[]{}3e4
   private static final String ID_MATCHER =
-      "([a-zA-Z0-9/\"[ ],:@#$%&{}\\[\\]\\-+\\u2E80-\\u9FFF_]+)";
+      "([a-zA-Z0-9/\"[ ],:@#$%&{}()*=?!~\\[\\]\\-+\\u2E80-\\u9FFF_]+)";
 
   private static final String STORAGE_GROUP_MATCHER = "([a-zA-Z0-9_.\\u2E80-\\u9FFF]+)";
 
@@ -157,7 +158,7 @@ public class IoTDBConfig {
 
   /**
    * The cycle when write ahead log is periodically forced to be written to disk(in milliseconds) If
-   * set this parameter to 0 it means call outputStream.force(true) after every each insert
+   * set this parameter to 0 it means call channel.force(true) after every each insert
    */
   private long forceWalPeriodInMs = 100;
 
@@ -179,6 +180,13 @@ public class IoTDBConfig {
    * larger than this parameter, then the MetaData operation plan will be rejected by MManager.
    */
   private int mlogBufferSize = 1024 * 1024;
+
+  /**
+   * The size of log buffer for every trigger management operation plan. If the size of a trigger
+   * management operation plan is larger than this parameter, the trigger management operation plan
+   * will be rejected by TriggerManager.
+   */
+  private int tlogBufferSize = 1024 * 1024;
 
   /** default base dir, stores all IoTDB runtime files */
   private static final String DEFAULT_BASE_DIR = "data";
@@ -215,6 +223,10 @@ public class IoTDBConfig {
   private String udfDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.UDF_FOLDER_NAME;
 
+  /** External lib directory for trigger, stores user-uploaded JAR files */
+  private String triggerDir =
+      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TRIGGER_FOLDER_NAME;
+
   /** Data directory of data. It can be settled as dataDirs = {"data1", "data2", "data3"}; */
   private String[] dataDirs = {"data" + File.separator + "data"};
 
@@ -235,6 +247,15 @@ public class IoTDBConfig {
 
   /** How many threads can concurrently query. When <= 0, use CPU core number. */
   private int concurrentQueryThread = Runtime.getRuntime().availableProcessors();
+
+  /** How many threads can concurrently evaluate windows. When <= 0, use CPU core number. */
+  private int concurrentWindowEvaluationThread = Runtime.getRuntime().availableProcessors();
+
+  /**
+   * Max number of window evaluation tasks that can be pending for execution. When <= 0, the value
+   * is 64 by default.
+   */
+  private int maxPendingWindowEvaluationTasks = 64;
 
   /** Is the write mem control for writing enable. */
   private boolean enableMemControl = true;
@@ -368,7 +389,7 @@ public class IoTDBConfig {
   private long cacheFileReaderClearPeriod = 100000;
 
   /** the max executing time of query in ms. */
-  private int queryTimeThreshold = 60000;
+  private int queryTimeoutThreshold = 60000;
 
   /** Replace implementation class of JDBC service */
   private String rpcImplClassName = TSServiceImpl.class.getName();
@@ -621,11 +642,9 @@ public class IoTDBConfig {
   // time in nanosecond precision when starting up
   private long startUpNanosecond = System.nanoTime();
 
-  /** thrift max frame size, the default is 15MB, we change it to 64MB */
-  private int thriftMaxFrameSize = 67108864;
+  private int thriftMaxFrameSize = RpcUtils.THRIFT_FRAME_MAX_SIZE;
 
-  /** thrift init buffer size, the default is 1KB. */
-  private int thriftInitBufferSize = 1024;
+  private int thriftDefaultBufferSize = RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY;
 
   /** time interval in minute for calculating query frequency */
   private int frequencyIntervalInMinute = 1;
@@ -633,8 +652,11 @@ public class IoTDBConfig {
   /** time cost(ms) threshold for slow query */
   private long slowQueryThreshold = 5000;
 
-  /** if the debug_state is true, we will print more details about the process of query */
-  private boolean debugState = false;
+  /**
+   * whether enable the rpc service. This parameter has no a corresponding field in the
+   * iotdb-engine.properties
+   */
+  private boolean enableRpcService = true;
 
   /** the size of ioTaskQueue */
   private int ioTaskQueueSizeForFlushing = 10;
@@ -768,6 +790,7 @@ public class IoTDBConfig {
     indexRootFolder = addHomeDir(indexRootFolder);
     extDir = addHomeDir(extDir);
     udfDir = addHomeDir(udfDir);
+    triggerDir = addHomeDir(triggerDir);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
       String hdfsDir = getHdfsDir();
@@ -868,7 +891,7 @@ public class IoTDBConfig {
     return rpcAddress;
   }
 
-  void setRpcAddress(String rpcAddress) {
+  public void setRpcAddress(String rpcAddress) {
     this.rpcAddress = rpcAddress;
   }
 
@@ -876,7 +899,7 @@ public class IoTDBConfig {
     return rpcPort;
   }
 
-  void setRpcPort(int rpcPort) {
+  public void setRpcPort(int rpcPort) {
     this.rpcPort = rpcPort;
   }
 
@@ -992,6 +1015,14 @@ public class IoTDBConfig {
     this.udfDir = udfDir;
   }
 
+  public String getTriggerDir() {
+    return triggerDir;
+  }
+
+  public void setTriggerDir(String triggerDir) {
+    this.triggerDir = triggerDir;
+  }
+
   public String getMultiDirStrategyClassName() {
     return multiDirStrategyClassName;
   }
@@ -1030,6 +1061,22 @@ public class IoTDBConfig {
 
   void setConcurrentQueryThread(int concurrentQueryThread) {
     this.concurrentQueryThread = concurrentQueryThread;
+  }
+
+  public int getConcurrentWindowEvaluationThread() {
+    return concurrentWindowEvaluationThread;
+  }
+
+  public void setConcurrentWindowEvaluationThread(int concurrentWindowEvaluationThread) {
+    this.concurrentWindowEvaluationThread = concurrentWindowEvaluationThread;
+  }
+
+  public int getMaxPendingWindowEvaluationTasks() {
+    return maxPendingWindowEvaluationTasks;
+  }
+
+  public void setMaxPendingWindowEvaluationTasks(int maxPendingWindowEvaluationTasks) {
+    this.maxPendingWindowEvaluationTasks = maxPendingWindowEvaluationTasks;
   }
 
   public long getTsFileSizeThreshold() {
@@ -1120,12 +1167,12 @@ public class IoTDBConfig {
     this.cacheFileReaderClearPeriod = cacheFileReaderClearPeriod;
   }
 
-  public int getQueryTimeThreshold() {
-    return queryTimeThreshold;
+  public int getQueryTimeoutThreshold() {
+    return queryTimeoutThreshold;
   }
 
-  public void setQueryTimeThreshold(int queryTimeThreshold) {
-    this.queryTimeThreshold = queryTimeThreshold;
+  public void setQueryTimeoutThreshold(int queryTimeoutThreshold) {
+    this.queryTimeoutThreshold = queryTimeoutThreshold;
   }
 
   public boolean isReadOnly() {
@@ -1946,12 +1993,12 @@ public class IoTDBConfig {
     this.thriftMaxFrameSize = thriftMaxFrameSize;
   }
 
-  public int getThriftInitBufferSize() {
-    return thriftInitBufferSize;
+  public int getThriftDefaultBufferSize() {
+    return thriftDefaultBufferSize;
   }
 
-  public void setThriftInitBufferSize(int thriftInitBufferSize) {
-    this.thriftInitBufferSize = thriftInitBufferSize;
+  public void setThriftDefaultBufferSize(int thriftDefaultBufferSize) {
+    this.thriftDefaultBufferSize = thriftDefaultBufferSize;
   }
 
   public int getMaxQueryDeduplicatedPathNum() {
@@ -1992,14 +2039,6 @@ public class IoTDBConfig {
 
   public void setSlowQueryThreshold(long slowQueryThreshold) {
     this.slowQueryThreshold = slowQueryThreshold;
-  }
-
-  public boolean isDebugOn() {
-    return debugState;
-  }
-
-  public void setDebugState(boolean debugState) {
-    this.debugState = debugState;
   }
 
   public boolean isEnableIndex() {
@@ -2081,6 +2120,22 @@ public class IoTDBConfig {
 
   public void setMlogBufferSize(int mlogBufferSize) {
     this.mlogBufferSize = mlogBufferSize;
+  }
+
+  public int getTlogBufferSize() {
+    return tlogBufferSize;
+  }
+
+  public void setTlogBufferSize(int tlogBufferSize) {
+    this.tlogBufferSize = tlogBufferSize;
+  }
+
+  public boolean isEnableRpcService() {
+    return enableRpcService;
+  }
+
+  public void setEnableRpcService(boolean enableRpcService) {
+    this.enableRpcService = enableRpcService;
   }
 
   public int getIoTaskQueueSizeForFlushing() {

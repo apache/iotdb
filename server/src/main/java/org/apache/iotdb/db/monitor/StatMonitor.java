@@ -40,6 +40,7 @@ import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -204,6 +205,7 @@ public class StatMonitor implements StatMonitorMBean, IService {
     globalSeriesValue.set(2, globalSeriesValue.get(2) + 1);
   }
 
+  @TestOnly
   public void close() {
     config.setEnableStatMonitor(false);
     config.setEnableMonitorSeriesWrite(false);

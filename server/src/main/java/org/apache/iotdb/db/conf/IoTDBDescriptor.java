@@ -27,12 +27,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.DefaultParser;
-import org.apache.commons.cli.Option;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
+import com.google.common.net.InetAddresses;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,14 +35,16 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.UnknownHostException;
 import java.util.Properties;
 
 public class IoTDBDescriptor {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBDescriptor.class);
-  private static CommandLine commandLine;
+
   private IoTDBConfig conf = new IoTDBConfig();
 
   protected IoTDBDescriptor() {
@@ -60,35 +57,6 @@ public class IoTDBDescriptor {
 
   public IoTDBConfig getConfig() {
     return conf;
-  }
-
-  public void replaceProps(String[] params) {
-    Options options = new Options();
-    final String RPC_PORT = "rpc_port";
-    Option rpcPort = new Option(RPC_PORT, RPC_PORT, true, "The jdbc service listens on the port");
-    rpcPort.setRequired(false);
-    options.addOption(rpcPort);
-
-    boolean ok = parseCommandLine(options, params);
-    if (!ok) {
-      logger.error("replaces properties failed, use default conf params");
-    } else {
-      if (commandLine.hasOption(RPC_PORT)) {
-        conf.setRpcPort(Integer.parseInt(commandLine.getOptionValue(RPC_PORT)));
-        logger.debug("replace rpc port with={}", conf.getRpcPort());
-      }
-    }
-  }
-
-  private boolean parseCommandLine(Options options, String[] params) {
-    try {
-      CommandLineParser parser = new DefaultParser();
-      commandLine = parser.parse(options, params);
-    } catch (ParseException e) {
-      logger.error("parse conf params failed, {}", e.toString());
-      return false;
-    }
-    return true;
   }
 
   /**
@@ -178,6 +146,7 @@ public class IoTDBDescriptor {
                   Integer.toString(conf.getQueryCacheSizeInMetric()))));
 
       conf.setRpcAddress(properties.getProperty("rpc_address", conf.getRpcAddress()));
+      replaceHostnameWithIP();
 
       conf.setRpcThriftCompressionEnable(
           Boolean.parseBoolean(
@@ -373,10 +342,10 @@ public class IoTDBDescriptor {
                   "unseq_file_num_in_each_level",
                   Integer.toString(conf.getUnseqFileNumInEachLevel()))));
 
-      conf.setQueryTimeThreshold(
+      conf.setQueryTimeoutThreshold(
           Integer.parseInt(
               properties.getProperty(
-                  "query_time_threshold", Integer.toString(conf.getQueryTimeThreshold()))));
+                  "query_timeout_threshold", Integer.toString(conf.getQueryTimeoutThreshold()))));
 
       conf.setSyncEnable(
           Boolean.parseBoolean(
@@ -668,10 +637,10 @@ public class IoTDBDescriptor {
         conf.setThriftMaxFrameSize(IoTDBConstant.LEFT_SIZE_IN_REQUEST * 2);
       }
 
-      conf.setThriftInitBufferSize(
+      conf.setThriftDefaultBufferSize(
           Integer.parseInt(
               properties.getProperty(
-                  "thrift_init_buffer_size", String.valueOf(conf.getThriftInitBufferSize()))));
+                  "thrift_init_buffer_size", String.valueOf(conf.getThriftDefaultBufferSize()))));
 
       conf.setFrequencyIntervalInMinute(
           Integer.parseInt(
@@ -684,13 +653,28 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "slow_query_threshold", String.valueOf(conf.getSlowQueryThreshold()))));
 
-      conf.setDebugState(
-          Boolean.parseBoolean(
-              properties.getProperty("debug_state", String.valueOf(conf.isDebugOn()))));
       conf.setVirtualStorageGroupNum(
           Integer.parseInt(
               properties.getProperty(
                   "virtual_storage_group_num", String.valueOf(conf.getVirtualStorageGroupNum()))));
+
+      conf.setConcurrentWindowEvaluationThread(
+          Integer.parseInt(
+              properties.getProperty(
+                  "concurrent_window_evaluation_thread",
+                  Integer.toString(conf.getConcurrentWindowEvaluationThread()))));
+      if (conf.getConcurrentWindowEvaluationThread() <= 0) {
+        conf.setConcurrentWindowEvaluationThread(Runtime.getRuntime().availableProcessors());
+      }
+
+      conf.setMaxPendingWindowEvaluationTasks(
+          Integer.parseInt(
+              properties.getProperty(
+                  "max_pending_window_evaluation_tasks",
+                  Integer.toString(conf.getMaxPendingWindowEvaluationTasks()))));
+      if (conf.getMaxPendingWindowEvaluationTasks() <= 0) {
+        conf.setMaxPendingWindowEvaluationTasks(64);
+      }
 
       // mqtt
       if (properties.getProperty(IoTDBConstant.MQTT_HOST_NAME) != null) {
@@ -792,6 +776,9 @@ public class IoTDBDescriptor {
       // UDF
       loadUDFProps(properties);
 
+      // trigger
+      loadTriggerProps(properties);
+
     } catch (FileNotFoundException e) {
       logger.warn("Fail to find config file {}", url, e);
     } catch (IOException e) {
@@ -802,6 +789,16 @@ public class IoTDBDescriptor {
       // update all data seriesPath
       conf.updatePath();
     }
+  }
+
+  // to keep consistent with the cluster module.
+  private void replaceHostnameWithIP() throws UnknownHostException {
+    boolean isInvalidRpcIp = InetAddresses.isInetAddress(conf.getRpcAddress());
+    if (!isInvalidRpcIp) {
+      InetAddress address = InetAddress.getByName(getConfig().getRpcAddress());
+      getConfig().setRpcAddress(address.getHostAddress());
+    }
+    logger.debug("after replace, the rpc_address={},", conf.getRpcAddress());
   }
 
   private void loadWALProps(Properties properties) {
@@ -1044,9 +1041,6 @@ public class IoTDBDescriptor {
       // update slow_query_threshold
       conf.setSlowQueryThreshold(Long.parseLong(properties.getProperty("slow_query_threshold")));
 
-      // update debug_state
-      conf.setDebugState(Boolean.parseBoolean(properties.getProperty("debug_state")));
-
     } catch (Exception e) {
       throw new QueryProcessException(String.format("Fail to reload configuration because %s", e));
     }
@@ -1169,6 +1163,17 @@ public class IoTDBDescriptor {
                 + " should be an integer, which is "
                 + readerTransformerCollectorMemoryProportion);
       }
+    }
+  }
+
+  private void loadTriggerProps(Properties properties) {
+    conf.setTriggerDir(properties.getProperty("trigger_root_dir", conf.getTriggerDir()));
+
+    int tlogBufferSize =
+        Integer.parseInt(
+            properties.getProperty("tlog_buffer_size", Integer.toString(conf.getTlogBufferSize())));
+    if (tlogBufferSize > 0) {
+      conf.setTlogBufferSize(tlogBufferSize);
     }
   }
 

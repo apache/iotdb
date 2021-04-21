@@ -31,7 +31,6 @@ import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -145,7 +144,9 @@ public class ClientServer extends TSServiceImpl {
     }
     serverTransport =
         new TServerSocket(
-            new InetSocketAddress(config.getClusterRpcIp(), config.getClusterRpcPort()));
+            new InetSocketAddress(
+                IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
+                config.getClusterRpcPort()));
     // async service also requires nonblocking server, and HsHaServer is basically more efficient a
     // nonblocking server
     int maxConcurrentClientNum =
@@ -166,7 +167,7 @@ public class ClientServer extends TSServiceImpl {
 
               @Override
               public Thread newThread(Runnable r) {
-                return new Thread(r, "ClusterClient" + threadIndex.incrementAndGet());
+                return new Thread(r, "ClusterClient-" + threadIndex.incrementAndGet());
               }
             }));
     // ClientServer will do the following processing when the HsHaServer has parsed a request
@@ -280,8 +281,8 @@ public class ClientServer extends TSServiceImpl {
    * @return a RemoteQueryContext using queryId
    */
   @Override
-  protected QueryContext genQueryContext(long queryId) {
-    RemoteQueryContext context = new RemoteQueryContext(queryId);
+  protected QueryContext genQueryContext(long queryId, boolean debug) {
+    RemoteQueryContext context = new RemoteQueryContext(queryId, debug);
     queryContextMap.put(queryId, context);
     return context;
   }
@@ -313,14 +314,10 @@ public class ClientServer extends TSServiceImpl {
                       queriedNode, RaftServer.getReadOperationTimeoutMS());
               client.endQuery(header, coordinator.getThisNode(), queryId, handler);
             } else {
-              SyncDataClient syncDataClient = null;
-              try {
-                syncDataClient =
-                    coordinator.getSyncDataClient(
-                        queriedNode, RaftServer.getReadOperationTimeoutMS());
+              try (SyncDataClient syncDataClient =
+                  coordinator.getSyncDataClient(
+                      queriedNode, RaftServer.getReadOperationTimeoutMS())) {
                 syncDataClient.endQuery(header, coordinator.getThisNode(), queryId);
-              } finally {
-                ClientUtils.putBackSyncClient(syncDataClient);
               }
             }
           } catch (IOException | TException e) {

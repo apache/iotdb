@@ -21,7 +21,7 @@ package org.apache.iotdb.cluster.log.snapshot;
 
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.db.utils.SerializeUtils;
+import org.apache.iotdb.cluster.utils.NodeSerializeUtils;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -77,7 +77,7 @@ public class PullSnapshotTaskDescriptor {
 
     dataOutputStream.writeInt(previousHolders.size());
     for (Node previousHolder : previousHolders) {
-      SerializeUtils.serialize(previousHolder, dataOutputStream);
+      NodeSerializeUtils.serialize(previousHolder, dataOutputStream);
     }
 
     dataOutputStream.writeBoolean(requireReadOnly);
@@ -94,7 +94,7 @@ public class PullSnapshotTaskDescriptor {
     previousHolders = new PartitionGroup();
     for (int i = 0; i < holderSize; i++) {
       Node node = new Node();
-      SerializeUtils.deserialize(node, dataInputStream);
+      NodeSerializeUtils.deserialize(node, dataInputStream);
       previousHolders.add(node);
     }
 
@@ -113,6 +113,18 @@ public class PullSnapshotTaskDescriptor {
     return requireReadOnly == that.requireReadOnly
         && Objects.equals(previousHolders, that.previousHolders)
         && Objects.equals(slots, that.slots);
+  }
+
+  @Override
+  public String toString() {
+    return "PullSnapshotTaskDescriptor{"
+        + " previousHolders="
+        + previousHolders
+        + ", slots="
+        + slots
+        + ", requireReadOnly="
+        + requireReadOnly
+        + "}";
   }
 
   @Override

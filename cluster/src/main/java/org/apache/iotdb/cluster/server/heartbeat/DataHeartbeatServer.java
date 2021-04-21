@@ -60,13 +60,13 @@ public class DataHeartbeatServer extends HeartbeatServer {
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       return new TNonblockingServerSocket(
           new InetSocketAddress(
-              config.getClusterRpcIp(),
+              config.getInternalIp(),
               thisNode.getDataPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET),
           getConnectionTimeoutInMS());
     } else {
       return new TServerSocket(
           new InetSocketAddress(
-              config.getClusterRpcIp(),
+              config.getInternalIp(),
               thisNode.getDataPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET));
     }
   }

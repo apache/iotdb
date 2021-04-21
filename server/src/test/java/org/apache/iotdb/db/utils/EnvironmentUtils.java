@@ -28,7 +28,9 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.CompactionMergeTaskPoolManager;
+import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.TriggerManagementException;
 import org.apache.iotdb.db.exception.UDFRegistrationException;
 import org.apache.iotdb.db.index.IndexManager;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -82,10 +84,12 @@ public class EnvironmentUtils {
   public static void cleanEnv() throws IOException, StorageEngineException {
     // wait all compaction finished
     CompactionMergeTaskPoolManager.getInstance().waitAllCompactionFinish();
-    // deregister all UDFs
+
+    // deregister all user defined classes
     try {
       UDFRegistrationService.getInstance().deregisterAll();
-    } catch (UDFRegistrationException e) {
+      TriggerRegistrationService.getInstance().deregisterAll();
+    } catch (UDFRegistrationException | TriggerManagementException e) {
       fail(e.getMessage());
     }
 
@@ -217,6 +221,10 @@ public class EnvironmentUtils {
     cleanDir(config.getQueryDir());
     // delete tracing
     cleanDir(config.getTracingDir());
+    // delete ulog
+    cleanDir(config.getUdfDir());
+    // delete tlog
+    cleanDir(config.getTriggerDir());
     // delete index
     cleanDir(config.getIndexRootFolder());
     // delete data files

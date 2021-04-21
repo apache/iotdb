@@ -24,6 +24,7 @@ import org.apache.iotdb.cluster.partition.slot.SlotNodeRemovalResult;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.query.ClusterPlanRouter;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.utils.Constants;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -204,13 +205,27 @@ public class SlotPartitionTableTest {
   private void assertGetHeaderGroup(int start, int last) {
     PartitionGroup group =
         localTable.getHeaderGroup(
-            new Node("localhost", 30000 + start, start, 40000 + start, 55560 + start));
+            new Node(
+                "localhost",
+                30000 + start,
+                start,
+                40000 + start,
+                Constants.RPC_PORT + start,
+                "localhost"));
     assertEquals(replica_size, group.size());
     assertEquals(
-        new Node("localhost", 30000 + start, start, 40000 + start, 55560 + start),
+        new Node(
+            "localhost",
+            30000 + start,
+            start,
+            40000 + start,
+            Constants.RPC_PORT + start,
+            "localhost"),
         group.getHeader());
+
     assertEquals(
-        new Node("localhost", 30000 + last, last, 40000 + last, 55560 + start),
+        new Node(
+            "localhost", 30000 + last, last, 40000 + last, Constants.RPC_PORT + start, "localhost"),
         group.get(replica_size - 1));
   }
 
@@ -335,7 +350,7 @@ public class SlotPartitionTableTest {
     assertTrue(PartitionUtils.isGlobalMetaPlan(globalLoadConfigPlan));
     PhysicalPlan localLoadConfigPlan = new LoadConfigurationPlan(LoadConfigurationPlanType.LOCAL);
     assertFalse(PartitionUtils.isGlobalMetaPlan(localLoadConfigPlan));
-    PhysicalPlan operateFilePlan = new OperateFilePlan(new File(""), OperatorType.TABLESCAN);
+    PhysicalPlan operateFilePlan = new OperateFilePlan(new File(""), OperatorType.LOAD_FILES);
     assertTrue(PartitionUtils.isLocalNonQueryPlan(operateFilePlan));
 
     PhysicalPlan setStorageGroupPlan = new SetStorageGroupPlan();
@@ -535,7 +550,7 @@ public class SlotPartitionTableTest {
   }
 
   private Node getNode(int i) {
-    return new Node("localhost", 30000 + i, i, 40000 + i, 55560 + i);
+    return new Node("localhost", 30000 + i, i, 40000 + i, Constants.RPC_PORT + i, "localhost");
   }
 
   @Test

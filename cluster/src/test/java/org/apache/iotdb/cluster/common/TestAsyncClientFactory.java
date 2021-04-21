@@ -49,7 +49,7 @@ public class TestAsyncClientFactory extends AsyncClientFactory {
     return new TestAsyncClient(
         protocolFactory,
         clientManager,
-        new TNonblockingSocket(node.getIp(), node.getMetaPort()),
+        new TNonblockingSocket(node.getInternalIp(), node.getMetaPort()),
         clientSerialNum.getAndIncrement());
   }
 }
