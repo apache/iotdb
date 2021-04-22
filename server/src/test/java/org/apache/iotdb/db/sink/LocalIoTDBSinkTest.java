@@ -46,7 +46,7 @@ import java.util.Map;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-public class TimeSeriesSinkTest {
+public class LocalIoTDBSinkTest {
 
   @Before
   public void setUp() throws Exception {

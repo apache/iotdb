@@ -514,9 +514,9 @@ Sink工具类为触发器提供了连接外部系统的能力。
 
 
 
-#### TimeSeriesSink
+#### LocalIoTDBSink
 
-`TimeSeriesSink`用于向本地序列写入数据点。
+`LocalIoTDBSink`用于向本地序列写入数据点。
 
 在写入数据前，不要求时间序列已被创建。
 

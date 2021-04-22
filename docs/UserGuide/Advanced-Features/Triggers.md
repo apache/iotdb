@@ -497,9 +497,9 @@ It provides a programming paradigm. Each sink utility contains a `Handler` for p
 
 
 
-#### TimeSeriesSink
+#### LocalIoTDBSink
 
-`TimeSeriesSink` is used to insert data points to the local sequence.
+`LocalIoTDBSink` is used to insert data points to the local sequence.
 
 Before writing data, it is not required that the time series have been created.
 
