@@ -34,19 +34,6 @@
         </filter>
     </appender>
 
-    <appender class="ch.qos.logback.core.ConsoleAppender" name="stdout">
-        <Target>System.out</Target>
-        <encoder>
-            <pattern>[%thread] %m %n</pattern>
-            <charset>utf-8</charset>
-        </encoder>
-        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
-            <level>DEBUG</level>
-        </filter>
-    </appender>
-    <logger name="org.testcontainers.containers.output.Slf4jLogConsumer" level="INFO">
-        <appender-ref ref="Container"/>
-    </logger>
     <root level="INFO">
         <appender-ref ref="stdout"/>
     </root>

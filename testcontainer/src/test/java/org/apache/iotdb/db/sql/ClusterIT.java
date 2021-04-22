@@ -20,11 +20,7 @@ package org.apache.iotdb.db.sql;
 
 import org.apache.iotdb.jdbc.Config;
 
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.DockerComposeContainer;
@@ -33,11 +29,9 @@ import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.containers.wait.strategy.Wait;
 
 import java.io.File;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
+import java.util.HashSet;
+import java.util.Set;
 
 public class ClusterIT {
   private static Logger logger = LoggerFactory.getLogger(ClusterIT.class);
@@ -82,26 +76,25 @@ public class ClusterIT {
   }
 
   @Test
-  public void testSimplePutAndGet() {
+  public void testSimplePutAndGet() throws SQLException {
 
     String[] timeSeriesArray = {"root.sg1.aa.bb", "root.sg1.aa.bb.cc", "root.sg1.aa"};
 
     for (String timeSeries : timeSeriesArray) {
-      try {
-        Assert.assertTrue(
-            statement.execute(
-                String.format(
-                    "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
-                    timeSeries)));
-        ResultSet resultSet = null;
-        resultSet = statement.executeQuery("show time series");
-        for (String timeseries : timeSeriesArray) {
-          Assert.assertTrue(resultSet.next());
-          Assert.assertEquals(timeseries, resultSet.getString(1));
-        }
-      } catch (SQLException throwables) {
-        Assert.fail(throwables.getMessage());
-      }
+      statement.execute(
+          String.format(
+              "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
+              timeSeries));
+    }
+    ResultSet resultSet = null;
+    resultSet = statement.executeQuery("show timeseries");
+    Set<String> result = new HashSet<>();
+    while (resultSet.next()) {
+      result.add(resultSet.getString(1));
+    }
+    Assert.assertEquals(3, result.size());
+    for (String timeseries : timeSeriesArray) {
+      Assert.assertTrue(result.contains(timeseries));
     }
   }
 }

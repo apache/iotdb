@@ -948,7 +948,10 @@
         <profile>
             <id>spotless</id>
             <activation>
-                <activeByDefault>true</activeByDefault>
+                <!-- activeByDefault does not take effect-->
+                <file>
+                    <exists>.</exists>
+                </file>
             </activation>
             <build>
                 <plugins>

@@ -20,23 +20,23 @@ package org.apache.iotdb.db.sql;
 
 import org.apache.iotdb.jdbc.Config;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.images.PullPolicy;
 import org.testcontainers.utility.DockerImageName;
 
 import java.io.File;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
+import java.util.HashSet;
+import java.util.Set;
 
 public class SingleNodeIT {
+  private static Logger logger = LoggerFactory.getLogger(SingleNodeIT.class);
   private Statement statement;
   private Connection connection;
 
@@ -49,6 +49,11 @@ public class SingleNodeIT {
               new File("src/test/resources/iotdb-engine.properties").getAbsolutePath(),
               "/iotdb/conf/iotdb-engine.properties",
               BindMode.READ_ONLY)
+          .withFileSystemBind(
+              new File("src/test/resources/logback-container.xml").getAbsolutePath(),
+              "/iotdb/conf/logback.xml",
+              BindMode.READ_ONLY)
+          .withLogConsumer(new Slf4jLogConsumer(logger))
           .withExposedPorts(6667)
           .waitingFor(Wait.forListeningPort());
 
@@ -80,6 +85,16 @@ public class SingleNodeIT {
           String.format(
               "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
               timeSeries));
+    }
+    ResultSet resultSet = null;
+    resultSet = statement.executeQuery("show timeseries");
+    Set<String> result = new HashSet<>();
+    while (resultSet.next()) {
+      result.add(resultSet.getString(1));
+    }
+    Assert.assertEquals(3, result.size());
+    for (String timeseries : timeSeriesArray) {
+      Assert.assertTrue(result.contains(timeseries));
     }
   }
 }

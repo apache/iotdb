@@ -35,7 +35,7 @@ services:
       retries: 120
     volumes:
     - ./iotdb-cluster.properties:/iotdb/conf/iotdb-cluster.properties
-    - ../logback.xml:/iotdb/conf/logback.xml
+    - ../logback-container.xml:/iotdb/conf/logback.xml
     scale: 3
 
 
