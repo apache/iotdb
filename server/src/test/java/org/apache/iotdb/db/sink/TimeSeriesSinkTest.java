@@ -193,13 +193,25 @@ public class TimeSeriesSinkTest {
   }
 
   @Test(expected = QueryProcessException.class)
-  public void onEventWithWrongType() throws Exception {
+  public void onEventWithWrongType1() throws Exception {
     LocalIoTDBHandler localIoTDBHandler = new LocalIoTDBHandler();
     localIoTDBHandler.open(
         new LocalIoTDBConfiguration(
             "root.sg1.d1", new String[] {"s1"}, new TSDataType[] {TSDataType.INT32}));
 
     localIoTDBHandler.onEvent(new LocalIoTDBEvent(0, Binary.valueOf(String.valueOf(0))));
+
+    localIoTDBHandler.close();
+  }
+
+  @Test(expected = ClassCastException.class)
+  public void onEventWithWrongType2() throws Exception {
+    LocalIoTDBHandler localIoTDBHandler = new LocalIoTDBHandler();
+    localIoTDBHandler.open(
+        new LocalIoTDBConfiguration(
+            "root.sg1.d1", new String[] {"s1"}, new TSDataType[] {TSDataType.TEXT}));
+
+    localIoTDBHandler.onEvent(new LocalIoTDBEvent(0, String.valueOf(0)));
 
     localIoTDBHandler.close();
   }
