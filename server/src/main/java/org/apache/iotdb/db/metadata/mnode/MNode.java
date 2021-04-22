@@ -1,9 +1,9 @@
 package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.cache.CacheEntry;
+import org.apache.iotdb.db.metadata.metadisk.cache.CacheEntry;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
-import org.apache.iotdb.db.metadata.metafile.PersistenceInfo;
+import org.apache.iotdb.db.metadata.metadisk.metafile.PersistenceInfo;
 
 import java.io.IOException;
 import java.io.Serializable;

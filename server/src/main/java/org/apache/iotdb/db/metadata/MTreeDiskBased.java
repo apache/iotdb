@@ -5,12 +5,9 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.metadata.*;
-import org.apache.iotdb.db.metadata.cache.CacheStrategy;
-import org.apache.iotdb.db.metadata.cache.LRUCacheStrategy;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
-import org.apache.iotdb.db.metadata.metafile.MetaFileAccess;
-import org.apache.iotdb.db.metadata.metafile.MockMetaFile;
-import org.apache.iotdb.db.metadata.metafile.PersistenceInfo;
+import org.apache.iotdb.db.metadata.metadisk.MetadataAccess;
+import org.apache.iotdb.db.metadata.metadisk.MetadataDiskManager;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
@@ -37,7 +34,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -51,61 +47,26 @@ public class MTreeDiskBased implements MTreeInterface {
   private static final String NO_CHILDNODE_MSG = " does not have the child node ";
   public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
-  private int capacity;
-  private CacheStrategy cacheStrategy;
+  private final String rootName= PATH_ROOT;
+  private MetadataAccess metadataDiskManager;
   private static final int DEFAULT_MAX_CAPACITY = 10000;
-
-  private MetaFileAccess metaFile;
-  private final String metaFilePath;
   private static final String DEFAULT_METAFILE_PATH =
       IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
           + File.separator
           + MetadataConstant.METAFILE_PATH;
 
-  private MNode root;
-  private PartialPath rootPath;
-  private String rootName;
 
   private static transient ThreadLocal<Integer> limit = new ThreadLocal<>();
   private static transient ThreadLocal<Integer> offset = new ThreadLocal<>();
   private static transient ThreadLocal<Integer> count = new ThreadLocal<>();
   private static transient ThreadLocal<Integer> curOffset = new ThreadLocal<>();
 
-  public MTreeDiskBased() throws IOException {
-    this(null, DEFAULT_MAX_CAPACITY, DEFAULT_METAFILE_PATH);
+  public MTreeDiskBased() throws MetadataException {
+    this(DEFAULT_MAX_CAPACITY, DEFAULT_METAFILE_PATH);
   }
 
-  public MTreeDiskBased(int cachesize, String metaFilePath) throws IOException {
-    this(null, cachesize, metaFilePath);
-  }
-
-  public MTreeDiskBased(MNode root, int cacheSize, String metaFilePath) throws IOException {
-    if (root==null) {
-      root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
-    }
-
-    rootName = root.getName();
-    try {
-      rootPath = new PartialPath(rootName);
-    } catch (IllegalPathException e) {
-      e.printStackTrace();
-    }
-
-    this.metaFilePath = metaFilePath;
-    metaFile = new MockMetaFile(metaFilePath);
-    //    metaFile=new MetaFile(metaFilePath);
-    metaFile.write(root);
-
-    capacity = cacheSize;
-    cacheStrategy = new LRUCacheStrategy();
-    if (capacity > 0) {
-      this.root = root;
-      cacheStrategy.applyChange(root);
-      cacheStrategy.setModified(root, false);
-    }else {
-      this.root=root.getEvictionHolder();
-    }
-
+  public MTreeDiskBased(int cacheSize, String metaFilePath) throws MetadataException {
+    metadataDiskManager =new MetadataDiskManager(cacheSize,metaFilePath);
   }
 
   static long getLastTimeStamp(MeasurementMNode node, QueryContext queryContext) {
@@ -140,204 +101,6 @@ public class MTreeDiskBased implements MTreeInterface {
     }
   }
 
-  private MNode getMNodeFromDisk(PersistenceInfo persistenceInfo) throws MetadataException{
-    try {
-      return metaFile.read(persistenceInfo);
-    } catch (IOException e) {
-      throw new MetadataException(e.getMessage());
-    }
-  }
-
-  private MNode getRoot() throws MetadataException {
-    MNode root = this.root;
-    if (root.isLoaded()) {
-      cacheStrategy.applyChange(root);
-    } else {
-      root = getMNodeFromDisk(root.getPersistenceInfo());
-      if (checkSizeAndEviction()) {
-        this.root = root;
-        cacheStrategy.applyChange(root);
-        cacheStrategy.setModified(root, false);
-      }
-    }
-    return root;
-  }
-
-  private MNode getChild(MNode parent, String name) throws MetadataException {
-    MNode result = parent.getChild(name);
-    if(result==null){
-      return null;
-    }
-    if (result.isLoaded()) {
-      if (result.isCached()) {
-        cacheStrategy.applyChange(result);
-      } else {
-        if (isCacheable(result)) {
-          cacheStrategy.applyChange(result);
-          cacheStrategy.setModified(result, false);
-        }
-      }
-    } else {
-      result = getMNodeFromDisk(result.getPersistenceInfo());
-      parent.addChild(name, result);
-      if (isCacheable(result)) {
-        cacheStrategy.applyChange(result);
-        cacheStrategy.setModified(result, false);
-      }
-    }
-    return result;
-  }
-
-  private Map<String, MNode> getChildren(MNode parent) throws MetadataException {
-    Map<String, MNode> result = new ConcurrentHashMap<>();
-    for (String childName : parent.getChildren().keySet()) {
-      MNode child = parent.getChild(childName);
-      if (child.isLoaded()) {
-        if (child.isCached()) {
-          cacheStrategy.applyChange(child);
-        }else {
-          if (isCacheable(child)) {
-            cacheStrategy.applyChange(child);
-            cacheStrategy.setModified(child, false);
-          }
-        }
-      } else {
-        child = getMNodeFromDisk(child.getPersistenceInfo());
-        parent.addChild(childName, child);
-        if (isCacheable(child)) {
-          cacheStrategy.applyChange(child);
-          cacheStrategy.setModified(child, false);
-        }
-      }
-      result.put(childName, child);
-    }
-    return result;
-  }
-
-  private void addChild(MNode parent, String childName, MNode child) throws MetadataException {
-    if(parent.hasChild(childName)){
-      return;
-    }
-    child.setParent(parent);
-    if(isCacheable(child)){
-      parent.addChild(childName, child);
-      cacheStrategy.setModified(parent, true);
-      cacheStrategy.applyChange(child);
-      cacheStrategy.setModified(child, true);
-    }else {
-      try {
-        parent.addChild(childName, child);
-        metaFile.write(child);
-        metaFile.write(parent);
-      } catch (IOException e) {
-        throw new MetadataException(e.getMessage());
-      }
-    }
-  }
-
-  private void addAlias(MNode parent, String alias, MNode child) throws MetadataException {
-    child.setParent(parent);
-    if (child.isCached()) {
-      parent.addAlias(alias, child);
-      cacheStrategy.setModified(parent, true);
-      cacheStrategy.applyChange(child);
-      cacheStrategy.setModified(child, true);
-    } else {
-      try {
-        parent.addAlias(alias, child);
-        metaFile.write(child);
-        metaFile.write(parent);
-      } catch (IOException e) {
-        throw new MetadataException(e.getMessage());
-      }
-    }
-  }
-
-  private void replaceChild(MNode parent, String measurement, MNode newChild)
-      throws MetadataException {
-    getChild(parent, measurement);
-    parent.replaceChild(measurement, newChild);
-    if (newChild.isCached()) {
-      cacheStrategy.applyChange(newChild);
-      cacheStrategy.setModified(newChild,true);
-    } else {
-      if (isCacheable(newChild)) {
-        cacheStrategy.applyChange(newChild);
-        cacheStrategy.setModified(newChild,true);
-      } else {
-        try {
-          metaFile.write(newChild);
-        } catch (IOException e) {
-          throw new MetadataException(e.getMessage());
-        }
-      }
-    }
-  }
-
-  private void deleteChild(MNode parent, String childName) throws MetadataException {
-    MNode child = parent.getChild(childName);
-    if(child.isCached()){
-      cacheStrategy.remove(child);
-    }
-    parent.deleteChild(childName);
-    try {
-      if (child.isPersisted()) {
-        metaFile.remove(child.getPersistenceInfo());
-      }
-      if (parent.isCached()) {
-        cacheStrategy.setModified(parent, true);
-      }else {
-        metaFile.write(parent);
-      }
-    } catch (IOException e) {
-      throw new MetadataException(e.getMessage());
-    }
-  }
-
-  private void deleteAliasChild(MNode parent, String alias) throws MetadataException {
-    parent.deleteAliasChild(alias);
-    if (parent.isCached()) {
-      cacheStrategy.setModified(parent, true);
-    } else {
-      try {
-        metaFile.write(parent);
-      } catch (IOException e) {
-        throw new MetadataException(e.getMessage());
-      }
-    }
-  }
-
-  private boolean isCacheable(MNode mNode) throws MetadataException{
-    MNode parent=mNode.getParent();
-    // parent may be evicted from the cache when checkSizeAndEviction
-    return parent.isCached() && checkSizeAndEviction() && parent.isCached();
-  }
-
-  private boolean checkSizeAndEviction() throws MetadataException {
-    if (capacity == 0) {
-      return false;
-    }
-    while (cacheStrategy.getSize() >= capacity) {
-      List<MNode> evictedMNode = cacheStrategy.evict();
-      for (MNode mNode : evictedMNode) {
-        try {
-          metaFile.write(mNode);
-          cacheStrategy.setModified(mNode, false);
-        } catch (IOException e) {
-          throw new MetadataException(e.getMessage());
-        }
-      }
-      MNode first=evictedMNode.get(evictedMNode.size()-1);
-      if (first.getParent() != null) {
-        first.getParent().evictChild(first.getName());
-      }
-      if (root != null && root.isLoaded() && first == root) {
-        root = root.getEvictionHolder();
-      }
-    }
-    return true;
-  }
-
   @Override
   public MeasurementMNode createTimeseries(
       PartialPath path,
@@ -352,7 +115,7 @@ public class MTreeDiskBased implements MTreeInterface {
     if (nodeNames.length <= 2 || !nodeNames[0].equals(rootName)) {
       throw new IllegalPathException(path.getFullPath());
     }
-    MNode cur = getRoot();
+    MNode cur = metadataDiskManager.getRoot();
     boolean hasSetStorageGroup = false;
     // e.g, path = root.sg.d1.s1,  create internal nodes and set cur to d1 node
     for (int i = 1; i < nodeNames.length - 1; i++) {
@@ -364,9 +127,9 @@ public class MTreeDiskBased implements MTreeInterface {
         if (!hasSetStorageGroup) {
           throw new StorageGroupNotSetException("Storage group should be created first");
         }
-        addChild(cur, nodeName, new InternalMNode(cur, nodeName));
+        metadataDiskManager.addChild(cur, nodeName, new InternalMNode(cur, nodeName));
       }
-      cur = getChild(cur, nodeName);
+      cur = metadataDiskManager.getChild(cur, nodeName);
     }
 
     if (props != null && props.containsKey(LOSS) && props.get(LOSS).equals(SDT)) {
@@ -378,13 +141,13 @@ public class MTreeDiskBased implements MTreeInterface {
     // synchronize check and add, we need addChild and add Alias become atomic operation
     // only write on mtree will be synchronized
     synchronized (this) {
-      MNode child = getChild(cur, leafName);
+      MNode child = metadataDiskManager.getChild(cur, leafName);
       if (child != null && (child.isMeasurement() || child.isStorageGroup())) {
         throw new PathAlreadyExistException(path.getFullPath());
       }
 
       if (alias != null) {
-        MNode childByAlias = getChild(cur, alias);
+        MNode childByAlias = metadataDiskManager.getChild(cur, alias);
         if (childByAlias != null && childByAlias.isMeasurement()) {
           throw new AliasAlreadyExistException(path.getFullPath(), alias);
         }
@@ -394,14 +157,14 @@ public class MTreeDiskBased implements MTreeInterface {
       MeasurementMNode measurementMNode =
           new MeasurementMNode(cur, leafName, alias, dataType, encoding, compressor, props);
       if (child != null) {
-        replaceChild(cur, measurementMNode.getName(), measurementMNode);
+        metadataDiskManager.replaceChild(cur, measurementMNode.getName(), measurementMNode);
       } else {
-        addChild(cur, leafName, measurementMNode);
+        metadataDiskManager.addChild(cur, leafName, measurementMNode);
       }
 
       // link alias to LeafMNode
       if (alias != null) {
-        addAlias(cur, alias, measurementMNode);
+        metadataDiskManager.addAlias(cur, alias, measurementMNode);
       }
       return measurementMNode;
     }
@@ -469,20 +232,20 @@ public class MTreeDiskBased implements MTreeInterface {
     if (nodeNames.length <= 1 || !nodeNames[0].equals(rootName)) {
       throw new IllegalPathException(deviceId.getFullPath());
     }
-    MNode cur = getRoot();
+    MNode cur = metadataDiskManager.getRoot();
     for (int i = 1; i < nodeNames.length; i++) {
       if (!cur.hasChild(nodeNames[i])) {
         if (i == sgLevel) {
-          addChild(
+          metadataDiskManager.addChild(
               cur,
               nodeNames[i],
               new StorageGroupMNode(
                   cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL()));
         } else {
-          addChild(cur, nodeNames[i], new InternalMNode(cur, nodeNames[i]));
+          metadataDiskManager.addChild(cur, nodeNames[i], new InternalMNode(cur, nodeNames[i]));
         }
       }
-      cur = getChild(cur, nodeNames[i]);
+      cur = metadataDiskManager.getChild(cur, nodeNames[i]);
     }
     return cur;
   }
@@ -495,14 +258,14 @@ public class MTreeDiskBased implements MTreeInterface {
     }
     MNode cur;
     try {
-      cur = getRoot();
+      cur = metadataDiskManager.getRoot();
     } catch (MetadataException e) {
       return false;
     }
     for (int i = 1; i < nodeNames.length; i++) {
       String childName = nodeNames[i];
       try {
-        cur = getChild(cur, childName);
+        cur = metadataDiskManager.getChild(cur, childName);
       } catch (MetadataException e) {
         e.printStackTrace();
         return false;
@@ -521,23 +284,23 @@ public class MTreeDiskBased implements MTreeInterface {
     if (nodeNames.length <= 1 || !nodeNames[0].equals(rootName)) {
       throw new IllegalPathException(path.getFullPath());
     }
-    MNode cur = getRoot();
+    MNode cur = metadataDiskManager.getRoot();
     int i = 1;
     // e.g., path = root.a.b.sg, create internal nodes for a, b
     while (i < nodeNames.length - 1) {
-      MNode temp = getChild(cur, nodeNames[i]);
+      MNode temp = metadataDiskManager.getChild(cur, nodeNames[i]);
       if (temp == null) {
-        addChild(cur, nodeNames[i], new InternalMNode(cur, nodeNames[i]));
+        metadataDiskManager.addChild(cur, nodeNames[i], new InternalMNode(cur, nodeNames[i]));
       } else if (temp.isStorageGroup()) {
         // before set storage group, check whether the exists or not
         throw new StorageGroupAlreadySetException(temp.getFullPath());
       }
-      cur = getChild(cur, nodeNames[i]);
+      cur = metadataDiskManager.getChild(cur, nodeNames[i]);
       i++;
     }
     if (cur.hasChild(nodeNames[i])) {
       // node b has child sg
-      if (getChild(cur, nodeNames[i]).isStorageGroup()) {
+      if (metadataDiskManager.getChild(cur, nodeNames[i]).isStorageGroup()) {
         throw new StorageGroupAlreadySetException(path.getFullPath());
       } else {
         throw new StorageGroupAlreadySetException(path.getFullPath(), true);
@@ -546,7 +309,7 @@ public class MTreeDiskBased implements MTreeInterface {
       StorageGroupMNode storageGroupMNode =
           new StorageGroupMNode(
               cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
-      addChild(cur, nodeNames[i], storageGroupMNode);
+      metadataDiskManager.addChild(cur, nodeNames[i], storageGroupMNode);
     }
   }
 
@@ -567,7 +330,7 @@ public class MTreeDiskBased implements MTreeInterface {
     }
     // Suppose current system has root.a.b.sg1, root.a.sg2, and delete root.a.b.sg1
     // delete the storage group node sg1
-    deleteChild(cur.getParent(), cur.getName());
+    metadataDiskManager.deleteChild(cur.getParent(), cur.getName());
 
     // collect all the LeafMNode in this storage group
     List<MeasurementMNode> leafMNodes = new LinkedList<>();
@@ -575,7 +338,7 @@ public class MTreeDiskBased implements MTreeInterface {
     queue.add(cur);
     while (!queue.isEmpty()) {
       MNode node = queue.poll();
-      for (MNode child : getChildren(node).values()) {
+      for (MNode child : metadataDiskManager.getChildren(node).values()) {
         if (child.isMeasurement()) {
           leafMNodes.add((MeasurementMNode) child);
         } else {
@@ -587,7 +350,7 @@ public class MTreeDiskBased implements MTreeInterface {
     cur = cur.getParent();
     // delete node b while retain root.a.sg2
     while (!IoTDBConstant.PATH_ROOT.equals(cur.getName()) && cur.getChildren().size() == 0) {
-      deleteChild(cur.getParent(), cur.getName());
+      metadataDiskManager.deleteChild(cur.getParent(), cur.getName());
       cur = cur.getParent();
     }
     return leafMNodes;
@@ -601,14 +364,14 @@ public class MTreeDiskBased implements MTreeInterface {
     }
     MNode cur;
     try {
-      cur = getRoot();
+      cur = metadataDiskManager.getRoot();
     } catch (MetadataException e) {
       return false;
     }
     int i = 1;
     while (i < nodeNames.length - 1) {
       try {
-        cur = getChild(cur, nodeNames[i]);
+        cur = metadataDiskManager.getChild(cur, nodeNames[i]);
       } catch (MetadataException e) {
         e.printStackTrace();
       }
@@ -618,7 +381,7 @@ public class MTreeDiskBased implements MTreeInterface {
       i++;
     }
     try {
-      cur = getChild(cur, nodeNames[i]);
+      cur = metadataDiskManager.getChild(cur, nodeNames[i]);
     } catch (MetadataException e) {
       e.printStackTrace();
     }
@@ -637,10 +400,10 @@ public class MTreeDiskBased implements MTreeInterface {
       throw new IllegalPathException(path.getFullPath());
     }
     // delete the last node of path
-    deleteChild(curNode.getParent(), curNode.getName());
+    metadataDiskManager.deleteChild(curNode.getParent(), curNode.getName());
     MeasurementMNode deletedNode = (MeasurementMNode) curNode;
     if (deletedNode.getAlias() != null) {
-      deleteAliasChild(curNode.getParent(), ((MeasurementMNode) curNode).getAlias());
+      metadataDiskManager.deleteAliasChild(curNode.getParent(), ((MeasurementMNode) curNode).getAlias());
     }
     curNode = curNode.getParent();
     // delete all empty ancestors except storage group and MeasurementMNode
@@ -651,7 +414,7 @@ public class MTreeDiskBased implements MTreeInterface {
       if (curNode.isStorageGroup()) {
         return new Pair<>(curNode.getPartialPath(), deletedNode);
       }
-      deleteChild(curNode.getParent(), curNode.getName());
+      metadataDiskManager.deleteChild(curNode.getParent(), curNode.getName());
       curNode = curNode.getParent();
     }
     return new Pair<>(null, deletedNode);
@@ -671,9 +434,9 @@ public class MTreeDiskBased implements MTreeInterface {
       throw new IllegalPathException(path.getFullPath());
     }
 
-    MNode cur = getRoot();
+    MNode cur = metadataDiskManager.getRoot();
     for (int i = 1; i < nodes.length; i++) {
-      cur = getChild(cur, nodes[i]);
+      cur = metadataDiskManager.getChild(cur, nodes[i]);
       if (cur == null) {
         // not find
         if (!storageGroupChecked) {
@@ -710,9 +473,9 @@ public class MTreeDiskBased implements MTreeInterface {
     if (nodes.length == 0 || !nodes[0].equals(rootName)) {
       throw new IllegalPathException(path.getFullPath());
     }
-    MNode cur = getRoot();
+    MNode cur = metadataDiskManager.getRoot();
     for (int i = 1; i < nodes.length; i++) {
-      cur = getChild(cur, nodes[i]);
+      cur = metadataDiskManager.getChild(cur, nodes[i]);
       if (cur.isStorageGroup()) {
         return (StorageGroupMNode) cur;
       }
@@ -726,9 +489,9 @@ public class MTreeDiskBased implements MTreeInterface {
     if (nodes.length == 0 || !nodes[0].equals(rootName)) {
       throw new IllegalPathException(path.getFullPath());
     }
-    MNode cur = getRoot();
+    MNode cur = metadataDiskManager.getRoot();
     for (int i = 1; i < nodes.length; i++) {
-      cur = getChild(cur, nodes[i]);
+      cur = metadataDiskManager.getChild(cur, nodes[i]);
       if (cur == null) {
         throw new PathNotExistException(path.getFullPath(), true);
       }
@@ -743,7 +506,7 @@ public class MTreeDiskBased implements MTreeInterface {
     if (nodes.length == 0 || !nodes[0].equals(rootName)) {
       throw new IllegalPathException(path.getFullPath());
     }
-    findStorageGroup(getRoot(), nodes, 1, "", storageGroups);
+    findStorageGroup(metadataDiskManager.getRoot(), nodes, 1, "", storageGroups);
     return storageGroups;
   }
 
@@ -761,13 +524,13 @@ public class MTreeDiskBased implements MTreeInterface {
     }
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
     if (!(PATH_WILDCARD).equals(nodeReg)) {
-      MNode next = getChild(node, nodeReg);
+      MNode next = metadataDiskManager.getChild(node, nodeReg);
       if (next != null) {
         findStorageGroup(
             next, nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR, storageGroupNames);
       }
     } else {
-      for (MNode child : getChildren(node).values()) {
+      for (MNode child : metadataDiskManager.getChildren(node).values()) {
         findStorageGroup(
             child, nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR, storageGroupNames);
       }
@@ -778,14 +541,20 @@ public class MTreeDiskBased implements MTreeInterface {
   public List<PartialPath> getAllStorageGroupPaths() {
     List<PartialPath> res = new ArrayList<>();
     Deque<MNode> nodeStack = new ArrayDeque<>();
-    nodeStack.add(root);
+    try {
+      nodeStack.add(metadataDiskManager.getRoot());
+    }catch (MetadataException e){
+      logger.error(e.getMessage());
+      return res;
+    }
+
     while (!nodeStack.isEmpty()) {
       MNode current = nodeStack.pop();
       if (current.isStorageGroup()) {
         res.add(current.getPartialPath());
       } else {
         try {
-          nodeStack.addAll(getChildren(current).values());
+          nodeStack.addAll(metadataDiskManager.getChildren(current).values());
         } catch (MetadataException e) {
           e.printStackTrace();
           break;
@@ -803,7 +572,7 @@ public class MTreeDiskBased implements MTreeInterface {
       throw new IllegalPathException(path.getFullPath());
     }
     List<PartialPath> storageGroupPaths = new ArrayList<>();
-    findStorageGroupPaths(getRoot(), nodes, 1, "", storageGroupPaths, false);
+    findStorageGroupPaths(metadataDiskManager.getRoot(), nodes, 1, "", storageGroupPaths, false);
     return storageGroupPaths;
   }
 
@@ -814,7 +583,7 @@ public class MTreeDiskBased implements MTreeInterface {
       throw new IllegalPathException(prefixPath.getFullPath());
     }
     List<PartialPath> storageGroupPaths = new ArrayList<>();
-    findStorageGroupPaths(getRoot(), nodes, 1, "", storageGroupPaths, true);
+    findStorageGroupPaths(metadataDiskManager.getRoot(), nodes, 1, "", storageGroupPaths, true);
     return storageGroupPaths;
   }
 
@@ -846,7 +615,7 @@ public class MTreeDiskBased implements MTreeInterface {
     }
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
     if (!(PATH_WILDCARD).equals(nodeReg)) {
-      MNode next = getChild(node, nodeReg);
+      MNode next = metadataDiskManager.getChild(node, nodeReg);
       if (next != null) {
         findStorageGroupPaths(
             node.getChild(nodeReg),
@@ -857,7 +626,7 @@ public class MTreeDiskBased implements MTreeInterface {
             prefixOnly);
       }
     } else {
-      for (MNode child : getChildren(node).values()) {
+      for (MNode child : metadataDiskManager.getChildren(node).values()) {
         findStorageGroupPaths(
             child,
             nodes,
@@ -873,16 +642,21 @@ public class MTreeDiskBased implements MTreeInterface {
   public List<StorageGroupMNode> getAllStorageGroupNodes() {
     List<StorageGroupMNode> ret = new ArrayList<>();
     Deque<MNode> nodeStack = new ArrayDeque<>();
-    nodeStack.add(root);
+    try {
+      nodeStack.add(metadataDiskManager.getRoot());
+    }catch (MetadataException e){
+      logger.error(e.getMessage());
+      return ret;
+    }
     while (!nodeStack.isEmpty()) {
       MNode current = nodeStack.pop();
       if (current.isStorageGroup()) {
         ret.add((StorageGroupMNode) current);
       } else {
         try {
-          nodeStack.addAll(getChildren(current).values());
+          nodeStack.addAll(metadataDiskManager.getChildren(current).values());
         } catch (MetadataException e) {
-          e.printStackTrace();
+          logger.error(e.getMessage());
           break;
         }
       }
@@ -895,13 +669,13 @@ public class MTreeDiskBased implements MTreeInterface {
     String[] nodes = path.getNodes();
     MNode cur;
     try {
-      cur = getRoot();
+      cur = metadataDiskManager.getRoot();
     } catch (MetadataException e) {
       throw new StorageGroupNotSetException(path.getFullPath());
     }
     for (int i = 1; i < nodes.length; i++) {
       try {
-        cur = getChild(cur, nodes[i]);
+        cur = metadataDiskManager.getChild(cur, nodes[i]);
       } catch (MetadataException e) {
         throw new StorageGroupNotSetException(path.getFullPath());
       }
@@ -919,13 +693,13 @@ public class MTreeDiskBased implements MTreeInterface {
     String[] nodes = path.getNodes();
     MNode cur;
     try {
-      cur = getRoot();
+      cur = metadataDiskManager.getRoot();
     } catch (MetadataException e) {
       return false;
     }
     for (int i = 1; i < nodes.length; i++) {
       try {
-        cur = getChild(cur, nodes[i]);
+        cur = metadataDiskManager.getChild(cur, nodes[i]);
       } catch (MetadataException e) {
         return false;
       }
@@ -980,7 +754,7 @@ public class MTreeDiskBased implements MTreeInterface {
       throw new IllegalPathException(prefixPath.getFullPath());
     }
     try {
-      return getCount(getRoot(), nodes, 1, false);
+      return getCount(metadataDiskManager.getRoot(), nodes, 1, false);
     } catch (PathNotExistException e) {
       throw new PathNotExistException(prefixPath.getFullPath());
     }
@@ -992,12 +766,12 @@ public class MTreeDiskBased implements MTreeInterface {
     if (idx < nodes.length) {
       if (PATH_WILDCARD.equals(nodes[idx])) {
         int sum = 0;
-        for (MNode child : getChildren(node).values()) {
+        for (MNode child : metadataDiskManager.getChildren(node).values()) {
           sum += getCount(child, nodes, idx + 1, true);
         }
         return sum;
       } else {
-        MNode child = getChild(node, nodes[idx]);
+        MNode child = metadataDiskManager.getChild(node, nodes[idx]);
         if (child == null) {
           if (!wildcard) {
             throw new PathNotExistException(node.getName() + NO_CHILDNODE_MSG + nodes[idx]);
@@ -1009,7 +783,7 @@ public class MTreeDiskBased implements MTreeInterface {
       }
     } else {
       int sum = node.isMeasurement() ? 1 : 0;
-      for (MNode child : getChildren(node).values()) {
+      for (MNode child : metadataDiskManager.getChildren(node).values()) {
         sum += getCount(child, nodes, idx + 1, wildcard);
       }
       return sum;
@@ -1022,7 +796,7 @@ public class MTreeDiskBased implements MTreeInterface {
     if (nodes.length == 0 || !nodes[0].equals(rootName)) {
       throw new IllegalPathException(prefixPath.getFullPath());
     }
-    return getDevicesCount(getRoot(), nodes, 1);
+    return getDevicesCount(metadataDiskManager.getRoot(), nodes, 1);
   }
 
   /** Traverse the MTree to get the count of devices. */
@@ -1057,7 +831,7 @@ public class MTreeDiskBased implements MTreeInterface {
     if (nodes.length == 0 || !nodes[0].equals(rootName)) {
       throw new IllegalPathException(prefixPath.getFullPath());
     }
-    return getStorageGroupCount(getRoot(), nodes, 1, "");
+    return getStorageGroupCount(metadataDiskManager.getRoot(), nodes, 1, "");
   }
 
   /** Traverse the MTree to get the count of storage group. */
@@ -1088,14 +862,14 @@ public class MTreeDiskBased implements MTreeInterface {
     if (nodes.length == 0 || !nodes[0].equals(rootName)) {
       throw new IllegalPathException(prefixPath.getFullPath());
     }
-    MNode node = getRoot();
+    MNode node = metadataDiskManager.getRoot();
     int i;
     for (i = 1; i < nodes.length; i++) {
       if (nodes[i].equals("*")) {
         break;
       }
       if (node.hasChild(nodes[i])) {
-        node = getChild(node, nodes[i]);
+        node = metadataDiskManager.getChild(node, nodes[i]);
       } else {
         throw new MetadataException(nodes[i - 1] + NO_CHILDNODE_MSG + nodes[i]);
       }
@@ -1113,7 +887,7 @@ public class MTreeDiskBased implements MTreeInterface {
       return 1;
     }
     int cnt = 0;
-    for (MNode child : getChildren(node).values()) {
+    for (MNode child : metadataDiskManager.getChildren(node).values()) {
       cnt += getCountInGivenLevel(child, targetLevel - 1);
     }
     return cnt;
@@ -1128,7 +902,7 @@ public class MTreeDiskBased implements MTreeInterface {
     }
     List<Pair<PartialPath, String[]>> allMatchedNodes = new ArrayList<>();
 
-    findPath(getRoot(), nodes, 1, allMatchedNodes, false, true, queryContext);
+    findPath(metadataDiskManager.getRoot(), nodes, 1, allMatchedNodes, false, true, queryContext);
 
     Stream<Pair<PartialPath, String[]>> sortedStream =
         allMatchedNodes.stream()
@@ -1164,7 +938,7 @@ public class MTreeDiskBased implements MTreeInterface {
     offset.set(plan.getOffset());
     curOffset.set(-1);
     count.set(0);
-    findPath(getRoot(), nodes, 1, res, offset.get() != 0 || limit.get() != 0, false, null);
+    findPath(metadataDiskManager.getRoot(), nodes, 1, res, offset.get() != 0 || limit.get() != 0, false, null);
     // avoid memory leaks
     limit.remove();
     offset.remove();
@@ -1220,12 +994,12 @@ public class MTreeDiskBased implements MTreeInterface {
     }
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
     if (!nodeReg.contains(PATH_WILDCARD)) {
-      MNode next = getChild(node, nodeReg);
+      MNode next = metadataDiskManager.getChild(node, nodeReg);
       if (next != null) {
         findPath(next, nodes, idx + 1, timeseriesSchemaList, hasLimit, needLast, queryContext);
       }
     } else {
-      for (MNode child : getChildren(node).values()) {
+      for (MNode child : metadataDiskManager.getChildren(node).values()) {
         if (!Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
           continue;
         }
@@ -1244,7 +1018,7 @@ public class MTreeDiskBased implements MTreeInterface {
       throw new IllegalPathException(path.getFullPath());
     }
     Set<String> childNodePaths = new TreeSet<>();
-    findChildNodePathInNextLevel(getRoot(), nodes, 1, "", childNodePaths, nodes.length + 1);
+    findChildNodePathInNextLevel(metadataDiskManager.getRoot(), nodes, 1, "", childNodePaths, nodes.length + 1);
     return childNodePaths;
   }
 
@@ -1271,7 +1045,7 @@ public class MTreeDiskBased implements MTreeInterface {
         res.add(parent + node.getName());
       } else {
         findChildNodePathInNextLevel(
-            getChild(node, nodeReg),
+                metadataDiskManager.getChild(node, nodeReg),
             nodes,
             idx + 1,
             parent + node.getName() + PATH_SEPARATOR,
@@ -1280,7 +1054,7 @@ public class MTreeDiskBased implements MTreeInterface {
       }
     } else {
       if (node.getChildren().size() > 0) {
-        for (MNode child : getChildren(node).values()) {
+        for (MNode child : metadataDiskManager.getChildren(node).values()) {
           if (!Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
             continue;
           }
@@ -1305,7 +1079,7 @@ public class MTreeDiskBased implements MTreeInterface {
       throw new IllegalPathException(path.getFullPath());
     }
     Set<String> childNodes = new TreeSet<>();
-    findChildNodeInNextLevel(getRoot(), nodes, 1, "", childNodes, nodes.length + 1);
+    findChildNodeInNextLevel(metadataDiskManager.getRoot(), nodes, 1, "", childNodes, nodes.length + 1);
     return childNodes;
   }
 
@@ -1332,7 +1106,7 @@ public class MTreeDiskBased implements MTreeInterface {
         res.add(node.getName());
       } else {
         findChildNodeInNextLevel(
-            getChild(node, nodeReg),
+                metadataDiskManager.getChild(node, nodeReg),
             nodes,
             idx + 1,
             parent + node.getName() + PATH_SEPARATOR,
@@ -1340,7 +1114,7 @@ public class MTreeDiskBased implements MTreeInterface {
             length);
       }
     } else {
-      if (getChildren(node).size() > 0) {
+      if (metadataDiskManager.getChildren(node).size() > 0) {
         for (MNode child : node.getChildren().values()) {
           if (!Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
             continue;
@@ -1366,7 +1140,7 @@ public class MTreeDiskBased implements MTreeInterface {
       throw new IllegalPathException(prefixPath.getFullPath());
     }
     Set<PartialPath> devices = new TreeSet<>();
-    findDevices(getRoot(), nodes, 1, devices, false);
+    findDevices(metadataDiskManager.getRoot(), nodes, 1, devices, false);
     return devices;
   }
 
@@ -1381,7 +1155,7 @@ public class MTreeDiskBased implements MTreeInterface {
     offset.set(plan.getOffset());
     curOffset.set(-1);
     count.set(0);
-    findDevices(getRoot(), nodes, 1, devices, offset.get() != 0 || limit.get() != 0);
+    findDevices(metadataDiskManager.getRoot(), nodes, 1, devices, offset.get() != 0 || limit.get() != 0);
     // avoid memory leaks
     limit.remove();
     offset.remove();
@@ -1414,7 +1188,7 @@ public class MTreeDiskBased implements MTreeInterface {
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
     // the node path doesn't contains '*'
     if (!nodeReg.contains(PATH_WILDCARD)) {
-      MNode next = getChild(node, nodeReg);
+      MNode next = metadataDiskManager.getChild(node, nodeReg);
       if (next != null) {
         if (next.isMeasurement() && idx >= nodes.length) {
           if (hasLimit) {
@@ -1432,7 +1206,7 @@ public class MTreeDiskBased implements MTreeInterface {
       }
     } else { // the node path contains '*'
       boolean deviceAdded = false;
-      for (MNode child : getChildren(node).values()) {
+      for (MNode child : metadataDiskManager.getChildren(node).values()) {
         // use '.*' to replace '*' to form a regex to match
         // if the match failed, skip it.
         if (!Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
@@ -1469,10 +1243,10 @@ public class MTreeDiskBased implements MTreeInterface {
       throw new IllegalPathException(path.getFullPath());
     }
     List<PartialPath> res = new ArrayList<>();
-    MNode node = getRoot();
+    MNode node = metadataDiskManager.getRoot();
     for (int i = 1; i < nodes.length; i++) {
-      if (getChild(node, nodes[i]) != null) {
-        node = getChild(node, nodes[i]);
+      if (metadataDiskManager.getChild(node, nodes[i]) != null) {
+        node = metadataDiskManager.getChild(node, nodes[i]);
         if (node.isStorageGroup() && filter != null && !filter.satisfy(node.getFullPath())) {
           return res;
         }
@@ -1504,7 +1278,7 @@ public class MTreeDiskBased implements MTreeInterface {
       res.add(path);
       return;
     }
-    for (MNode child : getChildren(node).values()) {
+    for (MNode child : metadataDiskManager.getChildren(node).values()) {
       findNodes(child, path.concatNode(child.toString()), res, targetLevel - 1, filter);
     }
   }
@@ -1519,10 +1293,17 @@ public class MTreeDiskBased implements MTreeInterface {
 
     Deque<MNode> nodeStack = new ArrayDeque<>();
     Deque<Integer> depthStack = new ArrayDeque<>();
-    if (!root.getChildren().isEmpty()) {
-      nodeStack.push(root);
-      depthStack.push(0);
+    try {
+      MNode root= metadataDiskManager.getRoot();
+      if (!metadataDiskManager.getChildren(root).isEmpty()) {
+        nodeStack.push(root);
+        depthStack.push(0);
+      }
+    }catch (MetadataException e){
+      logger.error(e.getMessage());
+      return paths;
     }
+
 
     while (!nodeStack.isEmpty()) {
       MNode mNode = nodeStack.removeFirst();
@@ -1577,7 +1358,9 @@ public class MTreeDiskBased implements MTreeInterface {
   @Override
   public void serializeTo(String snapshotPath) throws IOException {
     try (MLogWriter mLogWriter = new MLogWriter(snapshotPath)) {
-      root.serializeTo(mLogWriter);
+      metadataDiskManager.getRoot().serializeTo(mLogWriter);
+    }catch (MetadataException e){
+      throw new IOException(e.getMessage());
     }
   }
 

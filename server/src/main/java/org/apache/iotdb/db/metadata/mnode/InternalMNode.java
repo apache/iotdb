@@ -20,9 +20,9 @@ package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.cache.CacheEntry;
+import org.apache.iotdb.db.metadata.metadisk.cache.CacheEntry;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
-import org.apache.iotdb.db.metadata.metafile.PersistenceInfo;
+import org.apache.iotdb.db.metadata.metadisk.metafile.PersistenceInfo;
 import org.apache.iotdb.db.rescon.CachedStringPool;
 
 import java.io.IOException;

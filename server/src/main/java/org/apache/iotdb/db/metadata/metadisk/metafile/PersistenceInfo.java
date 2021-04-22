@@ -1,4 +1,4 @@
-package org.apache.iotdb.db.metadata.metafile;
+package org.apache.iotdb.db.metadata.metadisk.metafile;
 
 import org.apache.iotdb.db.metadata.mnode.PersistenceMNode;
 

@@ -1,9 +1,7 @@
-package org.apache.iotdb.db.metadata.metafile;
+package org.apache.iotdb.db.metadata.metadisk.metafile;
 
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
-import org.apache.iotdb.db.metadata.mnode.InternalMNode;
-import org.apache.iotdb.db.metadata.mnode.PersistenceMNode;
 
 import java.io.IOException;
 import java.util.*;

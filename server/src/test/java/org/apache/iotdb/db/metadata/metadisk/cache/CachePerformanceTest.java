@@ -1,4 +1,4 @@
-package org.apache.iotdb.db.metadata.cache;
+package org.apache.iotdb.db.metadata.metadisk.cache;
 
 import org.apache.iotdb.db.metadata.MTree;
 import org.apache.iotdb.db.metadata.MTreeDiskBased;
@@ -75,7 +75,7 @@ public class CachePerformanceTest {
   }
 
   private MTreeInterface testMTreeDisk() throws Exception {
-    MTreeInterface mTreeDisk = new MTreeDiskBased(null, NODE_NUM, null);
+    MTreeInterface mTreeDisk = new MTreeDiskBased(NODE_NUM, null);
     System.out.println("MTreeDisk TS creation time cost: " + generateMTree(mTreeDisk) + "ms");
     System.out.println("MTreeDisk TS access time cost: " + accessMTree(mTreeDisk) + "ms");
     return mTreeDisk;
@@ -106,7 +106,7 @@ public class CachePerformanceTest {
     createCostTime = 0;
     readCostTime = 0;
     for (int i = 0; i < times; i++) {
-      MTreeDiskBased mTreeDisk = new MTreeDiskBased(null, NODE_NUM, null);
+      MTreeDiskBased mTreeDisk = new MTreeDiskBased(NODE_NUM, null);
       createCostTime += generateMTree(mTreeDisk);
       readCostTime += accessMTree(mTreeDisk);
       mTreeDisk = null;

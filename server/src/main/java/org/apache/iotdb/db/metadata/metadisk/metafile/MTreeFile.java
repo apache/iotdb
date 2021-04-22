@@ -1,4 +1,4 @@
-package org.apache.iotdb.db.metadata.metafile;
+package org.apache.iotdb.db.metadata.metadisk.metafile;
 
 import org.apache.iotdb.db.metadata.mnode.*;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -17,6 +17,12 @@ public class MTreeFile {
 
   private static final int HEADER_LENGTH = 64;
   private static final int NODE_LENGTH = 512 * 2;
+
+  private static final int INTERNAL_MNODE_TYPE=0;
+  private static final int ROOT_MNODE_TYPE=1;
+  private static final int STORAGE_GROUP_MNODE_TYPE=2;
+  private static final int MEASUREMENT_MNODE_TYPE=3;
+  private static final int EXTENSION_TYPE=4;
 
   private final SlottedFileAccess fileAccess;
 
@@ -117,16 +123,23 @@ public class MTreeFile {
     long position=persistenceInfo.getPosition();
     ByteBuffer dataBuffer = readBytesFromFile(position);
     int type = dataBuffer.get();
-    MNode mNode;
-    if (type == 2) {
-      mNode = new StorageGroupMNode(null, null, 0);
-      readStorageGroupMNode(dataBuffer, (StorageGroupMNode) mNode);
-    } else if (type == 3) {
-      mNode = new MeasurementMNode(null, null, null, null);
-      readMeasurementMNode(dataBuffer, (MeasurementMNode) mNode);
-    } else {
-      mNode = new InternalMNode(null, null);
-      readMNode(dataBuffer, mNode);
+    MNode mNode=null;
+    switch (type){
+      case INTERNAL_MNODE_TYPE: // normal InternalMNode
+      case ROOT_MNODE_TYPE: // root
+        mNode = new InternalMNode(null, null);
+        readMNode(dataBuffer, mNode);
+        break;
+      case STORAGE_GROUP_MNODE_TYPE: // StorageGroupMNode
+        mNode = new StorageGroupMNode(null, null, 0);
+        readStorageGroupMNode(dataBuffer, (StorageGroupMNode) mNode);
+        break;
+      case MEASUREMENT_MNODE_TYPE: // MeasurementMNode
+        mNode = new MeasurementMNode(null, null, null, null);
+        readMeasurementMNode(dataBuffer, (MeasurementMNode) mNode);
+        break;
+      default:
+        throw new IOException("file corrupted");
     }
     mNode.setPersistenceInfo(persistenceInfo);
 

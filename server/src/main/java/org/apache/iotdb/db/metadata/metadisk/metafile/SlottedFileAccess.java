@@ -1,4 +1,4 @@
-package org.apache.iotdb.db.metadata.metafile;
+package org.apache.iotdb.db.metadata.metadisk.metafile;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
