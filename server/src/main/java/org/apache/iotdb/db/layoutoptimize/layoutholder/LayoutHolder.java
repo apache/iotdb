@@ -1,5 +1,6 @@
 package org.apache.iotdb.db.layoutoptimize.layoutholder;
 
+import org.apache.iotdb.db.exception.layoutoptimize.LayoutNotExistException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -51,16 +52,24 @@ public class LayoutHolder {
     }
   }
 
-  public Pair<List<String>, Long> getLayoutForDevice(String deviceId) {
-    // TODO: throw layout not exists exception when the value is not stored
+  public Pair<List<String>, Long> getLayoutForDevice(String deviceId)
+      throws LayoutNotExistException {
+    if (!orderMap.containsKey(deviceId))
+      throw new LayoutNotExistException(String.format("layout for %s not exists", deviceId));
     List<String> measurementOrder = new ArrayList<>(orderMap.get(deviceId));
     long chunkSize = chunkMap.getOrDefault(deviceId, 0L);
     return new Pair<>(measurementOrder, chunkSize);
   }
 
-  public List<String> getMeasurementForDevice(String deviceId) {
+  public List<String> getMeasurementForDevice(String deviceId) throws LayoutNotExistException {
+    if (!orderMap.containsKey(deviceId))
+      throw new LayoutNotExistException(String.format("layout for %s not exists", deviceId));
     return new ArrayList<>(orderMap.get(deviceId));
   }
 
-  public static void main(String[] args) {}
+  public long getChunkSize(String deviceId) throws LayoutNotExistException {
+    if (!orderMap.containsKey(deviceId))
+      throw new LayoutNotExistException(String.format("layout for %s not exists", deviceId));
+    return chunkMap.get(deviceId);
+  }
 }
