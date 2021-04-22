@@ -35,7 +35,6 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-
 import org.apache.thrift.TException;
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
@@ -141,7 +140,6 @@ public class ClusterMain {
 
   private static void startServerCheck() throws StartupException {
     ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
-    logger.info("seed urls in start Server Check 1:" + config.getSeedNodeUrls());
     // check the initial replicateNum and refuse to start when the replicateNum <= 0
     if (config.getReplicationNum() <= 0) {
       String message =
@@ -149,7 +147,6 @@ public class ClusterMain {
               "ReplicateNum should be greater than 0 instead of %d.", config.getReplicationNum());
       throw new StartupException(metaServer.getMember().getName(), message);
     }
-    logger.info("seed urls in start Server Check 2:" + config.getSeedNodeUrls());
     // check the initial cluster size and refuse to start when the size < quorum
     int quorum = config.getReplicationNum() / 2 + 1;
     if (config.getSeedNodeUrls().size() < quorum) {
