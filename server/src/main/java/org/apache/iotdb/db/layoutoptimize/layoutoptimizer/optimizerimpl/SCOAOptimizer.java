@@ -48,7 +48,8 @@ public class SCOAOptimizer extends LayoutOptimizer {
         swapMeasurementPos(left, right);
       }
     }
-    logger.info("optimization finish, origin cost is {} ms, optimized cost is {} ms", oriCost, curCost);
+    logger.info(
+        "optimization finish, origin cost is {} ms, optimized cost is {} ms", oriCost, curCost);
     return new Pair<>(measurementOrder, averageChunkSize);
   }
 
