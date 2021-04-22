@@ -50,65 +50,75 @@ public class NoCompactionTsFileManagement extends TsFileManagement {
   @Deprecated
   @Override
   public List<TsFileResource> getTsFileList(boolean sequence) {
-    List<TsFileResource> result = new ArrayList<>();
-    if (sequence) {
-      synchronized (sequenceFileTreeSetMap) {
+    readLock();
+    try {
+      List<TsFileResource> result = new ArrayList<>();
+      if (sequence) {
         for (TreeSet<TsFileResource> tsFileResourceTreeSet : sequenceFileTreeSetMap.values()) {
           result.addAll(tsFileResourceTreeSet);
         }
-      }
-    } else {
-      synchronized (unSequenceFileListMap) {
+      } else {
         for (List<TsFileResource> tsFileResourceList : unSequenceFileListMap.values()) {
           result.addAll(tsFileResourceList);
         }
       }
+      return result;
+    } finally {
+      readUnLock();
     }
-    return result;
   }
 
   @Override
   public List<TsFileResource> getTsFileListByTimePartition(boolean sequence, long timePartition) {
-    if (sequence) {
-      synchronized (sequenceFileTreeSetMap) {
-        return new ArrayList<>(sequenceFileTreeSetMap.getOrDefault(timePartition, new TreeSet<>()));
-      }
-    } else {
-      synchronized (unSequenceFileListMap) {
+    readLock();
+    try {
+      if (sequence) {
+        return new ArrayList<>(
+            sequenceFileTreeSetMap.getOrDefault(timePartition, newSequenceTsFileResources(0L)));
+      } else {
         return new ArrayList<>(
             unSequenceFileListMap.getOrDefault(timePartition, Collections.emptyList()));
       }
+    } finally {
+      readUnLock();
     }
   }
 
   @Override
   public Iterator<TsFileResource> getIterator(boolean sequence) {
-    return getTsFileList(sequence).iterator();
+    readLock();
+    try {
+      return getTsFileList(sequence).iterator();
+    } finally {
+      readUnLock();
+    }
   }
 
   @Override
   public void remove(TsFileResource tsFileResource, boolean sequence) {
-    if (sequence) {
-      synchronized (sequenceFileTreeSetMap) {
+    writeLock();
+    try {
+      if (sequence) {
         TreeSet<TsFileResource> sequenceFileTreeSet =
             sequenceFileTreeSetMap.get(tsFileResource.getTimePartition());
         sequenceFileTreeSet.remove(tsFileResource);
-      }
-    } else {
-      synchronized (unSequenceFileListMap) {
+      } else {
         List<TsFileResource> unSequenceFileList =
             unSequenceFileListMap.get(tsFileResource.getTimePartition());
         unSequenceFileList.remove(tsFileResource);
       }
+    } finally {
+      writeUnlock();
     }
   }
 
   @Override
   public void removeAll(List<TsFileResource> tsFileResourceList, boolean sequence) {
-    if (tsFileResourceList.size() > 0) {
-      tsFileResourceList.sort((o1, o2) -> (int) (o1.getTimePartition() - o2.getTimePartition()));
-      if (sequence) {
-        synchronized (sequenceFileTreeSetMap) {
+    writeLock();
+    try {
+      if (tsFileResourceList.size() > 0) {
+        tsFileResourceList.sort((o1, o2) -> (int) (o1.getTimePartition() - o2.getTimePartition()));
+        if (sequence) {
           long currTimePartition = tsFileResourceList.get(0).getTimePartition();
           int startIndex = 0;
           for (int i = 1; i < tsFileResourceList.size(); i++) {
@@ -124,9 +134,7 @@ public class NoCompactionTsFileManagement extends TsFileManagement {
           sequenceFileTreeSetMap
               .get(currTimePartition)
               .removeAll(tsFileResourceList.subList(startIndex, tsFileResourceList.size()));
-        }
-      } else {
-        synchronized (unSequenceFileListMap) {
+        } else {
           long currTimePartition = tsFileResourceList.get(0).getTimePartition();
           int startIndex = 0;
           for (int i = 1; i < tsFileResourceList.size(); i++) {
@@ -144,24 +152,27 @@ public class NoCompactionTsFileManagement extends TsFileManagement {
               .removeAll(tsFileResourceList.subList(startIndex, tsFileResourceList.size()));
         }
       }
+    } finally {
+      writeUnlock();
     }
   }
 
   @Override
   public void add(TsFileResource tsFileResource, boolean sequence) {
-    long timePartitionId = tsFileResource.getTimePartition();
-    if (sequence) {
-      synchronized (sequenceFileTreeSetMap) {
+    writeLock();
+    try {
+      long timePartitionId = tsFileResource.getTimePartition();
+      if (sequence) {
         sequenceFileTreeSetMap
             .computeIfAbsent(timePartitionId, this::newSequenceTsFileResources)
             .add(tsFileResource);
-      }
-    } else {
-      synchronized (unSequenceFileListMap) {
+      } else {
         unSequenceFileListMap
             .computeIfAbsent(timePartitionId, this::newUnSequenceTsFileResources)
             .add(tsFileResource);
       }
+    } finally {
+      writeUnlock();
     }
   }
 
@@ -172,73 +183,86 @@ public class NoCompactionTsFileManagement extends TsFileManagement {
 
   @Override
   public void addAll(List<TsFileResource> tsFileResourceList, boolean sequence) {
-    for (TsFileResource tsFileResource : tsFileResourceList) {
-      add(tsFileResource, sequence);
+    writeLock();
+    try {
+      for (TsFileResource tsFileResource : tsFileResourceList) {
+        add(tsFileResource, sequence);
+      }
+    } finally {
+      writeUnlock();
     }
   }
 
   @Override
   public boolean contains(TsFileResource tsFileResource, boolean sequence) {
-    if (sequence) {
-      synchronized (sequenceFileTreeSetMap) {
+    readLock();
+    try {
+      if (sequence) {
         return sequenceFileTreeSetMap
             .getOrDefault(tsFileResource.getTimePartition(), newSequenceTsFileResources(0L))
             .contains(tsFileResource);
-      }
-    } else {
-      synchronized (unSequenceFileListMap) {
+      } else {
         return unSequenceFileListMap
             .getOrDefault(tsFileResource.getTimePartition(), new ArrayList<>())
             .contains(tsFileResource);
       }
+    } finally {
+      readUnLock();
     }
   }
 
   @Override
   public void clear() {
-    sequenceFileTreeSetMap.clear();
-    unSequenceFileListMap.clear();
+    writeLock();
+    try {
+      sequenceFileTreeSetMap.clear();
+      unSequenceFileListMap.clear();
+    } finally {
+      writeUnlock();
+    }
   }
 
   @Override
   public boolean isEmpty(boolean sequence) {
-    if (sequence) {
-      synchronized (sequenceFileTreeSetMap) {
+    readLock();
+    try {
+      if (sequence) {
         for (Set<TsFileResource> sequenceFileTreeSet : sequenceFileTreeSetMap.values()) {
           if (!sequenceFileTreeSet.isEmpty()) {
             return false;
           }
         }
-      }
-    } else {
-      synchronized (unSequenceFileListMap) {
+      } else {
         for (List<TsFileResource> unSequenceFileList : unSequenceFileListMap.values()) {
           if (!unSequenceFileList.isEmpty()) {
             return false;
           }
         }
       }
+      return true;
+    } finally {
+      readUnLock();
     }
-    return true;
   }
 
   @Override
   public int size(boolean sequence) {
-    int result = 0;
-    if (sequence) {
-      synchronized (sequenceFileTreeSetMap) {
+    readLock();
+    try {
+      int result = 0;
+      if (sequence) {
         for (Set<TsFileResource> sequenceFileTreeSet : sequenceFileTreeSetMap.values()) {
           result += sequenceFileTreeSet.size();
         }
-      }
-    } else {
-      synchronized (unSequenceFileListMap) {
+      } else {
         for (List<TsFileResource> unSequenceFileList : unSequenceFileListMap.values()) {
           result += unSequenceFileList.size();
         }
       }
+      return result;
+    } finally {
+      readUnLock();
     }
-    return result;
   }
 
   @Override
