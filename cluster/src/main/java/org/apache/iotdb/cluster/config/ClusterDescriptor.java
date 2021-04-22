@@ -96,6 +96,7 @@ public class ClusterDescriptor {
       config.setInternalIp(hostnameToIP(config.getInternalIp()));
     }
     List<String> newSeedUrls = new ArrayList<>();
+    logger.info("seed urls:" + config.getSeedNodeUrls());
     for (String seedUrl : config.getSeedNodeUrls()) {
       String[] splits = seedUrl.split(":");
       if (splits.length != 2) {
@@ -111,6 +112,7 @@ public class ClusterDescriptor {
       }
     }
     config.setSeedNodeUrls(newSeedUrls);
+    logger.info("after replace, seed urls:" + config.getSeedNodeUrls());
     logger.debug(
         "after replace, the rpcIP={}, internalIP={}, seedUrls={}",
         IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),

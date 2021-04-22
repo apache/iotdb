@@ -141,6 +141,7 @@ public class ClusterMain {
 
   private static void startServerCheck() throws StartupException {
     ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
+    logger.info("seed urls in start Server Check 1:" + config.getSeedNodeUrls());
     // check the initial replicateNum and refuse to start when the replicateNum <= 0
     if (config.getReplicationNum() <= 0) {
       String message =
@@ -148,6 +149,7 @@ public class ClusterMain {
               "ReplicateNum should be greater than 0 instead of %d.", config.getReplicationNum());
       throw new StartupException(metaServer.getMember().getName(), message);
     }
+    logger.info("seed urls in start Server Check 2:" + config.getSeedNodeUrls());
     // check the initial cluster size and refuse to start when the size < quorum
     int quorum = config.getReplicationNum() / 2 + 1;
     if (config.getSeedNodeUrls().size() < quorum) {
@@ -157,6 +159,7 @@ public class ClusterMain {
               config.getSeedNodeUrls().size(), quorum);
       throw new StartupException(metaServer.getMember().getName(), message);
     }
+    logger.info("seed urls in start Server Check 3:" + config.getSeedNodeUrls());
     // assert not duplicated nodes
     Set<Node> seedNodes = new HashSet<>();
     for (String url : config.getSeedNodeUrls()) {
@@ -170,7 +173,7 @@ public class ClusterMain {
       seedNodes.add(node);
     }
 
-    // assert this node is in all nodes when restart
+    // assert this node is in all nodes when restart 172.19.0.2:9003, 172.19.0.3:9003,
     if (!metaServer.getMember().getAllNodes().isEmpty()) {
       if (!metaServer.getMember().getAllNodes().contains(metaServer.getMember().getThisNode())) {
         String message =

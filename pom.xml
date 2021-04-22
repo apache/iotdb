@@ -941,13 +941,24 @@
                     </execution>
                 </executions>
             </plugin>
-            <plugin>
-                <groupId>com.diffplug.spotless</groupId>
-                <artifactId>spotless-maven-plugin</artifactId>
-            </plugin>
         </plugins>
     </build>
     <profiles>
+        <!-- spotless is too slow, so we put it into a profile to skip it if needed -->
+        <profile>
+            <id>spotless</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.diffplug.spotless</groupId>
+                        <artifactId>spotless-maven-plugin</artifactId>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
         <!--
           A set of profiles defining the different properties needed to download and run thrift
           They are automatically activated depending on the OS you are using.

@@ -21,20 +21,30 @@ package org.apache.iotdb.db.sql;
 import org.apache.iotdb.jdbc.Config;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.DockerComposeContainer;
 import org.testcontainers.containers.NoProjectNameDockerComposeContainer;
+import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.containers.wait.strategy.Wait;
 
 import java.io.File;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
 public class ClusterIT {
+  private static Logger logger = LoggerFactory.getLogger(ClusterIT.class);
+  private static Logger node1Logger = LoggerFactory.getLogger("iotdb-server_1");
+  private static Logger node2Logger = LoggerFactory.getLogger("iotdb-server_2");
+  private static Logger node3Logger = LoggerFactory.getLogger("iotdb-server_3");
+
   private Statement statement;
   private Connection connection;
 
@@ -45,8 +55,11 @@ public class ClusterIT {
       new NoProjectNameDockerComposeContainer(
               "3nodes", new File("src/test/resources/3nodes/docker-compose.yaml"))
           .withExposedService("iotdb-server_1", 6667, Wait.forListeningPort())
+          .withLogConsumer("iotdb-server_1", new Slf4jLogConsumer(node1Logger))
           .withExposedService("iotdb-server_2", 6667, Wait.forListeningPort())
+          .withLogConsumer("iotdb-server_2", new Slf4jLogConsumer(node2Logger))
           .withExposedService("iotdb-server_3", 6667, Wait.forListeningPort())
+          .withLogConsumer("iotdb-server_3", new Slf4jLogConsumer(node3Logger))
           .withLocalCompose(true);
 
   int rpcPort = 6667;
@@ -69,15 +82,26 @@ public class ClusterIT {
   }
 
   @Test
-  public void testSimplePutAndGet() throws SQLException {
+  public void testSimplePutAndGet() {
 
     String[] timeSeriesArray = {"root.sg1.aa.bb", "root.sg1.aa.bb.cc", "root.sg1.aa"};
 
     for (String timeSeries : timeSeriesArray) {
-      statement.execute(
-          String.format(
-              "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
-              timeSeries));
+      try {
+        Assert.assertTrue(
+            statement.execute(
+                String.format(
+                    "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
+                    timeSeries)));
+        ResultSet resultSet = null;
+        resultSet = statement.executeQuery("show time series");
+        for (String timeseries : timeSeriesArray) {
+          Assert.assertTrue(resultSet.next());
+          Assert.assertEquals(timeseries, resultSet.getString(1));
+        }
+      } catch (SQLException throwables) {
+        Assert.fail(throwables.getMessage());
+      }
     }
   }
 }

@@ -168,6 +168,11 @@ public class ClusterConfig {
 
   private boolean openServerRpcPort = false;
 
+  /**
+   * create a clusterConfig class. The internalIP will be set according to the server's hostname. If
+   * there is something error for getting the ip of the hostname, then set the internalIp as
+   * localhost.
+   */
   public ClusterConfig() {
     try {
       internalIp = InetAddress.getLocalHost().getHostAddress();
