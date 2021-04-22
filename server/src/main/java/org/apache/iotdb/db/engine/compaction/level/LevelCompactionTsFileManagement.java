@@ -571,20 +571,20 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
 
   @Override
   protected void merge(long timePartition) {
-    isMerge =
+    isMergeExecutedInCurrentTask =
         merge(
             forkedSequenceTsFileResources, true, timePartition, seqLevelNum, seqFileNumInEachLevel);
     if (enableUnseqCompaction
         && unseqLevelNum <= 1
         && forkedUnSequenceTsFileResources.get(0).size() > 0) {
-      isMerge = true;
+      isMergeExecutedInCurrentTask = true;
       merge(
           isForceFullMerge,
           getTsFileListByTimePartition(true, timePartition),
           forkedUnSequenceTsFileResources.get(0),
           Long.MAX_VALUE);
     } else {
-      isMerge =
+      isMergeExecutedInCurrentTask =
           merge(
               forkedUnSequenceTsFileResources,
               false,

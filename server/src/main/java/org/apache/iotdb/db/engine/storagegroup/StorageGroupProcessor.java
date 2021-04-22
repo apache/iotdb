@@ -2998,7 +2998,7 @@ public class StorageGroupProcessor {
   @FunctionalInterface
   public interface CloseCompactionMergeCallBack {
 
-    void call(boolean isMerge, long timePartitionId);
+    void call(boolean isMergeExecutedInCurrentTask, long timePartitionId);
   }
 
   @FunctionalInterface

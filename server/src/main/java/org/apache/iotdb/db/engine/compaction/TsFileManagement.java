@@ -72,7 +72,7 @@ public abstract class TsFileManagement {
   private long mergeStartTime;
 
   /** whether execute merge chunk in this task */
-  protected boolean isMerge = false;
+  protected boolean isMergeExecutedInCurrentTask = false;
 
   protected boolean isForceFullMerge = IoTDBDescriptor.getInstance().getConfig().isForceFullMerge();
 
@@ -168,7 +168,7 @@ public abstract class TsFileManagement {
     @Override
     public void run() {
       merge(timePartitionId);
-      closeCompactionMergeCallBack.call(isMerge, timePartitionId);
+      closeCompactionMergeCallBack.call(isMergeExecutedInCurrentTask, timePartitionId);
     }
   }
 
@@ -392,7 +392,6 @@ public abstract class TsFileManagement {
       return;
     }
     removeUnseqFiles(unseqFiles);
-    unseqFiles.clear();
 
     for (int i = 0; i < seqFiles.size(); i++) {
       TsFileResource seqFile = seqFiles.get(i);
