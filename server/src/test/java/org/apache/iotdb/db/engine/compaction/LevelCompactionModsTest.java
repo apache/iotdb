@@ -73,7 +73,7 @@ public class LevelCompactionModsTest extends LevelCompactionTest {
     try (ModificationFile sourceModificationFile =
         new ModificationFile(sourceTsFileResource.getTsFilePath() + ModificationFile.FILE_SUFFIX)) {
       modification1 = new Deletion(new PartialPath(deviceIds[0], "sensor0"), 0, 0);
-      modification2 = new Deletion(new PartialPath(deviceIds[0], "sensor1"), 0, 0);
+      modification2 = new Deletion(new PartialPath(deviceIds[0], "sensor1"), Long.MAX_VALUE, 0);
       sourceModificationFile.write(modification1);
       sourceModificationFile.write(modification2);
       filterModifications.add(modification1);
@@ -87,6 +87,49 @@ public class LevelCompactionModsTest extends LevelCompactionTest {
       Collection<Modification> modifications = targetModificationFile.getModifications();
       assertEquals(1, modifications.size());
       assertEquals(modification2, modifications.stream().findFirst().get());
+    }
+  }
+
+  /**
+   * As we change the structure of mods file in 0.12, we have to check whether a modification record
+   * is valid by its offset in tsfile
+   */
+  @Test
+  public void testCompactionModsByOffset() throws IllegalPathException, IOException {
+    LevelCompactionTsFileManagement levelCompactionTsFileManagement =
+        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
+    TsFileResource sourceTsFileResource = seqResources.get(0);
+    TsFileResource targetTsFileResource = seqResources.get(1);
+    List<Modification> filterModifications = new ArrayList<>();
+    Modification modification1;
+    Modification modification2;
+    try (ModificationFile sourceModificationFile =
+        new ModificationFile(sourceTsFileResource.getTsFilePath() + ModificationFile.FILE_SUFFIX)) {
+      modification1 =
+          new Deletion(
+              new PartialPath(deviceIds[0], "sensor0"),
+              sourceTsFileResource.getTsFileSize() / 2,
+              0,
+              100);
+      modification2 =
+          new Deletion(
+              new PartialPath(deviceIds[0], "sensor1"),
+              sourceTsFileResource.getTsFileSize() / 2,
+              0,
+              100);
+      sourceModificationFile.write(modification1);
+      sourceModificationFile.write(modification2);
+      filterModifications.add(modification1);
+    }
+    List<TsFileResource> sourceTsFileResources = new ArrayList<>();
+    sourceTsFileResources.add(sourceTsFileResource);
+    levelCompactionTsFileManagement.renameLevelFilesMods(
+        filterModifications, sourceTsFileResources, targetTsFileResource);
+    try (ModificationFile targetModificationFile =
+        new ModificationFile(targetTsFileResource.getTsFilePath() + ModificationFile.FILE_SUFFIX)) {
+      Collection<Modification> modifications = targetModificationFile.getModifications();
+      assertEquals(1, modifications.size());
+      assertEquals(Long.MAX_VALUE, modifications.stream().findFirst().get().getFileOffset());
     }
   }
 }

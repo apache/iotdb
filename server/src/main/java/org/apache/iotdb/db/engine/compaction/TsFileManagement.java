@@ -346,6 +346,9 @@ public abstract class TsFileManagement {
       seqFile.removeModFile();
       if (mergingModification != null) {
         for (Modification modification : mergingModification.getModifications()) {
+          // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
+          // change after compaction
+          modification.setFileOffset(Long.MAX_VALUE);
           seqFile.getModFile().write(modification);
         }
         try {
