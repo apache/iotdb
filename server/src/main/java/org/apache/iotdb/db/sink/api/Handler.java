@@ -17,28 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.utils.windowing.runtime;
+package org.apache.iotdb.db.sink.api;
 
-import org.apache.iotdb.db.concurrent.WrappedRunnable;
-import org.apache.iotdb.db.utils.windowing.api.Evaluator;
-import org.apache.iotdb.db.utils.windowing.api.Window;
+public interface Handler<C extends Configuration, E extends Event> {
 
-public class WindowEvaluationTask extends WrappedRunnable {
+  @SuppressWarnings("squid:S112")
+  default void open(C configuration) throws Exception {}
 
-  private final Evaluator evaluator;
-  private final Window window;
+  @SuppressWarnings("squid:S112")
+  default void close() throws Exception {}
 
-  public WindowEvaluationTask(Evaluator evaluator, Window window) {
-    this.evaluator = evaluator;
-    this.window = window;
-  }
-
-  @Override
-  public void runMayThrow() throws Exception {
-    evaluator.evaluate(window);
-  }
-
-  public void onRejection() {
-    evaluator.onRejection(window);
-  }
+  @SuppressWarnings("squid:S112")
+  void onEvent(E event) throws Exception;
 }

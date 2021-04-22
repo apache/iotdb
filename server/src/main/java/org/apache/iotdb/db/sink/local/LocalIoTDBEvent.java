@@ -17,28 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.utils.windowing.runtime;
+package org.apache.iotdb.db.sink.local;
 
-import org.apache.iotdb.db.concurrent.WrappedRunnable;
-import org.apache.iotdb.db.utils.windowing.api.Evaluator;
-import org.apache.iotdb.db.utils.windowing.api.Window;
+import org.apache.iotdb.db.sink.api.Event;
 
-public class WindowEvaluationTask extends WrappedRunnable {
+public class LocalIoTDBEvent implements Event {
 
-  private final Evaluator evaluator;
-  private final Window window;
+  private final long timestamp;
+  private final Object[] values;
 
-  public WindowEvaluationTask(Evaluator evaluator, Window window) {
-    this.evaluator = evaluator;
-    this.window = window;
+  public LocalIoTDBEvent(long timestamp, Object... values) {
+    this.timestamp = timestamp;
+    this.values = values;
   }
 
-  @Override
-  public void runMayThrow() throws Exception {
-    evaluator.evaluate(window);
+  public long getTimestamp() {
+    return timestamp;
   }
 
-  public void onRejection() {
-    evaluator.onRejection(window);
+  public Object[] getValues() {
+    return values;
   }
 }

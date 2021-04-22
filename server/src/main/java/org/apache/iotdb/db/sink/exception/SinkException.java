@@ -17,28 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.utils.windowing.runtime;
+package org.apache.iotdb.db.sink.exception;
 
-import org.apache.iotdb.db.concurrent.WrappedRunnable;
-import org.apache.iotdb.db.utils.windowing.api.Evaluator;
-import org.apache.iotdb.db.utils.windowing.api.Window;
+public class SinkException extends Exception {
 
-public class WindowEvaluationTask extends WrappedRunnable {
-
-  private final Evaluator evaluator;
-  private final Window window;
-
-  public WindowEvaluationTask(Evaluator evaluator, Window window) {
-    this.evaluator = evaluator;
-    this.window = window;
+  public SinkException(String message) {
+    super(message);
   }
 
-  @Override
-  public void runMayThrow() throws Exception {
-    evaluator.evaluate(window);
-  }
-
-  public void onRejection() {
-    evaluator.onRejection(window);
+  public SinkException(String message, Throwable cause) {
+    super(message, cause);
   }
 }

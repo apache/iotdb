@@ -17,28 +17,46 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.utils.windowing.runtime;
+package org.apache.iotdb.db.sink.mqtt;
 
-import org.apache.iotdb.db.concurrent.WrappedRunnable;
-import org.apache.iotdb.db.utils.windowing.api.Evaluator;
-import org.apache.iotdb.db.utils.windowing.api.Window;
+import org.apache.iotdb.db.sink.api.Event;
 
-public class WindowEvaluationTask extends WrappedRunnable {
+import org.fusesource.mqtt.client.QoS;
 
-  private final Evaluator evaluator;
-  private final Window window;
+public class MQTTEvent implements Event {
 
-  public WindowEvaluationTask(Evaluator evaluator, Window window) {
-    this.evaluator = evaluator;
-    this.window = window;
+  private final String topic;
+  private final QoS qos;
+  private final boolean retain;
+
+  private final long timestamp;
+  private final Object[] values;
+
+  public MQTTEvent(String topic, QoS qos, boolean retain, long timestamp, Object... values) {
+    this.topic = topic;
+    this.qos = qos;
+    this.retain = retain;
+    this.timestamp = timestamp;
+    this.values = values;
   }
 
-  @Override
-  public void runMayThrow() throws Exception {
-    evaluator.evaluate(window);
+  public String getTopic() {
+    return topic;
   }
 
-  public void onRejection() {
-    evaluator.onRejection(window);
+  public QoS getQoS() {
+    return qos;
+  }
+
+  public boolean retain() {
+    return retain;
+  }
+
+  public long getTimestamp() {
+    return timestamp;
+  }
+
+  public Object[] getValues() {
+    return values;
   }
 }
