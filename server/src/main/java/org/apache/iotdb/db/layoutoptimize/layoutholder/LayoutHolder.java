@@ -3,13 +3,14 @@ package org.apache.iotdb.db.layoutoptimize.layoutholder;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.*;
 
 public class LayoutHolder {
   // device -> List<Measurement>
-  private Map<String, List<String>> layoutMap = new HashMap<>();
-  // device -> chunk size
+  private Map<String, List<String>> orderMap = new HashMap<>();
+  // device -> chunk size in memory
   private Map<String, Long> chunkMap = new HashMap<>();
   private static final LayoutHolder INSTANCE = new LayoutHolder();
 
@@ -22,16 +23,22 @@ public class LayoutHolder {
   public void updateMetadata() {
     MManager manager = MManager.getInstance();
     List<PartialPath> storageGroupPaths = manager.getAllStorageGroupPaths();
+    Set<String> deviceUpdated = new HashSet<>();
     for (PartialPath storageGroupPath : storageGroupPaths) {
       try {
         List<PartialPath> timeSeriesPaths = manager.getAllTimeseriesPath(storageGroupPath);
         for (PartialPath timeSeriesPath : timeSeriesPaths) {
-          if (!layoutMap.containsKey(timeSeriesPath.getDevice())) {
-            layoutMap.put(timeSeriesPath.getDevice(), new ArrayList<>());
+          if (!orderMap.containsKey(timeSeriesPath.getDevice())) {
+            orderMap.put(timeSeriesPath.getDevice(), new ArrayList<>());
           }
-          layoutMap
+          if (!orderMap
               .get(timeSeriesPath.getDevicePath().getFullPath())
-              .add(timeSeriesPath.getMeasurement());
+              .contains(timeSeriesPath.getMeasurement())) {
+            orderMap
+                .get(timeSeriesPath.getDevicePath().getFullPath())
+                .add(timeSeriesPath.getMeasurement());
+            deviceUpdated.add(timeSeriesPath.getDevicePath().getFullPath());
+          }
         }
       } catch (MetadataException e) {
         continue;
@@ -39,12 +46,21 @@ public class LayoutHolder {
     }
 
     // the measurement is in lexicographical order by default
-    for (Map.Entry<String, List<String>> entry : layoutMap.entrySet()) {
-      Collections.sort(entry.getValue());
+    for (String device : deviceUpdated) {
+      Collections.sort(orderMap.get(device));
     }
   }
 
-  public List<String> getLayoutForDevice(String deviceId) {
-    return layoutMap.getOrDefault(deviceId, null);
+  public Pair<List<String>, Long> getLayoutForDevice(String deviceId) {
+    // TODO: throw layout not exists exception when the value is not stored
+    List<String> measurementOrder = new ArrayList<>(orderMap.get(deviceId));
+    long chunkSize = chunkMap.getOrDefault(deviceId, 0L);
+    return new Pair<>(measurementOrder, chunkSize);
   }
+
+  public List<String> getMeasurementForDevice(String deviceId) {
+    return new ArrayList<>(orderMap.get(deviceId));
+  }
+
+  public static void main(String[] args) {}
 }
