@@ -131,13 +131,14 @@ public class RestorableTsFileIOWriterTest {
     writer
         .getIOWriter()
         .startFlushChunk(
-            new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.PLAIN),
+            new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.PLAIN).getMeasurementId(),
             CompressionType.SNAPPY,
             TSDataType.FLOAT,
             TSEncoding.PLAIN,
             new FloatStatistics(),
             100,
-            10);
+            10,
+            0);
     writer.getIOWriter().close();
 
     RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);

@@ -212,6 +212,7 @@ public class ClientServer extends TSServiceImpl {
       logger.warn("Illegal plan detected： {}", plan);
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
+
     return coordinator.executeNonQueryPlan(plan);
   }
 
