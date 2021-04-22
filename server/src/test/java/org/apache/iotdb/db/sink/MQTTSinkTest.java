@@ -46,6 +46,7 @@ import java.util.Map;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
+@SuppressWarnings("squid:S2925")
 public class MQTTSinkTest {
 
   @Before
@@ -76,6 +77,8 @@ public class MQTTSinkTest {
     }
 
     mqttHandler.close();
+
+    Thread.sleep(1000);
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
@@ -137,6 +140,8 @@ public class MQTTSinkTest {
     }
 
     mqttHandler.close();
+
+    Thread.sleep(1000);
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
