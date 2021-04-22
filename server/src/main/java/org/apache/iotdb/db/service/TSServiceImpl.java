@@ -39,8 +39,6 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
-import org.apache.iotdb.db.layoutoptimize.layoutoptimizer.LayoutOptimizer;
-import org.apache.iotdb.db.layoutoptimize.layoutoptimizer.optimizerimpl.SCOAOptimizer;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metrics.server.SqlArgument;
 import org.apache.iotdb.db.qp.Planner;
@@ -2147,8 +2145,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   @Override
   public void myTest() throws TException {
     try {
-      LayoutOptimizer optimizer = new SCOAOptimizer(null);
-      optimizer.optimize();
     } catch (Exception e) {
       e.printStackTrace();
     }

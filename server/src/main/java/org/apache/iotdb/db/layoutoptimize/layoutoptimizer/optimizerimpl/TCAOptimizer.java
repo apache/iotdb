@@ -1,7 +1,11 @@
 package org.apache.iotdb.db.layoutoptimize.layoutoptimizer.optimizerimpl;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.adapter.CompressionRatio;
 import org.apache.iotdb.db.exception.layoutoptimize.DataSizeInfoNotExistsException;
 import org.apache.iotdb.db.exception.layoutoptimize.SampleRateNoExistsException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.layoutoptimize.estimator.CostEstimator;
 import org.apache.iotdb.db.layoutoptimize.estimator.DataSizeEstimator;
@@ -45,7 +49,6 @@ public class TCAOptimizer extends LayoutOptimizer {
     int maxIteration = config.getSAMaxIteration();
     long maxTime = config.getSAMaxTime();
     long startTime = System.currentTimeMillis();
-    long blockInterval = chunkUpperBound - chunkLowerBound;
     Random random = new Random();
     double curCost = oriCost;
     double newCost = 0;
@@ -79,6 +82,21 @@ public class TCAOptimizer extends LayoutOptimizer {
         continue;
       }
     }
+    double compressionRatio = CompressionRatio.getInstance().getRatio();
+    chunkLowerBound = (long) (chunkLowerBound * compressionRatio);
+    chunkUpperBound = (long) (chunkUpperBound * compressionRatio);
+    // get the average memory space for each measurement
+    try {
+      IoTDBConfig ioTDBConfig = IoTDBDescriptor.getInstance().getConfig();
+      long memTableThreshold = ioTDBConfig.getMemtableSizeThreshold();
+      int measurementNum =
+          getMeasurementCountOfStorageGroup(MManager.getInstance().getStorageGroupPath(device));
+      long averageSizeForSingleChunkInMem = memTableThreshold / measurementNum;
+      // chunk upper bound should not be bigger than the average size of the each measurement
+      chunkUpperBound = Math.min(averageSizeForSingleChunkInMem, chunkUpperBound);
+    } catch (StorageGroupNotSetException e) {
+      e.printStackTrace();
+    }
   }
 
   private Pair<Long, Long> getChunkBound(QueryRecord queryRecord)
@@ -103,12 +121,11 @@ public class TCAOptimizer extends LayoutOptimizer {
     MManager manager = MManager.getInstance();
     long visitChunkSize =
         DataSizeEstimator.getInstance()
-            .getChunkSizeInMemory(
+            .getChunkSizeInDisk(
                 manager.getStorageGroupPath(device).getFullPath(),
                 (long) (averageSampleRate * span));
     long lowerBound = (long) (visitChunkSize * lowerBoundRatio);
     long upperBound = (long) (visitChunkSize * upperBoundRatio);
-    // TODO: get the min value of upper bound and memory limit val
     return new Pair<>(lowerBound, upperBound);
   }
 
@@ -143,6 +160,16 @@ public class TCAOptimizer extends LayoutOptimizer {
       measurementOrder.set(preSwapRight, tmp);
     } else {
       averageChunkSize = preChunkSize;
+    }
+  }
+
+  private int getMeasurementCountOfStorageGroup(PartialPath storageGroup) {
+    MManager manager = MManager.getInstance();
+    try {
+      List<PartialPath> partialPaths = manager.getAllTimeseriesPath(storageGroup);
+      return partialPaths.size();
+    } catch (MetadataException e) {
+      return -1;
     }
   }
 }
