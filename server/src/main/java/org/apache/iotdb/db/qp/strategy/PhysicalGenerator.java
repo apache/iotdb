@@ -242,13 +242,13 @@ public class PhysicalGenerator {
             measurementsNum++;
           }
         }
-        if (insert.getValueList().length % insert.getMeasurementList().length != 0) {
+        if (insert.getValueList().length % measurementsNum != 0) {
           throw new SQLParserException(
               String.format(
                   "the measurementList's size %d is not consistent with the valueList's size %d",
                   measurementsNum, insert.getValueList().length));
         }
-        if (insert.getMeasurementList().length == insert.getValueList().length) {
+        if (measurementsNum == insert.getValueList().length) {
           return new InsertRowPlan(
               paths.get(0),
               insert.getTime()[0],
@@ -263,9 +263,7 @@ public class PhysicalGenerator {
                   insert.getTime()[i],
                   insert.getMeasurementList(),
                   Arrays.copyOfRange(
-                      insert.getValueList(),
-                      i * insert.getMeasurementList().length,
-                      (i + 1) * insert.getMeasurementList().length)),
+                      insert.getValueList(), i * measurementsNum, (i + 1) * measurementsNum)),
               i);
         }
         return insertRowsPlan;
