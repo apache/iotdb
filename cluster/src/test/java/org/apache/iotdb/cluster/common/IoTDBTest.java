@@ -43,7 +43,7 @@ import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import org.junit.After;
 import org.junit.Before;
@@ -133,7 +133,7 @@ public abstract class IoTDBTest {
 
   private void createTimeSeries(int sgNum, int seriesNum) {
     try {
-      MeasurementSchema schema = TestUtils.getTestMeasurementSchema(seriesNum);
+      IMeasurementSchema schema = TestUtils.getTestMeasurementSchema(seriesNum);
       planExecutor.processNonQuery(
           new CreateTimeSeriesPlan(
               new PartialPath(
@@ -166,7 +166,7 @@ public abstract class IoTDBTest {
     for (String pathStr : pathStrs) {
       paths.add(new PartialPath(pathStr));
     }
-    queryPlan.setDeduplicatedPaths(paths);
+    queryPlan.setDeduplicatedPathsAndUpdate(paths);
     queryPlan.setPaths(paths);
     List<TSDataType> dataTypes = new ArrayList<>();
     for (PartialPath path : paths) {

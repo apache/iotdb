@@ -19,8 +19,6 @@
 
 -->
 
-# Application Program Interface (API)
-
 ## JDBC
 
 ### Dependencies
@@ -28,17 +26,21 @@
 * JDK >= 1.8
 * Maven >= 3.6
 
+
+
 ### Installation
 
 In root directory:
 
-```
+```shell
 mvn clean install -pl jdbc -am -Dmaven.test.skip=true
 ```
 
+
+
 ### Use IoTDB JDBC with Maven
 
-```
+```xml
 <dependencies>
     <dependency>
       <groupId>org.apache.iotdb</groupId>
@@ -47,6 +49,7 @@ mvn clean install -pl jdbc -am -Dmaven.test.skip=true
     </dependency>
 </dependencies>
 ```
+
 
 
 ### Coding Examples
@@ -201,3 +204,4 @@ public class JDBCExample {
   }
 }
 ```
+

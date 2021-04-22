@@ -24,6 +24,7 @@ import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
@@ -160,6 +161,9 @@ public class MLogParser {
           case CREATE_TIMESERIES:
             mLogTxtWriter.createTimeseries(
                 (CreateTimeSeriesPlan) plan, ((CreateTimeSeriesPlan) plan).getTagOffset());
+            break;
+          case CREATE_ALIGNED_TIMESERIES:
+            mLogTxtWriter.createAlignedTimeseries((CreateAlignedTimeSeriesPlan) plan);
             break;
           case DELETE_TIMESERIES:
             for (PartialPath partialPath : plan.getPaths()) {

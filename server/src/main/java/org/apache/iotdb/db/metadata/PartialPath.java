@@ -40,11 +40,11 @@ public class PartialPath extends Path implements Comparable<Path> {
 
   private static final Logger logger = LoggerFactory.getLogger(PartialPath.class);
 
-  private String[] nodes;
+  protected String[] nodes;
   // alias of measurement, null pointer cannot be serialized in thrift so empty string is instead
-  private String measurementAlias = "";
+  protected String measurementAlias = "";
   // alias of time series used in SELECT AS
-  private String tsAlias = "";
+  protected String tsAlias = "";
 
   /**
    * Construct the PartialPath using a String, will split the given String into String[] E.g., path

@@ -68,6 +68,13 @@ Total line number = 2
 It costs 0.170s
 ```
 
+As for **aligned** timeseries，we could insert values into measurements by **explicit** declaration with parentheses. Empty values could be represented by `NULL` or `null`:
+
+```
+IoTDB > insert into root.sg.d1(timestamp,(s1,s2),(s3,s4)) values (1509466680000,(1.0,2),(null,4))
+IoTDB > insert into root.sg.d1(timestamp,(s1,s2)) values (1509466680001,(NULL,1))
+```
+
 ## SELECT
 
 ### Time Slice Query
@@ -466,7 +473,7 @@ This section mainly introduces the related examples of down-frequency aggregatio
 using the [GROUP BY clause](../Appendix/SQL-Reference.md), 
 which is used to partition the result set according to the user's given partitioning conditions and aggregate the partitioned result set. 
 IoTDB supports partitioning result sets according to time interval and customized sliding step which should not be smaller than the time interval and defaults to equal the time interval if not set. And by default results are sorted by time in ascending order. 
-You can also use the [Java JDBC](../API/Programming-Native-API.md) standard interface to execute related queries.
+You can also use the [Java JDBC](../API/Programming-JDBC.md) standard interface to execute related queries.
 
 The GROUP BY statement provides users with three types of specified parameters:
 

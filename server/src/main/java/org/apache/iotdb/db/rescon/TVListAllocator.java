@@ -29,6 +29,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayDeque;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 
@@ -51,14 +52,24 @@ public class TVListAllocator implements TVListAllocatorMBean, IService {
     return list != null ? list : TVList.newList(dataType);
   }
 
-  public synchronized void release(TSDataType dataType, TVList list) {
-    list.clear();
-    tvListCache.get(dataType).add(list);
+  public synchronized TVList allocate(List<TSDataType> dataTypes) {
+    return TVList.newVectorList(dataTypes);
   }
 
+  /** For non-vector types. */
+  public synchronized void release(TSDataType dataType, TVList list) {
+    list.clear();
+    if (dataType != TSDataType.VECTOR) {
+      tvListCache.get(list.getDataType()).add(list);
+    }
+  }
+
+  /** For VECTOR type only. */
   public synchronized void release(TVList list) {
     list.clear();
-    tvListCache.get(list.getDataType()).add(list);
+    if (list.getDataType() != TSDataType.VECTOR) {
+      tvListCache.get(list.getDataType()).add(list);
+    }
   }
 
   @Override

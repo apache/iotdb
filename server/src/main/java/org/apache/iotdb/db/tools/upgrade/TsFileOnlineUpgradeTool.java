@@ -35,6 +35,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.v2.read.TsFileSequenceReaderForV2;
 import org.apache.iotdb.tsfile.v2.read.reader.page.PageReaderV2;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
@@ -79,11 +80,7 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
     }
   }
 
-  /**
-   * upgrade file resource
-   *
-   * @throws IOException, WriteProcessException
-   */
+  /** upgrade file resource */
   @SuppressWarnings({"squid:S3776", "deprecation"}) // Suppress high Cognitive Complexity warning
   private void upgradeFile(List<TsFileResource> upgradedResources)
       throws IOException, WriteProcessException {
@@ -101,13 +98,13 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
     List<List<ByteBuffer>> pageDataInChunkGroup = new ArrayList<>();
     List<List<Boolean>> needToDecodeInfoInChunkGroup = new ArrayList<>();
     byte marker;
-    List<MeasurementSchema> measurementSchemaList = new ArrayList<>();
+    List<IMeasurementSchema> measurementSchemaList = new ArrayList<>();
     try {
       while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
           case MetaMarker.CHUNK_HEADER:
             ChunkHeader header = ((TsFileSequenceReaderForV2) reader).readChunkHeader();
-            MeasurementSchema measurementSchema =
+            IMeasurementSchema measurementSchema =
                 new MeasurementSchema(
                     header.getMeasurementID(),
                     header.getDataType(),
@@ -239,9 +236,9 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
 
   @Override
   protected void decodeAndWritePageInToFiles(
-      MeasurementSchema schema,
+      IMeasurementSchema schema,
       ByteBuffer pageData,
-      Map<Long, Map<MeasurementSchema, ChunkWriterImpl>> chunkWritersInChunkGroup)
+      Map<Long, Map<IMeasurementSchema, ChunkWriterImpl>> chunkWritersInChunkGroup)
       throws IOException {
     valueDecoder.reset();
     PageReaderV2 pageReader =

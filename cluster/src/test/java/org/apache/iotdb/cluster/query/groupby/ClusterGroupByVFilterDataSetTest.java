@@ -63,7 +63,7 @@ public class ClusterGroupByVFilterDataSetTest extends BaseQueryTest {
         aggregations.add(SQLConstant.COUNT);
       }
       groupByPlan.setPaths(pathList);
-      groupByPlan.setDeduplicatedPaths(pathList);
+      groupByPlan.setDeduplicatedPathsAndUpdate(pathList);
       groupByPlan.setDataTypes(dataTypes);
       groupByPlan.setDeduplicatedDataTypes(dataTypes);
       groupByPlan.setAggregations(aggregations);

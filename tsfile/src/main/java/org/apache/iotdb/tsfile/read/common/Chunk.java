@@ -76,7 +76,8 @@ public class Chunk implements Accountable {
     // if the merged chunk has only one page, after merge with current chunk ,it will have more than
     // page
     // so we should add page statistics for it
-    if (chunk.chunkHeader.getChunkType() == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
+    if (((byte) (chunk.chunkHeader.getChunkType() & 0x3F))
+        == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
       // read the uncompressedSize and compressedSize of this page
       ReadWriteForEncodingUtils.readUnsignedVarInt(chunk.chunkData);
       ReadWriteForEncodingUtils.readUnsignedVarInt(chunk.chunkData);
@@ -96,7 +97,7 @@ public class Chunk implements Accountable {
     // if the current chunk has only one page, after merge with the merged chunk ,it will have more
     // than page
     // so we should add page statistics for it
-    if (chunkHeader.getChunkType() == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
+    if (((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
       // change the chunk type
       chunkHeader.setChunkType(MetaMarker.CHUNK_HEADER);
       // read the uncompressedSize and compressedSize of this page

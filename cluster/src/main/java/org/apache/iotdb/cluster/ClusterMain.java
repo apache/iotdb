@@ -103,7 +103,7 @@ public class ClusterMain {
       try {
         metaServer = new MetaClusterServer();
         startServerCheck();
-        // preStartCustomize();
+        preStartCustomize();
         metaServer.start();
         metaServer.buildCluster();
       } catch (TTransportException
@@ -117,7 +117,7 @@ public class ClusterMain {
     } else if (MODE_ADD.equals(mode)) {
       try {
         metaServer = new MetaClusterServer();
-        // preStartCustomize();
+        preStartCustomize();
         metaServer.start();
         metaServer.joinCluster();
       } catch (TTransportException
