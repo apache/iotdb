@@ -1,8 +1,8 @@
 package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.metadisk.cache.CacheEntry;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
+import org.apache.iotdb.db.metadata.metadisk.cache.CacheEntry;
 import org.apache.iotdb.db.metadata.metadisk.metafile.PersistenceInfo;
 
 import java.io.IOException;
@@ -20,8 +20,8 @@ public class PersistenceMNode implements PersistenceInfo, MNode {
     this.position = position;
   }
 
-  public PersistenceMNode(PersistenceInfo persistenceInfo){
-    position=persistenceInfo.getPosition();
+  public PersistenceMNode(PersistenceInfo persistenceInfo) {
+    position = persistenceInfo.getPosition();
   }
 
   @Override
@@ -61,7 +61,7 @@ public class PersistenceMNode implements PersistenceInfo, MNode {
 
   @Override
   public void setPersistenceInfo(PersistenceInfo persistenceInfo) {
-    position=persistenceInfo.getPosition();
+    position = persistenceInfo.getPosition();
   }
 
   @Override
@@ -75,9 +75,7 @@ public class PersistenceMNode implements PersistenceInfo, MNode {
   }
 
   @Override
-  public void addChild(String name, MNode child) {
-
-  }
+  public void addChild(String name, MNode child) {}
 
   @Override
   public MNode addChild(MNode child) {
@@ -85,14 +83,10 @@ public class PersistenceMNode implements PersistenceInfo, MNode {
   }
 
   @Override
-  public void deleteChild(String name) {
-
-  }
+  public void deleteChild(String name) {}
 
   @Override
-  public void deleteAliasChild(String alias) {
-
-  }
+  public void deleteAliasChild(String alias) {}
 
   @Override
   public MNode getChild(String name) {
@@ -125,9 +119,7 @@ public class PersistenceMNode implements PersistenceInfo, MNode {
   }
 
   @Override
-  public void setParent(MNode parent) {
-
-  }
+  public void setParent(MNode parent) {}
 
   @Override
   public Map<String, MNode> getChildren() {
@@ -140,14 +132,10 @@ public class PersistenceMNode implements PersistenceInfo, MNode {
   }
 
   @Override
-  public void setChildren(Map<String, MNode> children) {
-
-  }
+  public void setChildren(Map<String, MNode> children) {}
 
   @Override
-  public void setAliasChildren(Map<String, MNode> aliasChildren) {
-
-  }
+  public void setAliasChildren(Map<String, MNode> aliasChildren) {}
 
   @Override
   public String getName() {
@@ -155,19 +143,13 @@ public class PersistenceMNode implements PersistenceInfo, MNode {
   }
 
   @Override
-  public void setName(String name) {
-
-  }
+  public void setName(String name) {}
 
   @Override
-  public void serializeTo(MLogWriter logWriter) throws IOException {
-
-  }
+  public void serializeTo(MLogWriter logWriter) throws IOException {}
 
   @Override
-  public void replaceChild(String measurement, MNode newChildNode) {
-
-  }
+  public void replaceChild(String measurement, MNode newChildNode) {}
 
   @Override
   public CacheEntry getCacheEntry() {
@@ -175,9 +157,7 @@ public class PersistenceMNode implements PersistenceInfo, MNode {
   }
 
   @Override
-  public void setCacheEntry(CacheEntry cacheEntry) {
-
-  }
+  public void setCacheEntry(CacheEntry cacheEntry) {}
 
   @Override
   public boolean isCached() {
@@ -185,9 +165,7 @@ public class PersistenceMNode implements PersistenceInfo, MNode {
   }
 
   @Override
-  public void evictChild(String name) {
-
-  }
+  public void evictChild(String name) {}
 
   @Override
   public MNode clone() {

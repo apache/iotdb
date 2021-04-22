@@ -57,8 +57,8 @@ public class StorageGroupMNode extends InternalMNode {
     logWriter.serializeStorageGroupMNode(this);
   }
 
-  public MNode clone(){
-    StorageGroupMNode result=new StorageGroupMNode(parent,name,dataTTL);
+  public MNode clone() {
+    StorageGroupMNode result = new StorageGroupMNode(parent, name, dataTTL);
     copyData(result);
     return result;
   }

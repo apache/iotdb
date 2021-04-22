@@ -146,11 +146,11 @@ public class MeasurementMNode extends InternalMNode {
     logWriter.serializeMeasurementMNode(this);
   }
 
-  public MNode clone(){
-    MeasurementMNode result=new MeasurementMNode(parent,name,schema,alias);
+  public MNode clone() {
+    MeasurementMNode result = new MeasurementMNode(parent, name, schema, alias);
     copyData(result);
     result.setOffset(offset);
-    result.cachedLastValuePair=cachedLastValuePair;
+    result.cachedLastValuePair = cachedLastValuePair;
     result.setTriggerExecutor(triggerExecutor);
     return result;
   }

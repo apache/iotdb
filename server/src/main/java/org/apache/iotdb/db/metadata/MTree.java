@@ -26,8 +26,8 @@ import org.apache.iotdb.db.exception.metadata.*;
 import org.apache.iotdb.db.metadata.MManager.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
-import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
+import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -1419,7 +1419,7 @@ public class MTree implements MTreeInterface {
 
   @Override
   public int getMeasurementMNodeCount(PartialPath path) throws MetadataException {
-    MNode mNode=getNodeByPath(path);
+    MNode mNode = getNodeByPath(path);
     return mNode.getMeasurementMNodeCount();
   }
 

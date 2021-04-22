@@ -10,10 +10,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class MockMetaFile implements MetaFileAccess {
 
-  private final Map<Long, MNode> positionFile=new ConcurrentHashMap<>();
-  private final long rootPosition=0;
-  private long freePosition=1;
-
+  private final Map<Long, MNode> positionFile = new ConcurrentHashMap<>();
+  private final long rootPosition = 0;
+  private long freePosition = 1;
 
   public MockMetaFile(String metaFilePath) {}
 
@@ -24,24 +23,24 @@ public class MockMetaFile implements MetaFileAccess {
 
   @Override
   public void write(MNode mNode) throws IOException {
-    if(!mNode.isPersisted()){
-      if(mNode.getFullPath().equals("root")){
+    if (!mNode.isPersisted()) {
+      if (mNode.getFullPath().equals("root")) {
         mNode.setPersistenceInfo(PersistenceInfo.createPersistenceInfo(rootPosition));
-      }else {
+      } else {
         mNode.setPersistenceInfo(PersistenceInfo.createPersistenceInfo(freePosition++));
       }
     }
-    MNode persistedMNode=mNode.clone();
-    for(String childName:persistedMNode.getChildren().keySet()){
+    MNode persistedMNode = mNode.clone();
+    for (String childName : persistedMNode.getChildren().keySet()) {
       // require child be written before parent
       persistedMNode.evictChild(childName);
     }
-    positionFile.put(persistedMNode.getPersistenceInfo().getPosition(),persistedMNode);
+    positionFile.put(persistedMNode.getPersistenceInfo().getPosition(), persistedMNode);
   }
 
   @Override
   public void write(Collection<MNode> mNodes) throws IOException {
-    for(MNode mNode:mNodes){
+    for (MNode mNode : mNodes) {
       write(mNode);
     }
   }
@@ -65,14 +64,14 @@ public class MockMetaFile implements MetaFileAccess {
     positionFile.remove(getMNodeByPath(path).getPersistenceInfo().getPosition());
   }
 
-  // todo require all node in the path be persist, which means when write child, the parent should also be written
-  private MNode getMNodeByPath(PartialPath path){
-    String[] nodes=path.getNodes();
-    MNode cur=positionFile.get(rootPosition);
-    for(int i=1;i<nodes.length;i++){
-      cur=positionFile.get(cur.getChild(nodes[i]).getPersistenceInfo().getPosition());
+  // todo require all node in the path be persist, which means when write child, the parent should
+  // also be written
+  private MNode getMNodeByPath(PartialPath path) {
+    String[] nodes = path.getNodes();
+    MNode cur = positionFile.get(rootPosition);
+    for (int i = 1; i < nodes.length; i++) {
+      cur = positionFile.get(cur.getChild(nodes[i]).getPersistenceInfo().getPosition());
     }
     return cur;
   }
-
 }

@@ -82,7 +82,8 @@ public class MetaFile implements MetaFileAccess {
         continue;
       }
       if (mNode.getName().equals("root")) {
-        mNode.setPersistenceInfo(PersistenceInfo.createPersistenceInfo(mTreeFile.getRootPosition()));
+        mNode.setPersistenceInfo(
+            PersistenceInfo.createPersistenceInfo(mTreeFile.getRootPosition()));
       } else {
         mNode.setPersistenceInfo(PersistenceInfo.createPersistenceInfo(mTreeFile.getFreePos()));
       }

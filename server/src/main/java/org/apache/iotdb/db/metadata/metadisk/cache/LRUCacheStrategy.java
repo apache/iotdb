@@ -24,12 +24,12 @@ public class LRUCacheStrategy implements CacheStrategy {
 
   @Override
   public void applyChange(MNode mNode) {
-    if (mNode==null) {
+    if (mNode == null) {
       return;
     }
     try {
       lock.lock();
-      if (mNode.getParent()!=null && !mNode.getParent().isCached()) {
+      if (mNode.getParent() != null && !mNode.getParent().isCached()) {
         return;
       }
       CacheEntry entry = mNode.getCacheEntry();
@@ -45,7 +45,7 @@ public class LRUCacheStrategy implements CacheStrategy {
 
   @Override
   public void setModified(MNode mNode, boolean modified) {
-    if (mNode==null || mNode.getCacheEntry() == null) {
+    if (mNode == null || mNode.getCacheEntry() == null) {
       return;
     }
     mNode.getCacheEntry().setModified(modified);
@@ -80,7 +80,7 @@ public class LRUCacheStrategy implements CacheStrategy {
 
   @Override
   public void remove(MNode mNode) {
-    if (mNode==null||!mNode.isCached()) {
+    if (mNode == null || !mNode.isCached()) {
       return;
     }
     try {
@@ -130,41 +130,43 @@ public class LRUCacheStrategy implements CacheStrategy {
 
       MNode mNode = last.value;
       MNode parent = mNode.getParent();
-      while (parent!=null&&parent.getCacheEntry().isModified) {
-        mNode=parent;
+      while (parent != null && parent.getCacheEntry().isModified) {
+        mNode = parent;
         parent = mNode.getParent();
       }
-      collectModifiedRecursively(mNode,modifiedMNodes);
+      collectModifiedRecursively(mNode, modifiedMNodes);
 
-      mNode=last.value;
-      evictRecursively(last.value);
-      modifiedMNodes.add(0,mNode);
+      CacheEntry entry = first;
+      while (entry != null) {
+        System.out.print(entry.value);
+        System.out.print(entry.getValue().getCacheEntry() == null);
+        System.out.print("->");
+        entry = entry.next;
+      }
+      System.out.print(" ");
+
+      mNode = last.value;
+      removeRecursively(last.value);
+      modifiedMNodes.add(0, mNode);
+      if (mNode.getName().equals("root")) {
+        System.out.print(size);
+      }
       return modifiedMNodes;
     } finally {
       lock.unlock();
     }
   }
 
-  private void evictRecursively(MNode mNode) {
-    CacheEntry entry = mNode.getCacheEntry();
-    if (entry == null) {
+  private void collectModifiedRecursively(MNode mNode, Collection<MNode> mNodeCollection) {
+    CacheEntry cacheEntry = mNode.getCacheEntry();
+    if (cacheEntry == null) {
       return;
     }
-    removeOne(entry);
-    mNode.setCacheEntry(null);
     for (MNode child : mNode.getChildren().values()) {
-      evictRecursively(child);
+      collectModifiedRecursively(child, mNodeCollection);
     }
-  }
-
-  private void collectModifiedRecursively(MNode mNode, Collection<MNode> mNodeCollection){
-    CacheEntry cacheEntry=mNode.getCacheEntry();
-    if(cacheEntry==null||!cacheEntry.isModified){
-      return;
+    if (cacheEntry.isModified) {
+      mNodeCollection.add(mNode);
     }
-    for(MNode child:mNode.getChildren().values()){
-      collectModifiedRecursively(child,mNodeCollection);
-    }
-    mNodeCollection.add(mNode);
   }
 }

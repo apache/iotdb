@@ -18,11 +18,11 @@ public class MTreeFile {
   private static final int HEADER_LENGTH = 64;
   private static final int NODE_LENGTH = 512 * 2;
 
-  private static final int INTERNAL_MNODE_TYPE=0;
-  private static final int ROOT_MNODE_TYPE=1;
-  private static final int STORAGE_GROUP_MNODE_TYPE=2;
-  private static final int MEASUREMENT_MNODE_TYPE=3;
-  private static final int EXTENSION_TYPE=4;
+  private static final int INTERNAL_MNODE_TYPE = 0;
+  private static final int ROOT_MNODE_TYPE = 1;
+  private static final int STORAGE_GROUP_MNODE_TYPE = 2;
+  private static final int MEASUREMENT_MNODE_TYPE = 3;
+  private static final int EXTENSION_TYPE = 4;
 
   private final SlottedFileAccess fileAccess;
 
@@ -108,11 +108,11 @@ public class MTreeFile {
 
   public MNode readRecursively(PersistenceInfo persistenceInfo) throws IOException {
     MNode mNode = read(persistenceInfo);
-    Map<String, MNode> children=mNode.getChildren();
+    Map<String, MNode> children = mNode.getChildren();
     MNode child;
-    for(Map.Entry<String,MNode> entry:children.entrySet()){
-      child=entry.getValue();
-      child=readRecursively(child.getPersistenceInfo());
+    for (Map.Entry<String, MNode> entry : children.entrySet()) {
+      child = entry.getValue();
+      child = readRecursively(child.getPersistenceInfo());
       entry.setValue(child);
       child.setParent(mNode);
     }
@@ -120,11 +120,11 @@ public class MTreeFile {
   }
 
   public MNode read(PersistenceInfo persistenceInfo) throws IOException {
-    long position=persistenceInfo.getPosition();
+    long position = persistenceInfo.getPosition();
     ByteBuffer dataBuffer = readBytesFromFile(position);
     int type = dataBuffer.get();
-    MNode mNode=null;
-    switch (type){
+    MNode mNode = null;
+    switch (type) {
       case INTERNAL_MNODE_TYPE: // normal InternalMNode
       case ROOT_MNODE_TYPE: // root
         mNode = new InternalMNode(null, null);
@@ -247,7 +247,7 @@ public class MTreeFile {
 
     MNode child;
     for (long position : children.keySet()) {
-      child=new PersistenceMNode(position);
+      child = new PersistenceMNode(position);
       mNode.addChild(children.get(position), child);
       if (aliasChildren.containsKey(position)) {
         mNode.addAlias(aliasChildren.get(position), child);
@@ -458,7 +458,7 @@ public class MTreeFile {
   }
 
   public void remove(PersistenceInfo persistenceInfo) throws IOException {
-    long position=persistenceInfo.getPosition();
+    long position = persistenceInfo.getPosition();
     ByteBuffer buffer = ByteBuffer.allocate(17);
     while (position != 0) {
       fileAccess.readBytes(position, buffer);

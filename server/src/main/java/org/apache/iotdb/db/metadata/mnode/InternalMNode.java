@@ -20,8 +20,8 @@ package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.metadisk.cache.CacheEntry;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
+import org.apache.iotdb.db.metadata.metadisk.cache.CacheEntry;
 import org.apache.iotdb.db.metadata.metadisk.metafile.PersistenceInfo;
 import org.apache.iotdb.db.rescon.CachedStringPool;
 
@@ -109,8 +109,8 @@ public class InternalMNode implements MNode {
     }
 
     child.setParent(this);
-    MNode oldChild=children.get(name);
-    if (oldChild==null||!oldChild.isLoaded()) {
+    MNode oldChild = children.get(name);
+    if (oldChild == null || !oldChild.isLoaded()) {
       children.put(name, child);
     }
     //    children.putIfAbsent(name, child);
@@ -142,8 +142,8 @@ public class InternalMNode implements MNode {
     }
 
     child.setParent(this);
-    MNode oldChild=getChild(child.getName());
-    if (oldChild==null||!oldChild.isLoaded()) {
+    MNode oldChild = getChild(child.getName());
+    if (oldChild == null || !oldChild.isLoaded()) {
       children.put(child.getName(), child);
     }
     //    children.putIfAbsent(child.getName(), child);
@@ -173,7 +173,7 @@ public class InternalMNode implements MNode {
     if (children != null) {
       child = children.get(name);
     }
-    if (child!=null) {
+    if (child != null) {
       return child;
     }
 
@@ -369,13 +369,13 @@ public class InternalMNode implements MNode {
 
   @Override
   public void setPersistenceInfo(PersistenceInfo persistenceInfo) {
-    if(persistenceInfo==null){
+    if (persistenceInfo == null) {
       return;
     }
-    if(persistenceMNode!=null){
+    if (persistenceMNode != null) {
       persistenceMNode.setPersistenceInfo(persistenceInfo);
-    }else {
-      persistenceMNode=new PersistenceMNode(persistenceInfo);
+    } else {
+      persistenceMNode = new PersistenceMNode(persistenceInfo);
     }
   }
 
@@ -403,7 +403,7 @@ public class InternalMNode implements MNode {
   public void evictChild(String name) {
     if (children != null && children.containsKey(name)) {
       MNode mNode = children.get(name);
-      if(!mNode.isLoaded()){
+      if (!mNode.isLoaded()) {
         return;
       }
       children.put(name, mNode.getEvictionHolder()); // child must be persisted first
@@ -418,36 +418,34 @@ public class InternalMNode implements MNode {
 
   @Override
   public MNode clone() {
-    InternalMNode result=new InternalMNode(this.parent,this.name);
+    InternalMNode result = new InternalMNode(this.parent, this.name);
     copyData(result);
     return result;
   }
 
-  protected void copyData(MNode mNode){
+  protected void copyData(MNode mNode) {
     mNode.setParent(parent);
     mNode.setCacheEntry(cacheEntry);
     mNode.setPersistenceInfo(getPersistenceInfo());
 
-    Map<String,MNode> newChildren=new ConcurrentHashMap<>();
-    if(children!=null){
-      for(Entry<String,MNode> entry:children.entrySet()){
-        newChildren.put(entry.getKey(),entry.getValue());
+    Map<String, MNode> newChildren = new ConcurrentHashMap<>();
+    if (children != null) {
+      for (Entry<String, MNode> entry : children.entrySet()) {
+        newChildren.put(entry.getKey(), entry.getValue());
       }
     }
-    if(newChildren.size()!=0){
+    if (newChildren.size() != 0) {
       mNode.setChildren(newChildren);
     }
 
-    Map<String,MNode> newAliasChildren=new ConcurrentHashMap<>();
-    if(aliasChildren!=null){
-      for(Entry<String,MNode> entry:aliasChildren.entrySet()){
-        newAliasChildren.put(entry.getKey(),entry.getValue());
+    Map<String, MNode> newAliasChildren = new ConcurrentHashMap<>();
+    if (aliasChildren != null) {
+      for (Entry<String, MNode> entry : aliasChildren.entrySet()) {
+        newAliasChildren.put(entry.getKey(), entry.getValue());
       }
     }
-    if(newAliasChildren.size()!=0){
+    if (newAliasChildren.size() != 0) {
       mNode.setAliasChildren(newAliasChildren);
     }
-
   }
-
 }

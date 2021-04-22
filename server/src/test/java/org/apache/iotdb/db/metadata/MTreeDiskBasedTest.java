@@ -22,7 +22,7 @@ import static org.junit.Assert.*;
 
 public class MTreeDiskBasedTest {
 
-  private static final int CACHE_SIZE = 0;
+  private static final int CACHE_SIZE = 8;
   private static final String BASE_PATH = MTreeDiskBasedTest.class.getResource("").getPath();
   private static final String METAFILE_FILEPATH = BASE_PATH + "metafile.bin";
 
@@ -704,7 +704,7 @@ public class MTreeDiskBasedTest {
           Collections.emptyMap(),
           null);
       assertEquals(2, root.getMeasurementMNodeCount(sgPath)); // b and c
-      PartialPath cNodePath=new PartialPath(sgPath+".a.b.c");
+      PartialPath cNodePath = new PartialPath(sgPath + ".a.b.c");
       assertEquals(1, root.getMeasurementMNodeCount(cNodePath)); // c
 
       root.createTimeseries(
@@ -716,7 +716,7 @@ public class MTreeDiskBasedTest {
           null);
       assertEquals(3, root.getMeasurementMNodeCount(sgPath)); // b, c and d
       assertEquals(2, root.getMeasurementMNodeCount(cNodePath)); // c and d
-      PartialPath dNodePath=new PartialPath(cNodePath+".d");
+      PartialPath dNodePath = new PartialPath(cNodePath + ".d");
       assertEquals(1, root.getMeasurementMNodeCount(dNodePath)); // d
 
     } catch (MetadataException e1) {

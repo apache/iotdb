@@ -1,7 +1,7 @@
 package org.apache.iotdb.db.metadata.metadisk.cache;
 
-import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
+import org.apache.iotdb.db.metadata.mnode.MNode;
 
 import org.junit.Assert;
 import org.junit.Test;
