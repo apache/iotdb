@@ -2834,7 +2834,6 @@ public class StorageGroupProcessor {
   public void removePartitions(TimePartitionFilter filter) {
     // this requires blocking all other activities
     writeLock();
-    tsFileManagement.writeLock();
     try {
       // abort ongoing comapctions and merges
       CompactionMergeTaskPoolManager.getInstance().abortCompaction(logicalStorageGroupName);
@@ -2848,7 +2847,6 @@ public class StorageGroupProcessor {
       removePartitions(filter, tsFileManagement.getIterator(false), false);
 
     } finally {
-      tsFileManagement.writeUnlock();
       writeUnlock();
     }
   }

@@ -43,6 +43,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -50,8 +51,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
-import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.COMPACTION_LOG_NAME;
@@ -79,14 +78,12 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
 
   // First map is partition list; Second list is level list; Third list is file list in level;
   private final Map<Long, List<SortedSet<TsFileResource>>> sequenceTsFileResources =
-      new ConcurrentSkipListMap<>();
-  private final Map<Long, List<List<TsFileResource>>> unSequenceTsFileResources =
-      new ConcurrentSkipListMap<>();
+      new HashMap<>();
+  private final Map<Long, List<List<TsFileResource>>> unSequenceTsFileResources = new HashMap<>();
   private final List<List<TsFileResource>> forkedSequenceTsFileResources = new ArrayList<>();
   private final List<List<TsFileResource>> forkedUnSequenceTsFileResources = new ArrayList<>();
-  private final List<TsFileResource> sequenceRecoverTsFileResources = new CopyOnWriteArrayList<>();
-  private final List<TsFileResource> unSequenceRecoverTsFileResources =
-      new CopyOnWriteArrayList<>();
+  private final List<TsFileResource> sequenceRecoverTsFileResources = new ArrayList<>();
+  private final List<TsFileResource> unSequenceRecoverTsFileResources = new ArrayList<>();
 
   public LevelCompactionTsFileManagement(String storageGroupName, String storageGroupDir) {
     super(storageGroupName, storageGroupDir);
@@ -746,7 +743,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   }
 
   private List<SortedSet<TsFileResource>> newSequenceTsFileResources(Long k) {
-    List<SortedSet<TsFileResource>> newSequenceTsFileResources = new CopyOnWriteArrayList<>();
+    List<SortedSet<TsFileResource>> newSequenceTsFileResources = new ArrayList<>();
     for (int i = 0; i < seqLevelNum; i++) {
       newSequenceTsFileResources.add(
           new TreeSet<>(
