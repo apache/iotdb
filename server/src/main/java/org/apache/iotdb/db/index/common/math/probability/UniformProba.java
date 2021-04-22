@@ -17,15 +17,15 @@
  */
 package org.apache.iotdb.db.index.common.math.probability;
 
-import java.util.Random;
+import java.security.SecureRandom;
 
 public class UniformProba extends Probability {
 
   private final double downBound;
   private final double range;
-  private Random random;
+  private SecureRandom random;
 
-  public UniformProba(double upBound, double downBound, Random random) {
+  public UniformProba(double upBound, double downBound, SecureRandom random) {
     if (upBound < downBound) {
       throw new IllegalArgumentException(
           String.format("Invalid up bound and down bound: %f, %f: ", upBound, downBound));

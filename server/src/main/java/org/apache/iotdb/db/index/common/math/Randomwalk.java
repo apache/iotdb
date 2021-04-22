@@ -22,14 +22,16 @@ import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import java.util.Random;
+import com.google.common.primitives.Longs;
+
+import java.security.SecureRandom;
 
 public class Randomwalk {
 
   public static TVList generateRanWalkTVList(long length, long seed, float R, float miu) {
     TVList res = TVListAllocator.getInstance().allocate(TSDataType.DOUBLE);
     double lastPoint = R;
-    Random r = new Random(seed);
+    SecureRandom r = new SecureRandom(Longs.toByteArray(seed));
     UniformProba uniform = new UniformProba(miu / 2, -miu / 2, r);
     for (int i = 0; i < length; i++) {
       lastPoint = lastPoint + uniform.getNextRandom();
