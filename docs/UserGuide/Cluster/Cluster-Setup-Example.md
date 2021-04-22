@@ -26,9 +26,9 @@ PLEASE BE DELIBERATE IF YOU RUN IT IN PRODUCT ENVIRONMENT.__
 ```
 mvn clean package -DskipTests
 chmod -R 777 ./cluster/target/
-nohup ./cluster/target/iotdb-cluster-0.12.0-SNAPSHOT/sbin/start-node.sh ./cluster/target/test-classes/node1conf/ >/dev/null 2>&1 &
-nohup ./cluster/target/iotdb-cluster-0.12.0-SNAPSHOT/sbin/start-node.sh ./cluster/target/test-classes/node2conf/ >/dev/null 2>&1 &
-nohup ./cluster/target/iotdb-cluster-0.12.0-SNAPSHOT/sbin/start-node.sh ./cluster/target/test-classes/node3conf/ >/dev/null 2>&1 &
+nohup ./cluster/target/iotdb-cluster-0.13.0-SNAPSHOT/sbin/start-node.sh ./cluster/target/test-classes/node1conf/ >/dev/null 2>&1 &
+nohup ./cluster/target/iotdb-cluster-0.13.0-SNAPSHOT/sbin/start-node.sh ./cluster/target/test-classes/node2conf/ >/dev/null 2>&1 &
+nohup ./cluster/target/iotdb-cluster-0.13.0-SNAPSHOT/sbin/start-node.sh ./cluster/target/test-classes/node3conf/ >/dev/null 2>&1 &
 ```
 
 ## Example of distributed scaffolding for 3 nodes and 3 replicas
@@ -40,7 +40,7 @@ The operation steps are as follows:
 
 1. Make sure ports 6667, 9003, 9004, 40010, 40011 and 31999 are open on all three nodes.
 2. Use 'mvn clean package -pl cluster -am -DskipTests' to compile the distributed module.
-3. Send the generated package (iotdb-cluster-0.12.0-SNAPSHOT) to all servers.
+3. Send the generated package (iotdb-cluster-0.13.0-SNAPSHOT) to all servers.
 4. Configure all nodes' seed_nodes in conf/iotdb-cluster.properties as "A_private_ip:9003,B_private_ip:9003,C_private_ip:9003"
 5. Configure the internal_ip in conf/iotdb-cluster.properties to be the private_ip of each node.
 6. Configure rpc_address in conf/iotdb-engine.properties to be the public_ip of each node.

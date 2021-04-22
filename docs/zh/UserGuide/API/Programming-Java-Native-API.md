@@ -45,7 +45,7 @@ mvn clean install -pl session -am -Dmaven.test.skip=true
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>iotdb-session</artifactId>
-      <version>0.12.0</version>
+      <version>0.13.0-SNAPSHOT</version>
     </dependency>
 </dependencies>
 ```
