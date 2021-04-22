@@ -546,15 +546,12 @@ public class InsertRowPlan extends InsertPlan {
     return failedValues != null && !failedValues.isEmpty();
   }
 
-  public TimeValuePair composeTimeValuePair(int measurementIndex) {
-    if (measurementIndex >= values.length) {
+  public TimeValuePair composeTimeValuePair(int columnIndex) {
+    if (columnIndex >= values.length) {
       return null;
     }
-    Object value = values[measurementIndex];
-    return new TimeValuePair(
-        time,
-        TsPrimitiveType.getByType(
-            measurementMNodes[measurementIndex].getSchema().getType(), value));
+    Object value = values[columnIndex];
+    return new TimeValuePair(time, TsPrimitiveType.getByType(dataTypes[columnIndex], value));
   }
 
   @Override
