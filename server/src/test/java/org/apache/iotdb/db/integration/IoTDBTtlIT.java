@@ -75,7 +75,7 @@ public class IoTDBTtlIT {
       try {
         statement.execute("SET TTL TO root.TTL_SG1.s1 1000");
       } catch (SQLException e) {
-        assertEquals(TSStatusCode.METADATA_ERROR.getStatusCode(), e.getErrorCode());
+        assertEquals(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode(), e.getErrorCode());
       }
 
       long now = System.currentTimeMillis();

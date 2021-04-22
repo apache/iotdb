@@ -282,6 +282,15 @@ public class InsertMultiTabletPlan extends InsertPlan {
   }
 
   @Override
+  public void setIndex(long index) {
+    super.setIndex(index);
+    for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
+      // use the InsertMultiTabletPlan's index as the sub InsertTabletPlan's index
+      insertTabletPlan.setIndex(index);
+    }
+  }
+
+  @Override
   public String toString() {
     return "InsertMultiTabletPlan{"
         + " insertTabletPlanList="

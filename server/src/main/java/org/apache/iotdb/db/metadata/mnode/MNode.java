@@ -19,8 +19,12 @@
 package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.rescon.CachedStringPool;
 
 import java.io.IOException;
@@ -30,6 +34,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -66,6 +71,11 @@ public class MNode implements Serializable {
    */
   @SuppressWarnings("squid:S3077")
   private transient volatile Map<String, MNode> aliasChildren = null;
+
+  // device template
+  protected Template deviceTemplate = null;
+
+  private volatile boolean useTemplate = false;
 
   /** Constructor of MNode. */
   public MNode(MNode parent, String name) {
@@ -147,6 +157,14 @@ public class MNode implements Serializable {
     }
   }
 
+  public Template getDeviceTemplate() {
+    return deviceTemplate;
+  }
+
+  public void setDeviceTemplate(Template deviceTemplate) {
+    this.deviceTemplate = deviceTemplate;
+  }
+
   /** get the child with the name */
   public MNode getChild(String name) {
     MNode child = null;
@@ -157,6 +175,24 @@ public class MNode implements Serializable {
       return child;
     }
     return aliasChildren == null ? null : aliasChildren.get(name);
+  }
+
+  public MNode getChildOfAlignedTimeseries(String name) throws MetadataException {
+    MNode node = null;
+    // for aligned timeseries
+    List<String> measurementList = MetaUtils.getMeasurementsInPartialPath(name);
+    for (String measurement : measurementList) {
+      MNode nodeOfMeasurement = getChild(measurement);
+      if (node == null) {
+        node = nodeOfMeasurement;
+      } else {
+        if (node != nodeOfMeasurement) {
+          throw new AlignedTimeseriesException(
+              "Cannot get node of children in different aligned timeseries", name);
+        }
+      }
+    }
+    return node;
   }
 
   /** get the count of all MeasurementMNode whose ancestor is current node */
@@ -243,6 +279,19 @@ public class MNode implements Serializable {
     return children;
   }
 
+  public List<MNode> getDistinctMNodes() {
+    if (children == null) {
+      return Collections.emptyList();
+    }
+    List<MNode> distinctList = new ArrayList<>();
+    for (MNode child : children.values()) {
+      if (!distinctList.contains(child)) {
+        distinctList.add(child);
+      }
+    }
+    return distinctList;
+  }
+
   public Map<String, MNode> getAliasChildren() {
     if (aliasChildren == null) {
       return Collections.emptyMap();
@@ -302,5 +351,50 @@ public class MNode implements Serializable {
 
     this.deleteChild(measurement);
     this.addChild(newChildNode.getName(), newChildNode);
+  }
+
+  public Template getUpperTemplate() {
+    MNode cur = this;
+    while (cur != null) {
+      if (cur.getDeviceTemplate() != null) {
+        return cur.deviceTemplate;
+      }
+      cur = cur.parent;
+    }
+
+    return null;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    MNode mNode = (MNode) o;
+    if (fullPath == null) {
+      return Objects.equals(getFullPath(), mNode.getFullPath());
+    } else {
+      return Objects.equals(fullPath, mNode.fullPath);
+    }
+  }
+
+  @Override
+  public int hashCode() {
+    if (fullPath == null) {
+      return Objects.hash(getFullPath());
+    } else {
+      return Objects.hash(fullPath);
+    }
+  }
+
+  public boolean isUseTemplate() {
+    return useTemplate;
+  }
+
+  public void setUseTemplate(boolean useTemplate) {
+    this.useTemplate = useTemplate;
   }
 }

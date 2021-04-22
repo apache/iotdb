@@ -53,6 +53,7 @@ public class InsertRowPlan extends InsertPlan {
 
   private static final Logger logger = LoggerFactory.getLogger(InsertRowPlan.class);
   private static final byte TYPE_RAW_STRING = -1;
+  private static final byte TYPE_NULL = -2;
 
   private long time;
   private Object[] values;
@@ -85,11 +86,11 @@ public class InsertRowPlan extends InsertPlan {
     this.time = insertTime;
     this.deviceId = deviceId;
     this.measurements = measurementList;
-    this.dataTypes = new TSDataType[measurements.length];
+    this.dataTypes = new TSDataType[insertValues.length];
     // We need to create an Object[] for the data type casting, because we can not set Float, Long
     // to String[i]
-    this.values = new Object[measurements.length];
-    System.arraycopy(insertValues, 0, values, 0, measurements.length);
+    this.values = new Object[insertValues.length];
+    System.arraycopy(insertValues, 0, values, 0, insertValues.length);
     isNeedInferType = true;
   }
 
@@ -118,8 +119,8 @@ public class InsertRowPlan extends InsertPlan {
     this.deviceId = deviceId;
     this.measurements = measurements;
     this.dataTypes = dataTypes;
-    this.values = new Object[measurements.length];
-    for (int i = 0; i < measurements.length; i++) {
+    this.values = new Object[dataTypes.length];
+    for (int i = 0; i < dataTypes.length; i++) {
       try {
         values[i] = CommonUtils.parseValueForTest(dataTypes[i], insertValues[i]);
       } catch (QueryProcessException e) {
@@ -194,6 +195,7 @@ public class InsertRowPlan extends InsertPlan {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void transferType() throws QueryProcessException {
     if (isNeedInferType) {
+      int columnIndex = 0;
       for (int i = 0; i < measurementMNodes.length; i++) {
         if (measurementMNodes[i] == null) {
           if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
@@ -207,23 +209,52 @@ public class InsertRowPlan extends InsertPlan {
                 new PathNotExistException(
                     deviceId.getFullPath() + IoTDBConstant.PATH_SEPARATOR + measurements[i]));
           }
+          columnIndex++;
           continue;
         }
-        dataTypes[i] = measurementMNodes[i].getSchema().getType();
-        try {
-          values[i] = CommonUtils.parseValue(dataTypes[i], values[i].toString());
-        } catch (Exception e) {
-          logger.warn(
-              "{}.{} data type is not consistent, input {}, registered {}",
-              deviceId,
-              measurements[i],
-              values[i],
-              dataTypes[i]);
-          if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-            markFailedMeasurementInsertion(i, e);
-            measurementMNodes[i] = null;
-          } else {
-            throw e;
+        if (measurementMNodes[i].getSchema().getType() != TSDataType.VECTOR) {
+          dataTypes[columnIndex] = measurementMNodes[i].getSchema().getType();
+          try {
+            values[columnIndex] =
+                CommonUtils.parseValue(dataTypes[columnIndex], values[columnIndex].toString());
+          } catch (Exception e) {
+            logger.warn(
+                "{}.{} data type is not consistent, input {}, registered {}",
+                deviceId,
+                measurements[i],
+                values[i],
+                dataTypes[i]);
+            if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
+              markFailedMeasurementInsertion(i, e);
+              measurementMNodes[i] = null;
+            } else {
+              throw e;
+            }
+          }
+          columnIndex++;
+        }
+        // for aligned timeseries
+        else {
+          for (TSDataType dataType : measurementMNodes[i].getSchema().getValueTSDataTypeList()) {
+            dataTypes[columnIndex] = dataType;
+            try {
+              values[columnIndex] =
+                  CommonUtils.parseValue(dataTypes[columnIndex], values[columnIndex].toString());
+            } catch (Exception e) {
+              logger.warn(
+                  "{}.{} data type is not consistent, input {}, registered {}",
+                  deviceId,
+                  measurements[i],
+                  values[columnIndex],
+                  dataTypes[columnIndex]);
+              if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
+                markFailedMeasurementInsertion(i, e);
+                measurementMNodes[i] = null;
+              } else {
+                throw e;
+              }
+            }
+            columnIndex++;
           }
         }
       }
@@ -246,6 +277,7 @@ public class InsertRowPlan extends InsertPlan {
     }
     failedValues.add(values[index]);
     values[index] = null;
+    dataTypes[index] = null;
   }
 
   @Override
@@ -310,6 +342,7 @@ public class InsertRowPlan extends InsertPlan {
     }
 
     try {
+      stream.writeInt(dataTypes.length);
       putValues(stream);
     } catch (QueryProcessException e) {
       throw new IOException(e);
@@ -323,7 +356,8 @@ public class InsertRowPlan extends InsertPlan {
 
   private void putValues(DataOutputStream outputStream) throws QueryProcessException, IOException {
     for (int i = 0; i < values.length; i++) {
-      if (measurements[i] == null) {
+      if (values[i] == null) {
+        ReadWriteIOUtils.write(TYPE_NULL, outputStream);
         continue;
       }
       // types are not determined, the situation mainly occurs when the plan uses string values
@@ -361,7 +395,8 @@ public class InsertRowPlan extends InsertPlan {
 
   private void putValues(ByteBuffer buffer) throws QueryProcessException {
     for (int i = 0; i < values.length; i++) {
-      if (measurements[i] == null) {
+      if (values[i] == null) {
+        ReadWriteIOUtils.write(TYPE_NULL, buffer);
         continue;
       }
       // types are not determined, the situation mainly occurs when the plan uses string values
@@ -399,15 +434,14 @@ public class InsertRowPlan extends InsertPlan {
 
   /** Make sure the values is already inited before calling this */
   public void fillValues(ByteBuffer buffer) throws QueryProcessException {
-    for (int i = 0; i < measurements.length; i++) {
+    for (int i = 0; i < dataTypes.length; i++) {
       // types are not determined, the situation mainly occurs when the plan uses string values
       // and is forwarded to other nodes
       byte typeNum = (byte) ReadWriteIOUtils.read(buffer);
-      if (typeNum == TYPE_RAW_STRING) {
-        values[i] = ReadWriteIOUtils.readString(buffer);
+      if (typeNum == TYPE_RAW_STRING || typeNum == TYPE_NULL) {
+        values[i] = typeNum == TYPE_RAW_STRING ? ReadWriteIOUtils.readString(buffer) : null;
         continue;
       }
-
       dataTypes[i] = TSDataType.values()[typeNum];
       switch (dataTypes[i]) {
         case BOOLEAN:
@@ -456,8 +490,8 @@ public class InsertRowPlan extends InsertPlan {
         putString(buffer, measurement);
       }
     }
-
     try {
+      buffer.putInt(dataTypes.length);
       putValues(buffer);
     } catch (QueryProcessException e) {
       logger.error("Failed to serialize values for {}", this, e);
@@ -483,8 +517,9 @@ public class InsertRowPlan extends InsertPlan {
       measurements[i] = readString(buffer);
     }
 
-    this.dataTypes = new TSDataType[measurementSize];
-    this.values = new Object[measurementSize];
+    int dataTypeSize = buffer.getInt();
+    this.dataTypes = new TSDataType[dataTypeSize];
+    this.values = new Object[dataTypeSize];
     try {
       fillValues(buffer);
     } catch (QueryProcessException e) {
@@ -511,15 +546,12 @@ public class InsertRowPlan extends InsertPlan {
     return failedValues != null && !failedValues.isEmpty();
   }
 
-  public TimeValuePair composeTimeValuePair(int measurementIndex) {
-    if (measurementIndex >= values.length) {
+  public TimeValuePair composeTimeValuePair(int columnIndex) {
+    if (columnIndex >= values.length) {
       return null;
     }
-    Object value = values[measurementIndex];
-    return new TimeValuePair(
-        time,
-        TsPrimitiveType.getByType(
-            measurementMNodes[measurementIndex].getSchema().getType(), value));
+    Object value = values[columnIndex];
+    return new TimeValuePair(time, TsPrimitiveType.getByType(dataTypes[columnIndex], value));
   }
 
   @Override
@@ -555,12 +587,6 @@ public class InsertRowPlan extends InsertPlan {
     }
     if (values.length == 0) {
       throw new QueryProcessException("The size of values is 0");
-    }
-    if (measurements.length != values.length) {
-      throw new QueryProcessException(
-          String.format(
-              "Measurements length [%d] does not match " + "values length [%d]",
-              measurements.length, values.length));
     }
     for (Object value : values) {
       if (value == null) {

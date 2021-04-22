@@ -70,7 +70,7 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
   @Test
   public void test() throws StorageEngineException, IOException, QueryProcessException {
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
-    queryPlan.setDeduplicatedPaths(pathList);
+    queryPlan.setDeduplicatedPathsAndUpdate(pathList);
     queryPlan.setDeduplicatedDataTypes(dataTypes);
     QueryContext context =
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
@@ -110,7 +110,7 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
             SQLConstant.COUNT,
             SQLConstant.SUM);
     plan.setPaths(paths);
-    plan.setDeduplicatedPaths(paths);
+    plan.setDeduplicatedPathsAndUpdate(paths);
     plan.setDataTypes(dataTypes);
     plan.setDeduplicatedDataTypes(dataTypes);
     plan.setAggregations(aggregations);
@@ -131,7 +131,7 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
   public void testPreviousFill()
       throws QueryProcessException, StorageEngineException, IOException, IllegalPathException {
     FillQueryPlan plan = new FillQueryPlan();
-    plan.setDeduplicatedPaths(
+    plan.setDeduplicatedPathsAndUpdate(
         Collections.singletonList(new PartialPath(TestUtils.getTestSeries(0, 10))));
     plan.setDeduplicatedDataTypes(Collections.singletonList(TSDataType.DOUBLE));
     plan.setPaths(plan.getDeduplicatedPaths());
@@ -170,7 +170,7 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
   public void testLinearFill()
       throws QueryProcessException, StorageEngineException, IOException, IllegalPathException {
     FillQueryPlan plan = new FillQueryPlan();
-    plan.setDeduplicatedPaths(
+    plan.setDeduplicatedPathsAndUpdate(
         Collections.singletonList(new PartialPath(TestUtils.getTestSeries(0, 10))));
     plan.setDeduplicatedDataTypes(Collections.singletonList(TSDataType.DOUBLE));
     plan.setPaths(plan.getDeduplicatedPaths());
@@ -224,7 +224,7 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
         aggregations.add(SQLConstant.COUNT);
       }
       groupByPlan.setPaths(pathList);
-      groupByPlan.setDeduplicatedPaths(pathList);
+      groupByPlan.setDeduplicatedPathsAndUpdate(pathList);
       groupByPlan.setDataTypes(dataTypes);
       groupByPlan.setDeduplicatedDataTypes(dataTypes);
       groupByPlan.setAggregations(aggregations);
@@ -277,7 +277,7 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
         aggregations.add(SQLConstant.COUNT);
       }
       groupByPlan.setPaths(pathList);
-      groupByPlan.setDeduplicatedPaths(pathList);
+      groupByPlan.setDeduplicatedPathsAndUpdate(pathList);
       groupByPlan.setDataTypes(dataTypes);
       groupByPlan.setDeduplicatedDataTypes(dataTypes);
       groupByPlan.setAggregations(aggregations);

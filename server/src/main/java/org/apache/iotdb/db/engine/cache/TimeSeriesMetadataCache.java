@@ -25,6 +25,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.cache.Accountable;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -90,7 +91,7 @@ public class TimeSeriesMetadataCache {
                       + RamUsageEstimator.shallowSizeOf(value)
                       + RamUsageEstimator.sizeOf(value.getMeasurementId())
                       + RamUsageEstimator.shallowSizeOf(value.getStatistics())
-                      + (value.getChunkMetadataList().get(0).calculateRamSize()
+                      + (((ChunkMetadata) value.getChunkMetadataList().get(0)).calculateRamSize()
                               + RamUsageEstimator.NUM_BYTES_OBJECT_REF)
                           * value.getChunkMetadataList().size()
                       + RamUsageEstimator.shallowSizeOf(value.getChunkMetadataList());
@@ -106,7 +107,7 @@ public class TimeSeriesMetadataCache {
                       + RamUsageEstimator.shallowSizeOf(value)
                       + RamUsageEstimator.sizeOf(value.getMeasurementId())
                       + RamUsageEstimator.shallowSizeOf(value.getStatistics())
-                      + (value.getChunkMetadataList().get(0).calculateRamSize()
+                      + (((ChunkMetadata) value.getChunkMetadataList().get(0)).calculateRamSize()
                               + RamUsageEstimator.NUM_BYTES_OBJECT_REF)
                           * value.getChunkMetadataList().size()
                       + RamUsageEstimator.shallowSizeOf(value.getChunkMetadataList());

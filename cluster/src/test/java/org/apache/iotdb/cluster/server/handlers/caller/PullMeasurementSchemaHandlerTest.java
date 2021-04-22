@@ -23,7 +23,7 @@ import org.apache.iotdb.cluster.common.TestException;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import org.junit.Test;
 
@@ -44,8 +44,8 @@ public class PullMeasurementSchemaHandlerTest {
   public void testComplete() throws InterruptedException {
     Node owner = TestUtils.getNode(1);
     String prefixPath = "root";
-    AtomicReference<List<MeasurementSchema>> result = new AtomicReference<>();
-    List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+    AtomicReference<List<IMeasurementSchema>> result = new AtomicReference<>();
+    List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       measurementSchemas.add(TestUtils.getTestMeasurementSchema(i));
     }
@@ -59,8 +59,8 @@ public class PullMeasurementSchemaHandlerTest {
                 DataOutputStream dataOutputStream = new DataOutputStream(outputStream);
                 try {
                   dataOutputStream.writeInt(measurementSchemas.size());
-                  for (MeasurementSchema measurementSchema : measurementSchemas) {
-                    measurementSchema.serializeTo(dataOutputStream);
+                  for (IMeasurementSchema measurementSchema : measurementSchemas) {
+                    measurementSchema.partialSerializeTo(dataOutputStream);
                   }
                 } catch (IOException e) {
                   // ignore
@@ -79,7 +79,7 @@ public class PullMeasurementSchemaHandlerTest {
   public void testError() throws InterruptedException {
     Node owner = TestUtils.getNode(1);
     String prefixPath = "root";
-    AtomicReference<List<MeasurementSchema>> result = new AtomicReference<>();
+    AtomicReference<List<IMeasurementSchema>> result = new AtomicReference<>();
 
     PullMeasurementSchemaHandler handler =
         new PullMeasurementSchemaHandler(owner, Collections.singletonList(prefixPath), result);

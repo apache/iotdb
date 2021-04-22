@@ -51,14 +51,18 @@ import static org.junit.Assert.fail;
 
 public class IoTDBSimpleQueryIT {
 
+  boolean autoCreateSchemaEnabled;
+
   @Before
   public void setUp() {
     EnvironmentUtils.envSetUp();
+    autoCreateSchemaEnabled = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
   }
 
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
+    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(autoCreateSchemaEnabled);
   }
 
   @Test

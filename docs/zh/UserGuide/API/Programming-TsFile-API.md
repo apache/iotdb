@@ -23,6 +23,8 @@
 
 TsFile 是在 IoTDB 中使用的时间序列的文件格式。在这个章节中，我们将介绍这种文件格式的用法。 
 
+
+
 ### 安装 TsFile library
 
 
@@ -30,13 +32,13 @@ TsFile 是在 IoTDB 中使用的时间序列的文件格式。在这个章节中
 
 * 使用 jar 包: 编译源码生成 jar 包
 	
-```
+```shell
 git clone https://github.com/apache/iotdb.git
 cd tsfile/
 mvn clean package -Dmaven.test.skip=true
 ```
 
-命令执行完成之后，所有的 jar 包都可以从 `target/` 目录下找到。之后您可以在自己的工程中导入 `target/tsfile-0.12.0-SNAPSHOT.jar`.
+命令执行完成之后，所有的 jar 包都可以从 `target/` 目录下找到。之后您可以在自己的工程中导入 `target/tsfile-0.13.0-SNAPSHOT.jar`.
 	
 * 使用 Maven 依赖: 
 
@@ -44,31 +46,31 @@ mvn clean package -Dmaven.test.skip=true
 
  1. 下载源码
 
- ```
+ ```shell
 git clone https://github.com/apache/iotdb.git
-```
- 2. 编译源码和部署到本地仓库
-  	
  ```
+ 2. 编译源码和部署到本地仓库
+
+ ```shell
 cd tsfile/
 mvn clean install -Dmaven.test.skip=true
-```
+ ```
  3. 在您自己的工程中增加依赖:
 
- ```
+ ```xml
  <dependency>
    <groupId>org.apache.iotdb</groupId>
    <artifactId>tsfile</artifactId>
    <version>0.12.0</version>
  </dependency>
  ```
-    
+
 或者，您可以直接使用官方的 Maven 仓库:
 
   1. 首先，在`${username}\.m2\settings.xml`目录下的`settings.xml`文件中`<profiles>`
      节中增加`<profile>`，内容如下:
      
- ```
+ ```xml
 <profile>
    <id>allow-snapshots</id>
       <activation><activeByDefault>true</activeByDefault></activation>
@@ -86,18 +88,21 @@ mvn clean install -Dmaven.test.skip=true
       </repository>
    </repositories>
  </profile>
-```
+ ```
   2. 之后您可以在您的工程中增加如下依赖:
 
- ```
+ ```xml
  <dependency>
    <groupId>org.apache.iotdb</groupId>
    <artifactId>tsfile</artifactId>
-   <version>0.10.0</version>
+   <version>0.13.0-SNAPSHOT</version>
  </dependency>
  ```
 
+
+
 ### TsFile 的使用
+
 本章节演示TsFile的详细用法。
 
 时序数据(Time-series Data)
@@ -128,6 +133,7 @@ device_1, 1490860659000, m1, 10, m2, 12.12
 ```
 
 
+
 #### 写入 TsFile
 
 TsFile可以通过以下三个步骤生成，完整的代码参见"写入 TsFile 示例"章节。
@@ -138,28 +144,28 @@ TsFile可以通过以下三个步骤生成，完整的代码参见"写入 TsFile
     
     * 没有预定义 schema
     
-    ```
+    ```java
     public TsFileWriter(File file) throws IOException
     ```
     * 预定义 schema
     
-    ```
+    ```java
     public TsFileWriter(File file, Schema schema) throws IOException
     ```
     这个是用于使用 HDFS 文件系统的。`TsFileOutput`可以是`HDFSOutput`类的一个实例。
     
-    ```
+    ```java
     public TsFileWriter(TsFileOutput output, Schema schema) throws IOException 
     ```
     
     如果你想自己设置一些 TSFile 的配置，你可以使用`config`参数。比如:
     
-    ```
+    ```java
     TSFileConfig conf = new TSFileConfig();
     conf.setTSFileStorageFs("HDFS");
     TsFileWriter tsFileWriter = new TsFileWriter(file, schema, conf);
     ```
- 
+
     在上面的例子中，数据文件将存储在 HDFS 中，而不是本地文件系统中。如果你想在本地文件系统中存储数据文件，你可以使用`conf.setTSFileStorageFs("LOCAL")`，这也是默认的配置。
     
     您还可以通过`config.setHdfsIp(...)`和`config.setHdfsPort(...)`来配置 HDFS 的 IP 和端口。默认的 IP是`localhost`，默认的`RPC`端口是`9000`.
@@ -178,7 +184,7 @@ TsFile可以通过以下三个步骤生成，完整的代码参见"写入 TsFile
     
     下面是一系列接口:
     
-    ```
+    ```java
     // Create an empty Schema or from an existing map
     public Schema()
     public Schema(Map<String, MeasurementSchema> measurements)
@@ -194,13 +200,13 @@ TsFile可以通过以下三个步骤生成，完整的代码参见"写入 TsFile
   
     你可以在`TsFileWriter`类中使用以下接口来添加额外的测量(measurement):
     ​      
-    ```
+    ```java
     public void addMeasurement(MeasurementSchema measurementSchema) throws WriteProcessException
     ```
     
     `MeasurementSchema`类保存了一个测量(measurement)的信息，有几个构造函数:
     
-    ```
+    ```java
     public MeasurementSchema(String measurementId, TSDataType type, TSEncoding encoding)
     public MeasurementSchema(String measurementId, TSDataType type, TSEncoding encoding, CompressionType compressionType)
     public MeasurementSchema(String measurementId, TSDataType type, TSEncoding encoding, CompressionType compressionType, 
@@ -209,6 +215,7 @@ TsFile可以通过以下三个步骤生成，完整的代码参见"写入 TsFile
     
     **参数:**
     ​    
+    
     * measurementID: 测量的名称，通常是传感器的名称。
       
     * type: 数据类型，现在支持六种类型: `BOOLEAN`, `INT32`, `INT64`, `FLOAT`, `DOUBLE`, `TEXT`;
@@ -222,8 +229,8 @@ TsFile可以通过以下三个步骤生成，完整的代码参见"写入 TsFile
     
     > **注意:** 虽然一个测量(measurement)的名字可以被用在多个deltaObjects中, 但是它的参数是不允许被修改的。比如: 
         不允许多次为同一个测量(measurement)名添加不同类型的编码。下面是一个错误示例:
-        
-	```
+	
+	```java
 	// The measurement "sensor_1" is float type
 	addMeasurement(new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE));
 	// This call will throw a WriteProcessException exception
@@ -233,7 +240,7 @@ TsFile可以通过以下三个步骤生成，完整的代码参见"写入 TsFile
   
     使用这个接口创建一个新的`TSRecord`(时间戳和设备对)。
     
-    ```
+    ```java
     public TSRecord(long timestamp, String deviceId)
     ```
   
@@ -241,13 +248,13 @@ TsFile可以通过以下三个步骤生成，完整的代码参见"写入 TsFile
     
     用下面这种方法写
 
-    ```
+    ```java
     public void write(TSRecord record) throws IOException, WriteProcessException
     ```
     
 4. 调用`close`方法来完成写入过程。
 
-    ```
+    ```java
     public void close() throws IOException
     ```
 
@@ -256,23 +263,25 @@ TsFile可以通过以下三个步骤生成，完整的代码参见"写入 TsFile
 
 1. 使用`ForceAppendTsFileWriter`打开已经关闭的文件。
 
-	```
+	```java
 	public ForceAppendTsFileWriter(File file) throws IOException
 	```
 2. 调用 `doTruncate` 去掉文件的Metadata部分
 
 3. 使用  `ForceAppendTsFileWriter` 构造另一个`TsFileWriter`
 
-	```
+	```java
 	public TsFileWriter(TsFileIOWriter fileWriter) throws IOException
 	```
 请注意 此时需要重新添加测量值(measurement) 再进行上述写入操作。
+
+
 
 #### 写入 TsFile 示例
 
 您需要安装 TsFile 到本地的 Maven 仓库中。
 
-```
+```shell
 mvn clean install -pl tsfile -am -DskipTests
 ```
 
@@ -303,6 +312,8 @@ mvn clean install -pl tsfile -am -DskipTests
 ```
 中查看
 
+
+
 #### 读取 TsFile 接口
 
 
@@ -315,13 +326,13 @@ mvn clean install -pl tsfile -am -DskipTests
 在read接口中，参数`paths`表示要选择的测量值(measurement)。
 Path实例可以很容易地通过类`Path`来构造。例如:
 
-```
+```java
 Path p = new Path("device_1.sensor_1");
 ```
 
 我们可以为查询传递一个 ArrayList 路径，以支持多个路径查询。
 
-```
+```java
 List<Path> paths = new ArrayList<Path>();
 paths.add(new Path("device_1.sensor_1"));
 paths.add(new Path("device_1.sensor_3"));
@@ -345,29 +356,30 @@ paths.add(new Path("device_1.sensor_3"));
     
      * TimeFilter: 使用时序数据中的`time`过滤。
     
-    ```
+    ```java
     IExpression timeFilterExpr = new GlobalTimeExpression(TimeFilter);
     ```
 
  使用以下关系获得一个`TimeFilter`对象(值是一个 long 型变量)。
 
-  |Relationship|Description|
-  |----|----|
-  |TimeFilter.eq(value)|选择时间等于值的数据|
-  |TimeFilter.lt(value)|选择时间小于值的数据|
-  |TimeFilter.gt(value)|选择时间大于值的数据|
-  |TimeFilter.ltEq(value)|选择时间小于等于值的数据|
-  |TimeFilter.gtEq(value)|选择时间大于等于值的数据|
-  |TimeFilter.notEq(value)|选择时间不等于值的数据|
-  |TimeFilter.not(TimeFilter)|选择时间不满足另一个时间过滤器的数据|
+|Relationship|Description|
+|----|----|
+|TimeFilter.eq(value)|选择时间等于值的数据|
+|TimeFilter.lt(value)|选择时间小于值的数据|
+|TimeFilter.gt(value)|选择时间大于值的数据|
+|TimeFilter.ltEq(value)|选择时间小于等于值的数据|
+|TimeFilter.gtEq(value)|选择时间大于等于值的数据|
+|TimeFilter.notEq(value)|选择时间不等于值的数据|
+|TimeFilter.not(TimeFilter)|选择时间不满足另一个时间过滤器的数据|
 
-        
+
    * ValueFilter: 使用时序数据中的`value`过滤。
-       
-    ```
-    IExpression valueFilterExpr = new SingleSeriesExpression(Path, ValueFilter);
-    ```
-    
+     
+
+```java
+IExpression valueFilterExpr = new SingleSeriesExpression(Path, ValueFilter);
+```
+
  `ValueFilter`的用法与`TimeFilter`相同，只是需要确保值的类型等于measurement(在路径中定义)的类型。
 
 * **Binary Filter Operators**
@@ -382,52 +394,49 @@ Filter Expression 示例
 
 * **TimeFilterExpression 示例**
 
-```
+```java
 IExpression timeFilterExpr = new GlobalTimeExpression(TimeFilter.eq(15)); // series time = 15
-
 ```
-```
+```java
 IExpression timeFilterExpr = new GlobalTimeExpression(TimeFilter.ltEq(15)); // series time <= 15
-
 ```
-```
+```java
 IExpression timeFilterExpr = new GlobalTimeExpression(TimeFilter.lt(15)); // series time < 15
-
 ```
-```
+```java
 IExpression timeFilterExpr = new GlobalTimeExpression(TimeFilter.gtEq(15)); // series time >= 15
-
 ```
-```
+```java
 IExpression timeFilterExpr = new GlobalTimeExpression(TimeFilter.notEq(15)); // series time != 15
-
 ```
+```java
+IExpression timeFilterExpr = BinaryExpression.and(
+		new GlobalTimeExpression(TimeFilter.gtEq(15L)),
+    new GlobalTimeExpression(TimeFilter.lt(25L))); // 15 <= series time < 25
 ```
-IExpression timeFilterExpr = BinaryExpression.and(new GlobalTimeExpression(TimeFilter.gtEq(15L)),
-                                         new GlobalTimeExpression(TimeFilter.lt(25L))); // 15 <= series time < 25
-```
-```
-IExpression timeFilterExpr = BinaryExpression.or(new GlobalTimeExpression(TimeFilter.gtEq(15L)),
-                                         new GlobalTimeExpression(TimeFilter.lt(25L))); // series time >= 15 or series time < 25
+```java
+IExpression timeFilterExpr = BinaryExpression.or(
+    new GlobalTimeExpression(TimeFilter.gtEq(15L)),
+    new GlobalTimeExpression(TimeFilter.lt(25L))); // series time >= 15 or series time < 25
 ```
 
 * 读取接口
 
 首先，我们打开 TsFile 并从文件路径`path`中获取一个`ReadOnlyTsFile`实例。
 
-```
+```java
 TsFileSequenceReader reader = new TsFileSequenceReader(path);
 ReadOnlyTsFile readTsFile = new ReadOnlyTsFile(reader);
 ```
 接下来，我们准备路径数组和查询表达式，然后通过这个接口得到最终的`QueryExpression`对象:
 
-```
+```java
 QueryExpression queryExpression = QueryExpression.create(paths, statement);
 ```
 
 ReadOnlyTsFile类有两个`query`方法来执行查询。
 
-```
+```java
 public QueryDataSet query(QueryExpression queryExpression) throws IOException
 public QueryDataSet query(QueryExpression queryExpression, long partitionStartOffset, long partitionEndOffset) throws IOException
 ```
@@ -461,20 +470,22 @@ public QueryDataSet query(QueryExpression queryExpression, long partitionStartOf
    * `RowRecord next() throws IOException;`
 
      获取下一条记录。
-    
+     
      `RowRecord`类包含一个`long`类型的时间戳和一个`List<Field>`，用于不同传感器中的数据，我们可以使用两个getter方法来获取它们。
-    
-     ```
+     
+     ```java
      long getTimestamp();
      List<Field> getFields();
      ```
     
      要从一个字段获取数据，请使用以下方法:
-    
-     ```
+     
+     ```java
      TSDataType getDataType();
      Object getObjectValue();
      ```
+
+
 
 #### 读取现有 TsFile 示例
 
@@ -537,12 +548,13 @@ public class TsFileRead {
     reader.close();
   }
 }
-
 ```
+
+
 
 ### 修改 TsFile 配置项
 
-```
+```java
 TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
 config.setXXX();
 ```
