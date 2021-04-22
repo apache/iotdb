@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.sink;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.sink.local.LocalIoTDBConfiguration;
 import org.apache.iotdb.db.sink.local.LocalIoTDBEvent;
 import org.apache.iotdb.db.sink.local.LocalIoTDBHandler;
@@ -192,7 +191,7 @@ public class LocalIoTDBSinkTest {
     }
   }
 
-  @Test(expected = QueryProcessException.class)
+  @Test(expected = ClassCastException.class)
   public void onEventWithWrongType1() throws Exception {
     LocalIoTDBHandler localIoTDBHandler = new LocalIoTDBHandler();
     localIoTDBHandler.open(
