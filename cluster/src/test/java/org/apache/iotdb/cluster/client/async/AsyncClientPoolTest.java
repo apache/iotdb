@@ -33,7 +33,9 @@ import static org.junit.Assert.assertNull;
 
 public class AsyncClientPoolTest {
 
-  private final ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
+  @Mock private AsyncClientFactory testAsyncClientFactory;
+
+  private ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
   private boolean isAsyncServer;
 
   @Before
@@ -46,8 +48,6 @@ public class AsyncClientPoolTest {
   public void tearDown() {
     config.setUseAsyncServer(isAsyncServer);
   }
-
-  @Mock private AsyncClientFactory testAsyncClientFactory;
 
   @Test
   public void testTestClient() throws IOException {
@@ -190,9 +190,7 @@ public class AsyncClientPoolTest {
 
       assertNotEquals(clients.get(0), clients.get(1));
     } finally {
-      ClusterDescriptor.getInstance()
-          .getConfig()
-          .setMaxClientPerNodePerMember(maxClientPerNodePerMember);
+      config.setMaxClientPerNodePerMember(maxClientPerNodePerMember);
     }
   }
 

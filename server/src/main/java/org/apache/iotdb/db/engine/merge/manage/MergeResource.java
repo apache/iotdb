@@ -33,7 +33,7 @@ import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import java.io.IOException;
@@ -64,9 +64,9 @@ public class MergeResource {
   private Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
   private Map<TsFileResource, Map<String, Pair<Long, Long>>> startEndTimeCache =
       new HashMap<>(); // pair<startTime, endTime>
-  private Map<PartialPath, MeasurementSchema> measurementSchemaMap =
+  private Map<PartialPath, IMeasurementSchema> measurementSchemaMap =
       new HashMap<>(); // is this too waste?
-  private Map<MeasurementSchema, IChunkWriter> chunkWriterCache = new ConcurrentHashMap<>();
+  private Map<IMeasurementSchema, IChunkWriter> chunkWriterCache = new ConcurrentHashMap<>();
 
   private long timeLowerBound = Long.MIN_VALUE;
 
@@ -106,7 +106,7 @@ public class MergeResource {
     chunkWriterCache.clear();
   }
 
-  public MeasurementSchema getSchema(PartialPath path) {
+  public IMeasurementSchema getSchema(PartialPath path) {
     return measurementSchemaMap.get(path);
   }
 
@@ -174,7 +174,7 @@ public class MergeResource {
    * Construct the a new or get an existing ChunkWriter of a measurement. Different timeseries of
    * the same measurement and data type shares the same instance.
    */
-  public IChunkWriter getChunkWriter(MeasurementSchema measurementSchema) {
+  public IChunkWriter getChunkWriter(IMeasurementSchema measurementSchema) {
     return chunkWriterCache.computeIfAbsent(measurementSchema, ChunkWriterImpl::new);
   }
 
@@ -259,7 +259,7 @@ public class MergeResource {
     this.cacheDeviceMeta = cacheDeviceMeta;
   }
 
-  public void setMeasurementSchemaMap(Map<PartialPath, MeasurementSchema> measurementSchemaMap) {
+  public void setMeasurementSchemaMap(Map<PartialPath, IMeasurementSchema> measurementSchemaMap) {
     this.measurementSchemaMap = measurementSchemaMap;
   }
 

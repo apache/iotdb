@@ -30,6 +30,7 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
@@ -114,7 +115,7 @@ public class SchemaUtils {
     TSDataType dataType = schema.getType();
     TSEncoding encoding = schema.getEncodingType();
     CompressionType compressionType = schema.getCompressor();
-    MeasurementSchema measurementSchema =
+    IMeasurementSchema measurementSchema =
         new MeasurementSchema(path.getMeasurement(), dataType, encoding, compressionType);
 
     MeasurementMNode measurementMNode =
@@ -157,7 +158,6 @@ public class SchemaUtils {
    * @param measurementDataType
    * @param aggregation
    * @return
-   * @throws MetadataException
    */
   public static List<TSDataType> getAggregatedDataTypes(
       List<TSDataType> measurementDataType, String aggregation) {

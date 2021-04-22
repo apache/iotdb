@@ -39,4 +39,14 @@ public interface CacheHitRatioMonitorMXBean {
   double getTimeSeriesCacheUsedMemoryProportion();
 
   long getTimeSeriesMetaDataCacheAverageSize();
+
+  long getTotalMemTableSize();
+
+  double getFlushThershold();
+
+  double getRejectThershold();
+
+  int flushingMemTableNum();
+
+  int totalMemTableNum();
 }

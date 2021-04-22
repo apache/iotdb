@@ -44,7 +44,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class SeriesAggregateReaderTest {
 
@@ -71,7 +73,7 @@ public class SeriesAggregateReaderTest {
       PartialPath path = new PartialPath(SERIES_READER_TEST_SG + ".device0.sensor0");
       Set<String> allSensors = new HashSet<>();
       allSensors.add("sensor0");
-      QueryDataSource queryDataSource = new QueryDataSource(path, seqResources, unseqResources);
+      QueryDataSource queryDataSource = new QueryDataSource(seqResources, unseqResources);
       SeriesAggregateReader seriesReader =
           new SeriesAggregateReader(
               path,
