@@ -73,6 +73,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -1028,24 +1029,32 @@ public class StorageGroupProcessor {
       return;
     }
     MeasurementMNode[] mNodes = plan.getMeasurementMNodes();
+    int columnIndex = 0;
     for (int i = 0; i < mNodes.length; i++) {
-      if (plan.getColumns()[i] == null) {
-        continue;
-      }
-      // Update cached last value with high priority
-      if (mNodes[i] != null) {
-        // in stand alone version, the seriesPath is not needed, just use measurementMNodes[i] to
-        // update last cache
-        IoTDB.metaManager.updateLastCache(
-            null, plan.composeLastTimeValuePair(i), true, latestFlushedTime, mNodes[i]);
+      // Don't update cached last value for vector type
+      if (mNodes[i] != null && mNodes[i].getSchema().getType() == TSDataType.VECTOR) {
+        columnIndex += mNodes[i].getSchema().getValueMeasurementIdList().size();
       } else {
-        // measurementMNodes[i] is null, use the path to update remote cache
-        IoTDB.metaManager.updateLastCache(
-            plan.getDeviceId().concatNode(plan.getMeasurements()[i]),
-            plan.composeLastTimeValuePair(i),
-            true,
-            latestFlushedTime,
-            null);
+        if (plan.getColumns()[i] == null) {
+          columnIndex++;
+          continue;
+        }
+        // Update cached last value with high priority
+        if (mNodes[i] != null) {
+          // in stand alone version, the seriesPath is not needed, just use measurementMNodes[i] to
+          // update last cache
+          IoTDB.metaManager.updateLastCache(
+              null, plan.composeLastTimeValuePair(columnIndex), true, latestFlushedTime, mNodes[i]);
+        } else {
+          // measurementMNodes[i] is null, use the path to update remote cache
+          IoTDB.metaManager.updateLastCache(
+              plan.getDeviceId().concatNode(plan.getMeasurements()[columnIndex]),
+              plan.composeLastTimeValuePair(columnIndex),
+              true,
+              latestFlushedTime,
+              null);
+        }
+        columnIndex++;
       }
     }
   }
@@ -1087,23 +1096,31 @@ public class StorageGroupProcessor {
       return;
     }
     MeasurementMNode[] mNodes = plan.getMeasurementMNodes();
+    int columnIndex = 0;
     for (int i = 0; i < mNodes.length; i++) {
-      if (plan.getValues()[i] == null) {
-        continue;
-      }
-      // Update cached last value with high priority
-      if (mNodes[i] != null) {
-        // in stand alone version, the seriesPath is not needed, just use measurementMNodes[i] to
-        // update last cache
-        IoTDB.metaManager.updateLastCache(
-            null, plan.composeTimeValuePair(i), true, latestFlushedTime, mNodes[i]);
+      // Don't update cached last value for vector type
+      if (mNodes[i] != null && mNodes[i].getSchema().getType() == TSDataType.VECTOR) {
+        columnIndex += mNodes[i].getSchema().getValueMeasurementIdList().size();
       } else {
-        IoTDB.metaManager.updateLastCache(
-            plan.getDeviceId().concatNode(plan.getMeasurements()[i]),
-            plan.composeTimeValuePair(i),
-            true,
-            latestFlushedTime,
-            null);
+        if (plan.getValues()[columnIndex] == null) {
+          columnIndex++;
+          continue;
+        }
+        // Update cached last value with high priority
+        if (mNodes[i] != null) {
+          // in stand alone version, the seriesPath is not needed, just use measurementMNodes[i] to
+          // update last cache
+          IoTDB.metaManager.updateLastCache(
+              null, plan.composeTimeValuePair(columnIndex), true, latestFlushedTime, mNodes[i]);
+        } else {
+          IoTDB.metaManager.updateLastCache(
+              plan.getDeviceId().concatNode(plan.getMeasurements()[columnIndex]),
+              plan.composeTimeValuePair(columnIndex),
+              true,
+              latestFlushedTime,
+              null);
+        }
+        columnIndex++;
       }
     }
   }
