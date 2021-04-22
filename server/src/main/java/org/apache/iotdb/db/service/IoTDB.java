@@ -69,7 +69,16 @@ public class IoTDB implements IoTDBMBean {
     daemon.active();
     if (IoTDBDescriptor.getInstance().getConfig().isStartOpenApi()) {
       OpenApiServer oas = new OpenApiServer();
-      oas.start(IoTDBDescriptor.getInstance().getConfig().getOpenApiPort());
+      if (IoTDBDescriptor.getInstance().getConfig().isEnable_https()) {
+        oas.startSSL(
+            IoTDBDescriptor.getInstance().getConfig().getOpenApiPort(),
+            IoTDBDescriptor.getInstance().getConfig().getKeyStorePath(),
+            IoTDBDescriptor.getInstance().getConfig().getTrustStorePath(),
+            IoTDBDescriptor.getInstance().getConfig().getKeyStorePwd(),
+            IoTDBDescriptor.getInstance().getConfig().getKeyManagerPwd());
+      } else {
+        oas.start(IoTDBDescriptor.getInstance().getConfig().getOpenApiPort());
+      }
     }
   }
 

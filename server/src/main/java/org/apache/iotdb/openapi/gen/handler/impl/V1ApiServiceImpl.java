@@ -368,12 +368,12 @@ public class V1ApiServiceImpl extends V1ApiService {
   @Override
   public Response postV1NonQuery(ReadData readData, SecurityContext securityContext)
       throws NotFoundException {
-    boolean b=false;
+    boolean b = false;
     try {
       Planner planner = new Planner();
       PhysicalPlan physicalPlan = planner.parseSQLToPhysicalPlan(readData.getSql());
       PlanExecutor executor = new PlanExecutor();
-      b= executor.processNonQuery(physicalPlan);
+      b = executor.processNonQuery(physicalPlan);
 
     } catch (QueryProcessException e) {
       e.printStackTrace();
@@ -383,9 +383,9 @@ public class V1ApiServiceImpl extends V1ApiService {
       e.printStackTrace();
     }
     Gson result = new Gson();
-    String restr="execute fail";
-    if(b){
-      restr="execute sucessfully";
+    String restr = "execute fail";
+    if (b) {
+      restr = "execute sucessfully";
     }
     return Response.ok().entity(result.toJson(restr)).build();
   }
@@ -721,10 +721,8 @@ public class V1ApiServiceImpl extends V1ApiService {
     try {
       Planner planner = new Planner();
       PhysicalPlan physicalPlan = planner.parseSQLToPhysicalPlan(readData.getSql());
-      if(!(physicalPlan instanceof QueryPlan)){
-        return Response.ok()
-            .entity("only support for this operation select")
-            .build();
+      if (!(physicalPlan instanceof QueryPlan)) {
+        return Response.ok().entity("only support for this operation select").build();
       }
       if (!AuthorityChecker.check(
           securityContext.getUserPrincipal().getName(),

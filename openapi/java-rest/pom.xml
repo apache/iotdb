@@ -31,14 +31,18 @@
     <!--<packaging>war</packaging>-->
     <dependencies>
         <dependency>
-            <groupId>org.eclipse.jetty.aggregate</groupId>
-            <artifactId>jetty-all</artifactId>
-            <version>7.6.0.v20120127</version>
-            <scope>compile</scope>
-        </dependency>
-        <dependency>
             <groupId>org.xerial.snappy</groupId>
             <artifactId>snappy-java</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-server</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-servlet</artifactId>
+            <version>9.4.35.v20201120</version>
+            <scope>compile</scope>
         </dependency>
     </dependencies>
     <properties>

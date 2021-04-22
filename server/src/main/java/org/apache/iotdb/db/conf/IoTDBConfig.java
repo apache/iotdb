@@ -647,10 +647,58 @@ public class IoTDBConfig {
   private boolean startOpenApi = true;
 
   /** set the OpenApi reset port. */
-  private int OpenApiPort = 18080;
+  private int OpenApiPort = 28080;
 
-  /** set the OpenApi reset port. */
+  /** set the OpenApi storegroup number. */
   private int sgCount = 5;
+
+  /** set the OpenApi storegroup number. */
+  private boolean enable_https = true;
+
+  private String keyStorePath = "/Users/miaohongshan/crethttps/keystore";
+  private String trustStorePath = "/Users/miaohongshan/crethttps/keystore";
+  private String keyStorePwd = "yoursslpassword";
+  private String keyManagerPwd = "yoursslpassword";
+
+  public boolean isEnable_https() {
+    return enable_https;
+  }
+
+  public void setEnable_https(boolean enable_https) {
+    this.enable_https = enable_https;
+  }
+
+  public String getKeyStorePath() {
+    return keyStorePath;
+  }
+
+  public void setKeyStorePath(String keyStorePath) {
+    this.keyStorePath = keyStorePath;
+  }
+
+  public String getTrustStorePath() {
+    return trustStorePath;
+  }
+
+  public void setTrustStorePath(String trustStorePath) {
+    this.trustStorePath = trustStorePath;
+  }
+
+  public String getKeyStorePwd() {
+    return keyStorePwd;
+  }
+
+  public void setKeyStorePwd(String keyStorePwd) {
+    this.keyStorePwd = keyStorePwd;
+  }
+
+  public String getKeyManagerPwd() {
+    return keyManagerPwd;
+  }
+
+  public void setKeyManagerPwd(String keyManagerPwd) {
+    this.keyManagerPwd = keyManagerPwd;
+  }
 
   public int getSgCount() {
     return sgCount;
