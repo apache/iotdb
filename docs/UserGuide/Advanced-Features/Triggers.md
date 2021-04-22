@@ -523,6 +523,17 @@ for (int i = 0; i < 100; ++i) {
 }
 ```
 
+Note that when you need to insert data points to a time series of type `TEXT`, you need to use `org.apache.iotdb.tsfile.utils.Binary`:
+
+```java
+// insert 100 data points
+for (int i = 0; i < 100; ++i) {
+  final long timestamp = i;
+  final String value = "" + i;
+  localIoTDBHandler.onEvent(new LocalIoTDBEvent(timestamp, Binary.valueOf(value)));
+}
+```
+
 
 
 #### MQTTSink

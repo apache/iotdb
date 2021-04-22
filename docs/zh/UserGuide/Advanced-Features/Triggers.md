@@ -540,6 +540,17 @@ for (int i = 0; i < 100; ++i) {
 }
 ```
 
+注意，当您需要向某个`TEXT`类型的序列写入数据时，您需要借助`org.apache.iotdb.tsfile.utils.Binary`：
+
+```java
+// insert 100 data points
+for (int i = 0; i < 100; ++i) {
+  final long timestamp = i;
+  final String value = "" + i;
+  localIoTDBHandler.onEvent(new LocalIoTDBEvent(timestamp, Binary.valueOf(value)));
+}
+```
+
 
 
 #### MQTTSink
