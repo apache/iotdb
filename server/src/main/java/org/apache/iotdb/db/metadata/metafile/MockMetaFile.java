@@ -2,6 +2,7 @@ package org.apache.iotdb.db.metadata.metafile;
 
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.PersistenceMNode;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -11,16 +12,11 @@ import java.util.concurrent.ConcurrentHashMap;
 public class MockMetaFile implements MetaFileAccess {
 
   private final Map<Long, MNode> positionFile=new ConcurrentHashMap<>();
-  private final long rootPosition=1;
-  private long freePosition=2;
+  private final long rootPosition=0;
+  private long freePosition=1;
 
 
   public MockMetaFile(String metaFilePath) {}
-
-  @Override
-  public MNode read(PartialPath path) throws IOException {
-    return getMNodeByPath(path);
-  }
 
   @Override
   public MNode read(PersistenceInfo persistenceInfo) throws IOException {
@@ -31,9 +27,9 @@ public class MockMetaFile implements MetaFileAccess {
   public void write(MNode mNode) throws IOException {
     if(!mNode.isPersisted()){
       if(mNode.getFullPath().equals("root")){
-        mNode.setPersistenceInfo(new PersistenceMNode(rootPosition));
-      }{
-        mNode.setPersistenceInfo(new PersistenceMNode(freePosition++));
+        mNode.setPersistenceInfo(PersistenceInfo.createPersistenceInfo(rootPosition));
+      }else {
+        mNode.setPersistenceInfo(PersistenceInfo.createPersistenceInfo(freePosition++));
       }
     }
     MNode persistedMNode=mNode.clone();
@@ -52,11 +48,6 @@ public class MockMetaFile implements MetaFileAccess {
   }
 
   @Override
-  public void remove(PartialPath path) throws IOException {
-    positionFile.remove(getMNodeByPath(path).getPersistenceInfo().getPosition());
-  }
-
-  @Override
   public void remove(PersistenceInfo persistenceInfo) throws IOException {
     positionFile.remove(persistenceInfo.getPosition());
   }
@@ -66,6 +57,14 @@ public class MockMetaFile implements MetaFileAccess {
 
   @Override
   public void sync() throws IOException {}
+
+  public MNode read(PartialPath path) throws IOException {
+    return getMNodeByPath(path);
+  }
+
+  public void remove(PartialPath path) throws IOException {
+    positionFile.remove(getMNodeByPath(path).getPersistenceInfo().getPosition());
+  }
 
   // todo require all node in the path be persist, which means when write child, the parent should also be written
   private MNode getMNodeByPath(PartialPath path){

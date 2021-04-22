@@ -69,6 +69,8 @@ public interface MNode extends Serializable {
 
   boolean isCached();
 
+  MNode getEvictionHolder();
+
   void evictChild(String name);
 
   MNode clone();

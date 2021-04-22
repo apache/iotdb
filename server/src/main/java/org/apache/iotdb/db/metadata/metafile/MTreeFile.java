@@ -90,58 +90,31 @@ public class MTreeFile {
     if (!nodes[0].equals("root")) {
       return null;
     }
-    MNode mNode = read(rootPosition);
+    MNode mNode = read(PersistenceInfo.createPersistenceInfo(rootPosition));
     for (int i = 1; i < nodes.length; i++) {
       if (!mNode.hasChild(nodes[i])) {
         return null;
       }
-      mNode = read(mNode.getChild(nodes[i]).getPersistenceInfo().getPosition());
+      mNode = read(mNode.getChild(nodes[i]).getPersistenceInfo());
     }
     return mNode;
   }
 
-  public MNode readRecursively(long position) throws IOException {
-    MNode mNode = new InternalMNode(null, null);
-    mNode.setPersistenceInfo(new PersistenceMNode(position));
-    readDataRecursively(mNode);
-    return mNode;
-  }
-
-  public void readDataRecursively(MNode mNode) throws IOException {
-    MNode mnode = readData(mNode);
-    for (MNode child : mnode.getChildren().values()) {
-      readDataRecursively(child);
-    }
-  }
-
-  public MNode readData(MNode mNode) throws IOException {
-    PersistenceInfo persistenceInfo = mNode.getPersistenceInfo();
-    long position = persistenceInfo.getPosition();
-    ByteBuffer dataBuffer = readBytesFromFile(position);
-    int type = dataBuffer.get();
-    if (type > 3) {
-      throw new IOException("wrong position for node read");
-    } else if (type > 1) {
-      if (type == 2) {
-        if (!mNode.isStorageGroup()) {
-          mNode = new StorageGroupMNode(mNode.getParent(), mNode.getName(), 0);
-        }
-        readStorageGroupMNode(dataBuffer, (StorageGroupMNode) mNode);
-      } else {
-        if (!mNode.isMeasurement()) {
-          mNode = new MeasurementMNode(mNode.getParent(), mNode.getName(), null, null);
-        }
-        readMeasurementGroupMNode(dataBuffer, (MeasurementMNode) mNode);
-      }
-      mNode.getParent().getChildren().replace(mNode.getName(), mNode);
-      mNode.setPersistenceInfo(persistenceInfo);
-    } else {
-      readMNode(dataBuffer, mNode);
+  public MNode readRecursively(PersistenceInfo persistenceInfo) throws IOException {
+    MNode mNode = read(persistenceInfo);
+    Map<String, MNode> children=mNode.getChildren();
+    MNode child;
+    for(Map.Entry<String,MNode> entry:children.entrySet()){
+      child=entry.getValue();
+      child=readRecursively(child.getPersistenceInfo());
+      entry.setValue(child);
+      child.setParent(mNode);
     }
     return mNode;
   }
 
-  public MNode read(long position) throws IOException {
+  public MNode read(PersistenceInfo persistenceInfo) throws IOException {
+    long position=persistenceInfo.getPosition();
     ByteBuffer dataBuffer = readBytesFromFile(position);
     int type = dataBuffer.get();
     MNode mNode;
@@ -150,12 +123,12 @@ public class MTreeFile {
       readStorageGroupMNode(dataBuffer, (StorageGroupMNode) mNode);
     } else if (type == 3) {
       mNode = new MeasurementMNode(null, null, null, null);
-      readMeasurementGroupMNode(dataBuffer, (MeasurementMNode) mNode);
+      readMeasurementMNode(dataBuffer, (MeasurementMNode) mNode);
     } else {
       mNode = new InternalMNode(null, null);
       readMNode(dataBuffer, mNode);
     }
-    mNode.setPersistenceInfo(new PersistenceMNode(position));
+    mNode.setPersistenceInfo(persistenceInfo);
 
     return mNode;
   }
@@ -216,7 +189,7 @@ public class MTreeFile {
     readChildren(mNode, dataBuffer);
   }
 
-  private void readMeasurementGroupMNode(ByteBuffer dataBuffer, MeasurementMNode mNode) {
+  private void readMeasurementMNode(ByteBuffer dataBuffer, MeasurementMNode mNode) {
     mNode.setName(ReadWriteIOUtils.readVarIntString(dataBuffer));
     String alias = ReadWriteIOUtils.readVarIntString(dataBuffer);
     mNode.setAlias("".equals(alias) ? null : alias);
@@ -261,15 +234,11 @@ public class MTreeFile {
 
     MNode child;
     for (long position : children.keySet()) {
+      child=new PersistenceMNode(position);
+      mNode.addChild(children.get(position), child);
       if (aliasChildren.containsKey(position)) {
-        child =
-            new MeasurementMNode(mNode, children.get(position), null, aliasChildren.get(position));
-        mNode.addAlias(aliasChildren.get(position), mNode);
-      } else {
-        child = new InternalMNode(mNode, children.get(position));
+        mNode.addAlias(aliasChildren.get(position), child);
       }
-      child.setPersistenceInfo(new PersistenceMNode(position));
-      mNode.addChild(child.getName(), child);
     }
   }
 
@@ -355,9 +324,9 @@ public class MTreeFile {
 
     if (mNode.getPersistenceInfo() == null) {
       if (mNode.getName().equals("root")) {
-        mNode.setPersistenceInfo(new PersistenceMNode(rootPosition));
+        mNode.setPersistenceInfo(PersistenceInfo.createPersistenceInfo(rootPosition));
       } else {
-        mNode.setPersistenceInfo(new PersistenceMNode(getFreePos()));
+        mNode.setPersistenceInfo(PersistenceInfo.createPersistenceInfo(getFreePos()));
       }
     }
 
@@ -475,7 +444,8 @@ public class MTreeFile {
     return rootPosition;
   }
 
-  public void remove(long position) throws IOException {
+  public void remove(PersistenceInfo persistenceInfo) throws IOException {
+    long position=persistenceInfo.getPosition();
     ByteBuffer buffer = ByteBuffer.allocate(17);
     while (position != 0) {
       fileAccess.readBytes(position, buffer);

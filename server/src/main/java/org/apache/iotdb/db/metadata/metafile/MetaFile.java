@@ -3,6 +3,7 @@ package org.apache.iotdb.db.metadata.metafile;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
+import org.apache.iotdb.db.metadata.mnode.PersistenceMNode;
 
 import java.io.IOException;
 import java.util.*;
@@ -16,17 +17,8 @@ public class MetaFile implements MetaFileAccess {
   }
 
   @Override
-  public MNode read(PartialPath path) throws IOException {
-    return readMNode(path.toString());
-  }
-
-  @Override
   public MNode read(PersistenceInfo persistenceInfo) throws IOException {
     return readMNode(persistenceInfo);
-  }
-
-  private MNode readData(InternalMNode mNode) throws IOException {
-    return mTreeFile.readData(mNode);
   }
 
   @Override
@@ -43,9 +35,6 @@ public class MetaFile implements MetaFileAccess {
   }
 
   @Override
-  public void remove(PartialPath path) throws IOException {}
-
-  @Override
   public void remove(PersistenceInfo persistenceInfo) throws IOException {}
 
   @Override
@@ -58,16 +47,20 @@ public class MetaFile implements MetaFileAccess {
     mTreeFile.sync();
   }
 
+  public MNode read(PartialPath path) throws IOException {
+    return readMNode(path.toString());
+  }
+
   public MNode readMNode(String path) throws IOException {
     return mTreeFile.read(path);
   }
 
   public MNode readMNode(PersistenceInfo persistenceInfo) throws IOException {
-    return mTreeFile.read(persistenceInfo.getPosition());
+    return mTreeFile.read(persistenceInfo);
   }
 
   public MNode readRecursively(PersistenceInfo persistenceInfo) throws IOException {
-    return mTreeFile.readRecursively(persistenceInfo.getPosition());
+    return mTreeFile.readRecursively(persistenceInfo);
   }
 
   public void writeRecursively(MNode mNode) throws IOException {
@@ -75,6 +68,8 @@ public class MetaFile implements MetaFileAccess {
     flatten(mNode, mNodeList);
     write(mNodeList);
   }
+
+  public void remove(PartialPath path) throws IOException {}
 
   private void flatten(MNode mNode, Collection<MNode> mNodes) {
     mNodes.add(mNode);
@@ -89,9 +84,9 @@ public class MetaFile implements MetaFileAccess {
         continue;
       }
       if (mNode.getName().equals("root")) {
-        mNode.setPersistenceInfo(new PersistenceMNode(mTreeFile.getRootPosition()));
+        mNode.setPersistenceInfo(PersistenceInfo.createPersistenceInfo(mTreeFile.getRootPosition()));
       } else {
-        mNode.setPersistenceInfo(new PersistenceMNode(mTreeFile.getFreePos()));
+        mNode.setPersistenceInfo(PersistenceInfo.createPersistenceInfo(mTreeFile.getFreePos()));
       }
     }
   }

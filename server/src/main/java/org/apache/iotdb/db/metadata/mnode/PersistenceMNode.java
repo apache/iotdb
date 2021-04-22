@@ -1,14 +1,15 @@
-package org.apache.iotdb.db.metadata.metafile;
+package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.cache.CacheEntry;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
-import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.metafile.PersistenceInfo;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Map;
 
-class PersistenceMNode implements PersistenceInfo, MNode {
+public class PersistenceMNode implements PersistenceInfo, MNode {
 
   /** offset in metafile */
   private long position;
@@ -17,6 +18,10 @@ class PersistenceMNode implements PersistenceInfo, MNode {
 
   public PersistenceMNode(long position) {
     this.position = position;
+  }
+
+  public PersistenceMNode(PersistenceInfo persistenceInfo){
+    position=persistenceInfo.getPosition();
   }
 
   @Override
@@ -46,7 +51,7 @@ class PersistenceMNode implements PersistenceInfo, MNode {
 
   @Override
   public boolean isPersisted() {
-    return position!=0;
+    return true;
   }
 
   @Override
@@ -56,7 +61,12 @@ class PersistenceMNode implements PersistenceInfo, MNode {
 
   @Override
   public void setPersistenceInfo(PersistenceInfo persistenceInfo) {
-    this.position=persistenceInfo.getPosition();
+    position=persistenceInfo.getPosition();
+  }
+
+  @Override
+  public MNode getEvictionHolder() {
+    return this;
   }
 
   @Override
@@ -121,12 +131,12 @@ class PersistenceMNode implements PersistenceInfo, MNode {
 
   @Override
   public Map<String, MNode> getChildren() {
-    return null;
+    return Collections.emptyMap();
   }
 
   @Override
   public Map<String, MNode> getAliasChildren() {
-    return null;
+    return Collections.emptyMap();
   }
 
   @Override

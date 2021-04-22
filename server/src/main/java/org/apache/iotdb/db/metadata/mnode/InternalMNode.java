@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import com.sun.javafx.collections.MappingChange;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.cache.CacheEntry;
@@ -53,7 +52,7 @@ public class InternalMNode implements MNode {
   protected String fullPath;
 
   /** persistence information in metafile */
-  protected PersistenceInfo persistenceInfo;
+  protected PersistenceMNode persistenceMNode;
 
   /** used for cache implementation */
   protected transient CacheEntry cacheEntry;
@@ -110,7 +109,7 @@ public class InternalMNode implements MNode {
     }
 
     child.setParent(this);
-    MNode oldChild=getChild(name);
+    MNode oldChild=children.get(name);
     if (oldChild==null||!oldChild.isLoaded()) {
       children.put(name, child);
     }
@@ -360,17 +359,24 @@ public class InternalMNode implements MNode {
 
   @Override
   public boolean isPersisted() {
-    return persistenceInfo != null;
+    return persistenceMNode != null;
   }
 
   @Override
   public PersistenceInfo getPersistenceInfo() {
-    return persistenceInfo;
+    return persistenceMNode;
   }
 
   @Override
   public void setPersistenceInfo(PersistenceInfo persistenceInfo) {
-    this.persistenceInfo = persistenceInfo;
+    if(persistenceInfo==null){
+      return;
+    }
+    if(persistenceMNode!=null){
+      persistenceMNode.setPersistenceInfo(persistenceInfo);
+    }else {
+      persistenceMNode=new PersistenceMNode(persistenceInfo);
+    }
   }
 
   @Override
@@ -389,17 +395,22 @@ public class InternalMNode implements MNode {
   }
 
   @Override
+  public MNode getEvictionHolder() {
+    return persistenceMNode;
+  }
+
+  @Override
   public void evictChild(String name) {
     if (children != null && children.containsKey(name)) {
       MNode mNode = children.get(name);
       if(!mNode.isLoaded()){
         return;
       }
-      children.put(name, mNode.getPersistenceInfo()); // child must be persisted first
+      children.put(name, mNode.getEvictionHolder()); // child must be persisted first
       if (mNode.isMeasurement()) {
         String alias = ((MeasurementMNode) mNode).getAlias();
         if (alias != null && aliasChildren != null && aliasChildren.containsKey(alias)) {
-          aliasChildren.put(alias, mNode.getPersistenceInfo());
+          aliasChildren.put(alias, mNode.getEvictionHolder());
         }
       }
     }
@@ -415,7 +426,7 @@ public class InternalMNode implements MNode {
   protected void copyData(MNode mNode){
     mNode.setParent(parent);
     mNode.setCacheEntry(cacheEntry);
-    mNode.setPersistenceInfo(persistenceInfo);
+    mNode.setPersistenceInfo(getPersistenceInfo());
 
     Map<String,MNode> newChildren=new ConcurrentHashMap<>();
     if(children!=null){

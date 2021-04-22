@@ -22,7 +22,7 @@ import static org.junit.Assert.*;
 
 public class MTreeDiskBasedTest {
 
-  private static final int CACHE_SIZE = 5;
+  private static final int CACHE_SIZE = 10;
   private static final String BASE_PATH = MTreeDiskBasedTest.class.getResource("").getPath();
   private static final String METAFILE_FILEPATH = BASE_PATH + "metafile.bin";
 
@@ -174,6 +174,7 @@ public class MTreeDiskBasedTest {
           null);
 
       root.setStorageGroup(new PartialPath("root.a.b.d0"));
+      System.out.println(root.getNodeByPath(new PartialPath("root.a.b.d0")).isStorageGroup());
       root.createTimeseries(
           new PartialPath("root.a.b.d0.s0"),
           TSDataType.INT32,

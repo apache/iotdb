@@ -8,15 +8,11 @@ import java.util.Collection;
 
 public interface MetaFileAccess {
 
-  MNode read(PartialPath path) throws IOException;
-
   MNode read(PersistenceInfo persistenceInfo) throws IOException;
 
   void write(MNode mNode) throws IOException;
 
   void write(Collection<MNode> mNodes) throws IOException;
-
-  void remove(PartialPath path) throws IOException;
 
   void remove(PersistenceInfo persistenceInfo) throws IOException;
 

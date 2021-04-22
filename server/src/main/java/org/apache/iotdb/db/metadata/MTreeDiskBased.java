@@ -103,7 +103,7 @@ public class MTreeDiskBased implements MTreeInterface {
       cacheStrategy.applyChange(root);
       cacheStrategy.setModified(root, false);
     }else {
-      this.root=root.getPersistenceInfo();
+      this.root=root.getEvictionHolder();
     }
 
   }
@@ -171,13 +171,18 @@ public class MTreeDiskBased implements MTreeInterface {
     if (result.isLoaded()) {
       if (result.isCached()) {
         cacheStrategy.applyChange(result);
+      } else {
+        if (isCacheable(result)) {
+          cacheStrategy.applyChange(result);
+          cacheStrategy.setModified(result, false);
+        }
       }
     } else {
       result = getMNodeFromDisk(result.getPersistenceInfo());
       parent.addChild(name, result);
       if (isCacheable(result)) {
         cacheStrategy.applyChange(result);
-        cacheStrategy.setModified(root, false);
+        cacheStrategy.setModified(result, false);
       }
     }
     return result;
@@ -190,6 +195,11 @@ public class MTreeDiskBased implements MTreeInterface {
       if (child.isLoaded()) {
         if (child.isCached()) {
           cacheStrategy.applyChange(child);
+        }else {
+          if (isCacheable(child)) {
+            cacheStrategy.applyChange(child);
+            cacheStrategy.setModified(child, false);
+          }
         }
       } else {
         child = getMNodeFromDisk(child.getPersistenceInfo());
@@ -322,7 +332,7 @@ public class MTreeDiskBased implements MTreeInterface {
         first.getParent().evictChild(first.getName());
       }
       if (root != null && root.isLoaded() && first == root) {
-        root = root.getPersistenceInfo();
+        root = root.getEvictionHolder();
       }
     }
     return true;
