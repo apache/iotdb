@@ -32,9 +32,9 @@ public class MockMetaFile implements MetaFileAccess {
       }
     }
     MNode persistedMNode=mNode.clone();
-    for(Map.Entry<String,MNode> entry:persistedMNode.getChildren().entrySet()){
-      // todo require child be written before parent
-      persistedMNode.evictChild(entry.getKey());
+    for(String childName:persistedMNode.getChildren().keySet()){
+      // require child be written before parent
+      persistedMNode.evictChild(childName);
     }
     positionFile.put(persistedMNode.getPersistenceInfo().getPosition(),persistedMNode);
   }

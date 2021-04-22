@@ -22,7 +22,7 @@ import static org.junit.Assert.*;
 
 public class MTreeDiskBasedTest {
 
-  private static final int CACHE_SIZE = 10;
+  private static final int CACHE_SIZE = 0;
   private static final String BASE_PATH = MTreeDiskBasedTest.class.getResource("").getPath();
   private static final String METAFILE_FILEPATH = BASE_PATH + "metafile.bin";
 
@@ -174,7 +174,6 @@ public class MTreeDiskBasedTest {
           null);
 
       root.setStorageGroup(new PartialPath("root.a.b.d0"));
-      System.out.println(root.getNodeByPath(new PartialPath("root.a.b.d0")).isStorageGroup());
       root.createTimeseries(
           new PartialPath("root.a.b.d0.s0"),
           TSDataType.INT32,
@@ -695,7 +694,7 @@ public class MTreeDiskBasedTest {
           Collections.emptyMap(),
           null);
       MNode sgNode = root.getNodeByPath(sgPath);
-      assertEquals(1, sgNode.getMeasurementMNodeCount()); // b
+      assertEquals(1, root.getMeasurementMNodeCount(sgPath)); // b
 
       root.createTimeseries(
           new PartialPath("root.sg1.a.b.c"),
@@ -704,9 +703,9 @@ public class MTreeDiskBasedTest {
           TSFileDescriptor.getInstance().getConfig().getCompressor(),
           Collections.emptyMap(),
           null);
-      assertEquals(2, sgNode.getMeasurementMNodeCount()); // b and c
-      MNode cNode = sgNode.getChild("a").getChild("b").getChild("c");
-      assertEquals(1, cNode.getMeasurementMNodeCount()); // c
+      assertEquals(2, root.getMeasurementMNodeCount(sgPath)); // b and c
+      PartialPath cNodePath=new PartialPath(sgPath+".a.b.c");
+      assertEquals(1, root.getMeasurementMNodeCount(cNodePath)); // c
 
       root.createTimeseries(
           new PartialPath("root.sg1.a.b.c.d"),
@@ -715,10 +714,10 @@ public class MTreeDiskBasedTest {
           TSFileDescriptor.getInstance().getConfig().getCompressor(),
           Collections.emptyMap(),
           null);
-      assertEquals(3, sgNode.getMeasurementMNodeCount()); // b, c and d
-      assertEquals(2, cNode.getMeasurementMNodeCount()); // c and d
-      MNode dNode = cNode.getChild("d");
-      assertEquals(1, dNode.getMeasurementMNodeCount()); // d
+      assertEquals(3, root.getMeasurementMNodeCount(sgPath)); // b, c and d
+      assertEquals(2, root.getMeasurementMNodeCount(cNodePath)); // c and d
+      PartialPath dNodePath=new PartialPath(cNodePath+".d");
+      assertEquals(1, root.getMeasurementMNodeCount(dNodePath)); // d
 
     } catch (MetadataException e1) {
       fail(e1.getMessage());

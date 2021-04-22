@@ -1417,6 +1417,12 @@ public class MTree implements MTreeInterface {
     }
   }
 
+  @Override
+  public int getMeasurementMNodeCount(PartialPath path) throws MetadataException {
+    MNode mNode=getNodeByPath(path);
+    return mNode.getMeasurementMNodeCount();
+  }
+
   public static MTree deserializeFrom(File mtreeSnapshot) {
     try (MLogReader mLogReader = new MLogReader(mtreeSnapshot)) {
       return deserializeFromReader(mLogReader);

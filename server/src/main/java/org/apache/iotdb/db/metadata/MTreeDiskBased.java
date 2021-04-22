@@ -166,6 +166,7 @@ public class MTreeDiskBased implements MTreeInterface {
       if (alias != null) {
         metadataDiskManager.addAlias(cur, alias, measurementMNode);
       }
+
       return measurementMNode;
     }
   }
@@ -1362,6 +1363,19 @@ public class MTreeDiskBased implements MTreeInterface {
     }catch (MetadataException e){
       throw new IOException(e.getMessage());
     }
+  }
+
+  @Override
+  public int getMeasurementMNodeCount(PartialPath path) throws MetadataException {
+    MNode mNode=getNodeByPath(path);
+    int measurementMNodeCount = 0;
+    if (mNode.isMeasurement()) {
+      measurementMNodeCount += 1; // current node itself may be MeasurementMNode
+    }
+    for(String childName:mNode.getChildren().keySet()){
+      measurementMNodeCount += getMeasurementMNodeCount(new PartialPath(mNode.getFullPath()+ PATH_SEPARATOR+childName));
+    }
+    return measurementMNodeCount;
   }
 
   private static String jsonToString(JsonObject jsonObject) {

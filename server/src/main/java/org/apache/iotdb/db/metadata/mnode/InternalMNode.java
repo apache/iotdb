@@ -183,12 +183,12 @@ public class InternalMNode implements MNode {
   /** get the count of all MeasurementMNode whose ancestor is current node */
   @Override
   public int getMeasurementMNodeCount() {
-    if (children == null) {
-      return 1;
-    }
     int measurementMNodeCount = 0;
     if (isMeasurement()) {
       measurementMNodeCount += 1; // current node itself may be MeasurementMNode
+    }
+    if (children == null) {
+      return measurementMNodeCount;
     }
     for (MNode child : children.values()) {
       measurementMNodeCount += child.getMeasurementMNodeCount();

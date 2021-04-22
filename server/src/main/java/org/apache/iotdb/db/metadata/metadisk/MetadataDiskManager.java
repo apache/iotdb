@@ -244,8 +244,9 @@ public class MetadataDiskManager implements MetadataAccess{
             return false;
         }
         while (cacheStrategy.getSize() >= capacity) {
-            List<MNode> evictedMNode = cacheStrategy.evict();
-            for (MNode mNode : evictedMNode) {
+            List<MNode> modifiedMNodes = cacheStrategy.evict();
+            MNode evictedMNode=modifiedMNodes.remove(0);
+            for (MNode mNode : modifiedMNodes) {
                 try {
                     metaFile.write(mNode);
                     cacheStrategy.setModified(mNode, false);
@@ -253,11 +254,10 @@ public class MetadataDiskManager implements MetadataAccess{
                     throw new MetadataException(e.getMessage());
                 }
             }
-            MNode first=evictedMNode.get(evictedMNode.size()-1);
-            if (first.getParent() != null) {
-                first.getParent().evictChild(first.getName());
-            }
-            if (root != null && root.isLoaded() && first == root) {
+            if (evictedMNode.getParent() != null) {
+                evictedMNode.getParent().evictChild(evictedMNode.getName());
+            }else {
+                // only root's parent is null
                 root = root.getEvictionHolder();
             }
         }
