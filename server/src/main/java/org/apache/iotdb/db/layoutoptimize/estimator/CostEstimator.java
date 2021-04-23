@@ -30,7 +30,7 @@ public class CostEstimator {
    *
    * @param query the query to be estimated
    * @param physicalOrder the physical order of chunk in tsfile
-   * @param chunkSize the average chunk size
+   * @param chunkSize the average chunk size in disk
    * @return the cost in milliseconds
    */
   public double estimate(QueryRecord query, List<String> physicalOrder, long chunkSize) {

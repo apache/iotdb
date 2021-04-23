@@ -7,6 +7,21 @@ public class OptimizeConfig {
   private long SAMaxTime = 30L * 60L * 1000L;
   private int recordSampleNum = 100;
 
+  public OptimizeConfig() {}
+
+  public OptimizeConfig(
+      double SACoolingRate,
+      double SAInitTemperature,
+      int SAMaxIteration,
+      long SAMaxTime,
+      int recordSampleNum) {
+    this.SACoolingRate = SACoolingRate;
+    this.SAInitTemperature = SAInitTemperature;
+    this.SAMaxIteration = SAMaxIteration;
+    this.SAMaxTime = SAMaxTime;
+    this.recordSampleNum = recordSampleNum;
+  }
+
   public double getSACoolingRate() {
     return SACoolingRate;
   }

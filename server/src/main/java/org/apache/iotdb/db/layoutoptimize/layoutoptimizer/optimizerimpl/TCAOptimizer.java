@@ -52,6 +52,7 @@ public class TCAOptimizer extends LayoutOptimizer {
     Random random = new Random();
     double curCost = oriCost;
     double newCost = 0;
+    double compressionRatio = CompressionRatio.getInstance().getRatio();
     for (int i = 0;
         i < maxIteration && System.currentTimeMillis() - startTime < maxTime;
         i++, temperature *= (1 - coolingRate)) {
@@ -61,7 +62,11 @@ public class TCAOptimizer extends LayoutOptimizer {
       } else {
         changeChunkSize();
       }
-      newCost = estimator.estimate(records, measurementOrder, averageChunkSize);
+      // average chunk size is chunk size in memory
+      // when estimating cost, we should use chunk in disk
+      newCost =
+          estimator.estimate(
+              records, measurementOrder, (long) (averageChunkSize / compressionRatio));
       double probability = Math.abs(random.nextDouble()) % 1.0;
       if (newCost < curCost || Math.exp((curCost - newCost) / temperature) > probability) {
         curCost = newCost;

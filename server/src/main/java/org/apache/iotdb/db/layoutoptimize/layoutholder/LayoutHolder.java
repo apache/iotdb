@@ -1,7 +1,9 @@
 package org.apache.iotdb.db.layoutoptimize.layoutholder;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.layoutoptimize.LayoutNotExistException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -52,6 +54,11 @@ public class LayoutHolder {
     }
   }
 
+  public void setLayout(String device, List<String> measurementOrder, long chunkSize) {
+    orderMap.put(device, measurementOrder);
+    chunkMap.put(device, chunkSize);
+  }
+
   public Pair<List<String>, Long> getLayoutForDevice(String deviceId)
       throws LayoutNotExistException {
     if (!orderMap.containsKey(deviceId))
@@ -71,5 +78,15 @@ public class LayoutHolder {
     if (!orderMap.containsKey(deviceId))
       throw new LayoutNotExistException(String.format("layout for %s not exists", deviceId));
     return chunkMap.get(deviceId);
+  }
+
+  public void setDeviceForFlush(PartialPath device)
+      throws StorageGroupNotSetException, LayoutNotExistException {
+    if (!chunkMap.containsKey(device) || !orderMap.containsKey(device)) {
+      throw new LayoutNotExistException(
+          String.format("Layout for %s not exists", device.getFullPath()));
+    }
+    long chunkSize = chunkMap.get(device) * orderMap.get(device).size();
+    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(chunkSize);
   }
 }

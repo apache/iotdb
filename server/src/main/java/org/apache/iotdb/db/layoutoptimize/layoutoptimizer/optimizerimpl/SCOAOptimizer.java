@@ -1,5 +1,6 @@
 package org.apache.iotdb.db.layoutoptimize.layoutoptimizer.optimizerimpl;
 
+import org.apache.iotdb.db.conf.adapter.CompressionRatio;
 import org.apache.iotdb.db.layoutoptimize.estimator.CostEstimator;
 import org.apache.iotdb.db.layoutoptimize.layoutoptimizer.LayoutOptimizer;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -29,6 +30,7 @@ public class SCOAOptimizer extends LayoutOptimizer {
     double newCost = -1;
     double temperature = config.getSAInitTemperature();
     double coolingRate = config.getSACoolingRate();
+    double compressionRatio = CompressionRatio.getInstance().getRatio();
     for (int i = 0;
         i < config.getSAMaxIteration()
             && System.currentTimeMillis() - startTime < config.getSAMaxTime();
@@ -40,7 +42,11 @@ public class SCOAOptimizer extends LayoutOptimizer {
         right = random.nextInt(measurementOrder.size());
       } while (left == right);
       swapMeasurementPos(left, right);
-      newCost = estimator.estimate(records, measurementOrder, averageChunkSize);
+      // average chunk size is chunk size in memory
+      // when estimating cost, we should use chunk size in disk
+      newCost =
+          estimator.estimate(
+              records, measurementOrder, (long) (averageChunkSize / compressionRatio));
       double probability = Math.abs(random.nextDouble()) % 1.0;
       if (newCost < curCost || Math.exp((curCost - newCost) / temperature) > probability) {
         curCost = newCost;
