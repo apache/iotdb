@@ -37,7 +37,7 @@ import java.util.Map;
 
 public class RpcUtils {
 
-  /** How big should the default read and write buffers be? Defaults to 64KB */
+  /** How big should the default read and write buffers be? Defaults to 1KB */
   public static final int THRIFT_DEFAULT_BUF_CAPACITY = 1024;
   /**
    * It is used to prevent the size of the parsing package from being too large and allocating the
