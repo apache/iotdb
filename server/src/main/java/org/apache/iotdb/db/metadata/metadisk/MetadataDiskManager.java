@@ -247,8 +247,6 @@ public class MetadataDiskManager implements MetadataAccess {
     while (cacheStrategy.getSize() >= capacity) {
       List<MNode> modifiedMNodes = cacheStrategy.evict();
       MNode evictedMNode = modifiedMNodes.remove(0);
-      System.out.println(
-          evictedMNode + " " + modifiedMNodes.size() + " " + cacheStrategy.getSize());
       for (MNode mNode : modifiedMNodes) {
         try {
           metaFile.write(mNode);

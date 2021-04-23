@@ -136,21 +136,9 @@ public class LRUCacheStrategy implements CacheStrategy {
       }
       collectModifiedRecursively(mNode, modifiedMNodes);
 
-      CacheEntry entry = first;
-      while (entry != null) {
-        System.out.print(entry.value);
-        System.out.print(entry.getValue().getCacheEntry() == null);
-        System.out.print("->");
-        entry = entry.next;
-      }
-      System.out.print(" ");
-
       mNode = last.value;
       removeRecursively(last.value);
       modifiedMNodes.add(0, mNode);
-      if (mNode.getName().equals("root")) {
-        System.out.print(size);
-      }
       return modifiedMNodes;
     } finally {
       lock.unlock();
@@ -168,5 +156,16 @@ public class LRUCacheStrategy implements CacheStrategy {
     if (cacheEntry.isModified) {
       mNodeCollection.add(mNode);
     }
+  }
+
+  private void showCachedMNode() {
+    CacheEntry entry = first;
+    while (entry != null) {
+      System.out.print(entry.value);
+      System.out.print(entry.getValue().getCacheEntry() == null);
+      System.out.print("->");
+      entry = entry.next;
+    }
+    System.out.print(" ");
   }
 }

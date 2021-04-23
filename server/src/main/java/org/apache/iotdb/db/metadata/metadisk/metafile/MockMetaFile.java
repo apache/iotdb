@@ -31,6 +31,7 @@ public class MockMetaFile implements MetaFileAccess {
       }
     }
     MNode persistedMNode = mNode.clone();
+    persistedMNode.setCacheEntry(null);
     for (String childName : persistedMNode.getChildren().keySet()) {
       // require child be written before parent
       persistedMNode.evictChild(childName);
