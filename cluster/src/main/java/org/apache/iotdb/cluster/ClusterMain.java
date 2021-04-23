@@ -170,7 +170,7 @@ public class ClusterMain {
       seedNodes.add(node);
     }
 
-    // assert this node is in all nodes when restart 172.19.0.2:9003, 172.19.0.3:9003,
+    // assert this node is in all nodes when restart
     if (!metaServer.getMember().getAllNodes().isEmpty()) {
       if (!metaServer.getMember().getAllNodes().contains(metaServer.getMember().getThisNode())) {
         String message =

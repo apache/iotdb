@@ -39,7 +39,7 @@ jobs:
           restore-keys: ${{ runner.os }}-m2
 
       - name: Build Distribution Zip
-        run: ./mvnw.sh -B -DskipTests clean package
+        run: ./mvnw.sh -B -DskipTests clean install
 
       - name: Build Docker Image
         run: |
@@ -55,4 +55,4 @@ jobs:
 
       - name: TestContainer
         run: |
-          mvn integration-test -pl testcontainer
+          mvn -B integration-test -pl testcontainer

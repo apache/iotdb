@@ -34,7 +34,7 @@ The logic is, for Unix-like system, it checks whether `/var/run/docker.sock` exi
 For Window system, it checks whether `C:\Program Files\Docker\Docker\resources\bin\docker.exe` exists.
 
 If you are sure you have installed the Docker but `testcontainer` module is not loaed, use `-P unixDockerCheck`
-in your maven command.
+in your maven command, which also works on Windows OS.
 
 ## Behavior
 
