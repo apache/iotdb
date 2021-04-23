@@ -60,10 +60,10 @@ public class ClusterConfig {
   private boolean useBatchInLogCatchUp = true;
 
   /** max number of committed logs to be saved */
-  private int minNumOfLogsInMem = 100;
+  private int minNumOfLogsInMem = 1000;
 
   /** max number of committed logs in memory */
-  private int maxNumOfLogsInMem = 1000;
+  private int maxNumOfLogsInMem = 2000;
 
   /** max memory size of committed logs in memory, default 512M */
   private long maxMemorySizeForRaftLog = 536870912;
@@ -142,7 +142,7 @@ public class ClusterConfig {
   /** The maximum number of logs saved on the disk */
   private int maxPersistRaftLogNumberOnDisk = 1_000_000;
 
-  private boolean enableUsePersistLogOnDiskToCatchUp = false;
+  private boolean enableUsePersistLogOnDiskToCatchUp = true;
 
   /**
    * The number of logs read on the disk at one time, which is mainly used to control the memory
