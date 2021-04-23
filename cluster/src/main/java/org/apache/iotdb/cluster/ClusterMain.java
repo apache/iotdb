@@ -157,7 +157,7 @@ public class ClusterMain {
               config.getSeedNodeUrls().size(), quorum);
       throw new StartupException(metaServer.getMember().getName(), message);
     }
-    logger.info("seed urls in start Server Check 3:" + config.getSeedNodeUrls());
+
     // assert not duplicated nodes
     Set<Node> seedNodes = new HashSet<>();
     for (String url : config.getSeedNodeUrls()) {
