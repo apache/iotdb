@@ -1758,7 +1758,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   private void parseInsertValuesSpec(InsertValuesSpecContext ctx, InsertOperator insertOp) {
     List<InsertMultiValueContext> insertMultiValues = ctx.insertMultiValue();
     List<String> valueList = new ArrayList<>();
-    Long[] timeArray = new Long[insertMultiValues.size()];
+    long[] timeArray = new long[insertMultiValues.size()];
     for (int i = 0; i < insertMultiValues.size(); i++) {
       long timestamp;
       if (insertMultiValues.get(i).dateFormat() != null) {
