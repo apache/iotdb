@@ -21,7 +21,7 @@
 
 
 
-# 持续查询（Continuous Query, ）
+# 持续查询（Continuous Query, CQ）
 
 我们可以通过 SQL 语句注册、或卸载一个 CQ 实例，以及查询到所有已经注册的 CQ 配置信息。
 
