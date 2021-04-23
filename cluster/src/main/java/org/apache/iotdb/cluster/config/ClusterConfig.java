@@ -55,7 +55,7 @@ public class ClusterConfig {
 
   private int writeOperationTimeoutMS = (int) TimeUnit.SECONDS.toMillis(30);
 
-  private int catchUpTimeoutMS = (int) TimeUnit.SECONDS.toMillis(60);
+  private int catchUpTimeoutMS = (int) TimeUnit.SECONDS.toMillis(300);
 
   private boolean useBatchInLogCatchUp = true;
 
