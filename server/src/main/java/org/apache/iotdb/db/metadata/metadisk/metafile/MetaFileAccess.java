@@ -5,6 +5,7 @@ import org.apache.iotdb.db.metadata.mnode.MNode;
 import java.io.IOException;
 import java.util.Collection;
 
+/** this interface provides mnode IO operation on a file/disk */
 public interface MetaFileAccess {
 
   MNode read(PersistenceInfo persistenceInfo) throws IOException;

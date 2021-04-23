@@ -8,7 +8,6 @@ import org.apache.iotdb.db.metadata.metadisk.cache.CacheStrategy;
 import org.apache.iotdb.db.metadata.metadisk.cache.LRUCacheStrategy;
 import org.apache.iotdb.db.metadata.metadisk.metafile.MetaFile;
 import org.apache.iotdb.db.metadata.metadisk.metafile.MetaFileAccess;
-import org.apache.iotdb.db.metadata.metadisk.metafile.MockMetaFile;
 import org.apache.iotdb.db.metadata.metadisk.metafile.PersistenceInfo;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
@@ -19,6 +18,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * this class is an instance of MetadataAccess, provides operations on a disk-based mtree. user of
+ * this class has no need to consider whether the operated mnode is in memory or in disk.
+ */
 public class MetadataDiskManager implements MetadataAccess {
 
   private int capacity;
@@ -42,8 +45,7 @@ public class MetadataDiskManager implements MetadataAccess {
     MNode root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
 
     try {
-      //    metaFile = new MockMetaFile(metaFilePath);
-      metaFile=new MetaFile(metaFilePath);
+      metaFile = new MetaFile(metaFilePath);
       metaFile.write(root);
     } catch (IOException e) {
       throw new MetadataException(e.getMessage());
@@ -227,6 +229,7 @@ public class MetadataDiskManager implements MetadataAccess {
     }
   }
 
+  /** get mnode from disk */
   private MNode getMNodeFromDisk(PersistenceInfo persistenceInfo) throws MetadataException {
     try {
       return metaFile.read(persistenceInfo);
@@ -235,12 +238,22 @@ public class MetadataDiskManager implements MetadataAccess {
     }
   }
 
+  /**
+   * whether a mnode is able to be cached
+   *
+   * <p>only if the cache has enough space and the parent of the mnode is cached, the mnode will be
+   * cached.
+   */
   private boolean isCacheable(MNode mNode) throws MetadataException {
     MNode parent = mNode.getParent();
     // parent may be evicted from the cache when checkSizeAndEviction
     return parent.isCached() && checkSizeAndEviction() && parent.isCached();
   }
 
+  /**
+   * when a new mnode needed to be cached, this function should be invoked first to check whether
+   * the space of cache is enough and when not, cache eviction will be excuted
+   */
   private boolean checkSizeAndEviction() throws MetadataException {
     if (capacity == 0) {
       return false;

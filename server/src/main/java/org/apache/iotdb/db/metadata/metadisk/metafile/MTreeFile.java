@@ -262,7 +262,7 @@ public class MTreeFile {
     if (mNode == null) {
       throw new IOException("MNode is null and cannot be persist.");
     }
-    if(!mNode.isLoaded()){
+    if (!mNode.isLoaded()) {
       return;
     }
 
@@ -377,7 +377,8 @@ public class MTreeFile {
     bufferList[0] = ByteBuffer.allocate(nodeLength);
     bufferList[0].put(bitmap);
     MNode parent = mNode.getParent();
-    long prePos = (parent == null||!parent.isPersisted())? 0 : parent.getPersistenceInfo().getPosition();
+    long prePos =
+        (parent == null || !parent.isPersisted()) ? 0 : parent.getPersistenceInfo().getPosition();
     bufferList[0].putLong(prePos);
     long extensionPos = (0 == bufferNum - 1) ? 0 : getFreePos();
     bufferList[0].putLong(extensionPos);
@@ -441,7 +442,7 @@ public class MTreeFile {
   }
 
   private void serializeChildren(Map<String, MNode> children, ByteBuffer dataBuffer) {
-    for(String childName:children.keySet()){
+    for (String childName : children.keySet()) {
       ReadWriteIOUtils.writeVar(childName, dataBuffer);
       dataBuffer.putLong(children.get(childName).getPersistenceInfo().getPosition());
     }

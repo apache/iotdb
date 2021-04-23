@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/** Operations on the hierarchical struct of the Metadata Tree is defined in this interface. */
 public interface MTreeInterface extends Serializable {
 
   /**
