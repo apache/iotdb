@@ -21,7 +21,7 @@
 
 
 
-# 持续查询（Continuous Query, CQ）
+# 持续查询（Continuous Query, ）
 
 我们可以通过 SQL 语句注册、或卸载一个 CQ 实例，以及查询到所有已经注册的 CQ 配置信息。
 
@@ -48,6 +48,10 @@ END
 * <for_interval> 指定每次查询的时间范围为[now() - <for_interval>, now())。
 若用户不指定，若用户指定了 <every_interval>，
 则与 <every_interval> 一致，否则与 \<group_by_interval\> 一致。
+* <every_interval>的值应该大于0并小于<for_interval>的值，如果大于<for_interval>的值，
+  系统会按照等于<for_interval>的值处理。
+* <group_by_interval>的值应该大于0并小于<for_interval>的值，如果大于<for_interval>的值，
+  系统会按照等于<for_interval>的值处理。  
 * \<function\> 指定聚合函数。
 * \<path_prefix\> 与 \<path_suffix\> 拼接成完整的查询原时间序列。
 * \<new_path\> 或 \<new_path_suffix\> 指定将查询出的数据写入的时间序列路径。
