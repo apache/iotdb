@@ -24,7 +24,8 @@ import java.util.concurrent.RejectedExecutionException;
 @FunctionalInterface
 public interface Evaluator {
 
-  void evaluate(Window window);
+  @SuppressWarnings("squid:S112")
+  void evaluate(Window window) throws Exception;
 
   default void onRejection(Window window) {
     throw new RejectedExecutionException();

@@ -156,4 +156,73 @@ public class LevelCompactionTsFileManagementTest extends LevelCompactionTest {
     assertEquals(0, levelCompactionTsFileManagement.size(true));
     assertEquals(0, levelCompactionTsFileManagement.size(false));
   }
+
+  @Test
+  public void testIteratorRemove() {
+    LevelCompactionTsFileManagement levelCompactionTsFileManagement =
+        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
+    for (TsFileResource tsFileResource : seqResources) {
+      levelCompactionTsFileManagement.add(tsFileResource, true);
+    }
+    levelCompactionTsFileManagement.addAll(seqResources, false);
+    assertEquals(6, levelCompactionTsFileManagement.getTsFileList(true).size());
+
+    Iterator<TsFileResource> tsFileResourceIterator =
+        levelCompactionTsFileManagement.getIterator(true);
+    tsFileResourceIterator.next();
+    try {
+      tsFileResourceIterator.remove();
+    } catch (UnsupportedOperationException e) {
+      // pass
+    }
+    assertEquals(6, levelCompactionTsFileManagement.getTsFileList(true).size());
+
+    TsFileResource tsFileResource1 =
+        new TsFileResource(
+            new File(
+                TestConstant.BASE_OUTPUT_PATH.concat(
+                    10
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 10
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 1
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 0
+                        + ".tsfile")));
+    TsFileResource tsFileResource2 =
+        new TsFileResource(
+            new File(
+                TestConstant.BASE_OUTPUT_PATH.concat(
+                    11
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 11
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 1
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 0
+                        + ".tsfile")));
+    levelCompactionTsFileManagement.add(tsFileResource1, true);
+    levelCompactionTsFileManagement.add(tsFileResource2, true);
+    TsFileResource tsFileResource3 =
+        new TsFileResource(
+            new File(
+                TestConstant.BASE_OUTPUT_PATH.concat(
+                    12
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 12
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 2
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 0
+                        + ".tsfile")));
+    levelCompactionTsFileManagement.add(tsFileResource3, true);
+    Iterator<TsFileResource> tsFileResourceIterator2 =
+        levelCompactionTsFileManagement.getIterator(true);
+    int count = 0;
+    while (tsFileResourceIterator2.hasNext()) {
+      count++;
+      tsFileResourceIterator2.next();
+    }
+    assertEquals(9, count);
+  }
 }
