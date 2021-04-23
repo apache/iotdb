@@ -128,7 +128,9 @@ public class VectorChunkMetadata implements IChunkMetadata {
 
   @Override
   public TSDataType getDataType() {
-    return timeChunkMetadata.getDataType();
+    return valueChunkMetadataList.size() == 1
+        ? valueChunkMetadataList.get(0).getDataType()
+        : timeChunkMetadata.getDataType();
   }
 
   @Override
