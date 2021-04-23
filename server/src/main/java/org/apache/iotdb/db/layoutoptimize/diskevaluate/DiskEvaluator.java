@@ -26,7 +26,7 @@ public class DiskEvaluator {
   private DiskEvaluator() {}
 
   /**
-   * Create a temporary file foreek test
+   * Create a temporary file for seek test
    *
    * @param fileSize the size of the created file
    * @param dataPath the path of the created file
@@ -72,43 +72,60 @@ public class DiskEvaluator {
   }
 
   /**
-   * perform the read test on the given file, to get the read speed of the disk
+   * peform the read test on several file to get the long-term read performance of the disk
    *
-   * @param file the file to be test
+   * @param directory the directory containing the test file
    * @return the read speed of the disk in KB/s
    * @throws IOException throw the IOException if the file doesn't exist
    */
-  public synchronized double performRead(final File file) throws IOException {
+  public synchronized double performRead(final File directory) throws IOException {
     // clean the caches
-    CmdExecutor.builder(sudoPassword).sudoCmd("echo 3 | tee /proc/sys/vm/drop_caches");
-
-    long dataSize = file.length();
-    // 1MB buffer size
-    final int bufferSize = 1 * 1024 * 1024;
-    byte[] buffer = new byte[bufferSize];
-    long readSize = 0;
+    CmdExecutor cleaner =
+        CmdExecutor.builder(sudoPassword).sudoCmd("echo 3 | tee /proc/sys/vm/drop_caches");
+    cleaner.exec();
+    if (!directory.exists() || !directory.isDirectory())
+      throw new IOException(
+          String.format("%s does not exist or is not a directory", directory.getPath()));
+    File[] files = InputFactory.Instance().getFiles(directory.getPath());
+    if (files.length == 0) {
+      throw new IOException(String.format("%s contains no file", directory.getPath()));
+    }
+    long totalSize = 0;
+    long totalTime = 0;
     BufferedWriter logWriter =
         new BufferedWriter(
             new FileWriter(
                 IoTDBDescriptor.getInstance().getConfig().getSystemDir()
                     + File.separator
-                    + "disk_info.txt",
+                    + "disk.info",
                 true));
-    RandomAccessFile raf = new RandomAccessFile(file, "r");
-    raf.seek(0);
+    for (File file : files) {
+      long dataSize = file.length();
+      totalSize += dataSize;
+      // 1MB buffer size
+      final int bufferSize = 1 * 1024 * 1024;
+      byte[] buffer = new byte[bufferSize];
+      long readSize = 0;
 
-    long startTime = System.nanoTime();
-    while (readSize < dataSize) {
-      readSize += raf.read(buffer, 0, bufferSize);
+      RandomAccessFile raf = new RandomAccessFile(file, "r");
+      raf.seek(0);
+
+      long startTime = System.nanoTime();
+      while (readSize < dataSize) {
+        readSize += raf.read(buffer, 0, bufferSize);
+      }
+      long endTime = System.nanoTime();
+      // read time in millisecond
+      double readTime = (endTime - startTime) / 1000 / 1000;
+      totalTime += readTime;
+      cleaner.exec();
     }
-    long endTime = System.nanoTime();
-    // read time in seconds
-    double readTime = ((double) (endTime - startTime)) / 1000 / 1000 / 1000;
-    // read speed in KB
-    double readSpeed = ((double) dataSize) / readTime;
+    // read speed in KB/s
+    double readSpeed = ((double) totalSize) / totalTime / 1000 / 1024;
     logger.info(
         String.format(
-            "Read %d KB in %.2f seconds, %.2f KB/s", dataSize / 1024, readTime, readSpeed / 1024));
+            "Read %d KB in %.2f seconds, %.2f KB/s",
+            totalSize / 1024, totalTime / 1000, readSpeed));
     logWriter.write(String.format("Read speed: %.2f bytes/s\n", readSpeed));
     logWriter.flush();
     logWriter.close();
