@@ -6,6 +6,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.metadisk.cache.CacheStrategy;
 import org.apache.iotdb.db.metadata.metadisk.cache.LRUCacheStrategy;
+import org.apache.iotdb.db.metadata.metadisk.metafile.MetaFile;
 import org.apache.iotdb.db.metadata.metadisk.metafile.MetaFileAccess;
 import org.apache.iotdb.db.metadata.metadisk.metafile.MockMetaFile;
 import org.apache.iotdb.db.metadata.metadisk.metafile.PersistenceInfo;
@@ -40,9 +41,9 @@ public class MetadataDiskManager implements MetadataAccess {
 
     MNode root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
 
-    metaFile = new MockMetaFile(metaFilePath);
-    //    metaFile=new MetaFile(metaFilePath);
     try {
+      //    metaFile = new MockMetaFile(metaFilePath);
+      metaFile=new MetaFile(metaFilePath);
       metaFile.write(root);
     } catch (IOException e) {
       throw new MetadataException(e.getMessage());

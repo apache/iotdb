@@ -108,9 +108,9 @@ public class InternalMNode implements MNode {
       }
     }
 
-    child.setParent(this);
     MNode oldChild = children.get(name);
     if (oldChild == null || !oldChild.isLoaded()) {
+      child.setParent(this);
       children.put(name, child);
     }
     //    children.putIfAbsent(name, child);

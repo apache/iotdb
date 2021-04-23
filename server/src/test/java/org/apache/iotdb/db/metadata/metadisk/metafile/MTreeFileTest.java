@@ -61,7 +61,10 @@ public class MTreeFileTest {
     p.addChild("s", s);
     s.addChild("t", new MeasurementMNode(null, "t", new MeasurementSchema(), null));
     mTreeFile.writeRecursively(root);
-    MNode mNode = mTreeFile.read("root.p.s.t");
+    MNode mNode=mTreeFile.read("root.p.s");
+    Assert.assertTrue(mNode.isStorageGroup());
+    Assert.assertTrue(mNode.hasChild("t"));
+    mNode = mTreeFile.read("root.p.s.t");
     Assert.assertEquals("t", mNode.getName());
     Assert.assertTrue(mNode.isMeasurement());
   }

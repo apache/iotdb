@@ -123,11 +123,14 @@ public class MTreeFile {
     long position = persistenceInfo.getPosition();
     ByteBuffer dataBuffer = readBytesFromFile(position);
     int type = dataBuffer.get();
-    MNode mNode = null;
+    MNode mNode;
     switch (type) {
       case INTERNAL_MNODE_TYPE: // normal InternalMNode
-      case ROOT_MNODE_TYPE: // root
         mNode = new InternalMNode(null, null);
+        readMNode(dataBuffer, mNode);
+        break;
+      case ROOT_MNODE_TYPE: // root
+        mNode = new InternalMNode(null, "root");
         readMNode(dataBuffer, mNode);
         break;
       case STORAGE_GROUP_MNODE_TYPE: // StorageGroupMNode
@@ -259,6 +262,9 @@ public class MTreeFile {
     if (mNode == null) {
       throw new IOException("MNode is null and cannot be persist.");
     }
+    if(!mNode.isLoaded()){
+      return;
+    }
 
     Map<Long, ByteBuffer> mNodeBytes = serializeMNode(mNode);
     if (mNodeBytes == null) {
@@ -275,7 +281,6 @@ public class MTreeFile {
   }
 
   public void writeRecursively(MNode mNode) throws IOException {
-    write(mNode);
     for (MNode child : mNode.getChildren().values()) {
       writeRecursively(child);
     }
@@ -372,7 +377,7 @@ public class MTreeFile {
     bufferList[0] = ByteBuffer.allocate(nodeLength);
     bufferList[0].put(bitmap);
     MNode parent = mNode.getParent();
-    long prePos = parent == null ? 0 : parent.getPersistenceInfo().getPosition();
+    long prePos = (parent == null||!parent.isPersisted())? 0 : parent.getPersistenceInfo().getPosition();
     bufferList[0].putLong(prePos);
     long extensionPos = (0 == bufferNum - 1) ? 0 : getFreePos();
     bufferList[0].putLong(extensionPos);
@@ -436,11 +441,9 @@ public class MTreeFile {
   }
 
   private void serializeChildren(Map<String, MNode> children, ByteBuffer dataBuffer) {
-    PersistenceInfo persistenceInfo;
-    for (MNode child : children.values()) {
-      ReadWriteIOUtils.writeVar(child.getName(), dataBuffer);
-      persistenceInfo = child.getPersistenceInfo();
-      dataBuffer.putLong(persistenceInfo == null ? 0 : persistenceInfo.getPosition());
+    for(String childName:children.keySet()){
+      ReadWriteIOUtils.writeVar(childName, dataBuffer);
+      dataBuffer.putLong(children.get(childName).getPersistenceInfo().getPosition());
     }
     dataBuffer.put((byte) 0);
   }

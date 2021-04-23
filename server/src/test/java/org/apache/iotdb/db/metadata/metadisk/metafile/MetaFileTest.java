@@ -50,7 +50,7 @@ public class MetaFileTest {
     MNode mNode = new InternalMNode(null, "root");
     metaFile.write(mNode);
     Assert.assertNotEquals(0, mNode.getPersistenceInfo().getPosition());
-    mNode = metaFile.readMNode(mNode.getPersistenceInfo());
+    mNode = metaFile.read(mNode.getPersistenceInfo());
     Assert.assertEquals("root", mNode.getName());
   }
 
@@ -63,7 +63,7 @@ public class MetaFileTest {
     p.addChild("s", s);
     s.addChild("t", new MeasurementMNode(null, "t", new MeasurementSchema(), null));
     metaFile.writeRecursively(root);
-    MNode mNode = metaFile.readMNode("root.p.s.t");
+    MNode mNode = metaFile.read("root.p.s.t");
     Assert.assertEquals("t", mNode.getName());
     Assert.assertTrue(mNode.isLoaded());
   }

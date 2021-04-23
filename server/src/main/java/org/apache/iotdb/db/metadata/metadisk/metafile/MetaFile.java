@@ -16,7 +16,7 @@ public class MetaFile implements MetaFileAccess {
 
   @Override
   public MNode read(PersistenceInfo persistenceInfo) throws IOException {
-    return readMNode(persistenceInfo);
+    return mTreeFile.read(persistenceInfo);
   }
 
   @Override
@@ -45,16 +45,8 @@ public class MetaFile implements MetaFileAccess {
     mTreeFile.sync();
   }
 
-  public MNode read(PartialPath path) throws IOException {
-    return readMNode(path.toString());
-  }
-
-  public MNode readMNode(String path) throws IOException {
+  public MNode read(String path) throws IOException {
     return mTreeFile.read(path);
-  }
-
-  public MNode readMNode(PersistenceInfo persistenceInfo) throws IOException {
-    return mTreeFile.read(persistenceInfo);
   }
 
   public MNode readRecursively(PersistenceInfo persistenceInfo) throws IOException {

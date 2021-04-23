@@ -22,7 +22,7 @@ import static org.junit.Assert.*;
 
 public class MTreeDiskBasedTest {
 
-  private static final int CACHE_SIZE = 0;
+  private static final int CACHE_SIZE = 3;
   private static final String BASE_PATH = MTreeDiskBasedTest.class.getResource("").getPath();
   private static final String METAFILE_FILEPATH = BASE_PATH + "metafile.bin";
 
@@ -357,6 +357,7 @@ public class MTreeDiskBasedTest {
       Assert.assertEquals(
           "some children of root.laptop have already been set to storage group", e.getMessage());
     }
+
     // check timeseries
     assertFalse(root.isPathExist(new PartialPath("root.laptop.d1.s0")));
     assertFalse(root.isPathExist(new PartialPath("root.laptop.d1.s1")));

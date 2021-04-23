@@ -298,6 +298,7 @@ public class MTreeDiskBased implements MTreeInterface {
       cur = metadataDiskManager.getChild(cur, nodeNames[i]);
       i++;
     }
+
     if (cur.hasChild(nodeNames[i])) {
       // node b has child sg
       if (metadataDiskManager.getChild(cur, nodeNames[i]).isStorageGroup()) {
@@ -366,6 +367,7 @@ public class MTreeDiskBased implements MTreeInterface {
     try {
       cur = metadataDiskManager.getRoot();
     } catch (MetadataException e) {
+      logger.error(e.getMessage());
       return false;
     }
     int i = 1;
@@ -373,7 +375,8 @@ public class MTreeDiskBased implements MTreeInterface {
       try {
         cur = metadataDiskManager.getChild(cur, nodeNames[i]);
       } catch (MetadataException e) {
-        e.printStackTrace();
+        logger.error(e.getMessage());
+        return false;
       }
       if (cur == null || cur.isStorageGroup()) {
         return false;
@@ -383,7 +386,8 @@ public class MTreeDiskBased implements MTreeInterface {
     try {
       cur = metadataDiskManager.getChild(cur, nodeNames[i]);
     } catch (MetadataException e) {
-      e.printStackTrace();
+      logger.error(e.getMessage());
+      return false;
     }
     return cur != null && cur.isStorageGroup();
   }
