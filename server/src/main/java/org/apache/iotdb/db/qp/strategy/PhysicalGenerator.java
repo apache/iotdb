@@ -242,7 +242,7 @@ public class PhysicalGenerator {
             measurementsNum++;
           }
         }
-        if (insert.getValueList().length % measurementsNum != 0) {
+        if (measurementsNum == 0 || (insert.getValueList().length % measurementsNum != 0)) {
           throw new SQLParserException(
               String.format(
                   "the measurementList's size %d is not consistent with the valueList's size %d",

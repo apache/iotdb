@@ -107,12 +107,12 @@ public class IoTDBInsertMultiRowIT {
     ResultSet rs1 = st1.executeQuery("select count(status) from root.t1.wf01.wt01");
     rs1.next();
     long countStatus = rs1.getLong(1);
-    Assert.assertTrue(countStatus == 12);
+    Assert.assertEquals(countStatus ,12L);
 
     ResultSet rs2 = st1.executeQuery("select count(temperature) from root.t1.wf01.wt01");
     rs2.next();
     long countTemperature = rs2.getLong(1);
-    Assert.assertTrue(countTemperature == 6);
+    Assert.assertEquals(countTemperature , 6L);
 
     st1.close();
   }
