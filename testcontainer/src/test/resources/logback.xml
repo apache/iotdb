@@ -33,7 +33,6 @@
             <level>DEBUG</level>
         </filter>
     </appender>
-
     <appender class="ch.qos.logback.core.ConsoleAppender" name="stdout">
         <Target>System.out</Target>
         <encoder>
