@@ -145,6 +145,13 @@ public class LRUCacheStrategy implements CacheStrategy {
     }
   }
 
+  @Override
+  public List<MNode> collectModified(MNode mNode) {
+    List<MNode> result = new LinkedList<>();
+    collectModifiedRecursively(mNode, result);
+    return result;
+  }
+
   private void collectModifiedRecursively(MNode mNode, Collection<MNode> mNodeCollection) {
     CacheEntry cacheEntry = mNode.getCacheEntry();
     if (cacheEntry == null) {

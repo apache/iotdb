@@ -8,6 +8,8 @@ import java.util.Collection;
 /** this interface provides mnode IO operation on a file/disk */
 public interface MetaFileAccess {
 
+  MNode readRoot() throws IOException;
+
   MNode read(PersistenceInfo persistenceInfo) throws IOException;
 
   void write(MNode mNode) throws IOException;

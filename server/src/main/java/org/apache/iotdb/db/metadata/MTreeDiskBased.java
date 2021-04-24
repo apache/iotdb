@@ -60,11 +60,11 @@ public class MTreeDiskBased implements MTreeInterface {
   private static transient ThreadLocal<Integer> count = new ThreadLocal<>();
   private static transient ThreadLocal<Integer> curOffset = new ThreadLocal<>();
 
-  public MTreeDiskBased() throws MetadataException {
+  public MTreeDiskBased() throws IOException {
     this(DEFAULT_MAX_CAPACITY, DEFAULT_METAFILE_PATH);
   }
 
-  public MTreeDiskBased(int cacheSize, String metaFilePath) throws MetadataException {
+  public MTreeDiskBased(int cacheSize, String metaFilePath) throws IOException {
     metadataDiskManager = new MetadataDiskManager(cacheSize, metaFilePath);
   }
 
@@ -1391,6 +1391,25 @@ public class MTreeDiskBased implements MTreeInterface {
               new PartialPath(mNode.getFullPath() + PATH_SEPARATOR + childName));
     }
     return measurementMNodeCount;
+  }
+
+  @Override
+  public void persist() throws IOException {
+    metadataDiskManager.sync();
+  }
+
+  @Override
+  public MTreeInterface recoverFromFile() throws IOException {
+    return this;
+  }
+
+  @Override
+  public void clear() {
+    try {
+      metadataDiskManager.clear();
+    } catch (IOException e) {
+      logger.error("We can not clear mtreediskbased because " + e);
+    }
   }
 
   private static String jsonToString(JsonObject jsonObject) {

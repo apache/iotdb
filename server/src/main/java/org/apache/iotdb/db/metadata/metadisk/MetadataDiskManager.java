@@ -29,6 +29,7 @@ public class MetadataDiskManager implements MetadataAccess {
   private static final int DEFAULT_MAX_CAPACITY = 10000;
 
   private MetaFileAccess metaFile;
+  private String metaFilePath;
   private static final String DEFAULT_METAFILE_PATH =
       IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
           + File.separator
@@ -36,19 +37,23 @@ public class MetadataDiskManager implements MetadataAccess {
 
   private MNode root;
 
-  public MetadataDiskManager() throws MetadataException {
+  public MetadataDiskManager() throws IOException {
     this(DEFAULT_MAX_CAPACITY, DEFAULT_METAFILE_PATH);
   }
 
-  public MetadataDiskManager(int cacheSize, String metaFilePath) throws MetadataException {
+  public MetadataDiskManager(int cacheSize, String metaFilePath) throws IOException {
 
-    MNode root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
-
+    this.metaFilePath = metaFilePath;
+    metaFile = new MetaFile(metaFilePath);
+    MNode root = null;
     try {
-      metaFile = new MetaFile(metaFilePath);
-      metaFile.write(root);
+      root = metaFile.readRoot();
     } catch (IOException e) {
-      throw new MetadataException(e.getMessage());
+
+    }
+    if (root == null) {
+      root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
+      metaFile.write(root);
     }
 
     capacity = cacheSize;
@@ -226,6 +231,25 @@ public class MetadataDiskManager implements MetadataAccess {
       } catch (IOException e) {
         throw new MetadataException(e.getMessage());
       }
+    }
+  }
+
+  @Override
+  public void sync() throws IOException {
+    List<MNode> modifiedMNodes = cacheStrategy.collectModified(root);
+    for (MNode mNode : modifiedMNodes) {
+      metaFile.write(mNode);
+      cacheStrategy.setModified(mNode, false);
+    }
+  }
+
+  @Override
+  public void clear() throws IOException {
+    root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
+    metaFile.close();
+    File file = new File(metaFilePath);
+    if (file.exists()) {
+      file.delete();
     }
   }
 

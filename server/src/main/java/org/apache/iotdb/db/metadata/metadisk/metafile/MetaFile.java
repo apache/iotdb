@@ -15,6 +15,11 @@ public class MetaFile implements MetaFileAccess {
   }
 
   @Override
+  public MNode readRoot() throws IOException {
+    return mTreeFile.read(PersistenceInfo.createPersistenceInfo(mTreeFile.getRootPosition()));
+  }
+
+  @Override
   public MNode read(PersistenceInfo persistenceInfo) throws IOException {
     return mTreeFile.read(persistenceInfo);
   }

@@ -276,4 +276,10 @@ public interface MTreeInterface extends Serializable {
   void serializeTo(String snapshotPath) throws IOException;
 
   int getMeasurementMNodeCount(PartialPath path) throws MetadataException;
+
+  void persist() throws IOException;
+
+  MTreeInterface recoverFromFile() throws IOException;
+
+  void clear();
 }

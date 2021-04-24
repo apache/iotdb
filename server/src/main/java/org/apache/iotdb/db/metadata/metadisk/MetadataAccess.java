@@ -3,6 +3,7 @@ package org.apache.iotdb.db.metadata.metadisk;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 
+import java.io.IOException;
 import java.util.Map;
 
 /** this interface provides operations on mtree */
@@ -31,4 +32,8 @@ public interface MetadataAccess {
 
   /** delete a alias child of the parent */
   void deleteAliasChild(MNode parent, String alias) throws MetadataException;
+
+  void sync() throws IOException;
+
+  void clear() throws IOException;
 }

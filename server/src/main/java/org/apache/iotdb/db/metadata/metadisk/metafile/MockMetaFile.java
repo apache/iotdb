@@ -17,6 +17,11 @@ public class MockMetaFile implements MetaFileAccess {
   public MockMetaFile(String metaFilePath) {}
 
   @Override
+  public MNode readRoot() throws IOException {
+    return positionFile.get(rootPosition);
+  }
+
+  @Override
   public MNode read(PersistenceInfo persistenceInfo) throws IOException {
     return positionFile.get(persistenceInfo.getPosition());
   }

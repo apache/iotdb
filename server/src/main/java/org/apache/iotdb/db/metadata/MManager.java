@@ -78,7 +78,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -100,6 +99,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static java.util.stream.Collectors.toList;
+import static org.apache.iotdb.db.metadata.MetadataConstant.*;
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
@@ -130,8 +130,6 @@ public class MManager {
   private final long mtreeSnapshotThresholdTime;
   // the log file seriesPath
   private String logFilePath;
-  private String mtreeSnapshotPath;
-  private String mtreeSnapshotTmpPath;
   private MTreeInterface mtree;
   private MLogWriter logWriter;
   private TagLogFile tagLogFile;
@@ -160,6 +158,16 @@ public class MManager {
 
   private static final int ESTIMATED_SERIES_SIZE = config.getEstimatedSeriesSize();
 
+  private byte MTreeType = MTREE_MEMORY_BASED;
+
+  public void setMTreeType(byte MTreeType) {
+    if (MTreeType == MTREE_DISK_BASED) {
+      this.MTreeType = MTreeType;
+    } else {
+      this.MTreeType = MTREE_MEMORY_BASED;
+    }
+  }
+
   private static class MManagerHolder {
 
     private MManagerHolder() {
@@ -182,8 +190,6 @@ public class MManager {
       }
     }
     logFilePath = schemaDir + File.separator + MetadataConstant.METADATA_LOG;
-    mtreeSnapshotPath = schemaDir + File.separator + MetadataConstant.MTREE_SNAPSHOT;
-    mtreeSnapshotTmpPath = schemaDir + File.separator + MetadataConstant.MTREE_SNAPSHOT_TMP;
 
     // do not write log when recover
     isRecovering = true;
@@ -252,24 +258,8 @@ public class MManager {
   /** @return line number of the logFile */
   @SuppressWarnings("squid:S3776")
   private int initFromLog(File logFile) throws IOException {
-    File tmpFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath);
-    if (tmpFile.exists()) {
-      logger.warn("Creating MTree snapshot not successful before crashing...");
-      Files.delete(tmpFile.toPath());
-    }
-
-    File mtreeSnapshot = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotPath);
+    recoverFromFile();
     long time = System.currentTimeMillis();
-    if (!mtreeSnapshot.exists()) {
-      mtree = new MTree();
-      //      mtree = new MTreeDiskBased();
-    } else {
-      mtree = MTree.deserializeFrom(mtreeSnapshot);
-      logger.debug(
-          "spend {} ms to deserialize mtree from snapshot", System.currentTimeMillis() - time);
-    }
-
-    time = System.currentTimeMillis();
     // init the metadata from the operation log
     if (logFile.exists()) {
       int idx = 0;
@@ -285,6 +275,15 @@ public class MManager {
     } else {
       return 0;
     }
+  }
+
+  private void recoverFromFile() throws IOException {
+    if (MTreeType == MTREE_MEMORY_BASED) {
+      mtree = new MTree();
+    } else {
+      mtree = new MTreeDiskBased();
+    }
+    mtree.recoverFromFile();
   }
 
   private int applyMlog(MLogReader mLogReader) {
@@ -309,8 +308,7 @@ public class MManager {
   /** function for clearing MTree */
   public void clear() {
     try {
-      this.mtree = new MTree();
-      //      this.mtree = new MTreeDiskBased();
+      mtree.clear();
       this.mNodeCache.clear();
       this.tagIndex.clear();
       this.totalSeriesNumber.set(0);
@@ -1806,35 +1804,29 @@ public class MManager {
           "New mlog line number: {}, time from last modification: {} ms",
           logWriter.getLogNum(),
           System.currentTimeMillis() - logFile.lastModified());
-      createMTreeSnapshot();
+      persistMTree();
+    }
+  }
+
+  public void persistMTree() {
+    try {
+      mtree.persist();
+    } catch (IOException e) {
+      logger.warn("Fail to persist MTree because {}", METAFILE_PATH, e);
+    }
+    try {
+      logWriter.clear();
+    } catch (IOException e) {
+      logger.warn("Failed to clear mlog after MTree Persistence because {}", logFilePath, e);
     }
   }
 
   public void createMTreeSnapshot() {
-    long time = System.currentTimeMillis();
-    logger.info("Start creating MTree snapshot to {}", mtreeSnapshotPath);
-    try {
-      mtree.serializeTo(mtreeSnapshotTmpPath);
-      File tmpFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath);
-      File snapshotFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotPath);
-      if (snapshotFile.exists()) {
-        Files.delete(snapshotFile.toPath());
-      }
-      if (tmpFile.renameTo(snapshotFile)) {
-        logger.info(
-            "Finish creating MTree snapshot to {}, spend {} ms.",
-            mtreeSnapshotPath,
-            System.currentTimeMillis() - time);
-      }
-      logWriter.clear();
-    } catch (IOException e) {
-      logger.warn("Failed to create MTree snapshot to {}", mtreeSnapshotPath, e);
-      if (SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath).exists()) {
-        try {
-          Files.delete(SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath).toPath());
-        } catch (IOException e1) {
-          logger.warn("delete file {} failed: {}", mtreeSnapshotTmpPath, e1.getMessage());
-        }
+    if (MTreeType == MTREE_MEMORY_BASED) {
+      try {
+        mtree.persist();
+      } catch (IOException e) {
+        logger.warn("Fail to persist MTree because {}", METAFILE_PATH, e);
       }
     }
   }

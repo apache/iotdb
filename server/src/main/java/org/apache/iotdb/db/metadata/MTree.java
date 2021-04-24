@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.metadata.*;
 import org.apache.iotdb.db.metadata.MManager.StorageGroupFilter;
@@ -53,6 +54,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
@@ -73,6 +75,10 @@ public class MTree implements MTreeInterface {
   private static transient ThreadLocal<Integer> offset = new ThreadLocal<>();
   private static transient ThreadLocal<Integer> count = new ThreadLocal<>();
   private static transient ThreadLocal<Integer> curOffset = new ThreadLocal<>();
+
+  private String mtreeSnapshotPath;
+  private String mtreeSnapshotTmpPath;
+
   private MNode root;
 
   public MTree() {
@@ -81,6 +87,10 @@ public class MTree implements MTreeInterface {
 
   private MTree(MNode root) {
     this.root = root;
+
+    String schemaDir = IoTDBDescriptor.getInstance().getConfig().getSchemaDir();
+    mtreeSnapshotPath = schemaDir + File.separator + MetadataConstant.MTREE_SNAPSHOT;
+    mtreeSnapshotTmpPath = schemaDir + File.separator + MetadataConstant.MTREE_SNAPSHOT_TMP;
   }
 
   static long getLastTimeStamp(MeasurementMNode node, QueryContext queryContext) {
@@ -1421,6 +1431,63 @@ public class MTree implements MTreeInterface {
   public int getMeasurementMNodeCount(PartialPath path) throws MetadataException {
     MNode mNode = getNodeByPath(path);
     return mNode.getMeasurementMNodeCount();
+  }
+
+  @Override
+  public void persist() throws IOException {
+    createMTreeSnapshot();
+  }
+
+  private void createMTreeSnapshot() {
+    long time = System.currentTimeMillis();
+    logger.info("Start creating MTree snapshot to {}", mtreeSnapshotPath);
+    try {
+      serializeTo(mtreeSnapshotTmpPath);
+      File tmpFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath);
+      File snapshotFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotPath);
+      if (snapshotFile.exists()) {
+        Files.delete(snapshotFile.toPath());
+      }
+      if (tmpFile.renameTo(snapshotFile)) {
+        logger.info(
+            "Finish creating MTree snapshot to {}, spend {} ms.",
+            mtreeSnapshotPath,
+            System.currentTimeMillis() - time);
+      }
+    } catch (IOException e) {
+      logger.warn("Failed to create MTree snapshot to {}", mtreeSnapshotPath, e);
+      if (SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath).exists()) {
+        try {
+          Files.delete(SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath).toPath());
+        } catch (IOException e1) {
+          logger.warn("delete file {} failed: {}", mtreeSnapshotTmpPath, e1.getMessage());
+        }
+      }
+    }
+  }
+
+  @Override
+  public MTreeInterface recoverFromFile() throws IOException {
+    File tmpFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath);
+    if (tmpFile.exists()) {
+      logger.warn("Creating MTree snapshot not successful before crashing...");
+      Files.delete(tmpFile.toPath());
+    }
+
+    File mtreeSnapshot = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotPath);
+    long time = System.currentTimeMillis();
+    if (!mtreeSnapshot.exists()) {
+      return this;
+    } else {
+      logger.debug(
+          "spend {} ms to deserialize mtree from snapshot", System.currentTimeMillis() - time);
+      return MTree.deserializeFrom(mtreeSnapshot);
+    }
+  }
+
+  @Override
+  public void clear() {
+    root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
   }
 
   public static MTree deserializeFrom(File mtreeSnapshot) {

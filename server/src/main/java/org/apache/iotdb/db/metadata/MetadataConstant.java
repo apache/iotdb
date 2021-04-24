@@ -45,4 +45,6 @@ public class MetadataConstant {
   public static final short MEASUREMENT_MNODE_TYPE = 2;
 
   public static final String METAFILE_PATH = "metafile.bin";
+  public static final byte MTREE_MEMORY_BASED = 0;
+  public static final byte MTREE_DISK_BASED = 1;
 }

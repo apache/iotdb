@@ -389,7 +389,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private void operateCreateSnapshot() {
-    IoTDB.metaManager.createMTreeSnapshot();
+    IoTDB.metaManager.persistMTree();
   }
 
   private void operateKillQuery(KillQueryPlan killQueryPlan) throws QueryIdNotExsitException {

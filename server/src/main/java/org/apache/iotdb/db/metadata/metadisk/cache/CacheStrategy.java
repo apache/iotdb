@@ -28,4 +28,6 @@ public interface CacheStrategy {
    * collection need to be persisted
    */
   List<MNode> evict();
+
+  List<MNode> collectModified(MNode mNode);
 }
