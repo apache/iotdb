@@ -19,6 +19,8 @@
 package org.apache.iotdb.db.query.reader.chunk;
 
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.VectorChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -45,8 +47,15 @@ public class MemPageReader implements IPageReader {
 
   @Override
   public BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {
-    BatchData batchData =
-        BatchDataFactory.createBatchData(chunkMetadata.getDataType(), ascending, false);
+    TSDataType dataType;
+    if (chunkMetadata instanceof VectorChunkMetadata
+        && ((VectorChunkMetadata) chunkMetadata).getValueChunkMetadataList().size() == 1) {
+      dataType =
+          ((VectorChunkMetadata) chunkMetadata).getValueChunkMetadataList().get(0).getDataType();
+    } else {
+      dataType = chunkMetadata.getDataType();
+    }
+    BatchData batchData = BatchDataFactory.createBatchData(dataType, ascending, false);
     while (timeValuePairIterator.hasNextTimeValuePair()) {
       TimeValuePair timeValuePair = timeValuePairIterator.nextTimeValuePair();
       if (valueFilter == null

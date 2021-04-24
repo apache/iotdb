@@ -315,17 +315,6 @@ public abstract class AbstractMemTable implements IMemTable {
       // get sorted tv list is synchronized so different query can get right sorted list reference
       TVList vectorTvListCopy = vectorMemChunk.getSortedTvListForQuery(columns);
       int curSize = vectorTvListCopy.size();
-      // return normal ReadOnlyMemChunk for query one measurement in vector
-      if (columns.size() == 1) {
-        return new ReadOnlyMemChunk(
-            measurementIdList.get(0),
-            partialVectorSchema.getValueTSDataTypeList().get(0),
-            partialVectorSchema.getValueTSEncodingList().get(0),
-            vectorTvListCopy,
-            null,
-            curSize,
-            deletionList);
-      }
       return new ReadOnlyMemChunk(partialVectorSchema, vectorTvListCopy, curSize, deletionList);
     } else {
       if (!checkPath(deviceId, measurement)) {
