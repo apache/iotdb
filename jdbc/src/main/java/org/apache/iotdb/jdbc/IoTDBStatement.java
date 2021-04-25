@@ -322,14 +322,19 @@ public class IoTDBStatement implements Statement {
     TSStatus execResp = client.executeBatchStatement(execReq);
     int[] result = new int[batchSQLList.size()];
     boolean allSuccess = true;
-    String message = "";
+    String message = "\n";
     for (int i = 0; i < result.length; i++) {
       if (execResp.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
         result[i] = execResp.getSubStatus().get(i).code;
         if (result[i] != TSStatusCode.SUCCESS_STATUS.getStatusCode()
             && result[i] != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
           allSuccess = false;
-          message = execResp.getSubStatus().get(i).message;
+          message +=
+              execResp.getSubStatus().get(i).message
+                  + " for SQL: \""
+                  + batchSQLList.get(i)
+                  + "\" "
+                  + "\n";
         }
       } else {
         allSuccess =

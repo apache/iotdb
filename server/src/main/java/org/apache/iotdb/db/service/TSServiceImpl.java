@@ -572,6 +572,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           lastOperatorType = OperatorType.INSERT;
           insertRowsPlan.addOneInsertRowPlan((InsertRowPlan) physicalPlan, index);
           index++;
+
+          TSStatus status = checkAuthority(physicalPlan, req.getSessionId());
+          if (status != null) {
+            insertRowsPlan.getResults().put(i, status);
+            result.add(status);
+            isAllSuccessful = false;
+          }
+
           if (i == req.getStatements().size() - 1) {
             if (!executeBatchList(executeList, result)) {
               isAllSuccessful = false;
@@ -586,6 +594,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           }
           lastOperatorType = OperatorType.CREATE_TIMESERIES;
           initMultiTimeSeriesPlan(multiPlan);
+
+          TSStatus status = checkAuthority(physicalPlan, req.getSessionId());
+          if (status != null) {
+            multiPlan.getResults().put(i, status);
+            result.add(status);
+            isAllSuccessful = false;
+          }
 
           CreateTimeSeriesPlan createTimeSeriesPlan = (CreateTimeSeriesPlan) physicalPlan;
           setMultiTimeSeriesPlan(multiPlan, createTimeSeriesPlan);
