@@ -121,7 +121,6 @@ public class TsFileProcessor {
   private WriteLogNode logNode;
   private final boolean sequence;
   private long totalMemTableSize;
-  private boolean shouldFlush = false;
 
   private static final String FLUSH_QUERY_WRITE_LOCKED = "{}: {} get flushQueryLock write lock";
   private static final String FLUSH_QUERY_WRITE_RELEASE =
@@ -285,7 +284,6 @@ public class TsFileProcessor {
     long textDataIncrement = 0L;
     long chunkMetadataIncrement = 0L;
     String deviceId = insertRowPlan.getDeviceId().getFullPath();
-    long unsealedResourceIncrement = tsFileResource.estimateRamIncrement(deviceId);
     int columnIndex = 0;
     for (int i = 0; i < insertRowPlan.getMeasurementMNodes().length; i++) {
       // skip failed Measurements
@@ -326,7 +324,7 @@ public class TsFileProcessor {
       }
     }
     updateMemoryInfo(
-        memTableIncrement, unsealedResourceIncrement, chunkMetadataIncrement, textDataIncrement);
+        memTableIncrement, chunkMetadataIncrement, textDataIncrement);
   }
 
   private void checkMemCostAndAddToTspInfo(InsertTabletPlan insertTabletPlan, int start, int end)
@@ -337,7 +335,6 @@ public class TsFileProcessor {
     long[] memIncrements = new long[3]; // memTable, text, chunk metadata
 
     String deviceId = insertTabletPlan.getDeviceId().getFullPath();
-    long unsealedResourceIncrement = tsFileResource.estimateRamIncrement(deviceId);
 
     int columnIndex = 0;
     for (int i = 0; i < insertTabletPlan.getMeasurementMNodes().length; i++) {
@@ -368,7 +365,7 @@ public class TsFileProcessor {
     long textDataIncrement = memIncrements[1];
     long chunkMetadataIncrement = memIncrements[2];
     updateMemoryInfo(
-        memTableIncrement, unsealedResourceIncrement, chunkMetadataIncrement, textDataIncrement);
+        memTableIncrement, chunkMetadataIncrement, textDataIncrement);
   }
 
   private void updateMemCost(
@@ -453,21 +450,21 @@ public class TsFileProcessor {
 
   private void updateMemoryInfo(
       long memTableIncrement,
-      long unsealedResourceIncrement,
       long chunkMetadataIncrement,
       long textDataIncrement)
       throws WriteProcessException {
     memTableIncrement += textDataIncrement;
     storageGroupInfo.addStorageGroupMemCost(memTableIncrement);
-    tsFileProcessorInfo.addTSPMemCost(unsealedResourceIncrement + chunkMetadataIncrement);
+    tsFileProcessorInfo.addTSPMemCost(chunkMetadataIncrement);
     if (storageGroupInfo.needToReportToSystem()) {
-      SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
       try {
-        StorageEngine.blockInsertionIfReject();
+        if (!SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo, this)) {
+          StorageEngine.blockInsertionIfReject();
+        }
       } catch (WriteProcessRejectException e) {
         storageGroupInfo.releaseStorageGroupMemCost(memTableIncrement);
-        tsFileProcessorInfo.releaseTSPMemCost(unsealedResourceIncrement + chunkMetadataIncrement);
-        SystemInfo.getInstance().resetStorageGroupStatus(storageGroupInfo, false);
+        tsFileProcessorInfo.releaseTSPMemCost(chunkMetadataIncrement);
+        SystemInfo.getInstance().resetStorageGroupStatus(storageGroupInfo);
         throw e;
       }
     }
@@ -520,7 +517,7 @@ public class TsFileProcessor {
     if (workMemTable == null) {
       return false;
     }
-    if (shouldFlush) {
+    if (workMemTable.shouldFlush()) {
       logger.info(
           "The memtable size {} of tsfile {} reaches the mem control threshold",
           workMemTable.memSize(),
@@ -766,6 +763,9 @@ public class TsFileProcessor {
       flushListener.onFlushStart(tobeFlushed);
     }
 
+    if (enableMemControl) {
+      SystemInfo.getInstance().addFlushingMemTableCost(tobeFlushed.getTVListsRamCost());
+    }
     flushingMemTables.addLast(tobeFlushed);
     if (logger.isDebugEnabled()) {
       logger.debug(
@@ -780,7 +780,6 @@ public class TsFileProcessor {
       totalMemTableSize += tobeFlushed.memSize();
     }
     workMemTable = null;
-    shouldFlush = false;
     FlushManager.getInstance().registerTsFileProcessor(this);
   }
 
@@ -821,7 +820,8 @@ public class TsFileProcessor {
               flushingMemTables.size());
         }
         // report to System
-        SystemInfo.getInstance().resetStorageGroupStatus(storageGroupInfo, true);
+        SystemInfo.getInstance().resetStorageGroupStatus(storageGroupInfo);
+        SystemInfo.getInstance().resetFlushingMemTableCost(memTable.getTVListsRamCost());
       }
       if (logger.isDebugEnabled()) {
         logger.debug(
@@ -1265,12 +1265,8 @@ public class TsFileProcessor {
     return sequence;
   }
 
-  public void startAsyncFlush() {
-    storageGroupInfo.getStorageGroupProcessor().asyncFlushMemTableInTsFileProcessor(this);
-  }
-
-  public void setFlush() {
-    shouldFlush = true;
+  public void setWorkMemTableShouldFlush() {
+    workMemTable.setShouldFlush();
   }
 
   public void addFlushListener(FlushListener listener) {

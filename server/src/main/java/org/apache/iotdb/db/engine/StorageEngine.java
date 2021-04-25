@@ -61,7 +61,9 @@ import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.UpgradeUtils;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -72,6 +74,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.ConcurrentModificationException;
 import java.util.HashMap;
@@ -103,8 +106,8 @@ public class StorageEngine implements IService {
   @ServerConfigConsistent private static long timePartitionInterval = -1;
   /** whether enable data partition if disabled, all data belongs to partition 0 */
   @ServerConfigConsistent
-  private static boolean enablePartition =
-      IoTDBDescriptor.getInstance().getConfig().isEnablePartition();
+  private static boolean enablePartition = config.isEnablePartition();
+  private final boolean enableMemControl = config.isEnableMemControl();
 
   /**
    * a folder (system/storage_groups/ by default) that persist system info. Each Storage Processor
@@ -504,6 +507,13 @@ public class StorageEngine implements IService {
    * @param insertRowPlan physical plan of insertion
    */
   public void insert(InsertRowPlan insertRowPlan) throws StorageEngineException {
+    if (enableMemControl) {
+      try {
+        blockInsertionIfReject();
+      } catch (WriteProcessException e) {
+        throw new StorageEngineException(e);
+      }
+    }
     StorageGroupProcessor storageGroupProcessor = getProcessor(insertRowPlan.getDeviceId());
 
     try {
@@ -525,6 +535,13 @@ public class StorageEngine implements IService {
 
   public void insert(InsertRowsOfOneDevicePlan insertRowsOfOneDevicePlan)
       throws StorageEngineException {
+    if (enableMemControl) {
+      try {
+        blockInsertionIfReject();
+      } catch (WriteProcessException e) {
+        throw new StorageEngineException(e);
+      }
+    }
     StorageGroupProcessor storageGroupProcessor =
         getProcessor(insertRowsOfOneDevicePlan.getDeviceId());
 
@@ -539,6 +556,15 @@ public class StorageEngine implements IService {
   /** insert a InsertTabletPlan to a storage group */
   public void insertTablet(InsertTabletPlan insertTabletPlan)
       throws StorageEngineException, BatchProcessException {
+    if (enableMemControl) {
+      try {
+        blockInsertionIfReject();
+      } catch (WriteProcessRejectException e) {
+        TSStatus[] results = new TSStatus[insertTabletPlan.getRowCount()];
+        Arrays.fill(results, RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT));
+        throw new BatchProcessException(results);
+      }
+    }
     StorageGroupProcessor storageGroupProcessor;
     try {
       storageGroupProcessor = getProcessor(insertTabletPlan.getDeviceId());
