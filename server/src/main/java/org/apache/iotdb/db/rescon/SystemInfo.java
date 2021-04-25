@@ -31,6 +31,9 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.PriorityQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class SystemInfo {
 
@@ -44,6 +47,10 @@ public class SystemInfo {
   private Map<StorageGroupInfo, Long> reportedStorageGroupMemCostMap = new HashMap<>();
 
   private long flushingMemTablesCost = 0L;
+  private AtomicInteger threadCnt = new AtomicInteger();
+  private ExecutorService flushTaskSubmitThreadPool =
+      Executors.newFixedThreadPool(
+          config.getConcurrentFlushThread(), r -> new Thread(r, "FlushTaskSubmitThread-" + threadCnt.getAndIncrement()));
   private static double FLUSH_THERSHOLD = memorySizeForWrite * config.getFlushProportion();
   private static double REJECT_THERSHOLD = memorySizeForWrite * config.getRejectProportion();
 
@@ -89,7 +96,7 @@ public class SystemInfo {
         if (totalStorageGroupMemCost < memorySizeForWrite) {
           return true;
         } else {
-          throw new WriteProcessRejectException("Total Storage Group MemCost "+ totalStorageGroupMemCost +" is over than memorySizeForWrite");
+          throw new WriteProcessRejectException("Total Storage Group MemCost "+ totalStorageGroupMemCost +" is over than memorySizeForWriting " + memorySizeForWrite);
         }
       } else {
         return false;
@@ -188,6 +195,9 @@ public class SystemInfo {
       if (selectedTsFileProcessor == currentTsFileProcessor) {
         isCurrentTsFileProcessorSelected = true;
       }
+      flushTaskSubmitThreadPool.submit(() -> {
+        selectedTsFileProcessor.submitAFlushTask();
+      });
       allTsFileProcessors.poll();
     }
     return isCurrentTsFileProcessorSelected;
