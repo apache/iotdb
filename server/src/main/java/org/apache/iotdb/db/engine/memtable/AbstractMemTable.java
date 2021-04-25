@@ -71,6 +71,8 @@ public abstract class AbstractMemTable implements IMemTable {
    */
   protected boolean disableMemControl = true;
 
+  private boolean shouldFlush = false;
+
   private int seriesNumber = 0;
 
   private long totalPointsNum = 0;
@@ -320,6 +322,16 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public void addTextDataSize(long testDataSize) {
     this.memSize += testDataSize;
+  }
+
+  @Override
+  public void setShouldFlush() {
+    shouldFlush = true;
+  }
+
+  @Override
+  public boolean shouldFlush() {
+    return shouldFlush;
   }
 
   @Override
