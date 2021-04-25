@@ -197,7 +197,7 @@ public class MManagerAdvancedTest {
 
     MNode node = mmanager.getNodeByPath(new PartialPath("root.vehicle.d0"));
     Assert.assertEquals(
-        TSDataType.INT32, ((MeasurementMNode) node.getChild("s0")).getSchema().getType());
+        TSDataType.INT32, ((MeasurementMNode) mmanager.getNodeByPath(new PartialPath("root.vehicle.d0.s0"))).getSchema().getType());
 
     try {
       mmanager.getNodeByPath(new PartialPath("root.vehicle.d100"));

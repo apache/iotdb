@@ -35,5 +35,7 @@ public interface MetadataAccess {
 
   void sync() throws IOException;
 
+  void backup() throws IOException;
+
   void clear() throws IOException;
 }

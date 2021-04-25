@@ -47,6 +47,7 @@ public class MetadataDiskManagerTest {
     manager.addChild(sg, "device", device);
     MNode measurement = new MeasurementMNode(null, "t1", new MeasurementSchema(), null);
     manager.addChild(device, "t1", measurement);
+    manager.backup();
     manager.clear();
     MetadataDiskManager recoverManager = new MetadataDiskManager(4, METAFILE_FILEPATH);
     root = recoverManager.getRoot();

@@ -33,6 +33,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -326,7 +327,6 @@ public class MManagerBasicTest {
   public void testRecover() {
 
     MManager manager = IoTDB.metaManager;
-
     try {
 
       manager.setStorageGroup(new PartialPath("root.laptop.d1"));
@@ -387,6 +387,79 @@ public class MManagerBasicTest {
           recoverManager.getDevices(new PartialPath("root.*")).stream()
               .map(PartialPath::getFullPath)
               .collect(Collectors.toSet()));
+
+      recoverManager.clear();
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testRecoverFromFile(){
+    MManager manager = IoTDB.metaManager;
+
+    try {
+
+      manager.setStorageGroup(new PartialPath("root.laptop.d1"));
+      manager.setStorageGroup(new PartialPath("root.laptop.d2"));
+      manager.createTimeseries(
+              new PartialPath("root.laptop.d1.s1"),
+              TSDataType.INT32,
+              TSEncoding.PLAIN,
+              CompressionType.GZIP,
+              null);
+      manager.createTimeseries(
+              new PartialPath("root.laptop.d2.s1"),
+              TSDataType.INT32,
+              TSEncoding.PLAIN,
+              CompressionType.GZIP,
+              null);
+      assertTrue(manager.isStorageGroup(new PartialPath("root.laptop.d1")));
+      assertTrue(manager.isStorageGroup(new PartialPath("root.laptop.d2")));
+      assertFalse(manager.isStorageGroup(new PartialPath("root.laptop.d3")));
+      assertFalse(manager.isStorageGroup(new PartialPath("root.laptop")));
+      Set<String> devices =
+              new TreeSet<String>() {
+                {
+                  add("root.laptop.d1");
+                  add("root.laptop.d2");
+                }
+              };
+      // prefix with *
+      assertEquals(
+              devices,
+              manager.getDevices(new PartialPath("root.*")).stream()
+                      .map(PartialPath::getFullPath)
+                      .collect(Collectors.toSet()));
+
+      manager.deleteStorageGroups(Collections.singletonList(new PartialPath("root.laptop.d2")));
+      assertTrue(manager.isStorageGroup(new PartialPath("root.laptop.d1")));
+      assertFalse(manager.isStorageGroup(new PartialPath("root.laptop.d2")));
+      assertFalse(manager.isStorageGroup(new PartialPath("root.laptop.d3")));
+      assertFalse(manager.isStorageGroup(new PartialPath("root.laptop")));
+      devices.remove("root.laptop.d2");
+      // prefix with *
+      assertEquals(
+              devices,
+              manager.getDevices(new PartialPath("root.*")).stream()
+                      .map(PartialPath::getFullPath)
+                      .collect(Collectors.toSet()));
+
+      manager.persistMTree();
+      MManager recoverManager = new MManager();
+      recoverManager.init();
+
+      assertTrue(recoverManager.isStorageGroup(new PartialPath("root.laptop.d1")));
+      assertFalse(recoverManager.isStorageGroup(new PartialPath("root.laptop.d2")));
+      assertFalse(recoverManager.isStorageGroup(new PartialPath("root.laptop.d3")));
+      assertFalse(recoverManager.isStorageGroup(new PartialPath("root.laptop")));
+      // prefix with *
+      assertEquals(
+              devices,
+              recoverManager.getDevices(new PartialPath("root.*")).stream()
+                      .map(PartialPath::getFullPath)
+                      .collect(Collectors.toSet()));
 
       recoverManager.clear();
     } catch (MetadataException e) {

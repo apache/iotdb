@@ -1484,10 +1484,10 @@ public class MTree implements MTreeInterface {
     File mtreeSnapshot = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotPath);
     long time = System.currentTimeMillis();
     if (mtreeSnapshot.exists()) {
-      logger.debug(
-          "spend {} ms to deserialize mtree from snapshot", System.currentTimeMillis() - time);
       try (MLogReader mLogReader = new MLogReader(mtreeSnapshot)) {
         root = deserializeFromReader(mLogReader);
+        logger.debug(
+                "spend {} ms to deserialize mtree from snapshot", System.currentTimeMillis() - time);
       } catch (IOException e) {
         logger.warn("Failed to deserialize from {}. Use a new MTree.", mtreeSnapshot.getPath());
       } finally {
