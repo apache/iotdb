@@ -366,6 +366,16 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   /**
+   * Find the leaf node that contains this vector, return all the needed subSensor and time column
+   *
+   * @return TimeseriesMetadata for the time column and all the needed subSensor, the order of the
+   *     element in this list should be the same as subSensorList
+   */
+  public List<TimeseriesMetadata> readTimeseriesMetadata(Path path, List<String> subSensorList) {
+    return Collections.emptyList();
+  }
+
+  /**
    * Find the leaf node that contains path, return all the sensors in that leaf node which are also
    * in allSensors set
    */
