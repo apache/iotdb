@@ -358,23 +358,13 @@ public class TsFileProcessor {
     if (storageGroupInfo.needToReportToSystem()) {
       try {
         if (!SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo, this)) {
-          long startTime = System.currentTimeMillis();
-          while (SystemInfo.getInstance().isRejected()) {
-            storageGroupInfo.getStorageGroupProcessor().writeLockConditionAwait();
-            if (System.currentTimeMillis() - startTime
-                > config.getMaxWaitingTimeWhenInsertBlocked()) {
-              throw new WriteProcessRejectException(
-                  "System rejected over " + config.getMaxWaitingTimeWhenInsertBlocked() + "ms");
-            }
-          }
+          StorageEngine.blockInsertionIfReject();
         }
       } catch (WriteProcessRejectException e) {
         storageGroupInfo.releaseStorageGroupMemCost(memTableIncrement);
         tsFileProcessorInfo.releaseTSPMemCost(chunkMetadataIncrement);
         SystemInfo.getInstance().resetStorageGroupStatus(storageGroupInfo);
         throw e;
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
       }
     }
     workMemTable.addTVListRamCost(memTableIncrement);
@@ -991,7 +981,7 @@ public class TsFileProcessor {
   }
 
   public void submitAFlushTask() {
-    this.storageGroupInfo.getStorageGroupProcessor().submitAFlushTaskWhenShouldFlush(this);
+    this.storageGroupInfo.getStorageGroupProcessor().submitAFlushTaskIfShouldFlush(this);
   }
 
   public void setWorkMemTableShouldFlush() {

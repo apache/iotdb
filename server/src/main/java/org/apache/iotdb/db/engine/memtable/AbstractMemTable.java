@@ -63,7 +63,7 @@ public abstract class AbstractMemTable implements IMemTable {
    * memory usage of all TVLists memory usage regardless of whether these TVLists are full,
    * including TEXT values
    */
-  private long tvListRamCost = 0;
+  private volatile long tvListRamCost = 0;
 
   /**
    * The initial value is true because we want calculate the text data size when recover
@@ -71,7 +71,7 @@ public abstract class AbstractMemTable implements IMemTable {
    */
   protected boolean disableMemControl = true;
 
-  private boolean shouldFlush = false;
+  private volatile boolean shouldFlush = false;
 
   private int seriesNumber = 0;
 

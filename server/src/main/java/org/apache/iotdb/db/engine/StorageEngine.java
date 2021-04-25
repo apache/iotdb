@@ -883,7 +883,7 @@ public class StorageEngine implements IService {
         TimeUnit.MILLISECONDS.sleep(config.getCheckPeriodWhenInsertBlocked());
         if (System.currentTimeMillis() - startTime > config.getMaxWaitingTimeWhenInsertBlocked()) {
           throw new WriteProcessRejectException(
-              "System rejected over " + config.getMaxWaitingTimeWhenInsertBlocked() +
+              "System rejected over " + (System.currentTimeMillis() - startTime) +
                   "ms");
         }
       } catch (InterruptedException e) {

@@ -22,9 +22,6 @@ package org.apache.iotdb.db.rescon;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.PriorityQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupInfo;
@@ -44,11 +41,6 @@ public class SystemInfo {
   private Map<StorageGroupInfo, Long> reportedStorageGroupMemCostMap = new HashMap<>();
 
   private long flushingMemTablesCost = 0L;
-  private AtomicInteger threadCnt = new AtomicInteger();
-  private ExecutorService flushTaskSubmitThreadPool =
-      Executors.newFixedThreadPool(
-          config.getConcurrentFlushThread(),
-          r -> new Thread(r, "FlushTaskSubmitThread-" + threadCnt.getAndIncrement()));
 
   private static final double FLUSH_THERSHOLD =
       config.getAllocateMemoryForWrite() * config.getFlushProportion();
@@ -170,9 +162,9 @@ public class SystemInfo {
   }
 
   /**
-   * Order all tsfileProcessors in system by memory cost of actual data points in memtable.
-   * Mark the top K TSPs as to be flushed,
-   * so that after flushing the K TSPs, the memory cost should be less than FLUSH_THRESHOLD
+   * Order all tsfileProcessors in system by memory cost of actual data points in memtable. Mark the
+   * top K TSPs as to be flushed, so that after flushing the K TSPs, the memory cost should be less
+   * than FLUSH_THRESHOLD
    */
   private boolean chooseMemTablesToMarkFlush(TsFileProcessor currentTsFileProcessor) {
     if (reportedStorageGroupMemCostMap.size() == 0) {
@@ -190,18 +182,19 @@ public class SystemInfo {
     while (activeMemSize - memCost > FLUSH_THERSHOLD) {
       if (allTsFileProcessors.isEmpty()
           || allTsFileProcessors.peek().getWorkMemTableRamCost() == 0) {
-        return false;
+        return isCurrentTsFileProcessorSelected;
       }
       TsFileProcessor selectedTsFileProcessor = allTsFileProcessors.peek();
       memCost += selectedTsFileProcessor.getWorkMemTableRamCost();
       selectedTsFileProcessor.setWorkMemTableShouldFlush();
-      if (selectedTsFileProcessor == currentTsFileProcessor) {
-        isCurrentTsFileProcessorSelected = true;
-      }
-      flushTaskSubmitThreadPool.submit(
+      // Open a new thread for submit a flush task
+      new Thread(
           () -> {
             selectedTsFileProcessor.submitAFlushTask();
           });
+      if (selectedTsFileProcessor == currentTsFileProcessor) {
+        isCurrentTsFileProcessorSelected = true;
+      }
       allTsFileProcessors.poll();
     }
     return isCurrentTsFileProcessorSelected;
