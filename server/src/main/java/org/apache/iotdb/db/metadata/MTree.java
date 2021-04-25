@@ -82,7 +82,7 @@ public class MTree implements MTreeInterface {
   private MNode root;
 
   public MTree() {
-    this.root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
+    this(new InternalMNode(null, IoTDBConstant.PATH_ROOT));
   }
 
   private MTree(MNode root) {
@@ -1467,7 +1467,7 @@ public class MTree implements MTreeInterface {
   }
 
   @Override
-  public MTreeInterface recoverFromFile() throws IOException {
+  public void recoverFromFile() throws IOException {
     File tmpFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath);
     if (tmpFile.exists()) {
       logger.warn("Creating MTree snapshot not successful before crashing...");
@@ -1476,12 +1476,19 @@ public class MTree implements MTreeInterface {
 
     File mtreeSnapshot = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotPath);
     long time = System.currentTimeMillis();
-    if (!mtreeSnapshot.exists()) {
-      return this;
-    } else {
+    if (mtreeSnapshot.exists()) {
       logger.debug(
           "spend {} ms to deserialize mtree from snapshot", System.currentTimeMillis() - time);
-      return MTree.deserializeFrom(mtreeSnapshot);
+      try (MLogReader mLogReader = new MLogReader(mtreeSnapshot)) {
+        root=deserializeFromReader(mLogReader);
+      } catch (IOException e) {
+        logger.warn("Failed to deserialize from {}. Use a new MTree.", mtreeSnapshot.getPath());
+      } finally {
+        limit = new ThreadLocal<>();
+        offset = new ThreadLocal<>();
+        count = new ThreadLocal<>();
+        curOffset = new ThreadLocal<>();
+      }
     }
   }
 
@@ -1492,7 +1499,7 @@ public class MTree implements MTreeInterface {
 
   public static MTree deserializeFrom(File mtreeSnapshot) {
     try (MLogReader mLogReader = new MLogReader(mtreeSnapshot)) {
-      return deserializeFromReader(mLogReader);
+      return new MTree(deserializeFromReader(mLogReader));
     } catch (IOException e) {
       logger.warn("Failed to deserialize from {}. Use a new MTree.", mtreeSnapshot.getPath());
       return new MTree();
@@ -1505,7 +1512,7 @@ public class MTree implements MTreeInterface {
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private static MTree deserializeFromReader(MLogReader mLogReader) {
+  private static MNode deserializeFromReader(MLogReader mLogReader) {
     Deque<MNode> nodeStack = new ArrayDeque<>();
     MNode node = null;
     while (mLogReader.hasNext()) {
@@ -1549,7 +1556,7 @@ public class MTree implements MTreeInterface {
       }
     }
 
-    return new MTree(node);
+    return node;
   }
 
   @Override

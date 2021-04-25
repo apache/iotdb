@@ -158,7 +158,7 @@ public class MManager {
 
   private static final int ESTIMATED_SERIES_SIZE = config.getEstimatedSeriesSize();
 
-  private byte MTreeType = MTREE_MEMORY_BASED;
+  private byte MTreeType = MTREE_DISK_BASED;
 
   public void setMTreeType(byte MTreeType) {
     if (MTreeType == MTREE_DISK_BASED) {
@@ -237,6 +237,11 @@ public class MManager {
       tagLogFile = new TagLogFile(config.getSchemaDir(), MetadataConstant.TAG_LOG);
 
       isRecovering = true;
+      if (MTreeType == MTREE_MEMORY_BASED) {
+        mtree = new MTree();
+      } else {
+        mtree = new MTreeDiskBased();
+      }
       int lineNumber = initFromLog(logFile);
       List<PartialPath> storageGroups = mtree.getAllStorageGroupPaths();
       for (PartialPath sg : storageGroups) {
@@ -258,7 +263,7 @@ public class MManager {
   /** @return line number of the logFile */
   @SuppressWarnings("squid:S3776")
   private int initFromLog(File logFile) throws IOException {
-    recoverFromFile();
+    mtree.recoverFromFile();
     long time = System.currentTimeMillis();
     // init the metadata from the operation log
     if (logFile.exists()) {
@@ -275,15 +280,6 @@ public class MManager {
     } else {
       return 0;
     }
-  }
-
-  private void recoverFromFile() throws IOException {
-    if (MTreeType == MTREE_MEMORY_BASED) {
-      mtree = new MTree();
-    } else {
-      mtree = new MTreeDiskBased();
-    }
-    mtree.recoverFromFile();
   }
 
   private int applyMlog(MLogReader mLogReader) {

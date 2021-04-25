@@ -30,4 +30,6 @@ public interface CacheStrategy {
   List<MNode> evict();
 
   List<MNode> collectModified(MNode mNode);
+
+  void clear();
 }

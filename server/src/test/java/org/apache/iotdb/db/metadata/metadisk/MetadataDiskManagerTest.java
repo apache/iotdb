@@ -36,7 +36,7 @@ public class MetadataDiskManagerTest {
 
   @Test
   public void testEviction() throws Exception {
-    MetadataDiskManager manager = new MetadataDiskManager();
+    MetadataDiskManager manager = new MetadataDiskManager(CACHE_SIZE,METAFILE_FILEPATH);
     Assert.assertEquals("root", manager.getRoot().getName());
   }
 }

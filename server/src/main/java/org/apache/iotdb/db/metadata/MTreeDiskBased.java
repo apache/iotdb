@@ -49,7 +49,7 @@ public class MTreeDiskBased implements MTreeInterface {
 
   private final String rootName = PATH_ROOT;
   private MetadataAccess metadataDiskManager;
-  private static final int DEFAULT_MAX_CAPACITY = 10000;
+  private static final int DEFAULT_MAX_CAPACITY = 100000;
   private static final String DEFAULT_METAFILE_PATH =
       IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
           + File.separator
@@ -62,6 +62,10 @@ public class MTreeDiskBased implements MTreeInterface {
 
   public MTreeDiskBased() throws IOException {
     this(DEFAULT_MAX_CAPACITY, DEFAULT_METAFILE_PATH);
+  }
+
+  public MTreeDiskBased(int cacheSize) throws IOException{
+    this(cacheSize,DEFAULT_METAFILE_PATH);
   }
 
   public MTreeDiskBased(int cacheSize, String metaFilePath) throws IOException {
@@ -1399,8 +1403,8 @@ public class MTreeDiskBased implements MTreeInterface {
   }
 
   @Override
-  public MTreeInterface recoverFromFile() throws IOException {
-    return this;
+  public void recoverFromFile() throws IOException {
+
   }
 
   @Override

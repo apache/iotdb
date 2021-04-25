@@ -1,9 +1,6 @@
 package org.apache.iotdb.db.metadata.metadisk.cache;
 
-import org.apache.iotdb.db.metadata.MTree;
-import org.apache.iotdb.db.metadata.MTreeDiskBased;
-import org.apache.iotdb.db.metadata.MTreeInterface;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.*;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -16,6 +13,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.util.Collections;
 
 public class CachePerformanceTest {
@@ -25,6 +23,10 @@ public class CachePerformanceTest {
   private static final int TIMESERIES_NUM = 100;
   private static final int DEVICE_NUM = 1000;
   private static final int NODE_NUM = TIMESERIES_NUM * (DEVICE_NUM) + DEVICE_NUM + 3;
+
+  private static final String BASE_PATH = CachePerformanceTest.class.getResource("").getPath();
+  private static final String METAFILE_FILEPATH = BASE_PATH + "metafile.bin";
+  private File metaFile=new File(METAFILE_FILEPATH);
 
   private static PartialPath[][] paths = new PartialPath[DEVICE_NUM][TIMESERIES_NUM];
 
@@ -44,10 +46,16 @@ public class CachePerformanceTest {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
+    if(metaFile.exists()){
+      metaFile.delete();
+    }
   }
 
   @After
   public void tearDown() throws Exception {
+    if(metaFile.exists()){
+      metaFile.delete();
+    }
     EnvironmentUtils.cleanEnv();
   }
 
@@ -55,9 +63,11 @@ public class CachePerformanceTest {
   public void singleTimeComparison() throws Exception {
     System.gc();
     MTreeInterface mTreeMem = testMTreeMem();
+    mTreeMem.clear();
     mTreeMem = null;
     System.gc();
     MTreeInterface mTreeDisk = testMTreeDisk();
+    mTreeDisk.clear();
     //    mTreeDisk=null;
     //    System.out.println(ObjectSizeCalculator.getObjectSize(paths));
     //    System.out.println(ObjectSizeCalculator.getObjectSize(mTreeMem));
@@ -75,7 +85,7 @@ public class CachePerformanceTest {
   }
 
   private MTreeInterface testMTreeDisk() throws Exception {
-    MTreeInterface mTreeDisk = new MTreeDiskBased(NODE_NUM, null);
+    MTreeInterface mTreeDisk = new MTreeDiskBased(NODE_NUM, METAFILE_FILEPATH);
     System.out.println("MTreeDisk TS creation time cost: " + generateMTree(mTreeDisk) + "ms");
     System.out.println("MTreeDisk TS access time cost: " + accessMTree(mTreeDisk) + "ms");
     return mTreeDisk;
@@ -90,6 +100,7 @@ public class CachePerformanceTest {
       MTree mTreeMem = new MTree();
       createCostTime += generateMTree(mTreeMem);
       readCostTime += accessMTree(mTreeMem);
+      mTreeMem.clear();
       mTreeMem = null;
     }
     System.out.println(
@@ -106,9 +117,11 @@ public class CachePerformanceTest {
     createCostTime = 0;
     readCostTime = 0;
     for (int i = 0; i < times; i++) {
-      MTreeDiskBased mTreeDisk = new MTreeDiskBased(NODE_NUM, null);
+      MTreeDiskBased mTreeDisk = new MTreeDiskBased(NODE_NUM,METAFILE_FILEPATH);
       createCostTime += generateMTree(mTreeDisk);
       readCostTime += accessMTree(mTreeDisk);
+      mTreeDisk.clear();
+      metaFile.delete();
       mTreeDisk = null;
     }
     System.out.println(

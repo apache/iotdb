@@ -157,7 +157,7 @@ public class MetaFileTest {
   @Test
   public void testIOPerformance() throws IOException {
     int deviceNum = 1000;
-    int schemaNum = 1000;
+    int schemaNum = 100;
 
     long startTime, endTime;
     startTime = System.currentTimeMillis();

@@ -1,9 +1,7 @@
 package org.apache.iotdb.db.metadata.metadisk;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.metadisk.cache.CacheStrategy;
 import org.apache.iotdb.db.metadata.metadisk.cache.LRUCacheStrategy;
 import org.apache.iotdb.db.metadata.metadisk.metafile.MetaFile;
@@ -11,8 +9,9 @@ import org.apache.iotdb.db.metadata.metadisk.metafile.MetaFileAccess;
 import org.apache.iotdb.db.metadata.metadisk.metafile.PersistenceInfo;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -24,40 +23,36 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class MetadataDiskManager implements MetadataAccess {
 
+  private static final Logger logger = LoggerFactory.getLogger(MetadataDiskManager.class);
+
   private int capacity;
   private CacheStrategy cacheStrategy;
-  private static final int DEFAULT_MAX_CAPACITY = 10000;
 
   private MetaFileAccess metaFile;
   private String metaFilePath;
-  private static final String DEFAULT_METAFILE_PATH =
-      IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
-          + File.separator
-          + MetadataConstant.METAFILE_PATH;
 
   private MNode root;
-
-  public MetadataDiskManager() throws IOException {
-    this(DEFAULT_MAX_CAPACITY, DEFAULT_METAFILE_PATH);
-  }
 
   public MetadataDiskManager(int cacheSize, String metaFilePath) throws IOException {
 
     this.metaFilePath = metaFilePath;
+    capacity = cacheSize;
+    cacheStrategy = new LRUCacheStrategy();
+    init();
+  }
+
+  public void init()throws IOException{
     metaFile = new MetaFile(metaFilePath);
     MNode root = null;
     try {
       root = metaFile.readRoot();
     } catch (IOException e) {
-
+      logger.warn(e.getMessage());
     }
     if (root == null) {
       root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
       metaFile.write(root);
     }
-
-    capacity = cacheSize;
-    cacheStrategy = new LRUCacheStrategy();
     if (capacity > 0) {
       this.root = root;
       cacheStrategy.applyChange(root);
@@ -245,12 +240,9 @@ public class MetadataDiskManager implements MetadataAccess {
 
   @Override
   public void clear() throws IOException {
-    root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
+    cacheStrategy.clear();
     metaFile.close();
-    File file = new File(metaFilePath);
-    if (file.exists()) {
-      file.delete();
-    }
+    metaFile=null;
   }
 
   /** get mnode from disk */
