@@ -48,6 +48,7 @@ public class MTreeDiskBased implements MTreeInterface {
   public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
   private final String rootName = PATH_ROOT;
+  private String metaFilePath;
   private MetadataAccess metadataDiskManager;
   private static final int DEFAULT_MAX_CAPACITY = 100000;
   private static final String DEFAULT_METAFILE_PATH =
@@ -64,11 +65,8 @@ public class MTreeDiskBased implements MTreeInterface {
     this(DEFAULT_MAX_CAPACITY, DEFAULT_METAFILE_PATH);
   }
 
-  public MTreeDiskBased(int cacheSize) throws IOException{
-    this(cacheSize,DEFAULT_METAFILE_PATH);
-  }
-
   public MTreeDiskBased(int cacheSize, String metaFilePath) throws IOException {
+    this.metaFilePath=metaFilePath;
     metadataDiskManager = new MetadataDiskManager(cacheSize, metaFilePath);
   }
 
@@ -1403,16 +1401,11 @@ public class MTreeDiskBased implements MTreeInterface {
   }
 
   @Override
-  public void recoverFromFile() throws IOException {
-
-  }
-
-  @Override
   public void clear() {
     try {
       metadataDiskManager.clear();
     } catch (IOException e) {
-      logger.error("We can not clear mtreediskbased because " + e);
+      logger.error("We can not clear mtreediskbased because ", e);
     }
   }
 

@@ -263,7 +263,6 @@ public class MManager {
   /** @return line number of the logFile */
   @SuppressWarnings("squid:S3776")
   private int initFromLog(File logFile) throws IOException {
-    mtree.recoverFromFile();
     long time = System.currentTimeMillis();
     // init the metadata from the operation log
     if (logFile.exists()) {

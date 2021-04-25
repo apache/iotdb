@@ -12,6 +12,7 @@ import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -42,17 +43,27 @@ public class MetadataDiskManager implements MetadataAccess {
   }
 
   public void init()throws IOException{
-    metaFile = new MetaFile(metaFilePath);
     MNode root = null;
-    try {
-      root = metaFile.readRoot();
-    } catch (IOException e) {
-      logger.warn(e.getMessage());
+    File file=new File(metaFilePath);
+    if(file.exists()){
+      metaFile = new MetaFile(metaFilePath);
+      try {
+        root = metaFile.readRoot();
+      } catch (IOException e) {
+        logger.warn("We can't read root MNode from current metafile because {}",e.getMessage());
+        metaFile.close();
+        metaFile=null;
+      }
     }
     if (root == null) {
+      if(file.exists()){
+        file.delete();
+      }
+      metaFile=new MetaFile(metaFilePath);
       root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
-      metaFile.write(root);
     }
+    metaFile.write(root);
+
     if (capacity > 0) {
       this.root = root;
       cacheStrategy.applyChange(root);
@@ -241,6 +252,7 @@ public class MetadataDiskManager implements MetadataAccess {
   @Override
   public void clear() throws IOException {
     cacheStrategy.clear();
+    cacheStrategy=null;
     metaFile.close();
     metaFile=null;
   }

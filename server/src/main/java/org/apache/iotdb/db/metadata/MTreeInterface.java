@@ -279,7 +279,5 @@ public interface MTreeInterface extends Serializable {
 
   void persist() throws IOException;
 
-  void recoverFromFile() throws IOException;
-
   void clear();
 }

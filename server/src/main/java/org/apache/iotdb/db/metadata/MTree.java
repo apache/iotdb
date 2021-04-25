@@ -82,15 +82,24 @@ public class MTree implements MTreeInterface {
   private MNode root;
 
   public MTree() {
-    this(new InternalMNode(null, IoTDBConstant.PATH_ROOT));
+    try {
+      this.root=new InternalMNode(null, IoTDBConstant.PATH_ROOT);
+      init();
+    }catch (IOException e){
+      logger.error(
+              "Cannot recover all MTree from file, because", e);
+    }
   }
 
   private MTree(MNode root) {
     this.root = root;
+  }
 
+  private void init() throws IOException{
     String schemaDir = IoTDBDescriptor.getInstance().getConfig().getSchemaDir();
     mtreeSnapshotPath = schemaDir + File.separator + MetadataConstant.MTREE_SNAPSHOT;
     mtreeSnapshotTmpPath = schemaDir + File.separator + MetadataConstant.MTREE_SNAPSHOT_TMP;
+    recoverFromFile();
   }
 
   static long getLastTimeStamp(MeasurementMNode node, QueryContext queryContext) {
@@ -1466,7 +1475,6 @@ public class MTree implements MTreeInterface {
     }
   }
 
-  @Override
   public void recoverFromFile() throws IOException {
     File tmpFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath);
     if (tmpFile.exists()) {
