@@ -26,7 +26,7 @@ public class CachePerformanceTest {
 
   private static final String BASE_PATH = CachePerformanceTest.class.getResource("").getPath();
   private static final String METAFILE_FILEPATH = BASE_PATH + "metafile.bin";
-  private File metaFile=new File(METAFILE_FILEPATH);
+  private File metaFile = new File(METAFILE_FILEPATH);
 
   private static PartialPath[][] paths = new PartialPath[DEVICE_NUM][TIMESERIES_NUM];
 
@@ -46,14 +46,14 @@ public class CachePerformanceTest {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    if(metaFile.exists()){
+    if (metaFile.exists()) {
       metaFile.delete();
     }
   }
 
   @After
   public void tearDown() throws Exception {
-    if(metaFile.exists()){
+    if (metaFile.exists()) {
       metaFile.delete();
     }
     EnvironmentUtils.cleanEnv();
@@ -117,7 +117,7 @@ public class CachePerformanceTest {
     createCostTime = 0;
     readCostTime = 0;
     for (int i = 0; i < times; i++) {
-      MTreeDiskBased mTreeDisk = new MTreeDiskBased(NODE_NUM,METAFILE_FILEPATH);
+      MTreeDiskBased mTreeDisk = new MTreeDiskBased(NODE_NUM, METAFILE_FILEPATH);
       createCostTime += generateMTree(mTreeDisk);
       readCostTime += accessMTree(mTreeDisk);
       mTreeDisk.clear();

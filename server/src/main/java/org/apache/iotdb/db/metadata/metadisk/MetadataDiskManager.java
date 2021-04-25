@@ -9,6 +9,7 @@ import org.apache.iotdb.db.metadata.metadisk.metafile.MetaFileAccess;
 import org.apache.iotdb.db.metadata.metadisk.metafile.PersistenceInfo;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,24 +43,24 @@ public class MetadataDiskManager implements MetadataAccess {
     init();
   }
 
-  public void init()throws IOException{
+  public void init() throws IOException {
     MNode root = null;
-    File file=new File(metaFilePath);
-    if(file.exists()){
+    File file = new File(metaFilePath);
+    if (file.exists()) {
       metaFile = new MetaFile(metaFilePath);
       try {
         root = metaFile.readRoot();
       } catch (IOException e) {
-        logger.warn("We can't read root MNode from current metafile because {}",e.getMessage());
+        logger.warn("We can't read root MNode from current metafile because {}", e.getMessage());
         metaFile.close();
-        metaFile=null;
+        metaFile = null;
       }
     }
     if (root == null) {
-      if(file.exists()){
+      if (file.exists()) {
         file.delete();
       }
-      metaFile=new MetaFile(metaFilePath);
+      metaFile = new MetaFile(metaFilePath);
       root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
     }
     metaFile.write(root);
@@ -252,9 +253,9 @@ public class MetadataDiskManager implements MetadataAccess {
   @Override
   public void clear() throws IOException {
     cacheStrategy.clear();
-    cacheStrategy=null;
+    cacheStrategy = null;
     metaFile.close();
-    metaFile=null;
+    metaFile = null;
   }
 
   /** get mnode from disk */

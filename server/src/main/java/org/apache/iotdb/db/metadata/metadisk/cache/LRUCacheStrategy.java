@@ -152,7 +152,7 @@ public class LRUCacheStrategy implements CacheStrategy {
       List<MNode> result = new LinkedList<>();
       collectModifiedRecursively(mNode, result);
       return result;
-    }finally {
+    } finally {
       lock.unlock();
     }
   }
@@ -161,10 +161,10 @@ public class LRUCacheStrategy implements CacheStrategy {
   public void clear() {
     try {
       lock.lock();
-      while(last!=null){
+      while (last != null) {
         removeRecursively(last.value);
       }
-    }finally {
+    } finally {
       lock.unlock();
     }
   }

@@ -158,7 +158,7 @@ public class MManager {
 
   private static final int ESTIMATED_SERIES_SIZE = config.getEstimatedSeriesSize();
 
-  private byte MTreeType = MTREE_DISK_BASED;
+  private byte MTreeType = MTREE_MEMORY_BASED;
 
   public void setMTreeType(byte MTreeType) {
     if (MTreeType == MTREE_DISK_BASED) {

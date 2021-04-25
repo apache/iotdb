@@ -83,11 +83,10 @@ public class MTree implements MTreeInterface {
 
   public MTree() {
     try {
-      this.root=new InternalMNode(null, IoTDBConstant.PATH_ROOT);
+      this.root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
       init();
-    }catch (IOException e){
-      logger.error(
-              "Cannot recover all MTree from file, because", e);
+    } catch (IOException e) {
+      logger.error("Cannot recover all MTree from file, because", e);
     }
   }
 
@@ -95,7 +94,7 @@ public class MTree implements MTreeInterface {
     this.root = root;
   }
 
-  private void init() throws IOException{
+  private void init() throws IOException {
     String schemaDir = IoTDBDescriptor.getInstance().getConfig().getSchemaDir();
     mtreeSnapshotPath = schemaDir + File.separator + MetadataConstant.MTREE_SNAPSHOT;
     mtreeSnapshotTmpPath = schemaDir + File.separator + MetadataConstant.MTREE_SNAPSHOT_TMP;
@@ -1488,7 +1487,7 @@ public class MTree implements MTreeInterface {
       logger.debug(
           "spend {} ms to deserialize mtree from snapshot", System.currentTimeMillis() - time);
       try (MLogReader mLogReader = new MLogReader(mtreeSnapshot)) {
-        root=deserializeFromReader(mLogReader);
+        root = deserializeFromReader(mLogReader);
       } catch (IOException e) {
         logger.warn("Failed to deserialize from {}. Use a new MTree.", mtreeSnapshot.getPath());
       } finally {

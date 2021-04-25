@@ -66,7 +66,7 @@ public class MTreeDiskBased implements MTreeInterface {
   }
 
   public MTreeDiskBased(int cacheSize, String metaFilePath) throws IOException {
-    this.metaFilePath=metaFilePath;
+    this.metaFilePath = metaFilePath;
     metadataDiskManager = new MetadataDiskManager(cacheSize, metaFilePath);
   }
 

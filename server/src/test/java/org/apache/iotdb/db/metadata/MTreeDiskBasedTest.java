@@ -25,14 +25,14 @@ public class MTreeDiskBasedTest {
   private static final int CACHE_SIZE = 3;
   private static final String BASE_PATH = MTreeDiskBasedTest.class.getResource("").getPath();
   private static final String METAFILE_FILEPATH = BASE_PATH + "metafile.bin";
-  private File metaFile=new File(METAFILE_FILEPATH);
+  private File metaFile = new File(METAFILE_FILEPATH);
 
   private MTreeDiskBased root;
 
   @Before
-  public void setUp() throws Exception{
+  public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    if(metaFile.exists()){
+    if (metaFile.exists()) {
       metaFile.delete();
     }
     root = new MTreeDiskBased(CACHE_SIZE, METAFILE_FILEPATH);
@@ -41,7 +41,7 @@ public class MTreeDiskBasedTest {
   @After
   public void tearDown() throws Exception {
     root.clear();
-    if(metaFile.exists()){
+    if (metaFile.exists()) {
       metaFile.delete();
     }
     EnvironmentUtils.cleanEnv();
