@@ -509,6 +509,12 @@
             <artifactId>mockito-all</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+            <version>1.15.2</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
     <build>
         <pluginManagement>
@@ -913,6 +919,10 @@
                                 <!-- Include integration tests within integration-test phase. -->
                                 <include>src/test/**/*IT.java</include>
                             </includes>
+                            <excludes>
+                                <!-- Exclude unit tests within (unit) test phase. -->
+                                <exclude>src/test/**/*Test.java</exclude>
+                            </excludes>
                         </configuration>
                     </execution>
                 </executions>
@@ -932,13 +942,27 @@
                     </execution>
                 </executions>
             </plugin>
-            <plugin>
-                <groupId>com.diffplug.spotless</groupId>
-                <artifactId>spotless-maven-plugin</artifactId>
-            </plugin>
         </plugins>
     </build>
     <profiles>
+        <!-- spotless is too slow, so we put it into a profile to skip it if needed -->
+        <profile>
+            <id>spotless</id>
+            <activation>
+                <!-- activeByDefault does not take effect-->
+                <file>
+                    <exists>.</exists>
+                </file>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.diffplug.spotless</groupId>
+                        <artifactId>spotless-maven-plugin</artifactId>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
         <!--
           A set of profiles defining the different properties needed to download and run thrift
           They are automatically activated depending on the OS you are using.
@@ -991,6 +1015,30 @@
                 <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
                 <thrift.exec-cmd.args>+x ${project.build.directory}/tools/${thrift.executable}</thrift.exec-cmd.args>
             </properties>
+        </profile>
+        <!-- for TestContainer. As it requires docker, we have to detect whether docker exists.-->
+        <profile>
+            <!-- Mac and Unix-->
+            <id>unixDockerCheck</id>
+            <activation>
+                <file>
+                    <exists>/var/run/docker.sock</exists>
+                </file>
+            </activation>
+            <modules>
+                <module>testcontainer</module>
+            </modules>
+        </profile>
+        <profile>
+            <id>WinDockerCheck</id>
+            <activation>
+                <file>
+                    <exists>C:\Program Files\Docker\Docker\resources\bin\docker.exe</exists>
+                </file>
+            </activation>
+            <modules>
+                <module>testcontainer</module>
+            </modules>
         </profile>
         <!-- Some APIs were removed in Java 11, so we need to add replacements -->
         <profile>

@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -18,31 +17,27 @@
 # under the License.
 #
 
-set -e
+version: '3.8'
 
-cd "$(dirname "$0")"
+services:
+  iotdb-server:
+    image: apache/iotdb:cluster-maven-development
+    expose:
+      - 6667
+      - 9003
+      - 40010
+    networks:
+      - iotdb
+    healthcheck:
+      test: [ "CMD", "bash", "-c", "cat < /dev/null > /dev/tcp/127.0.0.1/6667" ]
+      interval: 5s
+      timeout: 60s
+      retries: 120
+    volumes:
+    - ./iotdb-cluster.properties:/iotdb/conf/iotdb-cluster.properties
+    - ../logback-container.xml:/iotdb/conf/logback.xml
+    scale: 5
 
-docker-compose up -d
-
-max_attempts=10
-attempts=1
-
-while ! docker-compose logs | grep -c 'Ready to Run IoTDB E2E Tests' > /dev/null 2>&1; do
-  if [[ $attempts -gt $max_attempts ]]; then
-    echo "Preparation is not ready after $max_attempts attempts, will exit now"
-    exit 1
-  fi
-  echo "Preparation is not ready yet, retrying ($attempts/$max_attempts)"
-  sleep 3
-  attempts=$((attempts+1))
-done
-
-results=$(docker-compose exec -T server /iotdb/sbin/start-cli.sh -e 'SELECT temperature FROM root.ln.wf01.wt01')
-
-if [[ $results != *"Total line number = 2"* ]]; then
-  echo "Total line number should be 2"
-  echo "$results"
-  exit 1
-fi
-
-cd -
+networks:
+  iotdb:
+    driver: bridge
