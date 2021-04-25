@@ -1612,7 +1612,8 @@ public class StorageGroupProcessor {
   }
 
   public void writeLockConditionAwait() throws InterruptedException {
-    writeLockConditionForReject.await(config.getCheckPeriodWhenInsertBlocked(), TimeUnit.MILLISECONDS);
+    writeLockConditionForReject.await(
+        config.getCheckPeriodWhenInsertBlocked(), TimeUnit.MILLISECONDS);
   }
 
   /**
