@@ -22,6 +22,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.CompressionRatio;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.flush.FlushManager;
@@ -454,23 +455,13 @@ public class TsFileProcessor {
     if (storageGroupInfo.needToReportToSystem()) {
       try {
         if (!SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo, this)) {
-          long startTime = System.currentTimeMillis();
-          while (SystemInfo.getInstance().isRejected()) {
-            storageGroupInfo.getStorageGroupProcessor().writeLockConditionAwait();
-            if (System.currentTimeMillis() - startTime
-                > config.getMaxWaitingTimeWhenInsertBlocked()) {
-              throw new WriteProcessRejectException(
-                  "System rejected over " + config.getMaxWaitingTimeWhenInsertBlocked() + "ms");
-            }
-          }
+          StorageEngine.blockInsertionIfReject();
         }
       } catch (WriteProcessRejectException e) {
         storageGroupInfo.releaseStorageGroupMemCost(memTableIncrement);
         tsFileProcessorInfo.releaseTSPMemCost(chunkMetadataIncrement);
         SystemInfo.getInstance().resetStorageGroupStatus(storageGroupInfo);
         throw e;
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
       }
     }
     workMemTable.addTVListRamCost(memTableIncrement);

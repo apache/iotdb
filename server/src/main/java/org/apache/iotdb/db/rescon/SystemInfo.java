@@ -32,9 +32,6 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.PriorityQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class SystemInfo {
 
@@ -48,11 +45,7 @@ public class SystemInfo {
   private Map<StorageGroupInfo, Long> reportedStorageGroupMemCostMap = new HashMap<>();
 
   private long flushingMemTablesCost = 0L;
-  private AtomicInteger threadCnt = new AtomicInteger();
-  private ExecutorService flushTaskSubmitThreadPool =
-      Executors.newFixedThreadPool(
-          config.getConcurrentFlushThread(),
-          r -> new Thread(r, "FlushTaskSubmitThread-" + threadCnt.getAndIncrement()));
+
   private static double FLUSH_THERSHOLD = memorySizeForWrite * config.getFlushProportion();
   private static double REJECT_THERSHOLD = memorySizeForWrite * config.getRejectProportion();
 
@@ -204,13 +197,13 @@ public class SystemInfo {
       TsFileProcessor selectedTsFileProcessor = allTsFileProcessors.peek();
       memCost += selectedTsFileProcessor.getWorkMemTableRamCost();
       selectedTsFileProcessor.setWorkMemTableShouldFlush();
-      if (selectedTsFileProcessor == currentTsFileProcessor) {
-        isCurrentTsFileProcessorSelected = true;
-      }
-      flushTaskSubmitThreadPool.submit(
+      new Thread(
           () -> {
             selectedTsFileProcessor.submitAFlushTask();
           });
+      if (selectedTsFileProcessor == currentTsFileProcessor) {
+        isCurrentTsFileProcessorSelected = true;
+      }
       allTsFileProcessors.poll();
     }
     return isCurrentTsFileProcessorSelected;
