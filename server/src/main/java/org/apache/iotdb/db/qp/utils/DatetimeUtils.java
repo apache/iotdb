@@ -43,7 +43,7 @@ public class DatetimeUtils {
   static {
     ISO_LOCAL_DATE_WIDTH_1_2 =
         new DateTimeFormatterBuilder()
-            .appendValue(ChronoField.YEAR, 4, 19, SignStyle.NEVER)
+            .appendValue(ChronoField.YEAR, 4, 19, SignStyle.EXCEEDS_PAD)
             .appendLiteral('-')
             .appendValue(ChronoField.MONTH_OF_YEAR, 1, 2, SignStyle.NEVER)
             .appendLiteral('-')

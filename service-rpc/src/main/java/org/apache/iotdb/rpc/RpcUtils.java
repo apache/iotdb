@@ -258,7 +258,8 @@ public class RpcUtils {
           digits.insert(0, "0");
         }
       }
-      return datetime.substring(0, 19) + "." + digits + datetime.substring(19);
+      String timeZoneStr = datetime.substring(datetime.length() - 6);
+      return datetime.substring(0, datetime.length() - 6) + "." + digits + timeZoneStr;
     } else {
       long integerofDate = timestamp / 1000_000_000L;
       StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000_000_000L));
@@ -271,7 +272,8 @@ public class RpcUtils {
           digits.insert(0, "0");
         }
       }
-      return datetime.substring(0, 19) + "." + digits + datetime.substring(19);
+      String timeZoneStr = datetime.substring(datetime.length() - 6);
+      return datetime.substring(0, datetime.length() - 6) + "." + digits + timeZoneStr;
     }
   }
 }
