@@ -63,7 +63,7 @@ public abstract class AbstractMemTable implements IMemTable {
    * memory usage of all TVLists memory usage regardless of whether these TVLists are full,
    * including TEXT values
    */
-  private volatile long tvListRamCost = 0;
+  private long tvListRamCost = 0;
 
   /**
    * The initial value is true because we want calculate the text data size when recover
