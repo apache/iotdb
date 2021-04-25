@@ -333,7 +333,7 @@ public class IoTDBStatement implements Statement {
               execResp.getSubStatus().get(i).message
                   + " for SQL: \""
                   + batchSQLList.get(i)
-                  + "\" "
+                  + "\""
                   + "\n";
         }
       } else {
