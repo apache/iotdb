@@ -24,11 +24,11 @@
     <parent>
         <artifactId>iotdb-examples</artifactId>
         <groupId>org.apache.iotdb</groupId>
-        <version>${revision}</version>
+        <version>0.12.1</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>hadoop-example</artifactId>
-    <version>${revision}</version>
+    <version>0.12.1</version>
     <name>hadoop-example</name>
     <dependencies>
         <dependency>
