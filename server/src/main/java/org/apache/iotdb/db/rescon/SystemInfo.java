@@ -22,6 +22,8 @@ package org.apache.iotdb.db.rescon;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.PriorityQueue;
+import java.util.concurrent.ExecutorService;
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupInfo;
@@ -36,6 +38,8 @@ public class SystemInfo {
   private static final Logger logger = LoggerFactory.getLogger(SystemInfo.class);
 
   private long totalStorageGroupMemCost = 0L;
+  private ExecutorService flushTaskSubmitThreadPool =
+      IoTDBThreadPoolFactory.newSingleThreadExecutor("FlushTask-Submit-Pool");
   private volatile boolean rejected = false;
 
   private Map<StorageGroupInfo, Long> reportedStorageGroupMemCostMap = new HashMap<>();
@@ -188,7 +192,7 @@ public class SystemInfo {
       memCost += selectedTsFileProcessor.getWorkMemTableRamCost();
       selectedTsFileProcessor.setWorkMemTableShouldFlush();
       // Open a new thread for submit a flush task
-      new Thread(
+      flushTaskSubmitThreadPool.submit(
           () -> {
             selectedTsFileProcessor.submitAFlushTask();
           });
