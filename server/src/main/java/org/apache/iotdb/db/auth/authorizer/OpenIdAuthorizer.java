@@ -99,8 +99,7 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
     logger.debug("Using Provider Metadata: {}", providerMetadata);
 
     try {
-      URL url =
-          new URI(providerMetadata.getJWKSetURI().toString().replace("http", "https")).toURL();
+      URL url = new URI(providerMetadata.getJWKSetURI().toString().replace("http", "http")).toURL();
       logger.debug("Using url {}", url);
       return getProviderRSAJWK(url.openStream());
     } catch (IOException e) {
@@ -189,7 +188,7 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
         .setAllowedClockSkewSeconds(Long.MAX_VALUE / 1000)
         // .setSigningKey(DatatypeConverter.parseBase64Binary(secret))
         .setSigningKey(providerKey)
-        .parseClaimsJws(token)
+        .parseClaimsJws(token.replaceAll("access_token:", ""))
         .getBody();
   }
 
