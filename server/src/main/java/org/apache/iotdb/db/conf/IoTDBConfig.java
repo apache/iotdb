@@ -90,7 +90,12 @@ public class IoTDBConfig {
   /** the mqtt message payload formatter. */
   private String mqttPayloadFormatter = "json";
 
+<<<<<<< HEAD
   /** max mqtt message size. Unit: byte */
+=======
+  /** max mqtt message size. 
+   * Unit: byte */
+>>>>>>> f8162b796... keep IoTDBConfig.java and iotdb-engine.properties consistent
   private int mqttMaxMessageSize = 1048576;
 
   /** Rpc binding address. */
@@ -131,6 +136,7 @@ public class IoTDBConfig {
   /** Reject proportion for system */
   private double rejectProportion = 0.8;
 
+<<<<<<< HEAD
   /** If storage group increased more than this threshold, report to system. Unit: byte */
   private long storageGroupSizeReportThreshold = 16 * 1024 * 1024L;
 
@@ -138,6 +144,18 @@ public class IoTDBConfig {
   private int checkPeriodWhenInsertBlocked = 50;
 
   /** When inserting rejected exceeds this, throw an exception. Unit: millisecond */
+=======
+  /** If storage group increased more than this threshold, report to system. 
+   * Unit: byte */
+  private long storageGroupSizeReportThreshold = 16 * 1024 * 1024L;
+
+  /** When inserting rejected, waiting period to check system again. 
+   * Unit: millisecond */
+  private int checkPeriodWhenInsertBlocked = 50;
+
+  /** When inserting rejected exceeds this, throw an exception. 
+   * Unit: millisecond */
+>>>>>>> f8162b796... keep IoTDBConfig.java and iotdb-engine.properties consistent
   private int maxWaitingTimeWhenInsertBlockedInMs = 10000;
   /** Is the write ahead log enable. */
   private boolean enableWal = true;
@@ -157,15 +175,25 @@ public class IoTDBConfig {
 
   /**
    * The cycle when write ahead log is periodically forced to be written to disk(in milliseconds) If
+<<<<<<< HEAD
    * set this parameter to 0 it means call channel.force(true) after every each insert. Unit:
    * millisecond
+=======
+   * set this parameter to 0 it means call channel.force(true) after every each insert. 
+   * Unit: millisecond
+>>>>>>> f8162b796... keep IoTDBConfig.java and iotdb-engine.properties consistent
    */
   private long forceWalPeriodInMs = 100;
 
   /**
    * The size of the log buffer in each log node (in bytes). Due to the double buffer mechanism, if
    * WAL is enabled and the size of the inserted plan is greater than one-half of this parameter,
+<<<<<<< HEAD
    * then the insert plan will be rejected by WAL. Unit: byte
+=======
+   * then the insert plan will be rejected by WAL. 
+   * Unit: byte
+>>>>>>> f8162b796... keep IoTDBConfig.java and iotdb-engine.properties consistent
    */
   private int walBufferSize = 16 * 1024 * 1024;
 
@@ -187,7 +215,12 @@ public class IoTDBConfig {
   /**
    * The size of log buffer for every trigger management operation plan. If the size of a trigger
    * management operation plan is larger than this parameter, the trigger management operation plan
+<<<<<<< HEAD
    * will be rejected by TriggerManager. Unit: byte
+=======
+   * will be rejected by TriggerManager.
+   * Unit: byte 
+>>>>>>> f8162b796... keep IoTDBConfig.java and iotdb-engine.properties consistent
    */
   private int tlogBufferSize = 1024 * 1024;
 
@@ -276,7 +309,12 @@ public class IoTDBConfig {
    * common buffer size. With the memory-control mechanism, the occupied memory of all raw data and
    * index structures will be counted. If the memory buffer size reaches this threshold, the indexes
    * will be flushed to the disk file. As a result, data in one series may be divided into more than
+<<<<<<< HEAD
    * one part and indexed separately. Unit: byte
+=======
+   * one part and indexed separately.
+   * Unit: byte
+>>>>>>> f8162b796... keep IoTDBConfig.java and iotdb-engine.properties consistent
    */
   private long indexBufferSize = 128 * 1024 * 1024L;
 
@@ -289,10 +327,19 @@ public class IoTDBConfig {
   /** index directory. */
   private String indexRootFolder = "data" + File.separator + "index";
 
+<<<<<<< HEAD
   /** When a TsFile's file size (in byte) exceed this, the TsFile is forced closed. Unit: byte */
   private long tsFileSizeThreshold = 1L;
 
   /** When a memTable's size (in byte) exceeds this, the memtable is flushed to disk. Unit: byte */
+=======
+  /** When a TsFile's file size (in byte) exceed this, the TsFile is forced closed. 
+   * Unit: byte */
+  private long tsFileSizeThreshold = 1L;
+
+  /** When a memTable's size (in byte) exceeds this, the memtable is flushed to disk. 
+   * Unit: byte */
+>>>>>>> f8162b796... keep IoTDBConfig.java and iotdb-engine.properties consistent
   private long memtableSizeThreshold = 1024 * 1024 * 1024L;
 
   /** When average series point number reaches this, flush the memtable to disk */
@@ -387,10 +434,19 @@ public class IoTDBConfig {
 
   private String ipWhiteList = "0.0.0.0/0";
 
+<<<<<<< HEAD
   /** Examining period of cache file reader : 100 seconds. Unit: millisecond */
   private long cacheFileReaderClearPeriod = 100000;
 
   /** the max executing time of query in ms. Unit: millisecond */
+=======
+  /** Examining period of cache file reader : 100 seconds. 
+   * Unit: millisecond */
+  private long cacheFileReaderClearPeriod = 100000;
+
+  /** the max executing time of query in ms. 
+   * Unit: millisecond */
+>>>>>>> f8162b796... keep IoTDBConfig.java and iotdb-engine.properties consistent
   private int queryTimeoutThreshold = 60000;
 
   /** Replace implementation class of JDBC service */
@@ -402,10 +458,21 @@ public class IoTDBConfig {
   /** Is performance tracing enable. */
   private boolean enablePerformanceTracing = false;
 
+<<<<<<< HEAD
   /** The display of stat performance interval in ms. Unit: millisecond */
   private long performanceStatDisplayInterval = 60000;
 
   /** The memory used for stat performance. Unit: kilobyte */
+=======
+  /** The display of stat performance interval in ms. 
+   * Unit: millisecond 
+   */
+  private long performanceStatDisplayInterval = 60000;
+
+  /** The memory used for stat performance. 
+   * Unit: kilobyte 
+   */
+>>>>>>> f8162b796... keep IoTDBConfig.java and iotdb-engine.properties consistent
   private int performanceStatMemoryInKB = 20;
 
   /** whether use chunkBufferPool. */
@@ -482,8 +549,13 @@ public class IoTDBConfig {
 
   /**
    * If one merge file selection runs for more than this time, it will be ended and its current
+<<<<<<< HEAD
    * selection will be used as final selection. When < 0, it means time is unbounded. Unit:
    * millisecond
+=======
+   * selection will be used as final selection. When < 0, it means time is unbounded.
+   * Unit: millisecond
+>>>>>>> f8162b796... keep IoTDBConfig.java and iotdb-engine.properties consistent
    */
   private long mergeFileSelectionTimeBudget = 30 * 1000L;
 
@@ -496,7 +568,8 @@ public class IoTDBConfig {
 
   /**
    * A global merge will be performed each such interval, that is, each storage group will be merged
-   * (if proper merge candidates can be found). Unit: second.
+   * (if proper merge candidates can be found). 
+   * Unit: second.
    */
   private long mergeIntervalSec = 0L;
 
@@ -568,10 +641,18 @@ public class IoTDBConfig {
   private int defaultFillInterval = -1;
 
   /**
+<<<<<<< HEAD
    * default TTL for storage groups that are not set TTL by statements, in ms.
    *
    * <p>Notice: if this property is changed, previous created storage group which are not set TTL
    * will also be affected. Unit: millisecond
+=======
+   * default TTL for storage groups that are not set TTL by statements, in ms. 
+   *
+   * <p>Notice: if this property is changed, previous created storage group which are not set TTL
+   * will also be affected.
+   * Unit: millisecond
+>>>>>>> f8162b796... keep IoTDBConfig.java and iotdb-engine.properties consistent
    */
   private long defaultTTL = Long.MAX_VALUE;
 
@@ -589,11 +670,22 @@ public class IoTDBConfig {
 
   /**
    * Threshold interval time of MTree modification. If the last modification time is less than this
+<<<<<<< HEAD
    * threshold, MTree snapshot will not be created. Default: 1 hour(3600 seconds) Unit: second
    */
   private int mtreeSnapshotThresholdTime = 3600;
 
   /** Time range for partitioning data inside each storage group. Unit: second */
+=======
+   * threshold, MTree snapshot will not be created. Default: 1 hour(3600 seconds)
+   * Unit: second
+   */
+  private int mtreeSnapshotThresholdTime = 3600;
+
+  /** Time range for partitioning data inside each storage group. 
+   * Unit: second 
+   */
+>>>>>>> f8162b796... keep IoTDBConfig.java and iotdb-engine.properties consistent
   private long partitionInterval = 604800;
 
   /**
@@ -651,10 +743,21 @@ public class IoTDBConfig {
 
   private int thriftDefaultBufferSize = RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY;
 
+<<<<<<< HEAD
   /** time interval in minute for calculating query frequency. Unit: minute */
   private int frequencyIntervalInMinute = 1;
 
   /** time cost(ms) threshold for slow query. Unit: millisecond */
+=======
+  /** time interval in minute for calculating query frequency. 
+   * Unit: minute 
+   */
+  private int frequencyIntervalInMinute = 1;
+
+  /** time cost(ms) threshold for slow query. 
+   * Unit: millisecond 
+   */
+>>>>>>> f8162b796... keep IoTDBConfig.java and iotdb-engine.properties consistent
   private long slowQueryThreshold = 5000;
 
   /**
