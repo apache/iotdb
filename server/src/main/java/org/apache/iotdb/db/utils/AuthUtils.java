@@ -57,6 +57,9 @@ public class AuthUtils {
       throw new AuthException(
           "Password's size must be greater than or equal to " + MIN_PASSWORD_LENGTH);
     }
+    if (password.contains(" ")) {
+      throw new AuthException("Password cannot contain spaces");
+    }
   }
 
   /**
@@ -70,6 +73,9 @@ public class AuthUtils {
       throw new AuthException(
           "Username's size must be greater than or equal to " + MIN_USERNAME_LENGTH);
     }
+    if (username.contains(" ")) {
+      throw new AuthException("Username cannot contain spaces");
+    }
   }
 
   /**
@@ -82,6 +88,9 @@ public class AuthUtils {
     if (rolename.length() < MIN_ROLENAME_LENGTH) {
       throw new AuthException(
           "Role name's size must be greater than or equal to " + MIN_ROLENAME_LENGTH);
+    }
+    if (rolename.contains(" ")) {
+      throw new AuthException("Rolename cannot contain spaces");
     }
   }
 

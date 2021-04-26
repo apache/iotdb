@@ -59,6 +59,22 @@ public class LocalFileUserManagerTest {
   }
 
   @Test
+  public void testIllegalInput() throws AuthException {
+    // Password contains space
+    try {
+      manager.createUser("username1", "password_ ");
+    } catch (AuthException e) {
+      assertTrue(e.getMessage().contains("cannot contain spaces"));
+    }
+    // Username contains space
+    try {
+      assertFalse(manager.createUser("username 2", "password_"));
+    } catch (AuthException e) {
+      assertTrue(e.getMessage().contains("cannot contain spaces"));
+    }
+  }
+
+  @Test
   public void test() throws AuthException {
     User[] users = new User[5];
     for (int i = 0; i < users.length; i++) {
