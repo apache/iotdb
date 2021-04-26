@@ -30,6 +30,7 @@ import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
+import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.virtualSg.VirtualStorageGroupManager;
 import org.apache.iotdb.db.exception.BatchProcessException;
@@ -202,9 +203,12 @@ public class StorageEngine implements IService {
   }
 
   /** block insertion if the insertion is rejected by memory control */
-  public static void blockInsertionIfReject() throws WriteProcessRejectException {
+  public static void blockInsertionIfReject(TsFileProcessor tsFileProcessor) throws WriteProcessRejectException {
     long startTime = System.currentTimeMillis();
     while (SystemInfo.getInstance().isRejected()) {
+      if (tsFileProcessor != null && tsFileProcessor.shouldFlush()) {
+        break;
+      }
       try {
         TimeUnit.MILLISECONDS.sleep(config.getCheckPeriodWhenInsertBlocked());
         if (System.currentTimeMillis() - startTime > config.getMaxWaitingTimeWhenInsertBlocked()) {
@@ -509,7 +513,7 @@ public class StorageEngine implements IService {
   public void insert(InsertRowPlan insertRowPlan) throws StorageEngineException {
     if (enableMemControl) {
       try {
-        blockInsertionIfReject();
+        blockInsertionIfReject(null);
       } catch (WriteProcessException e) {
         throw new StorageEngineException(e);
       }
@@ -537,7 +541,7 @@ public class StorageEngine implements IService {
       throws StorageEngineException {
     if (enableMemControl) {
       try {
-        blockInsertionIfReject();
+        blockInsertionIfReject(null);
       } catch (WriteProcessException e) {
         throw new StorageEngineException(e);
       }
@@ -558,7 +562,7 @@ public class StorageEngine implements IService {
       throws StorageEngineException, BatchProcessException {
     if (enableMemControl) {
       try {
-        blockInsertionIfReject();
+        blockInsertionIfReject(null);
       } catch (WriteProcessRejectException e) {
         TSStatus[] results = new TSStatus[insertTabletPlan.getRowCount()];
         Arrays.fill(results, RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT));

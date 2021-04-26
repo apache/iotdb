@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.rescon;
 
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.flush.FlushManager;
@@ -32,6 +33,7 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.PriorityQueue;
+import java.util.concurrent.ExecutorService;
 
 public class SystemInfo {
 
@@ -46,6 +48,8 @@ public class SystemInfo {
 
   private long flushingMemTablesCost = 0L;
 
+  private ExecutorService flushTaskSubmitThreadPool =
+      IoTDBThreadPoolFactory.newSingleThreadExecutor("FlushTask-Submit-Pool");
   private static double FLUSH_THERSHOLD = memorySizeForWrite * config.getFlushProportion();
   private static double REJECT_THERSHOLD = memorySizeForWrite * config.getRejectProportion();
 
@@ -197,7 +201,7 @@ public class SystemInfo {
       TsFileProcessor selectedTsFileProcessor = allTsFileProcessors.peek();
       memCost += selectedTsFileProcessor.getWorkMemTableRamCost();
       selectedTsFileProcessor.setWorkMemTableShouldFlush();
-      new Thread(
+      flushTaskSubmitThreadPool.submit(
           () -> {
             selectedTsFileProcessor.submitAFlushTask();
           });

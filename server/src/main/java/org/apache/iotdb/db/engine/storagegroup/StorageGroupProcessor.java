@@ -2879,9 +2879,6 @@ public class StorageGroupProcessor {
 
   public void insert(InsertRowsOfOneDevicePlan insertRowsOfOneDevicePlan)
       throws WriteProcessException, TriggerExecutionException {
-    if (enableMemControl) {
-      StorageEngine.blockInsertionIfReject();
-    }
     writeLock();
     try {
       boolean isSequence = false;

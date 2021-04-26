@@ -455,7 +455,7 @@ public class TsFileProcessor {
     if (storageGroupInfo.needToReportToSystem()) {
       try {
         if (!SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo, this)) {
-          StorageEngine.blockInsertionIfReject();
+          StorageEngine.blockInsertionIfReject(this);
         }
       } catch (WriteProcessRejectException e) {
         storageGroupInfo.releaseStorageGroupMemCost(memTableIncrement);
