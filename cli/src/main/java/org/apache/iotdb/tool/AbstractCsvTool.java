@@ -71,6 +71,7 @@ public abstract class AbstractCsvTool {
         "yyyy-MM-dd'T'HH:mm:ssZZ",
         "yyyy/MM/dd'T'HH:mm:ssZZ",
         "yyyy.MM.dd'T'HH:mm:ssZZ",
+        "yyyy-MM-dd'T'HH:mm:ss.SSSZ",
         "yyyy/MM/dd HH:mm:ss.SSS",
         "yyyy-MM-dd HH:mm:ss.SSS",
         "yyyy.MM.dd HH:mm:ss.SSS",
