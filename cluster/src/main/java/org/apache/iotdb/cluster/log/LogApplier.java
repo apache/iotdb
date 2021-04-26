@@ -19,20 +19,17 @@
 
 package org.apache.iotdb.cluster.log;
 
-/**
- * LogApplier applies the log to the local node to make it take effect.
- */
+/** LogApplier applies the log to the local node to make it take effect. */
 public interface LogApplier {
 
   /**
    * Apply the given log, if any exception is thrown during the execution, the exception will be
    * recorded in the log. Either an exception is thrown or the log is executed successfully, log
    * .setApplied(true) must be called.
+   *
    * @param log
    */
   void apply(Log log);
 
-  default void close() {
-
-  }
+  default void close() {}
 }

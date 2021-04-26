@@ -24,9 +24,7 @@ import java.util.List;
 
 public class NodeAdditionResult {
 
-  /**
-   * A new data group headed by the new node.
-   */
+  /** A new data group headed by the new node. */
   private List<PartitionGroup> newGroupList = new ArrayList<>();
 
   public List<PartitionGroup> getNewGroupList() {

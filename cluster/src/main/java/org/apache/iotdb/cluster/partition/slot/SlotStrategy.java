@@ -19,14 +19,12 @@
 
 package org.apache.iotdb.cluster.partition.slot;
 
-import static org.apache.iotdb.cluster.config.ClusterConstant.HASH_SALT;
-
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.tsfile.utils.Murmur128Hash;
 
-/**
- * SlotStrategy determines how a {storageGroupName, value} pair is distributed to a slot.
- */
+import static org.apache.iotdb.cluster.config.ClusterConstant.HASH_SALT;
+
+/** SlotStrategy determines how a {storageGroupName, value} pair is distributed to a slot. */
 public interface SlotStrategy {
   int calculateSlotByTime(String storageGroupName, long timestamp, int maxSlotNum);
 
@@ -41,8 +39,8 @@ public interface SlotStrategy {
     }
 
     @Override
-    public int calculateSlotByPartitionNum(String storageGroupName, long partitionId,
-        int maxSlotNum) {
+    public int calculateSlotByPartitionNum(
+        String storageGroupName, long partitionId, int maxSlotNum) {
       int hash = Murmur128Hash.hash(storageGroupName, partitionId, HASH_SALT);
       return Math.abs(hash % maxSlotNum);
     }

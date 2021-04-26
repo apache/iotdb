@@ -18,6 +18,12 @@
  */
 package org.apache.iotdb.db.sync.sender.recover;
 
+import org.apache.iotdb.db.sync.conf.SyncConstant;
+
+import org.apache.commons.io.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -26,10 +32,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
-import org.apache.commons.io.FileUtils;
-import org.apache.iotdb.db.sync.conf.SyncConstant;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class SyncSenderLogAnalyzer implements ISyncSenderLogAnalyzer {
 
@@ -76,9 +78,8 @@ public class SyncSenderLogAnalyzer implements ISyncSenderLogAnalyzer {
         lastLocalFiles.add(line);
       }
     } catch (IOException e) {
-      LOGGER
-          .error("Can not load last local file list from file {}", lastLocalFile.getAbsoluteFile(),
-              e);
+      LOGGER.error(
+          "Can not load last local file list from file {}", lastLocalFile.getAbsoluteFile(), e);
     }
   }
 
@@ -105,9 +106,8 @@ public class SyncSenderLogAnalyzer implements ISyncSenderLogAnalyzer {
         }
       }
     } catch (IOException e) {
-      LOGGER
-          .error("Can not load last local file list from file {}", lastLocalFile.getAbsoluteFile(),
-              e);
+      LOGGER.error(
+          "Can not load last local file list from file {}", lastLocalFile.getAbsoluteFile(), e);
     }
   }
 

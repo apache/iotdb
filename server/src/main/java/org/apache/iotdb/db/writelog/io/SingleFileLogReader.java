@@ -18,6 +18,11 @@
  */
 package org.apache.iotdb.db.writelog.io;
 
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
 import java.io.File;
@@ -27,9 +32,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.NoSuchElementException;
 import java.util.zip.CRC32;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * SingleFileLogReader reads binarized WAL logs from a file through a DataInputStream by scanning
@@ -83,9 +85,12 @@ public class SingleFileLogReader implements ILogReader {
       checkSummer.reset();
       checkSummer.update(buffer, 0, logSize);
       if (checkSummer.getValue() != checkSum) {
-        throw new IOException(String.format("The check sum of the No.%d log batch is incorrect! In "
-            + "file: "
-            + "%d Calculated: %d.", idx, checkSum, checkSummer.getValue()));
+        throw new IOException(
+            String.format(
+                "The check sum of the No.%d log batch is incorrect! In "
+                    + "file: "
+                    + "%d Calculated: %d.",
+                idx, checkSum, checkSummer.getValue()));
       }
 
       batchLogReader = new BatchLogReader(ByteBuffer.wrap(buffer));
@@ -93,7 +98,9 @@ public class SingleFileLogReader implements ILogReader {
     } catch (Exception e) {
       logger.error(
           "Cannot read more PhysicalPlans from {}, successfully read index is {}. The reason is",
-          idx, filepath, e);
+          idx,
+          filepath,
+          e);
       fileCorrupted = true;
       return false;
     }
@@ -102,11 +109,11 @@ public class SingleFileLogReader implements ILogReader {
 
   @Override
   public PhysicalPlan next() {
-    if (!hasNext()){
+    if (!hasNext()) {
       throw new NoSuchElementException();
     }
 
-    idx ++;
+    idx++;
     return batchLogReader.next();
   }
 

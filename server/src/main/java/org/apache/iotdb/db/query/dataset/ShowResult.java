@@ -32,12 +32,12 @@ public class ShowResult implements Comparable<ShowResult> {
     this.name = name;
   }
 
-  public ShowResult() {
-  }
+  public ShowResult() {}
 
   public String getName() {
     return name;
   }
+
   public String getSgName() {
     return sgName;
   }

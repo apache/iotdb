@@ -138,11 +138,11 @@ public class TimeSelector {
       smallerChildIndex = leftChildIndex;
     } else {
       if (ascending) {
-        smallerChildIndex = timeHeap[leftChildIndex] < timeHeap[rightChildIndex]
-            ? leftChildIndex : rightChildIndex;
+        smallerChildIndex =
+            timeHeap[leftChildIndex] < timeHeap[rightChildIndex] ? leftChildIndex : rightChildIndex;
       } else {
-        smallerChildIndex = timeHeap[leftChildIndex] < timeHeap[rightChildIndex]
-            ? rightChildIndex : leftChildIndex;
+        smallerChildIndex =
+            timeHeap[leftChildIndex] < timeHeap[rightChildIndex] ? rightChildIndex : leftChildIndex;
       }
     }
     return smallerChildIndex;

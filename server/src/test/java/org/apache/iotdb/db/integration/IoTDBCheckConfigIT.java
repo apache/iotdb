@@ -18,9 +18,6 @@
  */
 package org.apache.iotdb.db.integration;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
 import org.apache.iotdb.db.conf.IoTDBConfigCheck;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -28,50 +25,56 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
-import java.io.ByteArrayOutputStream;
 import java.security.AccessControlException;
 import java.security.Permission;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class IoTDBCheckConfigIT {
-  private File propertiesFile = SystemFileFactory.INSTANCE
-          .getFile(IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
-          + File.separator + "system.properties");
+  private File propertiesFile =
+      SystemFileFactory.INSTANCE.getFile(
+          IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
+              + File.separator
+              + "system.properties");
 
   private TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
 
   private Map<String, String> systemProperties = new HashMap<>();
 
-  private Properties  properties = new Properties();
+  private Properties properties = new Properties();
 
   private PrintStream console = null;
   private ByteArrayOutputStream bytes = null;
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
 
-    final SecurityManager securityManager = new SecurityManager() {
-      public void checkPermission(Permission permission) {
-        if (permission.getName().startsWith("exitVM")) {
-          throw new AccessControlException("Wrong system config");
-        }
-      }
-    };
+    final SecurityManager securityManager =
+        new SecurityManager() {
+          public void checkPermission(Permission permission) {
+            if (permission.getName().startsWith("exitVM")) {
+              throw new AccessControlException("Wrong system config");
+            }
+          }
+        };
     System.setSecurityManager(securityManager);
     bytes = new ByteArrayOutputStream();
     console = System.out;
@@ -81,11 +84,10 @@ public class IoTDBCheckConfigIT {
     systemProperties.put("timestamp_precision", "ms");
     systemProperties.put("tsfile_storage_fs", "LOCAL");
     systemProperties.put("enable_partition", "false");
-    systemProperties.put("max_degree_of_index_node", "1024");
+    systemProperties.put("max_degree_of_index_node", "256");
     systemProperties.put("tag_attribute_total_size", "700");
     systemProperties.put("iotdb_version", "0.11.2");
     systemProperties.put("virtual_storage_group_num", "1");
-
   }
 
   @After
@@ -93,6 +95,7 @@ public class IoTDBCheckConfigIT {
     EnvironmentUtils.cleanEnv();
     systemProperties.clear();
     properties.clear();
+    System.setOut(console);
   }
 
   @Test
@@ -105,7 +108,8 @@ public class IoTDBCheckConfigIT {
 
     // read properties from system.properties
     try (FileInputStream inputStream = new FileInputStream(propertiesFile);
-         InputStreamReader inputStreamReader = new InputStreamReader(inputStream, TSFileConfig.STRING_CHARSET)) {
+        InputStreamReader inputStreamReader =
+            new InputStreamReader(inputStream, TSFileConfig.STRING_CHARSET)) {
       properties.load(inputStreamReader);
     }
     String timeEncoder = (String) properties.get("time_encoder");

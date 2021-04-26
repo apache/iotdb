@@ -19,13 +19,12 @@
 
 package org.apache.iotdb.db.service.thrift;
 
-import java.net.InetSocketAddress;
-import java.util.concurrent.CountDownLatch;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.runtime.RPCServiceException;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.rpc.RpcTransportFactory;
+
 import org.apache.thrift.TProcessor;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -38,6 +37,9 @@ import org.apache.thrift.transport.TServerTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.net.InetSocketAddress;
+import java.util.concurrent.CountDownLatch;
 
 public class ThriftServiceThread extends Thread {
 
@@ -52,10 +54,16 @@ public class ThriftServiceThread extends Thread {
   private TThreadPoolServer.Args poolArgs;
 
   @SuppressWarnings("squid:S107")
-  public ThriftServiceThread(TProcessor processor, String serviceName,
+  public ThriftServiceThread(
+      TProcessor processor,
+      String serviceName,
       String threadsName,
-      String bindAddress, int port, int maxWorkerThreads, int timeoutMs,
-      TServerEventHandler serverEventHandler, boolean compress) {
+      String bindAddress,
+      int port,
+      int maxWorkerThreads,
+      int timeoutMs,
+      TServerEventHandler serverEventHandler,
+      boolean compress) {
     if (compress) {
       protocolFactory = new TCompactProtocol.Factory();
     } else {
@@ -65,12 +73,13 @@ public class ThriftServiceThread extends Thread {
 
     try {
       serverTransport = openTransport(bindAddress, port);
-      poolArgs = new TThreadPoolServer.Args(serverTransport)
-          .maxWorkerThreads(maxWorkerThreads)
-          .minWorkerThreads(CommonUtils.getCpuCores())
-          .stopTimeoutVal(timeoutMs);
-      poolArgs.executorService = IoTDBThreadPoolFactory.createThriftRpcClientThreadPool(poolArgs,
-          threadsName);
+      poolArgs =
+          new TThreadPoolServer.Args(serverTransport)
+              .maxWorkerThreads(maxWorkerThreads)
+              .minWorkerThreads(CommonUtils.getCpuCores())
+              .stopTimeoutVal(timeoutMs);
+      poolArgs.executorService =
+          IoTDBThreadPoolFactory.createThriftRpcClientThreadPool(poolArgs, threadsName);
       poolArgs.processor(processor);
       poolArgs.protocolFactory(protocolFactory);
       poolArgs.transportFactory(RpcTransportFactory.INSTANCE);
@@ -86,10 +95,14 @@ public class ThriftServiceThread extends Thread {
       if (threadStopLatch != null && threadStopLatch.getCount() == 1) {
         threadStopLatch.countDown();
       }
-      logger.debug("{}: close TThreadPoolServer and TServerSocket for {}",
-          IoTDBConstant.GLOBAL_DB_NAME, serviceName);
-      throw new RPCServiceException(String.format("%s: failed to start %s, because ",
-          IoTDBConstant.GLOBAL_DB_NAME, serviceName), e);
+      logger.debug(
+          "{}: close TThreadPoolServer and TServerSocket for {}",
+          IoTDBConstant.GLOBAL_DB_NAME,
+          serviceName);
+      throw new RPCServiceException(
+          String.format(
+              "%s: failed to start %s, because ", IoTDBConstant.GLOBAL_DB_NAME, serviceName),
+          e);
     }
   }
 
@@ -114,7 +127,6 @@ public class ThriftServiceThread extends Thread {
     throw lastExp;
   }
 
-
   public void setThreadStopLatch(CountDownLatch threadStopLatch) {
     this.threadStopLatch = threadStopLatch;
   }
@@ -126,8 +138,8 @@ public class ThriftServiceThread extends Thread {
     try {
       poolServer.serve();
     } catch (Exception e) {
-      throw new RPCServiceException(String.format("%s: %s exit, because ",
-          IoTDBConstant.GLOBAL_DB_NAME, serviceName), e);
+      throw new RPCServiceException(
+          String.format("%s: %s exit, because ", IoTDBConstant.GLOBAL_DB_NAME, serviceName), e);
     } finally {
       close();
       if (threadStopLatch == null) {
@@ -139,8 +151,10 @@ public class ThriftServiceThread extends Thread {
       if (threadStopLatch != null && threadStopLatch.getCount() == 1) {
         threadStopLatch.countDown();
       }
-      logger.debug("{}: close TThreadPoolServer and TServerSocket for {}",
-          IoTDBConstant.GLOBAL_DB_NAME, serviceName);
+      logger.debug(
+          "{}: close TThreadPoolServer and TServerSocket for {}",
+          IoTDBConstant.GLOBAL_DB_NAME,
+          serviceName);
     }
   }
 

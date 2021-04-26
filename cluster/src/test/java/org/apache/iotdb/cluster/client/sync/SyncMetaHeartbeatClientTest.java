@@ -17,42 +17,45 @@
  * under the License.
  */
 
-
 package org.apache.iotdb.cluster.client.sync;
 
-import java.io.IOException;
-import java.net.ServerSocket;
 import org.apache.iotdb.cluster.client.sync.SyncMetaHeartbeatClient.FactorySync;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.apache.thrift.transport.TTransportException;
 import org.junit.Assert;
 import org.junit.Test;
+
+import java.io.IOException;
+import java.net.ServerSocket;
 
 public class SyncMetaHeartbeatClientTest {
 
   @Test
   public void test() throws IOException, TTransportException, InterruptedException {
     Node node = new Node();
-    node.setMetaPort(9003).setIp("localhost");
+    node.setMetaPort(9003).setInternalIp("localhost").setClientIp("localhost");
     ServerSocket serverSocket = new ServerSocket(node.getMetaPort() + 1);
-    Thread listenThread = new Thread(() -> {
-      while (!Thread.interrupted()) {
-        try {
-          serverSocket.accept();
-        } catch (IOException e) {
-          return;
-        }
-      }
-    });
+    Thread listenThread =
+        new Thread(
+            () -> {
+              while (!Thread.interrupted()) {
+                try {
+                  serverSocket.accept();
+                } catch (IOException e) {
+                  return;
+                }
+              }
+            });
     listenThread.start();
 
     try {
       FactorySync factoryAsync = new FactorySync(new Factory());
       SyncMetaHeartbeatClient syncClient = factoryAsync.getSyncClient(node, null);
       Assert.assertEquals(
-          "SyncMetaHeartbeatClient{node=Node(ip:localhost, metaPort:9003,"
-              + " nodeIdentifier:0, dataPort:0, clientPort:0),metaHeartbeatPort=9004}",
+          "SyncMetaHeartbeatClient{node=Node(internalIp:localhost, metaPort:9003,"
+              + " nodeIdentifier:0, dataPort:0, clientPort:0, clientIp:localhost),metaHeartbeatPort=9004}",
           syncClient.toString());
     } finally {
       serverSocket.close();

@@ -19,16 +19,11 @@
 
 package org.apache.iotdb.cluster.log.manage;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.Snapshot;
-import org.apache.iotdb.cluster.log.applier.MetaLogApplier;
 import org.apache.iotdb.cluster.log.manage.serializable.SyncLogDequeSerializer;
 import org.apache.iotdb.cluster.log.snapshot.MetaSimpleSnapshot;
-import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
@@ -37,12 +32,15 @@ import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * MetaSingleSnapshotLogManager provides a MetaSimpleSnapshot as snapshot.
- */
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+
+/** MetaSingleSnapshotLogManager provides a MetaSimpleSnapshot as snapshot. */
 public class MetaSingleSnapshotLogManager extends RaftLogManager {
 
   private static final Logger logger = LoggerFactory.getLogger(MetaSingleSnapshotLogManager.class);
@@ -79,8 +77,9 @@ public class MetaSingleSnapshotLogManager extends RaftLogManager {
 
   @Override
   public Snapshot getSnapshot(long minIndex) {
-    MetaSimpleSnapshot snapshot = new MetaSimpleSnapshot(storageGroupTTLMap, userMap, roleMap,
-        metaGroupMember.getPartitionTable().serialize());
+    MetaSimpleSnapshot snapshot =
+        new MetaSimpleSnapshot(
+            storageGroupTTLMap, userMap, roleMap, metaGroupMember.getPartitionTable().serialize());
     snapshot.setLastLogIndex(commitIndex);
     snapshot.setLastLogTerm(term);
     return snapshot;

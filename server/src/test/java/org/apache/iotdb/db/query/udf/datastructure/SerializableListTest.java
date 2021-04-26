@@ -23,14 +23,15 @@ import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
 
 public abstract class SerializableListTest {
 
-  protected final static int ITERATION_TIMES = 10000; // make sure serialize() & deserialize() can be triggered
+  protected static final int ITERATION_TIMES =
+      10000; // make sure serialize() & deserialize() can be triggered
 
   protected static final float MEMORY_USAGE_LIMIT_IN_MB = 100f;
   protected static final int CACHE_SIZE = 3;
 
-  protected final static long QUERY_ID = 0;
+  protected static final long QUERY_ID = 0;
 
-  protected final static int INTERNAL_ROW_RECORD_LIST_CAPACITY = 8;
+  protected static final int INTERNAL_ROW_RECORD_LIST_CAPACITY = 8;
 
   public void setUp() throws Exception {
     TemporaryQueryDataFileService.getInstance().start();

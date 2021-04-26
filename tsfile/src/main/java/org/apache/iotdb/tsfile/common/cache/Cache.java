@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.tsfile.common.cache;
 
-import java.io.IOException;
-
 import org.apache.iotdb.tsfile.exception.cache.CacheException;
+
+import java.io.IOException;
 
 public interface Cache<K, T> {
 

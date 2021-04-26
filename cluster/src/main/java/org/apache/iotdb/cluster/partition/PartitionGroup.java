@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.cluster.partition;
 
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.utils.NodeSerializeUtils;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -26,8 +29,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Objects;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.db.utils.SerializeUtils;
 
 /**
  * PartitionGroup contains all the nodes that will form a data group with a certain node, which are
@@ -38,8 +39,7 @@ public class PartitionGroup extends ArrayList<Node> {
 
   private int id;
 
-  public PartitionGroup() {
-  }
+  public PartitionGroup() {}
 
   public PartitionGroup(Collection<Node> nodes) {
     this.addAll(nodes);
@@ -64,16 +64,14 @@ public class PartitionGroup extends ArrayList<Node> {
       return false;
     }
     PartitionGroup group = (PartitionGroup) o;
-    return Objects.equals(id, group.getId()) &&
-        super.equals(group);
+    return Objects.equals(id, group.getId()) && super.equals(group);
   }
 
-  public void serialize(DataOutputStream dataOutputStream)
-      throws IOException {
+  public void serialize(DataOutputStream dataOutputStream) throws IOException {
     dataOutputStream.writeInt(getId());
     dataOutputStream.writeInt(size());
     for (Node node : this) {
-      SerializeUtils.serialize(node, dataOutputStream);
+      NodeSerializeUtils.serialize(node, dataOutputStream);
     }
   }
 
@@ -82,7 +80,7 @@ public class PartitionGroup extends ArrayList<Node> {
     int nodeNum = buffer.getInt();
     for (int i2 = 0; i2 < nodeNum; i2++) {
       Node node = new Node();
-      SerializeUtils.deserialize(node, buffer);
+      NodeSerializeUtils.deserialize(node, buffer);
       add(node);
     }
   }

@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.cluster.common;
 
-import java.util.NoSuchElementException;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+
+import java.util.NoSuchElementException;
 
 public class TestManagedSeriesReader implements ManagedSeriesReader, IReaderByTimestamp {
 
@@ -56,19 +57,23 @@ public class TestManagedSeriesReader implements ManagedSeriesReader, IReaderByTi
   }
 
   @Override
-  public Object getValueInTimestamp(long timestamp) {
-    while (batchData.hasCurrent()) {
-      long currTime = batchData.currentTime();
-      if (currTime == timestamp) {
-        return batchData.currentValue();
-      } else if (currTime > timestamp) {
-        break;
+  public Object[] getValuesInTimestamps(long[] timestamps, int length) {
+    Object[] results = new Object[length];
+    for (int i = 0; i < length; i++) {
+      while (batchData.hasCurrent()) {
+        long currTime = batchData.currentTime();
+        if (currTime == timestamps[i]) {
+          results[i] = batchData.currentValue();
+          break;
+        } else if (currTime > timestamps[i]) {
+          results[i] = null;
+          break;
+        }
+        batchData.next();
       }
-      batchData.next();
     }
-    return null;
+    return results;
   }
-
 
   @Override
   public boolean hasNextBatch() {

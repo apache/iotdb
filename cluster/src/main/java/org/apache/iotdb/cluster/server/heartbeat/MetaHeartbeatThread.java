@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.server.heartbeat;
 
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,12 +71,12 @@ public class MetaHeartbeatThread extends HeartbeatThread {
     request.unsetPartitionTableBytes();
   }
 
-
   @Override
   void startElection() {
-//    if (localMetaMember.getThisNode().metaPort != 9003 && localMetaMember.getThisNode().metaPort != 9005) {
-//      return;
-//    }
+    //    if (localMetaMember.getThisNode().metaPort != 9003 &&
+    // localMetaMember.getThisNode().metaPort != 9005) {
+    //      return;
+    //    }
     super.startElection();
     localMetaMember.getAppendLogThreadPool().submit(() -> localMetaMember.processEmptyContentLog());
   }

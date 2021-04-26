@@ -23,5 +23,4 @@ public class ShowQueryProcesslistPlan extends ShowPlan {
   public ShowQueryProcesslistPlan(ShowContentType showContentType) {
     super(showContentType);
   }
-
 }

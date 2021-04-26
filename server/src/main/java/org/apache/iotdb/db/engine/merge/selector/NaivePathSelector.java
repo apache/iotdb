@@ -19,9 +19,10 @@
 
 package org.apache.iotdb.db.engine.merge.selector;
 
+import org.apache.iotdb.db.metadata.PartialPath;
+
 import java.util.List;
 import java.util.NoSuchElementException;
-import org.apache.iotdb.db.metadata.PartialPath;
 
 public class NaivePathSelector implements IMergePathSelector {
 
@@ -44,8 +45,10 @@ public class NaivePathSelector implements IMergePathSelector {
     if (!hasNext()) {
       throw new NoSuchElementException();
     }
-    List<PartialPath> ret = idx + maxSeriesNum <= paths.size() ? paths.subList(idx, idx + maxSeriesNum) :
-        paths.subList(idx, paths.size());
+    List<PartialPath> ret =
+        idx + maxSeriesNum <= paths.size()
+            ? paths.subList(idx, idx + maxSeriesNum)
+            : paths.subList(idx, paths.size());
     idx += maxSeriesNum;
     return ret;
   }

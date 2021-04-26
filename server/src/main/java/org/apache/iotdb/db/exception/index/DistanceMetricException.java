@@ -25,5 +25,4 @@ public class DistanceMetricException extends IndexRuntimeException {
   public DistanceMetricException(String message) {
     super(message);
   }
-
 }

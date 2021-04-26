@@ -19,19 +19,9 @@
 
 package org.apache.iotdb.db.query.reader.series;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.PathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -41,9 +31,19 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class SeriesReaderTest {
 
@@ -55,12 +55,12 @@ public class SeriesReaderTest {
   private List<TsFileResource> unseqResources = new ArrayList<>();
 
   @Before
-  public void setUp() throws MetadataException, PathException, IOException, WriteProcessException {
+  public void setUp() throws MetadataException, IOException, WriteProcessException {
     SeriesReaderTestUtil.setUp(measurementSchemas, deviceIds, seqResources, unseqResources);
   }
 
   @After
-  public void tearDown() throws IOException, StorageEngineException {
+  public void tearDown() throws IOException {
     SeriesReaderTestUtil.tearDown(seqResources, unseqResources);
   }
 
@@ -69,9 +69,17 @@ public class SeriesReaderTest {
     try {
       Set<String> allSensors = new HashSet<>();
       allSensors.add("sensor0");
-      SeriesReader seriesReader = new SeriesReader(
-          new PartialPath(SERIES_READER_TEST_SG + ".device0.sensor0"), allSensors,
-          TSDataType.INT32, new QueryContext(), seqResources, unseqResources, null, null, true);
+      SeriesReader seriesReader =
+          new SeriesReader(
+              new PartialPath(SERIES_READER_TEST_SG + ".device0.sensor0"),
+              allSensors,
+              TSDataType.INT32,
+              new QueryContext(),
+              seqResources,
+              unseqResources,
+              null,
+              null,
+              true);
       IBatchReader batchReader = new SeriesRawDataBatchReader(seriesReader);
       int count = 0;
       while (batchReader.hasNextBatch()) {
@@ -83,7 +91,8 @@ public class SeriesReaderTest {
           assertEquals(expectedTime, batchData.currentTime());
           if (expectedTime < 200) {
             assertEquals(20000 + expectedTime, batchData.getInt());
-          } else if (expectedTime < 260 || (expectedTime >= 300 && expectedTime < 380)
+          } else if (expectedTime < 260
+              || (expectedTime >= 300 && expectedTime < 380)
               || expectedTime >= 400) {
             assertEquals(10000 + expectedTime, batchData.getInt());
           } else {
@@ -104,9 +113,17 @@ public class SeriesReaderTest {
     try {
       Set<String> allSensors = new HashSet<>();
       allSensors.add("sensor0");
-      SeriesReader seriesReader = new SeriesReader(
-          new PartialPath(SERIES_READER_TEST_SG + ".device0.sensor0"), allSensors,
-          TSDataType.INT32, new QueryContext(), seqResources, unseqResources, null, null, true);
+      SeriesReader seriesReader =
+          new SeriesReader(
+              new PartialPath(SERIES_READER_TEST_SG + ".device0.sensor0"),
+              allSensors,
+              TSDataType.INT32,
+              new QueryContext(),
+              seqResources,
+              unseqResources,
+              null,
+              null,
+              true);
       IPointReader pointReader = new SeriesRawDataPointReader(seriesReader);
       long expectedTime = 0;
       while (pointReader.hasNextTimeValuePair()) {
@@ -115,7 +132,8 @@ public class SeriesReaderTest {
         int value = timeValuePair.getValue().getInt();
         if (expectedTime < 200) {
           assertEquals(20000 + expectedTime, value);
-        } else if (expectedTime < 260 || (expectedTime >= 300 && expectedTime < 380)
+        } else if (expectedTime < 260
+            || (expectedTime >= 300 && expectedTime < 380)
             || expectedTime >= 400) {
           assertEquals(10000 + expectedTime, value);
         } else {
@@ -134,9 +152,17 @@ public class SeriesReaderTest {
     try {
       Set<String> allSensors = new HashSet<>();
       allSensors.add("sensor0");
-      SeriesReader seriesReader = new SeriesReader(
-          new PartialPath(SERIES_READER_TEST_SG + ".device0.sensor0"), allSensors,
-          TSDataType.INT32, new QueryContext(), seqResources, unseqResources, null, null, false);
+      SeriesReader seriesReader =
+          new SeriesReader(
+              new PartialPath(SERIES_READER_TEST_SG + ".device0.sensor0"),
+              allSensors,
+              TSDataType.INT32,
+              new QueryContext(),
+              seqResources,
+              unseqResources,
+              null,
+              null,
+              false);
       IPointReader pointReader = new SeriesRawDataPointReader(seriesReader);
       long expectedTime = 499;
       while (pointReader.hasNextTimeValuePair()) {
@@ -145,7 +171,8 @@ public class SeriesReaderTest {
         int value = timeValuePair.getValue().getInt();
         if (expectedTime < 200) {
           assertEquals(20000 + expectedTime, value);
-        } else if (expectedTime < 260 || (expectedTime >= 300 && expectedTime < 380)
+        } else if (expectedTime < 260
+            || (expectedTime >= 300 && expectedTime < 380)
             || expectedTime >= 400) {
           assertEquals(10000 + expectedTime, value);
         } else {

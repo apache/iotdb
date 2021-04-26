@@ -58,5 +58,4 @@ public class Response {
   private Response() {
     // enum-like class
   }
-
 }

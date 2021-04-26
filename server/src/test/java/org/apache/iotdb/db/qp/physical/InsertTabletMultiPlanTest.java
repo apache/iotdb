@@ -18,9 +18,6 @@
  */
 package org.apache.iotdb.db.qp.physical;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -36,9 +33,13 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
+
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class InsertTabletMultiPlanTest extends InsertTabletPlanTest {
 
@@ -46,8 +47,9 @@ public class InsertTabletMultiPlanTest extends InsertTabletPlanTest {
 
   @Test
   public void testInsertMultiTabletPlan()
-      throws QueryProcessException, MetadataException, InterruptedException, QueryFilterOptimizationException, StorageEngineException, IOException {
-    long[] times = new long[]{110L, 111L, 112L, 113L};
+      throws QueryProcessException, MetadataException, InterruptedException,
+          QueryFilterOptimizationException, StorageEngineException, IOException {
+    long[] times = new long[] {110L, 111L, 112L, 113L};
     List<Integer> dataTypes = new ArrayList<>();
     dataTypes.add(TSDataType.DOUBLE.ordinal());
     dataTypes.add(TSDataType.FLOAT.ordinal());
@@ -75,8 +77,11 @@ public class InsertTabletMultiPlanTest extends InsertTabletPlanTest {
 
     List<InsertTabletPlan> insertTabletPlanList = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
-      InsertTabletPlan tabletPlan = new InsertTabletPlan(new PartialPath("root.multi.d" + i),
-          new String[]{"s1", "s2", "s3", "s4", "s5", "s6"}, dataTypes);
+      InsertTabletPlan tabletPlan =
+          new InsertTabletPlan(
+              new PartialPath("root.multi.d" + i),
+              new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
+              dataTypes);
       tabletPlan.setTimes(times);
       tabletPlan.setColumns(columns);
       tabletPlan.setRowCount(times.length);
@@ -87,8 +92,7 @@ public class InsertTabletMultiPlanTest extends InsertTabletPlanTest {
     InsertMultiTabletPlan insertMultiTabletPlan = new InsertMultiTabletPlan(insertTabletPlanList);
 
     executor.insertTablet(insertMultiTabletPlan);
-    QueryPlan queryPlan = (QueryPlan) processor
-        .parseSQLToPhysicalPlan("select * from root.multi");
+    QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.multi");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertEquals(60, dataSet.getPaths().size());
     while (dataSet.hasNext()) {

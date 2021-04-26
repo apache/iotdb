@@ -19,26 +19,18 @@
 
 package org.apache.iotdb.cluster.query;
 
-import static org.apache.iotdb.session.Config.DEFAULT_FETCH_SIZE;
-
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
-import org.apache.iotdb.cluster.exception.EmptyIntervalException;
 import org.apache.iotdb.cluster.exception.ReaderNotFoundException;
 import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.query.filter.SlotTsFileFilter;
 import org.apache.iotdb.cluster.query.manage.ClusterQueryManager;
 import org.apache.iotdb.cluster.query.reader.ClusterReaderFactory;
+import org.apache.iotdb.cluster.query.reader.mult.IMultBatchReader;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.LastQueryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.MultSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
@@ -52,10 +44,12 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
 import org.apache.iotdb.db.query.dataset.groupby.LocalGroupByExecutor;
@@ -77,8 +71,22 @@ import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import static org.apache.iotdb.session.Config.DEFAULT_FETCH_SIZE;
 
 public class LocalQueryExecutor {
 
@@ -94,29 +102,24 @@ public class LocalQueryExecutor {
     this.name = dataGroupMember.getName();
     this.queryManager = dataGroupMember.getQueryManager();
   }
-  
+
   private CMManager getCMManager() {
     return ((CMManager) IoTDB.metaManager);
   }
 
-  /**
-   * Return the data of the reader whose id is "readerId", using timestamps in "timeBuffer".
-   *
-   * @param readerId
-   * @param time
-   */
-  public ByteBuffer fetchSingleSeriesByTimestamp(long readerId, long time)
+  /** Return the data of the reader whose id is "readerId", using timestamps in "timeBuffer". */
+  public ByteBuffer fetchSingleSeriesByTimestamps(long readerId, long[] timestamps, int length)
       throws ReaderNotFoundException, IOException {
     IReaderByTimestamp reader = dataGroupMember.getQueryManager().getReaderByTimestamp(readerId);
     if (reader == null) {
       throw new ReaderNotFoundException(readerId);
     }
-    Object value = reader.getValueInTimestamp(time);
-    if (value != null) {
+    Object[] values = reader.getValuesInTimestamps(timestamps, length);
+    if (values != null) {
       ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
       DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
 
-      SerializeUtils.serializeObject(value, dataOutputStream);
+      SerializeUtils.serializeObjects(values, dataOutputStream);
       return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
     } else {
       return ByteBuffer.allocate(0);
@@ -128,8 +131,7 @@ public class LocalQueryExecutor {
    *
    * @param readerId
    */
-  public ByteBuffer fetchSingleSeries(long readerId)
-      throws ReaderNotFoundException, IOException {
+  public ByteBuffer fetchSingleSeries(long readerId) throws ReaderNotFoundException, IOException {
     IBatchReader reader = dataGroupMember.getQueryManager().getReader(readerId);
     if (reader == null) {
       throw new ReaderNotFoundException(readerId);
@@ -142,12 +144,54 @@ public class LocalQueryExecutor {
       DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
 
       SerializeUtils.serializeBatchData(batchData, dataOutputStream);
-      logger.debug("{}: Send results of reader {}, size:{}", dataGroupMember.getName(), readerId,
+      logger.debug(
+          "{}: Send results of reader {}, size:{}",
+          dataGroupMember.getName(),
+          readerId,
           batchData.length());
       return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
     } else {
       return ByteBuffer.allocate(0);
     }
+  }
+
+  /**
+   * Fetch a batch from the reader whose id is "readerId".
+   *
+   * @param readerId reader id
+   * @param paths mult series path
+   */
+  public Map<String, ByteBuffer> fetchMultSeries(long readerId, List<String> paths)
+      throws ReaderNotFoundException, IOException {
+    IMultBatchReader reader =
+        (IMultBatchReader) dataGroupMember.getQueryManager().getReader(readerId);
+    if (reader == null) {
+      throw new ReaderNotFoundException(readerId);
+    }
+
+    Map<String, ByteBuffer> pathByteBuffers = Maps.newHashMap();
+
+    for (String path : paths) {
+      ByteBuffer byteBuffer = null;
+      if (reader.hasNextBatch(path)) {
+        BatchData batchData = reader.nextBatch(path);
+
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+
+        SerializeUtils.serializeBatchData(batchData, dataOutputStream);
+        logger.debug(
+            "{}: Send results of reader {}, size:{}",
+            dataGroupMember.getName(),
+            readerId,
+            batchData.length());
+        byteBuffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+      } else {
+        byteBuffer = ByteBuffer.allocate(0);
+      }
+      pathByteBuffers.put(path, byteBuffer);
+    }
+    return pathByteBuffers;
   }
 
   /**
@@ -159,8 +203,12 @@ public class LocalQueryExecutor {
    */
   public long querySingleSeries(SingleSeriesQueryRequest request)
       throws CheckConsistencyException, QueryProcessException, StorageEngineException, IOException {
-    logger.debug("{}: {} is querying {}, queryId: {}", name, request.getRequester(),
-        request.getPath(), request.getQueryId());
+    logger.debug(
+        "{}: {} is querying {}, queryId: {}",
+        name,
+        request.getRequester(),
+        request.getPath(),
+        request.getQueryId());
     dataGroupMember.syncLeaderWithConsistencyCheck(false);
 
     PartialPath path = null;
@@ -182,24 +230,149 @@ public class LocalQueryExecutor {
 
     // the same query from a requester correspond to a context here
     RemoteQueryContext queryContext =
-        queryManager.getQueryContext(request.getRequester(),
-        request.getQueryId(), request.getFetchSize(), request.getDeduplicatedPathNum());
-    logger.debug("{}: local queryId for {}#{} is {}", name, request.getQueryId(),
-        request.getPath(), queryContext.getQueryId());
-    IBatchReader batchReader = readerFactory.getSeriesBatchReader(path, deviceMeasurements,
-        dataType, timeFilter, valueFilter, queryContext, dataGroupMember, request.ascending, request.requiredSlots);
+        queryManager.getQueryContext(
+            request.getRequester(),
+            request.getQueryId(),
+            request.getFetchSize(),
+            request.getDeduplicatedPathNum());
+    logger.debug(
+        "{}: local queryId for {}#{} is {}",
+        name,
+        request.getQueryId(),
+        request.getPath(),
+        queryContext.getQueryId());
+    IBatchReader batchReader =
+        readerFactory.getSeriesBatchReader(
+            path,
+            deviceMeasurements,
+            dataType,
+            timeFilter,
+            valueFilter,
+            queryContext,
+            dataGroupMember,
+            request.ascending,
+            request.requiredSlots);
 
     // if the reader contains no data, send a special id of -1 to prevent the requester from
     // meaninglessly fetching data
     if (batchReader != null && batchReader.hasNextBatch()) {
       long readerId = queryManager.registerReader(batchReader);
       queryContext.registerLocalReader(readerId);
-      logger.debug("{}: Build a reader of {} for {}#{}, readerId: {}", name, path,
-          request.getRequester(), request.getQueryId(), readerId);
+      logger.debug(
+          "{}: Build a reader of {} for {}#{}, readerId: {}",
+          name,
+          path,
+          request.getRequester(),
+          request.getQueryId(),
+          readerId);
       return readerId;
     } else {
-      logger.debug("{}: There is no data of {} for {}#{}", name, path,
-          request.getRequester(), request.getQueryId());
+      logger.debug(
+          "{}: There is no data of {} for {}#{}",
+          name,
+          path,
+          request.getRequester(),
+          request.getQueryId());
+
+      if (batchReader != null) {
+        batchReader.close();
+      }
+      return -1;
+    }
+  }
+
+  /**
+   * Create an IBatchReader of a path, register it in the query manager to get a reader id for it
+   * and send the id back to the requester. If the reader does not have any data, an id of -1 will
+   * be returned.
+   *
+   * @param request
+   */
+  public long queryMultSeries(MultSeriesQueryRequest request)
+      throws CheckConsistencyException, QueryProcessException, StorageEngineException, IOException {
+    logger.debug(
+        "{}: {} is querying {}, queryId: {}",
+        name,
+        request.getRequester(),
+        request.getPath(),
+        request.getQueryId());
+    dataGroupMember.syncLeaderWithConsistencyCheck(false);
+
+    List<PartialPath> paths = Lists.newArrayList();
+    request
+        .getPath()
+        .forEach(
+            fullPath -> {
+              try {
+                paths.add(new PartialPath(fullPath));
+              } catch (IllegalPathException e) {
+                logger.warn("Failed to create partial path, fullPath is {}.", fullPath, e);
+              }
+            });
+
+    List<TSDataType> dataTypes = Lists.newArrayList();
+    request
+        .getDataTypeOrdinal()
+        .forEach(
+            dataType -> {
+              dataTypes.add(TSDataType.values()[dataType]);
+            });
+
+    Filter timeFilter = null;
+    Filter valueFilter = null;
+    if (request.isSetTimeFilterBytes()) {
+      timeFilter = FilterFactory.deserialize(request.timeFilterBytes);
+    }
+    if (request.isSetValueFilterBytes()) {
+      valueFilter = FilterFactory.deserialize(request.valueFilterBytes);
+    }
+    Map<String, Set<String>> deviceMeasurements = request.getDeviceMeasurements();
+
+    // the same query from a requester correspond to a context here
+    RemoteQueryContext queryContext =
+        queryManager.getQueryContext(
+            request.getRequester(),
+            request.getQueryId(),
+            request.getFetchSize(),
+            request.getDeduplicatedPathNum());
+    logger.debug(
+        "{}: local queryId for {}#{} is {}",
+        name,
+        request.getQueryId(),
+        request.getPath(),
+        queryContext.getQueryId());
+    IBatchReader batchReader =
+        readerFactory.getMultSeriesBatchReader(
+            paths,
+            deviceMeasurements,
+            dataTypes,
+            timeFilter,
+            valueFilter,
+            queryContext,
+            dataGroupMember,
+            request.ascending,
+            null);
+
+    // if the reader contains no data, send a special id of -1 to prevent the requester from
+    // meaninglessly fetching data
+    if (batchReader != null && batchReader.hasNextBatch()) {
+      long readerId = queryManager.registerReader(batchReader);
+      queryContext.registerLocalReader(readerId);
+      logger.debug(
+          "{}: Build a reader of {} for {}#{}, readerId: {}",
+          name,
+          paths,
+          request.getRequester(),
+          request.getQueryId(),
+          readerId);
+      return readerId;
+    } else {
+      logger.debug(
+          "{}: There is no data of {} for {}#{}",
+          name,
+          paths,
+          request.getRequester(),
+          request.getQueryId());
 
       if (batchReader != null) {
         batchReader.close();
@@ -229,8 +402,12 @@ public class LocalQueryExecutor {
       getCMManager().collectTimeseriesSchema(prefixPath, timeseriesSchemas);
     }
     if (logger.isDebugEnabled()) {
-      logger.debug("{}: Collected {} schemas for {} and other {} paths", name,
-          timeseriesSchemas.size(), prefixPaths.get(0), prefixPaths.size() - 1);
+      logger.debug(
+          "{}: Collected {} schemas for {} and other {} paths",
+          name,
+          timeseriesSchemas.size(),
+          prefixPaths.get(0),
+          prefixPaths.size() - 1);
     }
 
     PullSchemaResp resp = new PullSchemaResp();
@@ -270,8 +447,12 @@ public class LocalQueryExecutor {
       getCMManager().collectSeries(new PartialPath(prefixPath), measurementSchemas);
     }
     if (logger.isDebugEnabled()) {
-      logger.debug("{}: Collected {} schemas for {} and other {} paths", name,
-          measurementSchemas.size(), prefixPaths.get(0), prefixPaths.size() - 1);
+      logger.debug(
+          "{}: Collected {} schemas for {} and other {} paths",
+          name,
+          measurementSchemas.size(),
+          prefixPaths.get(0),
+          prefixPaths.size() - 1);
     }
 
     PullSchemaResp resp = new PullSchemaResp();
@@ -299,9 +480,12 @@ public class LocalQueryExecutor {
    */
   public long querySingleSeriesByTimestamp(SingleSeriesQueryRequest request)
       throws CheckConsistencyException, QueryProcessException, StorageEngineException {
-    logger
-        .debug("{}: {} is querying {} by timestamp, queryId: {}", name, request.getRequester(),
-            request.getPath(), request.getQueryId());
+    logger.debug(
+        "{}: {} is querying {} by timestamp, queryId: {}",
+        name,
+        request.getRequester(),
+        request.getPath(),
+        request.getQueryId());
     dataGroupMember.syncLeaderWithConsistencyCheck(false);
 
     PartialPath path = null;
@@ -313,22 +497,45 @@ public class LocalQueryExecutor {
     TSDataType dataType = TSDataType.values()[request.dataTypeOrdinal];
     Set<String> deviceMeasurements = request.getDeviceMeasurements();
 
-    RemoteQueryContext queryContext = queryManager.getQueryContext(request.getRequester(),
-        request.getQueryId(), request.getFetchSize(), request.getDeduplicatedPathNum());
-    logger.debug("{}: local queryId for {}#{} is {}", name, request.getQueryId(),
-        request.getPath(), queryContext.getQueryId());
-    IReaderByTimestamp readerByTimestamp = readerFactory.getReaderByTimestamp(path,
-        deviceMeasurements, dataType, queryContext, dataGroupMember, request.ascending, request.requiredSlots);
+    RemoteQueryContext queryContext =
+        queryManager.getQueryContext(
+            request.getRequester(),
+            request.getQueryId(),
+            request.getFetchSize(),
+            request.getDeduplicatedPathNum());
+    logger.debug(
+        "{}: local queryId for {}#{} is {}",
+        name,
+        request.getQueryId(),
+        request.getPath(),
+        queryContext.getQueryId());
+    IReaderByTimestamp readerByTimestamp =
+        readerFactory.getReaderByTimestamp(
+            path,
+            deviceMeasurements,
+            dataType,
+            queryContext,
+            dataGroupMember,
+            request.ascending,
+            request.requiredSlots);
     if (readerByTimestamp != null) {
       long readerId = queryManager.registerReaderByTime(readerByTimestamp);
       queryContext.registerLocalReader(readerId);
 
-      logger.debug("{}: Build a readerByTimestamp of {} for {}, readerId: {}", name, path,
-          request.getRequester(), readerId);
+      logger.debug(
+          "{}: Build a readerByTimestamp of {} for {}, readerId: {}",
+          name,
+          path,
+          request.getRequester(),
+          readerId);
       return readerId;
     } else {
-      logger.debug("{}: There is no data {} for {}#{}", name, path,
-          request.getRequester(), request.getQueryId());
+      logger.debug(
+          "{}: There is no data {} for {}#{}",
+          name,
+          path,
+          request.getRequester(),
+          request.getQueryId());
       return -1;
     }
   }
@@ -351,6 +558,22 @@ public class LocalQueryExecutor {
     return ByteBuffer.wrap(outputStream.toByteArray());
   }
 
+  public ByteBuffer getDevices(ByteBuffer planBuffer)
+      throws CheckConsistencyException, IOException, MetadataException {
+    dataGroupMember.syncLeaderWithConsistencyCheck(false);
+    ShowDevicesPlan plan = (ShowDevicesPlan) PhysicalPlan.Factory.create(planBuffer);
+    List<ShowDevicesResult> allDevicesResult = getCMManager().getLocalDevices(plan);
+
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    try (DataOutputStream dataOutputStream = new DataOutputStream(outputStream)) {
+      dataOutputStream.writeInt(allDevicesResult.size());
+      for (ShowDevicesResult result : allDevicesResult) {
+        result.serialize(outputStream);
+      }
+    }
+    return ByteBuffer.wrap(outputStream.toByteArray());
+  }
+
   /**
    * Execute aggregations over the given path and return the results to the requester.
    *
@@ -358,9 +581,12 @@ public class LocalQueryExecutor {
    */
   public List<ByteBuffer> getAggrResult(GetAggrResultRequest request)
       throws StorageEngineException, QueryProcessException, IOException {
-    logger.debug("{}: {} is querying {} by aggregation, queryId: {}", name,
+    logger.debug(
+        "{}: {} is querying {} by aggregation, queryId: {}",
+        name,
         request.getRequestor(),
-        request.getPath(), request.getQueryId());
+        request.getPath(),
+        request.getQueryId());
 
     List<String> aggregations = request.getAggregations();
     TSDataType dataType = TSDataType.values()[request.getDataTypeOrdinal()];
@@ -369,15 +595,17 @@ public class LocalQueryExecutor {
     if (request.isSetTimeFilterBytes()) {
       timeFilter = FilterFactory.deserialize(request.timeFilterBytes);
     }
-    RemoteQueryContext queryContext = queryManager
-        .getQueryContext(request.getRequestor(), request.queryId, DEFAULT_FETCH_SIZE, -1);
+    RemoteQueryContext queryContext =
+        queryManager.getQueryContext(
+            request.getRequestor(), request.queryId, DEFAULT_FETCH_SIZE, -1);
     Set<String> deviceMeasurements = request.getDeviceMeasurements();
     boolean ascending = request.ascending;
 
     // do the aggregations locally
     List<AggregateResult> results;
-    results = getAggrResult(aggregations, deviceMeasurements, dataType, path, timeFilter,
-        queryContext, ascending);
+    results =
+        getAggrResult(
+            aggregations, deviceMeasurements, dataType, path, timeFilter, queryContext, ascending);
     logger.trace("{}: aggregation results {}, queryId: {}", name, results, request.getQueryId());
 
     // serialize and send the results
@@ -402,16 +630,21 @@ public class LocalQueryExecutor {
    * @param aggregations aggregation names in SQLConstant
    * @param dataType
    * @param path
-   * @param timeFilter   nullable
+   * @param timeFilter nullable
    * @param context
    * @return
    * @throws IOException
    * @throws StorageEngineException
    * @throws QueryProcessException
    */
-  public List<AggregateResult> getAggrResult(List<String> aggregations,
-      Set<String> allSensors, TSDataType dataType, String path,
-      Filter timeFilter, QueryContext context, boolean ascending)
+  public List<AggregateResult> getAggrResult(
+      List<String> aggregations,
+      Set<String> allSensors,
+      TSDataType dataType,
+      String path,
+      Filter timeFilter,
+      QueryContext context,
+      boolean ascending)
       throws IOException, StorageEngineException, QueryProcessException {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
@@ -425,18 +658,32 @@ public class LocalQueryExecutor {
       results.add(AggregateResultFactory.getAggrResultByName(aggregation, dataType));
     }
     List<Integer> nodeSlots =
-        ((SlotPartitionTable) dataGroupMember.getMetaGroupMember().getPartitionTable()).getNodeSlots(
-            dataGroupMember.getHeader(), dataGroupMember.getRaftGroupId());
+        ((SlotPartitionTable) dataGroupMember.getMetaGroupMember().getPartitionTable())
+            .getNodeSlots(dataGroupMember.getHeader(), dataGroupMember.getRaftGroupId());
     try {
       if (ascending) {
-        AggregationExecutor.aggregateOneSeries(new PartialPath(path), allSensors, context, timeFilter,
-            dataType, results, null, new SlotTsFileFilter(nodeSlots));
+        AggregationExecutor.aggregateOneSeries(
+            new PartialPath(path),
+            allSensors,
+            context,
+            timeFilter,
+            dataType,
+            results,
+            null,
+            new SlotTsFileFilter(nodeSlots));
       } else {
-        AggregationExecutor.aggregateOneSeries(new PartialPath(path), allSensors, context, timeFilter,
-            dataType, null, results, new SlotTsFileFilter(nodeSlots));
+        AggregationExecutor.aggregateOneSeries(
+            new PartialPath(path),
+            allSensors,
+            context,
+            timeFilter,
+            dataType,
+            null,
+            results,
+            new SlotTsFileFilter(nodeSlots));
       }
     } catch (IllegalPathException e) {
-      //ignore
+      // ignore
     }
     return results;
   }
@@ -471,16 +718,20 @@ public class LocalQueryExecutor {
    *
    * @param path
    * @param dataType
-   * @param timeFilter       nullable
+   * @param timeFilter nullable
    * @param aggregationTypes ordinals of AggregationType
    * @param context
    * @return
    * @throws StorageEngineException
    */
-  public LocalGroupByExecutor getGroupByExecutor(PartialPath path,
-      Set<String> deviceMeasurements, TSDataType dataType,
+  public LocalGroupByExecutor getGroupByExecutor(
+      PartialPath path,
+      Set<String> deviceMeasurements,
+      TSDataType dataType,
       Filter timeFilter,
-      List<Integer> aggregationTypes, QueryContext context, boolean ascending)
+      List<Integer> aggregationTypes,
+      QueryContext context,
+      boolean ascending)
       throws StorageEngineException, QueryProcessException {
     // pull the newest data
     try {
@@ -490,13 +741,22 @@ public class LocalQueryExecutor {
     }
 
     ClusterQueryUtils.checkPathExistence(path);
-    List<Integer> nodeSlots = ((SlotPartitionTable) dataGroupMember.getMetaGroupMember().getPartitionTable())
-        .getNodeSlots(dataGroupMember.getHeader(), dataGroupMember.getRaftGroupId());
-    LocalGroupByExecutor executor = new LocalGroupByExecutor(path,
-        deviceMeasurements, dataType, context, timeFilter, new SlotTsFileFilter(nodeSlots), ascending);
+    List<Integer> nodeSlots =
+        ((SlotPartitionTable) dataGroupMember.getMetaGroupMember().getPartitionTable())
+            .getNodeSlots(dataGroupMember.getHeader(), dataGroupMember.getRaftGroupId());
+    LocalGroupByExecutor executor =
+        new LocalGroupByExecutor(
+            path,
+            deviceMeasurements,
+            dataType,
+            context,
+            timeFilter,
+            new SlotTsFileFilter(nodeSlots),
+            ascending);
     for (Integer aggregationType : aggregationTypes) {
-      executor.addAggregateResult(AggregateResultFactory
-          .getAggrResultByType(AggregationType.values()[aggregationType], dataType, ascending));
+      executor.addAggregateResult(
+          AggregateResultFactory.getAggrResultByType(
+              AggregationType.values()[aggregationType], dataType, ascending));
     }
     return executor;
   }
@@ -523,24 +783,43 @@ public class LocalQueryExecutor {
       timeFilter = FilterFactory.deserialize(request.timeFilterBytes);
     }
     long queryId = request.getQueryId();
-    logger.debug("{}: {} is querying {} using group by, queryId: {}", name,
-        request.getRequestor(), path, queryId);
+    logger.debug(
+        "{}: {} is querying {} using group by, queryId: {}",
+        name,
+        request.getRequestor(),
+        path,
+        queryId);
     Set<String> deviceMeasurements = request.getDeviceMeasurements();
     boolean ascending = request.ascending;
 
-    RemoteQueryContext queryContext = queryManager
-        .getQueryContext(request.getRequestor(), queryId, DEFAULT_FETCH_SIZE, -1);
-    LocalGroupByExecutor executor = getGroupByExecutor(path, deviceMeasurements, dataType,
-        timeFilter, aggregationTypeOrdinals, queryContext, ascending);
+    RemoteQueryContext queryContext =
+        queryManager.getQueryContext(request.getRequestor(), queryId, DEFAULT_FETCH_SIZE, -1);
+    LocalGroupByExecutor executor =
+        getGroupByExecutor(
+            path,
+            deviceMeasurements,
+            dataType,
+            timeFilter,
+            aggregationTypeOrdinals,
+            queryContext,
+            ascending);
     if (!executor.isEmpty()) {
       long executorId = queryManager.registerGroupByExecutor(executor);
-      logger.debug("{}: Build a GroupByExecutor of {} for {}, executorId: {}", name, path,
-          request.getRequestor(), executor);
+      logger.debug(
+          "{}: Build a GroupByExecutor of {} for {}, executorId: {}",
+          name,
+          path,
+          request.getRequestor(),
+          executor);
       queryContext.registerLocalGroupByExecutor(executorId);
       return executorId;
     } else {
-      logger.debug("{}: There is no data {} for {}#{}", name, path,
-          request.getRequestor(), request.getQueryId());
+      logger.debug(
+          "{}: There is no data {} for {}#{}",
+          name,
+          path,
+          request.getRequestor(),
+          request.getQueryId());
       return -1;
     }
   }
@@ -567,8 +846,8 @@ public class LocalQueryExecutor {
       resultBuffers.add(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
       byteArrayOutputStream.reset();
     }
-    logger.debug("{}: Send results of group by executor {}, size:{}", name, executor,
-        resultBuffers.size());
+    logger.debug(
+        "{}: Send results of group by executor {}, size:{}", name, executor, resultBuffers.size());
     return resultBuffers;
   }
 
@@ -586,8 +865,8 @@ public class LocalQueryExecutor {
       SerializeUtils.serializeObject(pair.right, dataOutputStream);
       resultBuffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
     }
-    logger.debug("{}: Send results of group by executor {}, size:{}", name, executor,
-        resultBuffer.limit());
+    logger.debug(
+        "{}: Send results of group by executor {}, size:{}", name, executor, resultBuffer.limit());
     return resultBuffer;
   }
 
@@ -600,13 +879,13 @@ public class LocalQueryExecutor {
     long beforeRange = request.getBeforeRange();
     Node requester = request.getRequester();
     Set<String> deviceMeasurements = request.getDeviceMeasurements();
-    RemoteQueryContext queryContext = queryManager.getQueryContext(requester, queryId,
-        DEFAULT_FETCH_SIZE, -1);
+    RemoteQueryContext queryContext =
+        queryManager.getQueryContext(requester, queryId, DEFAULT_FETCH_SIZE, -1);
 
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    TimeValuePair timeValuePair = localPreviousFill(path, dataType, queryTime, beforeRange,
-        deviceMeasurements, queryContext);
+    TimeValuePair timeValuePair =
+        localPreviousFill(path, dataType, queryTime, beforeRange, deviceMeasurements, queryContext);
     SerializeUtils.serializeTVPair(timeValuePair, dataOutputStream);
     return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
   }
@@ -625,8 +904,13 @@ public class LocalQueryExecutor {
    * @throws StorageEngineException
    * @throws IOException
    */
-  public TimeValuePair localPreviousFill(PartialPath path, TSDataType dataType, long queryTime,
-      long beforeRange, Set<String> deviceMeasurements, QueryContext context)
+  public TimeValuePair localPreviousFill(
+      PartialPath path,
+      TSDataType dataType,
+      long queryTime,
+      long beforeRange,
+      Set<String> deviceMeasurements,
+      QueryContext context)
       throws QueryProcessException, StorageEngineException, IOException {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
@@ -656,11 +940,13 @@ public class LocalQueryExecutor {
 
   @SuppressWarnings("java:S1135") // ignore todos
   public ByteBuffer last(LastQueryRequest request)
-      throws CheckConsistencyException, QueryProcessException, IOException, StorageEngineException, IllegalPathException {
+      throws CheckConsistencyException, QueryProcessException, IOException, StorageEngineException,
+          IllegalPathException {
     dataGroupMember.syncLeaderWithConsistencyCheck(false);
 
-    RemoteQueryContext queryContext = queryManager
-        .getQueryContext(request.getRequestor(), request.getQueryId(), DEFAULT_FETCH_SIZE, -1);
+    RemoteQueryContext queryContext =
+        queryManager.getQueryContext(
+            request.getRequestor(), request.getQueryId(), DEFAULT_FETCH_SIZE, -1);
     List<PartialPath> partialPaths = new ArrayList<>();
     for (String path : request.getPaths()) {
       partialPaths.add(new PartialPath(path));
@@ -676,10 +962,9 @@ public class LocalQueryExecutor {
       expression = new GlobalTimeExpression(filter);
     }
 
-    List<Pair<Boolean, TimeValuePair>> timeValuePairs = LastQueryExecutor
-        .calculateLastPairForSeriesLocally(partialPaths,
-            dataTypes, queryContext, expression,
-            request.getDeviceMeasurements());
+    List<Pair<Boolean, TimeValuePair>> timeValuePairs =
+        LastQueryExecutor.calculateLastPairForSeriesLocally(
+            partialPaths, dataTypes, queryContext, expression, request.getDeviceMeasurements());
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     for (Pair<Boolean, TimeValuePair> timeValuePair : timeValuePairs) {
@@ -687,5 +972,4 @@ public class LocalQueryExecutor {
     }
     return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
   }
-
 }

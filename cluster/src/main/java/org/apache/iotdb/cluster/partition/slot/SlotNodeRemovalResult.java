@@ -19,6 +19,11 @@
 
 package org.apache.iotdb.cluster.partition.slot;
 
+import org.apache.iotdb.cluster.partition.NodeRemovalResult;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
+import org.apache.iotdb.cluster.utils.NodeSerializeUtils;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -26,14 +31,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.cluster.partition.NodeRemovalResult;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
-import org.apache.iotdb.db.utils.SerializeUtils;
 
-/**
- * SlotNodeRemovalResult stores the removed partition group and who will take over its slots.
- */
+/** SlotNodeRemovalResult stores the removed partition group and who will take over its slots. */
 public class SlotNodeRemovalResult extends NodeRemovalResult {
 
   private Map<RaftNode, List<Integer>> newSlotOwners = new HashMap<>();
@@ -50,12 +49,12 @@ public class SlotNodeRemovalResult extends NodeRemovalResult {
   public void serialize(DataOutputStream dataOutputStream) throws IOException {
     super.serialize(dataOutputStream);
     dataOutputStream.writeInt(newSlotOwners.size());
-    for (Map.Entry<RaftNode, List<Integer>> entry: newSlotOwners.entrySet()) {
+    for (Map.Entry<RaftNode, List<Integer>> entry : newSlotOwners.entrySet()) {
       RaftNode raftNode = entry.getKey();
-      SerializeUtils.serialize(raftNode.getNode(), dataOutputStream);
+      NodeSerializeUtils.serialize(raftNode.getNode(), dataOutputStream);
       dataOutputStream.writeInt(raftNode.getRaftId());
       dataOutputStream.writeInt(entry.getValue().size());
-      for (Integer slot: entry.getValue()) {
+      for (Integer slot : entry.getValue()) {
         dataOutputStream.writeInt(slot);
       }
     }
@@ -65,13 +64,13 @@ public class SlotNodeRemovalResult extends NodeRemovalResult {
   public void deserialize(ByteBuffer buffer) {
     super.deserialize(buffer);
     int size = buffer.getInt();
-    for (int i = 0 ; i < size; i++) {
+    for (int i = 0; i < size; i++) {
       Node node = new Node();
-      SerializeUtils.deserialize(node, buffer);
+      NodeSerializeUtils.deserialize(node, buffer);
       RaftNode raftNode = new RaftNode(node, buffer.getInt());
       List<Integer> slots = new ArrayList<>();
       int slotSize = buffer.getInt();
-      for (int j = 0 ; j < slotSize; j++) {
+      for (int j = 0; j < slotSize; j++) {
         slots.add(buffer.getInt());
       }
       newSlotOwners.put(raftNode, slots);

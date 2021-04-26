@@ -19,14 +19,15 @@
 
 package org.apache.iotdb.tsfile.file.header;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 
 public class ChunkGroupHeader {
 
@@ -39,8 +40,8 @@ public class ChunkGroupHeader {
 
   /**
    * constructor of CHUNK_GROUP_HEADER.
-   *  @param deviceID       device ID
    *
+   * @param deviceID device ID
    */
   public ChunkGroupHeader(String deviceID) {
     this.deviceID = deviceID;
@@ -57,7 +58,8 @@ public class ChunkGroupHeader {
    *
    * @param markerRead Whether the marker of the CHUNK_GROUP_HEADER is read ahead.
    */
-  public static ChunkGroupHeader deserializeFrom(InputStream inputStream, boolean markerRead) throws IOException {
+  public static ChunkGroupHeader deserializeFrom(InputStream inputStream, boolean markerRead)
+      throws IOException {
     if (!markerRead) {
       byte marker = (byte) inputStream.read();
       if (marker != MARKER) {
@@ -92,7 +94,6 @@ public class ChunkGroupHeader {
     return deviceID;
   }
 
-
   /**
    * serialize to outputStream.
    *
@@ -109,9 +110,12 @@ public class ChunkGroupHeader {
 
   @Override
   public String toString() {
-    return "ChunkGroupHeader{" +
-        "deviceID='" + deviceID + '\'' +
-        ", serializedSize=" + serializedSize +
-        '}';
+    return "ChunkGroupHeader{"
+        + "deviceID='"
+        + deviceID
+        + '\''
+        + ", serializedSize="
+        + serializedSize
+        + '}';
   }
 }

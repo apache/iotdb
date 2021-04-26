@@ -19,7 +19,6 @@
 package org.apache.iotdb.tsfile.file.metadata.enums;
 
 public enum TSEncoding {
-
   PLAIN((byte) 0),
   PLAIN_DICTIONARY((byte) 1),
   RLE((byte) 2),
@@ -27,7 +26,7 @@ public enum TSEncoding {
   TS_2DIFF((byte) 4),
   BITMAP((byte) 5),
   GORILLA_V1((byte) 6),
-  REGULAR( (byte) 7),
+  REGULAR((byte) 7),
   GORILLA((byte) 8);
 
   private final byte type;
@@ -46,15 +45,29 @@ public enum TSEncoding {
     return getTsEncoding(encoding);
   }
 
-
   private static TSEncoding getTsEncoding(byte encoding) {
-    for (TSEncoding tsEncoding : TSEncoding.values()) {
-      if (encoding == tsEncoding.type) {
-        return tsEncoding;
-      }
+    switch (encoding) {
+      case 0:
+        return TSEncoding.PLAIN;
+      case 1:
+        return TSEncoding.PLAIN_DICTIONARY;
+      case 2:
+        return TSEncoding.RLE;
+      case 3:
+        return TSEncoding.DIFF;
+      case 4:
+        return TSEncoding.TS_2DIFF;
+      case 5:
+        return TSEncoding.BITMAP;
+      case 6:
+        return TSEncoding.GORILLA_V1;
+      case 7:
+        return TSEncoding.REGULAR;
+      case 8:
+        return TSEncoding.GORILLA;
+      default:
+        throw new IllegalArgumentException("Invalid input: " + encoding);
     }
-
-    throw new IllegalArgumentException("Invalid input: " + encoding);
   }
 
   public static int getSerializedSize() {

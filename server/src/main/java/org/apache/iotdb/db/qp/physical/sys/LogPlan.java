@@ -19,18 +19,17 @@
 
 package org.apache.iotdb.db.qp.physical.sys;
 
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.utils.IOUtils;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.utils.IOUtils;
 
-/**
- * It's used by cluster to wrap log to plan
- */
+/** It's used by cluster to wrap log to plan */
 public class LogPlan extends PhysicalPlan {
 
   private ByteBuffer log;

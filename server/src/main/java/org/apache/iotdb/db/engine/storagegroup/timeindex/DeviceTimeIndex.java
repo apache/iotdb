@@ -19,6 +19,14 @@
 
 package org.apache.iotdb.db.engine.storagegroup.timeindex;
 
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.exception.PartitionViolationException;
+import org.apache.iotdb.db.rescon.CachedStringPool;
+import org.apache.iotdb.db.utils.FilePathUtils;
+import org.apache.iotdb.db.utils.SerializeUtils;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -28,24 +36,15 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.exception.PartitionViolationException;
-import org.apache.iotdb.db.rescon.CachedStringPool;
-import org.apache.iotdb.db.utils.FilePathUtils;
-import org.apache.iotdb.db.utils.SerializeUtils;
-import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class DeviceTimeIndex implements ITimeIndex {
 
   public static final int INIT_ARRAY_SIZE = 64;
 
-  protected static final Map<String, String> cachedDevicePool = CachedStringPool.getInstance()
-      .getCachedPool();
+  protected static final Map<String, String> cachedDevicePool =
+      CachedStringPool.getInstance().getCachedPool();
 
-  /**
-   * start times array.
-   */
+  /** start times array. */
   protected long[] startTimes;
 
   /**
@@ -54,9 +53,7 @@ public class DeviceTimeIndex implements ITimeIndex {
    */
   protected long[] endTimes;
 
-  /**
-   * device -> index of start times array and end times array
-   */
+  /** device -> index of start times array and end times array */
   protected Map<String, Integer> deviceToIndex;
 
   public DeviceTimeIndex() {
@@ -182,8 +179,9 @@ public class DeviceTimeIndex implements ITimeIndex {
 
   @Override
   public long calculateRamSize() {
-    return RamUsageEstimator.sizeOf(deviceToIndex) + RamUsageEstimator.sizeOf(startTimes) +
-        RamUsageEstimator.sizeOf(endTimes);
+    return RamUsageEstimator.sizeOf(deviceToIndex)
+        + RamUsageEstimator.sizeOf(startTimes)
+        + RamUsageEstimator.sizeOf(endTimes);
   }
 
   @Override
@@ -231,45 +229,52 @@ public class DeviceTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public long getTimePartition(String tsfilePath) {
+  public long getTimePartition(String tsFilePath) {
     try {
       if (deviceToIndex != null && !deviceToIndex.isEmpty()) {
         return StorageEngine.getTimePartition(startTimes[deviceToIndex.values().iterator().next()]);
       }
-      String[] filePathSplits = FilePathUtils.splitTsFilePath(tsfilePath);
+      String[] filePathSplits = FilePathUtils.splitTsFilePath(tsFilePath);
       return Long.parseLong(filePathSplits[filePathSplits.length - 2]);
     } catch (NumberFormatException e) {
       return 0;
     }
   }
 
-  @Override
-  public long getTimePartitionWithCheck(String tsfilePath) throws PartitionViolationException {
-    long partitionId = -1;
-    for (Long startTime : startTimes) {
-      long p = StorageEngine.getTimePartition(startTime);
-      if (partitionId == -1) {
+  /** @return the time partition id, if spans multi time partitions, return -1. */
+  private long getTimePartitionWithCheck() {
+    long partitionId = SPANS_MULTI_TIME_PARTITIONS_FLAG_ID;
+    for (int index : deviceToIndex.values()) {
+      long p = StorageEngine.getTimePartition(startTimes[index]);
+      if (partitionId == SPANS_MULTI_TIME_PARTITIONS_FLAG_ID) {
         partitionId = p;
       } else {
         if (partitionId != p) {
-          throw new PartitionViolationException(tsfilePath);
+          return SPANS_MULTI_TIME_PARTITIONS_FLAG_ID;
         }
       }
-    }
-    for (Long endTime : endTimes) {
-      long p = StorageEngine.getTimePartition(endTime);
-      if (partitionId == -1) {
-        partitionId = p;
-      } else {
-        if (partitionId != p) {
-          throw new PartitionViolationException(tsfilePath);
-        }
+
+      p = StorageEngine.getTimePartition(endTimes[index]);
+      if (partitionId != p) {
+        return SPANS_MULTI_TIME_PARTITIONS_FLAG_ID;
       }
-    }
-    if (partitionId == -1) {
-      throw new PartitionViolationException(tsfilePath);
     }
     return partitionId;
+  }
+
+  @Override
+  public long getTimePartitionWithCheck(String tsFilePath) throws PartitionViolationException {
+    long partitionId = getTimePartitionWithCheck();
+    if (partitionId == SPANS_MULTI_TIME_PARTITIONS_FLAG_ID) {
+      throw new PartitionViolationException(tsFilePath);
+    }
+    return partitionId;
+  }
+
+  @Override
+  public boolean isSpanMultiTimePartitions() {
+    long partitionId = getTimePartitionWithCheck();
+    return partitionId == SPANS_MULTI_TIME_PARTITIONS_FLAG_ID;
   }
 
   @Override
@@ -288,6 +293,18 @@ public class DeviceTimeIndex implements ITimeIndex {
       int index = getDeviceIndex(deviceId);
       endTimes[index] = time;
     }
+  }
+
+  @Override
+  public void putStartTime(String deviceId, long time) {
+    int index = getDeviceIndex(deviceId);
+    startTimes[index] = time;
+  }
+
+  @Override
+  public void putEndTime(String deviceId, long time) {
+    int index = getDeviceIndex(deviceId);
+    endTimes[index] = time;
   }
 
   @Override

@@ -29,5 +29,4 @@ public interface MetricsServiceMBean {
   void restartService() throws StartupException;
 
   void stopService();
-
 }

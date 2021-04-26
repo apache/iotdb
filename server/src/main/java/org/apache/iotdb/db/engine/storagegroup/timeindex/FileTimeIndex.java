@@ -19,14 +19,6 @@
 
 package org.apache.iotdb.db.engine.storagegroup.timeindex;
 
-import io.netty.util.internal.ConcurrentSet;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.rescon.CachedStringPool;
@@ -35,24 +27,28 @@ import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import io.netty.util.internal.ConcurrentSet;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+
 public class FileTimeIndex implements ITimeIndex {
 
-  protected static final Map<String, String> cachedDevicePool = CachedStringPool.getInstance()
-      .getCachedPool();
+  protected static final Map<String, String> cachedDevicePool =
+      CachedStringPool.getInstance().getCachedPool();
 
-  /**
-   * start time
-   */
+  /** start time */
   protected long startTime;
 
-  /**
-   * end times. The value is Long.MIN_VALUE if it's an unsealed sequence tsfile
-   */
+  /** end times. The value is Long.MIN_VALUE if it's an unsealed sequence tsfile */
   protected long endTime;
 
-  /**
-   * devices
-   */
+  /** devices */
   protected Set<String> devices;
 
   public FileTimeIndex() {
@@ -88,8 +84,8 @@ public class FileTimeIndex implements ITimeIndex {
       String cachedPath = cachedDevicePool.computeIfAbsent(path, k -> k);
       deviceSet.add(cachedPath);
     }
-    return new FileTimeIndex(deviceSet, ReadWriteIOUtils.readLong(inputStream),
-        ReadWriteIOUtils.readLong(inputStream));
+    return new FileTimeIndex(
+        deviceSet, ReadWriteIOUtils.readLong(inputStream), ReadWriteIOUtils.readLong(inputStream));
   }
 
   @Override
@@ -133,8 +129,9 @@ public class FileTimeIndex implements ITimeIndex {
 
   @Override
   public long calculateRamSize() {
-    return RamUsageEstimator.sizeOf(devices) + RamUsageEstimator.sizeOf(startTime) +
-        RamUsageEstimator.sizeOf(endTime);
+    return RamUsageEstimator.sizeOf(devices)
+        + RamUsageEstimator.sizeOf(startTime)
+        + RamUsageEstimator.sizeOf(endTime);
   }
 
   @Override
@@ -143,26 +140,40 @@ public class FileTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public long getTimePartition(String tsfilePath) {
+  public long getTimePartition(String tsFilePath) {
     try {
       if (devices != null && !devices.isEmpty()) {
         return StorageEngine.getTimePartition(startTime);
       }
-      String[] filePathSplits = FilePathUtils.splitTsFilePath(tsfilePath);
+      String[] filePathSplits = FilePathUtils.splitTsFilePath(tsFilePath);
       return Long.parseLong(filePathSplits[filePathSplits.length - 2]);
     } catch (NumberFormatException e) {
       return 0;
     }
   }
 
-  @Override
-  public long getTimePartitionWithCheck(String tsfilePath) throws PartitionViolationException {
+  private long getTimePartitionWithCheck() {
     long startPartitionId = StorageEngine.getTimePartition(startTime);
     long endPartitionId = StorageEngine.getTimePartition(endTime);
-    if (startPartitionId != endPartitionId) {
-      throw new PartitionViolationException(tsfilePath);
+    if (startPartitionId == endPartitionId) {
+      return startPartitionId;
     }
-    return startPartitionId;
+    return SPANS_MULTI_TIME_PARTITIONS_FLAG_ID;
+  }
+
+  @Override
+  public long getTimePartitionWithCheck(String tsFilePath) throws PartitionViolationException {
+    long partitionId = getTimePartitionWithCheck();
+    if (partitionId == SPANS_MULTI_TIME_PARTITIONS_FLAG_ID) {
+      throw new PartitionViolationException(tsFilePath);
+    }
+    return partitionId;
+  }
+
+  @Override
+  public boolean isSpanMultiTimePartitions() {
+    long partitionId = getTimePartitionWithCheck();
+    return partitionId == SPANS_MULTI_TIME_PARTITIONS_FLAG_ID;
   }
 
   @Override
@@ -179,6 +190,18 @@ public class FileTimeIndex implements ITimeIndex {
     if (this.endTime < time) {
       this.endTime = time;
     }
+  }
+
+  @Override
+  public void putStartTime(String deviceId, long time) {
+    devices.add(deviceId);
+    this.startTime = time;
+  }
+
+  @Override
+  public void putEndTime(String deviceId, long time) {
+    devices.add(deviceId);
+    this.endTime = time;
   }
 
   @Override

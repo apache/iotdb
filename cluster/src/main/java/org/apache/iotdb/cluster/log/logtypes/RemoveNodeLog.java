@@ -19,14 +19,15 @@
 
 package org.apache.iotdb.cluster.log.logtypes;
 
+import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.utils.NodeSerializeUtils;
+
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
-import org.apache.iotdb.cluster.log.Log;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.db.utils.SerializeUtils;
 
 public class RemoveNodeLog extends Log {
 
@@ -36,14 +37,12 @@ public class RemoveNodeLog extends Log {
 
   private long metaLogIndex;
 
-  public RemoveNodeLog(ByteBuffer partitionTable,
-      Node removedNode) {
+  public RemoveNodeLog(ByteBuffer partitionTable, Node removedNode) {
     this.partitionTable = partitionTable;
     this.removedNode = removedNode;
   }
 
-  public RemoveNodeLog() {
-  }
+  public RemoveNodeLog() {}
 
   public long getMetaLogIndex() {
     return metaLogIndex;
@@ -71,7 +70,7 @@ public class RemoveNodeLog extends Log {
       dataOutputStream.writeLong(getCurrLogTerm());
       dataOutputStream.writeLong(getMetaLogIndex());
 
-      SerializeUtils.serialize(removedNode, dataOutputStream);
+      NodeSerializeUtils.serialize(removedNode, dataOutputStream);
 
       dataOutputStream.writeInt(partitionTable.array().length);
       dataOutputStream.write(partitionTable.array());
@@ -88,7 +87,7 @@ public class RemoveNodeLog extends Log {
     setMetaLogIndex(buffer.getLong());
 
     removedNode = new Node();
-    SerializeUtils.deserialize(removedNode, buffer);
+    NodeSerializeUtils.deserialize(removedNode, buffer);
 
     int len = buffer.getInt();
     byte[] data = new byte[len];
@@ -116,8 +115,8 @@ public class RemoveNodeLog extends Log {
       return false;
     }
     RemoveNodeLog that = (RemoveNodeLog) o;
-    return Objects.equals(removedNode, that.removedNode) && Objects
-        .equals(partitionTable, that.partitionTable);
+    return Objects.equals(removedNode, that.removedNode)
+        && Objects.equals(partitionTable, that.partitionTable);
   }
 
   @Override

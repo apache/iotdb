@@ -19,14 +19,13 @@
 
 package org.apache.iotdb.cluster.partition.balancer;
 
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 
-/**
- * When add/remove node, the slots need to be redistributed.
- */
+import java.util.List;
+import java.util.Map;
+
+/** When add/remove node, the slots need to be redistributed. */
 public interface SlotBalancer {
 
   /**
@@ -35,9 +34,10 @@ public interface SlotBalancer {
   void moveSlotsToNew(Node newNode, List<Node> oldRing);
 
   /**
-   * When remove a old node, all hash slots of the removed groups will assigned to other raft groups.
+   * When remove a old node, all hash slots of the removed groups will assigned to other raft
+   * groups.
+   *
    * @param target the node to be removed
    */
   Map<RaftNode, List<Integer>> retrieveSlots(Node target);
-
 }

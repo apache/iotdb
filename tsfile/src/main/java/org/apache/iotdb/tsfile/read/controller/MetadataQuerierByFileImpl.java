@@ -18,6 +18,16 @@
  */
 package org.apache.iotdb.tsfile.read.controller;
 
+import org.apache.iotdb.tsfile.common.cache.LRUCache;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader.LocateStatus;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -29,15 +39,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
-import org.apache.iotdb.tsfile.common.cache.LRUCache;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader.LocateStatus;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
 
 public class MetadataQuerierByFileImpl implements IMetadataQuerier {
 
@@ -50,18 +51,17 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
 
   private TsFileSequenceReader tsFileReader;
 
-  /**
-   * Constructor of MetadataQuerierByFileImpl.
-   */
+  /** Constructor of MetadataQuerierByFileImpl. */
   public MetadataQuerierByFileImpl(TsFileSequenceReader tsFileReader) throws IOException {
     this.tsFileReader = tsFileReader;
     this.fileMetaData = tsFileReader.readFileMetadata();
-    chunkMetaDataCache = new LRUCache<Path, List<ChunkMetadata>>(CACHED_ENTRY_NUMBER) {
-      @Override
-      public List<ChunkMetadata> loadObjectByKey(Path key) throws IOException {
-        return loadChunkMetadata(key);
-      }
-    };
+    chunkMetaDataCache =
+        new LRUCache<Path, List<ChunkMetadata>>(CACHED_ENTRY_NUMBER) {
+          @Override
+          public List<ChunkMetadata> loadObjectByKey(Path key) throws IOException {
+            return loadChunkMetadata(key);
+          }
+        };
   }
 
   @Override
@@ -116,8 +116,8 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
         continue;
       }
 
-      List<TimeseriesMetadata> timeseriesMetaDataList = tsFileReader
-          .readTimeseriesMetadata(selectedDevice, selectedMeasurements);
+      List<TimeseriesMetadata> timeseriesMetaDataList =
+          tsFileReader.readTimeseriesMetadata(selectedDevice, selectedMeasurements);
       List<ChunkMetadata> chunkMetadataList = new ArrayList<>();
       for (TimeseriesMetadata timeseriesMetadata : timeseriesMetaDataList) {
         chunkMetadataList.addAll(tsFileReader.readChunkMetaDataList(timeseriesMetadata));
@@ -155,23 +155,21 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
 
   @Override
   public TSDataType getDataType(Path path) throws IOException {
-    if (tsFileReader.getChunkMetadataList(path) == null || tsFileReader.getChunkMetadataList(path)
-        .isEmpty()) {
+    if (tsFileReader.getChunkMetadataList(path) == null
+        || tsFileReader.getChunkMetadataList(path).isEmpty()) {
       return null;
     }
     return tsFileReader.getChunkMetadataList(path).get(0).getDataType();
-
   }
 
   private List<ChunkMetadata> loadChunkMetadata(Path path) throws IOException {
     return tsFileReader.getChunkMetadataList(path);
   }
 
-
   @Override
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public List<TimeRange> convertSpace2TimePartition(List<Path> paths, long spacePartitionStartPos,
-      long spacePartitionEndPos) throws IOException {
+  public List<TimeRange> convertSpace2TimePartition(
+      List<Path> paths, long spacePartitionStartPos, long spacePartitionEndPos) throws IOException {
     if (spacePartitionStartPos > spacePartitionEndPos) {
       throw new IllegalArgumentException(
           "'spacePartitionStartPos' should not be larger than 'spacePartitionEndPos'.");
@@ -186,7 +184,8 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
 
     TreeMap<String, Set<String>> deviceMeasurementsMap = new TreeMap<>();
     for (Path path : paths) {
-      deviceMeasurementsMap.computeIfAbsent(path.getDevice(), key -> new HashSet<>())
+      deviceMeasurementsMap
+          .computeIfAbsent(path.getDevice(), key -> new HashSet<>())
           .add(path.getMeasurement());
     }
     for (Map.Entry<String, Set<String>> deviceMeasurements : deviceMeasurementsMap.entrySet()) {
@@ -194,8 +193,8 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
       Set<String> selectedMeasurements = deviceMeasurements.getValue();
 
       // measurement -> ChunkMetadata list
-      Map<String, List<ChunkMetadata>> seriesMetadatas = tsFileReader
-          .readChunkMetadataInDevice(selectedDevice);
+      Map<String, List<ChunkMetadata>> seriesMetadatas =
+          tsFileReader.readChunkMetadataInDevice(selectedDevice);
 
       for (Entry<String, List<ChunkMetadata>> seriesMetadata : seriesMetadatas.entrySet()) {
 
@@ -204,34 +203,33 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
         }
 
         for (ChunkMetadata chunkMetadata : seriesMetadata.getValue()) {
-          LocateStatus location = checkLocateStatus(chunkMetadata, spacePartitionStartPos,
-              spacePartitionEndPos);
+          LocateStatus location =
+              checkLocateStatus(chunkMetadata, spacePartitionStartPos, spacePartitionEndPos);
           if (location == LocateStatus.after) {
             break;
           }
 
           if (location == LocateStatus.in) {
-            timeRangesInCandidates
-                .add(new TimeRange(chunkMetadata.getStartTime(), chunkMetadata.getEndTime()));
+            timeRangesInCandidates.add(
+                new TimeRange(chunkMetadata.getStartTime(), chunkMetadata.getEndTime()));
           } else {
-            timeRangesBeforeCandidates
-                .add(new TimeRange(chunkMetadata.getStartTime(), chunkMetadata.getEndTime()));
+            timeRangesBeforeCandidates.add(
+                new TimeRange(chunkMetadata.getStartTime(), chunkMetadata.getEndTime()));
           }
         }
-
       }
     }
 
     // (2) sort and merge the timeRangesInCandidates
-    ArrayList<TimeRange> timeRangesIn = new ArrayList<>(
-        TimeRange.sortAndMerge(timeRangesInCandidates));
+    ArrayList<TimeRange> timeRangesIn =
+        new ArrayList<>(TimeRange.sortAndMerge(timeRangesInCandidates));
     if (timeRangesIn.isEmpty()) {
       return Collections.emptyList(); // return an empty list
     }
 
     // (3) sort and merge the timeRangesBeforeCandidates
-    ArrayList<TimeRange> timeRangesBefore = new ArrayList<>(
-        TimeRange.sortAndMerge(timeRangesBeforeCandidates));
+    ArrayList<TimeRange> timeRangesBefore =
+        new ArrayList<>(TimeRange.sortAndMerge(timeRangesBeforeCandidates));
 
     // (4) calculate the remaining time ranges
     List<TimeRange> resTimeRanges = new ArrayList<>();
@@ -251,11 +249,10 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
    * @param spacePartitionEndPos the end position of the space partition
    * @return LocateStatus
    */
-  public static LocateStatus checkLocateStatus(ChunkMetadata chunkMetaData,
-      long spacePartitionStartPos, long spacePartitionEndPos) {
+  public static LocateStatus checkLocateStatus(
+      ChunkMetadata chunkMetaData, long spacePartitionStartPos, long spacePartitionEndPos) {
     long startOffsetOfChunk = chunkMetaData.getOffsetOfChunkHeader();
-    if (spacePartitionStartPos <= startOffsetOfChunk
-        && startOffsetOfChunk < spacePartitionEndPos) {
+    if (spacePartitionStartPos <= startOffsetOfChunk && startOffsetOfChunk < spacePartitionEndPos) {
       return LocateStatus.in;
     } else if (startOffsetOfChunk < spacePartitionStartPos) {
       return LocateStatus.before;
@@ -268,5 +265,4 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
   public void clear() {
     chunkMetaDataCache.clear();
   }
-
 }

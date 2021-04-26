@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,28 +18,28 @@
  */
 package org.apache.iotdb.cluster.utils.nodetool;
 
-import java.util.List;
-import java.util.Map;
-import org.apache.commons.collections4.map.MultiKeyMap;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.commons.collections4.map.MultiKeyMap;
+
+import java.util.List;
+import java.util.Map;
+
 public interface ClusterMonitorMBean {
 
-  /**
-   * Show the character of meta raft group.
-   */
+  /** Show the character of meta raft group. */
   List<Pair<Node, NodeCharacter>> getMetaGroup();
 
-  /**
-   * Show the character of target data raft group whose header is this node.
-   */
+  /** Show the character of target data raft group whose header is this node. */
   List<Pair<Node, NodeCharacter>> getDataGroup(int raftId) throws Exception;
 
   /**
-   * Query how many slots are still PULLING or PULLING_WRITABLE, it means whether user can add/remove a node.
+   * Query how many slots are still PULLING or PULLING_WRITABLE, it means whether user can
+   * add/remove a node.
+   *
    * @return key: group, value: slot num that still in the process of data migration
    */
   Map<PartitionGroup, Integer> getSlotNumInDataMigration() throws Exception;
@@ -75,14 +75,11 @@ public interface ClusterMonitorMBean {
   Map<Node, Integer> getAllNodeStatus();
 
   /**
-   *
-   * @return A multi-line string with each line representing the total time consumption,
-   * invocation number, and average time consumption.
+   * @return A multi-line string with each line representing the total time consumption, invocation
+   *     number, and average time consumption.
    */
   String getInstrumentingInfo();
 
-  /**
-   * Reset all instrumenting statistics in Timer.
-   */
+  /** Reset all instrumenting statistics in Timer. */
   void resetInstrumenting();
 }

@@ -18,17 +18,20 @@
 
 package org.apache.iotdb.flink;
 
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
+import org.apache.iotdb.flink.options.IoTDBSinkOptions;
+import org.apache.iotdb.session.pool.SessionPool;
 
 import com.google.common.collect.Lists;
+import org.junit.Before;
+import org.junit.Test;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.session.pool.SessionPool;
-import org.junit.Before;
-import org.junit.Test;
+
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 public class IoTDBSinkInsertTest {
 
@@ -37,9 +40,9 @@ public class IoTDBSinkInsertTest {
 
   @Before
   public void setUp() throws Exception {
-    IoTDBOptions options = new IoTDBOptions();
+    IoTDBSinkOptions options = new IoTDBSinkOptions();
     options.setTimeseriesOptionList(
-        Lists.newArrayList(new IoTDBOptions.TimeseriesOption("root.sg.D01.temperature")));
+        Lists.newArrayList(new IoTDBSinkOptions.TimeseriesOption("root.sg.D01.temperature")));
     ioTDBSink = new IoTDBSink(options, new DefaultIoTSerializationSchema());
 
     pool = mock(SessionPool.class);
@@ -56,8 +59,9 @@ public class IoTDBSinkInsertTest {
     tuple.put("values", "36.5");
 
     ioTDBSink.invoke(tuple, null);
-    verify(pool).insertRecord(any(String.class), any(Long.class), any(List.class), any(List.class),
-        any(List.class));
+    verify(pool)
+        .insertRecord(
+            any(String.class), any(Long.class), any(List.class), any(List.class), any(List.class));
   }
 
   @Test

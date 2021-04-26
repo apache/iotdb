@@ -18,21 +18,22 @@
  */
 package org.apache.iotdb.rpc;
 
-import java.io.IOException;
 import org.apache.thrift.transport.TFramedTransport;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
+
+import java.io.IOException;
 
 public abstract class TCompressedElasticFramedTransport extends TElasticFramedTransport {
 
   private AutoScalingBufferWriteTransport writeCompressBuffer;
   private AutoScalingBufferReadTransport readCompressBuffer;
 
-  protected TCompressedElasticFramedTransport(TTransport underlying, int initialBufferCapacity,
-      int softMaxLength) {
-    super(underlying, initialBufferCapacity, softMaxLength);
-    writeCompressBuffer = new AutoScalingBufferWriteTransport(initialBufferCapacity);
-    readCompressBuffer = new AutoScalingBufferReadTransport(initialBufferCapacity);
+  protected TCompressedElasticFramedTransport(
+      TTransport underlying, int thriftDefaultBufferSize, int thriftMaxFrameSize) {
+    super(underlying, thriftDefaultBufferSize, thriftMaxFrameSize);
+    writeCompressBuffer = new AutoScalingBufferWriteTransport(thriftDefaultBufferSize);
+    readCompressBuffer = new AutoScalingBufferReadTransport(thriftDefaultBufferSize);
   }
 
   @Override
@@ -42,8 +43,8 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
 
     if (size < 0) {
       close();
-      throw new TTransportException(TTransportException.CORRUPTED_DATA,
-          "Read a negative frame size (" + size + ")!");
+      throw new TTransportException(
+          TTransportException.CORRUPTED_DATA, "Read a negative frame size (" + size + ")!");
     }
 
     readBuffer.fill(underlying, size);
@@ -68,8 +69,8 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
     try {
       int maxCompressedLength = maxCompressedLength(length);
       writeCompressBuffer.resizeIfNecessary(maxCompressedLength);
-      int compressedLength = compress(writeBuffer.getBuffer(), 0, length,
-          writeCompressBuffer.getBuffer(), 0);
+      int compressedLength =
+          compress(writeBuffer.getBuffer(), 0, length, writeCompressBuffer.getBuffer(), 0);
       RpcStat.writeCompressedBytes.addAndGet(compressedLength);
       TFramedTransport.encodeFrameSize(compressedLength, i32buf);
       underlying.write(i32buf, 0, 4);
@@ -79,8 +80,8 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
     }
 
     writeBuffer.reset();
-    if (softMaxLength < length) {
-      writeBuffer.resizeIfNecessary(softMaxLength);
+    if (thriftDefaultBufferSize < length) {
+      writeBuffer.resizeIfNecessary(thriftDefaultBufferSize);
     }
     underlying.flush();
   }
@@ -89,9 +90,9 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
 
   protected abstract int maxCompressedLength(int len);
 
-  protected abstract int compress(byte[] input, int inOff, int len, byte[] output,
-      int outOff) throws IOException;
+  protected abstract int compress(byte[] input, int inOff, int len, byte[] output, int outOff)
+      throws IOException;
 
-  protected abstract void uncompress(byte[] input, int inOff, int size, byte[] output,
-      int outOff) throws IOException;
+  protected abstract void uncompress(byte[] input, int inOff, int size, byte[] output, int outOff)
+      throws IOException;
 }

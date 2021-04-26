@@ -20,36 +20,26 @@
 package org.apache.iotdb.tsfile.encoding.bitpacking;
 
 /**
- * This class is used to encode(decode) Long in Java with specified bit-width.
- * User need to guarantee that the length of every given Long in binary mode is
- * less than or equal to the bit-width.
+ * This class is used to encode(decode) Long in Java with specified bit-width. User need to
+ * guarantee that the length of every given Long in binary mode is less than or equal to the
+ * bit-width.
  *
- * <p>
- * e.g., if bit-width is 31, then Long '2147483648'(2^31) is not allowed but
- * '2147483647'(2^31-1) is allowed.
- *
- * <p>
- * For a full example, Width: 3 Input: 5 4 7 3 0 1 3 2
- *
- * <p>
- * Output:
- * <p>
- * +-----------------------+ +-----------------------+ +-----------------------+
- * |1 |0 |1 |1 |0 |0 |1 |1 | |1 |0 |1 |1 |0 |0 |0 |0 | |0 |1 |0 |1 |1 |0 |1 |0 |
- * +-----------------------+ +-----------------------+ +-----------------------+
- * +-----+ +-----+ +---------+ +-----+ +-----+ +---------+ +-----+ +-----+ 5 4 7
- * 3 0 1 3 2
- *
+ * <p>e.g., if bit-width is 31, then Long '2147483648'(2^31) is not allowed but '2147483647'(2^31-1)
+ * is allowed.
  */
 public class LongPacker {
-
-  /**
-   * Number of Long values for each pack operation.
+  /*
+   * For a full example, Width: 3 Input: 5 4 7 3 0 1 3 2
+   * Output:
+   * +-----------------------+ +-----------------------+ +-----------------------+
+   * |1 |0 |1 |1 |0 |0 |1 |1 | |1 |0 |1 |1 |0 |0 |0 |0 | |0 |1 |0 |1 |1 |0 |1 |0 |
+   * +-----------------------+ +-----------------------+ +-----------------------+
+   * +-----+ +-----+ +---------+ +-----+ +-----+ +---------+ +-----+ +-----+ 5 4 7
+   * 3 0 1 3 2
    */
+  /** Number of Long values for each pack operation. */
   private static final int NUM_OF_LONGS = 8;
-  /**
-   * bit-width.
-   */
+  /** bit-width. */
   private int width;
 
   public LongPacker(int width) {
@@ -57,14 +47,13 @@ public class LongPacker {
   }
 
   /**
-   * Encode 8 ({@link LongPacker#NUM_OF_LONGS}) Longs from the array 'values' with
-   * specified bit-width to bytes.
+   * Encode 8 ({@link LongPacker#NUM_OF_LONGS}) Longs from the array 'values' with specified
+   * bit-width to bytes.
    *
    * @param values - array where '8 Longs' are in
    * @param offset - the offset of first Long to be encoded
-   * @param buf    - encoded bytes, buf size must be equal to
-   *               ({@link LongPacker#NUM_OF_LONGS}} * {@link IntPacker#width} /
-   *               8)
+   * @param buf - encoded bytes, buf size must be equal to ({@link LongPacker#NUM_OF_LONGS}} *
+   *     {@link IntPacker#width} / 8)
    */
   public void pack8Values(long[] values, int offset, byte[] buf) {
 
@@ -114,7 +103,7 @@ public class LongPacker {
   /**
    * decode values from byte array.
    *
-   * @param buf    - array where bytes are in.
+   * @param buf - array where bytes are in.
    * @param offset - offset of first byte to be decoded in buf
    * @param values - decoded result , the size of values should be 8
    */
@@ -147,7 +136,8 @@ public class LongPacker {
           // numbers of bits to be take
           int t = width - totalBits;
           values[valueIdx] = values[valueIdx] << t;
-          values[valueIdx] = values[valueIdx] | (((1L << leftBits) - 1) & buf[byteIdx]) >>> (leftBits - t);
+          values[valueIdx] =
+              values[valueIdx] | (((1L << leftBits) - 1) & buf[byteIdx]) >>> (leftBits - t);
           leftBits -= t;
           totalBits += t;
         }
@@ -156,14 +146,13 @@ public class LongPacker {
       valueIdx++;
       totalBits = 0;
     }
-
   }
 
   /**
-   * decode all values from 'buf' with specified offset and length decoded result
-   * will be saved in array named 'values'.
+   * decode all values from 'buf' with specified offset and length decoded result will be saved in
+   * array named 'values'.
    *
-   * @param buf    array where all bytes are in.
+   * @param buf array where all bytes are in.
    * @param length length of bytes to be decoded in buf.
    * @param values decoded result
    */

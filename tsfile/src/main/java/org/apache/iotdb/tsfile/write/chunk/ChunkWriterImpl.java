@@ -18,10 +18,6 @@
  */
 package org.apache.iotdb.tsfile.write.chunk;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.Channels;
-import java.nio.channels.WritableByteChannel;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.compress.ICompressor;
 import org.apache.iotdb.tsfile.encoding.encoder.SDTEncoder;
@@ -36,8 +32,14 @@ import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.write.page.PageWriter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.Channels;
+import java.nio.channels.WritableByteChannel;
 
 public class ChunkWriterImpl implements IChunkWriter {
 
@@ -47,43 +49,32 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   private ICompressor compressor;
 
-  /**
-   * all pages of this chunk.
-   */
+  /** all pages of this chunk. */
   private PublicBAOS pageBuffer;
 
   private int numOfPages;
 
-  /**
-   * write data into current page
-   */
+  /** write data into current page */
   private PageWriter pageWriter;
 
-  /**
-   * page size threshold.
-   */
+  /** page size threshold. */
   private final long pageSizeThreshold;
 
   private final int maxNumberOfPointsInPage;
 
-  /**
-   * value count in current page.
-   */
+  /** value count in current page. */
   private int valueCountInOnePageForNextCheck;
 
   // initial value for valueCountInOnePageForNextCheck
   private static final int MINIMUM_RECORD_COUNT_FOR_CHECK = 1500;
 
-  /**
-   * statistic of this chunk.
-   */
+  /** statistic of this chunk. */
   private Statistics<?> statistics;
 
-  /**
-   * SDT parameters
-   */
+  /** SDT parameters */
   private boolean isSdtEncoding;
-  // When the ChunkWriter WILL write the last data point in the chunk, set it to true to tell SDT saves the point.
+  // When the ChunkWriter WILL write the last data point in the chunk, set it to true to tell SDT
+  // saves the point.
   private boolean isLastPoint;
   // do not re-execute SDT compression when merging chunks
   private boolean isMerging;
@@ -95,23 +86,20 @@ public class ChunkWriterImpl implements IChunkWriter {
   private static final String SDT_COMP_MIN_TIME = "compmintime";
   private static final String SDT_COMP_MAX_TIME = "compmaxtime";
 
-  /**
-   * first page info
-   */
+  /** first page info */
   private int sizeWithoutStatistic;
+
   private Statistics<?> firstPageStatistics;
 
-  /**
-   * @param schema schema of this measurement
-   */
+  /** @param schema schema of this measurement */
   public ChunkWriterImpl(MeasurementSchema schema) {
     this.measurementSchema = schema;
     this.compressor = ICompressor.getCompressor(schema.getCompressor());
     this.pageBuffer = new PublicBAOS();
 
     this.pageSizeThreshold = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
-    this.maxNumberOfPointsInPage = TSFileDescriptor.getInstance().getConfig()
-        .getMaxNumberOfPointsInPage();
+    this.maxNumberOfPointsInPage =
+        TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
     // initial check of memory usage. So that we have enough data to make an initial prediction
     this.valueCountInOnePageForNextCheck = MINIMUM_RECORD_COUNT_FOR_CHECK;
 
@@ -123,7 +111,7 @@ public class ChunkWriterImpl implements IChunkWriter {
     this.pageWriter.setTimeEncoder(measurementSchema.getTimeEncoder());
     this.pageWriter.setValueEncoder(measurementSchema.getValueEncoder());
 
-    //check if the measurement schema uses SDT
+    // check if the measurement schema uses SDT
     checkSdtEncoding();
   }
 
@@ -140,15 +128,18 @@ public class ChunkWriterImpl implements IChunkWriter {
       }
 
       if (isSdtEncoding && measurementSchema.getProps().containsKey(SDT_COMP_DEV)) {
-        sdtEncoder.setCompDeviation(Double.parseDouble(measurementSchema.getProps().get(SDT_COMP_DEV)));
+        sdtEncoder.setCompDeviation(
+            Double.parseDouble(measurementSchema.getProps().get(SDT_COMP_DEV)));
       }
 
       if (isSdtEncoding && measurementSchema.getProps().containsKey(SDT_COMP_MIN_TIME)) {
-        sdtEncoder.setCompMinTime(Long.parseLong(measurementSchema.getProps().get(SDT_COMP_MIN_TIME)));
+        sdtEncoder.setCompMinTime(
+            Long.parseLong(measurementSchema.getProps().get(SDT_COMP_MIN_TIME)));
       }
 
       if (isSdtEncoding && measurementSchema.getProps().containsKey(SDT_COMP_MAX_TIME)) {
-        sdtEncoder.setCompMaxTime(Long.parseLong(measurementSchema.getProps().get(SDT_COMP_MAX_TIME)));
+        sdtEncoder.setCompMaxTime(
+            Long.parseLong(measurementSchema.getProps().get(SDT_COMP_MAX_TIME)));
       }
     }
   }
@@ -158,7 +149,8 @@ public class ChunkWriterImpl implements IChunkWriter {
     // store last point for sdtEncoding, it still needs to go through encoding process
     // in case it exceeds compdev and needs to store second last point
     if (!isSdtEncoding || sdtEncoder.encodeLong(time, value)) {
-      pageWriter.write(isSdtEncoding ? sdtEncoder.getTime() : time,
+      pageWriter.write(
+          isSdtEncoding ? sdtEncoder.getTime() : time,
           isSdtEncoding ? sdtEncoder.getLongValue() : value);
     }
     if (isSdtEncoding && isLastPoint) {
@@ -170,7 +162,8 @@ public class ChunkWriterImpl implements IChunkWriter {
   @Override
   public void write(long time, int value) {
     if (!isSdtEncoding || sdtEncoder.encodeInt(time, value)) {
-      pageWriter.write(isSdtEncoding ? sdtEncoder.getTime() : time,
+      pageWriter.write(
+          isSdtEncoding ? sdtEncoder.getTime() : time,
           isSdtEncoding ? sdtEncoder.getIntValue() : value);
     }
     if (isSdtEncoding && isLastPoint) {
@@ -188,10 +181,11 @@ public class ChunkWriterImpl implements IChunkWriter {
   @Override
   public void write(long time, float value) {
     if (!isSdtEncoding || sdtEncoder.encodeFloat(time, value)) {
-      pageWriter.write(isSdtEncoding ? sdtEncoder.getTime() : time,
+      pageWriter.write(
+          isSdtEncoding ? sdtEncoder.getTime() : time,
           isSdtEncoding ? sdtEncoder.getFloatValue() : value);
     }
-    //store last point for sdt encoding
+    // store last point for sdt encoding
     if (isSdtEncoding && isLastPoint) {
       pageWriter.write(time, value);
     }
@@ -201,7 +195,8 @@ public class ChunkWriterImpl implements IChunkWriter {
   @Override
   public void write(long time, double value) {
     if (!isSdtEncoding || sdtEncoder.encodeDouble(time, value)) {
-      pageWriter.write(isSdtEncoding ? sdtEncoder.getTime() : time,
+      pageWriter.write(
+          isSdtEncoding ? sdtEncoder.getTime() : time,
           isSdtEncoding ? sdtEncoder.getDoubleValue() : value);
     }
     if (isSdtEncoding && isLastPoint) {
@@ -280,14 +275,16 @@ public class ChunkWriterImpl implements IChunkWriter {
         // we will write the current page
         logger.debug(
             "enough size, write page {}, pageSizeThreshold:{}, currentPateSize:{}, valueCountInOnePage:{}",
-            measurementSchema.getMeasurementId(), pageSizeThreshold, currentPageSize,
+            measurementSchema.getMeasurementId(),
+            pageSizeThreshold,
+            currentPageSize,
             pageWriter.getPointNumber());
         writePageToPageBuffer();
         valueCountInOnePageForNextCheck = MINIMUM_RECORD_COUNT_FOR_CHECK;
       } else {
         // reset the valueCountInOnePageForNextCheck for the next page
-        valueCountInOnePageForNextCheck = (int) (((float) pageSizeThreshold / currentPageSize)
-            * pageWriter.getPointNumber());
+        valueCountInOnePageForNextCheck =
+            (int) (((float) pageSizeThreshold / currentPageSize) * pageWriter.getPointNumber());
       }
     }
   }
@@ -334,9 +331,10 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   @Override
   public long estimateMaxSeriesMemSize() {
-    return pageBuffer.size() + pageWriter.estimateMaxMemSize() + PageHeader
-        .estimateMaxPageHeaderSizeWithoutStatistics() + pageWriter.getStatistics()
-        .getSerializedSize();
+    return pageBuffer.size()
+        + pageWriter.estimateMaxMemSize()
+        + PageHeader.estimateMaxPageHeaderSizeWithoutStatistics()
+        + pageWriter.getStatistics().getSerializedSize();
   }
 
   @Override
@@ -355,7 +353,7 @@ public class ChunkWriterImpl implements IChunkWriter {
       writePageToPageBuffer();
     }
   }
-  
+
   @Override
   public void clearPageWriter() {
     pageWriter = null;
@@ -372,31 +370,31 @@ public class ChunkWriterImpl implements IChunkWriter {
   }
 
   /**
-   * write the page header and data into the PageWriter's output stream.
-   *
-   * @NOTE: for upgrading 0.11/v2 to 0.12/v3 TsFile
+   * write the page header and data into the PageWriter's output stream. @NOTE: for upgrading
+   * 0.11/v2 to 0.12/v3 TsFile
    */
-  public void writePageHeaderAndDataIntoBuff(ByteBuffer data, PageHeader header,
-      boolean isOnlyOnePageChunk) throws PageException {
+  public void writePageHeaderAndDataIntoBuff(
+      ByteBuffer data, PageHeader header, boolean isOnlyOnePageChunk) throws PageException {
 
     // write the page header to pageBuffer
     try {
-      logger.debug("start to flush a page header into buffer, buffer position {} ",
-          pageBuffer.size());
+      logger.debug(
+          "start to flush a page header into buffer, buffer position {} ", pageBuffer.size());
       ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getUncompressedSize(), pageBuffer);
       ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getCompressedSize(), pageBuffer);
       if (!isOnlyOnePageChunk) {
         header.getStatistics().serialize(pageBuffer);
       }
-      logger
-          .debug("finish to flush a page header {} of {} into buffer, buffer position {} ", header,
-              measurementSchema.getMeasurementId(), pageBuffer.size());
+      logger.debug(
+          "finish to flush a page header {} of {} into buffer, buffer position {} ",
+          header,
+          measurementSchema.getMeasurementId(),
+          pageBuffer.size());
 
       statistics.mergeStatistics(header.getStatistics());
 
     } catch (IOException e) {
-      throw new PageException(
-          "IO Exception in writeDataPageHeader,ignore this page", e);
+      throw new PageException("IO Exception in writeDataPageHeader,ignore this page", e);
     }
     numOfPages++;
     // write page content to temp PBAOS
@@ -410,7 +408,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   /**
    * write the page to specified IOWriter.
    *
-   * @param writer     the specified IOWriter
+   * @param writer the specified IOWriter
    * @param statistics the chunk statistics
    * @throws IOException exception in IO
    */
@@ -421,8 +419,14 @@ public class ChunkWriterImpl implements IChunkWriter {
     }
 
     // start to write this column chunk
-    writer.startFlushChunk(measurementSchema, compressor.getType(), measurementSchema.getType(),
-        measurementSchema.getEncodingType(), statistics, pageBuffer.size(), numOfPages);
+    writer.startFlushChunk(
+        measurementSchema,
+        compressor.getType(),
+        measurementSchema.getType(),
+        measurementSchema.getEncodingType(),
+        statistics,
+        pageBuffer.size(),
+        numOfPages);
 
     long dataOffset = writer.getPos();
 
@@ -432,8 +436,11 @@ public class ChunkWriterImpl implements IChunkWriter {
     int dataSize = (int) (writer.getPos() - dataOffset);
     if (dataSize != pageBuffer.size()) {
       throw new IOException(
-          "Bytes written is inconsistent with the size of data: " + dataSize + " !="
-              + " " + pageBuffer.size());
+          "Bytes written is inconsistent with the size of data: "
+              + dataSize
+              + " !="
+              + " "
+              + pageBuffer.size());
     }
 
     writer.endCurrentChunk();

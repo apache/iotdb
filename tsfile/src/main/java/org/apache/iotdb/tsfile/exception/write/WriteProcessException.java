@@ -18,9 +18,7 @@
  */
 package org.apache.iotdb.tsfile.exception.write;
 
-/**
- * This exception is threw while meeting error in writing procession.
- */
+/** This exception is threw while meeting error in writing procession. */
 public class WriteProcessException extends Exception {
 
   private static final long serialVersionUID = -2664638061585302767L;

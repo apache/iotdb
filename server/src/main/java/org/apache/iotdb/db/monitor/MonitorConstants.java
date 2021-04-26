@@ -28,12 +28,10 @@ public class MonitorConstants {
   public static final String[] STAT_STORAGE_GROUP_ARRAY = {"root", "stats"};
   public static final String[] STAT_GLOBAL_ARRAY = {"root", "stats", "\"global\""};
 
-
-  /**
-   * Stat information.
-   */
+  /** Stat information. */
   public enum StatMeasurementConstants {
-    TOTAL_POINTS("TOTAL_POINTS"), TOTAL_REQ_SUCCESS("TOTAL_REQ_SUCCESS"),
+    TOTAL_POINTS("TOTAL_POINTS"),
+    TOTAL_REQ_SUCCESS("TOTAL_REQ_SUCCESS"),
     TOTAL_REQ_FAIL("TOTAL_REQ_FAIL");
 
     StatMeasurementConstants(String measurement) {

@@ -19,18 +19,17 @@
 
 package org.apache.iotdb.cluster.log.logtypes;
 
+import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.utils.NodeSerializeUtils;
+
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
-import org.apache.iotdb.cluster.log.Log;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.db.utils.SerializeUtils;
 
-/**
- * AddNodeLog records the operation of adding a node into this cluster.
- */
+/** AddNodeLog records the operation of adding a node into this cluster. */
 public class AddNodeLog extends Log {
 
   private ByteBuffer partitionTable;
@@ -44,8 +43,7 @@ public class AddNodeLog extends Log {
     this.newNode = newNode;
   }
 
-  public AddNodeLog() {
-  }
+  public AddNodeLog() {}
 
   public long getMetaLogIndex() {
     return metaLogIndex;
@@ -81,7 +79,7 @@ public class AddNodeLog extends Log {
       dataOutputStream.writeLong(getCurrLogTerm());
       dataOutputStream.writeLong(getMetaLogIndex());
 
-      SerializeUtils.serialize(newNode, dataOutputStream);
+      NodeSerializeUtils.serialize(newNode, dataOutputStream);
 
       dataOutputStream.writeInt(partitionTable.array().length);
       dataOutputStream.write(partitionTable.array());
@@ -102,7 +100,7 @@ public class AddNodeLog extends Log {
     setMetaLogIndex(buffer.getLong());
 
     newNode = new Node();
-    SerializeUtils.deserialize(newNode, buffer);
+    NodeSerializeUtils.deserialize(newNode, buffer);
 
     int len = buffer.getInt();
     byte[] data = new byte[len];
@@ -122,8 +120,8 @@ public class AddNodeLog extends Log {
       return false;
     }
     AddNodeLog that = (AddNodeLog) o;
-    return Objects.equals(newNode, that.newNode) && Objects
-        .equals(partitionTable, that.partitionTable);
+    return Objects.equals(newNode, that.newNode)
+        && Objects.equals(partitionTable, that.partitionTable);
   }
 
   @Override

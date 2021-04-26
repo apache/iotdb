@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.engine.flush;
 
-import java.util.concurrent.ConcurrentLinkedDeque;
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -32,15 +31,21 @@ import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.concurrent.ConcurrentLinkedDeque;
+
+import static java.io.File.separator;
 
 public class FlushManager implements FlushManagerMBean, IService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FlushManager.class);
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private ConcurrentLinkedDeque<TsFileProcessor> tsFileProcessorQueue = new ConcurrentLinkedDeque<>();
+  private ConcurrentLinkedDeque<TsFileProcessor> tsFileProcessorQueue =
+      new ConcurrentLinkedDeque<>();
 
   private FlushTaskPoolManager flushPool = FlushTaskPoolManager.getInstance();
 
@@ -99,14 +104,16 @@ public class FlushManager implements FlushManagerMBean, IService {
       tsFileProcessor.flushOneMemTable();
       tsFileProcessor.setManagedByFlushManager(false);
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Flush Thread re-register TSProcessor {} to the queue.",
+        LOGGER.debug(
+            "Flush Thread re-register TSProcessor {} to the queue.",
             tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath());
       }
       registerTsFileProcessor(tsFileProcessor);
       // update stat monitor cache to system during each flush()
       if (config.isEnableStatMonitor() && config.isEnableMonitorSeriesWrite()) {
         try {
-          StatMonitor.getInstance().saveStatValue(tsFileProcessor.getStorageGroupName());
+          StatMonitor.getInstance()
+              .saveStatValue(tsFileProcessor.getStorageGroupName().split(separator)[0]);
         } catch (StorageEngineException | MetadataException e) {
           LOGGER.error("Inserting monitor series data error.", e);
         }
@@ -114,9 +121,7 @@ public class FlushManager implements FlushManagerMBean, IService {
     }
   }
 
-  /**
-   * Add TsFileProcessor to asyncTryToFlush manager
-   */
+  /** Add TsFileProcessor to asyncTryToFlush manager */
   @SuppressWarnings("squid:S2445")
   public void registerTsFileProcessor(TsFileProcessor tsFileProcessor) {
     synchronized (tsFileProcessor) {
@@ -132,13 +137,15 @@ public class FlushManager implements FlushManagerMBean, IService {
             LOGGER.debug(
                 "{} begin to submit a flush thread, flushing memtable size: {}, queue size: {}",
                 tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath(),
-                tsFileProcessor.getFlushingMemTableSize(), tsFileProcessorQueue.size());
+                tsFileProcessor.getFlushingMemTableSize(),
+                tsFileProcessorQueue.size());
           }
           tsFileProcessor.setManagedByFlushManager(true);
           flushPool.submit(new FlushThread());
         } else {
           if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("No flushing memetable to do, register TsProcessor {} failed.",
+            LOGGER.debug(
+                "No flushing memetable to do, register TsProcessor {} failed.",
                 tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath());
           }
         }
@@ -146,8 +153,7 @@ public class FlushManager implements FlushManagerMBean, IService {
     }
   }
 
-  private FlushManager() {
-  }
+  private FlushManager() {}
 
   public static FlushManager getInstance() {
     return InstanceHolder.instance;
@@ -155,15 +161,16 @@ public class FlushManager implements FlushManagerMBean, IService {
 
   private static class InstanceHolder {
 
-    private InstanceHolder() {
-    }
+    private InstanceHolder() {}
 
     private static FlushManager instance = new FlushManager();
   }
 
   public String toString() {
-    return String.format("TSProcessors in the queue: %d, TaskPool size %d + %d,",
-        tsFileProcessorQueue.size(), flushPool.getWorkingTasksNumber(),
+    return String.format(
+        "TSProcessors in the queue: %d, TaskPool size %d + %d,",
+        tsFileProcessorQueue.size(),
+        flushPool.getWorkingTasksNumber(),
         flushPool.getWaitingTasksNumber());
   }
 }

@@ -19,9 +19,7 @@
 
 package org.apache.iotdb.cluster.exception;
 
-/**
- * Raised when add/remove membership log can not be sent to all data groups
- */
+/** Raised when add/remove membership log can not be sent to all data groups */
 public class ChangeMembershipException extends Exception {
 
   public ChangeMembershipException(String errMsg) {

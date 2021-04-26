@@ -19,10 +19,6 @@
 
 package org.apache.iotdb.cluster.server.service;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.List;
-import java.util.Set;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
@@ -33,6 +29,7 @@ import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.LastQueryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.MultSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
@@ -42,16 +39,24 @@ import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
+import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.service.IoTDB;
+
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class DataAsyncService extends BaseAsyncService implements TSDataService.AsyncIface {
 
@@ -74,8 +79,8 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
   }
 
   @Override
-  public void pullSnapshot(PullSnapshotRequest request,
-      AsyncMethodCallback<PullSnapshotResp> resultHandler) {
+  public void pullSnapshot(
+      PullSnapshotRequest request, AsyncMethodCallback<PullSnapshotResp> resultHandler) {
     PullSnapshotResp pullSnapshotResp = null;
     try {
       pullSnapshotResp = dataGroupMember.getSnapshot(request);
@@ -89,15 +94,18 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
     }
   }
 
-  private void forwardPullSnapshot(PullSnapshotRequest request,
-      AsyncMethodCallback<PullSnapshotResp> resultHandler) {
+  private void forwardPullSnapshot(
+      PullSnapshotRequest request, AsyncMethodCallback<PullSnapshotResp> resultHandler) {
     // if this node has been set readOnly, then it must have been synchronized with the leader
     // otherwise forward the request to the leader
-    if (dataGroupMember.getLeader() != null && !ClusterConstant.EMPTY_NODE.equals(dataGroupMember.getLeader())) {
-      logger.debug("{} forwarding a pull snapshot request to the leader {}", name,
+    if (dataGroupMember.getLeader() != null
+        && !ClusterConstant.EMPTY_NODE.equals(dataGroupMember.getLeader())) {
+      logger.debug(
+          "{} forwarding a pull snapshot request to the leader {}",
+          name,
           dataGroupMember.getLeader());
-      AsyncDataClient client = (AsyncDataClient) dataGroupMember
-          .getAsyncClient(dataGroupMember.getLeader());
+      AsyncDataClient client =
+          (AsyncDataClient) dataGroupMember.getAsyncClient(dataGroupMember.getLeader());
       try {
         client.pullSnapshot(request, resultHandler);
       } catch (TException e) {
@@ -108,27 +116,35 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
     }
   }
 
+  /**
+   * forward the request to the leader
+   *
+   * @param request pull schema request
+   * @param resultHandler result handler
+   */
   @Override
-  public void pullTimeSeriesSchema(PullSchemaRequest request,
-      AsyncMethodCallback<PullSchemaResp> resultHandler) {
-    try {
-      resultHandler
-          .onComplete(dataGroupMember.getLocalQueryExecutor().queryTimeSeriesSchema(request));
-    } catch (CheckConsistencyException e) {
-      // if this node cannot synchronize with the leader with in a given time, forward the
-      // request to the leader
-      AsyncDataClient leaderClient = getLeaderClient();
-      if (leaderClient == null) {
-        resultHandler.onError(new LeaderUnknownException(dataGroupMember.getAllNodes()));
-        return;
-      }
+  public void pullTimeSeriesSchema(
+      PullSchemaRequest request, AsyncMethodCallback<PullSchemaResp> resultHandler) {
+    if (dataGroupMember.getCharacter() == NodeCharacter.LEADER) {
       try {
-        leaderClient.pullTimeSeriesSchema(request, resultHandler);
-      } catch (TException e1) {
-        resultHandler.onError(e1);
+        resultHandler.onComplete(
+            dataGroupMember.getLocalQueryExecutor().queryTimeSeriesSchema(request));
+        return;
+      } catch (CheckConsistencyException | MetadataException e) {
+        resultHandler.onError(e);
       }
-    } catch (MetadataException e) {
-      resultHandler.onError(e);
+    }
+
+    // forward the request to the leader
+    AsyncDataClient leaderClient = getLeaderClient();
+    if (leaderClient == null) {
+      resultHandler.onError(new LeaderUnknownException(dataGroupMember.getAllNodes()));
+      return;
+    }
+    try {
+      leaderClient.pullTimeSeriesSchema(request, resultHandler);
+    } catch (TException e1) {
+      resultHandler.onError(e1);
     }
   }
 
@@ -137,33 +153,41 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
     return (AsyncDataClient) dataGroupMember.getAsyncClient(dataGroupMember.getLeader());
   }
 
+  /**
+   * forward the request to the leader
+   *
+   * @param request pull schema request
+   * @param resultHandler result handler
+   */
   @Override
-  public void pullMeasurementSchema(PullSchemaRequest request,
-      AsyncMethodCallback<PullSchemaResp> resultHandler) {
-    try {
-      resultHandler
-          .onComplete(dataGroupMember.getLocalQueryExecutor().queryMeasurementSchema(request));
-    } catch (CheckConsistencyException e) {
-      // if this node cannot synchronize with the leader with in a given time, forward the
-      // request to the leader
-      AsyncDataClient leaderClient = getLeaderClient();
-      if (leaderClient == null) {
-        resultHandler.onError(new LeaderUnknownException(dataGroupMember.getAllNodes()));
-        return;
-      }
+  public void pullMeasurementSchema(
+      PullSchemaRequest request, AsyncMethodCallback<PullSchemaResp> resultHandler) {
+    if (dataGroupMember.getCharacter() == NodeCharacter.LEADER) {
       try {
-        leaderClient.pullMeasurementSchema(request, resultHandler);
-      } catch (TException e1) {
-        resultHandler.onError(e1);
+        resultHandler.onComplete(
+            dataGroupMember.getLocalQueryExecutor().queryMeasurementSchema(request));
+        return;
+      } catch (CheckConsistencyException | MetadataException e) {
+        resultHandler.onError(e);
       }
-    } catch (IllegalPathException e) {
-      resultHandler.onError(e);
+    }
+
+    // forward the request to the leader
+    AsyncDataClient leaderClient = getLeaderClient();
+    if (leaderClient == null) {
+      resultHandler.onError(new LeaderUnknownException(dataGroupMember.getAllNodes()));
+      return;
+    }
+    try {
+      leaderClient.pullMeasurementSchema(request, resultHandler);
+    } catch (TException e1) {
+      resultHandler.onError(e1);
     }
   }
 
   @Override
-  public void querySingleSeries(SingleSeriesQueryRequest request,
-      AsyncMethodCallback<Long> resultHandler) {
+  public void querySingleSeries(
+      SingleSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler) {
     try {
       resultHandler.onComplete(dataGroupMember.getLocalQueryExecutor().querySingleSeries(request));
     } catch (Exception e) {
@@ -172,8 +196,18 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
   }
 
   @Override
-  public void querySingleSeriesByTimestamp(SingleSeriesQueryRequest request,
-      AsyncMethodCallback<Long> resultHandler) {
+  public void queryMultSeries(
+      MultSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler) throws TException {
+    try {
+      resultHandler.onComplete(dataGroupMember.getLocalQueryExecutor().queryMultSeries(request));
+    } catch (Exception e) {
+      resultHandler.onError(e);
+    }
+  }
+
+  @Override
+  public void querySingleSeriesByTimestamp(
+      SingleSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler) {
     try {
       resultHandler.onComplete(
           dataGroupMember.getLocalQueryExecutor().querySingleSeriesByTimestamp(request));
@@ -183,7 +217,11 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
   }
 
   @Override
-  public void endQuery(Node header, int raftId, Node requester, long queryId,
+  public void endQuery(
+      Node header,
+      int raftId,
+      Node requester,
+      long queryId,
       AsyncMethodCallback<Void> resultHandler) {
     try {
       dataGroupMember.getQueryManager().endQuery(requester, queryId);
@@ -194,8 +232,8 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
   }
 
   @Override
-  public void fetchSingleSeries(Node header, int raftId, long readerId,
-      AsyncMethodCallback<ByteBuffer> resultHandler) {
+  public void fetchSingleSeries(
+      Node header, int raftId, long readerId, AsyncMethodCallback<ByteBuffer> resultHandler) {
     try {
       resultHandler.onComplete(dataGroupMember.getLocalQueryExecutor().fetchSingleSeries(readerId));
     } catch (ReaderNotFoundException | IOException e) {
@@ -204,18 +242,45 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
   }
 
   @Override
-  public void fetchSingleSeriesByTimestamp(Node header, int raftId, long readerId, long timestamp,
-      AsyncMethodCallback<ByteBuffer> resultHandler) {
+  public void fetchMultSeries(
+      Node header,
+      int raftId,
+      long readerId,
+      List<String> paths,
+      AsyncMethodCallback<Map<String, ByteBuffer>> resultHandler)
+      throws TException {
     try {
-      resultHandler.onComplete(dataGroupMember.getLocalQueryExecutor()
-          .fetchSingleSeriesByTimestamp(readerId, timestamp));
+      resultHandler.onComplete(
+          dataGroupMember.getLocalQueryExecutor().fetchMultSeries(readerId, paths));
     } catch (ReaderNotFoundException | IOException e) {
       resultHandler.onError(e);
     }
   }
 
   @Override
-  public void getAllPaths(Node header, int raftId, List<String> paths, boolean withAlias,
+  public void fetchSingleSeriesByTimestamps(
+      Node header,
+      int raftId,
+      long readerId,
+      List<Long> timestamps,
+      AsyncMethodCallback<ByteBuffer> resultHandler) {
+    try {
+      resultHandler.onComplete(
+          dataGroupMember
+              .getLocalQueryExecutor()
+              .fetchSingleSeriesByTimestamps(
+                  readerId, timestamps.stream().mapToLong(k -> k).toArray(), timestamps.size()));
+    } catch (ReaderNotFoundException | IOException e) {
+      resultHandler.onError(e);
+    }
+  }
+
+  @Override
+  public void getAllPaths(
+      Node header,
+      int raftId,
+      List<String> paths,
+      boolean withAlias,
       AsyncMethodCallback<GetAllPathsResult> resultHandler) {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
@@ -226,8 +291,8 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
   }
 
   @Override
-  public void getAllDevices(Node header, int raftId, List<String> path,
-      AsyncMethodCallback<Set<String>> resultHandler) {
+  public void getAllDevices(
+      Node header, int raftId, List<String> path, AsyncMethodCallback<Set<String>> resultHandler) {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
       resultHandler.onComplete(((CMManager) IoTDB.metaManager).getAllDevices(path));
@@ -237,7 +302,24 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
   }
 
   @Override
-  public void getNodeList(Node header, int raftId, String path, int nodeLevel,
+  public void getDevices(
+      Node header,
+      int raftId,
+      ByteBuffer planBinary,
+      AsyncMethodCallback<ByteBuffer> resultHandler) {
+    try {
+      resultHandler.onComplete(dataGroupMember.getLocalQueryExecutor().getDevices(planBinary));
+    } catch (CheckConsistencyException | IOException | MetadataException e) {
+      resultHandler.onError(e);
+    }
+  }
+
+  @Override
+  public void getNodeList(
+      Node header,
+      int raftId,
+      String path,
+      int nodeLevel,
       AsyncMethodCallback<List<String>> resultHandler) {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
@@ -248,8 +330,19 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
   }
 
   @Override
-  public void getChildNodePathInNextLevel(Node header, int raftId, String path,
-      AsyncMethodCallback<Set<String>> resultHandler) {
+  public void getChildNodeInNextLevel(
+      Node header, int raftId, String path, AsyncMethodCallback<Set<String>> resultHandler) {
+    try {
+      dataGroupMember.syncLeaderWithConsistencyCheck(false);
+      resultHandler.onComplete(((CMManager) IoTDB.metaManager).getChildNodeInNextLevel(path));
+    } catch (CheckConsistencyException | MetadataException e) {
+      resultHandler.onError(e);
+    }
+  }
+
+  @Override
+  public void getChildNodePathInNextLevel(
+      Node header, int raftId, String path, AsyncMethodCallback<Set<String>> resultHandler) {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
       resultHandler.onComplete(((CMManager) IoTDB.metaManager).getChildNodePathInNextLevel(path));
@@ -259,19 +352,22 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
   }
 
   @Override
-  public void getAllMeasurementSchema(Node header, int raftId, ByteBuffer planBinary,
+  public void getAllMeasurementSchema(
+      Node header,
+      int raftId,
+      ByteBuffer planBinary,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
     try {
-      resultHandler
-          .onComplete(dataGroupMember.getLocalQueryExecutor().getAllMeasurementSchema(planBinary));
+      resultHandler.onComplete(
+          dataGroupMember.getLocalQueryExecutor().getAllMeasurementSchema(planBinary));
     } catch (CheckConsistencyException | IOException | MetadataException e) {
       resultHandler.onError(e);
     }
   }
 
   @Override
-  public void getAggrResult(GetAggrResultRequest request,
-      AsyncMethodCallback<List<ByteBuffer>> resultHandler) {
+  public void getAggrResult(
+      GetAggrResultRequest request, AsyncMethodCallback<List<ByteBuffer>> resultHandler) {
     try {
       resultHandler.onComplete(dataGroupMember.getLocalQueryExecutor().getAggrResult(request));
     } catch (StorageEngineException | QueryProcessException | IOException e) {
@@ -280,7 +376,10 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
   }
 
   @Override
-  public void getUnregisteredTimeseries(Node header, int raftId, List<String> timeseriesList,
+  public void getUnregisteredTimeseries(
+      Node header,
+      int raftId,
+      List<String> timeseriesList,
       AsyncMethodCallback<List<String>> resultHandler) {
     try {
       resultHandler.onComplete(
@@ -300,7 +399,11 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
   }
 
   @Override
-  public void getGroupByResult(Node header, int raftId, long executorId, long startTime,
+  public void getGroupByResult(
+      Node header,
+      int raftId,
+      long executorId,
+      long startTime,
       long endTime,
       AsyncMethodCallback<List<ByteBuffer>> resultHandler) {
     try {
@@ -312,11 +415,14 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
   }
 
   @Override
-  public void previousFill(PreviousFillRequest request,
-      AsyncMethodCallback<ByteBuffer> resultHandler) {
+  public void previousFill(
+      PreviousFillRequest request, AsyncMethodCallback<ByteBuffer> resultHandler) {
     try {
       resultHandler.onComplete(dataGroupMember.getLocalQueryExecutor().previousFill(request));
-    } catch (QueryProcessException | StorageEngineException | IOException | IllegalPathException e) {
+    } catch (QueryProcessException
+        | StorageEngineException
+        | IOException
+        | IllegalPathException e) {
       resultHandler.onError(e);
     }
   }
@@ -325,39 +431,51 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
   public void last(LastQueryRequest request, AsyncMethodCallback<ByteBuffer> resultHandler) {
     try {
       resultHandler.onComplete(dataGroupMember.getLocalQueryExecutor().last(request));
-    } catch (CheckConsistencyException | QueryProcessException | IOException | StorageEngineException | IllegalPathException e) {
+    } catch (CheckConsistencyException
+        | QueryProcessException
+        | IOException
+        | StorageEngineException
+        | IllegalPathException e) {
       resultHandler.onError(e);
     }
   }
 
   @Override
-  public void getPathCount(Node header, int raftId, List<String> pathsToQuery, int level,
+  public void getPathCount(
+      Node header,
+      int raftId,
+      List<String> pathsToQuery,
+      int level,
       AsyncMethodCallback<Integer> resultHandler) {
     try {
-      resultHandler
-          .onComplete(dataGroupMember.getLocalQueryExecutor().getPathCount(pathsToQuery, level));
+      resultHandler.onComplete(
+          dataGroupMember.getLocalQueryExecutor().getPathCount(pathsToQuery, level));
     } catch (CheckConsistencyException | MetadataException e) {
       resultHandler.onError(e);
     }
   }
 
   @Override
-  public void onSnapshotApplied(Node header, int raftId, List<Integer> slots,
-      AsyncMethodCallback<Boolean> resultHandler) {
+  public void onSnapshotApplied(
+      Node header, int raftId, List<Integer> slots, AsyncMethodCallback<Boolean> resultHandler) {
     resultHandler.onComplete(dataGroupMember.onSnapshotInstalled(slots));
   }
 
   @Override
-  public void peekNextNotNullValue(Node header, int raftId, long executorId, long startTime,
+  public void peekNextNotNullValue(
+      Node header,
+      int raftId,
+      long executorId,
+      long startTime,
       long endTime,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
     try {
-      resultHandler.onComplete(dataGroupMember.getLocalQueryExecutor()
-          .peekNextNotNullValue(executorId, startTime, endTime));
+      resultHandler.onComplete(
+          dataGroupMember
+              .getLocalQueryExecutor()
+              .peekNextNotNullValue(executorId, startTime, endTime));
     } catch (ReaderNotFoundException | IOException e) {
       resultHandler.onError(e);
     }
   }
-
-
 }

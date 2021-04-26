@@ -19,14 +19,17 @@
 
 package org.apache.iotdb.db.engine.storagegroup.timeindex;
 
+import org.apache.iotdb.db.exception.PartitionViolationException;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Set;
-import org.apache.iotdb.db.exception.PartitionViolationException;
 
 public interface ITimeIndex {
+
+  int SPANS_MULTI_TIME_PARTITIONS_FLAG_ID = -1;
 
   /**
    * serialize to outputStream
@@ -51,9 +54,7 @@ public interface ITimeIndex {
    */
   ITimeIndex deserialize(ByteBuffer buffer);
 
-  /**
-   * do something when TsFileResource is closing (may be empty method)
-   */
+  /** do something when TsFileResource is closing (may be empty method) */
   void close();
 
   /**
@@ -63,9 +64,7 @@ public interface ITimeIndex {
    */
   Set<String> getDevices();
 
-  /**
-   * @return whether end time is empty (Long.MIN_VALUE)
-   */
+  /** @return whether end time is empty (Long.MIN_VALUE) */
   boolean endTimeEmpty();
 
   /**
@@ -74,9 +73,7 @@ public interface ITimeIndex {
    */
   boolean stillLives(long timeLowerBound);
 
-  /**
-   * @return Calculate file index ram size
-   */
+  /** @return Calculate file index ram size */
   long calculateRamSize();
 
   /**
@@ -90,25 +87,32 @@ public interface ITimeIndex {
   /**
    * get time partition
    *
-   * @param tsfilePath tsfile absolute path
+   * @param tsFilePath tsFile absolute path
    * @return partition
    */
-  long getTimePartition(String tsfilePath);
+  long getTimePartition(String tsFilePath);
 
   /**
-   * get time partition with check. If data of tsfile cross partitions, an exception will be thrown
+   * get time partition with check. If data of tsFile spans partitions, an exception will be thrown
    *
-   * @param tsfilePath tsfile path
+   * @param tsFilePath tsFile path
    * @return partition
-   * @throws PartitionViolationException data of tsfile cross partitions
+   * @throws PartitionViolationException data of tsFile spans partitions
    */
-  long getTimePartitionWithCheck(String tsfilePath) throws PartitionViolationException;
+  long getTimePartitionWithCheck(String tsFilePath) throws PartitionViolationException;
+
+  /**
+   * Check whether the tsFile spans multiple time partitions.
+   *
+   * @return true if the tsFile spans multiple time partitions, otherwise false.
+   */
+  boolean isSpanMultiTimePartitions();
 
   /**
    * update start time
    *
    * @param deviceId device name
-   * @param time     start time
+   * @param time start time
    */
   void updateStartTime(String deviceId, long time);
 
@@ -116,9 +120,25 @@ public interface ITimeIndex {
    * update end time
    *
    * @param deviceId device name
-   * @param time     end time
+   * @param time end time
    */
   void updateEndTime(String deviceId, long time);
+
+  /**
+   * put start time
+   *
+   * @param deviceId device name
+   * @param time start time
+   */
+  void putStartTime(String deviceId, long time);
+
+  /**
+   * put end time
+   *
+   * @param deviceId device name
+   * @param time end time
+   */
+  void putEndTime(String deviceId, long time);
 
   /**
    * get start time of device

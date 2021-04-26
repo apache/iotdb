@@ -19,10 +19,6 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -40,6 +36,11 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+
 public class LocalGroupByExecutor implements GroupByExecutor {
 
   private final IAggregateReader reader;
@@ -56,15 +57,30 @@ public class LocalGroupByExecutor implements GroupByExecutor {
 
   private QueryDataSource queryDataSource;
 
-  public LocalGroupByExecutor(PartialPath path, Set<String> allSensors, TSDataType dataType,
-      QueryContext context, Filter timeFilter, TsFileFilter fileFilter, boolean ascending)
+  public LocalGroupByExecutor(
+      PartialPath path,
+      Set<String> allSensors,
+      TSDataType dataType,
+      QueryContext context,
+      Filter timeFilter,
+      TsFileFilter fileFilter,
+      boolean ascending)
       throws StorageEngineException, QueryProcessException {
-    queryDataSource = QueryResourceManager.getInstance()
-        .getQueryDataSource(path, context, timeFilter);
+    queryDataSource =
+        QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter);
     // update filter by TTL
     timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
-    this.reader = new SeriesAggregateReader(path, allSensors, dataType, context, queryDataSource,
-        timeFilter, null, fileFilter, ascending);
+    this.reader =
+        new SeriesAggregateReader(
+            path,
+            allSensors,
+            dataType,
+            context,
+            queryDataSource,
+            timeFilter,
+            null,
+            fileFilter,
+            ascending);
     this.preCachedData = null;
     timeRange = new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE);
     lastReadCurArrayIndex = 0;
@@ -73,8 +89,8 @@ public class LocalGroupByExecutor implements GroupByExecutor {
   }
 
   public boolean isEmpty() {
-    return queryDataSource.getSeqResources().isEmpty() && queryDataSource.getUnseqResources()
-        .isEmpty();
+    return queryDataSource.getSeqResources().isEmpty()
+        && queryDataSource.getUnseqResources().isEmpty();
   }
 
   @Override
@@ -91,15 +107,15 @@ public class LocalGroupByExecutor implements GroupByExecutor {
     return true;
   }
 
-
-  /**
-   * @return if already get the result
-   */
+  /** @return if already get the result */
   private boolean calcFromCacheData(long curStartTime, long curEndTime) throws IOException {
     calcFromBatch(preCachedData, curStartTime, curEndTime);
     // The result is calculated from the cache
-    return (preCachedData != null && (ascending ? preCachedData.getMaxTimestamp() >= curEndTime
-        : preCachedData.getMinTimestamp() < curStartTime)) || isEndCalc();
+    return (preCachedData != null
+            && (ascending
+                ? preCachedData.getMaxTimestamp() >= curEndTime
+                : preCachedData.getMinTimestamp() < curStartTime))
+        || isEndCalc();
   }
 
   @SuppressWarnings("squid:S3776")
@@ -145,12 +161,12 @@ public class LocalGroupByExecutor implements GroupByExecutor {
       return false;
     }
 
-    if (ascending && (batchData.getMaxTimestamp() < curStartTime
-        || batchData.currentTime() >= curEndTime)) {
+    if (ascending
+        && (batchData.getMaxTimestamp() < curStartTime || batchData.currentTime() >= curEndTime)) {
       return false;
     }
-    if (!ascending && (batchData.getTimeByIndex(0) >= curEndTime
-        || batchData.currentTime() < curStartTime)) {
+    if (!ascending
+        && (batchData.getTimeByIndex(0) >= curEndTime || batchData.currentTime() < curStartTime)) {
       preCachedData = batchData;
       return false;
     }
@@ -219,7 +235,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
       throws IOException {
     try {
       if (preCachedData != null && preCachedData.hasCurrent()) {
-        //save context
+        // save context
         int readCurArrayIndex = preCachedData.getReadCurArrayIndex();
         int readCurListIndex = preCachedData.getReadCurListIndex();
 
@@ -233,7 +249,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
         preCachedData.resetBatchData(readCurArrayIndex, readCurListIndex);
         return new Pair<>(nextStartTime, aggregateResults.get(0).getResult());
       } else {
-        //save context
+        // save context
         int readCurArrayIndex = lastReadCurArrayIndex;
         int readCurListIndex = lastReadCurListIndex;
 
@@ -324,8 +340,11 @@ public class LocalGroupByExecutor implements GroupByExecutor {
       calcFromBatch(batchData, curStartTime, curEndTime);
 
       // judge whether the calculation finished
-      if (isEndCalc() || (batchData.hasCurrent() && (ascending ?
-          batchData.currentTime() >= curEndTime : batchData.currentTime() < curStartTime))) {
+      if (isEndCalc()
+          || (batchData.hasCurrent()
+              && (ascending
+                  ? batchData.currentTime() >= curEndTime
+                  : batchData.currentTime() < curStartTime))) {
         return true;
       }
     }

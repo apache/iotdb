@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.tsfile.read.controller;
 
-
 import org.apache.iotdb.tsfile.common.cache.LRUCache;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -26,9 +25,7 @@ import org.apache.iotdb.tsfile.read.common.Chunk;
 
 import java.io.IOException;
 
-/**
- * Read one Chunk and cache it into a LRUCache, only used in tsfile module.
- */
+/** Read one Chunk and cache it into a LRUCache, only used in tsfile module. */
 public class CachedChunkLoaderImpl implements IChunkLoader {
 
   private static final int DEFAULT_CHUNK_CACHE_SIZE = 1000;
@@ -43,25 +40,29 @@ public class CachedChunkLoaderImpl implements IChunkLoader {
    * constructor of ChunkLoaderImpl.
    *
    * @param fileSequenceReader file sequence reader
-   * @param cacheSize          cache size
+   * @param cacheSize cache size
    */
   public CachedChunkLoaderImpl(TsFileSequenceReader fileSequenceReader, int cacheSize) {
 
     this.reader = fileSequenceReader;
 
-    chunkCache = new LRUCache<ChunkMetadata, Chunk>(cacheSize) {
+    chunkCache =
+        new LRUCache<ChunkMetadata, Chunk>(cacheSize) {
 
-      @Override
-      public Chunk loadObjectByKey(ChunkMetadata metaData) throws IOException {
-        return reader.readMemChunk(metaData);
-      }
-    };
+          @Override
+          public Chunk loadObjectByKey(ChunkMetadata metaData) throws IOException {
+            return reader.readMemChunk(metaData);
+          }
+        };
   }
 
   @Override
   public Chunk loadChunk(ChunkMetadata chunkMetaData) throws IOException {
     Chunk chunk = chunkCache.get(chunkMetaData);
-    return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeleteIntervalList(),
+    return new Chunk(
+        chunk.getHeader(),
+        chunk.getData().duplicate(),
+        chunk.getDeleteIntervalList(),
         chunkMetaData.getStatistics());
   }
 

@@ -19,7 +19,21 @@
 
 package org.apache.iotdb.db.engine.merge.manage;
 
+import org.apache.iotdb.db.concurrent.ThreadName;
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.merge.task.MergeMultiChunkTask.MergeChunkHeapTask;
+import org.apache.iotdb.db.engine.merge.task.MergeTask;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.service.IService;
+import org.apache.iotdb.db.service.JMXService;
+import org.apache.iotdb.db.service.ServiceType;
+
 import com.google.common.util.concurrent.RateLimiter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -37,18 +51,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.iotdb.db.concurrent.ThreadName;
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.merge.task.MergeMultiChunkTask.MergeChunkHeapTask;
-import org.apache.iotdb.db.engine.merge.task.MergeTask;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.service.IService;
-import org.apache.iotdb.db.service.JMXService;
-import org.apache.iotdb.db.service.ServiceType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * MergeManager provides a ThreadPool to queue and run all merge tasks to restrain the total
@@ -58,9 +60,9 @@ public class MergeManager implements IService, MergeManagerMBean {
 
   private static final Logger logger = LoggerFactory.getLogger(MergeManager.class);
   private static final MergeManager INSTANCE = new MergeManager();
-  private final String mbeanName = String
-      .format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE,
-          getID().getJmxName());
+  private final String mbeanName =
+      String.format(
+          "%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, getID().getJmxName());
   private final RateLimiter mergeWriteRateLimiter = RateLimiter.create(Double.MAX_VALUE);
 
   private AtomicInteger threadCnt = new AtomicInteger();
@@ -72,17 +74,14 @@ public class MergeManager implements IService, MergeManagerMBean {
   private Map<String, Set<MergeFuture>> storageGroupMainTasks = new ConcurrentHashMap<>();
   private Map<String, Set<MergeFuture>> storageGroupSubTasks = new ConcurrentHashMap<>();
 
-  private MergeManager() {
-  }
+  private MergeManager() {}
 
   public RateLimiter getMergeWriteRateLimiter() {
     setWriteMergeRate(IoTDBDescriptor.getInstance().getConfig().getMergeWriteThroughputMbPerSec());
     return mergeWriteRateLimiter;
   }
 
-  /**
-   * wait by throughoutMbPerSec limit to avoid continuous Write Or Read
-   */
+  /** wait by throughoutMbPerSec limit to avoid continuous Write Or Read */
   public static void mergeRateLimiterAcquire(RateLimiter limiter, long bytesLength) {
     while (bytesLength >= Integer.MAX_VALUE) {
       limiter.acquire(Integer.MAX_VALUE);
@@ -110,8 +109,9 @@ public class MergeManager implements IService, MergeManagerMBean {
 
   public void submitMainTask(MergeTask mergeTask) {
     MergeFuture future = (MergeFuture) mergeTaskPool.submit(mergeTask);
-    storageGroupMainTasks.computeIfAbsent(mergeTask.getStorageGroupName(),
-        k -> new ConcurrentSkipListSet<>()).add(future);
+    storageGroupMainTasks
+        .computeIfAbsent(mergeTask.getStorageGroupName(), k -> new ConcurrentSkipListSet<>())
+        .add(future);
   }
 
   public Future<Void> submitChunkSubTask(MergeChunkHeapTask task) {
@@ -136,20 +136,23 @@ public class MergeManager implements IService, MergeManagerMBean {
         chunkSubThreadNum = 1;
       }
 
-      mergeTaskPool = new MergeThreadPool(threadNum,
-          r -> new Thread(r, "MergeThread-" + threadCnt.getAndIncrement()));
-      mergeChunkSubTaskPool = new MergeThreadPool(threadNum * chunkSubThreadNum,
-          r -> new Thread(r, "MergeChunkSubThread-" + threadCnt.getAndIncrement()));
+      mergeTaskPool =
+          new MergeThreadPool(
+              threadNum, r -> new Thread(r, "MergeThread-" + threadCnt.getAndIncrement()));
+      mergeChunkSubTaskPool =
+          new MergeThreadPool(
+              threadNum * chunkSubThreadNum,
+              r -> new Thread(r, "MergeChunkSubThread-" + threadCnt.getAndIncrement()));
       long mergeInterval = IoTDBDescriptor.getInstance().getConfig().getMergeIntervalSec();
       if (mergeInterval > 0) {
-        timedMergeThreadPool = Executors.newSingleThreadScheduledExecutor(r -> new Thread(r,
-            "TimedMergeThread"));
-        timedMergeThreadPool.scheduleAtFixedRate(this::mergeAll, mergeInterval,
-            mergeInterval, TimeUnit.SECONDS);
+        timedMergeThreadPool =
+            Executors.newSingleThreadScheduledExecutor(r -> new Thread(r, "TimedMergeThread"));
+        timedMergeThreadPool.scheduleAtFixedRate(
+            this::mergeAll, mergeInterval, mergeInterval, TimeUnit.SECONDS);
       }
 
-      taskCleanerThreadPool = Executors.newSingleThreadScheduledExecutor(r -> new Thread(r,
-          "MergeTaskCleaner"));
+      taskCleanerThreadPool =
+          Executors.newSingleThreadScheduledExecutor(r -> new Thread(r, "MergeTaskCleaner"));
       taskCleanerThreadPool.scheduleAtFixedRate(this::cleanFinishedTask, 30, 30, TimeUnit.MINUTES);
       logger.info("MergeManager started");
     }
@@ -173,8 +176,10 @@ public class MergeManager implements IService, MergeManagerMBean {
         try {
           Thread.sleep(200);
         } catch (InterruptedException e) {
-          logger.error("CompactionMergeTaskPoolManager {} shutdown",
-              ThreadName.COMPACTION_SERVICE.getName(), e);
+          logger.error(
+              "CompactionMergeTaskPoolManager {} shutdown",
+              ThreadName.COMPACTION_SERVICE.getName(),
+              e);
           Thread.currentThread().interrupt();
         }
         timeMillis += 200;
@@ -210,8 +215,10 @@ public class MergeManager implements IService, MergeManagerMBean {
         try {
           Thread.sleep(200);
         } catch (InterruptedException e) {
-          logger.error("CompactionMergeTaskPoolManager {} shutdown",
-              ThreadName.COMPACTION_SERVICE.getName(), e);
+          logger.error(
+              "CompactionMergeTaskPoolManager {} shutdown",
+              ThreadName.COMPACTION_SERVICE.getName(),
+              e);
           Thread.currentThread().interrupt();
         }
         timeMillis += 200;
@@ -259,8 +266,8 @@ public class MergeManager implements IService, MergeManagerMBean {
   @Override
   public void abortMerge(String storageGroup) {
     // abort sub-tasks first
-    Set<MergeFuture> subTasks = storageGroupSubTasks
-        .getOrDefault(storageGroup, Collections.emptySet());
+    Set<MergeFuture> subTasks =
+        storageGroupSubTasks.getOrDefault(storageGroup, Collections.emptySet());
     Iterator<MergeFuture> subIterator = subTasks.iterator();
     while (subIterator.hasNext()) {
       Future<Void> next = subIterator.next();
@@ -270,8 +277,8 @@ public class MergeManager implements IService, MergeManagerMBean {
       subIterator.remove();
     }
     // abort main tasks
-    Set<MergeFuture> mainTasks = storageGroupMainTasks
-        .getOrDefault(storageGroup, Collections.emptySet());
+    Set<MergeFuture> mainTasks =
+        storageGroupMainTasks.getOrDefault(storageGroup, Collections.emptySet());
     Iterator<MergeFuture> mainIterator = mainTasks.iterator();
     while (mainIterator.hasNext()) {
       Future<Void> next = mainIterator.next();
@@ -293,8 +300,8 @@ public class MergeManager implements IService, MergeManagerMBean {
 
   /**
    * @return 2 maps, the first map contains status of main merge tasks and the second map contains
-   * status of merge chunk heap tasks, both map use storage groups as keys and list of merge status
-   * as values.
+   *     status of merge chunk heap tasks, both map use storage groups as keys and list of merge
+   *     status as values.
    */
   public Map<String, List<TaskStatus>>[] collectTaskStatus() {
     Map<String, List<TaskStatus>>[] result = new Map[2];
@@ -324,10 +331,13 @@ public class MergeManager implements IService, MergeManagerMBean {
     for (Entry<String, List<TaskStatus>> stringListEntry : statusMaps[0].entrySet()) {
       String storageGroup = stringListEntry.getKey();
       List<TaskStatus> statusList = stringListEntry.getValue();
-      builder.append("\t").append("Storage group: ").append(storageGroup)
+      builder
+          .append("\t")
+          .append("Storage group: ")
+          .append(storageGroup)
           .append(System.lineSeparator());
       for (TaskStatus status : statusList) {
-        builder.append("\t\t").append(status.toString()).append(System.lineSeparator());
+        builder.append("\t\t").append(status).append(System.lineSeparator());
       }
     }
 
@@ -335,10 +345,13 @@ public class MergeManager implements IService, MergeManagerMBean {
     for (Entry<String, List<TaskStatus>> stringListEntry : statusMaps[1].entrySet()) {
       String storageGroup = stringListEntry.getKey();
       List<TaskStatus> statusList = stringListEntry.getValue();
-      builder.append("\t").append("Storage group: ").append(storageGroup)
+      builder
+          .append("\t")
+          .append("Storage group: ")
+          .append(storageGroup)
           .append(System.lineSeparator());
       for (TaskStatus status : statusList) {
-        builder.append("\t\t").append(status.toString()).append(System.lineSeparator());
+        builder.append("\t\t").append(status).append(System.lineSeparator());
       }
     }
     return builder.toString();
@@ -369,9 +382,9 @@ public class MergeManager implements IService, MergeManagerMBean {
 
     @Override
     public String toString() {
-      return String.format("%s, "
-              + "%s, %s, done:%s, cancelled:%s", taskName,
-          createdTime, progress, isDone, isCancelled);
+      return String.format(
+          "%s, " + "%s, %s, done:%s, cancelled:%s",
+          taskName, createdTime, progress, isDone, isCancelled);
     }
 
     public String getTaskName() {

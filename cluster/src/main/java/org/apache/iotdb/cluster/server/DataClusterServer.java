@@ -19,15 +19,6 @@
 
 package org.apache.iotdb.cluster.server;
 
-import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.NoHeaderNodeException;
@@ -50,6 +41,7 @@ import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.LastQueryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.MultSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
@@ -57,6 +49,7 @@ import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
+import org.apache.iotdb.cluster.rpc.thrift.RequestCommitIndexResponse;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
@@ -68,6 +61,7 @@ import org.apache.iotdb.cluster.server.monitor.NodeReport.DataMemberReport;
 import org.apache.iotdb.cluster.server.service.DataAsyncService;
 import org.apache.iotdb.cluster.server.service.DataSyncService;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+
 import org.apache.thrift.TException;
 import org.apache.thrift.TProcessor;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -78,8 +72,18 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class DataClusterServer extends RaftServer implements TSDataService.AsyncIface,
-    TSDataService.Iface {
+import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
+public class DataClusterServer extends RaftServer
+    implements TSDataService.AsyncIface, TSDataService.Iface {
 
   private static final Logger logger = LoggerFactory.getLogger(DataClusterServer.class);
 
@@ -96,8 +100,8 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   private DataGroupMember.Factory dataMemberFactory;
   private MetaGroupMember metaGroupMember;
 
-  public DataClusterServer(Node thisNode, DataGroupMember.Factory dataMemberFactory,
-      MetaGroupMember metaGroupMember) {
+  public DataClusterServer(
+      Node thisNode, DataGroupMember.Factory dataMemberFactory, MetaGroupMember metaGroupMember) {
     super(thisNode);
     this.dataMemberFactory = dataMemberFactory;
     this.metaGroupMember = metaGroupMember;
@@ -141,17 +145,19 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
     syncServiceMap.remove(header);
   }
 
-  private <T> DataAsyncService getDataAsyncService(Node node, int raftId,
-      AsyncMethodCallback<T> resultHandler, Object request) {
-      return getDataAsyncService(new RaftNode(node, raftId), resultHandler, request);
+  private <T> DataAsyncService getDataAsyncService(
+      Node node, int raftId, AsyncMethodCallback<T> resultHandler, Object request) {
+    return getDataAsyncService(new RaftNode(node, raftId), resultHandler, request);
   }
 
-  private <T> DataAsyncService getDataAsyncService(RaftNode raftNode,
-      AsyncMethodCallback<T> resultHandler, Object request) {
-    return asyncServiceMap.computeIfAbsent(raftNode, h -> {
-      DataGroupMember dataMember = getDataMember(raftNode, resultHandler, request);
-      return dataMember != null ? new DataAsyncService(dataMember) : null;
-    });
+  private <T> DataAsyncService getDataAsyncService(
+      RaftNode raftNode, AsyncMethodCallback<T> resultHandler, Object request) {
+    return asyncServiceMap.computeIfAbsent(
+        raftNode,
+        h -> {
+          DataGroupMember dataMember = getDataMember(raftNode, resultHandler, request);
+          return dataMember != null ? new DataAsyncService(dataMember) : null;
+        });
   }
 
   private DataSyncService getDataSyncService(Node header, int raftId) {
@@ -159,26 +165,28 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   private DataSyncService getDataSyncService(RaftNode header) {
-    return syncServiceMap.computeIfAbsent(header, h -> {
-      DataGroupMember dataMember = getDataMember(header, null, null);
-      return dataMember != null ? new DataSyncService(dataMember) : null;
-    });
+    return syncServiceMap.computeIfAbsent(
+        header,
+        h -> {
+          DataGroupMember dataMember = getDataMember(header, null, null);
+          return dataMember != null ? new DataSyncService(dataMember) : null;
+        });
   }
 
-  public <T> DataGroupMember getDataMember(Node node, int raftId,
-      AsyncMethodCallback<T> resultHandler, Object request) {
+  public <T> DataGroupMember getDataMember(
+      Node node, int raftId, AsyncMethodCallback<T> resultHandler, Object request) {
     return getDataMember(new RaftNode(node, raftId), resultHandler, request);
   }
 
   /**
-   * @param raftNode          the header of the group which the local node is in
+   * @param raftNode the header of the group which the local node is in
    * @param resultHandler can be set to null if the request is an internal request
-   * @param request       the toString() of this parameter should explain what the request is and it
-   *                      is only used in logs for tracing
+   * @param request the toString() of this parameter should explain what the request is and it is
+   *     only used in logs for tracing
    * @return
    */
-  public <T> DataGroupMember getDataMember(RaftNode raftNode,
-      AsyncMethodCallback<T> resultHandler, Object request) {
+  public <T> DataGroupMember getDataMember(
+      RaftNode raftNode, AsyncMethodCallback<T> resultHandler, Object request) {
     // if the resultHandler is not null, then the request is a external one and must be with a
     // header
     if (raftNode.getNode() == null) {
@@ -248,8 +256,11 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
         if (member != null) {
           return member;
         }
-        logger.info("This node {} does not belong to the group {}, header {}", thisNode,
-            partitionGroup, raftNode);
+        logger.info(
+            "This node {} does not belong to the group {}, header {}",
+            thisNode,
+            partitionGroup,
+            raftNode);
         throw new NotInSameGroupException(partitionGroup, thisNode);
       }
     }
@@ -260,10 +271,10 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   // request, and forward the request to it. See methods in DataGroupMember for details.
 
   @Override
-  public void sendHeartbeat(HeartBeatRequest request,
-      AsyncMethodCallback<HeartBeatResponse> resultHandler) {
-    DataAsyncService service = getDataAsyncService(request.getHeader(), request.getRaftId(),
-        resultHandler, request);
+  public void sendHeartbeat(
+      HeartBeatRequest request, AsyncMethodCallback<HeartBeatResponse> resultHandler) {
+    DataAsyncService service =
+        getDataAsyncService(request.getHeader(), request.getRaftId(), resultHandler, request);
     if (service != null) {
       service.sendHeartbeat(request, resultHandler);
     }
@@ -271,8 +282,8 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
 
   @Override
   public void startElection(ElectionRequest request, AsyncMethodCallback<Long> resultHandler) {
-    DataAsyncService service = getDataAsyncService(request.getHeader(), request.getRaftId(),
-        resultHandler, request);
+    DataAsyncService service =
+        getDataAsyncService(request.getHeader(), request.getRaftId(), resultHandler, request);
     if (service != null) {
       service.startElection(request, resultHandler);
     }
@@ -280,7 +291,8 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
 
   @Override
   public void appendEntries(AppendEntriesRequest request, AsyncMethodCallback<Long> resultHandler) {
-    DataAsyncService service = getDataAsyncService(request.getHeader(), request.getRaftId(), resultHandler, request);
+    DataAsyncService service =
+        getDataAsyncService(request.getHeader(), request.getRaftId(), resultHandler, request);
     if (service != null) {
       service.appendEntries(request, resultHandler);
     }
@@ -288,7 +300,8 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
 
   @Override
   public void appendEntry(AppendEntryRequest request, AsyncMethodCallback<Long> resultHandler) {
-    DataAsyncService service = getDataAsyncService(request.getHeader(), request.getRaftId(), resultHandler, request);
+    DataAsyncService service =
+        getDataAsyncService(request.getHeader(), request.getRaftId(), resultHandler, request);
     if (service != null) {
       service.appendEntry(request, resultHandler);
     }
@@ -296,79 +309,130 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
 
   @Override
   public void sendSnapshot(SendSnapshotRequest request, AsyncMethodCallback<Void> resultHandler) {
-    DataAsyncService service = getDataAsyncService(request.getHeader(), request.getRaftId(), resultHandler, request);
+    DataAsyncService service =
+        getDataAsyncService(request.getHeader(), request.getRaftId(), resultHandler, request);
     if (service != null) {
       service.sendSnapshot(request, resultHandler);
     }
   }
 
   @Override
-  public void pullSnapshot(PullSnapshotRequest request,
-      AsyncMethodCallback<PullSnapshotResp> resultHandler) {
-    DataAsyncService service = getDataAsyncService(request.getHeader(), request.getRaftId(), resultHandler, request);
+  public void pullSnapshot(
+      PullSnapshotRequest request, AsyncMethodCallback<PullSnapshotResp> resultHandler) {
+    DataAsyncService service =
+        getDataAsyncService(request.getHeader(), request.getRaftId(), resultHandler, request);
     if (service != null) {
       service.pullSnapshot(request, resultHandler);
     }
   }
 
   @Override
-  public void executeNonQueryPlan(ExecutNonQueryReq request,
-      AsyncMethodCallback<TSStatus> resultHandler) {
-    DataAsyncService service = getDataAsyncService(request.getHeader(), request.getRaftId(), resultHandler, request);
+  public void executeNonQueryPlan(
+      ExecutNonQueryReq request, AsyncMethodCallback<TSStatus> resultHandler) {
+    DataAsyncService service =
+        getDataAsyncService(request.getHeader(), request.getRaftId(), resultHandler, request);
     if (service != null) {
       service.executeNonQueryPlan(request, resultHandler);
     }
   }
 
   @Override
-  public void requestCommitIndex(Node header, int raftId, AsyncMethodCallback<Long> resultHandler) {
-    DataAsyncService service = getDataAsyncService(header, raftId, resultHandler, "Request commit index");
+  public void requestCommitIndex(
+      Node header, int raftId, AsyncMethodCallback<RequestCommitIndexResponse> resultHandler) {
+    DataAsyncService service =
+        getDataAsyncService(header, raftId, resultHandler, "Request commit index");
     if (service != null) {
       service.requestCommitIndex(header, raftId, resultHandler);
     }
   }
 
   @Override
-  public void readFile(String filePath, long offset, int length, int raftId,
+  public void readFile(
+      String filePath,
+      long offset,
+      int length,
+      int raftId,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
-    DataAsyncService service = getDataAsyncService(new RaftNode(thisNode, raftId), resultHandler,
-        "Read file:" + filePath);
+    DataAsyncService service =
+        getDataAsyncService(new RaftNode(thisNode, raftId), resultHandler, "Read file:" + filePath);
     if (service != null) {
       service.readFile(filePath, offset, length, raftId, resultHandler);
     }
   }
 
   @Override
-  public void querySingleSeries(SingleSeriesQueryRequest request,
-      AsyncMethodCallback<Long> resultHandler) {
-    DataAsyncService service = getDataAsyncService(request.getHeader(), request.getRaftId(),
-        resultHandler, "Query series:" + request.getPath());
+  public void querySingleSeries(
+      SingleSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler) {
+    DataAsyncService service =
+        getDataAsyncService(
+            request.getHeader(),
+            request.getRaftId(),
+            resultHandler,
+            "Query series:" + request.getPath());
     if (service != null) {
       service.querySingleSeries(request, resultHandler);
     }
   }
 
   @Override
-  public void fetchSingleSeries(Node header, int raftId, long readerId,
-      AsyncMethodCallback<ByteBuffer> resultHandler) {
-    DataAsyncService service = getDataAsyncService(header, raftId, resultHandler,
-        "Fetch reader:" + readerId);
+  public void queryMultSeries(
+      MultSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler) throws TException {
+    DataAsyncService service =
+        getDataAsyncService(
+            request.getHeader(),
+            request.getRaftId(),
+            resultHandler,
+            "Query series:" + request.getPath());
+    if (service != null) {
+      service.queryMultSeries(request, resultHandler);
+    }
+  }
+
+  @Override
+  public void fetchSingleSeries(
+      Node header, int raftId, long readerId, AsyncMethodCallback<ByteBuffer> resultHandler) {
+    DataAsyncService service =
+        getDataAsyncService(header, raftId, resultHandler, "Fetch reader:" + readerId);
     if (service != null) {
       service.fetchSingleSeries(header, raftId, readerId, resultHandler);
     }
   }
 
   @Override
-  public void getAllPaths(Node header, int raftId, List<String> paths, boolean withAlias,
+  public void fetchMultSeries(
+      Node header,
+      int raftId,
+      long readerId,
+      List<String> paths,
+      AsyncMethodCallback<Map<String, ByteBuffer>> resultHandler)
+      throws TException {
+    DataAsyncService service =
+        getDataAsyncService(header, raftId, resultHandler, "Fetch reader:" + readerId);
+    if (service != null) {
+      service.fetchMultSeries(header, raftId, readerId, paths, resultHandler);
+    }
+  }
+
+  @Override
+  public void getAllPaths(
+      Node header,
+      int raftId,
+      List<String> paths,
+      boolean withAlias,
       AsyncMethodCallback<GetAllPathsResult> resultHandler) {
-    DataAsyncService service = getDataAsyncService(header, raftId, resultHandler, "Find path:" + paths);
+    DataAsyncService service =
+        getDataAsyncService(header, raftId, resultHandler, "Find path:" + paths);
     if (service != null) {
       service.getAllPaths(header, raftId, paths, withAlias, resultHandler);
     }
   }
 
   @Override
-  public void endQuery(Node header, int raftId, Node thisNode, long queryId,
+  public void endQuery(
+      Node header,
+      int raftId,
+      Node thisNode,
+      long queryId,
       AsyncMethodCallback<Void> resultHandler) {
     DataAsyncService service = getDataAsyncService(header, raftId, resultHandler, "End query");
     if (service != null) {
@@ -377,58 +441,85 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
-  public void querySingleSeriesByTimestamp(SingleSeriesQueryRequest request,
-      AsyncMethodCallback<Long> resultHandler) {
-    DataAsyncService service = getDataAsyncService(request.getHeader(), request.getRaftId(), resultHandler,
-        "Query by timestamp:" + request.getQueryId() + "#" + request.getPath() + " of " + request
-            .getRequester());
+  public void querySingleSeriesByTimestamp(
+      SingleSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler) {
+    DataAsyncService service =
+        getDataAsyncService(
+            request.getHeader(),
+            request.getRaftId(),
+            resultHandler,
+            "Query by timestamp:"
+                + request.getQueryId()
+                + "#"
+                + request.getPath()
+                + " of "
+                + request.getRequester());
     if (service != null) {
       service.querySingleSeriesByTimestamp(request, resultHandler);
     }
   }
 
   @Override
-  public void fetchSingleSeriesByTimestamp(Node header, int raftId, long readerId, long time,
+  public void fetchSingleSeriesByTimestamps(
+      Node header,
+      int raftId,
+      long readerId,
+      List<Long> timestamps,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
-    DataAsyncService service = getDataAsyncService(header, raftId, resultHandler,
-        "Fetch by timestamp:" + readerId);
+    DataAsyncService service =
+        getDataAsyncService(header, raftId, resultHandler, "Fetch by timestamp:" + readerId);
     if (service != null) {
-      service.fetchSingleSeriesByTimestamp(header, raftId, readerId, time, resultHandler);
+      service.fetchSingleSeriesByTimestamps(header, raftId, readerId, timestamps, resultHandler);
     }
   }
 
   @Override
-  public void pullTimeSeriesSchema(PullSchemaRequest request,
-      AsyncMethodCallback<PullSchemaResp> resultHandler) {
-    DataAsyncService service = getDataAsyncService(request.getHeader(), request.getRaftId(), resultHandler, request);
+  public void pullTimeSeriesSchema(
+      PullSchemaRequest request, AsyncMethodCallback<PullSchemaResp> resultHandler) {
+    DataAsyncService service =
+        getDataAsyncService(request.getHeader(), request.getRaftId(), resultHandler, request);
     if (service != null) {
       service.pullTimeSeriesSchema(request, resultHandler);
     }
   }
 
   @Override
-  public void pullMeasurementSchema(PullSchemaRequest request,
-      AsyncMethodCallback<PullSchemaResp> resultHandler) {
-    DataAsyncService service = getDataAsyncService(request.getHeader(), request.getRaftId(),
-        resultHandler,
-        "Pull measurement schema");
+  public void pullMeasurementSchema(
+      PullSchemaRequest request, AsyncMethodCallback<PullSchemaResp> resultHandler) {
+    DataAsyncService service =
+        getDataAsyncService(
+            request.getHeader(), request.getRaftId(), resultHandler, "Pull measurement schema");
     if (service != null) {
       service.pullMeasurementSchema(request, resultHandler);
     }
   }
 
   @Override
-  public void getAllDevices(Node header, int raftId, List<String> paths,
-      AsyncMethodCallback<Set<String>> resultHandler) {
-    DataAsyncService service = getDataAsyncService(header, raftId, resultHandler,
-        "Get all devices");
+  public void getAllDevices(
+      Node header, int raftId, List<String> paths, AsyncMethodCallback<Set<String>> resultHandler) {
+    DataAsyncService service =
+        getDataAsyncService(header, raftId, resultHandler, "Get all devices");
     if (service != null) {
       service.getAllDevices(header, raftId, paths, resultHandler);
     }
   }
 
   @Override
-  public void getNodeList(Node header, int raftId, String path, int nodeLevel,
+  public void getDevices(
+      Node header, int raftId, ByteBuffer planBinary, AsyncMethodCallback<ByteBuffer> resultHandler)
+      throws TException {
+    DataAsyncService service = getDataAsyncService(header, raftId, resultHandler, "get devices");
+    if (service != null) {
+      service.getDevices(header, raftId, planBinary, resultHandler);
+    }
+  }
+
+  @Override
+  public void getNodeList(
+      Node header,
+      int raftId,
+      String path,
+      int nodeLevel,
       AsyncMethodCallback<List<String>> resultHandler) {
     DataAsyncService service = getDataAsyncService(header, raftId, resultHandler, "Get node list");
     if (service != null) {
@@ -437,39 +528,57 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
-  public void getChildNodePathInNextLevel(Node header, int raftId, String path,
-      AsyncMethodCallback<Set<String>> resultHandler) {
-    DataAsyncService service = getDataAsyncService(header, raftId, resultHandler,
-        "Get child node path in next level");
+  public void getChildNodeInNextLevel(
+      Node header, int raftId, String path, AsyncMethodCallback<Set<String>> resultHandler)
+      throws TException {
+    DataAsyncService service =
+        getDataAsyncService(header, raftId, resultHandler, "Get child node in next level");
+    if (service != null) {
+      service.getChildNodeInNextLevel(header, raftId, path, resultHandler);
+    }
+  }
+
+  @Override
+  public void getChildNodePathInNextLevel(
+      Node header, int raftId, String path, AsyncMethodCallback<Set<String>> resultHandler) {
+    DataAsyncService service =
+        getDataAsyncService(header, raftId, resultHandler, "Get child node path in next level");
     if (service != null) {
       service.getChildNodePathInNextLevel(header, raftId, path, resultHandler);
     }
   }
 
   @Override
-  public void getAllMeasurementSchema(Node header, int raftId, ByteBuffer planBytes,
+  public void getAllMeasurementSchema(
+      Node header,
+      int raftId,
+      ByteBuffer planBytes,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
-    DataAsyncService service = getDataAsyncService(header, raftId, resultHandler,
-        "Get all measurement schema");
+    DataAsyncService service =
+        getDataAsyncService(header, raftId, resultHandler, "Get all measurement schema");
     if (service != null) {
       service.getAllMeasurementSchema(header, raftId, planBytes, resultHandler);
     }
   }
 
   @Override
-  public void getAggrResult(GetAggrResultRequest request,
-      AsyncMethodCallback<List<ByteBuffer>> resultHandler) {
-    DataAsyncService service = getDataAsyncService(request.getHeader(), request.getRaftId(), resultHandler, request);
+  public void getAggrResult(
+      GetAggrResultRequest request, AsyncMethodCallback<List<ByteBuffer>> resultHandler) {
+    DataAsyncService service =
+        getDataAsyncService(request.getHeader(), request.getRaftId(), resultHandler, request);
     if (service != null) {
       service.getAggrResult(request, resultHandler);
     }
   }
 
   @Override
-  public void getUnregisteredTimeseries(Node header, int raftId, List<String> timeseriesList,
+  public void getUnregisteredTimeseries(
+      Node header,
+      int raftId,
+      List<String> timeseriesList,
       AsyncMethodCallback<List<String>> resultHandler) {
-    DataAsyncService service = getDataAsyncService(header, raftId, resultHandler,
-        "Check if measurements are registered");
+    DataAsyncService service =
+        getDataAsyncService(header, raftId, resultHandler, "Check if measurements are registered");
     if (service != null) {
       service.getUnregisteredTimeseries(header, raftId, timeseriesList, resultHandler);
     }
@@ -477,14 +586,20 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
 
   @Override
   public void getGroupByExecutor(GroupByRequest request, AsyncMethodCallback<Long> resultHandler) {
-    DataAsyncService service = getDataAsyncService(request.getHeader(), request.getRaftId(), resultHandler, request);
+    DataAsyncService service =
+        getDataAsyncService(request.getHeader(), request.getRaftId(), resultHandler, request);
     if (service != null) {
       service.getGroupByExecutor(request, resultHandler);
     }
   }
 
   @Override
-  public void getGroupByResult(Node header, int raftId, long executorId, long startTime, long endTime,
+  public void getGroupByResult(
+      Node header,
+      int raftId,
+      long executorId,
+      long startTime,
+      long endTime,
       AsyncMethodCallback<List<ByteBuffer>> resultHandler) {
     DataAsyncService service = getDataAsyncService(header, raftId, resultHandler, "Fetch group by");
     if (service != null) {
@@ -503,12 +618,18 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
 
   @Override
   TServerTransport getServerSocket() throws TTransportException {
+    logger.info(
+        "[{}] Cluster node will listen {}:{}",
+        getServerClientName(),
+        config.getInternalIp(),
+        config.getInternalDataPort());
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      return new TNonblockingServerSocket(new InetSocketAddress(config.getClusterRpcIp(),
-          thisNode.getDataPort()), getConnectionTimeoutInMS());
+      return new TNonblockingServerSocket(
+          new InetSocketAddress(config.getInternalIp(), thisNode.getDataPort()),
+          getConnectionTimeoutInMS());
     } else {
-      return new TServerSocket(new InetSocketAddress(config.getClusterRpcIp(),
-          thisNode.getDataPort()));
+      return new TServerSocket(
+          new InetSocketAddress(config.getInternalIp(), thisNode.getDataPort()));
     }
   }
 
@@ -525,7 +646,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   public void preAddNodeForDataGroup(AddNodeLog log, DataGroupMember targetDataGroupMember) {
 
     // Make sure the previous add/remove node log has applied
-    metaGroupMember.waitUtil(log.getMetaLogIndex() - 1);
+    metaGroupMember.syncLocalApply(log.getMetaLogIndex() - 1);
 
     // Check the validity of the partition table
     if (!metaGroupMember.getPartitionTable().deserialize(log.getPartitionTable())) {
@@ -544,7 +665,8 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
    * @param result
    */
   public void addNode(Node node, NodeAdditionResult result) {
-    // If the node executed adding itself to the cluster, it's unnecessary to add new groups because they already exist.
+    // If the node executed adding itself to the cluster, it's unnecessary to add new groups because
+    // they already exist.
     if (node.equals(thisNode)) {
       return;
     }
@@ -563,8 +685,8 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
       }
 
       if (logger.isDebugEnabled()) {
-        logger
-            .debug("Data cluster server: start to handle new groups when adding new node {}", node);
+        logger.debug(
+            "Data cluster server: start to handle new groups when adding new node {}", node);
       }
       for (PartitionGroup newGroup : result.getNewGroupList()) {
         if (newGroup.contains(thisNode)) {
@@ -572,9 +694,8 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
           logger.info("Adding this node into a new group {}", newGroup);
           DataGroupMember dataGroupMember = dataMemberFactory.create(newGroup, thisNode);
           dataGroupMember = addDataGroupMember(dataGroupMember, header);
-          dataGroupMember
-              .pullNodeAdditionSnapshots(((SlotPartitionTable) partitionTable).getNodeSlots(node,
-                  newGroup.getId()), node);
+          dataGroupMember.pullNodeAdditionSnapshots(
+              ((SlotPartitionTable) partitionTable).getNodeSlots(node, newGroup.getId()), node);
         }
       }
     }
@@ -585,7 +706,8 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
    * which has no data. This is to make that member pull data from other nodes.
    */
   public void pullSnapshots() {
-    for (int raftId = 0; raftId < ClusterDescriptor.getInstance().getConfig().getMultiRaftFactor();
+    for (int raftId = 0;
+        raftId < ClusterDescriptor.getInstance().getConfig().getMultiRaftFactor();
         raftId++) {
       RaftNode raftNode = new RaftNode(thisNode, raftId);
       List<Integer> slots = ((SlotPartitionTable) partitionTable).getNodeSlots(raftNode);
@@ -594,26 +716,35 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
     }
   }
 
-
   /**
    * Make sure the group will not receive new raft logs
+   *
    * @param header
    * @param dataGroupMember
    */
-  private void removeMember(RaftNode header, DataGroupMember dataGroupMember, boolean removedGroup) {
+  private void removeMember(
+      RaftNode header, DataGroupMember dataGroupMember, boolean removedGroup) {
     dataGroupMember.setReadOnly();
     if (!removedGroup) {
       dataGroupMember.stop();
     } else {
       if (dataGroupMember.getCharacter() != NodeCharacter.LEADER) {
-        new Thread(()-> {
-          dataGroupMember.syncLeader();
-          dataGroupMember.stop();
-        }).start();
+        new Thread(
+                () -> {
+                  try {
+                    dataGroupMember.syncLeader(null);
+                    dataGroupMember.stop();
+                  } catch (CheckConsistencyException e) {
+                    logger.warn("Failed to check consistency.", e);
+                  }
+                })
+            .start();
       }
     }
     stoppedMemberManager.put(header, dataGroupMember);
-    logger.info("Data group member has removed, header {}, group is {}.", header,
+    logger.info(
+        "Data group member has removed, header {}, group is {}.",
+        header,
         dataGroupMember.getAllNodes());
   }
 
@@ -662,22 +793,25 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   public void preRemoveNodeForDataGroup(RemoveNodeLog log, DataGroupMember targetDataGroupMember) {
 
     // Make sure the previous add/remove node log has applied
-    metaGroupMember.waitUtil(log.getMetaLogIndex() - 1);
+    metaGroupMember.syncLocalApply(log.getMetaLogIndex() - 1);
 
     // Check the validity of the partition table
     if (!metaGroupMember.getPartitionTable().deserialize(log.getPartitionTable())) {
       return;
     }
 
-    logger.debug("Pre removing a node {} from {}", log.getRemovedNode(), targetDataGroupMember.getAllNodes());
+    logger.debug(
+        "Pre removing a node {} from {}",
+        log.getRemovedNode(),
+        targetDataGroupMember.getAllNodes());
     targetDataGroupMember.preRemoveNode(log.getRemovedNode());
   }
 
   /**
    * Try removing a node from the groups of each DataGroupMember. If the node is the header of some
    * group, set the member to read only so that it can still provide data for other nodes that has
-   * not yet pulled its data. Otherwise, just change the node list of the member and pull new data. And
-   * create a new DataGroupMember if this node should join a new group because of this removal.
+   * not yet pulled its data. Otherwise, just change the node list of the member and pull new data.
+   * And create a new DataGroupMember if this node should join a new group because of this removal.
    *
    * @param node
    * @param removalResult cluster changes due to the node removal
@@ -698,7 +832,9 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
       }
 
       if (logger.isDebugEnabled()) {
-        logger.debug("Data cluster server: start to handle new groups and pulling data when removing node {}", node);
+        logger.debug(
+            "Data cluster server: start to handle new groups and pulling data when removing node {}",
+            node);
       }
       // if the removed group contains the local node, the local node should join a new group to
       // preserve the replication number
@@ -719,9 +855,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
     this.partitionTable = partitionTable;
   }
 
-  /**
-   * @return The reports of every DataGroupMember in this node.
-   */
+  /** @return The reports of every DataGroupMember in this node. */
   public List<DataMemberReport> genMemberReports() {
     List<DataMemberReport> dataMemberReports = new ArrayList<>();
     for (DataGroupMember value : headerGroupMap.values()) {
@@ -732,9 +866,10 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
-  public void previousFill(PreviousFillRequest request,
-      AsyncMethodCallback<ByteBuffer> resultHandler) {
-    DataAsyncService service = getDataAsyncService(request.getHeader(), request.getRaftId(), resultHandler, request);
+  public void previousFill(
+      PreviousFillRequest request, AsyncMethodCallback<ByteBuffer> resultHandler) {
+    DataAsyncService service =
+        getDataAsyncService(request.getHeader(), request.getRaftId(), resultHandler, request);
     if (service != null) {
       service.previousFill(request, resultHandler);
     }
@@ -751,8 +886,8 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
-  public void matchTerm(long index, long term, Node header, int raftId,
-      AsyncMethodCallback<Boolean> resultHandler) {
+  public void matchTerm(
+      long index, long term, Node header, int raftId, AsyncMethodCallback<Boolean> resultHandler) {
     DataAsyncService service = getDataAsyncService(header, raftId, resultHandler, "Match term");
     if (service != null) {
       service.matchTerm(index, term, header, raftId, resultHandler);
@@ -761,14 +896,19 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
 
   @Override
   public void last(LastQueryRequest request, AsyncMethodCallback<ByteBuffer> resultHandler) {
-    DataAsyncService service = getDataAsyncService(request.getHeader(), request.getRaftId(), resultHandler, "last");
+    DataAsyncService service =
+        getDataAsyncService(request.getHeader(), request.getRaftId(), resultHandler, "last");
     if (service != null) {
       service.last(request, resultHandler);
     }
   }
 
   @Override
-  public void getPathCount(Node header, int raftId, List<String> pathsToQuery, int level,
+  public void getPathCount(
+      Node header,
+      int raftId,
+      List<String> pathsToQuery,
+      int level,
       AsyncMethodCallback<Integer> resultHandler) {
     DataAsyncService service = getDataAsyncService(header, raftId, resultHandler, "count path");
     if (service != null) {
@@ -777,10 +917,10 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
-  public void onSnapshotApplied(Node header, int raftId, List<Integer> slots,
-      AsyncMethodCallback<Boolean> resultHandler) {
-    DataAsyncService service = getDataAsyncService(header, raftId, resultHandler,
-        "Snapshot applied");
+  public void onSnapshotApplied(
+      Node header, int raftId, List<Integer> slots, AsyncMethodCallback<Boolean> resultHandler) {
+    DataAsyncService service =
+        getDataAsyncService(header, raftId, resultHandler, "Snapshot applied");
     if (service != null) {
       service.onSnapshotApplied(header, raftId, slots, resultHandler);
     }
@@ -792,21 +932,32 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
+  public long queryMultSeries(MultSeriesQueryRequest request) throws TException {
+    return getDataSyncService(request.getHeader(), request.getRaftId()).queryMultSeries(request);
+  }
+
+  @Override
   public ByteBuffer fetchSingleSeries(Node header, int raftId, long readerId) throws TException {
     return getDataSyncService(header, raftId).fetchSingleSeries(header, raftId, readerId);
   }
 
   @Override
-  public long querySingleSeriesByTimestamp(SingleSeriesQueryRequest request) throws TException {
-    return getDataSyncService(request.getHeader(), request.getRaftId()).querySingleSeriesByTimestamp(request);
+  public Map<String, ByteBuffer> fetchMultSeries(
+      Node header, int raftId, long readerId, List<String> paths) throws TException {
+    return getDataSyncService(header, raftId).fetchMultSeries(header, raftId, readerId, paths);
   }
 
   @Override
-  public ByteBuffer fetchSingleSeriesByTimestamp(Node header, int raftId, long readerId,
-      long timestamp)
-      throws TException {
+  public long querySingleSeriesByTimestamp(SingleSeriesQueryRequest request) throws TException {
+    return getDataSyncService(request.getHeader(), request.getRaftId())
+        .querySingleSeriesByTimestamp(request);
+  }
+
+  @Override
+  public ByteBuffer fetchSingleSeriesByTimestamps(
+      Node header, int raftId, long readerId, List<Long> timestamps) throws TException {
     return getDataSyncService(header, raftId)
-        .fetchSingleSeriesByTimestamp(header, raftId, readerId, timestamp);
+        .fetchSingleSeriesByTimestamps(header, raftId, readerId, timestamps);
   }
 
   @Override
@@ -815,9 +966,8 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
-  public GetAllPathsResult getAllPaths(Node header, int raftId, List<String> path,
-      boolean withAlias)
-      throws TException {
+  public GetAllPathsResult getAllPaths(
+      Node header, int raftId, List<String> path, boolean withAlias) throws TException {
     return getDataSyncService(header, raftId).getAllPaths(header, raftId, path, withAlias);
   }
 
@@ -833,6 +983,12 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
+  public Set<String> getChildNodeInNextLevel(Node header, int raftId, String path)
+      throws TException {
+    return getDataSyncService(header, raftId).getChildNodeInNextLevel(header, raftId, path);
+  }
+
+  @Override
   public Set<String> getChildNodePathInNextLevel(Node header, int raftId, String path)
       throws TException {
     return getDataSyncService(header, raftId).getChildNodePathInNextLevel(header, raftId, path);
@@ -845,15 +1001,20 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
+  public ByteBuffer getDevices(Node header, int raftId, ByteBuffer planBinary) throws TException {
+    return getDataSyncService(header, raftId).getDevices(header, raftId, planBinary);
+  }
+
+  @Override
   public List<ByteBuffer> getAggrResult(GetAggrResultRequest request) throws TException {
     return getDataSyncService(request.getHeader(), request.getRaftId()).getAggrResult(request);
   }
 
   @Override
-  public List<String> getUnregisteredTimeseries(Node header, int raftId,
-      List<String> timeseriesList)
-      throws TException {
-    return getDataSyncService(header, raftId).getUnregisteredTimeseries(header, raftId, timeseriesList);
+  public List<String> getUnregisteredTimeseries(
+      Node header, int raftId, List<String> timeseriesList) throws TException {
+    return getDataSyncService(header, raftId)
+        .getUnregisteredTimeseries(header, raftId, timeseriesList);
   }
 
   @Override
@@ -867,19 +1028,22 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
-  public List<ByteBuffer> getGroupByResult(Node header, int raftId, long executorId, long startTime,
-      long endTime) throws TException {
-    return getDataSyncService(header, raftId).getGroupByResult(header, raftId, executorId, startTime, endTime);
+  public List<ByteBuffer> getGroupByResult(
+      Node header, int raftId, long executorId, long startTime, long endTime) throws TException {
+    return getDataSyncService(header, raftId)
+        .getGroupByResult(header, raftId, executorId, startTime, endTime);
   }
 
   @Override
   public PullSchemaResp pullTimeSeriesSchema(PullSchemaRequest request) throws TException {
-    return getDataSyncService(request.getHeader(), request.getRaftId()).pullTimeSeriesSchema(request);
+    return getDataSyncService(request.getHeader(), request.getRaftId())
+        .pullTimeSeriesSchema(request);
   }
 
   @Override
   public PullSchemaResp pullMeasurementSchema(PullSchemaRequest request) throws TException {
-    return getDataSyncService(request.getHeader(), request.getRaftId()).pullMeasurementSchema(request);
+    return getDataSyncService(request.getHeader(), request.getRaftId())
+        .pullMeasurementSchema(request);
   }
 
   @Override
@@ -930,17 +1094,20 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
 
   @Override
   public TSStatus executeNonQueryPlan(ExecutNonQueryReq request) throws TException {
-    return getDataSyncService(request.getHeader(), request.getRaftId()).executeNonQueryPlan(request);
+    return getDataSyncService(request.getHeader(), request.getRaftId())
+        .executeNonQueryPlan(request);
   }
 
   @Override
-  public long requestCommitIndex(Node header, int raftId) throws TException {
+  public RequestCommitIndexResponse requestCommitIndex(Node header, int raftId) throws TException {
     return getDataSyncService(header, raftId).requestCommitIndex(header, raftId);
   }
 
   @Override
-  public ByteBuffer readFile(String filePath, long offset, int length, int raftId) throws TException {
-    return getDataSyncService(new RaftNode(thisNode, raftId)).readFile(filePath, offset, length, raftId);
+  public ByteBuffer readFile(String filePath, long offset, int length, int raftId)
+      throws TException {
+    return getDataSyncService(new RaftNode(thisNode, raftId))
+        .readFile(filePath, offset, length, raftId);
   }
 
   @Override
@@ -949,17 +1116,23 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
-  public ByteBuffer peekNextNotNullValue(Node header, int raftId, long executorId, long startTime,
-      long endTime)
-      throws TException {
-    return getDataSyncService(header, raftId).peekNextNotNullValue(header, raftId, executorId, startTime, endTime);
+  public ByteBuffer peekNextNotNullValue(
+      Node header, int raftId, long executorId, long startTime, long endTime) throws TException {
+    return getDataSyncService(header, raftId)
+        .peekNextNotNullValue(header, raftId, executorId, startTime, endTime);
   }
 
   @Override
-  public void peekNextNotNullValue(Node header, int raftId, long executorId, long startTime,
+  public void peekNextNotNullValue(
+      Node header,
+      int raftId,
+      long executorId,
+      long startTime,
       long endTime,
-      AsyncMethodCallback<ByteBuffer> resultHandler) throws TException {
-    resultHandler.onComplete(getDataSyncService(header, raftId)
+      AsyncMethodCallback<ByteBuffer> resultHandler)
+      throws TException {
+    resultHandler.onComplete(
+        getDataSyncService(header, raftId)
             .peekNextNotNullValue(header, raftId, executorId, startTime, endTime));
   }
 
@@ -969,10 +1142,10 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
-  public void removeHardLink(String hardLinkPath, int raftId,
-      AsyncMethodCallback<Void> resultHandler) {
-    DataAsyncService service = getDataAsyncService(new RaftNode(thisNode, raftId), resultHandler,
-        hardLinkPath);
+  public void removeHardLink(
+      String hardLinkPath, int raftId, AsyncMethodCallback<Void> resultHandler) {
+    DataAsyncService service =
+        getDataAsyncService(new RaftNode(thisNode, raftId), resultHandler, hardLinkPath);
     if (service != null) {
       service.removeHardLink(hardLinkPath, raftId, resultHandler);
     }

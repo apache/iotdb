@@ -19,10 +19,6 @@
 
 package org.apache.iotdb.cluster.server.heartbeat;
 
-import java.util.Collection;
-import java.util.Random;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
@@ -37,9 +33,15 @@ import org.apache.iotdb.cluster.server.handlers.caller.ElectionHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.HeartbeatHandler;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.utils.ClientUtils;
+
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Collection;
+import java.util.Random;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * HeartbeatThread takes the responsibility to send heartbeats (when this node is a leader), check
@@ -68,8 +70,9 @@ public class HeartbeatThread implements Runnable {
   public void run() {
     logger.info("{}: Heartbeat thread starts...", memberName);
     // sleep random time to reduce first election conflicts
-    long electionWait = ClusterConstant.getElectionLeastTimeOutMs()
-        + Math.abs(random.nextLong() % ClusterConstant.getElectionRandomTimeOutMs());
+    long electionWait =
+        ClusterConstant.getElectionLeastTimeOutMs()
+            + Math.abs(random.nextLong() % ClusterConstant.getElectionRandomTimeOutMs());
     try {
       logger.info("{}: Sleep {}ms before first election", memberName, electionWait);
       Thread.sleep(electionWait);
@@ -89,15 +92,17 @@ public class HeartbeatThread implements Runnable {
             break;
           case FOLLOWER:
             // check if heartbeat times out
-            long heartBeatInterval = System.currentTimeMillis() - localMember
-                .getLastHeartbeatReceivedTime();
+            long heartBeatInterval =
+                System.currentTimeMillis() - localMember.getLastHeartbeatReceivedTime();
             if (heartBeatInterval >= RaftServer.getConnectionTimeoutInMS()) {
               // the leader is considered dead, an election will be started in the next loop
               logger.info("{}: The leader {} timed out", memberName, localMember.getLeader());
               localMember.setCharacter(NodeCharacter.ELECTOR);
               localMember.setLeader(ClusterConstant.EMPTY_NODE);
             } else {
-              logger.debug("{}: Heartbeat from leader {} is still valid", memberName,
+              logger.debug(
+                  "{}: Heartbeat from leader {} is still valid",
+                  memberName,
                   localMember.getLeader());
               synchronized (localMember.getHeartBeatWaitObject()) {
                 localMember.getHeartBeatWaitObject().wait(RaftServer.getConnectionTimeoutInMS());
@@ -131,9 +136,7 @@ public class HeartbeatThread implements Runnable {
     logger.info("{}: End elections", memberName);
   }
 
-  /**
-   * Send each node (except the local node) in the group of the member a heartbeat.
-   */
+  /** Send each node (except the local node) in the group of the member a heartbeat. */
   protected void sendHeartbeats() {
     synchronized (localMember.getTerm()) {
       request.setTerm(localMember.getTerm().get());
@@ -145,14 +148,15 @@ public class HeartbeatThread implements Runnable {
     }
   }
 
-  /**
-   * Send each node (except the local node) in list a heartbeat.
-   */
+  /** Send each node (except the local node) in list a heartbeat. */
   @SuppressWarnings("java:S2445")
   private void sendHeartbeats(Collection<Node> nodes) {
     if (logger.isDebugEnabled()) {
-      logger.debug("{}: Send heartbeat to {} followers, commit log index = {}", memberName,
-          nodes.size() - 1, request.getCommitLogIndex());
+      logger.debug(
+          "{}: Send heartbeat to {} followers, commit log index = {}",
+          memberName,
+          nodes.size() - 1,
+          request.getCommitLogIndex());
     }
     synchronized (nodes) {
       // avoid concurrent modification
@@ -217,21 +221,24 @@ public class HeartbeatThread implements Runnable {
       req.setPartitionTableBytesIsSet(true);
     }
     if (client != null) {
-      localMember.getSerialToParallelPool().submit(() -> {
-        try {
-          logger.debug("{}: Sending heartbeat to {}", memberName, node);
-          HeartBeatResponse heartBeatResponse = client.sendHeartbeat(req);
-          heartbeatHandler.onComplete(heartBeatResponse);
-        } catch (TTransportException e) {
-          logger.warn("{}: Cannot send heart beat to node {} due to network", memberName,
-              node, e);
-          client.getInputProtocol().getTransport().close();
-        } catch (Exception e) {
-          logger.warn("{}: Cannot send heart beat to node {}", memberName, node, e);
-        } finally {
-          ClientUtils.putBackSyncHeartbeatClient(client);
-        }
-      });
+      localMember
+          .getSerialToParallelPool()
+          .submit(
+              () -> {
+                try {
+                  logger.debug("{}: Sending heartbeat to {}", memberName, node);
+                  HeartBeatResponse heartBeatResponse = client.sendHeartbeat(req);
+                  heartbeatHandler.onComplete(heartBeatResponse);
+                } catch (TTransportException e) {
+                  logger.warn(
+                      "{}: Cannot send heart beat to node {} due to network", memberName, node, e);
+                  client.getInputProtocol().getTransport().close();
+                } catch (Exception e) {
+                  logger.warn("{}: Cannot send heart beat to node {}", memberName, node, e);
+                } finally {
+                  ClientUtils.putBackSyncHeartbeatClient(client);
+                }
+              });
     }
   }
 
@@ -253,8 +260,9 @@ public class HeartbeatThread implements Runnable {
       startElection();
       if (localMember.getCharacter() == NodeCharacter.ELECTOR) {
         // sleep random time to reduce election conflicts
-        long electionWait = ClusterConstant.getElectionLeastTimeOutMs()
-            + Math.abs(random.nextLong() % ClusterConstant.getElectionRandomTimeOutMs());
+        long electionWait =
+            ClusterConstant.getElectionLeastTimeOutMs()
+                + Math.abs(random.nextLong() % ClusterConstant.getElectionRandomTimeOutMs());
         logger.info("{}: Sleep {}ms until next election", memberName, electionWait);
         Thread.sleep(electionWait);
       }
@@ -299,18 +307,28 @@ public class HeartbeatThread implements Runnable {
       electionRequest.setLastLogTerm(localMember.getLogManager().getLastLogTerm());
       electionRequest.setLastLogIndex(localMember.getLogManager().getLastLogIndex());
 
-      requestVote(localMember.getAllNodes(), electionRequest, nextTerm, quorum,
-          electionTerminated, electionValid, failingVoteCounter);
+      requestVote(
+          localMember.getAllNodes(),
+          electionRequest,
+          nextTerm,
+          quorum,
+          electionTerminated,
+          electionValid,
+          failingVoteCounter);
       // erase the log index so it can be updated in the next heartbeat
       electionRequest.unsetLastLogIndex();
 
       try {
-        logger.info("{}: Wait for {}ms until election time out", memberName,
+        logger.info(
+            "{}: Wait for {}ms until election time out",
+            memberName,
             RaftServer.getConnectionTimeoutInMS());
         localMember.getTerm().wait(RaftServer.getConnectionTimeoutInMS());
       } catch (InterruptedException e) {
-        logger.info("{}: Unexpected interruption when waiting the result of election {}",
-            memberName, nextTerm);
+        logger.info(
+            "{}: Unexpected interruption when waiting the result of election {}",
+            memberName,
+            nextTerm);
         Thread.currentThread().interrupt();
       }
 
@@ -324,7 +342,6 @@ public class HeartbeatThread implements Runnable {
     }
   }
 
-
   /**
    * Request a vote from each of the "nodes". Each for vote will decrease the counter "quorum" and
    * when it reaches 0, the flag "electionValid" and "electionTerminated" will be set to true. Any
@@ -332,14 +349,19 @@ public class HeartbeatThread implements Runnable {
    *
    * @param nodes
    * @param request
-   * @param nextTerm           the term of the election
+   * @param nextTerm the term of the election
    * @param quorum
    * @param electionTerminated
    * @param electionValid
    */
   @SuppressWarnings("java:S2445")
-  private void requestVote(Collection<Node> nodes, ElectionRequest request, long nextTerm,
-      AtomicInteger quorum, AtomicBoolean electionTerminated, AtomicBoolean electionValid,
+  private void requestVote(
+      Collection<Node> nodes,
+      ElectionRequest request,
+      long nextTerm,
+      AtomicInteger quorum,
+      AtomicBoolean electionTerminated,
+      AtomicBoolean electionValid,
       AtomicInteger failingVoteCounter) {
     synchronized (nodes) {
       // avoid concurrent modification
@@ -348,8 +370,15 @@ public class HeartbeatThread implements Runnable {
           continue;
         }
 
-        ElectionHandler handler = new ElectionHandler(localMember, node, nextTerm, quorum,
-            electionTerminated, electionValid, failingVoteCounter);
+        ElectionHandler handler =
+            new ElectionHandler(
+                localMember,
+                node,
+                nextTerm,
+                quorum,
+                electionTerminated,
+                electionValid,
+                failingVoteCounter);
         if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
           requestVoteAsync(node, handler, request);
         } else {
@@ -375,16 +404,19 @@ public class HeartbeatThread implements Runnable {
     Client client = localMember.getSyncHeartbeatClient(node);
     if (client != null) {
       logger.info("{}: Requesting a vote from {}", memberName, node);
-      localMember.getSerialToParallelPool().submit(() -> {
-        try {
-          long result = client.startElection(request);
-          handler.onComplete(result);
-        } catch (Exception e) {
-          handler.onError(e);
-        } finally {
-          ClientUtils.putBackSyncHeartbeatClient(client);
-        }
-      });
+      localMember
+          .getSerialToParallelPool()
+          .submit(
+              () -> {
+                try {
+                  long result = client.startElection(request);
+                  handler.onComplete(result);
+                } catch (Exception e) {
+                  handler.onError(e);
+                } finally {
+                  ClientUtils.putBackSyncHeartbeatClient(client);
+                }
+              });
     }
   }
 }

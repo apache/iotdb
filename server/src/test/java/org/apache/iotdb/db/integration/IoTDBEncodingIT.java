@@ -23,6 +23,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -60,14 +61,12 @@ public class IoTDBEncodingIT {
     EnvironmentUtils.cleanEnv();
   }
 
-
-
-
   @Test
   public void testSetEncodingRegularFailed() {
-    try (Connection connection = DriverManager
-            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("CREATE TIMESERIES root.test1.s0 WITH DATATYPE=INT64,ENCODING=REGULAR");
 
     } catch (SQLException e) {
@@ -77,10 +76,12 @@ public class IoTDBEncodingIT {
 
   @Test
   public void testSetTimeEncoderRegularAndValueEncoderTS_2DIFF() {
-    try (Connection connection = DriverManager
-            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE TIMESERIES root.db_0.tab0.salary WITH DATATYPE=INT64,ENCODING=TS_2DIFF");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "CREATE TIMESERIES root.db_0.tab0.salary WITH DATATYPE=INT64,ENCODING=TS_2DIFF");
       statement.execute("insert into root.db_0.tab0(time,salary) values(1,1100)");
       statement.execute("insert into root.db_0.tab0(time,salary) values(2,1200)");
       statement.execute("insert into root.db_0.tab0(time,salary) values(3,1300)");
@@ -94,7 +95,7 @@ public class IoTDBEncodingIT {
         while (resultSet.next()) {
           int salary = resultSet.getInt("root.db_0.tab0.salary");
           assertEquals(result[index], salary);
-          index ++;
+          index++;
         }
       }
     } catch (Exception e) {
@@ -104,10 +105,12 @@ public class IoTDBEncodingIT {
 
   @Test
   public void testSetTimeEncoderRegularAndValueEncoderTS_2DIFFOutofOrder() {
-    try (Connection connection = DriverManager
-            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE TIMESERIES root.db_0.tab0.salary WITH DATATYPE=INT64,ENCODING=TS_2DIFF");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "CREATE TIMESERIES root.db_0.tab0.salary WITH DATATYPE=INT64,ENCODING=TS_2DIFF");
       statement.execute("insert into root.db_0.tab0(time,salary) values(1,1200)");
       statement.execute("insert into root.db_0.tab0(time,salary) values(2,1100)");
       statement.execute("insert into root.db_0.tab0(time,salary) values(7,1000)");
@@ -120,7 +123,7 @@ public class IoTDBEncodingIT {
         while (resultSet.next()) {
           int salary = resultSet.getInt("root.db_0.tab0.salary");
           assertEquals(result[index], salary);
-          index ++;
+          index++;
         }
       }
     } catch (Exception e) {
@@ -130,9 +133,10 @@ public class IoTDBEncodingIT {
 
   @Test
   public void testSetTimeEncoderRegularAndValueEncoderRLE() {
-    try (Connection connection = DriverManager
-            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("CREATE TIMESERIES root.db_0.tab0.salary WITH DATATYPE=INT64,ENCODING=RLE");
       statement.execute("insert into root.db_0.tab0(time,salary) values(1,1100)");
       statement.execute("insert into root.db_0.tab0(time,salary) values(2,1200)");
@@ -146,7 +150,7 @@ public class IoTDBEncodingIT {
         while (resultSet.next()) {
           int salary = resultSet.getInt("root.db_0.tab0.salary");
           assertEquals(result[index], salary);
-          index ++;
+          index++;
         }
       }
     } catch (Exception e) {
@@ -156,9 +160,10 @@ public class IoTDBEncodingIT {
 
   @Test
   public void testSetTimeEncoderRegularAndValueEncoderRLEOutofOrder() {
-    try (Connection connection = DriverManager
-            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("CREATE TIMESERIES root.db_0.tab0.salary WITH DATATYPE=INT64,ENCODING=RLE");
       statement.execute("insert into root.db_0.tab0(time,salary) values(1,1200)");
       statement.execute("insert into root.db_0.tab0(time,salary) values(2,1100)");
@@ -172,7 +177,7 @@ public class IoTDBEncodingIT {
         while (resultSet.next()) {
           int salary = resultSet.getInt("root.db_0.tab0.salary");
           assertEquals(result[index], salary);
-          index ++;
+          index++;
         }
       }
     } catch (Exception e) {
@@ -182,10 +187,12 @@ public class IoTDBEncodingIT {
 
   @Test
   public void testSetTimeEncoderRegularAndValueEncoderGORILLA() {
-    try (Connection connection = DriverManager
-            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE TIMESERIES root.db_0.tab0.salary WITH DATATYPE=INT64,ENCODING=GORILLA");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "CREATE TIMESERIES root.db_0.tab0.salary WITH DATATYPE=INT64,ENCODING=GORILLA");
       statement.execute("insert into root.db_0.tab0(time,salary) values(1,1100)");
       statement.execute("insert into root.db_0.tab0(time,salary) values(2,1200)");
       statement.execute("insert into root.db_0.tab0(time,salary) values(3,1300)");
@@ -198,7 +205,7 @@ public class IoTDBEncodingIT {
         while (resultSet.next()) {
           int salary = resultSet.getInt("root.db_0.tab0.salary");
           assertEquals(result[index], salary);
-          index ++;
+          index++;
         }
       }
     } catch (Exception e) {
@@ -208,10 +215,12 @@ public class IoTDBEncodingIT {
 
   @Test
   public void testSetTimeEncoderRegularAndValueEncoderGORILLAOutofOrder() {
-    try (Connection connection = DriverManager
-            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE TIMESERIES root.db_0.tab0.salary WITH DATATYPE=INT64,ENCODING=GORILLA");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "CREATE TIMESERIES root.db_0.tab0.salary WITH DATATYPE=INT64,ENCODING=GORILLA");
       statement.execute("insert into root.db_0.tab0(time,salary) values(1,1200)");
       statement.execute("insert into root.db_0.tab0(time,salary) values(2,1100)");
       statement.execute("insert into root.db_0.tab0(time,salary) values(7,1000)");
@@ -224,7 +233,7 @@ public class IoTDBEncodingIT {
         while (resultSet.next()) {
           int salary = resultSet.getInt("root.db_0.tab0.salary");
           assertEquals(result[index], salary);
-          index ++;
+          index++;
         }
       }
     } catch (Exception e) {
@@ -233,18 +242,21 @@ public class IoTDBEncodingIT {
   }
 
   private static void insertData() throws ClassNotFoundException {
-    List<String> sqls = new ArrayList<>(Arrays.asList(
-        "SET STORAGE GROUP TO root.test1",
-        "SET STORAGE GROUP TO root.test2",
-        "CREATE TIMESERIES root.test1.s0 WITH DATATYPE=INT64,ENCODING=PLAIN",
-        "CREATE TIMESERIES root.test2.s0 WITH DATATYPE=INT64,ENCODING=PLAIN"
-    ));
+    List<String> sqls =
+        new ArrayList<>(
+            Arrays.asList(
+                "SET STORAGE GROUP TO root.test1",
+                "SET STORAGE GROUP TO root.test2",
+                "CREATE TIMESERIES root.test1.s0 WITH DATATYPE=INT64,ENCODING=PLAIN",
+                "CREATE TIMESERIES root.test2.s0 WITH DATATYPE=INT64,ENCODING=PLAIN"));
     // 10 partitions, each one with one seq file and one unseq file
     for (int i = 0; i < 10; i++) {
       // seq files
       for (int j = 1; j <= 2; j++) {
-        sqls.add(String.format("INSERT INTO root.test%d(timestamp, s0) VALUES (%d, %d)", j,
-            i * partitionInterval + 50, i * partitionInterval + 50));
+        sqls.add(
+            String.format(
+                "INSERT INTO root.test%d(timestamp, s0) VALUES (%d, %d)",
+                j, i * partitionInterval + 50, i * partitionInterval + 50));
       }
       // last file is unclosed
       if (i < 9) {
@@ -252,8 +264,10 @@ public class IoTDBEncodingIT {
       }
       // unseq files
       for (int j = 1; j <= 2; j++) {
-        sqls.add(String.format("INSERT INTO root.test%d(timestamp, s0) VALUES (%d, %d)", j,
-            i * partitionInterval, i * partitionInterval));
+        sqls.add(
+            String.format(
+                "INSERT INTO root.test%d(timestamp, s0) VALUES (%d, %d)",
+                j, i * partitionInterval, i * partitionInterval));
       }
       sqls.add("MERGE");
       // last file is unclosed
@@ -262,8 +276,9 @@ public class IoTDBEncodingIT {
       }
     }
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       for (String sql : sqls) {

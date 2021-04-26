@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.db.query.udf.datastructure.primitive;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.query.udf.datastructure.Cache;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.query.udf.datastructure.Cache;
 
 public class ElasticSerializableIntList implements IntList {
 

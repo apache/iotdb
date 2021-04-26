@@ -17,7 +17,6 @@
  * under the License.
  */
 
-
 package org.apache.iotdb.db.exception;
 
 public class LoadEmptyFileException extends LoadFileException {
@@ -25,5 +24,4 @@ public class LoadEmptyFileException extends LoadFileException {
   public LoadEmptyFileException() {
     super("Cannot load an empty file");
   }
-
 }

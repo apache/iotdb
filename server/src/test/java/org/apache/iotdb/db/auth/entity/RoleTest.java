@@ -18,11 +18,10 @@
  */
 package org.apache.iotdb.db.auth.entity;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
 import org.junit.Assert;
 import org.junit.Test;
+
+import java.util.Collections;
 
 public class RoleTest {
 
@@ -32,11 +31,11 @@ public class RoleTest {
     PathPrivilege pathPrivilege = new PathPrivilege("root.ln");
     role.setPrivilegeList(Collections.singletonList(pathPrivilege));
     role.setPrivileges("root.ln", Collections.singleton(1));
-    Assert.assertEquals("Role{name='role', privilegeList=[root.ln : INSERT_TIMESERIES]}",
-        role.toString());
+    Assert.assertEquals(
+        "Role{name='role', privilegeList=[root.ln : INSERT_TIMESERIES]}", role.toString());
     Role role1 = new Role("role1");
     role1.deserialize(role.serialize());
-    Assert.assertEquals("Role{name='role', privilegeList=[root.ln : INSERT_TIMESERIES]}",
-        role1.toString());
+    Assert.assertEquals(
+        "Role{name='role', privilegeList=[root.ln : INSERT_TIMESERIES]}", role1.toString());
   }
 }

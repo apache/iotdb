@@ -19,6 +19,23 @@
 
 package org.apache.iotdb.cluster.partition.slot;
 
+import org.apache.iotdb.cluster.config.ClusterConstant;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.partition.NodeAdditionResult;
+import org.apache.iotdb.cluster.partition.NodeRemovalResult;
+import org.apache.iotdb.cluster.partition.PartitionGroup;
+import org.apache.iotdb.cluster.partition.PartitionTable;
+import org.apache.iotdb.cluster.partition.balancer.DefaultSlotBalancer;
+import org.apache.iotdb.cluster.partition.balancer.SlotBalancer;
+import org.apache.iotdb.cluster.partition.slot.SlotStrategy.DefaultStrategy;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
+import org.apache.iotdb.cluster.utils.NodeSerializeUtils;
+import org.apache.iotdb.db.utils.SerializeUtils;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -36,20 +53,6 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import org.apache.iotdb.cluster.config.ClusterConstant;
-import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.partition.NodeAdditionResult;
-import org.apache.iotdb.cluster.partition.NodeRemovalResult;
-import org.apache.iotdb.cluster.partition.PartitionGroup;
-import org.apache.iotdb.cluster.partition.PartitionTable;
-import org.apache.iotdb.cluster.partition.balancer.DefaultSlotBalancer;
-import org.apache.iotdb.cluster.partition.balancer.SlotBalancer;
-import org.apache.iotdb.cluster.partition.slot.SlotStrategy.DefaultStrategy;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
-import org.apache.iotdb.db.utils.SerializeUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * SlotPartitionTable manages the slots (data partition) of each node using a look-up table. Slot:
@@ -61,18 +64,16 @@ public class SlotPartitionTable implements PartitionTable {
   private static final Logger logger = LoggerFactory.getLogger(SlotPartitionTable.class);
   private static SlotStrategy slotStrategy = new DefaultStrategy();
 
-  private int replicationNum =
-      ClusterDescriptor.getInstance().getConfig().getReplicationNum();
+  private int replicationNum = ClusterDescriptor.getInstance().getConfig().getReplicationNum();
 
-  private int multiRaftFactor =
-      ClusterDescriptor.getInstance().getConfig().getMultiRaftFactor();
+  private int multiRaftFactor = ClusterDescriptor.getInstance().getConfig().getMultiRaftFactor();
 
-  //all nodes
+  // all nodes
   private List<Node> nodeRing = new ArrayList<>();
-  //normally, it is equal to ClusterConstant.SLOT_NUM.
+  // normally, it is equal to ClusterConstant.SLOT_NUM.
   private int totalSlotNumbers;
 
-  //The following fields are used for determining which node a data item belongs to.
+  // The following fields are used for determining which node a data item belongs to.
   // the slots held by each node
   private Map<RaftNode, List<Integer>> nodeSlotMap = new ConcurrentHashMap<>();
   // each slot is managed by whom
@@ -83,7 +84,7 @@ public class SlotPartitionTable implements PartitionTable {
 
   private NodeRemovalResult nodeRemovalResult = new SlotNodeRemovalResult();
 
-  //the filed is used for determining which nodes need to be a group.
+  // the filed is used for determining which nodes need to be a group.
   // the data groups which this node belongs to.
   private List<PartitionGroup> localGroups;
 
@@ -171,7 +172,6 @@ public class SlotPartitionTable implements PartitionTable {
     }
   }
 
-
   // find replicationNum groups that a node is in
   private List<PartitionGroup> getPartitionGroups(Node node) {
     List<PartitionGroup> ret = new ArrayList<>();
@@ -238,7 +238,9 @@ public class SlotPartitionTable implements PartitionTable {
 
   public PartitionGroup route(int slot) {
     if (slot >= slotNodes.length || slot < 0) {
-      logger.warn("Invalid slot to route: {}, stack trace: {}", slot,
+      logger.warn(
+          "Invalid slot to route: {}, stack trace: {}",
+          slot,
           Thread.currentThread().getStackTrace());
       return null;
     }
@@ -254,11 +256,11 @@ public class SlotPartitionTable implements PartitionTable {
   @Override
   public RaftNode routeToHeaderByTime(String storageGroupName, long timestamp) {
     synchronized (nodeRing) {
-      int slot = getSlotStrategy()
-          .calculateSlotByTime(storageGroupName, timestamp, getTotalSlotNumbers());
+      int slot =
+          getSlotStrategy().calculateSlotByTime(storageGroupName, timestamp, getTotalSlotNumbers());
       RaftNode raftNode = slotNodes[slot];
-      logger.trace("The slot of {}@{} is {}, held by {}", storageGroupName, timestamp,
-          slot, raftNode);
+      logger.trace(
+          "The slot of {}@{} is {}, held by {}", storageGroupName, timestamp, slot, raftNode);
       return raftNode;
     }
   }
@@ -316,7 +318,6 @@ public class SlotPartitionTable implements PartitionTable {
     // old node
     slotBalancer.moveSlotsToNew(node, oldRing);
     this.nodeRemovalResult = new SlotNodeRemovalResult();
-
   }
 
   @Override
@@ -326,7 +327,7 @@ public class SlotPartitionTable implements PartitionTable {
     for (int raftId = 0; raftId < multiRaftFactor; raftId++) {
       RaftNode raftNode = new RaftNode(node, raftId);
       result.addNewGroup(getHeaderGroup(raftNode));
-      for (Entry<Integer, PartitionGroup> entry: previousNodeMap.get(raftNode).entrySet()) {
+      for (Entry<Integer, PartitionGroup> entry : previousNodeMap.get(raftNode).entrySet()) {
         RaftNode header = new RaftNode(entry.getValue().getHeader(), entry.getValue().getId());
         lostSlotsMap.computeIfAbsent(header, k -> new HashSet<>()).add(entry.getKey());
       }
@@ -342,7 +343,6 @@ public class SlotPartitionTable implements PartitionTable {
 
   @Override
   public ByteBuffer serialize() {
-
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream(4096);
     DataOutputStream dataOutputStream = new DataOutputStream(outputStream);
 
@@ -351,14 +351,15 @@ public class SlotPartitionTable implements PartitionTable {
       dataOutputStream.writeInt(totalSlotNumbers);
       dataOutputStream.writeInt(nodeSlotMap.size());
       for (Entry<RaftNode, List<Integer>> entry : nodeSlotMap.entrySet()) {
-        SerializeUtils.serialize(entry.getKey().getNode(), dataOutputStream);
+        NodeSerializeUtils.serialize(entry.getKey().getNode(), dataOutputStream);
         dataOutputStream.writeInt(entry.getKey().getRaftId());
         SerializeUtils.serializeIntList(entry.getValue(), dataOutputStream);
       }
 
       dataOutputStream.writeInt(previousNodeMap.size());
-      for (Entry<RaftNode, Map<Integer, PartitionGroup>> nodeMapEntry : previousNodeMap.entrySet()) {
-        SerializeUtils.serialize(nodeMapEntry.getKey().getNode(), dataOutputStream);
+      for (Entry<RaftNode, Map<Integer, PartitionGroup>> nodeMapEntry :
+          previousNodeMap.entrySet()) {
+        NodeSerializeUtils.serialize(nodeMapEntry.getKey().getNode(), dataOutputStream);
         dataOutputStream.writeInt(nodeMapEntry.getKey().getRaftId());
         Map<Integer, PartitionGroup> prevHolders = nodeMapEntry.getValue();
         dataOutputStream.writeInt(prevHolders.size());
@@ -380,7 +381,10 @@ public class SlotPartitionTable implements PartitionTable {
     long newLastLogIndex = buffer.getLong();
 
     if (logger.isDebugEnabled()) {
-      logger.debug("Partition table: lastMetaLogIndex {}, newLastLogIndex {}", lastMetaLogIndex, newLastLogIndex);
+      logger.debug(
+          "Partition table: lastMetaLogIndex {}, newLastLogIndex {}",
+          lastMetaLogIndex,
+          newLastLogIndex);
     }
     // judge whether the partition table of byte buffer is out of date
     if (lastMetaLogIndex != -1 && lastMetaLogIndex >= newLastLogIndex) {
@@ -394,7 +398,7 @@ public class SlotPartitionTable implements PartitionTable {
     Node node;
     for (int i = 0; i < size; i++) {
       node = new Node();
-      SerializeUtils.deserialize(node, buffer);
+      NodeSerializeUtils.deserialize(node, buffer);
       RaftNode raftNode = new RaftNode(node, buffer.getInt());
       List<Integer> slots = new ArrayList<>();
       SerializeUtils.deserializeIntList(slots, buffer);
@@ -408,7 +412,7 @@ public class SlotPartitionTable implements PartitionTable {
     previousNodeMap = new HashMap<>();
     for (int i = 0; i < prevNodeMapSize; i++) {
       node = new Node();
-      SerializeUtils.deserialize(node, buffer);
+      NodeSerializeUtils.deserialize(node, buffer);
       RaftNode raftNode = new RaftNode(node, buffer.getInt());
 
       Map<Integer, PartitionGroup> prevHolders = new HashMap<>();
@@ -475,12 +479,12 @@ public class SlotPartitionTable implements PartitionTable {
       return false;
     }
     SlotPartitionTable that = (SlotPartitionTable) o;
-    return totalSlotNumbers == that.totalSlotNumbers &&
-        Objects.equals(nodeRing, that.nodeRing) &&
-        Objects.equals(nodeSlotMap, that.nodeSlotMap) &&
-        Arrays.equals(slotNodes, that.slotNodes) &&
-        Objects.equals(previousNodeMap, that.previousNodeMap) &&
-        lastMetaLogIndex == that.lastMetaLogIndex;
+    return totalSlotNumbers == that.totalSlotNumbers
+        && Objects.equals(nodeRing, that.nodeRing)
+        && Objects.equals(nodeSlotMap, that.nodeSlotMap)
+        && Arrays.equals(slotNodes, that.slotNodes)
+        && Objects.equals(previousNodeMap, that.previousNodeMap)
+        && lastMetaLogIndex == that.lastMetaLogIndex;
   }
 
   @Override
@@ -496,7 +500,7 @@ public class SlotPartitionTable implements PartitionTable {
       }
 
       SlotNodeRemovalResult result = new SlotNodeRemovalResult();
-      for(int raftId = 0; raftId < multiRaftFactor; raftId++) {
+      for (int raftId = 0; raftId < multiRaftFactor; raftId++) {
         result.addRemovedGroup(getHeaderGroup(new RaftNode(target, raftId)));
       }
       nodeRing.remove(target);
@@ -514,7 +518,7 @@ public class SlotPartitionTable implements PartitionTable {
           localGroups.set(i, newGrp);
         }
       }
-      for(int i = removedGroupIdxs.size() - 1; i >= 0 ; i--) {
+      for (int i = removedGroupIdxs.size() - 1; i >= 0; i--) {
         int removedGroupIdx = removedGroupIdxs.get(i);
         int raftId = localGroups.get(removedGroupIdx).getId();
         localGroups.remove(removedGroupIdx);

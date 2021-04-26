@@ -18,21 +18,21 @@
  */
 package org.apache.iotdb.spark.tsfile.qp.optimizer;
 
-import static org.apache.iotdb.spark.tsfile.qp.common.SQLConstant.KW_AND;
-import static org.apache.iotdb.spark.tsfile.qp.common.SQLConstant.KW_OR;
-
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.spark.tsfile.qp.common.FilterOperator;
 import org.apache.iotdb.spark.tsfile.qp.exception.DNFOptimizeException;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.apache.iotdb.spark.tsfile.qp.common.SQLConstant.KW_AND;
+import static org.apache.iotdb.spark.tsfile.qp.common.SQLConstant.KW_OR;
 
 public class DNFFilterOptimizer implements IFilterOptimizer {
 
   /**
-   * get DNF(disjunctive normal form) for this filter operator tree.
-   * Before invoking getDNF function, make sure that operator tree must be binary tree.
-   * In other words, each non-leaf node has exactly two children.
+   * get DNF(disjunctive normal form) for this filter operator tree. Before invoking getDNF
+   * function, make sure that operator tree must be binary tree. In other words, each non-leaf node
+   * has exactly two children.
    *
    * @param filter filter operator to be optimized
    * @return FilterOperator
@@ -49,9 +49,8 @@ public class DNFFilterOptimizer implements IFilterOptimizer {
     }
     List<FilterOperator> children = filter.getChildren();
     if (children.size() != 2) {
-      throw new DNFOptimizeException("node :" + filter.getTokenSymbol() + " has "
-          + children.size() + " children");
-
+      throw new DNFOptimizeException(
+          "node :" + filter.getTokenSymbol() + " has " + children.size() + " children");
     }
     FilterOperator left = getDNF(children.get(0));
     FilterOperator right = getDNF(children.get(1));
@@ -78,13 +77,12 @@ public class DNFFilterOptimizer implements IFilterOptimizer {
         }
         break;
       default:
-        throw new DNFOptimizeException("get DNF failed, this tokenType is:"
-            + filter.getTokenIntType());
+        throw new DNFOptimizeException(
+            "get DNF failed, this tokenType is:" + filter.getTokenIntType());
     }
     filter.setChildrenList(newChildrenList);
     return filter;
   }
-
 
   /**
    * Merge two conjunction filter operators into one.<br>
@@ -108,8 +106,8 @@ public class DNFFilterOptimizer implements IFilterOptimizer {
   }
 
   /**
-   * Obtain conjunction node according to input filter operator's token type.
-   * If token type == KW_OR, return its children. Otherwise, return a list contains input filter operator
+   * Obtain conjunction node according to input filter operator's token type. If token type ==
+   * KW_OR, return its children. Otherwise, return a list contains input filter operator
    *
    * @param child
    * @return List<FilterOperator>
@@ -154,5 +152,4 @@ public class DNFFilterOptimizer implements IFilterOptimizer {
       newChildrenList.addAll(child.getChildren());
     }
   }
-
 }

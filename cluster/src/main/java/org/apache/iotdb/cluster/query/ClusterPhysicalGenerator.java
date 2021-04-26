@@ -19,20 +19,14 @@
 
 package org.apache.iotdb.cluster.query;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URL;
-import java.util.List;
-import java.util.Properties;
-import java.util.Set;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator.LoadConfigurationOperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
@@ -41,8 +35,18 @@ import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
+import java.util.List;
+import java.util.Properties;
+import java.util.Set;
 
 public class ClusterPhysicalGenerator extends PhysicalGenerator {
 
@@ -53,8 +57,8 @@ public class ClusterPhysicalGenerator extends PhysicalGenerator {
   }
 
   @Override
-  protected Pair<List<TSDataType>, List<TSDataType>> getSeriesTypes(List<PartialPath> paths,
-      String aggregation) throws MetadataException {
+  protected Pair<List<TSDataType>, List<TSDataType>> getSeriesTypes(
+      List<PartialPath> paths, String aggregation) throws MetadataException {
     return getCMManager().getSeriesTypesByPaths(paths, aggregation);
   }
 
@@ -65,12 +69,26 @@ public class ClusterPhysicalGenerator extends PhysicalGenerator {
 
   @Override
   protected List<PartialPath> getMatchedTimeseries(PartialPath path) throws MetadataException {
-    return ((CMManager) IoTDB.metaManager).getMatchedPaths(path);
+    return getCMManager().getMatchedPaths(path);
   }
 
   @Override
   protected Set<PartialPath> getMatchedDevices(PartialPath path) throws MetadataException {
-    return ((CMManager) IoTDB.metaManager).getMatchedDevices(path);
+    return getCMManager().getMatchedDevices(path);
+  }
+
+  @Override
+  public PhysicalPlan transformToPhysicalPlan(Operator operator, int fetchSize)
+      throws QueryProcessException {
+    // update storage groups before parsing query plans
+    if (operator instanceof SFWOperator) {
+      try {
+        getCMManager().syncMetaLeader();
+      } catch (MetadataException e) {
+        throw new QueryProcessException(e);
+      }
+    }
+    return super.transformToPhysicalPlan(operator, fetchSize);
   }
 
   @Override

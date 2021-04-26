@@ -20,5 +20,15 @@
 package org.apache.iotdb.tsfile.read.filter.factory;
 
 public enum FilterSerializeId {
-  AND, EQ, GROUP_BY, GT, GTEQ, LT, LTEQ, NEQ, NOT, OR, IN
+  AND,
+  EQ,
+  GROUP_BY,
+  GT,
+  GTEQ,
+  LT,
+  LTEQ,
+  NEQ,
+  NOT,
+  OR,
+  IN
 }

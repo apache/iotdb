@@ -18,42 +18,32 @@
  */
 package org.apache.iotdb.db.sync.receiver.load;
 
+import org.apache.iotdb.db.sync.receiver.load.FileLoader.LoadTask;
+
 import java.io.File;
 import java.io.IOException;
-import org.apache.iotdb.db.sync.receiver.load.FileLoader.LoadTask;
 
 /**
  * This interface is used to load files, including deleted files and new tsfiles. The
  * producer-consumer model is used to load files. A background consumer thread is used to load
  * files. There is a queue recording tasks. After receiving a file, the receiver adds a task to the
- * queue. When all files are loaded and the synchronization task is completed, the thread is
- * closed.
+ * queue. When all files are loaded and the synchronization task is completed, the thread is closed.
  */
 public interface IFileLoader {
 
-  /**
-   * Add a deleted file name to be loaded.
-   */
+  /** Add a deleted file name to be loaded. */
   void addDeletedFileName(File deletedFile);
 
-  /**
-   * Add a new tsfile to be loaded.
-   */
+  /** Add a new tsfile to be loaded. */
   void addTsfile(File tsfile);
 
-  /**
-   * Mark sync end.
-   */
+  /** Mark sync end. */
   void endSync();
 
-  /**
-   * Handle load task by type.
-   */
+  /** Handle load task by type. */
   void handleLoadTask(LoadTask task) throws IOException;
 
-  /**
-   * Set current load type
-   */
+  /** Set current load type */
   void setCurType(LoadType curType);
 
   void cleanUp();

@@ -19,13 +19,6 @@
 
 package org.apache.iotdb.cluster.server.service;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.BufferUnderflowException;
-import java.nio.ByteBuffer;
-import java.nio.file.Files;
-import org.apache.iotdb.cluster.client.sync.SyncDataClient;
-import org.apache.iotdb.cluster.client.sync.SyncMetaClient;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
@@ -37,14 +30,23 @@ import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
+import org.apache.iotdb.cluster.rpc.thrift.RequestCommitIndexResponse;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.BufferUnderflowException;
+import java.nio.ByteBuffer;
+import java.nio.file.Files;
 
 public abstract class BaseSyncService implements RaftService.Iface {
 
@@ -81,7 +83,9 @@ public abstract class BaseSyncService implements RaftService.Iface {
     try {
       return member.appendEntries(request);
     } catch (BufferUnderflowException e) {
-      logger.error("Underflow buffers {} of logs from {}", request.getEntries(),
+      logger.error(
+          "Underflow buffers {} of logs from {}",
+          request.getEntries(),
           request.getPrevLogIndex() + 1);
       throw new TException(e);
     } catch (Exception e) {
@@ -90,11 +94,22 @@ public abstract class BaseSyncService implements RaftService.Iface {
   }
 
   @Override
-  public long requestCommitIndex(Node header, int raftId)
-      throws TException {
-    long commitIndex = member.getCommitIndex();
+  public RequestCommitIndexResponse requestCommitIndex(Node header, int raftId) throws TException {
+
+    long commitIndex;
+    long commitTerm;
+    long curTerm;
+    synchronized (member.getTerm()) {
+      commitIndex = member.getLogManager().getCommitLogIndex();
+      commitTerm = member.getLogManager().getCommitLogTerm();
+      curTerm = member.getTerm().get();
+    }
+
+    RequestCommitIndexResponse response =
+        new RequestCommitIndexResponse(curTerm, commitIndex, commitTerm);
+
     if (commitIndex != Long.MIN_VALUE) {
-      return commitIndex;
+      return response;
     }
 
     member.waitLeader();
@@ -103,26 +118,19 @@ public abstract class BaseSyncService implements RaftService.Iface {
       throw new TException(new LeaderUnknownException(member.getAllNodes()));
     }
     try {
-      commitIndex = client.requestCommitIndex(header, raftId);
+      response = client.requestCommitIndex(header, raftId);
     } catch (TException e) {
       client.getInputProtocol().getTransport().close();
       throw e;
     } finally {
-      putBackSyncClient(client);
+      ClientUtils.putBackSyncClient(client);
     }
-    return commitIndex;
-  }
-
-  void putBackSyncClient(Client client) {
-    if (client instanceof SyncDataClient) {
-      ((SyncDataClient) client).putBack();
-    } else {
-      ((SyncMetaClient) client).putBack();
-    }
+    return response;
   }
 
   @Override
-  public ByteBuffer readFile(String filePath, long offset, int length, int raftId) throws TException {
+  public ByteBuffer readFile(String filePath, long offset, int length, int raftId)
+      throws TException {
     try {
       return IOUtils.readFile(filePath, offset, length);
     } catch (IOException e) {
@@ -157,7 +165,7 @@ public abstract class BaseSyncService implements RaftService.Iface {
           client.getInputProtocol().getTransport().close();
           throw e;
         } finally {
-          putBackSyncClient(client);
+          ClientUtils.putBackSyncClient(client);
         }
         return status;
       } else {

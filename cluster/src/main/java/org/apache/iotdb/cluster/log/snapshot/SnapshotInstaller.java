@@ -17,12 +17,12 @@
  * under the License.
  */
 
-
 package org.apache.iotdb.cluster.log.snapshot;
 
-import java.util.Map;
 import org.apache.iotdb.cluster.exception.SnapshotInstallationException;
 import org.apache.iotdb.cluster.log.Snapshot;
+
+import java.util.Map;
 
 public interface SnapshotInstaller<T extends Snapshot> {
 

@@ -24,25 +24,31 @@ import org.apache.iotdb.cluster.log.manage.PartitionedSnapshotLogManager;
 import org.apache.iotdb.cluster.log.snapshot.SnapshotFactory;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.utils.Constants;
 
 public class TestPartitionedLogManager extends PartitionedSnapshotLogManager {
 
   public TestPartitionedLogManager() {
-    super(new TestLogApplier(), null, new Node("localhost", 30001, 1, 40001, 55560), null, null,
+    super(
+        new TestLogApplier(),
+        null,
+        new Node("localhost", 30001, 1, Constants.RPC_PORT, 6667, "localhost"),
+        null,
+        null,
         null);
   }
 
-  public TestPartitionedLogManager(LogApplier logApplier,
-      PartitionTable partitionTable,
-      Node header,
-      SnapshotFactory factory) {
-    super(logApplier, partitionTable, header, new Node("localhost", 30001, 1, 40001, 55560),
+  public TestPartitionedLogManager(
+      LogApplier logApplier, PartitionTable partitionTable, Node header, SnapshotFactory factory) {
+    super(
+        logApplier,
+        partitionTable,
+        header,
+        new Node("localhost", 30001, 1, 40001, Constants.RPC_PORT, "localhost"),
         factory,
         null);
   }
 
   @Override
-  public void takeSnapshot() {
-
-  }
+  public void takeSnapshot() {}
 }

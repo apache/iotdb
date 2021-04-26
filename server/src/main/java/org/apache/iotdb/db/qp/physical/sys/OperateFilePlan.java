@@ -18,12 +18,13 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
-import java.io.File;
-import java.util.Collections;
-import java.util.List;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+
+import java.io.File;
+import java.util.Collections;
+import java.util.List;
 
 public class OperateFilePlan extends PhysicalPlan {
 
@@ -37,7 +38,8 @@ public class OperateFilePlan extends PhysicalPlan {
     this.file = file;
   }
 
-  public OperateFilePlan(File file, OperatorType operatorType, boolean autoCreateSchema, int sgLevel) {
+  public OperateFilePlan(
+      File file, OperatorType operatorType, boolean autoCreateSchema, int sgLevel) {
     super(false, operatorType);
     this.file = file;
     this.autoCreateSchema = autoCreateSchema;
@@ -73,12 +75,17 @@ public class OperateFilePlan extends PhysicalPlan {
 
   @Override
   public String toString() {
-    return "OperateFilePlan{" +
-        "file=" + file +
-        ", targetDir=" + targetDir +
-        ", autoCreateSchema=" + autoCreateSchema +
-        ", sgLevel=" + sgLevel +
-        ", operatorType=" + getOperatorType() +
-        '}';
+    return "OperateFilePlan{"
+        + "file="
+        + file
+        + ", targetDir="
+        + targetDir
+        + ", autoCreateSchema="
+        + autoCreateSchema
+        + ", sgLevel="
+        + sgLevel
+        + ", operatorType="
+        + getOperatorType()
+        + '}';
   }
 }

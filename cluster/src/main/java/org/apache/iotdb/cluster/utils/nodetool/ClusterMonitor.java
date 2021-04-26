@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,14 +18,6 @@
  */
 package org.apache.iotdb.cluster.utils.nodetool;
 
-import static org.apache.iotdb.cluster.utils.nodetool.function.NodeToolCmd.BUILDING_CLUSTER_INFO;
-import static org.apache.iotdb.cluster.utils.nodetool.function.NodeToolCmd.META_LEADER_UNKNOWN_INFO;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import org.apache.commons.collections4.map.MultiKeyMap;
 import org.apache.iotdb.cluster.ClusterMain;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
@@ -37,8 +29,8 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.server.MetaClusterServer;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
-import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.utils.nodetool.function.NodeToolCmd;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StartupException;
@@ -48,8 +40,18 @@ import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.tsfile.utils.Pair;
+
+import org.apache.commons.collections4.map.MultiKeyMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import static org.apache.iotdb.cluster.utils.nodetool.function.NodeToolCmd.BUILDING_CLUSTER_INFO;
+import static org.apache.iotdb.cluster.utils.nodetool.function.NodeToolCmd.META_LEADER_UNKNOWN_INFO;
 
 public class ClusterMonitor implements ClusterMonitorMBean, IService {
 
@@ -57,18 +59,17 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
 
   public static final ClusterMonitor INSTANCE = new ClusterMonitor();
 
-  private final String mbeanName = String
-      .format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE,
-          getID().getJmxName());
+  private final String mbeanName =
+      String.format(
+          "%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, getID().getJmxName());
 
   @Override
   public void start() throws StartupException {
     try {
       JMXService.registerMBean(INSTANCE, mbeanName);
     } catch (Exception e) {
-      String errorMessage = String
-          .format("Failed to start %s because of %s", this.getID().getName(),
-              e.getMessage());
+      String errorMessage =
+          String.format("Failed to start %s because of %s", this.getID().getName(), e.getMessage());
       throw new StartupException(errorMessage);
     }
   }
@@ -97,7 +98,8 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
       return null;
     }
     RaftNode raftNode = new RaftNode(metaMember.getThisNode(), raftId);
-    DataGroupMember dataMember = metaMember.getDataClusterServer().getHeaderGroupMap().getOrDefault(raftNode, null);
+    DataGroupMember dataMember =
+        metaMember.getDataClusterServer().getHeaderGroupMap().getOrDefault(raftNode, null);
     if (dataMember == null) {
       throw new Exception(String.format("Partition whose header is %s doesn't exist.", raftNode));
     }
@@ -113,8 +115,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
   }
 
   @Override
-  public Map<PartitionGroup, Integer> getSlotNumInDataMigration()
-      throws Exception {
+  public Map<PartitionGroup, Integer> getSlotNumInDataMigration() throws Exception {
     MetaGroupMember member = getMetaGroupMember();
     if (member.getPartitionTable() == null) {
       throw new Exception(BUILDING_CLUSTER_INFO);
@@ -130,8 +131,8 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
   }
 
   @Override
-  public MultiKeyMap<Long, PartitionGroup> getDataPartition(String path, long startTime,
-      long endTime) {
+  public MultiKeyMap<Long, PartitionGroup> getDataPartition(
+      String path, long startTime, long endTime) {
     PartitionTable partitionTable = getPartitionTable();
     if (partitionTable == null) {
       return null;
@@ -163,13 +164,16 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
       return null;
     }
     List<Node> allNodes = partitionTable.getAllNodes();
-    Map<RaftNode, List<Integer>> nodeSlotMap = ((SlotPartitionTable) partitionTable).getAllNodeSlots();
+    Map<RaftNode, List<Integer>> nodeSlotMap =
+        ((SlotPartitionTable) partitionTable).getAllNodeSlots();
     Map<PartitionGroup, Integer> raftGroupMapSlotNum = new HashMap<>();
     for (Node header : allNodes) {
-      for(int raftId = 0; raftId < ClusterDescriptor.getInstance().getConfig().getMultiRaftFactor(); raftId++) {
+      for (int raftId = 0;
+          raftId < ClusterDescriptor.getInstance().getConfig().getMultiRaftFactor();
+          raftId++) {
         RaftNode raftNode = new RaftNode(header, raftId);
-        raftGroupMapSlotNum
-            .put(partitionTable.getHeaderGroup(raftNode), nodeSlotMap.get(raftNode).size());
+        raftGroupMapSlotNum.put(
+            partitionTable.getHeaderGroup(raftNode), nodeSlotMap.get(raftNode).size());
       }
     }
     return raftGroupMapSlotNum;

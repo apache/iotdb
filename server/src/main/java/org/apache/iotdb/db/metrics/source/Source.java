@@ -21,5 +21,4 @@ package org.apache.iotdb.db.metrics.source;
 public interface Source {
 
   String sourceName();
-
 }

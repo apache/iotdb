@@ -69,5 +69,4 @@ public class CopyOnReadLinkedList<T> {
   public int size() {
     return data.size();
   }
-
 }

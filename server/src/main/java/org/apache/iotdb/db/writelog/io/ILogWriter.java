@@ -28,11 +28,11 @@ import java.nio.ByteBuffer;
 public interface ILogWriter {
 
   /**
-   * Write given logs to a persistent medium.
-   * NOTICE: the logs may be cached in the OS/FileSystem, if the OS/FileSystem you are using do
-   * not guarantee strong persistency and you want the logs to be persisted immediately, please
-   * call force() after calling this method.
-   * Notice: do not flip the buffer before calling this method
+   * Write given logs to a persistent medium. NOTICE: the logs may be cached in the OS/FileSystem,
+   * if the OS/FileSystem you are using do not guarantee strong persistency and you want the logs to
+   * be persisted immediately, please call force() after calling this method. Notice: do not flip
+   * the buffer before calling this method
+   *
    * @param logBuffer WAL logs that have been converted to bytes
    * @throws IOException
    */
@@ -40,12 +40,11 @@ public interface ILogWriter {
 
   /**
    * force the OS/FileSystem to flush its cache to make sure logs are persisted.
+   *
    * @throws IOException
    */
   void force() throws IOException;
 
-  /**
-   * release resources occupied by this object, like file streams.
-   */
+  /** release resources occupied by this object, like file streams. */
   void close() throws IOException;
 }

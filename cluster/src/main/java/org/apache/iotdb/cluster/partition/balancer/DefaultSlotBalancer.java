@@ -19,24 +19,22 @@
 
 package org.apache.iotdb.cluster.partition.balancer;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 
-/**
- * This balancer aims to avg slots to all raft groups.
- */
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+
+/** This balancer aims to avg slots to all raft groups. */
 public class DefaultSlotBalancer implements SlotBalancer {
 
-  private int multiRaftFactor =
-      ClusterDescriptor.getInstance().getConfig().getMultiRaftFactor();
+  private int multiRaftFactor = ClusterDescriptor.getInstance().getConfig().getMultiRaftFactor();
   private SlotPartitionTable table;
 
   public DefaultSlotBalancer(SlotPartitionTable partitionTable) {
@@ -44,7 +42,8 @@ public class DefaultSlotBalancer implements SlotBalancer {
   }
 
   /**
-   * Move last slots from each group whose slot number is bigger than the new average to the new node.
+   * Move last slots from each group whose slot number is bigger than the new average to the new
+   * node.
    */
   @Override
   public void moveSlotsToNew(Node newNode, List<Node> oldRing) {
@@ -71,8 +70,8 @@ public class DefaultSlotBalancer implements SlotBalancer {
         if (raftId != multiRaftFactor - 1) {
           numToMove = Math.min(numToMove, newAvg - newNodeSlotMap.get(curNode).size());
         }
-        List<Integer> slotsToMove = slots
-            .subList(slots.size() - transferNum, slots.size() - transferNum + numToMove);
+        List<Integer> slotsToMove =
+            slots.subList(slots.size() - transferNum, slots.size() - transferNum + numToMove);
         newNodeSlotMap.get(curNode).addAll(slotsToMove);
         for (Integer slot : slotsToMove) {
           // record what node previously hold the integer
@@ -104,7 +103,7 @@ public class DefaultSlotBalancer implements SlotBalancer {
     List<Node> nodeRing = table.getAllNodes();
 
     Map<RaftNode, List<Integer>> newHolderSlotMap = new HashMap<>();
-    for(int raftId = 0 ; raftId < multiRaftFactor; raftId++) {
+    for (int raftId = 0; raftId < multiRaftFactor; raftId++) {
       RaftNode raftNode = new RaftNode(target, raftId);
       List<Integer> slots = nodeSlotMap.remove(raftNode);
       for (int i = 0; i < slots.size(); i++) {

@@ -19,9 +19,10 @@
 
 package org.apache.iotdb.db.query.dataset;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
 import java.io.IOException;
 import java.util.List;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public interface UDFInputDataSet {
 

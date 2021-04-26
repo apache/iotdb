@@ -20,17 +20,21 @@
 
 package org.apache.iotdb.db.exception.query;
 
-import java.util.Date;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.rpc.TSStatusCode;
+
+import java.util.Date;
 
 public class OutOfTTLException extends WriteProcessException {
 
   private static final long serialVersionUID = -1197147887094603300L;
 
   public OutOfTTLException(long insertionTime, long timeLowerBound) {
-    super(String.format("Insertion time [%s] is less than ttl time bound [%s]",
-        new Date(insertionTime), new Date(timeLowerBound)),
-        TSStatusCode.OUT_OF_TTL_ERROR.getStatusCode(), true);
+    super(
+        String.format(
+            "Insertion time [%s] is less than ttl time bound [%s]",
+            new Date(insertionTime), new Date(timeLowerBound)),
+        TSStatusCode.OUT_OF_TTL_ERROR.getStatusCode(),
+        true);
   }
 }

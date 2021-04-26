@@ -18,13 +18,6 @@
  */
 package org.apache.iotdb.db.query.dataset;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -40,6 +33,7 @@ import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -48,10 +42,15 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
-/**
- * This QueryDataSet is used for ALIGN_BY_DEVICE query result.
- */
+/** This QueryDataSet is used for ALIGN_BY_DEVICE query result. */
 public class AlignByDeviceDataSet extends QueryDataSet {
 
   private DataSetType dataSetType;
@@ -78,8 +77,8 @@ public class AlignByDeviceDataSet extends QueryDataSet {
   private List<String> executeColumns;
   private int pathsNum = 0;
 
-  public AlignByDeviceDataSet(AlignByDevicePlan alignByDevicePlan, QueryContext context,
-      IQueryRouter queryRouter) {
+  public AlignByDeviceDataSet(
+      AlignByDevicePlan alignByDevicePlan, QueryContext context, IQueryRouter queryRouter) {
     super(null, alignByDevicePlan.getDataTypes());
 
     this.measurements = alignByDevicePlan.getMeasurements();
@@ -110,6 +109,8 @@ public class AlignByDeviceDataSet extends QueryDataSet {
         this.dataSetType = DataSetType.QUERY;
         this.rawDataQueryPlan = new RawDataQueryPlan();
         this.rawDataQueryPlan.setAscending(alignByDevicePlan.isAscending());
+        // only redirect query for raw data query
+        this.rawDataQueryPlan.setEnableRedirect(alignByDevicePlan.isEnableRedirect());
     }
 
     this.curDataSetInitialized = false;
@@ -194,8 +195,18 @@ public class AlignByDeviceDataSet extends QueryDataSet {
           default:
             throw new IOException("unsupported DataSetType");
         }
-      } catch (QueryProcessException | QueryFilterOptimizationException | StorageEngineException e) {
+      } catch (QueryProcessException
+          | QueryFilterOptimizationException
+          | StorageEngineException e) {
         throw new IOException(e);
+      }
+
+      if (currentDataSet.getEndPoint() != null) {
+        org.apache.iotdb.service.rpc.thrift.EndPoint endPoint =
+            new org.apache.iotdb.service.rpc.thrift.EndPoint();
+        endPoint.setIp(currentDataSet.getEndPoint().getIp());
+        endPoint.setPort(currentDataSet.getEndPoint().getPort());
+        throw new RedirectException(endPoint);
       }
 
       if (currentDataSet.hasNext()) {
@@ -255,7 +266,9 @@ public class AlignByDeviceDataSet extends QueryDataSet {
   }
 
   private enum DataSetType {
-    GROUPBYTIME, AGGREGATE, FILL, QUERY
+    GROUPBYTIME,
+    AGGREGATE,
+    FILL,
+    QUERY
   }
-
 }

@@ -27,12 +27,11 @@ import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * MetaLogApplier applies logs like node addition and storage group creation to IoTDB.
- */
+/** MetaLogApplier applies logs like node addition and storage group creation to IoTDB. */
 public class MetaLogApplier extends BaseApplier {
 
   private static final Logger logger = LoggerFactory.getLogger(MetaLogApplier.class);

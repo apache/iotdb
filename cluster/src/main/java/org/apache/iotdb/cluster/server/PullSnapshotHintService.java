@@ -19,12 +19,6 @@
 
 package org.apache.iotdb.cluster.server;
 
-import java.util.Iterator;
-import java.util.List;
-import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
@@ -33,9 +27,17 @@ import org.apache.iotdb.cluster.log.snapshot.PullSnapshotTaskDescriptor;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
+
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Iterator;
+import java.util.List;
+import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class PullSnapshotHintService {
 
@@ -91,7 +93,10 @@ public class PullSnapshotHintService {
             if (logger.isDebugEnabled()) {
               logger.debug(
                   "{}: start to send hint to target group {}, receiver {}, slot is {} and other {}",
-                  member.getName(), hint.partitionGroup, receiver, hint.slots.get(0),
+                  member.getName(),
+                  hint.partitionGroup,
+                  receiver,
+                  hint.slots.get(0),
                   hint.slots.size() - 1);
             }
             boolean result = sendHint(receiver, hint);
@@ -127,22 +132,22 @@ public class PullSnapshotHintService {
   private boolean sendHintsAsync(Node receiver, PullSnapshotHint hint)
       throws TException, InterruptedException {
     AsyncDataClient asyncDataClient = (AsyncDataClient) member.getAsyncClient(receiver);
-    return SyncClientAdaptor.onSnapshotApplied(asyncDataClient, hint.getHeader(), hint.getRaftId(), hint.slots);
+    return SyncClientAdaptor.onSnapshotApplied(
+        asyncDataClient, hint.getHeader(), hint.getRaftId(), hint.slots);
   }
 
   private boolean sendHintSync(Node receiver, PullSnapshotHint hint) throws TException {
-    SyncDataClient syncDataClient = (SyncDataClient) member.getSyncClient(receiver);
-    if (syncDataClient == null) {
-      return false;
+    try (SyncDataClient syncDataClient = (SyncDataClient) member.getSyncClient(receiver)) {
+      if (syncDataClient == null) {
+        return false;
+      }
+      return syncDataClient.onSnapshotApplied(hint.getHeader(), hint.getRaftId(), hint.slots);
     }
-    return syncDataClient.onSnapshotApplied(hint.getHeader(), hint.getRaftId(), hint.slots);
   }
 
   private static class PullSnapshotHint {
 
-    /**
-     * Nodes to send this hint;
-     */
+    /** Nodes to send this hint */
     private PartitionGroup receivers;
 
     private PartitionGroup partitionGroup;

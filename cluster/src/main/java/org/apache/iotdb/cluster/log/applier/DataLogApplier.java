@@ -19,14 +19,12 @@
 
 package org.apache.iotdb.cluster.log.applier;
 
-import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
-import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.IOUtils;
@@ -39,14 +37,16 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.service.IoTDB;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * DataLogApplier applies logs like data insertion/deletion/update and timeseries creation to
- * IoTDB.
+ * DataLogApplier applies logs like data insertion/deletion/update and timeseries creation to IoTDB.
  */
 public class DataLogApplier extends BaseApplier {
 
@@ -65,16 +65,24 @@ public class DataLogApplier extends BaseApplier {
 
     try {
       if (log instanceof AddNodeLog) {
-        metaGroupMember.getDataClusterServer().preAddNodeForDataGroup((AddNodeLog) log, dataGroupMember);
-        dataGroupMember.setAndSaveLastAppliedPartitionTableVersion(((AddNodeLog) log).getMetaLogIndex());
+        metaGroupMember
+            .getDataClusterServer()
+            .preAddNodeForDataGroup((AddNodeLog) log, dataGroupMember);
+        dataGroupMember.setAndSaveLastAppliedPartitionTableVersion(
+            ((AddNodeLog) log).getMetaLogIndex());
       } else if (log instanceof RemoveNodeLog) {
-        metaGroupMember.getDataClusterServer().preRemoveNodeForDataGroup((RemoveNodeLog) log, dataGroupMember);
-        dataGroupMember.setAndSaveLastAppliedPartitionTableVersion(((RemoveNodeLog) log).getMetaLogIndex());
+        metaGroupMember
+            .getDataClusterServer()
+            .preRemoveNodeForDataGroup((RemoveNodeLog) log, dataGroupMember);
+        dataGroupMember.setAndSaveLastAppliedPartitionTableVersion(
+            ((RemoveNodeLog) log).getMetaLogIndex());
       } else if (log instanceof PhysicalPlanLog) {
         PhysicalPlanLog physicalPlanLog = (PhysicalPlanLog) log;
         PhysicalPlan plan = physicalPlanLog.getPlan();
         if (plan instanceof InsertMultiTabletPlan) {
           applyInsert((InsertMultiTabletPlan) plan);
+        } else if (plan instanceof InsertRowsPlan) {
+          applyInsert((InsertRowsPlan) plan);
         } else if (plan instanceof InsertPlan) {
           applyInsert((InsertPlan) plan);
         } else {
@@ -83,9 +91,11 @@ public class DataLogApplier extends BaseApplier {
       } else if (log instanceof CloseFileLog) {
         CloseFileLog closeFileLog = ((CloseFileLog) log);
         StorageEngine.getInstance()
-            .closeStorageGroupProcessor(new PartialPath(closeFileLog.getStorageGroupName()),
+            .closeStorageGroupProcessor(
+                new PartialPath(closeFileLog.getStorageGroupName()),
                 closeFileLog.getPartitionId(),
-                closeFileLog.isSeq(), false);
+                closeFileLog.isSeq(),
+                false);
       } else {
         logger.error("Unsupported log: {}", log);
       }
@@ -104,6 +114,13 @@ public class DataLogApplier extends BaseApplier {
       throws StorageGroupNotSetException, QueryProcessException, StorageEngineException {
     for (InsertTabletPlan insertTabletPlan : plan.getInsertTabletPlanList()) {
       applyInsert(insertTabletPlan);
+    }
+  }
+
+  private void applyInsert(InsertRowsPlan plan)
+      throws StorageGroupNotSetException, QueryProcessException, StorageEngineException {
+    for (InsertRowPlan insertRowPlan : plan.getInsertRowPlanList()) {
+      applyInsert(insertRowPlan);
     }
   }
 

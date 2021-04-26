@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.db.query.udf.example;
 
-import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.TIME_INTERVAL_KEY;
-
-import java.io.IOException;
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.RowIterator;
 import org.apache.iotdb.db.query.udf.api.access.RowWindow;
@@ -31,19 +28,22 @@ import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameterValida
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+
+import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.TIME_INTERVAL_KEY;
+
 public class SlidingTimeWindowConstructionTester implements UDTF {
 
-  private static final Logger logger = LoggerFactory
-      .getLogger(SlidingTimeWindowConstructionTester.class);
+  private static final Logger logger =
+      LoggerFactory.getLogger(SlidingTimeWindowConstructionTester.class);
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
-    validator
-        .validateInputSeriesNumber(1)
-        .validateInputSeriesDataType(0, TSDataType.INT32);
+    validator.validateInputSeriesNumber(1).validateInputSeriesDataType(0, TSDataType.INT32);
   }
 
   @Override

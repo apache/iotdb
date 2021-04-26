@@ -61,7 +61,7 @@
             </activation>
             <properties>
                 <os.suffix>linux</os.suffix>
-                <os.classifier>linux-x86_64</os.classifier>
+                <!-- use Makefile as default cmake generator, users may specify other generators -->
                 <cmake.generator>Unix Makefiles</cmake.generator>
                 <cmake.root.dir>${project.parent.basedir}/compile-tools/thrift/target/cmake-${cmake-version}-Linux-x86_64/</cmake.root.dir>
                 <thrift.exec.absolute.path>${project.parent.basedir}/compile-tools/thrift/target/build/compiler/cpp/bin/thrift</thrift.exec.absolute.path>
@@ -77,7 +77,7 @@
             </activation>
             <properties>
                 <os.suffix>mac</os.suffix>
-                <os.classifier>mac-x86_64</os.classifier>
+                <!-- use Makefile as default cmake generator, users may specify other generators -->
                 <cmake.generator>Unix Makefiles</cmake.generator>
                 <cmake.root.dir>${project.parent.basedir}/compile-tools/thrift/target/cmake-${cmake-version}-Darwin-x86_64/CMake.app/Contents</cmake.root.dir>
                 <thrift.exec.absolute.path>${project.parent.basedir}/compile-tools/thrift/target/build/compiler/cpp/bin/thrift</thrift.exec.absolute.path>
@@ -93,7 +93,7 @@
             </activation>
             <properties>
                 <os.suffix>win</os.suffix>
-                <os.classifier>windows-x86_64</os.classifier>
+                <!-- use MSVC 2019 as default cmake generator, users may specify other generators -->
                 <cmake.generator>Visual Studio 16 2019</cmake.generator>
                 <cmake.root.dir>${project.parent.basedir}/compile-tools/thrift/target/cmake-${cmake-version}-win64-x64/</cmake.root.dir>
                 <thrift.exec.absolute.path>${project.parent.basedir}/compile-tools/thrift/target/build/compiler/cpp/bin/${cmake.build.type}/thrift.exe</thrift.exec.absolute.path>
@@ -103,21 +103,38 @@
             </properties>
         </profile>
         <profile>
-            <id>thrift-generation</id>
-            <activation>
-                <file>
-                    <exists>../thrift/src/main/thrift</exists>
-                </file>
-            </activation>
+            <id>compile-cpp</id>
             <build>
                 <plugins>
+                    <!-- Build and do session integration test -->
+                    <plugin>
+                        <artifactId>maven-resources-plugin</artifactId>
+                        <version>2.6</version>
+                        <executions>
+                            <execution>
+                                <id>copy-test-resources</id>
+                                <phase>validate</phase>
+                                <goals>
+                                    <goal>copy-resources</goal>
+                                </goals>
+                                <configuration>
+                                    <outputDirectory>${project.build.directory}/build/test</outputDirectory>
+                                    <resources>
+                                        <resource>
+                                            <directory>${project.basedir}/src/test</directory>
+                                            <filtering>true</filtering>
+                                        </resource>
+                                    </resources>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
                     <plugin>
                         <groupId>com.coderplus.maven.plugins</groupId>
                         <artifactId>copy-rename-maven-plugin</artifactId>
                         <version>1.0</version>
                         <executions>
                             <execution>
-                                <!-- Copy rpc.thrift into target directory -->
                                 <id>copy-thrift-source</id>
                                 <goals>
                                     <goal>copy</goal>
@@ -229,6 +246,60 @@
                                     <projectDirectory>${project.build.directory}/build/main</projectDirectory>
                                 </configuration>
                             </execution>
+                        </executions>
+                    </plugin>
+                    <!--Package all C++ header files and client library-->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-assembly-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>package-client-cpp</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>single</goal>
+                                </goals>
+                                <configuration>
+                                    <finalName>${project.artifactId}-${project.version}</finalName>
+                                    <descriptors>
+                                        <descriptor>src/assembly/client-cpp.xml</descriptor>
+                                    </descriptors>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>com.googlecode.maven-download-plugin</groupId>
+                        <artifactId>download-maven-plugin</artifactId>
+                        <version>1.3.0</version>
+                        <executions>
+                            <!-- Download the Catch2 header file. -->
+                            <execution>
+                                <id>get-catch2</id>
+                                <phase>generate-resources</phase>
+                                <goals>
+                                    <goal>wget</goal>
+                                </goals>
+                                <configuration>
+                                    <url>${catch2.url}</url>
+                                    <unpack>false</unpack>
+                                    <outputDirectory>${project.build.directory}/build/test/catch2</outputDirectory>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>cppTest</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.googlecode.cmake-maven-project</groupId>
+                        <artifactId>cmake-maven-plugin</artifactId>
+                        <version>3.7.2-b1</version>
+                        <executions>
                             <!-- Generate Cmake build directory to compile testing program -->
                             <execution>
                                 <id>cmake-generate-test</id>
@@ -272,71 +343,6 @@
                                 <configuration>
                                     <buildDirectory>${project.build.directory}/build/test</buildDirectory>
                                     <downloadBinaries>false</downloadBinaries>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <!--Package all C++ header files and client library-->
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-assembly-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>package-client-cpp</id>
-                                <phase>package</phase>
-                                <goals>
-                                    <goal>single</goal>
-                                </goals>
-                                <configuration>
-                                    <finalName>${project.artifactId}-${project.version}</finalName>
-                                    <descriptors>
-                                        <descriptor>src/assembly/client-cpp.xml</descriptor>
-                                    </descriptors>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <!-- Build and do session integration test -->
-                    <plugin>
-                        <artifactId>maven-resources-plugin</artifactId>
-                        <version>2.6</version>
-                        <executions>
-                            <execution>
-                                <id>copy-test-resources</id>
-                                <phase>validate</phase>
-                                <goals>
-                                    <goal>copy-resources</goal>
-                                </goals>
-                                <configuration>
-                                    <outputDirectory>${project.build.directory}/build/test</outputDirectory>
-                                    <resources>
-                                        <resource>
-                                            <directory>${project.basedir}/src/test</directory>
-                                            <filtering>true</filtering>
-                                        </resource>
-                                    </resources>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>com.googlecode.maven-download-plugin</groupId>
-                        <artifactId>download-maven-plugin</artifactId>
-                        <executions>
-                            <!-- Download the Catch2 header file. -->
-                            <execution>
-                                <id>get-catch2</id>
-                                <phase>generate-resources</phase>
-                                <goals>
-                                    <goal>wget</goal>
-                                </goals>
-                                <configuration>
-                                    <url>${catch2.url}</url>
-                                    <unpack>false</unpack>
-                                    <outputDirectory>${project.build.directory}/build/test/catch2</outputDirectory>
-                                    <skipCache>false</skipCache>
-                                    <!-- must be true to avoid the local Catch2 has incorrect vesion.-->
-                                    <overwrite>false</overwrite>
                                 </configuration>
                             </execution>
                         </executions>

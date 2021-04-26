@@ -84,4 +84,32 @@
             </plugin>
         </plugins>
     </build>
+    <profiles>
+        <profile>
+            <id>skipCrossTests</id>
+            <activation>
+                <property>
+                    <name>skipTests</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <properties>
+                <cross.test.it.skip>true</cross.test.it.skip>
+                <cross.ut.skip>true</cross.ut.skip>
+                <cross.test.test.skip>true</cross.test.test.skip>
+            </properties>
+        </profile>
+        <profile>
+            <id>skipUT_CrossTests</id>
+            <activation>
+                <property>
+                    <name>skipUTs</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <properties>
+                <cross.ut.skip>true</cross.ut.skip>
+            </properties>
+        </profile>
+    </profiles>
 </project>

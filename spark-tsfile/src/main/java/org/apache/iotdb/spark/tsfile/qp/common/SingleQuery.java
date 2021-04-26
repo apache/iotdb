@@ -18,13 +18,11 @@
  */
 package org.apache.iotdb.spark.tsfile.qp.common;
 
-
 import java.util.List;
 
 /**
- * This class is constructed with a single getIndex plan. Single getIndex means it could be processed by
- * reading API by one pass directly.<br>
- *
+ * This class is constructed with a single getIndex plan. Single getIndex means it could be
+ * processed by reading API by one pass directly.<br>
  */
 public class SingleQuery {
 
@@ -32,8 +30,10 @@ public class SingleQuery {
   private FilterOperator timeFilterOperator;
   private FilterOperator valueFilterOperator;
 
-  public SingleQuery(List<FilterOperator> columnFilterOperators,
-      FilterOperator timeFilter, FilterOperator valueFilter) {
+  public SingleQuery(
+      List<FilterOperator> columnFilterOperators,
+      FilterOperator timeFilter,
+      FilterOperator valueFilter) {
     super();
     this.columnFilterOperators = columnFilterOperators;
     this.timeFilterOperator = timeFilter;
@@ -55,9 +55,11 @@ public class SingleQuery {
 
   @Override
   public String toString() {
-    return "SingleQuery: \n" + columnFilterOperators + "\n" + timeFilterOperator + "\n"
+    return "SingleQuery: \n"
+        + columnFilterOperators
+        + "\n"
+        + timeFilterOperator
+        + "\n"
         + valueFilterOperator;
   }
-
-
 }

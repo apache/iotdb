@@ -18,15 +18,16 @@
  */
 package org.apache.iotdb.db.qp.utils;
 
-import static org.junit.Assert.assertEquals;
+import org.apache.iotdb.db.exception.query.LogicalOperatorException;
+
+import org.junit.Assert;
+import org.junit.Test;
 
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import org.apache.iotdb.db.exception.query.LogicalOperatorException;
-import org.h2.mvstore.DataUtils;
-import org.junit.Assert;
-import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
 
 public class DatetimeQueryDataSetUtilsTest {
 
@@ -37,9 +38,7 @@ public class DatetimeQueryDataSetUtilsTest {
   private final long timestamp = 1546413207689L;
   private long delta;
 
-  /**
-   *  Test convertDatetimeStrToLong() method with different time precision.
-   */
+  /** Test convertDatetimeStrToLong() method with different time precision. */
   @Test
   public void convertDatetimeStrToLongTest1() throws LogicalOperatorException {
     zoneOffset = ZonedDateTime.now().getOffset();
@@ -72,9 +71,7 @@ public class DatetimeQueryDataSetUtilsTest {
     testConvertDateStrToLong(zoneOffset, zoneId, timestamp1 + delta);
   }
 
-  /**
-   * Test time precision is ms.
-   */
+  /** Test time precision is ms. */
   @Test
   public void convertDurationStrToLongTest1() {
     Assert.assertEquals(7000L, DatetimeUtils.convertDurationStrToLong(7, "s", "ms"));
@@ -89,9 +86,7 @@ public class DatetimeQueryDataSetUtilsTest {
     Assert.assertEquals(7L, DatetimeUtils.convertDurationStrToLong(7000000, "ns", "ms"));
   }
 
-  /**
-   * Test time precision is us.
-   */
+  /** Test time precision is us. */
   @Test
   public void convertDurationStrToLongTest2() {
     Assert.assertEquals(7000000L, DatetimeUtils.convertDurationStrToLong(7, "s", "us"));
@@ -106,9 +101,7 @@ public class DatetimeQueryDataSetUtilsTest {
     Assert.assertEquals(7L, DatetimeUtils.convertDurationStrToLong(7000, "ns", "us"));
   }
 
-  /**
-   * Test time precision is ns.
-   */
+  /** Test time precision is ns. */
   @Test
   public void convertDurationStrToLongTest3() {
     Assert.assertEquals(7000000000L, DatetimeUtils.convertDurationStrToLong(7, "s", "ns"));
@@ -137,14 +130,23 @@ public class DatetimeQueryDataSetUtilsTest {
     Assert.assertEquals(7L, DatetimeUtils.convertDurationStrToLong(7, "ns", "ns"));
   }
 
-
   public void testConvertDatetimeStrToLongWithoutMS(ZoneOffset zoneOffset, ZoneId zoneId, long res)
       throws LogicalOperatorException {
-    String[] timeFormatWithoutMs = new String[]{"2019-01-02 15:13:27", "2019/01/02 15:13:27",
-        "2019.01.02 15:13:27", "2019-01-02T15:13:27", "2019/01/02T15:13:27", "2019.01.02T15:13:27",
-        "2019-01-02 15:13:27" + zoneOffset, "2019/01/02 15:13:27" + zoneOffset,
-        "2019.01.02 15:13:27" + zoneOffset, "2019-01-02T15:13:27" + zoneOffset,
-        "2019/01/02T15:13:27" + zoneOffset, "2019.01.02T15:13:27" + zoneOffset,};
+    String[] timeFormatWithoutMs =
+        new String[] {
+          "2019-01-02 15:13:27",
+          "2019/01/02 15:13:27",
+          "2019.01.02 15:13:27",
+          "2019-01-02T15:13:27",
+          "2019/01/02T15:13:27",
+          "2019.01.02T15:13:27",
+          "2019-01-02 15:13:27" + zoneOffset,
+          "2019/01/02 15:13:27" + zoneOffset,
+          "2019.01.02 15:13:27" + zoneOffset,
+          "2019-01-02T15:13:27" + zoneOffset,
+          "2019/01/02T15:13:27" + zoneOffset,
+          "2019.01.02T15:13:27" + zoneOffset,
+        };
     for (String str : timeFormatWithoutMs) {
       Assert.assertEquals(res, DatetimeUtils.convertDatetimeStrToLong(str, zoneOffset, 0));
     }
@@ -152,18 +154,25 @@ public class DatetimeQueryDataSetUtilsTest {
     for (String str : timeFormatWithoutMs) {
       assertEquals(res, DatetimeUtils.convertDatetimeStrToLong(str, zoneId));
     }
-
   }
 
   public void testConvertDatetimeStrToLongWithMS(ZoneOffset zoneOffset, ZoneId zoneId, long res)
       throws LogicalOperatorException {
-    String[] timeFormatWithoutMs = new String[]{"2019-01-02 15:13:27.689",
-        "2019/01/02 15:13:27.689",
-        "2019.01.02 15:13:27.689", "2019-01-02T15:13:27.689", "2019/01/02T15:13:27.689",
-        "2019.01.02T15:13:27.689", "2019-01-02 15:13:27.689" + zoneOffset,
-        "2019/01/02 15:13:27.689" + zoneOffset, "2019.01.02 15:13:27.689" + zoneOffset,
-        "2019-01-02T15:13:27.689" + zoneOffset, "2019/01/02T15:13:27.689" + zoneOffset,
-        "2019.01.02T15:13:27.689" + zoneOffset,};
+    String[] timeFormatWithoutMs =
+        new String[] {
+          "2019-01-02 15:13:27.689",
+          "2019/01/02 15:13:27.689",
+          "2019.01.02 15:13:27.689",
+          "2019-01-02T15:13:27.689",
+          "2019/01/02T15:13:27.689",
+          "2019.01.02T15:13:27.689",
+          "2019-01-02 15:13:27.689" + zoneOffset,
+          "2019/01/02 15:13:27.689" + zoneOffset,
+          "2019.01.02 15:13:27.689" + zoneOffset,
+          "2019-01-02T15:13:27.689" + zoneOffset,
+          "2019/01/02T15:13:27.689" + zoneOffset,
+          "2019.01.02T15:13:27.689" + zoneOffset,
+        };
     for (String str : timeFormatWithoutMs) {
       assertEquals(res, DatetimeUtils.convertDatetimeStrToLong(str, zoneOffset, 0));
     }
@@ -175,9 +184,10 @@ public class DatetimeQueryDataSetUtilsTest {
 
   public void testConvertDateStrToLong(ZoneOffset zoneOffset, ZoneId zoneId, long res)
       throws LogicalOperatorException {
-    String[] timeFormatWithoutMs = new String[]{"2019-01-02",
-        "2019/01/02",
-        "2019.01.02",};
+    String[] timeFormatWithoutMs =
+        new String[] {
+          "2019-01-02", "2019/01/02", "2019.01.02",
+        };
     for (String str : timeFormatWithoutMs) {
       assertEquals(res, DatetimeUtils.convertDatetimeStrToLong(str, zoneOffset, 0));
     }
@@ -186,5 +196,4 @@ public class DatetimeQueryDataSetUtilsTest {
       assertEquals(res, DatetimeUtils.convertDatetimeStrToLong(str, zoneId));
     }
   }
-
 }

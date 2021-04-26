@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,14 +18,16 @@
  */
 package org.apache.iotdb.cluster.utils.nodetool.function;
 
-import static org.apache.iotdb.cluster.utils.nodetool.Printer.msgPrintln;
-
-import io.airlift.airline.Command;
-import java.util.List;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitorMBean;
 import org.apache.iotdb.tsfile.utils.Pair;
+
+import io.airlift.airline.Command;
+
+import java.util.List;
+
+import static org.apache.iotdb.cluster.utils.nodetool.Printer.msgPrintln;
 
 @Command(name = "ring", description = "Print information about the meta raft group")
 public class Ring extends NodeToolCmd {
@@ -39,8 +41,9 @@ public class Ring extends NodeToolCmd {
       msgPrintln(String.format("%-20s  %30s", "Node Identifier", "Node"));
       for (Pair<Node, NodeCharacter> pair : allNodes) {
         Node node = pair.left;
-        msgPrintln(String
-            .format("%-20d->%30s", node.nodeIdentifier, nodeCharacterToString(node, pair.right)));
+        msgPrintln(
+            String.format(
+                "%-20d->%30s", node.nodeIdentifier, nodeCharacterToString(node, pair.right)));
       }
     }
   }

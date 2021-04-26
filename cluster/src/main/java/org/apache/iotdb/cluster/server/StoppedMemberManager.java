@@ -19,6 +19,17 @@
 
 package org.apache.iotdb.cluster.server;
 
+import org.apache.iotdb.cluster.partition.PartitionGroup;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
+import org.apache.iotdb.cluster.server.member.DataGroupMember;
+import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
+import org.apache.iotdb.cluster.utils.ClusterUtils;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -27,15 +38,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.iotdb.cluster.partition.PartitionGroup;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
-import org.apache.iotdb.cluster.server.member.DataGroupMember;
-import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
-import org.apache.iotdb.cluster.utils.ClusterUtils;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * When a node is added or removed, several partition groups are affected and nodes may exit some
@@ -58,8 +60,7 @@ public class StoppedMemberManager {
   private DataGroupMember.Factory memberFactory;
   private Node thisNode;
 
-  StoppedMemberManager(
-      Factory memberFactory, Node thisNode) {
+  StoppedMemberManager(Factory memberFactory, Node thisNode) {
     this.memberFactory = memberFactory;
     this.thisNode = thisNode;
     recover();
@@ -69,6 +70,8 @@ public class StoppedMemberManager {
    * When a DataGroupMember is removed, add it here and record this removal, so in next start-up we
    * can recover it as a data source for data transfers.
    *
+   * @param header When a DataGroupMember is removed, add it here and record this removal, so in
+   *     next start-up we can recover it as a data source for data transfers.
    * @param raftNode
    * @param dataGroupMember
    */
@@ -146,12 +149,12 @@ public class StoppedMemberManager {
     }
     DataGroupMember member = memberFactory.create(partitionGroup, thisNode);
     member.setReadOnly();
-    //TODO CORRECT
+    // TODO CORRECT
     removedMemberMap.put(new RaftNode(partitionGroup.getHeader(), 0), member);
   }
 
   private void parseResumed(String[] split) {
     Node header = ClusterUtils.stringToNode(split[1]);
-    removedMemberMap.remove(new RaftNode(header,0));
+    removedMemberMap.remove(new RaftNode(header, 0));
   }
 }

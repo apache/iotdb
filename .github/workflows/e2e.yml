@@ -18,7 +18,9 @@ on:
       - cluster_new
     paths-ignore:
       - 'docs/**'
-        
+  # allow manually run the action:
+  workflow_dispatch:
+
 jobs:
   E2E:
     runs-on: ubuntu-latest

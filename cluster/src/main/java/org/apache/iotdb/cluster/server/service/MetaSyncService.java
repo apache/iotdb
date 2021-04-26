@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.cluster.server.service;
 
-import java.nio.ByteBuffer;
 import org.apache.iotdb.cluster.client.sync.SyncMetaClient;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.exception.AddSelfException;
 import org.apache.iotdb.cluster.exception.ChangeMembershipException;
+import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
@@ -40,10 +40,14 @@ import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
+
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.nio.ByteBuffer;
 
 public class MetaSyncService extends BaseSyncService implements TSMetaService.Iface {
 
@@ -72,14 +76,20 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
     AddNodeResponse addNodeResponse;
     try {
       addNodeResponse = metaGroupMember.addNode(node, startUpStatus);
-    } catch (AddSelfException | LogExecutionException | ChangeMembershipException | InterruptedException | UnsupportedPlanException e) {
+    } catch (AddSelfException
+        | LogExecutionException
+        | ChangeMembershipException
+        | InterruptedException
+        | UnsupportedPlanException
+        | CheckConsistencyException e) {
       throw new TException(e);
     }
     if (addNodeResponse != null) {
       return addNodeResponse;
     }
 
-    if (member.getCharacter() == NodeCharacter.FOLLOWER && member.getLeader() != null
+    if (member.getCharacter() == NodeCharacter.FOLLOWER
+        && member.getLeader() != null
         && !ClusterConstant.EMPTY_NODE.equals(member.getLeader())) {
       logger.info("Forward the join request of {} to leader {}", node, member.getLeader());
       addNodeResponse = forwardAddNode(node, startUpStatus);
@@ -119,7 +129,7 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
         client.getInputProtocol().getTransport().close();
         logger.warn("Cannot connect to node {}", node, e);
       } finally {
-        putBackSyncClient(client);
+        ClientUtils.putBackSyncClient(client);
       }
     }
     return null;
@@ -151,7 +161,12 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
     long result;
     try {
       result = metaGroupMember.removeNode(node);
-    } catch (PartitionTableUnavailableException | LogExecutionException | ChangeMembershipException | InterruptedException | UnsupportedPlanException e) {
+    } catch (PartitionTableUnavailableException
+        | LogExecutionException
+        | ChangeMembershipException
+        | InterruptedException
+        | UnsupportedPlanException
+        | CheckConsistencyException e) {
       throw new TException(e);
     }
 
@@ -161,8 +176,8 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
 
     if (metaGroupMember.getCharacter() == NodeCharacter.FOLLOWER
         && metaGroupMember.getLeader() != null) {
-      logger.info("Forward the node removal request of {} to leader {}", node,
-          metaGroupMember.getLeader());
+      logger.info(
+          "Forward the node removal request of {} to leader {}", node, metaGroupMember.getLeader());
       Long rst = forwardRemoveNode(node);
       if (rst != null) {
         return rst;
@@ -187,7 +202,7 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
         client.getInputProtocol().getTransport().close();
         logger.warn("Cannot connect to node {}", node, e);
       } finally {
-        putBackSyncClient(client);
+        ClientUtils.putBackSyncClient(client);
       }
     }
     return null;

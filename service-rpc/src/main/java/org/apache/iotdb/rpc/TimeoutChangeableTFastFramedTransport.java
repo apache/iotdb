@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.rpc;
 
-import java.net.SocketException;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportFactory;
 
-public class TimeoutChangeableTFastFramedTransport extends TElasticFramedTransport implements TimeoutChangeableTransport {
+import java.net.SocketException;
+
+public class TimeoutChangeableTFastFramedTransport extends TElasticFramedTransport
+    implements TimeoutChangeableTransport {
 
   private TSocket underlyingSocket;
 
@@ -45,13 +47,12 @@ public class TimeoutChangeableTFastFramedTransport extends TElasticFramedTranspo
 
   public static class Factory extends TTransportFactory {
 
-    private final int initialBufferCapacity;
+    private final int thriftDefaultBufferSize;
+    protected final int thriftMaxFrameSize;
 
-    private final int maxLength;
-
-    public Factory(int initialBufferCapacity, int maxLength) {
-      this.initialBufferCapacity = initialBufferCapacity;
-      this.maxLength = maxLength;
+    public Factory(int thriftDefaultBufferSize, int thriftMaxFrameSize) {
+      this.thriftDefaultBufferSize = thriftDefaultBufferSize;
+      this.thriftMaxFrameSize = thriftMaxFrameSize;
     }
 
     @Override
@@ -59,7 +60,7 @@ public class TimeoutChangeableTFastFramedTransport extends TElasticFramedTranspo
       if (trans instanceof TSocket) {
         return new TimeoutChangeableTFastFramedTransport((TSocket) trans);
       } else {
-        return new TElasticFramedTransport(trans, initialBufferCapacity, maxLength);
+        return new TElasticFramedTransport(trans, thriftDefaultBufferSize, thriftMaxFrameSize);
       }
     }
   }
