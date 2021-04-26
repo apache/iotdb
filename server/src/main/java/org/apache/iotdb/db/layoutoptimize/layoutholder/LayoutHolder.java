@@ -13,10 +13,7 @@ import com.google.gson.GsonBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.util.*;
 
 public class LayoutHolder {
@@ -178,6 +175,40 @@ public class LayoutHolder {
    * @return true if success to load layout, else false
    */
   public boolean loadLayout() {
-    return false;
+    String systemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    File layoutDir = new File(systemDir + File.separator + "layout");
+    if (!layoutDir.exists()) {
+      logger.info("fail to load layout");
+      return false;
+    }
+    File layoutFile = new File(layoutDir.getPath() + File.separator + "layout.json");
+    if (!layoutFile.exists()) {
+      logger.info("fail to load layout");
+      return false;
+    }
+    try {
+      InputStream inputStream = new FileInputStream(layoutFile);
+      int length = (int) layoutFile.length();
+      int readLength = 0;
+      byte[] content = new byte[(int) length];
+      while (readLength < length) {
+        readLength += inputStream.read(content, readLength, 1024);
+      }
+      String json = new String(content);
+      Gson gson = new Gson();
+      Map<String, Map<String, Object>> jsonObject = gson.fromJson(json, layoutMap.getClass());
+      for (String key : jsonObject.keySet()) {
+        Map<String, Object> layout = jsonObject.get(key);
+        layoutMap.put(
+            key,
+            new Layout(
+                (ArrayList<String>) layout.get("measurements"),
+                ((Double) layout.get("averageChunkSize")).longValue()));
+      }
+    } catch (IOException e) {
+      logger.error(e.getMessage());
+    }
+    logger.info("load layout from local file successfully");
+    return true;
   }
 }
