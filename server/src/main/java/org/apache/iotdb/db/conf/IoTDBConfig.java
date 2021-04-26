@@ -496,7 +496,8 @@ public class IoTDBConfig {
 
   /**
    * A global merge will be performed each such interval, that is, each storage group will be merged
-   * (if proper merge candidates can be found). Unit: second.
+   * (if proper merge candidates can be found). 
+   * Unit: second.
    */
   private long mergeIntervalSec = 0L;
 
