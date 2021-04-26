@@ -879,7 +879,7 @@ public class StorageEngine implements IService {
   public static void blockInsertionIfReject(TsFileProcessor tsfileProcessor) throws WriteProcessRejectException {
     long startTime = System.currentTimeMillis();
     while (SystemInfo.getInstance().isRejected()) {
-      if (tsfileProcessor.shouldFlush()) {
+      if (tsfileProcessor != null && tsfileProcessor.shouldFlush()) {
         break;
       }
       try {
