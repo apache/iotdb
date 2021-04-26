@@ -49,7 +49,7 @@ IoTDB 告警功能预计支持两种模式：
 预编译好的二进制文件可在 [这里](https://prometheus.io/download/) 下载。
 
 运行方法：
-````
+````shell
 ./alertmanager --config.file=<your_file>
 ````
 
@@ -58,7 +58,7 @@ IoTDB 告警功能预计支持两种模式：
 或 [Docker Hub](https://quay.io/repository/prometheus/alertmanager) 获得。
 
 运行方法：
-````
+````shell
 docker run --name alertmanager -d -p 127.0.0.1:9093:9093 quay.io/prometheus/alertmanager
 ````
 
@@ -344,7 +344,7 @@ public class AlertingTriggerExample implements Trigger {
 运行逻辑由 `org.apache.iotdb.trigger.AlertingTriggerExample` 
 类定义的触发器。
 
-``` roomsql
+``` sql
   CREATE TRIGGER root-ln-wf01-wt01-alert
   AFTER INSERT
   ON root.ln.wf01.wt01.temperature
@@ -356,7 +356,7 @@ public class AlertingTriggerExample implements Trigger {
 当我们完成 AlertManager 的部署和启动、Trigger 的创建，
 可以通过向时间序列写入数据来测试告警功能。
 
-``` roomsql
+``` sql
 INSERT INTO root.ln.wf01.wt01(timestamp, temperature) VALUES (1, 0);
 INSERT INTO root.ln.wf01.wt01(timestamp, temperature) VALUES (2, 30);
 INSERT INTO root.ln.wf01.wt01(timestamp, temperature) VALUES (3, 60);
@@ -369,8 +369,6 @@ INSERT INTO root.ln.wf01.wt01(timestamp, temperature) VALUES (5, 120);
 `(5, 120)` 后触发的告警。                    
 
 <img  alt="alerting" src="https://user-images.githubusercontent.com/34649843/115957896-a9791080-a537-11eb-9962-541412bdcee6.png">
-
-
 
 
 

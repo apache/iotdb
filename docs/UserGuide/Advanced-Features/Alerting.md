@@ -51,7 +51,7 @@ at present, users can use these two modules with `AlertManager` to realize the w
 The pre-compiled binary file can be downloaded [here](https://prometheus.io/download/).
 
 Running command:
-````
+````shell
 ./alertmanager --config.file=<your_file>
 ````
 
@@ -60,7 +60,7 @@ Available at [Quay.io](https://hub.docker.com/r/prom/alertmanager/)
 or [Docker Hub](https://quay.io/repository/prometheus/alertmanager).
 
 Running command:
-````
+````shell
 docker run --name alertmanager -d -p 127.0.0.1:9093:9093 quay.io/prometheus/alertmanager
 ````
 
@@ -345,7 +345,7 @@ on the `root.ln.wf01.wt01.temperature` time series,
 whose operation logic is defined 
 by `org.apache.iotdb.trigger.AlertingTriggerExample` java class.
 
-``` roomsql
+``` sql
   CREATE TRIGGER root-ln-wf01-wt01-alert
   AFTER INSERT
   ON root.ln.wf01.wt01.temperature
@@ -359,7 +359,7 @@ When we finish the deployment and startup of AlertManager as well as the creatio
 we can test the alerting
 by writing data to the time series.
 
-``` roomsql
+``` sql
 INSERT INTO root.ln.wf01.wt01(timestamp, temperature) VALUES (1, 0);
 INSERT INTO root.ln.wf01.wt01(timestamp, temperature) VALUES (2, 30);
 INSERT INTO root.ln.wf01.wt01(timestamp, temperature) VALUES (3, 60);
