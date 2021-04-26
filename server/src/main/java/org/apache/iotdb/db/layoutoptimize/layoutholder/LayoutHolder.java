@@ -28,6 +28,9 @@ public class LayoutHolder {
 
   private LayoutHolder() {}
 
+  /**
+   * Update metadata from {@link MManager}
+   */
   public void updateMetadata() {
     MManager manager = MManager.getInstance();
     List<PartialPath> storageGroupPaths = manager.getAllStorageGroupPaths();
