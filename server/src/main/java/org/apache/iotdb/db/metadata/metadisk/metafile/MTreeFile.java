@@ -493,7 +493,6 @@ public class MTreeFile {
   }
 
   public void close() throws IOException {
-    sync();
     fileAccess.close();
   }
 }

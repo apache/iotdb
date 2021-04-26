@@ -21,7 +21,7 @@ import java.util.Map;
 public class MetaFileTest {
 
   private static String BASE_PATH = MetaFileTest.class.getResource("").getPath();
-  private static String MTREE_FILEPATH = BASE_PATH + "metafile.bin";
+  private static String MTREE_FILEPATH = BASE_PATH + "MetaFileTest_metafile.bin";
 
   private MetaFile metaFile;
 

@@ -325,8 +325,8 @@ public class MManagerBasicTest {
 
   @Test
   public void testRecover() {
-
     MManager manager = IoTDB.metaManager;
+
     try {
 
       manager.setStorageGroup(new PartialPath("root.laptop.d1"));
@@ -374,6 +374,7 @@ public class MManagerBasicTest {
               .map(PartialPath::getFullPath)
               .collect(Collectors.toSet()));
 
+      manager.clear();// current manager will release the metafile occupation
       MManager recoverManager = new MManager();
       recoverManager.init();
 
@@ -389,6 +390,7 @@ public class MManagerBasicTest {
               .collect(Collectors.toSet()));
 
       recoverManager.clear();
+      manager.init();// manager need be init for env clean
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -446,7 +448,8 @@ public class MManagerBasicTest {
                       .map(PartialPath::getFullPath)
                       .collect(Collectors.toSet()));
 
-      manager.persistMTree();
+      manager.createMTreeSnapshot();
+      manager.clear(); // current manager will release the metafile occupation
       MManager recoverManager = new MManager();
       recoverManager.init();
 
@@ -462,6 +465,7 @@ public class MManagerBasicTest {
                       .collect(Collectors.toSet()));
 
       recoverManager.clear();
+      manager.init(); // manager need be init for env clean
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());

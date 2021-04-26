@@ -24,7 +24,7 @@ public class MTreeDiskBasedTest {
 
   private static final int CACHE_SIZE = 3;
   private static final String BASE_PATH = MTreeDiskBasedTest.class.getResource("").getPath();
-  private static final String METAFILE_FILEPATH = BASE_PATH + "metafile.bin";
+  private static final String METAFILE_FILEPATH = BASE_PATH + "MTreeDiskBasedTest_metafile.bin";
   private File metaFile = new File(METAFILE_FILEPATH);
 
   private MTreeDiskBased root;

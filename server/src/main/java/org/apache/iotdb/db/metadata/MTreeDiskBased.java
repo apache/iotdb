@@ -48,13 +48,8 @@ public class MTreeDiskBased implements MTreeInterface {
   public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
   private final String rootName = PATH_ROOT;
-  private String metaFilePath;
   private MetadataAccess metadataDiskManager;
   private static final int DEFAULT_MAX_CAPACITY = 3;
-  private static final String DEFAULT_METAFILE_PATH =
-      IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
-          + File.separator
-          + MetadataConstant.METAFILE_PATH;
 
   private static transient ThreadLocal<Integer> limit = new ThreadLocal<>();
   private static transient ThreadLocal<Integer> offset = new ThreadLocal<>();
@@ -62,12 +57,15 @@ public class MTreeDiskBased implements MTreeInterface {
   private static transient ThreadLocal<Integer> curOffset = new ThreadLocal<>();
 
   public MTreeDiskBased() throws IOException {
-    this(DEFAULT_MAX_CAPACITY, DEFAULT_METAFILE_PATH);
+    this(DEFAULT_MAX_CAPACITY);
   }
 
-  public MTreeDiskBased(int cacheSize, String metaFilePath) throws IOException {
-    this.metaFilePath = metaFilePath;
-    metadataDiskManager = new MetadataDiskManager(cacheSize, metaFilePath);
+  public MTreeDiskBased(int cacheSize) throws IOException {
+    metadataDiskManager = new MetadataDiskManager(cacheSize);
+  }
+
+  public MTreeDiskBased(int cahceSize, String metaFilePath)throws IOException{
+    metadataDiskManager=new MetadataDiskManager(cahceSize,metaFilePath);
   }
 
   static long getLastTimeStamp(MeasurementMNode node, QueryContext queryContext) {
@@ -1396,8 +1394,8 @@ public class MTreeDiskBased implements MTreeInterface {
   }
 
   @Override
-  public void persist() throws IOException {
-    metadataDiskManager.backup();
+  public void createSnapshot() throws IOException {
+    metadataDiskManager.createSnapshot();
   }
 
   @Override

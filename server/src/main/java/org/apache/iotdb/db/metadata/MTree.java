@@ -1442,11 +1442,7 @@ public class MTree implements MTreeInterface {
   }
 
   @Override
-  public void persist() throws IOException {
-    createMTreeSnapshot();
-  }
-
-  private void createMTreeSnapshot() {
+  public void createSnapshot() throws IOException {
     long time = System.currentTimeMillis();
     logger.info("Start creating MTree snapshot to {}", mtreeSnapshotPath);
     try {
@@ -1458,9 +1454,9 @@ public class MTree implements MTreeInterface {
       }
       if (tmpFile.renameTo(snapshotFile)) {
         logger.info(
-            "Finish creating MTree snapshot to {}, spend {} ms.",
-            mtreeSnapshotPath,
-            System.currentTimeMillis() - time);
+                "Finish creating MTree snapshot to {}, spend {} ms.",
+                mtreeSnapshotPath,
+                System.currentTimeMillis() - time);
       }
     } catch (IOException e) {
       logger.warn("Failed to create MTree snapshot to {}", mtreeSnapshotPath, e);

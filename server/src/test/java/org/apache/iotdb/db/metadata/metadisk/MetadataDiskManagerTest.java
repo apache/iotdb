@@ -18,21 +18,40 @@ public class MetadataDiskManagerTest {
 
   private static final int CACHE_SIZE = 10;
   private static final String BASE_PATH = MetadataDiskManagerTest.class.getResource("").getPath();
-  private static final String METAFILE_FILEPATH = BASE_PATH + "metafile.bin";
-  private File metaFile = new File(METAFILE_FILEPATH);
+  private static final String METAFILE_FILEPATH = BASE_PATH + "MetadataDiskManagerTest_metafile.bin";
+  private String SNAPSHOT_PATH=METAFILE_FILEPATH+".snapshot.bin";
+  private String SNAPSHOT_TEMP_PATH=SNAPSHOT_PATH+".tmp";
 
   @Before
   public void setUp() {
     EnvironmentUtils.envSetUp();
-    if (metaFile.exists()) {
-      metaFile.delete();
+    File file=new File(METAFILE_FILEPATH);
+    if (file.exists()) {
+      file.delete();
+    }
+    file=new File(SNAPSHOT_PATH);
+    if (file.exists()) {
+      file.delete();
+    }
+    file=new File(SNAPSHOT_TEMP_PATH);
+    if (file.exists()) {
+      file.delete();
     }
   }
 
   @After
   public void tearDown() throws Exception {
-    if (metaFile.exists()) {
-      metaFile.delete();
+    File file=new File(METAFILE_FILEPATH);
+    if (file.exists()) {
+      file.delete();
+    }
+    file=new File(SNAPSHOT_PATH);
+    if (file.exists()) {
+      file.delete();
+    }
+    file=new File(SNAPSHOT_TEMP_PATH);
+    if (file.exists()) {
+      file.delete();
     }
     EnvironmentUtils.cleanEnv();
   }
@@ -47,8 +66,9 @@ public class MetadataDiskManagerTest {
     manager.addChild(sg, "device", device);
     MNode measurement = new MeasurementMNode(null, "t1", new MeasurementSchema(), null);
     manager.addChild(device, "t1", measurement);
-    manager.backup();
+    manager.createSnapshot();
     manager.clear();
+
     MetadataDiskManager recoverManager = new MetadataDiskManager(4, METAFILE_FILEPATH);
     root = recoverManager.getRoot();
     sg = recoverManager.getChild(root, "sg");
@@ -60,5 +80,6 @@ public class MetadataDiskManagerTest {
     Assert.assertEquals("device", device.getName());
     Assert.assertEquals("t1", measurement.getName());
     Assert.assertTrue(measurement.isMeasurement());
+    recoverManager.clear();
   }
 }

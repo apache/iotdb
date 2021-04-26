@@ -1799,30 +1799,20 @@ public class MManager {
           "New mlog line number: {}, time from last modification: {} ms",
           logWriter.getLogNum(),
           System.currentTimeMillis() - logFile.lastModified());
-      persistMTree();
+      createMTreeSnapshot();
     }
   }
 
-  public void persistMTree() {
+  public void createMTreeSnapshot() {
     try {
-      mtree.persist();
+      mtree.createSnapshot();
     } catch (IOException e) {
-      logger.warn("Fail to persist MTree because {}", METAFILE_PATH, e);
+      logger.warn("Failed to create MTree snapshot because",  e);
     }
     try {
       logWriter.clear();
     } catch (IOException e) {
       logger.warn("Failed to clear mlog after MTree Persistence because {}", logFilePath, e);
-    }
-  }
-
-  public void createMTreeSnapshot() {
-    if (MTreeType == MTREE_MEMORY_BASED) {
-      try {
-        mtree.persist();
-      } catch (IOException e) {
-        logger.warn("Fail to persist MTree because {}", METAFILE_PATH, e);
-      }
     }
   }
 

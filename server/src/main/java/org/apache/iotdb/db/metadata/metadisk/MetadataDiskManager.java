@@ -1,9 +1,10 @@
 package org.apache.iotdb.db.metadata.metadisk;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.logfile.MLogReader;
+import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.metadisk.cache.CacheStrategy;
 import org.apache.iotdb.db.metadata.metadisk.cache.LRUCacheStrategy;
 import org.apache.iotdb.db.metadata.metadisk.metafile.MetaFile;
@@ -35,15 +36,25 @@ public class MetadataDiskManager implements MetadataAccess {
 
   private MetaFileAccess metaFile;
   private String metaFilePath;
-  private String backupPath;
-  private String backupTempPath;
+  private String mtreeSnapshotPath;
+  private String mtreeSnapshotTmpPath;
 
   private MNode root;
 
-  public MetadataDiskManager(int cacheSize, String metaFilePath) throws IOException {
-    this.metaFilePath = metaFilePath;
-    backupPath=metaFilePath+".backup";
-    backupTempPath =backupPath+"tmp";
+  public MetadataDiskManager(int cacheSize) throws IOException{
+    String schemaDir = IoTDBDescriptor.getInstance().getConfig().getSchemaDir();
+    this.metaFilePath=schemaDir+ File.separator + MetadataConstant.METAFILE_PATH;
+    mtreeSnapshotPath =schemaDir + File.separator + MetadataConstant.MTREE_SNAPSHOT;
+    mtreeSnapshotTmpPath = schemaDir + File.separator + MetadataConstant.MTREE_SNAPSHOT_TMP;
+    capacity = cacheSize;
+    cacheStrategy = new LRUCacheStrategy();
+    init();
+  }
+
+  public MetadataDiskManager(int cacheSize, String metaFilePath) throws IOException{
+    this.metaFilePath=metaFilePath;
+    mtreeSnapshotPath =metaFilePath+".snapshot.bin";
+    mtreeSnapshotTmpPath = mtreeSnapshotPath+".tmp";
     capacity = cacheSize;
     cacheStrategy = new LRUCacheStrategy();
     init();
@@ -61,42 +72,42 @@ public class MetadataDiskManager implements MetadataAccess {
   }
 
   private MNode recoverFromFile() throws IOException{
-    File tmpFile = SystemFileFactory.INSTANCE.getFile(backupTempPath);
+    File tmpFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath);
     if (tmpFile.exists()) {
       logger.warn("Creating MTree snapshot not successful before crashing...");
       Files.delete(tmpFile.toPath());
     }
-    File backup = SystemFileFactory.INSTANCE.getFile(backupPath);
+    File snapshotFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotPath);
     File metaFile = SystemFileFactory.INSTANCE.getFile(metaFilePath);
     if(metaFile.exists()){
-      metaFile.delete();
+      Files.delete(metaFile.toPath());
     }
 
     MNode root=null;
     long time = System.currentTimeMillis();
-    if (backup.exists()) {
+    if (snapshotFile.exists()&&snapshotFile.renameTo(metaFile)) {
       try  {
-        backup.renameTo(metaFile);
         this.metaFile = new MetaFile(metaFilePath); //todo metaFile need to check the file when initialize
         root=this.metaFile.readRoot();
         logger.debug(
                 "spend {} ms to deserialize mtree from snapshot", System.currentTimeMillis() - time);
       } catch (IOException e) {
         // the metaFile got problem, corrupted. delete it and create new one.
-        logger.warn("Failed to deserialize from {}. Use a new MTree.", backup.getPath());
+        logger.warn("Failed to deserialize from {} because {}. Use a new MTree.", snapshotFile.getPath(),e);
         this.metaFile.close();
         this.metaFile = null;
-        backup.delete();
-        this.metaFile=new MetaFile(metaFilePath);
+        Files.delete(metaFile.toPath());
       }
-    }else {
-      this.metaFile = new MetaFile(metaFilePath);
     }
 
+    if(this.metaFile==null){
+      this.metaFile = new MetaFile(metaFilePath);
+    }
     if(root==null) {
       root=new InternalMNode(null, IoTDBConstant.PATH_ROOT);
       this.metaFile.write(root);
     }
+
     return root;
   }
 
@@ -277,31 +288,31 @@ public class MetadataDiskManager implements MetadataAccess {
   }
 
   @Override
-  public void backup() throws IOException {
+  public void createSnapshot() throws IOException {
     long time = System.currentTimeMillis();
-    logger.info("Start creating MTree snapshot to {}", backupPath);
+    logger.info("Start creating MTree snapshot to {}", mtreeSnapshotPath);
     try {
       sync();
       File metaFile= SystemFileFactory.INSTANCE.getFile(metaFilePath);
-      File backupTmep=SystemFileFactory.INSTANCE.getFile(backupTempPath);
-      Files.copy(metaFile.toPath(),backupTmep.toPath());
-      File backup=SystemFileFactory.INSTANCE.getFile(backupPath);
-      if (backup.exists()) {
-        Files.delete(backup.toPath());
+      File tempFile=SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath);
+      Files.copy(metaFile.toPath(),tempFile.toPath());
+      File snapshotFile=SystemFileFactory.INSTANCE.getFile(mtreeSnapshotPath);
+      if (snapshotFile.exists()) {
+        Files.delete(snapshotFile.toPath());
       }
-      if (backupTmep.renameTo(backup)) {
+      if (tempFile.renameTo(snapshotFile)) {
         logger.info(
                 "Finish creating MTree snapshot to {}, spend {} ms.",
-                backupPath,
+                mtreeSnapshotPath,
                 System.currentTimeMillis() - time);
       }
     } catch (IOException e) {
-      logger.warn("Failed to create MTree snapshot to {}", backupPath, e);
-      if (SystemFileFactory.INSTANCE.getFile(backupTempPath).exists()) {
+      logger.warn("Failed to create MTree snapshot to {}", mtreeSnapshotPath, e);
+      if (SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath).exists()) {
         try {
-          Files.delete(SystemFileFactory.INSTANCE.getFile(backupTempPath).toPath());
+          Files.delete(SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath).toPath());
         } catch (IOException e1) {
-          logger.warn("delete file {} failed: {}", backupTempPath, e1.getMessage());
+          logger.warn("delete file {} failed: {}", mtreeSnapshotTmpPath, e1.getMessage());
         }
       }
     }
