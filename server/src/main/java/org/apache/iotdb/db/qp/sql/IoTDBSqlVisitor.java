@@ -1774,7 +1774,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
         }
       }
     }
-    insertOp.setTime(timeArray);
+    insertOp.setTimes(timeArray);
     insertOp.setValueList(valueList.toArray(new String[0]));
   }
 

@@ -251,16 +251,16 @@ public class PhysicalGenerator {
         if (measurementsNum == insert.getValueList().length) {
           return new InsertRowPlan(
               paths.get(0),
-              insert.getTime()[0],
+              insert.getTimes()[0],
               insert.getMeasurementList(),
               insert.getValueList());
         }
         InsertRowsPlan insertRowsPlan = new InsertRowsPlan();
-        for (int i = 0; i < insert.getTime().length; i++) {
+        for (int i = 0; i < insert.getTimes().length; i++) {
           insertRowsPlan.addOneInsertRowPlan(
               new InsertRowPlan(
                   paths.get(0),
-                  insert.getTime()[i],
+                  insert.getTimes()[i],
                   insert.getMeasurementList(),
                   Arrays.copyOfRange(
                       insert.getValueList(), i * measurementsNum, (i + 1) * measurementsNum)),
