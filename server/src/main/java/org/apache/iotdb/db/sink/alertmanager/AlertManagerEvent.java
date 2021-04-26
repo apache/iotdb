@@ -20,7 +20,12 @@
 package org.apache.iotdb.db.sink.alertmanager;
 
 import org.apache.iotdb.db.sink.api.Event;
+import org.apache.iotdb.db.sink.exception.SinkException;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+
+import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -28,27 +33,43 @@ import java.util.regex.Pattern;
 
 public class AlertManagerEvent implements Event {
 
+  private static final String PARAMETER_NULL_ERROR_STR = "parameter null error";
+
+  private static final String ALERTNAME_KEY = "alertname";
+
   private final Map<String, String> labels;
 
   private final Map<String, String> annotations;
 
-  public AlertManagerEvent(String alertname) {
+  private static final Pattern pattern = Pattern.compile("\\{\\{\\.\\w+}}");
+
+  public AlertManagerEvent(String alertname) throws SinkException {
+    if (alertname == null) {
+      throw new SinkException(PARAMETER_NULL_ERROR_STR);
+    }
     this.labels = new HashMap<>();
-    this.labels.put("alertname", alertname);
+    this.labels.put(ALERTNAME_KEY, alertname);
     this.annotations = null;
   }
 
-  public AlertManagerEvent(String alertname, Map<String, String> extraLabels) {
+  public AlertManagerEvent(String alertname, Map<String, String> extraLabels) throws SinkException {
+    if (alertname == null || extraLabels == null) {
+      throw new SinkException(PARAMETER_NULL_ERROR_STR);
+    }
     this.labels = extraLabels;
-    this.labels.put("alertname", alertname);
+    this.labels.put(ALERTNAME_KEY, alertname);
     this.annotations = null;
   }
 
   public AlertManagerEvent(
-      String alertname, Map<String, String> extraLabels, Map<String, String> annotations) {
+      String alertname, Map<String, String> extraLabels, Map<String, String> annotations)
+      throws SinkException {
+    if (alertname == null || extraLabels == null || annotations == null) {
+      throw new SinkException(PARAMETER_NULL_ERROR_STR);
+    }
 
     this.labels = extraLabels;
-    this.labels.put("alertname", alertname);
+    this.labels.put(ALERTNAME_KEY, alertname);
     this.annotations = new HashMap<>();
 
     for (Map.Entry<String, String> entry : annotations.entrySet()) {
@@ -64,10 +85,32 @@ public class AlertManagerEvent implements Event {
     return labels;
   }
 
+  public String toJsonString() {
+    Gson gson = new Gson();
+    Type gsonType = new TypeToken<Map>() {}.getType();
+
+    StringBuilder sb = new StringBuilder();
+    sb.append("{\"labels\":");
+
+    String labelsString = gson.toJson(this.labels, gsonType);
+    sb.append(labelsString);
+
+    if (this.annotations != null) {
+      String annotationsString = gson.toJson(this.annotations, gsonType);
+      sb.append(",");
+      sb.append("\"annotations\":");
+      sb.append(annotationsString);
+    }
+    sb.append("}");
+    return sb.toString();
+  }
+
   private static String fillTemplate(Map<String, String> map, String template) {
-    if (template == null || map == null) return null;
+    if (template == null || map == null) {
+      return null;
+    }
     StringBuffer sb = new StringBuffer();
-    Matcher m = Pattern.compile("\\{\\{\\.\\w+}}").matcher(template);
+    Matcher m = pattern.matcher(template);
     while (m.find()) {
       String param = m.group();
       String key = param.substring(3, param.length() - 2).trim();

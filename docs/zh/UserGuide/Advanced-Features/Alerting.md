@@ -250,7 +250,7 @@ inhibit_rules:
 用户通过自行创建 Java 类、编写钩子中的逻辑来定义一个触发器。
 具体配置流程以及 Sink 模块提供的 `AlertManagerSink` 相关工具类的使用方法参见 [Triggers](Triggers.md)。
 
-下面的示例创建了 `org.apache.iotdb.trigger.AlertingTriggerExample` 类,
+下面的示例创建了 `org.apache.iotdb.trigger.AlertingExample` 类,
 其 `alertManagerHandler` 
 成员变量可发送告警至地址为 `http://127.0.0.1:9093/` 的 AlertManager 实例。
 
@@ -264,91 +264,98 @@ package org.apache.iotdb.trigger;
 此处省略包的引入
 */
 
-public class AlertingTriggerExample implements Trigger {
+public class AlertingExample implements Trigger {
 
-    AlertManagerHandler alertManagerHandler = new AlertManagerHandler();
+  private final AlertManagerHandler alertManagerHandler = new AlertManagerHandler();
 
-    String alertname;
+  private final AlertManagerConfiguration alertManagerConfiguration =
+      new AlertManagerConfiguration("http://127.0.0.1:9093/api/v2/alerts");
 
-    HashMap<String, String> labels = new HashMap<>();
+  private String alertname;
 
-    HashMap<String, String> annotations = new HashMap<>();
+  private final HashMap<String, String> labels = new HashMap<>();
 
-    @Override
-    public void onCreate(TriggerAttributes attributes) throws Exception {
+  private final HashMap<String, String> annotations = new HashMap<>();
 
-        AlertManagerConfiguration alertManagerConfiguration =
-                new AlertManagerConfiguration("http://127.0.0.1:9093/api/v2/alerts");
+  @Override
+  public void onCreate(TriggerAttributes attributes) throws Exception {
+    alertManagerHandler.open(alertManagerConfiguration);
 
-        alertManagerHandler.open(alertManagerConfiguration);
+    alertname = "alert_test";
 
-        alertname = "alert_test";
+    labels.put("series", "root.ln.wf01.wt01.temperature");
+    labels.put("value", "");
+    labels.put("severity", "");
 
-        labels.put("series", "root.ln.wf01.wt01.temperature");
-        labels.put("value", "");
-        labels.put("severity", "");
+    annotations.put("summary", "high temperature");
+    annotations.put("description", "{{.alertname}}: {{.series}} is {{.value}}");
+  }
 
-        annotations.put("summary", "high temperature");
-        annotations.put("description", "{{.alertname}}: {{.series}} is {{.value}}");
+  @Override
+  public void onDrop() throws IOException {
+    alertManagerHandler.close();
+  }
+
+  @Override
+  public void onStart() {
+    alertManagerHandler.open(alertManagerConfiguration);
+  }
+
+  @Override
+  public void onStop() throws Exception {
+    alertManagerHandler.close();
+  }
+
+  @Override
+  public Double fire(long timestamp, Double value) throws Exception {
+    if (value > 100.0) {
+      labels.put("value", String.valueOf(value));
+      labels.put("severity", "critical");
+      AlertManagerEvent alertManagerEvent = new AlertManagerEvent(alertname, labels, annotations);
+      alertManagerHandler.onEvent(alertManagerEvent);
+    } else if (value > 50.0) {
+      labels.put("value", String.valueOf(value));
+      labels.put("severity", "warning");
+      AlertManagerEvent alertManagerEvent = new AlertManagerEvent(alertname, labels, annotations);
+      alertManagerHandler.onEvent(alertManagerEvent);
     }
 
-    @Override
-    public Double fire(long timestamp, Double value) throws Exception {
-        if (value > 100.0) {
+    return value;
+  }
 
-            labels.put("value", String.valueOf(value));
-            labels.put("severity", "critical");
-            AlertManagerEvent alertManagerEvent = new AlertManagerEvent(alertname, labels, annotations);
-            alertManagerHandler.onEvent(alertManagerEvent);
-
-        } else if (value > 50.0) {
-
-            labels.put("value", String.valueOf(value));
-            labels.put("severity", "warning");
-            AlertManagerEvent alertManagerEvent = new AlertManagerEvent(alertname, labels, annotations);
-            alertManagerHandler.onEvent(alertManagerEvent);
-
-        }
-
-        return value;
+  @Override
+  public double[] fire(long[] timestamps, double[] values) throws Exception {
+    for (double value : values) {
+      if (value > 100.0) {
+        labels.put("value", String.valueOf(value));
+        labels.put("severity", "critical");
+        AlertManagerEvent alertManagerEvent = new AlertManagerEvent(alertname, labels, annotations);
+        alertManagerHandler.onEvent(alertManagerEvent);
+      } else if (value > 50.0) {
+        labels.put("value", String.valueOf(value));
+        labels.put("severity", "warning");
+        AlertManagerEvent alertManagerEvent = new AlertManagerEvent(alertname, labels, annotations);
+        alertManagerHandler.onEvent(alertManagerEvent);
+      }
     }
-
-    @Override
-    public double[] fire(long[] timestamps, double[] values) throws Exception {
-        for (double value : values) {
-            if (value > 100.0) {
-
-                labels.put("value", String.valueOf(value));
-                labels.put("severity", "critical");
-                AlertManagerEvent alertManagerEvent = new AlertManagerEvent(alertname, labels, annotations);
-                alertManagerHandler.onEvent(alertManagerEvent);
-
-            } else if (value > 50.0) {
-
-                labels.put("value", String.valueOf(value));
-                labels.put("severity", "warning");
-                AlertManagerEvent alertManagerEvent = new AlertManagerEvent(alertname, labels, annotations);
-                alertManagerHandler.onEvent(alertManagerEvent);
-
-            }
-        }
-        return values;
-    }
+    return values;
+  }
 }
+
 ````
 
 ### 创建 trigger
 
 如下的 sql 语句在 `root.ln.wf01.wt01.temperature` 
 时间序列上注册了名为 `root-ln-wf01-wt01-alert`、
-运行逻辑由 `org.apache.iotdb.trigger.AlertingTriggerExample` 
+运行逻辑由 `org.apache.iotdb.trigger.AlertingExample` 
 类定义的触发器。
 
 ``` sql
   CREATE TRIGGER root-ln-wf01-wt01-alert
   AFTER INSERT
   ON root.ln.wf01.wt01.temperature
-  AS "org.apache.iotdb.trigger.AlertingTriggerExample"
+  AS "org.apache.iotdb.trigger.AlertingExample"
 ```
 
 ## 写入数据

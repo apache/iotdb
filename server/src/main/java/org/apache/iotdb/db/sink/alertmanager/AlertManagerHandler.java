@@ -22,16 +22,14 @@ package org.apache.iotdb.db.sink.alertmanager;
 import org.apache.iotdb.db.sink.api.Handler;
 import org.apache.iotdb.db.sink.exception.SinkException;
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
+import org.apache.http.HttpStatus;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 
-import java.lang.reflect.Type;
-import java.util.Map;
+import java.io.IOException;
 
 public class AlertManagerHandler
     implements Handler<
@@ -40,52 +38,51 @@ public class AlertManagerHandler
 
   private HttpPost request;
 
+  private static CloseableHttpClient client;
+
+  private static int refCount = 0;
+
+  private static synchronized void closeClient() throws IOException {
+    if (--refCount == 0) {
+      client.close();
+    }
+  }
+
+  private static synchronized void openClient() {
+    if (refCount++ == 0) {
+      client = HttpClients.createDefault();
+    }
+  }
+
   @Override
-  public void open(org.apache.iotdb.db.sink.alertmanager.AlertManagerConfiguration configuration)
-      throws Exception {
-    this.request = new HttpPost(configuration.getEndpoint());
-    request.setHeader("Accept", "application/json");
-    request.setHeader("Content-type", "application/json");
+  public void close() throws IOException {
+    closeClient();
+  }
+
+  @Override
+  public void open(org.apache.iotdb.db.sink.alertmanager.AlertManagerConfiguration configuration) {
+    if (this.request == null) {
+      this.request = new HttpPost(configuration.getEndpoint());
+      request.setHeader("Accept", "application/json");
+      request.setHeader("Content-type", "application/json");
+    }
+
+    openClient();
   }
 
   @Override
   public void onEvent(AlertManagerEvent event) throws Exception {
 
-    String json = eventToJson(event);
+    String json = "[" + event.toJsonString() + "]";
 
     request.setEntity(new StringEntity(json));
 
-    try (CloseableHttpClient client = HttpClients.createDefault()) {
+    CloseableHttpResponse response = client.execute(request);
 
-      CloseableHttpResponse response = client.execute(request);
-
-      if (response.getStatusLine().getStatusCode() != 200) {
-        throw new SinkException(response.getStatusLine().toString());
-      }
-    }
-  }
-
-  private static String eventToJson(AlertManagerEvent event) throws SinkException {
-    Gson gson = new Gson();
-    Type gsonType = new TypeToken<Map>() {}.getType();
-
-    StringBuilder sb = new StringBuilder();
-    sb.append("[{\"labels\":");
-
-    if (event.getLabels() == null) {
-      throw new SinkException("labels empty error");
+    if (response.getStatusLine().getStatusCode() != HttpStatus.SC_OK) {
+      throw new SinkException(response.getStatusLine().toString());
     }
 
-    String labelsString = gson.toJson(event.getLabels(), gsonType);
-    sb.append(labelsString);
-
-    if (event.getAnnotations() != null) {
-      String annotationsString = gson.toJson(event.getAnnotations(), gsonType);
-      sb.append(",");
-      sb.append("\"annotations\":");
-      sb.append(annotationsString);
-    }
-    sb.append("}]");
-    return sb.toString();
+    response.close();
   }
 }

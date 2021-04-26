@@ -250,7 +250,7 @@ or `/alertmanager/api/v2/alerts`.
 The user defines a trigger by creating a Java class and writing the logic in the hook.
 Please refer to [Triggers](Triggers.md) for the specific configuration process and the usage method of `AlertManagerSink` related tools provided by the Sink module.
 
-The following example creates the `org.apache.iotdb.trigger.AlertingTriggerExample` class,
+The following example creates the `org.apache.iotdb.trigger.AlertingExample` class,
 Its alertManagerHandler member variables can send alerts to the AlertManager instance 
 at the address of `http://127.0.0.1:9093/`.
 
@@ -264,77 +264,84 @@ package org.apache.iotdb.trigger;
 package importing is omitted here
 */
 
-public class AlertingTriggerExample implements Trigger {
+public class AlertingExample implements Trigger {
 
-    AlertManagerHandler alertManagerHandler = new AlertManagerHandler();
+  private final AlertManagerHandler alertManagerHandler = new AlertManagerHandler();
 
-    String alertname;
+  private final AlertManagerConfiguration alertManagerConfiguration =
+      new AlertManagerConfiguration("http://127.0.0.1:9093/api/v2/alerts");
 
-    HashMap<String, String> labels = new HashMap<>();
+  private String alertname;
 
-    HashMap<String, String> annotations = new HashMap<>();
+  private final HashMap<String, String> labels = new HashMap<>();
 
-    @Override
-    public void onCreate(TriggerAttributes attributes) throws Exception {
+  private final HashMap<String, String> annotations = new HashMap<>();
 
-        AlertManagerConfiguration alertManagerConfiguration =
-                new AlertManagerConfiguration("http://127.0.0.1:9093/api/v2/alerts");
+  @Override
+  public void onCreate(TriggerAttributes attributes) throws Exception {
+    alertManagerHandler.open(alertManagerConfiguration);
 
-        alertManagerHandler.open(alertManagerConfiguration);
+    alertname = "alert_test";
 
-        alertname = "alert_test";
+    labels.put("series", "root.ln.wf01.wt01.temperature");
+    labels.put("value", "");
+    labels.put("severity", "");
 
-        labels.put("series", "root.ln.wf01.wt01.temperature");
-        labels.put("value", "");
-        labels.put("severity", "");
+    annotations.put("summary", "high temperature");
+    annotations.put("description", "{{.alertname}}: {{.series}} is {{.value}}");
+  }
 
-        annotations.put("summary", "high temperature");
-        annotations.put("description", "{{.alertname}}: {{.series}} is {{.value}}");
+  @Override
+  public void onDrop() throws IOException {
+    alertManagerHandler.close();
+  }
+
+  @Override
+  public void onStart() {
+    alertManagerHandler.open(alertManagerConfiguration);
+  }
+
+  @Override
+  public void onStop() throws Exception {
+    alertManagerHandler.close();
+  }
+
+  @Override
+  public Double fire(long timestamp, Double value) throws Exception {
+    if (value > 100.0) {
+      labels.put("value", String.valueOf(value));
+      labels.put("severity", "critical");
+      AlertManagerEvent alertManagerEvent = new AlertManagerEvent(alertname, labels, annotations);
+      alertManagerHandler.onEvent(alertManagerEvent);
+    } else if (value > 50.0) {
+      labels.put("value", String.valueOf(value));
+      labels.put("severity", "warning");
+      AlertManagerEvent alertManagerEvent = new AlertManagerEvent(alertname, labels, annotations);
+      alertManagerHandler.onEvent(alertManagerEvent);
     }
 
-    @Override
-    public Double fire(long timestamp, Double value) throws Exception {
-        if (value > 100.0) {
+    return value;
+  }
 
-            labels.put("value", String.valueOf(value));
-            labels.put("severity", "critical");
-            AlertManagerEvent alertManagerEvent = new AlertManagerEvent(alertname, labels, annotations);
-            alertManagerHandler.onEvent(alertManagerEvent);
-
-        } else if (value > 50.0) {
-
-            labels.put("value", String.valueOf(value));
-            labels.put("severity", "warning");
-            AlertManagerEvent alertManagerEvent = new AlertManagerEvent(alertname, labels, annotations);
-            alertManagerHandler.onEvent(alertManagerEvent);
-
-        }
-
-        return value;
+  @Override
+  public double[] fire(long[] timestamps, double[] values) throws Exception {
+    for (double value : values) {
+      if (value > 100.0) {
+        labels.put("value", String.valueOf(value));
+        labels.put("severity", "critical");
+        AlertManagerEvent alertManagerEvent = new AlertManagerEvent(alertname, labels, annotations);
+        alertManagerHandler.onEvent(alertManagerEvent);
+      } else if (value > 50.0) {
+        labels.put("value", String.valueOf(value));
+        labels.put("severity", "warning");
+        AlertManagerEvent alertManagerEvent = new AlertManagerEvent(alertname, labels, annotations);
+        alertManagerHandler.onEvent(alertManagerEvent);
+      }
     }
-
-    @Override
-    public double[] fire(long[] timestamps, double[] values) throws Exception {
-        for (double value : values) {
-            if (value > 100.0) {
-
-                labels.put("value", String.valueOf(value));
-                labels.put("severity", "critical");
-                AlertManagerEvent alertManagerEvent = new AlertManagerEvent(alertname, labels, annotations);
-                alertManagerHandler.onEvent(alertManagerEvent);
-
-            } else if (value > 50.0) {
-
-                labels.put("value", String.valueOf(value));
-                labels.put("severity", "warning");
-                AlertManagerEvent alertManagerEvent = new AlertManagerEvent(alertname, labels, annotations);
-                alertManagerHandler.onEvent(alertManagerEvent);
-
-            }
-        }
-        return values;
-    }
+    return values;
+  }
 }
+
 ````
 
 ### Creating trigger
@@ -343,13 +350,13 @@ The following SQL statement registered the trigger
 named `root-ln-wf01-wt01-alert` 
 on the `root.ln.wf01.wt01.temperature` time series, 
 whose operation logic is defined 
-by `org.apache.iotdb.trigger.AlertingTriggerExample` java class.
+by `org.apache.iotdb.trigger.AlertingExample` java class.
 
 ``` sql
   CREATE TRIGGER root-ln-wf01-wt01-alert
   AFTER INSERT
   ON root.ln.wf01.wt01.temperature
-  AS "org.apache.iotdb.trigger.AlertingTriggerExample"
+  AS "org.apache.iotdb.trigger.AlertingExample"
 ```
 
 

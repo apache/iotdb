@@ -25,24 +25,24 @@ import org.apache.iotdb.db.sink.alertmanager.AlertManagerConfiguration;
 import org.apache.iotdb.db.sink.alertmanager.AlertManagerEvent;
 import org.apache.iotdb.db.sink.alertmanager.AlertManagerHandler;
 
+import java.io.IOException;
 import java.util.HashMap;
 
-public class AlertingTriggerExample implements Trigger {
+public class AlertingExample implements Trigger {
 
-  AlertManagerHandler alertManagerHandler = new AlertManagerHandler();
+  private final AlertManagerHandler alertManagerHandler = new AlertManagerHandler();
 
-  String alertname;
+  private final AlertManagerConfiguration alertManagerConfiguration =
+      new AlertManagerConfiguration("http://127.0.0.1:9093/api/v2/alerts");
 
-  HashMap<String, String> labels = new HashMap<>();
+  private String alertname;
 
-  HashMap<String, String> annotations = new HashMap<>();
+  private final HashMap<String, String> labels = new HashMap<>();
+
+  private final HashMap<String, String> annotations = new HashMap<>();
 
   @Override
   public void onCreate(TriggerAttributes attributes) throws Exception {
-
-    AlertManagerConfiguration alertManagerConfiguration =
-        new AlertManagerConfiguration("http://127.0.0.1:9093/api/v2/alerts");
-
     alertManagerHandler.open(alertManagerConfiguration);
 
     alertname = "alert_test";
@@ -53,6 +53,21 @@ public class AlertingTriggerExample implements Trigger {
 
     annotations.put("summary", "high temperature");
     annotations.put("description", "{{.alertname}}: {{.series}} is {{.value}}");
+  }
+
+  @Override
+  public void onDrop() throws IOException {
+    alertManagerHandler.close();
+  }
+
+  @Override
+  public void onStart() {
+    alertManagerHandler.open(alertManagerConfiguration);
+  }
+
+  @Override
+  public void onStop() throws Exception {
+    alertManagerHandler.close();
   }
 
   @Override
