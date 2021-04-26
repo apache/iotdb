@@ -92,7 +92,7 @@ public class DiskEvaluator {
             new FileWriter(
                 IoTDBDescriptor.getInstance().getConfig().getSystemDir()
                     + File.separator
-                    + "disk_info.txt",
+                    + "disk.info",
                 true));
     RandomAccessFile raf = new RandomAccessFile(file, "r");
     raf.seek(0);
@@ -236,7 +236,7 @@ public class DiskEvaluator {
 
   /**
    * evaluate the disk performance both in seek and read, and store the result in
-   * SystemDir/disk_info.txt
+   * SystemDir/disk.info
    *
    * @throws IOException throw IOException if fail to create the test file
    */
