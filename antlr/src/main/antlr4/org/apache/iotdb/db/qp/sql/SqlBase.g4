@@ -20,7 +20,7 @@
 grammar SqlBase;
 
 singleStatement
-    : statement (';')? EOF
+    : EXPLAIN? statement (';')? EOF
     ;
 
 /*
@@ -102,7 +102,7 @@ statement
     | DROP TRIGGER triggerName=ID #dropTrigger
     | START TRIGGER triggerName=ID #startTrigger
     | STOP TRIGGER triggerName=ID #stopTrigger
-    | SHOW TRIGGERS (ON fullPath)? #showTriggers
+    | SHOW TRIGGERS #showTriggers
     | SELECT topClause? selectElements
     fromClause
     whereClause?
@@ -374,12 +374,25 @@ comparisonOperator
     ;
 
 insertColumnsSpec
-    : LR_BRACKET (TIMESTAMP|TIME) (COMMA nodeNameWithoutStar)+ RR_BRACKET
+    : LR_BRACKET (TIMESTAMP|TIME) (COMMA measurementName)+ RR_BRACKET
+    ;
+measurementName
+    : nodeNameWithoutStar
+    | LR_BRACKET nodeNameWithoutStar (COMMA nodeNameWithoutStar)+ RR_BRACKET
     ;
 
 insertValuesSpec
-    : LR_BRACKET dateFormat (COMMA constant)+ RR_BRACKET
-    | LR_BRACKET INT (COMMA constant)+ RR_BRACKET
+    :(COMMA? insertMultiValue)*
+    ;
+
+insertMultiValue
+    : LR_BRACKET dateFormat (COMMA measurementValue)+ RR_BRACKET
+    | LR_BRACKET INT (COMMA measurementValue)+ RR_BRACKET
+    ;
+
+measurementValue
+    : constant
+    | LR_BRACKET constant (COMMA constant)+ RR_BRACKET
     ;
 
 setCol
@@ -664,6 +677,7 @@ constant
     | MINUS? INT
     | stringLiteral
     | booleanClause
+    | NULL
     ;
 
 booleanClause
@@ -1285,6 +1299,15 @@ LIKE
 TOLERANCE
     : T O L E R A N C E
     ;
+
+EXPLAIN
+    : E X P L A I N
+    ;
+
+NULL
+    : N U L L
+    ;
+
 //============================
 // End of the keywords list
 //============================

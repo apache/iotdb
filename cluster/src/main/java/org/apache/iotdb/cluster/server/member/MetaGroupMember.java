@@ -88,7 +88,6 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -222,11 +221,6 @@ public class MetaGroupMember extends RaftMember {
    * establishing a cluster or joining a cluster.
    */
   private StartUpStatus startUpStatus;
-
-  /**
-   * localExecutor is used to directly execute plans like load configuration in the underlying IoTDB
-   */
-  private PlanExecutor localExecutor;
 
   /** hardLinkCleaner will periodically clean expired hardlinks created during snapshots */
   private ScheduledExecutorService hardLinkCleanerThread;
@@ -1431,9 +1425,31 @@ public class MetaGroupMember extends RaftMember {
     return routeIntervals(intervals, path);
   }
 
+  /**
+   * obtaining partition group based on path and intervals
+   *
+   * @param intervals time intervals, include minimum and maximum value
+   * @param path partial path
+   * @return data partition on which the current interval of the current path is stored
+   * @throws StorageEngineException if Failed to get storage group path
+   */
   public List<PartitionGroup> routeIntervals(Intervals intervals, PartialPath path)
       throws StorageEngineException {
     List<PartitionGroup> partitionGroups = new ArrayList<>();
+    PartialPath storageGroupName = null;
+    try {
+      storageGroupName = IoTDB.metaManager.getStorageGroupPath(path);
+    } catch (MetadataException e) {
+      throw new StorageEngineException(e);
+    }
+
+    // if cluster is not enable-partition, a partial data storage in one PartitionGroup
+    if (!StorageEngine.isEnablePartition()) {
+      PartitionGroup partitionGroup = partitionTable.route(storageGroupName.getFullPath(), 0L);
+      partitionGroups.add(partitionGroup);
+      return partitionGroups;
+    }
+
     long firstLB = intervals.getLowerBound(0);
     long lastUB = intervals.getUpperBound(intervals.getIntervalSize() - 1);
 
@@ -1444,24 +1460,19 @@ public class MetaGroupMember extends RaftMember {
     } else {
       // compute the related data groups of all intervals
       // TODO-Cluster#690: change to a broadcast when the computation is too expensive
-      try {
-        PartialPath storageGroupName = IoTDB.metaManager.getStorageGroupPath(path);
-        Set<Node> groupHeaders = new HashSet<>();
-        for (int i = 0; i < intervals.getIntervalSize(); i++) {
-          // compute the headers of groups involved in every interval
-          PartitionUtils.getIntervalHeaders(
-              storageGroupName.getFullPath(),
-              intervals.getLowerBound(i),
-              intervals.getUpperBound(i),
-              partitionTable,
-              groupHeaders);
-        }
-        // translate the headers to groups
-        for (Node groupHeader : groupHeaders) {
-          partitionGroups.add(partitionTable.getHeaderGroup(groupHeader));
-        }
-      } catch (MetadataException e) {
-        throw new StorageEngineException(e);
+      Set<Node> groupHeaders = new HashSet<>();
+      for (int i = 0; i < intervals.getIntervalSize(); i++) {
+        // compute the headers of groups involved in every interval
+        PartitionUtils.getIntervalHeaders(
+            storageGroupName.getFullPath(),
+            intervals.getLowerBound(i),
+            intervals.getUpperBound(i),
+            partitionTable,
+            groupHeaders);
+      }
+      // translate the headers to groups
+      for (Node groupHeader : groupHeaders) {
+        partitionGroups.add(partitionTable.getHeaderGroup(groupHeader));
       }
     }
     return partitionGroups;
@@ -1771,13 +1782,6 @@ public class MetaGroupMember extends RaftMember {
     if (dataClusterServer != null) {
       dataClusterServer.closeLogManagers();
     }
-  }
-
-  public PlanExecutor getLocalExecutor() throws QueryProcessException {
-    if (localExecutor == null) {
-      localExecutor = new PlanExecutor();
-    }
-    return localExecutor;
   }
 
   public StartUpStatus getStartUpStatus() {

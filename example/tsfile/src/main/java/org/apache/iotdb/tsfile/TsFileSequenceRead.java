@@ -59,8 +59,7 @@ public class TsFileSequenceRead {
       // Sequential reading of one ChunkGroup now follows this order:
       // first the CHUNK_GROUP_HEADER, then SeriesChunks (headers and data) in one ChunkGroup
       // Because we do not know how many chunks a ChunkGroup may have, we should read one byte (the
-      // marker) ahead and
-      // judge accordingly.
+      // marker) ahead and judge accordingly.
       reader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
       System.out.println("[Chunk Group]");
       System.out.println("position: " + reader.position());

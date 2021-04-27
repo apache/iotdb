@@ -30,7 +30,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.write.page.PageWriter;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import org.slf4j.Logger;
@@ -45,7 +45,7 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   private static final Logger logger = LoggerFactory.getLogger(ChunkWriterImpl.class);
 
-  private MeasurementSchema measurementSchema;
+  private IMeasurementSchema measurementSchema;
 
   private ICompressor compressor;
 
@@ -92,7 +92,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   private Statistics<?> firstPageStatistics;
 
   /** @param schema schema of this measurement */
-  public ChunkWriterImpl(MeasurementSchema schema) {
+  public ChunkWriterImpl(IMeasurementSchema schema) {
     this.measurementSchema = schema;
     this.compressor = ICompressor.getCompressor(schema.getCompressor());
     this.pageBuffer = new PublicBAOS();
@@ -115,7 +115,7 @@ public class ChunkWriterImpl implements IChunkWriter {
     checkSdtEncoding();
   }
 
-  public ChunkWriterImpl(MeasurementSchema schema, boolean isMerging) {
+  public ChunkWriterImpl(IMeasurementSchema schema, boolean isMerging) {
     this(schema);
     this.isMerging = isMerging;
   }
@@ -145,7 +145,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   }
 
   @Override
-  public void write(long time, long value) {
+  public void write(long time, long value, boolean isNull) {
     // store last point for sdtEncoding, it still needs to go through encoding process
     // in case it exceeds compdev and needs to store second last point
     if (!isSdtEncoding || sdtEncoder.encodeLong(time, value)) {
@@ -160,7 +160,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   }
 
   @Override
-  public void write(long time, int value) {
+  public void write(long time, int value, boolean isNull) {
     if (!isSdtEncoding || sdtEncoder.encodeInt(time, value)) {
       pageWriter.write(
           isSdtEncoding ? sdtEncoder.getTime() : time,
@@ -173,13 +173,13 @@ public class ChunkWriterImpl implements IChunkWriter {
   }
 
   @Override
-  public void write(long time, boolean value) {
+  public void write(long time, boolean value, boolean isNull) {
     pageWriter.write(time, value);
     checkPageSizeAndMayOpenANewPage();
   }
 
   @Override
-  public void write(long time, float value) {
+  public void write(long time, float value, boolean isNull) {
     if (!isSdtEncoding || sdtEncoder.encodeFloat(time, value)) {
       pageWriter.write(
           isSdtEncoding ? sdtEncoder.getTime() : time,
@@ -193,7 +193,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   }
 
   @Override
-  public void write(long time, double value) {
+  public void write(long time, double value, boolean isNull) {
     if (!isSdtEncoding || sdtEncoder.encodeDouble(time, value)) {
       pageWriter.write(
           isSdtEncoding ? sdtEncoder.getTime() : time,
@@ -206,9 +206,14 @@ public class ChunkWriterImpl implements IChunkWriter {
   }
 
   @Override
-  public void write(long time, Binary value) {
+  public void write(long time, Binary value, boolean isNull) {
     pageWriter.write(time, value);
     checkPageSizeAndMayOpenANewPage();
+  }
+
+  @Override
+  public void write(long time) {
+    throw new IllegalStateException("write time method is not implemented in common chunk writer");
   }
 
   @Override
@@ -412,7 +417,7 @@ public class ChunkWriterImpl implements IChunkWriter {
    * @param statistics the chunk statistics
    * @throws IOException exception in IO
    */
-  public void writeAllPagesOfChunkToTsFile(TsFileIOWriter writer, Statistics<?> statistics)
+  private void writeAllPagesOfChunkToTsFile(TsFileIOWriter writer, Statistics<?> statistics)
       throws IOException {
     if (statistics.getCount() == 0) {
       return;
@@ -420,13 +425,14 @@ public class ChunkWriterImpl implements IChunkWriter {
 
     // start to write this column chunk
     writer.startFlushChunk(
-        measurementSchema,
+        measurementSchema.getMeasurementId(),
         compressor.getType(),
         measurementSchema.getType(),
         measurementSchema.getEncodingType(),
         statistics,
         pageBuffer.size(),
-        numOfPages);
+        numOfPages,
+        0);
 
     long dataOffset = writer.getPos();
 

@@ -40,6 +40,7 @@ import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
+import org.apache.iotdb.cluster.server.handlers.caller.GetChildNodeNextLevelHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GetChildNodeNextLevelPathHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GetDevicesHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GetNodesListHandler;
@@ -61,7 +62,7 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import org.apache.thrift.TException;
@@ -180,6 +181,22 @@ public class SyncClientAdaptor {
     return response.get();
   }
 
+  public static Set<String> getChildNodeInNextLevel(
+      AsyncDataClient client, Node header, String path) throws TException, InterruptedException {
+    GetChildNodeNextLevelHandler handler = new GetChildNodeNextLevelHandler();
+    AtomicReference<Set<String>> response = new AtomicReference<>(null);
+    handler.setResponse(response);
+    handler.setContact(client.getNode());
+
+    client.getChildNodeInNextLevel(header, path, handler);
+    synchronized (response) {
+      if (response.get() == null) {
+        response.wait(RaftServer.getReadOperationTimeoutMS());
+      }
+    }
+    return response.get();
+  }
+
   public static Set<String> getNextChildren(AsyncDataClient client, Node header, String path)
       throws TException, InterruptedException {
     GetChildNodeNextLevelPathHandler handler = new GetChildNodeNextLevelPathHandler();
@@ -268,10 +285,10 @@ public class SyncClientAdaptor {
     return response.get();
   }
 
-  public static List<MeasurementSchema> pullMeasurementSchema(
+  public static List<IMeasurementSchema> pullMeasurementSchema(
       AsyncDataClient client, PullSchemaRequest pullSchemaRequest)
       throws TException, InterruptedException {
-    AtomicReference<List<MeasurementSchema>> measurementSchemas = new AtomicReference<>();
+    AtomicReference<List<IMeasurementSchema>> measurementSchemas = new AtomicReference<>();
 
     client.pullMeasurementSchema(
         pullSchemaRequest,

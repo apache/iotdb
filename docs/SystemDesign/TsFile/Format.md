@@ -210,7 +210,7 @@ All MetadataIndexNode forms a **metadata index tree**, which consists of no more
 
 To describe the structure of metadata index tree more clearly, we will give four examples here in details.
 
-The max degree of the metadata index tree (that is, the max number of each node's children) could be configured by users, and is 1024 by default. In the examples below, we assume `max_degree_of_index_node = 10` in the following examples.
+The max degree of the metadata index tree (that is, the max number of each node's children) could be configured by users, and is 256 by default. In the examples below, we assume `max_degree_of_index_node = 10` in the following examples.
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/81935219-de3fd080-9622-11ea-9aa1-a59bef1c0001.png">
 
@@ -246,7 +246,7 @@ Congratulations! You have finished the journey of discovering TsFile.
 
 #### 1.3.1 IoTDB Data Directory Overview Tool
 
-After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-0.10.0\tools\tsfileToolSet` directory.
+After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-0.13.0-SNAPSHOT\tools\tsfileToolSet` directory.
 
 Command:
 
@@ -265,7 +265,7 @@ For Linux or MacOs:
 An example on Windows:
 
 ```
-D:\iotdb\server\target\iotdb-server-0.12.0-SNAPSHOT\tools\tsfileToolSet>.\print-iotdb-data-dir.bat D:\\data\data
+D:\iotdb\server\target\iotdb-server-0.13.0-SNAPSHOT\tools\tsfileToolSet>.\print-iotdb-data-dir.bat D:\\data\data
 |````````````````````````
 Starting Printing the IoTDB Data Directory Overview
 ​|````````````````````````
@@ -297,7 +297,7 @@ TsFile data dir num:1
 
 #### 1.3.2 TsFileResource Print Tool
 
-After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-0.10.0\tools\tsfileToolSet` directory.
+After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-0.13.0-SNAPSHOT\tools\tsfileToolSet` directory.
 
 Command:
 
@@ -316,7 +316,7 @@ For Linux or MacOs:
 An example on Windows:
 
 ```shell
-D:\iotdb\server\target\iotdb-server-0.10.0\tools\tsfileToolSet>.\print-tsfile-resource-files.bat D:\data\data\sequence\root.vehicle
+D:\iotdb\server\target\iotdb-server-0.13.0-SNAPSHOT\tools\tsfileToolSet>.\print-tsfile-resource-files.bat D:\data\data\sequence\root.vehicle
 |````````````````````````
 Starting Printing the TsFileResources
 |​````````````````````````
@@ -328,7 +328,7 @@ analyzing the resource file finished.
 
 #### 1.3.3 TsFile Sketch Tool
 
-After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-0.10.0\tools\tsfileToolSet` directory.
+After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-0.13.0-SNAPSHOT\tools\tsfileToolSet` directory.
 
 Command:
 
@@ -351,7 +351,7 @@ For Linux or MacOs:
 An example on macOS:
 
 ```shell
-/iotdb/server/target/iotdb-server-0.10.0/tools/tsfileToolSet$ ./print-tsfile-sketch.sh test.tsfile
+/iotdb/server/target/iotdb-server-0.13.0-SNAPSHOT/tools/tsfileToolSet$ ./print-tsfile-sketch.sh test.tsfile
 |````````````````````````
 Starting Printing the TsFile Sketch
 |````````````````````````

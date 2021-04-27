@@ -18,23 +18,10 @@
     under the License.
 
 -->
-# MapReduce TsFile
-<!-- TOC -->
-## Outline
+## Hadoop-TsFile
 
-- TsFile-Hadoop-Connector User Guide
-    - About TsFile-Hadoop-Connector
-    - System Requirements
-    - Data Type Correspondence
-    - TSFInputFormat Explanation
-    - Examples
-        - Read Example: calculate the sum
-        - Write Example: write the average into Tsfile
 
-<!-- /TOC -->
-# TsFile-Hadoop-Connector User Guide
-
-## About TsFile-Hadoop-Connector
+### About Hadoop-TsFile-Connector
 
 TsFile-Hadoop-Connector implements the support of Hadoop for external data sources of Tsfile type. This enables users to read, write and query Tsfile by Hadoop.
 
@@ -43,15 +30,15 @@ With this connector, you can
 * load all files in a specific directory, from either the local file system or hdfs, into hadoop
 * write data from Hadoop into TsFile
 
-## System Requirements
+### System Requirements
 
 |Hadoop Version | Java Version | TsFile Version|
 |:---:|:---:|:---:|
-| `2.7.3`       | `1.8`        | `0.10.0`|
+| `2.7.3`       | `1.8`        | `0.13.0-SNAPSHOT`|
 
 > Note: For more information about how to download and use TsFile, please see the following link: https://github.com/apache/iotdb/tree/master/tsfile.
 
-## Data Type Correspondence
+### Data Type Correspondence
 
 | TsFile data type | Hadoop writable |
 | ---------------- | --------------- |
@@ -62,7 +49,7 @@ With this connector, you can
 | DOUBLE           | DoubleWritable  |
 | TEXT             | Text            |
 
-## TSFInputFormat Explanation
+### TSFInputFormat Explanation
 
 TSFInputFormat extract data from tsfile and format them into records of `MapWritable`.
 
@@ -86,9 +73,9 @@ In the Map job of Hadoop, you can get any value you want by key as following:
 `mapwritable.get(new Text("s1"))`
 > Note: All keys in `MapWritable` are `Text` type.
 
-## Examples
+### Examples
 
-### Read Example: calculate the sum
+#### Read Example: calculate the sum
 
 First of all, we should tell InputFormat what kind of data we want from tsfile.
 
@@ -152,7 +139,7 @@ Then, the `mapper` and `reducer` class is how you deal with the `MapWritable` pr
 > Note: For the complete code, please see the following link: https://github.com/apache/iotdb/blob/master/example/hadoop/src/main/java/org/apache/iotdb//hadoop/tsfile/TSFMRReadExample.java
 
 
-### Write Example: write the average into Tsfile
+#### Write Example: write the average into Tsfile
 
 Except for the `OutputFormatClass`, the rest of configuration code for hadoop map-reduce job is almost same as above.
 

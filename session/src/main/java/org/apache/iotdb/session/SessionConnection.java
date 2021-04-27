@@ -26,6 +26,8 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
+import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
+import org.apache.iotdb.service.rpc.thrift.TSCreateDeviceTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
@@ -42,6 +44,7 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
+import org.apache.iotdb.service.rpc.thrift.TSSetDeviceTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
@@ -69,6 +72,7 @@ public class SessionConnection {
   private long statementId;
   private ZoneId zoneId;
   private EndPoint endPoint;
+  private boolean enableRedirect = false;
 
   // TestOnly
   public SessionConnection() {}
@@ -82,8 +86,8 @@ public class SessionConnection {
   }
 
   private void init(EndPoint endPoint) throws IoTDBConnectionException {
-    RpcTransportFactory.setInitialBufferCapacity(session.initialBufferCapacity);
-    RpcTransportFactory.setMaxLength(session.maxFrameSize);
+    RpcTransportFactory.setDefaultBufferCapacity(session.thriftDefaultBufferSize);
+    RpcTransportFactory.setThriftMaxFrameSize(session.thriftMaxFrameSize);
     transport =
         RpcTransportFactory.INSTANCE.getTransport(
             new TSocket(endPoint.getIp(), endPoint.getPort(), session.connectionTimeoutInMs));
@@ -231,6 +235,25 @@ public class SessionConnection {
     }
   }
 
+  protected void createAlignedTimeseries(TSCreateAlignedTimeseriesReq request)
+      throws IoTDBConnectionException, StatementExecutionException {
+    request.setSessionId(sessionId);
+    try {
+      RpcUtils.verifySuccess(client.createAlignedTimeseries(request));
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          request.setSessionId(sessionId);
+          RpcUtils.verifySuccess(client.createAlignedTimeseries(request));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+      }
+    }
+  }
+
   protected void createMultiTimeseries(TSCreateMultiTimeseriesReq request)
       throws IoTDBConnectionException, StatementExecutionException {
     request.setSessionId(sessionId);
@@ -254,7 +277,11 @@ public class SessionConnection {
       throws IoTDBConnectionException, StatementExecutionException {
     SessionDataSet dataSet = null;
     try {
-      dataSet = executeQueryStatement(String.format("SHOW TIMESERIES %s", path), timeout);
+      try {
+        dataSet = executeQueryStatement(String.format("SHOW TIMESERIES %s", path), timeout);
+      } catch (RedirectException e) {
+        throw new StatementExecutionException("need to redirect query, should not see this.", e);
+      }
       return dataSet.hasNext();
     } finally {
       if (dataSet != null) {
@@ -264,13 +291,15 @@ public class SessionConnection {
   }
 
   protected SessionDataSet executeQueryStatement(String sql, long timeout)
-      throws StatementExecutionException, IoTDBConnectionException {
+      throws StatementExecutionException, IoTDBConnectionException, RedirectException {
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, statementId);
     execReq.setFetchSize(session.fetchSize);
     execReq.setTimeout(timeout);
     TSExecuteStatementResp execResp;
     try {
+      execReq.setEnableRedirectQuery(enableRedirect);
       execResp = client.executeQueryStatement(execReq);
+      RpcUtils.verifySuccessWithRedirection(execResp.getStatus());
     } catch (TException e) {
       if (reconnect()) {
         try {
@@ -304,6 +333,7 @@ public class SessionConnection {
       throws IoTDBConnectionException, StatementExecutionException {
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, statementId);
     try {
+      execReq.setEnableRedirectQuery(enableRedirect);
       TSExecuteStatementResp execResp = client.executeUpdateStatement(execReq);
       RpcUtils.verifySuccess(execResp.getStatus());
     } catch (TException e) {
@@ -322,13 +352,15 @@ public class SessionConnection {
   }
 
   protected SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
-      throws StatementExecutionException, IoTDBConnectionException {
+      throws StatementExecutionException, IoTDBConnectionException, RedirectException {
     TSRawDataQueryReq execReq =
         new TSRawDataQueryReq(sessionId, paths, startTime, endTime, statementId);
     execReq.setFetchSize(session.fetchSize);
     TSExecuteStatementResp execResp;
     try {
+      execReq.setEnableRedirectQuery(enableRedirect);
       execResp = client.executeRawDataQuery(execReq);
+      RpcUtils.verifySuccessWithRedirection(execResp.getStatus());
     } catch (TException e) {
       if (reconnect()) {
         try {
@@ -659,5 +691,59 @@ public class SessionConnection {
       }
     }
     return flag;
+  }
+
+  protected void createDeviceTemplate(TSCreateDeviceTemplateReq request)
+      throws IoTDBConnectionException, StatementExecutionException {
+    request.setSessionId(sessionId);
+    try {
+      RpcUtils.verifySuccess(client.createDeviceTemplate(request));
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          request.setSessionId(sessionId);
+          RpcUtils.verifySuccess(client.createDeviceTemplate(request));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+      }
+    }
+  }
+
+  protected void setDeviceTemplate(TSSetDeviceTemplateReq request)
+      throws IoTDBConnectionException, StatementExecutionException {
+    request.setSessionId(sessionId);
+    try {
+      RpcUtils.verifySuccess(client.setDeviceTemplate(request));
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          request.setSessionId(sessionId);
+          RpcUtils.verifySuccess(client.setDeviceTemplate(request));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+      }
+    }
+  }
+
+  public boolean isEnableRedirect() {
+    return enableRedirect;
+  }
+
+  public void setEnableRedirect(boolean enableRedirect) {
+    this.enableRedirect = enableRedirect;
+  }
+
+  public EndPoint getEndPoint() {
+    return endPoint;
+  }
+
+  public void setEndPoint(EndPoint endPoint) {
+    this.endPoint = endPoint;
   }
 }

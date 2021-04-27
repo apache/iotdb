@@ -29,8 +29,10 @@ import org.apache.iotdb.db.query.reader.chunk.MemChunkReader;
 import org.apache.iotdb.db.query.reader.chunk.metadata.DiskChunkMetadataLoader;
 import org.apache.iotdb.db.query.reader.chunk.metadata.MemChunkMetadataLoader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
+import org.apache.iotdb.tsfile.file.metadata.VectorChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -39,8 +41,10 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
+import org.apache.iotdb.tsfile.read.reader.chunk.VectorChunkReader;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -104,7 +108,8 @@ public class FileLoaderUtils {
                       resource.getTsFilePath(),
                       seriesPath.getDevice(),
                       seriesPath.getMeasurement()),
-                  allSensors);
+                  allSensors,
+                  context.isDebug());
       if (timeSeriesMetadata != null) {
         timeSeriesMetadata.setChunkMetadataLoader(
             new DiskChunkMetadataLoader(resource, seriesPath, context, filter));
@@ -140,7 +145,7 @@ public class FileLoaderUtils {
    *
    * @param timeSeriesMetadata the corresponding TimeSeriesMetadata in that file.
    */
-  public static List<ChunkMetadata> loadChunkMetadataList(TimeseriesMetadata timeSeriesMetadata)
+  public static List<IChunkMetadata> loadChunkMetadataList(ITimeSeriesMetadata timeSeriesMetadata)
       throws IOException {
     return timeSeriesMetadata.loadChunkMetadataList();
   }
@@ -151,8 +156,8 @@ public class FileLoaderUtils {
    * @param chunkMetaData the corresponding chunk metadata
    * @param timeFilter it should be a TimeFilter instead of a ValueFilter
    */
-  public static List<IPageReader> loadPageReaderList(ChunkMetadata chunkMetaData, Filter timeFilter)
-      throws IOException {
+  public static List<IPageReader> loadPageReaderList(
+      IChunkMetadata chunkMetaData, Filter timeFilter) throws IOException {
     if (chunkMetaData == null) {
       throw new IOException("Can't init null chunkMeta");
     }
@@ -162,22 +167,24 @@ public class FileLoaderUtils {
       MemChunkLoader memChunkLoader = (MemChunkLoader) chunkLoader;
       chunkReader = new MemChunkReader(memChunkLoader.getChunk(), timeFilter);
     } else {
-      Chunk chunk = chunkLoader.loadChunk(chunkMetaData);
-      chunk.setFromOldFile(chunkMetaData.isFromOldTsFile());
-      chunkReader = new ChunkReader(chunk, timeFilter);
-      chunkReader.hasNextSatisfiedPage();
+      if (chunkMetaData instanceof ChunkMetadata) {
+        Chunk chunk = chunkLoader.loadChunk((ChunkMetadata) chunkMetaData);
+        chunk.setFromOldFile(chunkMetaData.isFromOldTsFile());
+        chunkReader = new ChunkReader(chunk, timeFilter);
+        chunkReader.hasNextSatisfiedPage();
+      } else {
+        VectorChunkMetadata vectorChunkMetadata = (VectorChunkMetadata) chunkMetaData;
+        Chunk timeChunk = vectorChunkMetadata.getTimeChunk();
+        List<Chunk> valueChunkList = vectorChunkMetadata.getValueChunkList();
+        chunkReader = new VectorChunkReader(timeChunk, valueChunkList, timeFilter);
+      }
     }
     return chunkReader.loadPageReaderList();
   }
 
-  public static List<ChunkMetadata> getChunkMetadataList(Path path, String filePath)
+  public static List<IChunkMetadata> getChunkMetadataList(Path path, String filePath)
       throws IOException {
     TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(filePath, true);
-    return tsFileReader.getChunkMetadataList(path);
-  }
-
-  public static TsFileMetadata getTsFileMetadata(String filePath) throws IOException {
-    TsFileSequenceReader reader = FileReaderManager.getInstance().get(filePath, true);
-    return reader.readFileMetadata();
+    return new ArrayList<>(tsFileReader.getChunkMetadataList(path));
   }
 }
