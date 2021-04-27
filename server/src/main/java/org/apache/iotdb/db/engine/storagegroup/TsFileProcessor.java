@@ -1284,4 +1284,8 @@ public class TsFileProcessor {
   public void submitAFlushTask() {
     this.storageGroupInfo.getStorageGroupProcessor().submitAFlushTaskWhenShouldFlush(this);
   }
+
+  public boolean alreadyMarkedClosing() {
+    return shouldClose;
+  }
 }
