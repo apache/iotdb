@@ -118,7 +118,7 @@ public class IoTDBConfig {
   private long allocateMemoryForSchema = Runtime.getRuntime().maxMemory() * 1 / 10;
 
   /** Memory allocated for the read process besides cache */
-  private long allocateMemoryForReadWithoutCache = Runtime.getRuntime().maxMemory() * 9 / 100;
+  private long allocateMemoryForReadWithoutCache = allocateMemoryForRead * 3 / 10;
 
   private volatile int maxQueryDeduplicatedPathNum = 1000;
 
@@ -559,7 +559,7 @@ public class IoTDBConfig {
   private String kerberosKeytabFilePath = "/path";
 
   /** kerberos principal */
-  private String kerberosPrincipal = "principal";
+  private String kerberosPrincipal = "your principal";
 
   /** the num of memtable in each storage group */
   private int concurrentWritingTimePartition = 1;
