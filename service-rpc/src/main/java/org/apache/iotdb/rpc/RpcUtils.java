@@ -233,10 +233,10 @@ public class RpcUtils {
     if (datetime.contains("+")) {
       String timeZoneStr = datetime.substring(datetime.length() - 6);
       return datetime.substring(0, datetime.length() - 6) + "." + digits + timeZoneStr;
-    } else if (datetime.contains("Z")){
+    } else if (datetime.contains("Z")) {
       String timeZoneStr = datetime.substring(datetime.length() - 1);
       return datetime.substring(0, datetime.length() - 1) + "." + digits + timeZoneStr;
-    } else{
+    } else {
       String timeZoneStr = datetime.substring(datetime.length());
       return datetime + "." + digits + timeZoneStr;
     }
