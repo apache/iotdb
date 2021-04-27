@@ -39,9 +39,14 @@ public class TimeseriesMetadata implements Accountable, ITimeSeriesMetadata {
   private long startOffsetOfChunkMetaDataList;
   /**
    * 0 means this time series has only one chunk, no need to save the statistic again in chunk
-   * metadata 1 means this time series has more than one chunk, should save the statistic again in
-   * chunk metadata if the 8th bit is 1, it means it is the time column of a vector series if the
-   * 7th bit is 1, it means it is the value column of a vector series
+   * metadata;
+   *
+   * <p>1 means this time series has more than one chunk, should save the statistic again in chunk
+   * metadata;
+   *
+   * <p>if the 8th bit is 1, it means it is the time column of a vector series;
+   *
+   * <p>if the 7th bit is 1, it means it is the value column of a vector series
    */
   private byte timeSeriesMetadataType;
 
