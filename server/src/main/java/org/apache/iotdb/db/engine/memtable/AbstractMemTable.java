@@ -305,6 +305,9 @@ public abstract class AbstractMemTable implements IMemTable {
       }
       IWritableMemChunk vectorMemChunk =
           memTableMap.get(deviceId).get(partialVectorSchema.getMeasurementId());
+      if (vectorMemChunk == null) {
+        return null;
+      }
 
       List<String> measurementIdList = partialVectorSchema.getValueMeasurementIdList();
       List<Integer> columns = new ArrayList<>();
