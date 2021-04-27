@@ -28,13 +28,12 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>hadoop-example</artifactId>
-    <version>0.12.1-SNAPSHOT</version>
     <name>hadoop-example</name>
     <dependencies>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>hadoop-tsfile</artifactId>
-            <version>0.12.1-SNAPSHOT</version>
+            <version>${project.version}</version>
         </dependency>
     </dependencies>
 </project>
