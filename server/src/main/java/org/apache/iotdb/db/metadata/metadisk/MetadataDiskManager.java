@@ -87,7 +87,7 @@ public class MetadataDiskManager implements MetadataAccess {
     long time = System.currentTimeMillis();
     if (snapshotFile.exists()&&snapshotFile.renameTo(metaFile)) {
       try  {
-        this.metaFile = new MetaFile(metaFilePath); //todo metaFile need to check the file when initialize
+        this.metaFile = new MetaFile(metaFilePath);
         root=this.metaFile.readRoot();
         logger.debug(
                 "spend {} ms to deserialize mtree from snapshot", System.currentTimeMillis() - time);

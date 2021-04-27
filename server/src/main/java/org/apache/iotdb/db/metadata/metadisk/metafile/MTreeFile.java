@@ -47,6 +47,7 @@ public class MTreeFile {
       initMetaFileHeader();
     } else {
       readMetaFileHeader();
+      fileCheck();
     }
   }
 
@@ -89,6 +90,11 @@ public class MTreeFile {
     buffer.putInt(timeseriesCount);
     buffer.position(0);
     fileAccess.writeHeader(buffer);
+  }
+
+  private void fileCheck() throws IOException{
+    PersistenceInfo persistenceInfo=PersistenceInfo.createPersistenceInfo(rootPosition);
+    MNode mNode=read(persistenceInfo);
   }
 
   public MNode read(String path) throws IOException {
