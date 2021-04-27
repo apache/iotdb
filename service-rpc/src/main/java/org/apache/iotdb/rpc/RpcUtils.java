@@ -234,7 +234,7 @@ public class RpcUtils {
       String timeZoneStr = datetime.substring(datetime.length() - 6);
       return datetime.substring(0, datetime.length() - 6) + "." + digits + timeZoneStr;
     } else {
-      String timeZoneStr = datetime.substring(datetime.length() - 1);
+      String timeZoneStr = datetime.substring(datetime.length());
       return datetime.substring(0, datetime.length() - 1) + "." + digits + timeZoneStr;
     }
   }
