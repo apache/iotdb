@@ -1003,4 +1003,8 @@ public class TsFileProcessor {
   public void addCloseFileListeners(Collection<CloseFileListener> listeners) {
     closeFileListeners.addAll(listeners);
   }
+
+  public boolean alreadyMarkedClosing() {
+    return shouldClose;
+  }
 }

@@ -1181,7 +1181,8 @@ public class StorageGroupProcessor {
     // for sequence tsfile, we update the endTimeMap only when the file is prepared to be closed.
     // for unsequence tsfile, we have maintained the endTimeMap when an insertion comes.
     if (closingSequenceTsFileProcessor.contains(tsFileProcessor)
-        || closingUnSequenceTsFileProcessor.contains(tsFileProcessor)) {
+        || closingUnSequenceTsFileProcessor.contains(tsFileProcessor)
+        || tsFileProcessor.alreadyMarkedClosing()) {
       return;
     }
     logger.info(
