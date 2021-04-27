@@ -156,7 +156,6 @@
         <!-- disable enforcer by default-->
         <enforcer.skip>true</enforcer.skip>
         <spotless.version>2.4.2</spotless.version>
-        <revision>0.12.1-SNAPSHOT</revision>
     </properties>
     <!--
         if we claim dependencies in dependencyManagement, then we do not claim
