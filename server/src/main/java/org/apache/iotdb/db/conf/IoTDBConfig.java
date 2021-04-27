@@ -647,13 +647,13 @@ public class IoTDBConfig {
   private boolean startOpenApi = true;
 
   /** set the OpenApi reset port. */
-  private int OpenApiPort = 443;
+  private int OpenApiPort = 18080;
 
   /** set the OpenApi storegroup number. */
   private int sgCount = 5;
 
   /** enable the OpenApi ssl. */
-  private boolean enable_https = true;
+  private boolean enable_https = false;
 
   private String keyStorePath = "";
   private String trustStorePath = "";
