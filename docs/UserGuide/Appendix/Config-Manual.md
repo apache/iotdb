@@ -227,9 +227,9 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 6667 |
 |Effective|After restart system|
 
-* rpc\_thrift\_compression\_enable
+* rpc\_compression\_enable
 
-|Name| rpc\_thrift\_compression\_enable |
+|Name| rpc\_compression\_enable |
 |:---:|:---|
 |Description| Whether enable thrift's compression (using GZIP).|
 |Type|Boolean|
@@ -583,9 +583,9 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default|no |
 |Effective|After restart system|
 
-* thrift\_max\_frame\_size
+* rpc\_max\_frame\_size
 
-|Name| thrift\_max\_frame\_size |
+|Name| rpc\_max\_frame\_size |
 |:---:|:---|
 |Description| the max bytes in a RPC request/response|
 |Type| long |

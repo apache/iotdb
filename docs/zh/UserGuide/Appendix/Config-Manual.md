@@ -376,9 +376,9 @@
 |默认值| 65535 |
 |改后生效方式|重启服务生效|
 
-* rpc\_thrift\_compression\_enable
+* rpc\_compression\_enable
 
-|名字| rpc\_thrift\_compression\_enable |
+|名字| rpc\_compression\_enable |
 |:---:|:---|
 |描述|是否启用thrift的压缩机制。|
 |类型|true 或者 false|
@@ -541,18 +541,18 @@
 |改后生效方式|重启服务生效|
 
 
-* thrift\_max\_frame\_size
+* rpc\_max\_frame\_size
 
-|名字| thrift\_max\_frame\_size |
+|名字| rpc\_max\_frame\_size |
 |:---:|:---|
 |描述| RPC 请求/响应的最大字节数|
 |类型| long |
 |默认值| 67108864 (应大于等于 8 * 1024 * 1024) |
 |改后生效方式|重启服务生效|
 
-* thrift\_init\_buffer\_size
+* rpc\_init\_buffer\_size
 
-|名字| thrift\_init\_buffer\_size |
+|名字| rpc\_init\_buffer\_size |
 |:---:|:---|
 |描述| 字节数|
 |类型| long |

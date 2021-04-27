@@ -118,9 +118,9 @@ The configuration items described below are in the `iotdb-cluster.properties` fi
 |Default|127.0.0.1:9003,127.0.0.1:9005,127.0.0.1:9007|
 |Effective| After restart system|
 
-* rpc\_thrift\_compression\_enable
+* rpc\_compression\_enable
 
-|Name|rpc\_thrift\_compression\_enable|
+|Name|rpc\_compression\_enable|
 |:---:|:---|
 |Description|Whether to enable thrift compression, **Note that this parameter should be consistent with each node and with the client, and also consistent with the `rpc_compression_enable` parameter in `iotdb-engine.properties`**|
 |Type| Boolean|

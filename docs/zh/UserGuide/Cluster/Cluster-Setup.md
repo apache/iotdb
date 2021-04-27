@@ -113,9 +113,9 @@ iotdb-engines.properties配置文件中的部分内容会不再生效：
 |默认值|127.0.0.1:9003,127.0.0.1:9005,127.0.0.1:9007|
 |改后生效方式|重启服务生效|
 
-* rpc\_thrift\_compression\_enable
+* rpc\_compression\_enable
 
-|名字|rpc\_thrift\_compression\_enable|
+|名字|rpc\_compression\_enable|
 |:---:|:---|
 |描述|是否开启thrift压缩通信，**注意这个参数要各个节点保持一致，也要与客户端保持一致，同时也要与`iotdb-engine.properties`中`rpc_compression_enable`参数保持一致**|
 |类型| Boolean|
