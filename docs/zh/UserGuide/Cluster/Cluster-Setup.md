@@ -117,7 +117,7 @@ iotdb-engines.properties配置文件中的部分内容会不再生效：
 
 |名字|rpc\_thrift\_compression\_enable|
 |:---:|:---|
-|描述|是否开启thrift压缩通信，**注意这个参数要各个节点保持一致，也要与客户端保持一致，同时也要与`iotdb-engine.properties`中`rpc_thrift_compression_enable`参数保持一致**|
+|描述|是否开启thrift压缩通信，**注意这个参数要各个节点保持一致，也要与客户端保持一致，同时也要与`iotdb-engine.properties`中`rpc_compression_enable`参数保持一致**|
 |类型| Boolean|
 |默认值|false|
 |改后生效方式|重启服务生效，需要整个集群同时更改|

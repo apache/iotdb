@@ -138,7 +138,7 @@
 * Github issue-2169 GetObject returns String for all data types
 * Github issue-2240 fix Sync failed: Socket is closed by peer
 * Github issue-2387 The deleteData method exists in Session but not in SessionPool.
-* add thrift_max_frame_size in iotdb-engine.properties
+* add rpc_max_frame_size in iotdb-engine.properties
 * Fix incorrect last result after deleting all data
 * Fix compaction recover block restart: IoTDB cannot restart until last compaction recover task finished
 * Fix compaction ignore modification file: delete does not work after compaction

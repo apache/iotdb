@@ -122,7 +122,7 @@ The configuration items described below are in the `iotdb-cluster.properties` fi
 
 |Name|rpc\_thrift\_compression\_enable|
 |:---:|:---|
-|Description|Whether to enable thrift compression, **Note that this parameter should be consistent with each node and with the client, and also consistent with the `rpc_thrift_compression_enable` parameter in `iotdb-engine.properties`**|
+|Description|Whether to enable thrift compression, **Note that this parameter should be consistent with each node and with the client, and also consistent with the `rpc_compression_enable` parameter in `iotdb-engine.properties`**|
 |Type| Boolean|
 |Default|false|
 |Effective| After restart system, must be changed with all other nodes|

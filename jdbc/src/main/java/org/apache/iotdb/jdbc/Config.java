@@ -52,5 +52,5 @@ public class Config {
   public static final String DEFAULT_BUFFER_CAPACITY = "thrift_default_buffer_capacity";
 
   /** key of thrift max frame size */
-  public static final String THRIFT_FRAME_MAX_SIZE = "thrift_max_frame_size";
+  public static final String THRIFT_FRAME_MAX_SIZE = "rpc_max_frame_size";
 }

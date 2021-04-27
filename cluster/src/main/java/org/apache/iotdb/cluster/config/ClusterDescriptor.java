@@ -161,8 +161,7 @@ public class ClusterDescriptor {
     config.setRpcThriftCompressionEnabled(
         Boolean.parseBoolean(
             properties.getProperty(
-                "rpc_thrift_compression_enable",
-                String.valueOf(config.isRpcThriftCompressionEnabled()))));
+                "rpc_compression_enable", String.valueOf(config.isRpcThriftCompressionEnabled()))));
 
     config.setConnectionTimeoutInMS(
         Integer.parseInt(
