@@ -186,7 +186,13 @@ public class CompactionUtils {
       targetResource.updateEndTime(device, timeValuePair.getTimestamp());
     }
     // wait for limit write
-    MergeManager.mergeRateLimiterAcquire(compactionRateLimiter, chunkWriter.getCurrentChunkSize());
+    if (chunkWriter.getCurrentChunkSize() == 0) {
+      MergeManager
+          .mergeRateLimiterAcquire(compactionRateLimiter, chunkWriter.estimateMaxSeriesMemSize());
+    } else {
+      MergeManager
+          .mergeRateLimiterAcquire(compactionRateLimiter, chunkWriter.getCurrentChunkSize());
+    }
     chunkWriter.writeToFileWriter(writer);
   }
 
