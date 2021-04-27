@@ -270,7 +270,10 @@ public class TsFileRewriteTool implements AutoCloseable {
     }
   }
 
-  /** If the page cross multi partitions, will return true, otherwise return false. */
+  /**
+   * If the page have no statistics or crosses multi partitions, will return true, otherwise return
+   * false.
+   */
   protected boolean checkIfNeedToDecode(
       TSDataType dataType, TSEncoding encoding, PageHeader pageHeader) {
     if (pageHeader.getStatistics() == null) {
