@@ -700,6 +700,21 @@ public class IoTDBDescriptor {
           Integer.parseInt(
               properties.getProperty("sg_count", Integer.toString(conf.getSgCount()))));
 
+      conf.setEnable_https(
+          Boolean.parseBoolean(properties.getProperty("enable_https", conf.isEnable_https() + "")));
+
+      conf.setKeyStorePath(properties.getProperty("key_store_path", ""));
+
+      conf.setKeyStorePwd(properties.getProperty("key_store_pwd", ""));
+
+      conf.setTrustStorePath(properties.getProperty("trust_store_path", ""));
+
+      conf.setTrustStorePwd(properties.getProperty("trust_store_pwd", ""));
+
+      conf.setIdleTimeout(
+          Integer.parseInt(
+              properties.getProperty("idle_timeout", Integer.toString(conf.getIdleTimeout()))));
+
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance()
           .getConfig()

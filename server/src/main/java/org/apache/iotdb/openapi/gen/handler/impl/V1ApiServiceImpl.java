@@ -189,9 +189,11 @@ public class V1ApiServiceImpl extends V1ApiService {
             listvalues.add(fields.get(i - 1).getObjectValue(fields.get(i - 1).getDataType()));
             listtemp.get(i).put("values", listvalues);
           }
-          if (listtemp.get(i).get("type") == null) {
+          if (listtemp.get(i).get("type") == null&&(fields.get(i - 1) == null||fields.get(i - 1).getDataType()==null)) {
             listtemp.get(i).put("type", "");
-          } else if (listtemp.get(i).get("type").toString().length() == 0
+          } else if (listtemp.get(i).get("type") == null&&fields.get(i - 1) != null&&fields.get(i - 1).getDataType()!=null) {
+            listtemp.get(i).put("type", fields.get(i - 1).getDataType());
+          }else if (listtemp.get(i).get("type").toString().length() == 0
               && fields.get(i - 1) != null
               && fields.get(i - 1).getDataType() != null) {
             listtemp.get(i).put("type", fields.get(i - 1).getDataType());
@@ -331,10 +333,10 @@ public class V1ApiServiceImpl extends V1ApiService {
           if (nodes.length > requestBody.size()) {
             String node = nodes[requestBody.size()];
             if (nodes.length - 2 >= requestBody.size()
-                && (temNodeMap.get(node) == null || temNodeMap.get(node))) { // 倒数第二节点
+                && (temNodeMap.get(node) == null || temNodeMap.get(node))) { // second to last node
               temNodeMap.put(node, false);
             } else if (nodes.length - 1 == requestBody.size()
-                && temNodeMap.get(node) == null) { // 倒数第一个节点
+                && temNodeMap.get(node) == null) { // first to last node
               temNodeMap.put(node, true);
             }
           }
@@ -383,11 +385,15 @@ public class V1ApiServiceImpl extends V1ApiService {
       e.printStackTrace();
     }
     Gson result = new Gson();
-    String restr = "execute fail";
+    Map resultMap = new HashMap<String, Object>();
     if (b) {
-      restr = "execute sucessfully";
+      resultMap.put("code", 200);
+      resultMap.put("message", "execute sucessfully");
+    } else {
+      resultMap.put("code", 500);
+      resultMap.put("message", "execute fail");
     }
-    return Response.ok().entity(result.toJson(restr)).build();
+    return Response.ok().entity(result.toJson(resultMap)).build();
   }
 
   @Override

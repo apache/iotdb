@@ -586,7 +586,7 @@ public class IoTDBConfig {
   private boolean enablePartialInsert = true;
 
   // Open ID Secret
-  private String openIdProviderUrl = null;
+  private String openIdProviderUrl = "";
 
   // the authorizer provider class which extends BasicAuthorizer
   private String authorizerProvider = "org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer";
@@ -647,18 +647,35 @@ public class IoTDBConfig {
   private boolean startOpenApi = true;
 
   /** set the OpenApi reset port. */
-  private int OpenApiPort = 28080;
+  private int OpenApiPort = 443;
 
   /** set the OpenApi storegroup number. */
   private int sgCount = 5;
 
-  /** set the OpenApi storegroup number. */
+  /** enable the OpenApi ssl. */
   private boolean enable_https = true;
 
-  private String keyStorePath = "/Users/miaohongshan/crethttps/keystore";
-  private String trustStorePath = "/Users/miaohongshan/crethttps/keystore";
-  private String keyStorePwd = "yoursslpassword";
-  private String keyManagerPwd = "yoursslpassword";
+  private String keyStorePath = "";
+  private String trustStorePath = "";
+  private String keyStorePwd = "";
+  private String trustStorePwd = "";
+  private int idleTimeout = 50000;
+
+  public String getTrustStorePwd() {
+    return trustStorePwd;
+  }
+
+  public void setTrustStorePwd(String trustStorePwd) {
+    this.trustStorePwd = trustStorePwd;
+  }
+
+  public int getIdleTimeout() {
+    return idleTimeout;
+  }
+
+  public void setIdleTimeout(int idleTimeout) {
+    this.idleTimeout = idleTimeout;
+  }
 
   public boolean isEnable_https() {
     return enable_https;
@@ -690,14 +707,6 @@ public class IoTDBConfig {
 
   public void setKeyStorePwd(String keyStorePwd) {
     this.keyStorePwd = keyStorePwd;
-  }
-
-  public String getKeyManagerPwd() {
-    return keyManagerPwd;
-  }
-
-  public void setKeyManagerPwd(String keyManagerPwd) {
-    this.keyManagerPwd = keyManagerPwd;
   }
 
   public int getSgCount() {

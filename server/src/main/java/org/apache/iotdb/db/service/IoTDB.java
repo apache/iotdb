@@ -75,7 +75,8 @@ public class IoTDB implements IoTDBMBean {
             IoTDBDescriptor.getInstance().getConfig().getKeyStorePath(),
             IoTDBDescriptor.getInstance().getConfig().getTrustStorePath(),
             IoTDBDescriptor.getInstance().getConfig().getKeyStorePwd(),
-            IoTDBDescriptor.getInstance().getConfig().getKeyManagerPwd());
+            IoTDBDescriptor.getInstance().getConfig().getTrustStorePwd(),
+            IoTDBDescriptor.getInstance().getConfig().getIdleTimeout());
       } else {
         oas.start(IoTDBDescriptor.getInstance().getConfig().getOpenApiPort());
       }

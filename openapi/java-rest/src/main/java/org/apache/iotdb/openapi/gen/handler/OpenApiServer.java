@@ -16,6 +16,7 @@
  */
 package org.apache.iotdb.openapi.gen.handler;
 
+import org.eclipse.jetty.http.HttpVersion;
 import org.eclipse.jetty.server.HttpConfiguration;
 import org.eclipse.jetty.server.HttpConnectionFactory;
 import org.eclipse.jetty.server.SecureRequestCustomizer;
@@ -58,31 +59,25 @@ public class OpenApiServer {
       String keyStorePath,
       String trustStorePath,
       String keyStorePwd,
-      String keyManagerPwd) {
+      String trustStorePwd,
+      int idleTime) {
     Server server = new Server();
     HttpConfiguration https_config = new HttpConfiguration();
-    https_config.setSecureScheme("https");
     https_config.setSecurePort(port);
-    https_config.setOutputBufferSize(32768);
     https_config.addCustomizer(new SecureRequestCustomizer());
-
-    SslContextFactory sslContextFactory = new SslContextFactory();
-    // sslContextFactory.setKeyStorePath("/Users/miaohongshan/crethttps/keystore");
-    // sslContextFactory.setKeyStorePassword("yoursslpassword");
+    SslContextFactory.Server sslContextFactory = new SslContextFactory.Server();
     sslContextFactory.setKeyStorePath(keyStorePath);
-    sslContextFactory.setTrustStorePath(trustStorePath);
     sslContextFactory.setKeyStorePassword(keyStorePwd);
-    sslContextFactory.setKeyManagerPassword(keyManagerPwd);
-
+    sslContextFactory.setTrustStorePath(trustStorePath);
+    sslContextFactory.setTrustStorePassword(trustStorePwd);
     ServerConnector httpsConnector =
         new ServerConnector(
             server,
-            new SslConnectionFactory(sslContextFactory, "http/1.1"),
+            new SslConnectionFactory(sslContextFactory, HttpVersion.HTTP_1_1.asString()),
             new HttpConnectionFactory(https_config));
     httpsConnector.setPort(port);
-    httpsConnector.setIdleTimeout(500000);
+    httpsConnector.setIdleTimeout(idleTime);
     server.addConnector(httpsConnector);
-
     ServletContextHandler context = new ServletContextHandler(ServletContextHandler.NO_SESSIONS);
     ServletHolder holder = context.addServlet(ServletContainer.class, "/*");
     holder.setInitOrder(1);
