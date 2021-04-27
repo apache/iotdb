@@ -608,6 +608,11 @@ public class MTree implements MTreeInterface {
     return cur;
   }
 
+  @Override
+  public MNode getNodeByPathForChildrenCheck(PartialPath deviceId) throws MetadataException {
+    return getNodeByPath(deviceId);
+  }
+
   /**
    * Get all storage groups under the given path
    *

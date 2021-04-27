@@ -704,7 +704,8 @@ public class MManager {
 
   public MeasurementMNode[] getMNodes(PartialPath deviceId, String[] measurements)
       throws MetadataException {
-    MNode deviceNode = getNodeByPath(deviceId);
+//    MNode deviceNode = getNodeByPath(deviceId);
+    MNode deviceNode = mtree.getNodeByPathForChildrenCheck(deviceId);
     MeasurementMNode[] mNodes = new MeasurementMNode[measurements.length];
     for (int i = 0; i < mNodes.length; i++) {
       mNodes[i] = ((MeasurementMNode) deviceNode.getChild(measurements[i]));
@@ -1002,6 +1003,9 @@ public class MManager {
       throws MetadataException {
     MNode node = mtree.getNodeByPath(device);
     MNode leaf = node.getChild(measurement);
+    if(!leaf.isLoaded()){
+      leaf=mtree.getNodeByPath(device.concatNode(measurement));
+    }
     if (leaf != null) {
       return ((MeasurementMNode) leaf).getSchema();
     }
@@ -1044,7 +1048,7 @@ public class MManager {
 
   /** Get node by path */
   public MNode getNodeByPath(PartialPath path) throws MetadataException {
-    return mtree.getNodeByPath(path);
+    return mtree.getNodeByPathForChildrenCheck(path);
   }
 
   /**
@@ -1107,6 +1111,11 @@ public class MManager {
     MNode node;
     try {
       node = mNodeCache.get(path);
+      for(MNode child:node.getChildren().values()){
+        if(!child.isLoaded()){
+          return mtree.getNodeByPathForChildrenCheck(path);
+        }
+      }
       return node;
     } catch (CacheException e) {
       throw new PathNotExistException(path.getFullPath());
@@ -1123,9 +1132,9 @@ public class MManager {
   public String getDeviceId(PartialPath path) {
     String device = null;
     try {
-      MNode deviceNode = getDeviceNode(path);
+      MNode deviceNode = mNodeCache.get(path);
       device = deviceNode.getFullPath();
-    } catch (MetadataException | NullPointerException e) {
+    }catch (CacheException|NullPointerException  e) {
       // Cannot get deviceId from MManager, return the input deviceId
     }
     return device;
@@ -1671,7 +1680,7 @@ public class MManager {
 
   public void collectTimeseriesSchema(
       String prefixPath, Collection<TimeseriesSchema> timeseriesSchemas) throws MetadataException {
-    collectTimeseriesSchema(getNodeByPath(new PartialPath(prefixPath)), timeseriesSchemas);
+    collectTimeseriesSchema(mtree.getNodeByPath(new PartialPath(prefixPath)), timeseriesSchemas);
   }
 
   public void collectMeasurementSchema(
@@ -1698,7 +1707,7 @@ public class MManager {
   public void collectSeries(PartialPath startingPath, List<MeasurementSchema> measurementSchemas) {
     MNode mNode;
     try {
-      mNode = getNodeByPath(startingPath);
+      mNode = mtree.getNodeByPath(startingPath);
     } catch (MetadataException e) {
       return;
     }

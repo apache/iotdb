@@ -27,11 +27,9 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.regex.Pattern;
@@ -45,11 +43,10 @@ public class MTreeDiskBased implements MTreeInterface {
 
   private static final Logger logger = LoggerFactory.getLogger(MTreeDiskBased.class);
   private static final String NO_CHILDNODE_MSG = " does not have the child node ";
-  public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
   private final String rootName = PATH_ROOT;
   private MetadataAccess metadataDiskManager;
-  private static final int DEFAULT_MAX_CAPACITY = 3;
+  private static final int DEFAULT_MAX_CAPACITY = 300000;
 
   private static transient ThreadLocal<Integer> limit = new ThreadLocal<>();
   private static transient ThreadLocal<Integer> offset = new ThreadLocal<>();
@@ -173,13 +170,13 @@ public class MTreeDiskBased implements MTreeInterface {
   private void checkTimeseries(String timeseries) throws IllegalPathException {
     if (!IoTDBConfig.NODE_PATTERN.matcher(timeseries).matches()) {
       throw new IllegalPathException(
-          String.format("The timeseries name contains unsupported character. %s", timeseries));
+              String.format("The timeseries name contains unsupported character. %s", timeseries));
     }
   }
 
   // check if sdt parameters are valid
   private void checkSDTFormat(String path, Map<String, String> props)
-      throws IllegalParameterOfPathException {
+          throws IllegalParameterOfPathException {
     if (!props.containsKey(SDT_COMP_DEV)) {
       throw new IllegalParameterOfPathException("SDT compression deviation is required", path);
     }
@@ -188,7 +185,7 @@ public class MTreeDiskBased implements MTreeInterface {
       double d = Double.parseDouble(props.get(SDT_COMP_DEV));
       if (d < 0) {
         throw new IllegalParameterOfPathException(
-            "SDT compression deviation cannot be negative", path);
+                "SDT compression deviation cannot be negative", path);
       }
     } catch (NumberFormatException e) {
       throw new IllegalParameterOfPathException("SDT compression deviation formatting error", path);
@@ -199,12 +196,12 @@ public class MTreeDiskBased implements MTreeInterface {
 
     if (compMaxTime <= compMinTime) {
       throw new IllegalParameterOfPathException(
-          "SDT compression maximum time needs to be greater than compression minimum time", path);
+              "SDT compression maximum time needs to be greater than compression minimum time", path);
     }
   }
 
   private long sdtCompressionTimeFormat(String compTime, Map<String, String> props, String path)
-      throws IllegalParameterOfPathException {
+          throws IllegalParameterOfPathException {
     boolean isCompMaxTime = compTime.equals(SDT_COMP_MAX_TIME);
     long time = isCompMaxTime ? Long.MAX_VALUE : 0;
     String s = isCompMaxTime ? "maximum" : "minimum";
@@ -213,11 +210,11 @@ public class MTreeDiskBased implements MTreeInterface {
         time = Long.parseLong(props.get(compTime));
         if (time < 0) {
           throw new IllegalParameterOfPathException(
-              String.format("SDT compression %s time cannot be negative", s), path);
+                  String.format("SDT compression %s time cannot be negative", s), path);
         }
       } catch (IllegalParameterOfPathException e) {
         throw new IllegalParameterOfPathException(
-            String.format("SDT compression %s time formatting error", s), path);
+                String.format("SDT compression %s time formatting error", s), path);
       }
     } else {
       logger.info("{} enabled SDT but did not set compression {} time", path, s);
@@ -247,7 +244,7 @@ public class MTreeDiskBased implements MTreeInterface {
       }
       cur = metadataDiskManager.getChild(cur, nodeNames[i]);
     }
-    return cur;
+    return processMNodeReturn(cur);
   }
 
   @Override
@@ -502,6 +499,28 @@ public class MTreeDiskBased implements MTreeInterface {
       }
     }
     return cur;
+  }
+
+  @Override
+  public MNode getNodeByPathForChildrenCheck(PartialPath deviceId) throws MetadataException {
+    return processMNodeReturn(getNodeByPath(deviceId));
+  }
+
+  private MNode processMNodeReturn(MNode mNode) throws MetadataException{
+    MNode result=mNode.clone();
+    Map<String,MNode> children=result.getChildren();
+    for(Map.Entry<String,MNode> entry:children.entrySet()){
+      if(!entry.getValue().isLoaded()){
+        entry.setValue(metadataDiskManager.getChild(mNode,entry.getKey()));
+      }
+    }
+    Map<String, MNode> aliasChildren=result.getAliasChildren();
+    for(Map.Entry<String,MNode> entry:aliasChildren.entrySet()){
+      if(!entry.getValue().isLoaded()){
+        entry.setValue(metadataDiskManager.getChild(mNode,entry.getKey()));
+      }
+    }
+    return result;
   }
 
   @Override
@@ -1381,14 +1400,19 @@ public class MTreeDiskBased implements MTreeInterface {
   @Override
   public int getMeasurementMNodeCount(PartialPath path) throws MetadataException {
     MNode mNode = getNodeByPath(path);
+    return getMeasurementMNodeCount(mNode);
+  }
+
+  private int getMeasurementMNodeCount(MNode mNode) throws MetadataException{
     int measurementMNodeCount = 0;
     if (mNode.isMeasurement()) {
       measurementMNodeCount += 1; // current node itself may be MeasurementMNode
     }
+    MNode child;
     for (String childName : mNode.getChildren().keySet()) {
+      child=metadataDiskManager.getChild(mNode,childName);
       measurementMNodeCount +=
-          getMeasurementMNodeCount(
-              new PartialPath(mNode.getFullPath() + PATH_SEPARATOR + childName));
+              getMeasurementMNodeCount(child);
     }
     return measurementMNodeCount;
   }
@@ -1407,7 +1431,4 @@ public class MTreeDiskBased implements MTreeInterface {
     }
   }
 
-  private static String jsonToString(JsonObject jsonObject) {
-    return GSON.toJson(jsonObject);
-  }
 }
