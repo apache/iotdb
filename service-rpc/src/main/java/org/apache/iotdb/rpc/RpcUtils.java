@@ -229,6 +229,18 @@ public class RpcUtils {
     }
   }
 
+  public static String formateDatetimeStr(String datetime, StringBuilder digits) {
+    if (datetime.contains("Z")){
+      String timeZoneStr = datetime.substring(datetime.length() - 1);
+      return datetime.substring(0, datetime.length() - 1) + "." + digits + timeZoneStr;
+    } else if (datetime.contains("+")) {
+      String timeZoneStr = datetime.substring(datetime.length() - 6);
+      return datetime.substring(0, datetime.length() - 6) + "." + digits + timeZoneStr;
+    } else {
+      return  datetime + "." + digits;
+    }
+  }
+
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static String parseLongToDateWithPrecision(
       DateTimeFormatter formatter, long timestamp, ZoneId zoneid, String timestampPrecision) {
@@ -244,8 +256,7 @@ public class RpcUtils {
           digits.insert(0, "0");
         }
       }
-      String timeZoneStr = datetime.substring(datetime.length() - 6);
-      return datetime.substring(0, datetime.length() - 6) + "." + digits + timeZoneStr;
+      return formateDatetimeStr(datetime, digits);
     } else if (timestampPrecision.equals("us")) {
       long integerofDate = timestamp / 1000_000;
       StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000_000));
@@ -258,8 +269,7 @@ public class RpcUtils {
           digits.insert(0, "0");
         }
       }
-      String timeZoneStr = datetime.substring(datetime.length() - 6);
-      return datetime.substring(0, datetime.length() - 6) + "." + digits + timeZoneStr;
+      return formateDatetimeStr(datetime, digits);
     } else {
       long integerofDate = timestamp / 1000_000_000L;
       StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000_000_000L));
@@ -272,8 +282,7 @@ public class RpcUtils {
           digits.insert(0, "0");
         }
       }
-      String timeZoneStr = datetime.substring(datetime.length() - 6);
-      return datetime.substring(0, datetime.length() - 6) + "." + digits + timeZoneStr;
+      return formateDatetimeStr(datetime, digits);
     }
   }
 }
