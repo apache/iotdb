@@ -382,6 +382,10 @@ measurementName
     ;
 
 insertValuesSpec
+    :(COMMA? insertMultiValue)*
+    ;
+
+insertMultiValue
     : LR_BRACKET dateFormat (COMMA measurementValue)+ RR_BRACKET
     | LR_BRACKET INT (COMMA measurementValue)+ RR_BRACKET
     ;
