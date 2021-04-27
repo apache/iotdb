@@ -667,19 +667,8 @@ public class TsFileResource {
    *
    * @return TimeseriesMetadata or the first ValueTimeseriesMetadata in VectorTimeseriesMetadata
    */
-  public TimeseriesMetadata getTimeSeriesMetadata() {
-    if (timeSeriesMetadata == null) {
-      return null;
-    }
-    if (timeSeriesMetadata instanceof TimeseriesMetadata) {
-      return (TimeseriesMetadata) timeSeriesMetadata;
-    } else {
-      // it's ok for us to return the first value timeseries metadata,
-      // because the MemChunkMetadataLoader is not depend on the timeseries metadata
-      return ((VectorTimeSeriesMetadata) timeSeriesMetadata)
-          .getValueTimeseriesMetadataList()
-          .get(0);
-    }
+  public ITimeSeriesMetadata getTimeSeriesMetadata() {
+    return timeSeriesMetadata;
   }
 
   public void setUpgradedResources(List<TsFileResource> upgradedResources) {
