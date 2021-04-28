@@ -212,6 +212,7 @@ public class IoTDBAuthorizationIT {
     }
     assertTrue(caught);
 
+    caught = false;
     try (Connection adminCon =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
