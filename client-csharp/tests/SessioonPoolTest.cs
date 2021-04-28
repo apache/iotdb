@@ -8,7 +8,7 @@ namespace iotdb_client_csharp.client.test
     public class SessionPoolTest
     {
         public string host = "localhost";
-        public int port = 8888;
+        public int port = 6667;
         public string user = "root";
         public string passwd = "root";
         public int fetch_size = 5000;
@@ -18,7 +18,7 @@ namespace iotdb_client_csharp.client.test
 
         public void Test(){
             Task task;
-            /*
+            
             task = TestInsertRecord();
             task.Wait();
             
@@ -32,10 +32,8 @@ namespace iotdb_client_csharp.client.test
             task.Wait();
             task = TestInsertRecordsOfOneDevice();
             task.Wait();
-            */
             task = TestInsertTablet();
             task.Wait();
-            /*
             task = TestInsertTablets();
             task.Wait();          
             task = TestSetAndDeleteStorageGroup();
@@ -54,7 +52,6 @@ namespace iotdb_client_csharp.client.test
             task.Wait();
             task = TestSqlQuery();
             task.Wait();
-            */
             
         }
 
