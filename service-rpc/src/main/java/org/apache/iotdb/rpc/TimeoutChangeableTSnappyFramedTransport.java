@@ -46,12 +46,22 @@ public class TimeoutChangeableTSnappyFramedTransport extends TSnappyElasticFrame
   }
 
   public static class Factory extends TTransportFactory {
+
+    private final int thriftDefaultBufferSize;
+    protected final int thriftMaxFrameSize;
+
+    public Factory(int thriftDefaultBufferSize, int thriftMaxFrameSize) {
+      this.thriftDefaultBufferSize = thriftDefaultBufferSize;
+      this.thriftMaxFrameSize = thriftMaxFrameSize;
+    }
+
     @Override
     public TTransport getTransport(TTransport trans) {
       if (trans instanceof TSocket) {
         return new TimeoutChangeableTSnappyFramedTransport((TSocket) trans);
       } else {
-        return new TSnappyElasticFramedTransport(trans);
+        return new TSnappyElasticFramedTransport(
+            trans, thriftDefaultBufferSize, thriftMaxFrameSize);
       }
     }
   }
