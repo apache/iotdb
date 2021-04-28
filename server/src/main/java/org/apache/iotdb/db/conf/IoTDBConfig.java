@@ -319,11 +319,14 @@ public class IoTDBConfig {
   /** Query hitter strategy */
   private QueryHitterStrategy queryHitterStrategy = QueryHitterStrategy.DEFAULT_STRATEGY;
 
-  /** max query path hitter contains */
+  /** max query paths hitter contains */
   private int maxHitterNum = 5000;
 
   /** size ratio of the hitter level merge */
   private int sizeRatio = 2;
+
+  /** Counter ratio of the query hitter */
+  private int counterRatio = 2;
 
   /**
    * Works when the compaction_strategy is LEVEL_COMPACTION. Whether to merge unseq files into seq
@@ -1499,6 +1502,14 @@ public class IoTDBConfig {
 
   public void setSizeRatio(int sizeRatio) {
     this.sizeRatio = sizeRatio;
+  }
+
+  public int getCounterRatio() {
+    return counterRatio;
+  }
+
+  public void setCounterRatio(int counterRatio) {
+    this.counterRatio = counterRatio;
   }
 
   public boolean isEnableUnseqCompaction() {
