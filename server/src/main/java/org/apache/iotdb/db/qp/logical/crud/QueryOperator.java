@@ -19,31 +19,14 @@
 package org.apache.iotdb.db.qp.logical.crud;
 
 import org.apache.iotdb.db.index.common.IndexType;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.query.executor.fill.IFill;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.Map;
 
 /** this class extends {@code RootOperator} and process getIndex statement */
 public class QueryOperator extends SFWOperator {
 
-  private long startTime;
-  private long endTime;
-  // time interval
-  private long unit;
-  // sliding step
-  private long slidingStep;
-  private boolean isGroupByTime = false;
-  private boolean isIntervalByMonth = false;
-  private boolean isSlidingStepByMonth = false;
-  // if it is left close and right open interval
-  private boolean leftCRightO;
-
-  private Map<TSDataType, IFill> fillTypes;
-  private boolean isFill = false;
-
-  private boolean isGroupByLevel = false;
   private int level = -1;
 
   private int rowLimit = 0;
@@ -54,17 +37,23 @@ public class QueryOperator extends SFWOperator {
   private boolean isAlignByDevice = false;
   private boolean isAlignByTime = true;
 
-  private String column;
-
   private boolean ascending = true;
 
   private Map<String, Object> props;
 
   private IndexType indexType;
 
-  public QueryOperator(int tokenIntType) {
-    super(tokenIntType);
+  public QueryOperator() {
+    super(SQLConstant.TOK_QUERY);
     operatorType = Operator.OperatorType.QUERY;
+  }
+
+  public int getLevel() {
+    return level;
+  }
+
+  public void setLevel(int level) {
+    this.level = level;
   }
 
   public Map<String, Object> getProps() {
@@ -81,38 +70,6 @@ public class QueryOperator extends SFWOperator {
 
   public void setIndexType(IndexType indexType) {
     this.indexType = indexType;
-  }
-
-  public boolean isFill() {
-    return isFill;
-  }
-
-  public void setFill(boolean fill) {
-    isFill = fill;
-  }
-
-  public Map<TSDataType, IFill> getFillTypes() {
-    return fillTypes;
-  }
-
-  public void setFillTypes(Map<TSDataType, IFill> fillTypes) {
-    this.fillTypes = fillTypes;
-  }
-
-  public boolean isGroupByLevel() {
-    return isGroupByLevel;
-  }
-
-  public void setGroupByLevel(boolean isGroupBy) {
-    this.isGroupByLevel = isGroupBy;
-  }
-
-  public boolean isLeftCRightO() {
-    return leftCRightO;
-  }
-
-  public void setLeftCRightO(boolean leftCRightO) {
-    this.leftCRightO = leftCRightO;
   }
 
   public int getRowLimit() {
@@ -155,44 +112,12 @@ public class QueryOperator extends SFWOperator {
     return seriesLimit > 0;
   }
 
-  public long getUnit() {
-    return unit;
-  }
-
-  public void setUnit(long unit) {
-    this.unit = unit;
-  }
-
-  public long getStartTime() {
-    return startTime;
-  }
-
-  public void setStartTime(long startTime) {
-    this.startTime = startTime;
-  }
-
-  public long getEndTime() {
-    return endTime;
-  }
-
-  public void setEndTime(long endTime) {
-    this.endTime = endTime;
-  }
-
-  public long getSlidingStep() {
-    return slidingStep;
-  }
-
-  public void setSlidingStep(long slidingStep) {
-    this.slidingStep = slidingStep;
-  }
-
   public boolean isAlignByDevice() {
     return isAlignByDevice;
   }
 
-  public void setAlignByDevice(boolean isAlignByDevice) {
-    this.isAlignByDevice = isAlignByDevice;
+  public void setAlignByDevice(boolean alignByDevice) {
+    this.isAlignByDevice = alignByDevice;
   }
 
   public boolean isAlignByTime() {
@@ -201,46 +126,6 @@ public class QueryOperator extends SFWOperator {
 
   public void setAlignByTime(boolean isAlignByTime) {
     this.isAlignByTime = isAlignByTime;
-  }
-
-  public int getLevel() {
-    return level;
-  }
-
-  public void setLevel(int level) {
-    this.level = level;
-  }
-
-  public boolean isGroupByTime() {
-    return isGroupByTime;
-  }
-
-  public void setGroupByTime(boolean groupByTime) {
-    isGroupByTime = groupByTime;
-  }
-
-  public boolean isSlidingStepByMonth() {
-    return isSlidingStepByMonth;
-  }
-
-  public void setSlidingStepByMonth(boolean isSlidingStepByMonth) {
-    this.isSlidingStepByMonth = isSlidingStepByMonth;
-  }
-
-  public boolean isIntervalByMonth() {
-    return isIntervalByMonth;
-  }
-
-  public void setIntervalByMonth(boolean isIntervalByMonth) {
-    this.isIntervalByMonth = isIntervalByMonth;
-  }
-
-  public String getColumn() {
-    return column;
-  }
-
-  public void setColumn(String column) {
-    this.column = column;
   }
 
   public boolean isAscending() {

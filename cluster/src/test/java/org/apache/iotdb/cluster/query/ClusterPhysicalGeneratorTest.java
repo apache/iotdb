@@ -23,7 +23,6 @@ import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.crud.FromOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
@@ -49,12 +48,11 @@ public class ClusterPhysicalGeneratorTest extends BaseQueryTest {
 
   @Test
   public void test() throws QueryProcessException, IllegalPathException {
-    QueryOperator operator = new QueryOperator(SQLConstant.TOK_QUERY);
+    QueryOperator operator = new QueryOperator();
 
-    SelectOperator selectOperator =
-        new SelectOperator(SQLConstant.TOK_SELECT, ZoneId.systemDefault());
+    SelectOperator selectOperator = new SelectOperator(ZoneId.systemDefault());
     selectOperator.setSuffixPathList(pathList);
-    FromOperator fromOperator = new FromOperator(SQLConstant.TOK_FROM);
+    FromOperator fromOperator = new FromOperator();
     fromOperator.addPrefixTablePath(new PartialPath(TestUtils.getTestSg(0)));
 
     operator.setSelectOperator(selectOperator);

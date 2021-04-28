@@ -91,9 +91,9 @@ public class Planner {
     long endTime = rawDataQueryReq.getEndTime();
 
     // construct query operator and set its global time filter
-    QueryOperator queryOp = new QueryOperator(SQLConstant.TOK_QUERY);
-    FromOperator fromOp = new FromOperator(SQLConstant.TOK_FROM);
-    SelectOperator selectOp = new SelectOperator(SQLConstant.TOK_SELECT, zoneId);
+    QueryOperator queryOp = new QueryOperator();
+    FromOperator fromOp = new FromOperator();
+    SelectOperator selectOp = new SelectOperator(zoneId);
 
     // iterate the path list and add it to from operator
     for (String p : paths) {

@@ -252,7 +252,6 @@ specialClause
     | groupByTimeClause orderByTimeClause? specialLimit? #groupByTimeStatement
     | groupByFillClause orderByTimeClause? specialLimit? #groupByFillStatement
     | fillClause slimitClause? alignByDeviceClauseOrDisableAlign? #fillStatement
-    | alignByDeviceClauseOrDisableAlign #alignByDeviceStatementOrDisableAlignInSpecialClause
     | groupByLevelClause orderByTimeClause? specialLimit? #groupByLevelStatement
     ;
 

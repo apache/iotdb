@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.qp.logical.crud;
 
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.query.udf.core.context.UDFContext;
 
@@ -27,28 +28,19 @@ import java.util.ArrayList;
 import java.util.List;
 
 /** this class maintains information from select clause. */
-public final class SelectOperator extends Operator {
+public class SelectOperator extends Operator {
 
-  private final ZoneId zoneId;
-  private List<PartialPath> suffixList;
-  private List<String> aggregations;
+  protected final ZoneId zoneId;
+  protected List<PartialPath> suffixList = new ArrayList<>();
   private List<UDFContext> udfList;
 
-  private boolean lastQuery;
-  private boolean udfQuery;
-  private boolean hasBuiltinAggregation;
+  private boolean udfQuery = false;
 
   /** init with tokenIntType, default operatorType is <code>OperatorType.SELECT</code>. */
-  public SelectOperator(int tokenIntType, ZoneId zoneId) {
-    super(tokenIntType);
-    this.zoneId = zoneId;
+  public SelectOperator(ZoneId zoneId) {
+    super(SQLConstant.TOK_SELECT);
     operatorType = OperatorType.SELECT;
-    suffixList = new ArrayList<>();
-    aggregations = new ArrayList<>();
-    udfList = new ArrayList<>();
-    lastQuery = false;
-    udfQuery = false;
-    hasBuiltinAggregation = false;
+    this.zoneId = zoneId;
   }
 
   public ZoneId getZoneId() {
@@ -57,34 +49,6 @@ public final class SelectOperator extends Operator {
 
   public void addSelectPath(PartialPath suffixPath) {
     suffixList.add(suffixPath);
-  }
-
-  public void addClusterPath(PartialPath suffixPath, String aggregation) {
-    suffixList.add(suffixPath);
-    aggregations.add(aggregation);
-    if (aggregation != null) {
-      hasBuiltinAggregation = true;
-    }
-  }
-
-  public boolean isLastQuery() {
-    return this.lastQuery;
-  }
-
-  public void setLastQuery() {
-    lastQuery = true;
-  }
-
-  public List<String> getAggregations() {
-    return this.aggregations;
-  }
-
-  public void setAggregations(List<String> aggregations) {
-    this.aggregations = aggregations;
-  }
-
-  public boolean hasAggregation() {
-    return hasBuiltinAggregation; // todo: hasBuiltinAggregation || hasUDAF
   }
 
   public void setSuffixPathList(List<PartialPath> suffixPaths) {
@@ -98,6 +62,9 @@ public final class SelectOperator extends Operator {
   public void addUdf(UDFContext udf) {
     if (udf != null) {
       udfQuery = true;
+    }
+    if (udfList == null) {
+      udfList = new ArrayList<>();
     }
     udfList.add(udf);
   }
@@ -113,4 +80,19 @@ public final class SelectOperator extends Operator {
   public void setUdfList(List<UDFContext> udfList) {
     this.udfList = udfList;
   }
+
+  public boolean isLastQuery() {
+    return false;
+  }
+
+  public boolean hasAggregation() {
+    return false; // todo: hasBuiltinAggregation || hasUDAF
+  }
+
+  // TODO: package it
+  public List<String> getAggregations() {
+    return new ArrayList<>();
+  }
+
+  public void setAggregations(List<String> aggregations) {}
 }

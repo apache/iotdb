@@ -47,7 +47,7 @@ import static org.apache.iotdb.db.qp.constant.SQLConstant.KW_OR;
  */
 public class FilterOperator extends Operator implements Comparable<FilterOperator> {
 
-  // it is the symbol of token. e.g. AND is & and OR is |
+  // The symbol of token. e.g. AND is & and OR is |
   String tokenSymbol;
 
   private List<FilterOperator> childOperators;
@@ -168,7 +168,6 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
    * @return - pair.left: UnaryQueryFilter constructed by its one child; pair.right: Path
    *     represented by this child.
    * @throws MetadataException exception in filter transforming
-   * @param pathTSDataTypeHashMap
    */
   protected Pair<IUnaryExpression, String> transformToSingleQueryFilter(
       Map<PartialPath, TSDataType> pathTSDataTypeHashMap)

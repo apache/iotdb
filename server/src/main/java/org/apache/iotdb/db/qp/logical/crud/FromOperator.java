@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.qp.logical.crud;
 
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 
 import java.util.ArrayList;
@@ -29,8 +30,8 @@ public class FromOperator extends Operator {
 
   private List<PartialPath> prefixList;
 
-  public FromOperator(int tokenIntType) {
-    super(tokenIntType);
+  public FromOperator() {
+    super(SQLConstant.TOK_FROM);
     operatorType = OperatorType.FROM;
     prefixList = new ArrayList<>();
   }

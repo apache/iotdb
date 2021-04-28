@@ -29,24 +29,13 @@ import java.util.List;
  */
 public abstract class SFWOperator extends RootOperator {
 
-  private SelectOperator selectOperator;
-  private FromOperator fromOperator;
-  private FilterOperator filterOperator;
-  private boolean hasAggregation = false;
-  private boolean hasUdf = false;
-  private boolean lastQuery = false;
+  protected SelectOperator selectOperator;
+  protected FromOperator fromOperator;
+  protected FilterOperator filterOperator;
 
   public SFWOperator(int tokenIntType) {
     super(tokenIntType);
     operatorType = OperatorType.SFW;
-  }
-
-  public FromOperator getFromOperator() {
-    return fromOperator;
-  }
-
-  public void setFromOperator(FromOperator from) {
-    this.fromOperator = from;
   }
 
   public SelectOperator getSelectOperator() {
@@ -54,17 +43,16 @@ public abstract class SFWOperator extends RootOperator {
   }
 
   /** set selectOperator, then init hasAggregation according to selectOperator. */
-  public void setSelectOperator(SelectOperator sel) {
-    this.selectOperator = sel;
-    if (sel.hasAggregation()) {
-      hasAggregation = true;
-    }
-    if (sel.isUdfQuery()) {
-      hasUdf = true;
-    }
-    if (sel.isLastQuery()) {
-      lastQuery = true;
-    }
+  public void setSelectOperator(SelectOperator selectOperator) {
+    this.selectOperator = selectOperator;
+  }
+
+  public FromOperator getFromOperator() {
+    return fromOperator;
+  }
+
+  public void setFromOperator(FromOperator fromOperator) {
+    this.fromOperator = fromOperator;
   }
 
   public FilterOperator getFilterOperator() {
@@ -85,14 +73,14 @@ public abstract class SFWOperator extends RootOperator {
   }
 
   public boolean hasAggregation() {
-    return hasAggregation;
+    return selectOperator.hasAggregation();
   }
 
   public boolean hasUdf() {
-    return hasUdf;
+    return selectOperator.isUdfQuery();
   }
 
   public boolean isLastQuery() {
-    return lastQuery;
+    return selectOperator.isLastQuery();
   }
 }
