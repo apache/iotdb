@@ -683,18 +683,9 @@ public class TsFileResource {
     this.modFile = modFile;
   }
 
-  /** @return initial resource map size */
+  /** @return resource map size */
   public long calculateRamSize() {
     return timeIndex.calculateRamSize();
-  }
-
-  /**
-   * Calculate the resource ram increment when insert data in TsFileProcessor
-   *
-   * @return ramIncrement
-   */
-  public long estimateRamIncrement(String deviceToBeChecked) {
-    return timeIndex.estimateRamIncrement(deviceToBeChecked);
   }
 
   public void delete() throws IOException {
