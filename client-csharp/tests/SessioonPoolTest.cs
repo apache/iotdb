@@ -11,10 +11,10 @@ namespace iotdb_client_csharp.client.test
         public int port = 6667;
         public string user = "root";
         public string passwd = "root";
-        public int fetch_size = 5000;
-        public int processed_size = 4;
+        public int fetch_size = 10000;
+        public int processed_size = 8;
         public bool debug = false;
-        int pool_size = 4;
+        int pool_size = 3;
 
         public void Test(){
             Task task;
@@ -46,8 +46,8 @@ namespace iotdb_client_csharp.client.test
             task.Wait();
             task = TestSetTimeZone();
             task.Wait();
-             task = TestDeleteData();
-             task.Wait();
+            task = TestDeleteData();
+            task.Wait();
             task = TestNonSql();
             task.Wait();
             task = TestSqlQuery();
@@ -167,7 +167,6 @@ namespace iotdb_client_csharp.client.test
                Console.WriteLine(res.next());
            }
            await res.close();
-           Console.WriteLine("小规模执行完毕");
 
             var tasks = new List<Task<int>>();
            // large data test
@@ -265,6 +264,7 @@ namespace iotdb_client_csharp.client.test
                 res_count += 1;
             }
             await res.close();
+            Console.WriteLine(res_count + " "+ fetch_size * processed_size);
             System.Diagnostics.Debug.Assert(res_count == record_count);
             System.Diagnostics.Debug.Assert(status == 0);
             status = await session_pool.delete_storage_group_async("root.97209_TEST_CSHARP_CLIENT_GROUP");
@@ -328,6 +328,7 @@ namespace iotdb_client_csharp.client.test
                 res_count += 1;
             }
             await res.close();
+            Console.WriteLine(res_count + " "+ fetch_size * processed_size);
             System.Diagnostics.Debug.Assert(res_count == fetch_size * processed_size);
             status = await session_pool.delete_storage_group_async("root.97209_TEST_CSHARP_CLIENT_GROUP");
             System.Diagnostics.Debug.Assert(status == 0);
@@ -344,7 +345,7 @@ namespace iotdb_client_csharp.client.test
             System.Diagnostics.Debug.Assert(session_pool.is_open());
             await session_pool.delete_storage_group_async("root.97209_TEST_CSHARP_CLIENT_GROUP");
             string device_id = "root.97209_TEST_CSHARP_CLIENT_GROUP.TEST_CSHARP_CLIENT_DEVICE";
-            List<string> measurement_lst = new List<string>{"TS1", "TS2", "TS3"};
+            List<string> measurement_lst = new List<string>{"TEST_CSHARP_CLIENT_TS1", "TEST_CSHARP_CLIENT_TS2", "TEST_CSHARP_CLIENT_TS3"};
             List<List<object>> value_lst = new List<List<object>>{new List<object>{"iotdb", true, (Int32)12}, new List<object>{"c#", false, (Int32)13}, new List<object>{"client", true, (Int32)14}};
             List<long> timestamp_lst = new List<long>{1, 2, 3};
             var tablet = new Tablet(device_id, measurement_lst, value_lst, timestamp_lst);
@@ -383,6 +384,7 @@ namespace iotdb_client_csharp.client.test
                 res_count += 1;
             }
             await res.close();
+            Console.WriteLine(res_count + " "+ fetch_size*processed_size);
             System.Diagnostics.Debug.Assert(res_count == fetch_size * processed_size);
             status = await session_pool.delete_storage_group_async("root.97209_TEST_CSHARP_CLIENT_GROUP");
             System.Diagnostics.Debug.Assert(status == 0);
@@ -399,7 +401,7 @@ namespace iotdb_client_csharp.client.test
             System.Diagnostics.Debug.Assert(session_pool.is_open());
             await session_pool.delete_storage_group_async("root.97209_TEST_CSHARP_CLIENT_GROUP");
             List<string> device_id = new List<string>(){"root.97209_TEST_CSHARP_CLIENT_GROUP.TEST_CSHARP_CLIENT_DEVICE1", "root.97209_TEST_CSHARP_CLIENT_GROUP.TEST_CSHARP_CLIENT_DEVICE2"};
-            List<List<string>> measurements_lst = new List<List<string>>(){new List<string>(){"TS1", "TS2", "TS3"}, new List<string>(){"TS1", "TS2", "TS3"}};
+            List<List<string>> measurements_lst = new List<List<string>>(){new List<string>(){"TEST_CSHARP_CLIENT_TS1", "TEST_CSHARP_CLIENT_TS2", "TEST_CSHARP_CLIENT_TS3"}, new List<string>(){"TEST_CSHARP_CLIENT_TS1", "TEST_CSHARP_CLIENT_TS2", "TEST_CSHARP_CLIENT_TS3"}};
             List<List<List<object>>> values_lst = new List<List<List<object>>>(){new List<List<object>>(){new List<object>{"iotdb", true, (Int32)12}, new List<object>{"c#", false, (Int32)13}, new List<object>{"client", true, (Int32)14}}, new List<List<object>>(){new List<object>{"iotdb_2", true, (Int32)1}, new List<object>{"c#_2", false, (Int32)2}, new List<object>{"client_2", true, (Int32)3}}};
             List<List<long>> timestamp_lst = new List<List<long>>(){new List<long>(){2, 1, 3}, new List<long>(){3, 1, 2}};
             List<Tablet> tablets = new List<Tablet>(){};
@@ -425,15 +427,16 @@ namespace iotdb_client_csharp.client.test
             // large data test
 
             var tasks = new List<Task<int>>();
-            for(int timestamp = 4;timestamp <= 4 * fetch_size; timestamp++){
+            for(int timestamp = 4;timestamp <= processed_size * fetch_size; timestamp++){
                 var local_device_id = "root.97209_TEST_CSHARP_CLIENT_GROUP.TEST_CSHARP_CLIENT_DEVICE1";
-                var local_measurements = new List<string>(){"TS1", "TS2", "TS3"};
+                var local_measurements = new List<string>(){"TEST_CSHARP_CLIENT_TS1", "TEST_CSHARP_CLIENT_TS2", "TEST_CSHARP_CLIENT_TS3"};
                 var local_value = new List<List<object>>(){new List<object>(){"iotdb", true, (Int32)timestamp}};
                 var local_timestamp = new List<long>{timestamp};
                 Tablet tablet = new Tablet(local_device_id, local_measurements, local_value, local_timestamp);
                 tablets.Add(tablet);
                 if(timestamp % fetch_size == 0){
                     tasks.Add(session_pool.insert_tablets_async(tablets));
+                    tablets = new List<Tablet>(){};
                 }
             }
             Task.WaitAll(tasks.ToArray());
@@ -700,7 +703,7 @@ namespace iotdb_client_csharp.client.test
             System.Diagnostics.Debug.Assert(session_pool.is_open());
             await session_pool.delete_storage_group_async("root.97209_TEST_CSHARP_CLIENT_GROUP");
             string device_id = "root.97209_TEST_CSHARP_CLIENT_GROUP.TEST_CSHARP_CLIENT_DEVICE";
-            List<string> measurement_lst = new List<string>{"TS1", "TS2", "TS3"};
+            List<string> measurement_lst = new List<string>{"TEST_CSHARP_CLIENT_TS1", "TEST_CSHARP_CLIENT_TS2", "TEST_CSHARP_CLIENT_TS3"};
             List<List<object>> value_lst = new List<List<object>>{new List<object>{"iotdb", true, (Int32)12}, new List<object>{"c#", false, (Int32)13}, new List<object>{"client", true, (Int32)14}};
             List<long> timestamp_lst = new List<long>{2, 1, 3};
             var tablet = new Tablet(device_id, measurement_lst, value_lst, timestamp_lst);
@@ -755,7 +758,7 @@ namespace iotdb_client_csharp.client.test
             System.Diagnostics.Debug.Assert(session_pool.is_open());
             await session_pool.delete_storage_group_async("root.97209_TEST_CSHARP_CLIENT_GROUP");
             List<string> device_id = new List<string>(){"root.97209_TEST_CSHARP_CLIENT_GROUP.TEST_CSHARP_CLIENT_DEVICE1", "root.97209_TEST_CSHARP_CLIENT_GROUP.TEST_CSHARP_CLIENT_DEVICE2"};
-            List<List<string>> measurements_lst = new List<List<string>>(){new List<string>(){"TS1", "TS2", "TS3"}, new List<string>(){"TS1", "TS2", "TS3"}};
+            List<List<string>> measurements_lst = new List<List<string>>(){new List<string>(){"TEST_CSHARP_CLIENT_TS1", "TEST_CSHARP_CLIENT_TS2", "TEST_CSHARP_CLIENT_TS3"}, new List<string>(){"TEST_CSHARP_CLIENT_TS1", "TEST_CSHARP_CLIENT_TS2", "TEST_CSHARP_CLIENT_TS3"}};
             List<List<List<object>>> values_lst = new List<List<List<object>>>(){new List<List<object>>(){new List<object>{"iotdb", true, (Int32)12}, new List<object>{"c#", false, (Int32)13}, new List<object>{"client", true, (Int32)14}}, new List<List<object>>(){new List<object>{"iotdb_2", true, (Int32)1}, new List<object>{"c#_2", false, (Int32)2}, new List<object>{"client_2", true, (Int32)3}}};
             List<List<long>> timestamp_lst = new List<List<long>>(){new List<long>(){2, 1, 3}, new List<long>(){3, 1, 2}};
             List<Tablet> tablets = new List<Tablet>(){};
@@ -781,15 +784,16 @@ namespace iotdb_client_csharp.client.test
             // large data test
 
             var tasks = new List<Task<int>>();
-            for(int timestamp = 4;timestamp <= 4 * fetch_size; timestamp++){
+            for(int timestamp = 4;timestamp <= processed_size* fetch_size; timestamp++){
                 var local_device_id = "root.97209_TEST_CSHARP_CLIENT_GROUP.TEST_CSHARP_CLIENT_DEVICE1";
-                var local_measurements = new List<string>(){"TS1", "TS2", "TS3"};
+                var local_measurements = new List<string>(){"TEST_CSHARP_CLIENT_TS1", "TEST_CSHARP_CLIENT_TS2", "TEST_CSHARP_CLIENT_TS3"};
                 var local_value = new List<List<object>>(){new List<object>(){"iotdb", true, (Int32)timestamp}};
                 var local_timestamp = new List<long>{timestamp};
                 Tablet tablet = new Tablet(local_device_id, local_measurements, local_value, local_timestamp);
                 tablets.Add(tablet);
                 if(timestamp % fetch_size == 0){
                     tasks.Add(session_pool.test_insert_tablets_async(tablets));
+                    tablets = new List<Tablet>(){};
                 }
             }
             Task.WaitAll(tasks.ToArray());
