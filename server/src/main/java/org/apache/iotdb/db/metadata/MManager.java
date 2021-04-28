@@ -2054,7 +2054,8 @@ public class MManager {
    * if the path is in local mtree, nothing needed to do (because mtree is in the memory); Otherwise
    * cache the path to mRemoteSchemaCache
    */
-  public void cacheMeta(PartialPath path, MeasurementMNode measurementMNode) {
+  public void cacheMeta(
+      PartialPath path, MeasurementMNode measurementMNode, boolean needSetFullPath) {
     // do nothing
   }
 
