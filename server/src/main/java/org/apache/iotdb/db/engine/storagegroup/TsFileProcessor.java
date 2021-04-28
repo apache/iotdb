@@ -306,8 +306,7 @@ public class TsFileProcessor {
         textDataIncrement += MemUtils.getBinarySize((Binary) insertRowPlan.getValues()[i]);
       }
     }
-    updateMemoryInfo(
-        memTableIncrement, chunkMetadataIncrement, textDataIncrement);
+    updateMemoryInfo(memTableIncrement, chunkMetadataIncrement, textDataIncrement);
   }
 
   private void checkMemCostAndAddToTspInfo(InsertTabletPlan insertTabletPlan, int start, int end)
@@ -373,9 +372,7 @@ public class TsFileProcessor {
   }
 
   private void updateMemoryInfo(
-      long memTableIncrement,
-      long chunkMetadataIncrement,
-      long textDataIncrement)
+      long memTableIncrement, long chunkMetadataIncrement, long textDataIncrement)
       throws WriteProcessException {
     memTableIncrement += textDataIncrement;
     storageGroupInfo.addStorageGroupMemCost(memTableIncrement);

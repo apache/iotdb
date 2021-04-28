@@ -123,7 +123,6 @@ public interface IMemTable {
 
   boolean shouldFlush();
 
-
   void release();
 
   /** must guarantee the device exists in the work memtable only used when mem control enabled */

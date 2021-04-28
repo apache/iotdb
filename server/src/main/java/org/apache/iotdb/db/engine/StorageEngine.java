@@ -106,8 +106,7 @@ public class StorageEngine implements IService {
    */
   @ServerConfigConsistent private static long timePartitionInterval = -1;
   /** whether enable data partition if disabled, all data belongs to partition 0 */
-  @ServerConfigConsistent
-  private static boolean enablePartition = config.isEnablePartition();
+  @ServerConfigConsistent private static boolean enablePartition = config.isEnablePartition();
 
   private final boolean enableMemControl = config.isEnableMemControl();
 

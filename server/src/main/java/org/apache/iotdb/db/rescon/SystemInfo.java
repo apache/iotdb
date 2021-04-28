@@ -25,6 +25,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupInfo;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,7 +66,7 @@ public class SystemInfo {
       throws WriteProcessRejectException {
     long delta =
         storageGroupInfo.getMemCost()
-        - reportedStorageGroupMemCostMap.getOrDefault(storageGroupInfo, 0L);
+            - reportedStorageGroupMemCostMap.getOrDefault(storageGroupInfo, 0L);
     totalStorageGroupMemCost += delta;
     if (logger.isDebugEnabled()) {
       logger.debug(
@@ -83,7 +84,7 @@ public class SystemInfo {
       logger.debug(
           "The total storage group mem costs are too large, call for flushing. "
               + "Current sg cost is {}",
-              totalStorageGroupMemCost);
+          totalStorageGroupMemCost);
       chooseMemTablesToMarkFlush(tsFileProcessor);
       return true;
     } else {
@@ -157,7 +158,6 @@ public class SystemInfo {
       logCurrentTotalSGMemory();
       rejected = false;
     }
-
   }
 
   public synchronized void addFlushingMemTableCost(long flushingMemTableCost) {
