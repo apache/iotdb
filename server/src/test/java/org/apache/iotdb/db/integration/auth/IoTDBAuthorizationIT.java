@@ -199,6 +199,31 @@ public class IoTDBAuthorizationIT {
   }
 
   @Test
+  public void illegalPasswordTest() throws ClassNotFoundException, SQLException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    boolean caught = false;
+    try (Connection adminCon =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("CREATE USER tempuser 'temppw '");
+    } catch (SQLException e) {
+      caught = true;
+    }
+    assertTrue(caught);
+
+    try (Connection adminCon =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("CREATE USER tempuser 'te'");
+    } catch (SQLException e) {
+      caught = true;
+    }
+    assertTrue(caught);
+  }
+
+  @Test
   public void updatePasswordTest() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection adminCon =
@@ -680,7 +705,7 @@ public class IoTDBAuthorizationIT {
         validateResultSet(resultSet, ans);
 
         for (int i = 0; i < 10; i++) {
-          adminStmt.execute("CREATE USER user" + i + " 'password " + i + "'");
+          adminStmt.execute("CREATE USER user" + i + " 'password" + i + "'");
         }
         resultSet = adminStmt.executeQuery("LIST USER");
         ans =
@@ -1005,7 +1030,7 @@ public class IoTDBAuthorizationIT {
     Statement adminStmt = adminCon.createStatement();
 
     for (int i = 0; i < 10; i++) {
-      adminStmt.execute("CREATE USER user" + i + " 'password " + i + "'");
+      adminStmt.execute("CREATE USER user" + i + " 'password" + i + "'");
     }
 
     adminStmt.execute("CREATE USER tempuser 'temppw'");
