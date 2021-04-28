@@ -157,24 +157,7 @@ public class MetadataDiskManager implements MetadataAccess {
   public Map<String, MNode> getChildren(MNode parent) throws MetadataException {
     Map<String, MNode> result = new ConcurrentHashMap<>();
     for (String childName : parent.getChildren().keySet()) {
-      MNode child = parent.getChild(childName);
-      if (child.isLoaded()) {
-        if (child.isCached()) {
-          cacheStrategy.applyChange(child);
-        } else {
-          if (isCacheable(child)) {
-            cacheStrategy.applyChange(child);
-            cacheStrategy.setModified(child, false);
-          }
-        }
-      } else {
-        child = getMNodeFromDisk(child.getPersistenceInfo());
-        parent.addChild(childName, child);
-        if (isCacheable(child)) {
-          cacheStrategy.applyChange(child);
-          cacheStrategy.setModified(child, false);
-        }
-      }
+      MNode child = getChild(parent,childName);
       result.put(childName, child);
     }
     return result;

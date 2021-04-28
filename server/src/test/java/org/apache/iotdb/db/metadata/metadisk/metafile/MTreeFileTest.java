@@ -5,6 +5,10 @@ import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
@@ -59,7 +63,10 @@ public class MTreeFileTest {
     root.addChild("p", p);
     StorageGroupMNode s = new StorageGroupMNode(root.getChild("p"), "s", 0);
     p.addChild("s", s);
-    s.addChild("t", new MeasurementMNode(null, "t", new MeasurementSchema(), null));
+    MeasurementMNode m=new MeasurementMNode(null, "t", new MeasurementSchema("t", TSDataType.TEXT), "m");
+    m.updateCachedLast(new TimeValuePair(1L,TsPrimitiveType.getByType(TSDataType.TEXT,new Binary("cache"))),false,0L);
+    s.addChild("t", m);
+
     mTreeFile.writeRecursively(root);
     MNode mNode = mTreeFile.read("root.p.s");
     Assert.assertTrue(mNode.isStorageGroup());
@@ -67,6 +74,10 @@ public class MTreeFileTest {
     mNode = mTreeFile.read("root.p.s.t");
     Assert.assertEquals("t", mNode.getName());
     Assert.assertTrue(mNode.isMeasurement());
+    m=(MeasurementMNode) mNode;
+    Assert.assertEquals("m",m.getAlias());
+    Assert.assertEquals(1L,m.getCachedLast().getTimestamp());
+    Assert.assertEquals("cache",m.getCachedLast().getValue().getBinary().getStringValue());
   }
 
   @Test

@@ -1,11 +1,15 @@
 package org.apache.iotdb.db.metadata.metadisk.metafile;
 
 import org.apache.iotdb.db.metadata.mnode.*;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.File;
@@ -236,6 +240,38 @@ public class MTreeFile {
             props.size() == 0 ? null : props);
     mNode.setSchema(schema);
 
+    long timestamp=dataBuffer.getLong();
+    if(timestamp!=-1){
+      TSDataType dataType=schema.getType();
+      TsPrimitiveType value;
+      switch (dataType) {
+        case BOOLEAN:
+          value=TsPrimitiveType.getByType(dataType,dataBuffer.get()==1);
+          break;
+        case INT32:
+          value=TsPrimitiveType.getByType(dataType,dataBuffer.getInt());
+          break;
+        case INT64:
+          value=TsPrimitiveType.getByType(dataType,dataBuffer.getLong());
+          break;
+        case FLOAT:
+          value=TsPrimitiveType.getByType(dataType,dataBuffer.getFloat());
+          break;
+        case DOUBLE:
+          value=TsPrimitiveType.getByType(dataType,dataBuffer.getDouble());
+          break;
+        case TEXT:
+          byte[] content=new byte[dataBuffer.getInt()];
+          dataBuffer.get(content);
+          value=TsPrimitiveType.getByType(dataType,new Binary(content));
+          break;
+        default:
+          throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
+      }
+      TimeValuePair lastCache=new TimeValuePair(timestamp,value);
+      mNode.updateCachedLast(lastCache,false,0L);
+    }
+
     readChildren(mNode, dataBuffer);
   }
 
@@ -300,47 +336,82 @@ public class MTreeFile {
             + mNode.getName().length(); // string.length()==string.getBytes().length
 
     // children
-    for (String childName : mNode.getChildren().keySet()) {
-      length +=
-          ReadWriteForEncodingUtils.varIntSize(childName.length())
-              + childName.length()
-              + 8; // child name and child position
-    }
-    length += 1; // children end tag
-    for (String alias : mNode.getAliasChildren().keySet()) {
-      length +=
-          ReadWriteForEncodingUtils.varIntSize(alias.length())
-              + alias.length()
-              + 8; // child alias and child position
-    }
-    length += 1; // aliasChildren end tag
+    length += evaluateChildrenLength(mNode.getChildren());
+    // alias children
+    length += evaluateChildrenLength(mNode.getAliasChildren());
 
     if (mNode.isStorageGroup()) {
       length += 8; // TTL
     }
 
     if (mNode.isMeasurement()) {
-      MeasurementMNode measurementMNode = (MeasurementMNode) mNode;
-      String alias = measurementMNode.getAlias(); // alias
-      if (alias == null) {
-        length += ReadWriteForEncodingUtils.varIntSize(0);
-      } else {
-        length += ReadWriteForEncodingUtils.varIntSize(alias.length()) + alias.length();
-      }
-      length += 8; // offset
-      length += 3; // type, encoding, compressor
-      if (measurementMNode.getSchema().getProps() != null) {
-        for (Map.Entry<String, String> entry : measurementMNode.getSchema().getProps().entrySet()) {
-          length +=
-              ReadWriteForEncodingUtils.varIntSize(entry.getKey().length())
-                  + entry.getKey().length();
-          length +=
-              ReadWriteForEncodingUtils.varIntSize(entry.getValue().length())
-                  + entry.getValue().length();
-        }
-      }
-      length += 1; // end tag of props
+      length += evaluateMeasurementDataLength((MeasurementMNode) mNode);
     }
+    return length;
+  }
+
+  private int evaluateChildrenLength(Map<String,MNode> children){
+    int length=0;
+    for (String childName : children.keySet()) {
+      length +=
+              ReadWriteForEncodingUtils.varIntSize(childName.length())
+                      + childName.length()
+                      + 8; // child name and child position
+    }
+    length += 1; // children end tag
+    return length;
+  }
+
+  private int evaluateMeasurementDataLength(MeasurementMNode measurementMNode){
+    int length=0;
+    String alias = measurementMNode.getAlias(); // alias
+    if (alias == null) {
+      length += ReadWriteForEncodingUtils.varIntSize(0);
+    } else {
+      length += ReadWriteForEncodingUtils.varIntSize(alias.length()) + alias.length();
+    }
+    length += 8; // offset
+    length += 3; // type, encoding, compressor
+    if (measurementMNode.getSchema().getProps() != null) {
+      for (Map.Entry<String, String> entry : measurementMNode.getSchema().getProps().entrySet()) {
+        length +=
+                ReadWriteForEncodingUtils.varIntSize(entry.getKey().length())
+                        + entry.getKey().length();
+        length +=
+                ReadWriteForEncodingUtils.varIntSize(entry.getValue().length())
+                        + entry.getValue().length();
+      }
+    }
+    length += 1; // end tag of props
+
+    // lastCache
+    length += 8; // timestamp, -1 means lastCache is null
+    if(measurementMNode.getCachedLast()!=null){
+      TSDataType dataType=measurementMNode.getSchema().getType();
+      switch (dataType) { // value
+        case BOOLEAN:
+          length += 1;
+          break;
+        case INT32:
+          length += 4;
+          break;
+        case INT64:
+          length += 8;
+          break;
+        case FLOAT:
+          length += 4;
+          break;
+        case DOUBLE:
+          length += 8;
+          break;
+        case TEXT:
+          length += 4+measurementMNode.getCachedLast().getValue().getBinary().getLength(); // length + data
+          break;
+        default:
+          throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
+      }
+    }
+
     return length;
   }
 
@@ -442,6 +513,39 @@ public class MTreeFile {
       }
     }
     dataBuffer.put((byte) 0);
+
+    TimeValuePair lastCache=mNode.getCachedLast();
+    if(lastCache!=null){
+      dataBuffer.putLong(lastCache.getTimestamp());
+      TSDataType dataType=schema.getType();
+      TsPrimitiveType value=lastCache.getValue();
+      switch (dataType) {
+        case BOOLEAN:
+          dataBuffer.put((byte)(value.getBoolean()?1:0));
+          break;
+        case INT32:
+          dataBuffer.putInt(value.getInt());
+          break;
+        case INT64:
+          dataBuffer.putLong(value.getLong());
+          break;
+        case FLOAT:
+          dataBuffer.putFloat(value.getFloat());
+          break;
+        case DOUBLE:
+          dataBuffer.putDouble(value.getDouble());
+          break;
+        case TEXT:
+          dataBuffer.putInt(value.getBinary().getLength());
+          dataBuffer.put(value.getBinary().getValues());
+          break;
+        default:
+          throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
+      }
+    }else {
+      dataBuffer.putLong(-1);
+    }
+
     serializeChildren(mNode.getChildren(), dataBuffer);
     serializeChildren(mNode.getAliasChildren(), dataBuffer);
     dataBuffer.flip();

@@ -38,7 +38,9 @@ public class MetaFile implements MetaFileAccess {
   }
 
   @Override
-  public void remove(PersistenceInfo persistenceInfo) throws IOException {}
+  public void remove(PersistenceInfo persistenceInfo) throws IOException {
+    mTreeFile.remove(persistenceInfo);
+  }
 
   @Override
   public void close() throws IOException {
