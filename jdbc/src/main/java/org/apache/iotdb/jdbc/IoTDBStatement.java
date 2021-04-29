@@ -322,7 +322,7 @@ public class IoTDBStatement implements Statement {
     TSStatus execResp = client.executeBatchStatement(execReq);
     int[] result = new int[batchSQLList.size()];
     boolean allSuccess = true;
-    StringBuilder message = new StringBuilder("\n");
+    StringBuilder message = new StringBuilder(System.lineSeparator());
     for (int i = 0; i < result.length; i++) {
       if (execResp.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
         result[i] = execResp.getSubStatus().get(i).code;
@@ -334,7 +334,7 @@ public class IoTDBStatement implements Statement {
                   + " for SQL: \""
                   + batchSQLList.get(i)
                   + "\""
-                  + "\n");
+                  + System.lineSeparator());
         }
       } else {
         allSuccess =
