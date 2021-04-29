@@ -170,6 +170,7 @@ public abstract class TsFileManagement {
     public Void call() {
       merge(timePartitionId);
       closeCompactionMergeCallBack.call(isMergeExecutedInCurrentTask, timePartitionId);
+      return null;
     }
   }
 
