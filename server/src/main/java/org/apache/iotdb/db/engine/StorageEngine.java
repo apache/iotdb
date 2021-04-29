@@ -903,13 +903,13 @@ public class StorageEngine implements IService {
         set.stream()
             .sorted(Comparator.comparing(StorageGroupProcessor::getVirtualStorageGroupId))
             .collect(Collectors.toList());
-    list.forEach(storageGroupProcessor -> storageGroupProcessor.getTsFileManagement().readLock());
+    list.forEach(StorageGroupProcessor::readLock);
     return list;
   }
 
   /** unlock all merge lock of the storage group processor related to the query */
   public void mergeUnLock(List<StorageGroupProcessor> list) {
-    list.forEach(storageGroupProcessor -> storageGroupProcessor.getTsFileManagement().readUnLock());
+    list.forEach(StorageGroupProcessor::readUnlock);
   }
 
   static class InstanceHolder {

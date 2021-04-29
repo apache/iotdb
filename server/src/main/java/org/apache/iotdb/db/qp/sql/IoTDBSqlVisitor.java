@@ -1756,20 +1756,25 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   }
 
   private void parseInsertValuesSpec(InsertValuesSpecContext ctx, InsertOperator insertOp) {
-    long timestamp;
-    if (ctx.dateFormat() != null) {
-      timestamp = parseTimeFormat(ctx.dateFormat().getText());
-    } else {
-      timestamp = Long.parseLong(ctx.INT().getText());
-    }
-    insertOp.setTime(timestamp);
+    List<InsertMultiValueContext> insertMultiValues = ctx.insertMultiValue();
     List<String> valueList = new ArrayList<>();
-    List<MeasurementValueContext> values = ctx.measurementValue();
-    for (MeasurementValueContext value : values) {
-      for (ConstantContext counstant : value.constant()) {
-        valueList.add(counstant.getText());
+    long[] timeArray = new long[insertMultiValues.size()];
+    for (int i = 0; i < insertMultiValues.size(); i++) {
+      long timestamp;
+      if (insertMultiValues.get(i).dateFormat() != null) {
+        timestamp = parseTimeFormat(insertMultiValues.get(i).dateFormat().getText());
+      } else {
+        timestamp = Long.parseLong(insertMultiValues.get(i).INT().getText());
+      }
+      timeArray[i] = timestamp;
+      List<MeasurementValueContext> values = insertMultiValues.get(i).measurementValue();
+      for (MeasurementValueContext value : values) {
+        for (ConstantContext counstant : value.constant()) {
+          valueList.add(counstant.getText());
+        }
       }
     }
+    insertOp.setTimes(timeArray);
     insertOp.setValueList(valueList.toArray(new String[0]));
   }
 
