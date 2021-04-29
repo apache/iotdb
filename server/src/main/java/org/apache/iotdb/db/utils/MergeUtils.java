@@ -142,7 +142,8 @@ public class MergeUtils {
     List<Path> paths = collectFileSeries(sequenceReader);
 
     for (Path path : paths) {
-      List<ChunkMetadata> chunkMetadataList = sequenceReader.getChunkMetadataList(path);
+      List<ChunkMetadata> chunkMetadataList =
+          sequenceReader.getChunkMetadataListReturnEmptyIfPathNotExists(path);
       totalChunkNum += chunkMetadataList.size();
       maxChunkNum = chunkMetadataList.size() > maxChunkNum ? chunkMetadataList.size() : maxChunkNum;
     }
@@ -191,11 +192,11 @@ public class MergeUtils {
       TsFileSequenceReader tsFileReader,
       MergeResource resource,
       TsFileResource tsFileResource,
-      PriorityQueue<MetaListEntry> chunkMetaHeap)
-      throws IOException {
+      PriorityQueue<MetaListEntry> chunkMetaHeap) {
     for (int i = 0; i < paths.size(); i++) {
       PartialPath path = paths.get(i);
-      List<ChunkMetadata> metaDataList = tsFileReader.getChunkMetadataList(path);
+      List<ChunkMetadata> metaDataList =
+          tsFileReader.getChunkMetadataListReturnEmptyIfPathNotExists(path);
       if (metaDataList.isEmpty()) {
         continue;
       }

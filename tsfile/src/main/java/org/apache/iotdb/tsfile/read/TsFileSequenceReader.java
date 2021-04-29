@@ -1163,6 +1163,20 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   /**
+   * get ChunkMetaDatas of given path return empty if path not exists
+   *
+   * @param path timeseries path
+   * @return List of ChunkMetaData
+   */
+  public List<ChunkMetadata> getChunkMetadataListReturnEmptyIfPathNotExists(Path path) {
+    try {
+      return getChunkMetadataList(path);
+    } catch (IOException e) {
+      return Collections.emptyList();
+    }
+  }
+
+  /**
    * get ChunkMetaDatas in given TimeseriesMetaData
    *
    * @return List of ChunkMetaData
