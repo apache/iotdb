@@ -368,6 +368,10 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
 
           for (PartialPath originPath : originPaths) {
             List<PartialPath> actualPaths = removeWildcard(originPath, 0, 0).left;
+            if (actualPaths.isEmpty()) {
+              throw new LogicalOptimizeException(
+                  "The given series " + originPath.getFullPath() + " is not existed.");
+            }
             checkAndSetTsAlias(actualPaths, originPath);
             extendedPaths.add(actualPaths);
           }
