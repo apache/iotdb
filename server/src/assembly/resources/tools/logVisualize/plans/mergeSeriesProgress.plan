@@ -1,7 +1,0 @@
-#
-#Tue Sep 03 09:20:46 CST 2019
-legends=progress
-name=mergeSeriesProgress
-content_pattern=(.*)-.* has merged (.*)% series
-tag_positions=1
-measurement_positions=2

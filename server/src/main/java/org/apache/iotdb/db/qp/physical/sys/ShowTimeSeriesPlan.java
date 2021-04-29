@@ -18,26 +18,34 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.PartialPath;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 
 public class ShowTimeSeriesPlan extends ShowPlan {
 
-  // path can be root, root.*  root.*.*.a etc.. if the wildcard is not at the tail, then each
-  // * wildcard can only match one level, otherwise it can match to the tail.
-  private Path path;
   private boolean isContains;
   private String key;
   private String value;
-  private int limit = 0;
-  private int offset = 0;
 
-  public ShowTimeSeriesPlan(Path path) {
-    super(ShowContentType.TIMESERIES);
-    this.path = path;
+  // if is true, the result will be sorted according to the inserting frequency of the timeseries
+  private boolean orderByHeat;
+
+  public ShowTimeSeriesPlan(PartialPath path) {
+    super(ShowContentType.TIMESERIES, path);
   }
 
-  public ShowTimeSeriesPlan(Path path, boolean isContains, String key, String value, int limit,
-      int offset) {
+  public ShowTimeSeriesPlan(
+      PartialPath path,
+      boolean isContains,
+      String key,
+      String value,
+      int limit,
+      int offset,
+      boolean orderByHeat) {
     super(ShowContentType.TIMESERIES);
     this.path = path;
     this.isContains = isContains;
@@ -45,29 +53,71 @@ public class ShowTimeSeriesPlan extends ShowPlan {
     this.value = value;
     this.limit = limit;
     this.offset = offset;
+    this.orderByHeat = orderByHeat;
   }
 
-  public Path getPath() {
-    return this.path;
+  public ShowTimeSeriesPlan(PartialPath path, int limit, int offset, int fetchSize) {
+    super(ShowContentType.TIMESERIES, path, limit, offset, fetchSize);
+  }
+
+  public ShowTimeSeriesPlan() {
+    super(ShowContentType.TIMESERIES);
   }
 
   public boolean isContains() {
     return isContains;
   }
 
+  public void setIsContains(boolean isContains) {
+    this.isContains = isContains;
+  }
+
   public String getKey() {
     return key;
+  }
+
+  public void setKey(String key) {
+    this.key = key;
   }
 
   public String getValue() {
     return value;
   }
 
-  public int getLimit() {
-    return limit;
+  public void setValue(String value) {
+    this.value = value;
   }
 
-  public int getOffset() {
-    return offset;
+  public boolean isOrderByHeat() {
+    return orderByHeat;
+  }
+
+  public void setOrderByHeat(boolean orderByHeat) {
+    this.orderByHeat = orderByHeat;
+  }
+
+  @Override
+  public void serialize(DataOutputStream outputStream) throws IOException {
+    outputStream.write(PhysicalPlanType.SHOW_TIMESERIES.ordinal());
+    putString(outputStream, path.getFullPath());
+    outputStream.writeBoolean(isContains);
+    putString(outputStream, key);
+    putString(outputStream, value);
+    outputStream.writeInt(limit);
+    outputStream.writeInt(offset);
+    outputStream.writeBoolean(orderByHeat);
+    outputStream.writeLong(index);
+  }
+
+  @Override
+  public void deserialize(ByteBuffer buffer) throws IllegalPathException {
+    path = new PartialPath(readString(buffer));
+    isContains = buffer.get() == 1;
+    key = readString(buffer);
+    value = readString(buffer);
+    limit = buffer.getInt();
+    offset = buffer.getInt();
+    orderByHeat = buffer.get() == 1;
+    this.index = buffer.getLong();
   }
 }

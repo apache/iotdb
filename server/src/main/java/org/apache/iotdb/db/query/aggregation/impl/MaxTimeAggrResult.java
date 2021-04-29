@@ -19,15 +19,16 @@
 
 package org.apache.iotdb.db.query.aggregation.impl;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 
 public class MaxTimeAggrResult extends AggregateResult {
 
@@ -38,7 +39,7 @@ public class MaxTimeAggrResult extends AggregateResult {
 
   @Override
   public Long getResult() {
-    return hasResult() ? getLongValue() : null;
+    return hasCandidateResult() ? getLongValue() : null;
   }
 
   @Override
@@ -49,41 +50,43 @@ public class MaxTimeAggrResult extends AggregateResult {
 
   @Override
   public void updateResultFromPageData(BatchData dataInThisPage) {
-    int maxIndex = dataInThisPage.length() - 1;
-    if (maxIndex < 0) {
-      return;
-    }
-    long time = dataInThisPage.getTimeByIndex(maxIndex);
-    updateMaxTimeResult(time);
+    updateResultFromPageData(dataInThisPage, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage, long bound) {
-    while (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
+  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound) {
+    while (dataInThisPage.hasCurrent()
+        && dataInThisPage.currentTime() < maxBound
+        && dataInThisPage.currentTime() >= minBound) {
       updateMaxTimeResult(dataInThisPage.currentTime());
       dataInThisPage.next();
     }
   }
 
   @Override
-  public void updateResultUsingTimestamps(long[] timestamps, int length,
-      IReaderByTimestamp dataReader) throws IOException {
-    long time = -1;
-    for (int i = 0; i < length; i++) {
-      Object value = dataReader.getValueInTimestamp(timestamps[i]);
-      if (value != null) {
-        time = timestamps[i];
+  public void updateResultUsingTimestamps(
+      long[] timestamps, int length, IReaderByTimestamp dataReader) throws IOException {
+    Object[] values = dataReader.getValuesInTimestamps(timestamps, length);
+    for (int i = length - 1; i >= 0; i--) {
+      if (values[i] != null) {
+        updateMaxTimeResult(timestamps[i]);
+        return;
       }
     }
-
-    if (time == -1) {
-      return;
-    }
-    updateMaxTimeResult(time);
   }
 
   @Override
-  public boolean isCalculatedAggregationResult() {
+  public void updateResultUsingValues(long[] timestamps, int length, Object[] values) {
+    for (int i = length - 1; i >= 0; i--) {
+      if (values[i] != null) {
+        updateMaxTimeResult(timestamps[i]);
+        return;
+      }
+    }
+  }
+
+  @Override
+  public boolean hasFinalResult() {
     return false;
   }
 
@@ -96,17 +99,13 @@ public class MaxTimeAggrResult extends AggregateResult {
   }
 
   @Override
-  protected void deserializeSpecificFields(ByteBuffer buffer) {
-
-  }
+  protected void deserializeSpecificFields(ByteBuffer buffer) {}
 
   @Override
-  protected void serializeSpecificFields(OutputStream outputStream) throws IOException {
+  protected void serializeSpecificFields(OutputStream outputStream) {}
 
-  }
-
-  private void updateMaxTimeResult(long value) {
-    if (!hasResult() || value >= getLongValue()) {
+  protected void updateMaxTimeResult(long value) {
+    if (!hasCandidateResult() || value >= getLongValue()) {
       setLongValue(value);
     }
   }

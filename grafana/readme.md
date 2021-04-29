@@ -74,26 +74,26 @@ If you use Windows, start Grafana by executing grafana-server.exe, located in th
 
 ## IoTDB installation
 
-See https://github.com/apache/incubator-iotdb
+See https://github.com/apache/iotdb
 
 ## IoTDB-Grafana installation
 
 ```shell
-git clone https://github.com/apache/incubator-iotdb.git
+git clone https://github.com/apache/iotdb.git
 ```
 
 ### Start IoTDB-Grafana
 
 #### Option one
 
-Import the entire project, after the maven dependency is installed, directly run`incubatoriotdb/grafana/rc/main/java/org/apache/iotdb/web/grafana`directory` TsfileWebDemoApplication.java`, this grafana connector is developed by springboot
+Import the entire project, after the maven dependency is installed, directly run`iotdb/grafana/rc/main/java/org/apache/iotdb/web/grafana`directory` TsfileWebDemoApplication.java`, this grafana connector is developed by springboot
 
 #### Option two
 
 In `/grafana/target/`directory 
 
 ```shell
-cd incubator-iotdb
+cd iotdb
 mvn clean package -pl grafana -am -Dmaven.test.skip=true
 cd grafana/target
 java -jar iotdb-grafana-{version}.war

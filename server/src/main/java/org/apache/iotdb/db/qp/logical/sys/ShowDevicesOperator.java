@@ -19,18 +19,45 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
-import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.db.metadata.PartialPath;
 
 public class ShowDevicesOperator extends ShowOperator {
 
-  private Path path;
+  private PartialPath path;
+  private int limit = 0;
+  private int offset = 0;
+  private boolean hasSgCol;
 
-  public ShowDevicesOperator(int tokenIntType, Path path) {
+  public ShowDevicesOperator(int tokenIntType, PartialPath path) {
     super(tokenIntType);
     this.path = path;
   }
 
-  public Path getPath() {
+  public PartialPath getPath() {
     return path;
+  }
+
+  public int getLimit() {
+    return limit;
+  }
+
+  public void setLimit(int limit) {
+    this.limit = limit;
+  }
+
+  public int getOffset() {
+    return offset;
+  }
+
+  public void setOffset(int offset) {
+    this.offset = offset;
+  }
+
+  public void setSgCol(boolean hasSgCol) {
+    this.hasSgCol = hasSgCol;
+  }
+
+  public boolean hasSgCol() {
+    return hasSgCol;
   }
 }

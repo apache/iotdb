@@ -18,12 +18,13 @@
  */
 package org.apache.iotdb.spark.tsfile.qp.optimizer;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import org.apache.iotdb.spark.tsfile.qp.common.BasicOperator;
 import org.apache.iotdb.spark.tsfile.qp.common.FilterOperator;
 import org.apache.iotdb.spark.tsfile.qp.exception.MergeFilterException;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public class MergeSingleFilterOptimizer implements IFilterOptimizer {
 
@@ -34,6 +35,7 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
     return filter;
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private String mergeSamePathFilter(FilterOperator filter) throws MergeFilterException {
     if (filter.isLeaf()) {
       return filter.getSinglePath();

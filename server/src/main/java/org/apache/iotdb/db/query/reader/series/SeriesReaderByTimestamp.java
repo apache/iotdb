@@ -19,13 +19,14 @@
 package org.apache.iotdb.db.query.reader.series;
 
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
 
 import java.io.IOException;
 import java.util.Set;
@@ -34,29 +35,62 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
 
   private SeriesReader seriesReader;
   private BatchData batchData;
+  private boolean ascending;
 
-  public SeriesReaderByTimestamp(Path seriesPath, Set<String> allSensors,  TSDataType dataType, QueryContext context,
-                                 QueryDataSource dataSource, TsFileFilter fileFilter) {
-    seriesReader = new SeriesReader(seriesPath, allSensors, dataType, context,
-        dataSource, TimeFilter.gtEq(Long.MIN_VALUE), null, fileFilter);
+  public SeriesReaderByTimestamp(
+      PartialPath seriesPath,
+      Set<String> allSensors,
+      TSDataType dataType,
+      QueryContext context,
+      QueryDataSource dataSource,
+      TsFileFilter fileFilter,
+      boolean ascending) {
+    UnaryFilter timeFilter =
+        ascending ? TimeFilter.gtEq(Long.MIN_VALUE) : TimeFilter.ltEq(Long.MAX_VALUE);
+    this.seriesReader =
+        SeriesReaderFactory.createSeriesReader(
+            seriesPath,
+            allSensors,
+            dataType,
+            context,
+            dataSource,
+            timeFilter,
+            null,
+            fileFilter,
+            ascending);
+    this.ascending = ascending;
   }
 
-  public SeriesReaderByTimestamp(SeriesReader seriesReader) {
+  public SeriesReaderByTimestamp(SeriesReader seriesReader, boolean ascending) {
     this.seriesReader = seriesReader;
+    this.ascending = ascending;
   }
 
   @Override
-  public Object getValueInTimestamp(long timestamp) throws IOException {
-    seriesReader.setTimeFilter(timestamp);
-    if ((batchData == null || batchData.getTimeByIndex(batchData.length() - 1) < timestamp)
-        && !hasNext(timestamp)) {
+  public Object[] getValuesInTimestamps(long[] timestamps, int length) throws IOException {
+    if (length <= 0) {
       return null;
     }
+    Object[] results = new Object[length];
+    seriesReader.setTimeFilter(timestamps[0]);
+    for (int i = 0; i < length; i++) {
+      if ((batchData == null || !hasAvailableData(batchData, timestamps[i]))
+          && !hasNext(timestamps[i])) {
+        // there is no more data
+        break;
+      }
+      results[i] = batchData.getValueInTimestamp(timestamps[i]);
+    }
 
-    return batchData.getValueInTimestamp(timestamp);
+    return results;
   }
 
-  private boolean hasNext(long timestamp) throws IOException {
+  @Override
+  public boolean readerIsEmpty() throws IOException {
+    return seriesReader.isEmpty() && isEmpty(batchData);
+  }
+
+  protected boolean hasNext(long timestamp) throws IOException {
 
     /*
      * consume pages firstly
@@ -114,7 +148,7 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
       if (isEmpty(batchData)) {
         continue;
       }
-      if (batchData.getTimeByIndex(batchData.length() - 1) >= timestamp) {
+      if (hasAvailableData(batchData, timestamp)) {
         return true;
       }
     }
@@ -127,5 +161,9 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
 
   private boolean isEmpty(BatchData batchData) {
     return batchData == null || !batchData.hasCurrent();
+  }
+
+  private boolean hasAvailableData(BatchData data, long time) {
+    return ascending ? data.getMaxTimestamp() >= time : data.getMinTimestamp() <= time;
   }
 }

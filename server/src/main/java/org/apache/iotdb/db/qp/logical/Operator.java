@@ -20,21 +20,22 @@ package org.apache.iotdb.db.qp.logical;
 
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 
-/**
- * This class is a superclass of all operator.
- */
+/** This class is a superclass of all operator. */
 public abstract class Operator {
 
   // operator type in int format
   protected int tokenIntType;
   // operator type in String format
   protected String tokenName;
+  // flag of "explain"
+  protected boolean isDebug;
 
   protected OperatorType operatorType = OperatorType.NULL;
 
-  public Operator(int tokenIntType) {
+  protected Operator(int tokenIntType) {
     this.tokenIntType = tokenIntType;
     this.tokenName = SQLConstant.tokenNames.get(tokenIntType);
+    this.isDebug = false;
   }
 
   public OperatorType getType() {
@@ -57,23 +58,104 @@ public abstract class Operator {
     this.operatorType = operatorType;
   }
 
+  public boolean isDebug() {
+    return isDebug;
+  }
+
+  public void setDebug(boolean debug) {
+    isDebug = debug;
+  }
+
   @Override
   public String toString() {
     return tokenName;
   }
 
-  /**
-   * If you want to add new OperatorType, you must add it in the last.
-   */
+  /** If you want to add new OperatorType, you must add it in the last. */
   public enum OperatorType {
-    SFW, JOIN, UNION, FILTER, GROUPBY, ORDERBY, LIMIT, SELECT, SEQTABLESCAN, HASHTABLESCAN,
-    MERGEJOIN, FILEREAD, NULL, TABLESCAN, UPDATE, INSERT, BATCHINSERT, DELETE, BASIC_FUNC, IN, QUERY, MERGEQUERY,
-    AGGREGATION, AUTHOR, FROM, FUNC, LOADDATA, METADATA, INDEX, INDEXQUERY, FILL,
-    SET_STORAGE_GROUP, CREATE_TIMESERIES, DELETE_TIMESERIES, CREATE_USER, DELETE_USER, MODIFY_PASSWORD,
-    GRANT_USER_PRIVILEGE, REVOKE_USER_PRIVILEGE, GRANT_USER_ROLE, REVOKE_USER_ROLE, CREATE_ROLE,
-    DELETE_ROLE, GRANT_ROLE_PRIVILEGE, REVOKE_ROLE_PRIVILEGE, LIST_USER, LIST_ROLE,
-    LIST_USER_PRIVILEGE, LIST_ROLE_PRIVILEGE, LIST_USER_ROLES, LIST_ROLE_USERS,
-    GRANT_WATERMARK_EMBEDDING, REVOKE_WATERMARK_EMBEDDING,
-    TTL, DELETE_STORAGE_GROUP, LOAD_CONFIGURATION, SHOW, LOAD_FILES, REMOVE_FILE, MOVE_FILE, LAST, GROUP_BY_FILL
+    SFW,
+    FILTER,
+    GROUPBYTIME,
+    SELECT,
+    NULL,
+    INSERT,
+    BATCHINSERT,
+    DELETE,
+    BASIC_FUNC,
+    IN,
+    QUERY,
+    AGGREGATION,
+    AUTHOR,
+    FROM,
+    FUNC,
+    LOADDATA,
+    METADATA,
+    FILL,
+    SET_STORAGE_GROUP,
+    CREATE_TIMESERIES,
+    DELETE_TIMESERIES,
+    CREATE_USER,
+    DELETE_USER,
+    MODIFY_PASSWORD,
+    GRANT_USER_PRIVILEGE,
+    REVOKE_USER_PRIVILEGE,
+    GRANT_USER_ROLE,
+    REVOKE_USER_ROLE,
+    CREATE_ROLE,
+    DELETE_ROLE,
+    GRANT_ROLE_PRIVILEGE,
+    REVOKE_ROLE_PRIVILEGE,
+    LIST_USER,
+    LIST_ROLE,
+    LIST_USER_PRIVILEGE,
+    LIST_ROLE_PRIVILEGE,
+    LIST_USER_ROLES,
+    LIST_ROLE_USERS,
+    GRANT_WATERMARK_EMBEDDING,
+    REVOKE_WATERMARK_EMBEDDING,
+    TTL,
+    DELETE_STORAGE_GROUP,
+    LOAD_CONFIGURATION,
+    SHOW,
+    LOAD_FILES,
+    REMOVE_FILE,
+    MOVE_FILE,
+    LAST,
+    GROUP_BY_FILL,
+    ALTER_TIMESERIES,
+    FLUSH,
+    MERGE,
+    FULL_MERGE,
+    CLEAR_CACHE,
+    SHOW_MERGE_STATUS,
+    CREATE_SCHEMA_SNAPSHOT,
+    TRACING,
+    DELETE_PARTITION,
+    UDAF,
+    UDTF,
+    CREATE_FUNCTION,
+    DROP_FUNCTION,
+    CREATE_ALIGNED_TIMESERIES,
+    CREATE_MULTI_TIMESERIES,
+    AUTO_CREATE_DEVICE_MNODE,
+    CREATE_INDEX,
+    DROP_INDEX,
+    QUERY_INDEX,
+    KILL,
+    CHANGE_TAG_OFFSET,
+    CHANGE_ALIAS,
+    MNODE,
+    MEASUREMENT_MNODE,
+    STORAGE_GROUP_MNODE,
+    BATCH_INSERT_ONE_DEVICE,
+    MULTI_BATCH_INSERT,
+    BATCH_INSERT_ROWS,
+    CREATE_TRIGGER,
+    DROP_TRIGGER,
+    START_TRIGGER,
+    STOP_TRIGGER,
+    CREATE_TEMPLATE,
+    SET_DEVICE_TEMPLATE,
+    SET_USING_DEVICE_TEMPLATE,
   }
 }

@@ -18,60 +18,57 @@
  */
 package org.apache.iotdb.db.writelog.manager;
 
-import java.io.IOException;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.writelog.node.ExclusiveWriteLogNode;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+
 /**
- * MultiFileLogNodeManager manages all ExclusiveWriteLogNodes, each manages WALs of a TsFile
- * (either seq or unseq).
+ * MultiFileLogNodeManager manages all ExclusiveWriteLogNodes, each manages WALs of a TsFile (either
+ * seq or unseq).
  */
 public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
 
   private static final Logger logger = LoggerFactory.getLogger(MultiFileLogNodeManager.class);
-  private Map<String, WriteLogNode> nodeMap;
+  private final Map<String, WriteLogNode> nodeMap;
 
-  private Thread forceThread;
-  private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private ScheduledExecutorService executorService;
+  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private final Runnable forceTask = () -> {
-      while (true) {
-        if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
-          logger.warn("system mode is read-only, the force flush WAL task is stopped");
-          return;
-        }
-        if (Thread.interrupted()) {
-          logger.info("WAL force thread exits.");
-          return;
-        }
+  private void forceTask() {
+    if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+      logger.warn("system mode is read-only, the force flush WAL task is stopped");
+      return;
+    }
+    if (Thread.interrupted()) {
+      logger.info("WAL force thread exits.");
+      return;
+    }
 
-        for (WriteLogNode node : nodeMap.values()) {
-          try {
-            node.forceSync();
-          } catch (IOException e) {
-            logger.error("Cannot force {}, because ", node, e);
-          }
-        }
-        try {
-          Thread.sleep(config.getForceWalPeriodInMs());
-        } catch (InterruptedException e) {
-          logger.info("WAL force thread exits.");
-          Thread.currentThread().interrupt();
-          break;
-        }
+    for (WriteLogNode node : nodeMap.values()) {
+      try {
+        node.forceSync();
+      } catch (IOException e) {
+        logger.error("Cannot force {}, because ", node, e);
       }
-  };
+    }
+  }
 
   private MultiFileLogNodeManager() {
     nodeMap = new ConcurrentHashMap<>();
@@ -81,42 +78,31 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
     return InstanceHolder.instance;
   }
 
-
   @Override
-  public WriteLogNode getNode(String identifier) {
+  public WriteLogNode getNode(String identifier, Supplier<ByteBuffer[]> supplier) {
     WriteLogNode node = nodeMap.get(identifier);
     if (node == null) {
       node = new ExclusiveWriteLogNode(identifier);
       WriteLogNode oldNode = nodeMap.putIfAbsent(identifier, node);
       if (oldNode != null) {
         return oldNode;
+      } else {
+        node.initBuffer(supplier.get());
       }
     }
     return node;
   }
 
   @Override
-  public void deleteNode(String identifier) throws IOException {
+  public void deleteNode(String identifier, Consumer<ByteBuffer[]> consumer) throws IOException {
     WriteLogNode node = nodeMap.remove(identifier);
     if (node != null) {
-      node.delete();
+      consumer.accept(node.delete());
     }
   }
 
   @Override
   public void close() {
-    if (!isActivated(forceThread)) {
-      logger.warn("MultiFileLogNodeManager has not yet started");
-      return;
-    }
-    logger.info("LogNodeManager starts closing..");
-    if (isActivated(forceThread)) {
-      forceThread.interrupt();
-      logger.info("Waiting for force thread to stop");
-      while (forceThread.isAlive()) {
-        // wait for forceThread
-      }
-    }
     logger.info("{} nodes to be closed", nodeMap.size());
     for (WriteLogNode node : nodeMap.values()) {
       try {
@@ -135,14 +121,13 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
       if (!config.isEnableWal()) {
         return;
       }
-      if (!isActivated(forceThread)) {
-        if (config.getForceWalPeriodInMs() > 0) {
-          InstanceHolder.instance.forceThread = new Thread(InstanceHolder.instance.forceTask,
-              ThreadName.WAL_FORCE_DAEMON.getName());
-          InstanceHolder.instance.forceThread.start();
-        }
-      } else {
-        logger.warn("MultiFileLogNodeManager has already started");
+      if (config.getForceWalPeriodInMs() > 0) {
+        executorService = Executors.newSingleThreadScheduledExecutor();
+        executorService.scheduleWithFixedDelay(
+            this::forceTask,
+            config.getForceWalPeriodInMs(),
+            config.getForceWalPeriodInMs(),
+            TimeUnit.MILLISECONDS);
       }
     } catch (Exception e) {
       throw new StartupException(this.getID().getName(), e.getMessage());
@@ -154,6 +139,15 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
     if (!config.isEnableWal()) {
       return;
     }
+    if (executorService != null) {
+      executorService.shutdown();
+      try {
+        executorService.awaitTermination(30, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        logger.warn("force flush wal thread still doesn't exit after 30s");
+        Thread.currentThread().interrupt();
+      }
+    }
     close();
   }
 
@@ -162,14 +156,10 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
     return ServiceType.WAL_SERVICE;
   }
 
-  private boolean isActivated(Thread thread) {
-    return thread != null && thread.isAlive();
-  }
-
   private static class InstanceHolder {
-    private InstanceHolder(){}
 
-    private static MultiFileLogNodeManager instance = new MultiFileLogNodeManager();
+    private InstanceHolder() {}
+
+    private static final MultiFileLogNodeManager instance = new MultiFileLogNodeManager();
   }
-
 }

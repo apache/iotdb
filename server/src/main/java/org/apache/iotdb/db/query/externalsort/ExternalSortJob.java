@@ -18,14 +18,13 @@
  */
 package org.apache.iotdb.db.query.externalsort;
 
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
-/**
- * This class represents an external sort job. Every job will use a separated directory.
- */
+/** This class represents an external sort job. Every job will use a separated directory. */
 class ExternalSortJob {
 
   private List<ExternalSortJobPart> partList;

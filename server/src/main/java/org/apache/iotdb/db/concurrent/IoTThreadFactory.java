@@ -29,15 +29,12 @@ public class IoTThreadFactory implements ThreadFactory {
   private final String namePrefix;
   private Thread.UncaughtExceptionHandler handler = new IoTDBDefaultThreadExceptionHandler();
 
-  /**
-   * Constructor of IoTThreadFactory.
-   */
+  /** Constructor of IoTThreadFactory. */
   public IoTThreadFactory(String poolName) {
     SecurityManager s = System.getSecurityManager();
     group = (s != null) ? s.getThreadGroup() : Thread.currentThread().getThreadGroup();
     // thread pool name format : pool-number-IoTDB-poolName-thread-
-    this.namePrefix =
-        "pool-" + poolNumber.getAndIncrement() + "-IoTDB" + "-" + poolName + "-thread-";
+    this.namePrefix = "pool-" + poolNumber.getAndIncrement() + "-IoTDB-" + poolName + "-";
   }
 
   public IoTThreadFactory(String poolName, Thread.UncaughtExceptionHandler handler) {

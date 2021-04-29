@@ -18,15 +18,19 @@
  */
 package org.apache.iotdb.db.auth.entity;
 
+import org.apache.iotdb.db.utils.AuthUtils;
+import org.apache.iotdb.db.utils.SerializeUtils;
+
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import org.apache.iotdb.db.utils.AuthUtils;
 
-/**
- * This class contains all information of a role.
- */
+/** This class contains all information of a role. */
 public class Role {
 
   private String name;
@@ -69,9 +73,7 @@ public class Role {
     AuthUtils.removePrivilege(path, privilegeId, privilegeList);
   }
 
-  /**
-   * set privileges of path.
-   */
+  /** set privileges of path. */
   public void setPrivileges(String path, Set<Integer> privileges) {
     for (PathPrivilege pathPrivilege : privilegeList) {
       if (pathPrivilege.getPath().equals(path)) {
@@ -102,7 +104,40 @@ public class Role {
 
   @Override
   public int hashCode() {
-
     return Objects.hash(name, privilegeList);
+  }
+
+  public ByteBuffer serialize() {
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+
+    SerializeUtils.serialize(name, dataOutputStream);
+
+    try {
+      dataOutputStream.writeInt(privilegeList.size());
+      for (PathPrivilege pathPrivilege : privilegeList) {
+        dataOutputStream.write(pathPrivilege.serialize().array());
+      }
+    } catch (IOException e) {
+      // unreachable
+    }
+
+    return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+  }
+
+  public void deserialize(ByteBuffer buffer) {
+    name = SerializeUtils.deserializeString(buffer);
+    int privilegeListSize = buffer.getInt();
+    privilegeList = new ArrayList<>(privilegeListSize);
+    for (int i = 0; i < privilegeListSize; i++) {
+      PathPrivilege pathPrivilege = new PathPrivilege();
+      pathPrivilege.deserialize(buffer);
+      privilegeList.add(pathPrivilege);
+    }
+  }
+
+  @Override
+  public String toString() {
+    return "Role{" + "name='" + name + '\'' + ", privilegeList=" + privilegeList + '}';
   }
 }

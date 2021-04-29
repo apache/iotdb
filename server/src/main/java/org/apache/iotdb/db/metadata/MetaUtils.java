@@ -21,58 +21,144 @@ package org.apache.iotdb.db.metadata;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.utils.TestOnly;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
 
-class MetaUtils {
+public class MetaUtils {
 
-  public static final String PATH_SEPARATOR = "\\.";
-
-  private MetaUtils() {
-
-  }
-
-  public static String[] getNodeNames(String path) {
-    String[] nodeNames;
-    if (path.contains("\"") || path.contains("'")) {
-      // e.g., root.sg.d1."s1.int"  ->  root.sg.d1, s1.int
-      String[] measurementDeviceNode = path.trim().replace("'", "\"").split("\"");
-      // s1.int
-      String measurement = measurementDeviceNode[1];
-      // root.sg.d1 -> root, sg, d1
-      String[] deviceNodeName = measurementDeviceNode[0].split(PATH_SEPARATOR);
-      int nodeNumber = deviceNodeName.length + 1;
-      nodeNames = new String[nodeNumber];
-      System.arraycopy(deviceNodeName, 0, nodeNames, 0, nodeNumber - 1);
-      // nodeNames = [root, sg, d1, s1.int]
-      nodeNames[nodeNumber - 1] = measurement;
-    } else {
-      nodeNames = path.split(PATH_SEPARATOR);
-    }
-    return nodeNames;
-  }
+  private MetaUtils() {}
 
   static String getNodeRegByIdx(int idx, String[] nodes) {
     return idx >= nodes.length ? PATH_WILDCARD : nodes[idx];
   }
 
   /**
-   * Get storage group name when creating schema automatically is enable
+   * @param path the path will split. ex, root.ln.
+   * @return string array. ex, [root, ln]
+   * @throws IllegalPathException if path isn't correct, the exception will throw
+   */
+  public static String[] splitPathToDetachedPath(String path) throws IllegalPathException {
+    List<String> nodes = new ArrayList<>();
+    int startIndex = 0;
+    for (int i = 0; i < path.length(); i++) {
+      if (path.charAt(i) == IoTDBConstant.PATH_SEPARATOR) {
+        String node = path.substring(startIndex, i);
+        if (node.isEmpty()) {
+          throw new IllegalPathException(path);
+        }
+        nodes.add(node);
+        startIndex = i + 1;
+      } else if (path.charAt(i) == '"') {
+        int endIndex = path.indexOf('"', i + 1);
+        // if a double quotes with escape character
+        while (endIndex != -1 && path.charAt(endIndex - 1) == '\\') {
+          endIndex = path.indexOf('"', endIndex + 1);
+        }
+        if (endIndex != -1 && (endIndex == path.length() - 1 || path.charAt(endIndex + 1) == '.')) {
+          String node = path.substring(startIndex, endIndex + 1);
+          if (node.isEmpty()) {
+            throw new IllegalPathException(path);
+          }
+          nodes.add(node);
+          i = endIndex + 1;
+          startIndex = endIndex + 2;
+        } else {
+          throw new IllegalPathException(path);
+        }
+      } else if (path.charAt(i) == '\'') {
+        throw new IllegalPathException(path);
+      }
+    }
+    if (startIndex <= path.length() - 1) {
+      String node = path.substring(startIndex);
+      if (node.isEmpty()) {
+        throw new IllegalPathException(path);
+      }
+      nodes.add(node);
+    }
+    return nodes.toArray(new String[0]);
+  }
+
+  /**
+   * Get storage group path when creating schema automatically is enable
    *
-   * e.g., path = root.a.b.c and level = 2, return root.a
+   * <p>e.g., path = root.a.b.c and level = 1, return root.a
    *
    * @param path path
    * @param level level
    */
-  public static String getStorageGroupNameByLevel(String path, int level) throws MetadataException {
-    String[] nodeNames = MetaUtils.getNodeNames(path);
-    if (nodeNames.length < level || !nodeNames[0].equals(IoTDBConstant.PATH_ROOT)) {
-      throw new IllegalPathException(path);
+  public static PartialPath getStorageGroupPathByLevel(PartialPath path, int level)
+      throws MetadataException {
+    String[] nodeNames = path.getNodes();
+    if (nodeNames.length <= level || !nodeNames[0].equals(IoTDBConstant.PATH_ROOT)) {
+      throw new IllegalPathException(path.getFullPath());
     }
-    StringBuilder storageGroupName = new StringBuilder(nodeNames[0]);
-    for (int i = 1; i < level; i++) {
-      storageGroupName.append(IoTDBConstant.PATH_SEPARATOR).append(nodeNames[i]);
+    String[] storageGroupNodes = new String[level + 1];
+    System.arraycopy(nodeNames, 0, storageGroupNodes, 0, level + 1);
+    return new PartialPath(storageGroupNodes);
+  }
+
+  /**
+   * get aligned measurements in partial path FIXME maybe called by prefix path
+   *
+   * @param fullPath partial. For example: root.sg1.d1.(s1, s2, s3)
+   * @return measurement names. For example: [s1, s2, s3]
+   */
+  public static List<String> getMeasurementsInPartialPath(PartialPath fullPath) {
+    if (fullPath.getMeasurement().contains("(") && fullPath.getMeasurement().contains(",")) {
+      return getMeasurementsInPartialPath(fullPath.getMeasurement());
+    } else {
+      return Arrays.asList(fullPath.getMeasurement());
     }
-    return storageGroupName.toString();
+  }
+
+  public static List<String> getMeasurementsInPartialPath(String measurementString) {
+    String[] measurements = measurementString.replace("(", "").replace(")", "").split(",");
+    List<String> measurementList = new ArrayList<>();
+    for (String measurement : measurements) {
+      measurementList.add(measurement.trim());
+    }
+    return measurementList;
+  }
+
+  @TestOnly
+  public static List<String> getMultiFullPaths(MNode node) {
+    if (node == null) {
+      return Collections.emptyList();
+    }
+
+    List<MNode> lastNodeList = new ArrayList<>();
+    collectLastNode(node, lastNodeList);
+
+    List<String> result = new ArrayList<>();
+    for (MNode mNode : lastNodeList) {
+      result.add(mNode.getFullPath());
+    }
+
+    return result;
+  }
+
+  @TestOnly
+  public static void collectLastNode(MNode node, List<MNode> lastNodeList) {
+    if (node != null) {
+      Map<String, MNode> children = node.getChildren();
+      if (children.isEmpty()) {
+        lastNodeList.add(node);
+      }
+
+      for (Entry<String, MNode> entry : children.entrySet()) {
+        MNode childNode = entry.getValue();
+        collectLastNode(childNode, lastNodeList);
+      }
+    }
   }
 }

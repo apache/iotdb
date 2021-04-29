@@ -18,11 +18,12 @@
  */
 package org.apache.iotdb.db.conf.directories.strategy;
 
+import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.utils.CommonUtils;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.utils.CommonUtils;
 
 public class RandomOnDiskUsableSpaceStrategy extends DirectoryStrategy {
 
@@ -37,7 +38,10 @@ public class RandomOnDiskUsableSpaceStrategy extends DirectoryStrategy {
       throw new DiskSpaceInsufficientException(folders);
     }
 
-    long randomV = Math.abs(random.nextLong()) % spaceSum;
+    // The reason that avoid using Math.abs() is that, according to the doc of Math.abs(),
+    // if the argument is equal to the value of Long.MIN_VALUE, the result is that same value, which
+    // is negative.
+    long randomV = (random.nextLong() & Long.MAX_VALUE) % spaceSum;
     int index = 0;
     /* In fact, index will never equals spaceList.size(),
     for that randomV is less than sum of spaceList. */
@@ -49,9 +53,7 @@ public class RandomOnDiskUsableSpaceStrategy extends DirectoryStrategy {
     return index;
   }
 
-  /**
-   * get space list of all folders.
-   */
+  /** get space list of all folders. */
   public List<Long> getFolderUsableSpaceList() {
     List<Long> spaceList = new ArrayList<>();
     for (int i = 0; i < folders.size(); i++) {

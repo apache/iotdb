@@ -19,12 +19,17 @@
 #
 
 
-PIDS=$(ps ax | grep -i 'IoTDB' | grep java | grep -v grep | awk '{print $1}')
-
-if [ -z "$PIDS" ]; then
+IOTDB_CONF="`dirname "$0"`/../conf"
+rpc_port=`sed '/^rpc_port=/!d;s/.*=//' ${IOTDB_CONF}/iotdb-engine.properties`
+if type lsof > /dev/null; then
+  PID=$(lsof -t -i:${rpc_port})
+else
+  PID=$(ps ax | grep -i 'IoTDB' | grep java | grep -v grep | awk '{print $1}')
+fi
+if [ -z "$PID" ]; then
   echo "No IoTDB server to stop"
   exit 1
-else 
-  kill -s TERM $PIDS
+else
+  kill -s TERM $PID
   echo "close IoTDB"
 fi

@@ -18,25 +18,89 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
-import java.util.List;
-
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.db.utils.StatusUtils;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 public class DeleteTimeSeriesPlan extends PhysicalPlan {
-  
-  private List<Path> deletePathList;
-  
-  public DeleteTimeSeriesPlan (List<Path> deletePathList) {
-	  super(false, Operator.OperatorType.DELETE_TIMESERIES);
-	  this.deletePathList = deletePathList;
+
+  private List<PartialPath> deletePathList;
+  private Map<Integer, TSStatus> results = new TreeMap<>();
+
+  public DeleteTimeSeriesPlan(List<PartialPath> deletePathList) {
+    super(false, Operator.OperatorType.DELETE_TIMESERIES);
+    this.deletePathList = deletePathList;
   }
-  
+
+  public DeleteTimeSeriesPlan() {
+    super(false, Operator.OperatorType.DELETE_TIMESERIES);
+  }
+
   @Override
-  public List<Path> getPaths() {
+  public List<PartialPath> getPaths() {
     return deletePathList;
   }
 
+  public void setDeletePathList(List<PartialPath> deletePathList) {
+    this.deletePathList = deletePathList;
+  }
 
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    int type = PhysicalPlanType.DELETE_TIMESERIES.ordinal();
+    stream.writeByte((byte) type);
+    stream.writeInt(deletePathList.size());
+    for (PartialPath path : deletePathList) {
+      putString(stream, path.getFullPath());
+    }
+
+    stream.writeLong(index);
+  }
+
+  @Override
+  public void serialize(ByteBuffer buffer) {
+    int type = PhysicalPlanType.DELETE_TIMESERIES.ordinal();
+    buffer.put((byte) type);
+    buffer.putInt(deletePathList.size());
+    for (PartialPath path : deletePathList) {
+      putString(buffer, path.getFullPath());
+    }
+
+    buffer.putLong(index);
+  }
+
+  @Override
+  public void deserialize(ByteBuffer buffer) throws IllegalPathException {
+    int pathNumber = buffer.getInt();
+    deletePathList = new ArrayList<>();
+    for (int i = 0; i < pathNumber; i++) {
+      deletePathList.add(new PartialPath(readString(buffer)));
+    }
+
+    this.index = buffer.getLong();
+  }
+
+  @Override
+  public void setPaths(List<PartialPath> fullPaths) {
+    this.deletePathList = fullPaths;
+  }
+
+  public Map<Integer, TSStatus> getResults() {
+    return results;
+  }
+
+  public TSStatus[] getFailingStatus() {
+    return StatusUtils.getFailingStatus(results, deletePathList.size());
+  }
 }

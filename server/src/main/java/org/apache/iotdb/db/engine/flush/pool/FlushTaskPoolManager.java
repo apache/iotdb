@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.flush.pool;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,8 +52,8 @@ public class FlushTaskPoolManager extends AbstractPoolManager {
   public void start() {
     if (pool == null) {
       int threadCnt = IoTDBDescriptor.getInstance().getConfig().getConcurrentFlushThread();
-      pool = IoTDBThreadPoolFactory
-          .newFixedThreadPool(threadCnt, ThreadName.FLUSH_SERVICE.getName());
+      pool =
+          IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.FLUSH_SERVICE.getName());
     }
 
     LOGGER.info("Flush task manager started.");
@@ -60,17 +61,14 @@ public class FlushTaskPoolManager extends AbstractPoolManager {
 
   @Override
   public void stop() {
-    if (pool != null) {
-      close();
-      pool = null;
-    }
+    super.stop();
     LOGGER.info("Flush task manager stopped");
   }
 
   private static class InstanceHolder {
 
     private InstanceHolder() {
-      //allowed to do nothing
+      // allowed to do nothing
     }
 
     private static FlushTaskPoolManager instance = new FlushTaskPoolManager();

@@ -18,7 +18,12 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-public class StorageGroupMNode extends InternalMNode {
+import org.apache.iotdb.db.metadata.logfile.MLogWriter;
+import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
+
+import java.io.IOException;
+
+public class StorageGroupMNode extends MNode {
 
   private static final long serialVersionUID = 7999036474525817732L;
 
@@ -28,11 +33,18 @@ public class StorageGroupMNode extends InternalMNode {
    */
   private long dataTTL;
 
+  private int alignedTimeseriesIndex;
 
-  public StorageGroupMNode(MNode parent, String name, String fullPath, long dataTTL) {
+  public StorageGroupMNode(MNode parent, String name, long dataTTL) {
     super(parent, name);
     this.dataTTL = dataTTL;
-    this.fullPath = fullPath;
+    this.alignedTimeseriesIndex = 0;
+  }
+
+  public StorageGroupMNode(MNode parent, String name, long dataTTL, int alignedTimeseriesIndex) {
+    super(parent, name);
+    this.dataTTL = dataTTL;
+    this.alignedTimeseriesIndex = alignedTimeseriesIndex;
   }
 
   public long getDataTTL() {
@@ -43,4 +55,31 @@ public class StorageGroupMNode extends InternalMNode {
     this.dataTTL = dataTTL;
   }
 
+  public int getAlignedTimeseriesIndex() {
+    return alignedTimeseriesIndex;
+  }
+
+  public void addAlignedTimeseriesIndex() {
+    this.alignedTimeseriesIndex++;
+  }
+
+  @Override
+  public void serializeTo(MLogWriter logWriter) throws IOException {
+    serializeChildren(logWriter);
+
+    logWriter.serializeStorageGroupMNode(this);
+  }
+
+  public static StorageGroupMNode deserializeFrom(StorageGroupMNodePlan plan) {
+    return new StorageGroupMNode(
+        null, plan.getName(), plan.getDataTTL(), plan.getAlignedTimeseriesIndex());
+  }
+
+  public static StorageGroupMNode deserializeFrom(String[] nodeInfo) {
+    return new StorageGroupMNode(
+        null,
+        nodeInfo[1],
+        Long.parseLong(nodeInfo[2]),
+        nodeInfo.length == 4 ? Integer.parseInt(nodeInfo[3]) : 0);
+  }
 }

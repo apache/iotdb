@@ -19,12 +19,13 @@
 
 package org.apache.iotdb.db.engine.merge.selector;
 
-import java.util.List;
 import org.apache.iotdb.db.exception.MergeException;
 
+import java.util.List;
+
 /**
- * IMergeFileSelector selects a set of files from given seqFiles and unseqFiles which can be
- * merged without exceeding given memory budget.
+ * IMergeFileSelector selects a set of files from given seqFiles and unseqFiles which can be merged
+ * without exceeding given memory budget.
  */
 public interface IMergeFileSelector {
 

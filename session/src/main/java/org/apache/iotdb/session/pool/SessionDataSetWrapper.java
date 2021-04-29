@@ -18,21 +18,23 @@
  */
 package org.apache.iotdb.session.pool;
 
-import java.util.List;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
+import org.apache.iotdb.session.SessionDataSet.DataIterator;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
-public class SessionDataSetWrapper {
+import java.util.List;
+
+public class SessionDataSetWrapper implements AutoCloseable {
 
   SessionDataSet sessionDataSet;
   Session session;
   SessionPool pool;
 
-  public SessionDataSetWrapper(SessionDataSet sessionDataSet,
-      Session session, SessionPool pool) {
+  public SessionDataSetWrapper(SessionDataSet sessionDataSet, Session session, SessionPool pool) {
     this.sessionDataSet = sessionDataSet;
     this.session = session;
     this.pool = pool;
@@ -43,30 +45,32 @@ public class SessionDataSetWrapper {
   }
 
   public int getBatchSize() {
-    return sessionDataSet.getBatchSize();
+    return sessionDataSet.getFetchSize();
   }
 
   public void setBatchSize(int batchSize) {
-    sessionDataSet.setBatchSize(batchSize);
+    sessionDataSet.setFetchSize(batchSize);
   }
 
   /**
-   * If there is an Exception, and you do not want to use the resultset anymore,
-   * you have to release the resultset manually by calling closeResultSet
+   * If there is an Exception, and you do not want to use the resultset anymore, you have to release
+   * the resultset manually by calling closeResultSet
+   *
    * @return
    * @throws IoTDBConnectionException
    * @throws StatementExecutionException
    */
   public boolean hasNext() throws IoTDBConnectionException, StatementExecutionException {
-      boolean next = sessionDataSet.hasNext();
-      if (!next) {
-        pool.closeResultSet(this);
-      }
-      return next;
+    boolean next = sessionDataSet.hasNext();
+    if (!next) {
+      pool.closeResultSet(this);
+    }
+    return next;
   }
   /**
-   * If there is an Exception, and you do not want to use the resultset anymore,
-   * you have to release the resultset manually by calling closeResultSet
+   * If there is an Exception, and you do not want to use the resultset anymore, you have to release
+   * the resultset manually by calling closeResultSet
+   *
    * @return
    * @throws IoTDBConnectionException
    * @throws StatementExecutionException
@@ -75,7 +79,22 @@ public class SessionDataSetWrapper {
     return sessionDataSet.next();
   }
 
+  /** retrieve data set like jdbc */
+  public DataIterator iterator() {
+    return sessionDataSet.iterator();
+  }
+
   public List<String> getColumnNames() {
     return sessionDataSet.getColumnNames();
+  }
+
+  public List<TSDataType> getColumnTypes() {
+    return sessionDataSet.getColumnTypes();
+  }
+
+  /** close this dataset to release the session */
+  @Override
+  public void close() {
+    pool.closeResultSet(this);
   }
 }

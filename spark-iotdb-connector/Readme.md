@@ -25,7 +25,7 @@ The versions required for Spark and Java are as follow:
 
 | Spark Version | Scala Version | Java Version | TsFile |
 | ------------- | ------------- | ------------ |------------ |
-| `>= 2.2`        | `2.11`        | `1.8`        | `0.10.0`|
+| `>= 2.2`        | `2.11`        | `1.8`        | `0.13.0-SNAPSHOT`|
 
 
 ## install
@@ -38,7 +38,7 @@ mvn clean scala:compile compile install
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>spark-iotdb-connector</artifactId>
-      <version>0.10.0</version>
+      <version>0.13.0-SNAPSHOT</version>
     </dependency>
 ```
 
@@ -46,7 +46,7 @@ mvn clean scala:compile compile install
 # 2. spark-shell user guide
 
 ```
-spark-shell --jars spark-iotdb-connector-0.10.0.jar,iotdb-jdbc-0.10.0-jar-with-dependencies.jar
+spark-shell --jars spark-iotdb-connector-0.13.0-SNAPSHOT.jar,iotdb-jdbc-0.13.0-SNAPSHOT-jar-with-dependencies.jar
 
 import org.apache.iotdb.spark.db._
 
@@ -59,7 +59,7 @@ df.show()
 
 ### if you want to partition your rdd, you can do as following
 ```
-spark-shell --jars spark-iotdb-connector-0.10.0.jar,iotdb-jdbc-0.10.0-jar-with-dependencies.jar
+spark-shell --jars spark-iotdb-connector-0.13.0-SNAPSHOT.jar,iotdb-jdbc-0.13.0-SNAPSHOT-jar-with-dependencies.jar
 
 import org.apache.iotdb.spark.db._
 
@@ -76,28 +76,24 @@ df.show()
 
 Take the following TsFile structure as an example: There are three Measurements in the TsFile schema: status, temperature, and hardware. The basic information of these three measurements is as follows:
 
-<center>
-<table style="text-align:center">
-	<tr><th colspan="2">Name</th><th colspan="2">Type</th><th colspan="2">Encode</th></tr>
-	<tr><td colspan="2">status</td><td colspan="2">Boolean</td><td colspan="2">PLAIN</td></tr>
-	<tr><td colspan="2">temperature</td><td colspan="2">Float</td><td colspan="2">RLE</td></tr>
-	<tr><td colspan="2">hardware</td><td colspan="2">Text</td><td colspan="2">PLAIN</td></tr>
-</table>
-</center>
+| name | type | encode|
+|------|------|-------|
+| status | Boolean | PLAIN|
+| temperature | Float | RLE|
+| hardware | Text | PLAIN|
+
 
 The existing data in the TsFile is as follows:
 
 
-<center>
-<table style="text-align:center">
-	<tr><th colspan="4">device:root.ln.wf01.wt01</th><th colspan="4">device:root.ln.wf02.wt02</th></tr>
-	<tr><th colspan="2">status</th><th colspan="2">temperature</th><th colspan="2">hardware</th><th colspan="2">status</th></tr>
-	<tr><th>time</th><th>value</td><th>time</th><th>value</td><th>time</th><th>value</th><th>time</th><th>value</td></tr>
-	<tr><td>1</td><td>True</td><td>1</td><td>2.2</td><td>2</td><td>"aaa"</td><td>1</td><td>True</td></tr>
-	<tr><td>3</td><td>True</td><td>2</td><td>2.2</td><td>4</td><td>"bbb"</td><td>2</td><td>False</td></tr>
-	<tr><td>5</td><td> False </td><td>3</td><td>2.1</td><td>6</td><td>"ccc"</td><td>4</td><td>True</td></tr>
-</table>
-</center>
+| root.ln.wf01.wt01 |   | root.ln.wf02.wt02 | | | | | |
+|------|------------|-----|--------|------|-------|------|-------|
+| status |  | temperature |  | hardware | | status | | 
+| time | value | time | value | time | value |
+|    1 | True  | 1    | 2.2   | 2      | "aaa"     | 1 | True
+|    3 | True  | 2    | 2.2   | 4      | "bbb"     | 2 | False
+|    5 | False  | 3    | 2.1   | 6      | "ccc"     | 4 | True
+
 
 
 The wide(default) table form is as follows:

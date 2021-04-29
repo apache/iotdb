@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb.tsfile.read.expression.impl;
 
-import java.io.Serializable;
-
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.IUnaryExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+
+import java.io.Serializable;
 
 public class GlobalTimeExpression implements IUnaryExpression, Serializable {
 
@@ -56,6 +56,6 @@ public class GlobalTimeExpression implements IUnaryExpression, Serializable {
 
   @Override
   public String toString() {
-    return "[" + this.filter.toString() + "]";
+    return "[" + this.filter + "]";
   }
 }

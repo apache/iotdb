@@ -19,15 +19,16 @@
 
 package org.apache.iotdb.db.query.aggregation.impl;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 
 public class MinValueAggrResult extends AggregateResult {
 
@@ -38,7 +39,7 @@ public class MinValueAggrResult extends AggregateResult {
 
   @Override
   public Object getResult() {
-    return hasResult() ? getValue() : null;
+    return hasCandidateResult() ? getValue() : null;
   }
 
   @Override
@@ -49,35 +50,45 @@ public class MinValueAggrResult extends AggregateResult {
 
   @Override
   public void updateResultFromPageData(BatchData dataInThisPage) {
-    updateResultFromPageData(dataInThisPage, Long.MAX_VALUE);
+    updateResultFromPageData(dataInThisPage, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage, long bound) {
-    while (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
+  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound) {
+    while (dataInThisPage.hasCurrent()
+        && dataInThisPage.currentTime() < maxBound
+        && dataInThisPage.currentTime() >= minBound) {
       updateResult((Comparable<Object>) dataInThisPage.currentValue());
       dataInThisPage.next();
     }
   }
 
   @Override
-  public void updateResultUsingTimestamps(long[] timestamps, int length,
-      IReaderByTimestamp dataReader) throws IOException {
+  public void updateResultUsingTimestamps(
+      long[] timestamps, int length, IReaderByTimestamp dataReader) throws IOException {
     Comparable<Object> minVal = null;
+    Object[] values = dataReader.getValuesInTimestamps(timestamps, length);
     for (int i = 0; i < length; i++) {
-      Object value = dataReader.getValueInTimestamp(timestamps[i]);
-      if (value == null) {
-        continue;
-      }
-      if (minVal == null || minVal.compareTo(value) > 0) {
-        minVal = (Comparable<Object>) value;
+      if (values[i] != null && (minVal == null || minVal.compareTo(values[i]) > 0)) {
+        minVal = (Comparable<Object>) values[i];
       }
     }
     updateResult(minVal);
   }
 
   @Override
-  public boolean isCalculatedAggregationResult() {
+  public void updateResultUsingValues(long[] timestamps, int length, Object[] values) {
+    Comparable<Object> minVal = null;
+    for (int i = 0; i < length; i++) {
+      if (values[i] != null && (minVal == null || minVal.compareTo(values[i]) > 0)) {
+        minVal = (Comparable<Object>) values[i];
+      }
+    }
+    updateResult(minVal);
+  }
+
+  @Override
+  public boolean hasFinalResult() {
     return false;
   }
 
@@ -90,20 +101,17 @@ public class MinValueAggrResult extends AggregateResult {
   }
 
   @Override
-  protected void deserializeSpecificFields(ByteBuffer buffer) {
-  }
+  protected void deserializeSpecificFields(ByteBuffer buffer) {}
 
   @Override
-  protected void serializeSpecificFields(OutputStream outputStream) throws IOException {
-  }
+  protected void serializeSpecificFields(OutputStream outputStream) {}
 
   private void updateResult(Comparable<Object> minVal) {
     if (minVal == null) {
       return;
     }
-    if (!hasResult() || minVal.compareTo(getValue()) < 0) {
+    if (!hasCandidateResult() || minVal.compareTo(getValue()) < 0) {
       setValue(minVal);
     }
   }
-
 }

@@ -18,13 +18,20 @@
  */
 package org.apache.iotdb.tsfile.write.writer;
 
-import java.io.File;
-import java.io.IOException;
 import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
+import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * ForceAppendTsFileWriter opens a COMPLETE TsFile, reads and truncate its metadata to support
@@ -39,7 +46,7 @@ public class ForceAppendTsFileWriter extends TsFileIOWriter {
     if (logger.isDebugEnabled()) {
       logger.debug("{} writer is opened.", file.getName());
     }
-    this.out = new LocalTsFileOutput(file, true);
+    this.out = FSFactoryProducer.getFileOutputFactory().getTsFileOutput(file.getPath(), true);
     this.file = file;
 
     // file doesn't exist
@@ -57,6 +64,15 @@ public class ForceAppendTsFileWriter extends TsFileIOWriter {
       TsFileMetadata tsFileMetadata = reader.readFileMetadata();
       // truncate metadata and marker
       truncatePosition = tsFileMetadata.getMetaOffset();
+
+      canWrite = true;
+      List<String> devices = reader.getAllDevices();
+      for (String device : devices) {
+        List<ChunkMetadata> chunkMetadataList = new ArrayList<>();
+        reader.readChunkMetadataInDevice(device).values().forEach(chunkMetadataList::addAll);
+        ChunkGroupMetadata chunkGroupMetadata = new ChunkGroupMetadata(device, chunkMetadataList);
+        chunkGroupMetadataList.add(chunkGroupMetadata);
+      }
     }
   }
 
@@ -67,5 +83,4 @@ public class ForceAppendTsFileWriter extends TsFileIOWriter {
   public long getTruncatePosition() {
     return truncatePosition;
   }
-
 }

@@ -35,8 +35,9 @@ import java.nio.ByteBuffer;
 
 public abstract class AggregateResult {
 
+  public static final int TIME_LENGTH_FOR_FIRST_VALUE = 100;
   private final AggregationType aggregationType;
-  private TSDataType resultDataType;
+  protected TSDataType resultDataType;
 
   private boolean booleanValue;
   private int intValue;
@@ -45,7 +46,7 @@ public abstract class AggregateResult {
   private double doubleValue;
   private Binary binaryValue;
 
-  protected boolean hasResult;
+  protected boolean hasCandidateResult;
 
   /**
    * construct.
@@ -55,7 +56,7 @@ public abstract class AggregateResult {
   public AggregateResult(TSDataType resultDataType, AggregationType aggregationType) {
     this.aggregationType = aggregationType;
     this.resultDataType = resultDataType;
-    this.hasResult = false;
+    this.hasCandidateResult = false;
   }
 
   public abstract Object getResult();
@@ -73,25 +74,29 @@ public abstract class AggregateResult {
    *
    * @param dataInThisPage the data in Page
    */
-  public abstract void updateResultFromPageData(BatchData dataInThisPage) throws IOException;
+  public abstract void updateResultFromPageData(BatchData dataInThisPage)
+      throws IOException, QueryProcessException;
 
   /**
    * Aggregate results cannot be calculated using Statistics directly, using the data in each page
    *
    * @param dataInThisPage the data in Page
-   * @param bound          calculate points whose time < bound
+   * @param minBound calculate points whose time >= bound
+   * @param maxBound calculate points whose time < bound
    */
-  public abstract void updateResultFromPageData(BatchData dataInThisPage, long bound)
-      throws IOException;
+  public abstract void updateResultFromPageData(
+      BatchData dataInThisPage, long minBound, long maxBound) throws IOException;
 
   /**
-   * <p> This method calculates the aggregation using common timestamps of the cross series
-   * filter. </p>
+   * This method calculates the aggregation using common timestamps of the cross series filter.
    *
    * @throws IOException TsFile data read error
    */
-  public abstract void updateResultUsingTimestamps(long[] timestamps, int length,
-      IReaderByTimestamp dataReader) throws IOException;
+  public abstract void updateResultUsingTimestamps(
+      long[] timestamps, int length, IReaderByTimestamp dataReader) throws IOException;
+
+  /** This method calculates the aggregation using values that have been calculated */
+  public abstract void updateResultUsingValues(long[] timestamps, int length, Object[] values);
 
   /**
    * Judge if aggregation results have been calculated. In other words, if the aggregated result
@@ -99,18 +104,17 @@ public abstract class AggregateResult {
    *
    * @return If the aggregation result has been calculated return true, else return false.
    */
-  public abstract boolean isCalculatedAggregationResult();
+  public abstract boolean hasFinalResult();
 
-  /**
-   * Merge another aggregateResult into this
-   */
+  /** Merge another aggregateResult into this */
   public abstract void merge(AggregateResult another);
 
   public static AggregateResult deserializeFrom(ByteBuffer buffer) {
     AggregationType aggregationType = AggregationType.deserialize(buffer);
-    TSDataType dataType = TSDataType.deserialize(buffer.getShort());
-    AggregateResult aggregateResult = AggregateResultFactory
-        .getAggrResultByType(aggregationType, dataType);
+    TSDataType dataType = TSDataType.deserialize(buffer.get());
+    boolean ascending = ReadWriteIOUtils.readBool(buffer);
+    AggregateResult aggregateResult =
+        AggregateResultFactory.getAggrResultByType(aggregationType, dataType, ascending);
     boolean hasResult = ReadWriteIOUtils.readBool(buffer);
     if (hasResult) {
       switch (dataType) {
@@ -145,8 +149,9 @@ public abstract class AggregateResult {
   public void serializeTo(OutputStream outputStream) throws IOException {
     aggregationType.serializeTo(outputStream);
     ReadWriteIOUtils.write(resultDataType, outputStream);
-    ReadWriteIOUtils.write(hasResult(), outputStream);
-    if (hasResult()) {
+    ReadWriteIOUtils.write(isAscending(), outputStream);
+    ReadWriteIOUtils.write(hasCandidateResult(), outputStream);
+    if (hasCandidateResult()) {
       switch (resultDataType) {
         case BOOLEAN:
           ReadWriteIOUtils.write(booleanValue, outputStream);
@@ -176,7 +181,7 @@ public abstract class AggregateResult {
   protected abstract void serializeSpecificFields(OutputStream outputStream) throws IOException;
 
   public void reset() {
-    hasResult = false;
+    hasCandidateResult = false;
     booleanValue = false;
     doubleValue = 0;
     floatValue = 0;
@@ -210,7 +215,7 @@ public abstract class AggregateResult {
    * @param v object value
    */
   protected void setValue(Object v) {
-    hasResult = true;
+    hasCandidateResult = true;
     switch (resultDataType) {
       case BOOLEAN:
         booleanValue = (Boolean) v;
@@ -243,8 +248,8 @@ public abstract class AggregateResult {
     return booleanValue;
   }
 
-  protected void setBooleanValue(boolean booleanValue) {
-    this.hasResult = true;
+  public void setBooleanValue(boolean booleanValue) {
+    this.hasCandidateResult = true;
     this.booleanValue = booleanValue;
   }
 
@@ -252,8 +257,8 @@ public abstract class AggregateResult {
     return intValue;
   }
 
-  protected void setIntValue(int intValue) {
-    this.hasResult = true;
+  public void setIntValue(int intValue) {
+    this.hasCandidateResult = true;
     this.intValue = intValue;
   }
 
@@ -261,8 +266,8 @@ public abstract class AggregateResult {
     return longValue;
   }
 
-  protected void setLongValue(long longValue) {
-    this.hasResult = true;
+  public void setLongValue(long longValue) {
+    this.hasCandidateResult = true;
     this.longValue = longValue;
   }
 
@@ -270,8 +275,8 @@ public abstract class AggregateResult {
     return floatValue;
   }
 
-  protected void setFloatValue(float floatValue) {
-    this.hasResult = true;
+  public void setFloatValue(float floatValue) {
+    this.hasCandidateResult = true;
     this.floatValue = floatValue;
   }
 
@@ -279,8 +284,8 @@ public abstract class AggregateResult {
     return doubleValue;
   }
 
-  protected void setDoubleValue(double doubleValue) {
-    this.hasResult = true;
+  public void setDoubleValue(double doubleValue) {
+    this.hasCandidateResult = true;
     this.doubleValue = doubleValue;
   }
 
@@ -288,13 +293,13 @@ public abstract class AggregateResult {
     return binaryValue;
   }
 
-  protected void setBinaryValue(Binary binaryValue) {
-    this.hasResult = true;
+  public void setBinaryValue(Binary binaryValue) {
+    this.hasCandidateResult = true;
     this.binaryValue = binaryValue;
   }
 
-  protected boolean hasResult() {
-    return hasResult;
+  protected boolean hasCandidateResult() {
+    return hasCandidateResult;
   }
 
   @Override
@@ -304,5 +309,9 @@ public abstract class AggregateResult {
 
   public AggregationType getAggregationType() {
     return aggregationType;
+  }
+
+  public boolean isAscending() {
+    return true;
   }
 }

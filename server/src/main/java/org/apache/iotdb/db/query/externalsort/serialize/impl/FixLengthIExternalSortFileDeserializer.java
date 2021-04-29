@@ -18,31 +18,37 @@
  */
 package org.apache.iotdb.db.query.externalsort.serialize.impl;
 
+import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileDeserializer;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileDeserializer;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * FileFormat: [Header][Body]
- * <p>
- * [Header] = [DataTypeLength] + [DataTypeInStringBytes]
- * <p>
- * [DataTypeLength] = 4 bytes.
+ *
+ * <p>[Header] = [DataTypeLength] + [DataTypeInStringBytes]
+ *
+ * <p>[DataTypeLength] = 4 bytes.
  */
 public class FixLengthIExternalSortFileDeserializer implements IExternalSortFileDeserializer {
 
   private TimeValuePairReader reader;
   private InputStream inputStream;
   private String tmpFilePath;
+  private static final int BYTE_LEN = 1;
+  private static final int INT_LEN = 4;
+  private static final int LONG_LEN = 8;
+  private static final int DOUBLE_LEN = 8;
+  private static final int FLOAT_LEN = 4;
 
   public FixLengthIExternalSortFileDeserializer(String tmpFilePath) throws IOException {
     this.tmpFilePath = tmpFilePath;
@@ -78,7 +84,7 @@ public class FixLengthIExternalSortFileDeserializer implements IExternalSortFile
   }
 
   private TSDataType readHeader() throws IOException {
-    return TSDataType.deserialize(ReadWriteIOUtils.readShort(inputStream));
+    return TSDataType.deserialize(ReadWriteIOUtils.readByte(inputStream));
   }
 
   private void setReader(TSDataType type) {
@@ -102,14 +108,22 @@ public class FixLengthIExternalSortFileDeserializer implements IExternalSortFile
         this.reader = new TimeValuePairReader.BinaryReader();
         break;
       default:
-        throw new RuntimeException("Unknown TSDataType in FixLengthTimeValuePairSerializer:"
-            + type);
+        throw new RuntimeException(
+            "Unknown TSDataType in FixLengthTimeValuePairSerializer:" + type);
     }
   }
 
   private abstract static class TimeValuePairReader {
 
     public abstract TimeValuePair read(InputStream inputStream) throws IOException;
+
+    private static void handleIncorrectRead(int bytesToRead, int bytesActuallyRead)
+        throws IOException {
+      throw new IOException(
+          String.format(
+              "Intend to read %d bytes but %d are actually returned",
+              bytesToRead, bytesActuallyRead));
+    }
 
     private static class BooleanReader
         extends FixLengthIExternalSortFileDeserializer.TimeValuePairReader {
@@ -119,39 +133,60 @@ public class FixLengthIExternalSortFileDeserializer implements IExternalSortFile
 
       @Override
       public TimeValuePair read(InputStream inputStream) throws IOException {
-        inputStream.read(timestampBytes);
-        inputStream.read(valueBytes);
-        return new TimeValuePair(BytesUtils.bytesToLong(timestampBytes),
+        int readLen = inputStream.read(timestampBytes);
+        if (readLen != LONG_LEN) {
+          handleIncorrectRead(LONG_LEN, readLen);
+        }
+        readLen = inputStream.read(valueBytes);
+        if (readLen != BYTE_LEN) {
+          handleIncorrectRead(BYTE_LEN, readLen);
+        }
+        return new TimeValuePair(
+            BytesUtils.bytesToLong(timestampBytes),
             new TsPrimitiveType.TsBoolean(BytesUtils.bytesToBool(valueBytes)));
       }
     }
 
-    private static class IntReader extends
-        FixLengthIExternalSortFileDeserializer.TimeValuePairReader {
+    private static class IntReader
+        extends FixLengthIExternalSortFileDeserializer.TimeValuePairReader {
 
       byte[] timestampBytes = new byte[8];
       byte[] valueBytes = new byte[4];
 
       @Override
       public TimeValuePair read(InputStream inputStream) throws IOException {
-        inputStream.read(timestampBytes);
-        inputStream.read(valueBytes);
-        return new TimeValuePair(BytesUtils.bytesToLong(timestampBytes),
+        int readLen = inputStream.read(timestampBytes);
+        if (readLen != LONG_LEN) {
+          handleIncorrectRead(LONG_LEN, readLen);
+        }
+        readLen = inputStream.read(valueBytes);
+        if (readLen != INT_LEN) {
+          handleIncorrectRead(INT_LEN, readLen);
+        }
+        return new TimeValuePair(
+            BytesUtils.bytesToLong(timestampBytes),
             new TsPrimitiveType.TsInt(BytesUtils.bytesToInt(valueBytes)));
       }
     }
 
-    private static class LongReader extends
-        FixLengthIExternalSortFileDeserializer.TimeValuePairReader {
+    private static class LongReader
+        extends FixLengthIExternalSortFileDeserializer.TimeValuePairReader {
 
       byte[] timestampBytes = new byte[8];
       byte[] valueBytes = new byte[8];
 
       @Override
       public TimeValuePair read(InputStream inputStream) throws IOException {
-        inputStream.read(timestampBytes);
-        inputStream.read(valueBytes);
-        return new TimeValuePair(BytesUtils.bytesToLong(timestampBytes),
+        int readLen = inputStream.read(timestampBytes);
+        if (readLen != LONG_LEN) {
+          handleIncorrectRead(LONG_LEN, readLen);
+        }
+        readLen = inputStream.read(valueBytes);
+        if (readLen != LONG_LEN) {
+          handleIncorrectRead(LONG_LEN, readLen);
+        }
+        return new TimeValuePair(
+            BytesUtils.bytesToLong(timestampBytes),
             new TsPrimitiveType.TsLong(BytesUtils.bytesToLong(valueBytes)));
       }
     }
@@ -164,9 +199,16 @@ public class FixLengthIExternalSortFileDeserializer implements IExternalSortFile
 
       @Override
       public TimeValuePair read(InputStream inputStream) throws IOException {
-        inputStream.read(timestampBytes);
-        inputStream.read(valueBytes);
-        return new TimeValuePair(BytesUtils.bytesToLong(timestampBytes),
+        int readLen = inputStream.read(timestampBytes);
+        if (readLen != LONG_LEN) {
+          handleIncorrectRead(LONG_LEN, readLen);
+        }
+        readLen = inputStream.read(valueBytes);
+        if (readLen != FLOAT_LEN) {
+          handleIncorrectRead(FLOAT_LEN, readLen);
+        }
+        return new TimeValuePair(
+            BytesUtils.bytesToLong(timestampBytes),
             new TsPrimitiveType.TsFloat(BytesUtils.bytesToFloat(valueBytes)));
       }
     }
@@ -179,9 +221,16 @@ public class FixLengthIExternalSortFileDeserializer implements IExternalSortFile
 
       @Override
       public TimeValuePair read(InputStream inputStream) throws IOException {
-        inputStream.read(timestampBytes);
-        inputStream.read(valueBytes);
-        return new TimeValuePair(BytesUtils.bytesToLong(timestampBytes),
+        int readLen = inputStream.read(timestampBytes);
+        if (readLen != LONG_LEN) {
+          handleIncorrectRead(LONG_LEN, readLen);
+        }
+        readLen = inputStream.read(valueBytes);
+        if (readLen != DOUBLE_LEN) {
+          handleIncorrectRead(DOUBLE_LEN, readLen);
+        }
+        return new TimeValuePair(
+            BytesUtils.bytesToLong(timestampBytes),
             new TsPrimitiveType.TsDouble(BytesUtils.bytesToDouble(valueBytes)));
       }
     }
@@ -195,12 +244,22 @@ public class FixLengthIExternalSortFileDeserializer implements IExternalSortFile
 
       @Override
       public TimeValuePair read(InputStream inputStream) throws IOException {
-        inputStream.read(timestampBytes);
-        inputStream.read(valueLength);
+        int readLen = inputStream.read(timestampBytes);
+        if (readLen != LONG_LEN) {
+          handleIncorrectRead(LONG_LEN, readLen);
+        }
+        readLen = inputStream.read(valueLength);
+        if (readLen != INT_LEN) {
+          handleIncorrectRead(INT_LEN, readLen);
+        }
         int length = BytesUtils.bytesToInt(valueLength);
         valueBytes = new byte[length];
-        inputStream.read(valueBytes);
-        return new TimeValuePair(BytesUtils.bytesToLong(timestampBytes),
+        readLen = inputStream.read(valueBytes);
+        if (readLen != length) {
+          handleIncorrectRead(length, readLen);
+        }
+        return new TimeValuePair(
+            BytesUtils.bytesToLong(timestampBytes),
             new TsPrimitiveType.TsBinary(new Binary(BytesUtils.bytesToString(valueBytes))));
       }
     }

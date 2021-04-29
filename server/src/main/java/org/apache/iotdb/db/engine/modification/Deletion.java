@@ -19,30 +19,57 @@
 
 package org.apache.iotdb.db.engine.modification;
 
-import java.util.Objects;
-import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.db.metadata.PartialPath;
 
-/**
- * Deletion is a delete operation on a timeseries.
- */
+import java.util.Objects;
+
+/** Deletion is a delete operation on a timeseries. */
 public class Deletion extends Modification {
 
+  /** data within the interval [startTime, endTime] are to be deleted. */
+  private long startTime;
+
+  private long endTime;
+
   /**
-   * data whose timestamp <= this field are to be deleted.
+   * constructor of Deletion, the start time is set to Long.MIN_VALUE
+   *
+   * @param endTime end time of delete interval
+   * @param path time series path
    */
-  private long timestamp;
-
-  public Deletion(Path path, long versionNum, long timestamp) {
-    super(Type.DELETION, path, versionNum);
-    this.timestamp = timestamp;
+  public Deletion(PartialPath path, long fileOffset, long endTime) {
+    super(Type.DELETION, path, fileOffset);
+    this.startTime = Long.MIN_VALUE;
+    this.endTime = endTime;
   }
 
-  public long getTimestamp() {
-    return timestamp;
+  /**
+   * constructor of Deletion
+   *
+   * @param startTime start time of delete interval
+   * @param endTime end time of delete interval
+   * @param path time series path
+   */
+  public Deletion(PartialPath path, long fileOffset, long startTime, long endTime) {
+    super(Type.DELETION, path, fileOffset);
+    this.startTime = startTime;
+    this.endTime = endTime;
   }
 
-  public void setTimestamp(long timestamp) {
-    this.timestamp = timestamp;
+  public long getStartTime() {
+    return startTime;
+  }
+
+  public void setStartTime(long timestamp) {
+    this.startTime = timestamp;
+  }
+
+  public long getEndTime() {
+    return endTime;
+  }
+
+  public void setEndTime(long timestamp) {
+    this.endTime = timestamp;
   }
 
   @Override
@@ -54,11 +81,27 @@ public class Deletion extends Modification {
       return false;
     }
     Deletion del = (Deletion) obj;
-    return super.equals(obj) && del.timestamp == this.timestamp;
+    return super.equals(obj) && del.startTime == this.startTime && del.endTime == this.endTime;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), timestamp);
+    return Objects.hash(super.hashCode(), startTime, endTime);
+  }
+
+  @Override
+  public String toString() {
+    return "Deletion{"
+        + "startTime="
+        + startTime
+        + ", endTime="
+        + endTime
+        + ", type="
+        + type
+        + ", path="
+        + path
+        + ", fileOffset="
+        + fileOffset
+        + '}';
   }
 }

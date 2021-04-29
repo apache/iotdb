@@ -21,16 +21,16 @@ package org.apache.iotdb.db.engine.flush;
 import org.apache.iotdb.db.engine.memtable.AbstractMemTable;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 /**
- * Only used in sync flush and async close to start a flush task
- * This memtable is not managed by MemTablePool and does not store any data.
+ * Only used in sync flush and async close to start a flush task This memtable is not managed by
+ * MemTablePool and does not store any data.
  */
 public class NotifyFlushMemTable extends AbstractMemTable {
 
   @Override
-  protected IWritableMemChunk genMemSeries(MeasurementSchema schema) {
+  protected IWritableMemChunk genMemSeries(IMeasurementSchema schema) {
     return null;
   }
 

@@ -18,20 +18,21 @@
  */
 package org.apache.iotdb.db.query.dataset;
 
-import java.io.IOException;
-import java.util.List;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class SingleDataSet extends QueryDataSet {
 
   private RowRecord record;
   private int i = 0;
 
-  public SingleDataSet(List<Path> paths, List<TSDataType> dataTypes) {
-    super(paths, dataTypes);
+  public SingleDataSet(List<PartialPath> paths, List<TSDataType> dataTypes) {
+    super(new ArrayList<>(paths), dataTypes);
   }
 
   public void setRecord(RowRecord record) {
@@ -39,12 +40,12 @@ public class SingleDataSet extends QueryDataSet {
   }
 
   @Override
-  protected boolean hasNextWithoutConstraint() throws IOException {
+  public boolean hasNextWithoutConstraint() {
     return i == 0;
   }
 
   @Override
-  protected RowRecord nextWithoutConstraint() throws IOException {
+  public RowRecord nextWithoutConstraint() {
     i++;
     return record;
   }

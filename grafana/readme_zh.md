@@ -77,24 +77,24 @@ Shell > grafana-server --config=/usr/local/etc/grafana/grafana.ini --homepath /u
 
 ## IoTDB安装
 
-参见[https://github.com/apache/incubator-iotdb](https://github.com/apache/incubator-iotdb)
+参见[https://github.com/apache/iotdb](https://github.com/apache/iotdb)
 
 ## IoTDB-Grafana连接器安装
 
 ```shell
-git clone https://github.com/apache/incubator-iotdb.git
+git clone https://github.com/apache/iotdb.git
 ```
 
 ### 启动IoTDB-Grafana
 
 #### 方案一（适合开发者）
 
-导入整个项目，maven依赖安装完后，直接运行`incubatoriotdb/grafana/rc/main/java/org/apache/iotdb/web/grafana`目录下`TsfileWebDemoApplication.java`，这个grafana连接器采用springboot开发
+导入整个项目，maven依赖安装完后，直接运行`iotdb/grafana/rc/main/java/org/apache/iotdb/web/grafana`目录下`TsfileWebDemoApplication.java`，这个grafana连接器采用springboot开发
 
 #### 方案二（适合使用者）
 
 ```shell
-cd incubator-iotdb
+cd iotdb
 mvn clean package -pl grafana -am -Dmaven.test.skip=true
 cd grafana/target
 java -jar iotdb-grafana-{version}.war

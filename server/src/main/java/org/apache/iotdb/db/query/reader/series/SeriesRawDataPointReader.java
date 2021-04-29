@@ -24,9 +24,7 @@ import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
 import java.io.IOException;
 
-/**
- * only for test now
- */
+/** only for test now */
 public class SeriesRawDataPointReader implements IPointReader {
 
   private final SeriesRawDataBatchReader batchReader;
@@ -39,7 +37,6 @@ public class SeriesRawDataPointReader implements IPointReader {
     this.batchReader = new SeriesRawDataBatchReader(seriesReader);
   }
 
-
   @Override
   public boolean hasNextTimeValuePair() throws IOException {
     if (hasCachedTimeValuePair) {
@@ -47,8 +44,8 @@ public class SeriesRawDataPointReader implements IPointReader {
     }
 
     if (batchData != null && batchData.hasCurrent()) {
-      timeValuePair = new TimeValuePair(batchData.currentTime(),
-          batchData.currentTsPrimitiveType());
+      timeValuePair =
+          new TimeValuePair(batchData.currentTime(), batchData.currentTsPrimitiveType());
       hasCachedTimeValuePair = true;
       batchData.next();
       return true;
@@ -57,8 +54,8 @@ public class SeriesRawDataPointReader implements IPointReader {
     while (batchReader.hasNextBatch()) {
       batchData = batchReader.nextBatch();
       if (batchData.hasCurrent()) {
-        timeValuePair = new TimeValuePair(batchData.currentTime(),
-            batchData.currentTsPrimitiveType());
+        timeValuePair =
+            new TimeValuePair(batchData.currentTime(), batchData.currentTsPrimitiveType());
         hasCachedTimeValuePair = true;
         batchData.next();
         return true;

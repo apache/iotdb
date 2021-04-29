@@ -18,24 +18,24 @@
  */
 package org.apache.iotdb.db.auth;
 
-import java.util.List;
+import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
-import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
 import org.apache.iotdb.db.auth.entity.PrivilegeType;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.tsfile.read.common.Path;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.List;
 
 public class AuthorityChecker {
 
   private static final String SUPER_USER = IoTDBConstant.ADMIN_NAME;
   private static final Logger logger = LoggerFactory.getLogger(AuthorityChecker.class);
 
-  private AuthorityChecker() {
-
-  }
+  private AuthorityChecker() {}
 
   /**
    * check permission.
@@ -47,23 +47,24 @@ public class AuthorityChecker {
    * @return if permission-check is passed
    * @throws AuthException Authentication Exception
    */
-  public static boolean check(String username, List<Path> paths, Operator.OperatorType type,
-      String targetUser)
+  public static boolean check(
+      String username, List<PartialPath> paths, Operator.OperatorType type, String targetUser)
       throws AuthException {
     if (SUPER_USER.equals(username)) {
       return true;
     }
+
     int permission = translateToPermissionId(type);
     if (permission == -1) {
-      logger.error("OperateType not found. {}", type);
       return false;
-    } else if (permission == PrivilegeType.MODIFY_PASSWORD.ordinal() && username
-        .equals(targetUser)) {
+    } else if (permission == PrivilegeType.MODIFY_PASSWORD.ordinal()
+        && username.equals(targetUser)) {
       // a user can modify his own password
       return true;
     }
+
     if (!paths.isEmpty()) {
-      for (Path path : paths) {
+      for (PartialPath path : paths) {
         if (!checkOnePath(username, path, permission)) {
           return false;
         }
@@ -71,12 +72,13 @@ public class AuthorityChecker {
     } else {
       return checkOnePath(username, null, permission);
     }
+
     return true;
   }
 
-  private static boolean checkOnePath(String username, Path path, int permission)
+  private static boolean checkOnePath(String username, PartialPath path, int permission)
       throws AuthException {
-    IAuthorizer authorizer = LocalFileAuthorizer.getInstance();
+    IAuthorizer authorizer = BasicAuthorizer.getInstance();
     try {
       String fullPath = path == null ? IoTDBConstant.PATH_ROOT : path.getFullPath();
       if (authorizer.checkUserPrivileges(username, fullPath, permission)) {
@@ -117,25 +119,25 @@ public class AuthorityChecker {
       case CREATE_TIMESERIES:
         return PrivilegeType.CREATE_TIMESERIES.ordinal();
       case DELETE_TIMESERIES:
+      case DELETE:
+      case DROP_INDEX:
         return PrivilegeType.DELETE_TIMESERIES.ordinal();
       case QUERY:
       case SELECT:
       case FILTER:
-      case GROUPBY:
-      case SEQTABLESCAN:
-      case TABLESCAN:
-      case INDEXQUERY:
-      case MERGEQUERY:
+      case GROUPBYTIME:
+      case QUERY_INDEX:
       case AGGREGATION:
+      case UDAF:
+      case UDTF:
+      case LAST:
+      case FILL:
+      case GROUP_BY_FILL:
         return PrivilegeType.READ_TIMESERIES.ordinal();
-      case DELETE:
-        return PrivilegeType.DELETE_TIMESERIES.ordinal();
       case INSERT:
       case LOADDATA:
-      case INDEX:
+      case CREATE_INDEX:
         return PrivilegeType.INSERT_TIMESERIES.ordinal();
-      case UPDATE:
-        return PrivilegeType.UPDATE_TIMESERIES.ordinal();
       case LIST_ROLE:
       case LIST_ROLE_USERS:
       case LIST_ROLE_PRIVILEGE:
@@ -144,25 +146,21 @@ public class AuthorityChecker {
       case LIST_USER_ROLES:
       case LIST_USER_PRIVILEGE:
         return PrivilegeType.LIST_USER.ordinal();
-      case AUTHOR:
-      case METADATA:
-      case BASIC_FUNC:
-      case FILEREAD:
-      case FROM:
-      case FUNC:
-      case HASHTABLESCAN:
-      case JOIN:
-      case LIMIT:
-      case MERGEJOIN:
-      case NULL:
-      case ORDERBY:
-      case SFW:
-      case UNION:
-        logger.error("Illegal operator type authorization : {}", type);
-        return -1;
+      case CREATE_FUNCTION:
+        return PrivilegeType.CREATE_FUNCTION.ordinal();
+      case DROP_FUNCTION:
+        return PrivilegeType.DROP_FUNCTION.ordinal();
+      case CREATE_TRIGGER:
+        return PrivilegeType.CREATE_TRIGGER.ordinal();
+      case DROP_TRIGGER:
+        return PrivilegeType.DROP_TRIGGER.ordinal();
+      case START_TRIGGER:
+        return PrivilegeType.START_TRIGGER.ordinal();
+      case STOP_TRIGGER:
+        return PrivilegeType.STOP_TRIGGER.ordinal();
       default:
+        logger.error("Unrecognizable operator type ({}) for AuthorityChecker.", type);
         return -1;
     }
-
   }
 }

@@ -16,108 +16,44 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.qp.physical.crud;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.utils.CommonUtils;
-import org.apache.iotdb.db.utils.TestOnly;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
-import org.apache.iotdb.tsfile.write.record.TSRecord;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+public abstract class InsertPlan extends PhysicalPlan {
 
-public class InsertPlan extends PhysicalPlan {
+  protected PartialPath deviceId;
+  protected String[] measurements;
+  // get from client
+  protected TSDataType[] dataTypes;
+  // get from MManager
+  protected MeasurementMNode[] measurementMNodes;
 
-  private long time;
-  private String deviceId;
-  private String[] measurements;
-  private String[] values;
-  private MeasurementSchema[] schemas;
+  // record the failed measurements, their reasons, and positions in "measurements"
+  List<String> failedMeasurements;
+  private List<Exception> failedExceptions;
+  List<Integer> failedIndices;
 
-  public InsertPlan() {
-    super(false, OperatorType.INSERT);
-    canbeSplit = false;
+  public InsertPlan(Operator.OperatorType operatorType) {
+    super(false, operatorType);
+    super.canBeSplit = false;
   }
 
-  @TestOnly
-  public InsertPlan(String deviceId, long insertTime, String measurement, String insertValue) {
-    super(false, OperatorType.INSERT);
-    this.time = insertTime;
-    this.deviceId = deviceId;
-    this.measurements = new String[] {measurement};
-    this.values = new String[] {insertValue};
-    canbeSplit = false;
+  public PartialPath getDeviceId() {
+    return deviceId;
   }
 
-  public InsertPlan(TSRecord tsRecord) {
-    super(false, OperatorType.INSERT);
-    this.deviceId = tsRecord.deviceId;
-    this.time = tsRecord.time;
-    this.measurements = new String[tsRecord.dataPointList.size()];
-    this.schemas = new MeasurementSchema[tsRecord.dataPointList.size()];
-    this.values = new String[tsRecord.dataPointList.size()];
-    for (int i = 0; i < tsRecord.dataPointList.size(); i++) {
-      measurements[i] = tsRecord.dataPointList.get(i).getMeasurementId();
-      schemas[i] = new MeasurementSchema(measurements[i], tsRecord.dataPointList.get(i).getType(), TSEncoding.PLAIN);
-      values[i] = tsRecord.dataPointList.get(i).getValue().toString();
-    }
-    canbeSplit = false;
-  }
-
-  public InsertPlan(String deviceId, long insertTime, String[] measurementList,
-      String[] insertValues) {
-    super(false, Operator.OperatorType.INSERT);
-    this.time = insertTime;
-    this.deviceId = deviceId;
-    this.measurements = measurementList;
-    this.values = insertValues;
-    canbeSplit = false;
-  }
-
-  public long getTime() {
-    return time;
-  }
-
-  public void setTime(long time) {
-    this.time = time;
-  }
-
-  public MeasurementSchema[] getSchemas() {
-    return schemas;
-  }
-
-  public void setSchemas(MeasurementSchema[] schemas) {
-    this.schemas = schemas;
-  }
-
-  @Override
-  public List<Path> getPaths() {
-    List<Path> ret = new ArrayList<>();
-
-    for (String m : measurements) {
-      ret.add(new Path(deviceId, m));
-    }
-    return ret;
-  }
-
-  public String getDeviceId() {
-    return this.deviceId;
-  }
-
-  public void setDeviceId(String deviceId) {
+  public void setDeviceId(PartialPath deviceId) {
     this.deviceId = deviceId;
   }
 
@@ -129,103 +65,111 @@ public class InsertPlan extends PhysicalPlan {
     this.measurements = measurements;
   }
 
-  public String[] getValues() {
-    return this.values;
+  public TSDataType[] getDataTypes() {
+    return dataTypes;
   }
 
-  public void setValues(String[] values) {
-    this.values = values;
+  public void setDataTypes(TSDataType[] dataTypes) {
+    this.dataTypes = dataTypes;
   }
 
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    InsertPlan that = (InsertPlan) o;
-    return time == that.time && Objects.equals(deviceId, that.deviceId)
-        && Arrays.equals(measurements, that.measurements)
-        && Arrays.equals(values, that.values);
+  public MeasurementMNode[] getMeasurementMNodes() {
+    return measurementMNodes;
   }
 
-  @Override
-  public int hashCode() {
-    return Objects.hash(deviceId, time);
+  public void setMeasurementMNodes(MeasurementMNode[] mNodes) {
+    this.measurementMNodes = mNodes;
   }
 
-  @Override
-  public void serializeTo(DataOutputStream stream) throws IOException {
-    int type = PhysicalPlanType.INSERT.ordinal();
-    stream.writeByte((byte) type);
-    stream.writeLong(time);
-
-    putString(stream, deviceId);
-
-    stream.writeInt(measurements.length);
-
-    for (String m : measurements) {
-      putString(stream, m);
-    }
-
-    for (MeasurementSchema schema : schemas) {
-      schema.serializeTo(stream);
-    }
-
-    for (String m : values) {
-      putString(stream, m);
-    }
+  public List<String> getFailedMeasurements() {
+    return failedMeasurements;
   }
 
-  @Override
-  public void serializeTo(ByteBuffer buffer) {
-    int type = PhysicalPlanType.INSERT.ordinal();
-    buffer.put((byte) type);
-    buffer.putLong(time);
-
-    putString(buffer, deviceId);
-
-    buffer.putInt(measurements.length);
-
-    for (String m : measurements) {
-      putString(buffer, m);
-    }
-
-    for (String m : values) {
-      putString(buffer, m);
-    }
+  public List<Exception> getFailedExceptions() {
+    return failedExceptions;
   }
 
-  @Override
-  public void deserializeFrom(ByteBuffer buffer) {
-    this.time = buffer.getLong();
-    this.deviceId = readString(buffer);
-
-    int measurementSize = buffer.getInt();
-
-    this.measurements = new String[measurementSize];
-    for (int i = 0; i < measurementSize; i++) {
-      measurements[i] = readString(buffer);
-    }
-
-    this.values = new String[measurementSize];
-    for (int i = 0; i < measurementSize; i++) {
-      values[i] = readString(buffer);
-    }
+  public int getFailedMeasurementNumber() {
+    return failedMeasurements == null ? 0 : failedMeasurements.size();
   }
 
-  @Override
-  public String toString() {
-    return "deviceId: " + deviceId + ", time: " + time;
+  public abstract long getMinTime();
+
+  /** @param index failed measurement index */
+  public void markFailedMeasurementInsertion(int index, Exception e) {
+    if (measurements[index] == null) {
+      return;
+    }
+    if (failedMeasurements == null) {
+      failedMeasurements = new ArrayList<>();
+      failedExceptions = new ArrayList<>();
+      failedIndices = new ArrayList<>();
+    }
+    failedMeasurements.add(measurements[index]);
+    failedExceptions.add(e);
+    failedIndices.add(index);
+    measurements[index] = null;
   }
 
-  public TimeValuePair composeTimeValuePair(int measurementIndex) throws QueryProcessException {
-    if (measurementIndex >= values.length) {
+  /**
+   * Reconstruct this plan with the failed measurements.
+   *
+   * @return the plan itself, with measurements replaced with the previously failed ones.
+   */
+  public InsertPlan getPlanFromFailed() {
+    if (failedMeasurements == null) {
       return null;
     }
-    Object value = CommonUtils.parseValue(schemas[measurementIndex].getType(), values[measurementIndex]);
-    return new TimeValuePair(time, TsPrimitiveType.getByType(schemas[measurementIndex].getType(), value));
+    measurements = failedMeasurements.toArray(new String[0]);
+    failedMeasurements = null;
+    if (dataTypes != null) {
+      TSDataType[] temp = dataTypes.clone();
+      dataTypes = new TSDataType[failedIndices.size()];
+      for (int i = 0; i < failedIndices.size(); i++) {
+        dataTypes[i] = temp[failedIndices.get(i)];
+      }
+    }
+    if (measurementMNodes != null) {
+      MeasurementMNode[] temp = measurementMNodes.clone();
+      measurementMNodes = new MeasurementMNode[failedIndices.size()];
+      for (int i = 0; i < failedIndices.size(); i++) {
+        measurementMNodes[i] = temp[failedIndices.get(i)];
+      }
+    }
+
+    failedIndices = null;
+    failedExceptions = null;
+    return this;
+  }
+
+  /** Reset measurements from failed measurements (if any), as if no failure had ever happened. */
+  public void recoverFromFailure() {
+    if (failedMeasurements == null) {
+      return;
+    }
+
+    for (int i = 0; i < failedMeasurements.size(); i++) {
+      int index = failedIndices.get(i);
+      measurements[index] = failedMeasurements.get(i);
+    }
+    failedIndices = null;
+    failedExceptions = null;
+    failedMeasurements = null;
+  }
+
+  @Override
+  public void checkIntegrity() throws QueryProcessException {
+    if (deviceId == null) {
+      throw new QueryProcessException("DeviceId is null");
+    }
+    if (measurements == null) {
+      throw new QueryProcessException("Measurements are null");
+    }
+    for (String measurement : measurements) {
+      if (measurement == null || measurement.isEmpty()) {
+        throw new QueryProcessException(
+            "Measurement contains null or empty string: " + Arrays.toString(measurements));
+      }
+    }
   }
 }

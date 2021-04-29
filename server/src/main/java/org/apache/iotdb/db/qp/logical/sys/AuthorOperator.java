@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.RootOperator;
-import org.apache.iotdb.tsfile.read.common.Path;
 
 /**
  * this class maintains information in Author statement, including CREATE, DROP, GRANT and REVOKE.
@@ -32,7 +32,7 @@ public class AuthorOperator extends RootOperator {
   private String password;
   private String newPassword;
   private String[] privilegeList;
-  private Path nodeName;
+  private PartialPath nodeName;
 
   /**
    * AuthorOperator Constructor with AuthorType.
@@ -102,18 +102,32 @@ public class AuthorOperator extends RootOperator {
     this.privilegeList = authorizationList;
   }
 
-  public Path getNodeName() {
+  public PartialPath getNodeName() {
     return nodeName;
   }
 
-  public void setNodeNameList(Path nodePath) {
+  public void setNodeNameList(PartialPath nodePath) {
     this.nodeName = nodePath;
   }
 
   public enum AuthorType {
-    CREATE_USER, CREATE_ROLE, DROP_USER, DROP_ROLE, GRANT_ROLE, GRANT_USER, GRANT_ROLE_TO_USER,
-    REVOKE_USER, REVOKE_ROLE, REVOKE_ROLE_FROM_USER, UPDATE_USER, LIST_USER, LIST_ROLE,
-    LIST_USER_PRIVILEGE, LIST_ROLE_PRIVILEGE, LIST_USER_ROLES, LIST_ROLE_USERS;
+    CREATE_USER,
+    CREATE_ROLE,
+    DROP_USER,
+    DROP_ROLE,
+    GRANT_ROLE,
+    GRANT_USER,
+    GRANT_ROLE_TO_USER,
+    REVOKE_USER,
+    REVOKE_ROLE,
+    REVOKE_ROLE_FROM_USER,
+    UPDATE_USER,
+    LIST_USER,
+    LIST_ROLE,
+    LIST_USER_PRIVILEGE,
+    LIST_ROLE_PRIVILEGE,
+    LIST_USER_ROLES,
+    LIST_ROLE_USERS;
 
     /**
      * deserialize short number.

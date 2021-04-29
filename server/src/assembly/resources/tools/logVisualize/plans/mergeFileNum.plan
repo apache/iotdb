@@ -1,7 +1,0 @@
-#
-#Tue Sep 03 09:20:46 CST 2019
-legends=SeqFileNum,UnseqFileNum
-name=mergeFileNum
-content_pattern=(.*)-.* starts to merge (.*) seqFiles, (.*) unseqFiles
-tag_positions=1
-measurement_positions=2,3

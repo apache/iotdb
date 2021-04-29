@@ -200,18 +200,37 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 
-
-================================================================
-APACHE IOTDB SUBCOMPONENTS:
+--------------------------------------------------------------------------------
+                           APACHE IOTDB SUBCOMPONENTS
+--------------------------------------------------------------------------------
 
 The following class is copied from maven-wrapper (https://github.com/takari/maven-wrapper),
 which is under Apache License 2.0:
 
 ./.mvn/wrapper/MavenWrapperDownloader.java
 
-------------
+--------------------------------------------------------------------------------
 
 The following class is modified from Apache commons-collections
 
 ./tsfile/src/main/java/org/apache/iotdb/tsfile/utils/Murmur128Hash.java
 Relevant pr is: https://github.com/apache/commons-collections/pull/83/
+
+--------------------------------------------------------------------------------
+
+The following files include code modified from Michael Burman's gorilla-tsc project.
+
+./tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/encoder/GorillaEncoderV2.java
+./tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/encoder/IntGorillaEncoder.java
+./tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/encoder/LongGorillaEncoder.java
+./tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/encoder/SinglePrecisionEncoderV2.java
+./tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/encoder/DoublePrecisionEncoderV2.java
+./tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/decoder/GorillaDecoderV2.java
+./tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/decoder/IntGorillaDecoder.java
+./tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/decoder/LongGorillaDecoder.java
+./tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/decoder/SinglePrecisionDecoderV2.java
+./tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/decoder/DoublePrecisionDecoderV2.java
+
+Copyright: 2016-2018 Michael Burman and/or other contributors
+Project page: https://github.com/burmanm/gorilla-tsc
+License: http://www.apache.org/licenses/LICENSE-2.0

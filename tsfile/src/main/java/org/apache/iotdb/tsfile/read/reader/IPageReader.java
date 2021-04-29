@@ -20,13 +20,17 @@ package org.apache.iotdb.tsfile.read.reader;
 
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.io.IOException;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 public interface IPageReader {
 
-  BatchData getAllSatisfiedPageData() throws IOException;
+  default BatchData getAllSatisfiedPageData() throws IOException {
+    return getAllSatisfiedPageData(true);
+  }
+
+  BatchData getAllSatisfiedPageData(boolean ascending) throws IOException;
 
   Statistics getStatistics();
 

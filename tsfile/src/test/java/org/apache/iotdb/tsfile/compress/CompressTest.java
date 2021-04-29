@@ -18,33 +18,30 @@
  */
 package org.apache.iotdb.tsfile.compress;
 
-import static org.junit.Assert.assertEquals;
-
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.xerial.snappy.Snappy;
 
-import org.apache.iotdb.tsfile.compress.ICompressor;
-import org.apache.iotdb.tsfile.compress.IUnCompressor;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+
+import static org.junit.Assert.assertEquals;
 
 public class CompressTest {
 
-  private final String inputString = "Hello snappy-java! Snappy-java is a JNI-based wrapper of "
-      + "Snappy, a fast compressor/decompressor.";
+  private final String inputString =
+      "Hello snappy-java! Snappy-java is a JNI-based wrapper of "
+          + "Snappy, a fast compressor/decompressor.";
 
   @Before
-  public void setUp() {
-  }
+  public void setUp() {}
 
   @After
-  public void tearDown() {
-  }
+  public void tearDown() {}
 
   @Test
   public void snappyCompressorTest1() throws IOException {
@@ -81,4 +78,29 @@ public class CompressTest {
     assertEquals(inputString, result);
   }
 
+  @Test
+  public void lz4CompressorTest1() throws IOException {
+    PublicBAOS out = new PublicBAOS();
+    out.write(inputString.getBytes(StandardCharsets.UTF_8));
+    ICompressor compressor = new ICompressor.IOTDBLZ4Compressor();
+    IUnCompressor unCompressor = new IUnCompressor.LZ4UnCompressor();
+    byte[] compressed = compressor.compress(out.getBuf());
+    byte[] uncompressed = unCompressor.uncompress(compressed);
+    String result = new String(uncompressed, StandardCharsets.UTF_8);
+    assertEquals(inputString, result);
+  }
+
+  @Test
+  public void lz4CompressorTest2() throws IOException {
+    PublicBAOS out = new PublicBAOS();
+    out.write(inputString.getBytes(StandardCharsets.UTF_8));
+    ICompressor compressor = new ICompressor.IOTDBLZ4Compressor();
+    IUnCompressor unCompressor = new IUnCompressor.LZ4UnCompressor();
+    byte[] compressed = new byte[compressor.getMaxBytesForCompression(out.size())];
+    int size = compressor.compress(out.getBuf(), 0, out.size(), compressed);
+    byte[] bytes = Arrays.copyOfRange(compressed, 0, size);
+    byte[] uncompressed = unCompressor.uncompress(bytes);
+    String result = new String(uncompressed, StandardCharsets.UTF_8);
+    assertEquals(inputString, result);
+  }
 }

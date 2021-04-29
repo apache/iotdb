@@ -18,45 +18,67 @@
  */
 package org.apache.iotdb.db.query.reader.chunk;
 
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.VectorChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
+
+import java.io.IOException;
 
 public class MemPageReader implements IPageReader {
 
-  private BatchData batchData;
-  private Statistics statistics;
+  private final IPointReader timeValuePairIterator;
+  private final IChunkMetadata chunkMetadata;
   private Filter valueFilter;
 
-  public MemPageReader(BatchData batchData, Statistics statistics) {
-    this.batchData = batchData;
-    this.statistics = statistics;
+  public MemPageReader(
+      IPointReader timeValuePairIterator, IChunkMetadata chunkMetadata, Filter filter) {
+    this.timeValuePairIterator = timeValuePairIterator;
+    this.chunkMetadata = chunkMetadata;
+    this.valueFilter = filter;
   }
 
   @Override
-  public BatchData getAllSatisfiedPageData() {
-    if (valueFilter == null) {
-      return batchData;
+  public BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {
+    TSDataType dataType;
+    if (chunkMetadata instanceof VectorChunkMetadata
+        && ((VectorChunkMetadata) chunkMetadata).getValueChunkMetadataList().size() == 1) {
+      dataType =
+          ((VectorChunkMetadata) chunkMetadata).getValueChunkMetadataList().get(0).getDataType();
+    } else {
+      dataType = chunkMetadata.getDataType();
     }
-    BatchData filteredBatchData = new BatchData(batchData.getDataType());
-    while (batchData.hasCurrent()) {
-      if (valueFilter.satisfy(batchData.currentTime(), batchData.currentValue())) {
-        filteredBatchData.putAnObject(batchData.currentTime(), batchData.currentValue());
+    BatchData batchData = BatchDataFactory.createBatchData(dataType, ascending, false);
+    while (timeValuePairIterator.hasNextTimeValuePair()) {
+      TimeValuePair timeValuePair = timeValuePairIterator.nextTimeValuePair();
+      if (valueFilter == null
+          || valueFilter.satisfy(
+              timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
+        batchData.putAnObject(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
       }
-      batchData.next();
     }
-    return filteredBatchData;
+    return batchData.flip();
   }
 
   @Override
   public Statistics getStatistics() {
-    return statistics;
+    return chunkMetadata.getStatistics();
   }
 
   @Override
   public void setFilter(Filter filter) {
-    this.valueFilter = filter;
+    if (valueFilter == null) {
+      this.valueFilter = filter;
+    } else {
+      valueFilter = new AndFilter(this.valueFilter, filter);
+    }
   }
 
   @Override

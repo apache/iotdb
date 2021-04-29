@@ -19,6 +19,14 @@
 
 package org.apache.iotdb.hadoop.fileSystem;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.PathFilter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
@@ -29,18 +37,10 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.fs.PathFilter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class HDFSFile extends File {
 
@@ -48,7 +48,7 @@ public class HDFSFile extends File {
   private Path hdfsPath;
   private FileSystem fs;
   private static final Logger logger = LoggerFactory.getLogger(HDFSFile.class);
-
+  private static final String UNSUPPORT_OPERATION = "Unsupported operation.";
 
   public HDFSFile(String pathname) {
     super(pathname);
@@ -98,7 +98,7 @@ public class HDFSFile extends File {
     try {
       return fs.getFileStatus(hdfsPath).getLen();
     } catch (IOException e) {
-      logger.error("Fail to get length of the file {}, ", hdfsPath.toUri().toString(), e);
+      logger.error("Fail to get length of the file {}, ", hdfsPath.toUri(), e);
       return 0;
     }
   }
@@ -108,7 +108,7 @@ public class HDFSFile extends File {
     try {
       return fs.exists(hdfsPath);
     } catch (IOException e) {
-      logger.error("Fail to check whether the file {} exists. ", hdfsPath.toUri().toString(), e);
+      logger.error("Fail to check whether the file {} exists. ", hdfsPath.toUri(), e);
       return false;
     }
   }
@@ -121,16 +121,16 @@ public class HDFSFile extends File {
         Path filePath = fileStatus.getPath();
         files.add(new HDFSFile(filePath.toUri().toString()));
       }
-      return files.toArray(new HDFSFile[files.size()]);
+      return files.toArray(new HDFSFile[0]);
     } catch (IOException e) {
-      logger.error("Fail to list files in {}. ", hdfsPath.toUri().toString(), e);
+      logger.error("Fail to list files in {}. ", hdfsPath.toUri(), e);
       return null;
     }
   }
 
   @Override
   public File getParentFile() {
-    return new HDFSFile(hdfsPath.getParent().getName());
+    return new HDFSFile(hdfsPath.getParent().toUri().toString());
   }
 
   @Override
@@ -141,9 +141,9 @@ public class HDFSFile extends File {
   @Override
   public boolean delete() {
     try {
-      return fs.delete(hdfsPath, true);
+      return !fs.exists(hdfsPath) || fs.delete(hdfsPath, true);
     } catch (IOException e) {
-      logger.error("Fail to delete file {}. ", hdfsPath.toUri().toString(), e);
+      logger.error("Fail to delete file {}. ", hdfsPath.toUri(), e);
       return false;
     }
   }
@@ -151,12 +151,9 @@ public class HDFSFile extends File {
   @Override
   public boolean mkdirs() {
     try {
-      if (exists()) {
-        return false;
-      }
-      return fs.mkdirs(hdfsPath);
+      return !exists() && fs.mkdirs(hdfsPath);
     } catch (IOException e) {
-      logger.error("Fail to create directory {}. ", hdfsPath.toUri().toString(), e);
+      logger.error("Fail to create directory {}. ", hdfsPath.toUri(), e);
       return false;
     }
   }
@@ -166,7 +163,7 @@ public class HDFSFile extends File {
     try {
       return exists() && fs.getFileStatus(hdfsPath).isDirectory();
     } catch (IOException e) {
-      logger.error("Fail to judge whether {} is a directory. ", hdfsPath.toUri().toString(), e);
+      logger.error("Fail to judge whether {} is a directory. ", hdfsPath.toUri(), e);
       return false;
     }
   }
@@ -176,7 +173,7 @@ public class HDFSFile extends File {
     try {
       return fs.getStatus().getRemaining();
     } catch (IOException e) {
-      logger.error("Fail to get free space of {}. ", hdfsPath.toUri().toString(), e);
+      logger.error("Fail to get free space of {}. ", hdfsPath.toUri(), e);
       return 0L;
     }
   }
@@ -208,10 +205,7 @@ public class HDFSFile extends File {
 
   @Override
   public boolean equals(Object obj) {
-    if ((obj != null) && (obj instanceof HDFSFile)) {
-      return compareTo((HDFSFile) obj) == 0;
-    }
-    return false;
+    return obj instanceof HDFSFile && compareTo((HDFSFile) obj) == 0;
   }
 
   @Override
@@ -219,7 +213,7 @@ public class HDFSFile extends File {
     try {
       return fs.rename(hdfsPath, new Path(dest.getAbsolutePath()));
     } catch (IOException e) {
-      logger.error("Failed to rename file {} to {}. ", hdfsPath.toString(), dest.getName(), e);
+      logger.error("Failed to rename file {} to {}. ", hdfsPath, dest.getName(), e);
       return false;
     }
   }
@@ -235,7 +229,7 @@ public class HDFSFile extends File {
 
   public BufferedWriter getBufferedWriter(String filePath, boolean append) {
     try {
-        return new BufferedWriter(new OutputStreamWriter(fs.create(new Path(filePath))));
+      return new BufferedWriter(new OutputStreamWriter(fs.create(new Path(filePath))));
     } catch (IOException e) {
       logger.error("Failed to get buffered writer for {}. ", filePath, e);
       return null;
@@ -263,13 +257,13 @@ public class HDFSFile extends File {
   public File[] listFilesBySuffix(String fileFolder, String suffix) {
     PathFilter pathFilter = path -> path.toUri().toString().endsWith(suffix);
     List<HDFSFile> files = listFiles(fileFolder, pathFilter);
-    return files.toArray(new HDFSFile[files.size()]);
+    return files.toArray(new HDFSFile[0]);
   }
 
   public File[] listFilesByPrefix(String fileFolder, String prefix) {
     PathFilter pathFilter = path -> path.toUri().toString().startsWith(prefix);
     List<HDFSFile> files = listFiles(fileFolder, pathFilter);
-    return files.toArray(new HDFSFile[files.size()]);
+    return files.toArray(new HDFSFile[0]);
   }
 
   private List<HDFSFile> listFiles(String fileFolder, PathFilter pathFilter) {
@@ -290,152 +284,152 @@ public class HDFSFile extends File {
   }
 
   @Override
+  public File getAbsoluteFile() {
+    return new HDFSFile(getAbsolutePath());
+  }
+
+  @Override
   public String getParent() {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public boolean isAbsolute() {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public File[] listFiles(FileFilter filter) {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
-  public File getAbsoluteFile() {
-    throw new UnsupportedOperationException("Unsupported operation.");
+  public String getCanonicalPath() {
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
-  public String getCanonicalPath() throws IOException {
-    throw new UnsupportedOperationException("Unsupported operation.");
+  public File getCanonicalFile() {
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
-  public File getCanonicalFile() throws IOException {
-    throw new UnsupportedOperationException("Unsupported operation.");
-  }
-
-  @Override
-  public URL toURL() throws MalformedURLException {
-    throw new UnsupportedOperationException("Unsupported operation.");
+  public URL toURL() {
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public URI toURI() {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public boolean canRead() {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public boolean canWrite() {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public boolean isFile() {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public boolean isHidden() {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public long lastModified() {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public void deleteOnExit() {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public String[] list() {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public String[] list(FilenameFilter filter) {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public File[] listFiles(FilenameFilter filter) {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public boolean mkdir() {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public boolean setLastModified(long time) {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public boolean setReadOnly() {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public boolean setWritable(boolean writable, boolean ownerOnly) {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public boolean setWritable(boolean writable) {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public boolean setReadable(boolean readable, boolean ownerOnly) {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public boolean setReadable(boolean readable) {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public boolean setExecutable(boolean executable, boolean ownerOnly) {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public boolean setExecutable(boolean executable) {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public boolean canExecute() {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public long getTotalSpace() {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public long getUsableSpace() {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public java.nio.file.Path toPath() {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 }

@@ -19,38 +19,44 @@
 
 package org.apache.iotdb.db.engine.version;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * SimpleFileVersionController uses a local file and its file name to store the version.
- */
+import java.io.File;
+import java.io.IOException;
+
+/** SimpleFileVersionController uses a local file and its file name to store the version. */
 public class SimpleFileVersionController implements VersionController {
 
   private static final Logger logger = LoggerFactory.getLogger(SimpleFileVersionController.class);
-  private static final String FILE_PREFIX = "Version-";
+  public static final String FILE_PREFIX = "Version-";
+  public static final String UPGRADE_DIR = "upgrade";
   /**
    * Every time currVersion - prevVersion >= saveInterval, currVersion is persisted and prevVersion
    * is set to currVersion. When recovering from file, the version number is automatically increased
    * by saveInterval to avoid conflicts.
    */
   private static long saveInterval = 100;
-  /**
-   * time partition id to dividing time series into different storage group
-   */
+  /** time partition id to dividing time series into different storage group */
   private long timePartitionId;
+
   private long prevVersion;
   private long currVersion;
   private String directoryPath;
+
   public SimpleFileVersionController(String directoryPath, long timePartitionId)
       throws IOException {
     this.directoryPath = directoryPath + File.separator + timePartitionId;
     this.timePartitionId = timePartitionId;
+    restore();
+  }
+
+  /** only used for upgrading */
+  public SimpleFileVersionController(String directoryPath) throws IOException {
+    this.directoryPath = directoryPath + File.separator + UPGRADE_DIR;
     restore();
   }
 
@@ -101,15 +107,20 @@ public class SimpleFileVersionController implements VersionController {
   private void persist() throws IOException {
     File oldFile = SystemFileFactory.INSTANCE.getFile(directoryPath, FILE_PREFIX + prevVersion);
     File newFile = SystemFileFactory.INSTANCE.getFile(directoryPath, FILE_PREFIX + currVersion);
-    FileUtils.moveFile(oldFile, newFile);
-    logger.info("Version file updated, previous: {}, current: {}",
-        oldFile.getAbsolutePath(), newFile.getAbsolutePath());
+    if (oldFile.exists()) {
+      FileUtils.moveFile(oldFile, newFile);
+    }
+    logger.info(
+        "Version file updated, previous: {}, current: {}",
+        oldFile.getAbsolutePath(),
+        newFile.getAbsolutePath());
     prevVersion = currVersion;
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void restore() throws IOException {
     File directory = SystemFileFactory.INSTANCE.getFile(directoryPath);
-    if(!directory.exists()){
+    if (!directory.exists()) {
       directory.mkdirs();
     }
     File[] versionFiles = directory.listFiles((dir, name) -> name.startsWith(FILE_PREFIX));
@@ -134,7 +145,9 @@ public class SimpleFileVersionController implements VersionController {
     } else {
       versionFile = SystemFileFactory.INSTANCE.getFile(directory, FILE_PREFIX + "0");
       prevVersion = 0;
-      new FileOutputStream(versionFile).close();
+      if (!versionFile.createNewFile()) {
+        logger.warn("Cannot create new version file {}", versionFile);
+      }
     }
     // prevent overlapping in case of failure
     currVersion = prevVersion + saveInterval;

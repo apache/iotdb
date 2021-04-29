@@ -43,18 +43,15 @@ public interface IAggregateReader {
 
   boolean hasNextPage() throws IOException;
 
-  /**
-   * only be used without value filter
-   */
+  /** only be used without value filter */
   boolean canUseCurrentPageStatistics() throws IOException;
 
-  /**
-   * only be used without value filter
-   */
+  /** only be used without value filter */
   Statistics currentPageStatistics() throws IOException;
 
   void skipCurrentPage();
 
   BatchData nextPage() throws IOException;
 
+  boolean isAscending();
 }

@@ -1,6 +1,0 @@
-#
-#Tue Sep 03 09:20:46 CST 2019
-legends=Compression ratio
-name=compressionRatio
-content_pattern=Compression ratio is (.*)
-measurement_positions=1

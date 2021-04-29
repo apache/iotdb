@@ -31,11 +31,11 @@ IoTDB诚邀广大开发者参与开源项目构建
 
 ## PR指南
 
-在Github上面可以很方便地提交 [Pull Request (PR)](https://help.github.com/articles/about-pull-requests/)，下面将以本网站项目[apache/incubator-iotdb](https://github.com/apache/incubator-iotdb) 为例（如果是其他项目，请替换项目名incubator-iotdb）
+在Github上面可以很方便地提交 [Pull Request (PR)](https://help.github.com/articles/about-pull-requests/)，下面将以本网站项目[apache/iotdb](https://github.com/apache/iotdb) 为例（如果是其他项目，请替换项目名iotdb）
 
 ### Fork仓库
 
-进入 apache/incubator-iotdb 的 [github 页面](https://github.com/apache/incubator-iotdb) ，点击右上角按钮 `Fork` 进行 Fork
+进入 apache/iotdb 的 [github 页面](https://github.com/apache/iotdb) ，点击右上角按钮 `Fork` 进行 Fork
 
 ![](https://user-images.githubusercontent.com/37333508/79351839-bd288900-7f6b-11ea-8d12-feb18c35adad.png)
 
@@ -44,28 +44,28 @@ IoTDB诚邀广大开发者参与开源项目构建
 - 将代码克隆到本地：
 
 ```
-git clone https://github.com/<your_github_name>/incubator-iotdb.git
+git clone https://github.com/<your_github_name>/iotdb.git
 ```
 
 **请将 <your_github_name> 替换为您的github名字**
 
 clone完成后，origin会默认指向github上的远程fork地址。
 
-- 将 apache/incubator-iotdb 添加为本地仓库的远程分支 upstream：
+- 将 apache/iotdb 添加为本地仓库的远程分支 upstream：
 
 ```
-cd  incubator-iotdb
-git remote add upstream https://github.com/apache/incubator-iotdb.git
+cd  iotdb
+git remote add upstream https://github.com/apache/iotdb.git
 ```
 
 - 检查远程仓库设置：
 
 ```
 git remote -v
-origin https://github.com/<your_github_name>/incubator-iotdb.git (fetch)
-origin    https://github.com/<your_github_name>/incubator-iotdb.git(push)
-upstream  https://github.com/apache/incubator-iotdb.git (fetch)
-upstream  https://github.com/apache/incubator-iotdb.git (push)
+origin https://github.com/<your_github_name>/iotdb.git (fetch)
+origin    https://github.com/<your_github_name>/iotdb.git(push)
+upstream  https://github.com/apache/iotdb.git (fetch)
+upstream  https://github.com/apache/iotdb.git (push)
 ```
 
 - 新建分支以便在分支上做修改：（假设新建的分支名为fix）

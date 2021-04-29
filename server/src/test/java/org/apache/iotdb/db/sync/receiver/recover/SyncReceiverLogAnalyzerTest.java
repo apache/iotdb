@@ -19,21 +19,25 @@
 package org.apache.iotdb.db.sync.receiver.recover;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.apache.iotdb.db.sync.receiver.load.FileLoader;
 import org.apache.iotdb.db.sync.receiver.load.FileLoaderManager;
 import org.apache.iotdb.db.sync.receiver.load.FileLoaderTest;
 import org.apache.iotdb.db.sync.receiver.load.IFileLoader;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -44,9 +48,15 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class SyncReceiverLogAnalyzerTest {
 
@@ -58,33 +68,37 @@ public class SyncReceiverLogAnalyzerTest {
   private ISyncReceiverLogger receiverLogger;
 
   @Before
-  public void setUp()
-      throws IOException, InterruptedException, StartupException, DiskSpaceInsufficientException, MetadataException {
+  public void setUp() throws DiskSpaceInsufficientException, MetadataException {
+    IoTDBDescriptor.getInstance().getConfig().setSyncEnable(true);
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
-    dataDir = new File(DirectoryManager.getInstance().getNextFolderForSequenceFile())
-        .getParentFile().getAbsolutePath();
+    dataDir =
+        new File(DirectoryManager.getInstance().getNextFolderForSequenceFile())
+            .getParentFile()
+            .getAbsolutePath();
     logAnalyze = SyncReceiverLogAnalyzer.getInstance();
     initMetadata();
   }
 
   private void initMetadata() throws MetadataException {
-    MManager mmanager = MManager.getInstance();
+    MManager mmanager = IoTDB.metaManager;
     mmanager.init();
-    mmanager.setStorageGroup("root.sg0");
-    mmanager.setStorageGroup("root.sg1");
-    mmanager.setStorageGroup("root.sg2");
+    mmanager.setStorageGroup(new PartialPath("root.sg0"));
+    mmanager.setStorageGroup(new PartialPath("root.sg1"));
+    mmanager.setStorageGroup(new PartialPath("root.sg2"));
   }
 
   @After
-  public void tearDown() throws InterruptedException, IOException, StorageEngineException {
+  public void tearDown() throws IOException, StorageEngineException {
     EnvironmentUtils.cleanEnv();
+    IoTDBDescriptor.getInstance().getConfig().setSyncEnable(false);
   }
 
   @Test
-  public void recover() throws IOException, StorageEngineException, InterruptedException {
-    receiverLogger = new SyncReceiverLogger(
-        new File(getReceiverFolderFile(), SyncConstant.SYNC_LOG_NAME));
+  public void recover()
+      throws IOException, StorageEngineException, InterruptedException, IllegalPathException {
+    receiverLogger =
+        new SyncReceiverLogger(new File(getReceiverFolderFile(), SyncConstant.SYNC_LOG_NAME));
     fileLoader = FileLoader.createFileLoader(getReceiverFolderFile());
     Map<String, Set<File>> allFileList = new HashMap<>();
     Map<String, Set<File>> correctSequenceLoadedFileMap = new HashMap<>();
@@ -99,18 +113,28 @@ public class SyncReceiverLogAnalyzerTest {
         correctSequenceLoadedFileMap.putIfAbsent(SG_NAME + i, new HashSet<>());
         String rand = String.valueOf(r.nextInt(10000) + i * j);
         String fileName =
-            getSnapshotFolder() + File.separator + SG_NAME + i + File.separator + System
-                .currentTimeMillis() + IoTDBConstant.TSFILE_NAME_SEPARATOR + rand
-                + IoTDBConstant.TSFILE_NAME_SEPARATOR + "0.tsfile";
+            getSnapshotFolder()
+                + File.separator
+                + SG_NAME
+                + i
+                + File.separator
+                + "0"
+                + File.separator
+                + "0"
+                + File.separator
+                + System.currentTimeMillis()
+                + IoTDBConstant.FILE_NAME_SEPARATOR
+                + rand
+                + IoTDBConstant.FILE_NAME_SEPARATOR
+                + "0.tsfile";
         Thread.sleep(1);
         File syncFile = new File(fileName);
-        receiverLogger
-            .finishSyncTsfile(syncFile);
+        receiverLogger.finishSyncTsfile(syncFile);
         toBeSyncedFiles.add(syncFile.getAbsolutePath());
-        File dataFile = new File(
-            DirectoryManager.getInstance().getNextFolderForSequenceFile(),
-            syncFile.getParentFile().getName() + File.separatorChar
-                + syncFile.getName());
+        File dataFile =
+            new File(
+                DirectoryManager.getInstance().getNextFolderForSequenceFile(),
+                syncFile.getParentFile().getName() + File.separatorChar + syncFile.getName());
         correctSequenceLoadedFileMap.get(SG_NAME + i).add(dataFile);
         allFileList.get(SG_NAME + i).add(syncFile);
         if (!syncFile.getParentFile().exists()) {
@@ -121,18 +145,19 @@ public class SyncReceiverLogAnalyzerTest {
         }
         if (!new File(syncFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).exists()
             && !new File(syncFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX)
-            .createNewFile()) {
+                .createNewFile()) {
           LOGGER.error("Can not create new file {}", syncFile.getPath());
         }
         TsFileResource tsFileResource = new TsFileResource(syncFile);
-        tsFileResource.getStartTimeMap().put(String.valueOf(i), (long) j * 10);
-        tsFileResource.getEndTimeMap().put(String.valueOf(i), (long) j * 10 + 5);
+        tsFileResource.updateStartTime(String.valueOf(i), (long) j * 10);
+        tsFileResource.updateEndTime(String.valueOf(i), (long) j * 10 + 5);
         tsFileResource.serialize();
       }
     }
 
     for (int i = 0; i < 3; i++) {
-      StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(SG_NAME + i);
+      StorageGroupProcessor processor =
+          StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME + i));
       assertTrue(processor.getSequenceFileTreeSet().isEmpty());
       assertTrue(processor.getUnSequenceFileList().isEmpty());
     }
@@ -153,8 +178,9 @@ public class SyncReceiverLogAnalyzerTest {
         FileLoaderManager.getInstance().containsFileLoader(getReceiverFolderFile().getName()));
     int mode = 0;
     Set<String> toBeSyncedFilesTest = new HashSet<>();
-    try (BufferedReader br = new BufferedReader(
-        new FileReader(new File(getReceiverFolderFile(), SyncConstant.SYNC_LOG_NAME)))) {
+    try (BufferedReader br =
+        new BufferedReader(
+            new FileReader(new File(getReceiverFolderFile(), SyncConstant.SYNC_LOG_NAME)))) {
       String line;
       while ((line = br.readLine()) != null) {
         if (line.equals(SyncReceiverLogger.SYNC_DELETED_FILE_NAME_START)) {
@@ -183,16 +209,21 @@ public class SyncReceiverLogAnalyzerTest {
       }
     } catch (InterruptedException e) {
       LOGGER.error("Fail to wait for loading new tsfiles", e);
+      Thread.currentThread().interrupt();
+      throw e;
     }
 
     assertFalse(new File(getReceiverFolderFile(), SyncConstant.LOAD_LOG_NAME).exists());
     assertFalse(new File(getReceiverFolderFile(), SyncConstant.SYNC_LOG_NAME).exists());
   }
 
-
   private File getReceiverFolderFile() {
-    return new File(dataDir + File.separatorChar + SyncConstant.SYNC_RECEIVER + File.separatorChar
-        + "127.0.0.1_5555");
+    return new File(
+        dataDir
+            + File.separatorChar
+            + SyncConstant.SYNC_RECEIVER
+            + File.separatorChar
+            + "127.0.0.1_5555");
   }
 
   private File getSnapshotFolder() {

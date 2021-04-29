@@ -25,16 +25,18 @@ import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.chunk.ChunkGroupWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkGroupWriter;
-import org.apache.iotdb.tsfile.write.record.RowBatch;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
+import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
@@ -51,23 +53,19 @@ public class TsFileWriter implements AutoCloseable {
 
   protected static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
   private static final Logger LOG = LoggerFactory.getLogger(TsFileWriter.class);
-  /**
-   * schema of this TsFile.
-   **/
+  /** schema of this TsFile. */
   protected final Schema schema;
-  /**
-   * IO writer of this TsFile.
-   **/
+  /** IO writer of this TsFile. */
   private final TsFileIOWriter fileWriter;
+
   private final int pageSize;
   private long recordCount = 0;
 
   private Map<String, IChunkGroupWriter> groupWriters = new HashMap<>();
 
-  /**
-   * min value of threshold of data points num check.
-   **/
+  /** min value of threshold of data points num check. */
   private long recordCountForNextMemCheck = 100;
+
   private long chunkGroupSizeThreshold;
 
   /**
@@ -91,7 +89,7 @@ public class TsFileWriter implements AutoCloseable {
   /**
    * init this TsFileWriter.
    *
-   * @param file   the File to be written by this TsFileWriter
+   * @param file the File to be written by this TsFileWriter
    * @param schema the schema of this TsFile
    */
   public TsFileWriter(File file, Schema schema) throws IOException {
@@ -112,9 +110,9 @@ public class TsFileWriter implements AutoCloseable {
   /**
    * init this TsFileWriter.
    *
-   * @param file   the File to be written by this TsFileWriter
+   * @param file the File to be written by this TsFileWriter
    * @param schema the schema of this TsFile
-   * @param conf   the configuration of this TsFile
+   * @param conf the configuration of this TsFile
    */
   public TsFileWriter(File file, Schema schema, TSFileConfig conf) throws IOException {
     this(new TsFileIOWriter(file), schema, conf);
@@ -124,8 +122,8 @@ public class TsFileWriter implements AutoCloseable {
    * init this TsFileWriter.
    *
    * @param fileWriter the io writer of this TsFile
-   * @param schema     the schema of this TsFile
-   * @param conf       the configuration of this TsFile
+   * @param schema the schema of this TsFile
+   * @param conf the configuration of this TsFile
    */
   protected TsFileWriter(TsFileIOWriter fileWriter, Schema schema, TSFileConfig conf)
       throws IOException {
@@ -134,11 +132,10 @@ public class TsFileWriter implements AutoCloseable {
           "the given file Writer does not support writing any more. Maybe it is an complete TsFile");
     }
     this.fileWriter = fileWriter;
-    
+
     if (fileWriter instanceof RestorableTsFileIOWriter) {
       this.schema = new Schema(((RestorableTsFileIOWriter) fileWriter).getKnownSchema());
-    }
-    else {
+    } else {
       this.schema = schema;
     }
     this.pageSize = conf.getPageSizeInByte();
@@ -147,12 +144,14 @@ public class TsFileWriter implements AutoCloseable {
     if (this.pageSize >= chunkGroupSizeThreshold) {
       LOG.warn(
           "TsFile's page size {} is greater than chunk group size {}, please enlarge the chunk group"
-              + " size or decrease page size. ", pageSize, chunkGroupSizeThreshold);
+              + " size or decrease page size. ",
+          pageSize,
+          chunkGroupSizeThreshold);
     }
   }
 
-
-  public void registerDeviceTemplate(String templateName, Map<String, MeasurementSchema> template) {
+  public void registerDeviceTemplate(
+      String templateName, Map<String, IMeasurementSchema> template) {
     schema.registerDeviceTemplate(templateName, template);
   }
 
@@ -160,10 +159,10 @@ public class TsFileWriter implements AutoCloseable {
     schema.registerDevice(deviceId, templateName);
   }
 
-  public void registerTimeseries(Path path, MeasurementSchema measurementSchema)
+  public void registerTimeseries(Path path, IMeasurementSchema measurementSchema)
       throws WriteProcessException {
     if (schema.containsTimeseries(path)) {
-      throw new WriteProcessException("given timeseries has exists! " + path.toString());
+      throw new WriteProcessException("given timeseries has exists! " + path);
     }
     schema.registerTimeseries(path, measurementSchema);
   }
@@ -192,8 +191,8 @@ public class TsFileWriter implements AutoCloseable {
         groupWriter.tryToAddSeriesWriter(schema.getSeriesSchema(path), pageSize);
       } else if (schema.getDeviceTemplates() != null && schema.getDeviceTemplates().size() == 1) {
         // use the default template without needing to register device
-        Map<String, MeasurementSchema> template = schema.getDeviceTemplates()
-            .entrySet().iterator().next().getValue();
+        Map<String, IMeasurementSchema> template =
+            schema.getDeviceTemplates().entrySet().iterator().next().getValue();
         if (template.containsKey(path.getMeasurement())) {
           groupWriter.tryToAddSeriesWriter(template.get(path.getMeasurement()), pageSize);
         }
@@ -202,32 +201,38 @@ public class TsFileWriter implements AutoCloseable {
       }
     }
     return true;
-
   }
 
   /**
-   * Confirm whether the row batch is legal.
+   * Confirm whether the tablet is legal.
    *
-   * @param rowBatch - a row batch responding multiple columns
-   * @return - whether the row batch has been added into RecordWriter legally
+   * @param tablet - a tablet data responding multiple columns
+   * @return - whether the tablet's measurements have been added into RecordWriter legally
    * @throws WriteProcessException exception
    */
-  private void checkIsTimeSeriesExist(RowBatch rowBatch) throws WriteProcessException {
+  private void checkIsTimeSeriesExist(Tablet tablet) throws WriteProcessException {
     IChunkGroupWriter groupWriter;
-    if (!groupWriters.containsKey(rowBatch.deviceId)) {
-      groupWriter = new ChunkGroupWriterImpl(rowBatch.deviceId);
-      groupWriters.put(rowBatch.deviceId, groupWriter);
+    if (!groupWriters.containsKey(tablet.deviceId)) {
+      groupWriter = new ChunkGroupWriterImpl(tablet.deviceId);
+      groupWriters.put(tablet.deviceId, groupWriter);
     } else {
-      groupWriter = groupWriters.get(rowBatch.deviceId);
+      groupWriter = groupWriters.get(tablet.deviceId);
     }
-    String deviceId = rowBatch.deviceId;
+    String deviceId = tablet.deviceId;
 
-    // add all SeriesWriter of measurements in this RowBatch to this ChunkGroupWriter
-    for (MeasurementSchema timeseries : rowBatch.getSchemas()) {
+    // add all SeriesWriter of measurements in this Tablet to this ChunkGroupWriter
+    for (IMeasurementSchema timeseries : tablet.getSchemas()) {
       String measurementId = timeseries.getMeasurementId();
-      if (schema.containsTimeseries(new Path(deviceId, measurementId))) {
-        groupWriter.tryToAddSeriesWriter(schema.getSeriesSchema(new Path(deviceId, measurementId)),
-            pageSize);
+      Path path = new Path(deviceId, measurementId);
+      if (schema.containsTimeseries(path)) {
+        groupWriter.tryToAddSeriesWriter(schema.getSeriesSchema(path), pageSize);
+      } else if (schema.getDeviceTemplates() != null && schema.getDeviceTemplates().size() == 1) {
+        // use the default template without needing to register device
+        Map<String, IMeasurementSchema> template =
+            schema.getDeviceTemplates().entrySet().iterator().next().getValue();
+        if (template.containsKey(path.getMeasurement())) {
+          groupWriter.tryToAddSeriesWriter(template.get(path.getMeasurement()), pageSize);
+        }
       } else {
         throw new NoMeasurementException("input measurement is invalid: " + measurementId);
       }
@@ -239,7 +244,7 @@ public class TsFileWriter implements AutoCloseable {
    *
    * @param record - record responding a data line
    * @return true -size of tsfile or metadata reaches the threshold. false - otherwise
-   * @throws IOException           exception in IO
+   * @throws IOException exception in IO
    * @throws WriteProcessException exception in write process
    */
   public boolean write(TSRecord record) throws IOException, WriteProcessException {
@@ -252,18 +257,18 @@ public class TsFileWriter implements AutoCloseable {
   }
 
   /**
-   * write a row batch
+   * write a tablet
    *
-   * @param rowBatch - multiple time series of one device that share a time column
-   * @throws IOException           exception in IO
+   * @param tablet - multiple time series of one device that share a time column
+   * @throws IOException exception in IO
    * @throws WriteProcessException exception in write process
    */
-  public boolean write(RowBatch rowBatch) throws IOException, WriteProcessException {
-    // make sure the ChunkGroupWriter for this RowBatch exist
-    checkIsTimeSeriesExist(rowBatch);
-    // get corresponding ChunkGroupWriter and write this RowBatch
-    groupWriters.get(rowBatch.deviceId).write(rowBatch);
-    recordCount += rowBatch.batchSize;
+  public boolean write(Tablet tablet) throws IOException, WriteProcessException {
+    // make sure the ChunkGroupWriter for this Tablet exist
+    checkIsTimeSeriesExist(tablet);
+    // get corresponding ChunkGroupWriter and write this Tablet
+    groupWriters.get(tablet.deviceId).write(tablet);
+    recordCount += tablet.rowSize;
     return checkMemorySizeAndMayFlushChunks();
   }
 
@@ -273,7 +278,7 @@ public class TsFileWriter implements AutoCloseable {
    * @return total memory size used
    */
   private long calculateMemSizeForAllGroup() {
-    int memTotalSize = 0;
+    long memTotalSize = 0;
     for (IChunkGroupWriter group : groupWriters.values()) {
       memTotalSize += group.updateMaxGroupMemSize();
     }
@@ -308,16 +313,16 @@ public class TsFileWriter implements AutoCloseable {
    * outputStream.
    *
    * @return true - size of tsfile or metadata reaches the threshold. false - otherwise. But this
-   * function just return false, the Override of IoTDB may return true.
+   *     function just return false, the Override of IoTDB may return true.
    * @throws IOException exception in IO
    */
   public boolean flushAllChunkGroups() throws IOException {
     if (recordCount > 0) {
       for (Map.Entry<String, IChunkGroupWriter> entry : groupWriters.entrySet()) {
-        long pos = fileWriter.getPos();
         String deviceId = entry.getKey();
         IChunkGroupWriter groupWriter = entry.getValue();
         fileWriter.startChunkGroup(deviceId);
+        long pos = fileWriter.getPos();
         long dataSize = groupWriter.flushToFileWriter(fileWriter);
         if (fileWriter.getPos() - pos != dataSize) {
           throw new IOException(
@@ -347,7 +352,6 @@ public class TsFileWriter implements AutoCloseable {
   public void close() throws IOException {
     LOG.info("start close file");
     flushAllChunkGroups();
-    fileWriter.setDefaultVersionPair();
     fileWriter.endFile();
   }
 
@@ -358,9 +362,5 @@ public class TsFileWriter implements AutoCloseable {
    */
   public TsFileIOWriter getIOWriter() {
     return this.fileWriter;
-  }
-
-  public void writeVersion(long versionPair) throws IOException {
-    fileWriter.writeVersion(versionPair);
   }
 }

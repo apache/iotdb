@@ -25,6 +25,7 @@
         <bundle>mvn:org.apache.iotdb/iotdb-jdbc/${project.version}</bundle>
         <bundle>mvn:org.apache.iotdb/tsfile/${project.version}</bundle>
         <bundle>mvn:org.apache.iotdb/service-rpc/${project.version}</bundle>
+        <bundle>mvn:org.apache.iotdb/iotdb-thrift/${project.version}</bundle>
         <bundle>mvn:org.apache.iotdb/hadoop-tsfile/${project.version}</bundle>
         <bundle>mvn:org.apache.thrift/libthrift/0.13.0</bundle>
         <bundle>mvn:org.xerial.snappy/snappy-java/1.1.7.2</bundle>

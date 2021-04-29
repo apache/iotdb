@@ -32,8 +32,7 @@ public class Utils {
     return sum;
   }
 
-  public static String getTimeSeries(String sql){
+  public static String getTimeSeries(String sql) {
     return sql.substring(0, sql.indexOf(',')).trim();
   }
-
 }

@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.jdbc;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.sql.SQLException;
 import java.sql.Types;
@@ -28,21 +28,20 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class IoTDBResultMetadataTest {
 
   private IoTDBResultMetadata metadata;
 
   @Before
-  public void setUp() throws Exception {
-  }
+  public void setUp() {}
 
   @After
-  public void tearDown() throws Exception {
-  }
+  public void tearDown() {}
 
   @Test
   public void testGetColumnCount() {
@@ -67,7 +66,7 @@ public class IoTDBResultMetadataTest {
     List<String> columnInfoList = new ArrayList<>();
     columnInfoList.add("root.a.b.c");
     metadata = new IoTDBResultMetadata(columnInfoList, null, false);
-    assertEquals(metadata.getColumnCount(), 1);
+    assertEquals(1, metadata.getColumnCount());
   }
 
   @Test
@@ -112,7 +111,6 @@ public class IoTDBResultMetadataTest {
     for (int i = 1; i <= colums.length; i++) {
       assertEquals(metadata.getColumnLabel(i), colums[i - 1]);
     }
-
   }
 
   @Test
@@ -136,12 +134,19 @@ public class IoTDBResultMetadataTest {
     }
     assertTrue(flag);
 
-    String[] columns = {"timestamp", "root.a.b.boolean", "root.a.b.int32", "root.a.b.int64",
-        "root.a.b.float",
-        "root.a.b.double", "root.a.b.text"};
+    String[] columns = {
+      "timestamp",
+      "root.a.b.boolean",
+      "root.a.b.int32",
+      "root.a.b.int64",
+      "root.a.b.float",
+      "root.a.b.double",
+      "root.a.b.text"
+    };
     String[] typesString = {"BOOLEAN", "INT32", "INT64", "FLOAT", "DOUBLE", "TEXT"};
-    int[] types = {Types.BOOLEAN, Types.INTEGER, Types.BIGINT, Types.FLOAT, Types.DOUBLE,
-        Types.VARCHAR};
+    int[] types = {
+      Types.BOOLEAN, Types.INTEGER, Types.BIGINT, Types.FLOAT, Types.DOUBLE, Types.VARCHAR
+    };
     metadata = new IoTDBResultMetadata(Arrays.asList(columns), Arrays.asList(typesString), false);
     flag = false;
     try {
@@ -159,7 +164,7 @@ public class IoTDBResultMetadataTest {
     }
     assertTrue(flag);
 
-    assertEquals(metadata.getColumnType(1), Types.TIMESTAMP);
+    assertEquals(Types.TIMESTAMP, metadata.getColumnType(1));
     for (int i = 1; i <= types.length; i++) {
       assertEquals(metadata.getColumnType(i + 1), types[i - 1]);
     }

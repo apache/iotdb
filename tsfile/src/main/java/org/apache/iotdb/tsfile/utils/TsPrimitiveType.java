@@ -18,9 +18,11 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
-import java.io.Serializable;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import java.io.Serializable;
+import java.util.Arrays;
 
 public abstract class TsPrimitiveType implements Serializable {
 
@@ -44,6 +46,8 @@ public abstract class TsPrimitiveType implements Serializable {
         return new TsPrimitiveType.TsDouble((double) v);
       case TEXT:
         return new TsPrimitiveType.TsBinary((Binary) v);
+      case VECTOR:
+        return new TsPrimitiveType.TsVector((TsPrimitiveType[]) v);
       default:
         throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
     }
@@ -73,6 +77,10 @@ public abstract class TsPrimitiveType implements Serializable {
     throw new UnsupportedOperationException("getBinary() is not supported for current sub-class");
   }
 
+  public TsPrimitiveType[] getVector() {
+    throw new UnsupportedOperationException("getVector() is not supported for current sub-class");
+  }
+
   public void setBoolean(boolean val) {
     throw new UnsupportedOperationException("setBoolean() is not supported for current sub-class");
   }
@@ -97,6 +105,10 @@ public abstract class TsPrimitiveType implements Serializable {
     throw new UnsupportedOperationException("setBinary() is not supported for current sub-class");
   }
 
+  public void setVector(TsPrimitiveType[] val) {
+    throw new UnsupportedOperationException("setVector() is not supported for current sub-class");
+  }
+
   /**
    * get the size of one instance of current class.
    *
@@ -117,12 +129,12 @@ public abstract class TsPrimitiveType implements Serializable {
 
   @Override
   public boolean equals(Object object) {
-    return (object instanceof TsPrimitiveType) && (((TsPrimitiveType) object).getValue()
-        .equals(getValue()));
+    return (object instanceof TsPrimitiveType)
+        && (((TsPrimitiveType) object).getValue().equals(getValue()));
   }
 
   @Override
-  public int hashCode(){
+  public int hashCode() {
     return getValue().hashCode();
   }
 
@@ -462,4 +474,80 @@ public abstract class TsPrimitiveType implements Serializable {
     }
   }
 
+  public static class TsVector extends TsPrimitiveType {
+
+    private TsPrimitiveType[] values;
+
+    public TsVector(TsPrimitiveType[] values) {
+      this.values = values;
+    }
+
+    @Override
+    public TsPrimitiveType[] getVector() {
+      return values;
+    }
+
+    @Override
+    public void setVector(TsPrimitiveType[] vals) {
+      this.values = vals;
+    }
+
+    @Override
+    public int getSize() {
+      int size = 0;
+      for (TsPrimitiveType type : values) {
+        if (type != null) {
+          size += type.getSize();
+        }
+      }
+      // object header + array object header
+      return 4 + 4 + size;
+    }
+
+    @Override
+    public Object getValue() {
+      return getVector();
+    }
+
+    @Override
+    public String getStringValue() {
+      StringBuilder builder = new StringBuilder("[");
+      builder.append(values[0] == null ? "null" : values[0].getStringValue());
+      for (int i = 1; i < values.length; i++) {
+        builder.append(", ").append(values[i] == null ? "null" : values[i].getStringValue());
+      }
+      builder.append("]");
+      return builder.toString();
+    }
+
+    @Override
+    public TSDataType getDataType() {
+      return TSDataType.VECTOR;
+    }
+
+    @Override
+    public int hashCode() {
+      return Arrays.hashCode(values);
+    }
+
+    @Override
+    public boolean equals(Object anObject) {
+      if (this == anObject) {
+        return true;
+      }
+      if (anObject instanceof TsVector) {
+        TsVector anotherTs = (TsVector) anObject;
+        if (anotherTs.values.length != this.values.length) {
+          return false;
+        }
+        for (int i = 0; i < this.values.length; i++) {
+          if (!values[i].equals(anotherTs.values[i])) {
+            return false;
+          }
+        }
+        return true;
+      }
+      return false;
+    }
+  }
 }

@@ -19,19 +19,23 @@
 package org.apache.iotdb.db.query.reader.chunk;
 
 import org.apache.iotdb.db.utils.TimeValuePairUtils;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
 import java.io.IOException;
 
 /**
  * To read chunk data on disk, this class implements an interface {@link IPointReader} based on the
- * data reader {@link ChunkReader}. <p> Note that <code>ChunkReader</code> is an abstract class with
- * three concrete classes, two of which are used here: <code>ChunkReaderWithoutFilter</code> and
- * <code>ChunkReaderWithFilter</code>. <p>
+ * data reader {@link ChunkReader}.
+ *
+ * <p>Note that <code>ChunkReader</code> is an abstract class with three concrete classes, two of
+ * which are used here: <code>ChunkReaderWithoutFilter</code> and <code>ChunkReaderWithFilter</code>
+ * .
+ *
+ * <p>
  */
 public class ChunkDataIterator implements IPointReader {
 

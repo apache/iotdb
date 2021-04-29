@@ -26,8 +26,8 @@ set -e
 
 # Download the collection of files associated with an Apache IoTDB
 # Release or Release Candidate from the Apache Distribution area:
-# https://dist.apache.org/repos/dist/release/incubator/iotdb
-# or https://dist.apache.org/repos/dist/dev/incubator/iotdb
+# https://dist.apache.org/repos/dist/release/iotdb
+# or https://dist.apache.org/repos/dist/dev/iotdb
 # respectively.
 #
 # Prompts before taking actions unless "--nquery"
@@ -119,8 +119,8 @@ mkdir -p ${DST_VER_DIR}
 cd ${DST_VER_DIR}
 mywget ${URL}/README.md
 mywget ${URL}/RELEASE_NOTES.md
-getSignedBundle ${URL}/apache-iotdb-${VER}-incubating-source-release.zip
-getSignedBundle ${URL}/apache-iotdb-${VER}-incubating-bin.zip
+getSignedBundle ${URL}/apache-iotdb-${VER}-source-release.zip
+getSignedBundle ${URL}/apache-iotdb-${VER}-bin.zip
 
 echo
 echo Done Downloading to ${DST_BASE_DIR}

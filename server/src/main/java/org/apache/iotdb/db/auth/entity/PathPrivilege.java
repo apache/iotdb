@@ -18,6 +18,11 @@
  */
 package org.apache.iotdb.db.auth.entity;
 
+import org.apache.iotdb.db.utils.SerializeUtils;
+
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.nio.ByteBuffer;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Objects;
@@ -42,11 +47,11 @@ public class PathPrivilege {
    */
   private AtomicInteger referenceCnt = new AtomicInteger(0);
 
-  /**
-   * Sort PathPrivilege by referenceCnt in descent order.
-   */
-  public static final Comparator<PathPrivilege> REFERENCE_DESCENT_SORTER = (o1, o2) -> -Integer.
-          compare(o1.referenceCnt.get(), o2.referenceCnt.get());
+  /** Sort PathPrivilege by referenceCnt in descent order. */
+  public static final Comparator<PathPrivilege> REFERENCE_DESCENT_SORTER =
+      (o1, o2) -> -Integer.compare(o1.referenceCnt.get(), o2.referenceCnt.get());
+
+  public PathPrivilege() {}
 
   public PathPrivilege(String path) {
     this.path = path;
@@ -102,5 +107,21 @@ public class PathPrivilege {
       builder.append(" ").append(PrivilegeType.values()[privilegeId]);
     }
     return builder.toString();
+  }
+
+  public ByteBuffer serialize() {
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+
+    SerializeUtils.serializeIntSet(privileges, dataOutputStream);
+    SerializeUtils.serialize(path, dataOutputStream);
+
+    return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+  }
+
+  public void deserialize(ByteBuffer buffer) {
+    privileges = new HashSet<>();
+    SerializeUtils.deserializeIntSet(privileges, buffer);
+    path = SerializeUtils.deserializeString(buffer);
   }
 }

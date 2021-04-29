@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.tsfile.write.record.datapoint;
 
-import java.io.IOException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * a subclass for Integer data type extends DataPoint.
@@ -32,25 +32,22 @@ import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 public class IntDataPoint extends DataPoint {
 
   private static final Logger LOG = LoggerFactory.getLogger(IntDataPoint.class);
-  /** actual value. **/
+  /** actual value. */
   private int value;
 
-  /**
-   * constructor of IntDataPoint, the value type will be set automatically.
-   */
+  /** constructor of IntDataPoint, the value type will be set automatically. */
   public IntDataPoint(String measurementId, int v) {
     super(TSDataType.INT32, measurementId);
     this.value = v;
   }
 
   @Override
-  public void writeTo(long time, IChunkWriter writer) throws IOException {
+  public void writeTo(long time, IChunkWriter writer) {
     if (writer == null) {
       LOG.warn("given IChunkWriter is null, do nothing and return");
       return;
     }
-    writer.write(time, value);
-
+    writer.write(time, value, false);
   }
 
   @Override

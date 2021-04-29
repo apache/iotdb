@@ -1,18 +1,26 @@
-/**
- * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
- * agreements. See the NOTICE file distributed with this work for additional information regarding
- * copyright ownership. The ASF licenses this file to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance with the License. You may obtain a
- * copy of the License at
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software distributed under the License
- * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
- * or implied. See the License for the specific language governing permissions and limitations under
- * the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.iotdb.db.metrics.server;
+
+import com.sun.management.OperatingSystemMXBean;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.FileInputStream;
@@ -24,9 +32,6 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.StringTokenizer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import com.sun.management.OperatingSystemMXBean;
 
 public class ServerArgument {
 
@@ -60,13 +65,13 @@ public class ServerArgument {
   }
 
   private String inferHostname() {
-    InetAddress ia = null;
     try {
-      ia = InetAddress.getLocalHost();
+      InetAddress ia = InetAddress.getLocalHost();
+      return ia.getHostName();
     } catch (UnknownHostException e) {
       logger.error("The host is unknow", e);
     }
-    return ia.getHostName();
+    return "";
   }
 
   private String osName() {
@@ -74,7 +79,8 @@ public class ServerArgument {
   }
 
   private int totalCores() {
-    OperatingSystemMXBean osmxb = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
+    OperatingSystemMXBean osmxb =
+        (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
     int freeCores = osmxb.getAvailableProcessors();
     return freeCores;
   }
@@ -92,19 +98,23 @@ public class ServerArgument {
   }
 
   private long totalPhysicalMemory() {
-    OperatingSystemMXBean osmxb = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
+    OperatingSystemMXBean osmxb =
+        (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
     long totalMemorySize = osmxb.getTotalPhysicalMemorySize() / 1024 / 1024;
     return totalMemorySize;
   }
 
   private long usedPhysicalMemory() {
-    OperatingSystemMXBean osmxb = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
-    long usedMemorySize = (osmxb.getTotalPhysicalMemorySize() - osmxb.getFreePhysicalMemorySize()) / 1024 / 1024;
+    OperatingSystemMXBean osmxb =
+        (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
+    long usedMemorySize =
+        (osmxb.getTotalPhysicalMemorySize() - osmxb.getFreePhysicalMemorySize()) / 1024 / 1024;
     return usedMemorySize;
   }
 
   private long freePhysicalMemory() {
-    OperatingSystemMXBean osmxb = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
+    OperatingSystemMXBean osmxb =
+        (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
     long freeMemorySize = osmxb.getFreePhysicalMemorySize() / 1024 / 1024;
     return freeMemorySize;
   }
@@ -156,20 +166,18 @@ public class ServerArgument {
   public int getCpuRatio() {
     String osName = System.getProperty("os.name").toLowerCase();
     cpuRatio = 0;
-    if (osName.indexOf("windows") >= 0) {
+    if (osName.contains("windows")) {
       cpuRatio = getCpuRatioForWindows();
-    } else if (osName.indexOf("linux") >= 0) {
+    } else if (osName.contains("linux")) {
       cpuRatio = getCpuRateForLinux();
     } else {
       cpuRatio = 500;
-      logger.warn("Can't get the cpu ratio,because this OS:{} is not support",osName);
+      logger.warn("Can't get the cpu ratio,because this OS:{} is not support", osName);
     }
     return cpuRatio;
   }
 
-  /**
-   * cpu ratio for linux
-   */
+  /** cpu ratio for linux */
   private int getCpuRateForLinux() {
     try {
       long[] c0 = readLinuxCpu();
@@ -181,7 +189,7 @@ public class ServerArgument {
         if (totalCpuTime == 0) {
           return 100;
         }
-        return (int)(100 * (1 - (double)idleCpuTime / totalCpuTime));
+        return (int) (100 * (1 - (double) idleCpuTime / totalCpuTime));
       } else {
         return 0;
       }
@@ -191,13 +199,13 @@ public class ServerArgument {
     }
   }
 
-  /**
-   * cpu ratio for windows
-   */
+  /** cpu ratio for windows */
   private int getCpuRatioForWindows() {
     try {
-      String procCmd = System.getenv("windir") + "\\system32\\wbem\\wmic.exe process get Caption,CommandLine,"
-          + "KernelModeTime,ReadOperationCount,ThreadCount,UserModeTime,WriteOperationCount";
+      String procCmd =
+          System.getenv("windir")
+              + "\\system32\\wbem\\wmic.exe process get Caption,CommandLine,"
+              + "KernelModeTime,ReadOperationCount,ThreadCount,UserModeTime,WriteOperationCount";
       long[] c0 = readWinCpu(Runtime.getRuntime().exec(procCmd));
       Thread.sleep(CPUTIME);
       long[] c1 = readWinCpu(Runtime.getRuntime().exec(procCmd));
@@ -207,7 +215,7 @@ public class ServerArgument {
         if ((busytime + idletime) == 0) {
           return 100;
         }
-        return (int)(100 * ((double)busytime / (busytime + idletime)));
+        return (int) (100 * ((double) busytime / (busytime + idletime)));
       } else {
         return 0;
       }
@@ -217,99 +225,100 @@ public class ServerArgument {
     }
   }
 
-  /**
-   * read cpu info(windows)
-   */
+  /** read cpu info(windows) */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private long[] readWinCpu(final Process proc) throws Exception {
     long[] retn = new long[2];
     proc.getOutputStream().close();
-    InputStreamReader ir = new InputStreamReader(proc.getInputStream());
-    LineNumberReader input = new LineNumberReader(ir);
-    String line = input.readLine();
-    if (line == null || line.length() < 10) {
-      return null;
-    }
-    int capidx = line.indexOf("Caption");
-    int cmdidx = line.indexOf("CommandLine");
-    int rocidx = line.indexOf("ReadOperationCount");
-    int umtidx = line.indexOf("UserModeTime");
-    int kmtidx = line.indexOf("KernelModeTime");
-    int wocidx = line.indexOf("WriteOperationCount");
-    long idletime = 0;
-    long kneltime = 0;
-    long usertime = 0;
-    while ((line = input.readLine()) != null) {
-      if (line.length() < wocidx) {
-        continue;
+    try (InputStreamReader ir = new InputStreamReader(proc.getInputStream());
+        LineNumberReader input = new LineNumberReader(ir)) {
+      String line = input.readLine();
+      if (line == null || line.length() < 10) {
+        return null;
       }
-      String cmd = line.substring(cmdidx, kmtidx).trim();
-      if (cmd.indexOf("wmic.exe") >= 0) {
-        continue;
-      }
-      String caption = line.substring(capidx, cmdidx).trim();
-      String s1 = line.substring(kmtidx, rocidx).trim();
-      String s2 = line.substring(umtidx, wocidx).trim();
-      List<String> digitS1 = new ArrayList<>();
-      List<String> digitS2 = new ArrayList<>();
-      digitS1.add(s1.replaceAll("\\D", ""));
-      digitS2.add(s2.replaceAll("\\D", ""));
-      if (caption.equals("System Idle Process") || caption.equals("System")) {
+      int capidx = line.indexOf("Caption");
+      int cmdidx = line.indexOf("CommandLine");
+      int rocidx = line.indexOf("ReadOperationCount");
+      int umtidx = line.indexOf("UserModeTime");
+      int kmtidx = line.indexOf("KernelModeTime");
+      int wocidx = line.indexOf("WriteOperationCount");
+      long idletime = 0;
+      long kneltime = 0;
+      long usertime = 0;
+      while ((line = input.readLine()) != null) {
+        if (line.length() < wocidx) {
+          continue;
+        }
+        String cmd = line.substring(cmdidx, kmtidx).trim();
+        if (cmd.contains("wmic.exe")) {
+          continue;
+        }
+        String caption = line.substring(capidx, cmdidx).trim();
+        String s1 = line.substring(kmtidx, rocidx).trim();
+        String s2 = line.substring(umtidx, wocidx).trim();
+        List<String> digitS1 = new ArrayList<>();
+        List<String> digitS2 = new ArrayList<>();
+        digitS1.add(s1.replaceAll("\\D", ""));
+        digitS2.add(s2.replaceAll("\\D", ""));
+        if (caption.equals("System Idle Process") || caption.equals("System")) {
+          if (s1.length() > 0) {
+            if (!digitS1.get(0).equals("") && digitS1.get(0) != null) {
+              idletime += Long.valueOf(digitS1.get(0)).longValue();
+            }
+          }
+          if (s2.length() > 0) {
+            if (!digitS2.get(0).equals("") && digitS2.get(0) != null) {
+              idletime += Long.valueOf(digitS2.get(0)).longValue();
+            }
+          }
+          continue;
+        }
         if (s1.length() > 0) {
           if (!digitS1.get(0).equals("") && digitS1.get(0) != null) {
-            idletime += Long.valueOf(digitS1.get(0)).longValue();
+            kneltime += Long.valueOf(digitS1.get(0)).longValue();
           }
         }
         if (s2.length() > 0) {
           if (!digitS2.get(0).equals("") && digitS2.get(0) != null) {
-            idletime += Long.valueOf(digitS2.get(0)).longValue();
+            kneltime += Long.valueOf(digitS2.get(0)).longValue();
           }
         }
-        continue;
       }
-      if (s1.length() > 0) {
-        if (!digitS1.get(0).equals("") && digitS1.get(0) != null) {
-          kneltime += Long.valueOf(digitS1.get(0)).longValue();
-        }
-      }
-      if (s2.length() > 0) {
-        if (!digitS2.get(0).equals("") && digitS2.get(0) != null) {
-          kneltime += Long.valueOf(digitS2.get(0)).longValue();
-        }
-      }
+      retn[0] = idletime;
+      retn[1] = kneltime + usertime;
     }
-    retn[0] = idletime;
-    retn[1] = kneltime + usertime;
     proc.getInputStream().close();
     return retn;
   }
 
-  /**
-   * read cpu info(linux)
-   */
+  /** read cpu info(linux) */
   private long[] readLinuxCpu() throws Exception {
     long[] retn = new long[2];
-    BufferedReader buffer = null;
     long idleCpuTime = 0;
     long totalCpuTime = 0;
-    buffer = new BufferedReader(new InputStreamReader(new FileInputStream("/proc/stat")));
+
     String line = null;
-    while ((line = buffer.readLine()) != null) {
-      if (line.startsWith("cpu")) {
-        StringTokenizer tokenizer = new StringTokenizer(line);
-        List<String> temp = new ArrayList<String>();
-        while (tokenizer.hasMoreElements()) {
-          temp.add(tokenizer.nextToken());
+    try (BufferedReader buffer =
+        new BufferedReader(new InputStreamReader(new FileInputStream("/proc/stat")))) {
+      while ((line = buffer.readLine()) != null) {
+        if (line.startsWith("cpu")) {
+          StringTokenizer tokenizer = new StringTokenizer(line);
+          List<String> temp = new ArrayList<String>();
+          while (tokenizer.hasMoreElements()) {
+            temp.add(tokenizer.nextToken());
+          }
+          idleCpuTime = Long.parseLong(temp.get(4));
+          totalCpuTime =
+              Long.parseLong(temp.get(1))
+                  + Long.parseLong(temp.get(2))
+                  + Long.parseLong(temp.get(3))
+                  + Long.parseLong(temp.get(4));
+          break;
         }
-        idleCpuTime = Long.parseLong(temp.get(4));
-        totalCpuTime = Long.parseLong(temp.get(1)) + Long.parseLong(temp.get(2))
-            + Long.parseLong(temp.get(3)) + Long.parseLong(temp.get(4));
-        break;
       }
+      retn[0] = idleCpuTime;
+      retn[1] = totalCpuTime;
     }
-    retn[0] = idleCpuTime;
-    retn[1] = totalCpuTime;
-    buffer.close();
     return retn;
   }
-
 }

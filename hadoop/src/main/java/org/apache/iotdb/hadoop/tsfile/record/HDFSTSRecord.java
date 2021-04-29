@@ -18,13 +18,14 @@
  */
 package org.apache.iotdb.hadoop.tsfile.record;
 
-import org.apache.hadoop.io.Writable;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.*;
+
+import org.apache.hadoop.io.Writable;
 
 import java.io.DataInput;
 import java.io.DataOutput;
@@ -35,18 +36,11 @@ import java.util.List;
 
 public class HDFSTSRecord implements Writable {
 
-
-  /**
-   * timestamp of this TSRecord.
-   **/
+  /** timestamp of this TSRecord. */
   private long time;
-  /**
-   * deviceId of this TSRecord.
-   **/
+  /** deviceId of this TSRecord. */
   private String deviceId;
-  /**
-   * all value of this TSRecord.
-   **/
+  /** all value of this TSRecord. */
   private List<DataPoint> dataPointList = new ArrayList<>();
 
   public long getTime() {
@@ -73,14 +67,13 @@ public class HDFSTSRecord implements Writable {
     this.dataPointList = dataPointList;
   }
 
-  public HDFSTSRecord() {
-  }
+  public HDFSTSRecord() {}
 
   /**
    * constructor of HDFSTSRecord.
    *
    * @param timestamp timestamp of this TSRecord
-   * @param deviceId  deviceId of this TSRecord
+   * @param deviceId deviceId of this TSRecord
    */
   public HDFSTSRecord(long timestamp, String deviceId) {
     this.time = timestamp;
@@ -100,7 +93,7 @@ public class HDFSTSRecord implements Writable {
     out.write(deviceId.getBytes(StandardCharsets.UTF_8));
     out.writeInt(dataPointList.size());
     for (DataPoint dataPoint : dataPointList) {
-      out.writeShort(dataPoint.getType().serialize());
+      out.write(dataPoint.getType().serialize());
       out.writeInt(dataPoint.getMeasurementId().getBytes(StandardCharsets.UTF_8).length);
       out.write(dataPoint.getMeasurementId().getBytes(StandardCharsets.UTF_8));
       switch (dataPoint.getType()) {
@@ -139,7 +132,7 @@ public class HDFSTSRecord implements Writable {
     List<DataPoint> dataPoints = new ArrayList<>(len);
 
     for (int i = 0; i < len; i++) {
-      TSDataType dataType = TSDataType.deserialize(in.readShort());
+      TSDataType dataType = TSDataType.deserialize(in.readByte());
       int lenOfMeasurementId = in.readInt();
       byte[] c = new byte[lenOfMeasurementId];
       in.readFully(c);

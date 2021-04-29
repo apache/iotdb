@@ -20,9 +20,8 @@ package org.apache.iotdb.tsfile.write.schema;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.write.record.RowBatch;
 
-import java.util.ArrayList;
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -31,63 +30,43 @@ import java.util.Map;
  * The schema of timeseries that exist in this file. The deviceTemplates is a simplified manner to
  * batch create schema of timeseries.
  */
-public class Schema {
+public class Schema implements Serializable {
 
   /**
    * Path (device + measurement) -> measurementSchema By default, use the LinkedHashMap to store the
    * order of insertion
    */
-  private Map<Path, MeasurementSchema> registeredTimeseries;
+  private Map<Path, IMeasurementSchema> registeredTimeseries;
 
-  /**
-   * template name -> (measuremnet -> MeasurementSchema)
-   */
-  private Map<String, Map<String, MeasurementSchema>> deviceTemplates;
+  /** template name -> (measurement -> MeasurementSchema) */
+  private Map<String, Map<String, IMeasurementSchema>> deviceTemplates;
 
   public Schema() {
     this.registeredTimeseries = new LinkedHashMap<>();
   }
 
-  public Schema(Map<Path, MeasurementSchema> knownSchema) {
+  public Schema(Map<Path, IMeasurementSchema> knownSchema) {
     this.registeredTimeseries = knownSchema;
   }
 
-  /**
-   * Create a row batch to write aligned data
-   *
-   * @param deviceId the name of the device specified to be written in
-   */
-  public RowBatch createRowBatch(String deviceId) {
-    return new RowBatch(deviceId, new ArrayList<>(registeredTimeseries.values()));
-  }
-
-  /**
-   * Create a row batch to write aligned data
-   *
-   * @param deviceId     the name of the device specified to be written in
-   * @param maxBatchSize max size of rows in batch
-   */
-  public RowBatch createRowBatch(String deviceId, int maxBatchSize) {
-    return new RowBatch(deviceId, new ArrayList<>(registeredTimeseries.values()), maxBatchSize);
-  }
-
-  public void registerTimeseries(Path path, MeasurementSchema descriptor) {
+  public void registerTimeseries(Path path, IMeasurementSchema descriptor) {
     this.registeredTimeseries.put(path, descriptor);
   }
 
-  public void registerDeviceTemplate(String templateName, Map<String, MeasurementSchema> template) {
+  public void registerDeviceTemplate(
+      String templateName, Map<String, IMeasurementSchema> template) {
     if (deviceTemplates == null) {
       deviceTemplates = new HashMap<>();
     }
     this.deviceTemplates.put(templateName, template);
   }
 
-  public void extendTemplate(String templateName, MeasurementSchema descriptor) {
+  public void extendTemplate(String templateName, IMeasurementSchema descriptor) {
     if (deviceTemplates == null) {
       deviceTemplates = new HashMap<>();
     }
-    Map<String, MeasurementSchema> template = this.deviceTemplates
-        .getOrDefault(templateName, new HashMap<>());
+    Map<String, IMeasurementSchema> template =
+        this.deviceTemplates.getOrDefault(templateName, new HashMap<>());
     template.put(descriptor.getMeasurementId(), descriptor);
     this.deviceTemplates.put(templateName, template);
   }
@@ -96,14 +75,14 @@ public class Schema {
     if (!deviceTemplates.containsKey(templateName)) {
       return;
     }
-    Map<String, MeasurementSchema> template = deviceTemplates.get(templateName);
-    for (Map.Entry<String, MeasurementSchema> entry : template.entrySet()) {
+    Map<String, IMeasurementSchema> template = deviceTemplates.get(templateName);
+    for (Map.Entry<String, IMeasurementSchema> entry : template.entrySet()) {
       Path path = new Path(deviceId, entry.getKey());
       registerTimeseries(path, entry.getValue());
     }
   }
 
-  public MeasurementSchema getSeriesSchema(Path path) {
+  public IMeasurementSchema getSeriesSchema(Path path) {
     return registeredTimeseries.get(path);
   }
 
@@ -114,20 +93,17 @@ public class Schema {
     return registeredTimeseries.get(path).getType();
   }
 
-  public Map<String, Map<String, MeasurementSchema>> getDeviceTemplates() {
+  public Map<String, Map<String, IMeasurementSchema>> getDeviceTemplates() {
     return deviceTemplates;
   }
 
-  /**
-   * check if this schema contains a measurement named measurementId.
-   */
+  /** check if this schema contains a measurement named measurementId. */
   public boolean containsTimeseries(Path path) {
     return registeredTimeseries.containsKey(path);
   }
 
   // for test
-  public Map<Path, MeasurementSchema> getRegisteredTimeseriesMap() {
+  public Map<Path, IMeasurementSchema> getRegisteredTimeseriesMap() {
     return registeredTimeseries;
   }
-
 }

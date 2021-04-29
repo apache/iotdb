@@ -18,13 +18,12 @@
  */
 package org.apache.iotdb.db.query.externalsort;
 
-import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.chunk.ChunkReaderWrap;
+import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
 import java.io.IOException;
 import java.util.List;
-
 
 public interface ExternalSortJobEngine {
 
@@ -35,8 +34,8 @@ public interface ExternalSortJobEngine {
    * @param queryId query job id
    * @param chunkReaderWraps A list of ChunkReaderWrap
    */
-  List<IPointReader> executeForIPointReader(long queryId, List<ChunkReaderWrap>
-      chunkReaderWraps) throws IOException;
+  List<IPointReader> executeForIPointReader(long queryId, List<ChunkReaderWrap> chunkReaderWraps)
+      throws IOException;
 
   /**
    * Receive a list of chunkReaderWraps and judge whether it should be processed using external
@@ -44,13 +43,10 @@ public interface ExternalSortJobEngine {
    *
    * @param chunkReaderWraps A list of ChunkReaderWrap
    */
-  List<IReaderByTimestamp> executeForByTimestampReader(long queryId, List<ChunkReaderWrap>
-      chunkReaderWraps) throws IOException;
+  List<IReaderByTimestamp> executeForByTimestampReader(
+      long queryId, List<ChunkReaderWrap> chunkReaderWraps) throws IOException;
 
-  /**
-   * Create an external sort job which merges many chunks.
-   */
+  /** Create an external sort job which merges many chunks. */
   ExternalSortJob createJob(long queryId, List<ChunkReaderWrap> timeValuePairReaderList)
       throws IOException;
-
 }

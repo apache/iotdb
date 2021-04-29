@@ -18,25 +18,30 @@
  */
 package org.apache.iotdb.session.pool;
 
-import static org.junit.Assert.*;
-
-import java.sql.SQLException;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.thrift.TException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-//this test is not for testing the correctness of Session API. So we just implement one of the API.
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+// this test is not for testing the correctness of Session API. So we just implement one of the API.
 public class SessionPoolTest {
 
   @Before
@@ -51,20 +56,25 @@ public class SessionPoolTest {
     EnvironmentUtils.cleanEnv();
   }
 
-
   @Test
   public void insert() {
     SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3);
     ExecutorService service = Executors.newFixedThreadPool(10);
     for (int i = 0; i < 10; i++) {
       final int no = i;
-      service.submit(() -> {
-        try {
-          pool.insert("root.sg1.d1", 1, Collections.singletonList("s" + no), Collections.singletonList("3"));
-        } catch (IoTDBConnectionException | StatementExecutionException e) {
-          fail();
-        }
-      });
+      service.submit(
+          () -> {
+            try {
+              pool.insertRecord(
+                  "root.sg1.d1",
+                  1,
+                  Collections.singletonList("s" + no),
+                  Collections.singletonList(TSDataType.INT64),
+                  Collections.singletonList(3L));
+            } catch (IoTDBConnectionException | StatementExecutionException e) {
+              fail();
+            }
+          });
     }
     service.shutdown();
     try {
@@ -83,38 +93,38 @@ public class SessionPoolTest {
     SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3);
     assertEquals(0, pool.currentAvailableSize());
     try {
-      pool.insert(".root.sg1.d1", 1, Collections.singletonList("s" ), Collections.singletonList("3"));
+      pool.insertRecord(
+          ".root.sg1.d1",
+          1,
+          Collections.singletonList("s"),
+          Collections.singletonList(TSDataType.INT64),
+          Collections.singletonList(3L));
     } catch (IoTDBConnectionException | StatementExecutionException e) {
-      //do nothing
+      // do nothing
     }
     assertEquals(1, pool.currentAvailableSize());
     pool.close();
   }
 
-
   @Test
   public void incorrectExecuteQueryStatement() {
     SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3);
     ExecutorService service = Executors.newFixedThreadPool(10);
-    for (int i = 0; i < 10; i++) {
-      try {
-        pool.insert("root.sg1.d1", i, Collections.singletonList("s" + i), Collections.singletonList("" + i));
-      } catch (IoTDBConnectionException | StatementExecutionException e) {
-        fail();
-      }
-    }
-    //now let's query
+    write10Data(pool, true);
+    // now let's query
     for (int i = 0; i < 10; i++) {
       final int no = i;
-      service.submit(() -> {
-        try {
-          SessionDataSetWrapper wrapper = pool.executeQueryStatement("select * from root.sg1.d1 where time = " + no);
-          //this is incorrect becasue wrapper is not closed.
-          //so all other 7 queries will be blocked
-        } catch (IoTDBConnectionException | StatementExecutionException e) {
-          fail();
-        }
-      });
+      service.submit(
+          () -> {
+            try {
+              SessionDataSetWrapper wrapper =
+                  pool.executeQueryStatement("select * from root.sg1.d1 where time = " + no);
+              // this is incorrect becasue wrapper is not closed.
+              // so all other 7 queries will be blocked
+            } catch (IoTDBConnectionException | StatementExecutionException e) {
+              fail();
+            }
+          });
     }
     service.shutdown();
     try {
@@ -137,26 +147,21 @@ public class SessionPoolTest {
 
   private void correctQuery(SessionPool pool) {
     ExecutorService service = Executors.newFixedThreadPool(10);
-    for (int i = 0; i < 10; i++) {
-      try {
-        pool.insert("root.sg1.d1", i, Collections.singletonList("s" + i), Collections.singletonList("" + i));
-      } catch (IoTDBConnectionException | StatementExecutionException e) {
-        fail();
-      }
-    }
-    //now let's query
+    write10Data(pool, true);
+    // now let's query
     for (int i = 0; i < 10; i++) {
       final int no = i;
-      service.submit(() -> {
-        try {
-          SessionDataSetWrapper wrapper = pool.executeQueryStatement("select * from root.sg1.d1 where time = " + no);
-          pool.closeResultSet(wrapper);
-          pool.closeResultSet(wrapper);
-        } catch (Exception e) {
-          e.printStackTrace();
-          fail();
-        }
-      });
+      service.submit(
+          () -> {
+            try {
+              SessionDataSetWrapper wrapper =
+                  pool.executeQueryStatement("select * from root.sg1.d1 where time = " + no);
+              pool.closeResultSet(wrapper);
+            } catch (Exception e) {
+              e.printStackTrace();
+              fail();
+            }
+          });
     }
     service.shutdown();
     try {
@@ -170,30 +175,50 @@ public class SessionPoolTest {
   }
 
   @Test
-  public void tryIfTheServerIsRestart() {
-    SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3, 1, 6000, false);
+  public void executeRawDataQuery() throws InterruptedException {
+    SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3);
+    ExecutorService service = Executors.newFixedThreadPool(10);
+    write10Data(pool, true);
+    List<String> pathList = new ArrayList<>();
+    pathList.add("root.sg1.d1.s1");
     for (int i = 0; i < 10; i++) {
-      try {
-        pool.insert("root.sg1.d1", i, Collections.singletonList("s" + i), Collections.singletonList("" + i));
-      } catch (IoTDBConnectionException | StatementExecutionException e) {
-        fail();
-      }
+      final int no = i;
+      service.submit(
+          () -> {
+            try {
+              SessionDataSetWrapper wrapper = pool.executeRawDataQuery(pathList, no, no + 1);
+              if (wrapper.hasNext()) {
+                Assert.assertEquals(no, wrapper.sessionDataSet.next().getTimestamp());
+              }
+              pool.closeResultSet(wrapper);
+            } catch (Exception e) {
+              e.printStackTrace();
+              fail();
+            }
+          });
     }
+    service.shutdown();
+    assertTrue(service.awaitTermination(10, TimeUnit.SECONDS));
+    assertTrue(pool.currentAvailableSize() <= 3);
+    assertEquals(0, pool.currentOccupiedSize());
+    pool.close();
+  }
+
+  @Test
+  public void tryIfTheServerIsRestart() {
+    SessionPool pool =
+        new SessionPool("127.0.0.1", 6667, "root", "root", 3, 1, 6000, false, null, false);
+    write10Data(pool, true);
     SessionDataSetWrapper wrapper = null;
     try {
       wrapper = pool.executeQueryStatement("select * from root.sg1.d1 where time > 1");
       EnvironmentUtils.stopDaemon();
-      //user does not know what happens.
-      while(wrapper.hasNext()) {
+      // user does not know what happens.
+      while (wrapper.hasNext()) {
         wrapper.next();
       }
-    } catch (IoTDBConnectionException  e) {
-      try {
-        pool.closeResultSet(wrapper);
-      } catch (StatementExecutionException ex) {
-        ex.printStackTrace();
-        fail();
-      }
+    } catch (IoTDBConnectionException e) {
+      pool.closeResultSet(wrapper);
       EnvironmentUtils.reactiveDaemon();
       correctQuery(pool);
       pool.close();
@@ -206,22 +231,17 @@ public class SessionPoolTest {
 
   @Test
   public void tryIfTheServerIsRestartButDataIsGotten() {
-    SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3, 1, 60000, false);
-    for (int i = 0; i < 10; i++) {
-      try {
-        pool.insert("root.sg1.d1", i, Collections.singletonList("s" + i), Collections.singletonList("" + i));
-      } catch (IoTDBConnectionException | StatementExecutionException e) {
-        fail();
-      }
-    }
+    SessionPool pool =
+        new SessionPool("127.0.0.1", 6667, "root", "root", 3, 1, 60000, false, null, false);
+    write10Data(pool, true);
     assertEquals(1, pool.currentAvailableSize());
     SessionDataSetWrapper wrapper = null;
     try {
       wrapper = pool.executeQueryStatement("select * from root.sg1.d1 where time > 1");
-      //user does not know what happens.
+      // user does not know what happens.
       assertEquals(0, pool.currentAvailableSize());
       assertEquals(1, pool.currentOccupiedSize());
-      while(wrapper.hasNext()) {
+      while (wrapper.hasNext()) {
         wrapper.next();
       }
       assertEquals(1, pool.currentAvailableSize());
@@ -233,4 +253,57 @@ public class SessionPoolTest {
     pool.close();
   }
 
+  @Test
+  public void restart() throws Exception {
+    SessionPool pool =
+        new SessionPool("127.0.0.1", 6667, "root", "root", 1, 1, 1000, false, null, false);
+    write10Data(pool, true);
+    // stop the server.
+    EnvironmentUtils.stopDaemon();
+    // all this ten data will fail.
+    write10Data(pool, false);
+    // restart the server
+    EnvironmentUtils.reactiveDaemon();
+    write10Data(pool, true);
+  }
+
+  private void write10Data(SessionPool pool, boolean failWhenThrowException) {
+    for (int i = 0; i < 10; i++) {
+      try {
+        pool.insertRecord(
+            "root.sg1.d1",
+            i,
+            Collections.singletonList("s" + i),
+            Collections.singletonList(TSDataType.INT64),
+            Collections.singletonList((long) i));
+      } catch (IoTDBConnectionException | StatementExecutionException e) {
+        // will fail this 10 times.
+        if (failWhenThrowException) {
+          fail();
+        }
+      }
+    }
+  }
+
+  @Test
+  public void testClose() {
+    SessionPool pool =
+        new SessionPool("127.0.0.1", 6667, "root", "root", 3, 1, 60000, false, null, false);
+    pool.close();
+    try {
+      pool.insertRecord(
+          "root.sg1.d1",
+          1,
+          Collections.singletonList("s1"),
+          Collections.singletonList(TSDataType.INT64),
+          Collections.singletonList(1L));
+    } catch (IoTDBConnectionException e) {
+      Assert.assertEquals("Session pool is closed", e.getMessage());
+    } catch (StatementExecutionException e) {
+      fail();
+    }
+    // some other test cases are not covered:
+    // e.g., thread A created a new session, but not returned; thread B close the pool; A get the
+    // session.
+  }
 }

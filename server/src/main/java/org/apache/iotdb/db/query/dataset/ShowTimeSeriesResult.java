@@ -18,54 +18,151 @@
  */
 package org.apache.iotdb.db.query.dataset;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Objects;
 
-public class ShowTimeSeriesResult {
+public class ShowTimeSeriesResult extends ShowResult {
 
-  private String name;
   private String alias;
-  private String sgName;
-  private String dataType;
-  private String encoding;
-  private String compressor;
-  private Map<String, String> tagAndAttribute;
+  private TSDataType dataType;
+  private TSEncoding encoding;
+  private CompressionType compressor;
+  private Map<String, String> tags;
+  private Map<String, String> attributes;
 
-  public ShowTimeSeriesResult(String name, String alias, String sgName, String dataType,
-      String encoding, String compressor, Map<String, String> tagAndAttribute) {
-    this.name = name;
+  public ShowTimeSeriesResult(
+      String name,
+      String alias,
+      String sgName,
+      TSDataType dataType,
+      TSEncoding encoding,
+      CompressionType compressor,
+      Map<String, String> tags,
+      Map<String, String> attributes) {
+    super(name, sgName);
     this.alias = alias;
-    this.sgName = sgName;
     this.dataType = dataType;
     this.encoding = encoding;
     this.compressor = compressor;
-    this.tagAndAttribute = tagAndAttribute;
+    this.tags = tags;
+    this.attributes = attributes;
   }
 
-  public String getName() {
-    return name;
+  public ShowTimeSeriesResult() {
+    super();
   }
 
   public String getAlias() {
     return alias;
   }
 
-  public String getSgName() {
-    return sgName;
-  }
-
-  public String getDataType() {
+  public TSDataType getDataType() {
     return dataType;
   }
 
-  public String getEncoding() {
+  public TSEncoding getEncoding() {
     return encoding;
   }
 
-  public String getCompressor() {
+  public CompressionType getCompressor() {
     return compressor;
   }
 
-  public Map<String, String> getTagAndAttribute() {
-    return tagAndAttribute;
+  public Map<String, String> getTag() {
+    return tags;
+  }
+
+  public Map<String, String> getAttribute() {
+    return attributes;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    ShowTimeSeriesResult result = (ShowTimeSeriesResult) o;
+    return Objects.equals(name, result.name);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(name);
+  }
+
+  private void writeNullable(Map<String, String> param, OutputStream outputStream)
+      throws IOException {
+    ReadWriteIOUtils.write(param != null, outputStream);
+    if (param != null) {
+      ReadWriteIOUtils.write(param.size(), outputStream);
+      for (Entry<String, String> entry : param.entrySet()) {
+        ReadWriteIOUtils.write(entry.getKey(), outputStream);
+        ReadWriteIOUtils.write(entry.getValue(), outputStream);
+      }
+    }
+  }
+
+  public void serialize(OutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(name, outputStream);
+    ReadWriteIOUtils.write(alias != null, outputStream); // flag
+    if (alias != null) {
+      ReadWriteIOUtils.write(alias, outputStream);
+    }
+    ReadWriteIOUtils.write(sgName, outputStream);
+    ReadWriteIOUtils.write(dataType, outputStream);
+    ReadWriteIOUtils.write(encoding, outputStream);
+    ReadWriteIOUtils.write(compressor, outputStream);
+
+    // flag for tags and attributes
+    writeNullable(tags, outputStream);
+    writeNullable(attributes, outputStream);
+  }
+
+  public static ShowTimeSeriesResult deserialize(ByteBuffer buffer) {
+    ShowTimeSeriesResult result = new ShowTimeSeriesResult();
+    result.name = ReadWriteIOUtils.readString(buffer);
+    if (buffer.get() == 1) { // flag
+      result.alias = ReadWriteIOUtils.readString(buffer);
+    }
+    result.sgName = ReadWriteIOUtils.readString(buffer);
+    result.dataType = ReadWriteIOUtils.readDataType(buffer);
+    result.encoding = ReadWriteIOUtils.readEncoding(buffer);
+    result.compressor = ReadWriteIOUtils.readCompressionType(buffer);
+
+    // flag for tag
+    if (buffer.get() == 1) {
+      int tagSize = buffer.getInt();
+      result.tags = new HashMap<>(tagSize);
+      for (int i = 0; i < tagSize; i++) {
+        String key = ReadWriteIOUtils.readString(buffer);
+        String value = ReadWriteIOUtils.readString(buffer);
+        result.tags.put(key, value);
+      }
+    }
+
+    // flag for attribute
+    if (buffer.get() == 1) {
+      int attributeSize = buffer.getInt();
+      result.attributes = new HashMap<>(attributeSize);
+      for (int i = 0; i < attributeSize; i++) {
+        String key = ReadWriteIOUtils.readString(buffer);
+        String value = ReadWriteIOUtils.readString(buffer);
+        result.attributes.put(key, value);
+      }
+    }
+    return result;
   }
 }

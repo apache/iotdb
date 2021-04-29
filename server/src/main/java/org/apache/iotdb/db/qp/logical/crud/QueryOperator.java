@@ -18,15 +18,14 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
+import org.apache.iotdb.db.index.common.IndexType;
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.query.fill.IFill;
+import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.Map;
 
-/**
- * this class extends {@code RootOperator} and process getIndex statement
- */
+/** this class extends {@code RootOperator} and process getIndex statement */
 public class QueryOperator extends SFWOperator {
 
   private long startTime;
@@ -36,11 +35,16 @@ public class QueryOperator extends SFWOperator {
   // sliding step
   private long slidingStep;
   private boolean isGroupByTime = false;
+  private boolean isIntervalByMonth = false;
+  private boolean isSlidingStepByMonth = false;
   // if it is left close and right open interval
   private boolean leftCRightO;
 
   private Map<TSDataType, IFill> fillTypes;
   private boolean isFill = false;
+
+  private boolean isGroupByLevel = false;
+  private int level = -1;
 
   private int rowLimit = 0;
   private int rowOffset = 0;
@@ -50,9 +54,33 @@ public class QueryOperator extends SFWOperator {
   private boolean isAlignByDevice = false;
   private boolean isAlignByTime = true;
 
+  private String column;
+
+  private boolean ascending = true;
+
+  private Map<String, Object> props;
+
+  private IndexType indexType;
+
   public QueryOperator(int tokenIntType) {
     super(tokenIntType);
     operatorType = Operator.OperatorType.QUERY;
+  }
+
+  public Map<String, Object> getProps() {
+    return props;
+  }
+
+  public void setProps(Map<String, Object> props) {
+    this.props = props;
+  }
+
+  public IndexType getIndexType() {
+    return indexType;
+  }
+
+  public void setIndexType(IndexType indexType) {
+    this.indexType = indexType;
   }
 
   public boolean isFill() {
@@ -71,12 +99,12 @@ public class QueryOperator extends SFWOperator {
     this.fillTypes = fillTypes;
   }
 
-  public boolean isGroupBy() {
-    return isGroupByTime;
+  public boolean isGroupByLevel() {
+    return isGroupByLevel;
   }
 
-  public void setGroupBy(boolean isGroupBy) {
-    this.isGroupByTime = isGroupBy;
+  public void setGroupByLevel(boolean isGroupBy) {
+    this.isGroupByLevel = isGroupBy;
   }
 
   public boolean isLeftCRightO() {
@@ -173,5 +201,53 @@ public class QueryOperator extends SFWOperator {
 
   public void setAlignByTime(boolean isAlignByTime) {
     this.isAlignByTime = isAlignByTime;
+  }
+
+  public int getLevel() {
+    return level;
+  }
+
+  public void setLevel(int level) {
+    this.level = level;
+  }
+
+  public boolean isGroupByTime() {
+    return isGroupByTime;
+  }
+
+  public void setGroupByTime(boolean groupByTime) {
+    isGroupByTime = groupByTime;
+  }
+
+  public boolean isSlidingStepByMonth() {
+    return isSlidingStepByMonth;
+  }
+
+  public void setSlidingStepByMonth(boolean isSlidingStepByMonth) {
+    this.isSlidingStepByMonth = isSlidingStepByMonth;
+  }
+
+  public boolean isIntervalByMonth() {
+    return isIntervalByMonth;
+  }
+
+  public void setIntervalByMonth(boolean isIntervalByMonth) {
+    this.isIntervalByMonth = isIntervalByMonth;
+  }
+
+  public String getColumn() {
+    return column;
+  }
+
+  public void setColumn(String column) {
+    this.column = column;
+  }
+
+  public boolean isAscending() {
+    return ascending;
+  }
+
+  public void setAscending(boolean ascending) {
+    this.ascending = ascending;
   }
 }

@@ -19,28 +19,29 @@
 
 package org.apache.iotdb.flink.tsfile;
 
-import org.apache.flink.api.java.typeutils.ResultTypeQueryable;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+
+import org.apache.flink.api.java.typeutils.ResultTypeQueryable;
 
 import java.io.Serializable;
 
 /**
- * RowRecordParser parses the RowRecord objects read from TsFile into the user desired format.
- * If the accurate type information of parse result can not be extracted from the result type class automatically
- * (e.g. Row, Tuple, etc.), the {@link ResultTypeQueryable} interface needs to be implemented to provide the type
- * information explicitly.
+ * RowRecordParser parses the RowRecord objects read from TsFile into the user desired format. If
+ * the accurate type information of parse result can not be extracted from the result type class
+ * automatically (e.g. Row, Tuple, etc.), the {@link ResultTypeQueryable} interface needs to be
+ * implemented to provide the type information explicitly.
  *
  * @param <T> The type of the parse result.
  */
 public interface RowRecordParser<T> extends Serializable {
 
-	/**
-	 * Parse the row record into type T. The param `reuse` is recommended to use for reducing the creation of new
-	 * objects.
-	 *
-	 * @param rowRecord The input row record.
-	 * @param reuse The object could be reused.
-	 * @return The parsed result.
-	 */
-	T parse(RowRecord rowRecord, T reuse);
+  /**
+   * Parse the row record into type T. The param `reuse` is recommended to use for reducing the
+   * creation of new objects.
+   *
+   * @param rowRecord The input row record.
+   * @param reuse The object could be reused.
+   * @return The parsed result.
+   */
+  T parse(RowRecord rowRecord, T reuse);
 }

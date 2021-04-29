@@ -18,6 +18,27 @@
  */
 package org.apache.iotdb.jdbc;
 
+import org.apache.iotdb.rpc.RpcTransportFactory;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.service.rpc.thrift.ServerProperties;
+import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
+import org.apache.iotdb.service.rpc.thrift.TSIService;
+import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
+import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
+import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
+import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
+
+import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TCompactProtocol;
+import org.apache.thrift.transport.TSocket;
+import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.TTransportException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.sql.Array;
 import java.sql.Blob;
 import java.sql.CallableStatement;
@@ -38,29 +59,26 @@ import java.time.ZoneId;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executor;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.service.rpc.thrift.*;
-import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.protocol.TCompactProtocol;
-import org.apache.thrift.transport.TSocket;
-import org.apache.thrift.transport.TTransportException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 
 public class IoTDBConnection implements Connection {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConnection.class);
-  private static final TSProtocolVersion protocolVersion = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V2;
+  private static final TSProtocolVersion protocolVersion =
+      TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
+  private static final String NOT_SUPPORT_PREPARE_CALL = "Does not support prepareCall";
+  private static final String NOT_SUPPORT_PREPARE_STATEMENT = "Does not support prepareStatement";
   private TSIService.Iface client = null;
   private long sessionId = -1;
   private IoTDBConnectionParams params;
   private boolean isClosed = true;
   private SQLWarning warningChain = null;
-  private TSocket transport;
+  private TTransport transport;
+  /**
+   * Timeout of query can be set by users. Unit: s If not set, default value 0 will be used, which
+   * will use server configuration.
+   */
+  private int queryTimeout = 0;
+
   private ZoneId zoneId;
   private boolean autoCommit;
 
@@ -75,10 +93,9 @@ public class IoTDBConnection implements Connection {
     params = Utils.parseUrl(url, info);
 
     openTransport();
-    if(Config.rpcThriftCompressionEnable) {
+    if (Config.rpcThriftCompressionEnable) {
       setClient(new TSIService.Client(new TCompactProtocol(transport)));
-    }
-    else {
+    } else {
       setClient(new TSIService.Client(new TBinaryProtocol(transport)));
     }
     // open client session
@@ -117,7 +134,8 @@ public class IoTDBConnection implements Connection {
     try {
       getClient().closeSession(req);
     } catch (TException e) {
-      throw new SQLException("Error occurs when closing session at server. Maybe server is down.", e);
+      throw new SQLException(
+          "Error occurs when closing session at server. Maybe server is down.", e);
     } finally {
       isClosed = true;
       if (transport != null) {
@@ -161,7 +179,7 @@ public class IoTDBConnection implements Connection {
     if (isClosed) {
       throw new SQLException("Cannot create statement because connection is closed");
     }
-    return new IoTDBStatement(this, getClient(), sessionId, zoneId);
+    return new IoTDBStatement(this, getClient(), sessionId, zoneId, queryTimeout);
   }
 
   @Override
@@ -169,14 +187,14 @@ public class IoTDBConnection implements Connection {
       throws SQLException {
     if (resultSetConcurrency != ResultSet.CONCUR_READ_ONLY) {
       throw new SQLException(
-          String.format("Statements with result set concurrency %d are not supported",
-              resultSetConcurrency));
+          String.format(
+              "Statements with result set concurrency %d are not supported", resultSetConcurrency));
     }
     if (resultSetType == ResultSet.TYPE_SCROLL_SENSITIVE) {
-      throw new SQLException(String.format("Statements with ResultSet type %d are not supported",
-          resultSetType));
+      throw new SQLException(
+          String.format("Statements with ResultSet type %d are not supported", resultSetType));
     }
-    return new IoTDBStatement(this, getClient(), sessionId, zoneId);
+    return new IoTDBStatement(this, getClient(), sessionId, zoneId, queryTimeout);
   }
 
   @Override
@@ -245,7 +263,7 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public int getNetworkTimeout() {
-    return Config.connectionTimeoutInMs;
+    return Config.DEFAULT_CONNECTION_TIMEOUT_MS;
   }
 
   @Override
@@ -299,7 +317,7 @@ public class IoTDBConnection implements Connection {
   }
 
   @Override
-  public boolean isValid(int arg0) throws SQLException {
+  public boolean isValid(int arg0) {
     return !isClosed;
   }
 
@@ -310,18 +328,18 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public CallableStatement prepareCall(String arg0) throws SQLException {
-    throw new SQLException("Does not support prepareCall");
+    throw new SQLException(NOT_SUPPORT_PREPARE_CALL);
   }
 
   @Override
   public CallableStatement prepareCall(String arg0, int arg1, int arg2) throws SQLException {
-    throw new SQLException("Does not support prepareCall");
+    throw new SQLException(NOT_SUPPORT_PREPARE_CALL);
   }
 
   @Override
   public CallableStatement prepareCall(String arg0, int arg1, int arg2, int arg3)
       throws SQLException {
-    throw new SQLException("Does not support prepareCall");
+    throw new SQLException(NOT_SUPPORT_PREPARE_CALL);
   }
 
   @Override
@@ -331,29 +349,30 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public PreparedStatement prepareStatement(String sql, int autoGeneratedKeys) throws SQLException {
-    throw new SQLException("Does not support prepareStatement");
+    throw new SQLException(NOT_SUPPORT_PREPARE_STATEMENT);
   }
 
   @Override
   public PreparedStatement prepareStatement(String sql, int[] columnIndexes) throws SQLException {
-    throw new SQLException("Does not support prepareStatement");
+    throw new SQLException(NOT_SUPPORT_PREPARE_STATEMENT);
   }
 
   @Override
   public PreparedStatement prepareStatement(String sql, String[] columnNames) throws SQLException {
-    throw new SQLException("Does not support prepareStatement");
+    throw new SQLException(NOT_SUPPORT_PREPARE_STATEMENT);
   }
 
   @Override
   public PreparedStatement prepareStatement(String sql, int resultSetType, int resultSetConcurrency)
       throws SQLException {
-    throw new SQLException("Does not support prepareStatement");
+    throw new SQLException(NOT_SUPPORT_PREPARE_STATEMENT);
   }
 
   @Override
-  public PreparedStatement prepareStatement(String sql, int resultSetType, int resultSetConcurrency,
-      int resultSetHoldability) throws SQLException {
-    throw new SQLException("Does not support prepareStatement");
+  public PreparedStatement prepareStatement(
+      String sql, int resultSetType, int resultSetConcurrency, int resultSetHoldability)
+      throws SQLException {
+    throw new SQLException(NOT_SUPPORT_PREPARE_STATEMENT);
   }
 
   @Override
@@ -381,6 +400,17 @@ public class IoTDBConnection implements Connection {
     throw new SQLException("Does not support setNetworkTimeout");
   }
 
+  public int getQueryTimeout() {
+    return this.queryTimeout;
+  }
+
+  public void setQueryTimeout(int seconds) throws SQLException {
+    if (seconds < 0) {
+      throw new SQLException(String.format("queryTimeout %d must be >= 0!", seconds));
+    }
+    this.queryTimeout = seconds;
+  }
+
   @Override
   public Savepoint setSavepoint() throws SQLException {
     throw new SQLException("Does not support setSavepoint");
@@ -404,7 +434,11 @@ public class IoTDBConnection implements Connection {
   }
 
   private void openTransport() throws TTransportException {
-    transport = new TSocket(params.getHost(), params.getPort(), Config.connectionTimeoutInMs);
+    RpcTransportFactory.setDefaultBufferCapacity(params.getThriftDefaultBufferSize());
+    RpcTransportFactory.setThriftMaxFrameSize(params.getThriftMaxFrameSize());
+    transport =
+        RpcTransportFactory.INSTANCE.getTransport(
+            new TSocket(params.getHost(), params.getPort(), Config.DEFAULT_CONNECTION_TIMEOUT_MS));
     if (!transport.isOpen()) {
       transport.open();
     }
@@ -415,6 +449,7 @@ public class IoTDBConnection implements Connection {
 
     openReq.setUsername(params.getUsername());
     openReq.setPassword(params.getPassword());
+    openReq.setZoneId(getTimeZone());
 
     TSOpenSessionResp openResp = null;
     try {
@@ -424,31 +459,33 @@ public class IoTDBConnection implements Connection {
       RpcUtils.verifySuccess(openResp.getStatus());
 
       if (protocolVersion.getValue() != openResp.getServerProtocolVersion().getValue()) {
-        logger.warn("Protocol differ, Client version is {}}, but Server version is {}",
-            protocolVersion.getValue(), openResp.getServerProtocolVersion().getValue());
-        if (openResp.getServerProtocolVersion().getValue() == 0) {// less than 0.10
-          throw new TException(String
-              .format("Protocol not supported, Client version is %s, but Server version is %s",
+        logger.warn(
+            "Protocol differ, Client version is {}}, but Server version is {}",
+            protocolVersion.getValue(),
+            openResp.getServerProtocolVersion().getValue());
+        if (openResp.getServerProtocolVersion().getValue() == 0) { // less than 0.10
+          throw new TException(
+              String.format(
+                  "Protocol not supported, Client version is %s, but Server version is %s",
                   protocolVersion.getValue(), openResp.getServerProtocolVersion().getValue()));
         }
-      }
-
-      if (zoneId != null) {
-        setTimeZone(zoneId.toString());
-      } else {
-        zoneId = ZoneId.of(getTimeZone());
       }
 
     } catch (TException e) {
       transport.close();
       if (e.getMessage().contains("Required field 'client_protocol' was not present!")) {
         // the server is an old version (less than 0.10)
-        throw new SQLException(String.format(
-            "Can not establish connection with %s : You may try to connect an old version IoTDB instance using a client with new version: %s. ",
-            params.getJdbcUriString(), e.getMessage()), e);
+        throw new SQLException(
+            String.format(
+                "Can not establish connection with %s : You may try to connect an old version IoTDB instance using a client with new version: %s. ",
+                params.getJdbcUriString(), e.getMessage()),
+            e);
       }
-      throw new SQLException(String.format("Can not establish connection with %s : %s. ",
-          params.getJdbcUriString(), e.getMessage()), e);
+      throw new SQLException(
+          String.format(
+              "Can not establish connection with %s : %s. ",
+              params.getJdbcUriString(), e.getMessage()),
+          e);
     } catch (StatementExecutionException e) {
       // failed to connect, disconnect from the server
       transport.close();
@@ -464,10 +501,9 @@ public class IoTDBConnection implements Connection {
         if (transport != null) {
           transport.close();
           openTransport();
-          if(Config.rpcThriftCompressionEnable) {
+          if (Config.rpcThriftCompressionEnable) {
             setClient(new TSIService.Client(new TCompactProtocol(transport)));
-          }
-          else {
+          } else {
             setClient(new TSIService.Client(new TBinaryProtocol(transport)));
           }
           openSession();
@@ -477,27 +513,21 @@ public class IoTDBConnection implements Connection {
         }
       } catch (Exception e) {
         try {
-          Thread.sleep(Config.RETRY_INTERVAL);
+          Thread.sleep(Config.RETRY_INTERVAL_MS);
         } catch (InterruptedException e1) {
           logger.error("reconnect is interrupted.", e1);
+          Thread.currentThread().interrupt();
         }
       }
     }
     return flag;
   }
 
-  public String getTimeZone() throws TException, IoTDBSQLException {
-    if (zoneId != null) {
-      return zoneId.toString();
+  public String getTimeZone() {
+    if (zoneId == null) {
+      zoneId = ZoneId.systemDefault();
     }
-
-    TSGetTimeZoneResp resp = getClient().getTimeZone(sessionId);
-    try {
-      RpcUtils.verifySuccess(resp.getStatus());
-    } catch (StatementExecutionException e) {
-      throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
-    }
-    return resp.getTimeZone();
+    return zoneId.toString();
   }
 
   public void setTimeZone(String zoneId) throws TException, IoTDBSQLException {
@@ -514,6 +544,4 @@ public class IoTDBConnection implements Connection {
   public ServerProperties getServerProperties() throws TException {
     return getClient().getProperties();
   }
-
-
 }

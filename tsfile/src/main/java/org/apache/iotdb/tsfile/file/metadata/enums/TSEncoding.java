@@ -19,40 +19,59 @@
 package org.apache.iotdb.tsfile.file.metadata.enums;
 
 public enum TSEncoding {
+  PLAIN((byte) 0),
+  PLAIN_DICTIONARY((byte) 1),
+  RLE((byte) 2),
+  DIFF((byte) 3),
+  TS_2DIFF((byte) 4),
+  BITMAP((byte) 5),
+  GORILLA_V1((byte) 6),
+  REGULAR((byte) 7),
+  GORILLA((byte) 8);
 
-  PLAIN, PLAIN_DICTIONARY, RLE, DIFF, TS_2DIFF, BITMAP, GORILLA, REGULAR;
+  private final byte type;
+
+  TSEncoding(byte type) {
+    this.type = type;
+  }
 
   /**
    * judge the encoding deserialize type.
    *
-   * @param i -use to determine encoding type
+   * @param encoding -use to determine encoding type
    * @return -encoding type
    */
-  public static TSEncoding deserialize(short i) {
-    switch (i) {
+  public static TSEncoding deserialize(byte encoding) {
+    return getTsEncoding(encoding);
+  }
+
+  private static TSEncoding getTsEncoding(byte encoding) {
+    switch (encoding) {
       case 0:
-        return PLAIN;
+        return TSEncoding.PLAIN;
       case 1:
-        return PLAIN_DICTIONARY;
+        return TSEncoding.PLAIN_DICTIONARY;
       case 2:
-        return RLE;
+        return TSEncoding.RLE;
       case 3:
-        return DIFF;
+        return TSEncoding.DIFF;
       case 4:
-        return TS_2DIFF;
+        return TSEncoding.TS_2DIFF;
       case 5:
-        return BITMAP;
+        return TSEncoding.BITMAP;
       case 6:
-        return GORILLA;
+        return TSEncoding.GORILLA_V1;
       case 7:
-        return REGULAR;
+        return TSEncoding.REGULAR;
+      case 8:
+        return TSEncoding.GORILLA;
       default:
-        return PLAIN;
+        throw new IllegalArgumentException("Invalid input: " + encoding);
     }
   }
 
   public static int getSerializedSize() {
-    return Short.BYTES;
+    return Byte.BYTES;
   }
 
   /**
@@ -60,26 +79,7 @@ public enum TSEncoding {
    *
    * @return -encoding type
    */
-  public short serialize() {
-    switch (this) {
-      case PLAIN:
-        return 0;
-      case PLAIN_DICTIONARY:
-        return 1;
-      case RLE:
-        return 2;
-      case DIFF:
-        return 3;
-      case TS_2DIFF:
-        return 4;
-      case BITMAP:
-        return 5;
-      case GORILLA:
-        return 6;
-      case REGULAR:
-        return 7;
-      default:
-        return 0;
-    }
+  public byte serialize() {
+    return type;
   }
 }

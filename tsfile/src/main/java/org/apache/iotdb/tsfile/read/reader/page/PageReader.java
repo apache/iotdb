@@ -24,54 +24,59 @@ import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.reader.IPageReader;
+import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
+import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 
 public class PageReader implements IPageReader {
 
   private PageHeader pageHeader;
 
-  private TSDataType dataType;
+  protected TSDataType dataType;
 
-  /**
-   * decoder for value column
-   */
-  private Decoder valueDecoder;
+  /** decoder for value column */
+  protected Decoder valueDecoder;
 
-  /**
-   * decoder for time column
-   */
-  private Decoder timeDecoder;
+  /** decoder for time column */
+  protected Decoder timeDecoder;
 
-  /**
-   * time column in memory
-   */
-  private ByteBuffer timeBuffer;
+  /** time column in memory */
+  protected ByteBuffer timeBuffer;
 
-  /**
-   * value column in memory
-   */
-  private ByteBuffer valueBuffer;
+  /** value column in memory */
+  protected ByteBuffer valueBuffer;
 
-  private Filter filter;
+  protected Filter filter;
 
-  /**
-   * Data whose timestamp <= deletedAt should be considered deleted(not be returned).
-   */
-  private long deletedAt = Long.MIN_VALUE;
+  /** A list of deleted intervals. */
+  private List<TimeRange> deleteIntervalList;
 
-  public PageReader(ByteBuffer pageData, TSDataType dataType, Decoder valueDecoder,
-      Decoder timeDecoder, Filter filter) {
+  private int deleteCursor = 0;
+
+  public PageReader(
+      ByteBuffer pageData,
+      TSDataType dataType,
+      Decoder valueDecoder,
+      Decoder timeDecoder,
+      Filter filter) {
     this(null, pageData, dataType, valueDecoder, timeDecoder, filter);
   }
 
-  public PageReader(PageHeader pageHeader, ByteBuffer pageData, TSDataType dataType,
-      Decoder valueDecoder, Decoder timeDecoder, Filter filter) {
+  public PageReader(
+      PageHeader pageHeader,
+      ByteBuffer pageData,
+      TSDataType dataType,
+      Decoder valueDecoder,
+      Decoder timeDecoder,
+      Filter filter) {
     this.dataType = dataType;
     this.valueDecoder = valueDecoder;
     this.timeDecoder = timeDecoder;
@@ -95,50 +100,49 @@ public class PageReader implements IPageReader {
     valueBuffer.position(timeBufferLength);
   }
 
-  /**
-   * @return the returned BatchData may be empty, but never be null
-   */
+  /** @return the returned BatchData may be empty, but never be null */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
-  public BatchData getAllSatisfiedPageData() throws IOException {
+  public BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {
 
-    BatchData pageData = new BatchData(dataType);
+    BatchData pageData = BatchDataFactory.createBatchData(dataType, ascending, false);
 
     while (timeDecoder.hasNext(timeBuffer)) {
       long timestamp = timeDecoder.readLong(timeBuffer);
       switch (dataType) {
         case BOOLEAN:
           boolean aBoolean = valueDecoder.readBoolean(valueBuffer);
-          if (timestamp > deletedAt && (filter == null || filter.satisfy(timestamp, aBoolean))) {
+          if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aBoolean))) {
             pageData.putBoolean(timestamp, aBoolean);
           }
           break;
         case INT32:
           int anInt = valueDecoder.readInt(valueBuffer);
-          if (timestamp > deletedAt && (filter == null || filter.satisfy(timestamp, anInt))) {
+          if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, anInt))) {
             pageData.putInt(timestamp, anInt);
           }
           break;
         case INT64:
           long aLong = valueDecoder.readLong(valueBuffer);
-          if (timestamp > deletedAt && (filter == null || filter.satisfy(timestamp, aLong))) {
+          if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aLong))) {
             pageData.putLong(timestamp, aLong);
           }
           break;
         case FLOAT:
           float aFloat = valueDecoder.readFloat(valueBuffer);
-          if (timestamp > deletedAt && (filter == null || filter.satisfy(timestamp, aFloat))) {
+          if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aFloat))) {
             pageData.putFloat(timestamp, aFloat);
           }
           break;
         case DOUBLE:
           double aDouble = valueDecoder.readDouble(valueBuffer);
-          if (timestamp > deletedAt && (filter == null || filter.satisfy(timestamp, aDouble))) {
+          if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aDouble))) {
             pageData.putDouble(timestamp, aDouble);
           }
           break;
         case TEXT:
           Binary aBinary = valueDecoder.readBinary(valueBuffer);
-          if (timestamp > deletedAt && (filter == null || filter.satisfy(timestamp, aBinary))) {
+          if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aBinary))) {
             pageData.putBinary(timestamp, aBinary);
           }
           break;
@@ -146,7 +150,7 @@ public class PageReader implements IPageReader {
           throw new UnSupportedDataTypeException(String.valueOf(dataType));
       }
     }
-    return pageData;
+    return pageData.flip();
   }
 
   @Override
@@ -156,15 +160,36 @@ public class PageReader implements IPageReader {
 
   @Override
   public void setFilter(Filter filter) {
-    this.filter = filter;
+    if (this.filter == null) {
+      this.filter = filter;
+    } else {
+      this.filter = new AndFilter(this.filter, filter);
+    }
   }
 
-  public void setDeletedAt(long deletedAt) {
-    this.deletedAt = deletedAt;
+  public void setDeleteIntervalList(List<TimeRange> list) {
+    this.deleteIntervalList = list;
+  }
+
+  public List<TimeRange> getDeleteIntervalList() {
+    return deleteIntervalList;
   }
 
   @Override
   public boolean isModified() {
     return pageHeader.isModified();
+  }
+
+  protected boolean isDeleted(long timestamp) {
+    while (deleteIntervalList != null && deleteCursor < deleteIntervalList.size()) {
+      if (deleteIntervalList.get(deleteCursor).contains(timestamp)) {
+        return true;
+      } else if (deleteIntervalList.get(deleteCursor).getMax() < timestamp) {
+        deleteCursor++;
+      } else {
+        return false;
+      }
+    }
+    return false;
   }
 }

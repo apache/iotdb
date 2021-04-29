@@ -20,8 +20,10 @@
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
+
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -46,7 +48,11 @@ public class IoTDBMultiOverlappedChunkInUnseqIT {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    beforeMemtableSizeThreshold = IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold();
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
+    beforeMemtableSizeThreshold =
+        IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold();
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1024);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -58,19 +64,24 @@ public class IoTDBMultiOverlappedChunkInUnseqIT {
     // recovery value
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(beforeMemtableSizeThreshold);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
   }
 
   @Test
   public void selectOverlappedPageTest() {
 
-    try (Connection connection = DriverManager
-            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       String sql = "select count(s0) from root.vehicle.d0 where time < 1000000";
-      ResultSet resultSet = statement.executeQuery(sql);
-      while (resultSet.next()) {
-        String ans = resultSet.getString(count("root.vehicle.d0.s0"));
-        assertEquals("1000", ans);
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        while (resultSet.next()) {
+          String ans = resultSet.getString(count("root.vehicle.d0.s0"));
+          assertEquals("1000", ans);
+        }
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -79,25 +90,25 @@ public class IoTDBMultiOverlappedChunkInUnseqIT {
   }
 
   private static void insertData() {
-    try (Connection connection = DriverManager
-            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
 
       statement.execute("CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE");
 
-      String sql = String
-              .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", 1000000, 1000000);
+      String sql =
+          String.format(
+              "insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", 1000000, 1000000);
       statement.execute(sql);
 
       statement.execute("flush");
       for (long time = 1; time <= 1000; time++) {
-        sql = String
-                .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time);
+        sql = String.format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time);
         statement.execute(sql);
       }
       for (long time = 2; time <= 1000; time++) {
-        sql = String
-                .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, 1000);
+        sql = String.format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, 1000);
         statement.execute(sql);
       }
       statement.execute("flush");

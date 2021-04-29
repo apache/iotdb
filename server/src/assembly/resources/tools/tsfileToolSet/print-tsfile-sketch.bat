@@ -35,10 +35,8 @@ if NOT DEFINED JAVA_HOME goto :err
 @REM -----------------------------------------------------------------------------
 @REM ***** CLASSPATH library setting *****
 @REM Ensure that any user defined CLASSPATH variables are not used on startup
-set CLASSPATH="%IOTDB_HOME%\lib"
+set CLASSPATH="%IOTDB_HOME%\lib\*"
 
-@REM For each jar in the IOTDB_HOME lib directory call append to build the CLASSPATH variable.
-for %%i in ("%IOTDB_HOME%\lib\*.jar") do call :append "%%i"
 goto okClasspath
 
 :append

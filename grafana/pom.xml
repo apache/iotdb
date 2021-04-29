@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
-        <version>0.10.0-SNAPSHOT</version>
+        <version>0.13.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <!--parent>
@@ -39,7 +39,7 @@
     <description>Grafana data source connector for IoTDB</description>
     <properties>
         <start-class>org.apache.iotdb.web.grafana.TsfileWebDemoApplication</start-class>
-        <spring-boot.version>1.5.4.RELEASE</spring-boot.version>
+        <spring-boot.version>1.5.15.RELEASE</spring-boot.version>
         <spring.version>4.3.9.RELEASE</spring.version>
         <grafana.test.skip>false</grafana.test.skip>
         <grafana.it.skip>${grafana.test.skip}</grafana.it.skip>
@@ -51,13 +51,17 @@
             <dependency>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
-                <version>1.5.4.RELEASE</version>
+                <version>1.5.15.RELEASE</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
         </dependencies>
     </dependencyManagement>
     <dependencies>
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-jdbc</artifactId>
@@ -106,6 +110,7 @@
                 <plugin>
                     <groupId>org.codehaus.mojo</groupId>
                     <artifactId>exec-maven-plugin</artifactId>
+                    <version>1.6.0</version>
                     <configuration>
                         <mainClass>${start-class}</mainClass>
                     </configuration>
@@ -131,7 +136,7 @@
                         <dependency>
                             <groupId>org.springframework.boot</groupId>
                             <artifactId>spring-boot-maven-plugin</artifactId>
-                            <version>1.5.4.RELEASE</version>
+                            <version>1.5.15.RELEASE</version>
                         </dependency>
                     </dependencies>
                     <configuration>
@@ -192,7 +197,6 @@
                             <phase>integration-test</phase>
                             <goals>
                                 <goal>integration-test</goal>
-                                <goal>verify</goal>
                             </goals>
                         </execution>
                     </executions>

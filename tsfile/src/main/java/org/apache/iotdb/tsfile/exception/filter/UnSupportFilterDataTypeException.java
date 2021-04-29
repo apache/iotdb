@@ -18,9 +18,7 @@
  */
 package org.apache.iotdb.tsfile.exception.filter;
 
-/**
- * Some wrong filter parameters invoke.
- */
+/** Some wrong filter parameters invoke. */
 public class UnSupportFilterDataTypeException extends RuntimeException {
 
   public UnSupportFilterDataTypeException(String message, Throwable cause) {

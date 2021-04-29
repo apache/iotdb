@@ -24,6 +24,6 @@ public class QueryResourceManagerTest {
 
   @Test
   public void test() {
-    //TODO
+    // TODO
   }
 }

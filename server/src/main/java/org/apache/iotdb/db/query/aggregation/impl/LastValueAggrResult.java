@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.db.query.aggregation.impl;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
@@ -30,10 +27,14 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
+
 public class LastValueAggrResult extends AggregateResult {
 
-  //timestamp of current value
-  private long timestamp = Long.MIN_VALUE;
+  // timestamp of current value
+  protected long timestamp = Long.MIN_VALUE;
 
   public LastValueAggrResult(TSDataType dataType) {
     super(dataType, AggregationType.LAST_VALUE);
@@ -48,7 +49,7 @@ public class LastValueAggrResult extends AggregateResult {
 
   @Override
   public Object getResult() {
-    return hasResult() ? getValue() : null;
+    return hasCandidateResult() ? getValue() : null;
   }
 
   @Override
@@ -60,14 +61,16 @@ public class LastValueAggrResult extends AggregateResult {
 
   @Override
   public void updateResultFromPageData(BatchData dataInThisPage) {
-    updateResultFromPageData(dataInThisPage, Long.MAX_VALUE);
+    updateResultFromPageData(dataInThisPage, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage, long bound) {
+  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound) {
     long time = Long.MIN_VALUE;
     Object lastVal = null;
-    while (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
+    while (dataInThisPage.hasCurrent()
+        && dataInThisPage.currentTime() < maxBound
+        && dataInThisPage.currentTime() >= minBound) {
       time = dataInThisPage.currentTime();
       lastVal = dataInThisPage.currentValue();
       dataInThisPage.next();
@@ -80,34 +83,39 @@ public class LastValueAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultUsingTimestamps(long[] timestamps, int length,
-      IReaderByTimestamp dataReader) throws IOException {
-
-    long time = Long.MIN_VALUE;
-    Object lastVal = null;
-    for (int i = 0; i < length; i++) {
-      Object value = dataReader.getValueInTimestamp(timestamps[i]);
-      if (value != null) {
-        time = timestamps[i];
-        lastVal = value;
+  public void updateResultUsingTimestamps(
+      long[] timestamps, int length, IReaderByTimestamp dataReader) throws IOException {
+    Object[] values = dataReader.getValuesInTimestamps(timestamps, length);
+    for (int i = length - 1; i >= 0; i--) {
+      if (values[i] != null) {
+        timestamp = timestamps[i];
+        setValue(values[i]);
+        return;
       }
-    }
-    if (time != Long.MIN_VALUE) {
-      setValue(lastVal);
-      timestamp = time;
     }
   }
 
   @Override
-  public boolean isCalculatedAggregationResult() {
+  public void updateResultUsingValues(long[] timestamps, int length, Object[] values) {
+    for (int i = length - 1; i >= 0; i--) {
+      if (values[i] != null) {
+        timestamp = timestamps[i];
+        setValue(values[i]);
+        return;
+      }
+    }
+  }
+
+  @Override
+  public boolean hasFinalResult() {
     return false;
   }
 
   @Override
   public void merge(AggregateResult another) {
     LastValueAggrResult anotherLast = (LastValueAggrResult) another;
-    if(this.getValue() == null || this.timestamp < anotherLast.timestamp){
-      this.setValue( anotherLast.getValue() );
+    if (this.getValue() == null || this.timestamp < anotherLast.timestamp) {
+      this.setValue(anotherLast.getValue());
       this.timestamp = anotherLast.timestamp;
     }
   }

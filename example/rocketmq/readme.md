@@ -46,7 +46,7 @@ Producers insert IoTDB insert statements into partitions according to devices, e
 
 ## Usage
 ### Version usage
-IoTDB: 0.10.0  
+IoTDB: 0.13.0-SNAPSHOT  
 RocketMQ: 4.4.0
 ### Dependencies with Maven
 
@@ -55,7 +55,7 @@ RocketMQ: 4.4.0
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>iotdb-session</artifactId>
-      <version>0.10.0</version>
+      <version>0.13.0-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>org.apache.rocketmq</groupId>
@@ -73,7 +73,7 @@ please refer to [https://iotdb.apache.org/#/Download](https://iotdb.apache.org/#
 please refer to [http://rocketmq.apache.org/docs/quick-start/](http://rocketmq.apache.org/docs/quick-start/)
 
 ### 3. Startup IoTDB
-please refer to [https://iotdb.apache.org/#/Documents/progress/chap1/sec1](https://iotdb.apache.org/#/Documents/progress/chap1/sec1)
+please refer to [Quick Start](http://iotdb.apache.org/UserGuide/Master/Get%20Started/QuickStart.html)
 
 ### 4. Startup RocketMQ
 please refer to [http://rocketmq.apache.org/docs/quick-start/](http://rocketmq.apache.org/docs/quick-start/)

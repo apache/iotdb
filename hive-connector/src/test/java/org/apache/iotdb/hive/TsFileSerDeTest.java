@@ -66,7 +66,6 @@ public class TsFileSerDeTest {
       tsFileSerDer.initialize(job, tbl);
     } catch (SerDeException e) {
       e.printStackTrace();
-
     }
   }
 
@@ -87,7 +86,9 @@ public class TsFileSerDeTest {
       e.printStackTrace();
       fail();
     }
-    assertEquals(PrimitiveObjectInspector.PrimitiveCategory.LONG, ((PrimitiveTypeInfo)columnTypes.get(0)).getPrimitiveCategory());
+    assertEquals(
+        PrimitiveObjectInspector.PrimitiveCategory.LONG,
+        ((PrimitiveTypeInfo) columnTypes.get(0)).getPrimitiveCategory());
 
     Writable worryWritable1 = new Text();
     try {
@@ -115,11 +116,12 @@ public class TsFileSerDeTest {
       tsFileSerDer.deserialize(worryWritable3);
       fail("Expect a TsFileSerDeException to be thrown!");
     } catch (SerDeException e) {
-      assertEquals("Unexpected data type: "
-                      + worryWritable3.get(new Text("sensor_1")).getClass().getName()
-                      + " for Date TypeInfo: "
-                      + PrimitiveObjectInspector.PrimitiveCategory.LONG,
-              e.getMessage());
+      assertEquals(
+          "Unexpected data type: "
+              + worryWritable3.get(new Text("sensor_1")).getClass().getName()
+              + " for Date TypeInfo: "
+              + PrimitiveObjectInspector.PrimitiveCategory.LONG,
+          e.getMessage());
     }
 
     MapWritable writable = new MapWritable();
@@ -136,6 +138,5 @@ public class TsFileSerDeTest {
     } catch (SerDeException e) {
       fail("Don't expect a TsFileSerDeException to be Thrown!");
     }
-
   }
 }

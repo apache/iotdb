@@ -19,18 +19,18 @@
 
 package org.apache.iotdb.db.query.context;
 
+import org.apache.iotdb.db.engine.modification.Modification;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import org.apache.iotdb.db.engine.modification.Modification;
-import org.apache.iotdb.db.engine.modification.ModificationFile;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 
-/**
- * QueryContext contains the shared information with in a query.
- */
+/** QueryContext contains the shared information with in a query. */
 public class QueryContext {
 
   /**
@@ -49,40 +49,53 @@ public class QueryContext {
 
   private long queryTimeLowerBound = Long.MIN_VALUE;
 
-  public QueryContext() {
-  }
+  private boolean debug;
+
+  public QueryContext() {}
 
   public QueryContext(long queryId) {
     this.queryId = queryId;
+  }
+
+  public QueryContext(long queryId, boolean debug) {
+    this.queryId = queryId;
+    this.debug = debug;
   }
 
   /**
    * Find the modifications of timeseries 'path' in 'modFile'. If they are not in the cache, read
    * them from 'modFile' and put then into the cache.
    */
-  public List<Modification> getPathModifications(ModificationFile modFile, String path) {
+  public List<Modification> getPathModifications(ModificationFile modFile, PartialPath path) {
     Map<String, List<Modification>> fileModifications =
         filePathModCache.computeIfAbsent(modFile.getFilePath(), k -> new ConcurrentHashMap<>());
-    return fileModifications.computeIfAbsent(path, k -> {
-      List<Modification> allModifications = fileModCache.get(modFile.getFilePath());
-      if (allModifications == null) {
-        allModifications = (List<Modification>) modFile.getModifications();
-        fileModCache.put(modFile.getFilePath(), allModifications);
-      }
-      List<Modification> finalPathModifications = new ArrayList<>();
-      if (!allModifications.isEmpty()) {
-        allModifications.forEach(modification -> {
-          if (modification.getPathString().equals(path)) {
-            finalPathModifications.add(modification);
+    return fileModifications.computeIfAbsent(
+        path.getFullPath(),
+        k -> {
+          List<Modification> allModifications = fileModCache.get(modFile.getFilePath());
+          if (allModifications == null) {
+            allModifications = (List<Modification>) modFile.getModifications();
+            fileModCache.put(modFile.getFilePath(), allModifications);
           }
+          List<Modification> finalPathModifications = new ArrayList<>();
+          if (!allModifications.isEmpty()) {
+            allModifications.forEach(
+                modification -> {
+                  if (modification.getPath().matchFullPath(path)) {
+                    finalPathModifications.add(modification);
+                  }
+                });
+          }
+          return finalPathModifications;
         });
-      }
-      return finalPathModifications;
-    });
   }
 
   public long getQueryId() {
     return queryId;
+  }
+
+  public boolean isDebug() {
+    return debug;
   }
 
   public long getQueryTimeLowerBound() {
@@ -93,7 +106,7 @@ public class QueryContext {
     this.queryTimeLowerBound = queryTimeLowerBound;
   }
 
-  public boolean chunkNotSatisfy(ChunkMetadata chunkMetaData) {
+  public boolean chunkNotSatisfy(IChunkMetadata chunkMetaData) {
     return chunkMetaData.getEndTime() < queryTimeLowerBound;
   }
 }

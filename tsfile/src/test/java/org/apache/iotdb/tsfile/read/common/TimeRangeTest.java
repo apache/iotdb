@@ -18,16 +18,14 @@
  */
 package org.apache.iotdb.tsfile.read.common;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
-import java.util.ArrayList;
-
 import org.junit.Assert;
 import org.junit.Test;
 
-import org.apache.iotdb.tsfile.read.common.TimeRange;
+import java.util.ArrayList;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class TimeRangeTest {
 
@@ -113,6 +111,76 @@ public class TimeRangeTest {
     assertEquals("( 2 : 5 ]", r2.toString());
     assertTrue(r1.intersects(r2));
     assertTrue(r2.intersects(r1));
+  }
+
+  @Test
+  public void overlap1() {
+    TimeRange r1 = new TimeRange(1, 4);
+    TimeRange r2 = new TimeRange(4, 5);
+    r2.setLeftClose(false);
+    assertEquals("[ 1 : 4 ]", r1.toString());
+    assertEquals("( 4 : 5 ]", r2.toString());
+    assertFalse(r1.overlaps(r2));
+  }
+
+  @Test
+  public void overlap2() {
+    TimeRange r1 = new TimeRange(1, 4);
+    r1.setRightClose(false);
+    TimeRange r2 = new TimeRange(3, 6);
+    r2.setLeftClose(false);
+    assertEquals("[ 1 : 4 )", r1.toString());
+    assertEquals("( 3 : 6 ]", r2.toString());
+    assertFalse(r1.overlaps(r2));
+  }
+
+  @Test
+  /*
+   * [1,3] does not intersect with [5,6].
+   */
+  public void overlap3() {
+    TimeRange r1 = new TimeRange(1, 4);
+    TimeRange r2 = new TimeRange(5, 8);
+    assertEquals("[ 1 : 4 ]", r1.toString());
+    assertEquals("[ 5 : 8 ]", r2.toString());
+    assertFalse(r1.overlaps(r2));
+  }
+
+  @Test
+  public void overlap4() {
+    TimeRange r1 = new TimeRange(1, 4);
+    TimeRange r2 = new TimeRange(2, 5);
+    assertEquals("[ 1 : 4 ]", r1.toString());
+    assertEquals("[ 2 : 5 ]", r2.toString());
+    assertTrue(r1.overlaps(r2));
+  }
+
+  @Test
+  public void overlap5() {
+    TimeRange r1 = new TimeRange(1, 4);
+    TimeRange r2 = new TimeRange(3, 5);
+    r2.setLeftClose(false);
+    assertEquals("[ 1 : 4 ]", r1.toString());
+    assertEquals("( 3 : 5 ]", r2.toString());
+    assertTrue(r1.overlaps(r2));
+  }
+
+  @Test
+  public void overlap6() {
+    TimeRange r1 = new TimeRange(1, 5);
+    r1.setRightClose(false);
+    TimeRange r2 = new TimeRange(2, 6);
+    r2.setLeftClose(false);
+    assertEquals("[ 1 : 5 )", r1.toString());
+    assertEquals("( 2 : 6 ]", r2.toString());
+    assertTrue(r1.overlaps(r2));
+  }
+
+  @Test
+  public void equalTest() {
+    TimeRange r1 = new TimeRange(5, 8);
+    TimeRange r2 = new TimeRange(5, 8);
+    assertTrue(r1.equals(r2));
   }
 
   @Test
@@ -361,5 +429,4 @@ public class TimeRangeTest {
     assertEquals(remainRanges.get(0).getLeftClose(), true);
     assertEquals(remainRanges.get(0).getRightClose(), true);
   }
-
 }

@@ -18,14 +18,13 @@
  */
 package org.apache.iotdb.rocketmq;
 
-import java.util.Arrays;
-import java.util.List;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+
 import org.apache.rocketmq.client.consumer.DefaultMQPushConsumer;
 import org.apache.rocketmq.client.consumer.listener.ConsumeOrderlyStatus;
 import org.apache.rocketmq.client.consumer.listener.MessageListenerOrderly;
@@ -35,22 +34,47 @@ import org.apache.rocketmq.common.message.MessageExt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 public class RocketMQConsumer {
 
+  private static final Logger logger = LoggerFactory.getLogger(RocketMQConsumer.class);
+  private static Session session;
   private DefaultMQPushConsumer consumer;
   private String producerGroup;
   private String serverAddresses;
-  private static Session session;
-  private static final Logger logger = LoggerFactory.getLogger(RocketMQConsumer.class);
 
-  public RocketMQConsumer(String producerGroup, String serverAddresses, String connectionHost,
-      int connectionPort, String user, String password)
+  public RocketMQConsumer(
+      String producerGroup,
+      String serverAddresses,
+      String connectionHost,
+      int connectionPort,
+      String user,
+      String password)
       throws IoTDBConnectionException, StatementExecutionException {
     this.producerGroup = producerGroup;
     this.serverAddresses = serverAddresses;
     this.consumer = new DefaultMQPushConsumer(producerGroup);
     this.consumer.setNamesrvAddr(serverAddresses);
     initIoTDB(connectionHost, connectionPort, user, password);
+  }
+
+  public static void main(String[] args)
+      throws MQClientException, StatementExecutionException, IoTDBConnectionException {
+    /** Instantiate with specified consumer group name and specify name server addresses. */
+    RocketMQConsumer consumer =
+        new RocketMQConsumer(
+            Constant.CONSUMER_GROUP,
+            Constant.SERVER_ADDRESS,
+            Constant.IOTDB_CONNECTION_HOST,
+            Constant.IOTDB_CONNECTION_PORT,
+            Constant.IOTDB_CONNECTION_USER,
+            Constant.IOTDB_CONNECTION_PASSWORD);
+    consumer.prepareConsume();
+    consumer.addStorageGroup(Constant.ADDITIONAL_STORAGE_GROUP);
+    consumer.start();
   }
 
   private void initIoTDB(String host, int port, String user, String password)
@@ -76,7 +100,8 @@ public class RocketMQConsumer {
     session.setStorageGroup(storageGroup);
   }
 
-  private void createTimeseries(String[] sql) throws StatementExecutionException, IoTDBConnectionException {
+  private void createTimeseries(String[] sql)
+      throws StatementExecutionException, IoTDBConnectionException {
     String timeseries = sql[0];
     TSDataType dataType = TSDataType.valueOf(sql[1]);
     TSEncoding encoding = TSEncoding.valueOf(sql[2]);
@@ -89,8 +114,37 @@ public class RocketMQConsumer {
     String device = dataArray[0];
     long time = Long.parseLong(dataArray[1]);
     List<String> measurements = Arrays.asList(dataArray[2].split(":"));
-    List<String> values = Arrays.asList(dataArray[3].split(":"));
-    session.insert(device, time, measurements, values);
+    List<TSDataType> types = new ArrayList<>();
+    for (String type : dataArray[3].split(":")) {
+      types.add(TSDataType.valueOf(type));
+    }
+
+    List<Object> values = new ArrayList<>();
+    String[] valuesStr = dataArray[4].split(":");
+    for (int i = 0; i < valuesStr.length; i++) {
+      switch (types.get(i)) {
+        case INT64:
+          values.add(Long.parseLong(valuesStr[i]));
+          break;
+        case DOUBLE:
+          values.add(Double.parseDouble(valuesStr[i]));
+          break;
+        case INT32:
+          values.add(Integer.parseInt(valuesStr[i]));
+          break;
+        case TEXT:
+          values.add(valuesStr[i]);
+          break;
+        case FLOAT:
+          values.add(Float.parseFloat(valuesStr[i]));
+          break;
+        case BOOLEAN:
+          values.add(Boolean.parseBoolean(valuesStr[i]));
+          break;
+      }
+    }
+
+    session.insertRecord(device, time, measurements, types, values);
   }
 
   public void start() throws MQClientException {
@@ -99,33 +153,35 @@ public class RocketMQConsumer {
 
   /**
    * Subscribe topic and add register Listener
+   *
    * @throws MQClientException
    */
   public void prepareConsume() throws MQClientException {
-    /**
-     * Subscribe one more more topics to consume.
-     */
+    /** Subscribe one more more topics to consume. */
     consumer.subscribe(Constant.TOPIC, "*");
     /**
-     * Setting Consumer to start first from the head of the queue or from the tail of the queue
-     * If not for the first time, then continue to consume according to the position of last consumption.
+     * Setting Consumer to start first from the head of the queue or from the tail of the queue If
+     * not for the first time, then continue to consume according to the position of last
+     * consumption.
      */
     consumer.setConsumeFromWhere(ConsumeFromWhere.CONSUME_FROM_FIRST_OFFSET);
-    /**
-     * Register callback to execute on arrival of messages fetched from brokers.
-     */
-    consumer.registerMessageListener((MessageListenerOrderly) (msgs, context) -> {
-      for (MessageExt msg : msgs) {
-        logger.info(String.format("%s Receive New Messages: %s %n", Thread.currentThread().getName(),
-            new String(msg.getBody())));
-        try {
-          insert(new String(msg.getBody()));
-        } catch (Exception e) {
-          logger.error(e.getMessage());
-        }
-      }
-      return ConsumeOrderlyStatus.SUCCESS;
-    });
+    /** Register callback to execute on arrival of messages fetched from brokers. */
+    consumer.registerMessageListener(
+        (MessageListenerOrderly)
+            (msgs, context) -> {
+              for (MessageExt msg : msgs) {
+                logger.info(
+                    String.format(
+                        "%s Receive New Messages: %s %n",
+                        Thread.currentThread().getName(), new String(msg.getBody())));
+                try {
+                  insert(new String(msg.getBody()));
+                } catch (Exception e) {
+                  logger.error(e.getMessage());
+                }
+              }
+              return ConsumeOrderlyStatus.SUCCESS;
+            });
   }
 
   public void shutdown() {
@@ -146,21 +202,5 @@ public class RocketMQConsumer {
 
   public void setServerAddresses(String serverAddresses) {
     this.serverAddresses = serverAddresses;
-  }
-
-  public static void main(String[] args)
-      throws MQClientException, StatementExecutionException, IoTDBConnectionException {
-    /**
-     *Instantiate with specified consumer group name and specify name server addresses.
-     */
-    RocketMQConsumer consumer = new RocketMQConsumer(Constant.CONSUMER_GROUP,
-        Constant.SERVER_ADDRESS,
-        Constant.IOTDB_CONNECTION_HOST,
-        Constant.IOTDB_CONNECTION_PORT,
-        Constant.IOTDB_CONNECTION_USER,
-        Constant.IOTDB_CONNECTION_PASSWORD);
-    consumer.prepareConsume();
-    consumer.addStorageGroup(Constant.ADDITIONAL_STORAGE_GROUP);
-    consumer.start();
   }
 }

@@ -18,18 +18,16 @@
  */
 package org.apache.iotdb.hadoop.fileSystem;
 
+import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-
 
 /**
  * This class is used to wrap the {@link}FSDataOutputStream and implement the interface
@@ -40,13 +38,11 @@ public class HDFSOutput implements TsFileOutput {
   private FSDataOutputStream fsDataOutputStream;
   private FileSystem fs;
   private Path path;
-  private static final Logger logger = LoggerFactory.getLogger(HDFSOutput.class);
 
   public HDFSOutput(String filePath, boolean overwrite) throws IOException {
     this(filePath, new Configuration(), overwrite);
     path = new Path(filePath);
   }
-
 
   public HDFSOutput(String filePath, Configuration configuration, boolean overwrite)
       throws IOException {
@@ -54,8 +50,7 @@ public class HDFSOutput implements TsFileOutput {
     path = new Path(filePath);
   }
 
-  public HDFSOutput(Path path, Configuration configuration, boolean overwrite)
-      throws IOException {
+  public HDFSOutput(Path path, Configuration configuration, boolean overwrite) throws IOException {
     fs = path.getFileSystem(HDFSConfUtil.setConf(configuration));
     fsDataOutputStream = fs.exists(path) ? fs.append(path) : fs.create(path, overwrite);
     this.path = path;
@@ -66,7 +61,13 @@ public class HDFSOutput implements TsFileOutput {
     fsDataOutputStream.write(b);
   }
 
-  public void write(ByteBuffer b) throws IOException {
+  @Override
+  public void write(byte b) throws IOException {
+    fsDataOutputStream.write(b);
+  }
+
+  @Override
+  public void write(ByteBuffer b) {
     throw new UnsupportedOperationException("Unsupported operation.");
   }
 
@@ -77,28 +78,25 @@ public class HDFSOutput implements TsFileOutput {
 
   @Override
   public void close() throws IOException {
-    flush();
     fsDataOutputStream.close();
   }
 
   @Override
-  public OutputStream wrapAsStream() throws IOException {
+  public OutputStream wrapAsStream() {
     return fsDataOutputStream;
   }
 
   @Override
   public void flush() throws IOException {
-    this.fsDataOutputStream.flush();
+    this.fsDataOutputStream.hflush();
   }
 
   @Override
-  public void truncate(long position) throws IOException {
+  public void truncate(long size) throws IOException {
     if (fs.exists(path)) {
       fsDataOutputStream.close();
     }
-    if (!fs.truncate(path, position)) {
-      logger.error("Failed to truncate file {}. ", path.toUri().toString());
-    }
+    fs.truncate(path, size);
     if (fs.exists(path)) {
       fsDataOutputStream = fs.append(path);
     }

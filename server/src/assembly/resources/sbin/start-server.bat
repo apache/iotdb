@@ -90,19 +90,19 @@ set JAVA_OPTS=-ea^
  -DIOTDB_HOME="%IOTDB_HOME%"^
  -DTSFILE_HOME="%IOTDB_HOME%"^
  -DTSFILE_CONF="%IOTDB_CONF%"^
- -DIOTDB_CONF="%IOTDB_CONF%"
+ -DIOTDB_CONF="%IOTDB_CONF%"^
+ -Dsun.jnu.encoding=UTF-8^
+ -Dfile.encoding=UTF-8
 
 @REM ***** CLASSPATH library setting *****
 @REM Ensure that any user defined CLASSPATH variables are not used on startup
-set CLASSPATH="%IOTDB_HOME%\lib"
-
-@REM For each jar in the IOTDB_HOME lib directory call append to build the CLASSPATH variable.
-for %%i in ("%IOTDB_HOME%\lib\*.jar") do call :append "%%i"
+set CLASSPATH="%IOTDB_HOME%\lib\*"
 set CLASSPATH=%CLASSPATH%;iotdb.IoTDB
 goto okClasspath
 
 :append
 set CLASSPATH=%CLASSPATH%;%1
+
 goto :eof
 
 @REM -----------------------------------------------------------------------------

@@ -25,46 +25,55 @@ public class OrNode implements Node {
   private Node leftChild;
   private Node rightChild;
 
-  private boolean hasCachedLeftValue;
-  private long cachedLeftValue;
-  private boolean hasCachedRightValue;
-  private long cachedRightValue;
+  private boolean hasCachedLeftTime;
+  private long cachedLeftTime;
+  private boolean hasCachedRightTime;
+  private long cachedRightTime;
+  private boolean ascending = true;
 
   public OrNode(Node leftChild, Node rightChild) {
     this.leftChild = leftChild;
     this.rightChild = rightChild;
-    this.hasCachedLeftValue = false;
-    this.hasCachedRightValue = false;
+    this.hasCachedLeftTime = false;
+    this.hasCachedRightTime = false;
+  }
+
+  public OrNode(Node leftChild, Node rightChild, boolean ascending) {
+    this.leftChild = leftChild;
+    this.rightChild = rightChild;
+    this.hasCachedLeftTime = false;
+    this.hasCachedRightTime = false;
+    this.ascending = ascending;
   }
 
   @Override
   public boolean hasNext() throws IOException {
-    if (hasCachedLeftValue || hasCachedRightValue) {
+    if (hasCachedLeftTime || hasCachedRightTime) {
       return true;
     }
     return leftChild.hasNext() || rightChild.hasNext();
   }
 
   private boolean hasLeftValue() throws IOException {
-    return hasCachedLeftValue || leftChild.hasNext();
+    return hasCachedLeftTime || leftChild.hasNext();
   }
 
   private long getLeftValue() throws IOException {
-    if (hasCachedLeftValue) {
-      hasCachedLeftValue = false;
-      return cachedLeftValue;
+    if (hasCachedLeftTime) {
+      hasCachedLeftTime = false;
+      return cachedLeftTime;
     }
     return leftChild.next();
   }
 
   private boolean hasRightValue() throws IOException {
-    return hasCachedRightValue || rightChild.hasNext();
+    return hasCachedRightTime || rightChild.hasNext();
   }
 
   private long getRightValue() throws IOException {
-    if (hasCachedRightValue) {
-      hasCachedRightValue = false;
-      return cachedRightValue;
+    if (hasCachedRightTime) {
+      hasCachedRightTime = false;
+      return cachedRightTime;
     }
     return rightChild.next();
   }
@@ -78,19 +87,28 @@ public class OrNode implements Node {
     } else if (hasLeftValue() && hasRightValue()) {
       long leftValue = getLeftValue();
       long rightValue = getRightValue();
-      if (leftValue < rightValue) {
-        hasCachedRightValue = true;
-        cachedRightValue = rightValue;
-        return leftValue;
-      } else if (leftValue > rightValue) {
-        hasCachedLeftValue = true;
-        cachedLeftValue = leftValue;
-        return rightValue;
-      } else {
-        return leftValue;
+      if (ascending) {
+        return popAndFillNextCache(
+            leftValue < rightValue, leftValue > rightValue, leftValue, rightValue);
       }
+      return popAndFillNextCache(
+          leftValue > rightValue, leftValue < rightValue, leftValue, rightValue);
     }
     throw new IOException("no more data");
+  }
+
+  private long popAndFillNextCache(boolean popLeft, boolean popRight, long left, long right) {
+    if (popLeft) {
+      hasCachedRightTime = true;
+      cachedRightTime = right;
+      return left;
+    } else if (popRight) {
+      hasCachedLeftTime = true;
+      cachedLeftTime = left;
+      return right;
+    } else {
+      return left;
+    }
   }
 
   @Override

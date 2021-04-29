@@ -30,7 +30,7 @@
             <charset>utf-8</charset>
         </encoder>
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
-            <level>INFO</level>
+            <level>DEBUG</level>
         </filter>
     </appender>
     <!--<logger name="org.apache.iotdb.db.utils.OpenFileNumUtil" level="debug" />-->
@@ -40,15 +40,18 @@
     <!-- enable me if you want to monitor when files are opened and closed.
     <logger name="FileMonitor" level="info"/>
     -->
-    <logger name="org.apache.iotdb.db.engine.merge" level="DEBUG"/>
-    <logger name="org.eclipse.jetty.util.thread.QueuedThreadPool" level="DEBUG"/>
+    <logger name="org.apache.iotdb.db.engine.merge" level="INFO"/>
+    <logger name="org.apache.iotdb.db.service.thrift.ThriftServiceThread" level="INFO"/>
+    <logger name="org.eclipse.jetty.util.thread.QueuedThreadPool" level="INFO"/>
     <logger name="org.apache.iotdb.db.service.MetricsService" level="INFO"/>
     <logger name="org.apache.iotdb.db.engine.flush.FlushManager" level="INFO"/>
-    <logger name="org.apache.iotdb.db.integration.IoTDBMergeTest" level="INFO"/>
-    <logger name="org.apache.iotdb.db.service.IoTDB" level="INFO"/>
+    <logger name="org.apache.iotdb.db.integration.IoTDBMergeIT" level="INFO"/>
+    <logger name="org.apache.iotdb.db.service.RegisterManager" level="INFO"/>
+    <logger name="org.apache.iotdb.db.service.IoTDB" level="WARN"/>
     <logger name="org.apache.iotdb.db.service.RPCService" level="INFO"/>
     <logger name="org.apache.iotdb.db.service.MQTTService" level="INFO"/>
     <logger name="org.apache.iotdb.db.sync.receiver.SyncServerManager" level="INFO"/>
+    <logger name="DETAILED_FAILURE_QUERY_TRACE" level="ERROR"/>
     <root level="WARN">
         <appender-ref ref="stdout"/>
     </root>

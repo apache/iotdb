@@ -26,6 +26,7 @@ import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 import java.io.ByteArrayOutputStream;
@@ -35,34 +36,34 @@ import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.List;
 
-/**
- * TimeValuePairUtils to convert between thrift format and TsFile format.
- */
+/** TimeValuePairUtils to convert between thrift format and TsFile format. */
 public class QueryDataSetUtils {
 
   private static final int flag = 0x01;
 
-  private QueryDataSetUtils() {
-  }
+  private QueryDataSetUtils() {}
 
   /**
    * convert query data set by fetch size.
    *
    * @param queryDataSet -query dataset
-   * @param fetchSize    -fetch size
+   * @param fetchSize -fetch size
    * @return -convert query dataset
    */
-  public static TSQueryDataSet convertQueryDataSetByFetchSize(QueryDataSet queryDataSet,
-      int fetchSize) throws IOException {
+  public static TSQueryDataSet convertQueryDataSetByFetchSize(
+      QueryDataSet queryDataSet, int fetchSize) throws IOException {
     return convertQueryDataSetByFetchSize(queryDataSet, fetchSize, null);
   }
 
-  public static TSQueryDataSet convertQueryDataSetByFetchSize(QueryDataSet queryDataSet,
-      int fetchSize, WatermarkEncoder watermarkEncoder) throws IOException {
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  public static TSQueryDataSet convertQueryDataSetByFetchSize(
+      QueryDataSet queryDataSet, int fetchSize, WatermarkEncoder watermarkEncoder)
+      throws IOException {
     List<TSDataType> dataTypes = queryDataSet.getDataTypes();
     int columnNum = dataTypes.size();
     TSQueryDataSet tsQueryDataSet = new TSQueryDataSet();
-    // one time column and each value column has a actual value buffer and a bitmap value to indicate whether it is a null
+    // one time column and each value column has a actual value buffer and a bitmap value to
+    // indicate whether it is a null
     int columnNumWithTime = columnNum * 2 + 1;
     DataOutputStream[] dataOutputStreams = new DataOutputStream[columnNumWithTime];
     ByteArrayOutputStream[] byteArrayOutputStreams = new ByteArrayOutputStream[columnNumWithTime];
@@ -183,9 +184,26 @@ public class QueryDataSetUtils {
     return times;
   }
 
+  public static BitMap[] readBitMapsFromBuffer(ByteBuffer buffer, int columns, int size) {
+    if (!buffer.hasRemaining()) {
+      return null;
+    }
+    BitMap[] bitMaps = new BitMap[columns];
+    for (int i = 0; i < columns; i++) {
+      boolean hasBitMap = BytesUtils.byteToBool(buffer.get());
+      if (hasBitMap) {
+        byte[] bytes = new byte[size / Byte.SIZE + 1];
+        for (int j = 0; j < bytes.length; j++) {
+          bytes[j] = buffer.get();
+        }
+        bitMaps[i] = new BitMap(size, bytes);
+      }
+    }
+    return bitMaps;
+  }
 
-  public static Object[] readValuesFromBuffer(ByteBuffer buffer, List<Integer> types,
-      int columns, int size) {
+  public static Object[] readValuesFromBuffer(
+      ByteBuffer buffer, List<Integer> types, int columns, int size) {
     TSDataType[] dataTypes = new TSDataType[types.size()];
     for (int i = 0; i < dataTypes.length; i++) {
       dataTypes[i] = TSDataType.values()[types.get(i)];
@@ -194,12 +212,13 @@ public class QueryDataSetUtils {
   }
 
   /**
-   * @param buffer  data values
+   * @param buffer data values
    * @param columns column number
-   * @param size    value count in each column
+   * @param size value count in each column
    */
-  public static Object[] readValuesFromBuffer(ByteBuffer buffer, TSDataType[] types,
-      int columns, int size) {
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  public static Object[] readValuesFromBuffer(
+      ByteBuffer buffer, TSDataType[] types, int columns, int size) {
     Object[] values = new Object[columns];
     for (int i = 0; i < columns; i++) {
       switch (types[i]) {
@@ -250,8 +269,7 @@ public class QueryDataSetUtils {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("data type %s is not supported when convert data at client",
-                  types[i]));
+              String.format("data type %s is not supported when convert data at client", types[i]));
       }
     }
     return values;

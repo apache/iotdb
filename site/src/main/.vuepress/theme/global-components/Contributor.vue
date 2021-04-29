@@ -130,7 +130,7 @@
         {
           avatar:'/img/contributor-avatar/user.svg',
           name: 'Haonan Hou',
-          role: 'Committer',
+          role: 'PPMC, Committer',
           id: 'haonan',
           date: '2020/01/30'
         },
@@ -172,7 +172,7 @@
         {
           avatar: 'https://avatars1.githubusercontent.com/u/22488084?s=400&u=2ef5ad52a7c4241bf88fb5e45682948b307a7d90&v=4',
           name: 'Jincheng Sun',
-          role: 'Committer',
+          role: 'PPMC, Committer',
           id: 'jincheng',
           date: '2020/01/21'
         },
@@ -193,7 +193,7 @@
         {
           avatar:'/img/contributor-avatar/user.svg',
           name: 'Dawei Liu',
-          role: 'Committer',
+          role: 'PPMC, Committer',
           id: 'liudw',
           date: '2020/03/01'
         },
@@ -268,6 +268,13 @@
           date: '2018/11/18'
         }, 
         {
+          avatar: 'https://avatars0.githubusercontent.com/u/6711230?s=460&u=b8f03cad5891dbe4eab23ca75df3d97358b23b0c&v=4',
+          name: 'Xin Wang',
+          role: 'Committer',
+          id: 'xinwang',
+          date: '2020/05/18'
+        },
+        {
           avatar: '/img/contributor-avatar/kfx.jpeg',
           name: 'Kaifeng Xue',
           role: 'Committer',
@@ -287,6 +294,41 @@
           role: 'PPMC, Committer',
           id: 'zhaoxinyi',
           date: '2018/11/18'
+        },
+        {
+          avatar:'/img/contributor-avatar/user.svg',
+          name: 'Chao Wang',
+          role: 'Committer',
+          id: 'chaow',
+          date: '2020/09/04'
+        },
+        {
+          avatar:'/img/contributor-avatar/user.svg',
+          name: 'Houliang Qi',
+          role: 'Committer',
+          id: 'neuyilan',
+          date: '2020/12/18'
+        },
+        {
+          avatar:'/img/contributor-avatar/user.svg',
+          name: 'Xinyu Tan',
+          role: 'Committer',
+          id: 'LebronAl',
+          date: '2020/12/21'
+        },
+        {
+          avatar:'/img/contributor-avatar/xww.jpg',
+          name: 'Xiangwei Wei',
+          role: 'Committer',
+          id: 'Alima777',
+          date: '2021/02/20'
+        },
+        {
+          avatar:'/img/contributor-avatar/yrzh.jpg',
+          name: 'Jesse Zhou',
+          role: 'Committer',
+          id: 'JesseZhou-1',
+          date: '2021/02/20'
         },
         ]
       }

@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.tsfile.read.filter.factory;
 
-import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
@@ -30,6 +29,8 @@ import org.apache.iotdb.tsfile.read.filter.operator.LtEq;
 import org.apache.iotdb.tsfile.read.filter.operator.NotEq;
 import org.apache.iotdb.tsfile.read.filter.operator.NotFilter;
 import org.apache.iotdb.tsfile.read.filter.operator.OrFilter;
+
+import java.nio.ByteBuffer;
 
 public class FilterFactory {
 
@@ -86,5 +87,4 @@ public class FilterFactory {
     filter.deserialize(buffer);
     return filter;
   }
-
 }

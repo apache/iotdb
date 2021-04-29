@@ -25,11 +25,11 @@ For non-Chinese users, please read https://cwiki.apache.org/confluence/display/I
 
 ## Download everything under voting version / rc
 
-https://dist.apache.org/repos/dist/dev/incubator/iotdb/
+https://dist.apache.org/repos/dist/dev/iotdb/
 
 ## Import the public key of the release manager
 
-https://dist.apache.org/repos/dist/dev/incubator/iotdb/KEYS
+https://dist.apache.org/repos/dist/dev/iotdb/KEYS
 
 At the bottom is the public key of the Release Manager (RM)
 
@@ -75,9 +75,7 @@ gpg2 --import key.asc
 
 ## Verify the source distribution
 
-* (Incubation stage) Verify if `incubating`
-
-* Verify that there are DISCLAIMER, NOTICE, LICENSE, and the content is correct.
+* Verify that there are  NOTICE, LICENSE, and the content is correct.
 
 * Verify README, RELEASE_NOTES
 
@@ -90,11 +88,11 @@ mvn -B apache-rat:check
 * Verify signatures and hashes
 
 ```
-gpg2 --verify apache-iotdb-0.9.0-incubating-source-release.zip.asc apache-iotdb-0.9.0-incubating-source-release.zip
+gpg2 --verify apache-iotdb-0.12.0-source-release.zip.asc apache-iotdb-0.12.0-source-release.zip
 
 appear Good Singnature 
 
-shasum -a512 apache-iotdb-0.9.0-incubating-source-release.zip
+shasum -a512 apache-iotdb-0.12.0-source-release.zip
 
 Compared with the corresponding .sha512, the same is fine.
 ```
@@ -109,20 +107,18 @@ Should end up all SUCCESS
 
 ## Verifying the binary release
 
-* (Incubation stage) Verify if `incubating`
-
-* Verify that there are DISCLAIMER, NOTICE, LICENSE, and the content is correct.
+* Verify that there are NOTICE, LICENSE, and the content is correct.
 
 * Verify README, RELEASE_NOTES
 
 * Verify signatures and hashes
 
 ```
-gpg2 --verify apache-iotdb-0.9.0-incubating-bin.zip.asc apache-iotdb-0.9.0-incubating-bin.zip
+gpg2 --verify apache-iotdb-0.12.0-bin.zip.asc apache-iotdb-0.12.0-bin.zip
 
 appear Good Singnature 
 
-shasum -a512 apache-iotdb-0.9.0-incubating-bin.zip
+shasum -a512 apache-iotdb-0.12.0-bin.zip
 
 Compared with the corresponding .sha512, the same is fine.
 ```
@@ -130,9 +126,9 @@ Compared with the corresponding .sha512, the same is fine.
 * Verify that it starts and the sample statements execute correctly
 
 ```
-./sbin/start-server.sh
+nohup ./sbin/start-server.sh >/dev/null 2>&1 &
 
-./sbin/start-client.sh
+./sbin/start-cli.sh
 
 SET STORAGE GROUP TO root.turbine;
 CREATE TIMESERIES root.turbine.d1.s0 WITH DATATYPE=DOUBLE, ENCODING=GORILLA;
@@ -162,16 +158,12 @@ Hi,
 +1 (PMC could binding)
 
 The source release:
-Incubating in name [ok]
-Has DISCLAIMER [ok]
 LICENSE and NOTICE [ok]
 signatures and hashes [ok]
 All files have ASF header [ok]
 could compile from source: ./mvnw.sh clean install [ok]
 
 The binary distribution:
-Incubating in name [ok]
-Has DISCLAIMER [ok]
 LICENSE and NOTICE [ok]
 signatures and hashes [ok]
 Could run with the following statements [ok]

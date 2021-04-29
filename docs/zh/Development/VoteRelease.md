@@ -25,11 +25,11 @@ For non-Chinese users, please read https://cwiki.apache.org/confluence/display/I
 
 ## 下载投票的 版本/rc 下的所有内容
 
-https://dist.apache.org/repos/dist/dev/incubator/iotdb/
+https://dist.apache.org/repos/dist/dev/iotdb/
 
 ## 导入发布经理的公钥
 
-https://dist.apache.org/repos/dist/dev/incubator/iotdb/KEYS
+https://dist.apache.org/repos/dist/dev/iotdb/KEYS
 
 最下边有 Release Manager (RM) 的公钥
 
@@ -75,9 +75,7 @@ gpg2 --import key.asc
 
 ## 验证源码发布版
 
-* （孵化阶段）验证是否名字中有 ```incubating```
-
-* 验证是否有 DISCLAIMER、NOTICE、LICENSE，以及内容是否正确。
+* 验证是否有 NOTICE、LICENSE，以及内容是否正确。
 
 * 验证 README、RELEASE_NOTES
 
@@ -90,11 +88,11 @@ mvn -B apache-rat:check
 * 验证签名和哈希值
 
 ```
-gpg2 --verify apache-iotdb-0.9.0-incubating-source-release.zip.asc apache-iotdb-0.9.0-incubating-source-release.zip
+gpg2 --verify apache-iotdb-0.12.0-source-release.zip.asc apache-iotdb-0.12.0-source-release.zip
 
 出现 Good Singnature 
 
-shasum -a512 apache-iotdb-0.9.0-incubating-source-release.zip
+shasum -a512 apache-iotdb-0.12.0-source-release.zip
 
 和对应的 .sha512 对比，一样就可以。
 ```
@@ -109,20 +107,18 @@ mvnw.sh install
 
 ## 验证二进制发布版
 
-* （孵化阶段）验证是否名字中有 ```incubating```
-
-* 验证是否有 DISCLAIMER、NOTICE、LICENSE，以及内容是否正确。
+* 验证是否有 NOTICE、LICENSE，以及内容是否正确。
 
 * 验证 README、RELEASE_NOTES
 
 * 验证签名和哈希值
 
 ```
-gpg2 --verify apache-iotdb-0.9.0-incubating-bin.zip.asc apache-iotdb-0.9.0-incubating-bin.zip
+gpg2 --verify apache-iotdb-0.12.0-bin.zip.asc apache-iotdb-0.12.0-bin.zip
 
 出现 Good Singnature 
 
-shasum -a512 apache-iotdb-0.9.0-incubating-bin.zip
+shasum -a512 apache-iotdb-0.12.0-bin.zip
 
 和对应的 .sha512 对比，一样就可以。
 ```
@@ -130,9 +126,9 @@ shasum -a512 apache-iotdb-0.9.0-incubating-bin.zip
 * 验证是否能启动以及示例语句是否正确执行
 
 ```
-./sbin/start-server.sh
+nohup ./sbin/start-server.sh >/dev/null 2>&1 &
 
-./sbin/start-client.sh
+./sbin/start-cli.sh
 
 SET STORAGE GROUP TO root.turbine;
 CREATE TIMESERIES root.turbine.d1.s0 WITH DATATYPE=DOUBLE, ENCODING=GORILLA;
@@ -162,16 +158,12 @@ Hi,
 +1 (PMC could binding)
 
 The source release:
-Incubating in name [ok]
-Has DISCLAIMER [ok]
 LICENSE and NOTICE [ok]
 signatures and hashes [ok]
 All files have ASF header [ok]
 could compile from source: ./mvnw.sh clean install [ok]
 
 The binary distribution:
-Incubating in name [ok]
-Has DISCLAIMER [ok]
 LICENSE and NOTICE [ok]
 signatures and hashes [ok]
 Could run with the following statements [ok]

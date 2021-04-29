@@ -31,11 +31,11 @@ After submitting the pr, after passing the Travis-CI test and Sonar code quality
 
 ## PR guide
 
-You can easily submit [Pull Request (PR)](https://help.github.com/articles/about-pull-requests/) on Github, the following will use this website project [apache / incubator-iotdb](https://github.com/apache/incubator-iotdb) as an example (if it is another project, please replace the project name incubator-iotdb)
+You can easily submit [Pull Request (PR)](https://help.github.com/articles/about-pull-requests/) on Github, the following will use this website project [apache/iotdb](https://github.com/apache/iotdb) as an example (if it is another project, please replace the project name iotdb)
 
 ### Fork repository
 
-Visit the apache/incubator-iotdb project’s [github page](https://github.com/apache/incubator-iotdb), click `Fork` button on the right left cornor.
+Visit the apache/iotdb project’s [github page](https://github.com/apache/iotdb), click `Fork` button on the right left cornor.
 
 ![](https://user-images.githubusercontent.com/37333508/79351839-bd288900-7f6b-11ea-8d12-feb18c35adad.png)
 
@@ -44,28 +44,28 @@ Visit the apache/incubator-iotdb project’s [github page](https://github.com/ap
 - Clone the source code to local machine:
 
 ```
-git clone https://github.com/<your_github_name>/incubator-iotdb.git
+git clone https://github.com/<your_github_name>/iotdb.git
 ```
 
 **Note: substitute <your_github_name> with your github username.**
 
 After the clone is done, the origin remote will point to the default branch of the cloned repository.
 
-- add apache/incubator-iotdb as upstream remote:
+- add apache/iotdb as upstream remote:
 
 ```
-cd  incubator-iotdb
-git remote add upstream https://github.com/apache/incubator-iotdb.git
+cd  iotdb
+git remote add upstream https://github.com/apache/iotdb.git
 ```
 
 - Check the local repository’s remotes
 
 ```
 git remote -v
-origin https://github.com/<your_github_name>/incubator-iotdb.git (fetch)
-origin    https://github.com/<your_github_name>/incubator-iotdb.git(push)
-upstream  https://github.com/apache/incubator-iotdb.git (fetch)
-upstream  https://github.com/apache/incubator-iotdb.git (push)
+origin https://github.com/<your_github_name>/iotdb.git (fetch)
+origin    https://github.com/<your_github_name>/iotdb.git(push)
+upstream  https://github.com/apache/iotdb.git (fetch)
+upstream  https://github.com/apache/iotdb.git (push)
 ```
 
 - Create a new branch to start working：(e.g. fix)

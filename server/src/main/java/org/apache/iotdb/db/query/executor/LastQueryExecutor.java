@@ -19,50 +19,62 @@
 
 package org.apache.iotdb.db.query.executor;
 
-
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
-import java.util.Set;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.mnode.LeafMNode;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
-import org.apache.iotdb.db.utils.FileLoaderUtils;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.iotdb.db.query.executor.fill.LastPointReader;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.expression.IExpression;
+import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+import org.apache.iotdb.tsfile.utils.Pair;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
 
 public class LastQueryExecutor {
-  private List<Path> selectedSeries;
+
+  private List<PartialPath> selectedSeries;
   private List<TSDataType> dataTypes;
+  protected IExpression expression;
+  private static final boolean CACHE_ENABLED =
+      IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled();
+  private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
 
   public LastQueryExecutor(LastQueryPlan lastQueryPlan) {
     this.selectedSeries = lastQueryPlan.getDeduplicatedPaths();
     this.dataTypes = lastQueryPlan.getDeduplicatedDataTypes();
+    this.expression = lastQueryPlan.getExpression();
   }
 
-  public LastQueryExecutor(List<Path> selectedSeries, List<TSDataType> dataTypes) {
+  public LastQueryExecutor(List<PartialPath> selectedSeries, List<TSDataType> dataTypes) {
     this.selectedSeries = selectedSeries;
     this.dataTypes = dataTypes;
   }
@@ -72,21 +84,33 @@ public class LastQueryExecutor {
    *
    * @param context query context
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public QueryDataSet execute(QueryContext context, LastQueryPlan lastQueryPlan)
       throws StorageEngineException, IOException, QueryProcessException {
 
-    ListDataSet dataSet = new ListDataSet(
-        Arrays.asList(new Path(COLUMN_TIMESERIES), new Path(COLUMN_VALUE)),
+    ListDataSet dataSet =
+        new ListDataSet(
+            Arrays.asList(
+                new PartialPath(COLUMN_TIMESERIES, false), new PartialPath(COLUMN_VALUE, false)),
             Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
 
-    for (int i = 0; i < selectedSeries.size(); i++) {
-      TimeValuePair lastTimeValuePair = calculateLastPairForOneSeries(
-              selectedSeries.get(i), dataTypes.get(i), context,
-              lastQueryPlan.getAllMeasurementsInDevice(selectedSeries.get(i).getDevice()));
-      if (lastTimeValuePair.getValue() != null) {
+    List<Pair<Boolean, TimeValuePair>> lastPairList =
+        calculateLastPairForSeries(selectedSeries, dataTypes, context, expression, lastQueryPlan);
+
+    for (int i = 0; i < lastPairList.size(); i++) {
+      if (lastPairList.get(i).right != null && lastPairList.get(i).right.getValue() != null) {
+        TimeValuePair lastTimeValuePair = lastPairList.get(i).right;
         RowRecord resultRecord = new RowRecord(lastTimeValuePair.getTimestamp());
         Field pathField = new Field(TSDataType.TEXT);
-        pathField.setBinaryV(new Binary(selectedSeries.get(i).getFullPath()));
+        if (selectedSeries.get(i).isTsAliasExists()) {
+          pathField.setBinaryV(new Binary(selectedSeries.get(i).getTsAlias()));
+        } else {
+          if (selectedSeries.get(i).isMeasurementAliasExists()) {
+            pathField.setBinaryV(new Binary(selectedSeries.get(i).getFullPathWithAlias()));
+          } else {
+            pathField.setBinaryV(new Binary(selectedSeries.get(i).getFullPath()));
+          }
+        }
         resultRecord.addField(pathField);
 
         Field valueField = new Field(TSDataType.TEXT);
@@ -97,89 +121,170 @@ public class LastQueryExecutor {
       }
     }
 
+    if (!lastQueryPlan.isAscending()) {
+      dataSet.sortByTime();
+    }
     return dataSet;
   }
 
-  /**
-   * get last result for one series
-   *
-   * @param context query context
-   * @return TimeValuePair
-   */
-  public static TimeValuePair calculateLastPairForOneSeries(
-      Path seriesPath, TSDataType tsDataType, QueryContext context, Set<String> sensors)
-      throws IOException, QueryProcessException, StorageEngineException {
+  protected List<Pair<Boolean, TimeValuePair>> calculateLastPairForSeries(
+      List<PartialPath> seriesPaths,
+      List<TSDataType> dataTypes,
+      QueryContext context,
+      IExpression expression,
+      RawDataQueryPlan lastQueryPlan)
+      throws QueryProcessException, StorageEngineException, IOException {
+    return calculateLastPairForSeriesLocally(
+        seriesPaths, dataTypes, context, expression, lastQueryPlan.getDeviceToMeasurements());
+  }
 
-    // Retrieve last value from MNode
-    LeafMNode node;
+  public static List<Pair<Boolean, TimeValuePair>> calculateLastPairForSeriesLocally(
+      List<PartialPath> seriesPaths,
+      List<TSDataType> dataTypes,
+      QueryContext context,
+      IExpression expression,
+      Map<String, Set<String>> deviceMeasurementsMap)
+      throws QueryProcessException, StorageEngineException, IOException {
+    List<LastCacheAccessor> cacheAccessors = new ArrayList<>();
+    Filter filter = (expression == null) ? null : ((GlobalTimeExpression) expression).getFilter();
+
+    List<PartialPath> nonCachedPaths = new ArrayList<>();
+    List<TSDataType> nonCachedDataTypes = new ArrayList<>();
+    List<Pair<Boolean, TimeValuePair>> resultContainer =
+        readLastPairsFromCache(
+            seriesPaths,
+            dataTypes,
+            filter,
+            cacheAccessors,
+            nonCachedPaths,
+            nonCachedDataTypes,
+            context.isDebug());
+    if (nonCachedPaths.isEmpty()) {
+      return resultContainer;
+    }
+
+    // Acquire query resources for the rest series paths
+    List<LastPointReader> readerList = new ArrayList<>();
+    List<StorageGroupProcessor> list = StorageEngine.getInstance().mergeLock(nonCachedPaths);
     try {
-      node = (LeafMNode) MManager.getInstance().getNodeByPath(seriesPath.toString());
-    } catch (MetadataException e) {
-      throw new QueryProcessException(e);
+      for (int i = 0; i < nonCachedPaths.size(); i++) {
+        QueryDataSource dataSource =
+            QueryResourceManager.getInstance()
+                .getQueryDataSource(nonCachedPaths.get(i), context, null);
+        LastPointReader lastReader =
+            new LastPointReader(
+                nonCachedPaths.get(i),
+                nonCachedDataTypes.get(i),
+                deviceMeasurementsMap.get(nonCachedPaths.get(i).getDevice()),
+                context,
+                dataSource,
+                Long.MAX_VALUE,
+                null);
+        readerList.add(lastReader);
+      }
+    } finally {
+      StorageEngine.getInstance().mergeUnLock(list);
     }
-    if (node.getCachedLast() != null) {
-      return node.getCachedLast();
-    }
 
-    QueryDataSource dataSource =
-        QueryResourceManager.getInstance().getQueryDataSource(seriesPath, context, null);
-
-    List<TsFileResource> seqFileResources = dataSource.getSeqResources();
-    List<TsFileResource> unseqFileResources = dataSource.getUnseqResources();
-
-    TimeValuePair resultPair = new TimeValuePair(Long.MIN_VALUE, null);
-
-    if (!seqFileResources.isEmpty()) {
-      for (int i = seqFileResources.size() - 1; i >= 0; i--) {
-        TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(
-                seqFileResources.get(i), seriesPath, context, null, sensors);
-        if (timeseriesMetadata != null) {
-          if (!timeseriesMetadata.isModified()) {
-            Statistics timeseriesMetadataStats = timeseriesMetadata.getStatistics();
-            resultPair = constructLastPair(
-                    timeseriesMetadataStats.getEndTime(),
-                    timeseriesMetadataStats.getLastValue(),
-                    tsDataType);
-            break;
-          } else {
-            List<ChunkMetadata> chunkMetadataList = timeseriesMetadata.loadChunkMetadataList();
-            if (!chunkMetadataList.isEmpty()) {
-              ChunkMetadata lastChunkMetaData = chunkMetadataList.get(chunkMetadataList.size() - 1);
-              Statistics chunkStatistics = lastChunkMetaData.getStatistics();
-              resultPair =
-                  constructLastPair(
-                      chunkStatistics.getEndTime(), chunkStatistics.getLastValue(), tsDataType);
-              break;
+    // Compute Last result for the rest series paths by scanning Tsfiles
+    int index = 0;
+    for (int i = 0; i < resultContainer.size(); i++) {
+      if (Boolean.FALSE.equals(resultContainer.get(i).left)) {
+        resultContainer.get(i).right = readerList.get(index++).readLastPoint();
+        if (resultContainer.get(i).right.getValue() != null) {
+          resultContainer.get(i).left = true;
+          if (CACHE_ENABLED) {
+            cacheAccessors.get(i).write(resultContainer.get(i).right);
+            if (context.isDebug()) {
+              DEBUG_LOGGER.info(
+                  "[LastQueryExecutor] Update last cache for path: {} with timestamp: {}",
+                  seriesPaths,
+                  resultContainer.get(i).right.getTimestamp());
             }
           }
         }
       }
     }
+    return resultContainer;
+  }
 
-    long version = 0;
-    for (TsFileResource resource : unseqFileResources) {
-      if (resource.getEndTimeMap().get(seriesPath.getDevice()) < resultPair.getTimestamp()) {
-        continue;
+  private static List<Pair<Boolean, TimeValuePair>> readLastPairsFromCache(
+      List<PartialPath> seriesPaths,
+      List<TSDataType> dataTypes,
+      Filter filter,
+      List<LastCacheAccessor> cacheAccessors,
+      List<PartialPath> restPaths,
+      List<TSDataType> restDataType,
+      boolean debugOn) {
+    List<Pair<Boolean, TimeValuePair>> resultContainer = new ArrayList<>();
+    if (CACHE_ENABLED) {
+      for (PartialPath path : seriesPaths) {
+        cacheAccessors.add(new LastCacheAccessor(path));
       }
-      TimeseriesMetadata timeseriesMetadata =
-          FileLoaderUtils.loadTimeSeriesMetadata(resource, seriesPath, context, null, sensors);
-      for (ChunkMetadata chunkMetaData : timeseriesMetadata.loadChunkMetadataList()) {
-        if (chunkMetaData.getEndTime() == resultPair.getTimestamp()
-            && chunkMetaData.getVersion() > version) {
-          Statistics chunkStatistics = chunkMetaData.getStatistics();
-          resultPair = constructLastPair(
-                  chunkStatistics.getEndTime(), chunkStatistics.getLastValue(), tsDataType);
-          version = chunkMetaData.getVersion();
+    } else {
+      restPaths.addAll(seriesPaths);
+      restDataType.addAll(dataTypes);
+      for (int i = 0; i < seriesPaths.size(); i++) {
+        resultContainer.add(new Pair<>(false, null));
+      }
+    }
+    for (int i = 0; i < cacheAccessors.size(); i++) {
+      TimeValuePair tvPair = cacheAccessors.get(i).read();
+      if (tvPair == null) {
+        resultContainer.add(new Pair<>(false, null));
+        restPaths.add(seriesPaths.get(i));
+        restDataType.add(dataTypes.get(i));
+      } else if (!satisfyFilter(filter, tvPair)) {
+        resultContainer.add(new Pair<>(true, null));
+        if (debugOn) {
+          DEBUG_LOGGER.info(
+              "[LastQueryExecutor] Last cache hit for path: {} with timestamp: {}",
+              seriesPaths.get(i),
+              tvPair.getTimestamp());
+        }
+      } else {
+        resultContainer.add(new Pair<>(true, tvPair));
+        if (debugOn) {
+          DEBUG_LOGGER.info(
+              "[LastQueryExecutor] Last cache hit for path: {} with timestamp: {}",
+              seriesPaths.get(i),
+              tvPair.getTimestamp());
         }
       }
     }
-
-    // Update cached last value with low priority
-    node.updateCachedLast(resultPair, false, Long.MIN_VALUE);
-    return resultPair;
+    return resultContainer;
   }
 
-  private static TimeValuePair constructLastPair(long timestamp, Object value, TSDataType dataType) {
-    return new TimeValuePair(timestamp, TsPrimitiveType.getByType(dataType, value));
+  private static class LastCacheAccessor {
+    private PartialPath path;
+    private MeasurementMNode node;
+
+    LastCacheAccessor(PartialPath seriesPath) {
+      this.path = seriesPath;
+    }
+
+    public TimeValuePair read() {
+      try {
+        node = (MeasurementMNode) IoTDB.metaManager.getNodeByPath(path);
+      } catch (MetadataException e) {
+        TimeValuePair timeValuePair = IoTDB.metaManager.getLastCache(path);
+        if (timeValuePair != null) {
+          return timeValuePair;
+        }
+      }
+
+      if (node == null) {
+        return null;
+      }
+      return node.getCachedLast();
+    }
+
+    public void write(TimeValuePair pair) {
+      IoTDB.metaManager.updateLastCache(path, pair, false, Long.MIN_VALUE, node);
+    }
+  }
+
+  private static boolean satisfyFilter(Filter filter, TimeValuePair tvPair) {
+    return filter == null || filter.satisfy(tvPair.getTimestamp(), tvPair.getValue().getValue());
   }
 }

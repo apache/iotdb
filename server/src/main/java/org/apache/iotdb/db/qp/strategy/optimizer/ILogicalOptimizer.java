@@ -19,13 +19,13 @@
 package org.apache.iotdb.db.qp.strategy.optimizer;
 
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
+import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.qp.logical.Operator;
 
-/**
- * provide a context, transform it for optimization.
- */
+/** provide a context, transform it for optimization. */
 @FunctionalInterface
 public interface ILogicalOptimizer {
 
-  Operator transform(Operator operator) throws LogicalOptimizeException;
+  Operator transform(Operator operator, int maxDeduplicatedPathNum)
+      throws LogicalOptimizeException, PathNumOverLimitException;
 }

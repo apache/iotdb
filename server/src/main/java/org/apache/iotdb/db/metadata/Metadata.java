@@ -28,9 +28,7 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 
-/**
- * This class stores all the metadata info for every deviceId and every timeseries.
- */
+/** This class stores all the metadata info for every deviceId and every timeseries. */
 public class Metadata implements Serializable {
 
   private Map<String, List<String>> deviceIdMap;
@@ -43,9 +41,7 @@ public class Metadata implements Serializable {
     return deviceIdMap;
   }
 
-  /**
-   * combine multiple metadatas
-   */
+  /** combine multiple metadatas */
   public static Metadata combineMetadatas(Metadata[] metadatas) {
     Map<String, List<String>> deviceIdMap = new HashMap<>();
 
@@ -76,13 +72,13 @@ public class Metadata implements Serializable {
 
   @Override
   public boolean equals(Object obj) {
-    if(this == obj){
+    if (this == obj) {
       return true;
     }
-    if(obj == null){
+    if (obj == null) {
       return false;
     }
-    if(this.getClass() != obj.getClass()){
+    if (this.getClass() != obj.getClass()) {
       return false;
     }
 
@@ -95,10 +91,9 @@ public class Metadata implements Serializable {
     return Objects.hash(deviceIdMap);
   }
 
-  /**
-   * only used to check if deviceIdMap is equal to another deviceIdMap
-   */
-  private boolean deviceIdMapEquals(Map<String, List<String>> map1, Map<String, List<String>> map2) {
+  /** only used to check if deviceIdMap is equal to another deviceIdMap */
+  private boolean deviceIdMapEquals(
+      Map<String, List<String>> map1, Map<String, List<String>> map2) {
     if (!map1.keySet().equals(map2.keySet())) {
       return false;
     }

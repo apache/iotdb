@@ -18,18 +18,33 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
-import java.util.*;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class RawDataQueryPlan extends QueryPlan {
 
-  private List<Path> deduplicatedPaths = new ArrayList<>();
+  private List<PartialPath> deduplicatedPaths = new ArrayList<>();
   private List<TSDataType> deduplicatedDataTypes = new ArrayList<>();
   private IExpression expression = null;
   private Map<String, Set<String>> deviceToMeasurements = new HashMap<>();
+
+  private List<PartialPath> deduplicatedVectorPaths = new ArrayList<>();
+  private List<TSDataType> deduplicatedVectorDataTypes = new ArrayList<>();
 
   public RawDataQueryPlan() {
     super();
@@ -43,16 +58,18 @@ public class RawDataQueryPlan extends QueryPlan {
     return expression;
   }
 
-  public void setExpression(IExpression expression) {
+  public void setExpression(IExpression expression) throws QueryProcessException {
     this.expression = expression;
   }
 
-  public List<Path> getDeduplicatedPaths() {
+  public List<PartialPath> getDeduplicatedPaths() {
     return deduplicatedPaths;
   }
 
-  public void addDeduplicatedPaths(Path path) {
-    deviceToMeasurements.computeIfAbsent(path.getDevice(), key -> new HashSet<>()).add(path.getMeasurement());
+  public void addDeduplicatedPaths(PartialPath path) {
+    deviceToMeasurements
+        .computeIfAbsent(path.getDevice(), key -> new HashSet<>())
+        .add(path.getMeasurement());
     this.deduplicatedPaths.add(path);
   }
 
@@ -60,11 +77,23 @@ public class RawDataQueryPlan extends QueryPlan {
    * used for AlignByDevice Query, the query is executed by each device, So we only maintain
    * measurements of current device.
    */
-  public void setDeduplicatedPaths(List<Path> deduplicatedPaths) {
+  public void setDeduplicatedPathsAndUpdate(List<PartialPath> deduplicatedPaths) {
     deviceToMeasurements.clear();
     deduplicatedPaths.forEach(
-        path -> deviceToMeasurements.computeIfAbsent(path.getDevice(), key -> new HashSet<>())
-            .add(path.getMeasurement()));
+        path -> {
+          Set<String> set =
+              deviceToMeasurements.computeIfAbsent(path.getDevice(), key -> new HashSet<>());
+          set.add(path.getMeasurement());
+          if (path instanceof VectorPartialPath) {
+            ((VectorPartialPath) path)
+                .getSubSensorsPathList()
+                .forEach(subSensor -> set.add(subSensor.getMeasurement()));
+          }
+        });
+    this.deduplicatedPaths = deduplicatedPaths;
+  }
+
+  public void setDeduplicatedPaths(List<PartialPath> deduplicatedPaths) {
     this.deduplicatedPaths = deduplicatedPaths;
   }
 
@@ -76,8 +105,7 @@ public class RawDataQueryPlan extends QueryPlan {
     this.deduplicatedDataTypes.add(dataType);
   }
 
-  public void setDeduplicatedDataTypes(
-      List<TSDataType> deduplicatedDataTypes) {
+  public void setDeduplicatedDataTypes(List<TSDataType> deduplicatedDataTypes) {
     this.deduplicatedDataTypes = deduplicatedDataTypes;
   }
 
@@ -85,4 +113,50 @@ public class RawDataQueryPlan extends QueryPlan {
     return deviceToMeasurements.getOrDefault(device, Collections.emptySet());
   }
 
+  public void addFilterPathInDeviceToMeasurements(Path path) {
+    deviceToMeasurements
+        .computeIfAbsent(path.getDevice(), key -> new HashSet<>())
+        .add(path.getMeasurement());
+  }
+
+  public Map<String, Set<String>> getDeviceToMeasurements() {
+    return deviceToMeasurements;
+  }
+
+  public void transformPaths(MManager mManager) throws MetadataException {
+    for (int i = 0; i < deduplicatedPaths.size(); i++) {
+      PartialPath path = mManager.transformPath(deduplicatedPaths.get(i));
+      if (path instanceof VectorPartialPath) {
+        deduplicatedPaths.set(i, path);
+      }
+    }
+  }
+
+  public List<PartialPath> getDeduplicatedVectorPaths() {
+    return deduplicatedVectorPaths;
+  }
+
+  public void setDeduplicatedVectorPaths(List<PartialPath> deduplicatedVectorPaths) {
+    this.deduplicatedVectorPaths = deduplicatedVectorPaths;
+  }
+
+  public List<TSDataType> getDeduplicatedVectorDataTypes() {
+    return deduplicatedVectorDataTypes;
+  }
+
+  public void setDeduplicatedVectorDataTypes(List<TSDataType> deduplicatedVectorDataTypes) {
+    this.deduplicatedVectorDataTypes = deduplicatedVectorDataTypes;
+  }
+
+  public void transformToVector() {
+    if (!this.deduplicatedVectorPaths.isEmpty()) {
+      this.deduplicatedPaths = this.deduplicatedVectorPaths;
+      this.deduplicatedDataTypes = this.deduplicatedVectorDataTypes;
+      setPathToIndex(getVectorPathToIndex());
+    }
+  }
+
+  public boolean isRawQuery() {
+    return true;
+  }
 }
