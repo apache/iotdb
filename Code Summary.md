@@ -1,5 +1,6 @@
 ## Code Summary Information ##
 _The summary file provides a simple way to navigate through the source code to understand the architecture of the application. It follows the below principles:_
+
 * **Word** highlighted in **bold** are **java class** files within the source code
 * The relative path of these **java class** files can be found in the attached _**csv**_ file
 * _**Word**_ highlighted in both _**bold**_ and _**italic**_ are _**standard java class**_ files
