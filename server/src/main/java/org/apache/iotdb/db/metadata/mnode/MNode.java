@@ -124,6 +124,9 @@ public interface MNode extends Serializable {
    */
   void evictChild(String name);
 
+  /** whether the update on a node is necessary to sync to the mtree */
+  boolean isDeleted();
+
   /** get a cloned instance of this mnode */
   MNode clone();
 }

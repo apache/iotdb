@@ -370,7 +370,7 @@ public class InternalMNode implements MNode {
   @Override
   public void setPersistenceInfo(PersistenceInfo persistenceInfo) {
     if (persistenceInfo == null) {
-      return;
+      persistenceMNode=null;
     }
     if (persistenceMNode != null) {
       persistenceMNode.setPersistenceInfo(persistenceInfo);
@@ -414,6 +414,12 @@ public class InternalMNode implements MNode {
         }
       }
     }
+  }
+
+  @Override
+  public boolean isDeleted() {
+    // if a node neither in cache nor disk, the update has no need to write back.
+    return cacheEntry==null&&persistenceMNode==null;
   }
 
   @Override

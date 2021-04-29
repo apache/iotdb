@@ -1,10 +1,13 @@
 package org.apache.iotdb.db.metadata.metadisk;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.metadisk.cache.CacheStrategy;
 import org.apache.iotdb.db.metadata.metadisk.cache.LRUCacheStrategy;
 import org.apache.iotdb.db.metadata.metadisk.metafile.MetaFile;
@@ -230,20 +233,23 @@ public class MetadataDiskManager implements MetadataAccess {
   @Override
   public void deleteChild(MNode parent, String childName) throws MetadataException {
     MNode child = parent.getChild(childName);
+    parent.deleteChild(childName);
     if (child.isCached()) {
       cacheStrategy.remove(child);
     }
-    parent.deleteChild(childName);
+    PersistenceInfo persistenceInfo=child.getPersistenceInfo();
+    child.setPersistenceInfo(null);
+
     try {
-      if (child.isPersisted()) {
-        metaFile.remove(child.getPersistenceInfo());
-      }
       if (parent.isCached()) {
         cacheStrategy.setModified(parent, true);
       } else {
         metaFile.write(parent);
       }
-    } catch (IOException e) {
+      if (persistenceInfo!=null) {
+        metaFile.remove(persistenceInfo);
+      }
+    }catch (IOException e) {
       throw new MetadataException(e.getMessage());
     }
   }
@@ -264,15 +270,16 @@ public class MetadataDiskManager implements MetadataAccess {
 
   @Override
   public void updateMNode(MNode mNode) throws MetadataException {
+    if(mNode.isDeleted()){
+      return;
+    }
     if(mNode.isCached()){
       cacheStrategy.applyChange(mNode);
     }else {
-      if(mNode.isPersisted()){
-        try {
-          metaFile.write(mNode);
-        } catch (IOException e) {
-          throw new MetadataException(e.getMessage());
-        }
+      try {
+        metaFile.write(mNode);
+      } catch (IOException e) {
+        throw new MetadataException(e.getMessage());
       }
     }
   }
