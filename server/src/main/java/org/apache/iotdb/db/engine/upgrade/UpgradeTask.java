@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.upgrade;
 
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.service.UpgradeSevice;
@@ -32,6 +33,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class UpgradeTask extends WrappedRunnable {
@@ -77,6 +79,8 @@ public class UpgradeTask extends WrappedRunnable {
                 FSFactoryProducer.getFSFactory().getFile(partitionDir, upgradedFile.getName()
                     + ModificationFile.FILE_SUFFIX).toPath());
           }
+          long version = Long.parseLong(upgradedFile.getName().split(IoTDBConstant.TSFILE_NAME_SEPARATOR)[1]);
+          upgradedResource.setHistoricalVersions(Collections.singleton(version));
           upgradedResource.serialize();
           // delete tmp partition folder when it is empty
           if (upgradedFile.getParentFile().isDirectory() 
