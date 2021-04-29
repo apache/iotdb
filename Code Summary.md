@@ -31,5 +31,5 @@ Next, it performs following activities and registers the essential services:
   * **MergeManager**
   * **HotCompactionMergeTaskPoolManager**
 
-#### IOTDB Cli ####
+#### IoTDB Cli ####
 The entry point for the IoTDB Cli is **[Cli](https://github.com/apache/iotdb/blob/master/cli/src/main/java/org/apache/iotdb/cli/Cli.java)**. 
