@@ -827,4 +827,19 @@ public class IoTDBUDTFAlignByTimeQueryIT {
       fail(throwable.getMessage());
     }
   }
+
+  @Test
+  public void queryNonexistentSeries() {
+    String sqlStr = "select max(s100) from root.vehicle.d4";
+
+    try (Statement statement =
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
+            .createStatement()) {
+      statement.executeQuery(sqlStr);
+      fail();
+    } catch (SQLException throwable) {
+      assertTrue(
+          throwable.getMessage().contains("The given series root.vehicle.d4.s100 is not existed"));
+    }
+  }
 }
