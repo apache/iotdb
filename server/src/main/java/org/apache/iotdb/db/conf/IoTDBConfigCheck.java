@@ -339,10 +339,29 @@ public class IoTDBConfigCheck {
               + " before upgrading to V0.10");
           System.exit(-1);
         }
+        for (File tsfile : tsfiles) {
+          checkAndRenameTsFileWithoutMergeCount(tsfile);
+        }
+        for (File resource : resources) {
+          checkAndRenameTsFileWithoutMergeCount(resource);
+        }
       }
     }
   }
 
+  // rename the file from v0.8 like 1615179626920-72822.tsfile to 1615179626920-72822-0.tsfile
+  private void checkAndRenameTsFileWithoutMergeCount(File file) {
+    String[] name = file.getName().split(IoTDBConstant.TSFILE_NAME_SEPARATOR);
+    if (name.length == 2) {
+      file.renameTo(
+          FSFactoryProducer.getFSFactory()
+              .getFile(
+                  file.getParentFile(),
+                  file.getName().substring(0, file.getName().indexOf("."))
+                      + "-0"
+                      + file.getName().substring(file.getName().indexOf("."))));
+    }
+  }
 }
 
 

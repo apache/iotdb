@@ -1469,6 +1469,8 @@ public class StorageGroupProcessor {
   }
 
   public void upgrade() {
+    insertLock.writeLock().lock();
+    mergeLock.writeLock().lock();
     for (TsFileResource seqTsFileResource : upgradeSeqFileList) {
       seqTsFileResource.setSeq(true);
       seqTsFileResource.setUpgradeTsFileResourceCallBack(this::upgradeTsFileResourceCallBack);
@@ -1479,6 +1481,8 @@ public class StorageGroupProcessor {
       unseqTsFileResource.setUpgradeTsFileResourceCallBack(this::upgradeTsFileResourceCallBack);
       unseqTsFileResource.doUpgrade();
     }
+    mergeLock.writeLock().unlock();
+    insertLock.writeLock().unlock();
   }
 
   private void upgradeTsFileResourceCallBack(TsFileResource tsFileResource) {

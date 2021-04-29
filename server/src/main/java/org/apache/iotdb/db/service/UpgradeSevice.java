@@ -70,12 +70,8 @@ public class UpgradeSevice implements IService {
     UpgradeLog.closeLogWriter();
     if (upgradeThreadPool != null) {
       upgradeThreadPool.shutdownNow();
-      logger.info("Waiting for upgrade task pool to shut down");
-      while (!upgradeThreadPool.isTerminated()) {
-        // wait
-      }
-      upgradeThreadPool = null;
       logger.info("Upgrade service stopped");
+      upgradeThreadPool = null;
     }
   }
 
