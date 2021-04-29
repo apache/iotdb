@@ -155,13 +155,17 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
   }
 
   @Override
-  public TimeseriesMetadata readTimeseriesMetadata(Path path) throws IOException {
+  public TimeseriesMetadata readTimeseriesMetadata(Path path, boolean ignoreNotExists)
+      throws IOException {
     readFileMetadata();
     MetadataIndexNode deviceMetadataIndexNode = tsFileMetaData.getMetadataIndex();
     Pair<MetadataIndexEntry, Long> metadataIndexPair =
         getMetadataAndEndOffsetV2(
             deviceMetadataIndexNode, path.getDevice(), MetadataIndexNodeType.INTERNAL_DEVICE, true);
     if (metadataIndexPair == null) {
+      if (ignoreNotExists) {
+        return null;
+      }
       return null;
     }
     ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
