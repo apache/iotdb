@@ -371,11 +371,10 @@ public class InternalMNode implements MNode {
   public void setPersistenceInfo(PersistenceInfo persistenceInfo) {
     if (persistenceInfo == null) {
       persistenceMNode=null;
-    }
-    if (persistenceMNode != null) {
-      persistenceMNode.setPersistenceInfo(persistenceInfo);
-    } else {
+    }else if (persistenceMNode == null) {
       persistenceMNode = new PersistenceMNode(persistenceInfo);
+    } else {
+      persistenceMNode.setPersistenceInfo(persistenceInfo);
     }
   }
 
