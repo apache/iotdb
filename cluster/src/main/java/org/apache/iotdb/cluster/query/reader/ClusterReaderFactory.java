@@ -250,8 +250,7 @@ public class ClusterReaderFactory {
       Filter timeFilter,
       Filter valueFilter,
       QueryContext context,
-      boolean ascending,
-      Set<Integer> requiredSlots)
+      boolean ascending)
       throws StorageEngineException, EmptyIntervalException, QueryProcessException {
 
     Map<PartitionGroup, List<PartialPath>> partitionGroupListMap = Maps.newHashMap();
@@ -293,7 +292,7 @@ public class ClusterReaderFactory {
               valueFilter,
               context,
               ascending,
-              requiredSlots);
+              null);
       multPointReaders.add(abstractMultPointReader);
     }
     return multPointReaders;
@@ -383,8 +382,7 @@ public class ClusterReaderFactory {
       Filter timeFilter,
       Filter valueFilter,
       QueryContext context,
-      boolean ascending,
-      Set<Integer> requiredSlots)
+      boolean ascending)
       throws StorageEngineException, EmptyIntervalException {
     // find the groups that should be queried using the timeFilter
     List<PartitionGroup> partitionGroups = metaGroupMember.routeFilter(timeFilter, path);
@@ -407,7 +405,7 @@ public class ClusterReaderFactory {
                 context,
                 dataType,
                 ascending,
-                requiredSlots);
+                null);
         mergeReader.addReader(seriesReader, 0);
       }
     } catch (IOException | QueryProcessException e) {
@@ -961,6 +959,30 @@ public class ClusterReaderFactory {
     return executorId;
   }
 
+  public IBatchReader getSeriesBatchReader(
+      PartialPath path,
+      Set<String> allSensors,
+      TSDataType dataType,
+      Filter timeFilter,
+      Filter valueFilter,
+      QueryContext context,
+      DataGroupMember dataGroupMember,
+      boolean ascending,
+      Set<Integer> requiredSlots)
+      throws StorageEngineException, QueryProcessException, IOException {
+    return getSeriesBatchReader(
+        path,
+        allSensors,
+        dataType,
+        timeFilter,
+        valueFilter,
+        context,
+        dataGroupMember,
+        ascending,
+        requiredSlots,
+        true);
+  }
+
   /**
    * Create an IBatchReader of "path" with “timeFilter” and "valueFilter". A synchronization with
    * the leader will be performed according to consistency level
@@ -982,18 +1004,19 @@ public class ClusterReaderFactory {
       QueryContext context,
       DataGroupMember dataGroupMember,
       boolean ascending,
-      Set<Integer> requiredSlots)
+      Set<Integer> requiredSlots,
+      boolean syncLeader)
       throws StorageEngineException, QueryProcessException, IOException {
-    // pull the newest data
-    try {
-      dataGroupMember.syncLeaderWithConsistencyCheck(false);
-    } catch (CheckConsistencyException e) {
-      throw new StorageEngineException(e);
+    if (syncLeader) {
+      // pull the newest data
+      try {
+        dataGroupMember.syncLeaderWithConsistencyCheck(false);
+      } catch (CheckConsistencyException e) {
+        throw new StorageEngineException(e);
+      }
     }
 
     // find the groups that should be queried due to data migration.
-    // when a slot is in the status of PULLING or PULLING_WRITABLE, the read of it should merge
-    // result to guarantee integrity.
     Map<PartitionGroup, Set<Integer>> holderSlotMap = dataGroupMember.getPreviousHolderSlotMap();
 
     // If requiredSlots is not null, it means that this data group is the previous holder of
@@ -1093,20 +1116,19 @@ public class ClusterReaderFactory {
 
     for (int i = 0; i < paths.size(); i++) {
       PartialPath partialPath = paths.get(i);
-      SeriesReader seriesReader =
-          getSeriesReader(
+      IBatchReader batchReader =
+          getSeriesBatchReader(
               partialPath,
               allSensors.get(partialPath.getFullPath()),
               dataTypes.get(i),
               timeFilter,
               valueFilter,
               context,
-              dataGroupMember.getHeader(),
-              dataGroupMember.getRaftGroupId(),
+              dataGroupMember,
               ascending,
-              requiredSlots);
-      partialPathBatchReaderMap.put(
-          partialPath.getFullPath(), new SeriesRawDataBatchReader(seriesReader));
+              requiredSlots,
+              false);
+      partialPathBatchReaderMap.put(partialPath.getFullPath(), batchReader);
     }
     return new MultBatchReader(partialPathBatchReaderMap);
   }

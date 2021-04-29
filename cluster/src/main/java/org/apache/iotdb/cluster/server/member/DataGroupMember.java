@@ -157,10 +157,12 @@ public class DataGroupMember extends RaftMember {
   private LastAppliedPatitionTableVersion lastAppliedPartitionTableVersion;
 
   @TestOnly
-  public DataGroupMember() {
+  public DataGroupMember(PartitionGroup nodes) {
     // constructor for test
+    allNodes = nodes;
     setQueryManager(new ClusterQueryManager());
     localQueryExecutor = new LocalQueryExecutor(this);
+    lastAppliedPartitionTableVersion = new LastAppliedPatitionTableVersion(getMemberDir());
   }
 
   DataGroupMember(
@@ -207,10 +209,6 @@ public class DataGroupMember extends RaftMember {
     heartBeatService.submit(new DataHeartbeatThread(this));
     pullSnapshotService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
     pullSnapshotHintService = new PullSnapshotHintService(this);
-    logger.info("{}: has inited pullSnapshotService and pullSnapshotHintService", name);
-    if (pullSnapshotHintService == null) {
-      logger.error("{}: pullSnapshotHintService is null", name);
-    }
     pullSnapshotHintService.start();
     resumePullSnapshotTasks();
   }
@@ -799,7 +797,7 @@ public class DataGroupMember extends RaftMember {
       // pull the slots that should be taken over
       PullSnapshotTaskDescriptor taskDescriptor =
           new PullSnapshotTaskDescriptor(
-              removalResult.getRemovedGroup(getRaftGroupId()), slotsToPull, true);
+              removalResult.getRemovedGroup(getRaftGroupId()), new ArrayList<>(slotsToPull), true);
       pullFileSnapshot(taskDescriptor, null);
     }
   }
@@ -891,6 +889,10 @@ public class DataGroupMember extends RaftMember {
     pullSnapshotHintService.registerHint(descriptor);
   }
 
+  /**
+   * Find the groups that should be queried due to data migration. When a slot is in the status of
+   * PULLING or PULLING_WRITABLE, the read of it should merge result to guarantee integrity.
+   */
   public Map<PartitionGroup, Set<Integer>> getPreviousHolderSlotMap() {
     Map<PartitionGroup, Set<Integer>> holderSlotMap = new HashMap<>();
     RaftNode raftNode = new RaftNode(getHeader(), getRaftGroupId());

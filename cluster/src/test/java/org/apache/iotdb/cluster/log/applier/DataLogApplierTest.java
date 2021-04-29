@@ -285,7 +285,7 @@ public class DataLogApplierTest extends IoTDBTest {
     insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(16)));
     applier.apply(log);
     assertEquals(
-        "Storage group is not set for current seriesPath: [root.test16]",
+        "org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException: Storage group is not set for current seriesPath: [root.test16]",
         log.getException().getMessage());
   }
 

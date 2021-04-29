@@ -269,7 +269,7 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
             resource.setMaxPlanIndex(dataGroupMember.getLogManager().getLastLogIndex());
             loadRemoteFile(resource);
           } else {
-            if (isFileAlreadyPulled(resource)) {
+            if (!isFileAlreadyPulled(resource)) {
               loadRemoteFile(resource);
             } else {
               // notify the snapshot provider to remove the hardlink
@@ -280,10 +280,9 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
           throw new PullFileException(resource.getTsFilePath(), resource.getSource(), e);
         }
       }
-      if (isDataMigration) {
-        // all files are loaded, the slot can be queried without accessing the previous holder
-        slotManager.setToNull(slot, false);
-      }
+
+      // all files are loaded, the slot can be queried without accessing the previous holder
+      slotManager.setToNull(slot, !isDataMigration);
       logger.info("{}: slot {} is ready", name, slot);
     }
 

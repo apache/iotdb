@@ -254,7 +254,7 @@ public class FileSnapshotTest extends DataSnapshotTest {
       List<TsFileResource> loadedFiles = processor.getSequenceFileTreeSet();
       assertEquals(10, loadedFiles.size());
       for (int i = 0; i < 9; i++) {
-        assertEquals(i, loadedFiles.get(i).getMaxPlanIndex());
+        assertEquals(-1, loadedFiles.get(i).getMaxPlanIndex());
       }
       assertEquals(0, processor.getUnSequenceFileList().size());
     }
@@ -301,6 +301,6 @@ public class FileSnapshotTest extends DataSnapshotTest {
     for (int i = 0; i < 9; i++) {
       assertEquals(i, loadedFiles.get(i).getMaxPlanIndex());
     }
-    assertEquals(0, processor.getUnSequenceFileList().size());
+    assertEquals(1, processor.getUnSequenceFileList().size());
   }
 }

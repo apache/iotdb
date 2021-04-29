@@ -44,6 +44,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.LogPlan;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.apache.thrift.TException;
@@ -171,7 +172,9 @@ public class TestAsyncDataClient extends AsyncDataClient {
             () -> {
               try {
                 PhysicalPlan plan = PhysicalPlan.Factory.create(request.planBytes);
-                planExecutor.processNonQuery(plan);
+                if (!(plan instanceof LogPlan)) {
+                  planExecutor.processNonQuery(plan);
+                }
                 resultHandler.onComplete(StatusUtils.OK);
               } catch (IOException
                   | QueryProcessException

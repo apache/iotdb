@@ -130,14 +130,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.iotdb.cluster.server.NodeCharacter.ELECTOR;
 import static org.apache.iotdb.cluster.server.NodeCharacter.FOLLOWER;
 import static org.apache.iotdb.cluster.server.NodeCharacter.LEADER;
-import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
@@ -151,6 +149,7 @@ public class MetaGroupMemberTest extends BaseMember {
   private DataClusterServer dataClusterServer;
   protected boolean mockDataClusterServer;
   private Node exiledNode;
+  private final Object waitExileNode = new Object();
 
   private int prevReplicaNum;
   private List<String> prevSeedNodes;
@@ -176,13 +175,7 @@ public class MetaGroupMemberTest extends BaseMember {
     RaftServer.setReadOperationTimeoutMS(1000);
 
     super.setUp();
-    partitionTable =
-        new SlotPartitionTable(allNodes, TestUtils.getNode(0)) {
-          @Override
-          public RaftNode routeToHeaderByTime(String storageGroupName, long timestamp) {
-            return new RaftNode(TestUtils.getNode(0), 0);
-          }
-        };
+    partitionTable = new SlotPartitionTable(allNodes, TestUtils.getNode(0));
     testMetaMember.setPartitionTable(partitionTable);
     dummyResponse.set(Response.RESPONSE_AGREE);
     testMetaMember.setAllNodes(allNodes);
@@ -498,7 +491,10 @@ public class MetaGroupMemberTest extends BaseMember {
                 public void exile(
                     ByteBuffer removeNodeLog, AsyncMethodCallback<Void> resultHandler) {
                   System.out.printf("%s was exiled%n", node);
-                  exiledNode = node;
+                  synchronized (waitExileNode) {
+                    exiledNode = node;
+                    waitExileNode.notifyAll();
+                  }
                 }
 
                 @Override
@@ -524,6 +520,16 @@ public class MetaGroupMemberTest extends BaseMember {
                             response.setReplicationNumEquals(true);
                             response.setSeedNodeEquals(true);
                             resultHandler.onComplete(response);
+                          })
+                      .start();
+                }
+
+                @Override
+                public void collectMigrationStatus(AsyncMethodCallback<ByteBuffer> resultHandler) {
+                  new Thread(
+                          () -> {
+                            resultHandler.onComplete(
+                                ClusterUtils.serializeMigrationStatus(Collections.emptyMap()));
                           })
                       .start();
                 }
@@ -983,8 +989,7 @@ public class MetaGroupMemberTest extends BaseMember {
                 TimeFilter.gtEq(5),
                 ValueFilter.ltEq(8.0),
                 context,
-                true,
-                null);
+                true);
         assertTrue(reader.hasNextBatch());
         BatchData batchData = reader.nextBatch();
         for (int j = 5; j < 9; j++) {
@@ -1201,16 +1206,16 @@ public class MetaGroupMemberTest extends BaseMember {
       assertTrue(response.getCheckStatusResponse().isClusterNameEquals());
 
       // cannot add a node due to network failure
-      dummyResponse.set(Response.RESPONSE_NO_CONNECTION);
-      testMetaMember.setCharacter(LEADER);
-      result.set(null);
-      testMetaMember.setPartitionTable(partitionTable);
-      new Thread(
-              () -> {
-                await().atLeast(200, TimeUnit.MILLISECONDS);
-                dummyResponse.set(Response.RESPONSE_AGREE);
-              })
-          .start();
+      //      dummyResponse.set(Response.RESPONSE_NO_CONNECTION);
+      //      testMetaMember.setCharacter(LEADER);
+      //      result.set(null);
+      //      testMetaMember.setPartitionTable(partitionTable);
+      //      new Thread(
+      //              () -> {
+      //                await().atLeast(200, TimeUnit.MILLISECONDS);
+      //                dummyResponse.set(Response.RESPONSE_AGREE);
+      //              })
+      //          .start();
       new MetaAsyncService(testMetaMember)
           .addNode(TestUtils.getNode(12), TestUtils.getStartUpStatus(), handler);
       response = result.get();
@@ -1284,7 +1289,6 @@ public class MetaGroupMemberTest extends BaseMember {
     assertEquals(Response.RESPONSE_AGREE, (long) resultRef.get());
     assertFalse(testMetaMember.getAllNodes().contains(TestUtils.getNode(40)));
     assertEquals(ELECTOR, testMetaMember.getCharacter());
-    assertEquals(Long.MIN_VALUE, testMetaMember.getLastHeartbeatReceivedTime());
   }
 
   @Test
@@ -1311,7 +1315,14 @@ public class MetaGroupMemberTest extends BaseMember {
     assertEquals(Response.RESPONSE_AGREE, (long) resultRef.get());
     assertFalse(testMetaMember.getAllNodes().contains(TestUtils.getNode(20)));
     System.out.println("Checking exiled node in testRemoveNodeAsLeader()");
-    assertEquals(TestUtils.getNode(20), exiledNode);
+    synchronized (waitExileNode) {
+      try {
+        waitExileNode.wait();
+      } catch (InterruptedException e) {
+        // ignore
+      }
+      assertEquals(TestUtils.getNode(20), exiledNode);
+    }
   }
 
   @Test

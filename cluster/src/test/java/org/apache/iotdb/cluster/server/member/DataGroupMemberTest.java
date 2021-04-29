@@ -221,16 +221,24 @@ public class DataGroupMemberTest extends BaseMember {
                 @Override
                 public void pullMeasurementSchema(
                     PullSchemaRequest request, AsyncMethodCallback<PullSchemaResp> resultHandler) {
-                  dataGroupMemberMap.get(request.getHeader()).setCharacter(NodeCharacter.LEADER);
-                  new DataAsyncService(dataGroupMemberMap.get(request.getHeader()))
+                  dataGroupMemberMap
+                      .get(new RaftNode(request.getHeader(), request.getRaftId()))
+                      .setCharacter(NodeCharacter.LEADER);
+                  new DataAsyncService(
+                          dataGroupMemberMap.get(
+                              new RaftNode(request.getHeader(), request.getRaftId())))
                       .pullMeasurementSchema(request, resultHandler);
                 }
 
                 @Override
                 public void pullTimeSeriesSchema(
                     PullSchemaRequest request, AsyncMethodCallback<PullSchemaResp> resultHandler) {
-                  dataGroupMemberMap.get(request.getHeader()).setCharacter(NodeCharacter.LEADER);
-                  new DataAsyncService(dataGroupMemberMap.get(request.getHeader()))
+                  dataGroupMemberMap
+                      .get(new RaftNode(request.getHeader(), request.getRaftId()))
+                      .setCharacter(NodeCharacter.LEADER);
+                  new DataAsyncService(
+                          dataGroupMemberMap.get(
+                              new RaftNode(request.getHeader(), request.getRaftId())))
                       .pullTimeSeriesSchema(request, resultHandler);
                 }
 
@@ -372,7 +380,7 @@ public class DataGroupMemberTest extends BaseMember {
     testMetaMember.getTerm().set(10);
     List<Log> metaLogs = TestUtils.prepareTestLogs(6);
     metaLogManager.append(metaLogs);
-    Node voteFor = new Node("127.0.0.1", 30000, 0, 40000, Constants.RPC_PORT, "127.0.0.1");
+    Node voteFor = TestUtils.getNode(0);
     Node elector = new Node("127.0.0.1", 30001, 1, 40001, Constants.RPC_PORT + 1, "127.0.0.1");
 
     // a request with smaller term
@@ -380,6 +388,7 @@ public class DataGroupMemberTest extends BaseMember {
     electionRequest.setTerm(1);
     electionRequest.setLastLogIndex(100);
     electionRequest.setLastLogTerm(100);
+    electionRequest.setElector(TestUtils.getNode(0));
     TestHandler handler = new TestHandler();
     new DataAsyncService(dataGroupMember).startElection(electionRequest, handler);
     assertEquals(10, handler.getResponse());
@@ -389,6 +398,15 @@ public class DataGroupMemberTest extends BaseMember {
     handler = new TestHandler();
     new DataAsyncService(dataGroupMember).startElection(electionRequest, handler);
     assertEquals(Response.RESPONSE_AGREE, handler.getResponse());
+
+    dataGroupMember.setVoteFor(null);
+
+    // a request with same term and voteFor is empty and elector is not in the group
+    electionRequest.setTerm(10);
+    electionRequest.setElector(elector);
+    handler = new TestHandler();
+    new DataAsyncService(dataGroupMember).startElection(electionRequest, handler);
+    assertEquals(Response.RESPONSE_NODE_IS_NOT_IN_GROUP, handler.getResponse());
 
     dataGroupMember.setVoteFor(voteFor);
 
@@ -410,14 +428,16 @@ public class DataGroupMemberTest extends BaseMember {
     // a request with with larger term and stale data log
     // should reject election but update term
     electionRequest.setTerm(14);
-    electionRequest.setLastLogIndex(100);
-    electionRequest.setLastLogTerm(100);
+    electionRequest.setLastLogIndex(1);
+    electionRequest.setLastLogTerm(1);
     new DataAsyncService(dataGroupMember).startElection(electionRequest, handler);
     assertEquals(Response.RESPONSE_LOG_MISMATCH, handler.getResponse());
     assertEquals(14, dataGroupMember.getTerm().get());
 
     // a valid request with with larger term
     electionRequest.setTerm(15);
+    electionRequest.setLastLogIndex(100);
+    electionRequest.setLastLogTerm(100);
     new DataAsyncService(dataGroupMember).startElection(electionRequest, handler);
     assertEquals(Response.RESPONSE_AGREE, handler.getResponse());
     assertEquals(15, dataGroupMember.getTerm().get());
@@ -639,6 +659,7 @@ public class DataGroupMemberTest extends BaseMember {
       PullSchemaRequest request = new PullSchemaRequest();
       request.setPrefixPaths(Collections.singletonList(TestUtils.getTestSg(0)));
       request.setHeader(TestUtils.getNode(0));
+      request.setRaftId(0);
       AtomicReference<List<TimeseriesSchema>> result = new AtomicReference<>();
       PullTimeseriesSchemaHandler handler =
           new PullTimeseriesSchemaHandler(TestUtils.getNode(1), request.getPrefixPaths(), result);
@@ -1067,9 +1088,10 @@ public class DataGroupMemberTest extends BaseMember {
       dataGroupMember.removeNode(nodeToRemove);
 
       assertEquals(NodeCharacter.ELECTOR, dataGroupMember.getCharacter());
-      assertEquals(Long.MIN_VALUE, dataGroupMember.getLastHeartbeatReceivedTime());
       assertTrue(dataGroupMember.getAllNodes().contains(TestUtils.getNode(30)));
       assertFalse(dataGroupMember.getAllNodes().contains(nodeToRemove));
+
+      dataGroupMember.pullSlots(nodeRemovalResult);
       List<Integer> newSlots =
           nodeRemovalResult.getNewSlotOwners().get(new RaftNode(TestUtils.getNode(0), raftId));
       while (newSlots.size() != pulledSnapshots.size()) {}
@@ -1097,6 +1119,8 @@ public class DataGroupMemberTest extends BaseMember {
       assertEquals(0, dataGroupMember.getLastHeartbeatReceivedTime());
       assertTrue(dataGroupMember.getAllNodes().contains(TestUtils.getNode(30)));
       assertFalse(dataGroupMember.getAllNodes().contains(nodeToRemove));
+
+      dataGroupMember.pullSlots(nodeRemovalResult);
       List<Integer> newSlots =
           ((SlotNodeRemovalResult) nodeRemovalResult)
               .getNewSlotOwners()

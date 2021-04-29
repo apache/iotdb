@@ -39,6 +39,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import static org.apache.iotdb.cluster.config.ClusterConstant.THREAD_POLL_WAIT_TERMINATION_TIME;
+
 public class PullSnapshotHintService {
 
   private static final Logger logger = LoggerFactory.getLogger(PullSnapshotHintService.class);
@@ -62,9 +64,9 @@ public class PullSnapshotHintService {
       return;
     }
 
-    service.shutdown();
+    service.shutdownNow();
     try {
-      service.awaitTermination(3, TimeUnit.MINUTES);
+      service.awaitTermination(THREAD_POLL_WAIT_TERMINATION_TIME, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.warn("{}: PullSnapshotHintService exiting interrupted", member.getName());

@@ -67,7 +67,7 @@ public class TestUtils {
 
   public static long TEST_TIME_OUT_MS = 200;
 
-  public static ByteBuffer seralizePartitionTable = new SlotPartitionTable(getNode(0)).serialize();
+  public static ByteBuffer seralizePartitionTable = getPartitionTable(3).serialize();
 
   private TestUtils() {
     // util class

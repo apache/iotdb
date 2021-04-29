@@ -100,8 +100,7 @@ public class ClusterTimeGenerator extends ServerTimeGenerator {
               null,
               filter,
               context,
-              queryPlan.isAscending(),
-              null);
+              queryPlan.isAscending());
     } catch (Exception e) {
       throw new IOException(e);
     }

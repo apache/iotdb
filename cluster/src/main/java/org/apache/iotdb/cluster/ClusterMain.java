@@ -253,9 +253,6 @@ public class ClusterMain {
       logger.error("Cluster size is too small, cannot remove any node");
     } else if (response == Response.RESPONSE_REJECT) {
       logger.error("Node {} is not found in the cluster, please check", nodeToRemove);
-    } else if (response == Response.RESPONSE_CHANGE_MEMBERSHIP_CONFLICT) {
-      logger.warn(
-          "The cluster is performing other change membership operations. Change membership operations should be performed one by one. Please try again later");
     } else if (response == Response.RESPONSE_DATA_MIGRATION_NOT_FINISH) {
       logger.warn(
           "The data migration of the previous membership change operation is not finished. Please try again later");

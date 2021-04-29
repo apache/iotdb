@@ -122,8 +122,7 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
             timeFilter,
             null,
             context,
-            queryPlan.isAscending(),
-            null);
+            queryPlan.isAscending());
 
     // combine reader of different partition group of the same path
     // into a MultManagedMergeReader
@@ -176,8 +175,7 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
                 timeFilter,
                 null,
                 context,
-                queryPlan.isAscending(),
-                null);
+                queryPlan.isAscending());
       } catch (EmptyIntervalException e) {
         logger.info(e.getMessage());
         return Collections.emptyList();

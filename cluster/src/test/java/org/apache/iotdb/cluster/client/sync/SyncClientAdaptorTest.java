@@ -194,6 +194,15 @@ public class SyncClientAdaptorTest {
           }
 
           @Override
+          public void getChildNodePathInNextLevel(
+              Node header,
+              int raftId,
+              String path,
+              AsyncMethodCallback<Set<String>> resultHandler) {
+            resultHandler.onComplete(new HashSet<>(Arrays.asList("1", "2", "3")));
+          }
+
+          @Override
           public void getAllMeasurementSchema(
               Node header,
               int raftId,

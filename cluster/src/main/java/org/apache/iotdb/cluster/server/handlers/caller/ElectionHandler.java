@@ -106,7 +106,7 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
           // the rejection from a node with a smaller term means the log of this node falls behind
           logger.info("{}: Election {} rejected: code {}", memberName, currTerm, voterResp);
           onFail();
-        } else if (voterResp != RESPONSE_NODE_IS_NOT_IN_GROUP) {
+        } else if (voterResp == RESPONSE_NODE_IS_NOT_IN_GROUP) {
           logger.info("{}: This node has removed from the group", memberName);
           onFail();
         } else {

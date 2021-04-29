@@ -613,9 +613,6 @@ public class MetaGroupMember extends RaftMember {
       setNodeIdentifier(genNodeIdentifier());
     } else if (resp.getRespNum() == Response.RESPONSE_NEW_NODE_PARAMETER_CONFLICT) {
       handleConfigInconsistency(resp);
-    } else if (resp.getRespNum() == Response.RESPONSE_CHANGE_MEMBERSHIP_CONFLICT) {
-      logger.warn(
-          "The cluster is performing other change membership operations. Change membership operations should be performed one by one. Please try again later");
     } else if (resp.getRespNum() == Response.RESPONSE_DATA_MIGRATION_NOT_FINISH) {
       logger.warn(
           "The data migration of the previous membership change operation is not finished. Please try again later");
@@ -914,14 +911,12 @@ public class MetaGroupMember extends RaftMember {
       return true;
     }
 
-    boolean nodeExistInPartitionTable = false;
     for (Node node : partitionTable.getAllNodes()) {
       if (node.internalIp.equals(newNode.internalIp)
           && newNode.dataPort == node.dataPort
           && newNode.metaPort == node.metaPort
           && newNode.clientPort == node.clientPort) {
         newNode.nodeIdentifier = node.nodeIdentifier;
-        nodeExistInPartitionTable = true;
         break;
       }
     }
@@ -931,11 +926,6 @@ public class MetaGroupMember extends RaftMember {
       synchronized (partitionTable) {
         response.setPartitionTableBytes(partitionTable.serialize());
       }
-      return true;
-    }
-
-    if (!nodeExistInPartitionTable && partitionTable.getAllNodes().size() != allNodes.size()) {
-      response.setRespNum((int) Response.RESPONSE_CHANGE_MEMBERSHIP_CONFLICT);
       return true;
     }
 
@@ -2055,23 +2045,6 @@ public class MetaGroupMember extends RaftMember {
       logger.debug("Node {} is not in the cluster", node);
       return Response.RESPONSE_REJECT;
     }
-
-    if (partitionTable.getAllNodes().contains(target)
-        && partitionTable.getAllNodes().size() != allNodes.size()) {
-      return Response.RESPONSE_CHANGE_MEMBERSHIP_CONFLICT;
-    }
-
-    //    // If it is to remove the leader of meta group, transfer leader authority.
-    //    if (node.equals(thisNode)) {
-    //      logger.info("Remove the leader of meta group, it should step down and transfer
-    // leadership. Remove node: {}", node);
-    //      setSkipElection(true);
-    //      setCharacter(NodeCharacter.ELECTOR);
-    //      setLeader(null);
-    //      waitLeader();
-    //      setSkipElection(false);
-    //      return Response.RESPONSE_NULL;
-    //    }
 
     RemoveNodeLog removeNodeLog = new RemoveNodeLog();
     // node removal must be serialized to reduce potential concurrency problem
