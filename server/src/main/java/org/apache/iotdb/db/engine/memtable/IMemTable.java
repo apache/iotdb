@@ -130,6 +130,10 @@ public interface IMemTable {
 
   void setVersion(long version);
 
+  void setShouldFlush();
+
+  boolean shouldFlush();
+
   void release();
 
   /**
