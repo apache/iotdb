@@ -164,6 +164,10 @@ public class MergeFileTask {
 
     seqFile.writeLock();
     try {
+      if (Thread.currentThread().isInterrupted()) {
+        return;
+      }
+
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
 
       resource.removeFileReader(seqFile);
@@ -338,16 +342,20 @@ public class MergeFileTask {
     }
     updateStartTimeAndEndTime(seqFile, fileWriter);
     resource.removeFileReader(seqFile);
-    FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
     fileWriter.endFile();
 
     updatePlanIndexes(seqFile);
-    mergeLogger.logFileMergeEnd();
-    logger.debug("{} moved unmerged chunks of {} to the new file", taskName, seqFile);
 
     seqFile.writeLock();
     try {
+      if (Thread.currentThread().isInterrupted()) {
+        return;
+      }
+
       seqFile.serialize();
+      mergeLogger.logFileMergeEnd();
+      logger.debug("{} moved unmerged chunks of {} to the new file", taskName, seqFile);
+      FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
 
       // change tsFile name
       seqFile.getTsFile().delete();
