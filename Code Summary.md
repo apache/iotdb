@@ -4,7 +4,7 @@ _The summary file provides a simple way to navigate through the source code to u
 * The relative path of these **java class** files can be found in the attached _**csv**_ file
 * _**Word**_ highlighted in both _**bold**_ and _**italic**_ are _**standard java class**_ files
 
-#### IOTDB ####
+#### IoTDB ####
 The entry point for the server is **[IoTDB](https://github.com/apache/iotdb/tree/master/server/src/main/java/org/apache/iotdb/db/service/IoTDB.java)**. It performs following tasks during the setup
 * It calls **StartupChecks** and performs the following check
   * Checks JDK Version if it is greater than 8
