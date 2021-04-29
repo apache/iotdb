@@ -40,9 +40,9 @@ import static org.junit.Assert.assertEquals;
 
 public class AlertManagerTest {
 
-  class TestHandler implements HttpHandler {
+  static class TestHandler implements HttpHandler {
 
-    String correctRequest;
+    private final String correctRequest;
 
     public TestHandler(String correctRequest) {
       this.correctRequest = correctRequest;
@@ -65,7 +65,7 @@ public class AlertManagerTest {
   }
 
   @Test
-  public void alertmanagerTest0() throws Exception {
+  public void alertManagerTest0() throws Exception {
 
     HttpServer httpServer = HttpServer.create(new InetSocketAddress(9093), 0);
     httpServer.createContext(
@@ -93,9 +93,9 @@ public class AlertManagerTest {
   }
 
   @Test
-  public void alertmanagerTest1() throws Exception {
+  public void alertManagerTest1() throws Exception {
 
-    HttpServer httpServer = HttpServer.create(new InetSocketAddress(9093), 0);
+    HttpServer httpServer = HttpServer.create(new InetSocketAddress(9094), 0);
     httpServer.createContext(
         "/api/v2/alerts",
         new TestHandler(
@@ -108,7 +108,7 @@ public class AlertManagerTest {
     httpServer.start();
 
     AlertManagerConfiguration alertManagerConfiguration =
-        new AlertManagerConfiguration("http://127.0.0.1:9093/api/v2/alerts");
+        new AlertManagerConfiguration("http://127.0.0.1:9094/api/v2/alerts");
     AlertManagerHandler alertManagerHandler = new AlertManagerHandler();
 
     alertManagerHandler.open(alertManagerConfiguration);
@@ -135,9 +135,9 @@ public class AlertManagerTest {
   }
 
   @Test
-  public void alertmanagerTest2() throws Exception {
+  public void alertManagerTest2() throws Exception {
 
-    HttpServer httpServer = HttpServer.create(new InetSocketAddress(9093), 0);
+    HttpServer httpServer = HttpServer.create(new InetSocketAddress(9095), 0);
     httpServer.createContext(
         "/api/v2/alerts",
         new TestHandler(
@@ -153,7 +153,7 @@ public class AlertManagerTest {
     httpServer.start();
 
     AlertManagerConfiguration alertManagerConfiguration =
-        new AlertManagerConfiguration("http://127.0.0.1:9093/api/v2/alerts");
+        new AlertManagerConfiguration("http://127.0.0.1:9095/api/v2/alerts");
     AlertManagerHandler alertManagerHandler = new AlertManagerHandler();
 
     alertManagerHandler.open(alertManagerConfiguration);
@@ -190,9 +190,10 @@ public class AlertManagerTest {
   }
 
   @Test
-  public void multiAlertmanagerReopenTest() throws Exception {
+  @SuppressWarnings("squid:S2699")
+  public void multiAlertManagerReopenTest() throws Exception {
 
-    HttpServer httpServer = HttpServer.create(new InetSocketAddress(9093), 0);
+    HttpServer httpServer = HttpServer.create(new InetSocketAddress(9096), 0);
     httpServer.createContext(
         "/api/v2/alerts",
         new TestHandler(
@@ -204,7 +205,7 @@ public class AlertManagerTest {
 
     httpServer.start();
 
-    HttpServer httpServer2 = HttpServer.create(new InetSocketAddress(9094), 0);
+    HttpServer httpServer2 = HttpServer.create(new InetSocketAddress(9097), 0);
     httpServer2.createContext(
         "/api/v2/alerts",
         new TestHandler(
@@ -216,7 +217,7 @@ public class AlertManagerTest {
 
     httpServer2.start();
 
-    HttpServer httpServer3 = HttpServer.create(new InetSocketAddress(9095), 0);
+    HttpServer httpServer3 = HttpServer.create(new InetSocketAddress(9098), 0);
     httpServer3.createContext(
         "/api/v2/alerts",
         new TestHandler(
@@ -229,13 +230,13 @@ public class AlertManagerTest {
     httpServer3.start();
 
     AlertManagerConfiguration alertManagerConfiguration =
-        new AlertManagerConfiguration("http://127.0.0.1:9093/api/v2/alerts");
+        new AlertManagerConfiguration("http://127.0.0.1:9096/api/v2/alerts");
 
     AlertManagerConfiguration alertManagerConfiguration1 =
-        new AlertManagerConfiguration("http://127.0.0.1:9094/api/v2/alerts");
+        new AlertManagerConfiguration("http://127.0.0.1:9097/api/v2/alerts");
 
     AlertManagerConfiguration alertManagerConfiguration2 =
-        new AlertManagerConfiguration("http://127.0.0.1:9095/api/v2/alerts");
+        new AlertManagerConfiguration("http://127.0.0.1:9098/api/v2/alerts");
 
     String alertName = "test1";
 
@@ -275,7 +276,7 @@ public class AlertManagerTest {
   }
 
   @Test
-  public void alertmanagerEventToJsonTest0() throws Exception {
+  public void alertManagerEventToJsonTest0() throws Exception {
 
     String alertName = "test0";
 
@@ -285,7 +286,7 @@ public class AlertManagerTest {
   }
 
   @Test
-  public void alertmanagerEventToJsonTest1() throws Exception {
+  public void alertManagerEventToJsonTest1() throws Exception {
 
     String alertName = "test1";
 
@@ -306,7 +307,7 @@ public class AlertManagerTest {
   }
 
   @Test
-  public void alertmanagerEventToJsonTest2() throws Exception {
+  public void alertManagerEventToJsonTest2() throws Exception {
 
     String alertName = "test2";
 

@@ -31,25 +31,21 @@ import org.apache.http.impl.client.HttpClients;
 
 import java.io.IOException;
 
-public class AlertManagerHandler
-    implements Handler<
-        org.apache.iotdb.db.sink.alertmanager.AlertManagerConfiguration,
-        org.apache.iotdb.db.sink.alertmanager.AlertManagerEvent> {
+public class AlertManagerHandler implements Handler<AlertManagerConfiguration, AlertManagerEvent> {
+
+  private static CloseableHttpClient client;
+  private static int referenceCount;
 
   private HttpPost request;
 
-  private static CloseableHttpClient client;
-
-  private static int refCount = 0;
-
   private static synchronized void closeClient() throws IOException {
-    if (--refCount == 0) {
+    if (--referenceCount == 0) {
       client.close();
     }
   }
 
   private static synchronized void openClient() {
-    if (refCount++ == 0) {
+    if (referenceCount++ == 0) {
       client = HttpClients.createDefault();
     }
   }
@@ -60,7 +56,7 @@ public class AlertManagerHandler
   }
 
   @Override
-  public void open(org.apache.iotdb.db.sink.alertmanager.AlertManagerConfiguration configuration) {
+  public void open(AlertManagerConfiguration configuration) {
     if (this.request == null) {
       this.request = new HttpPost(configuration.getEndpoint());
       request.setHeader("Accept", "application/json");
@@ -71,18 +67,17 @@ public class AlertManagerHandler
   }
 
   @Override
-  public void onEvent(AlertManagerEvent event) throws Exception {
+  public void onEvent(AlertManagerEvent event) throws SinkException {
+    try {
+      request.setEntity(new StringEntity("[" + event.toJsonString() + "]"));
 
-    String json = "[" + event.toJsonString() + "]";
-
-    request.setEntity(new StringEntity(json));
-
-    CloseableHttpResponse response = client.execute(request);
-
-    if (response.getStatusLine().getStatusCode() != HttpStatus.SC_OK) {
-      throw new SinkException(response.getStatusLine().toString());
+      try (CloseableHttpResponse response = client.execute(request)) {
+        if (response.getStatusLine().getStatusCode() != HttpStatus.SC_OK) {
+          throw new SinkException(response.getStatusLine().toString());
+        }
+      }
+    } catch (Exception e) {
+      throw new SinkException(e.getMessage());
     }
-
-    response.close();
   }
 }
