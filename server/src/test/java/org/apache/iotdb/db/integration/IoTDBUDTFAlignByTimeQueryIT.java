@@ -830,16 +830,17 @@ public class IoTDBUDTFAlignByTimeQueryIT {
 
   @Test
   public void queryNonexistentSeries() {
-    String sqlStr = "select max(s100) from root.vehicle.d4";
+    String sqlStr =
+        "select max(s100), udf(*, s100), udf(*, s100), udf(s100, s100) from root.vehicle.d4";
 
     try (Statement statement =
         DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
             .createStatement()) {
-      statement.executeQuery(sqlStr);
-      fail();
+      ResultSet resultSet = statement.executeQuery(sqlStr);
+      assertEquals(1, resultSet.getMetaData().getColumnCount());
+      assertEquals("Time", resultSet.getMetaData().getColumnName(1));
     } catch (SQLException throwable) {
-      assertTrue(
-          throwable.getMessage().contains("The given series root.vehicle.d4.s100 is not existed"));
+      fail(throwable.getMessage());
     }
   }
 }
