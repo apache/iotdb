@@ -275,9 +275,15 @@ public interface MTreeInterface extends Serializable {
 
   Map<String, String> determineStorageGroup(PartialPath path) throws IllegalPathException;
 
-  void serializeTo(String snapshotPath) throws IOException;
-
   int getMeasurementMNodeCount(PartialPath path) throws MetadataException;
+
+  void changeOffset(PartialPath path, long offset) throws MetadataException;
+
+  void changeAlias(PartialPath path, String alias)throws MetadataException;
+
+  void updateMNode(MNode mNode) throws MetadataException;
+
+  void serializeTo(String snapshotPath) throws IOException;
 
   void createSnapshot() throws IOException;
 

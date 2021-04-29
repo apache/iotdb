@@ -441,6 +441,7 @@ public class MManager {
         logWriter.createTimeseries(plan);
       }
       leafMNode.setOffset(offset);
+      mtree.updateMNode(leafMNode);
 
     } catch (IOException e) {
       throw new MetadataException(e);
@@ -1048,7 +1049,7 @@ public class MManager {
 
   /** Get node by path */
   public MNode getNodeByPath(PartialPath path) throws MetadataException {
-    return mtree.getNodeByPathForChildrenCheck(path);
+    return mtree.getNodeByPath(path);
   }
 
   /**
@@ -1146,7 +1147,9 @@ public class MManager {
   }
 
   public void setTTL(PartialPath storageGroup, long dataTTL) throws MetadataException, IOException {
-    getStorageGroupNodeByStorageGroupPath(storageGroup).setDataTTL(dataTTL);
+    StorageGroupMNode storageGroupMNode=getStorageGroupNodeByStorageGroupPath(storageGroup);
+    storageGroupMNode.setDataTTL(dataTTL);
+    mtree.updateMNode(storageGroupMNode);
     if (!isRecovering) {
       logWriter.setTTL(storageGroup, dataTTL);
     }
@@ -1179,16 +1182,27 @@ public class MManager {
    * @param offset offset in the tag file
    */
   public void changeOffset(PartialPath path, long offset) throws MetadataException {
-    ((MeasurementMNode) mtree.getNodeByPath(path)).setOffset(offset);
+    MNode mNode = mtree.getNodeByPath(path);
+    if (!(mNode instanceof MeasurementMNode)) {
+      throw new PathNotExistException(path.getFullPath());
+    }
+    MeasurementMNode leafMNode = (MeasurementMNode) mNode;
+    leafMNode.setOffset(offset);
+    mtree.updateMNode(leafMNode);
   }
 
   public void changeAlias(PartialPath path, String alias) throws MetadataException {
-    MeasurementMNode leafMNode = (MeasurementMNode) mtree.getNodeByPath(path);
+    MNode mNode = mtree.getNodeByPath(path);
+    if (!(mNode instanceof MeasurementMNode)) {
+      throw new PathNotExistException(path.getFullPath());
+    }
+    MeasurementMNode leafMNode = (MeasurementMNode) mNode;
     if (leafMNode.getAlias() != null) {
       leafMNode.getParent().deleteAliasChild(leafMNode.getAlias());
     }
     leafMNode.getParent().addAlias(alias, leafMNode);
     leafMNode.setAlias(alias);
+    mtree.updateMNode(leafMNode);
   }
 
   /**
@@ -1223,6 +1237,7 @@ public class MManager {
       }
 
       leafMNode.setAlias(alias);
+      mtree.updateMNode(leafMNode);
       // persist to WAL
       logWriter.changeAlias(fullPath, alias);
     }
@@ -1235,6 +1250,7 @@ public class MManager {
       long offset = tagLogFile.write(tagsMap, attributesMap);
       logWriter.changeOffset(fullPath, offset);
       leafMNode.setOffset(offset);
+      mtree.updateMNode(leafMNode);
       // update inverted Index map
       if (tagsMap != null) {
         for (Entry<String, String> entry : tagsMap.entrySet()) {
@@ -1325,6 +1341,7 @@ public class MManager {
       long offset = tagLogFile.write(Collections.emptyMap(), attributesMap);
       logWriter.changeOffset(fullPath, offset);
       leafMNode.setOffset(offset);
+      mtree.updateMNode(leafMNode);
       return;
     }
 
@@ -1363,6 +1380,7 @@ public class MManager {
       long offset = tagLogFile.write(tagsMap, Collections.emptyMap());
       logWriter.changeOffset(fullPath, offset);
       leafMNode.setOffset(offset);
+      mtree.updateMNode(leafMNode);
       // update inverted Index map
       for (Entry<String, String> entry : tagsMap.entrySet()) {
         tagIndex

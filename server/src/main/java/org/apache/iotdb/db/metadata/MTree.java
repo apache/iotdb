@@ -1447,6 +1447,26 @@ public class MTree implements MTreeInterface {
   }
 
   @Override
+  public void changeOffset(PartialPath path, long offset) throws MetadataException {
+    ((MeasurementMNode) getNodeByPath(path)).setOffset(offset);
+  }
+
+  @Override
+  public void changeAlias(PartialPath path, String alias) throws MetadataException {
+    MeasurementMNode leafMNode = (MeasurementMNode) getNodeByPath(path);
+    if (leafMNode.getAlias() != null) {
+      leafMNode.getParent().deleteAliasChild(leafMNode.getAlias());
+    }
+    leafMNode.getParent().addAlias(alias, leafMNode);
+    leafMNode.setAlias(alias);
+  }
+
+  @Override
+  public void updateMNode(MNode mNode) throws MetadataException {
+
+  }
+
+  @Override
   public void createSnapshot() throws IOException {
     long time = System.currentTimeMillis();
     logger.info("Start creating MTree snapshot to {}", mtreeSnapshotPath);

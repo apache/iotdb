@@ -13,6 +13,7 @@ import org.apache.iotdb.db.metadata.metadisk.metafile.PersistenceInfo;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -257,6 +258,21 @@ public class MetadataDiskManager implements MetadataAccess {
         metaFile.write(parent);
       } catch (IOException e) {
         throw new MetadataException(e.getMessage());
+      }
+    }
+  }
+
+  @Override
+  public void updateMNode(MNode mNode) throws MetadataException {
+    if(mNode.isCached()){
+      cacheStrategy.applyChange(mNode);
+    }else {
+      if(mNode.isPersisted()){
+        try {
+          metaFile.write(mNode);
+        } catch (IOException e) {
+          throw new MetadataException(e.getMessage());
+        }
       }
     }
   }

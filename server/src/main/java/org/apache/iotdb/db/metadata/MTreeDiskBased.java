@@ -25,8 +25,6 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -244,7 +242,8 @@ public class MTreeDiskBased implements MTreeInterface {
       }
       cur = metadataDiskManager.getChild(cur, nodeNames[i]);
     }
-    return processMNodeReturn(cur);
+    return cur;
+//    return processMNodeReturn(cur);
   }
 
   @Override
@@ -1401,6 +1400,28 @@ public class MTreeDiskBased implements MTreeInterface {
   public int getMeasurementMNodeCount(PartialPath path) throws MetadataException {
     MNode mNode = getNodeByPath(path);
     return getMeasurementMNodeCount(mNode);
+  }
+
+  @Override
+  public void changeOffset(PartialPath path, long offset) throws MetadataException {
+    MeasurementMNode measurementMNode=(MeasurementMNode) getNodeByPath(path);
+    measurementMNode.setOffset(offset);
+    metadataDiskManager.updateMNode(measurementMNode);
+  }
+
+  @Override
+  public void changeAlias(PartialPath path, String alias) throws MetadataException {
+    MeasurementMNode leafMNode = (MeasurementMNode) getNodeByPath(path);
+    if (leafMNode.getAlias() != null) {
+      metadataDiskManager.deleteAliasChild(leafMNode.getParent(),leafMNode.getAlias());
+    }
+    leafMNode.setAlias(alias);
+    metadataDiskManager.addAlias(leafMNode.getParent(),alias,leafMNode);
+  }
+
+  @Override
+  public void updateMNode(MNode mNode) throws MetadataException {
+    metadataDiskManager.updateMNode(mNode);
   }
 
   private int getMeasurementMNodeCount(MNode mNode) throws MetadataException{
