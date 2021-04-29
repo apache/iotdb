@@ -270,17 +270,16 @@ public class TsFileRewriteTool implements AutoCloseable {
   }
 
   /**
-   * Due to TsFile version-3 changed the serialize way of integer in TEXT data and INT32 data with
-   * PLAIN encoding, and also add a sum statistic for BOOLEAN data, these types of data need to
-   * decode to points and rewrite in new TsFile.
+   * If the page have no statistics or crosses multi partitions, will return true, otherwise return
+   * false.
    */
   protected boolean checkIfNeedToDecode(
       TSDataType dataType, TSEncoding encoding, PageHeader pageHeader) {
-    return dataType == TSDataType.BOOLEAN
-        || dataType == TSDataType.TEXT
-        || (dataType == TSDataType.INT32 && encoding == TSEncoding.PLAIN)
-        || StorageEngine.getTimePartition(pageHeader.getStartTime())
-            != StorageEngine.getTimePartition(pageHeader.getEndTime());
+    if (pageHeader.getStatistics() == null) {
+      return true;
+    }
+    return StorageEngine.getTimePartition(pageHeader.getStartTime())
+        != StorageEngine.getTimePartition(pageHeader.getEndTime());
   }
 
   /**
