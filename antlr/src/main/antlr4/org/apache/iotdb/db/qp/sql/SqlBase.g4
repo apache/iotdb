@@ -20,7 +20,7 @@
 grammar SqlBase;
 
 singleStatement
-    : EXPLAIN? statement (';')? EOF
+    : DEBUG? statement (';')? EOF
     ;
 
 /*
@@ -1302,6 +1302,10 @@ TOLERANCE
 
 EXPLAIN
     : E X P L A I N
+    ;
+
+DEBUG
+    : D E B U G
     ;
 
 NULL
