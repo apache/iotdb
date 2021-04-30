@@ -58,7 +58,7 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>service-rpc</artifactId>
-            <version>0.12.1-SNAPSHOT</version>
+            <version>${project.version}</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.apache.thrift</groupId>
@@ -69,7 +69,7 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-server</artifactId>
-            <version>0.12.1-SNAPSHOT</version>
+            <version>${project.version}</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.apache.thrift</groupId>
@@ -84,7 +84,7 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-thrift-cluster</artifactId>
-            <version>0.12.1-SNAPSHOT</version>
+            <version>${project.version}</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.apache.thrift</groupId>
@@ -96,20 +96,20 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-server</artifactId>
-            <version>0.12.1-SNAPSHOT</version>
+            <version>${project.version}</version>
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-session</artifactId>
-            <version>0.12.1-SNAPSHOT</version>
+            <version>${project.version}</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-jdbc</artifactId>
-            <version>0.12.1-SNAPSHOT</version>
+            <version>${project.version}</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
