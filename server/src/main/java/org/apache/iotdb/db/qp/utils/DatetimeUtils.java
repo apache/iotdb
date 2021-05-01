@@ -57,7 +57,7 @@ public class DatetimeUtils {
   static {
     ISO_LOCAL_DATE_WITH_SLASH =
         new DateTimeFormatterBuilder()
-            .appendValue(ChronoField.YEAR, 4, 10, SignStyle.EXCEEDS_PAD)
+            .appendValue(ChronoField.YEAR, 4, 19, SignStyle.EXCEEDS_PAD)
             .appendLiteral('/')
             .appendValue(ChronoField.MONTH_OF_YEAR, 1, 2, SignStyle.NEVER)
             .appendLiteral('/')
@@ -71,7 +71,7 @@ public class DatetimeUtils {
   static {
     ISO_LOCAL_DATE_WITH_DOT =
         new DateTimeFormatterBuilder()
-            .appendValue(ChronoField.YEAR, 4, 10, SignStyle.EXCEEDS_PAD)
+            .appendValue(ChronoField.YEAR, 4, 19, SignStyle.EXCEEDS_PAD)
             .appendLiteral('.')
             .appendValue(ChronoField.MONTH_OF_YEAR, 1, 2, SignStyle.NEVER)
             .appendLiteral('.')
