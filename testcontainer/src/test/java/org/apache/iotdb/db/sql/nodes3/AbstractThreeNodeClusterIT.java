@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.sql.nodes3;
 
 import org.apache.iotdb.db.sql.ClusterIT;
+
 import org.junit.Rule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
