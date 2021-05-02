@@ -678,34 +678,6 @@ public class IoTDBSessionSimpleIT {
 
   @Test
   public void testInsertSinglePoint() throws IoTDBConnectionException, StatementExecutionException {
-    //    session = new Session("127.0.0.1", 6667, "root", "root");
-    //    session.open();
-    //    Long time = 1617094607262L;
-    //    String measurement = "m1";
-    //    //    List<List<TSDataType>> datatypes = new ArrayList<>();
-    //    String value = "aa";
-    //
-    //    System.out.println("-----外层---");
-    //    System.out.println("----外层----");
-    //
-    //    String storageGroup = "root.sg";
-    //    //    session.setStorageGroup(storageGroup);
-    //
-    //    session.createTimeseries(
-    //        "root.sg.d1.m1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
-    //
-    //    session.insertSinglePoint("root.sg.d1", time, measurement, value);
-    //
-    //    SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg.d1.m1");
-    //    //    Iterator it = dataSet.iterator();
-    //    Boolean b = dataSet.hasNext();
-    //    while (dataSet.hasNext()) {
-    //      System.out.println("--------");
-    //      System.out.println(dataSet.next().toString());
-    //      System.out.println("--------");
-    //    }
-    //    //    checkResult(session);
-    //    session.close();
 
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
@@ -714,30 +686,21 @@ public class IoTDBSessionSimpleIT {
     List<String> measurements = new ArrayList<>();
     measurements.add("s1 ");
 
-    //    List<String> values = new ArrayList<>();
-    //    values.add("1.0");
-    //    session.insertRecord(deviceId, 1L, measurements, values);
-
     session.createTimeseries(
         "root.sg1.d1.s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
     session.insertStringSinglePoint(deviceId, 1000L, "s1", "1000");
     session.insertSinglePoint(deviceId, 1005L, "s1", TSDataType.INT64, 1005L);
 
-    //    String[] expected = new String[] {"root.sg1.d1.s1 "};
+    SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg1.d1");
 
-    //    assertFalse(session.checkTimeseriesExists("root.sg1.d1.s1 "));
-    //    SessionDataSet dataSet = session.executeQueryStatement("show timeseries");
-
-    SessionDataSet dataSet2 = session.executeQueryStatement("select * from root.sg1.d1");
-
-    int i = 0;
-    while (dataSet2.hasNext()) {
-      //      System.out.println("数据为  ：  " + dataSet.next().getFields().get(0).toString());
-      //      System.out.println("数据为  ：  " + dataSet.next().getTimestamp());
-      System.out.println("string is   :   " + dataSet2.next().toString());
-      //      assertEquals(expected[i], dataSet.next().getFields().get(0).toString());
-      i++;
+    List<String> Expected = new ArrayList<>();
+    Expected.add("1000");
+    Expected.add("1005");
+    List<String> Actual = new ArrayList<>();
+    while (dataSet.hasNext()) {
+      Actual.add(dataSet.next().getFields().get(0).toString());
     }
+    assertEquals(Expected, Actual);
 
     session.close();
   }

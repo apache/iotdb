@@ -238,7 +238,6 @@ public class PlanExecutor implements IPlanExecutor {
         insert((InsertRowPlan) plan);
         return true;
       case INSERTSINGLEPOINT:
-        System.out.println("执行到了 plan executor ");
         insertSinglePoint((InsertSinglePointPlan) plan);
         return true;
       case BATCH_INSERT_ONE_DEVICE:
@@ -1156,6 +1155,31 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
+  private void checkFailedMeasurments(InsertSinglePointPlan plan)
+      throws PathNotExistException, StorageEngineException {
+    // check if all path not exist exceptions
+    String failedPath = plan.getFailedMeasurement();
+    Exception exception = plan.getFailedException();
+    boolean isPathNotExistException = true;
+
+    Throwable curException = exception;
+    while (curException.getCause() != null) {
+      curException = curException.getCause();
+    }
+    if (!(curException instanceof PathNotExistException)) {
+      isPathNotExistException = false;
+    }
+
+    if (isPathNotExistException) {
+      throw new PathNotExistException(failedPath);
+    } else {
+      throw new StorageEngineException(
+          INSERT_MEASUREMENTS_FAILED_MESSAGE
+              + plan.getFailedMeasurement()
+              + (!(exception == null) ? (" caused by " + exception.getMessage()) : ""));
+    }
+  }
+
   @Override
   public void insert(InsertRowsOfOneDevicePlan insertRowsOfOneDevicePlan)
       throws QueryProcessException {
@@ -1237,22 +1261,13 @@ public class PlanExecutor implements IPlanExecutor {
   public void insertSinglePoint(InsertSinglePointPlan insertSinglePointPlan)
       throws QueryProcessException {
     try {
-      //      insertSinglePointPlan.setMeasurementMNode(
-      //          insertSinglePointPlan.getMeasurement());
-      //      // check whether types are match
+      // check whether types are match
       getSeriesSchemas(insertSinglePointPlan);
       insertSinglePointPlan.transferType();
-      System.out.println("执行到了  plan executor  insertSinglePoint ");
-      System.out.println(
-          "打印对象中的值"
-              + insertSinglePointPlan.getDeviceId()
-              + insertSinglePointPlan.getMeasurement()
-              + insertSinglePointPlan.getValue());
-      System.out.println(insertSinglePointPlan.toString());
       StorageEngine.getInstance().insertSinglePoint(insertSinglePointPlan);
-      //      if (insertSinglePointPlan.getFailedMeasurement() != null) {
-      //        checkFailedMeasurments(insertSinglePointPlan);
-      //      }
+      if (insertSinglePointPlan.getFailedMeasurement() != null) {
+        checkFailedMeasurments(insertSinglePointPlan);
+      }
     } catch (StorageEngineException e) {
       if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
         StatMonitor.getInstance().updateFailedStatValue();

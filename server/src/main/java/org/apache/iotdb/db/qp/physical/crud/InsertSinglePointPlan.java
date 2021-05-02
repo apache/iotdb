@@ -35,6 +35,9 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -43,6 +46,8 @@ import java.util.List;
 import java.util.Objects;
 
 public class InsertSinglePointPlan extends PhysicalPlan {
+
+  private static final Logger logger = LoggerFactory.getLogger(InsertSinglePointPlan.class);
 
   private static final byte TYPE_RAW_STRING = -1;
 
@@ -158,37 +163,7 @@ public class InsertSinglePointPlan extends PhysicalPlan {
     return failedMeasurement == null ? 0 : 1;
   }
 
-  // 6个
-  //  public InsertSinglePointPlan(InsertSinglePointPlan another) {
-  //    super(OperatorType.INSERTSINGLEPOINT);
-  //    this.deviceId = another.deviceId;
-  //    this.time = another.time;
-  //    this.measurement = another.measurement;
-  //    System.arraycopy(another.measurements, 0, this.measurements, 0,
-  // another.measurements.length);
-  //    this.values = new Object[another.values.length];
-  //    System.arraycopy(another.values, 0, this.values, 0, another.values.length);
-  //    this.dataTypes = new TSDataType[another.dataTypes.length];
-  //    System.arraycopy(another.dataTypes, 0, this.dataTypes, 0, another.dataTypes.length);
-  //  }
-  //
-  //  public InsertSinglePointPlan(
-  //      PartialPath deviceId, long insertTime, String[] measurementList, String[] insertValues) {
-  //    super(Operator.OperatorType.INSERT);
-  //    this.time = insertTime;
-  //    this.deviceId = deviceId;
-  //    this.measurements = measurementList;
-  //    this.dataTypes = new TSDataType[measurements.length];
-  //    // We need to create an Object[] for the data type casting, because we can not set Float,
-  // Long
-  //    // to String[i]
-  //    this.values = new Object[measurements.length];
-  //    System.arraycopy(insertValues, 0, values, 0, measurements.length);
-  //    isNeedInferType = true;
-  //  }
-
   public InsertSinglePointPlan(InsertSinglePointPlan another) {
-    //    super(OperatorType.INSERTSINGPOINT);
     super(false, OperatorType.INSERTSINGLEPOINT);
     this.deviceId = another.deviceId;
     this.time = another.time;
@@ -203,7 +178,6 @@ public class InsertSinglePointPlan extends PhysicalPlan {
     this.time = time;
     this.deviceId = deviceId;
     this.measurement = measurement;
-    //    this.dataType = dataType;
     // We need to create an Object[] for the data type casting, because we can not set Float, Long
     // to String[i]
     this.value = insertValue;
@@ -218,75 +192,9 @@ public class InsertSinglePointPlan extends PhysicalPlan {
     this.deviceId = deviceId;
     this.measurement = measurement;
     this.dataType = dataType;
-    //    this.value = value;
     this.fillValue(value);
-    isNeedInferType = true;
+    isNeedInferType = false;
   }
-
-  //  @TestOnly
-  //  public InsertSinglePointPlan(
-  //      PartialPath deviceId,
-  //      long insertTime,
-  //      String[] measurements,
-  //      TSDataType[] dataTypes,
-  //      String[] insertValues) {
-  //    super(OperatorType.INSERT);
-  //    this.time = insertTime;
-  //    this.deviceId = deviceId;
-  //    this.measurements = measurements;
-  //    this.dataTypes = dataTypes;
-  //    this.values = new Object[measurements.length];
-  //    for (int i = 0; i < measurements.length; i++) {
-  //      try {
-  //        values[i] = CommonUtils.parseValueForTest(dataTypes[i], insertValues[i]);
-  //      } catch (QueryProcessException e) {
-  //        e.printStackTrace();
-  //      }
-  //    }
-  //  }
-
-  //  @TestOnly
-  //  public InsertSinglePointPlan(
-  //      PartialPath deviceId,
-  //      long insertTime,
-  //      String measurement,
-  //      TSDataType type,
-  //      String insertValue) {
-  //    super(OperatorType.INSERT);
-  //    this.time = insertTime;
-  //    this.deviceId = deviceId;
-  //    this.measurements = new String[] {measurement};
-  //    this.dataTypes = new TSDataType[] {type};
-  //    this.values = new Object[1];
-  //    try {
-  //      values[0] = CommonUtils.parseValueForTest(dataTypes[0], insertValue);
-  //    } catch (QueryProcessException e) {
-  //      e.printStackTrace();
-  //    }
-  //  }
-
-  //  @TestOnly
-  //  public InsertSinglePointPlan(TSRecord tsRecord) throws IllegalPathException {
-  //    super(OperatorType.INSERTSINGLEPOINT);
-  //    this.deviceId = new PartialPath(tsRecord.deviceId);
-  //    this.time = tsRecord.time;
-  //    this.measurement = measurement;
-  //    this.measurementMNode = measurementMNode;
-  //    this.dataType = dataType;
-  //    this.value = value;
-  //
-  //      measurement = tsRecord.dataPointList.get(i).getMeasurementId();
-  //      measurementMNode =
-  //          new MeasurementMNode(
-  //              null,
-  //              measurement,
-  //              new MeasurementSchema(
-  //                  measurement, tsRecord.dataPointList.get(i).getType(), TSEncoding.PLAIN),
-  //              null);
-  //      dataTypes[i] = tsRecord.dataPointList.get(i).getType();
-  //      values[i] = tsRecord.dataPointList.get(i).getValue();
-  //
-  //  }
 
   public long getMinTime() {
     return getTime();
@@ -501,7 +409,7 @@ public class InsertSinglePointPlan extends PhysicalPlan {
     try {
       putValues(buffer);
     } catch (QueryProcessException e) {
-      //      logger.error("Failed to serialize values for {}", this, e);
+      logger.error("Failed to serialize values for {}", this, e);
     }
 
     // the types are not inferred before the plan is serialized
@@ -559,37 +467,6 @@ public class InsertSinglePointPlan extends PhysicalPlan {
     return this;
   }
 
-  /**
-   * Reconstruct this plan with the failed measurements.
-   *
-   * @return the plan itself, with measurements replaced with the previously failed ones.
-   */
-  //  public InsertSinglePointPlan getPlanFromFailed() {
-  //    if (failedMeasurements == null) {
-  //      return null;
-  //    }
-  //    measurements = failedMeasurements.toArray(new String[0]);
-  //    failedMeasurements = null;
-  //    if (dataTypes != null) {
-  //      TSDataType[] temp = dataTypes.clone();
-  //      dataTypes = new TSDataType[failedIndices.size()];
-  //      for (int i = 0; i < failedIndices.size(); i++) {
-  //        dataTypes[i] = temp[failedIndices.get(i)];
-  //      }
-  //    }
-  //    if (measurementMNodes != null) {
-  //      MeasurementMNode[] temp = measurementMNodes.clone();
-  //      measurementMNodes = new MeasurementMNode[failedIndices.size()];
-  //      for (int i = 0; i < failedIndices.size(); i++) {
-  //        measurementMNodes[i] = temp[failedIndices.get(i)];
-  //      }
-  //    }
-  //
-  //    failedIndices = null;
-  //    failedExceptions = null;
-  //    return this;
-  //  }
-
   /** Reset measurement from failed measurement (if any), as if no failure had ever happened. */
   public void recoverFromFailure() {
     if (failedMeasurement == null) {
@@ -627,12 +504,12 @@ public class InsertSinglePointPlan extends PhysicalPlan {
       try {
         value = CommonUtils.parseValue(dataType, value.toString());
       } catch (Exception e) {
-        //          logger.warn(
-        //              "{}.{} data type is not consistent, input {}, registered {}",
-        //              deviceId,
-        //              measurements[i],
-        //              values[i],
-        //              dataTypes[i]);
+        logger.warn(
+            "{}.{} data type is not consistent, input {}, registered {}",
+            deviceId,
+            measurement,
+            value,
+            dataType);
         if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
           markFailedMeasurementInsertion(e);
           measurementMNode = null;

@@ -224,10 +224,6 @@ public class TsFileProcessor {
   public void InsertSinglePoint(InsertSinglePointPlan insertSinglePointPlan)
       throws WriteProcessException {
 
-    System.out.println("执行到了 TsFileProcessor  plan为：   " + insertSinglePointPlan.toString());
-    System.out.println("打印 storageGroupName  " + storageGroupName);
-    //    System.out.println("workMemTable is :" + workMemTable.toString());
-
     if (workMemTable == null) {
       if (enableMemControl) {
         workMemTable = new PrimitiveMemTable(enableMemControl);
@@ -241,7 +237,6 @@ public class TsFileProcessor {
     if (enableMemControl) {
       checkMemCostAndAddToTspInfo(insertSinglePointPlan);
     }
-    System.out.println("下一步执行  workMemTable.InsertSinglePoint");
 
     workMemTable.InsertSinglePoint(insertSinglePointPlan);
 

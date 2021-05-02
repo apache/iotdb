@@ -821,7 +821,6 @@ public class StorageGroupProcessor {
   public void InsertSinglePoint(InsertSinglePointPlan insertSinglePointPlan)
       throws WriteProcessException {
     // reject insertions that are out of ttl
-    System.out.println("执行到 StorageGroupProcessor  plan为 ：  " + insertSinglePointPlan.toString());
     if (!isAlive(insertSinglePointPlan.getTime())) {
       throw new OutOfTTLException(
           insertSinglePointPlan.getTime(), (System.currentTimeMillis() - dataTTL));

@@ -146,10 +146,8 @@ public abstract class AbstractMemTable implements IMemTable {
     MeasurementMNode measurementMNode = insertSinglePointPlan.getMeasurementMNode();
     String measurement = insertSinglePointPlan.getMeasurement();
 
-    memSize += 40;
-    //        MemUtils.getRecordSize(measurementMNode.getSchema().getType(), value,
-    // disableMemControl);
-    System.out.println("执行到了 AbstractMenTable" + insertSinglePointPlan.toString());
+    memSize +=
+        MemUtils.getRecordSize(measurementMNode.getSchema().getType(), value, disableMemControl);
 
     write(
         insertSinglePointPlan.getDeviceId().getFullPath(),

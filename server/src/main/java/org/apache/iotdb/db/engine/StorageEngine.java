@@ -547,16 +547,15 @@ public class StorageEngine implements IService {
       throws StorageEngineException {
 
     StorageGroupProcessor storageGroupProcessor = getProcessor(insertSinglePointPlan.getDeviceId());
-    System.out.println("执行到了  Storge Engine");
+
     try {
       storageGroupProcessor.InsertSinglePoint(insertSinglePointPlan);
       if (config.isEnableStatMonitor()) {
         try {
           StorageGroupMNode storageGroupMNode =
               IoTDB.metaManager.getStorageGroupNodeByPath(insertSinglePointPlan.getDeviceId());
-          //          updateMonitorStatistics(
-          //              processorMap.get(storageGroupMNode.getPartialPath()),
-          // insertSinglePointPlan);
+          updateMonitorStatistics(
+              processorMap.get(storageGroupMNode.getPartialPath()), insertSinglePointPlan);
         } catch (MetadataException e) {
           logger.error("failed to record status", e);
         }
@@ -601,6 +600,18 @@ public class StorageEngine implements IService {
     virtualStorageGroupManager.updateMonitorSeriesValue(successPointsNum);
     // update to global statistics
     monitor.updateStatGlobalValue(successPointsNum);
+  }
+
+  private void updateMonitorStatistics(
+      VirtualStorageGroupManager virtualStorageGroupManager,
+      InsertSinglePointPlan insertSinglePointPlan) {
+    StatMonitor monitor = StatMonitor.getInstance();
+    //  Only one point is involved, so if getFailedMeasurementNumber = 1  success point is 0
+    int isSuccessPoint = (insertSinglePointPlan.getFailedMeasurementNumber() == 1) ? 0 : 1;
+    // update to storage group statistics
+    virtualStorageGroupManager.updateMonitorSeriesValue(isSuccessPoint);
+    // update to global statistics
+    monitor.updateStatGlobalValue(isSuccessPoint);
   }
 
   /** flush command Sync asyncCloseOneProcessor all file node processors. */

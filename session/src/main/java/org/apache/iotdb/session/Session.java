@@ -729,7 +729,6 @@ public class Session {
   public void insertStringSinglePoint(String deviceId, long time, String measurement, String value)
       throws IoTDBConnectionException, StatementExecutionException {
     TSInsertStringSinglePointReq request =
-        //    TSInsertStringRecordReq request =
         genTSInsertStringSinglePointReq(deviceId, time, measurement, value);
     insertStringSinglePoint(deviceId, request);
   }
@@ -748,7 +747,6 @@ public class Session {
       String deviceId, long time, String measurement, TSDataType type, Object value)
       throws IoTDBConnectionException, StatementExecutionException {
     TSInsertSinglePointReq request =
-        //    TSInsertStringRecordReq request =
         genTSInsertSinglePointReq(deviceId, time, measurement, type, value);
     insertSinglePoint(deviceId, request);
   }

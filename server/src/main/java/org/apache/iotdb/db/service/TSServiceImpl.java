@@ -1221,8 +1221,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           req.deviceId,
           req.getTimestamp());
     }
-    boolean allCheckSuccess = true;
-    //    InsertSingPointPlan insertSingPointPlan = new InsertSingPointPlan();
+
     InsertSinglePointPlan insertSinglePointPlan = null;
     try {
       insertSinglePointPlan =
@@ -1233,27 +1232,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
               ByteBuffer.wrap(req.getValue()));
       TSStatus status = checkAuthority(insertSinglePointPlan, req.getSessionId());
 
-      System.out.println("接收到了数据  初始化plan之后" + insertSinglePointPlan.toString());
-      //        if (status != null) {
-      //          insertSingPointPlan.getResult().put(i, status);
-      //          allCheckSuccess = false;
-      //        }
-      //        insertRowsPlan.addOneInsertRowPlan(plan, i);
+      return status != null ? status : executeNonQueryPlan(insertSinglePointPlan);
     } catch (Exception e) {
-      allCheckSuccess = false;
-      //        insertRowsPlan
-      //            .getResults()
-      //            .put(
-      //                i,
-      //                onNPEOrUnexpectedException(
-      //                    e, "inserting records", TSStatusCode.INTERNAL_SERVER_ERROR));
+      return onNPEOrUnexpectedException(
+          e, "inserting a record", TSStatusCode.EXECUTE_STATEMENT_ERROR);
     }
-
-    TSStatus tsStatus = executeNonQueryPlan(insertSinglePointPlan);
-
-    //    return judgeFinalTsStatus(
-    //        allCheckSuccess, tsStatus, status, req.deviceId);
-    return tsStatus;
   }
 
   @Override
@@ -1269,39 +1252,21 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           req.deviceId,
           req.getTimestamp());
     }
-    boolean allCheckSuccess = true;
-    //    InsertSingPointPlan insertSingPointPlan = new InsertSingPointPlan();
-    InsertSinglePointPlan insertSinglePointPlan = null;
+    InsertSinglePointPlan insertStringSinglePointPlan = null;
     try {
-      insertSinglePointPlan =
+      insertStringSinglePointPlan =
           new InsertSinglePointPlan(
               new PartialPath(req.getDeviceId()),
               req.getTimestamp(),
               req.getMeasurement(),
               req.getValue());
-      TSStatus status = checkAuthority(insertSinglePointPlan, req.getSessionId());
+      TSStatus status = checkAuthority(insertStringSinglePointPlan, req.getSessionId());
 
-      System.out.println("接收到了数据  初始化plan之后" + insertSinglePointPlan.toString());
-      //        if (status != null) {
-      //          insertSingPointPlan.getResult().put(i, status);
-      //          allCheckSuccess = false;
-      //        }
-      //        insertRowsPlan.addOneInsertRowPlan(plan, i);
+      return status != null ? status : executeNonQueryPlan(insertStringSinglePointPlan);
     } catch (Exception e) {
-      allCheckSuccess = false;
-      //        insertRowsPlan
-      //            .getResults()
-      //            .put(
-      //                i,
-      //                onNPEOrUnexpectedException(
-      //                    e, "inserting records", TSStatusCode.INTERNAL_SERVER_ERROR));
+      return onNPEOrUnexpectedException(
+          e, "inserting a record", TSStatusCode.EXECUTE_STATEMENT_ERROR);
     }
-
-    TSStatus tsStatus = executeNonQueryPlan(insertSinglePointPlan);
-
-    //    return judgeFinalTsStatus(
-    //        allCheckSuccess, tsStatus, status, req.deviceId);
-    return tsStatus;
   }
 
   protected QueryContext genQueryContext(long queryId, boolean debug) {
