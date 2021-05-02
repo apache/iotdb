@@ -16,63 +16,77 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.sql;
 
 import org.apache.iotdb.jdbc.Config;
 
-import org.junit.*;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.DockerComposeContainer;
-import org.testcontainers.containers.NoProjectNameDockerComposeContainer;
-import org.testcontainers.containers.output.Slf4jLogConsumer;
-import org.testcontainers.containers.wait.strategy.Wait;
 
-import java.io.File;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.HashSet;
 import java.util.Set;
 
-public class ClusterIT {
+public abstract class ClusterIT {
+
   private static Logger logger = LoggerFactory.getLogger(ClusterIT.class);
-  private static Logger node1Logger = LoggerFactory.getLogger("iotdb-server_1");
-  private static Logger node2Logger = LoggerFactory.getLogger("iotdb-server_2");
-  private static Logger node3Logger = LoggerFactory.getLogger("iotdb-server_3");
 
-  private Statement statement;
-  private Connection connection;
+  private Statement writeStatement;
+  private Connection writeConnection;
+  private Statement readStatement;
+  private Connection readConnection;
 
-  // in TestContainer's document, it is @ClassRule, and the environment is `public static`
-  // I am not sure the difference now.
-  @Rule
-  public DockerComposeContainer environment =
-      new NoProjectNameDockerComposeContainer(
-              "3nodes", new File("src/test/resources/3nodes/docker-compose.yaml"))
-          .withExposedService("iotdb-server_1", 6667, Wait.forListeningPort())
-          .withLogConsumer("iotdb-server_1", new Slf4jLogConsumer(node1Logger))
-          .withExposedService("iotdb-server_2", 6667, Wait.forListeningPort())
-          .withLogConsumer("iotdb-server_2", new Slf4jLogConsumer(node2Logger))
-          .withExposedService("iotdb-server_3", 6667, Wait.forListeningPort())
-          .withLogConsumer("iotdb-server_3", new Slf4jLogConsumer(node3Logger))
-          .withLocalCompose(true);
+  protected int getWriteRpcPort() {
+    return getContainer().getServicePort("iotdb-server_1", 6667);
+  }
 
-  int rpcPort = 6667;
+  protected String getWriteRpcIp() {
+    return getContainer().getServiceHost("iotdb-server_1", 6667);
+  }
+
+  protected int getReadRpcPort() {
+    return getContainer().getServicePort("iotdb-server_1", 6667);
+  }
+
+  protected String getReadRpcIp() {
+    return getContainer().getServiceHost("iotdb-server_1", 6667);
+  }
+
+  protected void startCluster() {}
+
+  protected abstract DockerComposeContainer getContainer();
 
   @Before
   public void setUp() throws Exception {
-
-    String ip = environment.getServiceHost("iotdb-server_1", 6667);
-    rpcPort = environment.getServicePort("iotdb-server_1", 6667);
+    startCluster();
 
     Class.forName(Config.JDBC_DRIVER_NAME);
-    connection = DriverManager.getConnection("jdbc:iotdb://" + ip + ":" + rpcPort, "root", "root");
-    statement = connection.createStatement();
+    writeConnection =
+        DriverManager.getConnection(
+            "jdbc:iotdb://" + getWriteRpcIp() + ":" + getWriteRpcPort(), "root", "root");
+    writeStatement = writeConnection.createStatement();
+    readConnection =
+        DriverManager.getConnection(
+            "jdbc:iotdb://" + getReadRpcIp() + ":" + getReadRpcPort(), "root", "root");
+    readStatement = readConnection.createStatement();
   }
 
   @After
   public void tearDown() throws Exception {
-    statement.close();
-    connection.close();
+    writeStatement.close();
+    writeConnection.close();
+    readStatement.close();
+    readConnection.close();
   }
 
   @Test
@@ -81,13 +95,13 @@ public class ClusterIT {
     String[] timeSeriesArray = {"root.sg1.aa.bb", "root.sg1.aa.bb.cc", "root.sg1.aa"};
 
     for (String timeSeries : timeSeriesArray) {
-      statement.execute(
+      writeStatement.execute(
           String.format(
               "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
               timeSeries));
     }
     ResultSet resultSet = null;
-    resultSet = statement.executeQuery("show timeseries");
+    resultSet = readStatement.executeQuery("show timeseries");
     Set<String> result = new HashSet<>();
     while (resultSet.next()) {
       result.add(resultSet.getString(1));
@@ -96,5 +110,17 @@ public class ClusterIT {
     for (String timeseries : timeSeriesArray) {
       Assert.assertTrue(result.contains(timeseries));
     }
+    resultSet.close();
+
+    // test https://issues.apache.org/jira/browse/IOTDB-1331
+    writeStatement.execute("insert into root.ln.wf01.wt01(time, temperature) values(10, 1.0)");
+    resultSet = readStatement.executeQuery("select avg(temperature) from root.ln.wf01.wt01");
+    if (resultSet.next()) {
+      Assert.assertEquals(1.0, resultSet.getDouble(1), 0.01);
+    } else {
+      Assert.fail("expect 1 result, but get an empty resultSet.");
+    }
+    Assert.assertFalse(resultSet.next());
+    resultSet.close();
   }
 }
