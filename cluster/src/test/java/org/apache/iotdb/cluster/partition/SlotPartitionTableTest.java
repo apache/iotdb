@@ -63,7 +63,6 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
-import org.mockito.internal.util.reflection.Whitebox;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -118,7 +117,6 @@ public class SlotPartitionTableTest {
     prevReplicaNum = ClusterDescriptor.getInstance().getConfig().getReplicationNum();
     ClusterDescriptor.getInstance().getConfig().setReplicationNum(replica_size);
     tables = new SlotPartitionTable[20];
-    mManager = new MManager[20];
 
     // suppose there are 40 storage groups and each node maintains two of them.
     String[] storageNames = new String[40];
@@ -138,11 +136,6 @@ public class SlotPartitionTableTest {
       storageNames[i + 20] = String.format("root.sg.l2.l3.l4.%d", i + 20);
       node = localTable.routeToHeaderByTime(storageNames[i + 20], 0);
       nodeSGs[node.getMetaPort() - 30000].add(storageNames[i + 20]);
-    }
-    for (int i = 0; i < 20; i++) {
-      mManager[i] = MManagerWhiteBox.newMManager("target/schemas/mlog_" + i);
-      initMockMManager(i, mManager[i], storageNames, nodeSGs[i]);
-      Whitebox.setInternalState(tables[i], "mManager", mManager[i]);
     }
   }
 
@@ -225,7 +218,7 @@ public class SlotPartitionTableTest {
 
     assertEquals(
         new Node(
-            "localhost", 30000 + last, last, 40000 + last, Constants.RPC_PORT + start, "localhost"),
+            "localhost", 30000 + last, last, 40000 + last, Constants.RPC_PORT + last, "localhost"),
         group.get(replica_size - 1));
   }
 
