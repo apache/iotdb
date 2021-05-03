@@ -368,7 +368,7 @@ service TSDataService extends RaftService {
     * @return a map containing key-value,the serialized time-value pairs or an empty buffer if there
     * are not more results.
     **/
-    map<string,binary> fetchMultSeries(1:Node header, 2:long readerId, list<string> paths)
+    map<string,binary> fetchMultSeries(1:Node header, 2:long readerId, 3:list<string> paths)
 
    /**
    * Query a time series and generate an IReaderByTimestamp.
@@ -508,26 +508,26 @@ service TSMetaService extends RaftService {
   * cannot know when another node resumes, and handshakes are mainly used to update node status
   * on coordinator side.
   **/
-  void handshake(Node sender);
+  void handshake(1:Node sender);
 }
 
 /**
 * for cluster maintainer.
 * The interface will replace the JMX based NodeTool APIs.
 **/
-service DBA {
+service ClusterInfoService {
 
     /**
      * Get physical hash ring
      */
-    List<Node> getRing();
+    list<Node> getRing();
 
     /**
      * Get data partition information of input path and time range.
      * @param path input path
      * @return data partition information
      */
-    map<long, list<Node>> getDataPartition(String path, long startTime, long endTime);
+    map<long, list<Node>> getDataPartition(1:string path, 2:long startTime, 3:long endTime);
 
     /**
      * Get metadata partition information of input path
@@ -535,35 +535,20 @@ service DBA {
      * @param path input path
      * @return metadata partition information
      */
-    list<Node> getMetaPartition(String path);
-
-    /**
-     * Get data partition groups that input node belongs to and the slot number in each partition
-     * group.
-     *
-     * @return key: the partition group, value: the slot number
-     */
-    Map<list<Node>, int> getSlotNumOfCurNode();
-
-    /**
-     * Get all data partition groups and the slot number in each partition group.
-     *
-     * @return key: the partition group, value: the slot number
-     */
-    Map<list<Node>, int> getSlotNumOfAllNode();
+    list<Node> getMetaPartition(1:string path);
 
     /**
      * Get status of all nodes
      *
      * @return key: node, value: live or not
      */
-    Map<Node, bool> getAllNodeStatus();
+    map<Node, bool> getAllNodeStatus();
 
     /**
      * @return A multi-line string with each line representing the total time consumption, invocation
      *     number, and average time consumption.
      */
-    String getInstrumentingInfo();
+    string getInstrumentingInfo();
 
     /** Reset all instrumenting statistics in Timer. */
     void resetInstrumenting();
