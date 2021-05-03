@@ -76,33 +76,6 @@ public class InsertSinglePointPlan extends PhysicalPlan {
     super.canBeSplit = false;
   }
 
-  //  public InsertSinglePointPlan(PartialPath partialPath, long timestamp, String measurement,
-  // byte[] value) {
-  //    super(partialPath, timestamp, measurement, value);
-  //  }
-
-  //  public InsertSinglePointPlan(
-  //      PartialPath deviceId, long time, String measurement, ByteBuffer value)
-  //      throws QueryProcessException {
-  //    super(false, OperatorType.INSERTSINGLEPOINT);
-  //    this.time = time;
-  //    this.deviceId = deviceId;
-  //    this.measurement = measurement;
-  //    this.dataType = dataType;
-  //    //    this.value = value;
-  //    this.fillValue(value);
-  //    isNeedInferType = false;
-  //  }
-
-  //  public InsertSinglePointPlan(PartialPath partialPath, long timestamp, String measurement,
-  // byte[] value) {
-  //    super(partialPath, timestamp, measurement, value);
-  //  }
-
-  //  public InsertSinglePointPlan() {
-  //    super(OperatorType.INSERTSINGLEPOINT);
-  //  }
-
   public PartialPath getDeviceId() {
     return deviceId;
   }
