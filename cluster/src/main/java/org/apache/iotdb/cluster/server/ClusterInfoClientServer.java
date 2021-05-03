@@ -18,7 +18,13 @@
  */
 package org.apache.iotdb.cluster.server;
 
+import java.util.ArrayList;
+import java.util.stream.Collectors;
+import org.apache.commons.collections4.keyvalue.MultiKey;
+import org.apache.commons.collections4.map.MultiKeyMap;
+import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.ClusterInfoService;
+import org.apache.iotdb.cluster.rpc.thrift.DataPartitionEntry;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitor;
 import org.apache.thrift.TException;
@@ -34,29 +40,30 @@ public class ClusterInfoClientServer implements ClusterInfoService.Iface {
   }
 
   @Override
-  public Map<Long, List<Node>> getDataPartition(String path, long startTime, long endTime)
+  public List<DataPartitionEntry> getDataPartition(String path, long startTime, long endTime)
       throws TException {
-    //    Map<Long, PartitionGroup> result =
-    //        ClusterMonitor.INSTANCE.getDataPartition(path, startTime, endTime);
-
-    return null;
+        MultiKeyMap<Long, PartitionGroup> partitions =
+            ClusterMonitor.INSTANCE.getDataPartition(path, startTime, endTime);
+        List<DataPartitionEntry> result = new ArrayList<>(partitions.size());
+        partitions.forEach((multikey, nodes) -> {
+          result.add(new DataPartitionEntry(multikey.getKey(1), multikey.getKey(2), nodes));
+        });
+    return result;
   }
 
   @Override
   public List<Node> getMetaPartition(String path) throws TException {
-    return null;
+    return ClusterMonitor.INSTANCE.getMetaPartition(path);
   }
 
   @Override
   public Map<Node, Boolean> getAllNodeStatus() throws TException {
-    return null;
+    return ClusterMonitor.INSTANCE.getAllNodeStatus();
   }
 
   @Override
   public String getInstrumentingInfo() throws TException {
-    return null;
+    return ClusterMonitor.INSTANCE.getInstrumentingInfo();
   }
 
-  @Override
-  public void resetInstrumenting() throws TException {}
 }

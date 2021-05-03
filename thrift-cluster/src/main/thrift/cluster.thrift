@@ -511,6 +511,13 @@ service TSMetaService extends RaftService {
   void handshake(1:Node sender);
 }
 
+
+struct DataPartitionEntry{
+  1: required long startTime,
+  2: required long endTime,
+  3: required list<Node> nodes
+}
+
 /**
 * for cluster maintainer.
 * The interface will replace the JMX based NodeTool APIs.
@@ -527,7 +534,7 @@ service ClusterInfoService {
      * @param path input path
      * @return data partition information
      */
-    map<long, list<Node>> getDataPartition(1:string path, 2:long startTime, 3:long endTime);
+    list<DataPartitionEntry> getDataPartition(1:string path, 2:long startTime, 3:long endTime);
 
     /**
      * Get metadata partition information of input path
@@ -550,6 +557,4 @@ service ClusterInfoService {
      */
     string getInstrumentingInfo();
 
-    /** Reset all instrumenting statistics in Timer. */
-    void resetInstrumenting();
 }
