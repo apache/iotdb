@@ -44,6 +44,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.LineNumberReader;
 import java.nio.charset.StandardCharsets;
+import java.sql.*;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -106,9 +107,99 @@ public class ImportCsv extends AbstractCsvTool {
     return options;
   }
 
+  public static Connection getConnection(String ip, String port, String username, String password) {
+    // JDBC driver name and database URL
+    String driver = "org.apache.iotdb.jdbc.IoTDBDriver";
+    String url = "jdbc:iotdb://"+ip+":"+port+"/";
+
+    Connection connection = null;
+    try {
+      Class.forName(driver);
+      connection = DriverManager.getConnection(url, username, password);
+    } catch (ClassNotFoundException e) {
+      e.printStackTrace();
+    } catch (SQLException e) {
+      e.printStackTrace();
+    }
+    return connection;
+  }
+
+  public static boolean valueCheck(String value, String device, int position , String ip, String port, String username, String password){
+    Connection connection = getConnection(ip, port, username, password);
+    Statement statement = null;
+    ResultSet resultSet=null;
+    List<String> datatypes = new ArrayList<>();
+    try {
+      statement = connection.createStatement();
+      statement.execute("SHOW TIMESERIES "+device);
+      resultSet=statement.getResultSet();
+      //outputResult(statement.getResultSet());
+      while (resultSet.next()) {
+        datatypes.add(resultSet.getString(4));
+      }
+      //System.out.println(datatypes);
+    } catch (SQLException throwables) {
+      throwables.printStackTrace();
+    }
+    finally {
+      try {
+        statement.close();
+        connection.close();
+      } catch (SQLException throwables) {
+        throwables.printStackTrace();
+      }
+    }
+    if(datatypes.get(position-1).equals("DOUBLE")){
+      try{
+        Double.parseDouble(value);
+        return true;
+      }
+      catch(NumberFormatException e) {
+        return false;
+      }
+    }
+    else if(datatypes.get(position-1).equals("FLOAT")){
+      try{
+        Float.parseFloat(value);
+        return true;
+      }
+      catch(NumberFormatException e) {
+        return false;
+      }
+    }
+    else if(datatypes.get(position-1).equals("BOOLEAN")){
+        if (Boolean.parseBoolean(value)){
+          return true;
+        }
+        else if (value.equalsIgnoreCase("False")||value.equals("0")){
+          return true;
+        }
+        else {return false;}
+    }
+    else if(datatypes.get(position-1).equals("INT32")){
+      try{
+        Integer.parseInt(value);
+        return true;
+      }
+      catch(NumberFormatException e) {
+        return false;
+      }
+    }
+    else if(datatypes.get(position-1).equals("INT64")){
+      try{
+        Long.parseLong(value);
+        return true;
+      }
+      catch(NumberFormatException e) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   /** Data from csv To tsfile. */
   @SuppressWarnings("squid:S1135")
-  private static void loadDataFromCSV(File file) {
+  private static void loadDataFromCSV(File file, String ip, String port, String username, String password) {
     int fileLine;
     try {
       fileLine = getFileLineCount(file);
@@ -160,7 +251,13 @@ public class ImportCsv extends AbstractCsvTool {
 
           List<String> values = new ArrayList<>();
           for (int position : deviceToPositions.getValue()) {
-            values.add(cols[position]);
+            boolean valid=valueCheck(cols[position], devices.get(devices.size()-1),position, ip, port, username, password);
+            if(valid==true){
+              values.add(cols[position]);
+            }
+            else{
+              values.add("null");
+            }
           }
           valuesList.add(values);
 
@@ -297,9 +394,9 @@ public class ImportCsv extends AbstractCsvTool {
 
       File file = new File(filename);
       if (file.isFile()) {
-        importFromSingleFile(file);
+        importFromSingleFile(file, ip, port, username, password);
       } else if (file.isDirectory()) {
-        importFromDirectory(file);
+        importFromDirectory(file, ip, port, username, password);
       }
     } catch (IoTDBConnectionException e) {
       System.out.println("Encounter an error when connecting to server, because " + e.getMessage());
@@ -318,16 +415,16 @@ public class ImportCsv extends AbstractCsvTool {
     }
   }
 
-  private static void importFromSingleFile(File file) {
+  private static void importFromSingleFile(File file, String ip, String port, String username, String password) {
     if (file.getName().endsWith(FILE_SUFFIX)) {
-      loadDataFromCSV(file);
+      loadDataFromCSV(file, ip, port, username, password);
     } else {
       System.out.println(
           "File " + file.getName() + "  should ends with '.csv' if you want to import");
     }
   }
 
-  private static void importFromDirectory(File file) {
+  private static void importFromDirectory(File file, String ip, String port, String username, String password) {
     File[] files = file.listFiles();
     if (files == null) {
       return;
@@ -336,7 +433,7 @@ public class ImportCsv extends AbstractCsvTool {
     for (File subFile : files) {
       if (subFile.isFile()) {
         if (subFile.getName().endsWith(FILE_SUFFIX)) {
-          loadDataFromCSV(subFile);
+          loadDataFromCSV(subFile, ip, port, username, password);
         } else {
           System.out.println(
               "File " + file.getName() + " should ends with '.csv' if you want to import");
