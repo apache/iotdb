@@ -16,23 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.server;
+package org.apache.iotdb.cluster.server.clusterInfo;
 
-import java.util.ArrayList;
-import java.util.stream.Collectors;
-import org.apache.commons.collections4.keyvalue.MultiKey;
-import org.apache.commons.collections4.map.MultiKeyMap;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.ClusterInfoService;
 import org.apache.iotdb.cluster.rpc.thrift.DataPartitionEntry;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitor;
+
+import org.apache.commons.collections4.map.MultiKeyMap;
 import org.apache.thrift.TException;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class ClusterInfoClientServer implements ClusterInfoService.Iface {
+public class ClusterInfoServiceImpl implements ClusterInfoService.Iface {
 
   @Override
   public List<Node> getRing() throws TException {
@@ -40,14 +39,13 @@ public class ClusterInfoClientServer implements ClusterInfoService.Iface {
   }
 
   @Override
-  public List<DataPartitionEntry> getDataPartition(String path, long startTime, long endTime)
-      throws TException {
-        MultiKeyMap<Long, PartitionGroup> partitions =
-            ClusterMonitor.INSTANCE.getDataPartition(path, startTime, endTime);
-        List<DataPartitionEntry> result = new ArrayList<>(partitions.size());
-        partitions.forEach((multikey, nodes) -> {
-          result.add(new DataPartitionEntry(multikey.getKey(1), multikey.getKey(2), nodes));
-        });
+  public List<DataPartitionEntry> getDataPartition(String path, long startTime, long endTime) {
+    MultiKeyMap<Long, PartitionGroup> partitions =
+        ClusterMonitor.INSTANCE.getDataPartition(path, startTime, endTime);
+    List<DataPartitionEntry> result = new ArrayList<>(partitions.size());
+    partitions.forEach(
+        (multikey, nodes) ->
+            result.add(new DataPartitionEntry(multikey.getKey(1), multikey.getKey(2), nodes)));
     return result;
   }
 
@@ -66,4 +64,7 @@ public class ClusterInfoClientServer implements ClusterInfoService.Iface {
     return ClusterMonitor.INSTANCE.getInstrumentingInfo();
   }
 
+  public void handleClientExit() {
+    // do something when a client connection exits.
+  }
 }

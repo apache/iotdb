@@ -29,6 +29,7 @@ import org.apache.iotdb.cluster.partition.slot.SlotStrategy;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.MetaClusterServer;
 import org.apache.iotdb.cluster.server.Response;
+import org.apache.iotdb.cluster.server.clusterInfo.ClusterInfoService;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.db.conf.IoTDBConfigCheck;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -106,6 +107,9 @@ public class ClusterMain {
         preStartCustomize();
         metaServer.start();
         metaServer.buildCluster();
+        // Currently, we do not reigher ClusterInfoService as a JMX Bean,
+        // so we use startService() rather than start()
+        ClusterInfoService.getInstance().startService();
       } catch (TTransportException
           | StartupException
           | QueryProcessException
@@ -120,6 +124,9 @@ public class ClusterMain {
         preStartCustomize();
         metaServer.start();
         metaServer.joinCluster();
+        // Currently, we do not reigher ClusterInfoService as a JMX Bean,
+        // so we use startService() rather than start()
+        ClusterInfoService.getInstance().startService();
       } catch (TTransportException
           | StartupException
           | QueryProcessException
