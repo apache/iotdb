@@ -16,41 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.logical.crud;
 
-/** this class extends {@code RootOperator} and process insert statement. */
-public class InsertOperator extends SFWOperator {
+package org.apache.iotdb.db.sink.alertmanager;
 
-  private long[] times;
-  private String[] measurementList;
-  private String[] valueList;
+import org.apache.iotdb.db.sink.api.Configuration;
 
-  public InsertOperator(int tokenIntType) {
-    super(tokenIntType);
-    operatorType = OperatorType.INSERT;
+public class AlertManagerConfiguration implements Configuration {
+
+  private final String endpoint;
+
+  public AlertManagerConfiguration(String endpoint) {
+    this.endpoint = endpoint;
   }
 
-  public String[] getMeasurementList() {
-    return measurementList;
-  }
-
-  public void setMeasurementList(String[] measurementList) {
-    this.measurementList = measurementList;
-  }
-
-  public String[] getValueList() {
-    return valueList;
-  }
-
-  public void setValueList(String[] insertValue) {
-    this.valueList = insertValue;
-  }
-
-  public long[] getTimes() {
-    return times;
-  }
-
-  public void setTimes(long[] times) {
-    this.times = times;
+  public String getEndpoint() {
+    return endpoint;
   }
 }

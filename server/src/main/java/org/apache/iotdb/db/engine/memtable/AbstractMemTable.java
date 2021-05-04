@@ -52,6 +52,7 @@ public abstract class AbstractMemTable implements IMemTable {
    */
   protected boolean disableMemControl = true;
 
+  private boolean shouldFlush = false;
   private int avgSeriesPointNumThreshold =
       IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
   /** memory size of data points, including TEXT values */
@@ -305,6 +306,9 @@ public abstract class AbstractMemTable implements IMemTable {
       }
       IWritableMemChunk vectorMemChunk =
           memTableMap.get(deviceId).get(partialVectorSchema.getMeasurementId());
+      if (vectorMemChunk == null) {
+        return null;
+      }
 
       List<String> measurementIdList = partialVectorSchema.getValueMeasurementIdList();
       List<Integer> columns = new ArrayList<>();
@@ -385,6 +389,16 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public void addTextDataSize(long testDataSize) {
     this.memSize += testDataSize;
+  }
+
+  @Override
+  public void setShouldFlush() {
+    shouldFlush = true;
+  }
+
+  @Override
+  public boolean shouldFlush() {
+    return shouldFlush;
   }
 
   @Override

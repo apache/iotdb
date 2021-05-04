@@ -42,7 +42,6 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
@@ -162,7 +161,7 @@ public class Coordinator {
    */
   private TSStatus processNonPartitionedDataPlan(PhysicalPlan plan) {
     try {
-      if (plan instanceof DeleteTimeSeriesPlan || plan instanceof DeletePlan) {
+      if (plan instanceof DeleteTimeSeriesPlan) {
         // as delete related plans may have abstract paths (paths with wildcards), we convert
         // them to full paths so the executor nodes will not need to query the metadata holders,
         // eliminating the risk that when they are querying the metadata holders, the timeseries

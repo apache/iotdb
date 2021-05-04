@@ -749,7 +749,7 @@ public class MManager {
   public void deleteStorageGroups(List<PartialPath> storageGroups) throws MetadataException {
     try {
       for (PartialPath storageGroup : storageGroups) {
-        totalSeriesNumber.addAndGet(mtree.getAllTimeseriesCount(storageGroup));
+        totalSeriesNumber.addAndGet(-mtree.getAllTimeseriesCount(storageGroup));
         // clear cached MNode
         if (!allowToCreateNewSeries
             && totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE < MTREE_SIZE_THRESHOLD) {
@@ -2054,7 +2054,8 @@ public class MManager {
    * if the path is in local mtree, nothing needed to do (because mtree is in the memory); Otherwise
    * cache the path to mRemoteSchemaCache
    */
-  public void cacheMeta(PartialPath path, MeasurementMNode measurementMNode) {
+  public void cacheMeta(
+      PartialPath path, MeasurementMNode measurementMNode, boolean needSetFullPath) {
     // do nothing
   }
 
@@ -2445,5 +2446,9 @@ public class MManager {
 
   private void setUsingDeviceTemplate(SetUsingDeviceTemplatePlan plan) throws MetadataException {
     getDeviceNode(plan.getPrefixPath()).setUseTemplate(true);
+  }
+
+  public long getTotalSeriesNumber() {
+    return totalSeriesNumber.get();
   }
 }
