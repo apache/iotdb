@@ -22,10 +22,16 @@ public class WorkloadManager {
 
   private WorkloadManager() {}
 
-  public void addQueryRecord(String deviceID, List<String> sensors, long interval) {
+  /**
+   * Add query record to the manager
+   * @param deviceID the device which is visited
+   * @param sensors the sensors that are visited
+   * @param span the time span of the query
+   */
+  public void addQueryRecord(String deviceID, List<String> sensors, long span) {
     writeLock.lock();
     try {
-      workloadList.addRecord(deviceID, sensors, interval);
+      workloadList.addRecord(deviceID, sensors, span);
     } finally {
       writeLock.unlock();
     }
@@ -34,10 +40,10 @@ public class WorkloadManager {
   /**
    * using the statistic info to judge if the workload is changed
    *
-   * @param deviceId the id of the device to judge on
+   * @param deviceID the id of the device to judge on
    * @return true if the workload changes else false
    */
-  public boolean isWorkloadChanged(String deviceId) {
+  public boolean isWorkloadChanged(String deviceID) {
     readLock.lock();
     try {
       ListStatistic oriStatistic = workloadList.getStatistic();
@@ -53,14 +59,14 @@ public class WorkloadManager {
   /**
    * generate a sample of query record according to the collected info in workload manager
    *
-   * @param deviceId the id of the device to sample on
+   * @param deviceID the id of the device to sample on
    * @param sampleNum the number of the sampled query record
    * @return the list of the query record
    */
-  public List<QueryRecord> getSampledQueryRecord(String deviceId, int sampleNum) {
+  public List<QueryRecord> getSampledQueryRecord(String deviceID, int sampleNum) {
     readLock.lock();
     try {
-      WorkloadInfo info = workloadList.getWorkloadInfo(deviceId);
+      WorkloadInfo info = workloadList.getWorkloadInfo(deviceID);
       List<QueryRecord> records = new LinkedList<>();
       for (int i = 0; i < sampleNum; i++) {
         records.add(info.sample());

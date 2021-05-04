@@ -72,10 +72,10 @@ public class DiskEvaluator {
   }
 
   /**
-   * peform the read test on several file to get the long-term read performance of the disk
+   * perform the read test on several file to get the long-term read performance of the disk
    *
    * @param directory the directory containing the test file
-   * @return the read speed of the disk in KB/s
+   * @return the read speed of the disk in Byte/ms
    * @throws IOException throw the IOException if the file doesn't exist
    */
   public synchronized double performRead(final File directory) throws IOException {
@@ -120,12 +120,12 @@ public class DiskEvaluator {
       totalTime += readTime;
       cleaner.exec();
     }
-    // read speed in KB/s
-    double readSpeed = ((double) totalSize) / totalTime / 1000 / 1024;
+    // read speed in Byte/ms
+    double readSpeed = ((double) totalSize) / totalTime;
     logger.info(
         String.format(
             "Read %d KB in %.2f seconds, %.2f KB/s",
-            totalSize / 1024, totalTime / 1000, readSpeed));
+            totalSize / 1024, totalTime / 1000, readSpeed / 1000 / 1024));
     logWriter.write(String.format("Read speed: %.2f bytes/s\n", readSpeed));
     logWriter.flush();
     logWriter.close();
@@ -253,7 +253,7 @@ public class DiskEvaluator {
 
   /**
    * evaluate the disk performance both in seek and read, and store the result in
-   * SystemDir/disk_info.txt
+   * SystemDir/disk.info
    *
    * @throws IOException throw IOException if fail to create the test file
    */

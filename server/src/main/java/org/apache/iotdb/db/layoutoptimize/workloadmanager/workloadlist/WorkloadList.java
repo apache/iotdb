@@ -74,14 +74,14 @@ public class WorkloadList {
       for (Map.Entry<VisitedMeasurements, Long> measurementEntry : measurementMap.entrySet()) {
         if (measurementEntry.getKey().getDeviceId().equals(deviceId)) {
           for (String measurement : measurementEntry.getKey().getMeasurements()) {
-            info.addMeasurementVisit(measurement);
+            info.addVisitedMeasurement(measurement);
           }
         }
       }
 
       Map<Long, Long> spanMap = item.getSpanMap(deviceId);
       for (Map.Entry<Long, Long> spanEntry : spanMap.entrySet()) {
-        info.addSpanVisit(spanEntry.getKey(), spanEntry.getValue());
+        info.addVisitedSpan(spanEntry.getKey(), spanEntry.getValue());
       }
     }
     return info;

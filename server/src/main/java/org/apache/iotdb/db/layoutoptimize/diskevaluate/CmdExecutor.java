@@ -16,15 +16,11 @@ public class CmdExecutor {
   private static final String SHELL_NAME = "/bin/bash";
   private static final String SHELL_PARAM = "-c";
   private static final String REDIRECT = "2>&1";
-  /** 执行 sudo 的密码 */
   private final String sudoPassword;
-  /** 是否显示命令内容及输出 */
   private boolean verbose = true;
-  /** 是否错误输出重定向 */
   private boolean errRedirect = true;
-  /** 是否同步，主线程是否等待命令执行结束 */
+  // if it is synchronized
   private boolean sync = true;
-  /** 执行多条命令时的命令分隔符 */
   private String cmdSeparator = " && ";
 
   private List<String> cmds = new ArrayList<String>(16);
@@ -72,9 +68,9 @@ public class CmdExecutor {
   }
 
   /**
-   * 添加一条需要sudo执行的命令
+   * add a sudo command
    *
-   * @param cmd 要执行的命令(字符串中不需要有sudo)
+   * @param cmd the command need to be executed(should not contain "sudo")
    * @return
    */
   public CmdExecutor sudoCmd(String cmd) {
@@ -89,9 +85,9 @@ public class CmdExecutor {
   }
 
   /**
-   * 添加一条普通命令
+   * add a simple command
    *
-   * @param cmd
+   * @param cmd the command need to be executed
    * @return
    */
   public CmdExecutor cmd(String cmd) {
@@ -119,9 +115,9 @@ public class CmdExecutor {
   }
 
   /**
-   * 将{@link InputStream}中所有内容输出到{@link StringBuffer}
+   * output the content in {@link InputStream} to {@link StringBuffer}
    *
-   * @param in
+   * @param in the input stream containing the content needs to be transfer
    * @return
    * @throws IOException
    */
@@ -142,9 +138,9 @@ public class CmdExecutor {
   }
 
   /**
-   * 调用{@link Runtime#exec(String[])}执行命令
+   * execute the command using {@link Runtime#exec(String[])}
    *
-   * @return 返回输出结果
+   * @return the result of execution
    */
   public String exec() throws IOException {
     StringBuffer outBuffer = new StringBuffer();
@@ -153,10 +149,10 @@ public class CmdExecutor {
   }
 
   /**
-   * 调用{@link Runtime#exec(String[])}执行命令
+   * execute the command using {@link Runtime#exec(String[])}
    *
-   * @param outBuffer 标准输出
-   * @param errBuffer 错误信息输出
+   * @param outBuffer standard output buffer
+   * @param errBuffer standard error buffer
    * @throws IOException
    */
   public void exec(StringBuffer outBuffer, StringBuffer errBuffer) throws IOException {

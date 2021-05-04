@@ -20,7 +20,7 @@ public class WorkloadInfo {
     spanVisitCount = new HashMap<>();
   }
 
-  public void addMeasurementVisit(String measurement) {
+  public void addVisitedMeasurement(String measurement) {
     if (!measurementVisitCount.containsKey(measurement)) {
       measurementVisitCount.put(measurement, 1L);
     } else {
@@ -28,7 +28,7 @@ public class WorkloadInfo {
     }
   }
 
-  public void addSpanVisit(long span, long visitCount) {
+  public void addVisitedSpan(long span, long visitCount) {
     if (!spanVisitCount.containsKey(span)) {
       spanVisitCount.put(span, visitCount);
     } else {
