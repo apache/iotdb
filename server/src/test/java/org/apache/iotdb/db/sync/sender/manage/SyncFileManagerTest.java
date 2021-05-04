@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.sync.sender.manage;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.tier.TierManager;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -59,7 +59,7 @@ public class SyncFileManagerTest {
   @Before
   public void setUp() throws DiskSpaceInsufficientException {
     EnvironmentUtils.envSetUp();
-    FSPath seqDir = DirectoryManager.getInstance().getNextFolderForSequenceFile();
+    FSPath seqDir = TierManager.getInstance().getAllSequenceFileFolders().get(0);
     dataDir = new FSPath(seqDir.getFsType(), seqDir.getFile().getParentFile().getAbsolutePath());
     config.update(dataDir);
   }

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.conf.directories.strategy;
+package org.apache.iotdb.db.engine.tier.directories.strategy;
 
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;

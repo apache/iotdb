@@ -43,6 +43,20 @@ public abstract class AbstractFSFactory implements FSFactory {
     }
   }
 
+  @Override
+  public void copyFile(File srcFile, File destFile) {
+    if (FSUtils.getFSType(srcFile).equals(FSUtils.getFSType(destFile))) {
+      copyFileInSameFS(srcFile, destFile);
+      return;
+    }
+    HDFSFactory hdfsFactory = (HDFSFactory) FSFactoryProducer.getFSFactory(FSType.HDFS);
+    if (FSUtils.getFSType(srcFile).equals(FSType.HDFS)) {
+      hdfsFactory.copyToLocalFile(srcFile, destFile);
+    } else {
+      hdfsFactory.copyFromLocalFile(srcFile, destFile);
+    }
+  }
+
   /**
    * move file in same file system.
    *
@@ -50,4 +64,12 @@ public abstract class AbstractFSFactory implements FSFactory {
    * @param destFile dest file
    */
   abstract void moveFileInSameFS(File srcFile, File destFile);
+
+  /**
+   * copy file in same file system.
+   *
+   * @param srcFile src file
+   * @param destFile dest file
+   */
+  abstract void copyFileInSameFS(File srcFile, File destFile);
 }

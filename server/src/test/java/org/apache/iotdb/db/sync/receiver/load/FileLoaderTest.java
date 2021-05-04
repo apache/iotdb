@@ -20,11 +20,11 @@ package org.apache.iotdb.db.sync.receiver.load;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.virtualSg.HashVirtualPartitioner;
+import org.apache.iotdb.db.engine.tier.TierManager;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -69,7 +69,7 @@ public class FileLoaderTest {
     HashVirtualPartitioner.getInstance().setStorageGroupNum(1);
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
-    FSPath seqDir = DirectoryManager.getInstance().getNextFolderForSequenceFile();
+    FSPath seqDir = TierManager.getInstance().getAllSequenceFileFolders().get(0);
     dataDir = new FSPath(seqDir.getFsType(), seqDir.getFile().getParentFile().getAbsolutePath());
     initMetadata();
   }
@@ -224,7 +224,7 @@ public class FileLoaderTest {
     // add some tsfiles
     Random r = new Random(0);
     long time = System.currentTimeMillis();
-    FSPath seqFolder = DirectoryManager.getInstance().getNextFolderForSequenceFile();
+    FSPath seqFolder = TierManager.getInstance().getAllSequenceFileFolders().get(0);
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 25; j++) {
         allFileList.putIfAbsent(SG_NAME + i, new ArrayList<>());

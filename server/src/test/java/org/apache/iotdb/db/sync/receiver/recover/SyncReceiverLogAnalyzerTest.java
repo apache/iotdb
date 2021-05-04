@@ -20,10 +20,10 @@ package org.apache.iotdb.db.sync.receiver.recover;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.tier.TierManager;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -73,7 +73,7 @@ public class SyncReceiverLogAnalyzerTest {
     IoTDBDescriptor.getInstance().getConfig().setSyncEnable(true);
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
-    FSPath seqDir = DirectoryManager.getInstance().getNextFolderForSequenceFile();
+    FSPath seqDir = TierManager.getInstance().getAllSequenceFileFolders().get(0);
     dataDir = new FSPath(seqDir.getFsType(), seqDir.getFile().getParentFile().getAbsolutePath());
     logAnalyze = SyncReceiverLogAnalyzer.getInstance();
     initMetadata();
@@ -131,8 +131,9 @@ public class SyncReceiverLogAnalyzerTest {
         receiverLogger.finishSyncTsfile(syncFile);
         toBeSyncedFiles.add(syncFile.getAbsolutePath());
         File dataFile =
-            DirectoryManager.getInstance()
-                .getNextFolderForSequenceFile()
+            TierManager.getInstance()
+                .getAllSequenceFileFolders()
+                .get(0)
                 .getChildFile(
                     syncFile.getParentFile().getName() + File.separatorChar + syncFile.getName());
         correctSequenceLoadedFileMap.get(SG_NAME + i).add(dataFile);

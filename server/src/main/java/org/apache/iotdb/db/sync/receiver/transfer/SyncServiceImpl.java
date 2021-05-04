@@ -22,8 +22,8 @@ import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.tier.TierManager;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.SyncDeviceOwnerConflictException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
@@ -139,7 +139,7 @@ public class SyncServiceImpl implements SyncService.Iface {
   /** Init file path. */
   private void initPath() throws DiskSpaceInsufficientException {
     String dataDir =
-        DirectoryManager.getInstance()
+        TierManager.getInstance()
             .getNextFolderForSequenceFile()
             .getFile()
             .getParentFile()

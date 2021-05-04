@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.db.conf;
 
-import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.tier.TierManager;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -344,8 +344,8 @@ public class IoTDBConfigCheck {
           IoTDBConstant.VERSION);
       System.exit(-1);
     }
-    checkUnClosedTsFileV2InFolders(DirectoryManager.getInstance().getAllSequenceFileFolders());
-    checkUnClosedTsFileV2InFolders(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
+    checkUnClosedTsFileV2InFolders(TierManager.getInstance().getAllSequenceFileFolders());
+    checkUnClosedTsFileV2InFolders(TierManager.getInstance().getAllUnSequenceFileFolders());
   }
 
   private void checkUnClosedTsFileV2InFolders(List<FSPath> folders) {
@@ -416,8 +416,8 @@ public class IoTDBConfigCheck {
   }
 
   private void moveTsFileV2() {
-    moveFileToUpgradeFolder(DirectoryManager.getInstance().getAllSequenceFileFolders());
-    moveFileToUpgradeFolder(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
+    moveFileToUpgradeFolder(TierManager.getInstance().getAllSequenceFileFolders());
+    moveFileToUpgradeFolder(TierManager.getInstance().getAllUnSequenceFileFolders());
     logger.info("Move version-2 TsFile successfully");
   }
 

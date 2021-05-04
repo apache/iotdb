@@ -180,7 +180,7 @@ public class IoTDBLoadExternalTsFileWithTimePartitionIT {
 
       statement.execute(String.format("load \"%s\"", new File(tempDir).getAbsolutePath()));
 
-      FSPath dataDir = config.getDataDirs()[0];
+      FSPath dataDir = config.getDataDirs()[0][0];
       // sequence/logical_sg/virtual_sg/time_partitions
       File f = dataDir.getChildFile(
               new PartialPath("sequence") + File.separator + "root.ln" + File.separator + "0");

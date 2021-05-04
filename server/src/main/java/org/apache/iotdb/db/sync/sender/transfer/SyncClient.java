@@ -244,34 +244,36 @@ public class SyncClient implements ISyncClient {
     syncSchema();
 
     // 3. Sync all data
-    FSPath[] dataDirs = ioTDBConfig.getDataDirs();
+    FSPath[][] dataDirs = ioTDBConfig.getDataDirs();
     logger.info("There are {} data dirs to be synced.", dataDirs.length);
-    for (int i = 0; i < dataDirs.length; i++) {
-      FSPath dataDir = dataDirs[i];
-      logger.info(
-          "Start to sync data in data dir {}, the process is {}/{}",
-          dataDir,
-          i + 1,
-          dataDirs.length);
+    for (FSPath[] tierDataDirs : dataDirs) {
+      for (int i = 0; i < tierDataDirs.length; i++) {
+        FSPath dataDir = tierDataDirs[i];
+        logger.info(
+            "Start to sync data in data dir {}, the process is {}/{}",
+            dataDir,
+            i + 1,
+            dataDirs.length);
 
-      config.update(dataDir);
-      syncFileManager.getValidFiles(dataDir);
-      allSG = syncFileManager.getAllSGs();
-      lastLocalFilesMap = syncFileManager.getLastLocalFilesMap();
-      deletedFilesMap = syncFileManager.getDeletedFilesMap();
-      toBeSyncedFilesMap = syncFileManager.getToBeSyncedFilesMap();
-      checkRecovery();
-      if (SyncUtils.isEmpty(deletedFilesMap) && SyncUtils.isEmpty(toBeSyncedFilesMap)) {
-        logger.info("There has no data to sync in data dir {}", dataDir);
-        continue;
+        config.update(dataDir);
+        syncFileManager.getValidFiles(dataDir);
+        allSG = syncFileManager.getAllSGs();
+        lastLocalFilesMap = syncFileManager.getLastLocalFilesMap();
+        deletedFilesMap = syncFileManager.getDeletedFilesMap();
+        toBeSyncedFilesMap = syncFileManager.getToBeSyncedFilesMap();
+        checkRecovery();
+        if (SyncUtils.isEmpty(deletedFilesMap) && SyncUtils.isEmpty(toBeSyncedFilesMap)) {
+          logger.info("There has no data to sync in data dir {}", dataDir);
+          continue;
+        }
+        sync();
+        endSync();
+        logger.info(
+            "Finish to sync data in data dir {}, the process is {}/{}",
+            dataDir,
+            i + 1,
+            dataDirs.length);
       }
-      sync();
-      endSync();
-      logger.info(
-          "Finish to sync data in data dir {}, the process is {}/{}",
-          dataDir,
-          i + 1,
-          dataDirs.length);
     }
 
     // 4. notify receiver that synchronization finish

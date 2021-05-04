@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.conf;
 
-import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
+import org.apache.iotdb.db.engine.tier.TierManager;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -211,8 +211,26 @@ public class IoTDBDescriptor {
         conf.setMlogBufferSize(mlogBufferSize);
       }
 
-      conf.setMultiDirStrategyClassName(
-          properties.getProperty("multi_dir_strategy", conf.getMultiDirStrategyClassName()));
+      String rawMultiDirStrategyClassNames = String.join(";", conf.getMultiDirStrategyClassNames());
+      conf.setMultiDirStrategyClassNames(
+          properties.getProperty("multi_dir_strategy", rawMultiDirStrategyClassNames).split(";"));
+
+      conf.setEnableTieredStorage(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "enable_tiered_storage", Boolean.toString(conf.isEnableTieredStorage()))));
+
+      String rawTierMigrationStrategyClassNames =
+          String.join(";", conf.getTierMigrationStrategyClassNames());
+      conf.setTierMigrationStrategyClassNames(
+          properties
+              .getProperty("default_tier_migration_strategy", rawTierMigrationStrategyClassNames)
+              .split(";"));
+
+      conf.setMigrationThreadNum(
+          Integer.parseInt(
+              properties.getProperty(
+                  "migration_thread_num", Integer.toString(conf.getMigrationThreadNum()))));
 
       conf.setBatchSize(
           Integer.parseInt(
@@ -789,38 +807,21 @@ public class IoTDBDescriptor {
     conf.setTracingDir(properties.getProperty("tracing_dir", conf.getTracingDir()));
 
     String dataDirs = properties.getProperty("data_dirs");
-    FSPath[] fsDataDirs;
+    FSPath[][] fsDataDirs;
+    // parse path string to FSPath
     if (dataDirs == null) {
       fsDataDirs = conf.getDataDirs();
     } else {
-      String[] dirs = dataDirs.split(",");
-      fsDataDirs = new FSPath[dirs.length];
-      for (int i = 0; i < dirs.length; ++i) {
-        fsDataDirs[i] = FSPath.parse(dirs[i]);
-      }
-    }
-    int cnt = 0;
-    for (int i = 0; i < fsDataDirs.length; ++i) {
-      if (TSFileDescriptor.getInstance().getConfig().isFSSupported(fsDataDirs[i].getFsType())) {
-        cnt++;
-      } else {
-        fsDataDirs[i] = null;
-      }
-    }
-    FSPath[] validDirs;
-    if (cnt == fsDataDirs.length) {
-      validDirs = fsDataDirs;
-    } else {
-      validDirs = new FSPath[cnt];
-      int idx = 0;
-      for (FSPath fsPath : fsDataDirs) {
-        if (fsPath != null) {
-          validDirs[idx] = fsPath;
-          ++idx;
+      String[][] tierDataDirs = parseDataDirs(dataDirs);
+      fsDataDirs = new FSPath[tierDataDirs.length][];
+      for (int i = 0; i < tierDataDirs.length; ++i) {
+        fsDataDirs[i] = new FSPath[tierDataDirs[i].length];
+        for (int j = 0; j < tierDataDirs[i].length; ++j) {
+          fsDataDirs[i][j] = FSPath.parse(tierDataDirs[i][j]);
         }
       }
     }
-    conf.setDataDirs(validDirs);
+    conf.setDataDirs(fsDataDirs);
 
     conf.setWalDir(properties.getProperty("wal_dir", conf.getWalDir()));
   }
@@ -1014,15 +1015,22 @@ public class IoTDBDescriptor {
       // update data dirs
       String dataDirs = properties.getProperty("data_dirs", null);
       if (dataDirs != null) {
-        conf.reloadDataDirs(dataDirs.split(","));
+        conf.reloadDataDirs(parseDataDirs(dataDirs));
       }
 
       // update dir strategy
       String multiDirStrategyClassName = properties.getProperty("multi_dir_strategy", null);
-      if (multiDirStrategyClassName != null
-          && !multiDirStrategyClassName.equals(conf.getMultiDirStrategyClassName())) {
-        conf.setMultiDirStrategyClassName(multiDirStrategyClassName);
-        DirectoryManager.getInstance().updateDirectoryStrategy();
+      if (multiDirStrategyClassName != null) {
+        conf.setMultiDirStrategyClassNames(multiDirStrategyClassName.split(";"));
+        TierManager.getInstance().updateDirectoryStrategies();
+      }
+
+      // update default migration strategy
+      String tierMigrationStrategyClassNames =
+          properties.getProperty("default_tier_migration_strategy", null);
+      if (tierMigrationStrategyClassNames != null) {
+        conf.setTierMigrationStrategyClassNames(tierMigrationStrategyClassNames.split(";"));
+        TierManager.getInstance().updateMigrationStrategies();
       }
 
       // update WAL conf
@@ -1068,6 +1076,15 @@ public class IoTDBDescriptor {
     } catch (Exception e) {
       throw new QueryProcessException(String.format("Fail to reload configuration because %s", e));
     }
+  }
+
+  private String[][] parseDataDirs(String dataDirs) {
+    String[] tiers = dataDirs.split(";");
+    String[][] tierDataDirs = new String[tiers.length][];
+    for (int i = 0; i < tiers.length; ++i) {
+      tierDataDirs[i] = tiers[i].split(",");
+    }
+    return tierDataDirs;
   }
 
   public void loadHotModifiedProps() throws QueryProcessException {

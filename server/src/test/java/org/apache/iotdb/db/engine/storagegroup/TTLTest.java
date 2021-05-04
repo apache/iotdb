@@ -22,9 +22,9 @@ package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.tier.TierManager;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TriggerExecutionException;
@@ -290,9 +290,9 @@ public class TTLTest {
     storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
 
     // files before ttl
-    File seqDir = DirectoryManager.getInstance().getNextFolderForSequenceFile().getChildFile(sg1);
+    File seqDir = TierManager.getInstance().getAllSequenceFileFolders().get(0).getChildFile(sg1);
     File unseqDir =
-        DirectoryManager.getInstance().getNextFolderForUnSequenceFile().getChildFile(sg1);
+        TierManager.getInstance().getAllUnSequenceFileFolders().get(0).getChildFile(sg1);
 
     List<File> seqFiles = new ArrayList<>();
     for (File directory : seqDir.listFiles()) {

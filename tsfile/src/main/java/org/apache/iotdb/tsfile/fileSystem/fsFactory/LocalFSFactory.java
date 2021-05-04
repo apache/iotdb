@@ -137,4 +137,17 @@ public class LocalFSFactory extends AbstractFSFactory {
           e);
     }
   }
+
+  @Override
+  void copyFileInSameFS(File srcFile, File destFile) {
+    try {
+      FileUtils.copyFile(srcFile, destFile);
+    } catch (IOException e) {
+      logger.error(
+          "Failed to copy file from {} to {}. ",
+          srcFile.getAbsolutePath(),
+          destFile.getAbsolutePath(),
+          e);
+    }
+  }
 }

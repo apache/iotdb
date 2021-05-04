@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine.storagegroup;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.CompactionMergeTaskPoolManager;
 import org.apache.iotdb.db.engine.compaction.TsFileManagement;
@@ -32,12 +31,18 @@ import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.task.RecoverMergeTask;
+import org.apache.iotdb.db.engine.migration.manage.MigrationManager;
+import org.apache.iotdb.db.engine.migration.task.MigrationRecoverTask;
+import org.apache.iotdb.db.engine.migration.task.MigrationTask;
+import org.apache.iotdb.db.engine.migration.utils.MigrationLogger;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEvent;
+import org.apache.iotdb.db.engine.tier.TierManager;
+import org.apache.iotdb.db.engine.tier.migration.IMigrationStrategy;
 import org.apache.iotdb.db.engine.upgrade.UpgradeCheckStatus;
 import org.apache.iotdb.db.engine.upgrade.UpgradeLog;
 import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
@@ -114,6 +119,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.BiConsumer;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
@@ -262,6 +268,10 @@ public class StorageGroupProcessor {
   private final Deque<ByteBuffer> walByteBufferPool = new LinkedList<>();
 
   private int currentWalPoolSize = 0;
+
+  /** migration strategy of each tier */
+  private final List<IMigrationStrategy> migrationStrategies =
+      new ArrayList<>(TierManager.getInstance().getMigrationStrategies());
 
   // this field is used to avoid when one writer release bytebuffer back to pool,
   // and the next writer has already arrived, but the check thread get the lock first, it find the
@@ -420,12 +430,12 @@ public class StorageGroupProcessor {
     try {
       // collect candidate TsFiles from sequential and unsequential data directory
       Pair<List<TsFileResource>, List<TsFileResource>> seqTsFilesPair =
-          getAllFiles(DirectoryManager.getInstance().getAllSequenceFileFolders());
+          getAllFiles(TierManager.getInstance().getAllSequenceFileFolders());
       List<TsFileResource> tmpSeqTsFiles = seqTsFilesPair.left;
       List<TsFileResource> oldSeqTsFiles = seqTsFilesPair.right;
       upgradeSeqFileList.addAll(oldSeqTsFiles);
       Pair<List<TsFileResource>, List<TsFileResource>> unseqTsFilesPair =
-          getAllFiles(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
+          getAllFiles(TierManager.getInstance().getAllUnSequenceFileFolders());
       List<TsFileResource> tmpUnseqTsFiles = unseqTsFilesPair.left;
       List<TsFileResource> oldUnseqTsFiles = unseqTsFilesPair.right;
       upgradeUnseqFileList.addAll(oldUnseqTsFiles);
@@ -474,6 +484,7 @@ public class StorageGroupProcessor {
         mergingMods.delete();
       }
       recoverCompaction();
+      recoverMigration();
       for (TsFileResource resource : tsFileManagement.getTsFileList(true)) {
         long partitionNum = resource.getTimePartition();
         updatePartitionFileVersion(partitionNum, resource.getVersion());
@@ -534,6 +545,31 @@ public class StorageGroupProcessor {
       logger.error(
           "{} compaction pool not started ,recover failed",
           logicalStorageGroupName + "-" + virtualStorageGroupId);
+    }
+  }
+
+  private void recoverMigration() {
+    File logDir =
+        SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, MigrationLogger.MIGRATION_FOLDER);
+    if (!logDir.exists()) {
+      return;
+    }
+    File[] files = logDir.listFiles();
+    if (files != null) {
+      for (File file : files) {
+        if (!file.isDirectory()
+            && file.getName().endsWith(MigrationLogger.MIGRATION_LOG_EXTENSION)) {
+          MigrationRecoverTask recoverTask =
+              new MigrationRecoverTask(
+                  file,
+                  this::migrationEndCallBack,
+                  this::deleteTsfile,
+                  tsFileManagement::getTsFileListByTimePartition,
+                  logicalStorageGroupName,
+                  storageGroupSysDir.getAbsolutePath());
+          MigrationManager.getInstance().submitMigrationTask(recoverTask);
+        }
+      }
     }
   }
 
@@ -1186,11 +1222,11 @@ public class StorageGroupProcessor {
 
   private TsFileProcessor newTsFileProcessor(boolean sequence, long timePartitionId)
       throws IOException, DiskSpaceInsufficientException {
-    DirectoryManager directoryManager = DirectoryManager.getInstance();
+    TierManager tierManager = TierManager.getInstance();
     FSPath baseDir =
         sequence
-            ? directoryManager.getNextFolderForSequenceFile()
-            : directoryManager.getNextFolderForUnSequenceFile();
+            ? tierManager.getNextFolderForSequenceFile()
+            : tierManager.getNextFolderForUnSequenceFile();
     baseDir.getChildFile(logicalStorageGroupName + File.separator + virtualStorageGroupId).mkdirs();
 
     FSPath filePath =
@@ -1392,8 +1428,8 @@ public class StorageGroupProcessor {
     }
     try {
       closeAllResources();
-      List<FSPath> folder = DirectoryManager.getInstance().getAllSequenceFileFolders();
-      folder.addAll(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
+      List<FSPath> folder = TierManager.getInstance().getAllSequenceFileFolders();
+      folder.addAll(TierManager.getInstance().getAllUnSequenceFileFolders());
       deleteAllSGFolders(folder);
 
       this.workSequenceTsFileProcessors.clear();
@@ -1447,6 +1483,7 @@ public class StorageGroupProcessor {
 
   private void checkFileTTL(TsFileResource resource, long timeLowerBound, boolean isSeq) {
     if (resource.isMerging()
+        || resource.isMigrating()
         || !resource.isClosed()
         || !resource.isDeleted() && resource.stillLives(timeLowerBound)) {
       return;
@@ -1457,8 +1494,8 @@ public class StorageGroupProcessor {
       // prevent new merges and queries from choosing this file
       resource.setDeleted(true);
       // the file may be chosen for merge after the last check and before writeLock()
-      // double check to ensure the file is not used by a merge
-      if (resource.isMerging()) {
+      // double check to ensure the file is not used by a merge or a migration
+      if (resource.isMerging() || resource.isMigrating()) {
         return;
       }
 
@@ -1481,6 +1518,133 @@ public class StorageGroupProcessor {
       }
     } finally {
       writeUnlock();
+    }
+  }
+
+  public void checkTierMigration() {
+    for (long timePartitionId : latestTimeForEachDevice.keySet()) {
+      List<TsFileResource> seqFiles =
+          new ArrayList<>(tsFileManagement.getTsFileListByTimePartition(true, timePartitionId));
+      try {
+        checkTimePartitionMigration(seqFiles, true, timePartitionId);
+      } catch (Exception e) {
+        logger.error("Occurs Error when checking migrating", e);
+        // release migrating status
+        for (TsFileResource seqFile : seqFiles) {
+          seqFile.setMigrating(false);
+        }
+      }
+
+      List<TsFileResource> unseqFiles =
+          new ArrayList<>(tsFileManagement.getTsFileListByTimePartition(false, timePartitionId));
+      try {
+        checkTimePartitionMigration(unseqFiles, false, timePartitionId);
+      } catch (Exception e) {
+        logger.error("Occurs Error when checking migrating", e);
+        // release migrating status
+        for (TsFileResource unseqFile : unseqFiles) {
+          unseqFile.setMigrating(false);
+        }
+      }
+    }
+  }
+
+  private void checkTimePartitionMigration(
+      List<TsFileResource> tsFileResources, boolean sequence, long timePartitionId) {
+    Map<Integer, List<TsFileResource>> tierTsFilesToMigrate = new HashMap<>();
+    // filter tsfiles which need migrating
+    for (TsFileResource tsFileResource : tsFileResources) {
+      int tsFileTierLevel = tsFileResource.getTierLevel();
+      if (tsFileTierLevel < 0 || tsFileTierLevel >= TierManager.getInstance().getTiersNum()) {
+        logger.error(
+            "Skip adding TsFile {} because it has invalid tier level: {}.",
+            tsFileResource.getTsFilePath(),
+            tsFileTierLevel);
+        continue;
+      }
+      // migration condition
+      if (tsFileResource.isMerging()
+          || tsFileResource.isMigrating()
+          || tsFileResource.isDeleted()
+          || !tsFileResource.isClosed()
+          || tsFileResource.getTierLevel() == TierManager.getInstance().getTiersNum() - 1
+          || !migrationStrategies.get(tsFileTierLevel).shouldMigrate(tsFileResource)) {
+        continue;
+      }
+      tsFileResource.setMigrating(true);
+      tierTsFilesToMigrate
+          .computeIfAbsent(tsFileTierLevel, level -> new ArrayList<>())
+          .add(tsFileResource);
+    }
+    // submit migration task for each tier
+    for (int tierLevel : tierTsFilesToMigrate.keySet()) {
+      FSPath dataDir;
+      try {
+        int nextTierLevel = tierLevel + 1;
+        dataDir =
+            sequence
+                ? TierManager.getInstance()
+                    .getTierDirectoryManager(nextTierLevel)
+                    .getNextFolderForSequenceFile()
+                : TierManager.getInstance()
+                    .getTierDirectoryManager(nextTierLevel)
+                    .getNextFolderForUnSequenceFile();
+      } catch (DiskSpaceInsufficientException e) {
+        logger.error(
+            "Cannot migrate files of {} in tier {} because no space left in next tier.",
+            logicalStorageGroupName,
+            tierLevel,
+            e);
+        continue;
+      }
+      File targetDir =
+          dataDir.getChildFile(
+              logicalStorageGroupName
+                  + File.separator
+                  + virtualStorageGroupId
+                  + File.separator
+                  + timePartitionId);
+      MigrationTask migrationTask =
+          new MigrationTask(
+              tierTsFilesToMigrate.get(tierLevel),
+              targetDir,
+              sequence,
+              timePartitionId,
+              this::migrationEndCallBack,
+              logicalStorageGroupName,
+              storageGroupSysDir.getAbsolutePath());
+      MigrationManager.getInstance().submitMigrationTask(migrationTask);
+    }
+  }
+
+  private void migrationEndCallBack(
+      File tsFileToDelete, File tsFileToLoad, boolean sequence, BiConsumer<File, File> fileMoveOp) {
+    tsFileManagement.writeLock();
+    writeLock();
+    if (fileMoveOp != null) {
+      fileMoveOp.accept(tsFileToDelete, tsFileToLoad);
+    }
+    try {
+      Iterator<TsFileResource> tsFileIterator = tsFileManagement.getIterator(sequence);
+      while (tsFileIterator.hasNext()) {
+        TsFileResource tsFileResource = tsFileIterator.next();
+        if (tsFileResource.getTsFile().getName().equals(tsFileToDelete.getName())) {
+          tsFileResource.writeLock();
+          try {
+            tsFileResource.setFile(tsFileToLoad);
+            logger.info(
+                "[Migration] replace {} by {} in tsFileResource.",
+                tsFileToDelete.getAbsolutePath(),
+                tsFileToLoad.getAbsolutePath());
+          } finally {
+            tsFileResource.writeUnlock();
+          }
+          break;
+        }
+      }
+    } finally {
+      writeUnlock();
+      tsFileManagement.writeUnlock();
     }
   }
 
@@ -2542,7 +2706,7 @@ public class StorageGroupProcessor {
     File targetFile;
     switch (type) {
       case LOAD_UNSEQUENCE:
-        FSPath unseqFsPath = DirectoryManager.getInstance().getNextFolderForUnSequenceFile();
+        FSPath unseqFsPath = TierManager.getInstance().getNextFolderForUnSequenceFile();
         targetFile =
             unseqFsPath.getChildFile(
                 logicalStorageGroupName
@@ -2564,7 +2728,7 @@ public class StorageGroupProcessor {
             targetFile.getAbsolutePath());
         break;
       case LOAD_SEQUENCE:
-        FSPath seqFsPath = DirectoryManager.getInstance().getNextFolderForSequenceFile();
+        FSPath seqFsPath = TierManager.getInstance().getNextFolderForSequenceFile();
         targetFile =
             seqFsPath.getChildFile(
                 logicalStorageGroupName
@@ -2640,18 +2804,18 @@ public class StorageGroupProcessor {
    *
    * <p>Secondly, delete the tsfile and .resource file.
    *
-   * @param tsfieToBeDeleted tsfile to be deleted
+   * @param tsfileToBeDeleted tsfile to be deleted
    * @return whether the file to be deleted exists. @UsedBy sync module, load external tsfile
    *     module.
    */
-  public boolean deleteTsfile(File tsfieToBeDeleted) {
+  public boolean deleteTsfile(File tsfileToBeDeleted) {
     writeLock();
     TsFileResource tsFileResourceToBeDeleted = null;
     try {
       Iterator<TsFileResource> sequenceIterator = tsFileManagement.getIterator(true);
       while (sequenceIterator.hasNext()) {
         TsFileResource sequenceResource = sequenceIterator.next();
-        if (sequenceResource.getTsFile().getName().equals(tsfieToBeDeleted.getName())) {
+        if (sequenceResource.getTsFile().getName().equals(tsfileToBeDeleted.getName())) {
           tsFileResourceToBeDeleted = sequenceResource;
           tsFileManagement.remove(tsFileResourceToBeDeleted, true);
           break;
@@ -2661,7 +2825,7 @@ public class StorageGroupProcessor {
         Iterator<TsFileResource> unsequenceIterator = tsFileManagement.getIterator(false);
         while (unsequenceIterator.hasNext()) {
           TsFileResource unsequenceResource = unsequenceIterator.next();
-          if (unsequenceResource.getTsFile().getName().equals(tsfieToBeDeleted.getName())) {
+          if (unsequenceResource.getTsFile().getName().equals(tsfileToBeDeleted.getName())) {
             tsFileResourceToBeDeleted = unsequenceResource;
             tsFileManagement.remove(tsFileResourceToBeDeleted, false);
             break;

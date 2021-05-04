@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.sync.sender.recover;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.tier.TierManager;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -65,7 +65,7 @@ public class SyncSenderLogAnalyzerTest {
   public void setUp()
       throws IOException, InterruptedException, StartupException, DiskSpaceInsufficientException {
     EnvironmentUtils.envSetUp();
-    FSPath seqDir = DirectoryManager.getInstance().getNextFolderForSequenceFile();
+    FSPath seqDir = TierManager.getInstance().getAllSequenceFileFolders().get(0);
     dataDir = new FSPath(seqDir.getFsType(), seqDir.getFile().getParentFile().getAbsolutePath());
     config.update(dataDir);
     senderLogger =

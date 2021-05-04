@@ -31,7 +31,7 @@ import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.directories.DirectoryManager;
+import org.apache.iotdb.db.engine.tier.TierManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
@@ -91,7 +91,7 @@ public class EnvironmentUtils {
   private static final Logger logger = LoggerFactory.getLogger(EnvironmentUtils.class);
 
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static DirectoryManager directoryManager = DirectoryManager.getInstance();
+  private static TierManager tierManager = TierManager.getInstance();
 
   public static long TEST_QUERY_JOB_ID = QueryResourceManager.getInstance()
       .assignQueryId(true, 1024, 0);
@@ -136,11 +136,11 @@ public class EnvironmentUtils {
 
   public static void cleanAllDir() throws IOException {
     // delete sequential files
-    for (FSPath path : directoryManager.getAllSequenceFileFolders()) {
+    for (FSPath path : tierManager.getAllSequenceFileFolders()) {
       cleanDir(path.getFile());
     }
     // delete unsequence files
-    for (FSPath path : directoryManager.getAllUnSequenceFileFolders()) {
+    for (FSPath path : tierManager.getAllUnSequenceFileFolders()) {
       cleanDir(path.getFile());
     }
     // delete system info
@@ -148,8 +148,10 @@ public class EnvironmentUtils {
     // delete wal
     cleanDir(new File(config.getWalDir()));
     // delete data files
-    for (FSPath dataDir : config.getDataDirs()) {
-      cleanDir(dataDir.getFile());
+    for (FSPath[] tierDataDirs : config.getDataDirs()) {
+      for (FSPath dataDir: tierDataDirs) {
+        cleanDir(dataDir.getFile());
+      }
     }
   }
 
@@ -192,11 +194,11 @@ public class EnvironmentUtils {
 
   private static void createAllDir() {
     // create sequential files
-    for (FSPath path : directoryManager.getAllSequenceFileFolders()) {
+    for (FSPath path : tierManager.getAllSequenceFileFolders()) {
       createDir(path);
     }
     // create unsequential files
-    for (FSPath path : directoryManager.getAllUnSequenceFileFolders()) {
+    for (FSPath path : tierManager.getAllUnSequenceFileFolders()) {
       createDir(path);
     }
     // create storage group
@@ -204,8 +206,10 @@ public class EnvironmentUtils {
     // create wal
     createDir(config.getWalDir());
     // create data
-    for (FSPath dataDir : config.getDataDirs()) {
-      createDir(dataDir);
+    for (FSPath[] tierDataDirs : config.getDataDirs()) {
+      for (FSPath dataDir: tierDataDirs) {
+        createDir(dataDir);
+      }
     }
   }
 

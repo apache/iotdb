@@ -22,7 +22,7 @@ package org.apache.iotdb.db.utils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.directories.DirectoryManager;
+import org.apache.iotdb.db.engine.tier.TierManager;
 import org.apache.iotdb.tsfile.fileSystem.FSPath;
 
 import org.slf4j.Logger;
@@ -50,8 +50,8 @@ public class OpenFileNumUtil {
   // command 'lsof -p' is available on most Linux distro except CentOS.
   private static final String SEARCH_OPEN_DATA_FILE_BY_PID = "lsof -p %d";
 
-  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static DirectoryManager directoryManager = DirectoryManager.getInstance();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final TierManager tierManager = TierManager.getInstance();
   private static final String[] COMMAND_TEMPLATE = {"/bin/bash", "-c", ""};
   private static boolean isOutputValid = false;
   private int pid;
@@ -263,8 +263,8 @@ public class OpenFileNumUtil {
 
   public enum OpenFileNumStatistics {
     TOTAL_OPEN_FILE_NUM(null),
-    SEQUENCE_FILE_OPEN_NUM(directoryManager.getAllSequenceFileFolders()),
-    UNSEQUENCE_FILE_OPEN_NUM(directoryManager.getAllUnSequenceFileFolders()),
+    SEQUENCE_FILE_OPEN_NUM(tierManager.getAllSequenceFileFolders()),
+    UNSEQUENCE_FILE_OPEN_NUM(tierManager.getAllUnSequenceFileFolders()),
     WAL_OPEN_FILE_NUM(
         Collections.singletonList(new FSPath(config.getSystemFileStorageFs(), config.getWalDir()))),
     DIGEST_OPEN_FILE_NUM(

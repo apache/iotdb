@@ -20,14 +20,15 @@ package org.apache.iotdb.tsfile.fileSystem;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.exception.filesystem.FileSystemNotSupportedException;
 import org.apache.iotdb.tsfile.utils.FSUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.Path;
+import java.util.Objects;
 
 /**
  * The {@code FSPath} class wraps filesystem and path value in an object. It also provides a method
@@ -49,7 +50,7 @@ public class FSPath {
   }
 
   /**
-   * Parse the string argument as a FSPath object.FsType and path information are separated by
+   * Parses the string argument as a FSPath object.FsType and path information are separated by
    * semicolon, e.g., local@data/data.
    *
    * @param fsPath a {@code String} containing FSType and path information to be parsed.
@@ -61,7 +62,11 @@ public class FSPath {
       String fs = fsPath.substring(0, sepIdx);
       for (FSType fsType : FSType.values()) {
         if (fs.equalsIgnoreCase(fsType.name())) {
-          return new FSPath(fsType, fsPath.substring(fsType.name().length() + 1));
+          if (config.isFSSupported(fsType)) {
+            return new FSPath(fsType, fsPath.substring(fsType.name().length() + 1));
+          } else {
+            throw new FileSystemNotSupportedException(fsType.name());
+          }
         }
       }
     }
@@ -69,11 +74,12 @@ public class FSPath {
     if (config.getTSFileStorageFs().length == 1) {
       return new FSPath(config.getTSFileStorageFs()[0], fsPath);
     }
-    throw new FileSystemNotFoundException("File system not found: " + fsPath);
+    // use LOCAL as default
+    return new FSPath(FSType.LOCAL, fsPath);
   }
 
   /**
-   * Parse the file argument as a FSPath object.
+   * Parses the file argument as a FSPath object.
    *
    * @param file a file of any filesystem
    * @return the FSPath object represented by the file argument
@@ -91,7 +97,7 @@ public class FSPath {
   }
 
   /**
-   * Get the raw path value, e.g., local@data/data.
+   * Gets the raw path value, e.g., local@data/data.
    *
    * @return a string that contains both filesystem and path information
    */
@@ -100,7 +106,7 @@ public class FSPath {
   }
 
   /**
-   * Get the {@code Path} object of this fsPath
+   * Gets the {@code Path} object of this fsPath
    *
    * @return a {@code Path} object that represents this filesystem and path
    */
@@ -109,7 +115,7 @@ public class FSPath {
   }
 
   /**
-   * Get the file of this fsPath
+   * Gets the file of this fsPath
    *
    * @return a file that represents this filesystem and path
    */
@@ -118,7 +124,7 @@ public class FSPath {
   }
 
   /**
-   * Create a child File instance from a child pathname string based on this fsPath.
+   * Creates a child File instance from a child pathname string based on this fsPath.
    *
    * @param child The child pathname string
    * @return a file that represents this filesystem and child path
@@ -149,8 +155,31 @@ public class FSPath {
     return new FSPath(fsType, path + String.join("", suffix));
   }
 
+  /**
+   * Gets the absolute path representation of this fsPath.
+   *
+   * @return a fsPath whose path part is absolute
+   */
+  public FSPath getAbsoluteFSPath() {
+    return new FSPath(this.fsType, getFile().getAbsolutePath());
+  }
+
   @Override
   public String toString() {
     return getRawFSPath();
+  }
+
+  @Override
+  public int hashCode() {
+    return toString().hashCode();
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) return true;
+    if (obj == null) return false;
+    if (getClass() != obj.getClass()) return false;
+    FSPath other = (FSPath) obj;
+    return Objects.equals(fsType, other.fsType) && Objects.equals(path, other.path);
   }
 }

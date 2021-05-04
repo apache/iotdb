@@ -26,6 +26,7 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpgradeTsFi
 import org.apache.iotdb.db.engine.storagegroup.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.ITimeIndex;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
+import org.apache.iotdb.db.engine.tier.TierManager;
 import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.service.UpgradeSevice;
@@ -106,6 +107,7 @@ public class TsFileResource {
   private volatile boolean closed = false;
   private volatile boolean deleted = false;
   private volatile boolean isMerging = false;
+  private volatile boolean isMigrating = false;
 
   private TsFileLock tsFileLock = new TsFileLock();
 
@@ -164,6 +166,7 @@ public class TsFileResource {
     this.closed = other.closed;
     this.deleted = other.deleted;
     this.isMerging = other.isMerging;
+    this.isMigrating = other.isMigrating;
     this.chunkMetadataList = other.chunkMetadataList;
     this.readOnlyMemChunk = other.readOnlyMemChunk;
     generateTimeSeriesMetadata();
@@ -619,12 +622,20 @@ public class TsFileResource {
     this.deleted = deleted;
   }
 
-  boolean isMerging() {
+  public boolean isMerging() {
     return isMerging;
   }
 
   public void setMerging(boolean merging) {
     isMerging = merging;
+  }
+
+  public boolean isMigrating() {
+    return isMigrating;
+  }
+
+  public void setMigrating(boolean migrating) {
+    isMigrating = migrating;
   }
 
   /** check if any of the device lives over the given time bound */
@@ -854,6 +865,10 @@ public class TsFileResource {
 
   public void setTimeIndex(ITimeIndex timeIndex) {
     this.timeIndex = timeIndex;
+  }
+
+  public int getTierLevel() {
+    return TierManager.getInstance().getTierLevel(file);
   }
 
   // change tsFile name

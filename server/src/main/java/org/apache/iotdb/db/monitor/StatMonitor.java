@@ -259,8 +259,10 @@ public class StatMonitor implements StatMonitorMBean, IService {
   public long getDataSizeInByte() {
     try {
       long totalSize = 0;
-      for (FSPath dataDir : config.getDataDirs()) {
-        totalSize += FileUtils.sizeOfDirectory(dataDir.getFile());
+      for (FSPath[] tierDataDirs : config.getDataDirs()) {
+        for (FSPath dataDir : tierDataDirs) {
+          totalSize += FileUtils.sizeOfDirectory(dataDir.getFile());
+        }
       }
       return totalSize;
     } catch (Exception e) {

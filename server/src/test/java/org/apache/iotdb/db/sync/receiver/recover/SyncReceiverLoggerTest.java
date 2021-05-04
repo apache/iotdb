@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.sync.receiver.recover;
 
-import org.apache.iotdb.db.conf.directories.DirectoryManager;
+import org.apache.iotdb.db.engine.tier.TierManager;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.sync.conf.SyncConstant;
@@ -47,7 +47,7 @@ public class SyncReceiverLoggerTest {
   @Before
   public void setUp() throws DiskSpaceInsufficientException {
     EnvironmentUtils.envSetUp();
-    FSPath seqDir = DirectoryManager.getInstance().getNextFolderForSequenceFile();
+    FSPath seqDir = TierManager.getInstance().getAllSequenceFileFolders().get(0);
     dataDir = new FSPath(seqDir.getFsType(), seqDir.getFile().getParentFile().getAbsolutePath());
   }
 

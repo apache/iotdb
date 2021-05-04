@@ -20,12 +20,12 @@
 package org.apache.iotdb.db.engine.modification;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.io.LocalTextModificationAccessor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
+import org.apache.iotdb.db.engine.tier.TierManager;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -182,7 +182,7 @@ public class DeletionFileNodeTest {
         };
 
     File fileNodeDir =
-        DirectoryManager.getInstance().getSequenceFileFolder(0).getChildFile(processorName);
+        TierManager.getInstance().getAllSequenceFileFolders().get(0).getChildFile(processorName);
     List<File> modFiles = new ArrayList<>();
     for (File directory : fileNodeDir.listFiles()) {
       assertTrue(directory.isDirectory());
@@ -318,7 +318,7 @@ public class DeletionFileNodeTest {
         };
 
     File fileNodeDir =
-        DirectoryManager.getInstance().getNextFolderForUnSequenceFile().getChildFile(processorName);
+        TierManager.getInstance().getAllUnSequenceFileFolders().get(0).getChildFile(processorName);
     List<File> modFiles = new ArrayList<>();
     for (File directory : fileNodeDir.listFiles()) {
       assertTrue(directory.isDirectory());

@@ -85,7 +85,7 @@ public class FSUtils {
         return fs;
       }
     }
-    throw new FileSystemNotSupportedException(file.getName());
+    throw new FileSystemNotSupportedException(file.getPath());
   }
 
   /**
