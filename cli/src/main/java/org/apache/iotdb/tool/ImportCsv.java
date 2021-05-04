@@ -124,7 +124,7 @@ public class ImportCsv extends AbstractCsvTool {
     return connection;
   }
 
-  public static boolean valueCheck(String value, String device, int position , String ip, String port, String username, String password){
+  public static List<String> getDatatype(String device, String ip, String port, String username, String password){
     Connection connection = getConnection(ip, port, username, password);
     Statement statement = null;
     ResultSet resultSet=null;
@@ -149,6 +149,10 @@ public class ImportCsv extends AbstractCsvTool {
         throwables.printStackTrace();
       }
     }
+    return datatypes;
+  }
+
+  public static boolean valueCheck(String value, String device, int position, List<String> datatypes){
     if(datatypes.get(position-1).equals("DOUBLE")){
       try{
         Double.parseDouble(value);
@@ -249,9 +253,12 @@ public class ImportCsv extends AbstractCsvTool {
 
           times.add(parseTime(cols[0], useFormatter, timeFormatter));
 
+          List<String> datatypes = new ArrayList<>();
+          datatypes=getDatatype(devices.get(devices.size()-1), ip, port, username, password);
+
           List<String> values = new ArrayList<>();
           for (int position : deviceToPositions.getValue()) {
-            boolean valid=valueCheck(cols[position], devices.get(devices.size()-1),position, ip, port, username, password);
+            boolean valid=valueCheck(cols[position], devices.get(devices.size()-1), position, datatypes);
             if(valid==true){
               values.add(cols[position]);
             }
