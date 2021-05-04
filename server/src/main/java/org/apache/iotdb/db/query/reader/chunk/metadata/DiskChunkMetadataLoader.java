@@ -118,7 +118,7 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
     chunkMetadataList.forEach(
         chunkMetadata -> {
           if (chunkMetadata.getChunkLoader() == null) {
-            chunkMetadata.setFilePath(resource.getTsFile());
+            chunkMetadata.setFile(resource.getTsFile());
             chunkMetadata.setClosed(resource.isClosed());
             chunkMetadata.setChunkLoader(new DiskChunkLoader(context));
           }

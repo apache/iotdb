@@ -32,6 +32,7 @@ import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -58,6 +59,8 @@ import java.util.List;
 import java.util.Map;
 
 public class TsFileRewriteToolTest {
+  private static final FSFactory fsFactory =
+      FSFactoryProducer.getFSFactory(TestConstant.DEFAULT_TEST_FS);
 
   private String path = null;
 
@@ -222,7 +225,7 @@ public class TsFileRewriteToolTest {
 
   private void createOneTsFileWithOnlyOnePage(HashMap<String, List<String>> deviceSensorsMap) {
     try {
-      File f = FSFactoryProducer.getFSFactory().getFile(path);
+      File f = fsFactory.getFile(path);
       TsFileWriter tsFileWriter = new TsFileWriter(f);
       // add measurements into file schema
       try {
@@ -263,7 +266,7 @@ public class TsFileRewriteToolTest {
 
   private void createOneTsFile(HashMap<String, List<String>> deviceSensorsMap) {
     try {
-      File f = FSFactoryProducer.getFSFactory(TestConstant.DEFAULT_TEST_FS).getFile(path);
+      File f = fsFactory.getFile(path);
       TsFileWriter tsFileWriter = new TsFileWriter(f);
       // add measurements into file schema
       try {

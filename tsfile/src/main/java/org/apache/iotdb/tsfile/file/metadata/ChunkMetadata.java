@@ -313,7 +313,7 @@ public class ChunkMetadata implements Accountable, IChunkMetadata {
     return file;
   }
 
-  public void setFilePath(File file) {
+  public void setFile(File file) {
     this.file = file;
   }
 

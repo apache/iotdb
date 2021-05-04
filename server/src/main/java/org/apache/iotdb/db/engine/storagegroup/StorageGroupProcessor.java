@@ -1619,7 +1619,6 @@ public class StorageGroupProcessor {
 
   private void migrationEndCallBack(
       File tsFileToDelete, File tsFileToLoad, boolean sequence, BiConsumer<File, File> fileMoveOp) {
-    tsFileManagement.writeLock();
     writeLock();
     if (fileMoveOp != null) {
       fileMoveOp.accept(tsFileToDelete, tsFileToLoad);
@@ -1644,7 +1643,6 @@ public class StorageGroupProcessor {
       }
     } finally {
       writeUnlock();
-      tsFileManagement.writeUnlock();
     }
   }
 
