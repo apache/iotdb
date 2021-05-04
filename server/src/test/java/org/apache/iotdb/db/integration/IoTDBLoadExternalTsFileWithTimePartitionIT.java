@@ -182,7 +182,8 @@ public class IoTDBLoadExternalTsFileWithTimePartitionIT {
 
       FSPath dataDir = config.getDataDirs()[0][0];
       // sequence/logical_sg/virtual_sg/time_partitions
-      File f = dataDir.getChildFile(
+      File f =
+          dataDir.getChildFile(
               new PartialPath("sequence") + File.separator + "root.ln" + File.separator + "0");
       Assert.assertEquals(
           (endTime - startTime) / (timePartition), f.list().length * originalTsFileNum);

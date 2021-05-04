@@ -180,8 +180,7 @@ public class FileLoaderUtils {
     return chunkReader.loadPageReaderList();
   }
 
-  public static List<IChunkMetadata> getChunkMetadataList(Path path, File file)
-      throws IOException {
+  public static List<IChunkMetadata> getChunkMetadataList(Path path, File file) throws IOException {
     TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(file, true);
     return new ArrayList<>(tsFileReader.getChunkMetadataList(path));
   }
