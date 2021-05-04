@@ -1528,7 +1528,7 @@ public class StorageGroupProcessor {
       try {
         checkTimePartitionMigration(seqFiles, true, timePartitionId);
       } catch (Exception e) {
-        logger.error("Occurs Error when checking migrating", e);
+        logger.error("Error occurs when checking {}'s migrating", logicalStorageGroupName, e);
         // release migrating status
         for (TsFileResource seqFile : seqFiles) {
           seqFile.setMigrating(false);
@@ -1540,7 +1540,7 @@ public class StorageGroupProcessor {
       try {
         checkTimePartitionMigration(unseqFiles, false, timePartitionId);
       } catch (Exception e) {
-        logger.error("Occurs Error when checking migrating", e);
+        logger.error("Error occurs when checking {}'s migrating", logicalStorageGroupName, e);
         // release migrating status
         for (TsFileResource unseqFile : unseqFiles) {
           unseqFile.setMigrating(false);
@@ -1631,7 +1631,7 @@ public class StorageGroupProcessor {
           tsFileResource.writeLock();
           try {
             tsFileResource.setFile(tsFileToLoad);
-            logger.info(
+            logger.debug(
                 "[Migration] replace {} by {} in tsFileResource.",
                 tsFileToDelete.getAbsolutePath(),
                 tsFileToLoad.getAbsolutePath());

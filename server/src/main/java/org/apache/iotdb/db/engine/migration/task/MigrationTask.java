@@ -107,7 +107,7 @@ public class MigrationTask implements IMigrationTask {
                       FSPath.parse(src).postConcat(TsFileResource.RESOURCE_SUFFIX).getFile(),
                       FSPath.parse(target).postConcat(TsFileResource.RESOURCE_SUFFIX).getFile());
                   fsFactory.moveFile(src, target);
-                  logger.info(
+                  logger.debug(
                       "[Migration] move {} to {}.",
                       src.getAbsolutePath(),
                       target.getAbsolutePath());
@@ -123,7 +123,7 @@ public class MigrationTask implements IMigrationTask {
               FSPath.parse(targetFile).postConcat(TsFileResource.RESOURCE_SUFFIX).getFile();
           fsFactory.copyFile(srcResource, targetResource);
           fsFactory.copyFile(srcFile, targetFile);
-          logger.info(
+          logger.debug(
               "[Migration] copy {} to {}.",
               srcFile.getAbsolutePath(),
               targetFile.getAbsolutePath());
@@ -135,7 +135,7 @@ public class MigrationTask implements IMigrationTask {
           // remove old file
           srcResource.delete();
           srcFile.delete();
-          logger.info("[Migration] remove old file {}.", srcFile.getAbsolutePath());
+          logger.debug("[Migration] remove old file {}.", srcFile.getAbsolutePath());
         }
         srcTsFileResource.setMigrating(false);
         migrationLogger.endMigrateTsFile();

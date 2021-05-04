@@ -100,7 +100,7 @@ public class StorageEngine implements IService {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long TTL_CHECK_INTERVAL = 60 * 1000L;
-  private static final long TIER_MIGRATION_CHECK_INTERVAL = 60 * 60 * 1000L;
+  private static final long TIER_MIGRATION_CHECK_INTERVAL = 20 * 1000L;
 
   /**
    * Time range for dividing storage group, the time unit is the same with IoTDB's

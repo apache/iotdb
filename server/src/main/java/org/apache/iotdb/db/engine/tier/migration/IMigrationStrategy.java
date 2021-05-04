@@ -21,14 +21,9 @@ package org.apache.iotdb.db.engine.tier.migration;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /** This interface is functional and aims to help judging whether a TsFile needs migrating. */
 @FunctionalInterface
 public interface IMigrationStrategy {
-  Logger logger = LoggerFactory.getLogger(IMigrationStrategy.class);
-
   String PINNED_STRATEGY_CLASS_NAME = PinnedStrategy.class.getName();
   String TIME2LIVE_STRATEGY_CLASS_NAME = Time2LiveStrategy.class.getName();
 
@@ -69,7 +64,6 @@ public interface IMigrationStrategy {
             .replaceAll("\\s", "")
             .split(",");
     if (TIME2LIVE_STRATEGY_CLASS_NAME.equals(className) && params.length == 1) {
-      logger.info(params[0]);
       return new Time2LiveStrategy(Long.parseLong(params[0]));
     } else {
       throw new IllegalArgumentException(classNameWithParams);
