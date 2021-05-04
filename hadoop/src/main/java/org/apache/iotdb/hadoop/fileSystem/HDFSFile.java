@@ -227,7 +227,7 @@ public class HDFSFile extends File {
 
   @Override
   public String getParent() {
-    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
+    return hdfsPath.getParent().toUri().toString();
   }
 
   @Override
