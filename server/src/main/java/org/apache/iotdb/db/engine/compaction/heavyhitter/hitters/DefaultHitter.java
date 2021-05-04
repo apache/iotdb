@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.engine.compaction.heavyhitter.hitters;
 
 import java.util.List;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.engine.compaction.heavyhitter.QueryHeavyHitters;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -34,9 +36,22 @@ import org.slf4j.LoggerFactory;
 public class DefaultHitter implements QueryHeavyHitters {
 
   private static final Logger logger = LoggerFactory.getLogger(DefaultHitter.class);
+  protected final ReadWriteLock queryHitterLock = new ReentrantReadWriteLock();
 
   public DefaultHitter(int maxHitterNum) {
 
+  }
+
+  @Override
+  public void acceptQuerySeriesList(List<PartialPath> queryPaths) {
+    queryHitterLock.writeLock().lock();
+    try {
+      for (PartialPath path : queryPaths) {
+        acceptQuerySeries(path);
+      }
+    } finally {
+      queryHitterLock.writeLock().unlock();
+    }
   }
 
   @Override

@@ -26,6 +26,11 @@ import org.apache.iotdb.db.metadata.PartialPath;
 public interface QueryHeavyHitters {
 
   /**
+   * accept time series path list to estimate query frequency
+   */
+  void acceptQuerySeriesList(List<PartialPath> queryPaths);
+
+  /**
    * accept time series path to estimate query frequency
    */
   void acceptQuerySeries(PartialPath queryPath);

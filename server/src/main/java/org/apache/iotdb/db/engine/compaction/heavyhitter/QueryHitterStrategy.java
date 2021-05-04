@@ -21,6 +21,8 @@ package org.apache.iotdb.db.engine.compaction.heavyhitter;
 
 public enum  QueryHitterStrategy {
   // test query hitter
-  DEFAULT_STRATEGY
+  DEFAULT_STRATEGY,
+  // HashMap hitter
+  HASH_STRATEGY
 
 }
