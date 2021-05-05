@@ -65,14 +65,16 @@ public class MigrationTask implements IMigrationTask {
   }
 
   void migrate() {
-    logger.info(
-        "[Migration] Start migrating files of {} in time partition {}.",
-        storageGroupName,
-        timPartitionId);
     if (srcTsFileResources == null || srcTsFileResources.isEmpty() || targetDir == null) {
-      logger.info("[Migration] No files to migrate, so will abort task.");
+      logger.info("[Migration] No files to migrate, so abort this migration task.");
       return;
     }
+    logger.info(
+        "[Migration] Start migrating {} files of {} in time partition {}. Target directory is {}.",
+        srcTsFileResources.size(),
+        storageGroupName,
+        timPartitionId,
+        FSPath.parse(targetDir).getRawFSPath());
     long startTimeMillis = System.currentTimeMillis();
     List<File> srcFiles =
         srcTsFileResources.stream().map(TsFileResource::getTsFile).collect(Collectors.toList());
@@ -107,8 +109,8 @@ public class MigrationTask implements IMigrationTask {
                       FSPath.parse(src).postConcat(TsFileResource.RESOURCE_SUFFIX).getFile(),
                       FSPath.parse(target).postConcat(TsFileResource.RESOURCE_SUFFIX).getFile());
                   fsFactory.moveFile(src, target);
-                  logger.debug(
-                      "[Migration] move {} to {}.",
+                  logger.info(
+                      "[Migration] Move {} to {}.",
                       src.getAbsolutePath(),
                       target.getAbsolutePath());
                 });
@@ -123,8 +125,8 @@ public class MigrationTask implements IMigrationTask {
               FSPath.parse(targetFile).postConcat(TsFileResource.RESOURCE_SUFFIX).getFile();
           fsFactory.copyFile(srcResource, targetResource);
           fsFactory.copyFile(srcFile, targetFile);
-          logger.debug(
-              "[Migration] copy {} to {}.",
+          logger.info(
+              "[Migration] Copy {} to {}.",
               srcFile.getAbsolutePath(),
               targetFile.getAbsolutePath());
           migrationLogger.endCopyTsFile();
@@ -135,7 +137,7 @@ public class MigrationTask implements IMigrationTask {
           // remove old file
           srcResource.delete();
           srcFile.delete();
-          logger.debug("[Migration] remove old file {}.", srcFile.getAbsolutePath());
+          logger.info("[Migration] Remove old file {}.", srcFile.getAbsolutePath());
         }
         srcTsFileResource.setMigrating(false);
         migrationLogger.endMigrateTsFile();
@@ -157,7 +159,7 @@ public class MigrationTask implements IMigrationTask {
       }
     } finally {
       logger.info(
-          "[Migration] migration end, consumption: {} ms",
+          "[Migration] End migration, consumption: {} ms",
           System.currentTimeMillis() - startTimeMillis);
       for (TsFileResource tsFileResource : srcTsFileResources) {
         tsFileResource.setMigrating(false);

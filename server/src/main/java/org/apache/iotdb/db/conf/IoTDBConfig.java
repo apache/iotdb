@@ -236,7 +236,10 @@ public class IoTDBConfig {
   private String triggerDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TRIGGER_FOLDER_NAME;
 
-  /** Data directory of data. It can be settled as dataDirs = {"data1", "data2", "data3"}; */
+  /**
+   * Data directories of data. It can be settled as dataDirs = {{"tier1/data1", "tier1/data2"},
+   * {"tier2/data1", "tier2/data2"}};
+   */
   private FSPath[][] dataDirs = {
     {
       new FSPath(FSType.LOCAL, DEFAULT_BASE_DIR + File.separator + "data"),
@@ -925,24 +928,23 @@ public class IoTDBConfig {
   public void setDataDirs(FSPath[][] fsDataDirs) {
     FSPath[][] validFsDataDirs = new FSPath[fsDataDirs.length][];
     for (int i = 0; i < fsDataDirs.length; ++i) {
+      FSPath[] tierDataDirs = fsDataDirs[i];
       // tag invalid data_dir in one tier
       int cnt = 0;
-      for (int j = 0; j < fsDataDirs[i].length; ++j) {
-        if (TSFileDescriptor.getInstance()
-            .getConfig()
-            .isFSSupported(fsDataDirs[i][j].getFsType())) {
+      for (int j = 0; j < tierDataDirs.length; ++j) {
+        if (TSFileDescriptor.getInstance().getConfig().isFSSupported(tierDataDirs[j].getFsType())) {
           cnt++;
         } else {
-          fsDataDirs[i][j] = null;
+          tierDataDirs[j] = null;
         }
       }
       // remove invalid data_dir in one tier
-      if (cnt == fsDataDirs.length) {
-        validFsDataDirs[i] = fsDataDirs[i];
+      if (cnt == tierDataDirs.length) {
+        validFsDataDirs[i] = tierDataDirs;
       } else {
         validFsDataDirs[i] = new FSPath[cnt];
         int idx = 0;
-        for (FSPath fsPath : fsDataDirs[i]) {
+        for (FSPath fsPath : tierDataDirs) {
           if (fsPath != null) {
             validFsDataDirs[i][idx] = fsPath;
             ++idx;

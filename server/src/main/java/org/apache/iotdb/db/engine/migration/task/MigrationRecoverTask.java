@@ -116,7 +116,7 @@ public class MigrationRecoverTask implements IMigrationTask {
           tsFileResource.setMigrating(true);
           srcTsFileResources.add(tsFileResource);
         } else {
-          logger.info("{} doesn't have corresponding TsFileResource.", srcPath);
+          logger.info("File {} doesn't have corresponding TsFileResource.", srcPath);
         }
       }
       MigrationTask newTask =
