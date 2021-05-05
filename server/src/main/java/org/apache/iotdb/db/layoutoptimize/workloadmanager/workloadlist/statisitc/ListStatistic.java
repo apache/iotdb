@@ -55,7 +55,6 @@ public class ListStatistic {
     }
   }
 
-
   public boolean isTheSame(ListStatistic other) {
     double countDiffRate = getVisitCountDiff(measurementVisitCount, other.measurementVisitCount);
     double measurementDiffRate =

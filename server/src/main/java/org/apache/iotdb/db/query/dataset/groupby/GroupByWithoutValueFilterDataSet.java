@@ -118,7 +118,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
                 groupByTimePlan.getDeduplicatedAggregations().get(i), dataTypes.get(i), ascending);
         pathExecutors.get(path).addAggregateResult(aggrResult);
         // Map the device id to the corresponding query indexes
-        if (deviceQueryIdxMap.containsKey(path.getDevice())) {
+        if (!deviceQueryIdxMap.containsKey(path.getDevice())) {
           deviceQueryIdxMap.put(path.getDevice(), new ArrayList<>());
         }
         deviceQueryIdxMap.get(path.getDevice()).add(i);

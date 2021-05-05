@@ -11,7 +11,7 @@ public class ItemStatistic {
   long maxSpan;
   long minSpan;
   BigInteger totalSpan;
-  Map<String, Map<String, Long>> measurementVisitCount;
+  Map<String, Map<String, Long>> measurementVisitCount = new HashMap<>();
 
   public ItemStatistic() {
     averageSpan = 0;

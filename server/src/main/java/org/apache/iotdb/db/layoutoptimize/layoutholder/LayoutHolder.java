@@ -18,7 +18,7 @@ import java.util.*;
 
 public class LayoutHolder {
   // device -> layout
-  private Map<String, Layout> layoutMap;
+  private Map<String, Layout> layoutMap = new HashMap<>();
   private static final LayoutHolder INSTANCE = new LayoutHolder();
   private static final Logger logger = LoggerFactory.getLogger(LayoutHolder.class);
 
@@ -28,9 +28,7 @@ public class LayoutHolder {
 
   private LayoutHolder() {}
 
-  /**
-   * Update metadata from {@link MManager}
-   */
+  /** Update metadata from {@link MManager} */
   public void updateMetadata() {
     MManager manager = MManager.getInstance();
     List<PartialPath> storageGroupPaths = manager.getAllStorageGroupPaths();
@@ -213,5 +211,9 @@ public class LayoutHolder {
     }
     logger.info("load layout from local file successfully");
     return true;
+  }
+
+  public boolean hasLayoutForDevice(String deviceID) {
+    return layoutMap.containsKey(deviceID);
   }
 }

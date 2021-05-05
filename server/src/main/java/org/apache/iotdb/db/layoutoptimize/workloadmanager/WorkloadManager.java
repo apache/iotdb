@@ -24,6 +24,7 @@ public class WorkloadManager {
 
   /**
    * Add query record to the manager
+   *
    * @param deviceID the device which is visited
    * @param sensors the sensors that are visited
    * @param span the time span of the query
