@@ -27,20 +27,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.DockerComposeContainer;
 
-import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.Statement;
 
 // do not add tests here.
 // add tests into Cases.java instead.
 public abstract class ClusterIT extends Cases {
 
   private static Logger logger = LoggerFactory.getLogger(ClusterIT.class);
-
-  private Statement writeStatement;
-  private Connection writeConnection;
-  private Statement readStatement;
-  private Connection readConnection;
 
   // "root.sg1" is a special storage for testing whether the read and write operations can be run
   // correctly if the data is not on the connected node.
