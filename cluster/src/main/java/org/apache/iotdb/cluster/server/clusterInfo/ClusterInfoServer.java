@@ -30,10 +30,10 @@ import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.service.thrift.ThriftService;
 import org.apache.iotdb.db.service.thrift.ThriftServiceThread;
 
-public class ClusterInfoService extends ThriftService {
+public class ClusterInfoServer extends ThriftService implements ClusterInfoServerMBean {
   private ClusterInfoServiceImpl serviceImpl;
 
-  public static ClusterInfoService getInstance() {
+  public static ClusterInfoServer getInstance() {
     return ClusterMonitorServiceHolder.INSTANCE;
   }
 
@@ -64,7 +64,7 @@ public class ClusterInfoService extends ThriftService {
               getID().getName(),
               ThreadName.CLUSTER_INFO_SERVICE.getName(),
               nodeConfig.getRpcAddress(),
-              clusterConfig.getClusterRpcPort(),
+              clusterConfig.getClusterInfoRpcPort(),
               nodeConfig.getRpcMaxConcurrentClientNum(),
               nodeConfig.getThriftServerAwaitTimeForStopService(),
               new ClusterInfoServiceThriftHandler(serviceImpl),
@@ -82,12 +82,12 @@ public class ClusterInfoService extends ThriftService {
 
   @Override
   public int getBindPort() {
-    return ClusterDescriptor.getInstance().getConfig().getClusterRpcPort();
+    return ClusterDescriptor.getInstance().getConfig().getClusterInfoRpcPort();
   }
 
   private static class ClusterMonitorServiceHolder {
 
-    private static final ClusterInfoService INSTANCE = new ClusterInfoService();
+    private static final ClusterInfoServer INSTANCE = new ClusterInfoServer();
 
     private ClusterMonitorServiceHolder() {}
   }

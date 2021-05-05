@@ -6,4 +6,8 @@ public class FiveNodeCluster4IT extends AbstractFiveNodeClusterIT {
   protected String getWriteRpcIp() {
     return getContainer().getServiceHost("iotdb-server_4", 6667);
   }
+
+  protected int getWriteRpcPort() {
+    return getContainer().getServicePort("iotdb-server_4", 6667);
+  }
 }

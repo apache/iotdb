@@ -187,7 +187,6 @@ public class MetaGroupMemberTest extends BaseMember {
     mockDataClusterServer = false;
     NodeStatusManager.getINSTANCE().setMetaGroupMember(testMetaMember);
     exiledNode = null;
-    System.out.println("Init term of metaGroupMember: " + testMetaMember.getTerm().get());
   }
 
   private DataGroupMember getDataGroupMember(PartitionGroup group, Node node) {
@@ -1369,5 +1368,9 @@ public class MetaGroupMemberTest extends BaseMember {
               }
             });
     while (resultRef.get() == null) {}
+  }
+
+  public MetaGroupMember getTestMetaGroupMember() {
+    return testMetaMember;
   }
 }

@@ -16,82 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.sql;
 
-import org.apache.iotdb.jdbc.Config;
-
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.testcontainers.containers.DockerComposeContainer;
-
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.HashSet;
 import java.util.Set;
+import org.junit.Assert;
+import org.junit.Test;
 
-public abstract class ClusterIT {
-
-  private static Logger logger = LoggerFactory.getLogger(ClusterIT.class);
+public abstract class Cases {
 
   private Statement writeStatement;
   private Connection writeConnection;
   private Statement readStatement;
   private Connection readConnection;
-
-  // "root.sg1" is a special storage for testing whether the read and write operations can be run
-  // correctly if the data is not on the connected node.
-  public String defaultSG = "root.sg1";
-
-  protected int getWriteRpcPort() {
-    return getContainer().getServicePort("iotdb-server_1", 6667);
-  }
-
-  protected String getWriteRpcIp() {
-    return getContainer().getServiceHost("iotdb-server_1", 6667);
-  }
-
-  protected int getReadRpcPort() {
-    return getContainer().getServicePort("iotdb-server_1", 6667);
-  }
-
-  protected String getReadRpcIp() {
-    return getContainer().getServiceHost("iotdb-server_1", 6667);
-  }
-
-  protected void startCluster() {}
-
-  protected abstract DockerComposeContainer getContainer();
-
-  @Before
-  public void setUp() throws Exception {
-    startCluster();
-
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    writeConnection =
-        DriverManager.getConnection(
-            "jdbc:iotdb://" + getWriteRpcIp() + ":" + getWriteRpcPort(), "root", "root");
-    writeStatement = writeConnection.createStatement();
-    readConnection =
-        DriverManager.getConnection(
-            "jdbc:iotdb://" + getReadRpcIp() + ":" + getReadRpcPort(), "root", "root");
-    readStatement = readConnection.createStatement();
-  }
-
-  @After
-  public void tearDown() throws Exception {
-    writeStatement.close();
-    writeConnection.close();
-    readStatement.close();
-    readConnection.close();
-  }
 
   @Test
   public void testSimplePutAndGet() throws SQLException {

@@ -45,7 +45,7 @@ public class ClusterInfoServiceImpl implements ClusterInfoService.Iface {
     List<DataPartitionEntry> result = new ArrayList<>(partitions.size());
     partitions.forEach(
         (multikey, nodes) ->
-            result.add(new DataPartitionEntry(multikey.getKey(1), multikey.getKey(2), nodes)));
+            result.add(new DataPartitionEntry(multikey.getKey(0), multikey.getKey(1), nodes)));
     return result;
   }
 
