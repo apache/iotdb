@@ -23,11 +23,9 @@ import org.apache.iotdb.cluster.rpc.thrift.ClusterInfoService;
 import org.apache.iotdb.cluster.server.clusterInfo.ClusterInfoServer;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcTransportFactory;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
+
 import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;

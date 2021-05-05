@@ -22,22 +22,18 @@ package org.apache.iotdb.db.sql;
 import org.apache.iotdb.jdbc.Config;
 
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.DockerComposeContainer;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.HashSet;
-import java.util.Set;
 
-public abstract class ClusterIT {
+// do not add tests here.
+// add tests into Cases.java instead.
+public abstract class ClusterIT extends Cases {
 
   private static Logger logger = LoggerFactory.getLogger(ClusterIT.class);
 
@@ -87,44 +83,6 @@ public abstract class ClusterIT {
 
   @After
   public void tearDown() throws Exception {
-    writeStatement.close();
-    writeConnection.close();
-    readStatement.close();
-    readConnection.close();
-  }
-
-  @Test
-  public void testSimplePutAndGet() throws SQLException {
-
-    String[] timeSeriesArray = {"root.sg1.aa.bb", "root.sg1.aa.bb.cc", "root.sg1.aa"};
-
-    for (String timeSeries : timeSeriesArray) {
-      writeStatement.execute(
-          String.format(
-              "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
-              timeSeries));
-    }
-    ResultSet resultSet = null;
-    resultSet = readStatement.executeQuery("show timeseries");
-    Set<String> result = new HashSet<>();
-    while (resultSet.next()) {
-      result.add(resultSet.getString(1));
-    }
-    Assert.assertEquals(3, result.size());
-    for (String timeseries : timeSeriesArray) {
-      Assert.assertTrue(result.contains(timeseries));
-    }
-    resultSet.close();
-
-    // test https://issues.apache.org/jira/browse/IOTDB-1331
-    writeStatement.execute("insert into root.ln.wf01.wt01(time, temperature) values(10, 1.0)");
-    resultSet = readStatement.executeQuery("select avg(temperature) from root.ln.wf01.wt01");
-    if (resultSet.next()) {
-      Assert.assertEquals(1.0, resultSet.getDouble(1), 0.01);
-    } else {
-      Assert.fail("expect 1 result, but get an empty resultSet.");
-    }
-    Assert.assertFalse(resultSet.next());
-    resultSet.close();
+    super.tearDown();
   }
 }

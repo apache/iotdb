@@ -19,28 +19,24 @@
 
 package org.apache.iotdb.cluster.server.clusterinfo;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.cluster.ClusterMain;
-import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.DataPartitionEntry;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.MetaClusterServer;
 import org.apache.iotdb.cluster.server.clusterInfo.ClusterInfoServiceImpl;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-
 import org.apache.iotdb.cluster.server.member.MetaGroupMemberTest;
-import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
+
 import org.apache.thrift.TException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.powermock.reflect.Whitebox;
+
+import java.util.Collections;
+import java.util.List;
 
 public class ClusterInfoServiceImplTest {
 

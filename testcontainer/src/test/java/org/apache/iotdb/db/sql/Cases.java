@@ -18,21 +18,29 @@
  */
 package org.apache.iotdb.db.sql;
 
+import org.junit.Assert;
+import org.junit.Test;
+
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.HashSet;
 import java.util.Set;
-import org.junit.Assert;
-import org.junit.Test;
 
 public abstract class Cases {
 
-  private Statement writeStatement;
-  private Connection writeConnection;
-  private Statement readStatement;
-  private Connection readConnection;
+  protected Statement writeStatement;
+  protected Connection writeConnection;
+  protected Statement readStatement;
+  protected Connection readConnection;
+
+  public void tearDown() throws Exception {
+    writeStatement.close();
+    writeConnection.close();
+    readStatement.close();
+    readConnection.close();
+  }
 
   @Test
   public void testSimplePutAndGet() throws SQLException {

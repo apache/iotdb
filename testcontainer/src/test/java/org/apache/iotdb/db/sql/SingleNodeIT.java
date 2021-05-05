@@ -32,13 +32,11 @@ import org.testcontainers.utility.DockerImageName;
 
 import java.io.File;
 import java.sql.*;
-import java.util.HashSet;
-import java.util.Set;
 
-public class SingleNodeIT {
+// do not add tests here.
+// add tests into Cases.java instead.
+public class SingleNodeIT extends Cases {
   private static Logger logger = LoggerFactory.getLogger(SingleNodeIT.class);
-  private Statement statement;
-  private Connection connection;
 
   @Rule
   public GenericContainer dslContainer =
@@ -63,38 +61,16 @@ public class SingleNodeIT {
   @Before
   public void setUp() throws Exception {
     rpcPort = dslContainer.getMappedPort(6667);
-
     syncPort = dslContainer.getMappedPort(5555);
     Class.forName(Config.JDBC_DRIVER_NAME);
-    connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:" + rpcPort, "root", "root");
-    statement = connection.createStatement();
+    writeConnection =
+        readConnection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:" + rpcPort, "root", "root");
+    writeStatement = readStatement = writeConnection.createStatement();
   }
 
   @After
   public void tearDown() throws Exception {
-    statement.close();
-    connection.close();
-  }
-
-  @Test
-  public void testSimplePutAndGet() throws SQLException {
-    String[] timeSeriesArray = {"root.sg1.aa.bb", "root.sg1.aa.bb.cc", "root.sg1.aa"};
-
-    for (String timeSeries : timeSeriesArray) {
-      statement.execute(
-          String.format(
-              "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
-              timeSeries));
-    }
-    ResultSet resultSet = null;
-    resultSet = statement.executeQuery("show timeseries");
-    Set<String> result = new HashSet<>();
-    while (resultSet.next()) {
-      result.add(resultSet.getString(1));
-    }
-    Assert.assertEquals(3, result.size());
-    for (String timeseries : timeSeriesArray) {
-      Assert.assertTrue(result.contains(timeseries));
-    }
+    super.tearDown();
   }
 }
