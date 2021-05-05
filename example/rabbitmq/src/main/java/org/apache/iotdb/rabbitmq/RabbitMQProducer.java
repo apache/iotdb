@@ -34,8 +34,7 @@ public class RabbitMQProducer {
 
   private static final Logger logger = LoggerFactory.getLogger(RabbitMQProducer.class);
 
-  public static void main(String[] args)
-      throws IOException, TimeoutException {
+  public static void main(String[] args) throws IOException, TimeoutException {
     Channel channel = RabbitMQChannelUtils.getChannelInstance(Constant.CONNECTION_NAME);
     channel.exchangeDeclare(Constant.TOPIC, BuiltinExchangeType.TOPIC);
     AMQP.BasicProperties basicProperties =
