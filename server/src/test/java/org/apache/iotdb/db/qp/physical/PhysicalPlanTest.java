@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.qp.physical;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.trigger.api.TriggerEvent;
+import org.apache.iotdb.db.engine.trigger.executor.TriggerEvent;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -47,6 +47,7 @@ import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
 import org.apache.iotdb.db.qp.physical.sys.ShowTriggersPlan;
 import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
@@ -161,6 +162,21 @@ public class PhysicalPlanTest {
         "seriesPath: root.vehicle.d1.s2, resultDataType: INT32, encoding: RLE, compression: SNAPPY, tagOffset: -1",
         plan.toString());
   }
+
+  // TODO @Steve SU
+  //  @Test
+  //  public void testMetadata4() throws QueryProcessException {
+  //    String metadata =
+  //        "create aligned timeseries root.vehicle.d1.(s1 INT32, s2 FLOAT) with encoding=(RLE, RLE)
+  // compression=SNAPPY";
+  //    Planner processor = new Planner();
+  //    CreateAlignedTimeSeriesPlan plan =
+  //        (CreateAlignedTimeSeriesPlan) processor.parseSQLToPhysicalPlan(metadata);
+  //    assertEquals(
+  //        "devicePath: root.vehicle.d1, measurements: [s1, s2], dataTypes: [INT32, FLOAT],
+  // encoding: [RLE, RLE], compression: SNAPPY",
+  //        plan.toString());
+  //  }
 
   @Test
   public void testAuthor() throws QueryProcessException {
@@ -1210,10 +1226,10 @@ public class PhysicalPlanTest {
 
   @Test
   public void testShowTriggers() throws QueryProcessException {
-    String sql = "SHOW TRIGGERS ON root.sg1.d1.s1";
+    String sql = "SHOW TRIGGERS";
 
     ShowTriggersPlan plan = (ShowTriggersPlan) processor.parseSQLToPhysicalPlan(sql);
     Assert.assertTrue(plan.isQuery());
-    Assert.assertEquals("root.sg1.d1.s1", plan.getPath().getFullPath());
+    Assert.assertEquals(ShowContentType.TRIGGERS, plan.getShowContentType());
   }
 }

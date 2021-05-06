@@ -51,6 +51,7 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -62,6 +63,7 @@ import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataPointReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.series.SeriesReaderFactory;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -110,18 +112,12 @@ public class ClusterReaderFactory {
       QueryContext context,
       boolean ascending)
       throws StorageEngineException, QueryProcessException {
-    // make sure the partition table is new
-    try {
-      metaGroupMember.syncLeaderWithConsistencyCheck(false);
-    } catch (CheckConsistencyException e) {
-      throw new QueryProcessException(e.getMessage());
-    }
     // get all data groups
     List<PartitionGroup> partitionGroups;
     try {
       partitionGroups = metaGroupMember.routeFilter(null, path);
     } catch (EmptyIntervalException e) {
-      logger.info(e.getMessage());
+      logger.warn(e.getMessage());
       partitionGroups = Collections.emptyList();
     }
     logger.debug(
@@ -519,7 +515,7 @@ public class ClusterReaderFactory {
         ((SlotPartitionTable) metaGroupMember.getPartitionTable()).getNodeSlots(header);
     QueryDataSource queryDataSource =
         QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter);
-    return new SeriesReader(
+    return SeriesReaderFactory.createSeriesReader(
         path,
         allSensors,
         dataType,
@@ -668,7 +664,17 @@ public class ClusterReaderFactory {
     List<String> fullPaths = Lists.newArrayList();
     paths.forEach(
         path -> {
-          fullPaths.add(path.getFullPath());
+          if (path instanceof VectorPartialPath) {
+            StringBuilder builder = new StringBuilder(path.getFullPath());
+            List<PartialPath> pathList = ((VectorPartialPath) path).getSubSensorsPathList();
+            for (int i = 0; i < pathList.size(); i++) {
+              builder.append(":");
+              builder.append(pathList.get(i).getFullPath());
+            }
+            fullPaths.add(builder.toString());
+          } else {
+            fullPaths.add(path.getFullPath());
+          }
         });
 
     List<Integer> dataTypeOrdinals = Lists.newArrayList();

@@ -58,4 +58,9 @@ public class FillQueryPlan extends RawDataQueryPlan {
           getOperatorType().name() + " doesn't support disable align clause.");
     }
   }
+
+  @Override
+  public boolean isRawQuery() {
+    return false;
+  }
 }

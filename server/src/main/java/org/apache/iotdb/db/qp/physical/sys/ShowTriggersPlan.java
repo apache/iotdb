@@ -19,17 +19,9 @@
 
 package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.db.metadata.PartialPath;
-
 public class ShowTriggersPlan extends ShowPlan {
 
-  public ShowTriggersPlan(PartialPath path) {
+  public ShowTriggersPlan() {
     super(ShowContentType.TRIGGERS);
-    this.path = path;
-  }
-
-  @Override
-  public PartialPath getPath() {
-    return path;
   }
 }

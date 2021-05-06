@@ -21,7 +21,7 @@ package org.apache.iotdb.cluster.log.logtypes;
 
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.db.utils.SerializeUtils;
+import org.apache.iotdb.cluster.utils.NodeSerializeUtils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -41,7 +41,7 @@ public class RemoveNodeLog extends Log {
       dataOutputStream.writeLong(getCurrLogIndex());
       dataOutputStream.writeLong(getCurrLogTerm());
 
-      SerializeUtils.serialize(removedNode, dataOutputStream);
+      NodeSerializeUtils.serialize(removedNode, dataOutputStream);
     } catch (IOException e) {
       // ignored
     }
@@ -54,7 +54,7 @@ public class RemoveNodeLog extends Log {
     setCurrLogTerm(buffer.getLong());
 
     removedNode = new Node();
-    SerializeUtils.deserialize(removedNode, buffer);
+    NodeSerializeUtils.deserialize(removedNode, buffer);
   }
 
   public Node getRemovedNode() {

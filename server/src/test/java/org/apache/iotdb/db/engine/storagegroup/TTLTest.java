@@ -27,6 +27,7 @@ import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
+import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -104,7 +105,7 @@ public class TTLTest {
   }
 
   private void insertToStorageGroupProcessor(InsertRowPlan insertPlan)
-      throws WriteProcessException {
+      throws WriteProcessException, TriggerExecutionException {
     storageGroupProcessor.insert(insertPlan);
   }
 
@@ -150,7 +151,8 @@ public class TTLTest {
 
   @Test
   public void testTTLWrite()
-      throws WriteProcessException, QueryProcessException, IllegalPathException {
+      throws WriteProcessException, QueryProcessException, IllegalPathException,
+          TriggerExecutionException {
     InsertRowPlan plan = new InsertRowPlan();
     plan.setDeviceId(new PartialPath(sg1));
     plan.setTime(System.currentTimeMillis());
@@ -182,7 +184,8 @@ public class TTLTest {
   }
 
   private void prepareData()
-      throws WriteProcessException, QueryProcessException, IllegalPathException {
+      throws WriteProcessException, QueryProcessException, IllegalPathException,
+          TriggerExecutionException {
     InsertRowPlan plan = new InsertRowPlan();
     plan.setDeviceId(new PartialPath(sg1));
     plan.setTime(System.currentTimeMillis());
@@ -224,7 +227,7 @@ public class TTLTest {
     // files before ttl
     QueryDataSource dataSource =
         storageGroupProcessor.query(
-            new PartialPath(sg1), s1, EnvironmentUtils.TEST_QUERY_CONTEXT, null, null);
+            new PartialPath(sg1, s1), EnvironmentUtils.TEST_QUERY_CONTEXT, null, null);
     List<TsFileResource> seqResource = dataSource.getSeqResources();
     List<TsFileResource> unseqResource = dataSource.getUnseqResources();
     assertEquals(4, seqResource.size());
@@ -235,7 +238,7 @@ public class TTLTest {
     // files after ttl
     dataSource =
         storageGroupProcessor.query(
-            new PartialPath(sg1), s1, EnvironmentUtils.TEST_QUERY_CONTEXT, null, null);
+            new PartialPath(sg1, s1), EnvironmentUtils.TEST_QUERY_CONTEXT, null, null);
     seqResource = dataSource.getSeqResources();
     unseqResource = dataSource.getUnseqResources();
     assertTrue(seqResource.size() < 4);
@@ -270,7 +273,7 @@ public class TTLTest {
     storageGroupProcessor.setDataTTL(0);
     dataSource =
         storageGroupProcessor.query(
-            new PartialPath(sg1), s1, EnvironmentUtils.TEST_QUERY_CONTEXT, null, null);
+            new PartialPath(sg1, s1), EnvironmentUtils.TEST_QUERY_CONTEXT, null, null);
     seqResource = dataSource.getSeqResources();
     unseqResource = dataSource.getUnseqResources();
     assertEquals(0, seqResource.size());
@@ -422,7 +425,8 @@ public class TTLTest {
 
   @Test
   public void testTTLCleanFile()
-      throws WriteProcessException, QueryProcessException, IllegalPathException {
+      throws WriteProcessException, QueryProcessException, IllegalPathException,
+          TriggerExecutionException {
     prepareData();
     storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
 

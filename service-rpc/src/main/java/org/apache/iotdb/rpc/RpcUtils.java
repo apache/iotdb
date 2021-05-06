@@ -55,9 +55,9 @@ public class RpcUtils {
   /**
    * It is used to prevent the size of the parsing package from being too large and allocating the
    * buffer will cause oom. Therefore, the maximum length of the requested memory is limited when
-   * reading. The default value is 512MB
+   * reading. Thrift max frame size (16384000 bytes by default), we change it to 512MB.
    */
-  public static final int FRAME_HARD_MAX_LENGTH = 536870912;
+  public static final int THRIFT_FRAME_MAX_SIZE = 536870912;
 
   /**
    * if resizeIfNecessary is called continuously with a small size for more than

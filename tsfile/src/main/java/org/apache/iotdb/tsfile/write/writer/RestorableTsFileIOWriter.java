@@ -22,12 +22,13 @@ package org.apache.iotdb.tsfile.write.writer;
 import org.apache.iotdb.tsfile.exception.NotCompatibleTsFileException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileCheckStatus;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,7 +58,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
 
   private static final Logger logger = LoggerFactory.getLogger("FileMonitor");
   private long truncatedSize = -1;
-  private Map<Path, MeasurementSchema> knownSchemas = new HashMap<>();
+  private Map<Path, IMeasurementSchema> knownSchemas = new HashMap<>();
 
   private int lastFlushedChunkGroupIndex = 0;
 
@@ -147,7 +148,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     return truncatedSize;
   }
 
-  public Map<Path, MeasurementSchema> getKnownSchema() {
+  public Map<Path, IMeasurementSchema> getKnownSchema() {
     return knownSchemas;
   }
 
@@ -166,12 +167,12 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     List<ChunkMetadata> chunkMetadataList = new ArrayList<>();
     if (metadatasForQuery.containsKey(deviceId)
         && metadatasForQuery.get(deviceId).containsKey(measurementId)) {
-      for (ChunkMetadata chunkMetaData : metadatasForQuery.get(deviceId).get(measurementId)) {
+      for (IChunkMetadata chunkMetaData : metadatasForQuery.get(deviceId).get(measurementId)) {
         // filter: if a device'measurement is defined as float type, and data has been persistent.
         // Then someone deletes the timeseries and recreate it with Int type. We have to ignore
         // all the stale data.
         if (dataType == null || dataType.equals(chunkMetaData.getDataType())) {
-          chunkMetadataList.add(chunkMetaData);
+          chunkMetadataList.add((ChunkMetadata) chunkMetaData);
         }
       }
     }
@@ -193,7 +194,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
         List<ChunkMetadata> rowMetaDataList = chunkGroupMetadata.getChunkMetadataList();
 
         String device = chunkGroupMetadata.getDevice();
-        for (ChunkMetadata chunkMetaData : rowMetaDataList) {
+        for (IChunkMetadata chunkMetaData : rowMetaDataList) {
           String measurementId = chunkMetaData.getMeasurementUid();
           if (!metadatasForQuery.containsKey(device)) {
             metadatasForQuery.put(device, new HashMap<>());
@@ -201,7 +202,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
           if (!metadatasForQuery.get(device).containsKey(measurementId)) {
             metadatasForQuery.get(device).put(measurementId, new ArrayList<>());
           }
-          metadatasForQuery.get(device).get(measurementId).add(chunkMetaData);
+          metadatasForQuery.get(device).get(measurementId).add((ChunkMetadata) chunkMetaData);
         }
       }
     }
@@ -228,7 +229,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     return append;
   }
 
-  public void addSchema(Path path, MeasurementSchema schema) {
+  public void addSchema(Path path, IMeasurementSchema schema) {
     knownSchemas.put(path, schema);
   }
 

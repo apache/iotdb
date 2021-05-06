@@ -74,6 +74,9 @@ public class IoTDBStatMonitorTest {
   @After
   public void tearDown() throws IOException, StorageEngineException, TTransportException {
     // reset setEnableStatMonitor to false
+    config.setEnableStatMonitor(false);
+    config.setEnableMonitorSeriesWrite(false);
+
     statMonitor.close();
     EnvironmentUtils.cleanEnv();
   }
@@ -81,6 +84,7 @@ public class IoTDBStatMonitorTest {
   @Test
   public void completeTest() throws Exception {
     getValueInMemoryTest();
+    statMonitor.saveStatValue("root.sg");
     saveStatValueTest();
 
     // restart server
@@ -114,8 +118,6 @@ public class IoTDBStatMonitorTest {
   }
 
   private void saveStatValueTest() throws MetadataException, StorageEngineException {
-    statMonitor.saveStatValue(STORAGE_GROUP_NAME);
-
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");

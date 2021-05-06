@@ -19,11 +19,11 @@
 
 -->
 
-## TsFile-Flink-Connector
+## Flink-TsFile-Connector
 
-### About TsFile-Flink-Connector
+### About Flink-TsFile-Connector
 
-TsFile-Flink-Connector implements the support of Flink for external data sources of Tsfile type. 
+Flink-TsFile-Connector implements the support of Flink for external data sources of Tsfile type. 
 This enables users to read and write  Tsfile by Flink via DataStream/DataSet API.
 
 With this connector, you can
@@ -177,4 +177,5 @@ source.map(t -> {
 }).returns(rowTypeInfo).write(outputFormat, path);
 env.execute();
 ```
+
 

@@ -440,8 +440,8 @@ public class IoTDBConnection implements Connection {
   }
 
   private void openTransport() throws TTransportException {
-    RpcTransportFactory.setInitialBufferCapacity(params.getInitialBufferCapacity());
-    RpcTransportFactory.setMaxLength(params.getMaxFrameSize());
+    RpcTransportFactory.setDefaultBufferCapacity(params.getThriftDefaultBufferSize());
+    RpcTransportFactory.setThriftMaxFrameSize(params.getThriftMaxFrameSize());
     transport =
         RpcTransportFactory.INSTANCE.getTransport(
             new TSocket(

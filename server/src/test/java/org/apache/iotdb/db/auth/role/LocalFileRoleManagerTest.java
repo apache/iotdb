@@ -87,6 +87,12 @@ public class LocalFileRoleManagerTest {
       caught = true;
     }
     assertTrue(caught);
+    try {
+      manager.createRole("rolename ");
+    } catch (AuthException e) {
+      caught = true;
+    }
+    assertTrue(caught);
 
     // delete
     assertFalse(manager.deleteRole("not a role"));

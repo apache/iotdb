@@ -34,7 +34,9 @@ import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -77,7 +79,7 @@ public class MetaPuller {
    * Pull the all timeseries schemas of given prefixPaths from remote nodes. All prefixPaths must
    * contain the storage group.
    */
-  List<MeasurementSchema> pullMeasurementSchemas(List<PartialPath> prefixPaths)
+  List<IMeasurementSchema> pullMeasurementSchemas(List<PartialPath> prefixPaths)
       throws MetadataException {
     logger.debug("{}: Pulling timeseries schemas of {}", metaGroupMember.getName(), prefixPaths);
     // split the paths by the data groups that will hold them
@@ -88,7 +90,7 @@ public class MetaPuller {
       partitionGroupPathMap.computeIfAbsent(partitionGroup, g -> new ArrayList<>()).add(prefixPath);
     }
 
-    List<MeasurementSchema> schemas = new ArrayList<>();
+    List<IMeasurementSchema> schemas = new ArrayList<>();
     // pull timeseries schema from every group involved
     if (logger.isDebugEnabled()) {
       logger.debug(
@@ -127,7 +129,7 @@ public class MetaPuller {
   private void pullMeasurementSchemas(
       PartitionGroup partitionGroup,
       List<PartialPath> prefixPaths,
-      List<MeasurementSchema> results) {
+      List<IMeasurementSchema> results) {
     if (partitionGroup.contains(metaGroupMember.getThisNode())) {
       // the node is in the target group, synchronize with leader should be enough
       try {
@@ -166,7 +168,7 @@ public class MetaPuller {
   }
 
   private boolean pullMeasurementSchemas(
-      Node node, PullSchemaRequest request, List<MeasurementSchema> results) {
+      Node node, PullSchemaRequest request, List<IMeasurementSchema> results) {
     if (logger.isDebugEnabled()) {
       logger.debug(
           "{}: Pulling timeseries schemas of {} and other {} paths from {}",
@@ -176,7 +178,7 @@ public class MetaPuller {
           node);
     }
 
-    List<MeasurementSchema> schemas = null;
+    List<IMeasurementSchema> schemas = null;
     try {
       schemas = pullMeasurementSchemas(node, request);
     } catch (IOException | TException e) {
@@ -215,9 +217,9 @@ public class MetaPuller {
     return false;
   }
 
-  private List<MeasurementSchema> pullMeasurementSchemas(Node node, PullSchemaRequest request)
+  private List<IMeasurementSchema> pullMeasurementSchemas(Node node, PullSchemaRequest request)
       throws TException, InterruptedException, IOException {
-    List<MeasurementSchema> schemas;
+    List<IMeasurementSchema> schemas;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client =
           metaGroupMember
@@ -236,7 +238,10 @@ public class MetaPuller {
         int size = buffer.getInt();
         schemas = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
-          schemas.add(MeasurementSchema.deserializeFrom(buffer));
+          schemas.add(
+              buffer.get() == 0
+                  ? MeasurementSchema.partialDeserializeFrom(buffer)
+                  : VectorMeasurementSchema.partialDeserializeFrom(buffer));
         }
       }
     }

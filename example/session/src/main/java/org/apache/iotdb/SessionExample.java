@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -28,6 +29,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.Tablet;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.apache.thrift.transport.TTransportException;
@@ -81,7 +83,6 @@ public class SessionExample {
     deleteData();
     deleteTimeseries();
     setTimeout();
-    session.close();
 
     sessionEnableRedirect = new Session(LOCAL_HOST, 6667, "root", "root");
     sessionEnableRedirect.setEnableQueryRedirection(true);
@@ -93,6 +94,7 @@ public class SessionExample {
     insertRecord4Redirect();
     query4Redirect();
     sessionEnableRedirect.close();
+    session.close();
   }
 
   private static void createTimeseries()
@@ -323,7 +325,7 @@ public class SessionExample {
      */
     // The schema of measurements of one device
     // only measurementId and data type in MeasurementSchema take effects in Tablet
-    List<MeasurementSchema> schemaList = new ArrayList<>();
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
@@ -378,7 +380,7 @@ public class SessionExample {
   private static void insertTablets() throws IoTDBConnectionException, StatementExecutionException {
     // The schema of measurements of one device
     // only measurementId and data type in MeasurementSchema take effects in Tablet
-    List<MeasurementSchema> schemaList = new ArrayList<>();
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
@@ -537,7 +539,7 @@ public class SessionExample {
                   + i
                   + ".d1 where time >= 1 and time < 10 and root.redirect"
                   + i
-                  + "d1.s1 > 1");
+                  + ".d1.s1 > 1");
       System.out.println(dataSet.getColumnNames());
       dataSet.setFetchSize(1024); // default is 10000
       while (dataSet.hasNext()) {

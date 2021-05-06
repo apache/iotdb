@@ -48,6 +48,7 @@ import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
+import org.apache.iotdb.cluster.rpc.thrift.RequestCommitIndexResponse;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.server.NodeCharacter;
@@ -64,6 +65,7 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -85,7 +87,7 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -245,11 +247,11 @@ public class DataGroupMemberTest extends BaseMember {
 
                 @Override
                 public void requestCommitIndex(
-                    Node header, AsyncMethodCallback<Long> resultHandler) {
+                    Node header, AsyncMethodCallback<RequestCommitIndexResponse> resultHandler) {
                   new Thread(
                           () -> {
                             if (enableSyncLeader) {
-                              resultHandler.onComplete(-1L);
+                              resultHandler.onComplete(new RequestCommitIndexResponse());
                             } else {
                               resultHandler.onError(new TestException());
                             }
@@ -458,7 +460,7 @@ public class DataGroupMemberTest extends BaseMember {
   @Test
   public void testApplySnapshot()
       throws IOException, WriteProcessException, SnapshotInstallationException,
-          QueryProcessException, IllegalPathException {
+          QueryProcessException, IllegalPathException, TriggerExecutionException {
     System.out.println("Start testApplySnapshot()");
     FileSnapshot snapshot = new FileSnapshot();
     List<TimeseriesSchema> schemaList = new ArrayList<>();
@@ -671,7 +673,7 @@ public class DataGroupMemberTest extends BaseMember {
       PullSchemaRequest request = new PullSchemaRequest();
       request.setPrefixPaths(Collections.singletonList(TestUtils.getTestSg(0)));
       request.setHeader(TestUtils.getNode(0));
-      AtomicReference<List<MeasurementSchema>> result = new AtomicReference<>();
+      AtomicReference<List<IMeasurementSchema>> result = new AtomicReference<>();
       PullMeasurementSchemaHandler handler =
           new PullMeasurementSchemaHandler(TestUtils.getNode(1), request.getPrefixPaths(), result);
       new DataAsyncService(dataGroupMember).pullMeasurementSchema(request, handler);
