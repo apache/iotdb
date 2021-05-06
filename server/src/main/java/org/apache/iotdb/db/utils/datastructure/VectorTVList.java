@@ -69,8 +69,6 @@ public class VectorTVList extends TVList {
       List<Object> columnValues = values.get(i);
       if (columnValue == null) {
         markNullValue(i, arrayIndex, elementIndex);
-      } else if (isValueMarked(indices.get(arrayIndex)[elementIndex], i)) {
-        bitMaps.get(i).get(arrayIndex).unmark(elementIndex);
       }
       switch (dataTypes.get(i)) {
         case TEXT:
