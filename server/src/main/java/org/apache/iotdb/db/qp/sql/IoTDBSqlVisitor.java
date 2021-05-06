@@ -1765,11 +1765,23 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
         timestamp = parseTimeFormat(insertMultiValues.get(i).dateFormat().getText());
       } else if (insertMultiValues.get(i).INT() != null) {
         timestamp = Long.parseLong(insertMultiValues.get(i).INT().getText());
-      } else {
-        if (insertMultiValues.size() != 1) {
-          throw new SQLParserException("need timestamps when insert multi rows");
+      } else if (insertMultiValues.size() != 1) {
+        throw new SQLParserException("need timestamps when insert multi rows");
+      } else{
+        String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
+        long startupNano = IoTDBDescriptor.getInstance().getConfig().getStartUpNanosecond();
+        switch (timePrecision) {
+          case "ns":
+            timestamp = System.currentTimeMillis() * 1000_000
+                + (System.nanoTime() - startupNano) % 1000_000;
+            break;
+          case "us":
+            timestamp = System.currentTimeMillis() * 1000
+                + (System.nanoTime() - startupNano) / 1000 % 1000;
+            break;
+          default:
+            timestamp = System.currentTimeMillis();
         }
-        timestamp = System.currentTimeMillis();
       }
       timeArray[i] = timestamp;
       List<MeasurementValueContext> values = insertMultiValues.get(i).measurementValue();

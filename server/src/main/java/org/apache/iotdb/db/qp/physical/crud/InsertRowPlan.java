@@ -18,15 +18,18 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
+import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -582,6 +585,16 @@ public class InsertRowPlan extends InsertPlan {
   @Override
   public void checkIntegrity() throws QueryProcessException {
     super.checkIntegrity();
+    List measurementList = Arrays.asList(this.measurements);
+    try {
+      Set<String> schemaSet = IoTDB.metaManager.getChildNodeInNextLevel(this.deviceId);
+      checkTimeseries("time",schemaSet,measurementList);
+      checkTimeseries("TIME",schemaSet,measurementList);
+      checkTimeseries("timestamp",schemaSet,measurementList);
+      checkTimeseries("TIMESTAMP",schemaSet,measurementList);
+    } catch (MetadataException e) {
+        e.printStackTrace();
+    }
     if (values == null) {
       throw new QueryProcessException("Values are null");
     }
@@ -591,6 +604,15 @@ public class InsertRowPlan extends InsertPlan {
     for (Object value : values) {
       if (value == null) {
         throw new QueryProcessException("Values contain null: " + Arrays.toString(values));
+      }
+    }
+  }
+
+  public void checkTimeseries(String timeseries,Set<String> schemaSet,List measurementList)
+      throws QueryProcessException {
+    if (measurementList.contains(timeseries)) {
+      if (!schemaSet.contains(timeseries)){
+        throw new QueryProcessException("Should create timeseries first");
       }
     }
   }
