@@ -507,6 +507,27 @@ public class VectorTVList extends TVList {
     return indices.get(arrayIndex)[elementIndex];
   }
 
+  /**
+   * Get the valid original row index in a column by a given time duplicated original row index
+   * list.
+   *
+   * @param timeDuplicatedOriginRowIndexList The row index list that the time of all indexes are
+   *     same.
+   * @param columnIndex The index of a given column.
+   * @return The original row index of the latest non-null value, or the first row index if all
+   *     values in given columns are null.
+   */
+  public int getValidRowIndexForTimeDuplicatedRows(
+      List<Integer> timeDuplicatedOriginRowIndexList, int columnIndex) {
+    int validRowIndex = timeDuplicatedOriginRowIndexList.get(0);
+    for (int originRowIndex : timeDuplicatedOriginRowIndexList) {
+      if (!isValueMarked(originRowIndex, columnIndex)) {
+        validRowIndex = originRowIndex;
+      }
+    }
+    return validRowIndex;
+  }
+
   @Override
   protected void setPivotTo(int pos) {
     set(pos, pivotTime, pivotIndex);
@@ -649,15 +670,5 @@ public class VectorTVList extends TVList {
   @Override
   public TSDataType getDataType() {
     return TSDataType.VECTOR;
-  }
-
-  public int getValidRowIndex(List<Integer> originRowIndexList, int columnIndex) {
-    int validRowIndex = originRowIndexList.get(0);
-    for (int originRowIndex : originRowIndexList) {
-      if (!isValueMarked(originRowIndex, columnIndex)) {
-        validRowIndex = originRowIndex;
-      }
-    }
-    return validRowIndex;
   }
 }
