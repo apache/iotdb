@@ -650,4 +650,14 @@ public class VectorTVList extends TVList {
   public TSDataType getDataType() {
     return TSDataType.VECTOR;
   }
+
+  public int getValidRowIndex(List<Integer> originRowIndexList, int columnIndex) {
+    int validRowIndex = originRowIndexList.get(0);
+    for (int originRowIndex : originRowIndexList) {
+      if (!isValueMarked(originRowIndex, columnIndex)) {
+        validRowIndex = originRowIndex;
+      }
+    }
+    return validRowIndex;
+  }
 }
