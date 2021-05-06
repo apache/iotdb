@@ -182,12 +182,7 @@ public class ClusterUtils {
     if (ipCompare != 0) {
       return ipCompare;
     } else {
-      int metaPortCompare = thisSeedNode.getMetaPort() - thatSeedNode.getMetaPort();
-      if (metaPortCompare != 0) {
-        return metaPortCompare;
-      } else {
-        return thisSeedNode.getDataPort() - thatSeedNode.getDataPort();
-      }
+      return thisSeedNode.getMetaPort() - thatSeedNode.getMetaPort();
     }
   }
 

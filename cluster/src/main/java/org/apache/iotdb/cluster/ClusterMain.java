@@ -49,6 +49,8 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 
+import static org.apache.iotdb.cluster.utils.ClusterUtils.UNKNOWN_CLIENT_IP;
+
 public class ClusterMain {
 
   private static final Logger logger = LoggerFactory.getLogger(ClusterMain.class);
@@ -217,7 +219,7 @@ public class ClusterMain {
     TProtocolFactory factory =
         config.isRpcThriftCompressionEnabled() ? new TCompactProtocol.Factory() : new Factory();
     Node nodeToRemove = new Node();
-    nodeToRemove.setInternalIp(ip).setMetaPort(metaPort);
+    nodeToRemove.setInternalIp(ip).setMetaPort(metaPort).setClientIp(UNKNOWN_CLIENT_IP);
     // try sending the request to each seed node
     for (String url : config.getSeedNodeUrls()) {
       Node node = ClusterUtils.parseNode(url);

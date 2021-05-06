@@ -1029,7 +1029,7 @@ public class MetaGroupMember extends RaftMember {
 
     int retryTime = 0;
     while (true) {
-      logger.info("{} Send empty content log to other nodes, retry time: {}", name, retryTime);
+      logger.debug("{} Send empty content log to other nodes, retry time: {}", name, retryTime);
       AppendLogResult result = sendLogToFollowers(log);
       switch (result) {
         case OK:
@@ -1040,7 +1040,7 @@ public class MetaGroupMember extends RaftMember {
           }
           return;
         case TIME_OUT:
-          logger.info("{}: add empty content log timed out, retry.", name);
+          logger.debug("{}: add empty content log timed out, retry.", name);
           try {
             Thread.sleep(ClusterConstant.RETRY_WAIT_TIME_MS);
           } catch (InterruptedException e) {
