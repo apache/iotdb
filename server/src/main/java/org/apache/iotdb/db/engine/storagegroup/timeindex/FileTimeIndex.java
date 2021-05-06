@@ -135,11 +135,6 @@ public class FileTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public long estimateRamIncrement(String deviceToBeChecked) {
-    return devices.contains(deviceToBeChecked) ? 0L : RamUsageEstimator.sizeOf(deviceToBeChecked);
-  }
-
-  @Override
   public long getTimePartition(String tsFilePath) {
     try {
       if (devices != null && !devices.isEmpty()) {

@@ -20,7 +20,7 @@
 grammar SqlBase;
 
 singleStatement
-    : EXPLAIN? statement (';')? EOF
+    : DEBUG? statement (';')? EOF
     ;
 
 /*
@@ -382,6 +382,10 @@ measurementName
     ;
 
 insertValuesSpec
+    :(COMMA? insertMultiValue)*
+    ;
+
+insertMultiValue
     : LR_BRACKET dateFormat (COMMA measurementValue)+ RR_BRACKET
     | LR_BRACKET INT (COMMA measurementValue)+ RR_BRACKET
     ;
@@ -1298,6 +1302,10 @@ TOLERANCE
 
 EXPLAIN
     : E X P L A I N
+    ;
+
+DEBUG
+    : D E B U G
     ;
 
 NULL

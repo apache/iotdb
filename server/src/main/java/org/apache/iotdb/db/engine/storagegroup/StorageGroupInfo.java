@@ -62,9 +62,7 @@ public class StorageGroupInfo {
 
   /** When create a new TsFileProcessor, call this method */
   public void initTsFileProcessorInfo(TsFileProcessor tsFileProcessor) {
-    if (reportedTsps.add(tsFileProcessor)) {
-      memoryCost.getAndAdd(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize());
-    }
+    reportedTsps.add(tsFileProcessor);
   }
 
   public void addStorageGroupMemCost(long cost) {
@@ -99,7 +97,7 @@ public class StorageGroupInfo {
    */
   public void closeTsFileProcessorAndReportToSystem(TsFileProcessor tsFileProcessor) {
     reportedTsps.remove(tsFileProcessor);
-    SystemInfo.getInstance().resetStorageGroupStatus(this, true);
+    SystemInfo.getInstance().resetStorageGroupStatus(this);
   }
 
   public Supplier<ByteBuffer[]> getWalSupplier() {
