@@ -597,10 +597,10 @@ public abstract class TVList {
           tvPair =
               getTimeValuePairForTimeDuplicatedRows(
                   timeDuplicatedVectorRowIndexList, time, floatPrecision, encoding);
+          timeDuplicatedVectorRowIndexList = null;
         } else {
           tvPair = getTimeValuePair(cur, time, floatPrecision, encoding);
         }
-        timeDuplicatedVectorRowIndexList = null;
         cur++;
         if (tvPair.getValue() != null) {
           cachedTimeValuePair = tvPair;
