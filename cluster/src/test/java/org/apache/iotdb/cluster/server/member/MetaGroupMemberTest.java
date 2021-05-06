@@ -1007,7 +1007,7 @@ public class MetaGroupMemberTest extends BaseMember {
 
       request.setRegenerateIdentifier(true);
       testMetaMember.processValidHeartbeatReq(request, response);
-      assertNotEquals(10, response.getFollowerIdentifier());
+      assertTrue(response.getFollowerIdentifier() != 10);
       assertTrue(response.isRequirePartitionTable());
 
       request.setPartitionTableBytes(partitionTable.serialize());
