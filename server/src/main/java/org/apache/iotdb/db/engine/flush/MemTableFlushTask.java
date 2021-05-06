@@ -173,69 +173,18 @@ public class MemTableFlushTask {
               if (dataType == TSDataType.VECTOR) {
                 if (duplicatedSortedRowIndexList == null) {
                   duplicatedSortedRowIndexList = new ArrayList<>();
+                  duplicatedSortedRowIndexList.add(sortedRowIndex);
                 }
-                duplicatedSortedRowIndexList.add(sortedRowIndex);
+                duplicatedSortedRowIndexList.add(sortedRowIndex + 1);
               }
               continue;
             }
 
-            // For vector type only, combine the time duplicated vector rows to one row
+            // For vector type only, write the time duplicated vector rows
             if (duplicatedSortedRowIndexList != null && !duplicatedSortedRowIndexList.isEmpty()) {
-              VectorTVList vectorTvPairs = (VectorTVList) tvPairs;
-              List<TSDataType> dataTypes = vectorTvPairs.getTsDataTypes();
-              List<Integer> originRowIndexList = new ArrayList<>();
-              duplicatedSortedRowIndexList.forEach(i -> {
-                originRowIndexList.add(vectorTvPairs.getValueIndex(i));
-              }); 
-              for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
-                int validOriginRowIndex = vectorTvPairs.getValidRowIndex(originRowIndexList, columnIndex);
-                boolean isNull = vectorTvPairs.isValueMarked(validOriginRowIndex, columnIndex);
-                switch (dataTypes.get(columnIndex)) {
-                  case BOOLEAN:
-                    seriesWriterImpl.write(
-                        time,
-                        vectorTvPairs.getBooleanByValueIndex(validOriginRowIndex, columnIndex),
-                        isNull);
-                    break;
-                  case INT32:
-                    seriesWriterImpl.write(
-                        time,
-                        vectorTvPairs.getIntByValueIndex(validOriginRowIndex, columnIndex),
-                        isNull);
-                    break;
-                  case INT64:
-                    seriesWriterImpl.write(
-                        time,
-                        vectorTvPairs.getLongByValueIndex(validOriginRowIndex, columnIndex),
-                        isNull);
-                    break;
-                  case FLOAT:
-                    seriesWriterImpl.write(
-                        time,
-                        vectorTvPairs.getFloatByValueIndex(validOriginRowIndex, columnIndex),
-                        isNull);
-                    break;
-                  case DOUBLE:
-                    seriesWriterImpl.write(
-                        time,
-                        vectorTvPairs.getDoubleByValueIndex(validOriginRowIndex, columnIndex),
-                        isNull);
-                    break;
-                  case TEXT:
-                    seriesWriterImpl.write(
-                        time,
-                        vectorTvPairs.getBinaryByValueIndex(validOriginRowIndex, columnIndex),
-                        isNull);
-                    break;
-                  default:
-                    LOGGER.error(
-                        "Storage group {} does not support data type: {}",
-                        storageGroup,
-                        dataType);
-                    break;
-                }
-              }
-              seriesWriterImpl.write(time);
+              writeTimeDuplicatedVectorRows(
+                  time, (VectorTVList) tvPairs, duplicatedSortedRowIndexList, seriesWriterImpl);
+              duplicatedSortedRowIndexList = null;
               continue;
             }
 
@@ -310,7 +259,7 @@ public class MemTableFlushTask {
                       LOGGER.error(
                           "Storage group {} does not support data type: {}",
                           storageGroup,
-                          dataType);
+                          dataTypes.get(columnIndex));
                       break;
                   }
                 }
@@ -322,6 +271,69 @@ public class MemTableFlushTask {
                 break;
             }
           }
+        }
+
+        private void writeTimeDuplicatedVectorRows(
+            long time,
+            VectorTVList vectorTvPairs,
+            List<Integer> duplicatedSortedRowIndexList,
+            IChunkWriter seriesWriterImpl) {
+          List<TSDataType> dataTypes = vectorTvPairs.getTsDataTypes();
+          List<Integer> originRowIndexList = new ArrayList<>();
+          duplicatedSortedRowIndexList.forEach(
+              i -> {
+                originRowIndexList.add(vectorTvPairs.getValueIndex(i));
+              });
+          for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
+            int validOriginRowIndex =
+                vectorTvPairs.getValidRowIndex(originRowIndexList, columnIndex);
+            boolean isNull = vectorTvPairs.isValueMarked(validOriginRowIndex, columnIndex);
+            switch (dataTypes.get(columnIndex)) {
+              case BOOLEAN:
+                seriesWriterImpl.write(
+                    time,
+                    vectorTvPairs.getBooleanByValueIndex(validOriginRowIndex, columnIndex),
+                    isNull);
+                break;
+              case INT32:
+                seriesWriterImpl.write(
+                    time,
+                    vectorTvPairs.getIntByValueIndex(validOriginRowIndex, columnIndex),
+                    isNull);
+                break;
+              case INT64:
+                seriesWriterImpl.write(
+                    time,
+                    vectorTvPairs.getLongByValueIndex(validOriginRowIndex, columnIndex),
+                    isNull);
+                break;
+              case FLOAT:
+                seriesWriterImpl.write(
+                    time,
+                    vectorTvPairs.getFloatByValueIndex(validOriginRowIndex, columnIndex),
+                    isNull);
+                break;
+              case DOUBLE:
+                seriesWriterImpl.write(
+                    time,
+                    vectorTvPairs.getDoubleByValueIndex(validOriginRowIndex, columnIndex),
+                    isNull);
+                break;
+              case TEXT:
+                seriesWriterImpl.write(
+                    time,
+                    vectorTvPairs.getBinaryByValueIndex(validOriginRowIndex, columnIndex),
+                    isNull);
+                break;
+              default:
+                LOGGER.error(
+                    "Storage group {} does not support data type: {}",
+                    storageGroup,
+                    dataTypes.get(columnIndex));
+                break;
+            }
+          }
+          seriesWriterImpl.write(time);
         }
 
         @SuppressWarnings("squid:S135")
