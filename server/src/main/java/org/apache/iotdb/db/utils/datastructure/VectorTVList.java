@@ -118,15 +118,17 @@ public class VectorTVList extends TVList {
   }
 
   public Object getVector(List<Integer> timeDuplicatedIndexList) {
-    int[] timeDuplicatedIndexes = new int[values.size()];
+    int[] validIndexesForTimeDuplicatedRows = new int[values.size()];
     for (int i = 0; i < values.size(); i++) {
-      timeDuplicatedIndexes[i] = getValidRowIndexForTimeDuplicatedRows(timeDuplicatedIndexList, i);
+      validIndexesForTimeDuplicatedRows[i] =
+          getValidRowIndexForTimeDuplicatedRows(timeDuplicatedIndexList, i);
     }
     return getVectorByValueIndex(
-        timeDuplicatedIndexList.get(timeDuplicatedIndexList.size() - 1), timeDuplicatedIndexes);
+        timeDuplicatedIndexList.get(timeDuplicatedIndexList.size() - 1),
+        validIndexesForTimeDuplicatedRows);
   }
 
-  private Object getVectorByValueIndex(int valueIndex, int[] timeDuplicatedIndexes) {
+  private Object getVectorByValueIndex(int valueIndex, int[] validIndexesForTimeDuplicatedRows) {
     if (valueIndex >= size) {
       throw new ArrayIndexOutOfBoundsException(valueIndex);
     }
@@ -135,9 +137,9 @@ public class VectorTVList extends TVList {
     TsPrimitiveType[] vector = new TsPrimitiveType[values.size()];
     for (int i = 0; i < values.size(); i++) {
       List<Object> columnValues = values.get(i);
-      if (timeDuplicatedIndexes != null) {
-        arrayIndex = timeDuplicatedIndexes[i] / ARRAY_SIZE;
-        elementIndex = timeDuplicatedIndexes[i] % ARRAY_SIZE;
+      if (validIndexesForTimeDuplicatedRows != null) {
+        arrayIndex = validIndexesForTimeDuplicatedRows[i] / ARRAY_SIZE;
+        elementIndex = validIndexesForTimeDuplicatedRows[i] % ARRAY_SIZE;
       }
       if (bitMaps != null
           && bitMaps.get(i) != null
@@ -565,7 +567,7 @@ public class VectorTVList extends TVList {
   }
 
   @Override
-  public TimeValuePair getCombinedTimeValuePairForVector(
+  public TimeValuePair getTimeValuePairForTimeDuplicatedRows(
       List<Integer> indexList, long time, Integer floatPrecision, TSEncoding encoding) {
     if (this.dataTypes.size() == 1) {
       return new TimeValuePair(time, ((TsPrimitiveType) getVector(indexList)).getVector()[0]);

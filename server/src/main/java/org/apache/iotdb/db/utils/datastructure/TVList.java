@@ -527,7 +527,7 @@ public abstract class TVList {
   protected abstract TimeValuePair getTimeValuePair(
       int index, long time, Integer floatPrecision, TSEncoding encoding);
 
-  public TimeValuePair getCombinedTimeValuePairForVector(
+  public TimeValuePair getTimeValuePairForTimeDuplicatedRows(
       List<Integer> timeDuplicatedVectorRowIndexList,
       long time,
       Integer floatPrecision,
@@ -595,7 +595,7 @@ public abstract class TVList {
         TimeValuePair tvPair;
         if (getDataType() == TSDataType.VECTOR && timeDuplicatedVectorRowIndexList != null) {
           tvPair =
-              getCombinedTimeValuePairForVector(
+              getTimeValuePairForTimeDuplicatedRows(
                   timeDuplicatedVectorRowIndexList, time, floatPrecision, encoding);
         } else {
           tvPair = getTimeValuePair(cur, time, floatPrecision, encoding);
