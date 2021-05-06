@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
-import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -51,6 +50,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 public class InsertRowPlan extends InsertPlan {
 
@@ -588,12 +588,12 @@ public class InsertRowPlan extends InsertPlan {
     List measurementList = Arrays.asList(this.measurements);
     try {
       Set<String> schemaSet = IoTDB.metaManager.getChildNodeInNextLevel(this.deviceId);
-      checkTimeseries("time",schemaSet,measurementList);
-      checkTimeseries("TIME",schemaSet,measurementList);
-      checkTimeseries("timestamp",schemaSet,measurementList);
-      checkTimeseries("TIMESTAMP",schemaSet,measurementList);
+      checkTimeseries("time", schemaSet, measurementList);
+      checkTimeseries("TIME", schemaSet, measurementList);
+      checkTimeseries("timestamp", schemaSet, measurementList);
+      checkTimeseries("TIMESTAMP", schemaSet, measurementList);
     } catch (MetadataException e) {
-        e.printStackTrace();
+      e.printStackTrace();
     }
     if (values == null) {
       throw new QueryProcessException("Values are null");
@@ -608,10 +608,10 @@ public class InsertRowPlan extends InsertPlan {
     }
   }
 
-  public void checkTimeseries(String timeseries,Set<String> schemaSet,List measurementList)
+  public void checkTimeseries(String timeseries, Set<String> schemaSet, List measurementList)
       throws QueryProcessException {
     if (measurementList.contains(timeseries)) {
-      if (!schemaSet.contains(timeseries)){
+      if (!schemaSet.contains(timeseries)) {
         throw new QueryProcessException("Should create timeseries first");
       }
     }
