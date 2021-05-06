@@ -379,7 +379,24 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
   public List<TimeseriesMetadata> readTimeseriesMetadata(Path path, List<String> subSensorList)
       throws IOException {
-    Map<String, TimeseriesMetadata> timeseriesMetadataMap = readTimeseriesMetadata(path);
+    Pair<MetadataIndexEntry, Long> metadataIndexPair = getLeafMetadataIndexPair(path);
+    if (metadataIndexPair == null) {
+      return Collections.emptyList();
+    }
+    Map<String, TimeseriesMetadata> timeseriesMetadataMap = new HashMap<>();
+    ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
+    while (buffer.hasRemaining()) {
+      TimeseriesMetadata timeseriesMetadata;
+      try {
+        timeseriesMetadata = TimeseriesMetadata.deserializeFrom(buffer, true);
+      } catch (BufferOverflowException e) {
+        logger.error(
+            "Something error happened while deserializing TimeseriesMetadata of file {}", file);
+        throw e;
+      }
+      timeseriesMetadataMap.put(timeseriesMetadata.getMeasurementId(), timeseriesMetadata);
+    }
+
     List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
     for (String subSensor : subSensorList) {
       timeseriesMetadataList.add(timeseriesMetadataMap.get(subSensor));
@@ -393,28 +410,37 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
   public List<TimeseriesMetadata> readTimeseriesMetadata(Path path, Set<String> allSensors)
       throws IOException {
-    Map<String, TimeseriesMetadata> timeseriesMetadataMap = readTimeseriesMetadata(path);
+    Pair<MetadataIndexEntry, Long> metadataIndexPair = getLeafMetadataIndexPair(path);
+    if (metadataIndexPair == null) {
+      return Collections.emptyList();
+    }
     List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
-    for (Map.Entry<String, TimeseriesMetadata> entry : timeseriesMetadataMap.entrySet()) {
-      if (allSensors.contains(entry.getKey())) {
-        timeseriesMetadataList.add(entry.getValue());
+
+    ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
+    while (buffer.hasRemaining()) {
+      TimeseriesMetadata timeseriesMetadata;
+      try {
+        timeseriesMetadata = TimeseriesMetadata.deserializeFrom(buffer, true);
+      } catch (BufferOverflowException e) {
+        logger.error(
+            "Something error happened while deserializing TimeseriesMetadata of file {}", file);
+        throw e;
+      }
+      if (allSensors.contains(timeseriesMetadata.getMeasurementId())) {
+        timeseriesMetadataList.add(timeseriesMetadata);
       }
     }
     return timeseriesMetadataList;
   }
 
-  /**
-   * Get all the timeseriesMetadata in the leaf node which contains path
-   *
-   * @return map of sensor name -> timeseriesMetadata
-   */
-  private Map<String, TimeseriesMetadata> readTimeseriesMetadata(Path path) throws IOException {
+  /** Get leaf MetadataIndexPair which contains path */
+  private Pair<MetadataIndexEntry, Long> getLeafMetadataIndexPair(Path path) throws IOException {
     readFileMetadata();
     MetadataIndexNode deviceMetadataIndexNode = tsFileMetaData.getMetadataIndex();
     Pair<MetadataIndexEntry, Long> metadataIndexPair =
         getMetadataAndEndOffset(deviceMetadataIndexNode, path.getDevice(), true, true);
     if (metadataIndexPair == null) {
-      return Collections.emptyMap();
+      return null;
     }
     ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
     MetadataIndexNode metadataIndexNode = deviceMetadataIndexNode;
@@ -428,23 +454,7 @@ public class TsFileSequenceReader implements AutoCloseable {
       metadataIndexPair =
           getMetadataAndEndOffset(metadataIndexNode, path.getMeasurement(), false, false);
     }
-    if (metadataIndexPair == null) {
-      return Collections.emptyMap();
-    }
-    buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
-    Map<String, TimeseriesMetadata> timeseriesMetadataMap = new HashMap<>();
-    while (buffer.hasRemaining()) {
-      TimeseriesMetadata timeseriesMetadata;
-      try {
-        timeseriesMetadata = TimeseriesMetadata.deserializeFrom(buffer, true);
-      } catch (BufferOverflowException e) {
-        logger.error(
-            "Something error happened while deserializing TimeseriesMetadata of file {}", file);
-        throw e;
-      }
-      timeseriesMetadataMap.put(timeseriesMetadata.getMeasurementId(), timeseriesMetadata);
-    }
-    return timeseriesMetadataMap;
+    return metadataIndexPair;
   }
 
   public List<TimeseriesMetadata> readTimeseriesMetadata(String device, Set<String> measurements)
