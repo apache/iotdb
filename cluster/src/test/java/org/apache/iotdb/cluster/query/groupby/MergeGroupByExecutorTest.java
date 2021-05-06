@@ -38,8 +38,9 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class MergeGroupByExecutorTest extends BaseQueryTest {
 
@@ -52,11 +53,13 @@ public class MergeGroupByExecutorTest extends BaseQueryTest {
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
     try {
       Filter timeFilter = null;
+      Set<String> deviceMeasurements = new HashSet<>();
+      deviceMeasurements.add(path.getMeasurement());
 
       MergeGroupByExecutor groupByExecutor =
           new MergeGroupByExecutor(
               path,
-              Collections.singleton(path.getMeasurement()),
+              deviceMeasurements,
               dataType,
               context,
               timeFilter,
@@ -91,11 +94,13 @@ public class MergeGroupByExecutorTest extends BaseQueryTest {
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
     try {
       Filter timeFilter = TimeFilter.gtEq(3);
+      Set<String> deviceMeasurements = new HashSet<>();
+      deviceMeasurements.add(path.getMeasurement());
 
       MergeGroupByExecutor groupByExecutor =
           new MergeGroupByExecutor(
               path,
-              Collections.singleton(path.getMeasurement()),
+              deviceMeasurements
               dataType,
               context,
               timeFilter,
