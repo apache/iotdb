@@ -20,9 +20,12 @@
 package org.apache.iotdb.cluster.client.sync;
 
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.rpc.RpcTransportFactory;
+import org.apache.iotdb.rpc.RpcUtils;
 
+import org.apache.thrift.TConfiguration;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
@@ -40,10 +43,13 @@ public class SyncMetaHeartbeatClient extends SyncMetaClient {
         protocolFactory.getProtocol(
             RpcTransportFactory.INSTANCE.getTransport(
                 new TSocket(
+                    new TConfiguration(
+                        TConfiguration.DEFAULT_MAX_MESSAGE_SIZE,
+                        RpcUtils.THRIFT_FRAME_MAX_SIZE,
+                        TConfiguration.DEFAULT_RECURSION_DEPTH),
                     node.getInternalIp(),
-                    node.getMetaPort() + ClusterUtils.META_HEARTBEAT_PORT_OFFSET // ,
-                    //                    RaftServer.getConnectionTimeoutInMS()
-                    ))));
+                    node.getMetaPort() + ClusterUtils.META_HEARTBEAT_PORT_OFFSET,
+                    RaftServer.getConnectionTimeoutInMS()))));
     this.node = node;
     this.pool = pool;
     getInputProtocol().getTransport().open();

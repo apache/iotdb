@@ -41,6 +41,17 @@ public class RpcUtils {
   public static final int DEFAULT_BUF_CAPACITY = 64 * 1024;
   /** How big is the largest allowable frame? Defaults to 16MB. */
   public static final int DEFAULT_MAX_LENGTH = 16384000;
+
+  /** How big should the default read and write buffers be? Defaults to 1KB */
+  public static final int THRIFT_DEFAULT_BUF_CAPACITY = 1024;
+
+  /**
+   * It is used to prevent the size of the parsing package from being too large and allocating the
+   * buffer will cause oom. Therefore, the maximum length of the requested memory is limited when
+   * reading. Thrift max frame size (16384000 bytes by default), we change it to 512MB.
+   */
+  public static final int THRIFT_FRAME_MAX_SIZE = 536870912;
+
   /**
    * It is used to prevent the size of the parsing package from being too large and allocating the
    * buffer will cause oom. Therefore, the maximum length of the requested memory is limited when

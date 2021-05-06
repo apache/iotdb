@@ -37,11 +37,13 @@ import org.apache.iotdb.db.sync.sender.recover.SyncSenderLogAnalyzer;
 import org.apache.iotdb.db.sync.sender.recover.SyncSenderLogger;
 import org.apache.iotdb.db.utils.SyncUtils;
 import org.apache.iotdb.rpc.RpcTransportFactory;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.service.sync.thrift.ConfirmInfo;
 import org.apache.iotdb.service.sync.thrift.SyncService;
 import org.apache.iotdb.service.sync.thrift.SyncStatus;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.thrift.TConfiguration;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -132,6 +134,12 @@ public class SyncClient implements ISyncClient {
   private SyncClient() {
     init();
   }
+
+  private TConfiguration tConfiguration =
+      new TConfiguration(
+          TConfiguration.DEFAULT_MAX_MESSAGE_SIZE,
+          RpcUtils.THRIFT_FRAME_MAX_SIZE,
+          TConfiguration.DEFAULT_RECURSION_DEPTH);
 
   public static SyncClient getInstance() {
     return InstanceHolder.INSTANCE;
@@ -293,7 +301,9 @@ public class SyncClient implements ISyncClient {
       throws SyncConnectionException, TTransportException {
     RpcTransportFactory.setInitialBufferCapacity(ioTDBConfig.getThriftInitBufferSize());
     RpcTransportFactory.setMaxLength(ioTDBConfig.getThriftMaxFrameSize());
-    transport = RpcTransportFactory.INSTANCE.getTransport(new TSocket(serverIp, serverPort));
+    transport =
+        RpcTransportFactory.INSTANCE.getTransport(
+            new TSocket(tConfiguration, serverIp, serverPort, TIMEOUT_MS));
     TProtocol protocol;
     if (ioTDBConfig.isRpcThriftCompressionEnable()) {
       protocol = new TCompactProtocol(transport);

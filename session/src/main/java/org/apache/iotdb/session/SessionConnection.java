@@ -45,6 +45,7 @@ import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
+import org.apache.thrift.TConfiguration;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -87,7 +88,14 @@ public class SessionConnection {
     RpcTransportFactory.setMaxLength(session.maxFrameSize);
     transport =
         RpcTransportFactory.INSTANCE.getTransport(
-            new TSocket(endPoint.getIp(), endPoint.getPort()));
+            new TSocket(
+                new TConfiguration(
+                    TConfiguration.DEFAULT_MAX_MESSAGE_SIZE,
+                    RpcUtils.THRIFT_FRAME_MAX_SIZE,
+                    TConfiguration.DEFAULT_RECURSION_DEPTH),
+                endPoint.getIp(),
+                endPoint.getPort(),
+                session.connectionTimeoutInMs));
 
     try {
       transport.open();
