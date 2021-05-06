@@ -126,7 +126,7 @@ public class MemTableFlushTask {
           holder.updateMetadata();
         }
         measurementsOrder = holder.getMeasurementForDevice(memTableEntry.getKey());
-        for(String measurement : measurementsOrder) {
+        for (String measurement : measurementsOrder) {
           if (!value.containsKey(measurement)) continue;
           long startTime = System.currentTimeMillis();
           IWritableMemChunk series = value.get(measurement);
