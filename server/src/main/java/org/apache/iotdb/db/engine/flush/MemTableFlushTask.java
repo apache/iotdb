@@ -173,11 +173,9 @@ public class MemTableFlushTask {
               if (dataType == TSDataType.VECTOR) {
                 if (timeDuplicatedVectorRowIndexList == null) {
                   timeDuplicatedVectorRowIndexList = new ArrayList<>();
-                  timeDuplicatedVectorRowIndexList.add(
-                      ((VectorTVList) tvPairs).getValueIndex(sortedRowIndex));
+                  timeDuplicatedVectorRowIndexList.add(tvPairs.getValueIndex(sortedRowIndex));
                 }
-                timeDuplicatedVectorRowIndexList.add(
-                    ((VectorTVList) tvPairs).getValueIndex(sortedRowIndex + 1));
+                timeDuplicatedVectorRowIndexList.add(tvPairs.getValueIndex(sortedRowIndex + 1));
               }
               continue;
             }

@@ -116,10 +116,19 @@ public class VectorTVList extends TVList {
     int arrayIndex = index / ARRAY_SIZE;
     int elementIndex = index % ARRAY_SIZE;
     int valueIndex = indices.get(arrayIndex)[elementIndex];
-    return getVectorByValueIndex(valueIndex);
+    return getVectorByValueIndex(valueIndex, null);
   }
 
-  private Object getVectorByValueIndex(int valueIndex) {
+  public Object getVector(List<Integer> timeDuplicatedIndexList) {
+    int[] timeDuplicatedIndexes = new int[values.size()];
+    for (int i = 0; i < values.size(); i++) {
+      timeDuplicatedIndexes[i] = getValidRowIndexForTimeDuplicatedRows(timeDuplicatedIndexList, i);
+    }
+    return getVectorByValueIndex(
+        timeDuplicatedIndexList.get(timeDuplicatedIndexList.size() - 1), timeDuplicatedIndexes);
+  }
+
+  private Object getVectorByValueIndex(int valueIndex, int[] timeDuplicatedIndexes) {
     if (valueIndex >= size) {
       throw new ArrayIndexOutOfBoundsException(valueIndex);
     }
@@ -128,6 +137,10 @@ public class VectorTVList extends TVList {
     TsPrimitiveType[] vector = new TsPrimitiveType[values.size()];
     for (int i = 0; i < values.size(); i++) {
       List<Object> columnValues = values.get(i);
+      if (timeDuplicatedIndexes != null) {
+        arrayIndex = timeDuplicatedIndexes[i] / ARRAY_SIZE;
+        elementIndex = timeDuplicatedIndexes[i] % ARRAY_SIZE;
+      }
       if (bitMaps != null
           && bitMaps.get(i) != null
           && bitMaps.get(i).get(arrayIndex).isMarked(elementIndex)) {
@@ -498,6 +511,7 @@ public class VectorTVList extends TVList {
   }
 
   /* Get the row index value in index column. */
+  @Override
   public int getValueIndex(int index) {
     if (index >= size) {
       throw new ArrayIndexOutOfBoundsException(index);
@@ -546,9 +560,19 @@ public class VectorTVList extends TVList {
   protected TimeValuePair getTimeValuePair(
       int index, long time, Integer floatPrecision, TSEncoding encoding) {
     if (this.dataTypes.size() == 1) {
-      return new TimeValuePair(getTime(index), ((TsPrimitiveType) getVector(index)).getVector()[0]);
+      return new TimeValuePair(time, ((TsPrimitiveType) getVector(index)).getVector()[0]);
     } else {
-      return new TimeValuePair(getTime(index), (TsPrimitiveType) getVector(index));
+      return new TimeValuePair(time, (TsPrimitiveType) getVector(index));
+    }
+  }
+
+  @Override
+  public TimeValuePair getCombinedTimeValuePairForVector(
+      List<Integer> indexList, long time, Integer floatPrecision, TSEncoding encoding) {
+    if (this.dataTypes.size() == 1) {
+      return new TimeValuePair(time, ((TsPrimitiveType) getVector(indexList)).getVector()[0]);
+    } else {
+      return new TimeValuePair(time, (TsPrimitiveType) getVector(indexList));
     }
   }
 
