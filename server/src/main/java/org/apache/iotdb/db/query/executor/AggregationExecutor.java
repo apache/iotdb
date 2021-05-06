@@ -132,12 +132,19 @@ public class AggregationExecutor {
                   aggregationPlan.getAllMeasurementsInDevice(deviceID),
                   timeFilter,
                   context);
-              System.out.println(123);
             }
           } catch (IllegalPathException e) {
             continue;
           }
         }
+      }
+      for (Map.Entry<PartialPath, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
+        aggregateOneSeries(
+            entry,
+            aggregateResultList,
+            aggregationPlan.getAllMeasurementsInDevice(entry.getKey().getDevice()),
+            timeFilter,
+            context);
       }
     } catch (LayoutNotExistException e) {
       for (Map.Entry<PartialPath, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {

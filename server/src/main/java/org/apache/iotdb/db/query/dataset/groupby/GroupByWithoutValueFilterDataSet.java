@@ -46,7 +46,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
 public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
@@ -206,14 +205,15 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
           }
         }
       }
-      for (Entry<PartialPath, GroupByExecutor> pathToExecutorEntry : pathExecutors.entrySet()) {
-        GroupByExecutor executor = pathToExecutorEntry.getValue();
-        List<AggregateResult> aggregations = executor.calcResult(curStartTime, curEndTime);
-        for (int i = 0; i < aggregations.size(); i++) {
-          int resultIndex = resultIndexes.get(pathToExecutorEntry.getKey()).get(i);
-          fields[resultIndex] = aggregations.get(i);
-        }
-      }
+      //      for (Entry<PartialPath, GroupByExecutor> pathToExecutorEntry :
+      // pathExecutors.entrySet()) {
+      //        GroupByExecutor executor = pathToExecutorEntry.getValue();
+      //        List<AggregateResult> aggregations = executor.calcResult(curStartTime, curEndTime);
+      //        for (int i = 0; i < aggregations.size(); i++) {
+      //          int resultIndex = resultIndexes.get(pathToExecutorEntry.getKey()).get(i);
+      //          fields[resultIndex] = aggregations.get(i);
+      //        }
+      //      }
     } catch (QueryProcessException e) {
       logger.error("GroupByWithoutValueFilterDataSet execute has error", e);
       throw new IOException(e.getMessage(), e);
