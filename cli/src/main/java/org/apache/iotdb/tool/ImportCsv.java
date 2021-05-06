@@ -110,7 +110,7 @@ public class ImportCsv extends AbstractCsvTool {
   public static Connection getConnection(String ip, String port, String username, String password) {
     // JDBC driver name and database URL
     String driver = "org.apache.iotdb.jdbc.IoTDBDriver";
-    String url = "jdbc:iotdb://"+ip+":"+port+"/";
+    String url = "jdbc:iotdb://" + ip + ":" + port + "/";
 
     Connection connection = null;
     try {
@@ -124,24 +124,24 @@ public class ImportCsv extends AbstractCsvTool {
     return connection;
   }
 
-  public static List<String> getDatatype(String device, String ip, String port, String username, String password){
+  public static List<String> getDatatype(
+      String device, String ip, String port, String username, String password) {
     Connection connection = getConnection(ip, port, username, password);
     Statement statement = null;
-    ResultSet resultSet=null;
+    ResultSet resultSet = null;
     List<String> datatypes = new ArrayList<>();
     try {
       statement = connection.createStatement();
-      statement.execute("SHOW TIMESERIES "+device);
-      resultSet=statement.getResultSet();
-      //outputResult(statement.getResultSet());
+      statement.execute("SHOW TIMESERIES " + device);
+      resultSet = statement.getResultSet();
+      // outputResult(statement.getResultSet());
       while (resultSet.next()) {
         datatypes.add(resultSet.getString(4));
       }
-      //System.out.println(datatypes);
+      // System.out.println(datatypes);
     } catch (SQLException throwables) {
       throwables.printStackTrace();
-    }
-    finally {
+    } finally {
       try {
         statement.close();
         connection.close();
@@ -152,49 +152,42 @@ public class ImportCsv extends AbstractCsvTool {
     return datatypes;
   }
 
-  public static boolean valueCheck(String value, String device, int position, List<String> datatypes){
-    if(datatypes.get(position-1).equals("DOUBLE")){
-      try{
+  public static boolean valueCheck(
+      String value, String device, int position, List<String> datatypes) {
+    if (datatypes.get(position - 1).equals("DOUBLE")) {
+      try {
         Double.parseDouble(value);
         return true;
-      }
-      catch(NumberFormatException e) {
+      } catch (NumberFormatException e) {
         return false;
       }
-    }
-    else if(datatypes.get(position-1).equals("FLOAT")){
-      try{
+    } else if (datatypes.get(position - 1).equals("FLOAT")) {
+      try {
         Float.parseFloat(value);
         return true;
-      }
-      catch(NumberFormatException e) {
+      } catch (NumberFormatException e) {
         return false;
       }
-    }
-    else if(datatypes.get(position-1).equals("BOOLEAN")){
-        if (Boolean.parseBoolean(value)){
-          return true;
-        }
-        else if (value.equalsIgnoreCase("False")||value.equals("0")){
-          return true;
-        }
-        else {return false;}
-    }
-    else if(datatypes.get(position-1).equals("INT32")){
-      try{
+    } else if (datatypes.get(position - 1).equals("BOOLEAN")) {
+      if (Boolean.parseBoolean(value)) {
+        return true;
+      } else if (value.equalsIgnoreCase("False") || value.equals("0")) {
+        return true;
+      } else {
+        return false;
+      }
+    } else if (datatypes.get(position - 1).equals("INT32")) {
+      try {
         Integer.parseInt(value);
         return true;
-      }
-      catch(NumberFormatException e) {
+      } catch (NumberFormatException e) {
         return false;
       }
-    }
-    else if(datatypes.get(position-1).equals("INT64")){
-      try{
+    } else if (datatypes.get(position - 1).equals("INT64")) {
+      try {
         Long.parseLong(value);
         return true;
-      }
-      catch(NumberFormatException e) {
+      } catch (NumberFormatException e) {
         return false;
       }
     }
@@ -203,7 +196,8 @@ public class ImportCsv extends AbstractCsvTool {
 
   /** Data from csv To tsfile. */
   @SuppressWarnings("squid:S1135")
-  private static void loadDataFromCSV(File file, String ip, String port, String username, String password) {
+  private static void loadDataFromCSV(
+      File file, String ip, String port, String username, String password) {
     int fileLine;
     try {
       fileLine = getFileLineCount(file);
@@ -254,15 +248,15 @@ public class ImportCsv extends AbstractCsvTool {
           times.add(parseTime(cols[0], useFormatter, timeFormatter));
 
           List<String> datatypes = new ArrayList<>();
-          datatypes=getDatatype(devices.get(devices.size()-1), ip, port, username, password);
+          datatypes = getDatatype(devices.get(devices.size() - 1), ip, port, username, password);
 
           List<String> values = new ArrayList<>();
           for (int position : deviceToPositions.getValue()) {
-            boolean valid=valueCheck(cols[position], devices.get(devices.size()-1), position, datatypes);
-            if(valid==true){
+            boolean valid =
+                valueCheck(cols[position], devices.get(devices.size() - 1), position, datatypes);
+            if (valid == true) {
               values.add(cols[position]);
-            }
-            else{
+            } else {
               values.add("null");
             }
           }
@@ -422,7 +416,8 @@ public class ImportCsv extends AbstractCsvTool {
     }
   }
 
-  private static void importFromSingleFile(File file, String ip, String port, String username, String password) {
+  private static void importFromSingleFile(
+      File file, String ip, String port, String username, String password) {
     if (file.getName().endsWith(FILE_SUFFIX)) {
       loadDataFromCSV(file, ip, port, username, password);
     } else {
@@ -431,7 +426,8 @@ public class ImportCsv extends AbstractCsvTool {
     }
   }
 
-  private static void importFromDirectory(File file, String ip, String port, String username, String password) {
+  private static void importFromDirectory(
+      File file, String ip, String port, String username, String password) {
     File[] files = file.listFiles();
     if (files == null) {
       return;
