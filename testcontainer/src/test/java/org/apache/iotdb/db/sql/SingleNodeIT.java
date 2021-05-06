@@ -97,4 +97,27 @@ public class SingleNodeIT {
       Assert.assertTrue(result.contains(timeseries));
     }
   }
+
+  @Test
+  public void testLast() throws SQLException {
+
+    String[] timeSeriesArray = {"root.ln.wf01.wt01.temperature WITH DATATYPE=DOUBLE, ENCODING=RLE"};
+    String[] initDataArray = {
+      "INSERT INTO root.ln.wf01.wt01(timestamp, temperature) values(100, 10.0)",
+      "INSERT INTO root.ln.wf01.wt01(timestamp, temperature) values(200, 20.0)",
+      "INSERT INTO root.ln.wf01.wt01(timestamp, temperature) values(150, 15.0)"
+    };
+
+    for (String timeSeries : timeSeriesArray) {
+      statement.execute(String.format("create timeseries %s ", timeSeries));
+    }
+    for (String initData : initDataArray) {
+      statement.execute(initData);
+    }
+    ResultSet resultSet = statement.executeQuery("select last * from root.ln.wf01.wt01;");
+    Assert.assertTrue(resultSet.next());
+    double last = Double.parseDouble(resultSet.getString(3));
+    Assert.assertEquals(20.0, last, 0.1);
+    resultSet.close();
+  }
 }
