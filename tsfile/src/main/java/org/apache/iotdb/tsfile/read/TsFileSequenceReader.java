@@ -372,25 +372,49 @@ public class TsFileSequenceReader implements AutoCloseable {
   /**
    * Find the leaf node that contains this vector, return all the needed subSensor and time column
    *
+   * @param path path with time column
+   * @param subSensorList value columns that needed
    * @return TimeseriesMetadata for the time column and all the needed subSensor, the order of the
    *     element in this list should be the same as subSensorList
    */
-  public List<TimeseriesMetadata> readTimeseriesMetadata(Path path, List<String> subSensorList) {
-    return Collections.emptyList();
+  public List<TimeseriesMetadata> readTimeseriesMetadata(Path path, List<String> subSensorList)
+      throws IOException {
+    Map<String, TimeseriesMetadata> timeseriesMetadataMap = readTimeseriesMetadata(path);
+    List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
+    for (String subSensor : subSensorList) {
+      timeseriesMetadataList.add(timeseriesMetadataMap.get(subSensor));
+    }
+    return timeseriesMetadataList;
   }
 
   /**
-   * getChunkMetadataList Find the leaf node that contains path, return all the sensors in that leaf
-   * node which are also in allSensors set
+   * Find the leaf node that contains path, return all the sensors in that leaf node which are also
+   * in allSensors set
    */
   public List<TimeseriesMetadata> readTimeseriesMetadata(Path path, Set<String> allSensors)
       throws IOException {
+    Map<String, TimeseriesMetadata> timeseriesMetadataMap = readTimeseriesMetadata(path);
+    List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
+    for (Map.Entry<String, TimeseriesMetadata> entry : timeseriesMetadataMap.entrySet()) {
+      if (allSensors.contains(entry.getKey())) {
+        timeseriesMetadataList.add(entry.getValue());
+      }
+    }
+    return timeseriesMetadataList;
+  }
+
+  /**
+   * Get all the timeseriesMetadata in the leaf node which contains path
+   *
+   * @return map of sensor name -> timeseriesMetadata
+   */
+  private Map<String, TimeseriesMetadata> readTimeseriesMetadata(Path path) throws IOException {
     readFileMetadata();
     MetadataIndexNode deviceMetadataIndexNode = tsFileMetaData.getMetadataIndex();
     Pair<MetadataIndexEntry, Long> metadataIndexPair =
         getMetadataAndEndOffset(deviceMetadataIndexNode, path.getDevice(), true, true);
     if (metadataIndexPair == null) {
-      return null;
+      return Collections.emptyMap();
     }
     ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
     MetadataIndexNode metadataIndexNode = deviceMetadataIndexNode;
@@ -405,10 +429,10 @@ public class TsFileSequenceReader implements AutoCloseable {
           getMetadataAndEndOffset(metadataIndexNode, path.getMeasurement(), false, false);
     }
     if (metadataIndexPair == null) {
-      return null;
+      return Collections.emptyMap();
     }
-    List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
     buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
+    Map<String, TimeseriesMetadata> timeseriesMetadataMap = new HashMap<>();
     while (buffer.hasRemaining()) {
       TimeseriesMetadata timeseriesMetadata;
       try {
@@ -418,11 +442,9 @@ public class TsFileSequenceReader implements AutoCloseable {
             "Something error happened while deserializing TimeseriesMetadata of file {}", file);
         throw e;
       }
-      if (allSensors.contains(timeseriesMetadata.getMeasurementId())) {
-        timeseriesMetadataList.add(timeseriesMetadata);
-      }
+      timeseriesMetadataMap.put(timeseriesMetadata.getMeasurementId(), timeseriesMetadata);
     }
-    return timeseriesMetadataList;
+    return timeseriesMetadataMap;
   }
 
   public List<TimeseriesMetadata> readTimeseriesMetadata(String device, Set<String> measurements)

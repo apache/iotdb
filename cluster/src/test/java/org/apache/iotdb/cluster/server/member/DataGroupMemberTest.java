@@ -106,6 +106,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -1114,7 +1115,9 @@ public class DataGroupMemberTest extends BaseMember {
       request.setQueryId(queryContext.getQueryId());
       request.setRequestor(TestUtils.getNode(0));
       request.setDataTypeOrdinal(TSDataType.DOUBLE.ordinal());
-      request.setDeviceMeasurements(Collections.singleton(TestUtils.getTestMeasurement(0)));
+      Set<String> deviceMeasurements = new HashSet<>();
+      deviceMeasurements.add(TestUtils.getTestMeasurement(0));
+      request.setDeviceMeasurements(deviceMeasurements);
       request.setAscending(true);
 
       DataGroupMember dataGroupMember;
