@@ -1200,6 +1200,18 @@ public class StorageGroupProcessor {
     }
   }
 
+  public void submitAFlushTaskWhenShouldFlush(TsFileProcessor tsFileProcessor) {
+    writeLock();
+    try {
+      // check memtable size and may asyncTryToFlush the work memtable
+      if (tsFileProcessor.shouldFlush()) {
+        fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
+      }
+    } finally {
+      writeUnlock();
+    }
+  }
+
   private TsFileProcessor getOrCreateTsFileProcessor(long timeRangeId, boolean sequence) {
     TsFileProcessor tsFileProcessor = null;
     try {

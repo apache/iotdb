@@ -1290,4 +1290,12 @@ public class TsFileProcessor {
   public void addCloseFileListeners(Collection<CloseFileListener> listeners) {
     closeFileListeners.addAll(listeners);
   }
+
+  public void submitAFlushTask() {
+    this.storageGroupInfo.getStorageGroupProcessor().submitAFlushTaskWhenShouldFlush(this);
+  }
+
+  public boolean alreadyMarkedClosing() {
+    return shouldClose;
+  }
 }
