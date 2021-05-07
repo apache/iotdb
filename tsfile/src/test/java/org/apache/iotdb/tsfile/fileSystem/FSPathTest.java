@@ -30,7 +30,7 @@ import java.nio.file.Path;
 public class FSPathTest {
 
   @Test
-  public void testParse1() {
+  public void testParseUsingString() {
     FSPath fsPath;
 
     String pathWithFS =
@@ -48,11 +48,11 @@ public class FSPathTest {
   }
 
   @Test
-  public void testParse2() {
+  public void testParseUsingFile() {
     File file = new File(TestConstant.BASE_OUTPUT_PATH);
     FSPath fsPath = FSPath.parse(file);
     Assert.assertEquals(FSType.LOCAL, fsPath.getFsType());
-    Assert.assertEquals(file.getAbsolutePath(), fsPath.getPath());
+    Assert.assertEquals(file.getPath(), fsPath.getPath());
     Assert.assertEquals(
         FSType.LOCAL.name() + FSPath.FS_PATH_SEPARATOR + file.getPath(), fsPath.getRawFSPath());
   }

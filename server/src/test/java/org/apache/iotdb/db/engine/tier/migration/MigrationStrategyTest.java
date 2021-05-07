@@ -80,7 +80,7 @@ public class MigrationStrategyTest {
   public void testTime2LiveStrategy2() throws InterruptedException {
     IMigrationStrategy strategy = new Time2LiveStrategy(500);
     TsFileResource resource = mockFile(System.currentTimeMillis());
-    Thread.sleep(500);
+    Thread.sleep(1000);
     Assert.assertTrue(strategy.shouldMigrate(resource));
   }
 
