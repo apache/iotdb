@@ -275,7 +275,8 @@ public class MetadataDiskManager implements MetadataAccess {
     }
     if(mNode.isCached()){
       cacheStrategy.applyChange(mNode);
-    }else {
+      cacheStrategy.setModified(mNode,true);
+    }else if(mNode.isPersisted()){
       try {
         metaFile.write(mNode);
       } catch (IOException e) {
