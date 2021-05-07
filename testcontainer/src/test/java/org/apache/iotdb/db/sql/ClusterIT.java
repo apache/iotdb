@@ -87,4 +87,8 @@ public abstract class ClusterIT extends Cases {
   public void tearDown() throws Exception {
     super.tearDown();
   }
+
+  // do not add tests here.
+  // add tests into Cases.java instead.
+
 }

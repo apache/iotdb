@@ -100,5 +100,25 @@ public abstract class Cases {
       Assert.assertFalse(resultSet.next());
       resultSet.close();
     }
+
+    // test https://issues.apache.org/jira/browse/IOTDB-1348
+    initDataArray =
+        new String[] {
+          "INSERT INTO root.ln.wf01.wt01(timestamp, temperature) values(250, 10.0)",
+          "INSERT INTO root.ln.wf01.wt01(timestamp, temperature) values(300, 20.0)",
+          "INSERT INTO root.ln.wf01.wt01(timestamp, temperature) values(350, 25.0)"
+        };
+
+    for (String initData : initDataArray) {
+      writeStatement.execute(initData);
+    }
+    // try to read data on each node.
+    for (Statement readStatement : readStatements) {
+      resultSet = readStatement.executeQuery("select last * from root.ln.wf01.wt01;");
+      Assert.assertTrue(resultSet.next());
+      double last = Double.parseDouble(resultSet.getString(3));
+      Assert.assertEquals(25.0, last, 0.1);
+      resultSet.close();
+    }
   }
 }

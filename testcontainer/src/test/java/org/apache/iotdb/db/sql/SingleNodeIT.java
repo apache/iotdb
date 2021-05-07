@@ -76,25 +76,6 @@ public class SingleNodeIT extends Cases {
     super.tearDown();
   }
 
-  @Test
-  public void testAgg() throws SQLException {
-
-    String[] timeSeriesArray = {"root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE"};
-    String[] initDataArray = {
-      "INSERT INTO root.ln.wf01.wt01(timestamp,temperature) values(200,20.71)",
-      "INSERT INTO root.ln.wf01.wt01(timestamp,temperature) values(220,50.71)"
-    };
-
-    for (String timeSeries : timeSeriesArray) {
-      statement.execute(String.format("create timeseries %s ", timeSeries));
-    }
-    for (String initData : initDataArray) {
-      statement.execute(initData);
-    }
-    ResultSet resultSet = statement.executeQuery("select avg(temperature) from root.ln.wf01.wt01;");
-    Assert.assertTrue(resultSet.next());
-    double avg = resultSet.getDouble(1);
-    Assert.assertEquals(35.71, avg, 0.1);
-    resultSet.close();
-  }
+  // do not add tests here.
+  // add tests into Cases.java instead.
 }
