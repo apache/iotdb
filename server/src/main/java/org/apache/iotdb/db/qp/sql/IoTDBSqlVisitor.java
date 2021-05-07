@@ -1863,13 +1863,16 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   }
 
   /**
-   * parse time unit or sliding step in group by query.
+   * parse time unit or sliding step in group by query. If 'mo' is used, then other units can not be
+   * used together, like '1mo1d'.
    *
    * @param durationStr represent duration string like: 12d8m9ns, 1y1mo, etc.
    * @return time in milliseconds, microseconds, or nanoseconds depending on the profile
    */
   private long parseTimeUnitOrSlidingStep(
       QueryOperator queryOp, String durationStr, boolean isParsingTimeUnit) {
+    boolean hasMonthUnit = false;
+    boolean hasOtherUnits = false;
     for (int i = 0; i < durationStr.length(); i++) {
       char ch = durationStr.charAt(i);
       if (!Character.isDigit(ch)) {
@@ -1885,8 +1888,15 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
           } else {
             queryOp.setSlidingStepByMonth(true);
           }
+          hasMonthUnit = true;
+        } else {
+          hasOtherUnits = true;
         }
       }
+    }
+    if (hasMonthUnit && hasOtherUnits) {
+      throw new SQLParserException(
+          "Natural month unit can not be used with other time units together now.");
     }
     return parseDuration(durationStr);
   }
