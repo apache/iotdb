@@ -119,7 +119,7 @@ public class ClusterIT {
     Assert.assertEquals(35.71, avg, 0.1);
     resultSet.close();
   }
-  
+
   @Test
   public void testLast() throws SQLException {
 
