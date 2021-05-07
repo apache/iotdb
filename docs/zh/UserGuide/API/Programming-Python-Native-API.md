@@ -70,7 +70,7 @@ class MyTestCase(unittest.TestCase):
             session.close()
 ```
 
-默认情况下，它会拉取最新的IoTDB镜像 `apache/iotdb:latest`进行测试，如果您想指定待测IoTDB的版本，您只需要将版本信息像这样声明：`IoTDBContainer("apache/iotdb:0.10.0")`，此时，您就会得到一个`0.10.0`版本的IoTDB实例。
+默认情况下，它会拉取最新的IoTDB镜像 `apache/iotdb:latest`进行测试，如果您想指定待测IoTDB的版本，您只需要将版本信息像这样声明：`IoTDBContainer("apache/iotdb:0.12.0")`，此时，您就会得到一个`0.12.0`版本的IoTDB实例。
 
 
 

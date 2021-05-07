@@ -34,7 +34,7 @@ public class WindowEvaluationTask extends WrappedRunnable {
   }
 
   @Override
-  public void runMayThrow() {
+  public void runMayThrow() throws Exception {
     evaluator.evaluate(window);
   }
 

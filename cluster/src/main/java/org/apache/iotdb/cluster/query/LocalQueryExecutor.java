@@ -43,6 +43,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
@@ -69,7 +70,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import com.google.common.collect.Lists;
@@ -303,7 +304,16 @@ public class LocalQueryExecutor {
         .forEach(
             fullPath -> {
               try {
-                paths.add(new PartialPath(fullPath));
+                if (fullPath.contains("$#$")) {
+                  String[] array = fullPath.split(":");
+                  List<PartialPath> subSensorsPathList = new ArrayList<>();
+                  for (int i = 1; i < array.length; i++) {
+                    subSensorsPathList.add(new PartialPath(array[i]));
+                  }
+                  paths.add(new VectorPartialPath(array[0], subSensorsPathList));
+                } else {
+                  paths.add(new PartialPath(fullPath));
+                }
               } catch (IllegalPathException e) {
                 logger.warn("Failed to create partial path, fullPath is {}.", fullPath, e);
               }
@@ -440,7 +450,7 @@ public class LocalQueryExecutor {
     // collect local timeseries schemas and send to the requester
     // the measurements in them are the full paths.
     List<String> prefixPaths = request.getPrefixPaths();
-    List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+    List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
     for (String prefixPath : prefixPaths) {
       getCMManager().collectSeries(new PartialPath(prefixPath), measurementSchemas);
     }
@@ -459,8 +469,8 @@ public class LocalQueryExecutor {
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     try {
       dataOutputStream.writeInt(measurementSchemas.size());
-      for (MeasurementSchema timeseriesSchema : measurementSchemas) {
-        timeseriesSchema.serializeTo(dataOutputStream);
+      for (IMeasurementSchema timeseriesSchema : measurementSchemas) {
+        timeseriesSchema.partialSerializeTo(dataOutputStream);
       }
     } catch (IOException ignored) {
       // unreachable for we are using a ByteArrayOutputStream

@@ -366,11 +366,20 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
           List<PartialPath> originPaths = originUdf.getPaths();
           List<List<PartialPath>> extendedPaths = new ArrayList<>();
 
+          boolean atLeastOneSeriesNotExisted = false;
           for (PartialPath originPath : originPaths) {
             List<PartialPath> actualPaths = removeWildcard(originPath, 0, 0).left;
+            if (actualPaths.isEmpty()) {
+              atLeastOneSeriesNotExisted = true;
+              break;
+            }
             checkAndSetTsAlias(actualPaths, originPath);
             extendedPaths.add(actualPaths);
           }
+          if (atLeastOneSeriesNotExisted) {
+            continue;
+          }
+
           List<List<PartialPath>> actualPaths = new ArrayList<>();
           cartesianProduct(extendedPaths, actualPaths, 0, new ArrayList<>());
 

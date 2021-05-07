@@ -43,7 +43,7 @@
 <dependency>
   <groupId>org.apache.iotdb</groupId>
   <artifactId>iotdb-server</artifactId>
-  <version>0.12.0-SNAPSHOT</version>
+  <version>0.13.0-SNAPSHOT</version>
   <scope>provided</scope>
 </dependency>
 ```
@@ -165,7 +165,7 @@ default int[] fire(long[] timestamps, int[] values) throws Exception {
 
 2. 将项目打成JAR包，如果您使用Maven管理项目，可以参考上述Maven项目示例的写法
 
-3. 将JAR包放置到目录 `iotdb-server-0.12.0-SNAPSHOT/ext/trigger` （也可以是`iotdb-server-0.12.0-SNAPSHOT/ext/trigger`的子目录）下。
+3. 将JAR包放置到目录 `iotdb-server-0.13.0-SNAPSHOT/ext/trigger` （也可以是`iotdb-server-0.13.0-SNAPSHOT/ext/trigger`的子目录）下。
 
    > 您可以通过修改配置文件中的`trigger_root_dir`来指定加载触发器JAR包的根路径。
 
@@ -503,6 +503,391 @@ SlidingTimeWindowEvaluationHandler handler =
 ##### max_pending_window_evaluation_tasks
 
 最多允许堆积的窗口计算任务。默认为64个。
+
+
+
+### Sink工具类
+
+Sink工具类为触发器提供了连接外部系统的能力。
+
+它提供了一套编程范式。每一个Sink工具都包含一个用于处理数据发送的`Handler`、一个用于配置`Handler`的`Configuration`，还有一个用于描述发送数据的`Event`。
+
+
+
+#### LocalIoTDBSink
+
+`LocalIoTDBSink`用于向本地序列写入数据点。
+
+在写入数据前，不要求时间序列已被创建。
+
+**注意**，在触发器场景中，侦听的时间序列和写入的目标时间序列不要在同一个存储组下。
+
+使用示例：
+
+```java
+final String device = "root.alerting";
+final String[] measurements = new String[] {"local"};
+final TSDataType[] dataTypes = new TSDataType[] {TSDataType.DOUBLE};
+
+LocalIoTDBHandler localIoTDBHandler = new LocalIoTDBHandler();
+localIoTDBHandler.open(new LocalIoTDBConfiguration(device, measurements, dataTypes));
+
+// insert 100 data points
+for (int i = 0; i < 100; ++i) {
+  final long timestamp = i;
+  final double value = i;
+  localIoTDBHandler.onEvent(new LocalIoTDBEvent(timestamp, value));
+}
+```
+
+注意，当您需要向某个`TEXT`类型的序列写入数据时，您需要借助`org.apache.iotdb.tsfile.utils.Binary`：
+
+```java
+// insert 100 data points
+for (int i = 0; i < 100; ++i) {
+  final long timestamp = i;
+  final String value = "" + i;
+  localIoTDBHandler.onEvent(new LocalIoTDBEvent(timestamp, Binary.valueOf(value)));
+}
+```
+
+
+
+#### MQTTSink
+
+触发器可以使用`MQTTSink`向其他的 IoTDB 实例发送数据点。
+
+在发送数据前，不要求时间序列已被创建。
+
+使用示例：
+
+```java
+final String host = "127.0.0.1";
+final int port = 1883;
+final String username = "root";
+final String password = "root";
+final PartialPath device = new PartialPath("root.alerting");
+final String[] measurements = new String[] {"remote"};
+
+MQTTHandler mqttHandler = new MQTTHandler();
+mqttHandler.open(new MQTTConfiguration(host, port, username, password, device, measurements));
+
+final String topic = "test";
+final QoS qos = QoS.EXACTLY_ONCE;
+final boolean retain = false;
+// send 100 data points
+for (int i = 0; i < 100; ++i) {
+  final long timestamp = i;
+  final double value = i;
+  mqttHandler.onEvent(new MQTTEvent(topic, qos, retain, timestamp, value));
+}
+```
+
+
+
+#### AlertManagerSink
+
+触发器可以使用`AlertManagerSink` 向 AlertManager 发送消息。
+
+`AlertManagerConfiguration` 的构造需传入 AlertManager 的发送告警的 endpoint。
+```java
+AlertManagerConfiguration(String endpoint);
+```
+
+`AlertManagerEvent` 提供三种构造函数：
+```java
+AlertManagerEvent(String alertname);
+AlertManagerEvent(String alertname, Map<String, String> extraLabels);
+AlertManagerEvent(String alertname, Map<String, String> extraLabels, Map<String, String> annotations);
+```
+其中：
+* `alertname` 是必传参数，用于标识一个 `alert`，`alertname` 字段可用于 `AlertManager` 发送告警时的分组和消重。
+* `extraLabels` 可选传，在后台与 `alertname` 组合成 `labels` 一起标识一个 `alert`，可用于 `AlertManager` 发送告警时的分组和消重。
+* `annotations` 可选传，它的 value 值可使用 Go 语言模板风格的 `{{.<label_key>}}`，
+ `{{.<label_key>}}` 在最终生成消息时会被替换为 `labels[<label_key>]`。
+* `labels` 和 `annotations` 会被解析成 json 字符串发送给 `AlertManager`：
+```json
+{
+    "labels": {
+      "alertname": "<requiredAlertName>",
+      "<labelname>": "<labelvalue>",
+      ...
+    },
+    "annotations": {
+      "<labelname>": "<labelvalue>",
+      ...
+    }
+}
+```
+
+调用  `AlertManagerHandler` 的 `onEvent(AlertManagerEvent event)` 方法发送一个告警。
+
+
+
+**使用示例 1：**
+
+只传 `alertname`。
+
+```java
+AlertManagerHandler alertManagerHandler = new AlertManagerHandler();
+
+alertManagerHandler.open(new AlertManagerConfiguration("http://127.0.0.1:9093/api/v1/alerts"));
+
+final String alertName = "test0";
+
+AlertManagerEvent alertManagerEvent = new AlertManagerEvent(alertName);
+
+alertManagerHandler.onEvent(alertManagerEvent);
+```
+
+ 
+
+**使用示例 2：**
+
+传入 `alertname` 和 `extraLabels`。
+
+```java
+AlertManagerHandler alertManagerHandler = new AlertManagerHandler();
+
+alertManagerHandler.open(new AlertManagerConfiguration("http://127.0.0.1:9093/api/v1/alerts"));
+
+final String alertName = "test1";
+
+final HashMap<String, String> extraLabels = new HashMap<>();
+extraLabels.put("severity", "critical");
+extraLabels.put("series", "root.ln.wt01.wf01.temperature");
+extraLabels.put("value", String.valueOf(100.0));
+
+AlertManagerEvent alertManagerEvent = new AlertManagerEvent(alertName, extraLabels);
+
+alertManagerHandler.onEvent(alertManagerEvent);
+```
+
+
+
+**使用示例 3：**
+
+传入 `alertname`， `extraLabels` 和 `annotations` 。
+
+最终 `description` 字段的值会被解析为 `test2: root.ln.wt01.wf01.temperature is 100.0`。
+
+```java
+AlertManagerHandler alertManagerHandler = new AlertManagerHandler();
+
+alertManagerHandler.open(new AlertManagerConfiguration("http://127.0.0.1:9093/api/v1/alerts"));
+
+final String alertName = "test2";
+
+final HashMap<String, String> extraLabels = new HashMap<>();
+extraLabels.put("severity", "critical");
+extraLabels.put("series", "root.ln.wt01.wf01.temperature");
+extraLabels.put("value", String.valueOf(100.0));
+
+final HashMap<String, String> annotations = new HashMap<>();
+annotations.put("summary", "high temperature");
+annotations.put("description", "{{.alertname}}: {{.series}} is {{.value}}");
+
+alertManagerHandler.onEvent(new AlertManagerEvent(alertName, extraLabels, annotations));
+```
+
+
+
+## 完整的Maven示例项目
+
+如果您使用[Maven](http://search.maven.org/)，可以参考我们编写的示例项目**trigger-example**。
+
+您可以在[这里](https://github.com/apache/iotdb/tree/master/example/trigger)找到它。
+
+它展示了：
+
+* 如何使用Maven管理您的trigger项目
+* 如何基于触发器的用户编程接口实现数据侦听
+* 如何使用窗口工具类
+* 如何使用Sink工具类
+
+```java
+package org.apache.iotdb.trigger;
+
+import org.apache.iotdb.db.engine.trigger.api.Trigger;
+import org.apache.iotdb.db.engine.trigger.api.TriggerAttributes;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.sink.mqtt.MQTTConfiguration;
+import org.apache.iotdb.db.sink.mqtt.MQTTEvent;
+import org.apache.iotdb.db.sink.mqtt.MQTTHandler;
+import org.apache.iotdb.db.sink.local.LocalIoTDBConfiguration;
+import org.apache.iotdb.db.sink.local.LocalIoTDBEvent;
+import org.apache.iotdb.db.sink.local.LocalIoTDBHandler;
+import org.apache.iotdb.db.utils.windowing.configuration.SlidingSizeWindowConfiguration;
+import org.apache.iotdb.db.utils.windowing.handler.SlidingSizeWindowEvaluationHandler;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import org.fusesource.mqtt.client.QoS;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class TriggerExample implements Trigger {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(TriggerExample.class);
+
+  private static final String TARGET_DEVICE = "root.alerting";
+
+  private final LocalIoTDBHandler localIoTDBHandler = new LocalIoTDBHandler();
+  private final MQTTHandler mqttHandler = new MQTTHandler();
+
+  private SlidingSizeWindowEvaluationHandler windowEvaluationHandler;
+
+  @Override
+  public void onCreate(TriggerAttributes attributes) throws Exception {
+    LOGGER.info("onCreate(TriggerAttributes attributes)");
+
+    double lo = attributes.getDouble("lo");
+    double hi = attributes.getDouble("hi");
+
+    openSinkHandlers();
+
+    windowEvaluationHandler =
+        new SlidingSizeWindowEvaluationHandler(
+            new SlidingSizeWindowConfiguration(TSDataType.DOUBLE, 5, 5),
+            window -> {
+              double avg = 0;
+              for (int i = 0; i < window.size(); ++i) {
+                avg += window.getDouble(i);
+              }
+              avg /= window.size();
+
+              if (avg < lo || hi < avg) {
+                localIoTDBHandler.onEvent(new LocalIoTDBEvent(window.getTime(0), avg));
+                mqttHandler.onEvent(
+                    new MQTTEvent("test", QoS.EXACTLY_ONCE, false, window.getTime(0), avg));
+              }
+            });
+  }
+
+  @Override
+  public void onDrop() throws Exception {
+    LOGGER.info("onDrop()");
+    closeSinkHandlers();
+  }
+
+  @Override
+  public void onStart() throws Exception {
+    LOGGER.info("onStart()");
+    openSinkHandlers();
+  }
+
+  @Override
+  public void onStop() throws Exception {
+    LOGGER.info("onStop()");
+    closeSinkHandlers();
+  }
+
+  @Override
+  public Double fire(long timestamp, Double value) {
+    windowEvaluationHandler.collect(timestamp, value);
+    return value;
+  }
+
+  @Override
+  public double[] fire(long[] timestamps, double[] values) {
+    for (int i = 0; i < timestamps.length; ++i) {
+      windowEvaluationHandler.collect(timestamps[i], values[i]);
+    }
+    return values;
+  }
+
+  private void openSinkHandlers() throws Exception {
+    localIoTDBHandler.open(
+        new LocalIoTDBConfiguration(
+            TARGET_DEVICE, new String[] {"local"}, new TSDataType[] {TSDataType.DOUBLE}));
+    mqttHandler.open(
+        new MQTTConfiguration(
+            "127.0.0.1",
+            1883,
+            "root",
+            "root",
+            new PartialPath(TARGET_DEVICE),
+            new String[] {"remote"}));
+  }
+
+  private void closeSinkHandlers() throws Exception {
+    localIoTDBHandler.close();
+    mqttHandler.close();
+  }
+}
+```
+
+您可以按照下面的步骤试用这个触发器：
+
+* 在`iotdb-engine.properties`中启用MQTT服务
+
+  ``` properties
+  # whether to enable the mqtt service.
+  enable_mqtt_service=true
+  ```
+
+* 启动 IoTDB 服务器
+
+* 通过 cli 创建时间序列
+
+  ``` sql
+  CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=DOUBLE, ENCODING=PLAIN;
+  ```
+
+* 将 **trigger-example** 中打包好的JAR（`trigger-example-0.13.0-SNAPSHOT.jar`）放置到目录 `iotdb-server-0.13.0-SNAPSHOT/ext/trigger` （也可以是`iotdb-server-0.13.0-SNAPSHOT/ext/trigger`的子目录）下
+
+  > 您可以通过修改配置文件中的`trigger_root_dir`来指定加载触发器JAR包的根路径。
+
+* 使用SQL语句注册该触发器，假定赋予该触发器的名字为`window-avg-alerter`
+
+* 使用`CREATE TRIGGER`语句注册该触发器
+
+  ```sql
+  CREATE TRIGGER window-avg-alerter
+  AFTER INSERT
+  ON root.sg1.d1.s1
+  AS "org.apache.iotdb.trigger.TriggerExample"
+  WITH (
+    "lo" = "0", 
+    "hi" = "10.0"
+  )
+  ```
+
+* 使用 cli 插入测试数据
+
+  ``` sql
+  INSERT INTO root.sg1.d1(timestamp, s1) VALUES (1, 0);
+  INSERT INTO root.sg1.d1(timestamp, s1) VALUES (2, 2);
+  INSERT INTO root.sg1.d1(timestamp, s1) VALUES (3, 4);
+  INSERT INTO root.sg1.d1(timestamp, s1) VALUES (4, 6);
+  INSERT INTO root.sg1.d1(timestamp, s1) VALUES (5, 8);
+  
+  INSERT INTO root.sg1.d1(timestamp, s1) VALUES (6, 10);
+  INSERT INTO root.sg1.d1(timestamp, s1) VALUES (7, 12);
+  INSERT INTO root.sg1.d1(timestamp, s1) VALUES (8, 14);
+  INSERT INTO root.sg1.d1(timestamp, s1) VALUES (9, 16);
+  INSERT INTO root.sg1.d1(timestamp, s1) VALUES (10, 18);
+  ```
+
+* 使用 cli 查询数据以验证触发器的行为
+
+  ``` sql
+  SELECT * FROM root.alerting;
+  ```
+
+* 正常情况下，得到如下结果
+
+  ``` sql
+  IoTDB> SELECT * FROM root.alerting;
+  +-----------------------------+--------------------+-------------------+
+  |                         Time|root.alerting.remote|root.alerting.local|
+  +-----------------------------+--------------------+-------------------+
+  |1970-01-01T08:00:00.006+08:00|                14.0|               14.0|
+  +-----------------------------+--------------------+-------------------+
+  Total line number = 1
+  It costs 0.006s
+  ```
+
+以上就是基本的使用方法，希望您能喜欢 :D
 
 
 

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.rescon;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -36,7 +37,7 @@ import java.util.concurrent.atomic.AtomicLong;
 /** Manage all primitive data list in memory, including get and release operation. */
 public class PrimitiveArrayManager {
 
-  /** data type -> ArrayDeque<Array> */
+  /** data type -> ArrayDeque of primitive arrays. */
   private static final Map<TSDataType, ArrayDeque<Object>> bufferedArraysMap =
       new EnumMap<>(TSDataType.class);
 
@@ -71,6 +72,7 @@ public class PrimitiveArrayManager {
     bufferedArraysMap.put(TSDataType.FLOAT, new ArrayDeque<>());
     bufferedArraysMap.put(TSDataType.DOUBLE, new ArrayDeque<>());
     bufferedArraysMap.put(TSDataType.TEXT, new ArrayDeque<>());
+    bufferedArraysMap.put(TSDataType.VECTOR, new ArrayDeque<>());
   }
 
   private PrimitiveArrayManager() {
@@ -126,6 +128,9 @@ public class PrimitiveArrayManager {
         break;
       case TEXT:
         dataArray = new Binary[ARRAY_SIZE];
+        break;
+      case VECTOR:
+        dataArray = new byte[ARRAY_SIZE][];
         break;
       default:
         throw new UnSupportedDataTypeException(dataType.toString());

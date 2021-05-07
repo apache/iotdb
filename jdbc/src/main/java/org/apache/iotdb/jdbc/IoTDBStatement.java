@@ -324,14 +324,19 @@ public class IoTDBStatement implements Statement {
     TSStatus execResp = client.executeBatchStatement(execReq);
     int[] result = new int[batchSQLList.size()];
     boolean allSuccess = true;
-    String message = "";
+    StringBuilder message = new StringBuilder(System.lineSeparator());
     for (int i = 0; i < result.length; i++) {
       if (execResp.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
         result[i] = execResp.getSubStatus().get(i).code;
         if (result[i] != TSStatusCode.SUCCESS_STATUS.getStatusCode()
             && result[i] != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
           allSuccess = false;
-          message = execResp.getSubStatus().get(i).message;
+          message.append(
+              execResp.getSubStatus().get(i).message
+                  + " for SQL: \""
+                  + batchSQLList.get(i)
+                  + "\""
+                  + System.lineSeparator());
         }
       } else {
         allSuccess =
@@ -339,11 +344,12 @@ public class IoTDBStatement implements Statement {
                 && (execResp.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
                     || execResp.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode());
         result[i] = execResp.getCode();
-        message = execResp.getMessage();
+        message.setLength(0);
+        message.append(execResp.getMessage());
       }
     }
     if (!allSuccess) {
-      throw new BatchUpdateException(message, result);
+      throw new BatchUpdateException(message.toString(), result);
     }
     return result;
   }

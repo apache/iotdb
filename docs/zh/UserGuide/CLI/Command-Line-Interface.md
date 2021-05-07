@@ -28,7 +28,7 @@ IOTDB为用户提供cli/Shell工具用于启动客户端和服务端程序。下
 ## 安装
 在iotdb的根目录下执行
 
-```
+```shell
 > mvn clean package -pl cli -am -DskipTests
 ```
 
@@ -44,12 +44,12 @@ IOTDB为用户提供cli/Shell工具用于启动客户端和服务端程序。下
 
 Linux系统与MacOS系统启动命令如下：
 
-```
+```shell
 Shell > sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root
 ```
 Windows系统启动命令如下：
 
-```
+```shell
 Shell > sbin\start-cli.bat -h 127.0.0.1 -p 6667 -u root -pw root
 ```
 回车后即可成功启动客户端。启动后出现如图提示即为启动成功。
@@ -85,22 +85,71 @@ IoTDB> login successfully
 
 Linux系统与MacOS系统启动命令如下：
 
-```
+```shell
 Shell > sbin/start-cli.sh -h 10.129.187.21 -p 6667 -u root -pw root -disableISO8601 -maxPRC 10
 ```
 Windows系统启动命令如下：
 
-```
+```shell
 Shell > sbin\start-cli.bat -h 10.129.187.21 -p 6667 -u root -pw root -disableISO8601 -maxPRC 10
 ```
 
 ### 使用OpenID作为用户名认证登录
 
+OpenID Connect (OIDC)使用keycloack作为OIDC服务权限认证服务。
+
+#### 配置
+配置位于iotdb-engines.properties，设定authorizer_provider_class为org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer则开启了openID服务，默认情况下值为org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer表示没有开启openID服务。
+
+```
+authorizer_provider_class=org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer
+```
+如果开启了openID服务则openID_url为必填项,openID_url 值为http://ip:port/auth/realms/{realmsName}
+
+```
+openID_url=http://127.0.0.1:8080/auth/realms/iotdb/
+```
+####keycloack配置
+
+1、下载keycloack程序，在keycloack/bin中启动keycloack
+
+```shell
+Shell >cd bin
+Shell >./standalone.sh
+```
+2、使用https://ip:port/auth登陆keycloack,首次登陆需要创建用户
+
+![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/login_keycloak.png?raw=true)
+
+3、点击Administration Console进入管理端
+
+![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/Administration%20Console.png?raw=true)
+
+4、在左侧的Master 菜单点击add Realm,输入Name创建一个新的Realm
+
+![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/add%20Realm_1.png?raw=true)
+
+![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/add%20Realm_2.png?raw=true)
+
+5、点击左侧菜单Clients，创建client
+
+![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/client.png?raw=true)
+
+6、点击左侧菜单User，创建user
+
+![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/user.png?raw=true)
+
+7、点击新创建的用户id，点击Credentials导航输入密码和关闭Temporary选项，至此keyclork 配置完成
+
+![avatar](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/CLI/Command-Line-Interface/pwd.png?raw=true)
+
+以上步骤提供了一种keycloak登陆iotdb方式，更多方式请参考keycloak配置
+
 若对应的IoTDB服务器开启了使用OpenID Connect (OIDC)作为权限认证服务，那么就不再需要使用用户名密码进行登录。
 替而代之的是使用Token，以及空密码。
 此时，登录命令如下：
 
-```
+```shell
 Shell > sbin/start-cli.sh -h 10.129.187.21 -p 6667 -u {my-access-token} -pw ""
 ```
 
@@ -108,9 +157,9 @@ Shell > sbin/start-cli.sh -h 10.129.187.21 -p 6667 -u {my-access-token} -pw ""
 
 如何获取token取决于你的OIDC设置。 最简单的一种情况是使用`password-grant`。例如，假设你在用keycloack作为你的OIDC服务，
 并且你在keycloack中有一个被定义成publich的`iotdb`客户的realm，那么你可以使用如下`curl`命令获得token。
-（注意例子中的{}和里面的内容需要替换成具体的服务器地址和realm名字）： 
-```
-curl -X POST "https://{your-keycloack-server}/auth/realms/{your-realm}/protocol/openid-connect/token" \ -H "Content-Type: application/x-www-form-urlencoded" \
+（注意例子中的{}和里面的内容需要替换成具体的服务器地址和realm名字）：
+```shell
+curl -X POST "http://{your-keycloack-server}/auth/realms/{your-realm}/protocol/openid-connect/token" \ -H "Content-Type: application/x-www-form-urlencoded" \
  -d "username={username}" \
  -d "password={password}" \
  -d 'grant_type=password' \
@@ -132,12 +181,12 @@ curl -X POST "https://{your-keycloack-server}/auth/realms/{your-realm}/protocol/
 
 Linux系统与MacOS指令:
 
-```
+```shell
 Shell > sbin/start-cli.sh -h {host} -p {rpcPort} -u {user} -pw {password} -e {sql for iotdb}
 ```
 
 Windows系统指令
-```
+```shell
 Shell > sbin\start-cli.bat -h {host} -p {rpcPort} -u {user} -pw {password} -e {sql for iotdb}
 ```
 
@@ -157,7 +206,7 @@ Shell > sbin\start-cli.bat -h {host} -p {rpcPort} -u {user} -pw {password} -e {s
 
 那么通过使用cli/Shell工具的-e参数，可以采用如下的脚本：
 
-```
+```shell
 # !/bin/bash
 
 host=127.0.0.1
@@ -175,7 +224,7 @@ pass=root
 
 打印出来的结果显示如下，通过这种方式进行的操作与客户端的输入模式以及通过JDBC进行操作结果是一致的。
 
-```
+```shell
  Shell > ./shell.sh 
 +-----------------------------+------------+
 |                         Time|root.demo.s1|

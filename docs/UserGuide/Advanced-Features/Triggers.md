@@ -41,7 +41,7 @@ You need to implement the trigger by writing a Java class, where the dependency 
 <dependency>
   <groupId>org.apache.iotdb</groupId>
   <artifactId>iotdb-server</artifactId>
-  <version>0.12.0-SNAPSHOT</version>
+  <version>0.13.0-SNAPSHOT</version>
   <scope>provided</scope>
 </dependency>
 ```
@@ -163,7 +163,7 @@ Registering a trigger can be carried out as follows:
 
 2. Pack the project into a JAR package. If you use Maven to manage the project, you can refer to the above Maven project example.
 
-3. Put the JAR package in the directory `iotdb-server-0.12.0-SNAPSHOT/ext/trigger` (or a subdirectory of `iotdb-server-0.12.0-SNAPSHOT/ext/trigger`).
+3. Put the JAR package in the directory `iotdb-server-0.13.0-SNAPSHOT/ext/trigger` (or a subdirectory of `iotdb-server-0.13.0-SNAPSHOT/ext/trigger`).
 
    > You can specify the root path to load the trigger JAR packages by modifying the `trigger_root_dir` in the configuration file.
 
@@ -486,6 +486,392 @@ The number of threads that can be used for evaluating sliding windows. The value
 ##### max_pending_window_evaluation_tasks
 
 The maximum number of window evaluation tasks that can be pending for execution. The value is 64 by default.
+
+
+
+### Sink Utility
+
+The sink utility provides the ability for triggers to connect to external systems.
+
+It provides a programming paradigm. Each sink utility contains a `Handler` for processing data sending, a `Configuration` for configuring `Handler`, and an `Event` for describing the sending data.
+
+
+
+#### LocalIoTDBSink
+
+`LocalIoTDBSink` is used to insert data points to the local sequence.
+
+Before writing data, it is not required that the time series have been created.
+
+**Note**, in the scenario used for triggers, the listening time series and the written target time series should not be in the same storage group.
+
+Example:
+
+```java
+final String device = "root.alerting";
+final String[] measurements = new String[] {"local"};
+final TSDataType[] dataTypes = new TSDataType[] {TSDataType.DOUBLE};
+
+LocalIoTDBHandler localIoTDBHandler = new LocalIoTDBHandler();
+localIoTDBHandler.open(new LocalIoTDBConfiguration(device, measurements, dataTypes));
+
+// insert 100 data points
+for (int i = 0; i < 100; ++i) {
+  final long timestamp = i;
+  final double value = i;
+  localIoTDBHandler.onEvent(new LocalIoTDBEvent(timestamp, value));
+}
+```
+
+Note that when you need to insert data points to a time series of type `TEXT`, you need to use `org.apache.iotdb.tsfile.utils.Binary`:
+
+```java
+// insert 100 data points
+for (int i = 0; i < 100; ++i) {
+  final long timestamp = i;
+  final String value = "" + i;
+  localIoTDBHandler.onEvent(new LocalIoTDBEvent(timestamp, Binary.valueOf(value)));
+}
+```
+
+
+
+#### MQTTSink
+
+In triggers, you can use `MQTTSink` to send data points to other IoTDB instances.
+
+Before sending data, it is not required that the time series have been created.
+
+Example:
+
+```java
+final String host = "127.0.0.1";
+final int port = 1883;
+final String username = "root";
+final String password = "root";
+final PartialPath device = new PartialPath("root.alerting");
+final String[] measurements = new String[] {"remote"};
+
+MQTTHandler mqttHandler = new MQTTHandler();
+mqttHandler.open(new MQTTConfiguration(host, port, username, password, device, measurements));
+
+final String topic = "test";
+final QoS qos = QoS.EXACTLY_ONCE;
+final boolean retain = false;
+// send 100 data points
+for (int i = 0; i < 100; ++i) {
+  final long timestamp = i;
+  final double value = i;
+  mqttHandler.onEvent(new MQTTEvent(topic, qos, retain, timestamp, value));
+}
+```
+
+
+
+#### AlertManagerSink
+
+In a trigger, you can use `AlertManagerSink` to send messages to AlertManager。
+
+You need to specify the endpoint to send alerts of your AlertManager when constructing
+`AlertManagerConfiguration` 
+
+```java
+AlertManagerConfiguration(String endpoint);
+```
+
+`AlertManagerEvent` offers three types of constructors：
+```java
+AlertManagerEvent(String alertname);
+AlertManagerEvent(String alertname, Map<String, String> extraLabels);
+AlertManagerEvent(String alertname, Map<String, String> extraLabels, Map<String, String> annotations);
+```
+
+* `alertname` is a required parameter to identify an `alert`. The `alertname` field can be used for grouping and deduplication when the `AlertManager` sends an alert.
+* `extraLabels` is optional. In the backend, it is combined with `alertname` to form `labels` to identify an `alert`, which can be used for grouping and deduplication when `AlertManager` sends alarms.
+* `annotations` is optional, and its value can use Go style template `{{.<label_key>}}`. `{{.<label_key>}}` will be replaced with `labels[<label_key>]` when the message is finally generated.
+* `labels` and `annotations` will be parsed into json string and sent to `AlertManager`:
+```json
+{
+    "labels": {
+      "alertname": "<requiredAlertName>",
+      "<labelname>": "<labelvalue>",
+      ...
+    },
+    "annotations": {
+      "<labelname>": "<labelvalue>",
+      ...
+    }
+}
+```
+
+Call the `onEvent(AlertManagerEvent event)` method of `AlertManagerHandler` to send an alert.
+
+
+
+**Example 1:**
+
+Only pass `alertname`.
+
+```java
+AlertManagerHandler alertManagerHandler = new AlertManagerHandler();
+
+alertManagerHandler.open(new AlertManagerConfiguration("http://127.0.0.1:9093/api/v1/alerts"));
+
+final String alertName = "test0";
+
+AlertManagerEvent alertManagerEvent = new AlertManagerEvent(alertName);
+
+alertManagerHandler.onEvent(alertManagerEvent);
+```
+
+
+
+**Example 2：**
+
+Pass `alertname` and `extraLabels`.
+
+```java
+AlertManagerHandler alertManagerHandler = new AlertManagerHandler();
+
+alertManagerHandler.open(new AlertManagerConfiguration("http://127.0.0.1:9093/api/v1/alerts"));
+
+final String alertName = "test1";
+
+final HashMap<String, String> extraLabels = new HashMap<>();
+extraLabels.put("severity", "critical");
+extraLabels.put("series", "root.ln.wt01.wf01.temperature");
+extraLabels.put("value", String.valueOf(100.0));
+
+AlertManagerEvent alertManagerEvent = new AlertManagerEvent(alertName, extraLabels);
+
+alertManagerHandler.onEvent(alertManagerEvent);
+```
+
+
+
+**Example 3：**
+
+Pass `alertname`， `extraLabels` 和 `annotations`.
+
+The final value of the `description` field will be parsed as `test2: root.ln.wt01.wf01.temperature is 100.0`.
+
+```java
+AlertManagerHandler alertManagerHandler = new AlertManagerHandler();
+
+alertManagerHandler.open(new AlertManagerConfiguration("http://127.0.0.1:9093/api/v1/alerts"));
+
+final String alertName = "test2";
+
+final HashMap<String, String> extraLabels = new HashMap<>();
+extraLabels.put("severity", "critical");
+extraLabels.put("series", "root.ln.wt01.wf01.temperature");
+extraLabels.put("value", String.valueOf(100.0));
+
+final HashMap<String, String> annotations = new HashMap<>();
+annotations.put("summary", "high temperature");
+annotations.put("description", "{{.alertname}}: {{.series}} is {{.value}}");
+
+alertManagerHandler.onEvent(new AlertManagerEvent(alertName, extraLabels, annotations));
+```
+
+
+
+## Maven Project Example
+
+If you use [Maven](http://search.maven.org/), you can refer to our sample project **trigger-example**.
+
+You can find it [here](https://github.com/apache/iotdb/tree/master/example/trigger).
+
+It shows:
+
+* How to use Maven to manage your trigger project
+* How to listen to data changes based on the user programming interface
+* How to use the windowing utility
+* How to use the sink utility
+
+```java
+package org.apache.iotdb.trigger;
+
+import org.apache.iotdb.db.engine.trigger.api.Trigger;
+import org.apache.iotdb.db.engine.trigger.api.TriggerAttributes;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.sink.mqtt.MQTTConfiguration;
+import org.apache.iotdb.db.sink.mqtt.MQTTEvent;
+import org.apache.iotdb.db.sink.mqtt.MQTTHandler;
+import org.apache.iotdb.db.sink.local.LocalIoTDBConfiguration;
+import org.apache.iotdb.db.sink.local.LocalIoTDBEvent;
+import org.apache.iotdb.db.sink.local.LocalIoTDBHandler;
+import org.apache.iotdb.db.utils.windowing.configuration.SlidingSizeWindowConfiguration;
+import org.apache.iotdb.db.utils.windowing.handler.SlidingSizeWindowEvaluationHandler;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import org.fusesource.mqtt.client.QoS;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class TriggerExample implements Trigger {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(TriggerExample.class);
+
+  private static final String TARGET_DEVICE = "root.alerting";
+
+  private final LocalIoTDBHandler localIoTDBHandler = new LocalIoTDBHandler();
+  private final MQTTHandler mqttHandler = new MQTTHandler();
+
+  private SlidingSizeWindowEvaluationHandler windowEvaluationHandler;
+
+  @Override
+  public void onCreate(TriggerAttributes attributes) throws Exception {
+    LOGGER.info("onCreate(TriggerAttributes attributes)");
+
+    double lo = attributes.getDouble("lo");
+    double hi = attributes.getDouble("hi");
+
+    openSinkHandlers();
+
+    windowEvaluationHandler =
+        new SlidingSizeWindowEvaluationHandler(
+            new SlidingSizeWindowConfiguration(TSDataType.DOUBLE, 5, 5),
+            window -> {
+              double avg = 0;
+              for (int i = 0; i < window.size(); ++i) {
+                avg += window.getDouble(i);
+              }
+              avg /= window.size();
+
+              if (avg < lo || hi < avg) {
+                localIoTDBHandler.onEvent(new LocalIoTDBEvent(window.getTime(0), avg));
+                mqttHandler.onEvent(
+                    new MQTTEvent("test", QoS.EXACTLY_ONCE, false, window.getTime(0), avg));
+              }
+            });
+  }
+
+  @Override
+  public void onDrop() throws Exception {
+    LOGGER.info("onDrop()");
+    closeSinkHandlers();
+  }
+
+  @Override
+  public void onStart() throws Exception {
+    LOGGER.info("onStart()");
+    openSinkHandlers();
+  }
+
+  @Override
+  public void onStop() throws Exception {
+    LOGGER.info("onStop()");
+    closeSinkHandlers();
+  }
+
+  @Override
+  public Double fire(long timestamp, Double value) {
+    windowEvaluationHandler.collect(timestamp, value);
+    return value;
+  }
+
+  @Override
+  public double[] fire(long[] timestamps, double[] values) {
+    for (int i = 0; i < timestamps.length; ++i) {
+      windowEvaluationHandler.collect(timestamps[i], values[i]);
+    }
+    return values;
+  }
+
+  private void openSinkHandlers() throws Exception {
+    localIoTDBHandler.open(
+        new LocalIoTDBConfiguration(
+            TARGET_DEVICE, new String[] {"local"}, new TSDataType[] {TSDataType.DOUBLE}));
+    mqttHandler.open(
+        new MQTTConfiguration(
+            "127.0.0.1",
+            1883,
+            "root",
+            "root",
+            new PartialPath(TARGET_DEVICE),
+            new String[] {"remote"}));
+  }
+
+  private void closeSinkHandlers() throws Exception {
+    localIoTDBHandler.close();
+    mqttHandler.close();
+  }
+}
+```
+
+You can try this trigger by following the steps below:
+
+* Enable MQTT service by modifying `iotdb-engine.properties`
+
+  ``` properties
+  # whether to enable the mqtt service.
+  enable_mqtt_service=true
+  ```
+
+* Start the IoTDB server
+
+* Create time series via cli
+
+  ``` sql
+  CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=DOUBLE, ENCODING=PLAIN;
+  ```
+
+* Place the JAR (`trigger-example-0.13.0-SNAPSHOT.jar`) of **trigger-example** in the directory `iotdb-server-0.13.0-SNAPSHOT/ext/trigger` (or in a subdirectory of `iotdb-server-0.13.0-SNAPSHOT/ext/trigger`)
+
+  > You can specify the root path to load the trigger JAR package by modifying the `trigger_root_dir` in the configuration file.
+
+* Use the SQL statement to register the trigger, assuming that the name given to the trigger is `window-avg-alerter`
+
+* Use the `CREATE TRIGGER` statement to register the trigger via cli
+
+  ```sql
+  CREATE TRIGGER window-avg-alerter
+  AFTER INSERT
+  ON root.sg1.d1.s1
+  AS "org.apache.iotdb.trigger.TriggerExample"
+  WITH (
+    "lo" = "0",
+    "hi" = "10.0"
+  )
+  ```
+
+* Use cli to insert test data
+
+  ``` sql
+  INSERT INTO root.sg1.d1(timestamp, s1) VALUES (1, 0);
+  INSERT INTO root.sg1.d1(timestamp, s1) VALUES (2, 2);
+  INSERT INTO root.sg1.d1(timestamp, s1) VALUES (3, 4);
+  INSERT INTO root.sg1.d1(timestamp, s1) VALUES (4, 6);
+  INSERT INTO root.sg1.d1(timestamp, s1) VALUES (5, 8);
+  
+  INSERT INTO root.sg1.d1(timestamp, s1) VALUES (6, 10);
+  INSERT INTO root.sg1.d1(timestamp, s1) VALUES (7, 12);
+  INSERT INTO root.sg1.d1(timestamp, s1) VALUES (8, 14);
+  INSERT INTO root.sg1.d1(timestamp, s1) VALUES (9, 16);
+  INSERT INTO root.sg1.d1(timestamp, s1) VALUES (10, 18);
+  ```
+
+* Use cli to query data to verify the behavior of the trigger
+
+  ``` sql
+  SELECT * FROM root.alerting;
+  ```
+
+* Under normal circumstances, the following results should be shown
+
+  ``` sql
+  IoTDB> SELECT * FROM root.alerting;
+  +-----------------------------+--------------------+-------------------+
+  |                         Time|root.alerting.remote|root.alerting.local|
+  +-----------------------------+--------------------+-------------------+
+  |1970-01-01T08:00:00.006+08:00|                14.0|               14.0|
+  +-----------------------------+--------------------+-------------------+
+  Total line number = 1
+  It costs 0.006s
+  ```
+
+That's all, please enjoy it :D
 
 
 
