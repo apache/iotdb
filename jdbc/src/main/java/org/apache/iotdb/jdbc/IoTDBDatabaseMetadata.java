@@ -349,35 +349,42 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     List<String> columnNameList = new ArrayList<String>();
     List<String> columnTypeList = new ArrayList<String>();
     Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
-    Field[] fields = new Field[21];
-    fields[0] = new Field("", "TYPE_CAT", "TEXT");
-    fields[1] = new Field("", "TYPE_SCHEM", "TEXT");
-    fields[2] = new Field("", "TYPE_NAME", "TEXT");
-    fields[3] = new Field("", "ATTR_NAME", "TEXT");
-    fields[4] = new Field("", "DATA_TYPE", "INT32");
-    fields[5] = new Field("", "ATTR_TYPE_NAME", "TEXT");
-    fields[6] = new Field("", "ATTR_SIZE", "INT32");
-    fields[7] = new Field("", "DECIMAL_DIGITS", "INT32");
-    fields[8] = new Field("", "NUM_PREC_RADIX", "INT32");
-    fields[9] = new Field("", "NULLABLE ", "INT32");
-    fields[10] = new Field("", "REMARKS", "TEXT");
-    fields[11] = new Field("", "ATTR_DEF", "TEXT");
-    fields[12] = new Field("", "SQL_DATA_TYPE", "INT32");
-    fields[13] = new Field("", "SQL_DATETIME_SUB", "INT32");
-    fields[14] = new Field("", "CHAR_OCTET_LENGTH", "INT32");
-    fields[15] = new Field("", "ORDINAL_POSITION", "INT32");
-    fields[16] = new Field("", "IS_NULLABLE", "TEXT");
-    fields[17] = new Field("", "SCOPE_CATALOG", "TEXT");
-    fields[18] = new Field("", "SCOPE_SCHEMA", "TEXT");
-    fields[19] = new Field("", "SCOPE_TABLE", "TEXT");
-    fields[20] = new Field("", "SOURCE_DATA_TYPE", "INT32");
-    for (int i = 0; i < fields.length; i++) {
-      columnNameList.add(fields[i].getName());
-      columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(), i);
+    Statement stmt = connection.createStatement();
+    try {
+      Field[] fields = new Field[21];
+      fields[0] = new Field("", "TYPE_CAT", "TEXT");
+      fields[1] = new Field("", "TYPE_SCHEM", "TEXT");
+      fields[2] = new Field("", "TYPE_NAME", "TEXT");
+      fields[3] = new Field("", "ATTR_NAME", "TEXT");
+      fields[4] = new Field("", "DATA_TYPE", "INT32");
+      fields[5] = new Field("", "ATTR_TYPE_NAME", "TEXT");
+      fields[6] = new Field("", "ATTR_SIZE", "INT32");
+      fields[7] = new Field("", "DECIMAL_DIGITS", "INT32");
+      fields[8] = new Field("", "NUM_PREC_RADIX", "INT32");
+      fields[9] = new Field("", "NULLABLE ", "INT32");
+      fields[10] = new Field("", "REMARKS", "TEXT");
+      fields[11] = new Field("", "ATTR_DEF", "TEXT");
+      fields[12] = new Field("", "SQL_DATA_TYPE", "INT32");
+      fields[13] = new Field("", "SQL_DATETIME_SUB", "INT32");
+      fields[14] = new Field("", "CHAR_OCTET_LENGTH", "INT32");
+      fields[15] = new Field("", "ORDINAL_POSITION", "INT32");
+      fields[16] = new Field("", "IS_NULLABLE", "TEXT");
+      fields[17] = new Field("", "SCOPE_CATALOG", "TEXT");
+      fields[18] = new Field("", "SCOPE_SCHEMA", "TEXT");
+      fields[19] = new Field("", "SCOPE_TABLE", "TEXT");
+      fields[20] = new Field("", "SOURCE_DATA_TYPE", "INT32");
+      for (int i = 0; i < fields.length; i++) {
+        columnNameList.add(fields[i].getName());
+        columnTypeList.add(fields[i].getSqlType());
+        columnNameIndex.put(fields[i].getName(), i);
+      }
+    }catch (Exception e){
+      e.printStackTrace();
+    }finally {
+      colse(null, stmt);
     }
     return new IoTDBJDBCResultSet(
-        connection.createStatement(),
+        stmt,
         columnNameList,
         columnTypeList,
         columnNameIndex,
@@ -396,23 +403,31 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     List<String> columnNameList = new ArrayList<String>();
     List<String> columnTypeList = new ArrayList<String>();
     Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
-    Field[] fields = new Field[8];
-    fields[0] = new Field("", "SCOPE", "INT32");
-    fields[1] = new Field("", "COLUMN_NAME", "TEXT");
-    fields[2] = new Field("", "DATA_TYPE", "INT32");
-    fields[3] = new Field("", "TYPE_NAME", "TEXT");
-    fields[4] = new Field("", "COLUMN_SIZE", "INT32");
-    fields[5] = new Field("", "BUFFER_LENGTH", "INT32");
-    fields[6] = new Field("", "DECIMAL_DIGITS", "INT32");
-    fields[7] = new Field("", "PSEUDO_COLUMN", "INT32");
+    Statement stmt = connection.createStatement();
+    try {
+      Field[] fields = new Field[8];
+      fields[0] = new Field("", "SCOPE", "INT32");
+      fields[1] = new Field("", "COLUMN_NAME", "TEXT");
+      fields[2] = new Field("", "DATA_TYPE", "INT32");
+      fields[3] = new Field("", "TYPE_NAME", "TEXT");
+      fields[4] = new Field("", "COLUMN_SIZE", "INT32");
+      fields[5] = new Field("", "BUFFER_LENGTH", "INT32");
+      fields[6] = new Field("", "DECIMAL_DIGITS", "INT32");
+      fields[7] = new Field("", "PSEUDO_COLUMN", "INT32");
 
-    for (int i = 0; i < fields.length; i++) {
-      columnNameList.add(fields[i].getName());
-      columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(), i);
+      for (int i = 0; i < fields.length; i++) {
+        columnNameList.add(fields[i].getName());
+        columnTypeList.add(fields[i].getSqlType());
+        columnNameIndex.put(fields[i].getName(), i);
+      }
+    }catch (Exception e){
+      e.printStackTrace();
+    }finally {
+      colse(null, stmt);
     }
+
     return new IoTDBJDBCResultSet(
-        connection.createStatement(),
+        stmt,
         columnNameList,
         columnTypeList,
         columnNameIndex,
@@ -808,28 +823,35 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     List<String> columnNameList = new ArrayList<String>();
     List<String> columnTypeList = new ArrayList<String>();
     Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
-    Field[] fields = new Field[14];
-    fields[0] = new Field("", "PKTABLE_CAT", "TEXT");
-    fields[1] = new Field("", "PKTABLE_SCHEM", "TEXT");
-    fields[2] = new Field("", "PKTABLE_NAME", "TEXT");
-    fields[3] = new Field("", "PKCOLUMN_NAME", "TEXT");
-    fields[4] = new Field("", "FKTABLE_CAT", "TEXT");
-    fields[5] = new Field("", "FKTABLE_SCHEM", "TEXT");
-    fields[6] = new Field("", "FKTABLE_NAME", "TEXT");
-    fields[7] = new Field("", "FKCOLUMN_NAME", "TEXT");
-    fields[8] = new Field("", "KEY_SEQ", "TEXT");
-    fields[9] = new Field("", "UPDATE_RULE ", "TEXT");
-    fields[10] = new Field("", "DELETE_RULE", "TEXT");
-    fields[11] = new Field("", "FK_NAME", "TEXT");
-    fields[12] = new Field("", "PK_NAME", "TEXT");
-    fields[13] = new Field("", "DEFERRABILITY", "TEXT");
-    for (int i = 0; i < fields.length; i++) {
-      columnNameList.add(fields[i].getName());
-      columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(), i);
+    Statement stmt = connection.createStatement();
+    try {
+      Field[] fields = new Field[14];
+      fields[0] = new Field("", "PKTABLE_CAT", "TEXT");
+      fields[1] = new Field("", "PKTABLE_SCHEM", "TEXT");
+      fields[2] = new Field("", "PKTABLE_NAME", "TEXT");
+      fields[3] = new Field("", "PKCOLUMN_NAME", "TEXT");
+      fields[4] = new Field("", "FKTABLE_CAT", "TEXT");
+      fields[5] = new Field("", "FKTABLE_SCHEM", "TEXT");
+      fields[6] = new Field("", "FKTABLE_NAME", "TEXT");
+      fields[7] = new Field("", "FKCOLUMN_NAME", "TEXT");
+      fields[8] = new Field("", "KEY_SEQ", "TEXT");
+      fields[9] = new Field("", "UPDATE_RULE ", "TEXT");
+      fields[10] = new Field("", "DELETE_RULE", "TEXT");
+      fields[11] = new Field("", "FK_NAME", "TEXT");
+      fields[12] = new Field("", "PK_NAME", "TEXT");
+      fields[13] = new Field("", "DEFERRABILITY", "TEXT");
+      for (int i = 0; i < fields.length; i++) {
+        columnNameList.add(fields[i].getName());
+        columnTypeList.add(fields[i].getSqlType());
+        columnNameIndex.put(fields[i].getName(), i);
+      }
+    }catch (Exception e){
+      e.printStackTrace();
+    }finally {
+      colse(null, stmt);
     }
     return new IoTDBJDBCResultSet(
-        connection.createStatement(),
+        stmt,
         columnNameList,
         columnTypeList,
         columnNameIndex,
@@ -840,6 +862,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         sessionId,
         null,
         (long) 60 * 1000);
+
   }
 
   @Override
@@ -908,32 +931,39 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   }
 
   @Override
-  public ResultSet getExportedKeys(String arg0, String arg1, String arg2) throws SQLException {
+  public ResultSet getExportedKeys(String catalog, String schema, final String table) throws SQLException {
     List<String> columnNameList = new ArrayList<String>();
     List<String> columnTypeList = new ArrayList<String>();
     Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
-    Field[] fields = new Field[14];
-    fields[0] = new Field("", "PKTABLE_CAT", "TEXT");
-    fields[1] = new Field("", "PKTABLE_SCHEM", "INT32");
-    fields[2] = new Field("", "PKTABLE_NAME", "TEXT");
-    fields[3] = new Field("", "PKCOLUMN_NAME", "TEXT");
-    fields[4] = new Field("", "FKTABLE_CAT", "TEXT");
-    fields[5] = new Field("", "FKTABLE_SCHEM", "TEXT");
-    fields[6] = new Field("", "FKTABLE_NAME", "TEXT");
-    fields[7] = new Field("", "FKCOLUMN_NAME", "TEXT");
-    fields[8] = new Field("", "KEY_SEQ", "INT32");
-    fields[9] = new Field("", "UPDATE_RULE", "INT32");
-    fields[10] = new Field("", "DELETE_RULE", "INT32");
-    fields[11] = new Field("", "FK_NAME", "TEXT");
-    fields[12] = new Field("", "PK_NAME", "TEXT");
-    fields[13] = new Field("", "DEFERRABILITY", "INT32");
-    for (int i = 0; i < fields.length; i++) {
-      columnNameList.add(fields[i].getName());
-      columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(), i);
+    Statement stmt = connection.createStatement();
+    try {
+      Field[] fields = new Field[14];
+      fields[0] = new Field("", "PKTABLE_CAT", "TEXT");
+      fields[1] = new Field("", "PKTABLE_SCHEM", "INT32");
+      fields[2] = new Field("", "PKTABLE_NAME", "TEXT");
+      fields[3] = new Field("", "PKCOLUMN_NAME", "TEXT");
+      fields[4] = new Field("", "FKTABLE_CAT", "TEXT");
+      fields[5] = new Field("", "FKTABLE_SCHEM", "TEXT");
+      fields[6] = new Field("", "FKTABLE_NAME", "TEXT");
+      fields[7] = new Field("", "FKCOLUMN_NAME", "TEXT");
+      fields[8] = new Field("", "KEY_SEQ", "INT32");
+      fields[9] = new Field("", "UPDATE_RULE", "INT32");
+      fields[10] = new Field("", "DELETE_RULE", "INT32");
+      fields[11] = new Field("", "FK_NAME", "TEXT");
+      fields[12] = new Field("", "PK_NAME", "TEXT");
+      fields[13] = new Field("", "DEFERRABILITY", "INT32");
+      for (int i = 0; i < fields.length; i++) {
+        columnNameList.add(fields[i].getName());
+        columnTypeList.add(fields[i].getSqlType());
+        columnNameIndex.put(fields[i].getName(), i);
+      }
+    }catch (Exception e){
+      e.printStackTrace();
+    }finally {
+      colse(null, stmt);
     }
     return new IoTDBJDBCResultSet(
-        null,
+        stmt,
         columnNameList,
         columnTypeList,
         columnNameIndex,
@@ -1130,28 +1160,35 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     List<String> columnNameList = new ArrayList<String>();
     List<String> columnTypeList = new ArrayList<String>();
     Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
-    Field[] fields = new Field[14];
-    fields[0] = new Field("", "PKTABLE_CAT", "TEXT");
-    fields[1] = new Field("", "PKTABLE_SCHEM", "INT32");
-    fields[2] = new Field("", "PKTABLE_NAME", "TEXT");
-    fields[3] = new Field("", "PKCOLUMN_NAME", "TEXT");
-    fields[4] = new Field("", "FKTABLE_CAT", "TEXT");
-    fields[5] = new Field("", "FKTABLE_SCHEM", "TEXT");
-    fields[6] = new Field("", "FKTABLE_NAME", "TEXT");
-    fields[7] = new Field("", "FKCOLUMN_NAME", "TEXT");
-    fields[8] = new Field("", "KEY_SEQ", "INT32");
-    fields[9] = new Field("", "UPDATE_RULE", "INT32");
-    fields[10] = new Field("", "DELETE_RULE", "INT32");
-    fields[11] = new Field("", "FK_NAME", "TEXT");
-    fields[12] = new Field("", "PK_NAME", "TEXT");
-    fields[13] = new Field("", "DEFERRABILITY", "INT32");
-    for (int i = 0; i < fields.length; i++) {
-      columnNameList.add(fields[i].getName());
-      columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(), i);
+    Statement stmt = connection.createStatement();
+    try {
+      Field[] fields = new Field[14];
+      fields[0] = new Field("", "PKTABLE_CAT", "TEXT");
+      fields[1] = new Field("", "PKTABLE_SCHEM", "INT32");
+      fields[2] = new Field("", "PKTABLE_NAME", "TEXT");
+      fields[3] = new Field("", "PKCOLUMN_NAME", "TEXT");
+      fields[4] = new Field("", "FKTABLE_CAT", "TEXT");
+      fields[5] = new Field("", "FKTABLE_SCHEM", "TEXT");
+      fields[6] = new Field("", "FKTABLE_NAME", "TEXT");
+      fields[7] = new Field("", "FKCOLUMN_NAME", "TEXT");
+      fields[8] = new Field("", "KEY_SEQ", "INT32");
+      fields[9] = new Field("", "UPDATE_RULE", "INT32");
+      fields[10] = new Field("", "DELETE_RULE", "INT32");
+      fields[11] = new Field("", "FK_NAME", "TEXT");
+      fields[12] = new Field("", "PK_NAME", "TEXT");
+      fields[13] = new Field("", "DEFERRABILITY", "INT32");
+      for (int i = 0; i < fields.length; i++) {
+        columnNameList.add(fields[i].getName());
+        columnTypeList.add(fields[i].getSqlType());
+        columnNameIndex.put(fields[i].getName(), i);
+      }
+    }catch (Exception e){
+      e.printStackTrace();
+    }finally {
+      colse(null, stmt);
     }
     return new IoTDBJDBCResultSet(
-        null,
+        stmt,
         columnNameList,
         columnTypeList,
         columnNameIndex,
@@ -1170,28 +1207,35 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     List<String> columnNameList = new ArrayList<String>();
     List<String> columnTypeList = new ArrayList<String>();
     Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
-    Field[] fields = new Field[14];
-    fields[0] = new Field("", "TABLE_CAT", "TEXT");
-    fields[1] = new Field("", "TABLE_SCHEM", "TEXT");
-    fields[2] = new Field("", "TABLE_NAME", "TEXT");
-    fields[3] = new Field("", "NON_UNIQUE", "TEXT");
-    fields[4] = new Field("", "INDEX_QUALIFIER", "TEXT");
-    fields[5] = new Field("", "INDEX_NAME", "TEXT");
-    fields[6] = new Field("", "TYPE", "TEXT");
-    fields[7] = new Field("", "ORDINAL_POSITION", "TEXT");
-    fields[8] = new Field("", "COLUMN_NAME", "TEXT");
-    fields[9] = new Field("", "ASC_OR_DESC", "TEXT");
-    fields[10] = new Field("", "CARDINALITY", "TEXT");
-    fields[11] = new Field("", "PAGES", "TEXT");
-    fields[12] = new Field("", "PK_NAME", "TEXT");
-    fields[13] = new Field("", "FILTER_CONDITION", "TEXT");
-    for (int i = 0; i < fields.length; i++) {
-      columnNameList.add(fields[i].getName());
-      columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(), i);
+    Statement stmt = connection.createStatement();
+    try {
+      Field[] fields = new Field[14];
+      fields[0] = new Field("", "TABLE_CAT", "TEXT");
+      fields[1] = new Field("", "TABLE_SCHEM", "TEXT");
+      fields[2] = new Field("", "TABLE_NAME", "TEXT");
+      fields[3] = new Field("", "NON_UNIQUE", "TEXT");
+      fields[4] = new Field("", "INDEX_QUALIFIER", "TEXT");
+      fields[5] = new Field("", "INDEX_NAME", "TEXT");
+      fields[6] = new Field("", "TYPE", "TEXT");
+      fields[7] = new Field("", "ORDINAL_POSITION", "TEXT");
+      fields[8] = new Field("", "COLUMN_NAME", "TEXT");
+      fields[9] = new Field("", "ASC_OR_DESC", "TEXT");
+      fields[10] = new Field("", "CARDINALITY", "TEXT");
+      fields[11] = new Field("", "PAGES", "TEXT");
+      fields[12] = new Field("", "PK_NAME", "TEXT");
+      fields[13] = new Field("", "FILTER_CONDITION", "TEXT");
+      for (int i = 0; i < fields.length; i++) {
+        columnNameList.add(fields[i].getName());
+        columnTypeList.add(fields[i].getSqlType());
+        columnNameIndex.put(fields[i].getName(), i);
+      }
+    }catch (Exception e){
+      e.printStackTrace();
+    }finally {
+      colse(null, stmt);
     }
     return new IoTDBJDBCResultSet(
-        null,
+        stmt,
         columnNameList,
         columnTypeList,
         columnNameIndex,
@@ -1425,34 +1469,42 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     List<String> columnNameList = new ArrayList<String>();
     List<String> columnTypeList = new ArrayList<String>();
     Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
-    Field[] fields = new Field[20];
-    fields[0] = new Field("", "PROCEDURE_CAT", "TEXT");
-    fields[1] = new Field("", "PROCEDURE_SCHEM", "TEXT");
-    fields[2] = new Field("", "PROCEDURE_NAME", "TEXT");
-    fields[3] = new Field("", "COLUMN_NAME", "TEXT");
-    fields[4] = new Field("", "COLUMN_TYPE", "TEXT");
-    fields[5] = new Field("", "DATA_TYPE", "INT32");
-    fields[6] = new Field("", "TYPE_NAME", "TEXT");
-    fields[7] = new Field("", "PRECISION", "TEXT");
-    fields[8] = new Field("", "LENGTH", "TEXT");
-    fields[9] = new Field("", "SCALE", "TEXT");
-    fields[10] = new Field("", "RADIX", "TEXT");
-    fields[11] = new Field("", "NULLABLE", "TEXT");
-    fields[12] = new Field("", "REMARKS", "TEXT");
-    fields[13] = new Field("", "COLUMN_DEF", "TEXT");
-    fields[14] = new Field("", "SQL_DATA_TYPE", "INT32");
-    fields[15] = new Field("", "SQL_DATETIME_SUB", "TEXT");
-    fields[16] = new Field("", "CHAR_OCTET_LENGTH", "TEXT");
-    fields[17] = new Field("", "ORDINAL_POSITION", "TEXT");
-    fields[18] = new Field("", "IS_NULLABLE", "TEXT");
-    fields[19] = new Field("", "SPECIFIC_NAME", "TEXT");
-    for (int i = 0; i < fields.length; i++) {
-      columnNameList.add(fields[i].getName());
-      columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(), i);
+    Statement stmt = connection.createStatement();
+    try {
+
+      Field[] fields = new Field[20];
+      fields[0] = new Field("", "PROCEDURE_CAT", "TEXT");
+      fields[1] = new Field("", "PROCEDURE_SCHEM", "TEXT");
+      fields[2] = new Field("", "PROCEDURE_NAME", "TEXT");
+      fields[3] = new Field("", "COLUMN_NAME", "TEXT");
+      fields[4] = new Field("", "COLUMN_TYPE", "TEXT");
+      fields[5] = new Field("", "DATA_TYPE", "INT32");
+      fields[6] = new Field("", "TYPE_NAME", "TEXT");
+      fields[7] = new Field("", "PRECISION", "TEXT");
+      fields[8] = new Field("", "LENGTH", "TEXT");
+      fields[9] = new Field("", "SCALE", "TEXT");
+      fields[10] = new Field("", "RADIX", "TEXT");
+      fields[11] = new Field("", "NULLABLE", "TEXT");
+      fields[12] = new Field("", "REMARKS", "TEXT");
+      fields[13] = new Field("", "COLUMN_DEF", "TEXT");
+      fields[14] = new Field("", "SQL_DATA_TYPE", "INT32");
+      fields[15] = new Field("", "SQL_DATETIME_SUB", "TEXT");
+      fields[16] = new Field("", "CHAR_OCTET_LENGTH", "TEXT");
+      fields[17] = new Field("", "ORDINAL_POSITION", "TEXT");
+      fields[18] = new Field("", "IS_NULLABLE", "TEXT");
+      fields[19] = new Field("", "SPECIFIC_NAME", "TEXT");
+      for (int i = 0; i < fields.length; i++) {
+        columnNameList.add(fields[i].getName());
+        columnTypeList.add(fields[i].getSqlType());
+        columnNameIndex.put(fields[i].getName(), i);
+      }
+    }catch (Exception e){
+      e.printStackTrace();
+    }finally {
+      colse(null, stmt);
     }
     return new IoTDBJDBCResultSet(
-        null,
+        stmt,
         columnNameList,
         columnTypeList,
         columnNameIndex,
@@ -1475,20 +1527,27 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     List<String> columnNameList = new ArrayList<String>();
     List<String> columnTypeList = new ArrayList<String>();
     Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
-    Field[] fields = new Field[6];
-    fields[0] = new Field("", "PROCEDURE_CAT", "TEXT");
-    fields[1] = new Field("", "PROCEDURE_SCHEM", "TEXT");
-    fields[2] = new Field("", "PROCEDURE_NAME", "TEXT");
-    fields[3] = new Field("", "REMARKS", "TEXT");
-    fields[4] = new Field("", "PROCEDURE_TYPE", "TEXT");
-    fields[5] = new Field("", "SPECIFIC_NAME", "TEXT");
-    for (int i = 0; i < fields.length; i++) {
-      columnNameList.add(fields[i].getName());
-      columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(), i);
+    Statement stmt = connection.createStatement();
+    try {
+      Field[] fields = new Field[6];
+      fields[0] = new Field("", "PROCEDURE_CAT", "TEXT");
+      fields[1] = new Field("", "PROCEDURE_SCHEM", "TEXT");
+      fields[2] = new Field("", "PROCEDURE_NAME", "TEXT");
+      fields[3] = new Field("", "REMARKS", "TEXT");
+      fields[4] = new Field("", "PROCEDURE_TYPE", "TEXT");
+      fields[5] = new Field("", "SPECIFIC_NAME", "TEXT");
+      for (int i = 0; i < fields.length; i++) {
+        columnNameList.add(fields[i].getName());
+        columnTypeList.add(fields[i].getSqlType());
+        columnNameIndex.put(fields[i].getName(), i);
+      }
+    }catch (Exception e){
+      e.printStackTrace();
+    }finally {
+      colse(null, stmt);
     }
     return new IoTDBJDBCResultSet(
-        null,
+        stmt,
         columnNameList,
         columnTypeList,
         columnNameIndex,
@@ -1676,18 +1735,25 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     List<String> columnNameList = new ArrayList<String>();
     List<String> columnTypeList = new ArrayList<String>();
     Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
-    Field[] fields = new Field[4];
-    fields[0] = new Field("", "TABLE_CAT", "TEXT");
-    fields[1] = new Field("", "TABLE_SCHEM", "TEXT");
-    fields[2] = new Field("", "TABLE_NAME", "TEXT");
-    fields[3] = new Field("", "SUPERTABLE_NAME", "TEXT");
-    for (int i = 0; i < fields.length; i++) {
-      columnNameList.add(fields[i].getName());
-      columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(), i);
+    Statement stmt = connection.createStatement();
+    try {
+      Field[] fields = new Field[4];
+      fields[0] = new Field("", "TABLE_CAT", "TEXT");
+      fields[1] = new Field("", "TABLE_SCHEM", "TEXT");
+      fields[2] = new Field("", "TABLE_NAME", "TEXT");
+      fields[3] = new Field("", "SUPERTABLE_NAME", "TEXT");
+      for (int i = 0; i < fields.length; i++) {
+        columnNameList.add(fields[i].getName());
+        columnTypeList.add(fields[i].getSqlType());
+        columnNameIndex.put(fields[i].getName(), i);
+      }
+    }catch (Exception e){
+      e.printStackTrace();
+    }finally {
+      colse(null, stmt);
     }
     return new IoTDBJDBCResultSet(
-        null,
+        stmt,
         columnNameList,
         columnTypeList,
         columnNameIndex,
@@ -1706,20 +1772,27 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     List<String> columnNameList = new ArrayList<String>();
     List<String> columnTypeList = new ArrayList<String>();
     Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
-    Field[] fields = new Field[6];
-    fields[0] = new Field("", "TABLE_CAT", "TEXT");
-    fields[1] = new Field("", "TABLE_SCHEM", "TEXT");
-    fields[2] = new Field("", "TABLE_NAME", "TEXT");
-    fields[3] = new Field("", "SUPERTYPE_CAT", "TEXT");
-    fields[4] = new Field("", "SUPERTYPE_SCHEM", "TEXT");
-    fields[5] = new Field("", "SUPERTYPE_NAME", "TEXT");
-    for (int i = 0; i < fields.length; i++) {
-      columnNameList.add(fields[i].getName());
-      columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(), i);
+    Statement stmt = connection.createStatement();
+    try {
+      Field[] fields = new Field[6];
+      fields[0] = new Field("", "TABLE_CAT", "TEXT");
+      fields[1] = new Field("", "TABLE_SCHEM", "TEXT");
+      fields[2] = new Field("", "TABLE_NAME", "TEXT");
+      fields[3] = new Field("", "SUPERTYPE_CAT", "TEXT");
+      fields[4] = new Field("", "SUPERTYPE_SCHEM", "TEXT");
+      fields[5] = new Field("", "SUPERTYPE_NAME", "TEXT");
+      for (int i = 0; i < fields.length; i++) {
+        columnNameList.add(fields[i].getName());
+        columnTypeList.add(fields[i].getSqlType());
+        columnNameIndex.put(fields[i].getName(), i);
+      }
+    }catch (Exception e){
+      e.printStackTrace();
+    }finally {
+      colse(null, stmt);
     }
     return new IoTDBJDBCResultSet(
-        null,
+        stmt,
         columnNameList,
         columnTypeList,
         columnNameIndex,
@@ -2061,13 +2134,14 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   }
 
   private void colse(ResultSet rs, Statement stmt) {
-    if (rs != null) {
+
       try {
+        if (rs != null) {
         rs.close();
+        }
       } catch (Exception ex) {
         rs = null;
       }
-    }
     try {
       if (stmt != null) {
         stmt.close();
@@ -2451,21 +2525,28 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     List<String> columnNameList = new ArrayList<String>();
     List<String> columnTypeList = new ArrayList<String>();
     Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
-    Field[] fields = new Field[7];
-    fields[0] = new Field("", "TABLE_CAT", "TEXT");
-    fields[1] = new Field("", "TABLE_SCHEM", "TEXT");
-    fields[2] = new Field("", "TABLE_NAME", "TEXT");
-    fields[3] = new Field("", "CLASS_NAME", "TEXT");
-    fields[4] = new Field("", "DATA_TYPE", "INT32");
-    fields[5] = new Field("", "REMARKS", "TEXT");
-    fields[6] = new Field("", "BASE_TYPE", "TEXT");
-    for (int i = 0; i < fields.length; i++) {
-      columnNameList.add(fields[i].getName());
-      columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(), i);
+    Statement stmt = connection.createStatement();
+    try {
+      Field[] fields = new Field[7];
+      fields[0] = new Field("", "TABLE_CAT", "TEXT");
+      fields[1] = new Field("", "TABLE_SCHEM", "TEXT");
+      fields[2] = new Field("", "TABLE_NAME", "TEXT");
+      fields[3] = new Field("", "CLASS_NAME", "TEXT");
+      fields[4] = new Field("", "DATA_TYPE", "INT32");
+      fields[5] = new Field("", "REMARKS", "TEXT");
+      fields[6] = new Field("", "BASE_TYPE", "TEXT");
+      for (int i = 0; i < fields.length; i++) {
+        columnNameList.add(fields[i].getName());
+        columnTypeList.add(fields[i].getSqlType());
+        columnNameIndex.put(fields[i].getName(), i);
+      }
+    }catch (Exception e){
+      e.printStackTrace();
+    }finally {
+      colse(null, stmt);
     }
     return new IoTDBJDBCResultSet(
-        null,
+        stmt,
         columnNameList,
         columnTypeList,
         columnNameIndex,
@@ -2495,22 +2576,29 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     List<String> columnNameList = new ArrayList<String>();
     List<String> columnTypeList = new ArrayList<String>();
     Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
-    Field[] fields = new Field[8];
-    fields[0] = new Field("", "SCOPE", "INT32");
-    fields[1] = new Field("", "COLUMN_NAME", "TEXT");
-    fields[2] = new Field("", "DATA_TYPE", "INT32");
-    fields[3] = new Field("", "TYPE_NAME", "TEXT");
-    fields[4] = new Field("", "COLUMN_SIZE", "INT32");
-    fields[5] = new Field("", "BUFFER_LENGTH", "INT32");
-    fields[6] = new Field("", "DECIMAL_DIGITS", "INT32");
-    fields[7] = new Field("", "PSEUDO_COLUMN", "INT32");
-    for (int i = 0; i < fields.length; i++) {
-      columnNameList.add(fields[i].getName());
-      columnTypeList.add(fields[i].getSqlType());
-      columnNameIndex.put(fields[i].getName(), i);
+    Statement stmt = connection.createStatement();
+    try {
+      Field[] fields = new Field[8];
+      fields[0] = new Field("", "SCOPE", "INT32");
+      fields[1] = new Field("", "COLUMN_NAME", "TEXT");
+      fields[2] = new Field("", "DATA_TYPE", "INT32");
+      fields[3] = new Field("", "TYPE_NAME", "TEXT");
+      fields[4] = new Field("", "COLUMN_SIZE", "INT32");
+      fields[5] = new Field("", "BUFFER_LENGTH", "INT32");
+      fields[6] = new Field("", "DECIMAL_DIGITS", "INT32");
+      fields[7] = new Field("", "PSEUDO_COLUMN", "INT32");
+      for (int i = 0; i < fields.length; i++) {
+        columnNameList.add(fields[i].getName());
+        columnTypeList.add(fields[i].getSqlType());
+        columnNameIndex.put(fields[i].getName(), i);
+      }
+    }catch (Exception e){
+      e.printStackTrace();
+    }finally {
+      colse(null, stmt);
     }
     return new IoTDBJDBCResultSet(
-        null,
+        stmt,
         columnNameList,
         columnTypeList,
         columnNameIndex,
