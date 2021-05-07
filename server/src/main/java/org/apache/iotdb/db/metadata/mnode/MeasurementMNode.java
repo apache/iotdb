@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.IOException;
@@ -37,7 +38,7 @@ public class MeasurementMNode extends MNode {
   private static final long serialVersionUID = -1199657856921206435L;
 
   /** measurement's Schema for one timeseries represented by current leaf node */
-  private MeasurementSchema schema;
+  private IMeasurementSchema schema;
 
   private String alias;
   // tag/attribute's start offset in tag file
@@ -62,13 +63,13 @@ public class MeasurementMNode extends MNode {
   }
 
   public MeasurementMNode(
-      MNode parent, String measurementName, MeasurementSchema schema, String alias) {
+      MNode parent, String measurementName, IMeasurementSchema schema, String alias) {
     super(parent, measurementName);
     this.schema = schema;
     this.alias = alias;
   }
 
-  public MeasurementSchema getSchema() {
+  public IMeasurementSchema getSchema() {
     return schema;
   }
 
@@ -126,7 +127,7 @@ public class MeasurementMNode extends MNode {
     this.alias = alias;
   }
 
-  public void setSchema(MeasurementSchema schema) {
+  public void setSchema(IMeasurementSchema schema) {
     this.schema = schema;
   }
 
@@ -158,7 +159,7 @@ public class MeasurementMNode extends MNode {
         props.put(propInfo.split(":")[0], propInfo.split(":")[1]);
       }
     }
-    MeasurementSchema schema =
+    IMeasurementSchema schema =
         new MeasurementSchema(
             name,
             Byte.parseByte(nodeInfo[3]),
@@ -177,5 +178,14 @@ public class MeasurementMNode extends MNode {
     node.setOffset(plan.getOffset());
 
     return node;
+  }
+
+  public TSDataType getDataType(String measurementId) {
+    if (schema instanceof MeasurementSchema) {
+      return schema.getType();
+    } else {
+      int index = schema.getMeasurementIdColumnIndex(measurementId);
+      return schema.getValueTSDataTypeList().get(index);
+    }
   }
 }

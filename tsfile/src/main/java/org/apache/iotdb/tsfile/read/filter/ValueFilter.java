@@ -28,6 +28,7 @@ import org.apache.iotdb.tsfile.read.filter.operator.Lt;
 import org.apache.iotdb.tsfile.read.filter.operator.LtEq;
 import org.apache.iotdb.tsfile.read.filter.operator.NotEq;
 import org.apache.iotdb.tsfile.read.filter.operator.NotFilter;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.util.Set;
 
@@ -74,10 +75,40 @@ public class ValueFilter {
     }
   }
 
+  public static class VectorValueIn<T extends Comparable<T>> extends ValueIn<T> {
+
+    private final int index;
+
+    private VectorValueIn(Set<T> values, boolean not, int index) {
+      super(values, not);
+      this.index = index;
+    }
+
+    public boolean satisfy(long time, TsPrimitiveType[] values) {
+      Object v = filterType == FilterType.TIME_FILTER ? time : values[index].getValue();
+      return this.values.contains(v) != not;
+    }
+  }
+
   public static class ValueEq<T extends Comparable<T>> extends Eq<T> {
 
     private ValueEq(T value) {
       super(value, FilterType.VALUE_FILTER);
+    }
+  }
+
+  public static class VectorValueEq<T extends Comparable<T>> extends ValueEq<T> {
+
+    private final int index;
+
+    private VectorValueEq(T value, int index) {
+      super(value);
+      this.index = index;
+    }
+
+    public boolean satisfy(long time, TsPrimitiveType[] values) {
+      Object v = filterType == FilterType.TIME_FILTER ? time : values[index].getValue();
+      return this.value.equals(v);
     }
   }
 
@@ -88,10 +119,40 @@ public class ValueFilter {
     }
   }
 
+  public static class VectorValueGt<T extends Comparable<T>> extends ValueGt<T> {
+
+    private final int index;
+
+    private VectorValueGt(T value, int index) {
+      super(value);
+      this.index = index;
+    }
+
+    public boolean satisfy(long time, TsPrimitiveType[] values) {
+      Object v = filterType == FilterType.TIME_FILTER ? time : values[index].getValue();
+      return this.value.compareTo((T) v) < 0;
+    }
+  }
+
   public static class ValueGtEq<T extends Comparable<T>> extends GtEq<T> {
 
     private ValueGtEq(T value) {
       super(value, FilterType.VALUE_FILTER);
+    }
+  }
+
+  public static class VectorValueGtEq<T extends Comparable<T>> extends ValueGtEq<T> {
+
+    private final int index;
+
+    private VectorValueGtEq(T value, int index) {
+      super(value);
+      this.index = index;
+    }
+
+    public boolean satisfy(long time, TsPrimitiveType[] values) {
+      Object v = filterType == FilterType.TIME_FILTER ? time : values[index].getValue();
+      return this.value.compareTo((T) v) <= 0;
     }
   }
 
@@ -102,10 +163,40 @@ public class ValueFilter {
     }
   }
 
+  public static class VectorValueLt<T extends Comparable<T>> extends ValueLt<T> {
+
+    private final int index;
+
+    private VectorValueLt(T value, int index) {
+      super(value);
+      this.index = index;
+    }
+
+    public boolean satisfy(long time, TsPrimitiveType[] values) {
+      Object v = filterType == FilterType.TIME_FILTER ? time : values[index].getValue();
+      return this.value.compareTo((T) v) > 0;
+    }
+  }
+
   public static class ValueLtEq<T extends Comparable<T>> extends LtEq<T> {
 
     private ValueLtEq(T value) {
       super(value, FilterType.VALUE_FILTER);
+    }
+  }
+
+  public static class VectorValueLtEq<T extends Comparable<T>> extends ValueLtEq<T> {
+
+    private final int index;
+
+    private VectorValueLtEq(T value, int index) {
+      super(value);
+      this.index = index;
+    }
+
+    public boolean satisfy(long time, TsPrimitiveType[] values) {
+      Object v = filterType == FilterType.TIME_FILTER ? time : values[index].getValue();
+      return this.value.compareTo((T) v) >= 0;
     }
   }
 
@@ -125,6 +216,21 @@ public class ValueFilter {
 
     private ValueNotEq(T value) {
       super(value, FilterType.VALUE_FILTER);
+    }
+  }
+
+  public static class VectorValueNotEq<T extends Comparable<T>> extends ValueNotEq<T> {
+
+    private final int index;
+
+    private VectorValueNotEq(T value, int index) {
+      super(value);
+      this.index = index;
+    }
+
+    public boolean satisfy(long time, TsPrimitiveType[] values) {
+      Object v = filterType == FilterType.TIME_FILTER ? time : values[index].getValue();
+      return !this.value.equals(v);
     }
   }
 }

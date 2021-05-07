@@ -46,7 +46,6 @@ public class MemtableBenchmark {
       for (int j = 0; j < numOfMeasurement; j++) {
         memTable.write(
             deviceId,
-            measurementId[j],
             new MeasurementSchema(measurementId[j], tsDataType, TSEncoding.PLAIN),
             System.nanoTime(),
             String.valueOf(System.currentTimeMillis()));

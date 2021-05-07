@@ -137,6 +137,7 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.InClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.IndexPredicateClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.IndexWithClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.InsertColumnsSpecContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.InsertMultiValueContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.InsertStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.InsertValuesSpecContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.KillQueryContext;
@@ -155,6 +156,8 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.ListUserPrivilegesContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.LoadConfigurationStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.LoadFilesContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.LoadStatementContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.MeasurementNameContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.MeasurementValueContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.MergeContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.MoveFileContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.NodeNameContext;
@@ -262,7 +265,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   @Override
   public Operator visitSingleStatement(SingleStatementContext ctx) {
     Operator operator = visit(ctx.statement());
-    if (ctx.EXPLAIN() != null) {
+    if (ctx.DEBUG() != null) {
       operator.setDebug(true);
     }
     return operator;
@@ -1880,28 +1883,35 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   }
 
   private void parseInsertColumnSpec(InsertColumnsSpecContext ctx, InsertOperator insertOp) {
-    List<NodeNameWithoutStarContext> nodeNamesWithoutStar = ctx.nodeNameWithoutStar();
+    List<MeasurementNameContext> measurementNames = ctx.measurementName();
     List<String> measurementList = new ArrayList<>();
-    for (NodeNameWithoutStarContext nodeNameWithoutStar : nodeNamesWithoutStar) {
-      String measurement = nodeNameWithoutStar.getText();
+    for (MeasurementNameContext measurementName : measurementNames) {
+      String measurement = measurementName.getText();
       measurementList.add(measurement);
     }
     insertOp.setMeasurementList(measurementList.toArray(new String[0]));
   }
 
   private void parseInsertValuesSpec(InsertValuesSpecContext ctx, InsertOperator insertOp) {
-    long timestamp;
-    if (ctx.dateFormat() != null) {
-      timestamp = parseTimeFormat(ctx.dateFormat().getText());
-    } else {
-      timestamp = Long.parseLong(ctx.INT().getText());
-    }
-    insertOp.setTime(timestamp);
+    List<InsertMultiValueContext> insertMultiValues = ctx.insertMultiValue();
     List<String> valueList = new ArrayList<>();
-    List<ConstantContext> values = ctx.constant();
-    for (ConstantContext value : values) {
-      valueList.add(value.getText());
+    long[] timeArray = new long[insertMultiValues.size()];
+    for (int i = 0; i < insertMultiValues.size(); i++) {
+      long timestamp;
+      if (insertMultiValues.get(i).dateFormat() != null) {
+        timestamp = parseTimeFormat(insertMultiValues.get(i).dateFormat().getText());
+      } else {
+        timestamp = Long.parseLong(insertMultiValues.get(i).INT().getText());
+      }
+      timeArray[i] = timestamp;
+      List<MeasurementValueContext> values = insertMultiValues.get(i).measurementValue();
+      for (MeasurementValueContext value : values) {
+        for (ConstantContext counstant : value.constant()) {
+          valueList.add(counstant.getText());
+        }
+      }
     }
+    insertOp.setTimes(timeArray);
     insertOp.setValueList(valueList.toArray(new String[0]));
   }
 

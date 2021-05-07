@@ -45,7 +45,7 @@ public class SeriesAggregateReader implements IAggregateReader {
       TsFileFilter fileFilter,
       boolean ascending) {
     this.seriesReader =
-        new SeriesReader(
+        SeriesReaderFactory.createSeriesReader(
             seriesPath,
             allSensors,
             dataType,

@@ -41,6 +41,7 @@ import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.apache.commons.cli.CommandLine;
@@ -115,7 +116,7 @@ public class ClientMain {
 
   private static final TSDataType[] DATA_TYPES = new TSDataType[] {TSDataType.DOUBLE};
 
-  private static List<MeasurementSchema> schemas;
+  private static List<IMeasurementSchema> schemas;
 
   private static final String[] DATA_QUERIES =
       new String[] {
@@ -364,7 +365,7 @@ public class ClientMain {
   private static void registerTimeseries(long sessionId, Client client) throws TException {
     TSCreateTimeseriesReq req = new TSCreateTimeseriesReq();
     req.setSessionId(sessionId);
-    for (MeasurementSchema schema : schemas) {
+    for (IMeasurementSchema schema : schemas) {
       req.setDataType(schema.getType().ordinal());
       req.setEncoding(schema.getEncodingType().ordinal());
       req.setCompressor(schema.getCompressor().ordinal());

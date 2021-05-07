@@ -77,6 +77,7 @@ import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryIndexPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
@@ -129,6 +130,7 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -232,15 +234,39 @@ public class PhysicalGenerator {
       case INSERT:
         InsertOperator insert = (InsertOperator) operator;
         paths = insert.getSelectedPaths();
-        if (insert.getMeasurementList().length != insert.getValueList().length) {
+        int measurementsNum = 0;
+        for (String measurement : insert.getMeasurementList()) {
+          if (measurement.startsWith("(") && measurement.endsWith(")")) {
+            measurementsNum += measurement.replace("(", "").replace(")", "").split(",").length;
+          } else {
+            measurementsNum++;
+          }
+        }
+        if (measurementsNum == 0 || (insert.getValueList().length % measurementsNum != 0)) {
           throw new SQLParserException(
               String.format(
                   "the measurementList's size %d is not consistent with the valueList's size %d",
-                  insert.getMeasurementList().length, insert.getValueList().length));
+                  measurementsNum, insert.getValueList().length));
         }
-
-        return new InsertRowPlan(
-            paths.get(0), insert.getTime(), insert.getMeasurementList(), insert.getValueList());
+        if (measurementsNum == insert.getValueList().length) {
+          return new InsertRowPlan(
+              paths.get(0),
+              insert.getTimes()[0],
+              insert.getMeasurementList(),
+              insert.getValueList());
+        }
+        InsertRowsPlan insertRowsPlan = new InsertRowsPlan();
+        for (int i = 0; i < insert.getTimes().length; i++) {
+          insertRowsPlan.addOneInsertRowPlan(
+              new InsertRowPlan(
+                  paths.get(0),
+                  insert.getTimes()[i],
+                  insert.getMeasurementList(),
+                  Arrays.copyOfRange(
+                      insert.getValueList(), i * measurementsNum, (i + 1) * measurementsNum)),
+              i);
+        }
+        return insertRowsPlan;
       case MERGE:
         if (operator.getTokenIntType() == SQLConstant.TOK_FULL_MERGE) {
           return new MergePlan(OperatorType.FULL_MERGE);
@@ -849,6 +875,7 @@ public class PhysicalGenerator {
           columnForReaderSet.add(column);
         }
       }
+      ((LastQueryPlan) queryPlan).transformPaths(IoTDB.metaManager);
       return;
     }
 
@@ -903,10 +930,37 @@ public class PhysicalGenerator {
         columnForDisplaySet.add(columnForDisplay);
       }
     }
-
     if (queryPlan instanceof UDTFPlan) {
       ((UDTFPlan) queryPlan).setPathNameToReaderIndex(pathNameToReaderIndex);
+      return;
     }
+
+    if (!rawDataQueryPlan.isRawQuery()) {
+      rawDataQueryPlan.transformPaths(IoTDB.metaManager);
+    } else {
+      // support vector
+      List<PartialPath> deduplicatedPaths = rawDataQueryPlan.getDeduplicatedPaths();
+      Pair<List<PartialPath>, Map<String, Integer>> pair = getSeriesSchema(deduplicatedPaths);
+
+      List<PartialPath> vectorizedDeduplicatedPaths = pair.left;
+      List<TSDataType> vectorizedDeduplicatedDataTypes =
+          new ArrayList<>(getSeriesTypes(vectorizedDeduplicatedPaths));
+      rawDataQueryPlan.setDeduplicatedVectorPaths(vectorizedDeduplicatedPaths);
+      rawDataQueryPlan.setDeduplicatedVectorDataTypes(vectorizedDeduplicatedDataTypes);
+
+      Map<String, Integer> columnForDisplayToQueryDataSetIndex = pair.right;
+      Map<String, Integer> pathToIndex = new HashMap<>();
+      for (String columnForDisplay : columnForDisplaySet) {
+        pathToIndex.put(
+            columnForDisplay, columnForDisplayToQueryDataSetIndex.get(columnForDisplay));
+      }
+      queryPlan.setVectorPathToIndex(pathToIndex);
+    }
+  }
+
+  protected Pair<List<PartialPath>, Map<String, Integer>> getSeriesSchema(List<PartialPath> paths)
+      throws MetadataException {
+    return IoTDB.metaManager.getSeriesSchemas(paths);
   }
 
   private List<String> slimitTrimColumn(List<String> columnList, int seriesLimit, int seriesOffset)

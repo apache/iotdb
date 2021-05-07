@@ -319,7 +319,7 @@ public class IoTDBSeriesReaderIT {
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedDataTypes(dataTypes);
-    queryPlan.setDeduplicatedPaths(pathList);
+    queryPlan.setDeduplicatedPathsAndUpdate(pathList);
     QueryDataSet queryDataSet = queryRouter.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
 
     int cnt = 0;
@@ -351,7 +351,7 @@ public class IoTDBSeriesReaderIT {
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedDataTypes(dataTypes);
-    queryPlan.setDeduplicatedPaths(pathList);
+    queryPlan.setDeduplicatedPathsAndUpdate(pathList);
     queryPlan.setExpression(singleSeriesExpression);
     QueryDataSet queryDataSet = queryRouter.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
 
@@ -379,7 +379,7 @@ public class IoTDBSeriesReaderIT {
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedDataTypes(dataTypes);
-    queryPlan.setDeduplicatedPaths(Collections.singletonList(path));
+    queryPlan.setDeduplicatedPathsAndUpdate(Collections.singletonList(path));
     queryPlan.setExpression(expression);
     QueryDataSet queryDataSet = queryRouter.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
 
@@ -407,7 +407,7 @@ public class IoTDBSeriesReaderIT {
     List<PartialPath> pathList = new ArrayList<>();
     pathList.add(path1);
     pathList.add(path2);
-    queryPlan.setDeduplicatedPaths(pathList);
+    queryPlan.setDeduplicatedPathsAndUpdate(pathList);
 
     List<TSDataType> dataTypes = new ArrayList<>();
     dataTypes.add(TSDataType.INT32);
