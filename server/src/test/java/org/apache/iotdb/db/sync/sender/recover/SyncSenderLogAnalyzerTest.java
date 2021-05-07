@@ -66,7 +66,7 @@ public class SyncSenderLogAnalyzerTest {
       throws IOException, InterruptedException, StartupException, DiskSpaceInsufficientException {
     EnvironmentUtils.envSetUp();
     FSPath seqDir = TierManager.getInstance().getAllSequenceFileFolders().get(0);
-    dataDir = new FSPath(seqDir.getFsType(), seqDir.getFile().getParentFile().getAbsolutePath());
+    dataDir = new FSPath(seqDir.getFsType(), seqDir.toFile().getParentFile().getAbsolutePath());
     config.update(dataDir);
     senderLogger =
         new SyncSenderLogger(config.getSenderFolderPath().getChildFile(SyncConstant.SYNC_LOG_NAME));
@@ -104,7 +104,7 @@ public class SyncSenderLogAnalyzerTest {
                 + "0"
                 + File.separator
                 + rand;
-        File file = new FSPath(dataDir.getFsType(), fileName).getFile();
+        File file = new FSPath(dataDir.getFsType(), fileName).toFile();
         allFileList.get(getSgName(i)).get(0L).get(0L).add(file);
         if (!file.getParentFile().exists()) {
           file.getParentFile().mkdirs();

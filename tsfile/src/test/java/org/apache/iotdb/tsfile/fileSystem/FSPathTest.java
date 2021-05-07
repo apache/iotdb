@@ -54,8 +54,7 @@ public class FSPathTest {
     Assert.assertEquals(FSType.LOCAL, fsPath.getFsType());
     Assert.assertEquals(file.getAbsolutePath(), fsPath.getPath());
     Assert.assertEquals(
-        FSType.LOCAL.name() + FSPath.FS_PATH_SEPARATOR + file.getAbsolutePath(),
-        fsPath.getRawFSPath());
+        FSType.LOCAL.name() + FSPath.FS_PATH_SEPARATOR + file.getPath(), fsPath.getRawFSPath());
   }
 
   @Test
@@ -68,12 +67,12 @@ public class FSPathTest {
   }
 
   @Test
-  public void testGetFile() {
+  public void testToFile() {
     String pathWithFS =
         FSType.LOCAL.name() + FSPath.FS_PATH_SEPARATOR + TestConstant.BASE_OUTPUT_PATH;
     FSPath fsPath = FSPath.parse(pathWithFS);
     File expectedFile = new File(TestConstant.BASE_OUTPUT_PATH);
-    Assert.assertEquals(expectedFile, fsPath.getFile());
+    Assert.assertEquals(expectedFile, fsPath.toFile());
   }
 
   @Test
@@ -111,6 +110,17 @@ public class FSPathTest {
     Assert.assertEquals(TestConstant.BASE_OUTPUT_PATH + fileName, fsPath.getPath());
     Assert.assertEquals(
         FSType.LOCAL.name() + FSPath.FS_PATH_SEPARATOR + TestConstant.BASE_OUTPUT_PATH + fileName,
+        fsPath.getRawFSPath());
+  }
+
+  @Test
+  public void testGetAbsoluteFSPath() {
+    File file = new File(TestConstant.BASE_OUTPUT_PATH);
+    FSPath fsPath = FSPath.parse(file).getAbsoluteFSPath();
+    Assert.assertEquals(FSType.LOCAL, fsPath.getFsType());
+    Assert.assertEquals(file.getAbsolutePath(), fsPath.getPath());
+    Assert.assertEquals(
+        FSType.LOCAL.name() + FSPath.FS_PATH_SEPARATOR + file.getAbsolutePath(),
         fsPath.getRawFSPath());
   }
 }

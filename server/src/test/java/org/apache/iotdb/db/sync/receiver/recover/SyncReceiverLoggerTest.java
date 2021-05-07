@@ -50,7 +50,7 @@ public class SyncReceiverLoggerTest {
   public void setUp() throws DiskSpaceInsufficientException {
     EnvironmentUtils.envSetUp();
     FSPath seqDir = TierManager.getInstance().getAllSequenceFileFolders().get(0);
-    dataDir = new FSPath(seqDir.getFsType(), seqDir.getFile().getParentFile().getAbsolutePath());
+    dataDir = new FSPath(seqDir.getFsType(), seqDir.toFile().getParentFile().getAbsolutePath());
     fsFactory = FSFactoryProducer.getFSFactory(dataDir.getFsType());
   }
 
@@ -70,7 +70,7 @@ public class SyncReceiverLoggerTest {
     for (int i = 0; i < 200; i++) {
       File file = fsFactory.getFile(getReceiverFolderFile(), "deleted" + i);
       receiverLogger.finishSyncDeletedFileName(file);
-      deletedFileNames.add(FSPath.parse(file).getRawFSPath());
+      deletedFileNames.add(FSPath.parse(file).getAbsoluteFSPath().getRawFSPath());
     }
     Set<String> toBeSyncedFiles = new HashSet<>();
     Set<String> toBeSyncedFilesTest = new HashSet<>();
@@ -78,7 +78,7 @@ public class SyncReceiverLoggerTest {
     for (int i = 0; i < 200; i++) {
       File file = fsFactory.getFile(getReceiverFolderFile(), "new" + i);
       receiverLogger.finishSyncTsfile(file);
-      toBeSyncedFiles.add(FSPath.parse(file).getRawFSPath());
+      toBeSyncedFiles.add(FSPath.parse(file).getAbsoluteFSPath().getRawFSPath());
     }
     receiverLogger.close();
     int count = 0;
@@ -115,6 +115,6 @@ public class SyncReceiverLoggerTest {
     return dataDir
         .postConcat(
             File.separatorChar + SyncConstant.SYNC_RECEIVER + File.separatorChar + "127.0.0.1_5555")
-        .getFile();
+        .toFile();
   }
 }

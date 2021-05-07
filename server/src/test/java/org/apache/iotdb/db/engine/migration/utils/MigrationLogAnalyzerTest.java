@@ -75,14 +75,17 @@ public class MigrationLogAnalyzerTest {
     analyzer.analyze();
 
     Assert.assertTrue(analyzer.isSequence());
-    Assert.assertEquals(FSPath.parse(targetDir).getRawFSPath(), analyzer.getTargetDir());
+    Assert.assertEquals(
+        FSPath.parse(targetDir).getAbsoluteFSPath().getRawFSPath(), analyzer.getTargetDir());
     List<String> srcRawPaths = analyzer.getFiles();
     for (int i = 0; i < this.srcFiles.size(); ++i) {
-      Assert.assertEquals(FSPath.parse(srcFiles.get(i)).getRawFSPath(), srcRawPaths.get(i));
+      Assert.assertEquals(
+          FSPath.parse(srcFiles.get(i)).getAbsoluteFSPath().getRawFSPath(), srcRawPaths.get(i));
     }
     for (File src : this.srcFiles) {
       Assert.assertEquals(
-          fileStatus.get(src), analyzer.getMigrationStatus(FSPath.parse(src).getRawFSPath()));
+          fileStatus.get(src),
+          analyzer.getMigrationStatus(FSPath.parse(src).getAbsoluteFSPath().getRawFSPath()));
     }
   }
 
@@ -109,14 +112,17 @@ public class MigrationLogAnalyzerTest {
     analyzer.analyze();
 
     Assert.assertTrue(analyzer.isSequence());
-    Assert.assertEquals(FSPath.parse(targetDir).getRawFSPath(), analyzer.getTargetDir());
+    Assert.assertEquals(
+        FSPath.parse(targetDir).getAbsoluteFSPath().getRawFSPath(), analyzer.getTargetDir());
     List<String> srcRawPaths = analyzer.getFiles();
     for (int i = 0; i < this.srcFiles.size(); ++i) {
-      Assert.assertEquals(FSPath.parse(srcFiles.get(i)).getRawFSPath(), srcRawPaths.get(i));
+      Assert.assertEquals(
+          FSPath.parse(srcFiles.get(i)).getAbsoluteFSPath().getRawFSPath(), srcRawPaths.get(i));
     }
     for (File src : this.srcFiles) {
       Assert.assertEquals(
-          fileStatus.get(src), analyzer.getMigrationStatus(FSPath.parse(src).getRawFSPath()));
+          fileStatus.get(src),
+          analyzer.getMigrationStatus(FSPath.parse(src).getAbsoluteFSPath().getRawFSPath()));
     }
   }
 
@@ -141,14 +147,17 @@ public class MigrationLogAnalyzerTest {
     analyzer.analyze();
 
     Assert.assertTrue(analyzer.isSequence());
-    Assert.assertEquals(FSPath.parse(targetDir).getRawFSPath(), analyzer.getTargetDir());
+    Assert.assertEquals(
+        FSPath.parse(targetDir).getAbsoluteFSPath().getRawFSPath(), analyzer.getTargetDir());
     List<String> srcRawPaths = analyzer.getFiles();
     for (int i = 0; i < this.srcFiles.size(); ++i) {
-      Assert.assertEquals(FSPath.parse(srcFiles.get(i)).getRawFSPath(), srcRawPaths.get(i));
+      Assert.assertEquals(
+          FSPath.parse(srcFiles.get(i)).getAbsoluteFSPath().getRawFSPath(), srcRawPaths.get(i));
     }
     for (File src : this.srcFiles) {
       Assert.assertEquals(
-          fileStatus.get(src), analyzer.getMigrationStatus(FSPath.parse(src).getRawFSPath()));
+          fileStatus.get(src),
+          analyzer.getMigrationStatus(FSPath.parse(src).getAbsoluteFSPath().getRawFSPath()));
     }
   }
 
@@ -170,14 +179,17 @@ public class MigrationLogAnalyzerTest {
     analyzer.analyze();
 
     Assert.assertFalse(analyzer.isSequence());
-    Assert.assertEquals(FSPath.parse(targetDir).getRawFSPath(), analyzer.getTargetDir());
+    Assert.assertEquals(
+        FSPath.parse(targetDir).getAbsoluteFSPath().getRawFSPath(), analyzer.getTargetDir());
     List<String> srcRawPaths = analyzer.getFiles();
     for (int i = 0; i < this.srcFiles.size(); ++i) {
-      Assert.assertEquals(FSPath.parse(srcFiles.get(i)).getRawFSPath(), srcRawPaths.get(i));
+      Assert.assertEquals(
+          FSPath.parse(srcFiles.get(i)).getAbsoluteFSPath().getRawFSPath(), srcRawPaths.get(i));
     }
     for (File src : this.srcFiles) {
       Assert.assertEquals(
-          fileStatus.get(src), analyzer.getMigrationStatus(FSPath.parse(src).getRawFSPath()));
+          fileStatus.get(src),
+          analyzer.getMigrationStatus(FSPath.parse(src).getAbsoluteFSPath().getRawFSPath()));
     }
   }
 }

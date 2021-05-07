@@ -22,7 +22,6 @@ package org.apache.iotdb.db.engine.migration.utils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.tsfile.fileSystem.FSPath;
-import org.apache.iotdb.tsfile.utils.FSUtils;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -71,8 +70,7 @@ public class MigrationLogger {
     logStream.write(sequence ? SEQUENCE_SOURCE : UNSEQUENCE_SOURCE);
     logStream.newLine();
     for (File file : sourceFiles) {
-      FSPath fsPath = new FSPath(FSUtils.getFSType(file), file.getAbsolutePath());
-      logStream.write(fsPath.getRawFSPath());
+      logStream.write(FSPath.parse(file).getAbsoluteFSPath().getRawFSPath());
       logStream.newLine();
     }
     logStream.flush();
@@ -81,8 +79,7 @@ public class MigrationLogger {
   public void logTargetDir(File targetDir) throws IOException {
     logStream.write(TARGET_DIR);
     logStream.newLine();
-    FSPath fsPath = new FSPath(FSUtils.getFSType(targetDir), targetDir.getAbsolutePath());
-    logStream.write(fsPath.getRawFSPath());
+    logStream.write(FSPath.parse(targetDir).getAbsoluteFSPath().getRawFSPath());
     logStream.newLine();
     logStream.flush();
   }
@@ -102,8 +99,7 @@ public class MigrationLogger {
   public void startMigrateTsFile(File file) throws IOException {
     logStream.write(FILE_START);
     logStream.newLine();
-    FSPath fsPath = new FSPath(FSUtils.getFSType(file), file.getAbsolutePath());
-    logStream.write(fsPath.getRawFSPath());
+    logStream.write(FSPath.parse(file).getAbsoluteFSPath().getRawFSPath());
     logStream.newLine();
     logStream.flush();
   }

@@ -261,7 +261,7 @@ public class StatMonitor implements StatMonitorMBean, IService {
       long totalSize = 0;
       for (FSPath[] tierDataDirs : config.getDataDirs()) {
         for (FSPath dataDir : tierDataDirs) {
-          totalSize += FileUtils.sizeOfDirectory(dataDir.getFile());
+          totalSize += FileUtils.sizeOfDirectory(dataDir.toFile());
         }
       }
       return totalSize;

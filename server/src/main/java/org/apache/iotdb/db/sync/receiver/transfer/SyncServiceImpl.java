@@ -141,7 +141,7 @@ public class SyncServiceImpl implements SyncService.Iface {
   private void initPath() throws DiskSpaceInsufficientException {
     FSPath seqFolder = TierManager.getInstance().getNextFolderForSequenceFile();
     String syncFolderPath =
-        FilePathUtils.regularizePath(seqFolder.getFile().getParentFile().getAbsolutePath())
+        FilePathUtils.regularizePath(seqFolder.toFile().getParentFile().getAbsolutePath())
             + SyncConstant.SYNC_RECEIVER
             + File.separatorChar
             + senderName.get();
@@ -254,7 +254,7 @@ public class SyncServiceImpl implements SyncService.Iface {
                     new TsFileResource(
                         FSPath.parse(currentFile.get())
                             .postConcat(TsFileResource.RESOURCE_SUFFIX)
-                            .getFile()));
+                            .toFile()));
             syncLog.get().finishSyncTsfile(currentFile.get());
             FileLoaderManager.getInstance()
                 .getFileLoader(senderName.get())

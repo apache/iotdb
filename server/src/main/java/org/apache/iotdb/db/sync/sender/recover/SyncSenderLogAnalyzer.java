@@ -107,7 +107,7 @@ public class SyncSenderLogAnalyzer implements ISyncSenderLogAnalyzer {
         fsFactory.getBufferedReader(tmpToBeSyncedBlacklistFile.getAbsolutePath())) {
       String line;
       while ((line = br.readLine()) != null) {
-        File file = FSPath.parse(line).getFile();
+        File file = FSPath.parse(line).toFile();
         if (file.exists()) {
           lastLocalFiles.add(line);
         }
@@ -131,7 +131,7 @@ public class SyncSenderLogAnalyzer implements ISyncSenderLogAnalyzer {
         fsFactory.getBufferedReader(tmpDeletedBlacklistFile.getAbsolutePath())) {
       String line;
       while ((line = br.readLine()) != null) {
-        File file = FSPath.parse(line).getFile();
+        File file = FSPath.parse(line).toFile();
         if (!file.exists()) {
           lastLocalFiles.remove(line);
         }

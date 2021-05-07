@@ -78,7 +78,7 @@ public class MigrationRecoverTask implements IMigrationTask {
           logFile.getAbsolutePath());
     }
     List<String> srcPaths = new ArrayList<>();
-    File targetDir = FSPath.parse(analyzer.getTargetDir()).getFile();
+    File targetDir = FSPath.parse(analyzer.getTargetDir()).toFile();
     for (String src : analyzer.getFiles()) {
       switch (analyzer.getMigrationStatus(src)) {
         case START:
@@ -86,7 +86,7 @@ public class MigrationRecoverTask implements IMigrationTask {
           srcPaths.add(src);
           break;
         case COPY_END:
-          sgTsFileDeleteFunc.accept(FSPath.parse(src).getFile());
+          sgTsFileDeleteFunc.accept(FSPath.parse(src).toFile());
           break;
         case MOVE_END:
         case END:
@@ -106,7 +106,8 @@ public class MigrationRecoverTask implements IMigrationTask {
     for (TsFileResource tsFileResource :
         tsFileResourcesGetter.apply(analyzer.isSequence(), timePartitionId)) {
       tsFileResourcesByPath.put(
-          FSPath.parse(tsFileResource.getTsFile()).getRawFSPath(), tsFileResource);
+          FSPath.parse(tsFileResource.getTsFile()).getAbsoluteFSPath().getRawFSPath(),
+          tsFileResource);
     }
     List<TsFileResource> srcTsFileResources = new ArrayList<>();
     try {

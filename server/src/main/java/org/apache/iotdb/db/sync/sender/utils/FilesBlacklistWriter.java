@@ -66,9 +66,7 @@ public class FilesBlacklistWriter {
   public void addToBlacklist(File tsFile, File receiverDir) {
     FSFactory fsFactory = FSFactoryProducer.getFSFactory(FSUtils.getFSType(receiverDir));
     File blacklistFile = fsFactory.getFile(receiverDir, blacklistFilename);
-    System.out.println("out");
     try (BufferedWriter bw = fsFactory.getBufferedWriter(blacklistFile.getAbsolutePath(), true)) {
-      System.out.println("in");
       bw.write(FSPath.parse(tsFile).getAbsoluteFSPath().getRawFSPath());
       bw.newLine();
       bw.flush();

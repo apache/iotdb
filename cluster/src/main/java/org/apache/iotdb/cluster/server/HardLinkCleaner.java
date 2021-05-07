@@ -52,7 +52,7 @@ public class HardLinkCleaner implements Runnable {
   }
 
   private void scanFolder(FSPath folder) {
-    File folderFile = folder.getFile();
+    File folderFile = folder.toFile();
     scanFile(folderFile);
   }
 

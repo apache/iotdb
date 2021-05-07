@@ -137,11 +137,11 @@ public class EnvironmentUtils {
   public static void cleanAllDir() throws IOException {
     // delete sequential files
     for (FSPath path : tierManager.getAllSequenceFileFolders()) {
-      cleanDir(path.getFile());
+      cleanDir(path.toFile());
     }
     // delete unsequence files
     for (FSPath path : tierManager.getAllUnSequenceFileFolders()) {
-      cleanDir(path.getFile());
+      cleanDir(path.toFile());
     }
     // delete system info
     cleanDir(new File(config.getSystemDir()));
@@ -150,7 +150,7 @@ public class EnvironmentUtils {
     // delete data files
     for (FSPath[] tierDataDirs : config.getDataDirs()) {
       for (FSPath dataDir: tierDataDirs) {
-        cleanDir(dataDir.getFile());
+        cleanDir(dataDir.toFile());
       }
     }
   }
@@ -219,7 +219,7 @@ public class EnvironmentUtils {
   }
 
   private static void createDir(FSPath dir) {
-    File file = dir.getFile();
+    File file = dir.toFile();
     file.mkdirs();
   }
 

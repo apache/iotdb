@@ -51,7 +51,7 @@ public class TsFileSketchTool {
     System.out.println("TsFile path:" + filename);
     System.out.println("Sketch save path:" + outFile);
     try (PrintWriter pw = new PrintWriter(new FileWriter(outFile))) {
-      File file = FSPath.parse(filename).getFile();
+      File file = FSPath.parse(filename).toFile();
       long length = file.length();
       printlnBoth(
           pw, "-------------------------------- TsFile Sketch --------------------------------");

@@ -85,6 +85,7 @@ public class FSUtils {
         return fs;
       }
     }
+    logger.error("Unsupported file system: {}", file);
     throw new FileSystemNotSupportedException(file.getPath());
   }
 

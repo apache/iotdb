@@ -62,7 +62,7 @@ public class SyncClientTest {
   public void setUp() throws DiskSpaceInsufficientException {
     EnvironmentUtils.envSetUp();
     FSPath seqDir = TierManager.getInstance().getAllSequenceFileFolders().get(0);
-    dataDir = new FSPath(seqDir.getFsType(), seqDir.getFile().getParentFile().getAbsolutePath());
+    dataDir = new FSPath(seqDir.getFsType(), seqDir.toFile().getParentFile().getAbsolutePath());
     config.update(dataDir);
     senderLogAnalyzer = new SyncSenderLogAnalyzer(config.getSenderFolderPath());
   }
@@ -97,7 +97,7 @@ public class SyncClientTest {
                 + "0"
                 + File.separator
                 + rand;
-        File file = new FSPath(dataDir.getFsType(), fileName).getFile();
+        File file = new FSPath(dataDir.getFsType(), fileName).toFile();
         allFileList.get(String.valueOf(i)).get(0L).get(0L).add(file);
         if (!file.getParentFile().exists()) {
           file.getParentFile().mkdirs();
@@ -128,11 +128,11 @@ public class SyncClientTest {
       }
     }
 
-    assertTrue(config.getSenderFolderPath().getFile().exists());
-    assertTrue(config.getSnapshotPath().getFile().exists());
+    assertTrue(config.getSenderFolderPath().toFile().exists());
+    assertTrue(config.getSnapshotPath().toFile().exists());
 
     Map<String, Set<String>> snapFileMap = new HashMap<>();
-    for (File sgFile : config.getSnapshotPath().getFile().listFiles()) {
+    for (File sgFile : config.getSnapshotPath().toFile().listFiles()) {
       snapFileMap.putIfAbsent(sgFile.getName(), new HashSet<>());
       for (File vgFile : sgFile.listFiles()) {
         for (File trFile : vgFile.listFiles()) {
@@ -152,9 +152,9 @@ public class SyncClientTest {
       assertTrue(snapFileMap.get(sg).containsAll(tsfiles));
     }
 
-    assertFalse(config.getLastFileInfoPath().getFile().exists());
+    assertFalse(config.getLastFileInfoPath().toFile().exists());
     senderLogAnalyzer.recover();
-    assertFalse(config.getSnapshotPath().getFile().exists());
-    assertTrue(config.getLastFileInfoPath().getFile().exists());
+    assertFalse(config.getSnapshotPath().toFile().exists());
+    assertTrue(config.getLastFileInfoPath().toFile().exists());
   }
 }

@@ -123,7 +123,7 @@ public class DirectoryManager {
 
   private void mkDataDirs(List<FSPath> folders) {
     for (FSPath folder : folders) {
-      File file = folder.getFile();
+      File file = folder.toFile();
       if (file.mkdirs()) {
         logger.info("folder {} doesn't exist, create it", file.getPath());
       } else {

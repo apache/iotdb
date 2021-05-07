@@ -74,7 +74,7 @@ public class SyncReceiverLogAnalyzerTest {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     FSPath seqDir = TierManager.getInstance().getAllSequenceFileFolders().get(0);
-    dataDir = new FSPath(seqDir.getFsType(), seqDir.getFile().getParentFile().getAbsolutePath());
+    dataDir = new FSPath(seqDir.getFsType(), seqDir.toFile().getParentFile().getAbsolutePath());
     logAnalyze = SyncReceiverLogAnalyzer.getInstance();
     initMetadata();
   }
@@ -129,7 +129,7 @@ public class SyncReceiverLogAnalyzerTest {
         Thread.sleep(1);
         File syncFile = new File(fileName);
         receiverLogger.finishSyncTsfile(syncFile);
-        toBeSyncedFiles.add(FSPath.parse(syncFile).getRawFSPath());
+        toBeSyncedFiles.add(FSPath.parse(syncFile).getAbsoluteFSPath().getRawFSPath());
         File dataFile =
             TierManager.getInstance()
                 .getAllSequenceFileFolders()
@@ -222,7 +222,7 @@ public class SyncReceiverLogAnalyzerTest {
     return dataDir
         .postConcat(
             File.separatorChar + SyncConstant.SYNC_RECEIVER + File.separatorChar + "127.0.0.1_5555")
-        .getFile();
+        .toFile();
   }
 
   private File getSnapshotFolder() {

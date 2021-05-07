@@ -48,8 +48,8 @@ public class SyncUtils {
             + File.separator
             + file.getName();
     FSPath snapshotDir = SyncSenderDescriptor.getInstance().getConfig().getSnapshotPath();
-    if (!snapshotDir.getFile().exists()) {
-      snapshotDir.getFile().mkdirs();
+    if (!snapshotDir.toFile().exists()) {
+      snapshotDir.toFile().mkdirs();
     }
     return snapshotDir.getChildFile(relativeFilePath);
   }

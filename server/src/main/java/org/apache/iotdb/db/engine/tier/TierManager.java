@@ -27,7 +27,6 @@ import org.apache.iotdb.db.engine.tier.migration.IMigrationStrategy;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.tsfile.fileSystem.FSPath;
-import org.apache.iotdb.tsfile.utils.FSUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -274,16 +273,10 @@ public class TierManager {
    */
   public int getTierLevel(File tsFile) {
     // locate the data directory
-    String absolutePath =
-        tsFile
-            .getParentFile()
-            .getParentFile()
-            .getParentFile()
-            .getParentFile()
-            .getParentFile()
-            .getAbsolutePath();
+    File dataDir =
+        tsFile.getParentFile().getParentFile().getParentFile().getParentFile().getParentFile();
     Integer tierLevel =
-        directoryTierLevel.get(new FSPath(FSUtils.getFSType(tsFile), absolutePath).getRawFSPath());
+        directoryTierLevel.get(FSPath.parse(dataDir).getAbsoluteFSPath().getRawFSPath());
     if (tierLevel == null) {
       String msg =
           String.format(

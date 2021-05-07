@@ -55,7 +55,7 @@ public class SyncReceiverLogAnalyzer implements ISyncReceiverLogAnalyzer {
     for (FSPath[] tierDataDirs : dataDirs) {
       for (FSPath dataDir : tierDataDirs) {
         String path = FilePathUtils.regularizePath(dataDir.getPath()) + SyncConstant.SYNC_RECEIVER;
-        File file = new FSPath(dataDir.getFsType(), path).getFile();
+        File file = new FSPath(dataDir.getFsType(), path).toFile();
         if (!file.exists()) {
           continue;
         }
@@ -100,7 +100,7 @@ public class SyncReceiverLogAnalyzer implements ISyncReceiverLogAnalyzer {
     for (FSPath[] tierDataDirs : dataDirs) {
       for (FSPath dataDir : tierDataDirs) {
         String path = FilePathUtils.regularizePath(dataDir.getPath()) + SyncConstant.SYNC_RECEIVER;
-        File file = new FSPath(dataDir.getFsType(), path).getFile();
+        File file = new FSPath(dataDir.getFsType(), path).toFile();
         if (!file.exists()) {
           continue;
         }
@@ -143,10 +143,10 @@ public class SyncReceiverLogAnalyzer implements ISyncReceiverLogAnalyzer {
         } else {
           switch (loadType) {
             case ADD:
-              loader.addTsfile(FSPath.parse(line).getFile());
+              loader.addTsfile(FSPath.parse(line).toFile());
               break;
             case DELETE:
-              loader.addDeletedFileName(FSPath.parse(line).getFile());
+              loader.addDeletedFileName(FSPath.parse(line).toFile());
               break;
             default:
               LOGGER.error("Wrong load type {}", loadType);

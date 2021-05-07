@@ -71,7 +71,7 @@ public class CommonUtils {
    * @return
    */
   public static long getUsableSpace(FSPath dir) {
-    File dirFile = dir.getFile();
+    File dirFile = dir.toFile();
     dirFile.mkdirs();
     return dirFile.getFreeSpace();
   }
@@ -81,7 +81,7 @@ public class CommonUtils {
   }
 
   public static long getOccupiedSpace(FSPath folderPath) throws IOException {
-    File file = folderPath.getFile();
+    File file = folderPath.toFile();
     if (file.isDirectory()) {
       return FileUtils.sizeOfDirectory(file);
     } else {

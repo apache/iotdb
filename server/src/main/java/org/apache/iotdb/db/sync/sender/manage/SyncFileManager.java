@@ -104,7 +104,7 @@ public class SyncFileManager implements ISyncFileManager {
     // get all files in data dir sequence folder
     Map<String, Map<Long, Map<Long, Set<File>>>> currentAllLocalFiles = new HashMap<>();
     File seqFolder =
-        dataDir.postConcat(File.separatorChar + IoTDBConstant.SEQUENCE_FLODER_NAME).getFile();
+        dataDir.postConcat(File.separatorChar + IoTDBConstant.SEQUENCE_FLODER_NAME).toFile();
     if (!seqFolder.exists()) {
       return;
     }
@@ -190,7 +190,7 @@ public class SyncFileManager implements ISyncFileManager {
         "Start to get last local files from last local file info {}",
         lastLocalFilePath.getRawFSPath());
     lastLocalFilesMap = new HashMap<>();
-    File lastLocalFileInfo = lastLocalFilePath.getFile();
+    File lastLocalFileInfo = lastLocalFilePath.toFile();
     if (!lastLocalFileInfo.exists()) {
       return;
     }
@@ -198,7 +198,7 @@ public class SyncFileManager implements ISyncFileManager {
     try (BufferedReader reader = fsFactory.getBufferedReader(lastLocalFileInfo.getAbsolutePath())) {
       String filePath;
       while ((filePath = reader.readLine()) != null) {
-        File file = FSPath.parse(filePath).getFile();
+        File file = FSPath.parse(filePath).toFile();
         Long timeRangeId = Long.parseLong(file.getParentFile().getName());
         Long vgId = Long.parseLong(file.getParentFile().getParentFile().getName());
         String sgName = file.getParentFile().getParentFile().getParentFile().getName();
@@ -217,21 +217,21 @@ public class SyncFileManager implements ISyncFileManager {
   }
 
   private void filterToBeSyncedFiles(FSPath blacklistFilePath) throws IOException {
-    File blacklistFile = blacklistFilePath.getFile();
+    File blacklistFile = blacklistFilePath.toFile();
     if (!blacklistFile.exists()) {
       return;
     }
     LOGGER.info(
         "Start to get to-be-synced files blacklist from blacklist file {}",
         blacklistFilePath.getRawFSPath());
-    File tmpBlacklistFile = blacklistFilePath.postConcat(SyncConstant.TMP_FILE_SUFFIX).getFile();
+    File tmpBlacklistFile = blacklistFilePath.postConcat(SyncConstant.TMP_FILE_SUFFIX).toFile();
     FSFactory fsFactory = FSFactoryProducer.getFSFactory(blacklistFilePath.getFsType());
     fsFactory.moveFile(blacklistFile, tmpBlacklistFile);
     // analyze tmp black list
     try (BufferedReader reader = fsFactory.getBufferedReader(tmpBlacklistFile.getAbsolutePath())) {
       String filePath;
       while ((filePath = reader.readLine()) != null) {
-        File file = FSPath.parse(filePath).getFile();
+        File file = FSPath.parse(filePath).toFile();
         Long timeRangeId = Long.parseLong(file.getParentFile().getName());
         Long vgId = Long.parseLong(file.getParentFile().getParentFile().getName());
         String sgName = file.getParentFile().getParentFile().getParentFile().getName();
@@ -250,21 +250,21 @@ public class SyncFileManager implements ISyncFileManager {
   }
 
   private void filterDeletedFiles(FSPath blacklistFilePath) throws IOException {
-    File blacklistFile = blacklistFilePath.getFile();
+    File blacklistFile = blacklistFilePath.toFile();
     if (!blacklistFile.exists()) {
       return;
     }
     LOGGER.info(
         "Start to get deleted files blacklist from blacklist file {}",
         blacklistFilePath.getRawFSPath());
-    File tmpBlacklistFile = blacklistFilePath.postConcat(SyncConstant.TMP_FILE_SUFFIX).getFile();
+    File tmpBlacklistFile = blacklistFilePath.postConcat(SyncConstant.TMP_FILE_SUFFIX).toFile();
     FSFactory fsFactory = FSFactoryProducer.getFSFactory(blacklistFilePath.getFsType());
     fsFactory.moveFile(blacklistFile, tmpBlacklistFile);
     // analyze tmp black list
     try (BufferedReader reader = fsFactory.getBufferedReader(tmpBlacklistFile.getAbsolutePath())) {
       String filePath;
       while ((filePath = reader.readLine()) != null) {
-        File file = FSPath.parse(filePath).getFile();
+        File file = FSPath.parse(filePath).toFile();
         Long timeRangeId = Long.parseLong(file.getParentFile().getName());
         Long vgId = Long.parseLong(file.getParentFile().getParentFile().getName());
         String sgName = file.getParentFile().getParentFile().getParentFile().getName();

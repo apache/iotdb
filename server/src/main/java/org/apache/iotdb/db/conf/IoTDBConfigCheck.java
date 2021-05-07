@@ -350,7 +350,7 @@ public class IoTDBConfigCheck {
 
   private void checkUnClosedTsFileV2InFolders(List<FSPath> folders) {
     for (FSPath baseDir : folders) {
-      File fileFolder = baseDir.getFile();
+      File fileFolder = baseDir.toFile();
       if (!fileFolder.isDirectory()) {
         continue;
       }
@@ -424,7 +424,7 @@ public class IoTDBConfigCheck {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void moveFileToUpgradeFolder(List<FSPath> folders) {
     for (FSPath baseDir : folders) {
-      File fileFolder = baseDir.getFile();
+      File fileFolder = baseDir.toFile();
       if (!fileFolder.isDirectory()) {
         continue;
       }

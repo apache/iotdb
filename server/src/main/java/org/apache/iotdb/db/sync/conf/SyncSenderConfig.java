@@ -65,8 +65,8 @@ public class SyncSenderConfig {
             File.separatorChar + SyncConstant.TO_BE_SYNCED_BLACKLIST_FILE_NAME);
     snapshotPath =
         senderFolderPath.postConcat(File.separatorChar + SyncConstant.DATA_SNAPSHOT_NAME);
-    if (!snapshotPath.getFile().exists()) {
-      snapshotPath.getFile().mkdirs();
+    if (!snapshotPath.toFile().exists()) {
+      snapshotPath.toFile().mkdirs();
     }
   }
 

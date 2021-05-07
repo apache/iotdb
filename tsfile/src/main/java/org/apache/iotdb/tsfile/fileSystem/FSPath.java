@@ -65,6 +65,7 @@ public class FSPath {
           if (config.isFSSupported(fsType)) {
             return new FSPath(fsType, fsPath.substring(fsType.name().length() + 1));
           } else {
+            logger.error("Unsupported file system: {}", fsType);
             throw new FileSystemNotSupportedException(fsType.name());
           }
         }
@@ -85,7 +86,7 @@ public class FSPath {
    * @return the FSPath object represented by the file argument
    */
   public static FSPath parse(File file) {
-    return new FSPath(FSUtils.getFSType(file), file.getAbsolutePath());
+    return new FSPath(FSUtils.getFSType(file), file.getPath());
   }
 
   public FSType getFsType() {
@@ -111,7 +112,7 @@ public class FSPath {
    * @return a {@code Path} object that represents this filesystem and path
    */
   public Path toPath() {
-    return getFile().toPath();
+    return toFile().toPath();
   }
 
   /**
@@ -119,7 +120,7 @@ public class FSPath {
    *
    * @return a file that represents this filesystem and path
    */
-  public File getFile() {
+  public File toFile() {
     return FSFactoryProducer.getFSFactory(fsType).getFile(path);
   }
 
@@ -161,7 +162,7 @@ public class FSPath {
    * @return a fsPath whose path part is absolute
    */
   public FSPath getAbsoluteFSPath() {
-    return new FSPath(this.fsType, getFile().getAbsolutePath());
+    return new FSPath(this.fsType, toFile().getAbsolutePath());
   }
 
   @Override

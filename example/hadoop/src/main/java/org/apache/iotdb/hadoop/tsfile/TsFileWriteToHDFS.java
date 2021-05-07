@@ -46,7 +46,7 @@ public class TsFileWriteToHDFS {
     config.setTSFileStorageFs(new FSType[] {FSType.HDFS});
 
     String path = "hdfs://localhost:9000/test.tsfile";
-    File f = new FSPath(FSType.HDFS, path).getFile();
+    File f = new FSPath(FSType.HDFS, path).toFile();
     try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
       tsFileWriter.registerTimeseries(
           new Path(Constant.DEVICE_1, Constant.SENSOR_1),

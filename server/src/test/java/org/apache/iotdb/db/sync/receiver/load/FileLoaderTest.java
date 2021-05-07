@@ -70,7 +70,7 @@ public class FileLoaderTest {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     FSPath seqDir = TierManager.getInstance().getAllSequenceFileFolders().get(0);
-    dataDir = new FSPath(seqDir.getFsType(), seqDir.getFile().getParentFile().getAbsolutePath());
+    dataDir = new FSPath(seqDir.getFsType(), seqDir.toFile().getParentFile().getAbsolutePath());
     initMetadata();
   }
 
@@ -397,7 +397,7 @@ public class FileLoaderTest {
     return dataDir
         .postConcat(
             File.separatorChar + SyncConstant.SYNC_RECEIVER + File.separatorChar + "127.0.0.1_5555")
-        .getFile();
+        .toFile();
   }
 
   private File getSnapshotFolder() {

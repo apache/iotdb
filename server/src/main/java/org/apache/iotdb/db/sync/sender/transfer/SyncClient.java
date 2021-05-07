@@ -573,7 +573,7 @@ public class SyncClient implements ISyncClient {
         File snapshotFile = makeFileSnapshot(tsfile);
         // firstly sync .resource file, then sync tsfile
         syncSingleFile(
-            FSPath.parse(snapshotFile).postConcat(TsFileResource.RESOURCE_SUFFIX).getFile());
+            FSPath.parse(snapshotFile).postConcat(TsFileResource.RESOURCE_SUFFIX).toFile());
         syncSingleFile(snapshotFile);
         lastLocalFilesMap.get(sgName).get(vgId).get(timeRangeId).add(tsfile);
         syncLog.finishSyncTsfile(tsfile);
@@ -668,7 +668,7 @@ public class SyncClient implements ISyncClient {
 
   private void endSync() throws IOException {
     File currentLocalFile = getCurrentLogFile();
-    File lastLocalFile = config.getLastFileInfoPath().getFile();
+    File lastLocalFile = config.getLastFileInfoPath().toFile();
 
     // 1. Write file list to currentLocalFile
     FSFactory fsFactory = FSFactoryProducer.getFSFactory(FSUtils.getFSType(currentLocalFile));
@@ -678,7 +678,7 @@ public class SyncClient implements ISyncClient {
         for (Map<Long, Set<File>> currentLocalFiles : vgCurrentLocalFiles.values()) {
           for (Set<File> files : currentLocalFiles.values()) {
             for (File file : files) {
-              bw.write(FSPath.parse(file).getRawFSPath());
+              bw.write(FSPath.parse(file).getAbsoluteFSPath().getRawFSPath());
               logger.error(FSPath.parse(file).getRawFSPath());
               bw.newLine();
             }
@@ -696,7 +696,7 @@ public class SyncClient implements ISyncClient {
 
     // 3. delete snapshot directory
     try {
-      FileUtils.deleteDirectory(config.getSnapshotPath().getFile());
+      FileUtils.deleteDirectory(config.getSnapshotPath().toFile());
     } catch (Exception e) {
       logger.error("Can not clear snapshot directory {}", config.getSnapshotPath(), e);
     }
@@ -710,12 +710,12 @@ public class SyncClient implements ISyncClient {
 
   private void clearBlackLists() {
     File deletedBlackList =
-        config.getDeletedBlackListPath().postConcat(SyncConstant.TMP_FILE_SUFFIX).getFile();
+        config.getDeletedBlackListPath().postConcat(SyncConstant.TMP_FILE_SUFFIX).toFile();
     if (deletedBlackList.exists()) {
       deletedBlackList.delete();
     }
     File toBeSyncedBlackList =
-        config.getToBeSyncedBlackListPath().postConcat(SyncConstant.TMP_FILE_SUFFIX).getFile();
+        config.getToBeSyncedBlackListPath().postConcat(SyncConstant.TMP_FILE_SUFFIX).toFile();
     if (toBeSyncedBlackList.exists()) {
       toBeSyncedBlackList.delete();
     }

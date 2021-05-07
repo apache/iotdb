@@ -54,7 +54,7 @@ public class IoTDBDataDirViewer {
     System.out.println("data dir num:" + data_dir.length);
     try (PrintWriter pw = new PrintWriter(new FileWriter(outFile))) {
       for (String dir : data_dir) {
-        File dirFile = FSPath.parse(dir).getFile();
+        File dirFile = FSPath.parse(dir).toFile();
         File[] seqAndUnseqDirs = dirFile.listFiles();
         if (seqAndUnseqDirs == null || seqAndUnseqDirs.length != 2) {
           throw new IOException(

@@ -110,8 +110,8 @@ public class MigrationTask implements IMigrationTask {
                   FSFactory fsFactory = FSFactoryProducer.getFSFactory(FSUtils.getFSType(src));
                   // firstly move .tsfile.resource, then move .tsfile
                   fsFactory.moveFile(
-                      FSPath.parse(src).postConcat(TsFileResource.RESOURCE_SUFFIX).getFile(),
-                      FSPath.parse(target).postConcat(TsFileResource.RESOURCE_SUFFIX).getFile());
+                      FSPath.parse(src).postConcat(TsFileResource.RESOURCE_SUFFIX).toFile(),
+                      FSPath.parse(target).postConcat(TsFileResource.RESOURCE_SUFFIX).toFile());
                   fsFactory.moveFile(src, target);
                   logger.info(
                       "[Migration] Move {} to {}.",
@@ -124,9 +124,9 @@ public class MigrationTask implements IMigrationTask {
           // firstly copy .tsfile.resource, then copy .tsfile
           FSFactory fsFactory = FSFactoryProducer.getFSFactory(FSUtils.getFSType(srcFile));
           File srcResource =
-              FSPath.parse(srcFile).postConcat(TsFileResource.RESOURCE_SUFFIX).getFile();
+              FSPath.parse(srcFile).postConcat(TsFileResource.RESOURCE_SUFFIX).toFile();
           File targetResource =
-              FSPath.parse(targetFile).postConcat(TsFileResource.RESOURCE_SUFFIX).getFile();
+              FSPath.parse(targetFile).postConcat(TsFileResource.RESOURCE_SUFFIX).toFile();
           fsFactory.copyFile(srcResource, targetResource);
           fsFactory.copyFile(srcFile, targetFile);
           logger.info(

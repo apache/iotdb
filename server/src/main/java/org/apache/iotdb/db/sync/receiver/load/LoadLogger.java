@@ -49,7 +49,7 @@ public class LoadLogger implements ILoadLogger {
 
   @Override
   public void finishLoadDeletedFile(File file) throws IOException {
-    bw.write(FSPath.parse(file).getRawFSPath());
+    bw.write(FSPath.parse(file).getAbsoluteFSPath().getRawFSPath());
     bw.newLine();
     bw.flush();
   }
@@ -63,7 +63,7 @@ public class LoadLogger implements ILoadLogger {
 
   @Override
   public void finishLoadTsfile(File file) throws IOException {
-    bw.write(FSPath.parse(file).getRawFSPath());
+    bw.write(FSPath.parse(file).getAbsoluteFSPath().getRawFSPath());
     bw.newLine();
     bw.flush();
   }

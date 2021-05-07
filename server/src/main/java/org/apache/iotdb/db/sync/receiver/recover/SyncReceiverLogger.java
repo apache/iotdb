@@ -48,7 +48,7 @@ public class SyncReceiverLogger implements ISyncReceiverLogger {
 
   @Override
   public void finishSyncDeletedFileName(File file) throws IOException {
-    bw.write(FSPath.parse(file).getRawFSPath());
+    bw.write(FSPath.parse(file).getAbsoluteFSPath().getRawFSPath());
     bw.newLine();
     bw.flush();
   }
@@ -62,7 +62,7 @@ public class SyncReceiverLogger implements ISyncReceiverLogger {
 
   @Override
   public void finishSyncTsfile(File file) throws IOException {
-    bw.write(FSPath.parse(file).getRawFSPath());
+    bw.write(FSPath.parse(file).getAbsoluteFSPath().getRawFSPath());
     bw.newLine();
     bw.flush();
   }

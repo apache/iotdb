@@ -53,7 +53,7 @@ public class SyncSenderLoggerTest {
       throws IOException, InterruptedException, StartupException, DiskSpaceInsufficientException {
     EnvironmentUtils.envSetUp();
     FSPath seqDir = TierManager.getInstance().getAllSequenceFileFolders().get(0);
-    dataDir = new FSPath(seqDir.getFsType(), seqDir.getFile().getParentFile().getAbsolutePath());
+    dataDir = new FSPath(seqDir.getFsType(), seqDir.toFile().getParentFile().getAbsolutePath());
     config.update(dataDir);
   }
 
@@ -72,7 +72,7 @@ public class SyncSenderLoggerTest {
     for (int i = 0; i < 100; i++) {
       File file = config.getSenderFolderPath().getChildFile("deleted" + i);
       senderLogger.finishSyncDeletedFileName(file);
-      deletedFileNames.add(FSPath.parse(file).getRawFSPath());
+      deletedFileNames.add(FSPath.parse(file).getAbsoluteFSPath().getRawFSPath());
     }
     Set<String> toBeSyncedFiles = new HashSet<>();
     Set<String> toBeSyncedFilesTest = new HashSet<>();
@@ -80,7 +80,7 @@ public class SyncSenderLoggerTest {
     for (int i = 0; i < 100; i++) {
       File file = config.getSenderFolderPath().getChildFile("new" + i);
       senderLogger.finishSyncTsfile(file);
-      toBeSyncedFiles.add(FSPath.parse(file).getRawFSPath());
+      toBeSyncedFiles.add(FSPath.parse(file).getAbsoluteFSPath().getRawFSPath());
     }
     senderLogger.close();
     int count = 0;

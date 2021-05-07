@@ -60,7 +60,7 @@ public class SyncFileManagerTest {
   public void setUp() throws DiskSpaceInsufficientException {
     EnvironmentUtils.envSetUp();
     FSPath seqDir = TierManager.getInstance().getAllSequenceFileFolders().get(0);
-    dataDir = new FSPath(seqDir.getFsType(), seqDir.getFile().getParentFile().getAbsolutePath());
+    dataDir = new FSPath(seqDir.getFsType(), seqDir.toFile().getParentFile().getAbsolutePath());
     config.update(dataDir);
   }
 
@@ -95,7 +95,7 @@ public class SyncFileManagerTest {
                 + "0"
                 + File.separator
                 + rand;
-        File file = new FSPath(dataDir.getFsType(), fileName).getFile();
+        File file = new FSPath(dataDir.getFsType(), fileName).toFile();
         allFileList.get(getSgName(i)).get(0L).get(0L).add(file);
         if (!file.getParentFile().exists()) {
           file.getParentFile().mkdirs();
@@ -145,7 +145,7 @@ public class SyncFileManagerTest {
                 + "0"
                 + File.separator
                 + rand;
-        File file = new FSPath(dataDir.getFsType(), fileName).getFile();
+        File file = new FSPath(dataDir.getFsType(), fileName).toFile();
         allFileList.get(getSgName(i)).get(0L).get(0L).add(file);
         correctToBeSyncedFiles.get(getSgName(i)).get(0L).get(0L).add(file);
         if (!file.getParentFile().exists()) {
@@ -200,7 +200,7 @@ public class SyncFileManagerTest {
                 + File.separator
                 + File.separator
                 + rand;
-        File file = new FSPath(dataDir.getFsType(), fileName).getFile();
+        File file = new FSPath(dataDir.getFsType(), fileName).toFile();
         allFileList.get(getSgName(i)).get(0L).get(0L).add(file);
         correctToBeSyncedFiles.get(getSgName(i)).get(0L).get(0L).add(file);
         if (!file.getParentFile().exists()) {
@@ -283,7 +283,7 @@ public class SyncFileManagerTest {
                 + File.separator
                 + File.separator
                 + rand;
-        File file = new FSPath(dataDir.getFsType(), fileName).getFile();
+        File file = new FSPath(dataDir.getFsType(), fileName).toFile();
         allFileList.get(getSgName(i)).get(0L).get(0L).add(file);
         if (!file.getParentFile().exists()) {
           file.getParentFile().mkdirs();
@@ -330,7 +330,7 @@ public class SyncFileManagerTest {
   private void updateLastLocalFiles(
       Map<String, Map<Long, Map<Long, Set<File>>>> lastLocalFilesMap) {
     try (BufferedWriter bw =
-        new BufferedWriter(new FileWriter(config.getLastFileInfoPath().getFile()))) {
+        new BufferedWriter(new FileWriter(config.getLastFileInfoPath().toFile()))) {
       for (Map<Long, Map<Long, Set<File>>> currentLocalFiles : lastLocalFilesMap.values()) {
         for (Map<Long, Set<File>> vgFiles : currentLocalFiles.values()) {
           for (Set<File> files : vgFiles.values()) {

@@ -182,7 +182,7 @@ public class MigrationTaskTest extends MigrationTest {
         fsFactory.getBufferedReader(deletedBlacklistFile.getAbsolutePath())) {
       String filePath;
       while ((filePath = reader.readLine()) != null) {
-        File file = FSPath.parse(filePath).getFile();
+        File file = FSPath.parse(filePath).toFile();
         deletedFilesBlacklist.add(file);
       }
     }
@@ -198,7 +198,7 @@ public class MigrationTaskTest extends MigrationTest {
         fsFactory.getBufferedReader(toBeSyncedBlacklistFile.getAbsolutePath())) {
       String filePath;
       while ((filePath = reader.readLine()) != null) {
-        File file = FSPath.parse(filePath).getFile();
+        File file = FSPath.parse(filePath).toFile();
         toBeSyncedFilesBlacklist.add(file);
       }
     }
