@@ -16,10 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
- 
+
 #include <string>
 #include <vector>
-#include <exception> 
+#include <exception>
 #include <iostream>
 #include <algorithm>
 #include <map>
@@ -52,7 +52,7 @@ class IoTDBConnectionException : public std::exception
         IoTDBConnectionException() : message() {}
         IoTDBConnectionException(const char* m) : message(m) {}
         IoTDBConnectionException(std::string m) : message(m) {}
-        virtual const char* what() const throw () 
+        virtual const char* what() const throw ()
         {
             return message.c_str();
         }
@@ -76,7 +76,7 @@ public:
     std::vector<TSStatus> statusList;
 private:
     std::string message;
-    
+
 };
 
 class UnSupportedDataTypeException : public std::exception
@@ -368,7 +368,7 @@ private:
 public:
     std::string deviceId; // deviceId of this tablet
     std::vector<std::pair<std::string, TSDataType::TSDataType>> schemas; // the list of measurement schemas for creating the tablet
-    int64_t* timestamps;   //timestamps in this tablet
+    std::vector <int64_t> timestamps;   //timestamps in this tablet
     std::vector<std::vector<std::string>> values;
     int rowSize;    //the number of rows to include in this tablet
     int maxRowNumber;   // the maximum number of rows for this tablet
@@ -401,7 +401,7 @@ public:
         this->maxRowNumber = maxRowNumber;
 
         // create timestamp column
-        timestamps = new int64_t[maxRowNumber];
+        timestamps.resize(maxRowNumber);
         // create value columns
         values.resize(schemas.size());
         for (int i = 0; i < schemas.size(); i++) {
@@ -525,7 +525,7 @@ private:
     RowRecord rowRecord;
     char* currentBitmap; // used to cache the current bitmap for every column
     static const int flag = 0x80; // used to do `or` operation with bitmap to judge whether the value is null
-    
+
 public:
     SessionDataSet(){}
     SessionDataSet(std::string sql, std::vector<std::string>& columnNameList, std::vector<std::string>& columnTypeList, int64_t queryId,
@@ -594,7 +594,7 @@ class Session
         bool checkSorted(Tablet& tablet);
         bool checkSorted(std::vector<int64_t>& times);
         void sortTablet(Tablet& tablet);
-        void sortIndexByTimestamp(int* index, int64_t* timestamps, int length);
+        void sortIndexByTimestamp(int *index, std::vector<int64_t>& timestamps, int length);
         std::string getTimeZone();
         void setTimeZone(std::string zoneId);
         void appendValues(std::string &buffer, char* value, int size);
