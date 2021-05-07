@@ -42,6 +42,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -190,12 +191,21 @@ public class MemTableFlushTask {
       new Runnable() {
         private void writeOneSeries(
             TVList tvPairs, IChunkWriter seriesWriterImpl, TSDataType dataType) {
+          List<Integer> timeDuplicatedVectorRowIndexList = null;
           for (int sortedRowIndex = 0; sortedRowIndex < tvPairs.size(); sortedRowIndex++) {
             long time = tvPairs.getTime(sortedRowIndex);
 
             // skip duplicated data
             if ((sortedRowIndex + 1 < tvPairs.size()
                 && (time == tvPairs.getTime(sortedRowIndex + 1)))) {
+              // record the time duplicated row index list for vector type
+              if (dataType == TSDataType.VECTOR) {
+                if (timeDuplicatedVectorRowIndexList == null) {
+                  timeDuplicatedVectorRowIndexList = new ArrayList<>();
+                  timeDuplicatedVectorRowIndexList.add(tvPairs.getValueIndex(sortedRowIndex));
+                }
+                timeDuplicatedVectorRowIndexList.add(tvPairs.getValueIndex(sortedRowIndex + 1));
+              }
               continue;
             }
 
@@ -228,6 +238,13 @@ public class MemTableFlushTask {
                 List<TSDataType> dataTypes = vectorTvPairs.getTsDataTypes();
                 int originRowIndex = vectorTvPairs.getValueIndex(sortedRowIndex);
                 for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
+                  // write the time duplicated rows
+                  if (timeDuplicatedVectorRowIndexList != null
+                      && !timeDuplicatedVectorRowIndexList.isEmpty()) {
+                    originRowIndex =
+                        vectorTvPairs.getValidRowIndexForTimeDuplicatedRows(
+                            timeDuplicatedVectorRowIndexList, columnIndex);
+                  }
                   boolean isNull = vectorTvPairs.isValueMarked(originRowIndex, columnIndex);
                   switch (dataTypes.get(columnIndex)) {
                     case BOOLEAN:
@@ -270,11 +287,12 @@ public class MemTableFlushTask {
                       LOGGER.error(
                           "Storage group {} does not support data type: {}",
                           storageGroup,
-                          dataType);
+                          dataTypes.get(columnIndex));
                       break;
                   }
                 }
                 seriesWriterImpl.write(time);
+                timeDuplicatedVectorRowIndexList = null;
                 break;
               default:
                 LOGGER.error(
