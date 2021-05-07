@@ -432,6 +432,7 @@ public class MManagerDiskBasedTest {
             manager.clear(); // current manager will release the metafile occupation
 
             MManager recoverManager = new MManager();
+            recoverManager.setMTreeType(MTREE_DISK_BASED);
             recoverManager.init();
 
             assertTrue(recoverManager.isStorageGroup(new PartialPath("root.laptop.d1")));

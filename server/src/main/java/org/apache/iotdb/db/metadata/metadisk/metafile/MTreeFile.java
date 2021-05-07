@@ -416,7 +416,6 @@ public class MTreeFile {
   }
 
   private Map<Long, ByteBuffer> serializeMNode(MNode mNode) throws IOException {
-
     if (mNode.getPersistenceInfo() == null) {
       if (mNode.getName().equals("root")) {
         mNode.setPersistenceInfo(PersistenceInfo.createPersistenceInfo(rootPosition));
@@ -424,16 +423,12 @@ public class MTreeFile {
         mNode.setPersistenceInfo(PersistenceInfo.createPersistenceInfo(getFreePos()));
       }
     }
-
     int mNodeLength = evaluateNodeLength(mNode);
     int bufferNum =
         (mNodeLength / (nodeLength - 17)) + ((mNodeLength % (nodeLength - 17)) == 0 ? 0 : 1);
     if (bufferNum > 15) {
       return null;
     }
-    ByteBuffer[] bufferList = new ByteBuffer[bufferNum];
-    Map<Long, ByteBuffer> result = new HashMap<>(bufferNum);
-
     byte bitmap = (byte) bufferNum;
     ByteBuffer dataBuffer = ByteBuffer.allocate(mNodeLength);
     if (mNode.isStorageGroup()) {
@@ -450,36 +445,32 @@ public class MTreeFile {
         bitmap = (byte) (0x80 | bitmap);
       }
     }
+    return splitBytes(dataBuffer,bufferNum,bitmap,mNode);
+  }
 
-    bufferList[0] = ByteBuffer.allocate(nodeLength);
-    bufferList[0].put(bitmap);
+  private Map<Long, ByteBuffer> splitBytes(ByteBuffer dataBuffer, int bufferNum,byte bitmap, MNode mNode) throws IOException{
+    Map<Long, ByteBuffer> result = new HashMap<>(bufferNum);
+    ByteBuffer buffer;
     MNode parent = mNode.getParent();
-    long prePos =
-        (parent == null || !parent.isPersisted()) ? 0 : parent.getPersistenceInfo().getPosition();
-    bufferList[0].putLong(prePos);
-    long extensionPos = (0 == bufferNum - 1) ? 0 : getFreePos();
-    bufferList[0].putLong(extensionPos);
-    dataBuffer.limit(Math.min(dataBuffer.position() + nodeLength - 17, dataBuffer.capacity()));
-    bufferList[0].put(dataBuffer);
-    bufferList[0].position(0);
-    long currentPos = mNode.getPersistenceInfo().getPosition();
-    result.put(currentPos, bufferList[0]);
-
-    for (int i = 1; i < bufferNum; i++) {
+    long currentPos = (parent == null || !parent.isPersisted()) ? 0 : parent.getPersistenceInfo().getPosition();
+    long prePos;
+    long extensionPos=mNode.getPersistenceInfo().getPosition();
+    for (int i = 0; i < bufferNum; i++) {
       prePos = currentPos;
       currentPos = extensionPos;
-      bufferList[i] = ByteBuffer.allocate(nodeLength);
-      result.put(currentPos, bufferList[i]);
-      bitmap = (byte) (0xC0 | (bufferNum - i));
-      bufferList[i].put(bitmap);
-      bufferList[i].putLong(prePos);
+      buffer = ByteBuffer.allocate(nodeLength);
+      result.put(currentPos, buffer);
+      if(i>0){
+        bitmap = (byte) (0xC0 | (bufferNum - i));
+      }
+      buffer.put(bitmap);
+      buffer.putLong(prePos);
       extensionPos = (i == bufferNum - 1) ? 0 : getFreePos();
-      bufferList[i].putLong(extensionPos);
+      buffer.putLong(extensionPos);
       dataBuffer.limit(Math.min(dataBuffer.position() + nodeLength - 17, dataBuffer.capacity()));
-      bufferList[i].put(dataBuffer);
-      bufferList[i].position(0);
+      buffer.put(dataBuffer);
+      buffer.position(0);
     }
-
     return result;
   }
 
