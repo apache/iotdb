@@ -81,6 +81,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
@@ -263,6 +264,20 @@ public class CMManager extends MManager {
   @Override
   public IMeasurementSchema getSeriesSchema(PartialPath fullPath) throws MetadataException {
     return super.getSeriesSchema(fullPath, getMeasurementMNode(fullPath));
+  }
+
+  /**
+   * Transform the PartialPath to VectorPartialPath if it is a sub sensor of one vector. otherwise,
+   * we don't change it.
+   */
+  @Override
+  public PartialPath transformPath(PartialPath partialPath) throws MetadataException {
+    MeasurementMNode node = getMeasurementMNode(partialPath);
+    if (node.getSchema() instanceof MeasurementSchema) {
+      return partialPath;
+    } else {
+      return toVectorPath(partialPath, node.getName());
+    }
   }
 
   private MeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {

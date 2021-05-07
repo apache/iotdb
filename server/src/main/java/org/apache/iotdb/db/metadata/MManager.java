@@ -1190,7 +1190,7 @@ public class MManager {
   }
 
   /**
-   * transform the PartialPath to VectorPartialPath if it is a sub sensor of one vector otherwise,
+   * Transform the PartialPath to VectorPartialPath if it is a sub sensor of one vector. otherwise,
    * we don't change it.
    */
   public PartialPath transformPath(PartialPath partialPath) throws MetadataException {
@@ -1198,11 +1198,16 @@ public class MManager {
     if (node.getSchema() instanceof MeasurementSchema) {
       return partialPath;
     } else {
-      List<PartialPath> subSensorsPathList = new ArrayList<>();
-      subSensorsPathList.add(partialPath);
-      return new VectorPartialPath(
-          partialPath.getDevice() + "." + node.getName(), subSensorsPathList);
+      return toVectorPath(partialPath, node.getName());
     }
+  }
+
+  /** Convert the PartialPath to VectorPartialPath. */
+  protected VectorPartialPath toVectorPath(PartialPath partialPath, String name)
+      throws MetadataException {
+    List<PartialPath> subSensorsPathList = new ArrayList<>();
+    subSensorsPathList.add(partialPath);
+    return new VectorPartialPath(partialPath.getDevice() + "." + name, subSensorsPathList);
   }
 
   /**

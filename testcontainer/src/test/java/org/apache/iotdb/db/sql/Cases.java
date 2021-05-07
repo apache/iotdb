@@ -49,8 +49,12 @@ public abstract class Cases {
     }
   }
 
+  // if we seperate the test into multiply test() methods, then the docker container have to be
+  // built
+  // several times. So, if the test cases are not conflict, we can put them into one method.
+  // but if you want to avoid other cases' impact, use a seperate test() method.
   @Test
-  public void testSimplePutAndGet() throws SQLException {
+  public void multiCasesTest() throws SQLException {
 
     String[] timeSeriesArray = {"root.sg1.aa.bb", "root.sg1.aa.bb.cc", "root.sg1.aa"};
 
@@ -76,12 +80,20 @@ public abstract class Cases {
     }
 
     // test https://issues.apache.org/jira/browse/IOTDB-1331
-    writeStatement.execute("insert into root.ln.wf01.wt01(time, temperature) values(10, 1.0)");
+    writeStatement.execute(
+        "create timeseries root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE");
+    String[] initDataArray = {
+      "INSERT INTO root.ln.wf01.wt01(timestamp,temperature) values(200,20.71)",
+      "INSERT INTO root.ln.wf01.wt01(timestamp,temperature) values(220,50.71)"
+    };
+    for (String initData : initDataArray) {
+      writeStatement.execute(initData);
+    }
     // try to read data on each node.
     for (Statement readStatement : readStatements) {
       resultSet = readStatement.executeQuery("select avg(temperature) from root.ln.wf01.wt01");
       if (resultSet.next()) {
-        Assert.assertEquals(1.0, resultSet.getDouble(1), 0.01);
+        Assert.assertEquals(35.71, resultSet.getDouble(1), 0.01);
       } else {
         Assert.fail("expect 1 result, but get an empty resultSet.");
       }
