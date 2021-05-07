@@ -22,6 +22,8 @@ package org.apache.iotdb.cluster.query;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.ReaderNotFoundException;
 import org.apache.iotdb.cluster.metadata.CMManager;
+import org.apache.iotdb.cluster.metadata.MetaPuller;
+import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.query.filter.SlotTsFileFilter;
 import org.apache.iotdb.cluster.query.manage.ClusterQueryManager;
@@ -35,9 +37,11 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.utils.ClusterQueryUtils;
+import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -82,6 +86,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -433,8 +438,8 @@ public class LocalQueryExecutor {
    *
    * @param request
    */
-  public PullSchemaResp queryMeasurementSchema(PullSchemaRequest request)
-      throws CheckConsistencyException, IllegalPathException {
+  public PullSchemaResp queryMeasurementSchema(PullSchemaRequest request) // pullMeasurementSchemas
+      throws CheckConsistencyException, MetadataException {
     // try to synchronize with the leader first in case that some schema logs are accepted but
     // not committed yet
     dataGroupMember.syncLeaderWithConsistencyCheck(false);
@@ -443,9 +448,8 @@ public class LocalQueryExecutor {
     // the measurements in them are the full paths.
     List<String> prefixPaths = request.getPrefixPaths();
     List<MeasurementSchema> measurementSchemas = new ArrayList<>();
-    for (String prefixPath : prefixPaths) {
-      getCMManager().collectSeries(new PartialPath(prefixPath), measurementSchemas);
-    }
+
+    collectSeries(prefixPaths, measurementSchemas);
     if (logger.isDebugEnabled()) {
       logger.debug(
           "{}: Collected {} schemas for {} and other {} paths",
@@ -469,6 +473,44 @@ public class LocalQueryExecutor {
     }
     resp.setSchemaBytes(byteArrayOutputStream.toByteArray());
     return resp;
+  }
+
+  private void collectSeries(List<String> prefixPaths, List<MeasurementSchema> measurementSchemas)
+      throws MetadataException {
+    // Due to add/remove node, some slots may in the state of PULLING, which will not contains the
+    // corresponding schemas.
+    // In this case, we need to pull series from previous holder.
+    Map<PartitionGroup, List<PartialPath>> prePartitionGroupPathMap = new HashMap<>();
+
+    RaftNode raftNode = new RaftNode(dataGroupMember.getHeader(), dataGroupMember.getRaftGroupId());
+    Map<Integer, PartitionGroup> slotPreviousHolderMap =
+        ((SlotPartitionTable) dataGroupMember.getMetaGroupMember().getPartitionTable())
+            .getPreviousNodeMap()
+            .get(raftNode);
+
+    for (String prefixPath : prefixPaths) {
+      int slot =
+          ClusterUtils.getSlotByPathTimeWithSync(
+              new PartialPath(prefixPath), dataGroupMember.getMetaGroupMember());
+      if (dataGroupMember.getSlotManager().checkSlotInMetaMigrationStatus(slot)
+          && slotPreviousHolderMap.containsKey(slot)) {
+        prePartitionGroupPathMap
+            .computeIfAbsent(slotPreviousHolderMap.get(slot), s -> new ArrayList<>())
+            .add(new PartialPath(prefixPath));
+      } else {
+        getCMManager().collectSeries(new PartialPath(prefixPath), measurementSchemas);
+      }
+    }
+
+    if (prePartitionGroupPathMap.isEmpty()) {
+      return;
+    }
+    for (Map.Entry<PartitionGroup, List<PartialPath>> partitionGroupListEntry :
+        prePartitionGroupPathMap.entrySet()) {
+      PartitionGroup partitionGroup = partitionGroupListEntry.getKey();
+      List<PartialPath> paths = partitionGroupListEntry.getValue();
+      MetaPuller.getInstance().pullMeasurementSchemas(partitionGroup, paths, measurementSchemas);
+    }
   }
 
   /**

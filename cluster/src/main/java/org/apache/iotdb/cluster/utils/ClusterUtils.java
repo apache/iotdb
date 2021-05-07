@@ -20,10 +20,12 @@
 package org.apache.iotdb.cluster.utils;
 
 import org.apache.iotdb.cluster.config.ClusterConfig;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
+import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
@@ -31,6 +33,7 @@ import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 
@@ -363,6 +366,30 @@ public class ClusterUtils {
       partitionGroup = metaGroupMember.getPartitionTable().partitionByPathTime(prefixPath, 0);
     }
     return partitionGroup;
+  }
+
+  public static int getSlotByPathTimeWithSync(
+      PartialPath prefixPath, MetaGroupMember metaGroupMember) throws MetadataException {
+    int slot;
+    try {
+      PartialPath storageGroup = IoTDB.metaManager.getStorageGroupPath(prefixPath);
+      slot =
+          SlotPartitionTable.getSlotStrategy()
+              .calculateSlotByPartitionNum(storageGroup.getFullPath(), 0, ClusterConstant.SLOT_NUM);
+    } catch (StorageGroupNotSetException e) {
+      // the storage group is not found locally, but may be found in the leader, retry after
+      // synchronizing with the leader
+      try {
+        metaGroupMember.syncLeaderWithConsistencyCheck(true);
+      } catch (CheckConsistencyException checkConsistencyException) {
+        throw new MetadataException(checkConsistencyException.getMessage());
+      }
+      PartialPath storageGroup = IoTDB.metaManager.getStorageGroupPath(prefixPath);
+      slot =
+          SlotPartitionTable.getSlotStrategy()
+              .calculateSlotByPartitionNum(storageGroup.getFullPath(), 0, ClusterConstant.SLOT_NUM);
+    }
+    return slot;
   }
 
   public static ByteBuffer serializeMigrationStatus(Map<PartitionGroup, Integer> migrationStatus) {

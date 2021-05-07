@@ -171,7 +171,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
     if (dataGroupMember.getCharacter() == NodeCharacter.LEADER) {
       try {
         return dataGroupMember.getLocalQueryExecutor().queryMeasurementSchema(request);
-      } catch (CheckConsistencyException | IllegalPathException e) {
+      } catch (CheckConsistencyException | MetadataException e) {
         throw new TException(e);
       }
     }

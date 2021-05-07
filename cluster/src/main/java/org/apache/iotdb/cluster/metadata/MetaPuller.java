@@ -124,7 +124,7 @@ public class MetaPuller {
    * @param prefixPaths
    * @param results
    */
-  private void pullMeasurementSchemas(
+  public void pullMeasurementSchemas(
       PartitionGroup partitionGroup,
       List<PartialPath> prefixPaths,
       List<MeasurementSchema> results) {

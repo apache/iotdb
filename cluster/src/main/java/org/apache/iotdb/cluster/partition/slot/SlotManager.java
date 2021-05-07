@@ -137,6 +137,11 @@ public class SlotManager {
         || slotDescriptor.slotStatus == SlotStatus.PULLING_WRITABLE;
   }
 
+  public boolean checkSlotInMetaMigrationStatus(int slotId) {
+    SlotDescriptor slotDescriptor = idSlotMap.get(slotId);
+    return slotDescriptor.slotStatus == SlotStatus.PULLING;
+  }
+
   /**
    * @param slotId
    * @return the SlotStatus of a slot
