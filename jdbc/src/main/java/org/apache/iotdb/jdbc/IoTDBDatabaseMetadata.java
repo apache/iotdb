@@ -378,9 +378,9 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         columnTypeList.add(fields[i].getSqlType());
         columnNameIndex.put(fields[i].getName(), i);
       }
-    }catch (Exception e){
+    } catch (Exception e) {
       e.printStackTrace();
-    }finally {
+    } finally {
       colse(null, stmt);
     }
     return new IoTDBJDBCResultSet(
@@ -420,9 +420,9 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         columnTypeList.add(fields[i].getSqlType());
         columnNameIndex.put(fields[i].getName(), i);
       }
-    }catch (Exception e){
+    } catch (Exception e) {
       e.printStackTrace();
-    }finally {
+    } finally {
       colse(null, stmt);
     }
 
@@ -845,9 +845,9 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         columnTypeList.add(fields[i].getSqlType());
         columnNameIndex.put(fields[i].getName(), i);
       }
-    }catch (Exception e){
+    } catch (Exception e) {
       e.printStackTrace();
-    }finally {
+    } finally {
       colse(null, stmt);
     }
     return new IoTDBJDBCResultSet(
@@ -862,7 +862,6 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         sessionId,
         null,
         (long) 60 * 1000);
-
   }
 
   @Override
@@ -931,7 +930,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   }
 
   @Override
-  public ResultSet getExportedKeys(String catalog, String schema, final String table) throws SQLException {
+  public ResultSet getExportedKeys(String catalog, String schema, final String table)
+      throws SQLException {
     List<String> columnNameList = new ArrayList<String>();
     List<String> columnTypeList = new ArrayList<String>();
     Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
@@ -957,9 +957,9 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         columnTypeList.add(fields[i].getSqlType());
         columnNameIndex.put(fields[i].getName(), i);
       }
-    }catch (Exception e){
+    } catch (Exception e) {
       e.printStackTrace();
-    }finally {
+    } finally {
       colse(null, stmt);
     }
     return new IoTDBJDBCResultSet(
@@ -1182,9 +1182,9 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         columnTypeList.add(fields[i].getSqlType());
         columnNameIndex.put(fields[i].getName(), i);
       }
-    }catch (Exception e){
+    } catch (Exception e) {
       e.printStackTrace();
-    }finally {
+    } finally {
       colse(null, stmt);
     }
     return new IoTDBJDBCResultSet(
@@ -1229,9 +1229,9 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         columnTypeList.add(fields[i].getSqlType());
         columnNameIndex.put(fields[i].getName(), i);
       }
-    }catch (Exception e){
+    } catch (Exception e) {
       e.printStackTrace();
-    }finally {
+    } finally {
       colse(null, stmt);
     }
     return new IoTDBJDBCResultSet(
@@ -1498,9 +1498,9 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         columnTypeList.add(fields[i].getSqlType());
         columnNameIndex.put(fields[i].getName(), i);
       }
-    }catch (Exception e){
+    } catch (Exception e) {
       e.printStackTrace();
-    }finally {
+    } finally {
       colse(null, stmt);
     }
     return new IoTDBJDBCResultSet(
@@ -1541,9 +1541,9 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         columnTypeList.add(fields[i].getSqlType());
         columnNameIndex.put(fields[i].getName(), i);
       }
-    }catch (Exception e){
+    } catch (Exception e) {
       e.printStackTrace();
-    }finally {
+    } finally {
       colse(null, stmt);
     }
     return new IoTDBJDBCResultSet(
@@ -1747,9 +1747,9 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         columnTypeList.add(fields[i].getSqlType());
         columnNameIndex.put(fields[i].getName(), i);
       }
-    }catch (Exception e){
+    } catch (Exception e) {
       e.printStackTrace();
-    }finally {
+    } finally {
       colse(null, stmt);
     }
     return new IoTDBJDBCResultSet(
@@ -1786,9 +1786,9 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         columnTypeList.add(fields[i].getSqlType());
         columnNameIndex.put(fields[i].getName(), i);
       }
-    }catch (Exception e){
+    } catch (Exception e) {
       e.printStackTrace();
-    }finally {
+    } finally {
       colse(null, stmt);
     }
     return new IoTDBJDBCResultSet(
@@ -2135,13 +2135,13 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   private void colse(ResultSet rs, Statement stmt) {
 
-      try {
-        if (rs != null) {
+    try {
+      if (rs != null) {
         rs.close();
-        }
-      } catch (Exception ex) {
-        rs = null;
       }
+    } catch (Exception ex) {
+      rs = null;
+    }
     try {
       if (stmt != null) {
         stmt.close();
@@ -2540,9 +2540,9 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         columnTypeList.add(fields[i].getSqlType());
         columnNameIndex.put(fields[i].getName(), i);
       }
-    }catch (Exception e){
+    } catch (Exception e) {
       e.printStackTrace();
-    }finally {
+    } finally {
       colse(null, stmt);
     }
     return new IoTDBJDBCResultSet(
@@ -2592,9 +2592,9 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         columnTypeList.add(fields[i].getSqlType());
         columnNameIndex.put(fields[i].getName(), i);
       }
-    }catch (Exception e){
+    } catch (Exception e) {
       e.printStackTrace();
-    }finally {
+    } finally {
       colse(null, stmt);
     }
     return new IoTDBJDBCResultSet(

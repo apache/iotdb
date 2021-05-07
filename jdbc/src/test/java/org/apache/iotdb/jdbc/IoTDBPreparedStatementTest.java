@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.jdbc;
 
-import java.sql.Types;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Iface;
@@ -31,6 +30,7 @@ import org.mockito.MockitoAnnotations;
 
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.sql.Types;
 import java.time.ZoneId;
 
 import static org.junit.Assert.assertEquals;
@@ -322,13 +322,13 @@ public class IoTDBPreparedStatementTest {
 
     IoTDBPreparedStatement ps =
         new IoTDBPreparedStatement(connection, client, sessionId, sql, zoneId);
-    ps.setObject(1,"2020-01-01 10:10:10", Types.TIMESTAMP,-1);
-    ps.setObject(2,false,Types.BOOLEAN,-1);
-    ps.setObject(3, 123,Types.INTEGER,-1);
-    ps.setObject(4, 123234345,Types.BIGINT);
-    ps.setObject(5, 123.423f,Types.FLOAT);
-    ps.setObject(6, -1323.0,Types.DOUBLE);
-    ps.setObject(7, "abc",Types.VARCHAR);
+    ps.setObject(1, "2020-01-01 10:10:10", Types.TIMESTAMP, -1);
+    ps.setObject(2, false, Types.BOOLEAN, -1);
+    ps.setObject(3, 123, Types.INTEGER, -1);
+    ps.setObject(4, 123234345, Types.BIGINT);
+    ps.setObject(5, 123.423f, Types.FLOAT);
+    ps.setObject(6, -1323.0, Types.DOUBLE);
+    ps.setObject(7, "abc", Types.VARCHAR);
     ps.execute();
 
     ArgumentCaptor<TSExecuteStatementReq> argument =

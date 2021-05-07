@@ -313,8 +313,8 @@ public class IoTDBStatement implements Statement {
         throw new SQLException(
             "Fail to reconnect to server when executing batch sqls. please check server status", e);
       }
-    }finally {
-        clearBatch();
+    } finally {
+      clearBatch();
     }
   }
 
