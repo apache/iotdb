@@ -32,14 +32,21 @@ public abstract class Cases {
 
   protected Statement writeStatement;
   protected Connection writeConnection;
-  protected Statement readStatement;
-  protected Connection readConnection;
+  protected Statement[] readStatements;
+  protected Connection[] readConnections;
+
+  /** initialize the writeStatement,writeConnection, readStatements and the readConnections. */
+  public abstract void setUp() throws Exception;
 
   public void tearDown() throws Exception {
     writeStatement.close();
     writeConnection.close();
-    readStatement.close();
-    readConnection.close();
+    for (Statement statement : readStatements) {
+      statement.close();
+    }
+    for (Connection connection : readConnections) {
+      connection.close();
+    }
   }
 
   @Test
@@ -54,26 +61,32 @@ public abstract class Cases {
               timeSeries));
     }
     ResultSet resultSet = null;
-    resultSet = readStatement.executeQuery("show timeseries");
-    Set<String> result = new HashSet<>();
-    while (resultSet.next()) {
-      result.add(resultSet.getString(1));
+    // try to read data on each node.
+    for (Statement readStatement : readStatements) {
+      resultSet = readStatement.executeQuery("show timeseries");
+      Set<String> result = new HashSet<>();
+      while (resultSet.next()) {
+        result.add(resultSet.getString(1));
+      }
+      Assert.assertEquals(3, result.size());
+      for (String timeseries : timeSeriesArray) {
+        Assert.assertTrue(result.contains(timeseries));
+      }
+      resultSet.close();
     }
-    Assert.assertEquals(3, result.size());
-    for (String timeseries : timeSeriesArray) {
-      Assert.assertTrue(result.contains(timeseries));
-    }
-    resultSet.close();
 
     // test https://issues.apache.org/jira/browse/IOTDB-1331
     writeStatement.execute("insert into root.ln.wf01.wt01(time, temperature) values(10, 1.0)");
-    resultSet = readStatement.executeQuery("select avg(temperature) from root.ln.wf01.wt01");
-    if (resultSet.next()) {
-      Assert.assertEquals(1.0, resultSet.getDouble(1), 0.01);
-    } else {
-      Assert.fail("expect 1 result, but get an empty resultSet.");
+    // try to read data on each node.
+    for (Statement readStatement : readStatements) {
+      resultSet = readStatement.executeQuery("select avg(temperature) from root.ln.wf01.wt01");
+      if (resultSet.next()) {
+        Assert.assertEquals(1.0, resultSet.getDouble(1), 0.01);
+      } else {
+        Assert.fail("expect 1 result, but get an empty resultSet.");
+      }
+      Assert.assertFalse(resultSet.next());
+      resultSet.close();
     }
-    Assert.assertFalse(resultSet.next());
-    resultSet.close();
   }
 }

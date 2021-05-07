@@ -27,7 +27,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.DockerComposeContainer;
 
+import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.Statement;
 
 // do not add tests here.
 // add tests into Cases.java instead.
@@ -47,12 +49,12 @@ public abstract class ClusterIT extends Cases {
     return getContainer().getServiceHost("iotdb-server_1", 6667);
   }
 
-  protected int getReadRpcPort() {
-    return getContainer().getServicePort("iotdb-server_1", 6667);
+  protected int[] getReadRpcPorts() {
+    return new int[] {getContainer().getServicePort("iotdb-server_1", 6667)};
   }
 
-  protected String getReadRpcIp() {
-    return getContainer().getServiceHost("iotdb-server_1", 6667);
+  protected String[] getReadRpcIps() {
+    return new String[] {getContainer().getServiceHost("iotdb-server_1", 6667)};
   }
 
   protected void startCluster() {}
@@ -68,10 +70,17 @@ public abstract class ClusterIT extends Cases {
         DriverManager.getConnection(
             "jdbc:iotdb://" + getWriteRpcIp() + ":" + getWriteRpcPort(), "root", "root");
     writeStatement = writeConnection.createStatement();
-    readConnection =
-        DriverManager.getConnection(
-            "jdbc:iotdb://" + getReadRpcIp() + ":" + getReadRpcPort(), "root", "root");
-    readStatement = readConnection.createStatement();
+
+    int[] readPorts = getReadRpcPorts();
+    String[] readIps = getReadRpcIps();
+    readConnections = new Connection[readPorts.length];
+    readStatements = new Statement[readPorts.length];
+    for (int i = 0; i < readPorts.length; i++) {
+      readConnections[i] =
+          DriverManager.getConnection(
+              "jdbc:iotdb://" + readIps[i] + ":" + readPorts[i], "root", "root");
+      readStatements[i] = readConnections[i].createStatement();
+    }
   }
 
   @After

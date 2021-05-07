@@ -63,10 +63,12 @@ public class SingleNodeIT extends Cases {
     rpcPort = dslContainer.getMappedPort(6667);
     syncPort = dslContainer.getMappedPort(5555);
     Class.forName(Config.JDBC_DRIVER_NAME);
+    readConnections = new Connection[1];
+    readStatements = new Statement[1];
     writeConnection =
-        readConnection =
+        readConnections[0] =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:" + rpcPort, "root", "root");
-    writeStatement = readStatement = writeConnection.createStatement();
+    writeStatement = readStatements[0] = writeConnection.createStatement();
   }
 
   @After
