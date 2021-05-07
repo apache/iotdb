@@ -26,15 +26,16 @@ import org.apache.iotdb.db.sync.receiver.load.IFileLoader;
 import org.apache.iotdb.db.sync.receiver.load.LoadLogger;
 import org.apache.iotdb.db.sync.receiver.load.LoadType;
 import org.apache.iotdb.db.utils.FilePathUtils;
+import org.apache.iotdb.db.utils.FileUtils;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.FSPath;
+import org.apache.iotdb.tsfile.utils.FSUtils;
 
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 
 public class SyncReceiverLogAnalyzer implements ISyncReceiverLogAnalyzer {
@@ -67,10 +68,12 @@ public class SyncReceiverLogAnalyzer implements ISyncReceiverLogAnalyzer {
   }
 
   private boolean recover(File senderFolder) throws IOException {
+    FSPath senderFolderPath = FSPath.parse(senderFolder);
     // check the state
-    if (!new File(senderFolder, SyncConstant.SYNC_LOG_NAME).exists()) {
-      new File(senderFolder, SyncConstant.LOAD_LOG_NAME).delete();
-      FileUtils.deleteDirectory(new File(senderFolder, SyncConstant.RECEIVER_DATA_FOLDER_NAME));
+    if (!senderFolderPath.getChildFile(SyncConstant.SYNC_LOG_NAME).exists()) {
+      senderFolderPath.getChildFile(SyncConstant.LOAD_LOG_NAME).delete();
+      FileUtils.deleteDirectory(
+          senderFolderPath.getChildFile(SyncConstant.RECEIVER_DATA_FOLDER_NAME));
       return true;
     }
     if (FileLoaderManager.getInstance().containsFileLoader(senderFolder.getName())) {
@@ -84,8 +87,8 @@ public class SyncReceiverLogAnalyzer implements ISyncReceiverLogAnalyzer {
     } else {
       scanLogger(
           FileLoader.createFileLoader(senderFolder),
-          new File(senderFolder, SyncConstant.SYNC_LOG_NAME),
-          new File(senderFolder, SyncConstant.LOAD_LOG_NAME));
+          senderFolderPath.getChildFile(SyncConstant.SYNC_LOG_NAME),
+          senderFolderPath.getChildFile(SyncConstant.LOAD_LOG_NAME));
     }
     return !FileLoaderManager.getInstance().containsFileLoader(senderFolder.getName());
   }
@@ -114,9 +117,13 @@ public class SyncReceiverLogAnalyzer implements ISyncReceiverLogAnalyzer {
   @Override
   public void scanLogger(IFileLoader loader, File syncLog, File loadLog) {
     LoadType loadType = LoadType.NONE;
-    try (BufferedReader syncReader = new BufferedReader(new FileReader(syncLog))) {
+    try (BufferedReader syncReader =
+        FSFactoryProducer.getFSFactory(FSUtils.getFSType(syncLog))
+            .getBufferedReader(syncLog.getAbsolutePath())) {
       String line;
-      try (BufferedReader loadReader = new BufferedReader(new FileReader(loadLog))) {
+      try (BufferedReader loadReader =
+          FSFactoryProducer.getFSFactory(FSUtils.getFSType(loadLog))
+              .getBufferedReader(loadLog.getAbsolutePath())) {
         while ((line = loadReader.readLine()) != null) {
           if (line.equals(LoadLogger.LOAD_DELETED_FILE_NAME_START)) {
             loadType = LoadType.DELETE;
@@ -136,10 +143,10 @@ public class SyncReceiverLogAnalyzer implements ISyncReceiverLogAnalyzer {
         } else {
           switch (loadType) {
             case ADD:
-              loader.addTsfile(new File(line));
+              loader.addTsfile(FSPath.parse(line).getFile());
               break;
             case DELETE:
-              loader.addDeletedFileName(new File(line));
+              loader.addDeletedFileName(FSPath.parse(line).getFile());
               break;
             default:
               LOGGER.error("Wrong load type {}", loadType);

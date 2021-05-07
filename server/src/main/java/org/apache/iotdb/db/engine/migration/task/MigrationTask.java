@@ -21,6 +21,9 @@ package org.apache.iotdb.db.engine.migration.task;
 
 import org.apache.iotdb.db.engine.migration.utils.MigrationLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.sync.conf.SyncConstant;
+import org.apache.iotdb.db.sync.sender.utils.FilesBlacklistWriter;
+import org.apache.iotdb.db.sync.sender.utils.FilesBlacklistWriter.BlacklistType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.FSPath;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
@@ -30,6 +33,7 @@ import org.apache.iotdb.tsfile.utils.FSUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
@@ -139,6 +143,8 @@ public class MigrationTask implements IMigrationTask {
           srcFile.delete();
           logger.info("[Migration] Remove old file {}.", srcFile.getAbsolutePath());
         }
+        // check sync status and add to blacklist
+        checkSyncStatus(srcFile, targetFile);
         srcTsFileResource.setMigrating(false);
         migrationLogger.endMigrateTsFile();
       }
@@ -165,6 +171,59 @@ public class MigrationTask implements IMigrationTask {
         tsFileResource.setMigrating(false);
       }
     }
+  }
+
+  private void checkSyncStatus(File srcFile, File targetFile) throws IOException {
+    FSFactory srcFsFactory = FSFactoryProducer.getFSFactory(FSUtils.getFSType(srcFile));
+    File srcSyncSenderDir = srcFsFactory.getFile(getDataDir(srcFile), SyncConstant.SYNC_SENDER);
+    if (!srcSyncSenderDir.exists()) {
+      return;
+    }
+
+    for (File srcReceiverDir : srcSyncSenderDir.listFiles()) {
+      boolean isSynced = false;
+      File lastLocalFileInfo =
+          srcFsFactory.getFile(srcReceiverDir, SyncConstant.LAST_LOCAL_FILE_NAME);
+      if (lastLocalFileInfo.exists()) {
+        try (BufferedReader reader =
+            srcFsFactory.getBufferedReader(lastLocalFileInfo.getAbsolutePath())) {
+          String srcFilePath = FSPath.parse(srcFile).getAbsoluteFSPath().getRawFSPath();
+          String filePath;
+          while ((filePath = reader.readLine()) != null) {
+            if (filePath.equals(srcFilePath)) {
+              isSynced = true;
+              break;
+            }
+          }
+        }
+      }
+
+      if (isSynced) {
+        FilesBlacklistWriter.getWriter(BlacklistType.DELETED_FILES)
+            .addToBlacklist(srcFile, srcReceiverDir);
+        logger.info(
+            "[Migration] Add {} to deleted files blacklist in {}.", srcFile, srcReceiverDir);
+
+        FSFactory targetFsFactory = FSFactoryProducer.getFSFactory(FSUtils.getFSType(targetFile));
+        File targetReceiverDir =
+            targetFsFactory.getFile(
+                targetFsFactory.getFile(getDataDir(targetFile), SyncConstant.SYNC_SENDER),
+                srcReceiverDir.getName());
+        if (!targetReceiverDir.exists()) {
+          targetReceiverDir.mkdirs();
+        }
+        FilesBlacklistWriter.getWriter(BlacklistType.TO_BE_SYNCED_FILES)
+            .addToBlacklist(targetFile, targetReceiverDir);
+        logger.info(
+            "[Migration] Add {} to to-be-synced files blacklist in {}.",
+            targetFile,
+            targetReceiverDir);
+      }
+    }
+  }
+
+  private File getDataDir(File tsFile) {
+    return tsFile.getParentFile().getParentFile().getParentFile().getParentFile().getParentFile();
   }
 
   @Override

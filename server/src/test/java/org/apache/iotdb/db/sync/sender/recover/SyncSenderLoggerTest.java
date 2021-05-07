@@ -33,6 +33,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashSet;
@@ -69,17 +70,17 @@ public class SyncSenderLoggerTest {
     Set<String> deletedFileNamesTest = new HashSet<>();
     senderLogger.startSyncDeletedFilesName();
     for (int i = 0; i < 100; i++) {
-      senderLogger.finishSyncDeletedFileName(
-          config.getSenderFolderPath().getChildFile("deleted" + i));
-      deletedFileNames.add(
-          config.getSenderFolderPath().getChildFile("deleted" + i).getAbsolutePath());
+      File file = config.getSenderFolderPath().getChildFile("deleted" + i);
+      senderLogger.finishSyncDeletedFileName(file);
+      deletedFileNames.add(FSPath.parse(file).getRawFSPath());
     }
     Set<String> toBeSyncedFiles = new HashSet<>();
     Set<String> toBeSyncedFilesTest = new HashSet<>();
     senderLogger.startSyncTsFiles();
     for (int i = 0; i < 100; i++) {
-      senderLogger.finishSyncTsfile(config.getSenderFolderPath().getChildFile("new" + i));
-      toBeSyncedFiles.add(config.getSenderFolderPath().getChildFile("new" + i).getAbsolutePath());
+      File file = config.getSenderFolderPath().getChildFile("new" + i);
+      senderLogger.finishSyncTsfile(file);
+      toBeSyncedFiles.add(FSPath.parse(file).getRawFSPath());
     }
     senderLogger.close();
     int count = 0;

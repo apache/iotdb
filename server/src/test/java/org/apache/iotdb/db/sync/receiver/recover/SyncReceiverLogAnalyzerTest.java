@@ -129,7 +129,7 @@ public class SyncReceiverLogAnalyzerTest {
         Thread.sleep(1);
         File syncFile = new File(fileName);
         receiverLogger.finishSyncTsfile(syncFile);
-        toBeSyncedFiles.add(syncFile.getAbsolutePath());
+        toBeSyncedFiles.add(FSPath.parse(syncFile).getRawFSPath());
         File dataFile =
             TierManager.getInstance()
                 .getAllSequenceFileFolders()

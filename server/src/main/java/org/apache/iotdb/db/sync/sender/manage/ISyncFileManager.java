@@ -44,9 +44,9 @@ public interface ISyncFileManager {
    * Load last local files from file<lastLocalFile> which does not contain those tsfiles which are
    * not synced successfully in previous sync tasks.
    *
-   * @param lastLocalFile last local file, which may not exist in first sync task.
+   * @param lastLocalFilePath last local file, which may not exist in first sync task.
    */
-  void getLastLocalFiles(File lastLocalFile) throws IOException;
+  void getLastLocalFiles(FSPath lastLocalFilePath) throws IOException;
 
   /**
    * Based on current local files and last local files, we can distinguish two kinds of files

@@ -1,3 +1,22 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package org.apache.iotdb.db.engine.migration.task;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -39,17 +58,29 @@ public abstract class MigrationTest {
   static final String testSgSysDir =
       TestConstant.OUTPUT_DATA_DIR.concat(testSgName).concat(File.separator);
   static final String testSgTier1Dir =
-      TestConstant.OUTPUT_DATA_DIR
-          .concat("tier1")
-          .concat(File.separator)
-          .concat(testSgName)
-          .concat(File.separator);
+      TestConstant.OUTPUT_DATA_DIR.concat(
+          "tier1"
+              + File.separator
+              + testSgName
+              + File.separator
+              + IoTDBConstant.SEQUENCE_FLODER_NAME
+              + File.separator
+              + "0"
+              + File.separator
+              + "0"
+              + File.separator);
   static final String testSgTier2Dir =
-      TestConstant.OUTPUT_DATA_DIR
-          .concat("tier2")
-          .concat(File.separator)
-          .concat(testSgName)
-          .concat(File.separator);
+      TestConstant.OUTPUT_DATA_DIR.concat(
+          "tier2"
+              + File.separator
+              + testSgName
+              + File.separator
+              + IoTDBConstant.SEQUENCE_FLODER_NAME
+              + File.separator
+              + "0"
+              + File.separator
+              + "0"
+              + File.separator);
 
   final int srcFileNum = 6;
   final int measurementNum = 10;
@@ -110,14 +141,16 @@ public abstract class MigrationTest {
   private void prepareFiles(int fileNum) throws IOException, WriteProcessException {
     for (int i = 0; i < fileNum; ++i) {
       File file =
-          fsFactory.getFile(
-              testSgTier1Dir,
-              i
-                  + IoTDBConstant.FILE_NAME_SEPARATOR
-                  + 0
-                  + IoTDBConstant.FILE_NAME_SEPARATOR
-                  + 0
-                  + ".tsfile");
+          fsFactory
+              .getFile(
+                  testSgTier1Dir,
+                  i
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 0
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 0
+                      + ".tsfile")
+              .getAbsoluteFile();
       TsFileResource tsFileResource = new TsFileResource(file);
       tsFileResource.setClosed(true);
       tsFileResource.updatePlanIndexes(i);

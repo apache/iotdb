@@ -36,6 +36,10 @@ public class SyncSenderConfig {
 
   private FSPath lastFileInfoPath;
 
+  private FSPath deletedBlackListPath;
+
+  private FSPath toBeSyncedBlackListPath;
+
   private FSPath snapshotPath;
 
   /** The maximum number of retry when syncing a file to receiver fails. */
@@ -54,6 +58,11 @@ public class SyncSenderConfig {
                 + getSyncReceiverName());
     lastFileInfoPath =
         senderFolderPath.postConcat(File.separatorChar + SyncConstant.LAST_LOCAL_FILE_NAME);
+    deletedBlackListPath =
+        senderFolderPath.postConcat(File.separatorChar + SyncConstant.DELETED_BLACKLIST_FILE_NAME);
+    toBeSyncedBlackListPath =
+        senderFolderPath.postConcat(
+            File.separatorChar + SyncConstant.TO_BE_SYNCED_BLACKLIST_FILE_NAME);
     snapshotPath =
         senderFolderPath.postConcat(File.separatorChar + SyncConstant.DATA_SNAPSHOT_NAME);
     if (!snapshotPath.getFile().exists()) {
@@ -89,24 +98,20 @@ public class SyncSenderConfig {
     return senderFolderPath;
   }
 
-  public void setSenderFolderPath(FSPath senderFolderPath) {
-    this.senderFolderPath = senderFolderPath;
-  }
-
   public FSPath getLastFileInfoPath() {
     return lastFileInfoPath;
   }
 
-  public void setLastFileInfoPath(FSPath lastFileInfoPath) {
-    this.lastFileInfoPath = lastFileInfoPath;
+  public FSPath getDeletedBlackListPath() {
+    return deletedBlackListPath;
+  }
+
+  public FSPath getToBeSyncedBlackListPath() {
+    return toBeSyncedBlackListPath;
   }
 
   public FSPath getSnapshotPath() {
     return snapshotPath;
-  }
-
-  public void setSnapshotPath(FSPath snapshotPath) {
-    this.snapshotPath = snapshotPath;
   }
 
   public String getSyncReceiverName() {
