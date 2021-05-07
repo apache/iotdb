@@ -203,6 +203,32 @@ public class IoTDBAuthorizationIT {
   }
 
   @Test
+  public void illegalPasswordTest() throws ClassNotFoundException, SQLException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    boolean caught = false;
+    try (Connection adminCon =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("CREATE USER tempuser 'temppw '");
+    } catch (SQLException e) {
+      caught = true;
+    }
+    assertTrue(caught);
+
+    caught = false;
+    try (Connection adminCon =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("CREATE USER tempuser 'te'");
+    } catch (SQLException e) {
+      caught = true;
+    }
+    assertTrue(caught);
+  }
+
+  @Test
   public void updatePasswordTest() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection adminCon =
@@ -684,7 +710,7 @@ public class IoTDBAuthorizationIT {
         validateResultSet(resultSet, ans);
 
         for (int i = 0; i < 10; i++) {
-          adminStmt.execute("CREATE USER user" + i + " 'password " + i + "'");
+          adminStmt.execute("CREATE USER user" + i + " 'password" + i + "'");
         }
         resultSet = adminStmt.executeQuery("LIST USER");
         ans =
@@ -1009,7 +1035,7 @@ public class IoTDBAuthorizationIT {
     Statement adminStmt = adminCon.createStatement();
 
     for (int i = 0; i < 10; i++) {
-      adminStmt.execute("CREATE USER user" + i + " 'password " + i + "'");
+      adminStmt.execute("CREATE USER user" + i + " 'password" + i + "'");
     }
 
     adminStmt.execute("CREATE USER tempuser 'temppw'");
@@ -1067,8 +1093,11 @@ public class IoTDBAuthorizationIT {
           userStatement.executeBatch();
         } catch (BatchUpdateException e) {
           assertEquals(
-              "\nNo permissions for this operation CREATE_TIMESERIES for SQL: \"CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64\"\n"
-                  + "No permissions for this operation CREATE_TIMESERIES for SQL: \"CREATE TIMESERIES root.sg2.d1.s1 WITH DATATYPE=INT64\"\n",
+              System.lineSeparator()
+                  + "No permissions for this operation CREATE_TIMESERIES for SQL: \"CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64\""
+                  + System.lineSeparator()
+                  + "No permissions for this operation CREATE_TIMESERIES for SQL: \"CREATE TIMESERIES root.sg2.d1.s1 WITH DATATYPE=INT64\""
+                  + System.lineSeparator(),
               e.getMessage());
         }
       }
@@ -1098,8 +1127,11 @@ public class IoTDBAuthorizationIT {
         } catch (BatchUpdateException e) {
           System.out.println(e.getMessage());
           assertEquals(
-              "\nNo permissions for this operation INSERT for SQL: \"insert into root.sg2.d1(timestamp,s1) values (2,1)\"\n"
-                  + "No permissions for this operation INSERT for SQL: \"insert into root.sg2.d1(timestamp,s1) values (4,1)\"\n",
+              System.lineSeparator()
+                  + "No permissions for this operation INSERT for SQL: \"insert into root.sg2.d1(timestamp,s1) values (2,1)\""
+                  + System.lineSeparator()
+                  + "No permissions for this operation INSERT for SQL: \"insert into root.sg2.d1(timestamp,s1) values (4,1)\""
+                  + System.lineSeparator(),
               e.getMessage());
         }
       }

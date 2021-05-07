@@ -184,24 +184,6 @@ public class DeviceTimeIndex implements ITimeIndex {
         + RamUsageEstimator.sizeOf(endTimes);
   }
 
-  @Override
-  public long estimateRamIncrement(String deviceToBeChecked) {
-    long ramIncrement = 0L;
-    if (!deviceToIndex.containsKey(deviceToBeChecked)) {
-      // 80 is the Map.Entry header ram size
-      if (deviceToIndex.isEmpty()) {
-        ramIncrement += 80;
-      }
-      // Map.Entry ram size
-      ramIncrement += RamUsageEstimator.sizeOf(deviceToBeChecked) + 16;
-      // if needs to extend the startTimes and endTimes arrays
-      if (deviceToIndex.size() >= startTimes.length) {
-        ramIncrement += startTimes.length * Long.BYTES;
-      }
-    }
-    return ramIncrement;
-  }
-
   private int getDeviceIndex(String deviceId) {
     int index;
     if (deviceToIndex.containsKey(deviceId)) {

@@ -120,7 +120,7 @@ public class SchemaUtils {
 
     MeasurementMNode measurementMNode =
         new MeasurementMNode(null, path.getMeasurement(), measurementSchema, null);
-    IoTDB.metaManager.cacheMeta(path, measurementMNode);
+    IoTDB.metaManager.cacheMeta(path, measurementMNode, true);
   }
 
   public static List<TSDataType> getSeriesTypesByPaths(Collection<PartialPath> paths)

@@ -230,13 +230,14 @@ public class CMManager extends MManager {
                 null, measurementSchema.getMeasurementId(), measurementSchema, null);
         if (measurementSchema instanceof VectorMeasurementSchema) {
           for (String subSensorId : measurementSchema.getValueMeasurementIdList()) {
-            cacheMeta(new PartialPath(path.getDevice(), subSensorId), measurementMNode);
+            cacheMeta(new PartialPath(path.getDevice(), subSensorId), measurementMNode, false);
           }
           cacheMeta(
               new PartialPath(path.getDevice(), measurementSchema.getMeasurementId()),
-              measurementMNode);
+              measurementMNode,
+              true);
         } else {
-          cacheMeta(path, measurementMNode);
+          cacheMeta(path, measurementMNode, true);
         }
         return measurementMNode.getDataType(path.getMeasurement());
       } else {
@@ -290,7 +291,7 @@ public class CMManager extends MManager {
           MeasurementMNode measurementMNode =
               new MeasurementMNode(
                   null, measurementSchema.getMeasurementId(), measurementSchema, null);
-          cacheMeta(fullPath, measurementMNode);
+          cacheMeta(fullPath, measurementMNode, true);
           node = measurementMNode;
         } else {
           throw e;
@@ -370,13 +371,20 @@ public class CMManager extends MManager {
       // take care, the pulled schema's measurement Id is only series name
       MeasurementMNode measurementMNode =
           new MeasurementMNode(null, schema.getMeasurementId(), schema, null);
-      cacheMeta(deviceId.concatNode(schema.getMeasurementId()), measurementMNode);
+      cacheMeta(deviceId.concatNode(schema.getMeasurementId()), measurementMNode, true);
     }
     logger.debug("Pulled {}/{} schemas from remote", schemas.size(), measurementList.length);
   }
 
+  /*
+  do not set FullPath for Vector subSensor
+   */
   @Override
-  public void cacheMeta(PartialPath seriesPath, MeasurementMNode measurementMNode) {
+  public void cacheMeta(
+      PartialPath seriesPath, MeasurementMNode measurementMNode, boolean needSetFullPath) {
+    if (needSetFullPath) {
+      measurementMNode.setFullPath(seriesPath.getFullPath());
+    }
     cacheLock.writeLock().lock();
     mRemoteMetaCache.put(seriesPath, measurementMNode);
     cacheLock.writeLock().unlock();
