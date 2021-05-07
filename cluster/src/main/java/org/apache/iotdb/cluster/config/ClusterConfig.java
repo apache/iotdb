@@ -21,27 +21,31 @@ package org.apache.iotdb.cluster.config;
 import org.apache.iotdb.cluster.utils.ClusterConsistent;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class ClusterConfig {
-
+  private static Logger logger = LoggerFactory.getLogger(ClusterConfig.class);
   static final String CONFIG_NAME = "iotdb-cluster.properties";
 
-  private String internalIp = "127.0.0.1";
+  private String internalIp;
   private int internalMetaPort = 9003;
   private int internalDataPort = 40010;
   private int clusterRpcPort = IoTDBDescriptor.getInstance().getConfig().getRpcPort();
 
   /** each one is a {internalIp | domain name}:{meta port} string tuple. */
-  private List<String> seedNodeUrls =
-      Arrays.asList(String.format("%s:%d", internalIp, internalMetaPort));
+  private List<String> seedNodeUrls;
 
   @ClusterConsistent private boolean isRpcThriftCompressionEnabled = false;
   private int maxConcurrentClientNum = 10000;
 
-  @ClusterConsistent private int replicationNum = 3;
+  @ClusterConsistent private int replicationNum = 1;
 
   @ClusterConsistent private int multiRaftFactor = 1;
 
@@ -57,15 +61,15 @@ public class ClusterConfig {
 
   private int writeOperationTimeoutMS = (int) TimeUnit.SECONDS.toMillis(30);
 
-  private int catchUpTimeoutMS = (int) TimeUnit.SECONDS.toMillis(60);
+  private int catchUpTimeoutMS = (int) TimeUnit.SECONDS.toMillis(300);
 
   private boolean useBatchInLogCatchUp = true;
 
   /** max number of committed logs to be saved */
-  private int minNumOfLogsInMem = 100;
+  private int minNumOfLogsInMem = 1000;
 
   /** max number of committed logs in memory */
-  private int maxNumOfLogsInMem = 1000;
+  private int maxNumOfLogsInMem = 2000;
 
   /** max memory size of committed logs in memory, default 512M */
   private long maxMemorySizeForRaftLog = 536870912;
@@ -144,7 +148,7 @@ public class ClusterConfig {
   /** The maximum number of logs saved on the disk */
   private int maxPersistRaftLogNumberOnDisk = 1_000_000;
 
-  private boolean enableUsePersistLogOnDiskToCatchUp = false;
+  private boolean enableUsePersistLogOnDiskToCatchUp = true;
 
   /**
    * The number of logs read on the disk at one time, which is mainly used to control the memory
@@ -165,6 +169,21 @@ public class ClusterConfig {
   private long maxReadLogLag = 1000L;
 
   private boolean openServerRpcPort = false;
+
+  /**
+   * create a clusterConfig class. The internalIP will be set according to the server's hostname. If
+   * there is something error for getting the ip of the hostname, then set the internalIp as
+   * localhost.
+   */
+  public ClusterConfig() {
+    try {
+      internalIp = InetAddress.getLocalHost().getHostAddress();
+    } catch (UnknownHostException e) {
+      logger.error(e.getMessage());
+      internalIp = "127.0.0.1";
+    }
+    seedNodeUrls = Arrays.asList(String.format("%s:%d", internalIp, internalMetaPort));
+  }
 
   public int getSelectorNumOfClientPool() {
     return selectorNumOfClientPool;

@@ -42,7 +42,7 @@ In root directory:
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>iotdb-session</artifactId>
-      <version>0.12.0</version>
+      <version>0.13.0-SNAPSHOT</version>
     </dependency>
 </dependencies>
 ```
@@ -100,6 +100,15 @@ void createMultiTimeseries(List<String> paths, List<TSDataType> dataTypes,
       List<Map<String, String>> propsList, List<Map<String, String>> tagsList,
       List<Map<String, String>> attributesList, List<String> measurementAliasList)
 ```
+
+* Create aligned timeseries
+```
+void createAlignedTimeseries(String devicePath, List<String> measurements,
+      List<TSDataType> dataTypes, List<TSEncoding> encodings,
+      CompressionType compressor, List<String> measurementAliasList);
+```
+
+Attention: Alias of measurements are **not supported** currently.
 
 * Delete one or several timeseries
 
@@ -260,6 +269,8 @@ Examples: ```session/src/test/java/org/apache/iotdb/session/pool/SessionPoolTest
 
 Or `example/session/src/main/java/org/apache/iotdb/SessionPoolExample.java`
 
+For examples of aligned timeseries and device template, you can refer to `example/session/src/main/java/org/apache/iotdb/VectorSessionExample.java`
+
 
 
 
@@ -335,6 +346,17 @@ void createMultiTimeseries(List<String> paths, List<TSDataType> dataTypes, List<
 Create multiple timeseries with a single method. Users can provide props, tags, attributes and measurementAlias as well for detailed timeseries information.
 
 ```java
+void createAlignedTimeseries(String devicePath, List<String> measurements,
+      List<TSDataType> dataTypes, List<TSEncoding> encodings,
+      CompressionType compressor, List<String> measurementAliasList);
+```
+
+Create aligned timeseries with device path, measurements, data types, encodings, compression.
+
+Attention: Alias of measurements are **not supported** currently.
+
+```java
+
 boolean checkTimeseriesExists(String path)
 ```
 
@@ -346,4 +368,41 @@ public Session(String host, int rpcPort, String username, String password,
 ```
 
 Open a session and specifies whether the Leader cache is enabled. Note that this interface improves performance for distributed IoTDB, but adds less cost to the client for stand-alone IoTDB.
+
+```
+
+* name: template name
+* measurements: List of measurements, if it is a single measurement, just put it's name
+*     into a list and add to measurements if it is a vector measurement, put all measurements of
+*     the vector into a list and add to measurements
+* dataTypes: List of datatypes, if it is a single measurement, just put it's type into a
+*     list and add to dataTypes if it is a vector measurement, put all types of the vector
+*     into a list and add to dataTypes
+* encodings: List of encodings, if it is a single measurement, just put it's encoding into
+*     a list and add to encodings if it is a vector measurement, put all encodings of the
+*     vector into a list and add to encodings
+* compressors: List of compressors                            
+void createDeviceTemplate(
+      String name,
+      List<List<String>> measurements,
+      List<List<TSDataType>> dataTypes,
+      List<List<TSEncoding>> encodings,
+      List<CompressionType> compressors)
+```
+
+Create a device template, the param description at above
+
+``` 
+
+void setDeviceTemplate(String templateName, String prefixPath)
+
+```
+
+Set the device template named 'templateName' at path 'prefixPath'. You should firstly create the template using
+
+```
+
+void createDeviceTemplate
+
+```
 

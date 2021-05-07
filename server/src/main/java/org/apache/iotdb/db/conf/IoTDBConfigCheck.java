@@ -300,6 +300,10 @@ public class IoTDBConfigCheck {
       printErrorLogAndExit(TIMESTAMP_PRECISION_STRING);
     }
 
+    if (Boolean.parseBoolean(properties.getProperty(ENABLE_PARTITION_STRING)) != enablePartition) {
+      printErrorLogAndExit(ENABLE_PARTITION_STRING);
+    }
+
     if (Long.parseLong(properties.getProperty(PARTITION_INTERVAL_STRING)) != partitionInterval) {
       printErrorLogAndExit(PARTITION_INTERVAL_STRING);
     }

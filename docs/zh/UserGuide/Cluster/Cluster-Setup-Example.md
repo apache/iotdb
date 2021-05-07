@@ -25,9 +25,9 @@ __集群模式目前是测试版！请谨慎在生产环境中使用。__
 ```
 mvn clean package -DskipTests
 chmod -R 777 ./cluster/target/
-nohup ./cluster/target/iotdb-cluster-0.12.0-SNAPSHOT/sbin/start-node.sh ./cluster/target/test-classes/node1conf/ >/dev/null 2>&1 &
-nohup ./cluster/target/iotdb-cluster-0.12.0-SNAPSHOT/sbin/start-node.sh ./cluster/target/test-classes/node2conf/ >/dev/null 2>&1 &
-nohup ./cluster/target/iotdb-cluster-0.12.0-SNAPSHOT/sbin/start-node.sh ./cluster/target/test-classes/node3conf/ >/dev/null 2>&1 &
+nohup ./cluster/target/iotdb-cluster-0.13.0-SNAPSHOT/sbin/start-node.sh ./cluster/target/test-classes/node1conf/ >/dev/null 2>&1 &
+nohup ./cluster/target/iotdb-cluster-0.13.0-SNAPSHOT/sbin/start-node.sh ./cluster/target/test-classes/node2conf/ >/dev/null 2>&1 &
+nohup ./cluster/target/iotdb-cluster-0.13.0-SNAPSHOT/sbin/start-node.sh ./cluster/target/test-classes/node3conf/ >/dev/null 2>&1 &
 ```
 
 ## 3节点3副本分布式搭建示例
@@ -39,7 +39,7 @@ nohup ./cluster/target/iotdb-cluster-0.12.0-SNAPSHOT/sbin/start-node.sh ./cluste
 
 1. 保证三个节点的 6667, 9003, 9004, 40010, 40011 和 31999 端口是开放的。
 2. 使用 `mvn clean package -pl cluster -am -DskipTests` 编译分布式模块。
-3. 将打出来的包(iotdb-cluster-0.12.0-SNAPSHOT)传到所有的服务器上。
+3. 将打出来的包(iotdb-cluster-0.13.0-SNAPSHOT)传到所有的服务器上。
 4. 配置所有节点 conf/iotdb-cluster.properties 配置文件中的 seed_nodes 为 "A_private_ip:9003,B_private_ip:9003,C_private_ip:9003"
 5. 配置所有节点 conf/iotdb-cluster.properties 配置文件中的 internal_ip 为各自节点的 private_ip。
 6. 配置所有节点 conf/iotdb-engine.properties 配置文件中的 rpc_address 为各自节点的 public_ip。

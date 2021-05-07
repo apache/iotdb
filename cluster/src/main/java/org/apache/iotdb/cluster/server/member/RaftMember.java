@@ -63,11 +63,14 @@ import org.apache.iotdb.cluster.utils.PlanSerializer;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.IoTDBException;
+import org.apache.iotdb.db.exception.metadata.DuplicatedTemplateException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.LogPlan;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -234,6 +237,11 @@ public abstract class RaftMember {
 
   /** If this node can not be the leader, this parameter will be set true. */
   private volatile boolean skipElection = false;
+
+  /**
+   * localExecutor is used to directly execute plans like load configuration in the underlying IoTDB
+   */
+  protected PlanExecutor localExecutor;
 
   protected RaftMember() {}
 
@@ -583,6 +591,13 @@ public abstract class RaftMember {
           response);
     }
     return response;
+  }
+
+  public PlanExecutor getLocalExecutor() throws QueryProcessException {
+    if (localExecutor == null) {
+      localExecutor = new PlanExecutor();
+    }
+    return localExecutor;
   }
 
   /**
@@ -1022,7 +1037,7 @@ public abstract class RaftMember {
         return StatusUtils.OK;
       }
     } catch (LogExecutionException e) {
-      return handleLogExecutionException(log, e);
+      return handleLogExecutionException(log, IOUtils.getRootCause(e));
     }
     return StatusUtils.TIME_OUT;
   }
@@ -1096,7 +1111,7 @@ public abstract class RaftMember {
           break;
       }
     } catch (LogExecutionException e) {
-      return handleLogExecutionException(log, e);
+      return handleLogExecutionException(log, IOUtils.getRootCause(e));
     }
     return StatusUtils.TIME_OUT;
   }
@@ -1536,10 +1551,17 @@ public abstract class RaftMember {
     }
   }
 
-  private TSStatus handleLogExecutionException(Log log, LogExecutionException e) {
-    Throwable cause = IOUtils.getRootCause(e);
+  protected TSStatus handleLogExecutionException(Object log, Throwable cause) {
     if (cause instanceof BatchProcessException) {
       return RpcUtils.getStatus(Arrays.asList(((BatchProcessException) cause).getFailingStatus()));
+    }
+    if (cause instanceof DuplicatedTemplateException) {
+      return StatusUtils.DUPLICATED_TEMPLATE.deepCopy().setMessage(cause.getMessage());
+    }
+    if (cause instanceof StorageGroupNotSetException) {
+      TSStatus status = StatusUtils.getStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST);
+      status.setMessage(cause.getMessage());
+      return status;
     }
     TSStatus tsStatus =
         StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, cause.getMessage());
@@ -1550,7 +1572,6 @@ public abstract class RaftMember {
       tsStatus.setCode(((IoTDBException) cause).getErrorCode());
     }
     if (!(cause instanceof PathNotExistException)
-        && !(cause instanceof StorageGroupNotSetException)
         && !(cause instanceof PathAlreadyExistException)
         && !(cause instanceof StorageGroupAlreadySetException)) {
       logger.debug("{} cannot be executed because ", log, cause);

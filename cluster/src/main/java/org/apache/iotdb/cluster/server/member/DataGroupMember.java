@@ -28,6 +28,7 @@ import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncDataHeartbeatClient;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.SnapshotInstallationException;
 import org.apache.iotdb.cluster.log.Log;
@@ -69,6 +70,7 @@ import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
 import org.apache.iotdb.cluster.server.monitor.Peer;
 import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
+import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -76,6 +78,7 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartiti
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -663,16 +666,38 @@ public class DataGroupMember extends RaftMember {
    */
   @Override
   public TSStatus executeNonQueryPlan(PhysicalPlan plan) {
-    TSStatus status = executeNonQueryPlanWithKnownLeader(plan);
-    if (!StatusUtils.NO_LEADER.equals(status)) {
-      return status;
+    if (ClusterDescriptor.getInstance().getConfig().getReplicationNum() == 1) {
+      try {
+        getLocalExecutor().processNonQuery(plan);
+        return StatusUtils.OK;
+      } catch (Exception e) {
+        Throwable cause = IOUtils.getRootCause(e);
+        if (cause instanceof StorageGroupNotSetException
+            || cause instanceof UndefinedTemplateException) {
+          try {
+            metaGroupMember.syncLeaderWithConsistencyCheck(true);
+            getLocalExecutor().processNonQuery(plan);
+            return StatusUtils.OK;
+          } catch (CheckConsistencyException ce) {
+            return StatusUtils.getStatus(StatusUtils.CONSISTENCY_FAILURE, ce.getMessage());
+          } catch (Exception ne) {
+            return handleLogExecutionException(plan, IOUtils.getRootCause(ne));
+          }
+        }
+        return handleLogExecutionException(plan, cause);
+      }
+    } else {
+      TSStatus status = executeNonQueryPlanWithKnownLeader(plan);
+      if (!StatusUtils.NO_LEADER.equals(status)) {
+        return status;
+      }
+
+      long startTime = Timer.Statistic.DATA_GROUP_MEMBER_WAIT_LEADER.getOperationStartTime();
+      waitLeader();
+      Timer.Statistic.DATA_GROUP_MEMBER_WAIT_LEADER.calOperationCostTimeFromStart(startTime);
+
+      return executeNonQueryPlanWithKnownLeader(plan);
     }
-
-    long startTime = Timer.Statistic.DATA_GROUP_MEMBER_WAIT_LEADER.getOperationStartTime();
-    waitLeader();
-    Timer.Statistic.DATA_GROUP_MEMBER_WAIT_LEADER.calOperationCostTimeFromStart(startTime);
-
-    return executeNonQueryPlanWithKnownLeader(plan);
   }
 
   private TSStatus executeNonQueryPlanWithKnownLeader(PhysicalPlan plan) {

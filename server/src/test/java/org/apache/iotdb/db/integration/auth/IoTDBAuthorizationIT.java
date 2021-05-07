@@ -26,12 +26,16 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import java.sql.BatchUpdateException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -196,6 +200,32 @@ public class IoTDBAuthorizationIT {
       }
       fail();
     }
+  }
+
+  @Test
+  public void illegalPasswordTest() throws ClassNotFoundException, SQLException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    boolean caught = false;
+    try (Connection adminCon =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("CREATE USER tempuser 'temppw '");
+    } catch (SQLException e) {
+      caught = true;
+    }
+    assertTrue(caught);
+
+    caught = false;
+    try (Connection adminCon =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("CREATE USER tempuser 'te'");
+    } catch (SQLException e) {
+      caught = true;
+    }
+    assertTrue(caught);
   }
 
   @Test
@@ -680,7 +710,7 @@ public class IoTDBAuthorizationIT {
         validateResultSet(resultSet, ans);
 
         for (int i = 0; i < 10; i++) {
-          adminStmt.execute("CREATE USER user" + i + " 'password " + i + "'");
+          adminStmt.execute("CREATE USER user" + i + " 'password" + i + "'");
         }
         resultSet = adminStmt.executeQuery("LIST USER");
         ans =
@@ -1005,7 +1035,7 @@ public class IoTDBAuthorizationIT {
     Statement adminStmt = adminCon.createStatement();
 
     for (int i = 0; i < 10; i++) {
-      adminStmt.execute("CREATE USER user" + i + " 'password " + i + "'");
+      adminStmt.execute("CREATE USER user" + i + " 'password" + i + "'");
     }
 
     adminStmt.execute("CREATE USER tempuser 'temppw'");
@@ -1042,6 +1072,80 @@ public class IoTDBAuthorizationIT {
       }
     } finally {
       adminCon.close();
+    }
+  }
+
+  @Test
+  public void testExecuteBatchWithPrivilege() throws ClassNotFoundException, SQLException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection adminCon =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("CREATE USER tempuser 'temppw'");
+      try (Connection userCon =
+              DriverManager.getConnection(
+                  Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "tempuser", "temppw");
+          Statement userStatement = userCon.createStatement()) {
+        userStatement.addBatch("CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64");
+        userStatement.addBatch("CREATE TIMESERIES root.sg2.d1.s1 WITH DATATYPE=INT64");
+        try {
+          userStatement.executeBatch();
+        } catch (BatchUpdateException e) {
+          assertEquals(
+              System.lineSeparator()
+                  + "No permissions for this operation CREATE_TIMESERIES for SQL: \"CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64\""
+                  + System.lineSeparator()
+                  + "No permissions for this operation CREATE_TIMESERIES for SQL: \"CREATE TIMESERIES root.sg2.d1.s1 WITH DATATYPE=INT64\""
+                  + System.lineSeparator(),
+              e.getMessage());
+        }
+      }
+    }
+  }
+
+  @Test
+  public void testExecuteBatchWithPrivilege1() throws ClassNotFoundException, SQLException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection adminCon =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("CREATE USER tempuser 'temppw'");
+      adminStmt.execute("GRANT USER tempuser PRIVILEGES 'INSERT_TIMESERIES' on root.sg1");
+
+      try (Connection userCon =
+              DriverManager.getConnection(
+                  Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "tempuser", "temppw");
+          Statement userStatement = userCon.createStatement()) {
+        userStatement.addBatch("insert into root.sg1.d1(timestamp,s1) values (1,1)");
+        userStatement.addBatch("insert into root.sg2.d1(timestamp,s1) values (2,1)");
+        userStatement.addBatch("insert into root.sg1.d1(timestamp,s2) values (3,1)");
+        userStatement.addBatch("insert into root.sg2.d1(timestamp,s1) values (4,1)");
+        try {
+          userStatement.executeBatch();
+        } catch (BatchUpdateException e) {
+          System.out.println(e.getMessage());
+          assertEquals(
+              System.lineSeparator()
+                  + "No permissions for this operation INSERT for SQL: \"insert into root.sg2.d1(timestamp,s1) values (2,1)\""
+                  + System.lineSeparator()
+                  + "No permissions for this operation INSERT for SQL: \"insert into root.sg2.d1(timestamp,s1) values (4,1)\""
+                  + System.lineSeparator(),
+              e.getMessage());
+        }
+      }
+      ResultSet resultSet = adminStmt.executeQuery("select * from root");
+      String[] expected = new String[] {"1, 1.0", "1, null", "3, null", "3, 1.0"};
+      List<String> expectedList = new ArrayList<>();
+      Collections.addAll(expectedList, expected);
+      List<String> result = new ArrayList<>();
+      while (resultSet.next()) {
+        result.add(resultSet.getString("Time") + ", " + resultSet.getString("root.sg1.d1.s1"));
+        result.add(resultSet.getString("Time") + ", " + resultSet.getString("root.sg1.d1.s2"));
+      }
+      assertEquals(expected.length, result.size());
+      assertTrue(expectedList.containsAll(result));
     }
   }
 }

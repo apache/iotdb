@@ -89,7 +89,7 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -699,7 +699,7 @@ public class DataGroupMemberTest extends BaseMember {
       PullSchemaRequest request = new PullSchemaRequest();
       request.setPrefixPaths(Collections.singletonList(TestUtils.getTestSg(0)));
       request.setHeader(TestUtils.getNode(0));
-      AtomicReference<List<MeasurementSchema>> result = new AtomicReference<>();
+      AtomicReference<List<IMeasurementSchema>> result = new AtomicReference<>();
       PullMeasurementSchemaHandler handler =
           new PullMeasurementSchemaHandler(TestUtils.getNode(1), request.getPrefixPaths(), result);
       new DataAsyncService(dataGroupMember).pullMeasurementSchema(request, handler);

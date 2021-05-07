@@ -23,15 +23,19 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateIndexPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -48,6 +52,7 @@ import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetUsingDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
@@ -247,6 +252,9 @@ public abstract class PhysicalPlan {
         case CREATE_TIMESERIES:
           plan = new CreateTimeSeriesPlan();
           break;
+        case CREATE_ALIGNED_TIMESERIES:
+          plan = new CreateAlignedTimeSeriesPlan();
+          break;
         case DELETE_TIMESERIES:
           plan = new DeleteTimeSeriesPlan();
           break;
@@ -352,6 +360,18 @@ public abstract class PhysicalPlan {
         case CLUSTER_LOG:
           plan = new LogPlan();
           break;
+        case CREATE_TEMPLATE:
+          plan = new CreateTemplatePlan();
+          break;
+        case SET_DEVICE_TEMPLATE:
+          plan = new SetDeviceTemplatePlan();
+          break;
+        case SET_USING_DEVICE_TEMPLATE:
+          plan = new SetUsingDeviceTemplatePlan();
+          break;
+        case AUTO_CREATE_DEVICE_MNODE:
+          plan = new AutoCreateDeviceMNodePlan();
+          break;
         default:
           throw new IOException("unrecognized log type " + type);
       }
@@ -366,6 +386,7 @@ public abstract class PhysicalPlan {
     BATCHINSERT,
     SET_STORAGE_GROUP,
     CREATE_TIMESERIES,
+    CREATE_ALIGNED_TIMESERIES,
     TTL,
     GRANT_WATERMARK_EMBEDDING,
     REVOKE_WATERMARK_EMBEDDING,
@@ -399,6 +420,10 @@ public abstract class PhysicalPlan {
     MULTI_BATCH_INSERT,
     BATCH_INSERT_ROWS,
     SHOW_DEVICES,
+    CREATE_TEMPLATE,
+    SET_DEVICE_TEMPLATE,
+    SET_USING_DEVICE_TEMPLATE,
+    AUTO_CREATE_DEVICE_MNODE,
     CREATE_TRIGGER,
     DROP_TRIGGER,
     START_TRIGGER,

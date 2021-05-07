@@ -41,6 +41,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CountPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.LogPlan;
@@ -129,6 +130,8 @@ public class ClusterPlanRouter {
       return splitAndRoutePlan((CountPlan) plan);
     } else if (plan instanceof CreateTimeSeriesPlan) {
       return splitAndRoutePlan((CreateTimeSeriesPlan) plan);
+    } else if (plan instanceof CreateAlignedTimeSeriesPlan) {
+      return splitAndRoutePlan((CreateAlignedTimeSeriesPlan) plan);
     } else if (plan instanceof InsertRowPlan) {
       return splitAndRoutePlan((InsertRowPlan) plan);
     } else if (plan instanceof AlterTimeSeriesPlan) {
@@ -187,6 +190,12 @@ public class ClusterPlanRouter {
   private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(CreateTimeSeriesPlan plan)
       throws MetadataException {
     PartitionGroup partitionGroup = partitionTable.partitionByPathTime(plan.getPath(), 0);
+    return Collections.singletonMap(plan, partitionGroup);
+  }
+
+  private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(CreateAlignedTimeSeriesPlan plan)
+      throws MetadataException {
+    PartitionGroup partitionGroup = partitionTable.partitionByPathTime(plan.getDevicePath(), 0);
     return Collections.singletonMap(plan, partitionGroup);
   }
 
@@ -340,7 +349,7 @@ public class ClusterPlanRouter {
       }
       long[] subTimes = new long[count];
       int destLoc = 0;
-      Object[] values = initTabletValues(plan.getMeasurements().length, count, plan.getDataTypes());
+      Object[] values = initTabletValues(plan.getDataTypes().length, count, plan.getDataTypes());
       for (int i = 0; i < locs.size(); i += 2) {
         int start = locs.get(i);
         int end = locs.get(i + 1);

@@ -43,6 +43,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -135,7 +136,7 @@ public class SlotPartitionTable implements PartitionTable {
   private void init(Collection<Node> nodes) {
     logger.info("Initializing a new partition table");
     nodeRing.addAll(nodes);
-    nodeRing.sort(Comparator.comparingInt(Node::getNodeIdentifier));
+    Collections.sort(nodeRing);
     localGroups = getPartitionGroups(thisNode);
     assignPartitions();
   }
@@ -434,7 +435,7 @@ public class SlotPartitionTable implements PartitionTable {
         nodeRing.add(raftNode.getNode());
       }
     }
-    nodeRing.sort(Comparator.comparingInt(Node::getNodeIdentifier));
+    Collections.sort(nodeRing);
     logger.info("All known nodes: {}", nodeRing);
 
     localGroups = getPartitionGroups(thisNode);

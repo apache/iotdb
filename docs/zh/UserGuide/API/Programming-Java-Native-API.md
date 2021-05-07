@@ -45,7 +45,7 @@ mvn clean install -pl session -am -Dmaven.test.skip=true
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>iotdb-session</artifactId>
-      <version>0.12.0</version>
+      <version>0.13.0-SNAPSHOT</version>
     </dependency>
 </dependencies>
 ```
@@ -101,6 +101,16 @@ void createMultiTimeseries(List<String> paths, List<TSDataType> dataTypes,
       List<Map<String, String>> propsList, List<Map<String, String>> tagsList,
       List<Map<String, String>> attributesList, List<String> measurementAliasList)
 ```
+
+* 创建对齐时间序列
+
+```
+void createAlignedTimeseries(String devicePath, List<String> measurements,
+      List<TSDataType> dataTypes, List<TSEncoding> encodings,
+      CompressionType compressor, List<String> measurementAliasList);
+```
+
+注意：目前**暂不支持**使用传感器别名。
 
 * 删除一个或多个时间序列
 
@@ -182,6 +192,33 @@ SessionDataSet executeQueryStatement(String sql)
 void executeNonQueryStatement(String sql)
 ```
 
+* 创建一个设备模板
+
+```
+* name: 设备模板名称
+* measurements: 工况名称列表，如果该工况是非对齐的，直接将其名称放入一个list中再放入measurements中，
+*               如果该工况是对齐的，将所有对齐工况名称放入一个list再放入measurements中
+* dataTypes: 数据类型名称列表，如果该工况是非对齐的，直接将其数据类型放入一个list中再放入dataTypes中，
+             如果该工况是对齐的，将所有对齐工况的数据类型放入一个list再放入dataTypes中
+* encodings: 编码类型名称列表，如果该工况是非对齐的，直接将其数据类型放入一个list中再放入encodings中，
+             如果该工况是对齐的，将所有对齐工况的编码类型放入一个list再放入encodings中
+* compressors: 压缩方式列表                          
+void createDeviceTemplate(
+      String name,
+      List<List<String>> measurements,
+      List<List<TSDataType>> dataTypes,
+      List<List<TSEncoding>> encodings,
+      List<CompressionType> compressors)
+```
+
+
+* 将名为'templateName'的设备模板挂载到'prefixPath'路径下，在执行这一步之前，你需要创建名为'templateName'的设备模板
+
+``` 
+void setDeviceTemplate(String templateName, String prefixPath)
+```
+
+
 
 
 ### 测试接口说明
@@ -239,7 +276,9 @@ void testInsertTablet(Tablet tablet)
 
 或 `example/session/src/main/java/org/apache/iotdb/SessionPoolExample.java`
 
+使用对齐时间序列和设备模板的示例可以参见 `example/session/src/main/java/org/apache/iotdb/VectorSessionExample.java`。
 
+  
 
 ### 示例代码
 
