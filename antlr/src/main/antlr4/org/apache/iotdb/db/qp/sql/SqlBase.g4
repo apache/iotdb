@@ -106,7 +106,8 @@ statement
     | SELECT topClause? selectElements
     fromClause
     whereClause?
-    specialClause? #selectStatement
+    specialClause?
+    WITHOUT (ALL | ANY) NULL #selectStatement
     ;
 
 selectElements
@@ -1306,6 +1307,14 @@ EXPLAIN
 
 NULL
     : N U L L
+    ;
+
+WITHOUT
+    : W I T H O U T
+    ;
+
+ANY
+    : A N Y
     ;
 
 //============================

@@ -62,6 +62,10 @@ public class QueryOperator extends SFWOperator {
 
   private IndexType indexType;
 
+  private boolean withoutAnyNull;
+
+  private boolean withoutAllNull;
+
   public QueryOperator(int tokenIntType) {
     super(tokenIntType);
     operatorType = Operator.OperatorType.QUERY;
@@ -249,5 +253,21 @@ public class QueryOperator extends SFWOperator {
 
   public void setAscending(boolean ascending) {
     this.ascending = ascending;
+  }
+
+  public boolean isWithoutAnyNull() {
+    return withoutAnyNull;
+  }
+
+  public void setWithoutAnyNull(boolean withoutAnyNull) {
+    this.withoutAnyNull = withoutAnyNull;
+  }
+
+  public boolean isWithoutAllNull() {
+    return withoutAllNull;
+  }
+
+  public void setWithoutAllNull(boolean withoutAllNull) {
+    this.withoutAllNull = withoutAllNull;
   }
 }

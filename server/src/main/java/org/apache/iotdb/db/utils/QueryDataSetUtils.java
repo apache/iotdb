@@ -43,18 +43,6 @@ public class QueryDataSetUtils {
 
   private QueryDataSetUtils() {}
 
-  /**
-   * convert query data set by fetch size.
-   *
-   * @param queryDataSet -query dataset
-   * @param fetchSize -fetch size
-   * @return -convert query dataset
-   */
-  public static TSQueryDataSet convertQueryDataSetByFetchSize(
-      QueryDataSet queryDataSet, int fetchSize) throws IOException {
-    return convertQueryDataSetByFetchSize(queryDataSet, fetchSize, null);
-  }
-
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static TSQueryDataSet convertQueryDataSetByFetchSize(
       QueryDataSet queryDataSet, int fetchSize, WatermarkEncoder watermarkEncoder)
@@ -79,6 +67,16 @@ public class QueryDataSetUtils {
     for (int i = 0; i < fetchSize; i++) {
       if (queryDataSet.hasNext()) {
         RowRecord rowRecord = queryDataSet.next();
+        // filter the row that all columns are null
+        if (queryDataSet.isWithoutAllNull() && rowRecord.isAllNull()) {
+          i--;
+          continue;
+        }
+        // filter the row that any column is null
+        if (queryDataSet.isWithoutAnyNull() && rowRecord.hasNullField()) {
+          i--;
+          continue;
+        }
         if (watermarkEncoder != null) {
           rowRecord = watermarkEncoder.encodeRecord(rowRecord);
         }

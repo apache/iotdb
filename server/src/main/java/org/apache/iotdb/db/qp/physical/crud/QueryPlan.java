@@ -46,6 +46,10 @@ public abstract class QueryPlan extends PhysicalPlan {
 
   private boolean enableRedirect = false;
 
+  private boolean withoutAnyNull;
+
+  private boolean withoutAllNull;
+
   public QueryPlan() {
     super(true);
     setOperatorType(Operator.OperatorType.QUERY);
@@ -149,5 +153,21 @@ public abstract class QueryPlan extends PhysicalPlan {
 
   public void setVectorPathToIndex(Map<String, Integer> vectorPathToIndex) {
     this.vectorPathToIndex = vectorPathToIndex;
+  }
+
+  public boolean isWithoutAnyNull() {
+    return withoutAnyNull;
+  }
+
+  public void setWithoutAnyNull(boolean withoutAnyNull) {
+    this.withoutAnyNull = withoutAnyNull;
+  }
+
+  public boolean isWithoutAllNull() {
+    return withoutAllNull;
+  }
+
+  public void setWithoutAllNull(boolean withoutAllNull) {
+    this.withoutAllNull = withoutAllNull;
   }
 }
