@@ -18,24 +18,6 @@
  */
 package org.apache.iotdb.db.qp.sql;
 
-import static org.apache.iotdb.db.index.common.IndexConstant.PATTERN;
-import static org.apache.iotdb.db.index.common.IndexConstant.THRESHOLD;
-import static org.apache.iotdb.db.index.common.IndexConstant.TOP_K;
-import static org.apache.iotdb.db.qp.constant.SQLConstant.TIME_PATH;
-import static org.apache.iotdb.db.qp.constant.SQLConstant.TOK_KILL_QUERY;
-
-import java.io.File;
-import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import org.antlr.v4.runtime.tree.TerminalNode;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEvent;
 import org.apache.iotdb.db.exception.index.UnsupportedIndexTypeException;
@@ -246,6 +228,26 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.StringContainer;
+
+import org.antlr.v4.runtime.tree.TerminalNode;
+
+import java.io.File;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+
+import static org.apache.iotdb.db.index.common.IndexConstant.PATTERN;
+import static org.apache.iotdb.db.index.common.IndexConstant.THRESHOLD;
+import static org.apache.iotdb.db.index.common.IndexConstant.TOP_K;
+import static org.apache.iotdb.db.qp.constant.SQLConstant.TIME_PATH;
+import static org.apache.iotdb.db.qp.constant.SQLConstant.TOK_KILL_QUERY;
 
 public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
