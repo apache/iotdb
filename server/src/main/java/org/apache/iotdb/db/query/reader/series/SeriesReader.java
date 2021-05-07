@@ -46,7 +46,6 @@ import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
@@ -123,11 +122,7 @@ public class SeriesReader {
       Filter valueFilter,
       TsFileFilter fileFilter,
       boolean ascending) {
-    Set<String> allSensors1;
     this.seriesPath = seriesPath;
-    if (allSensors == null) {
-      allSensors = new HashSet<>();
-    }
     this.allSensors = allSensors;
     this.allSensors.add(seriesPath.getMeasurement());
     this.dataType = dataType;
@@ -172,9 +167,6 @@ public class SeriesReader {
       Filter valueFilter,
       boolean ascending) {
     this.seriesPath = seriesPath;
-    if (allSensors == null) {
-      allSensors = new HashSet<>();
-    }
     this.allSensors = allSensors;
     this.allSensors.add(seriesPath.getMeasurement());
     this.dataType = dataType;
