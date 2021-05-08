@@ -2170,7 +2170,8 @@ public class StorageGroupProcessor {
 
       for (MNode measurementNode : node.getChildren().values()) {
         if (measurementNode != null) {
-          ((MeasurementMNode) measurementNode).resetCache();
+//          ((MeasurementMNode) measurementNode).resetCache();
+          IoTDB.metaManager.resetLastCache(measurementNode.getPartialPath());
           logger.info(
               "[tryToDeleteLastCacheByDevice] Last cache for path: {} is set to null",
               measurementNode.getFullPath());
