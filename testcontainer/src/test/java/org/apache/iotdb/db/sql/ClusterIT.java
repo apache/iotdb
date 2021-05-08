@@ -90,5 +90,4 @@ public abstract class ClusterIT extends Cases {
 
   // do not add tests here.
   // add tests into Cases.java instead.
-
 }
