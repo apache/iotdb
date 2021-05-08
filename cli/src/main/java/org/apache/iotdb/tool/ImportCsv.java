@@ -167,7 +167,16 @@ public class ImportCsv extends AbstractCsvTool {
           measurementsList.add(devicesToMeasurements.get(device));
         }
         if (lineNumber % 10000 == 0) {
-          session.insertRecords(devices, times, measurementsList, valuesList);
+          try {
+            session.insertRecords(devices, times, measurementsList, valuesList);
+          } catch (StatementExecutionException e) {
+            if (e.getMessage().contains("failed to insert measurements")) {
+              System.out.println("Meet error when insert csv because " + e.getMessage());
+              System.out.println("Continue inserting... ");
+            } else {
+              throw e;
+            }
+          }
           pb.stepTo(lineNumber + 1L);
           devices = new ArrayList<>();
           times = new ArrayList<>();
@@ -176,7 +185,16 @@ public class ImportCsv extends AbstractCsvTool {
         }
       }
       // TODO change it to insertTablet, now is slow
-      session.insertRecords(devices, times, measurementsList, valuesList);
+      try {
+        session.insertRecords(devices, times, measurementsList, valuesList);
+      } catch (StatementExecutionException e) {
+        if (e.getMessage().contains("failed to insert measurements")) {
+          System.out.println("Meet error when insert csv because " + e.getMessage());
+          System.out.println("Continue inserting... ");
+        } else {
+          throw e;
+        }
+      }
       System.out.println("Insert csv successfully!");
       pb.stepTo(fileLine);
     } catch (FileNotFoundException e) {
