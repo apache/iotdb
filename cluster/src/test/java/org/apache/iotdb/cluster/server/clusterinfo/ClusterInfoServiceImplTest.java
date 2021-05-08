@@ -89,7 +89,7 @@ public class ClusterInfoServiceImplTest {
     Assert.assertEquals(50, nodes.get(0).getNodeIdentifier());
     Assert.assertEquals(60, nodes.get(1).getNodeIdentifier());
   }
-  
+
   @Test
   public void getInstrumentingInfo() throws TException {
     // hard to test the content of the instrumentInfo.
