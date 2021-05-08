@@ -155,7 +155,7 @@
         <client-cpp>false</client-cpp>
         <!-- disable enforcer by default-->
         <enforcer.skip>true</enforcer.skip>
-        <spotless.version>2.4.2</spotless.version>
+        <spotless.version>2.5.0</spotless.version>
     </properties>
     <!--
         if we claim dependencies in dependencyManagement, then we do not claim
