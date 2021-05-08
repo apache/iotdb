@@ -535,6 +535,14 @@ public class MTreeDiskBased implements MTreeInterface {
     return result;
   }
 
+  @Override
+  public MNode getChildMNodeInDevice(MNode deviceNode, String childName) throws MetadataException {
+    MNode result=metadataDiskManager.getChild(deviceNode, childName);
+    if(result==null){
+      result=getNodeByPath(deviceNode.getPartialPath().concatNode(childName));
+    }
+    return result;
+  }
 
 
   @Override

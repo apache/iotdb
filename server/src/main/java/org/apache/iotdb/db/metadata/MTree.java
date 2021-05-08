@@ -626,6 +626,11 @@ public class MTree implements MTreeInterface {
     return result;
   }
 
+  @Override
+  public MNode getChildMNodeInDevice(MNode deviceNode, String childName) throws MetadataException {
+    return deviceNode.getChild(childName);
+  }
+
   /**
    * Get all storage groups under the given path
    *

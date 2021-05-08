@@ -1860,15 +1860,14 @@ public class MManager {
 
     // 1. get device node
     MNode deviceMNode = getDeviceNodeWithAutoCreate(deviceId);
-    Map<String,MNode> children=mtree.getChildrenOfNodeByPath(deviceId);
+
     // 2. get schema of each measurement
     // if do not has measurement
     MeasurementMNode measurementMNode;
     TSDataType dataType;
     for (int i = 0; i < measurementList.length; i++) {
       try {
-//        MNode child = getMNode(deviceMNode, measurementList[i]);
-        MNode child = children.get(measurementList[i]);
+        MNode child = getMNode(deviceMNode, measurementList[i]);
         if (child instanceof MeasurementMNode) {
           measurementMNode = (MeasurementMNode) child;
         } else if (child instanceof StorageGroupMNode) {
@@ -1881,8 +1880,7 @@ public class MManager {
             dataType = getTypeInLoc(plan, i);
             // create it, may concurrent created by multiple thread
             internalCreateTimeseries(deviceId.concatNode(measurementList[i]), dataType);
-//            measurementMNode = (MeasurementMNode) deviceMNode.getChild(measurementList[i]);
-            measurementMNode = (MeasurementMNode) children.get(measurementList[i]);
+            measurementMNode = (MeasurementMNode) getMNode(deviceMNode, measurementList[i]);
           }
         }
 
@@ -1941,7 +1939,12 @@ public class MManager {
   }
 
   public MNode getMNode(MNode deviceMNode, String measurementName) {
-    return deviceMNode.getChild(measurementName);
+    try {
+      return mtree.getChildMNodeInDevice(deviceMNode,measurementName);
+    }catch (MetadataException e){
+      logger.warn("Cannot get child {} from DeviceNode {} because ",measurementName,deviceMNode,e);
+    }
+    return null;
   }
 
   /** create timeseries with ignore PathAlreadyExistException */

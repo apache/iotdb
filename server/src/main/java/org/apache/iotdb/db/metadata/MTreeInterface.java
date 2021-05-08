@@ -125,6 +125,8 @@ public interface MTreeInterface extends Serializable {
 
   Map<String, MNode> getChildrenOfNodeByPath(PartialPath path) throws MetadataException;
 
+  MNode getChildMNodeInDevice(MNode deviceNode, String childName) throws MetadataException;;
+
   /**
    * Get all storage groups under the given path
    *
