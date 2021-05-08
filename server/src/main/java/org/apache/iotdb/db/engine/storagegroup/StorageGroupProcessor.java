@@ -1830,11 +1830,14 @@ public class StorageGroupProcessor {
       for (MNode measurementNode : node.getChildren().values()) {
         if (measurementNode != null
             && originalPath.matchFullPath(measurementNode.getPartialPath())) {
-          TimeValuePair lastPair = ((MeasurementMNode) measurementNode).getCachedLast();
+//          TimeValuePair lastPair = ((MeasurementMNode) measurementNode).getCachedLast();
+          PartialPath path=measurementNode.getPartialPath();
+          TimeValuePair lastPair=IoTDB.metaManager.getLastCache(path);
           if (lastPair != null
               && startTime <= lastPair.getTimestamp()
               && lastPair.getTimestamp() <= endTime) {
-            ((MeasurementMNode) measurementNode).resetCache();
+//            ((MeasurementMNode) measurementNode).resetCache();
+            IoTDB.metaManager.resetLastCache(path);
             logger.info(
                 "[tryToDeleteLastCache] Last cache for path: {} is set to null",
                 measurementNode.getFullPath());

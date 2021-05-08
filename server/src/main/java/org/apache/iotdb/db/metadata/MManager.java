@@ -158,7 +158,7 @@ public class MManager {
 
   private static final int ESTIMATED_SERIES_SIZE = config.getEstimatedSeriesSize();
 
-  private byte MTreeType = MTREE_DISK_BASED;
+  private byte MTreeType = MTREE_MEMORY_BASED;
 
   public void setMTreeType(byte MTreeType) {
     if (MTreeType == MTREE_DISK_BASED) {
@@ -1079,7 +1079,7 @@ public class MManager {
     MNode node;
     boolean shouldSetStorageGroup;
     try {
-      node = mNodeCache.get(path);
+      node = getMNodeFromCache(path);
       return node;
     } catch (CacheException e) {
       if (!autoCreateSchema) {
@@ -1111,10 +1111,11 @@ public class MManager {
   public MNode getDeviceNode(PartialPath path) throws MetadataException {
     MNode node;
     try {
-      node = mNodeCache.get(path);
+      node = getMNodeFromCache(path);
       for(MNode child:node.getChildren().values()){
         if(!child.isLoaded()){
-          return mtree.getNodeByPathForChildrenCheck(path);
+          processMNodeForExternChildrenCheck(node);
+          break;
         }
       }
       return node;
@@ -1133,7 +1134,7 @@ public class MManager {
   public String getDeviceId(PartialPath path) {
     String device = null;
     try {
-      MNode deviceNode = mNodeCache.get(path);
+      MNode deviceNode = getMNodeFromCache(path);
       device = deviceNode.getFullPath();
     }catch (CacheException|NullPointerException  e) {
       // Cannot get deviceId from MManager, return the input deviceId
@@ -1701,7 +1702,7 @@ public class MManager {
     collectTimeseriesSchema(mtree.getNodeByPath(new PartialPath(prefixPath)), timeseriesSchemas);
   }
 
-  public void collectMeasurementSchema(
+  private void collectMeasurementSchema(
       MNode startingNode, Collection<MeasurementSchema> measurementSchemas) {
     Deque<MNode> nodeDeque = new ArrayDeque<>();
     nodeDeque.addLast(startingNode);
@@ -1778,16 +1779,16 @@ public class MManager {
       boolean highPriorityUpdate,
       Long latestFlushedTime,
       MeasurementMNode node) {
-    if (node != null) {
-      node.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
-    } else {
-      try {
-        MeasurementMNode node1 = (MeasurementMNode) mtree.getNodeByPath(seriesPath);
-        node1.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
-      } catch (MetadataException e) {
-        logger.warn("failed to update last cache for the {}, err:{}", seriesPath, e.getMessage());
+    try {
+      if(node==null){
+        node=(MeasurementMNode) mtree.getNodeByPath(seriesPath);
       }
+      node.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
+      mtree.updateMNode(node);
+    } catch (MetadataException e) {
+      logger.warn("failed to update last cache for the {}, err:{}", seriesPath, e.getMessage());
     }
+
   }
 
   public TimeValuePair getLastCache(PartialPath seriesPath) {
@@ -1798,6 +1799,16 @@ public class MManager {
       logger.warn("failed to get last cache for the {}, err:{}", seriesPath, e.getMessage());
     }
     return null;
+  }
+
+  public void resetLastCache(PartialPath seriesPath){
+    try {
+      MeasurementMNode node = (MeasurementMNode) mtree.getNodeByPath(seriesPath);
+      node.resetCache();
+      mtree.updateMNode(node);
+    } catch (MetadataException e) {
+      logger.warn("failed to reset last cache for the {}, err:{}", seriesPath, e.getMessage());
+    }
   }
 
   @TestOnly
@@ -1972,4 +1983,19 @@ public class MManager {
 
     boolean satisfy(String storageGroup);
   }
+
+
+  private MNode getMNodeFromCache(PartialPath path) throws CacheException{
+    MNode node = mNodeCache.get(path);
+    if(MTreeType==MTREE_DISK_BASED&&!node.isCached()){
+      mNodeCache.removeObject(path);
+      return mNodeCache.loadObjectByKey(path);
+    }
+    return node;
+  }
+
+  private MNode processMNodeForExternChildrenCheck(MNode node) throws MetadataException{
+    return mtree.getNodeByPathForChildrenCheck(node.getPartialPath());
+  }
+
 }
