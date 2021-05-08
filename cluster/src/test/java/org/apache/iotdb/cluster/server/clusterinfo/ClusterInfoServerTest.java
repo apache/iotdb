@@ -63,8 +63,7 @@ public class ClusterInfoServerTest {
         RpcTransportFactory.INSTANCE.getTransport(
             new TSocket(
                 IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
-                ClusterDescriptor.getInstance().getConfig().getClusterRpcPort()));
-
+                ClusterDescriptor.getInstance().getConfig().getClusterInfoRpcPort()));
     try {
       transport.open();
     } catch (TTransportException e) {
