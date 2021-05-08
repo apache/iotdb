@@ -23,7 +23,9 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.layoutoptimize.LayoutNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.layoutoptimize.layoutholder.LayoutHolder;
 import org.apache.iotdb.db.layoutoptimize.workloadmanager.WorkloadManager;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
@@ -56,6 +58,9 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   private LinkedList<Long> cachedTimestamps = new LinkedList<>();
   /** group by batch calculation size. */
   protected int timeStampFetchSize;
+
+  private Map<Integer, Integer> resultToPathIdx = new HashMap<>();
+  private List<Path> pathsInPhysicalOrder = new ArrayList<>();
 
   private long lastTimestamp;
 
@@ -146,6 +151,44 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
           "need to call hasNext() before calling next()" + " in GroupByWithoutValueFilterDataSet.");
     }
     hasCachedTimeInterval = false;
+    if (pathsInPhysicalOrder.size() == 0) {
+      Map<String, Set<Path>> pathForEachDevice = new HashMap<>();
+      Map<Path, Integer> pathToIndex = new HashMap<>();
+      for (int i = 0; i < paths.size(); ++i) {
+        Path path = paths.get(i);
+        pathToIndex.put(path, i);
+        if (!pathForEachDevice.containsKey(path.getDevice())) {
+          pathForEachDevice.put(path.getDevice(), new HashSet<>());
+        }
+        pathForEachDevice.get(path.getDevice()).add(path);
+      }
+      LayoutHolder holder = LayoutHolder.getInstance();
+      for (String device : pathForEachDevice.keySet()) {
+        if (!holder.hasLayoutForDevice(device)) {
+          holder.updateMetadata();
+        }
+        Set<Path> pathsForCurDevice = pathForEachDevice.get(device);
+        try {
+          List<String> measurements = holder.getMeasurementForDevice(device);
+          if (measurements.size() < pathForEachDevice.size()) {
+            holder.updateMetadata();
+            measurements = holder.getMeasurementForDevice(device);
+          }
+          for (String measurement : measurements) {
+            Path path = new Path(device, measurement);
+            if (pathsForCurDevice.contains(path)) {
+              pathsInPhysicalOrder.add(path);
+              resultToPathIdx.put(pathsInPhysicalOrder.size() - 1, pathToIndex.get(path));
+            }
+          }
+        } catch (LayoutNotExistException e) {
+          for (Path path : pathsForCurDevice) {
+            pathsInPhysicalOrder.add(path);
+            resultToPathIdx.put(pathsInPhysicalOrder.size() - 1, pathToIndex.get(path));
+          }
+        }
+      }
+    }
     List<AggregateResult> aggregateResultList = new ArrayList<>();
     for (int i = 0; i < paths.size(); i++) {
       aggregateResultList.add(
@@ -179,10 +222,12 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
       timeArrayLength = constructTimeArrayForOneCal(timestampArray, timeArrayLength);
 
       // cal result using timestamp array
-      for (int i = 0; i < paths.size(); i++) {
+      for (int i = 0; i < pathsInPhysicalOrder.size(); i++) {
+        int idx = resultToPathIdx.get(i);
         aggregateResultList
-            .get(i)
-            .updateResultUsingTimestamps(timestampArray, timeArrayLength, allDataReaderList.get(i));
+            .get(idx)
+            .updateResultUsingTimestamps(
+                timestampArray, timeArrayLength, allDataReaderList.get(idx));
       }
 
       timeArrayLength = 0;

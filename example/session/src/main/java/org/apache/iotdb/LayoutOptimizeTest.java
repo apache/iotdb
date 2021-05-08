@@ -10,6 +10,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
+import com.google.gson.Gson;
+
 import java.io.*;
 import java.util.*;
 
@@ -19,21 +21,27 @@ public class LayoutOptimizeTest {
   private static final String STORAGE_GROUP = "root.sgtest";
   private static final String DEVICE = "root.sgtest.d1";
   private static final String OBJECT_FILE = "test.obj";
-  private static final int TIMESERIES_NUM = 100;
-  private static final long TIME_NUM = 10000L;
+  private static final String QUERY_FILE = "/home/lau/桌面/test.json";
+  private static List<String> queries = new ArrayList<>();
+  private static final int TIMESERIES_NUM = 3000;
+  private static final long TIME_NUM = 100000L;
 
   public static void main(String[] args) throws Exception {
     session = new Session(HOST, 6667, "root", "root");
     session.open(false);
-    //    clearEnvironment();
-    //    setUpEnvironment();
-    //    session.executeNonQueryStatement("flush");
-    verifyAggregation();
+    try {
+      clearEnvironment();
+    } catch (Exception e) {
+    }
+    setUpEnvironment();
+    loadQueries();
+    performQueries();
     session.close();
   }
 
   public static void setUpEnvironment()
       throws IoTDBConnectionException, StatementExecutionException {
+    System.out.println("Setting up environment...");
     try {
       session.setStorageGroup(STORAGE_GROUP);
     } catch (StatementExecutionException e) {
@@ -107,6 +115,57 @@ public class LayoutOptimizeTest {
     System.out.println(resultMap.equals(previousMap));
   }
 
+  public static void getResultOfGroupByWithValueFilter() throws Exception {
+    String sql =
+        String.format(
+            "select avg(*) from %s where s1>0.1 and s2<0.9 group by ([0,%d),100ms)",
+            DEVICE, TIME_NUM);
+    SessionDataSet dataSet = session.executeQueryStatement(sql);
+    List<String> columnNames = dataSet.getColumnNames();
+    Map<String, List<Double>> resultMap = new HashMap<>();
+    while (dataSet.hasNext()) {
+      RowRecord record = dataSet.next();
+      List<Field> fields = record.getFields();
+      for (int i = 0; i < columnNames.size() - 1; i++) {
+        String columnName = columnNames.get(i + 1);
+        if (!resultMap.containsKey(columnName)) resultMap.put(columnName, new ArrayList<>());
+        resultMap.get(columnName).add(fields.get(i).getDoubleV());
+      }
+    }
+    File file = new File(OBJECT_FILE);
+    if (file.exists()) {
+      file.delete();
+    }
+    file.createNewFile();
+    ObjectOutputStream objectOutputStream =
+        new ObjectOutputStream(new FileOutputStream(OBJECT_FILE));
+    objectOutputStream.writeObject(resultMap);
+    objectOutputStream.close();
+  }
+
+  public static void verifyGroupByWithValueFilter() throws Exception {
+    String sql =
+        String.format(
+            "select avg(*) from %s where s1>0.1 and s2<0.9 group by ([0,%d),100ms)",
+            DEVICE, TIME_NUM);
+    SessionDataSet dataSet = session.executeQueryStatement(sql);
+    List<String> columnNames = dataSet.getColumnNames();
+    Map<String, List<Double>> resultMap = new HashMap<>();
+    while (dataSet.hasNext()) {
+      RowRecord record = dataSet.next();
+      List<Field> fields = record.getFields();
+      for (int i = 0; i < columnNames.size() - 1; i++) {
+        String columnName = columnNames.get(i + 1);
+        if (!resultMap.containsKey(columnName)) resultMap.put(columnName, new ArrayList<>());
+        resultMap.get(columnName).add(fields.get(i).getDoubleV());
+      }
+    }
+    ObjectInputStream objectInputStream = new ObjectInputStream(new FileInputStream(OBJECT_FILE));
+    Map<String, List<Double>> previousMap =
+        (Map<String, List<Double>>) objectInputStream.readObject();
+    System.out.println(resultMap.equals(previousMap));
+  }
+
   public static void getResultOfAggregation() throws Exception {
     String sql = String.format("select avg(*) from %s", DEVICE);
     SessionDataSet dataSet = session.executeQueryStatement(sql);
@@ -146,5 +205,39 @@ public class LayoutOptimizeTest {
     ObjectInputStream objectInputStream = new ObjectInputStream(new FileInputStream(OBJECT_FILE));
     Map<String, Double> previousResult = (Map<String, Double>) objectInputStream.readObject();
     System.out.println(resultMap.equals(previousResult));
+  }
+
+  public static void loadQueries() throws Exception {
+    System.out.println("Loading queries...");
+    File queriesFile = new File(QUERY_FILE);
+    if (!queriesFile.exists()) {
+      return;
+    }
+    Scanner scanner = new Scanner(new FileInputStream(queriesFile));
+    StringBuilder builder = new StringBuilder();
+    while (scanner.hasNext()) {
+      builder.append(scanner.next());
+    }
+    String json = builder.toString();
+    Gson gson = new Gson();
+    queries = (List<String>) gson.fromJson(json, queries.getClass());
+    System.out.println(queries);
+  }
+
+  public static void performQueries() throws Exception {
+    System.out.println("Performing queries...");
+    long startTime = System.currentTimeMillis();
+    for (String query : queries) {
+      SessionDataSet dataSet = session.executeQueryStatement(query);
+      while (dataSet.hasNext()) {
+        dataSet.next();
+      }
+    }
+    long totalQueryTime = System.currentTimeMillis() - startTime;
+    System.out.printf("Total query time is: %d ms\n", totalQueryTime);
+  }
+
+  public static void performOptimize() throws Exception {
+    session.myTest();
   }
 }

@@ -2,11 +2,15 @@ package org.apache.iotdb.db.layoutoptimize.diskevaluate;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
+import com.google.gson.Gson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 
 public class DiskEvaluator {
   private static final DiskEvaluator INSTANCE = new DiskEvaluator();
@@ -18,6 +22,7 @@ public class DiskEvaluator {
   public int SEEK_NUM = 5000;
   public int SEEK_NUM_PER_SEGMENT = 50;
   public int READ_LENGTH = 100;
+  private DiskInfo diskInfo = new DiskInfo();
 
   public static DiskEvaluator getInstance() {
     return INSTANCE;
@@ -92,13 +97,6 @@ public class DiskEvaluator {
     }
     long totalSize = 0;
     long totalTime = 0;
-    BufferedWriter logWriter =
-        new BufferedWriter(
-            new FileWriter(
-                IoTDBDescriptor.getInstance().getConfig().getSystemDir()
-                    + File.separator
-                    + "disk.info",
-                true));
     for (File file : files) {
       long dataSize = file.length();
       totalSize += dataSize;
@@ -126,9 +124,7 @@ public class DiskEvaluator {
         String.format(
             "Read %d KB in %.2f seconds, %.2f KB/s",
             totalSize / 1024, totalTime / 1000, readSpeed / 1000 / 1024));
-    logWriter.write(String.format("Read speed: %.2f bytes/s\n", readSpeed));
-    logWriter.flush();
-    logWriter.close();
+    diskInfo.setReadSpeed(readSpeed);
     return readSpeed;
   }
 
@@ -212,12 +208,6 @@ public class DiskEvaluator {
       int readLength) {
     try {
       File[] files = InputFactory.Instance().getFiles(dataPath);
-      BufferedWriter seekCostWriter =
-          new BufferedWriter(
-              new FileWriter(
-                  IoTDBDescriptor.getInstance().getConfig().getSystemDir() + "/disk_info.txt",
-                  true));
-      seekCostWriter.write(DiskId + "\n");
 
       for (int j = 1; j <= numIntervals; ++j) {
         long seekDistance = seekDistInterval * j;
@@ -241,11 +231,8 @@ public class DiskEvaluator {
         }
 
         double avgSeekCost = totalSeekCost / ((files.length) / 2);
-        // seek cost in disk_info.txt is in ms
-        seekCostWriter.write(seekDistance + "\t" + avgSeekCost + "\n");
-        seekCostWriter.flush();
+        diskInfo.addSeekInfo(seekDistance, avgSeekCost);
       }
-      seekCostWriter.close();
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -259,7 +246,10 @@ public class DiskEvaluator {
    */
   public synchronized void performDiskEvaluation() throws IOException {
     String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
-    for (String dataDir : dataDirs) {
+    DiskInfo[] diskInfos = new DiskInfo[dataDirs.length];
+    for (int i = 0; i < dataDirs.length; ++i) {
+      String dataDir = dataDirs[i];
+      diskInfo = new DiskInfo();
       String tmpDirPath = dataDir + File.separator + "seek_test";
       File tmpDir = new File(tmpDirPath);
       if (tmpDir.exists()) {
@@ -277,6 +267,62 @@ public class DiskEvaluator {
         file.delete();
       }
       tmpDir.delete();
+      diskInfos[i] = diskInfo;
+    }
+    this.diskInfo = DiskInfo.calAvgInfo(diskInfos);
+    // persist in json format
+    Gson gson = new Gson();
+    String json = gson.toJson(diskInfo);
+    String systemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    File layoutDir = new File(systemDir + File.separator + "layout");
+    if (!layoutDir.exists()) {
+      layoutDir.mkdir();
+    }
+    File diskInfoFile = new File(layoutDir + File.separator + "disk.info");
+    if (!diskInfoFile.exists()) {
+      diskInfoFile.createNewFile();
+    }
+    BufferedOutputStream outputStream =
+        new BufferedOutputStream(new FileOutputStream(diskInfoFile));
+    outputStream.write(json.getBytes(StandardCharsets.UTF_8));
+    outputStream.flush();
+    outputStream.close();
+  }
+
+  private static class DiskInfo {
+    public List<Long> seekDistance = new ArrayList<>();
+    public List<Double> seekCost = new ArrayList<>();
+    public double readSpeed = 0;
+
+    public void addSeekInfo(long distance, double cost) {
+      seekDistance.add(distance);
+      seekCost.add(cost);
+    }
+
+    public void setReadSpeed(double readSpeed) {
+      this.readSpeed = readSpeed;
+    }
+
+    public static DiskInfo calAvgInfo(DiskInfo[] infos) {
+      DiskInfo avgDiskInfo = null;
+      if (infos.length == 0) {
+        avgDiskInfo = null;
+      } else if (infos.length == 1) {
+        avgDiskInfo = infos[0];
+      } else {
+        int totalLength = infos[0].seekCost.size();
+        avgDiskInfo = new DiskInfo();
+        for (int i = 0; i < totalLength; ++i) {
+          BigDecimal totalCost = new BigDecimal(0);
+          for (DiskInfo info : infos) {
+            totalCost = totalCost.add(BigDecimal.valueOf(info.seekCost.get(i)));
+          }
+          avgDiskInfo.addSeekInfo(
+              infos[0].seekDistance.get(i),
+              totalCost.divide(BigDecimal.valueOf(infos.length)).doubleValue());
+        }
+      }
+      return avgDiskInfo;
     }
   }
 }
