@@ -170,8 +170,12 @@ public class ImportCsv extends AbstractCsvTool {
           try {
             session.insertRecords(devices, times, measurementsList, valuesList);
           } catch (StatementExecutionException e) {
-            System.out.println("Meet error when insert csv because " + e.getMessage());
-            System.out.println("Continue inserting... ");
+            if (e.getMessage().contains("failed to insert measurements")) {
+              System.out.println("Meet error when insert csv because " + e.getMessage());
+              System.out.println("Continue inserting... ");
+            } else {
+              throw e;
+            }
           }
           pb.stepTo(lineNumber + 1L);
           devices = new ArrayList<>();
@@ -184,8 +188,12 @@ public class ImportCsv extends AbstractCsvTool {
       try {
         session.insertRecords(devices, times, measurementsList, valuesList);
       } catch (StatementExecutionException e) {
-        System.out.println("Meet error when insert csv because " + e.getMessage());
-        System.out.println("Continue inserting... ");
+        if (e.getMessage().contains("failed to insert measurements")) {
+          System.out.println("Meet error when insert csv because " + e.getMessage());
+          System.out.println("Continue inserting... ");
+        } else {
+          throw e;
+        }
       }
       System.out.println("Insert csv successfully!");
       pb.stepTo(fileLine);
@@ -193,7 +201,7 @@ public class ImportCsv extends AbstractCsvTool {
       System.out.println("Cannot find " + file.getName() + " because: " + e.getMessage());
     } catch (IOException e) {
       System.out.println("CSV file read exception because: " + e.getMessage());
-    } catch (IoTDBConnectionException e) {
+    } catch (IoTDBConnectionException | StatementExecutionException e) {
       System.out.println("Meet error when insert csv because " + e.getMessage());
     }
   }
