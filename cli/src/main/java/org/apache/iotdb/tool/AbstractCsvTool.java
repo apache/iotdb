@@ -57,18 +57,6 @@ public abstract class AbstractCsvTool {
       new String[] {"default", "long", "number", "timestamp"};
   protected static final String[] STRING_TIME_FORMAT =
       new String[] {
-        "yyyy-MM-dd HH:mm:ss",
-        "yyyy/MM/dd HH:mm:ss",
-        "yyyy.MM.dd HH:mm:ss",
-        "yyyy-MM-dd'T'HH:mm:ss",
-        "yyyy/MM/dd'T'HH:mm:ss",
-        "yyyy.MM.dd'T'HH:mm:ss",
-        "yyyy-MM-dd HH:mm:ssZZ",
-        "yyyy/MM/dd HH:mm:ssZZ",
-        "yyyy.MM.dd HH:mm:ssZZ",
-        "yyyy-MM-dd'T'HH:mm:ssZZ",
-        "yyyy/MM/dd'T'HH:mm:ssZZ",
-        "yyyy.MM.dd'T'HH:mm:ssZZ",
         "yyyy-MM-dd'T'HH:mm:ss.SSSZ",
         "yyyy/MM/dd HH:mm:ss.SSS",
         "yyyy-MM-dd HH:mm:ss.SSS",
@@ -82,6 +70,18 @@ public abstract class AbstractCsvTool {
         "yyyy.MM.dd HH:mm:ss.SSSZZ",
         "yyyy-MM-dd'T'HH:mm:ss.SSSZZ",
         "yyyy/MM/dd'T'HH:mm:ss.SSSZZ",
+        "yyyy-MM-dd HH:mm:ss",
+        "yyyy/MM/dd HH:mm:ss",
+        "yyyy.MM.dd HH:mm:ss",
+        "yyyy-MM-dd'T'HH:mm:ss",
+        "yyyy/MM/dd'T'HH:mm:ss",
+        "yyyy.MM.dd'T'HH:mm:ss",
+        "yyyy-MM-dd HH:mm:ssZZ",
+        "yyyy/MM/dd HH:mm:ssZZ",
+        "yyyy.MM.dd HH:mm:ssZZ",
+        "yyyy-MM-dd'T'HH:mm:ssZZ",
+        "yyyy/MM/dd'T'HH:mm:ssZZ",
+        "yyyy.MM.dd'T'HH:mm:ssZZ",
       };
   protected static String host;
   protected static String port;
