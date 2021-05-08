@@ -53,12 +53,15 @@ public abstract class AbstractCsvTool {
   protected static final String TIME_ZONE_ARGS = "tz";
   protected static final String TIME_ZONE_NAME = "timeZone";
   protected static final int MAX_HELP_CONSOLE_WIDTH = 92;
-  protected static final String[] SUPPORT_TIME_FORMAT =
+  protected static final String[] NUMBER_TIME_FORMAT =
       new String[] {
         "default",
         "long",
         "number",
-        "timestamp",
+        "timestamp"
+      };
+  protected static final String[] STRING_TIME_FORMAT =
+      new String[] {
         "yyyy-MM-dd HH:mm:ss",
         "yyyy/MM/dd HH:mm:ss",
         "yyyy.MM.dd HH:mm:ss",
@@ -129,7 +132,12 @@ public abstract class AbstractCsvTool {
   }
 
   protected static boolean checkTimeFormat() {
-    for (String format : SUPPORT_TIME_FORMAT) {
+    for (String format : NUMBER_TIME_FORMAT) {
+      if (timeFormat.equals(format)) {
+        return true;
+      }
+    }
+    for (String format : STRING_TIME_FORMAT) {
       if (timeFormat.equals(format)) {
         return true;
       }
