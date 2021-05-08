@@ -16,7 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.server.clusterInfo;
+
+package org.apache.iotdb.cluster.server.clusterinfo;
 
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.ClusterInfoService;

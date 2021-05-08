@@ -36,9 +36,9 @@ public abstract class Cases {
   protected Connection[] readConnections;
 
   /** initialize the writeStatement,writeConnection, readStatements and the readConnections. */
-  public abstract void setUp() throws Exception;
+  public abstract void init() throws Exception;
 
-  public void tearDown() throws Exception {
+  public void clean() throws Exception {
     writeStatement.close();
     writeConnection.close();
     for (Statement statement : readStatements) {

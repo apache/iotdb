@@ -23,7 +23,6 @@ import org.apache.iotdb.cluster.ClusterMain;
 import org.apache.iotdb.cluster.rpc.thrift.DataPartitionEntry;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.MetaClusterServer;
-import org.apache.iotdb.cluster.server.clusterInfo.ClusterInfoServiceImpl;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMemberTest;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -90,12 +89,7 @@ public class ClusterInfoServiceImplTest {
     Assert.assertEquals(50, nodes.get(0).getNodeIdentifier());
     Assert.assertEquals(60, nodes.get(1).getNodeIdentifier());
   }
-
-  @Test
-  public void getAllNodeStatus() throws TException {
-    // TODO need to use mode to test getAllNodeStatus
-  }
-
+  
   @Test
   public void getInstrumentingInfo() throws TException {
     // hard to test the content of the instrumentInfo.

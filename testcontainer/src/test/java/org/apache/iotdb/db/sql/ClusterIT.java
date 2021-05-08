@@ -62,7 +62,7 @@ public abstract class ClusterIT extends Cases {
   protected abstract DockerComposeContainer getContainer();
 
   @Before
-  public void setUp() throws Exception {
+  public void init() throws Exception {
     startCluster();
 
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -84,8 +84,8 @@ public abstract class ClusterIT extends Cases {
   }
 
   @After
-  public void tearDown() throws Exception {
-    super.tearDown();
+  public void clean() throws Exception {
+    super.clean();
   }
 
   // do not add tests here.

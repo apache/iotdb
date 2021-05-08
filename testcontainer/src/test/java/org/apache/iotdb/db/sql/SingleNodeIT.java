@@ -59,7 +59,7 @@ public class SingleNodeIT extends Cases {
   int syncPort = 5555;
 
   @Before
-  public void setUp() throws Exception {
+  public void init() throws Exception {
     rpcPort = dslContainer.getMappedPort(6667);
     syncPort = dslContainer.getMappedPort(5555);
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -72,8 +72,8 @@ public class SingleNodeIT extends Cases {
   }
 
   @After
-  public void tearDown() throws Exception {
-    super.tearDown();
+  public void clean() throws Exception {
+    super.clean();
   }
 
   // do not add tests here.

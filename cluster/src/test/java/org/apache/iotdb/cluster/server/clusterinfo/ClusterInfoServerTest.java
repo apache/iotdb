@@ -20,7 +20,6 @@ package org.apache.iotdb.cluster.server.clusterinfo;
 
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.ClusterInfoService;
-import org.apache.iotdb.cluster.server.clusterInfo.ClusterInfoServer;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.rpc.RpcTransportFactory;
@@ -50,11 +49,6 @@ public class ClusterInfoServerTest {
   public void tearDown() throws MetadataException {
     test.tearDown();
     service.stop();
-  }
-
-  @Test
-  public void getID() {
-    System.out.println(service.getID());
   }
 
   @Test
