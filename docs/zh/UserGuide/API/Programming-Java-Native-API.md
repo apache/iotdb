@@ -286,3 +286,98 @@ void testInsertTablet(Tablet tablet)
 
 使用上述接口的示例代码在 ```example/session/src/main/java/org/apache/iotdb/SessionExample.java```
 
+
+
+### 集群信息相关的接口 (仅在集群模式下可用)
+
+集群信息相关的接口允许用户获取如数据分区情况、节点是否当机等信息。
+要使用该API，需要增加依赖：
+
+```xml
+<dependencies>
+    <dependency>
+      <groupId>org.apache.iotdb</groupId>
+      <artifactId>iotdb-thrift-cluster</artifactId>
+      <version>0.13.0-SNAPSHOT</version>
+    </dependency>
+</dependencies>
+```
+
+建立连接与关闭连接的示例:
+
+```java
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.transport.TSocket;
+import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.TTransportException;
+import org.apache.iotdb.rpc.RpcTransportFactory;
+
+    public class CluserInfoClient {
+      TTransport transport;
+      ClusterInfoService.Client client;
+      public void connect() {
+          transport =
+              RpcTransportFactory.INSTANCE.getTransport(
+                  new TSocket(
+                      // the RPC address
+                      IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
+                      // the RPC port
+                      ClusterDescriptor.getInstance().getConfig().getClusterRpcPort()));
+          try {
+            transport.open();
+          } catch (TTransportException e) {
+            Assert.fail(e.getMessage());
+          }
+          //get the client
+          client = new ClusterInfoService.Client(new TBinaryProtocol(transport));
+       }
+      public void close() {
+        transport.close();
+      }  
+    }
+```
+
+API列表：
+
+* 获取集群中的各个节点的信息（构成哈希环）
+
+```java
+list<Node> getRing();
+```
+
+* 给定一个路径（应包括一个SG作为前缀）和起止时间，获取其覆盖的数据分区情况:
+
+```java 
+    /**
+     * @param path input path (should contains a Storage group name as its prefix)
+     * @return the data partition info. If the time range only covers one data partition, the the size
+     * of the list is one.
+     */
+    list<DataPartitionEntry> getDataPartition(1:string path, 2:long startTime, 3:long endTime);
+```
+
+* 给定一个路径（应包括一个SG作为前缀），获取其被分到了哪个节点上:
+```java  
+    /**
+     * @param path input path (should contains a Storage group name as its prefix)
+     * @return metadata partition information
+     */
+    list<Node> getMetaPartition(1:string path);
+```
+
+* 获取所有节点的死活状态:
+```java
+    /**
+     * @return key: node, value: live or not
+     */
+    map<Node, bool> getAllNodeStatus();
+```
+
+* 获取当前连接节点的Raft组信息（投票编号等）（一般用户无需使用该接口）:
+```java  
+    /**
+     * @return A multi-line string with each line representing the total time consumption, invocation
+     *     number, and average time consumption.
+     */
+    string getInstrumentingInfo();
+```

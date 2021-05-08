@@ -100,6 +100,15 @@ The configuration items described below are in the `iotdb-cluster.properties` fi
 |Default|40010|
 |Effective| After restart system, shall NOT change after cluster is up|
 
+* cluster\_info\_public\_port
+
+|Name|cluster\_info\_public\_port|
+|:---:|:---|
+|Description|The port of RPC service that getting the cluster info (e.g., data partition)|
+|Type|Int32|
+|Default|6567|
+|Effective| After restart system|
+
 * open\_server\_rpc\_port
 
 |Name|open\_server\_rpc\_port|
