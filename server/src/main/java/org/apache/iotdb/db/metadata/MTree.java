@@ -613,6 +613,19 @@ public class MTree implements MTreeInterface {
     return getNodeByPath(deviceId);
   }
 
+  @Override
+  public Map<String, MNode> getChildrenOfNodeByPath(PartialPath path) throws MetadataException {
+    Map<String,MNode> result=new HashMap<>();
+    MNode node=getNodeByPath(path);
+    for(Entry<String,MNode> entry:node.getChildren().entrySet()){
+      result.put(entry.getKey(),entry.getValue());
+    }
+    for(Entry<String,MNode> entry:node.getAliasChildren().entrySet()){
+      result.put(entry.getKey(),entry.getValue());
+    }
+    return result;
+  }
+
   /**
    * Get all storage groups under the given path
    *

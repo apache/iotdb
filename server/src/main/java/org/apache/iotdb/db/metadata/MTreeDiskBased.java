@@ -44,7 +44,7 @@ public class MTreeDiskBased implements MTreeInterface {
 
   private final String rootName = PATH_ROOT;
   private MetadataAccess metadataDiskManager;
-  private static final int DEFAULT_MAX_CAPACITY = 3;
+  private static final int DEFAULT_MAX_CAPACITY = 30000;
 
   private static transient ThreadLocal<Integer> limit = new ThreadLocal<>();
   private static transient ThreadLocal<Integer> offset = new ThreadLocal<>();
@@ -521,6 +521,21 @@ public class MTreeDiskBased implements MTreeInterface {
     }
     return result;
   }
+
+  @Override
+  public Map<String, MNode> getChildrenOfNodeByPath(PartialPath path) throws MetadataException {
+    MNode node=getNodeByPath(path);
+    Map<String,MNode> result=new HashMap<>();
+    for(String key:node.getChildren().keySet()){
+      result.put(key,metadataDiskManager.getChild(node,key));
+    }
+    for(String key:node.getAliasChildren().keySet()){
+      result.put(key,metadataDiskManager.getChild(node,key));
+    }
+    return result;
+  }
+
+
 
   @Override
   public List<String> getStorageGroupByPath(PartialPath path) throws MetadataException {

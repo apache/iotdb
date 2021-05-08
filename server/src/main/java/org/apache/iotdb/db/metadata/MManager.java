@@ -706,10 +706,11 @@ public class MManager {
   public MeasurementMNode[] getMNodes(PartialPath deviceId, String[] measurements)
       throws MetadataException {
 //    MNode deviceNode = getNodeByPath(deviceId);
-    MNode deviceNode = mtree.getNodeByPathForChildrenCheck(deviceId);
+    Map<String,MNode> deviceChildren=mtree.getChildrenOfNodeByPath(deviceId);
     MeasurementMNode[] mNodes = new MeasurementMNode[measurements.length];
     for (int i = 0; i < mNodes.length; i++) {
-      mNodes[i] = ((MeasurementMNode) deviceNode.getChild(measurements[i]));
+//      mNodes[i] = ((MeasurementMNode) deviceNode.getChild(measurements[i]));
+      mNodes[i] = ((MeasurementMNode) deviceChildren.get(measurements[i]));
       if (mNodes[i] == null && !IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
         throw new MetadataException(measurements[i] + " does not exist in " + deviceId);
       }
@@ -1112,12 +1113,7 @@ public class MManager {
     MNode node;
     try {
       node = getMNodeFromCache(path);
-      for(MNode child:node.getChildren().values()){
-        if(!child.isLoaded()){
-          processMNodeForExternChildrenCheck(node);
-          break;
-        }
-      }
+      node=processMNodeForExternChildrenCheck(node);
       return node;
     } catch (CacheException e) {
       throw new PathNotExistException(path.getFullPath());
@@ -1864,14 +1860,15 @@ public class MManager {
 
     // 1. get device node
     MNode deviceMNode = getDeviceNodeWithAutoCreate(deviceId);
-
+    Map<String,MNode> children=mtree.getChildrenOfNodeByPath(deviceId);
     // 2. get schema of each measurement
     // if do not has measurement
     MeasurementMNode measurementMNode;
     TSDataType dataType;
     for (int i = 0; i < measurementList.length; i++) {
       try {
-        MNode child = getMNode(deviceMNode, measurementList[i]);
+//        MNode child = getMNode(deviceMNode, measurementList[i]);
+        MNode child = children.get(measurementList[i]);
         if (child instanceof MeasurementMNode) {
           measurementMNode = (MeasurementMNode) child;
         } else if (child instanceof StorageGroupMNode) {
@@ -1884,7 +1881,8 @@ public class MManager {
             dataType = getTypeInLoc(plan, i);
             // create it, may concurrent created by multiple thread
             internalCreateTimeseries(deviceId.concatNode(measurementList[i]), dataType);
-            measurementMNode = (MeasurementMNode) deviceMNode.getChild(measurementList[i]);
+//            measurementMNode = (MeasurementMNode) deviceMNode.getChild(measurementList[i]);
+            measurementMNode = (MeasurementMNode) children.get(measurementList[i]);
           }
         }
 
