@@ -20,7 +20,7 @@
 grammar SqlBase;
 
 singleStatement
-    : DEBUG? statement (';')? EOF
+    : EXPLAIN? statement (';')? EOF
     ;
 
 /*
@@ -102,7 +102,7 @@ statement
     | DROP TRIGGER triggerName=ID #dropTrigger
     | START TRIGGER triggerName=ID #startTrigger
     | STOP TRIGGER triggerName=ID #stopTrigger
-    | SHOW TRIGGERS #showTriggers
+    | SHOW TRIGGERS (ON fullPath)? #showTriggers
     | SELECT topClause? selectElements
     fromClause
     whereClause?
@@ -401,25 +401,12 @@ comparisonOperator
     ;
 
 insertColumnsSpec
-    : LR_BRACKET (TIMESTAMP|TIME) (COMMA measurementName)+ RR_BRACKET
-    ;
-measurementName
-    : nodeNameWithoutStar
-    | LR_BRACKET nodeNameWithoutStar (COMMA nodeNameWithoutStar)+ RR_BRACKET
+    : LR_BRACKET (TIMESTAMP|TIME) (COMMA nodeNameWithoutStar)+ RR_BRACKET
     ;
 
 insertValuesSpec
-    :(COMMA? insertMultiValue)*
-    ;
-
-insertMultiValue
-    : LR_BRACKET dateFormat (COMMA measurementValue)+ RR_BRACKET
-    | LR_BRACKET INT (COMMA measurementValue)+ RR_BRACKET
-    ;
-
-measurementValue
-    : constant
-    | LR_BRACKET constant (COMMA constant)+ RR_BRACKET
+    : LR_BRACKET dateFormat (COMMA constant)+ RR_BRACKET
+    | LR_BRACKET INT (COMMA constant)+ RR_BRACKET
     ;
 
 setCol
@@ -709,7 +696,6 @@ constant
     | MINUS? INT
     | stringLiteral
     | booleanClause
-    | NULL
     ;
 
 booleanClause
@@ -1336,6 +1322,7 @@ EXPLAIN
     : E X P L A I N
     ;
 
+
 CONTINUOUS
     : C O N T I N U O U S
     ;
@@ -1358,13 +1345,6 @@ RESAMPLE
 
 EVERY
     : E V E R Y
-
-DEBUG
-    : D E B U G
-    ;
-
-NULL
-    : N U L L
     ;
 
 //============================
@@ -1469,8 +1449,6 @@ NAME_CHAR
     |   '%'
     |   '&'
     |   '+'
-    |   '{'
-    |   '}'
     |   CN_CHAR
     ;
 
@@ -1487,8 +1465,6 @@ FIRST_NAME_CHAR
     |   '%'
     |   '&'
     |   '+'
-    |   '{'
-    |   '}'
     |   CN_CHAR
     ;
 
