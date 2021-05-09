@@ -49,42 +49,42 @@ public class MManagerAdvancedTest {
     EnvironmentUtils.envSetUp();
     mmanager = IoTDB.metaManager;
 
-    mmanager.setStorageGroup(new PartialPath("root.vehicle.device-with-hyphen"));
+    mmanager.setStorageGroup(new PartialPath("root.vehicle.d0"));
     mmanager.setStorageGroup(new PartialPath("root.vehicle.d1"));
     mmanager.setStorageGroup(new PartialPath("root.vehicle.d2"));
 
     mmanager.createTimeseries(
-        new PartialPath("root.vehicle.device-with-hyphen.s0"),
+        new PartialPath("root.vehicle.d0.s0"),
         TSDataType.INT32,
         TSEncoding.RLE,
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
     mmanager.createTimeseries(
-        new PartialPath("root.vehicle.device-with-hyphen.s1"),
+        new PartialPath("root.vehicle.d0.s1"),
         TSDataType.INT64,
         TSEncoding.RLE,
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
     mmanager.createTimeseries(
-        new PartialPath("root.vehicle.device-with-hyphen.s2"),
+        new PartialPath("root.vehicle.d0.s2"),
         TSDataType.FLOAT,
         TSEncoding.RLE,
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
     mmanager.createTimeseries(
-        new PartialPath("root.vehicle.device-with-hyphen.s3"),
+        new PartialPath("root.vehicle.d0.s3"),
         TSDataType.DOUBLE,
         TSEncoding.RLE,
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
     mmanager.createTimeseries(
-        new PartialPath("root.vehicle.device-with-hyphen.s4"),
+        new PartialPath("root.vehicle.d0.s4"),
         TSDataType.BOOLEAN,
         TSEncoding.PLAIN,
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
     mmanager.createTimeseries(
-        new PartialPath("root.vehicle.device-with-hyphen.s5"),
+        new PartialPath("root.vehicle.d0.s5"),
         TSDataType.TEXT,
         TSEncoding.PLAIN,
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
@@ -140,19 +140,19 @@ public class MManagerAdvancedTest {
       // test file name
       List<PartialPath> fileNames = mmanager.getAllStorageGroupPaths();
       assertEquals(3, fileNames.size());
-      if (fileNames.get(2).equals(new PartialPath("root.vehicle.device-with-hyphen"))) {
-        assertEquals(new PartialPath("root.vehicle.d1"), fileNames.get(0));
+      if (fileNames.get(0).equals(new PartialPath("root.vehicle.d0"))) {
+        assertEquals(new PartialPath("root.vehicle.d1"), fileNames.get(1));
       } else {
-        assertEquals(new PartialPath("root.vehicle.device-with-hyphen"), fileNames.get(0));
+        assertEquals(new PartialPath("root.vehicle.d0"), fileNames.get(1));
       }
       // test filename by seriesPath
       assertEquals(
-          new PartialPath("root.vehicle.device-with-hyphen"),
-          mmanager.getStorageGroupPath(new PartialPath("root.vehicle.device-with-hyphen.s1")));
+          new PartialPath("root.vehicle.d0"),
+          mmanager.getStorageGroupPath(new PartialPath("root.vehicle.d0.s1")));
       List<PartialPath> pathList =
           mmanager.getAllTimeseriesPath(new PartialPath("root.vehicle.d1.*"));
       assertEquals(6, pathList.size());
-      pathList = mmanager.getAllTimeseriesPath(new PartialPath("root.vehicle.device-with-hyphen"));
+      pathList = mmanager.getAllTimeseriesPath(new PartialPath("root.vehicle.d0"));
       assertEquals(6, pathList.size());
       pathList = mmanager.getAllTimeseriesPath(new PartialPath("root.vehicle.d*"));
       assertEquals(12, pathList.size());
@@ -195,7 +195,7 @@ public class MManagerAdvancedTest {
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
 
-    MNode node = mmanager.getNodeByPath(new PartialPath("root.vehicle.device-with-hyphen"));
+    MNode node = mmanager.getNodeByPath(new PartialPath("root.vehicle.d0"));
     Assert.assertEquals(
         TSDataType.INT32, ((MeasurementMNode) node.getChild("s0")).getSchema().getType());
 
