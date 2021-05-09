@@ -31,7 +31,6 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.Result;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -1242,9 +1241,9 @@ public class IoTDBSimpleQueryIT {
   public void testStorageGroupWithHyphenInName() throws ClassNotFoundException, MetadataException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
       statement.execute("SET STORAGE GROUP TO root.group-with-hyphen");
     } catch (SQLException e) {
@@ -1252,14 +1251,20 @@ public class IoTDBSimpleQueryIT {
     }
 
     try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute("SHOW STORAGE GROUP");
       if (hasResultSet) {
         try (ResultSet resultSet = statement.getResultSet()) {
-          resultSet.next();
-          Assert.assertEquals(resultSet.getString(1), "root.group-with-hyphen");
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          while (resultSet.next()) {
+            StringBuilder builder = new StringBuilder();
+            for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+              builder.append(resultSet.getString(i));
+            }
+            Assert.assertEquals(builder.toString(), "root.group-with-hyphen");
+          }
         }
       }
     } catch (SQLException e) {
