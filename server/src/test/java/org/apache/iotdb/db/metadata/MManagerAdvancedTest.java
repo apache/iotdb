@@ -54,78 +54,78 @@ public class MManagerAdvancedTest {
     mmanager.setStorageGroup(new PartialPath("root.vehicle.d2"));
 
     mmanager.createTimeseries(
-            new PartialPath("root.vehicle.device-with-hyphen.s0"),
-            TSDataType.INT32,
-            TSEncoding.RLE,
-            TSFileDescriptor.getInstance().getConfig().getCompressor(),
-            Collections.emptyMap());
+        new PartialPath("root.vehicle.device-with-hyphen.s0"),
+        TSDataType.INT32,
+        TSEncoding.RLE,
+        TSFileDescriptor.getInstance().getConfig().getCompressor(),
+        Collections.emptyMap());
     mmanager.createTimeseries(
-            new PartialPath("root.vehicle.device-with-hyphen.s1"),
-            TSDataType.INT64,
-            TSEncoding.RLE,
-            TSFileDescriptor.getInstance().getConfig().getCompressor(),
-            Collections.emptyMap());
+        new PartialPath("root.vehicle.device-with-hyphen.s1"),
+        TSDataType.INT64,
+        TSEncoding.RLE,
+        TSFileDescriptor.getInstance().getConfig().getCompressor(),
+        Collections.emptyMap());
     mmanager.createTimeseries(
-            new PartialPath("root.vehicle.device-with-hyphen.s2"),
-            TSDataType.FLOAT,
-            TSEncoding.RLE,
-            TSFileDescriptor.getInstance().getConfig().getCompressor(),
-            Collections.emptyMap());
+        new PartialPath("root.vehicle.device-with-hyphen.s2"),
+        TSDataType.FLOAT,
+        TSEncoding.RLE,
+        TSFileDescriptor.getInstance().getConfig().getCompressor(),
+        Collections.emptyMap());
     mmanager.createTimeseries(
-            new PartialPath("root.vehicle.device-with-hyphen.s3"),
-            TSDataType.DOUBLE,
-            TSEncoding.RLE,
-            TSFileDescriptor.getInstance().getConfig().getCompressor(),
-            Collections.emptyMap());
+        new PartialPath("root.vehicle.device-with-hyphen.s3"),
+        TSDataType.DOUBLE,
+        TSEncoding.RLE,
+        TSFileDescriptor.getInstance().getConfig().getCompressor(),
+        Collections.emptyMap());
     mmanager.createTimeseries(
-            new PartialPath("root.vehicle.device-with-hyphen.s4"),
-            TSDataType.BOOLEAN,
-            TSEncoding.PLAIN,
-            TSFileDescriptor.getInstance().getConfig().getCompressor(),
-            Collections.emptyMap());
+        new PartialPath("root.vehicle.device-with-hyphen.s4"),
+        TSDataType.BOOLEAN,
+        TSEncoding.PLAIN,
+        TSFileDescriptor.getInstance().getConfig().getCompressor(),
+        Collections.emptyMap());
     mmanager.createTimeseries(
-            new PartialPath("root.vehicle.device-with-hyphen.s5"),
-            TSDataType.TEXT,
-            TSEncoding.PLAIN,
-            TSFileDescriptor.getInstance().getConfig().getCompressor(),
-            Collections.emptyMap());
+        new PartialPath("root.vehicle.device-with-hyphen.s5"),
+        TSDataType.TEXT,
+        TSEncoding.PLAIN,
+        TSFileDescriptor.getInstance().getConfig().getCompressor(),
+        Collections.emptyMap());
 
     mmanager.createTimeseries(
-            new PartialPath("root.vehicle.d1.s0"),
-            TSDataType.INT32,
-            TSEncoding.RLE,
-            TSFileDescriptor.getInstance().getConfig().getCompressor(),
-            Collections.emptyMap());
+        new PartialPath("root.vehicle.d1.s0"),
+        TSDataType.INT32,
+        TSEncoding.RLE,
+        TSFileDescriptor.getInstance().getConfig().getCompressor(),
+        Collections.emptyMap());
     mmanager.createTimeseries(
-            new PartialPath("root.vehicle.d1.s1"),
-            TSDataType.INT64,
-            TSEncoding.RLE,
-            TSFileDescriptor.getInstance().getConfig().getCompressor(),
-            Collections.emptyMap());
+        new PartialPath("root.vehicle.d1.s1"),
+        TSDataType.INT64,
+        TSEncoding.RLE,
+        TSFileDescriptor.getInstance().getConfig().getCompressor(),
+        Collections.emptyMap());
     mmanager.createTimeseries(
-            new PartialPath("root.vehicle.d1.s2"),
-            TSDataType.FLOAT,
-            TSEncoding.RLE,
-            TSFileDescriptor.getInstance().getConfig().getCompressor(),
-            Collections.emptyMap());
+        new PartialPath("root.vehicle.d1.s2"),
+        TSDataType.FLOAT,
+        TSEncoding.RLE,
+        TSFileDescriptor.getInstance().getConfig().getCompressor(),
+        Collections.emptyMap());
     mmanager.createTimeseries(
-            new PartialPath("root.vehicle.d1.s3"),
-            TSDataType.DOUBLE,
-            TSEncoding.RLE,
-            TSFileDescriptor.getInstance().getConfig().getCompressor(),
-            Collections.emptyMap());
+        new PartialPath("root.vehicle.d1.s3"),
+        TSDataType.DOUBLE,
+        TSEncoding.RLE,
+        TSFileDescriptor.getInstance().getConfig().getCompressor(),
+        Collections.emptyMap());
     mmanager.createTimeseries(
-            new PartialPath("root.vehicle.d1.s4"),
-            TSDataType.BOOLEAN,
-            TSEncoding.PLAIN,
-            TSFileDescriptor.getInstance().getConfig().getCompressor(),
-            Collections.emptyMap());
+        new PartialPath("root.vehicle.d1.s4"),
+        TSDataType.BOOLEAN,
+        TSEncoding.PLAIN,
+        TSFileDescriptor.getInstance().getConfig().getCompressor(),
+        Collections.emptyMap());
     mmanager.createTimeseries(
-            new PartialPath("root.vehicle.d1.s5"),
-            TSDataType.TEXT,
-            TSEncoding.PLAIN,
-            TSFileDescriptor.getInstance().getConfig().getCompressor(),
-            Collections.emptyMap());
+        new PartialPath("root.vehicle.d1.s5"),
+        TSDataType.TEXT,
+        TSEncoding.PLAIN,
+        TSFileDescriptor.getInstance().getConfig().getCompressor(),
+        Collections.emptyMap());
   }
 
   @After
@@ -147,10 +147,10 @@ public class MManagerAdvancedTest {
       }
       // test filename by seriesPath
       assertEquals(
-              new PartialPath("root.vehicle.device-with-hyphen"),
-              mmanager.getStorageGroupPath(new PartialPath("root.vehicle.device-with-hyphen.s1")));
+          new PartialPath("root.vehicle.device-with-hyphen"),
+          mmanager.getStorageGroupPath(new PartialPath("root.vehicle.device-with-hyphen.s1")));
       List<PartialPath> pathList =
-              mmanager.getAllTimeseriesPath(new PartialPath("root.vehicle.d1.*"));
+          mmanager.getAllTimeseriesPath(new PartialPath("root.vehicle.d1.*"));
       assertEquals(6, pathList.size());
       pathList = mmanager.getAllTimeseriesPath(new PartialPath("root.vehicle.device-with-hyphen"));
       assertEquals(6, pathList.size());
@@ -171,33 +171,33 @@ public class MManagerAdvancedTest {
   @Test
   public void testCache() throws MetadataException {
     mmanager.createTimeseries(
-            new PartialPath("root.vehicle.d2.s0"),
-            TSDataType.DOUBLE,
-            TSEncoding.RLE,
-            TSFileDescriptor.getInstance().getConfig().getCompressor(),
-            Collections.emptyMap());
+        new PartialPath("root.vehicle.d2.s0"),
+        TSDataType.DOUBLE,
+        TSEncoding.RLE,
+        TSFileDescriptor.getInstance().getConfig().getCompressor(),
+        Collections.emptyMap());
     mmanager.createTimeseries(
-            new PartialPath("root.vehicle.d2.s1"),
-            TSDataType.BOOLEAN,
-            TSEncoding.PLAIN,
-            TSFileDescriptor.getInstance().getConfig().getCompressor(),
-            Collections.emptyMap());
+        new PartialPath("root.vehicle.d2.s1"),
+        TSDataType.BOOLEAN,
+        TSEncoding.PLAIN,
+        TSFileDescriptor.getInstance().getConfig().getCompressor(),
+        Collections.emptyMap());
     mmanager.createTimeseries(
-            new PartialPath("root.vehicle.d2.s2.g0"),
-            TSDataType.TEXT,
-            TSEncoding.PLAIN,
-            TSFileDescriptor.getInstance().getConfig().getCompressor(),
-            Collections.emptyMap());
+        new PartialPath("root.vehicle.d2.s2.g0"),
+        TSDataType.TEXT,
+        TSEncoding.PLAIN,
+        TSFileDescriptor.getInstance().getConfig().getCompressor(),
+        Collections.emptyMap());
     mmanager.createTimeseries(
-            new PartialPath("root.vehicle.d2.s3"),
-            TSDataType.TEXT,
-            TSEncoding.PLAIN,
-            TSFileDescriptor.getInstance().getConfig().getCompressor(),
-            Collections.emptyMap());
+        new PartialPath("root.vehicle.d2.s3"),
+        TSDataType.TEXT,
+        TSEncoding.PLAIN,
+        TSFileDescriptor.getInstance().getConfig().getCompressor(),
+        Collections.emptyMap());
 
     MNode node = mmanager.getNodeByPath(new PartialPath("root.vehicle.device-with-hyphen"));
     Assert.assertEquals(
-            TSDataType.INT32, ((MeasurementMNode) node.getChild("s0")).getSchema().getType());
+        TSDataType.INT32, ((MeasurementMNode) node.getChild("s0")).getSchema().getType());
 
     try {
       mmanager.getNodeByPath(new PartialPath("root.vehicle.d100"));
@@ -209,11 +209,11 @@ public class MManagerAdvancedTest {
   @Test
   public void testCachedLastTimeValue() throws MetadataException {
     mmanager.createTimeseries(
-            new PartialPath("root.vehicle.d2.s0"),
-            TSDataType.DOUBLE,
-            TSEncoding.RLE,
-            TSFileDescriptor.getInstance().getConfig().getCompressor(),
-            Collections.emptyMap());
+        new PartialPath("root.vehicle.d2.s0"),
+        TSDataType.DOUBLE,
+        TSEncoding.RLE,
+        TSFileDescriptor.getInstance().getConfig().getCompressor(),
+        Collections.emptyMap());
 
     TimeValuePair tv1 = new TimeValuePair(1000, TsPrimitiveType.getByType(TSDataType.DOUBLE, 1.0));
     TimeValuePair tv2 = new TimeValuePair(2000, TsPrimitiveType.getByType(TSDataType.DOUBLE, 3.0));
@@ -222,9 +222,9 @@ public class MManagerAdvancedTest {
     ((MeasurementMNode) node).updateCachedLast(tv1, true, Long.MIN_VALUE);
     ((MeasurementMNode) node).updateCachedLast(tv2, true, Long.MIN_VALUE);
     Assert.assertEquals(
-            tv2.getTimestamp(), ((MeasurementMNode) node).getCachedLast().getTimestamp());
+        tv2.getTimestamp(), ((MeasurementMNode) node).getCachedLast().getTimestamp());
     ((MeasurementMNode) node).updateCachedLast(tv3, true, Long.MIN_VALUE);
     Assert.assertEquals(
-            tv2.getTimestamp(), ((MeasurementMNode) node).getCachedLast().getTimestamp());
+        tv2.getTimestamp(), ((MeasurementMNode) node).getCachedLast().getTimestamp());
   }
 }
