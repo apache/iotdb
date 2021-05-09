@@ -81,7 +81,7 @@ public class MManagerBasicTest {
     assertFalse(manager.isPathExist(new PartialPath("root.laptop")));
 
     try {
-      manager.setStorageGroup(new PartialPath("root.laptop.device-with-hyphen"));
+      manager.setStorageGroup(new PartialPath("root.laptop.d1"));
       manager.setStorageGroup(new PartialPath("root.1"));
     } catch (MetadataException e) {
       e.printStackTrace();
@@ -99,7 +99,7 @@ public class MManagerBasicTest {
 
     try {
       manager.createTimeseries(
-          new PartialPath("root.laptop.device-with-hyphen.s0"),
+          new PartialPath("root.laptop.d1.s0"),
           TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"),
           compressionType,
@@ -109,24 +109,24 @@ public class MManagerBasicTest {
       fail(e.getMessage());
     }
     assertTrue(manager.isPathExist(new PartialPath("root.laptop")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.device-with-hyphen")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.device-with-hyphen.s0")));
-    assertFalse(manager.isPathExist(new PartialPath("root.laptop.device-with-hyphen.s1")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s0")));
+    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.s1")));
     try {
       manager.createTimeseries(
-          new PartialPath("root.laptop.device-with-hyphen.s1"),
+          new PartialPath("root.laptop.d1.s1"),
           TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"),
           compressionType,
           Collections.emptyMap());
       manager.createTimeseries(
-          new PartialPath("root.laptop.device-with-hyphen.1_2"),
+          new PartialPath("root.laptop.d1.1_2"),
           TSDataType.INT32,
           TSEncoding.RLE,
           TSFileDescriptor.getInstance().getConfig().getCompressor(),
           Collections.emptyMap());
       manager.createTimeseries(
-          new PartialPath("root.laptop.device-with-hyphen.\"1.2.3\""),
+          new PartialPath("root.laptop.d1.\"1.2.3\""),
           TSDataType.INT32,
           TSEncoding.RLE,
           TSFileDescriptor.getInstance().getConfig().getCompressor(),
@@ -138,9 +138,9 @@ public class MManagerBasicTest {
           TSFileDescriptor.getInstance().getConfig().getCompressor(),
           Collections.emptyMap());
 
-      assertTrue(manager.isPathExist(new PartialPath("root.laptop.device-with-hyphen.s1")));
-      assertTrue(manager.isPathExist(new PartialPath("root.laptop.device-with-hyphen.1_2")));
-      assertTrue(manager.isPathExist(new PartialPath("root.laptop.device-with-hyphen.\"1.2.3\"")));
+      assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s1")));
+      assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.1_2")));
+      assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.\"1.2.3\"")));
       assertTrue(manager.isPathExist(new PartialPath("root.1.2")));
       assertTrue(manager.isPathExist(new PartialPath("root.1.2.3")));
     } catch (MetadataException e1) {
@@ -149,27 +149,27 @@ public class MManagerBasicTest {
     }
 
     try {
-      manager.deleteTimeseries(new PartialPath("root.laptop.device-with-hyphen.s1"));
+      manager.deleteTimeseries(new PartialPath("root.laptop.d1.s1"));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
-    assertFalse(manager.isPathExist(new PartialPath("root.laptop.device-with-hyphen.s1")));
+    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.s1")));
 
     try {
-      manager.deleteTimeseries(new PartialPath("root.laptop.device-with-hyphen.s0"));
+      manager.deleteTimeseries(new PartialPath("root.laptop.d1.s0"));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
-    assertFalse(manager.isPathExist(new PartialPath("root.laptop.device-with-hyphen.s0")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.device-with-hyphen")));
+    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.s0")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1")));
     assertTrue(manager.isPathExist(new PartialPath("root.laptop")));
     assertTrue(manager.isPathExist(new PartialPath("root")));
 
     try {
       manager.createTimeseries(
-          new PartialPath("root.laptop.device-with-hyphen.s1"),
+          new PartialPath("root.laptop.d1.s1"),
           TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"),
           compressionType,
@@ -181,7 +181,7 @@ public class MManagerBasicTest {
 
     try {
       manager.createTimeseries(
-          new PartialPath("root.laptop.device-with-hyphen.s0"),
+          new PartialPath("root.laptop.d1.s0"),
           TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"),
           compressionType,
@@ -195,13 +195,13 @@ public class MManagerBasicTest {
     assertFalse(manager.checkStorageGroupByPath(new PartialPath("root.laptop.d2")));
 
     try {
-      manager.deleteTimeseries(new PartialPath("root.laptop.device-with-hyphen.s0"));
+      manager.deleteTimeseries(new PartialPath("root.laptop.d1.s0"));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
     try {
-      manager.deleteTimeseries(new PartialPath("root.laptop.device-with-hyphen.s1"));
+      manager.deleteTimeseries(new PartialPath("root.laptop.d1.s1"));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -218,15 +218,15 @@ public class MManagerBasicTest {
     }
 
     try {
-      manager.deleteTimeseries(new PartialPath("root.laptop.device-with-hyphen.1_2"));
-      manager.deleteTimeseries(new PartialPath("root.laptop.device-with-hyphen.\"1.2.3\""));
+      manager.deleteTimeseries(new PartialPath("root.laptop.d1.1_2"));
+      manager.deleteTimeseries(new PartialPath("root.laptop.d1.\"1.2.3\""));
       manager.deleteTimeseries(new PartialPath("root.1.2.3"));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
-    assertFalse(manager.isPathExist(new PartialPath("root.laptop.device-with-hyphen.1_2")));
-    assertFalse(manager.isPathExist(new PartialPath("root.laptop.device-with-hyphen.\"1.2.3\"")));
+    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.1_2")));
+    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.\"1.2.3\"")));
     assertFalse(manager.isPathExist(new PartialPath("root.1.2.3")));
     assertFalse(manager.isPathExist(new PartialPath("root.1.2")));
     assertTrue(manager.isPathExist(new PartialPath("root.1")));
@@ -253,13 +253,13 @@ public class MManagerBasicTest {
 
     try {
       manager.createTimeseries(
-          new PartialPath("root.laptop.device-with-hyphen.s0"),
+          new PartialPath("root.laptop.d1.s0"),
           TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"),
           compressionType,
           Collections.emptyMap());
       manager.createAlignedTimeSeries(
-          new PartialPath("root.laptop.device-with-hyphen"),
+          new PartialPath("root.laptop.d1"),
           Arrays.asList("s1", "s2", "s3"),
           Arrays.asList(
               TSDataType.valueOf("INT32"),
@@ -274,11 +274,11 @@ public class MManagerBasicTest {
     }
 
     assertTrue(manager.isPathExist(new PartialPath("root.laptop")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.device-with-hyphen")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.device-with-hyphen.s0")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.device-with-hyphen.s1")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.device-with-hyphen.s2")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.device-with-hyphen.s3")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s0")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s1")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s2")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s3")));
     try {
       assertEquals(
           1,
@@ -291,46 +291,46 @@ public class MManagerBasicTest {
     }
 
     try {
-      manager.deleteTimeseries(new PartialPath("root.laptop.device-with-hyphen.s2"));
+      manager.deleteTimeseries(new PartialPath("root.laptop.d1.s2"));
     } catch (MetadataException e) {
       assertEquals(
-          "Not support deleting part of aligned timeseies! (Path: root.laptop.device-with-hyphen.s2)",
+          "Not support deleting part of aligned timeseies! (Path: root.laptop.d1.s2)",
           e.getMessage());
     }
 
     try {
-      manager.deleteTimeseries(new PartialPath("root.laptop.device-with-hyphen.(s2, s3)"));
+      manager.deleteTimeseries(new PartialPath("root.laptop.d1.(s2, s3)"));
     } catch (MetadataException e) {
       assertEquals(
-          "Not support deleting part of aligned timeseies! (Path: root.laptop.device-with-hyphen.(s2, s3))",
+          "Not support deleting part of aligned timeseies! (Path: root.laptop.d1.(s2, s3))",
           e.getMessage());
     }
 
     try {
-      manager.deleteTimeseries(new PartialPath("root.laptop.device-with-hyphen.(s1,s2,s3)"));
+      manager.deleteTimeseries(new PartialPath("root.laptop.d1.(s1,s2,s3)"));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
 
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.device-with-hyphen")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.device-with-hyphen.s0")));
-    assertFalse(manager.isPathExist(new PartialPath("root.laptop.device-with-hyphen.s1")));
-    assertFalse(manager.isPathExist(new PartialPath("root.laptop.device-with-hyphen.s2")));
-    assertFalse(manager.isPathExist(new PartialPath("root.laptop.device-with-hyphen.s3")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s0")));
+    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.s1")));
+    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.s2")));
+    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.s3")));
 
     try {
-      manager.deleteTimeseries(new PartialPath("root.laptop.device-with-hyphen.s0"));
+      manager.deleteTimeseries(new PartialPath("root.laptop.d1.s0"));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
-    assertFalse(manager.isPathExist(new PartialPath("root.laptop.device-with-hyphen")));
-    assertFalse(manager.isPathExist(new PartialPath("root.laptop.device-with-hyphen.s0")));
+    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1")));
+    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.s0")));
 
     try {
       manager.createAlignedTimeSeries(
-          new PartialPath("root.laptop.device-with-hyphen"),
+          new PartialPath("root.laptop.d1"),
           Arrays.asList("s0", "s2", "s4"),
           Arrays.asList(
               TSDataType.valueOf("INT32"),
@@ -344,10 +344,10 @@ public class MManagerBasicTest {
       fail(e.getMessage());
     }
 
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.device-with-hyphen")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.device-with-hyphen.s0")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.device-with-hyphen.s2")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.device-with-hyphen.s4")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s0")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s2")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s4")));
     try {
       assertEquals(
           2,
@@ -367,25 +367,25 @@ public class MManagerBasicTest {
     try {
       manager.setStorageGroup(new PartialPath("root.laptop"));
       manager.createTimeseries(
-          new PartialPath("root.laptop.device-with-hyphen"),
+          new PartialPath("root.laptop.d1"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
           null);
       manager.createTimeseries(
-          new PartialPath("root.laptop.device-with-hyphen.s1"),
+          new PartialPath("root.laptop.d1.s1"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
           null);
       manager.createTimeseries(
-          new PartialPath("root.laptop.device-with-hyphen.s1.t1"),
+          new PartialPath("root.laptop.d1.s1.t1"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
           null);
       manager.createTimeseries(
-          new PartialPath("root.laptop.device-with-hyphen.s2"),
+          new PartialPath("root.laptop.d1.s2"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
@@ -409,10 +409,8 @@ public class MManagerBasicTest {
       assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.*.*")), 5);
       assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.*.*.t1")), 1);
       assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.*.s1")), 3);
-      assertEquals(
-          manager.getAllTimeseriesCount(new PartialPath("root.laptop.device-with-hyphen")), 4);
-      assertEquals(
-          manager.getAllTimeseriesCount(new PartialPath("root.laptop.device-with-hyphen.*")), 3);
+      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1")), 4);
+      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1.*")), 3);
       assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d2.s1")), 1);
       assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d2")), 2);
 
@@ -437,14 +435,14 @@ public class MManagerBasicTest {
       assertFalse(manager.isStorageGroup(new PartialPath("root")));
       assertFalse(manager.isStorageGroup(new PartialPath("root1.laptop.d2")));
 
-      manager.setStorageGroup(new PartialPath("root.laptop.device-with-hyphen"));
-      assertTrue(manager.isStorageGroup(new PartialPath("root.laptop.device-with-hyphen")));
+      manager.setStorageGroup(new PartialPath("root.laptop.d1"));
+      assertTrue(manager.isStorageGroup(new PartialPath("root.laptop.d1")));
       assertFalse(manager.isStorageGroup(new PartialPath("root.laptop.d2")));
       assertFalse(manager.isStorageGroup(new PartialPath("root.laptop")));
-      assertFalse(manager.isStorageGroup(new PartialPath("root.laptop.device-with-hyphen.s1")));
+      assertFalse(manager.isStorageGroup(new PartialPath("root.laptop.d1.s1")));
 
       manager.setStorageGroup(new PartialPath("root.laptop.d2"));
-      assertTrue(manager.isStorageGroup(new PartialPath("root.laptop.device-with-hyphen")));
+      assertTrue(manager.isStorageGroup(new PartialPath("root.laptop.d1")));
       assertTrue(manager.isStorageGroup(new PartialPath("root.laptop.d2")));
       assertFalse(manager.isStorageGroup(new PartialPath("root.laptop.d3")));
       assertFalse(manager.isStorageGroup(new PartialPath("root.laptop")));
@@ -461,10 +459,10 @@ public class MManagerBasicTest {
 
     try {
 
-      manager.setStorageGroup(new PartialPath("root.laptop.device-with-hyphen"));
+      manager.setStorageGroup(new PartialPath("root.laptop.d1"));
       manager.setStorageGroup(new PartialPath("root.laptop.d2"));
       manager.createTimeseries(
-          new PartialPath("root.laptop.device-with-hyphen.s1"),
+          new PartialPath("root.laptop.d1.s1"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
@@ -475,14 +473,14 @@ public class MManagerBasicTest {
           TSEncoding.PLAIN,
           CompressionType.GZIP,
           null);
-      assertTrue(manager.isStorageGroup(new PartialPath("root.laptop.device-with-hyphen")));
+      assertTrue(manager.isStorageGroup(new PartialPath("root.laptop.d1")));
       assertTrue(manager.isStorageGroup(new PartialPath("root.laptop.d2")));
       assertFalse(manager.isStorageGroup(new PartialPath("root.laptop.d3")));
       assertFalse(manager.isStorageGroup(new PartialPath("root.laptop")));
       Set<String> devices =
           new TreeSet<String>() {
             {
-              add("root.laptop.device-with-hyphen");
+              add("root.laptop.d1");
               add("root.laptop.d2");
             }
           };
@@ -494,7 +492,7 @@ public class MManagerBasicTest {
               .collect(Collectors.toSet()));
 
       manager.deleteStorageGroups(Collections.singletonList(new PartialPath("root.laptop.d2")));
-      assertTrue(manager.isStorageGroup(new PartialPath("root.laptop.device-with-hyphen")));
+      assertTrue(manager.isStorageGroup(new PartialPath("root.laptop.d1")));
       assertFalse(manager.isStorageGroup(new PartialPath("root.laptop.d2")));
       assertFalse(manager.isStorageGroup(new PartialPath("root.laptop.d3")));
       assertFalse(manager.isStorageGroup(new PartialPath("root.laptop")));
@@ -509,7 +507,7 @@ public class MManagerBasicTest {
       MManager recoverManager = new MManager();
       recoverManager.init();
 
-      assertTrue(recoverManager.isStorageGroup(new PartialPath("root.laptop.device-with-hyphen")));
+      assertTrue(recoverManager.isStorageGroup(new PartialPath("root.laptop.d1")));
       assertFalse(recoverManager.isStorageGroup(new PartialPath("root.laptop.d2")));
       assertFalse(recoverManager.isStorageGroup(new PartialPath("root.laptop.d3")));
       assertFalse(recoverManager.isStorageGroup(new PartialPath("root.laptop")));
@@ -532,10 +530,10 @@ public class MManagerBasicTest {
 
     MManager manager = IoTDB.metaManager;
     try {
-      manager.setStorageGroup(new PartialPath("root.laptop.device-with-hyphen"));
+      manager.setStorageGroup(new PartialPath("root.laptop.d1"));
       manager.setStorageGroup(new PartialPath("root.laptop.d2"));
       manager.createTimeseries(
-          new PartialPath("root.laptop.device-with-hyphen.s1"),
+          new PartialPath("root.laptop.d1.s1"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
@@ -549,12 +547,9 @@ public class MManagerBasicTest {
 
       List<String> list = new ArrayList<>();
 
-      list.add("root.laptop.device-with-hyphen");
-      assertEquals(
-          list,
-          manager.getStorageGroupByPath(new PartialPath("root.laptop.device-with-hyphen.s1")));
-      assertEquals(
-          list, manager.getStorageGroupByPath(new PartialPath("root.laptop.device-with-hyphen")));
+      list.add("root.laptop.d1");
+      assertEquals(list, manager.getStorageGroupByPath(new PartialPath("root.laptop.d1.s1")));
+      assertEquals(list, manager.getStorageGroupByPath(new PartialPath("root.laptop.d1")));
       list.add("root.laptop.d2");
       assertEquals(list, manager.getStorageGroupByPath(new PartialPath("root.laptop")));
       assertEquals(list, manager.getStorageGroupByPath(new PartialPath("root")));
@@ -600,7 +595,7 @@ public class MManagerBasicTest {
     try {
       manager.setStorageGroup(new PartialPath("root.laptop"));
       manager.createTimeseries(
-          new PartialPath("root.laptop.device-with-hyphen.s1"),
+          new PartialPath("root.laptop.d1.s1"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
@@ -612,16 +607,16 @@ public class MManagerBasicTest {
           CompressionType.GZIP,
           null);
       manager.createTimeseries(
-          new PartialPath("root.laptop.device-with-hyphen.s2"),
+          new PartialPath("root.laptop.d1.s2"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
           null);
       Set<String> nodes = new HashSet<>(Arrays.asList("s1", "s2"));
       Set<String> nodes2 = new HashSet<>(Arrays.asList("laptop"));
-      Set<String> nodes3 = new HashSet<>(Arrays.asList("device-with-hyphen", "d2"));
+      Set<String> nodes3 = new HashSet<>(Arrays.asList("d1", "d2"));
       Set<String> nexLevelNodes1 =
-          manager.getChildNodeInNextLevel(new PartialPath("root.laptop.device-with-hyphen"));
+          manager.getChildNodeInNextLevel(new PartialPath("root.laptop.d1"));
       Set<String> nexLevelNodes2 = manager.getChildNodeInNextLevel(new PartialPath("root"));
       Set<String> nexLevelNodes3 = manager.getChildNodeInNextLevel(new PartialPath("root.laptop"));
       // usual condition
@@ -642,8 +637,7 @@ public class MManagerBasicTest {
     try {
       assertEquals(
           "root.laptop",
-          MetaUtils.getStorageGroupPathByLevel(
-                  new PartialPath("root.laptop.device-with-hyphen.s1"), level)
+          MetaUtils.getStorageGroupPathByLevel(new PartialPath("root.laptop.d1.s1"), level)
               .getFullPath());
     } catch (MetadataException e) {
       e.printStackTrace();
@@ -698,7 +692,7 @@ public class MManagerBasicTest {
   public void testCreateTimeseriesWithIllegalName() {
     MManager manager = IoTDB.metaManager;
     try {
-      PartialPath path1 = new PartialPath("root.laptop.device-with-hyphen\n.s1");
+      PartialPath path1 = new PartialPath("root.laptop.d1\n.s1");
       try {
         manager.createTimeseries(
             path1, TSDataType.INT32, TSEncoding.PLAIN, CompressionType.SNAPPY, null);
@@ -709,7 +703,7 @@ public class MManagerBasicTest {
       fail();
     }
     try {
-      PartialPath path2 = new PartialPath("root.laptop.device-with-hyphen\t.s1");
+      PartialPath path2 = new PartialPath("root.laptop.d1\t.s1");
       try {
         manager.createTimeseries(
             path2, TSDataType.INT32, TSEncoding.PLAIN, CompressionType.SNAPPY, null);
@@ -728,7 +722,7 @@ public class MManagerBasicTest {
     try {
       manager.setStorageGroup(new PartialPath("root.laptop"));
       manager.createTimeseries(
-          new PartialPath("root.laptop.device-with-hyphen.s1"),
+          new PartialPath("root.laptop.d1.s1"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
@@ -740,7 +734,7 @@ public class MManagerBasicTest {
           CompressionType.GZIP,
           null);
       Set<String> devices = new TreeSet<>();
-      devices.add("root.laptop.device-with-hyphen");
+      devices.add("root.laptop.d1");
       devices.add("root.laptop.d2");
       // usual condition
       assertEquals(
@@ -1098,13 +1092,13 @@ public class MManagerBasicTest {
     MManager manager = IoTDB.metaManager;
     try {
       manager.createTimeseries(
-          new PartialPath("root.laptop.device-with-hyphen.s0"),
+          new PartialPath("root.laptop.d1.s0"),
           TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"),
           compressionType,
           Collections.emptyMap());
       manager.createAlignedTimeSeries(
-          new PartialPath("root.laptop.device-with-hyphen"),
+          new PartialPath("root.laptop.d1"),
           Arrays.asList("s1", "s2", "s3"),
           Arrays.asList(
               TSDataType.valueOf("INT32"),
@@ -1114,37 +1108,31 @@ public class MManagerBasicTest {
               TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
           compressionType);
 
-      // show timeseries root.laptop.device-with-hyphen.s0
+      // show timeseries root.laptop.d1.s0
       ShowTimeSeriesPlan showTimeSeriesPlan =
           new ShowTimeSeriesPlan(
-              new PartialPath("root.laptop.device-with-hyphen.s0"), false, null, null, 0, 0, false);
+              new PartialPath("root.laptop.d1.s0"), false, null, null, 0, 0, false);
       List<ShowTimeSeriesResult> result =
           manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
       assertEquals(1, result.size());
-      assertEquals("root.laptop.device-with-hyphen.s0", result.get(0).getName());
+      assertEquals("root.laptop.d1.s0", result.get(0).getName());
 
-      // show timeseries root.laptop.device-with-hyphen.s1
+      // show timeseries root.laptop.d1.s1
       showTimeSeriesPlan =
           new ShowTimeSeriesPlan(
-              new PartialPath("root.laptop.device-with-hyphen.s1"), false, null, null, 0, 0, false);
+              new PartialPath("root.laptop.d1.s1"), false, null, null, 0, 0, false);
       result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
       assertEquals(1, result.size());
-      assertEquals("root.laptop.device-with-hyphen.s1", result.get(0).getName());
+      assertEquals("root.laptop.d1.s1", result.get(0).getName());
 
-      // show timeseries root.laptop.device-with-hyphen.(s1,s2,s3)
+      // show timeseries root.laptop.d1.(s1,s2,s3)
       showTimeSeriesPlan =
           new ShowTimeSeriesPlan(
-              new PartialPath("root.laptop.device-with-hyphen.(s1,s2,s3)"),
-              false,
-              null,
-              null,
-              0,
-              0,
-              false);
+              new PartialPath("root.laptop.d1.(s1,s2,s3)"), false, null, null, 0, 0, false);
       result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
       assertEquals(3, result.size());
       for (int i = 0; i < result.size(); i++) {
-        assertEquals("root.laptop.device-with-hyphen.s" + (i + 1), result.get(i).getName());
+        assertEquals("root.laptop.d1.s" + (i + 1), result.get(i).getName());
       }
 
       // show timeseries
@@ -1157,17 +1145,11 @@ public class MManagerBasicTest {
       fail(e.getMessage());
     }
 
-    // show timeseries root.laptop.device-with-hyphen.(s0,s1)
+    // show timeseries root.laptop.d1.(s0,s1)
     try {
       ShowTimeSeriesPlan showTimeSeriesPlan =
           new ShowTimeSeriesPlan(
-              new PartialPath("root.laptop.device-with-hyphen.(s0,s1)"),
-              false,
-              null,
-              null,
-              0,
-              0,
-              false);
+              new PartialPath("root.laptop.d1.(s0,s1)"), false, null, null, 0, 0, false);
       List<ShowTimeSeriesResult> result =
           manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
     } catch (MetadataException e) {
@@ -1217,51 +1199,45 @@ public class MManagerBasicTest {
 
       // set device template
       SetDeviceTemplatePlan setDeviceTemplatePlan =
-          new SetDeviceTemplatePlan("template1", "root.laptop.device-with-hyphen");
+          new SetDeviceTemplatePlan("template1", "root.laptop.d1");
       manager.setDeviceTemplate(setDeviceTemplatePlan);
-      manager.getDeviceNode(new PartialPath("root.laptop.device-with-hyphen")).setUseTemplate(true);
+      manager.getDeviceNode(new PartialPath("root.laptop.d1")).setUseTemplate(true);
 
-      // show timeseries root.laptop.device-with-hyphen.s0
+      // show timeseries root.laptop.d1.s0
       ShowTimeSeriesPlan showTimeSeriesPlan =
           new ShowTimeSeriesPlan(
-              new PartialPath("root.laptop.device-with-hyphen.s0"), false, null, null, 0, 0, false);
+              new PartialPath("root.laptop.d1.s0"), false, null, null, 0, 0, false);
       List<ShowTimeSeriesResult> result =
           manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
       assertEquals(1, result.size());
-      assertEquals("root.laptop.device-with-hyphen.s0", result.get(0).getName());
+      assertEquals("root.laptop.d1.s0", result.get(0).getName());
 
-      // show timeseries root.laptop.device-with-hyphen.s1
+      // show timeseries root.laptop.d1.s1
       showTimeSeriesPlan =
           new ShowTimeSeriesPlan(
-              new PartialPath("root.laptop.device-with-hyphen.s1"), false, null, null, 0, 0, false);
+              new PartialPath("root.laptop.d1.s1"), false, null, null, 0, 0, false);
       result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
       assertEquals(1, result.size());
-      assertEquals("root.laptop.device-with-hyphen.s1", result.get(0).getName());
+      assertEquals("root.laptop.d1.s1", result.get(0).getName());
 
-      // show timeseries root.laptop.device-with-hyphen.(s1,s2,s3)
+      // show timeseries root.laptop.d1.(s1,s2,s3)
       showTimeSeriesPlan =
           new ShowTimeSeriesPlan(
-              new PartialPath("root.laptop.device-with-hyphen.(s1,s2,s3)"),
-              false,
-              null,
-              null,
-              0,
-              0,
-              false);
+              new PartialPath("root.laptop.d1.(s1,s2,s3)"), false, null, null, 0, 0, false);
       result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
       assertEquals(3, result.size());
       for (int i = 0; i < result.size(); i++) {
-        assertEquals("root.laptop.device-with-hyphen.s" + (i + 1), result.get(i).getName());
+        assertEquals("root.laptop.d1.s" + (i + 1), result.get(i).getName());
       }
 
-      // show timeseries root.laptop.device-with-hyphen.(s1,s2,s3)
+      // show timeseries root.laptop.d1.(s1,s2,s3)
       showTimeSeriesPlan =
           new ShowTimeSeriesPlan(new PartialPath("root"), false, null, null, 0, 0, false);
       result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
       assertEquals(4, result.size());
       Set<String> set = new HashSet<>();
       for (int i = 0; i < result.size(); i++) {
-        set.add("root.laptop.device-with-hyphen.s" + i);
+        set.add("root.laptop.d1.s" + i);
       }
 
       for (int i = 0; i < result.size(); i++) {
@@ -1274,17 +1250,11 @@ public class MManagerBasicTest {
       fail(e.getMessage());
     }
 
-    // show timeseries root.laptop.device-with-hyphen.(s0,s1)
+    // show timeseries root.laptop.d1.(s0,s1)
     try {
       ShowTimeSeriesPlan showTimeSeriesPlan =
           new ShowTimeSeriesPlan(
-              new PartialPath("root.laptop.device-with-hyphen.(s0,s1)"),
-              false,
-              null,
-              null,
-              0,
-              0,
-              false);
+              new PartialPath("root.laptop.d1.(s0,s1)"), false, null, null, 0, 0, false);
       List<ShowTimeSeriesResult> result =
           manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
     } catch (MetadataException e) {
@@ -1295,56 +1265,65 @@ public class MManagerBasicTest {
   }
 
   @Test
-  public void testTotalSeriesNumber() {
+  public void testStorageGroupNameWithHyphen() throws IllegalPathException {
     MManager manager = IoTDB.metaManager;
+    assertTrue(manager.isPathExist(new PartialPath("root")));
+
+    assertFalse(manager.isPathExist(new PartialPath("root.device-with-hyphen")));
 
     try {
-      manager.setStorageGroup(new PartialPath("root.laptop"));
-      manager.createTimeseries(
-          new PartialPath("root.laptop.d1"),
-          TSDataType.INT32,
-          TSEncoding.PLAIN,
-          CompressionType.GZIP,
-          null);
-      manager.createTimeseries(
-          new PartialPath("root.laptop.d1.s1"),
-          TSDataType.INT32,
-          TSEncoding.PLAIN,
-          CompressionType.GZIP,
-          null);
-      manager.createTimeseries(
-          new PartialPath("root.laptop.d1.s1.t1"),
-          TSDataType.INT32,
-          TSEncoding.PLAIN,
-          CompressionType.GZIP,
-          null);
-      manager.createTimeseries(
-          new PartialPath("root.laptop.d1.s2"),
-          TSDataType.INT32,
-          TSEncoding.PLAIN,
-          CompressionType.GZIP,
-          null);
-      manager.createTimeseries(
-          new PartialPath("root.laptop.d2.s1"),
-          TSDataType.INT32,
-          TSEncoding.PLAIN,
-          CompressionType.GZIP,
-          null);
-      manager.createTimeseries(
-          new PartialPath("root.laptop.d2.s2"),
-          TSDataType.INT32,
-          TSEncoding.PLAIN,
-          CompressionType.GZIP,
-          null);
-
-      assertEquals(6, manager.getTotalSeriesNumber());
-      manager.deleteTimeseries(new PartialPath("root.laptop.d2.s1"));
-      assertEquals(5, manager.getTotalSeriesNumber());
-      manager.deleteStorageGroups(Collections.singletonList(new PartialPath("root.laptop")));
-      assertEquals(0, manager.getTotalSeriesNumber());
+      manager.setStorageGroup(new PartialPath("root.device-with-hyphen"));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
+
+    assertTrue(manager.isPathExist(new PartialPath("root.device-with-hyphen")));
+
+    try {
+      manager.createTimeseries(
+          new PartialPath("root.device-with-hyphen.s0"),
+          TSDataType.valueOf("INT32"),
+          TSEncoding.valueOf("RLE"),
+          compressionType,
+          Collections.emptyMap());
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+    assertTrue(manager.isPathExist(new PartialPath("root.device-with-hyphen")));
+    assertTrue(manager.isPathExist(new PartialPath("root.device-with-hyphen.s0")));
+    assertFalse(manager.isPathExist(new PartialPath("root.device-with-hyphen.s1")));
+    try {
+      manager.createTimeseries(
+          new PartialPath("root.device-with-hyphen.s1"),
+          TSDataType.valueOf("INT32"),
+          TSEncoding.valueOf("RLE"),
+          compressionType,
+          Collections.emptyMap());
+
+      assertTrue(manager.isPathExist(new PartialPath("root.device-with-hyphen.s1")));
+    } catch (MetadataException e1) {
+      e1.printStackTrace();
+      fail(e1.getMessage());
+    }
+
+    try {
+      manager.deleteTimeseries(new PartialPath("root.device-with-hyphen.s1"));
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+    assertFalse(manager.isPathExist(new PartialPath("root.device-with-hyphen.s1")));
+
+    try {
+      manager.deleteTimeseries(new PartialPath("root.device-with-hyphen.s0"));
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+    assertFalse(manager.isPathExist(new PartialPath("root.device-with-hyphen.s0")));
+    assertTrue(manager.isPathExist(new PartialPath("root.device-with-hyphen")));
+    assertTrue(manager.isPathExist(new PartialPath("root")));
   }
 }
