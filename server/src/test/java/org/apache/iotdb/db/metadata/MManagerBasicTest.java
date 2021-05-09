@@ -1259,61 +1259,15 @@ public class MManagerBasicTest {
     MManager manager = IoTDB.metaManager;
     assertTrue(manager.isPathExist(new PartialPath("root")));
 
-    assertFalse(manager.isPathExist(new PartialPath("root.device-with-hyphen")));
+    assertFalse(manager.isPathExist(new PartialPath("root.group-with-hyphen")));
 
     try {
-      manager.setStorageGroup(new PartialPath("root.device-with-hyphen"));
+      manager.setStorageGroup(new PartialPath("root.group-with-hyphen"));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
 
-    assertTrue(manager.isPathExist(new PartialPath("root.device-with-hyphen")));
-
-    try {
-      manager.createTimeseries(
-          new PartialPath("root.device-with-hyphen.s0"),
-          TSDataType.valueOf("INT32"),
-          TSEncoding.valueOf("RLE"),
-          compressionType,
-          Collections.emptyMap());
-    } catch (MetadataException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-    assertTrue(manager.isPathExist(new PartialPath("root.device-with-hyphen")));
-    assertTrue(manager.isPathExist(new PartialPath("root.device-with-hyphen.s0")));
-    assertFalse(manager.isPathExist(new PartialPath("root.device-with-hyphen.s1")));
-    try {
-      manager.createTimeseries(
-          new PartialPath("root.device-with-hyphen.s1"),
-          TSDataType.valueOf("INT32"),
-          TSEncoding.valueOf("RLE"),
-          compressionType,
-          Collections.emptyMap());
-
-      assertTrue(manager.isPathExist(new PartialPath("root.device-with-hyphen.s1")));
-    } catch (MetadataException e1) {
-      e1.printStackTrace();
-      fail(e1.getMessage());
-    }
-
-    try {
-      manager.deleteTimeseries(new PartialPath("root.device-with-hyphen.s1"));
-    } catch (MetadataException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-    assertFalse(manager.isPathExist(new PartialPath("root.device-with-hyphen.s1")));
-
-    try {
-      manager.deleteTimeseries(new PartialPath("root.device-with-hyphen.s0"));
-    } catch (MetadataException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-    assertFalse(manager.isPathExist(new PartialPath("root.device-with-hyphen.s0")));
-    assertTrue(manager.isPathExist(new PartialPath("root.device-with-hyphen")));
-    assertTrue(manager.isPathExist(new PartialPath("root")));
+    assertTrue(manager.isPathExist(new PartialPath("root.group-with-hyphen")));
   }
 }
