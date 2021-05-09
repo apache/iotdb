@@ -55,17 +55,17 @@ public class MManagerImproveTest {
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
     mManager = IoTDB.metaManager;
-    mManager.setStorageGroup(new PartialPath("root.t1.v2"));
+    mManager.setStorageGroup(new PartialPath("root.t1.device-with-hyphen"));
 
     for (int j = 0; j < DEVICE_NUM; j++) {
       for (int i = 0; i < TIMESERIES_NUM; i++) {
-        String p = "root.t1.v2.d" + j + ".s" + i;
+        String p = "root.t1.device-with-hyphen.d" + j + ".s" + i;
         mManager.createTimeseries(
-            new PartialPath(p),
-            TSDataType.TEXT,
-            TSEncoding.PLAIN,
-            TSFileDescriptor.getInstance().getConfig().getCompressor(),
-            Collections.emptyMap());
+                new PartialPath(p),
+                TSDataType.TEXT,
+                TSEncoding.PLAIN,
+                TSFileDescriptor.getInstance().getConfig().getCompressor(),
+                Collections.emptyMap());
       }
     }
   }
@@ -74,8 +74,8 @@ public class MManagerImproveTest {
   public void checkSetUp() throws IllegalPathException {
     mManager = IoTDB.metaManager;
 
-    assertTrue(mManager.isPathExist(new PartialPath("root.t1.v2.d3.s5")));
-    assertFalse(mManager.isPathExist(new PartialPath("root.t1.v2.d9.s" + TIMESERIES_NUM)));
+    assertTrue(mManager.isPathExist(new PartialPath("root.t1.device-with-hyphen.d3.s5")));
+    assertFalse(mManager.isPathExist(new PartialPath("root.t1.device-with-hyphen.d9.s" + TIMESERIES_NUM)));
     assertFalse(mManager.isPathExist(new PartialPath("root.t10")));
   }
 
@@ -86,7 +86,7 @@ public class MManagerImproveTest {
     long string_combine, path_exist, list_init, check_filelevel, get_seriestype;
     string_combine = path_exist = list_init = check_filelevel = get_seriestype = 0;
 
-    String deviceId = "root.t1.v2.d3";
+    String deviceId = "root.t1.device-with-hyphen.d3";
     String measurement = "s5";
     String path = deviceId + TsFileConstant.PATH_SEPARATOR + measurement;
 
@@ -117,7 +117,7 @@ public class MManagerImproveTest {
   }
 
   private void doOriginTest(String deviceId, List<String> measurementList)
-      throws MetadataException {
+          throws MetadataException {
     for (String measurement : measurementList) {
       String path = deviceId + TsFileConstant.PATH_SEPARATOR + measurement;
       assertTrue(mManager.isPathExist(new PartialPath(path)));
@@ -127,7 +127,7 @@ public class MManagerImproveTest {
   }
 
   private void doPathLoopOnceTest(String deviceId, List<String> measurementList)
-      throws MetadataException {
+          throws MetadataException {
     for (String measurement : measurementList) {
       String path = deviceId + TsFileConstant.PATH_SEPARATOR + measurement;
       TSDataType dataType = mManager.getSeriesType(new PartialPath(path));
@@ -151,7 +151,7 @@ public class MManagerImproveTest {
 
     String[] deviceIdList = new String[DEVICE_NUM];
     for (int i = 0; i < DEVICE_NUM; i++) {
-      deviceIdList[i] = "root.t1.v2.d" + i;
+      deviceIdList[i] = "root.t1.device-with-hyphen.d" + i;
     }
     List<String> measurementList = new ArrayList<>();
     for (int i = 0; i < TIMESERIES_NUM; i++) {
