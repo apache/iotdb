@@ -226,7 +226,9 @@ public class TimeSeriesMetadataCache {
     }
   }
 
-  @SuppressWarnings("squid:S1860") // Suppress synchronize warning
+  // Suppress synchronize warning
+  // Suppress high Cognitive Complexity warning
+  @SuppressWarnings({"squid:S1860", "squid:S3776"})
   public List<TimeseriesMetadata> get(
       TimeSeriesMetadataCacheKey key,
       List<String> subSensorList,
@@ -239,7 +241,7 @@ public class TimeSeriesMetadataCache {
       BloomFilter bloomFilter = reader.readBloomFilter();
       if (bloomFilter != null
           && !bloomFilter.contains(key.device + IoTDBConstant.PATH_SEPARATOR + key.measurement)) {
-        return null;
+        return Collections.emptyList();
       }
       return reader.readTimeseriesMetadata(new Path(key.device, key.measurement), subSensorList);
     }
@@ -276,7 +278,7 @@ public class TimeSeriesMetadataCache {
             if (debug) {
               DEBUG_LOGGER.info("TimeSeries meta data {} is filter by bloomFilter!", key);
             }
-            return null;
+            return Collections.emptyList();
           }
           printCacheLog(false);
           List<TimeseriesMetadata> timeSeriesMetadataList =
@@ -304,7 +306,7 @@ public class TimeSeriesMetadataCache {
       if (debug) {
         DEBUG_LOGGER.info("The file doesn't have this time series {}.", key);
       }
-      return null;
+      return Collections.emptyList();
     } else {
       if (debug) {
         DEBUG_LOGGER.info(

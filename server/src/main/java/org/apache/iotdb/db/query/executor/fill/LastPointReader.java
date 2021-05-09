@@ -23,7 +23,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -117,7 +116,7 @@ public class LastPointReader {
         } else {
           List<IChunkMetadata> seqChunkMetadataList = timeseriesMetadata.loadChunkMetadataList();
           for (int i = seqChunkMetadataList.size() - 1; i >= 0; i--) {
-            lastPoint = getChunkLastPoint((ChunkMetadata) seqChunkMetadataList.get(i));
+            lastPoint = getChunkLastPoint(seqChunkMetadataList.get(i));
             // last point of this sequence chunk is valid, quit the loop
             if (lastPoint.getValue() != null) {
               return lastPoint;

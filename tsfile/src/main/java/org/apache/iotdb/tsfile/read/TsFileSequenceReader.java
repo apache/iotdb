@@ -404,10 +404,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     return timeseriesMetadataList;
   }
 
-  /**
-   * Find the leaf node that contains path, return all the sensors in that leaf node which are also
-   * in allSensors set
-   */
+  /* Find the leaf node that contains path, return all the sensors in that leaf node which are also in allSensors set */
   public List<TimeseriesMetadata> readTimeseriesMetadata(Path path, Set<String> allSensors)
       throws IOException {
     Pair<MetadataIndexEntry, Long> metadataIndexPair = getLeafMetadataIndexPair(path);
@@ -433,7 +430,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     return timeseriesMetadataList;
   }
 
-  /** Get leaf MetadataIndexPair which contains path */
+  /* Get leaf MetadataIndexPair which contains path */
   private Pair<MetadataIndexEntry, Long> getLeafMetadataIndexPair(Path path) throws IOException {
     readFileMetadata();
     MetadataIndexNode deviceMetadataIndexNode = tsFileMetaData.getMetadataIndex();
@@ -675,7 +672,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     }
   }
 
-  /** TimeseriesMetadata don't need deserialize chunk metadata list */
+  /* TimeseriesMetadata don't need deserialize chunk metadata list */
   public Map<String, List<TimeseriesMetadata>> getAllTimeseriesMetadata() throws IOException {
     if (tsFileMetaData == null) {
       readFileMetadata();
@@ -701,7 +698,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     return timeseriesMetadataMap;
   }
 
-  /** This method will only deserialize the TimeseriesMetadata, not including chunk metadata list */
+  /* This method will only deserialize the TimeseriesMetadata, not including chunk metadata list */
   private List<TimeseriesMetadata> getDeviceTimeseriesMetadataWithoutChunkMetadata(String device)
       throws IOException {
     MetadataIndexNode metadataIndexNode = tsFileMetaData.getMetadataIndex();
@@ -726,10 +723,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     return deviceTimeseriesMetadata;
   }
 
-  /**
-   * This method will not only deserialize the TimeseriesMetadata, but also all the chunk metadata
-   * list meanwhile.
-   */
+  /* This method will not only deserialize the TimeseriesMetadata, but also all the chunk metadata list meanwhile. */
   private List<TimeseriesMetadata> getDeviceTimeseriesMetadata(String device) throws IOException {
     MetadataIndexNode metadataIndexNode = tsFileMetaData.getMetadataIndex();
     Pair<MetadataIndexEntry, Long> metadataIndexPair =

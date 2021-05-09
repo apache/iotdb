@@ -234,6 +234,7 @@ public class TsFileIOWriter {
    *
    * @throws IOException if I/O error occurs
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void endFile() throws IOException {
     long metaOffset = out.getPosition();
 
@@ -248,15 +249,15 @@ public class TsFileIOWriter {
     Map<Path, Map<Path, List<IChunkMetadata>>> vectorToPathsMap = new HashMap<>();
 
     for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
-      List<ChunkMetadata> chunkMetadataList = chunkGroupMetadata.getChunkMetadataList();
+      List<ChunkMetadata> chunkMetadatas = chunkGroupMetadata.getChunkMetadataList();
       int idx = 0;
-      while (idx < chunkMetadataList.size()) {
-        IChunkMetadata chunkMetadata = chunkMetadataList.get(idx);
+      while (idx < chunkMetadatas.size()) {
+        IChunkMetadata chunkMetadata = chunkMetadatas.get(idx);
         if (chunkMetadata.getMask() == 0) {
           Path series = new Path(chunkGroupMetadata.getDevice(), chunkMetadata.getMeasurementUid());
           chunkMetadataListMap.computeIfAbsent(series, k -> new ArrayList<>()).add(chunkMetadata);
           idx++;
-        } else if (chunkMetadata.getMask() == (byte) 0x80) {
+        } else if (chunkMetadata.isTimeColumn()) {
           // time column of a vector series
           Path series = new Path(chunkGroupMetadata.getDevice(), chunkMetadata.getMeasurementUid());
           chunkMetadataListMap.computeIfAbsent(series, k -> new ArrayList<>()).add(chunkMetadata);
@@ -264,9 +265,8 @@ public class TsFileIOWriter {
           Map<Path, List<IChunkMetadata>> chunkMetadataListMapInVector = new TreeMap<>();
 
           // value columns of a vector series
-          while (idx < chunkMetadataList.size()
-              && chunkMetadataList.get(idx).getMask() == (byte) 0x40) {
-            chunkMetadata = chunkMetadataList.get(idx);
+          while (idx < chunkMetadatas.size() && chunkMetadatas.get(idx).isValueColumn()) {
+            chunkMetadata = chunkMetadatas.get(idx);
             Path vectorSeries =
                 new Path(chunkGroupMetadata.getDevice(), chunkMetadata.getMeasurementUid());
             chunkMetadataListMapInVector
@@ -374,7 +374,7 @@ public class TsFileIOWriter {
     // for VECTOR
     for (IChunkMetadata chunkMetadata : chunkMetadataList) {
       // chunkMetadata is time column of a vector series
-      if (chunkMetadata.getMask() == (byte) 0x80) {
+      if (chunkMetadata.isTimeColumn()) {
         Map<Path, List<IChunkMetadata>> vectorMap = vectorToPathsMap.get(path);
 
         for (Map.Entry<Path, List<IChunkMetadata>> entry : vectorMap.entrySet()) {

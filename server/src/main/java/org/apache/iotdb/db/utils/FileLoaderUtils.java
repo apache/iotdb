@@ -92,6 +92,7 @@ public class FileLoaderUtils {
    * @param allSensors measurements queried at the same time of this device
    * @param filter any filter, only used to check time range
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static ITimeSeriesMetadata loadTimeSeriesMetadata(
       TsFileResource resource,
       PartialPath seriesPath,

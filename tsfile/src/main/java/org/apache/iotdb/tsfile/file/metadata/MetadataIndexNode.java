@@ -78,10 +78,6 @@ public class MetadataIndexNode {
     return children.size() >= config.getMaxDegreeOfIndexNode();
   }
 
-  boolean isEmpty() {
-    return children.size() == 0;
-  }
-
   MetadataIndexEntry peek() {
     if (children.isEmpty()) {
       return null;

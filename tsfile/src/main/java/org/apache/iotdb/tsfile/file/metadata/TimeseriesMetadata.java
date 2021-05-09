@@ -20,6 +20,7 @@
 package org.apache.iotdb.tsfile.file.metadata;
 
 import org.apache.iotdb.tsfile.common.cache.Accountable;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
@@ -144,6 +145,14 @@ public class TimeseriesMetadata implements Accountable, ITimeSeriesMetadata {
 
   public byte getTimeSeriesMetadataType() {
     return timeSeriesMetadataType;
+  }
+
+  public boolean isTimeColumn() {
+    return timeSeriesMetadataType == TsFileConstant.TIME_COLUMN_MASK;
+  }
+
+  public boolean isValueColumn() {
+    return timeSeriesMetadataType == TsFileConstant.VALUE_COLUMN_MASK;
   }
 
   public void setTimeSeriesMetadataType(byte timeSeriesMetadataType) {

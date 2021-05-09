@@ -497,7 +497,11 @@ public class VectorTVList extends TVList {
     pivotIndex = getValueIndex(pos);
   }
 
-  /* Get the row index value in index column. */
+  /**
+   * Get the row index value in index column
+   *
+   * @param index row index
+   */
   public int getValueIndex(int index) {
     if (index >= size) {
       throw new ArrayIndexOutOfBoundsException(index);

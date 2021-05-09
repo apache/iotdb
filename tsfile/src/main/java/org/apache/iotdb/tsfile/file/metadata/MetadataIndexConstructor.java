@@ -43,7 +43,7 @@ public class MetadataIndexConstructor {
   /**
    * Construct metadata index tree
    *
-   * @param deviceTimeseriesMetadataMap device - >List<TimeseriesMetadata>
+   * @param deviceTimeseriesMetadataMap device => TimeseriesMetadata list
    * @param out tsfile output
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -64,12 +64,11 @@ public class MetadataIndexConstructor {
       int serializedTimeseriesMetadataNum = 0;
       for (int i = 0; i < entry.getValue().size(); i++) {
         timeseriesMetadata = entry.getValue().get(i);
-        if (timeseriesMetadata.getTimeSeriesMetadataType() == (byte) 0x80) {
-          // this timeseriesMetadata is time column of a vector series
+        if (timeseriesMetadata.isTimeColumn()) {
           // calculate the number of value columns in this vector
           int numOfValueColumns = 0;
           for (int j = i + 1; j < entry.getValue().size(); j++) {
-            if (entry.getValue().get(j).getTimeSeriesMetadataType() == (byte) 0x40) {
+            if (entry.getValue().get(j).isValueColumn()) {
               numOfValueColumns++;
             } else {
               break;
@@ -77,7 +76,7 @@ public class MetadataIndexConstructor {
           }
 
           // only add time column of vector into LEAF_MEASUREMENT node
-          if (currentIndexNode.isEmpty()
+          if (currentIndexNode.getChildren().isEmpty()
               || serializedTimeseriesMetadataNum + numOfValueColumns + 1
                   > config.getMaxDegreeOfIndexNode() * 1.5) {
             currentIndexNode.addEntry(
@@ -88,7 +87,7 @@ public class MetadataIndexConstructor {
           timeseriesMetadata.serializeTo(out.wrapAsStream());
           serializedTimeseriesMetadataNum++;
           for (int j = 0; j < numOfValueColumns; j++) {
-            i++;
+            i += 1;
             timeseriesMetadata = entry.getValue().get(i);
             // value columns of vector should not be added into LEAF_MEASUREMENT node
             timeseriesMetadata.serializeTo(out.wrapAsStream());
