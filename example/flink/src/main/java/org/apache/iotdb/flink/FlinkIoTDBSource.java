@@ -29,6 +29,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.thrift.transport.TTransportException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -60,7 +61,8 @@ public class FlinkIoTDBSource {
     env.execute();
   }
 
-  private static void prepareData() throws IoTDBConnectionException, StatementExecutionException {
+  private static void prepareData()
+      throws IoTDBConnectionException, StatementExecutionException, TTransportException {
     Session session = new Session(LOCAL_HOST, 6667, "root", "root");
     session.open(false);
     try {

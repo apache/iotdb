@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.source.RichSourceFunction;
+import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -88,7 +89,7 @@ public abstract class IoTDBSource<T> extends RichSourceFunction<T> {
     }
   }
 
-  void initSession() throws IoTDBConnectionException {
+  void initSession() throws IoTDBConnectionException, TTransportException {
     session =
         new Session(
             sourceOptions.getHost(),

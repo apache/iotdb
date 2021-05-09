@@ -377,7 +377,7 @@ public class IoTDBSessionSimpleIT {
 
   @Test
   public void testInsertTabletWithAlignedTimeseries()
-      throws IoTDBConnectionException, StatementExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException, TTransportException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
     List<IMeasurementSchema> schemaList = new ArrayList<>();
