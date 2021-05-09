@@ -11,7 +11,6 @@ import java.util.concurrent.locks.ReentrantLock;
 public class LRUCacheStrategy implements CacheStrategy {
 
   private int size = 0;
-
   private CacheEntry first;
   private CacheEntry last;
 
@@ -20,6 +19,59 @@ public class LRUCacheStrategy implements CacheStrategy {
   @Override
   public int getSize() {
     return size;
+  }
+
+  @Override
+  public void lockMNode(MNode mNode) {
+    if(mNode==null){
+      return;
+    }
+    try {
+      lock.lock();
+      if(mNode.getParent()!=null){
+        increaseOccupation(mNode.getParent());
+      }
+      increaseOccupation(mNode);
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  private void increaseOccupation(MNode mNode){
+    CacheEntry entry = mNode.getCacheEntry();
+    if (entry == null) {
+      entry = new CacheEntry(mNode);
+    }else if(!entry.isOccupied()){
+      removeOne(entry);
+    }
+    entry.increaseOccupation();
+  }
+
+  @Override
+  public void unlockMNode(MNode mNode) {
+    if(mNode==null){
+      return;
+    }
+    try {
+      lock.lock();
+      decreaseOccupation(mNode);
+      if(mNode.getParent()!=null){
+        decreaseOccupation(mNode.getParent());
+      }
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  private void decreaseOccupation(MNode mNode){
+    CacheEntry entry = mNode.getCacheEntry();
+    if (entry == null) {
+      return;
+    }
+    entry.decreaseOccupation();
+    if(!entry.isOccupied()){
+      moveToFirst(entry);
+    }
   }
 
   @Override
@@ -34,10 +86,11 @@ public class LRUCacheStrategy implements CacheStrategy {
       }
       CacheEntry entry = mNode.getCacheEntry();
       if (entry == null) {
-        size++;
         entry = new CacheEntry(mNode);
       }
-      moveToFirst(entry);
+      if(!entry.isOccupied()){
+        moveToFirst(entry);
+      }
     } finally {
       lock.unlock();
     }
@@ -52,6 +105,10 @@ public class LRUCacheStrategy implements CacheStrategy {
   }
 
   private void moveToFirst(CacheEntry entry) {
+
+    if(entry.pre==null&&entry.next==null){
+      size++;
+    }
 
     if (first == null || last == null) { // empty linked list
       first = last = entry;
@@ -76,6 +133,7 @@ public class LRUCacheStrategy implements CacheStrategy {
     first.pre = entry;
     first = entry;
     first.pre = null;
+
   }
 
   @Override
@@ -105,6 +163,8 @@ public class LRUCacheStrategy implements CacheStrategy {
       last = entry.pre;
     }
     size--;
+    entry.pre=null;
+    entry.next=null;
   }
 
   private void removeRecursively(MNode mNode) {

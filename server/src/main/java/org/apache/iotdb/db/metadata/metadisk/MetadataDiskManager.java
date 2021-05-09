@@ -1,13 +1,10 @@
 package org.apache.iotdb.db.metadata.metadisk;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.metadisk.cache.CacheStrategy;
 import org.apache.iotdb.db.metadata.metadisk.cache.LRUCacheStrategy;
 import org.apache.iotdb.db.metadata.metadisk.metafile.MetaFile;
@@ -16,7 +13,6 @@ import org.apache.iotdb.db.metadata.metadisk.metafile.PersistenceInfo;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -283,6 +279,16 @@ public class MetadataDiskManager implements MetadataAccess {
         throw new MetadataException(e.getMessage());
       }
     }
+  }
+
+  @Override
+  public void lockMNodeInMemory(MNode mNode) {
+    cacheStrategy.lockMNode(mNode);
+  }
+
+  @Override
+  public void releaseMNodeMemoryLock(MNode mNode) {
+    cacheStrategy.unlockMNode(mNode);
   }
 
   @Override
