@@ -88,7 +88,6 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -222,11 +221,6 @@ public class MetaGroupMember extends RaftMember {
    * establishing a cluster or joining a cluster.
    */
   private StartUpStatus startUpStatus;
-
-  /**
-   * localExecutor is used to directly execute plans like load configuration in the underlying IoTDB
-   */
-  private PlanExecutor localExecutor;
 
   /** hardLinkCleaner will periodically clean expired hardlinks created during snapshots */
   private ScheduledExecutorService hardLinkCleanerThread;
@@ -464,9 +458,9 @@ public class MetaGroupMember extends RaftMember {
 
   private void generateNodeReport() {
     try {
-      if (logger.isInfoEnabled()) {
+      if (logger.isDebugEnabled()) {
         NodeReport report = genNodeReport();
-        logger.info(report.toString());
+        logger.debug(report.toString());
       }
     } catch (Exception e) {
       logger.error("{} exception occurred when generating node report", name, e);
@@ -1788,13 +1782,6 @@ public class MetaGroupMember extends RaftMember {
     if (dataClusterServer != null) {
       dataClusterServer.closeLogManagers();
     }
-  }
-
-  public PlanExecutor getLocalExecutor() throws QueryProcessException {
-    if (localExecutor == null) {
-      localExecutor = new PlanExecutor();
-    }
-    return localExecutor;
   }
 
   public StartUpStatus getStartUpStatus() {

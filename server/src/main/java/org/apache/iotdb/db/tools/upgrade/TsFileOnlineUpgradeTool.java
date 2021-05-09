@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.tools.upgrade;
 
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -35,6 +36,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.v2.read.TsFileSequenceReaderForV2;
 import org.apache.iotdb.tsfile.v2.read.reader.page.PageReaderV2;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
@@ -79,11 +81,7 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
     }
   }
 
-  /**
-   * upgrade file resource
-   *
-   * @throws IOException, WriteProcessException
-   */
+  /** upgrade file resource */
   @SuppressWarnings({"squid:S3776", "deprecation"}) // Suppress high Cognitive Complexity warning
   private void upgradeFile(List<TsFileResource> upgradedResources)
       throws IOException, WriteProcessException {
@@ -101,13 +99,13 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
     List<List<ByteBuffer>> pageDataInChunkGroup = new ArrayList<>();
     List<List<Boolean>> needToDecodeInfoInChunkGroup = new ArrayList<>();
     byte marker;
-    List<MeasurementSchema> measurementSchemaList = new ArrayList<>();
+    List<IMeasurementSchema> measurementSchemaList = new ArrayList<>();
     try {
       while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
           case MetaMarker.CHUNK_HEADER:
             ChunkHeader header = ((TsFileSequenceReaderForV2) reader).readChunkHeader();
-            MeasurementSchema measurementSchema =
+            IMeasurementSchema measurementSchema =
                 new MeasurementSchema(
                     header.getMeasurementID(),
                     header.getDataType(),
@@ -237,11 +235,26 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
     return name[0] + "-0" + TsFileConstant.TSFILE_SUFFIX;
   }
 
+  /**
+   * Due to TsFile version-3 changed the serialize way of integer in TEXT data and INT32 data with
+   * PLAIN encoding, and also add a sum statistic for BOOLEAN data, these types of data need to
+   * decode to points and rewrite in new TsFile.
+   */
+  @Override
+  protected boolean checkIfNeedToDecode(
+      TSDataType dataType, TSEncoding encoding, PageHeader pageHeader) {
+    return dataType == TSDataType.BOOLEAN
+        || dataType == TSDataType.TEXT
+        || (dataType == TSDataType.INT32 && encoding == TSEncoding.PLAIN)
+        || StorageEngine.getTimePartition(pageHeader.getStartTime())
+            != StorageEngine.getTimePartition(pageHeader.getEndTime());
+  }
+
   @Override
   protected void decodeAndWritePageInToFiles(
-      MeasurementSchema schema,
+      IMeasurementSchema schema,
       ByteBuffer pageData,
-      Map<Long, Map<MeasurementSchema, ChunkWriterImpl>> chunkWritersInChunkGroup)
+      Map<Long, Map<IMeasurementSchema, ChunkWriterImpl>> chunkWritersInChunkGroup)
       throws IOException {
     valueDecoder.reset();
     PageReaderV2 pageReader =

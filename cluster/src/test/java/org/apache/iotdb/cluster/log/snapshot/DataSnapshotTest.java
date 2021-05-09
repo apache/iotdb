@@ -25,6 +25,8 @@ import org.apache.iotdb.cluster.common.TestDataGroupMember;
 import org.apache.iotdb.cluster.common.TestLogManager;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.config.ClusterConfig;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
@@ -59,8 +61,13 @@ public abstract class DataSnapshotTest {
   int failureCnt;
   boolean addNetFailure = false;
 
+  private final ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
+  private boolean isAsyncServer;
+
   @Before
   public void setUp() throws MetadataException, StartupException {
+    isAsyncServer = config.isUseAsyncServer();
+    config.setUseAsyncServer(true);
     dataGroupMember =
         new TestDataGroupMember() {
           @Override
@@ -171,6 +178,7 @@ public abstract class DataSnapshotTest {
 
   @After
   public void tearDown() throws Exception {
+    config.setUseAsyncServer(isAsyncServer);
     metaGroupMember.closeLogManager();
     dataGroupMember.closeLogManager();
     metaGroupMember.stop();

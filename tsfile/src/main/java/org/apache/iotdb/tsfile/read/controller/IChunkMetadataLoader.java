@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.tsfile.read.controller;
 
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 
 import java.io.IOException;
 import java.util.List;
@@ -27,6 +27,8 @@ import java.util.List;
 public interface IChunkMetadataLoader {
 
   /** read all chunk metadata of one time series in one file. */
-  List<ChunkMetadata> loadChunkMetadataList(TimeseriesMetadata timeseriesMetadata)
+  List<IChunkMetadata> loadChunkMetadataList(ITimeSeriesMetadata timeseriesMetadata)
       throws IOException;
+
+  boolean isMemChunkMetadataLoader();
 }

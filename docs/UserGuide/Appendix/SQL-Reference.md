@@ -40,7 +40,7 @@ show version
 +---------------+
 |        version|
 +---------------+
-|0.12.0-SNAPSHOT|
+|0.13.0-SNAPSHOT|
 +---------------+
 Total line number = 1
 It costs 0.417s
@@ -102,6 +102,27 @@ Note: When propertyValue is SDT, it is required to set compression deviation COM
 Note: For SDT, values withtin COMPDEV will be discarded.
 Note: For SDT, it is optional to set compression minimum COMPMINTIME, which is the minimum time difference between stored values for purpose of noise reduction.
 Note: For SDT, it is optional to set compression maximum COMPMAXTIME, which is the maximum time difference between stored values regardless of COMPDEV.
+```
+
+* Create device template
+```
+CREATE device template <TemplateName> WITH <AttributeClauses>
+attributeClauses
+    : (MEASUREMENT_NAME DATATYPE OPERATOR_EQ dataType COMMA ENCODING OPERATOR_EQ encoding
+    (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor=propertyValue)?
+    (COMMA property)*)
+    attributeClause
+    ;
+Eg: create device template temp1(
+        (s1 INT32 with encoding=Gorilla, compression=SNAPPY),
+        (s2 FLOAT with encoding=RLE, compression=SNAPPY)
+       )  
+```
+
+* Set device template
+```
+set device template <TemplateName> to <STORAGE_GROUP_NAME>
+Eg: set device template temp1 to root.beijing
 ```
 
 * Delete Timeseries Statement
@@ -303,12 +324,13 @@ CREATE SNAPSHOT FOR SCHEMA
 * Insert Record Statement
 
 ```
-INSERT INTO <PrefixPath> LPAREN TIMESTAMP COMMA <Sensor> [COMMA <Sensor>]* RPAREN VALUES LPAREN <TimeValue>, <PointValue> [COMMA <PointValue>]* RPAREN
-Sensor : Identifier
+INSERT INTO <PrefixPath> LPAREN TIMESTAMP COMMA <MeasurementName> [COMMA <MeasurementName>]* RPAREN VALUES LPAREN <TimeValue>, <PointValue> [COMMA <PointValue>]* RPAREN
+MeasurementName : Identifier | LPAREN Identifier (COMMA Identifier)+ RPAREN
 Eg: IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)
 Eg: IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp,status) VALUES(NOW(), false)
 Eg: IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp,temperature) VALUES(2017-11-01T00:17:00.000+08:00,24.22028)
-Eg: IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp, status, temperature) VALUES (1509466680000, false, 20.060787);
+Eg: IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp,status,temperature) VALUES (1509466680000,false,20.060787)
+Eg: IoTDB > INSERT INTO root.sg.d1(timestamp,(s1,s2),(s3,s4)) VALUES (1509466680000,(1.0,2),(NULL,4))
 Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 Note: The order of Sensor and PointValue need one-to-one correspondence
 ```

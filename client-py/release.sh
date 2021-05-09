@@ -19,6 +19,9 @@
 # under the License.
 #
 
+# the python version must be python3.
+python --version
+
 rm -Rf build
 rm -Rf dist
 rm -Rf iotdb_session.egg_info

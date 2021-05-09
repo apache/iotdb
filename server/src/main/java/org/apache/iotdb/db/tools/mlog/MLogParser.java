@@ -154,6 +154,9 @@ public class MLogParser {
             mLogTxtWriter.createTimeseries(
                 (CreateTimeSeriesPlan) plan, ((CreateTimeSeriesPlan) plan).getTagOffset());
             break;
+          case CREATE_ALIGNED_TIMESERIES:
+            mLogTxtWriter.createAlignedTimeseries((CreateAlignedTimeSeriesPlan) plan);
+            break;
           case DELETE_TIMESERIES:
             for (PartialPath partialPath : plan.getPaths()) {
               mLogTxtWriter.deleteTimeseries(partialPath.getFullPath());
