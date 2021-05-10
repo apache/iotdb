@@ -9,6 +9,7 @@ on:
       - master
       - 'rel/*'
       - Vector
+      - JDK16
     paths-ignore:
       - 'docs/**'
   pull_request:
