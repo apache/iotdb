@@ -266,8 +266,7 @@ public class DiskEvaluator {
       //          dataDir, tmpDirPath, SEEK_INTERVAL, SEEK_NUM, SEEK_NUM_PER_SEGMENT, READ_LENGTH);
       File[] files = tmpDir.listFiles();
       if (files.length != 0) {
-        File file = files[0];
-        performRead(file);
+        performRead(tmpDir);
       }
       for (File file : files) {
         file.delete();
