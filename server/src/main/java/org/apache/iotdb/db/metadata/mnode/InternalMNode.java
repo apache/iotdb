@@ -416,6 +416,11 @@ public class InternalMNode implements MNode {
   }
 
   @Override
+  public boolean isLockedInMemory() {
+    return cacheEntry==null||cacheEntry.isLocked();// if a node is not cached, it will stay in memory until GC.
+  }
+
+  @Override
   public boolean isDeleted() {
     // if a node neither in cache nor disk, the update has no need to write back.
     return cacheEntry==null&&persistenceMNode==null;

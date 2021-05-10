@@ -52,9 +52,13 @@ public class CacheEntry {
     isModified = modified;
   }
 
-  public boolean isOccupied(){return semaphore.get()>0;}
+  public boolean isLocked(){return semaphore.get()>0;}
 
-  public void increaseOccupation(){semaphore.getAndIncrement();}
+  public void increaseLock(){semaphore.getAndIncrement();}
 
-  public void decreaseOccupation(){semaphore.getAndDecrement();}
+  public void decreaseLock(){
+    if(semaphore.get()>0){
+      semaphore.getAndDecrement();
+    }
+  }
 }

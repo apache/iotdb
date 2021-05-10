@@ -172,6 +172,11 @@ public class PersistenceMNode implements PersistenceInfo, MNode {
   public void evictChild(String name) {}
 
   @Override
+  public boolean isLockedInMemory() {
+    return false;
+  }
+
+  @Override
   public boolean isDeleted() {
     return position==-1;
   }

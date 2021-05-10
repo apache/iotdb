@@ -124,6 +124,9 @@ public interface MNode extends Serializable {
    */
   void evictChild(String name);
 
+  /** whether this mnode has been locked in memory */
+  boolean isLockedInMemory();
+
   /** whether the update on a node is necessary to sync to the mtree */
   boolean isDeleted();
 

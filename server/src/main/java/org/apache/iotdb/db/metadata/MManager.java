@@ -20,6 +20,7 @@ package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.cost.statistic.Measurement;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
@@ -386,66 +387,8 @@ public class MManager {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
-    if (!allowToCreateNewSeries) {
-      throw new MetadataException(
-          "IoTDB system load is too large to create timeseries, "
-              + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
-    }
-    try {
-      PartialPath path = plan.getPath();
-      SchemaUtils.checkDataTypeWithEncoding(plan.getDataType(), plan.getEncoding());
-
-      ensureStorageGroup(path);
-
-      TSDataType type = plan.getDataType();
-      // create time series in MTree
-      MeasurementMNode leafMNode =
-          mtree.createTimeseries(
-              path,
-              type,
-              plan.getEncoding(),
-              plan.getCompressor(),
-              plan.getProps(),
-              plan.getAlias());
-
-      // update tag index
-      if (plan.getTags() != null) {
-        // tag key, tag value
-        for (Entry<String, String> entry : plan.getTags().entrySet()) {
-          if (entry.getKey() == null || entry.getValue() == null) {
-            continue;
-          }
-          tagIndex
-              .computeIfAbsent(entry.getKey(), k -> new ConcurrentHashMap<>())
-              .computeIfAbsent(entry.getValue(), v -> new CopyOnWriteArraySet<>())
-              .add(leafMNode);
-        }
-      }
-
-      // update statistics and schemaDataTypeNumMap
-      totalSeriesNumber.addAndGet(1);
-      if (totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE >= MTREE_SIZE_THRESHOLD) {
-        logger.warn("Current series number {} is too large...", totalSeriesNumber);
-        allowToCreateNewSeries = false;
-      }
-      updateSchemaDataTypeNumMap(type, 1);
-
-      // write log
-      if (!isRecovering) {
-        // either tags or attributes is not empty
-        if ((plan.getTags() != null && !plan.getTags().isEmpty())
-            || (plan.getAttributes() != null && !plan.getAttributes().isEmpty())) {
-          offset = tagLogFile.write(plan.getTags(), plan.getAttributes());
-        }
-        plan.setTagOffset(offset);
-        logWriter.createTimeseries(plan);
-      }
-      leafMNode.setOffset(offset);
-      mtree.updateMNode(leafMNode);
-
-    } catch (IOException e) {
-      throw new MetadataException(e);
-    }
+    MeasurementMNode measurementMNode=createTimeseriesAndReturnResult(plan,offset);
+    mtree.unlockMNode(measurementMNode);
   }
 
   /**
@@ -473,6 +416,69 @@ public class MManager {
                 + " a non-exist time series {}",
             path);
       }
+    }
+  }
+
+  private MeasurementMNode createTimeseriesAndReturnResult(CreateTimeSeriesPlan plan, long offset) throws MetadataException{
+    if (!allowToCreateNewSeries) {
+      throw new MetadataException(
+              "IoTDB system load is too large to create timeseries, "
+                      + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
+    }
+    try {
+      PartialPath path = plan.getPath();
+      SchemaUtils.checkDataTypeWithEncoding(plan.getDataType(), plan.getEncoding());
+
+      ensureStorageGroup(path);
+
+      TSDataType type = plan.getDataType();
+      // create time series in MTree
+      MeasurementMNode leafMNode =
+              mtree.createTimeseries(
+                      path,
+                      type,
+                      plan.getEncoding(),
+                      plan.getCompressor(),
+                      plan.getProps(),
+                      plan.getAlias());
+
+      // update tag index
+      if (plan.getTags() != null) {
+        // tag key, tag value
+        for (Entry<String, String> entry : plan.getTags().entrySet()) {
+          if (entry.getKey() == null || entry.getValue() == null) {
+            continue;
+          }
+          tagIndex
+                  .computeIfAbsent(entry.getKey(), k -> new ConcurrentHashMap<>())
+                  .computeIfAbsent(entry.getValue(), v -> new CopyOnWriteArraySet<>())
+                  .add(leafMNode);
+        }
+      }
+
+      // update statistics and schemaDataTypeNumMap
+      totalSeriesNumber.addAndGet(1);
+      if (totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE >= MTREE_SIZE_THRESHOLD) {
+        logger.warn("Current series number {} is too large...", totalSeriesNumber);
+        allowToCreateNewSeries = false;
+      }
+      updateSchemaDataTypeNumMap(type, 1);
+
+      // write log
+      if (!isRecovering) {
+        // either tags or attributes is not empty
+        if ((plan.getTags() != null && !plan.getTags().isEmpty())
+                || (plan.getAttributes() != null && !plan.getAttributes().isEmpty())) {
+          offset = tagLogFile.write(plan.getTags(), plan.getAttributes());
+        }
+        plan.setTagOffset(offset);
+        logWriter.createTimeseries(plan);
+      }
+      leafMNode.setOffset(offset);
+      mtree.updateMNode(leafMNode);
+      return leafMNode;
+    } catch (IOException e) {
+      throw new MetadataException(e);
     }
   }
 
@@ -1078,6 +1084,7 @@ public class MManager {
   public MNode getDeviceNodeWithAutoCreate(PartialPath path, boolean autoCreateSchema, int sgLevel)
       throws MetadataException {
     MNode node=getDeviceNodeWithAutoCreateWithoutReturnProcess(path,autoCreateSchema,sgLevel);
+    mtree.unlockMNode(node);
     node=processMNodeForExternChildrenCheck(node);
     return node;
   }
@@ -1887,8 +1894,7 @@ public class MManager {
             // child is null or child is type of MNode
             dataType = getTypeInLoc(plan, i);
             // create it, may concurrent created by multiple thread
-            internalCreateTimeseries(deviceId.concatNode(measurementList[i]), dataType);
-            measurementMNode = (MeasurementMNode) getMNode(deviceMNode, measurementList[i]);
+            measurementMNode = internalCreateTimeseries(deviceId.concatNode(measurementList[i]), dataType);
           }
         }
 
@@ -1942,28 +1948,34 @@ public class MManager {
         }
       }
     }
-
+    mtree.unlockMNode(deviceMNode);
     return deviceMNode;
   }
 
-  public MNode getMNode(MNode deviceMNode, String measurementName) {
-    try {
-      return mtree.getChildMNodeInDevice(deviceMNode,measurementName);
-    }catch (MetadataException e){
-      logger.warn("Cannot get child {} from DeviceNode {} because ",measurementName,deviceMNode,e);
-    }
-    return null;
+  public MNode getMNode(MNode deviceMNode, String measurementName) throws MetadataException {
+    return mtree.getChildMNodeInDevice(deviceMNode,measurementName);
   }
 
   /** create timeseries with ignore PathAlreadyExistException */
-  private void internalCreateTimeseries(PartialPath path, TSDataType dataType)
+  private MeasurementMNode internalCreateTimeseries(PartialPath path, TSDataType dataType)
       throws MetadataException {
-    createTimeseries(
-        path,
-        dataType,
-        getDefaultEncoding(dataType),
-        TSFileDescriptor.getInstance().getConfig().getCompressor(),
-        Collections.emptyMap());
+    try {
+      return createTimeseriesAndReturnResult(
+              new CreateTimeSeriesPlan(
+                      path,
+                      dataType,
+                      getDefaultEncoding(dataType),
+                      TSFileDescriptor.getInstance().getConfig().getCompressor(),
+                      Collections.emptyMap(), null, null, null),-1);
+    } catch (PathAlreadyExistException | AliasAlreadyExistException e) {
+      if (logger.isDebugEnabled()) {
+        logger.debug(
+                "Ignore PathAlreadyExistException and AliasAlreadyExistException when Concurrent inserting"
+                        + " a non-exist time series {}",
+                path);
+      }
+    }
+    throw new MetadataException("Failed to createTimeseries "+path+" because ");
   }
 
   /** get dataType of plan, in loc measurements only support InsertRowPlan and InsertTabletPlan */
@@ -2008,7 +2020,7 @@ public class MManager {
   }
 
   private MNode processMNodeForExternChildrenCheck(MNode node) throws MetadataException{
-    return mtree.getNodeByPathForChildrenCheck(node.getPartialPath());
+    return mtree.getNodeDeepClone(node);
   }
 
 }

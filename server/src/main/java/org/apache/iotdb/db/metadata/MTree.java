@@ -609,8 +609,8 @@ public class MTree implements MTreeInterface {
   }
 
   @Override
-  public MNode getNodeByPathForChildrenCheck(PartialPath deviceId) throws MetadataException {
-    return getNodeByPath(deviceId);
+  public MNode getNodeByPathWithMemoryLock(PartialPath path) throws MetadataException {
+    return getNodeByPath(path);
   }
 
   @Override
@@ -629,6 +629,11 @@ public class MTree implements MTreeInterface {
   @Override
   public MNode getChildMNodeInDevice(MNode deviceNode, String childName) throws MetadataException {
     return deviceNode.getChild(childName);
+  }
+
+  @Override
+  public MNode getNodeDeepClone(MNode mNode) throws MetadataException {
+    return mNode.clone();
   }
 
   /**
