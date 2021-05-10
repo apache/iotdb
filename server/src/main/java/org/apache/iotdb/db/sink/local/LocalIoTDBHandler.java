@@ -82,7 +82,7 @@ public class LocalIoTDBHandler implements Handler<LocalIoTDBConfiguration, Local
 
   @Override
   public void onEvent(LocalIoTDBEvent event)
-      throws QueryProcessException, StorageEngineException, StorageGroupNotSetException {
+          throws QueryProcessException, StorageEngineException, MetadataException {
     InsertRowPlan plan = new InsertRowPlan();
     plan.setNeedInferType(false);
     plan.setDeviceId(device);
@@ -94,7 +94,7 @@ public class LocalIoTDBHandler implements Handler<LocalIoTDBConfiguration, Local
   }
 
   private void executeNonQuery(PhysicalPlan plan)
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
+          throws QueryProcessException, MetadataException, StorageEngineException {
     if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new QueryProcessException(
           "Current system mode is read-only, non-query operation is not supported.");
