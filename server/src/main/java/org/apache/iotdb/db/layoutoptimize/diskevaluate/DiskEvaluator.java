@@ -17,7 +17,7 @@ public class DiskEvaluator {
   private static final DiskEvaluator INSTANCE = new DiskEvaluator();
   private static final Logger logger = LoggerFactory.getLogger(DiskEvaluator.class);
   private final String sudoPassword = "601tif";
-  public int GENERATE_FILE_NUM = 1;
+  public int GENERATE_FILE_NUM = 20;
   public long GENERATE_FILE_SIZE = 8l * 1024l * 1024l * 1024l; // 8 GB
   public long SEEK_INTERVAL = 1024;
   public int SEEK_NUM = 5000;
