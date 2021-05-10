@@ -1,5 +1,8 @@
 package org.apache.iotdb.db.metadata;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -39,6 +42,7 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.SDT_COMP_MAX_TIME;
 
 public class MTreeDiskBased implements MTreeInterface {
 
+  public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
   private static final Logger logger = LoggerFactory.getLogger(MTreeDiskBased.class);
   private static final String NO_CHILDNODE_MSG = " does not have the child node ";
 
@@ -1338,6 +1342,40 @@ public class MTreeDiskBased implements MTreeInterface {
       findNodes(child, path.concatNode(child.toString()), res, targetLevel - 1, filter);
     }
   }
+  @Override
+  public String toString() {
+    String result="";
+    try {
+      JsonObject jsonObject = new JsonObject();
+      jsonObject.add(rootName, mNodeToJSON(metadataDiskManager.getRoot(), null));
+      result=GSON.toJson(jsonObject);
+    }catch (MetadataException e){
+      logger.warn("Failed to serialize MTree to string because ",e);
+    }
+    return result;
+  }
+
+  private JsonObject mNodeToJSON(MNode node, String storageGroupName) throws MetadataException {
+    JsonObject jsonObject = new JsonObject();
+    if (node.getChildren().size() > 0) {
+      if (node.isStorageGroup()) {
+        storageGroupName = node.getFullPath();
+      }
+      for (String childName : node.getChildren().keySet()) {
+        jsonObject.add(childName, mNodeToJSON(metadataDiskManager.getChild(node,childName), storageGroupName));
+      }
+    } else if (node.isMeasurement()) {
+      MeasurementMNode leafMNode = (MeasurementMNode) node;
+      jsonObject.add("DataType", GSON.toJsonTree(leafMNode.getSchema().getType()));
+      jsonObject.add("Encoding", GSON.toJsonTree(leafMNode.getSchema().getEncodingType()));
+      jsonObject.add("Compressor", GSON.toJsonTree(leafMNode.getSchema().getCompressor()));
+      if (leafMNode.getSchema().getProps() != null) {
+        jsonObject.addProperty("args", leafMNode.getSchema().getProps().toString());
+      }
+      jsonObject.addProperty("StorageGroup", storageGroupName);
+    }
+    return jsonObject;
+  }
 
   @Override
   public Map<String, String> determineStorageGroup(PartialPath path) throws IllegalPathException {
@@ -1445,6 +1483,11 @@ public class MTreeDiskBased implements MTreeInterface {
   @Override
   public void updateMNode(MNode mNode) throws MetadataException {
     metadataDiskManager.updateMNode(mNode);
+  }
+
+  @Override
+  public void unlockMNode(MNode mNode){
+    metadataDiskManager.releaseMNodeMemoryLock(mNode);
   }
 
   private int getMeasurementMNodeCount(MNode mNode) throws MetadataException{

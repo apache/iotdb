@@ -158,7 +158,7 @@ public class MManager {
 
   private static final int ESTIMATED_SERIES_SIZE = config.getEstimatedSeriesSize();
 
-  private byte MTreeType = MTREE_MEMORY_BASED;
+  private byte MTreeType = MTREE_DISK_BASED;
 
   public void setMTreeType(byte MTreeType) {
     if (MTreeType == MTREE_DISK_BASED) {
@@ -1077,6 +1077,13 @@ public class MManager {
    */
   public MNode getDeviceNodeWithAutoCreate(PartialPath path, boolean autoCreateSchema, int sgLevel)
       throws MetadataException {
+    MNode node=getDeviceNodeWithAutoCreateWithoutReturnProcess(path,autoCreateSchema,sgLevel);
+    node=processMNodeForExternChildrenCheck(node);
+    return node;
+  }
+
+  private MNode getDeviceNodeWithAutoCreateWithoutReturnProcess(PartialPath path, boolean autoCreateSchema, int sgLevel)
+          throws MetadataException {
     MNode node;
     boolean shouldSetStorageGroup;
     try {
@@ -1859,7 +1866,8 @@ public class MManager {
     MeasurementMNode[] measurementMNodes = plan.getMeasurementMNodes();
 
     // 1. get device node
-    MNode deviceMNode = getDeviceNodeWithAutoCreate(deviceId);
+    MNode deviceMNode =getDeviceNodeWithAutoCreateWithoutReturnProcess(
+            deviceId, config.isAutoCreateSchemaEnabled(), config.getDefaultStorageGroupLevel());
 
     // 2. get schema of each measurement
     // if do not has measurement
@@ -1985,6 +1993,10 @@ public class MManager {
     boolean satisfy(String storageGroup);
   }
 
+
+  public void unlockmnode(MNode mNode){
+    mtree.unlockMNode(mNode);
+  }
 
   private MNode getMNodeFromCache(PartialPath path) throws CacheException{
     MNode node = mNodeCache.get(path);

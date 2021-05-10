@@ -1485,6 +1485,11 @@ public class MTree implements MTreeInterface {
   }
 
   @Override
+  public void unlockMNode(MNode mNode){
+
+  }
+
+  @Override
   public void createSnapshot() throws IOException {
     long time = System.currentTimeMillis();
     logger.info("Start creating MTree snapshot to {}", mtreeSnapshotPath);
