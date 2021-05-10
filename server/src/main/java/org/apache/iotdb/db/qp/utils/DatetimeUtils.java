@@ -31,6 +31,7 @@ import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.DateTimeParseException;
 import java.time.format.SignStyle;
 import java.time.temporal.ChronoField;
+import java.util.concurrent.TimeUnit;
 
 public class DatetimeUtils {
 
@@ -599,6 +600,16 @@ public class DatetimeUtils {
       } else {
         return res;
       }
+    }
+  }
+
+  public static TimeUnit toTimeUnit(String timestampPrecision) {
+    if (timestampPrecision.equals("us")) {
+      return TimeUnit.MICROSECONDS;
+    } else if (timestampPrecision.equals("ns")) {
+      return TimeUnit.NANOSECONDS;
+    } else {
+      return TimeUnit.MILLISECONDS;
     }
   }
 

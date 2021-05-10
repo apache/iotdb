@@ -79,7 +79,6 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
@@ -203,9 +202,7 @@ public class MetaGroupMemberTest extends BaseMember {
             try {
               planExecutor.processNonQuery(plan);
               return StatusUtils.OK;
-            } catch (QueryProcessException
-                | MetadataException
-                | StorageEngineException e) {
+            } catch (QueryProcessException | MetadataException | StorageEngineException e) {
               return StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, e.getMessage());
             }
           }
@@ -844,8 +841,7 @@ public class MetaGroupMemberTest extends BaseMember {
 
   @Test
   public void testGetReaderByTimestamp()
-      throws QueryProcessException, StorageEngineException, IOException,
-          MetadataException {
+      throws QueryProcessException, StorageEngineException, IOException, MetadataException {
     System.out.println("Start testGetReaderByTimestamp()");
     RaftServer.setReadOperationTimeoutMS(10000);
     mockDataClusterServer = true;
@@ -905,8 +901,8 @@ public class MetaGroupMemberTest extends BaseMember {
 
   @Test
   public void testGetReader()
-      throws QueryProcessException, StorageEngineException, IOException,
-          MetadataException, EmptyIntervalException {
+      throws QueryProcessException, StorageEngineException, IOException, MetadataException,
+          EmptyIntervalException {
     System.out.println("Start testGetReader()");
     mockDataClusterServer = true;
     InsertRowPlan insertPlan = new InsertRowPlan();

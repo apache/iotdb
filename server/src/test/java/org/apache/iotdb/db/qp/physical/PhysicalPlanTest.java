@@ -37,18 +37,18 @@ import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
-import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowContinuousQueriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowContinuousQueriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
 import org.apache.iotdb.db.qp.physical.sys.ShowTriggersPlan;
@@ -1318,23 +1318,6 @@ public class PhysicalPlanTest {
     Assert.assertEquals("${0}.${1}.${2}.${3}.temperature_max", plan.getTargetPath().getFullPath());
     Assert.assertEquals(
         "select max_value(temperature) from root.ln.*.*.* group by ([now() - 20s, now()), 10s), level = 3",
-        plan.getQuerySql());
-  }
-
-  @Test
-  public void testCreateCQ6() throws QueryProcessException {
-    String sql =
-        "CREATE CONTINUOUS QUERY cq1 RESAMPLE FOR 20s BEGIN SELECT max_value(temperature) INTO temperature_max FROM root.ln.*.*.* WHERE temperature > 50 and temperature < 100 GROUP BY time(10s), level = 3 END";
-
-    CreateContinuousQueryPlan plan =
-        (CreateContinuousQueryPlan) processor.parseSQLToPhysicalPlan(sql);
-    Assert.assertFalse(plan.isQuery());
-    Assert.assertEquals("cq1", plan.getContinuousQueryName());
-    Assert.assertEquals(20000, plan.getEveryInterval());
-    Assert.assertEquals(20000, plan.getForInterval());
-    Assert.assertEquals("${0}.${1}.${2}.${3}.temperature_max", plan.getTargetPath().getFullPath());
-    Assert.assertEquals(
-        "select max_value(temperature) from root.ln.*.*.* where temperature > 50 and temperature < 100 group by ([now() - 20s, now()), 10s), level = 3",
         plan.getQuerySql());
   }
 

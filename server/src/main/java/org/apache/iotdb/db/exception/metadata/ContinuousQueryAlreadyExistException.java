@@ -27,7 +27,7 @@ public class ContinuousQueryAlreadyExistException extends MetadataException {
 
   public ContinuousQueryAlreadyExistException(String continuousQueryName) {
     super(
-        String.format("Continuous Query [%s] already exist", continuousQueryName),
+        String.format("Continuous Query [%s] already exists", continuousQueryName),
         TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode());
     this.isUserException = true;
   }

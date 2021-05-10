@@ -22,7 +22,6 @@ package org.apache.iotdb.db.sink.local;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.executor.IPlanExecutor;
@@ -82,7 +81,7 @@ public class LocalIoTDBHandler implements Handler<LocalIoTDBConfiguration, Local
 
   @Override
   public void onEvent(LocalIoTDBEvent event)
-          throws QueryProcessException, StorageEngineException, MetadataException {
+      throws QueryProcessException, StorageEngineException, MetadataException {
     InsertRowPlan plan = new InsertRowPlan();
     plan.setNeedInferType(false);
     plan.setDeviceId(device);
@@ -94,7 +93,7 @@ public class LocalIoTDBHandler implements Handler<LocalIoTDBConfiguration, Local
   }
 
   private void executeNonQuery(PhysicalPlan plan)
-          throws QueryProcessException, MetadataException, StorageEngineException {
+      throws QueryProcessException, MetadataException, StorageEngineException {
     if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new QueryProcessException(
           "Current system mode is read-only, non-query operation is not supported.");
