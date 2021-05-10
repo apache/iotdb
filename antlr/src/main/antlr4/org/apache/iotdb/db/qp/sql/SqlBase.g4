@@ -107,7 +107,7 @@ statement
     fromClause
     whereClause?
     specialClause?
-    WITHOUT (ALL | ANY) NULL #selectStatement
+    (WITHOUT NULL (ALL | ANY))? #selectStatement
     ;
 
 selectElements

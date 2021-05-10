@@ -103,7 +103,15 @@ public abstract class QueryDataSet {
     // proceed to the OFFSET row by skipping rows
     while (rowOffset > 0) {
       if (hasNextWithoutConstraint()) {
-        nextWithoutConstraint(); // DO NOT use next()
+        RowRecord rowRecord = nextWithoutConstraint(); // DO NOT use next()
+        // filter the row that all columns are null
+        if (withoutAllNull && rowRecord.isAllNull()) {
+          continue;
+        }
+        // filter the row that any column is null
+        if (withoutAnyNull && rowRecord.hasNullField()) {
+          continue;
+        }
         rowOffset--;
       } else {
         return false;
