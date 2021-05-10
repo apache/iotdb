@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-
+import logging
 import struct
 import time
 
@@ -52,6 +52,8 @@ from .thrift.rpc.ttypes import TSDeleteDataReq, TSProtocolVersion, TSSetTimeZone
 #      TSCreateMultiTimeseriesReq, TSCloseSessionReq, TSInsertTabletsReq, TSInsertRecordsReq
 # from iotdb.rpc.ttypes import TSDeleteDataReq, TSProtocolVersion, TSSetTimeZoneReq
 from .utils.IoTDBConstants import TSDataType
+
+logger = logging.getLogger("IoTDB")
 
 
 class Session(object):
@@ -94,7 +96,7 @@ class Session(object):
             try:
                 self.__transport.open()
             except TTransport.TTransportException as e:
-                print("TTransportException: ", e)
+                logger.exception("TTransportException!", exc_info=e)
 
         if enable_rpc_compression:
             self.__client = Client(TCompactProtocol.TCompactProtocol(self.__transport))
@@ -112,7 +114,7 @@ class Session(object):
             open_resp = self.__client.openSession(open_req)
 
             if self.protocol_version != open_resp.serverProtocolVersion:
-                print(
+                logger.exception(
                     "Protocol differ, Client version is {}, but Server version is {}".format(
                         self.protocol_version, open_resp.serverProtocolVersion
                     )
@@ -126,7 +128,7 @@ class Session(object):
 
         except Exception as e:
             self.__transport.close()
-            print("session closed because: ", e)
+            logger.exception("session closed because: ", exc_info=e)
 
         if self.__zone_id is not None:
             self.set_time_zone(self.__zone_id)
@@ -145,9 +147,9 @@ class Session(object):
         try:
             self.__client.closeSession(req)
         except TTransport.TException as e:
-            print(
+            logger.exception(
                 "Error occurs when closing session at server. Maybe server is down. Error message: ",
-                e,
+                exc_info=e,
             )
         finally:
             self.__is_close = True
@@ -160,7 +162,9 @@ class Session(object):
         :param group_name: String, storage group name (starts from root)
         """
         status = self.__client.setStorageGroup(self.__session_id, group_name)
-        print("setting storage group {} message: {}".format(group_name, status.message))
+        logger.debug(
+            "setting storage group {} message: {}".format(group_name, status.message)
+        )
 
         return Session.verify_success(status)
 
@@ -178,7 +182,7 @@ class Session(object):
         :param storage_group_lst: List, paths of the target storage groups.
         """
         status = self.__client.deleteStorageGroups(self.__session_id, storage_group_lst)
-        print(
+        logger.debug(
             "delete storage group(s) {} message: {}".format(
                 storage_group_lst, status.message
             )
@@ -201,7 +205,9 @@ class Session(object):
             self.__session_id, ts_path, data_type, encoding, compressor
         )
         status = self.__client.createTimeseries(request)
-        print("creating time series {} message: {}".format(ts_path, status.message))
+        logger.debug(
+            "creating time series {} message: {}".format(ts_path, status.message)
+        )
 
         return Session.verify_success(status)
 
@@ -223,7 +229,7 @@ class Session(object):
             self.__session_id, ts_path_lst, data_type_lst, encoding_lst, compressor_lst
         )
         status = self.__client.createMultiTimeseries(request)
-        print(
+        logger.debug(
             "creating multiple time series {} message: {}".format(
                 ts_path_lst, status.message
             )
@@ -237,7 +243,7 @@ class Session(object):
         :param paths_list: List of time series path, which should be complete (starts from root)
         """
         status = self.__client.deleteTimeseries(self.__session_id, paths_list)
-        print(
+        logger.debug(
             "deleting multiple time series {} message: {}".format(
                 paths_list, status.message
             )
@@ -265,9 +271,11 @@ class Session(object):
         request = TSDeleteDataReq(self.__session_id, paths_list, timestamp)
         try:
             status = self.__client.deleteData(request)
-            print("delete data from {}, message: {}".format(paths_list, status.message))
+            logger.debug(
+                "delete data from {}, message: {}".format(paths_list, status.message)
+            )
         except TTransport.TException as e:
-            print("data deletion fails because: ", e)
+            logger.exception("data deletion fails because: ", e)
 
     def insert_str_record(self, device_id, timestamp, measurements, string_values):
         """ special case for inserting one row of String (TEXT) value """
@@ -280,7 +288,7 @@ class Session(object):
             device_id, timestamp, measurements, data_types, string_values
         )
         status = self.__client.insertStringRecord(request)
-        print(
+        logger.debug(
             "insert one record to device {} message: {}".format(
                 device_id, status.message
             )
@@ -305,7 +313,7 @@ class Session(object):
             device_id, timestamp, measurements, data_types, values
         )
         status = self.__client.insertRecord(request)
-        print(
+        logger.debug(
             "insert one record to device {} message: {}".format(
                 device_id, status.message
             )
@@ -333,7 +341,7 @@ class Session(object):
             device_ids, times, measurements_lst, type_values_lst, values_lst
         )
         status = self.__client.insertRecords(request)
-        print(
+        logger.debug(
             "insert multiple records to devices {} message: {}".format(
                 device_ids, status.message
             )
@@ -358,7 +366,7 @@ class Session(object):
             device_id, timestamp, measurements, data_types, values
         )
         status = self.__client.testInsertRecord(request)
-        print(
+        logger.debug(
             "testing! insert one record to device {} message: {}".format(
                 device_id, status.message
             )
@@ -386,7 +394,9 @@ class Session(object):
             device_ids, times, measurements_lst, type_values_lst, values_lst
         )
         status = self.__client.testInsertRecords(request)
-        print("testing! insert multiple records, message: {}".format(status.message))
+        logger.debug(
+            "testing! insert multiple records, message: {}".format(status.message)
+        )
 
         return Session.verify_success(status)
 
@@ -394,9 +404,9 @@ class Session(object):
         self, device_id, timestamp, measurements, data_types, values
     ):
         if (len(values) != len(data_types)) or (len(values) != len(measurements)):
-            print("length of data types does not equal to length of values!")
-            # could raise an error here.
-            return
+            raise RuntimeError(
+                "length of data types does not equal to length of values!"
+            )
         values_in_bytes = Session.value_to_bytes(data_types, values)
         return TSInsertRecordReq(
             self.__session_id, device_id, measurements, values_in_bytes, timestamp
@@ -406,9 +416,9 @@ class Session(object):
         self, device_id, timestamp, measurements, data_types, values
     ):
         if (len(values) != len(data_types)) or (len(values) != len(measurements)):
-            print("length of data types does not equal to length of values!")
-            # could raise an error here.
-            return
+            raise RuntimeError(
+                "length of data types does not equal to length of values!"
+            )
         return TSInsertStringRecordReq(
             self.__session_id, device_id, measurements, values, timestamp
         )
@@ -422,22 +432,18 @@ class Session(object):
             or (len(device_ids) != len(times))
             or (len(times) != len(values_lst))
         ):
-            print(
+            raise RuntimeError(
                 "deviceIds, times, measurementsList and valuesList's size should be equal"
             )
-            # could raise an error here.
-            return
 
         value_lst = []
         for values, data_types, measurements in zip(
             values_lst, types_lst, measurements_lst
         ):
             if (len(values) != len(data_types)) or (len(values) != len(measurements)):
-                print(
+                raise RuntimeError(
                     "deviceIds, times, measurementsList and valuesList's size should be equal"
                 )
-                # could raise an error here.
-                return
             values_in_bytes = Session.value_to_bytes(data_types, values)
             value_lst.append(values_in_bytes)
 
@@ -458,7 +464,7 @@ class Session(object):
         :param tablet: a tablet specified above
         """
         status = self.__client.insertTablet(self.gen_insert_tablet_req(tablet))
-        print(
+        logger.debug(
             "insert one tablet to device {} message: {}".format(
                 tablet.get_device_id(), status.message
             )
@@ -472,7 +478,7 @@ class Session(object):
         :param tablet_lst: List of tablets
         """
         status = self.__client.insertTablets(self.gen_insert_tablets_req(tablet_lst))
-        print("insert multiple tablets, message: {}".format(status.message))
+        logger.debug("insert multiple tablets, message: {}".format(status.message))
 
         return Session.verify_success(status)
 
@@ -514,15 +520,15 @@ class Session(object):
             or size != len(types_list)
             or size != len(values_list)
         ):
-            print(
+            raise RuntimeError(
                 "insert records of one device error: types, times, measurementsList and valuesList's size should be equal"
             )
-            return
 
         # check sorted
         if not Session.check_sorted(times_list):
-            print("insert records of one device error: timestamp not sorted")
-            return
+            raise RuntimeError(
+                "insert records of one device error: timestamp not sorted"
+            )
 
         request = self.gen_insert_records_of_one_device_request(
             device_id, times_list, measurements_list, values_list, types_list
@@ -530,7 +536,7 @@ class Session(object):
 
         # send request
         status = self.__client.insertRecordsOfOneDevice(request)
-        print("insert records of one device, message: {}".format(status.message))
+        logger.debug("insert records of one device, message: {}".format(status.message))
 
         return Session.verify_success(status)
 
@@ -543,11 +549,9 @@ class Session(object):
         ):
             data_types = [data_type.value for data_type in data_types]
             if (len(values) != len(data_types)) or (len(values) != len(measurements)):
-                print(
+                raise RuntimeError(
                     "insert records of one device error: deviceIds, times, measurementsList and valuesList's size should be equal"
                 )
-                # could raise an error here.
-                return
             values_in_bytes = Session.value_to_bytes(data_types, values)
             binary_value_list.append(values_in_bytes)
 
@@ -566,7 +570,7 @@ class Session(object):
         :param tablet: a tablet of data
         """
         status = self.__client.testInsertTablet(self.gen_insert_tablet_req(tablet))
-        print(
+        logger.debug(
             "testing! insert one tablet to device {} message: {}".format(
                 tablet.get_device_id(), status.message
             )
@@ -583,7 +587,9 @@ class Session(object):
         status = self.__client.testInsertTablets(
             self.gen_insert_tablets_req(tablet_list)
         )
-        print("testing! insert multiple tablets, message: {}".format(status.message))
+        logger.debug(
+            "testing! insert multiple tablets, message: {}".format(status.message)
+        )
 
         return Session.verify_success(status)
 
@@ -657,13 +663,12 @@ class Session(object):
         try:
             resp = self.__client.executeUpdateStatement(request)
             status = resp.status
-            print(
+            logger.debug(
                 "execute non-query statement {} message: {}".format(sql, status.message)
             )
             return Session.verify_success(status)
         except TTransport.TException as e:
-            print("execution of non-query statement fails because: ", e)
-            return -1
+            raise RuntimeError("execution of non-query statement fails because: ", e)
 
     @staticmethod
     def value_to_bytes(data_types, values):
@@ -705,9 +710,7 @@ class Session(object):
                 values_tobe_packed.append(len(value_bytes))
                 values_tobe_packed.append(value_bytes)
             else:
-                print("Unsupported data type:" + str(data_type))
-                # could raise an error here.
-                return
+                raise RuntimeError("Unsupported data type:" + str(data_type))
         format_str = "".join(format_str_list)
         return struct.pack(format_str, *values_tobe_packed)
 
@@ -717,22 +720,20 @@ class Session(object):
         try:
             resp = self.__client.getTimeZone(self.__session_id)
         except TTransport.TException as e:
-            print("Could not get time zone because: ", e)
-            raise Exception
+            raise RuntimeError("Could not get time zone because: ", e)
         return resp.timeZone
 
     def set_time_zone(self, zone_id):
         request = TSSetTimeZoneReq(self.__session_id, zone_id)
         try:
             status = self.__client.setTimeZone(request)
-            print(
+            logger.debug(
                 "setting time zone_id as {}, message: {}".format(
                     zone_id, status.message
                 )
             )
         except TTransport.TException as e:
-            print("Could not set time zone because: ", e)
-            raise Exception
+            raise RuntimeError("Could not set time zone because: ", e)
         self.__zone_id = zone_id
 
     @staticmethod
@@ -751,5 +752,5 @@ class Session(object):
         if status.code == Session.SUCCESS_CODE:
             return 0
 
-        print("error status is", status)
+        logger.debug("error status is", status)
         return -1

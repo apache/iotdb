@@ -89,7 +89,7 @@ class MyTestCase(unittest.TestCase):
             session.close()
 ```
 
-by default it will load the image `apache/iotdb:latest`, if you want a specific version just pass it like e.g. `IoTDBContainer("apache/iotdb:0.10.0")` to get version `0.10.0` running.
+by default it will load the image `apache/iotdb:latest`, if you want a specific version just pass it like e.g. `IoTDBContainer("apache/iotdb:0.12.0")` to get version `0.12.0` running.
 
 ## Pandas Support
 
@@ -191,3 +191,19 @@ To do a release just ensure that you have the right set of generated thrift file
 Then run linting and auto-formatting.
 Then, ensure that all tests work (via `pytest .`).
 Then you are good to go to do a release!
+
+### Preparing your environment
+
+First, install all necessary dev dependencies via `pip install -r requirements_dev.txt`.
+
+### Doing the Release
+
+There is a convenient script `release.sh` to do all steps for a release.
+Namely, these are
+
+* Remove all transient directories from last release (if exists)
+* (Re-)generate all generated sources via mvn
+* Run Linting (flake8)
+* Run Tests via pytest
+* Build
+* Release to pypi

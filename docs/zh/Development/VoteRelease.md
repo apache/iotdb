@@ -88,11 +88,11 @@ mvn -B apache-rat:check
 * 验证签名和哈希值
 
 ```
-gpg2 --verify apache-iotdb-0.9.0-incubating-source-release.zip.asc apache-iotdb-0.9.0-incubating-source-release.zip
+gpg2 --verify apache-iotdb-0.12.0-source-release.zip.asc apache-iotdb-0.12.0-source-release.zip
 
 出现 Good Singnature 
 
-shasum -a512 apache-iotdb-0.9.0-incubating-source-release.zip
+shasum -a512 apache-iotdb-0.12.0-source-release.zip
 
 和对应的 .sha512 对比，一样就可以。
 ```
@@ -114,11 +114,11 @@ mvnw.sh install
 * 验证签名和哈希值
 
 ```
-gpg2 --verify apache-iotdb-0.9.0-incubating-bin.zip.asc apache-iotdb-0.9.0-incubating-bin.zip
+gpg2 --verify apache-iotdb-0.12.0-bin.zip.asc apache-iotdb-0.12.0-bin.zip
 
 出现 Good Singnature 
 
-shasum -a512 apache-iotdb-0.9.0-incubating-bin.zip
+shasum -a512 apache-iotdb-0.12.0-bin.zip
 
 和对应的 .sha512 对比，一样就可以。
 ```

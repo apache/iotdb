@@ -21,12 +21,22 @@ package org.apache.iotdb.db.metadata;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
+import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -44,6 +54,7 @@ import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -64,7 +75,6 @@ public class MManagerBasicTest {
 
   @Test
   public void testAddPathAndExist() throws IllegalPathException {
-
     MManager manager = IoTDB.metaManager;
     assertTrue(manager.isPathExist(new PartialPath("root")));
 
@@ -114,19 +124,19 @@ public class MManagerBasicTest {
           TSDataType.INT32,
           TSEncoding.RLE,
           TSFileDescriptor.getInstance().getConfig().getCompressor(),
-          Collections.EMPTY_MAP);
+          Collections.emptyMap());
       manager.createTimeseries(
           new PartialPath("root.laptop.d1.\"1.2.3\""),
           TSDataType.INT32,
           TSEncoding.RLE,
           TSFileDescriptor.getInstance().getConfig().getCompressor(),
-          Collections.EMPTY_MAP);
+          Collections.emptyMap());
       manager.createTimeseries(
           new PartialPath("root.1.2.3"),
           TSDataType.INT32,
           TSEncoding.RLE,
           TSFileDescriptor.getInstance().getConfig().getCompressor(),
-          Collections.EMPTY_MAP);
+          Collections.emptyMap());
 
       assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s1")));
       assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.1_2")));
@@ -228,6 +238,126 @@ public class MManagerBasicTest {
       fail(e.getMessage());
     }
     assertFalse(manager.isPathExist(new PartialPath("root.1")));
+  }
+
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  @Test
+  public void testCreateAlignedTimeseries() throws IllegalPathException {
+    MManager manager = IoTDB.metaManager;
+    try {
+      manager.setStorageGroup(new PartialPath("root.laptop"));
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    try {
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d1.s0"),
+          TSDataType.valueOf("INT32"),
+          TSEncoding.valueOf("RLE"),
+          compressionType,
+          Collections.emptyMap());
+      manager.createAlignedTimeSeries(
+          new PartialPath("root.laptop.d1"),
+          Arrays.asList("s1", "s2", "s3"),
+          Arrays.asList(
+              TSDataType.valueOf("INT32"),
+              TSDataType.valueOf("FLOAT"),
+              TSDataType.valueOf("INT32")),
+          Arrays.asList(
+              TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
+          compressionType);
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s0")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s1")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s2")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s3")));
+    try {
+      assertEquals(
+          1,
+          manager
+              .getStorageGroupNodeByStorageGroupPath(new PartialPath("root.laptop"))
+              .getAlignedTimeseriesIndex());
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    try {
+      manager.deleteTimeseries(new PartialPath("root.laptop.d1.s2"));
+    } catch (MetadataException e) {
+      assertEquals(
+          "Not support deleting part of aligned timeseies! (Path: root.laptop.d1.s2)",
+          e.getMessage());
+    }
+
+    try {
+      manager.deleteTimeseries(new PartialPath("root.laptop.d1.(s2, s3)"));
+    } catch (MetadataException e) {
+      assertEquals(
+          "Not support deleting part of aligned timeseies! (Path: root.laptop.d1.(s2, s3))",
+          e.getMessage());
+    }
+
+    try {
+      manager.deleteTimeseries(new PartialPath("root.laptop.d1.(s1,s2,s3)"));
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s0")));
+    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.s1")));
+    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.s2")));
+    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.s3")));
+
+    try {
+      manager.deleteTimeseries(new PartialPath("root.laptop.d1.s0"));
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1")));
+    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.s0")));
+
+    try {
+      manager.createAlignedTimeSeries(
+          new PartialPath("root.laptop.d1"),
+          Arrays.asList("s0", "s2", "s4"),
+          Arrays.asList(
+              TSDataType.valueOf("INT32"),
+              TSDataType.valueOf("FLOAT"),
+              TSDataType.valueOf("INT32")),
+          Arrays.asList(
+              TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
+          compressionType);
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s0")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s2")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s4")));
+    try {
+      assertEquals(
+          2,
+          manager
+              .getStorageGroupNodeByStorageGroupPath(new PartialPath("root.laptop"))
+              .getAlignedTimeseriesIndex());
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
   }
 
   @Test
@@ -735,5 +865,473 @@ public class MManagerBasicTest {
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  @Test
+  public void testTemplate() throws MetadataException {
+    CreateTemplatePlan plan = getCreateTemplatePlan();
+
+    MManager manager = IoTDB.metaManager;
+    manager.createDeviceTemplate(plan);
+
+    // set device template
+    SetDeviceTemplatePlan setDeviceTemplatePlan =
+        new SetDeviceTemplatePlan("template1", "root.sg1.d1");
+
+    manager.setDeviceTemplate(setDeviceTemplatePlan);
+
+    MNode node = manager.getDeviceNode(new PartialPath("root.sg1.d1"));
+    node.setUseTemplate(true);
+
+    MeasurementSchema s11 =
+        new MeasurementSchema("s11", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+    assertNotNull(node.getDeviceTemplate());
+    assertEquals(node.getDeviceTemplate().getSchemaMap().get("s11"), s11);
+
+    Set<IMeasurementSchema> allSchema =
+        new HashSet<>(node.getDeviceTemplate().getSchemaMap().values());
+    for (IMeasurementSchema schema :
+        manager.getAllMeasurementByDevicePath(new PartialPath("root.sg1.d1"))) {
+      allSchema.remove(schema);
+    }
+
+    assertTrue(allSchema.isEmpty());
+  }
+
+  private CreateTemplatePlan getCreateTemplatePlan() {
+    List<List<String>> measurementList = new ArrayList<>();
+    measurementList.add(Collections.singletonList("s11"));
+    List<String> measurements = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      measurements.add("s" + i);
+    }
+    measurementList.add(measurements);
+
+    List<List<TSDataType>> dataTypeList = new ArrayList<>();
+    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
+    List<TSDataType> dataTypes = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      dataTypes.add(TSDataType.INT64);
+    }
+    dataTypeList.add(dataTypes);
+
+    List<List<TSEncoding>> encodingList = new ArrayList<>();
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+    List<TSEncoding> encodings = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      encodings.add(TSEncoding.RLE);
+    }
+    encodingList.add(encodings);
+
+    List<CompressionType> compressionTypes = new ArrayList<>();
+    for (int i = 0; i < 11; i++) {
+      compressionTypes.add(CompressionType.SNAPPY);
+    }
+
+    return new CreateTemplatePlan(
+        "template1", measurementList, dataTypeList, encodingList, compressionTypes);
+  }
+
+  @Test
+  public void testTemplateCompatibility() throws MetadataException {
+    List<List<String>> measurementList = new ArrayList<>();
+    measurementList.add(Collections.singletonList("s11"));
+    List<String> measurements = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      measurements.add("s" + i);
+    }
+    measurementList.add(measurements);
+
+    List<List<TSDataType>> dataTypeList = new ArrayList<>();
+    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
+    List<TSDataType> dataTypes = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      dataTypes.add(TSDataType.INT64);
+    }
+    dataTypeList.add(dataTypes);
+
+    List<List<TSEncoding>> encodingList = new ArrayList<>();
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+    List<TSEncoding> encodings = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      encodings.add(TSEncoding.RLE);
+    }
+    encodingList.add(encodings);
+
+    List<CompressionType> compressionTypes = new ArrayList<>();
+    for (int i = 0; i < 11; i++) {
+      compressionTypes.add(CompressionType.SNAPPY);
+    }
+
+    CreateTemplatePlan plan1 =
+        new CreateTemplatePlan(
+            "template1",
+            new ArrayList<>(measurementList),
+            new ArrayList<>(dataTypeList),
+            new ArrayList<>(encodingList),
+            new ArrayList<>(compressionTypes));
+
+    measurementList.add(Collections.singletonList("s12"));
+    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+    compressionTypes.add(CompressionType.SNAPPY);
+
+    CreateTemplatePlan plan2 =
+        new CreateTemplatePlan(
+            "template2",
+            new ArrayList<>(measurementList),
+            new ArrayList<>(dataTypeList),
+            new ArrayList<>(encodingList),
+            new ArrayList<>(compressionTypes));
+
+    MManager manager = IoTDB.metaManager;
+
+    assertTrue(manager.isTemplateCompatible(new Template(plan1), new Template(plan2)));
+    assertFalse(manager.isTemplateCompatible(new Template(plan2), new Template(plan1)));
+
+    System.out.println(measurementList);
+    measurementList.get(1).add("s13");
+    dataTypeList.get(1).add(TSDataType.INT64);
+    encodingList.get(1).add(TSEncoding.RLE);
+
+    CreateTemplatePlan plan3 =
+        new CreateTemplatePlan(
+            "template3",
+            new ArrayList<>(measurementList),
+            new ArrayList<>(dataTypeList),
+            new ArrayList<>(encodingList),
+            new ArrayList<>(compressionTypes));
+
+    assertTrue(manager.isTemplateCompatible(new Template(plan1), new Template(plan3)));
+
+    List<String> vectorList = new ArrayList<>(measurementList.get(1));
+    vectorList.remove(0);
+    List<TSDataType> vectorDataTypesList = new ArrayList<>(dataTypeList.get(1));
+    vectorDataTypesList.remove(0);
+    List<TSEncoding> vectorEncodingsList = new ArrayList<>(encodingList.get(1));
+    vectorEncodingsList.remove(0);
+
+    measurementList.set(1, vectorList);
+    dataTypeList.set(1, vectorDataTypesList);
+    encodingList.set(1, vectorEncodingsList);
+
+    CreateTemplatePlan plan4 =
+        new CreateTemplatePlan(
+            "template4",
+            new ArrayList<>(measurementList),
+            new ArrayList<>(dataTypeList),
+            new ArrayList<>(encodingList),
+            new ArrayList<>(compressionTypes));
+
+    assertFalse(manager.isTemplateCompatible(new Template(plan1), new Template(plan4)));
+
+    // test manager
+    manager.createDeviceTemplate(plan1);
+    manager.createDeviceTemplate(plan2);
+    manager.createDeviceTemplate(plan4);
+
+    manager.setDeviceTemplate(new SetDeviceTemplatePlan("template1", "root.sg1.d1"));
+    try {
+      manager.setDeviceTemplate(new SetDeviceTemplatePlan("template4", "root.sg1.d1.d2"));
+      fail("These two templates are incompatible");
+    } catch (MetadataException e) {
+      assertEquals("Incompatible template", e.getMessage());
+    }
+
+    manager.setDeviceTemplate(new SetDeviceTemplatePlan("template2", "root.sg1.d1.d2"));
+  }
+
+  @Test
+  public void testTemplateAndTimeSeriesCompatibility() throws MetadataException {
+    CreateTemplatePlan plan = getCreateTemplatePlan();
+    MManager manager = IoTDB.metaManager;
+    manager.createDeviceTemplate(plan);
+
+    // set device template
+    SetDeviceTemplatePlan setDeviceTemplatePlan =
+        new SetDeviceTemplatePlan("template1", "root.sg1.d1");
+
+    manager.setDeviceTemplate(setDeviceTemplatePlan);
+
+    CreateTimeSeriesPlan createTimeSeriesPlan =
+        new CreateTimeSeriesPlan(
+            new PartialPath("root.sg1.d1.s20"),
+            TSDataType.INT32,
+            TSEncoding.PLAIN,
+            CompressionType.GZIP,
+            null,
+            null,
+            null,
+            null);
+
+    manager.createTimeseries(createTimeSeriesPlan);
+
+    CreateTimeSeriesPlan createTimeSeriesPlan2 =
+        new CreateTimeSeriesPlan(
+            new PartialPath("root.sg1.d1.s1"),
+            TSDataType.INT32,
+            TSEncoding.PLAIN,
+            CompressionType.GZIP,
+            null,
+            null,
+            null,
+            null);
+
+    try {
+      manager.createTimeseries(createTimeSeriesPlan2);
+      fail();
+    } catch (Exception e) {
+      assertEquals(
+          "Path [root.sg1.d1.s1 ( which is incompatible with template )] already exist",
+          e.getMessage());
+    }
+  }
+
+  @Test
+  public void testShowTimeseries() {
+    MManager manager = IoTDB.metaManager;
+    try {
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d1.s0"),
+          TSDataType.valueOf("INT32"),
+          TSEncoding.valueOf("RLE"),
+          compressionType,
+          Collections.emptyMap());
+      manager.createAlignedTimeSeries(
+          new PartialPath("root.laptop.d1"),
+          Arrays.asList("s1", "s2", "s3"),
+          Arrays.asList(
+              TSDataType.valueOf("INT32"),
+              TSDataType.valueOf("FLOAT"),
+              TSDataType.valueOf("INT32")),
+          Arrays.asList(
+              TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
+          compressionType);
+
+      // show timeseries root.laptop.d1.s0
+      ShowTimeSeriesPlan showTimeSeriesPlan =
+          new ShowTimeSeriesPlan(
+              new PartialPath("root.laptop.d1.s0"), false, null, null, 0, 0, false);
+      List<ShowTimeSeriesResult> result =
+          manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+      assertEquals(1, result.size());
+      assertEquals("root.laptop.d1.s0", result.get(0).getName());
+
+      // show timeseries root.laptop.d1.s1
+      showTimeSeriesPlan =
+          new ShowTimeSeriesPlan(
+              new PartialPath("root.laptop.d1.s1"), false, null, null, 0, 0, false);
+      result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+      assertEquals(1, result.size());
+      assertEquals("root.laptop.d1.s1", result.get(0).getName());
+
+      // show timeseries root.laptop.d1.(s1,s2,s3)
+      showTimeSeriesPlan =
+          new ShowTimeSeriesPlan(
+              new PartialPath("root.laptop.d1.(s1,s2,s3)"), false, null, null, 0, 0, false);
+      result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+      assertEquals(3, result.size());
+      for (int i = 0; i < result.size(); i++) {
+        assertEquals("root.laptop.d1.s" + (i + 1), result.get(i).getName());
+      }
+
+      // show timeseries
+      showTimeSeriesPlan =
+          new ShowTimeSeriesPlan(new PartialPath("root"), false, null, null, 0, 0, false);
+      result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+      assertEquals(4, result.size());
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    // show timeseries root.laptop.d1.(s0,s1)
+    try {
+      ShowTimeSeriesPlan showTimeSeriesPlan =
+          new ShowTimeSeriesPlan(
+              new PartialPath("root.laptop.d1.(s0,s1)"), false, null, null, 0, 0, false);
+      List<ShowTimeSeriesResult> result =
+          manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+    } catch (MetadataException e) {
+      assertEquals(
+          "Cannot get node of children in different aligned timeseries (Path: (s0,s1))",
+          e.getMessage());
+    }
+  }
+
+  @Test
+  public void testShowTimeseriesWithTemplate() {
+    List<List<String>> measurementList = new ArrayList<>();
+    measurementList.add(Collections.singletonList("s0"));
+    List<String> measurements = new ArrayList<>();
+    for (int i = 1; i <= 3; i++) {
+      measurements.add("s" + i);
+    }
+    measurementList.add(measurements);
+
+    List<List<TSDataType>> dataTypeList = new ArrayList<>();
+    dataTypeList.add(Collections.singletonList(TSDataType.INT32));
+    List<TSDataType> dataTypes = new ArrayList<>();
+    dataTypes.add(TSDataType.INT32);
+    dataTypes.add(TSDataType.FLOAT);
+    dataTypes.add(TSDataType.INT32);
+    dataTypeList.add(dataTypes);
+
+    List<List<TSEncoding>> encodingList = new ArrayList<>();
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+    List<TSEncoding> encodings = new ArrayList<>();
+    for (int i = 1; i <= 3; i++) {
+      encodings.add(TSEncoding.RLE);
+    }
+    encodingList.add(encodings);
+
+    List<CompressionType> compressionTypes = new ArrayList<>();
+    for (int i = 0; i < 2; i++) {
+      compressionTypes.add(compressionType);
+    }
+
+    CreateTemplatePlan plan =
+        new CreateTemplatePlan(
+            "template1", measurementList, dataTypeList, encodingList, compressionTypes);
+    MManager manager = IoTDB.metaManager;
+    try {
+      manager.createDeviceTemplate(plan);
+
+      // set device template
+      SetDeviceTemplatePlan setDeviceTemplatePlan =
+          new SetDeviceTemplatePlan("template1", "root.laptop.d1");
+      manager.setDeviceTemplate(setDeviceTemplatePlan);
+      manager.getDeviceNode(new PartialPath("root.laptop.d1")).setUseTemplate(true);
+
+      // show timeseries root.laptop.d1.s0
+      ShowTimeSeriesPlan showTimeSeriesPlan =
+          new ShowTimeSeriesPlan(
+              new PartialPath("root.laptop.d1.s0"), false, null, null, 0, 0, false);
+      List<ShowTimeSeriesResult> result =
+          manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+      assertEquals(1, result.size());
+      assertEquals("root.laptop.d1.s0", result.get(0).getName());
+
+      // show timeseries root.laptop.d1.s1
+      showTimeSeriesPlan =
+          new ShowTimeSeriesPlan(
+              new PartialPath("root.laptop.d1.s1"), false, null, null, 0, 0, false);
+      result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+      assertEquals(1, result.size());
+      assertEquals("root.laptop.d1.s1", result.get(0).getName());
+
+      // show timeseries root.laptop.d1.(s1,s2,s3)
+      showTimeSeriesPlan =
+          new ShowTimeSeriesPlan(
+              new PartialPath("root.laptop.d1.(s1,s2,s3)"), false, null, null, 0, 0, false);
+      result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+      assertEquals(3, result.size());
+      for (int i = 0; i < result.size(); i++) {
+        assertEquals("root.laptop.d1.s" + (i + 1), result.get(i).getName());
+      }
+
+      // show timeseries root.laptop.d1.(s1,s2,s3)
+      showTimeSeriesPlan =
+          new ShowTimeSeriesPlan(new PartialPath("root"), false, null, null, 0, 0, false);
+      result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+      assertEquals(4, result.size());
+      Set<String> set = new HashSet<>();
+      for (int i = 0; i < result.size(); i++) {
+        set.add("root.laptop.d1.s" + i);
+      }
+
+      for (int i = 0; i < result.size(); i++) {
+        set.remove(result.get(i).getName());
+      }
+
+      assertTrue(set.isEmpty());
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    // show timeseries root.laptop.d1.(s0,s1)
+    try {
+      ShowTimeSeriesPlan showTimeSeriesPlan =
+          new ShowTimeSeriesPlan(
+              new PartialPath("root.laptop.d1.(s0,s1)"), false, null, null, 0, 0, false);
+      List<ShowTimeSeriesResult> result =
+          manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+    } catch (MetadataException e) {
+      assertEquals(
+          "Cannot get node of children in different aligned timeseries (Path: (s0,s1))",
+          e.getMessage());
+    }
+  }
+
+  @Test
+  public void testTotalSeriesNumber() {
+    MManager manager = IoTDB.metaManager;
+
+    try {
+      manager.setStorageGroup(new PartialPath("root.laptop"));
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d1"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d1.s1"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d1.s1.t1"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d1.s2"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d2.s1"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d2.s2"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+
+      assertEquals(6, manager.getTotalSeriesNumber());
+      manager.deleteTimeseries(new PartialPath("root.laptop.d2.s1"));
+      assertEquals(5, manager.getTotalSeriesNumber());
+      manager.deleteStorageGroups(Collections.singletonList(new PartialPath("root.laptop")));
+      assertEquals(0, manager.getTotalSeriesNumber());
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testStorageGroupNameWithHyphen() throws IllegalPathException {
+    MManager manager = IoTDB.metaManager;
+    assertTrue(manager.isPathExist(new PartialPath("root")));
+
+    assertFalse(manager.isPathExist(new PartialPath("root.group-with-hyphen")));
+
+    try {
+      manager.setStorageGroup(new PartialPath("root.group-with-hyphen"));
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    assertTrue(manager.isPathExist(new PartialPath("root.group-with-hyphen")));
   }
 }

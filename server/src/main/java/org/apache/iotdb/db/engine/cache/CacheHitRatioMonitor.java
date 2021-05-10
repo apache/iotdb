@@ -19,7 +19,10 @@
 package org.apache.iotdb.db.engine.cache;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.rescon.MemTableManager;
+import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
@@ -111,5 +114,30 @@ public class CacheHitRatioMonitor implements CacheHitRatioMonitorMXBean, IServic
     private static final CacheHitRatioMonitor DISPLAYER = new CacheHitRatioMonitor();
 
     private AsyncCacheHitRatioHolder() {}
+  }
+
+  @Override
+  public long getTotalMemTableSize() {
+    return SystemInfo.getInstance().getTotalMemTableSize();
+  }
+
+  @Override
+  public double getFlushThershold() {
+    return SystemInfo.getInstance().getFlushThershold();
+  }
+
+  @Override
+  public double getRejectThershold() {
+    return SystemInfo.getInstance().getRejectThershold();
+  }
+
+  @Override
+  public int flushingMemTableNum() {
+    return FlushManager.getInstance().getNumberOfWorkingTasks();
+  }
+
+  @Override
+  public int totalMemTableNum() {
+    return MemTableManager.getInstance().getCurrentMemtableNumber();
   }
 }

@@ -54,9 +54,9 @@ public class IoTDBConfig {
 
   // e.g., a31+/$%#&[]{}3e4
   private static final String ID_MATCHER =
-      "([a-zA-Z0-9/\"[ ],:@#$%&{}\\[\\]\\-+\\u2E80-\\u9FFF_]+)";
+      "([a-zA-Z0-9/\"[ ],:@#$%&{}()*=?!~\\[\\]\\-+\\u2E80-\\u9FFF_]+)";
 
-  private static final String STORAGE_GROUP_MATCHER = "([a-zA-Z0-9_.\\u2E80-\\u9FFF]+)";
+  private static final String STORAGE_GROUP_MATCHER = "([a-zA-Z0-9_.\\-\\u2E80-\\u9FFF]+)";
 
   // e.g.,  .s1
   private static final String PARTIAL_NODE_MATCHER = "[" + PATH_SEPARATOR + "]" + ID_MATCHER;
@@ -90,7 +90,7 @@ public class IoTDBConfig {
   /** the mqtt message payload formatter. */
   private String mqttPayloadFormatter = "json";
 
-  /** max mqtt message size */
+  /** max mqtt message size. Unit: byte */
   private int mqttMaxMessageSize = 1048576;
 
   /** Rpc binding address. */
@@ -118,7 +118,7 @@ public class IoTDBConfig {
   private long allocateMemoryForSchema = Runtime.getRuntime().maxMemory() * 1 / 10;
 
   /** Memory allocated for the read process besides cache */
-  private long allocateMemoryForReadWithoutCache = Runtime.getRuntime().maxMemory() * 9 / 100;
+  private long allocateMemoryForReadWithoutCache = allocateMemoryForRead * 3 / 10;
 
   private volatile int maxQueryDeduplicatedPathNum = 1000;
 
@@ -131,13 +131,13 @@ public class IoTDBConfig {
   /** Reject proportion for system */
   private double rejectProportion = 0.8;
 
-  /** If storage group increased more than this threshold, report to system. */
+  /** If storage group increased more than this threshold, report to system. Unit: byte */
   private long storageGroupSizeReportThreshold = 16 * 1024 * 1024L;
 
-  /** When inserting rejected, waiting period to check system again */
+  /** When inserting rejected, waiting period to check system again. Unit: millisecond */
   private int checkPeriodWhenInsertBlocked = 50;
 
-  /** When inserting rejected exceeds this, throw an exception */
+  /** When inserting rejected exceeds this, throw an exception. Unit: millisecond */
   private int maxWaitingTimeWhenInsertBlockedInMs = 10000;
   /** Is the write ahead log enable. */
   private boolean enableWal = true;
@@ -157,28 +157,39 @@ public class IoTDBConfig {
 
   /**
    * The cycle when write ahead log is periodically forced to be written to disk(in milliseconds) If
-   * set this parameter to 0 it means call channel.force(true) after every each insert
+   * set this parameter to 0 it means call channel.force(true) after every each insert. Unit:
+   * millisecond
    */
   private long forceWalPeriodInMs = 100;
 
   /**
    * The size of the log buffer in each log node (in bytes). Due to the double buffer mechanism, if
    * WAL is enabled and the size of the inserted plan is greater than one-half of this parameter,
-   * then the insert plan will be rejected by WAL.
+   * then the insert plan will be rejected by WAL. Unit: byte
    */
   private int walBufferSize = 16 * 1024 * 1024;
 
   private int maxWalBytebufferNumForEachPartition = 6;
 
+  /** Unit: millisecond */
   private long walPoolTrimIntervalInMS = 10_000;
 
+  /** Unit: byte */
   private int estimatedSeriesSize = 300;
 
   /**
    * Size of log buffer for every MetaData operation. If the size of a MetaData operation plan is
    * larger than this parameter, then the MetaData operation plan will be rejected by MManager.
+   * Unit: byte
    */
   private int mlogBufferSize = 1024 * 1024;
+
+  /**
+   * The size of log buffer for every trigger management operation plan. If the size of a trigger
+   * management operation plan is larger than this parameter, the trigger management operation plan
+   * will be rejected by TriggerManager. Unit: byte
+   */
+  private int tlogBufferSize = 1024 * 1024;
 
   /** default base dir, stores all IoTDB runtime files */
   private static final String DEFAULT_BASE_DIR = "data";
@@ -215,6 +226,10 @@ public class IoTDBConfig {
   private String udfDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.UDF_FOLDER_NAME;
 
+  /** External lib directory for trigger, stores user-uploaded JAR files */
+  private String triggerDir =
+      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TRIGGER_FOLDER_NAME;
+
   /** Data directory of data. It can be settled as dataDirs = {"data1", "data2", "data3"}; */
   private String[] dataDirs = {"data" + File.separator + "data"};
 
@@ -236,6 +251,15 @@ public class IoTDBConfig {
   /** How many threads can concurrently query. When <= 0, use CPU core number. */
   private int concurrentQueryThread = Runtime.getRuntime().availableProcessors();
 
+  /** How many threads can concurrently evaluate windows. When <= 0, use CPU core number. */
+  private int concurrentWindowEvaluationThread = Runtime.getRuntime().availableProcessors();
+
+  /**
+   * Max number of window evaluation tasks that can be pending for execution. When <= 0, the value
+   * is 64 by default.
+   */
+  private int maxPendingWindowEvaluationTasks = 64;
+
   /** Is the write mem control for writing enable. */
   private boolean enableMemControl = true;
 
@@ -252,7 +276,7 @@ public class IoTDBConfig {
    * common buffer size. With the memory-control mechanism, the occupied memory of all raw data and
    * index structures will be counted. If the memory buffer size reaches this threshold, the indexes
    * will be flushed to the disk file. As a result, data in one series may be divided into more than
-   * one part and indexed separately.
+   * one part and indexed separately. Unit: byte
    */
   private long indexBufferSize = 128 * 1024 * 1024L;
 
@@ -265,14 +289,14 @@ public class IoTDBConfig {
   /** index directory. */
   private String indexRootFolder = "data" + File.separator + "index";
 
-  /** When a TsFile's file size (in byte) exceed this, the TsFile is forced closed. */
+  /** When a TsFile's file size (in byte) exceed this, the TsFile is forced closed. Unit: byte */
   private long tsFileSizeThreshold = 1L;
 
-  /** When a memTable's size (in byte) exceeds this, the memtable is flushed to disk. */
+  /** When a memTable's size (in byte) exceeds this, the memtable is flushed to disk. Unit: byte */
   private long memtableSizeThreshold = 1024 * 1024 * 1024L;
 
   /** When average series point number reaches this, flush the memtable to disk */
-  private int avgSeriesPointNumberThreshold = 100000;
+  private int avgSeriesPointNumberThreshold = 10000;
 
   /**
    * Work when tsfile_manage_strategy is level_strategy. When merge point number reaches this, merge
@@ -296,6 +320,12 @@ public class IoTDBConfig {
    * files or not.
    */
   private boolean enableUnseqCompaction = true;
+
+  /**
+   * Works when the compaction_strategy is LEVEL_COMPACTION. Whether to start next compaction task
+   * automatically after finish one compaction task
+   */
+  private boolean enableContinuousCompaction = true;
 
   /**
    * Works when the compaction_strategy is LEVEL_COMPACTION. The max seq file num of each level.
@@ -352,18 +382,21 @@ public class IoTDBConfig {
 
   /** Is this IoTDB instance a receiver of sync or not. */
   private boolean isSyncEnable = false;
+
   /** If this IoTDB instance is a receiver of sync, set the server port. */
   private int syncServerPort = 5555;
+
   /**
    * Set the language version when loading file including error information, default value is "EN"
    */
   private String languageVersion = "EN";
 
   private String ipWhiteList = "0.0.0.0/0";
-  /** Examining period of cache file reader : 100 seconds. */
+
+  /** Examining period of cache file reader : 100 seconds. Unit: millisecond */
   private long cacheFileReaderClearPeriod = 100000;
 
-  /** the max executing time of query in ms. */
+  /** the max executing time of query in ms. Unit: millisecond */
   private int queryTimeoutThreshold = 60000;
 
   /** Replace implementation class of JDBC service */
@@ -375,11 +408,12 @@ public class IoTDBConfig {
   /** Is performance tracing enable. */
   private boolean enablePerformanceTracing = false;
 
-  /** The display of stat performance interval in ms. */
+  /** The display of stat performance interval in ms. Unit: millisecond */
   private long performanceStatDisplayInterval = 60000;
 
-  /** The memory used for stat performance. */
+  /** The memory used for stat performance. Unit: kilobyte */
   private int performanceStatMemoryInKB = 20;
+
   /** whether use chunkBufferPool. */
   private boolean chunkBufferPoolEnable = false;
 
@@ -454,7 +488,8 @@ public class IoTDBConfig {
 
   /**
    * If one merge file selection runs for more than this time, it will be ended and its current
-   * selection will be used as final selection. Unit: millis. When < 0, it means time is unbounded.
+   * selection will be used as final selection. When < 0, it means time is unbounded. Unit:
+   * millisecond
    */
   private long mergeFileSelectionTimeBudget = 30 * 1000L;
 
@@ -530,7 +565,7 @@ public class IoTDBConfig {
   private String kerberosKeytabFilePath = "/path";
 
   /** kerberos principal */
-  private String kerberosPrincipal = "principal";
+  private String kerberosPrincipal = "your principal";
 
   /** the num of memtable in each storage group */
   private int concurrentWritingTimePartition = 1;
@@ -539,10 +574,10 @@ public class IoTDBConfig {
   private int defaultFillInterval = -1;
 
   /**
-   * default TTL for storage groups that are not set TTL by statements, in ms
+   * default TTL for storage groups that are not set TTL by statements, in ms.
    *
    * <p>Notice: if this property is changed, previous created storage group which are not set TTL
-   * will also be affected.
+   * will also be affected. Unit: millisecond
    */
   private long defaultTTL = Long.MAX_VALUE;
 
@@ -560,11 +595,11 @@ public class IoTDBConfig {
 
   /**
    * Threshold interval time of MTree modification. If the last modification time is less than this
-   * threshold, MTree snapshot will not be created. Unit: second. Default: 1 hour(3600 seconds)
+   * threshold, MTree snapshot will not be created. Default: 1 hour(3600 seconds) Unit: second
    */
   private int mtreeSnapshotThresholdTime = 3600;
 
-  /** Time range for partitioning data inside each storage group, the unit is second */
+  /** Time range for partitioning data inside each storage group. Unit: second */
   private long partitionInterval = 604800;
 
   /**
@@ -617,14 +652,15 @@ public class IoTDBConfig {
   // time in nanosecond precision when starting up
   private long startUpNanosecond = System.nanoTime();
 
-  private int thriftMaxFrameSize = RpcUtils.THRIFT_FRAME_MAX_SIZE;
+  /** Unit: byte */
+  private int thriftMaxFrameSize = 67108864;
 
   private int thriftDefaultBufferSize = RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY;
 
-  /** time interval in minute for calculating query frequency */
+  /** time interval in minute for calculating query frequency. Unit: minute */
   private int frequencyIntervalInMinute = 1;
 
-  /** time cost(ms) threshold for slow query */
+  /** time cost(ms) threshold for slow query. Unit: millisecond */
   private long slowQueryThreshold = 5000;
 
   /**
@@ -763,6 +799,7 @@ public class IoTDBConfig {
     indexRootFolder = addHomeDir(indexRootFolder);
     extDir = addHomeDir(extDir);
     udfDir = addHomeDir(udfDir);
+    triggerDir = addHomeDir(triggerDir);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
       String hdfsDir = getHdfsDir();
@@ -987,6 +1024,14 @@ public class IoTDBConfig {
     this.udfDir = udfDir;
   }
 
+  public String getTriggerDir() {
+    return triggerDir;
+  }
+
+  public void setTriggerDir(String triggerDir) {
+    this.triggerDir = triggerDir;
+  }
+
   public String getMultiDirStrategyClassName() {
     return multiDirStrategyClassName;
   }
@@ -1025,6 +1070,22 @@ public class IoTDBConfig {
 
   void setConcurrentQueryThread(int concurrentQueryThread) {
     this.concurrentQueryThread = concurrentQueryThread;
+  }
+
+  public int getConcurrentWindowEvaluationThread() {
+    return concurrentWindowEvaluationThread;
+  }
+
+  public void setConcurrentWindowEvaluationThread(int concurrentWindowEvaluationThread) {
+    this.concurrentWindowEvaluationThread = concurrentWindowEvaluationThread;
+  }
+
+  public int getMaxPendingWindowEvaluationTasks() {
+    return maxPendingWindowEvaluationTasks;
+  }
+
+  public void setMaxPendingWindowEvaluationTasks(int maxPendingWindowEvaluationTasks) {
+    this.maxPendingWindowEvaluationTasks = maxPendingWindowEvaluationTasks;
   }
 
   public long getTsFileSizeThreshold() {
@@ -1417,6 +1478,14 @@ public class IoTDBConfig {
 
   public void setEnableUnseqCompaction(boolean enableUnseqCompaction) {
     this.enableUnseqCompaction = enableUnseqCompaction;
+  }
+
+  public boolean isEnableContinuousCompaction() {
+    return enableContinuousCompaction;
+  }
+
+  public void setEnableContinuousCompaction(boolean enableContinuousCompaction) {
+    this.enableContinuousCompaction = enableContinuousCompaction;
   }
 
   public int getSeqFileNumInEachLevel() {
@@ -2052,6 +2121,14 @@ public class IoTDBConfig {
 
   public void setMlogBufferSize(int mlogBufferSize) {
     this.mlogBufferSize = mlogBufferSize;
+  }
+
+  public int getTlogBufferSize() {
+    return tlogBufferSize;
+  }
+
+  public void setTlogBufferSize(int tlogBufferSize) {
+    this.tlogBufferSize = tlogBufferSize;
   }
 
   public boolean isEnableRpcService() {

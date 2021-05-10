@@ -23,7 +23,7 @@ services:
   server-prototype:
     build:
       context: ../../..
-      dockerfile: docker/src/main/Dockerfile
+      dockerfile: docker/src/main/Dockerfile-single
     ports:
       - 6667:6667
     networks:
@@ -37,7 +37,7 @@ services:
   initializer:
     build:
       context: ../../..
-      dockerfile: docker/src/main/Dockerfile
+      dockerfile: docker/src/main/Dockerfile-single
     networks:
       iotdb:
     entrypoint:

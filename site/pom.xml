@@ -23,7 +23,7 @@
     <parent>
         <artifactId>iotdb-parent</artifactId>
         <groupId>org.apache.iotdb</groupId>
-        <version>0.12.0-SNAPSHOT</version>
+        <version>0.13.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -418,6 +418,98 @@
                             </execution>
                         </executions>
                     </plugin>-->
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>compile-site-0.12</id>
+            <build>
+                <plugins>
+                    <!-- download 0.12 docs from iotdb repo -->
+                    <plugin>
+                        <groupId>com.googlecode.maven-download-plugin</groupId>
+                        <artifactId>download-maven-plugin</artifactId>
+                        <version>1.3.0</version>
+                        <executions>
+                            <execution>
+                                <id>get-0.12-docs</id>
+                                <phase>generate-sources</phase>
+                                <goals>
+                                    <goal>wget</goal>
+                                </goals>
+                                <configuration>
+                                    <url>https://github.com/apache/iotdb/archive/rel/0.12.zip</url>
+                                    <outputDirectory>${project.build.directory}/download</outputDirectory>
+                                    <outputFileName>0.12.x.zip</outputFileName>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!-- unpack 0.12 docs from the zip files-->
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>truezip-maven-plugin</artifactId>
+                        <version>1.2</version>
+                        <inherited>false</inherited>
+                        <executions>
+                            <execution>
+                                <id>copy-0.12-documentation</id>
+                                <goals>
+                                    <goal>copy</goal>
+                                </goals>
+                                <phase>generate-sources</phase>
+                                <configuration>
+                                    <fileset>
+                                        <directory>${project.build.directory}/download/0.12.x.zip/iotdb-rel-0.12/docs/UserGuide</directory>
+                                        <outputDirectory>${project.build.directory}/vue-source/src/UserGuide/V0.12.x</outputDirectory>
+                                    </fileset>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>copy-0.12-zh-documentation</id>
+                                <goals>
+                                    <goal>copy</goal>
+                                </goals>
+                                <phase>generate-sources</phase>
+                                <configuration>
+                                    <fileset>
+                                        <directory>${project.build.directory}/download/0.12.x.zip/iotdb-rel-0.12/docs/zh/UserGuide</directory>
+                                        <outputDirectory>${project.build.directory}/vue-source/src/zh/UserGuide/V0.12.x</outputDirectory>
+                                    </fileset>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!-- remove files if `existing` folder exist-->
+                    <plugin>
+                        <groupId>com.coderplus.maven.plugins</groupId>
+                        <artifactId>copy-rename-maven-plugin</artifactId>
+                        <version>1.0</version>
+                        <executions>
+                            <execution>
+                                <id>clean-stale-0.12-doc</id>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>rename</goal>
+                                </goals>
+                                <configuration>
+                                    <sourceFile>${project.build.directory}/existing/UserGuide/V0.12.x</sourceFile>
+                                    <destinationFile>${project.build.directory}/existing/V0.12.x</destinationFile>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>clean-stale-0.12-zh-doc</id>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>rename</goal>
+                                </goals>
+                                <configuration>
+                                    <sourceFile>${project.build.directory}/existing/zh/UserGuide/V0.12.x</sourceFile>
+                                    <destinationFile>${project.build.directory}/existing/zh/V0.12.x</destinationFile>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
                 </plugins>
             </build>
         </profile>

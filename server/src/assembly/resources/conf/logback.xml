@@ -26,14 +26,14 @@
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEERROR">
         <file>${IOTDB_HOME}/logs/log_error.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-error-%d{yyyyMMdd-HH}.%i.log.gz</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/log-error-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
             <maxFileSize>10MB</maxFileSize>
             <maxHistory>168</maxHistory>
             <totalSizeCap>512MB</totalSizeCap>
         </rollingPolicy>
         <append>true</append>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-            <pattern>%d [%t] %-5p %C:%L - %m %n</pattern>
+            <pattern>%d [%t] %-5p %C{25}:%L - %m %n</pattern>
             <charset>utf-8</charset>
         </encoder>
         <filter class="ch.qos.logback.classic.filter.LevelFilter">
@@ -45,14 +45,14 @@
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEWARN">
         <file>${IOTDB_HOME}/logs/log_warn.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-warn-%d{yyyyMMdd-HH}.%i.log.gz</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/log-warn-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
             <maxFileSize>10MB</maxFileSize>
             <maxHistory>168</maxHistory>
             <totalSizeCap>512MB</totalSizeCap>
         </rollingPolicy>
         <append>true</append>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-            <pattern>%d [%t] %-5p %C:%L - %m %n</pattern>
+            <pattern>%d [%t] %-5p %C{25}:%L - %m %n</pattern>
             <charset>utf-8</charset>
         </encoder>
         <filter class="ch.qos.logback.classic.filter.LevelFilter">
@@ -64,14 +64,14 @@
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEINFO">
         <file>${IOTDB_HOME}/logs/log_info.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-info-%d{yyyyMMdd-HH}.%i.log.gz</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/log-info-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
             <maxFileSize>50MB</maxFileSize>
             <maxHistory>168</maxHistory>
             <totalSizeCap>5GB</totalSizeCap>
         </rollingPolicy>
         <append>true</append>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-            <pattern>%d [%t] %-5p %C:%L - %m %n</pattern>
+            <pattern>%d [%t] %-5p %C{25}:%L - %m %n</pattern>
             <charset>utf-8</charset>
         </encoder>
         <filter class="ch.qos.logback.classic.filter.LevelFilter">
@@ -83,14 +83,14 @@
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEDEBUG">
         <file>${IOTDB_HOME}/logs/log_debug.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-debug-%d{yyyyMMdd-HH}.%i.log.gz</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/log-debug-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
             <maxFileSize>50MB</maxFileSize>
             <maxHistory>168</maxHistory>
             <totalSizeCap>5GB</totalSizeCap>
         </rollingPolicy>
         <append>true</append>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-            <pattern>%d [%t] %-5p %C:%L - %m %n</pattern>
+            <pattern>%d [%t] %-5p %C{25}:%L - %m %n</pattern>
             <charset>utf-8</charset>
         </encoder>
         <filter class="ch.qos.logback.classic.filter.LevelFilter">
@@ -102,14 +102,14 @@
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILETRACE">
         <file>${IOTDB_HOME}/logs/log_trace.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-trace-%d{yyyyMMdd-HH}.%i.log.gz</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/log-trace-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
             <maxFileSize>50MB</maxFileSize>
             <maxHistory>168</maxHistory>
             <totalSizeCap>5GB</totalSizeCap>
         </rollingPolicy>
         <append>true</append>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-            <pattern>%d [%t] %-5p %C:%L - %m %n</pattern>
+            <pattern>%d [%t] %-5p %C{25}:%L - %m %n</pattern>
             <charset>utf-8</charset>
         </encoder>
         <filter class="ch.qos.logback.classic.filter.LevelFilter">
@@ -121,7 +121,7 @@
     <appender class="ch.qos.logback.core.ConsoleAppender" name="stdout">
         <Target>System.out</Target>
         <encoder>
-            <pattern>%d [%t] %-5p %C:%L - %m %n</pattern>
+            <pattern>%d [%t] %-5p %C{25}:%L - %m %n</pattern>
             <charset>utf-8</charset>
         </encoder>
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
@@ -132,14 +132,14 @@
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEALL">
         <file>${IOTDB_HOME}/logs/log_all.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-all-%d{yyyyMMdd-HH}.%i.log.gz</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/log-all-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
             <maxFileSize>50MB</maxFileSize>
             <maxHistory>168</maxHistory>
             <totalSizeCap>5GB</totalSizeCap>
         </rollingPolicy>
         <append>true</append>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-            <pattern>%d [%t] %-5p %C:%L - %m %n</pattern>
+            <pattern>%d [%t] %-5p %C{25}:%L - %m %n</pattern>
             <charset>utf-8</charset>
         </encoder>
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
@@ -149,14 +149,14 @@
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILE_COST_MEASURE">
         <file>${IOTDB_HOME}/logs/log_measure.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-measure-%d{yyyyMMdd-HH}.%i.log.gz</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/log-measure-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
             <maxFileSize>10MB</maxFileSize>
             <maxHistory>168</maxHistory>
             <totalSizeCap>512MB</totalSizeCap>
         </rollingPolicy>
         <append>true</append>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-            <pattern>%d [%t] %-5p %C:%L - %m %n</pattern>
+            <pattern>%d [%t] %-5p %C{25}:%L - %m %n</pattern>
             <charset>utf-8</charset>
         </encoder>
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
@@ -166,14 +166,14 @@
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="SYNC">
         <file>${IOTDB_HOME}/logs/log_sync.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-sync-%d{yyyyMMdd-HH}.%i.log.gz</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/log-sync-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
             <maxFileSize>10MB</maxFileSize>
             <maxHistory>168</maxHistory>
             <totalSizeCap>512MB</totalSizeCap>
         </rollingPolicy>
         <append>true</append>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-            <pattern>%d [%t] %-5p %C:%L - %m %n</pattern>
+            <pattern>%d [%t] %-5p %C{25}:%L - %m %n</pattern>
             <charset>utf-8</charset>
         </encoder>
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
@@ -183,14 +183,14 @@
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="AUDIT">
         <file>${IOTDB_HOME}/logs/log_audit.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-audit-%d{yyyyMMdd-HH}.%i.log.gz</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/log-audit-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
             <maxFileSize>10MB</maxFileSize>
             <maxHistory>168</maxHistory>
             <totalSizeCap>512MB</totalSizeCap>
         </rollingPolicy>
         <append>true</append>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-            <pattern>%d [%t] %-5p %C:%L - %m %n</pattern>
+            <pattern>%d [%t] %-5p %C{25}:%L - %m %n</pattern>
             <charset>utf-8</charset>
         </encoder>
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
@@ -200,14 +200,14 @@
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="QUERY_DEBUG">
         <file>${IOTDB_HOME}/logs/log_query_debug.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-query-debug-%d{yyyyMMdd-HH}.%i.log.gz</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/log-query-debug-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
             <maxFileSize>10MB</maxFileSize>
             <maxHistory>168</maxHistory>
             <totalSizeCap>512MB</totalSizeCap>
         </rollingPolicy>
         <append>true</append>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-            <pattern>%d [%t] %-5p %C:%L - %m %n</pattern>
+            <pattern>%d [%t] %-5p %C{25}:%L - %m %n</pattern>
             <charset>utf-8</charset>
         </encoder>
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
@@ -217,14 +217,14 @@
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="SLOW_SQL">
         <file>${IOTDB_HOME}/logs/log_slow_sql.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-slow-sql-%d{yyyyMMdd-HH}.%i.log.gz</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/log-slow-sql-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
             <maxFileSize>10MB</maxFileSize>
             <maxHistory>168</maxHistory>
             <totalSizeCap>512MB</totalSizeCap>
         </rollingPolicy>
         <append>true</append>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-            <pattern>%d [%t] %-5p %C:%L - %m %n</pattern>
+            <pattern>%d [%t] %-5p %C{25}:%L - %m %n</pattern>
             <charset>utf-8</charset>
         </encoder>
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
@@ -234,14 +234,14 @@
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="QUERY_FREQUENCY">
         <file>${IOTDB_HOME}/logs/log_query_frequency.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-query-frequency-%d{yyyyMMdd-HH}.%i.log.gz</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/log-query-frequency-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
             <maxFileSize>10MB</maxFileSize>
             <maxHistory>168</maxHistory>
             <totalSizeCap>512MB</totalSizeCap>
         </rollingPolicy>
         <append>true</append>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-            <pattern>%d [%t] %-5p %C:%L - %m %n</pattern>
+            <pattern>%d [%t] %-5p %C{25}:%L - %m %n</pattern>
             <charset>utf-8</charset>
         </encoder>
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">

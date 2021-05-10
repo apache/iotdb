@@ -246,7 +246,7 @@ TsFile 是以6个字节的magic string (`TsFile`) 作为结束.
 
 #### 1.3.1 IoTDB Data Directory 快速概览工具
 
-该工具的启动脚本会在编译 server 之后生成至 `server\target\iotdb-server-0.10.0\tools\tsfileToolSet` 目录中。
+该工具的启动脚本会在编译 server 之后生成至 `server\target\iotdb-server-0.13.0-SNAPSHOT\tools\tsfileToolSet` 目录中。
 
 使用方式:
 
@@ -265,7 +265,7 @@ For Linux or MacOs:
 在Windows系统中的示例:
 
 ```
-D:\iotdb\server\target\iotdb-server-0.12.0-SNAPSHOT\tools\tsfileToolSet>.\print-iotdb-data-dir.bat D:\\data\data
+D:\iotdb\server\target\iotdb-server-0.13.0-SNAPSHOT\tools\tsfileToolSet>.\print-iotdb-data-dir.bat D:\\data\data
 ｜````````````````````````
 Starting Printing the IoTDB Data Directory Overview
 ​｜````````````````````````
@@ -295,7 +295,7 @@ TsFile data dir num:1
 
 #### 1.3.2 TsFileResource 打印工具
 
-该工具的启动脚本会在编译 server 之后生成至 `server\target\iotdb-server-0.10.0\tools\tsfileToolSet` 目录中。
+该工具的启动脚本会在编译 server 之后生成至 `server\target\iotdb-server-0.13.0-SNAPSHOT\tools\tsfileToolSet` 目录中。
 
 使用方式:
 
@@ -314,7 +314,7 @@ Linux or MacOs:
 在Windows系统中的示例:
 
 ```
-D:\iotdb\server\target\iotdb-server-0.10.0\tools\tsfileToolSet>.\print-tsfile-resource-files.bat D:\data\data\sequence\root.vehicle
+D:\iotdb\server\target\iotdb-server-0.13.0-SNAPSHOT\tools\tsfileToolSet>.\print-tsfile-resource-files.bat D:\data\data\sequence\root.vehicle
 ｜````````````````````````
 Starting Printing the TsFileResources
 ​｜````````````````````````
@@ -326,7 +326,7 @@ analyzing the resource file finished.
 
 #### 1.3.3 TsFile 描述工具
 
-该工具的启动脚本会在编译 server 之后生成至 `server\target\iotdb-server-0.10.0\tools\tsfileToolSet` 目录中。
+该工具的启动脚本会在编译 server 之后生成至 `server\target\iotdb-server-0.13.0-SNAPSHOT\tools\tsfileToolSet` 目录中。
 
 使用方式:
 
@@ -349,7 +349,7 @@ Linux or MacOs:
 在mac系统中的示例:
 
 ```
-/iotdb/server/target/iotdb-server-0.10.0/tools/tsfileToolSet$ ./print-tsfile-sketch.sh test.tsfile
+/iotdb/server/target/iotdb-server-0.13.0-SNAPSHOT/tools/tsfileToolSet$ ./print-tsfile-sketch.sh test.tsfile
 ｜````````````````````````
 Starting Printing the TsFile Sketch
 ｜​````````````````````````

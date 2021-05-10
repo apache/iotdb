@@ -44,6 +44,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.Callable;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -70,6 +71,9 @@ public abstract class TsFileManagement {
   public ModificationFile mergingModification;
 
   private long mergeStartTime;
+
+  /** whether execute merge chunk in this task */
+  protected boolean isMergeExecutedInCurrentTask = false;
 
   protected boolean isForceFullMerge = IoTDBDescriptor.getInstance().getConfig().isForceFullMerge();
 
@@ -129,11 +133,11 @@ public abstract class TsFileManagement {
   /** fork current TsFile list (call this before merge) */
   public abstract void forkCurrentFileList(long timePartition) throws IOException;
 
-  public void readLock() {
+  protected void readLock() {
     compactionMergeLock.readLock().lock();
   }
 
-  public void readUnLock() {
+  protected void readUnLock() {
     compactionMergeLock.readLock().unlock();
   }
 
@@ -151,7 +155,7 @@ public abstract class TsFileManagement {
 
   protected abstract void merge(long timePartition);
 
-  public class CompactionMergeTask implements Runnable {
+  public class CompactionMergeTask implements Callable<Void> {
 
     private CloseCompactionMergeCallBack closeCompactionMergeCallBack;
     private long timePartitionId;
@@ -163,13 +167,14 @@ public abstract class TsFileManagement {
     }
 
     @Override
-    public void run() {
+    public Void call() {
       merge(timePartitionId);
-      closeCompactionMergeCallBack.call();
+      closeCompactionMergeCallBack.call(isMergeExecutedInCurrentTask, timePartitionId);
+      return null;
     }
   }
 
-  public class CompactionRecoverTask implements Runnable {
+  public class CompactionRecoverTask implements Callable<Void> {
 
     private CloseCompactionMergeCallBack closeCompactionMergeCallBack;
 
@@ -178,9 +183,12 @@ public abstract class TsFileManagement {
     }
 
     @Override
-    public void run() {
+    public Void call() {
       recover();
-      closeCompactionMergeCallBack.call();
+      // in recover logic, we do not have to start next compaction task, and in this case the param
+      // time partition is useless, we can just pass 0L
+      closeCompactionMergeCallBack.call(false, 0L);
+      return null;
     }
   }
 
@@ -346,6 +354,9 @@ public abstract class TsFileManagement {
       seqFile.removeModFile();
       if (mergingModification != null) {
         for (Modification modification : mergingModification.getModifications()) {
+          // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
+          // change after compaction
+          modification.setFileOffset(Long.MAX_VALUE);
           seqFile.getModFile().write(modification);
         }
         try {
@@ -379,8 +390,8 @@ public abstract class TsFileManagement {
       List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles, File mergeLog) {
     logger.info("{} a merge task is ending...", storageGroupName);
 
-    if (unseqFiles.isEmpty()) {
-      // merge runtime exception arose, just end this merge
+    if (Thread.currentThread().isInterrupted() || unseqFiles.isEmpty()) {
+      // merge task abort, or merge runtime exception arose, just end this merge
       isUnseqMerging = false;
       logger.info("{} a merge task abnormally ends", storageGroupName);
       return;

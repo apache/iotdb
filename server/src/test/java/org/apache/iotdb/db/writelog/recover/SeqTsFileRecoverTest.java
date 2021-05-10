@@ -48,6 +48,7 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -113,7 +114,7 @@ public class SeqTsFileRecoverTest {
     }
 
     Schema schema = new Schema();
-    Map<String, MeasurementSchema> template = new HashMap<>();
+    Map<String, IMeasurementSchema> template = new HashMap<>();
     for (int i = 0; i < 10; i++) {
       template.put(
           "sensor" + i, new MeasurementSchema("sensor" + i, TSDataType.INT64, TSEncoding.PLAIN));

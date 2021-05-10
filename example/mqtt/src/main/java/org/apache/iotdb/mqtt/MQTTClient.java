@@ -45,6 +45,7 @@ public class MQTTClient {
                   + "}",
               System.currentTimeMillis(), random.nextDouble());
 
+      Thread.sleep(1);
       connection.publish("root.sg.d1.s1", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
     }
 
