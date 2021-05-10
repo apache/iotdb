@@ -17,7 +17,7 @@ import java.util.*;
 
 public class LayoutOptimizeTest {
   private static Session session;
-  private static final String HOST = "127.0.0.1";
+  private static final String HOST = "192.168.130.38";
   private static final String STORAGE_GROUP = "root.sgtest";
   private static final String DEVICE = "root.sgtest.d1";
   private static final String OBJECT_FILE = "test.obj";
@@ -29,13 +29,7 @@ public class LayoutOptimizeTest {
   public static void main(String[] args) throws Exception {
     session = new Session(HOST, 6667, "root", "root");
     session.open(false);
-    try {
-      clearEnvironment();
-    } catch (Exception e) {
-    }
-    setUpEnvironment();
-    loadQueries();
-    performQueries();
+    performDiskSeek();
     session.close();
   }
 
@@ -239,5 +233,9 @@ public class LayoutOptimizeTest {
 
   public static void performOptimize() throws Exception {
     session.myTest();
+  }
+
+  public static void performDiskSeek() throws Exception {
+    session.evaluateDisk();
   }
 }

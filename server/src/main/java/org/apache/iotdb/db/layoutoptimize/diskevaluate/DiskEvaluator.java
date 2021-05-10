@@ -209,11 +209,16 @@ public class DiskEvaluator {
     try {
       File[] files = InputFactory.Instance().getFiles(dataPath);
 
+      int oneTenthIntervals = numIntervals / 10;
       for (int j = 1; j <= numIntervals; ++j) {
+        if (j % oneTenthIntervals == 0 || j == 1) {
+          logger.info("seeking for {} interval, {} intervals in total", j, numIntervals);
+        }
         long seekDistance = seekDistInterval * j;
 
         // drop caches before seeks.
         CmdExecutor.builder(sudoPassword)
+            .verbose(false)
             .errRedirect(false)
             .sudoCmd("echo 3 | sudo tee /proc/sys/vm/drop_caches")
             .exec();
