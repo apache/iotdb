@@ -16,7 +16,7 @@ public class DiskEvaluator {
   private static final DiskEvaluator INSTANCE = new DiskEvaluator();
   private static final Logger logger = LoggerFactory.getLogger(DiskEvaluator.class);
   private final String sudoPassword = "601tif";
-  public int GENERATE_FILE_NUM = 20;
+  public int GENERATE_FILE_NUM = 1;
   public long GENERATE_FILE_SIZE = 8l * 1024l * 1024l * 1024l; // 8 GB
   public long SEEK_INTERVAL = 1024;
   public int SEEK_NUM = 5000;
@@ -68,8 +68,8 @@ public class DiskEvaluator {
       os.flush();
       os.close();
       long endTime = System.nanoTime();
-      double lastTime = ((double) (endTime - startTime)) / 1000 / 1000;
-      double writeSpeed = ((double) fileSize) / lastTime / 1024;
+      double lastTime = ((double) (endTime - startTime)) / 1000 / 1000 / 1000;
+      double writeSpeed = ((double) fileSize) / lastTime / 1024 / 1024;
       System.out.println(
           String.format("Write %d KB in %.2f s, %.2f MB/s", fileSize / 1024, lastTime, writeSpeed));
     }
