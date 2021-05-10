@@ -1838,10 +1838,9 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   }
 
   /**
-   * parse time unit or sliding step in group by query. If 'mo' is used, then other units can not be
-   * used together, like '1mo1d'.
+   * parse time unit or sliding step in group by query.
    *
-   * @param durationStr represent duration string like: 12d8m9ns, 1y1mo, etc.
+   * @param durationStr represent duration string like: 12d8m9ns, 1y1d, etc.
    * @return time in milliseconds, microseconds, or nanoseconds depending on the profile
    */
   private long parseTimeUnitOrSlidingStep(
