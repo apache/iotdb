@@ -107,6 +107,33 @@ statement
     fromClause
     whereClause?
     specialClause? #selectStatement
+    | CREATE CONTINUOUS QUERY continuousQueryName=ID
+      resampleClause?
+      BEGIN
+      cqSelectIntoClause
+      END  # createContinuousQueryStatement
+    | DROP CONTINUOUS QUERY continuousQueryName=ID# dropContinuousQueryStatement
+    | SHOW CONTINUOUS QUERIES # showContinuousQueriesStatement
+    ;
+
+
+resampleClause
+    : RESAMPLE (EVERY DURATION)? (FOR DURATION)?;
+
+cqSelectIntoClause
+    : SELECT selectElements
+    INTO (fullPath | suffixPath)
+    fromClause
+    whereClause?
+    cqGroupByTimeClause
+    ;
+
+
+cqGroupByTimeClause
+    : GROUP BY TIME LR_BRACKET
+      DURATION
+      RR_BRACKET
+      (COMMA LEVEL OPERATOR_EQ INT)?
     ;
 
 selectElements
@@ -659,6 +686,11 @@ nodeNameWithoutStar
     | PARTITION
     | DESC
     | ASC
+    | CONTINUOUS
+    | BEGIN
+    | END
+    | RESAMPLE
+    | EVERY
     ;
 
 dataType
@@ -1304,6 +1336,31 @@ EXPLAIN
     : E X P L A I N
     ;
 
+
+CONTINUOUS
+    : C O N T I N U O U S
+    ;
+
+QUERIES
+    : Q U E R I E S
+    ;
+
+BEGIN
+    : B E G I N
+    ;
+
+END
+    : E N D
+    ;
+
+RESAMPLE
+    : R E S A M P L E
+    ;
+
+EVERY
+    : E V E R Y
+    ;
+
 DEBUG
     : D E B U G
     ;
@@ -1414,6 +1471,8 @@ NAME_CHAR
     |   '%'
     |   '&'
     |   '+'
+    |   '{'
+    |   '}'
     |   CN_CHAR
     ;
 
@@ -1430,6 +1489,8 @@ FIRST_NAME_CHAR
     |   '%'
     |   '&'
     |   '+'
+    |   '{'
+    |   '}'
     |   CN_CHAR
     ;
 

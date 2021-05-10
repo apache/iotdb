@@ -33,6 +33,8 @@ import org.apache.iotdb.db.qp.logical.crud.DeleteDataOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.InsertOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
+import org.apache.iotdb.db.qp.logical.sys.CreateContinuousQueryOperator;
+import org.apache.iotdb.db.qp.logical.sys.DropContinuousQueryOperator;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.CountOperator;
@@ -83,6 +85,9 @@ import org.apache.iotdb.db.qp.physical.crud.QueryIndexPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowContinuousQueriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.ClearCachePlan;
@@ -415,6 +420,21 @@ public class PhysicalGenerator {
         return new StartTriggerPlan(((StartTriggerOperator) operator).getTriggerName());
       case STOP_TRIGGER:
         return new StopTriggerPlan(((StopTriggerOperator) operator).getTriggerName());
+      case CREATE_CONTINUOUS_QUERY:
+        CreateContinuousQueryOperator createContinuousQueryOperator =
+            (CreateContinuousQueryOperator) operator;
+        return new CreateContinuousQueryPlan(
+            createContinuousQueryOperator.getQuerySql(),
+            createContinuousQueryOperator.getContinuousQueryName(),
+            createContinuousQueryOperator.getTargetPath(),
+            createContinuousQueryOperator.getEveryInterval(),
+            createContinuousQueryOperator.getForInterval(),
+            createContinuousQueryOperator.getQueryOperator());
+      case DROP_CONTINUOUS_QUERY:
+        return new DropContinuousQueryPlan(
+            ((DropContinuousQueryOperator) operator).getContinuousQueryName());
+      case SHOW_CONTINUOUS_QUERIES:
+        return new ShowContinuousQueriesPlan();
       default:
         throw new LogicalOperatorException(operator.getType().toString(), "");
     }

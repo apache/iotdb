@@ -202,6 +202,12 @@ public class MLogParser {
           case MNODE:
             mLogTxtWriter.serializeMNode((MNodePlan) plan);
             break;
+          case CREATE_CONTINUOUS_QUERY:
+            mLogTxtWriter.createContinuousQuery((CreateContinuousQueryPlan) plan);
+            break;
+          case DROP_CONTINUOUS_QUERY:
+            mLogTxtWriter.dropContinuousQuery((DropContinuousQueryPlan) plan);
+            break;
           default:
             logger.warn("unknown plan {}", plan);
         }

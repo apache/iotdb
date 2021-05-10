@@ -204,7 +204,7 @@ public class MetaGroupMemberTest extends BaseMember {
               planExecutor.processNonQuery(plan);
               return StatusUtils.OK;
             } catch (QueryProcessException
-                | StorageGroupNotSetException
+                | MetadataException
                 | StorageEngineException e) {
               return StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, e.getMessage());
             }
@@ -453,9 +453,8 @@ public class MetaGroupMemberTest extends BaseMember {
                               resultHandler.onComplete(StatusUtils.OK);
                             } catch (IOException
                                 | QueryProcessException
-                                | StorageGroupNotSetException
-                                | StorageEngineException
-                                | IllegalPathException e) {
+                                | MetadataException
+                                | StorageEngineException e) {
                               resultHandler.onError(e);
                             }
                           })
@@ -532,8 +531,7 @@ public class MetaGroupMemberTest extends BaseMember {
 
   @Test
   public void testClosePartition()
-      throws QueryProcessException, StorageEngineException, StorageGroupNotSetException,
-          IllegalPathException {
+      throws QueryProcessException, StorageEngineException, MetadataException {
     System.out.println("Start testClosePartition()");
     // the operation is accepted
     dummyResponse.set(Response.RESPONSE_AGREE);
@@ -847,7 +845,7 @@ public class MetaGroupMemberTest extends BaseMember {
   @Test
   public void testGetReaderByTimestamp()
       throws QueryProcessException, StorageEngineException, IOException,
-          StorageGroupNotSetException, IllegalPathException {
+          MetadataException {
     System.out.println("Start testGetReaderByTimestamp()");
     RaftServer.setReadOperationTimeoutMS(10000);
     mockDataClusterServer = true;
@@ -908,7 +906,7 @@ public class MetaGroupMemberTest extends BaseMember {
   @Test
   public void testGetReader()
       throws QueryProcessException, StorageEngineException, IOException,
-          StorageGroupNotSetException, IllegalPathException, EmptyIntervalException {
+          MetadataException, EmptyIntervalException {
     System.out.println("Start testGetReader()");
     mockDataClusterServer = true;
     InsertRowPlan insertPlan = new InsertRowPlan();

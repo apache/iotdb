@@ -59,7 +59,8 @@ public interface IPlanExecutor {
    * @param plan Physical Non-Query Plan
    */
   boolean processNonQuery(PhysicalPlan plan)
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException;
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException,
+          MetadataException;
 
   /**
    * execute update command and return whether the operator is successful.
