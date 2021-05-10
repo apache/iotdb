@@ -47,13 +47,19 @@ IoTDB > insert into root.ln.wf02.wt02(timestamp,hardware) values(1, "v1")
 INSERT语句还可以支持在同一个时间点下多列数据的插入，同时向2时间点插入上述两个时间序列的值，多列数据插入示例代码如下：
 
 ```
-IoTDB > insert into root.ln.wf02.wt02(timestamp, status, hardware) VALUES (2, false, 'v2')
+IoTDB > insert into root.ln.wf02.wt02(timestamp, status, hardware) values (2, false, 'v2')
+```
+
+此外，INSERT语句支持一次性插入多行数据，同时向2个不同时间点插入上述时间序列的值，示例代码如下：
+
+```
+IoTDB > insert into root.ln.wf02.wt02(timestamp, status, hardware) VALUES (3, false, 'v3'),(4, true, 'v4')
 ```
 
 插入数据后我们可以使用SELECT语句简单查询已插入的数据。
 
 ```
-IoTDB > select * from root.ln.wf02 where time < 3
+IoTDB > select * from root.ln.wf02 where time < 5
 ```
 
 结果如图所示。由查询结果可以看出，单列、多列数据的插入操作正确执行。
@@ -64,9 +70,18 @@ IoTDB > select * from root.ln.wf02 where time < 3
 +-----------------------------+--------------------------+------------------------+
 |1970-01-01T08:00:00.001+08:00|                        v1|                    true|
 |1970-01-01T08:00:00.002+08:00|                        v2|                   false|
+|1970-01-01T08:00:00.003+08:00|                        v3|                   false|
+|1970-01-01T08:00:00.004+08:00|                        v4|                    true|
 +-----------------------------+--------------------------+------------------------+
-Total line number = 2
+Total line number = 4
 It costs 0.170s
+```
+
+对于**对齐**时间序列而言，可以通过括号来**显式地**同时向序列中所有传感器插入值。其中，空值可以用 `NULL` 或者 `null` 占用：
+
+```
+IoTDB > insert into root.sg.d1(timestamp,(s1,s2),(s3,s4)) values (1509466680000,(1.0,2),(null,4))
+IoTDB > insert into root.sg.d1(timestamp,(s1,s2)) values (1509466680001,(NULL,1))
 ```
 
 ### 数据查询
@@ -1355,7 +1370,7 @@ It costs 0.014s
 
  * 自定义序列生成函数
 
-请参考 [UDF (用户定义函数)](../UDF/UDF-User-Defined-Function.md)。
+请参考 [UDF (用户定义函数)](../Advanced-Features/UDF-User-Defined-Function.md)。
 
 #### 错误处理
 

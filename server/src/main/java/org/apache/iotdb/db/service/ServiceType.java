@@ -43,6 +43,7 @@ public enum ServiceType {
   UDF_CLASSLOADER_MANAGER_SERVICE("UDF Classloader Manager Service", ""),
   UDF_REGISTRATION_SERVICE("UDF Registration Service", ""),
   TEMPORARY_QUERY_DATA_FILE_SERVICE("Temporary Query Data File Service", ""),
+  TRIGGER_REGISTRATION_SERVICE("Trigger Registration Service", ""),
   CACHE_HIT_RATIO_DISPLAY_SERVICE(
       "CACHE_HIT_RATIO_DISPLAY_SERVICE",
       generateJmxName(IoTDBConstant.IOTDB_PACKAGE, "Cache Hit Ratio")),
@@ -50,7 +51,8 @@ public enum ServiceType {
 
   FLUSH_SERVICE(
       "Flush ServerService", generateJmxName("org.apache.iotdb.db.engine.pool", "Flush Manager")),
-  CLUSTER_MONITOR_SERVICE("Cluster Monitor ServerService", "Cluster Monitor");
+  CLUSTER_MONITOR_SERVICE("Cluster Monitor ServerService", "Cluster Monitor"),
+  SYSTEMINFO_SERVICE("MemTable Monitor Service", "MemTable, Monitor");
 
   private final String name;
   private final String jmxName;

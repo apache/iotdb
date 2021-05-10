@@ -114,26 +114,38 @@ public class CatchUpTask implements Runnable {
 
     int index = findLastMatchIndex(logs);
     if (index == -1) {
-      logger.info("Cannot find matched of {} within [{}, {}] in memory", node, lo, hi);
-      if (judgeUseLogsInDiskToCatchUp()) {
-        long startIndex = peer.getMatchIndex() + 1;
-        long endIndex = raftMember.getLogManager().getCommitLogIndex();
-        List<Log> logsInDisk = getLogsInStableEntryManager(startIndex, endIndex);
-        if (!logsInDisk.isEmpty()) {
-          logger.info(
-              "{}, found {} logs in disk to catch up {} , startIndex={}, endIndex={}, memoryFirstIndex={}, getFirstLogIndex={}",
-              name,
-              logsInDisk.size(),
-              node,
-              startIndex,
-              endIndex,
-              localFirstIndex,
-              logsInDisk.get(0).getCurrLogIndex());
-          logs = logsInDisk;
-          return true;
-        }
+      logger.info("{}, Cannot find matched of {} within [{}, {}] in memory", name, node, lo, hi);
+      if (!judgeUseLogsInDiskToCatchUp()) {
+        return false;
       }
-      return false;
+      long startIndex = peer.getMatchIndex() + 1;
+      long endIndex = raftMember.getLogManager().getCommitLogIndex();
+      List<Log> logsInDisk = getLogsInStableEntryManager(startIndex, endIndex);
+      if (!logsInDisk.isEmpty()) {
+        logger.info(
+            "{}, found {} logs in disk to catch up {} , startIndex={}, endIndex={}, memoryFirstIndex={}, getFirstLogIndex={}",
+            name,
+            logsInDisk.size(),
+            node,
+            startIndex,
+            endIndex,
+            localFirstIndex,
+            logsInDisk.get(0).getCurrLogIndex());
+        logs = logsInDisk;
+        index = findLastMatchIndex(logs);
+        // the follower's matchIndex may have been updated
+        if (index == -1) {
+          return false;
+        }
+      } else {
+        logger.info(
+            "{}, Cannot find matched of {} within [{}, {}] in disk",
+            name,
+            node,
+            startIndex,
+            endIndex);
+        return false;
+      }
     }
     long newMatchedIndex = logs.get(index).getCurrLogIndex() - 1;
     if (newMatchedIndex > lastLogIndex) {

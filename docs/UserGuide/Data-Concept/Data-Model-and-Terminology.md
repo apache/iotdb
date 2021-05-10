@@ -101,6 +101,29 @@ For example, if device1 of the vehicle type has a sensor named sensor1, its time
 
 > Note: The layer of timeseries paths supported by the current IoTDB must be greater than or equal to four (it will be changed to two in the future).
 
+
+* Aligned timeseries (From v0.13)
+
+When a group of sensors detects data at the same time, multiple timeseries with the same timestamp will be produced, which are called **aligned timeseries** in IoTDB (and are also called **multivariate timeseries** academically. It contains multiple unary timeseries as components, and the sampling time of each unary timeseries is the same.)
+
+Aligned timeseries can be created, inserted values, and deleted at the same time. However, when querying, each sensor can be queried separately.
+
+By using aligned timeseries, the timestamp column could be stored only once in memory and disk when inserting data, instead of stored as many times as the number of timeseries:
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/114125919-f4850800-9929-11eb-8211-81d4c04af1ec.png">
+
+In the following chapters of data definition language, data operation language and Java Native Interface, various operations related to aligned timeseries will be introduced one by one.
+
+
+* Device template (From v0.13)
+
+In the actual scenario, there are many devices with the same model, that is, they have the same working condition name and type. To save system resources, you can declare a **device template** for the same type of device, mount it to any node in the path.
+
+Currently you can only set one **device template** on a specific path. Device will use it's own device template or nearest ancestor's device template.
+
+In the following chapters of data definition language, data operation language and Java Native Interface, various operations related to device template will be introduced one by one.
+
+
 * Prefix Path
 
 The prefix path refers to the path where the prefix of a timeseries path is located. A prefix path contains all timeseries paths prefixed by the path. For example, suppose that we have three sensors: `root.vehicle.device1.sensor1`, `root.vehicle.device1.sensor2`, `root.vehicle.device2.sensor1`, the prefix path `root.vehicle.device1` contains two timeseries paths `root.vehicle.device1.sensor1` and `root.vehicle.device1.sensor2` while `root.vehicle.device2.sensor1` is excluded.
@@ -237,4 +260,3 @@ Relative time refers to the time relative to the server time ```now()``` and ```
   now() - 1w //1 week earlier than the current server time
   ```
   > Note：There must be spaces on the left and right of '+' and '-'.
-

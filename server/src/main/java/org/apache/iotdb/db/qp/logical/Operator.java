@@ -74,19 +74,10 @@ public abstract class Operator {
   /** If you want to add new OperatorType, you must add it in the last. */
   public enum OperatorType {
     SFW,
-    JOIN,
-    UNION,
     FILTER,
     GROUPBYTIME,
-    ORDERBY,
-    LIMIT,
     SELECT,
-    SEQTABLESCAN,
-    HASHTABLESCAN,
-    MERGEJOIN,
-    FILEREAD,
     NULL,
-    TABLESCAN,
     INSERT,
     INSERTSINGLEPOINT,
     BATCHINSERT,
@@ -94,7 +85,6 @@ public abstract class Operator {
     BASIC_FUNC,
     IN,
     QUERY,
-    MERGEQUERY,
     AGGREGATION,
     AUTHOR,
     FROM,
@@ -146,7 +136,9 @@ public abstract class Operator {
     UDTF,
     CREATE_FUNCTION,
     DROP_FUNCTION,
+    CREATE_ALIGNED_TIMESERIES,
     CREATE_MULTI_TIMESERIES,
+    AUTO_CREATE_DEVICE_MNODE,
     CREATE_INDEX,
     DROP_INDEX,
     QUERY_INDEX,
@@ -162,6 +154,9 @@ public abstract class Operator {
     CREATE_TRIGGER,
     DROP_TRIGGER,
     START_TRIGGER,
-    STOP_TRIGGER
+    STOP_TRIGGER,
+    CREATE_TEMPLATE,
+    SET_DEVICE_TEMPLATE,
+    SET_USING_DEVICE_TEMPLATE,
   }
 }

@@ -49,7 +49,7 @@ public class ClusterFillExecutorTest extends BaseQueryTest {
   public void testPreviousFill()
       throws QueryProcessException, StorageEngineException, IOException, IllegalPathException {
     FillQueryPlan plan = new FillQueryPlan();
-    plan.setDeduplicatedPaths(
+    plan.setDeduplicatedPathsAndUpdate(
         Collections.singletonList(new PartialPath(TestUtils.getTestSeries(0, 10))));
     plan.setDeduplicatedDataTypes(Collections.singletonList(TSDataType.DOUBLE));
     plan.setPaths(plan.getDeduplicatedPaths());
@@ -95,7 +95,7 @@ public class ClusterFillExecutorTest extends BaseQueryTest {
   public void testLinearFill()
       throws QueryProcessException, StorageEngineException, IOException, IllegalPathException {
     FillQueryPlan plan = new FillQueryPlan();
-    plan.setDeduplicatedPaths(
+    plan.setDeduplicatedPathsAndUpdate(
         Collections.singletonList(new PartialPath(TestUtils.getTestSeries(0, 10))));
     plan.setDeduplicatedDataTypes(Collections.singletonList(TSDataType.DOUBLE));
     plan.setPaths(plan.getDeduplicatedPaths());

@@ -30,6 +30,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -164,6 +165,10 @@ public class MergeFileTask {
 
     seqFile.writeLock();
     try {
+      if (Thread.currentThread().isInterrupted()) {
+        return;
+      }
+
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
 
       resource.removeFileReader(seqFile);
@@ -227,7 +232,7 @@ public class MergeFileTask {
     for (Entry<String, List<ChunkMetadata>> deviceChunkMetadataListEntry :
         deviceChunkMetadataListMap.entrySet()) {
       String device = deviceChunkMetadataListEntry.getKey();
-      for (ChunkMetadata chunkMetadata : deviceChunkMetadataListEntry.getValue()) {
+      for (IChunkMetadata chunkMetadata : deviceChunkMetadataListEntry.getValue()) {
         resource.updateStartTime(seqFile, device, chunkMetadata.getStartTime());
         resource.updateEndTime(seqFile, device, chunkMetadata.getEndTime());
       }
@@ -338,16 +343,20 @@ public class MergeFileTask {
     }
     updateStartTimeAndEndTime(seqFile, fileWriter);
     resource.removeFileReader(seqFile);
-    FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
     fileWriter.endFile();
 
     updatePlanIndexes(seqFile);
-    mergeLogger.logFileMergeEnd();
-    logger.debug("{} moved unmerged chunks of {} to the new file", taskName, seqFile);
 
     seqFile.writeLock();
     try {
+      if (Thread.currentThread().isInterrupted()) {
+        return;
+      }
+
       seqFile.serialize();
+      mergeLogger.logFileMergeEnd();
+      logger.debug("{} moved unmerged chunks of {} to the new file", taskName, seqFile);
+      FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
 
       // change tsFile name
       seqFile.getTsFile().delete();

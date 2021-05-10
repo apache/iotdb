@@ -43,6 +43,7 @@ import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
@@ -144,7 +145,7 @@ public class TsFileRewriteTool implements AutoCloseable {
     List<List<ByteBuffer>> pageDataInChunkGroup = new ArrayList<>();
     List<List<Boolean>> needToDecodeInfoInChunkGroup = new ArrayList<>();
     byte marker;
-    List<MeasurementSchema> measurementSchemaList = new ArrayList<>();
+    List<IMeasurementSchema> measurementSchemaList = new ArrayList<>();
     String lastChunkGroupDeviceId = null;
     try {
       while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
@@ -270,17 +271,16 @@ public class TsFileRewriteTool implements AutoCloseable {
   }
 
   /**
-   * Due to TsFile version-3 changed the serialize way of integer in TEXT data and INT32 data with
-   * PLAIN encoding, and also add a sum statistic for BOOLEAN data, these types of data need to
-   * decode to points and rewrite in new TsFile.
+   * If the page have no statistics or crosses multi partitions, will return true, otherwise return
+   * false.
    */
   protected boolean checkIfNeedToDecode(
       TSDataType dataType, TSEncoding encoding, PageHeader pageHeader) {
-    return dataType == TSDataType.BOOLEAN
-        || dataType == TSDataType.TEXT
-        || (dataType == TSDataType.INT32 && encoding == TSEncoding.PLAIN)
-        || StorageEngine.getTimePartition(pageHeader.getStartTime())
-            != StorageEngine.getTimePartition(pageHeader.getEndTime());
+    if (pageHeader.getStatistics() == null) {
+      return true;
+    }
+    return StorageEngine.getTimePartition(pageHeader.getStartTime())
+        != StorageEngine.getTimePartition(pageHeader.getEndTime());
   }
 
   /**
@@ -290,14 +290,14 @@ public class TsFileRewriteTool implements AutoCloseable {
    */
   protected void rewrite(
       String deviceId,
-      List<MeasurementSchema> schemas,
+      List<IMeasurementSchema> schemas,
       List<List<PageHeader>> pageHeadersInChunkGroup,
       List<List<ByteBuffer>> dataInChunkGroup,
       List<List<Boolean>> needToDecodeInfoInChunkGroup)
       throws IOException, PageException {
-    Map<Long, Map<MeasurementSchema, ChunkWriterImpl>> chunkWritersInChunkGroup = new HashMap<>();
+    Map<Long, Map<IMeasurementSchema, ChunkWriterImpl>> chunkWritersInChunkGroup = new HashMap<>();
     for (int i = 0; i < schemas.size(); i++) {
-      MeasurementSchema schema = schemas.get(i);
+      IMeasurementSchema schema = schemas.get(i);
       List<ByteBuffer> pageDataInChunk = dataInChunkGroup.get(i);
       List<PageHeader> pageHeadersInChunk = pageHeadersInChunkGroup.get(i);
       List<Boolean> needToDecodeInfoInChunk = needToDecodeInfoInChunkGroup.get(i);
@@ -317,7 +317,7 @@ public class TsFileRewriteTool implements AutoCloseable {
       }
     }
 
-    for (Entry<Long, Map<MeasurementSchema, ChunkWriterImpl>> entry :
+    for (Entry<Long, Map<IMeasurementSchema, ChunkWriterImpl>> entry :
         chunkWritersInChunkGroup.entrySet()) {
       long partitionId = entry.getKey();
       TsFileIOWriter tsFileIOWriter = partitionWriterMap.get(partitionId);
@@ -369,15 +369,15 @@ public class TsFileRewriteTool implements AutoCloseable {
   }
 
   protected void writePageInToFile(
-      MeasurementSchema schema,
+      IMeasurementSchema schema,
       PageHeader pageHeader,
       ByteBuffer pageData,
-      Map<Long, Map<MeasurementSchema, ChunkWriterImpl>> chunkWritersInChunkGroup,
+      Map<Long, Map<IMeasurementSchema, ChunkWriterImpl>> chunkWritersInChunkGroup,
       boolean isOnlyOnePageChunk)
       throws PageException {
     long partitionId = StorageEngine.getTimePartition(pageHeader.getStartTime());
     getOrDefaultTsFileIOWriter(oldTsFile, partitionId);
-    Map<MeasurementSchema, ChunkWriterImpl> chunkWriters =
+    Map<IMeasurementSchema, ChunkWriterImpl> chunkWriters =
         chunkWritersInChunkGroup.getOrDefault(partitionId, new HashMap<>());
     ChunkWriterImpl chunkWriter = chunkWriters.getOrDefault(schema, new ChunkWriterImpl(schema));
     chunkWriter.writePageHeaderAndDataIntoBuff(pageData, pageHeader, isOnlyOnePageChunk);
@@ -386,9 +386,9 @@ public class TsFileRewriteTool implements AutoCloseable {
   }
 
   protected void decodeAndWritePageInToFiles(
-      MeasurementSchema schema,
+      IMeasurementSchema schema,
       ByteBuffer pageData,
-      Map<Long, Map<MeasurementSchema, ChunkWriterImpl>> chunkWritersInChunkGroup)
+      Map<Long, Map<IMeasurementSchema, ChunkWriterImpl>> chunkWritersInChunkGroup)
       throws IOException {
     valueDecoder.reset();
     PageReader pageReader =
@@ -399,35 +399,35 @@ public class TsFileRewriteTool implements AutoCloseable {
 
   protected void rewritePageIntoFiles(
       BatchData batchData,
-      MeasurementSchema schema,
-      Map<Long, Map<MeasurementSchema, ChunkWriterImpl>> chunkWritersInChunkGroup) {
+      IMeasurementSchema schema,
+      Map<Long, Map<IMeasurementSchema, ChunkWriterImpl>> chunkWritersInChunkGroup) {
     while (batchData.hasCurrent()) {
       long time = batchData.currentTime();
       Object value = batchData.currentValue();
       long partitionId = StorageEngine.getTimePartition(time);
 
-      Map<MeasurementSchema, ChunkWriterImpl> chunkWriters =
+      Map<IMeasurementSchema, ChunkWriterImpl> chunkWriters =
           chunkWritersInChunkGroup.getOrDefault(partitionId, new HashMap<>());
       ChunkWriterImpl chunkWriter = chunkWriters.getOrDefault(schema, new ChunkWriterImpl(schema));
       getOrDefaultTsFileIOWriter(oldTsFile, partitionId);
       switch (schema.getType()) {
         case INT32:
-          chunkWriter.write(time, (int) value);
+          chunkWriter.write(time, (int) value, false);
           break;
         case INT64:
-          chunkWriter.write(time, (long) value);
+          chunkWriter.write(time, (long) value, false);
           break;
         case FLOAT:
-          chunkWriter.write(time, (float) value);
+          chunkWriter.write(time, (float) value, false);
           break;
         case DOUBLE:
-          chunkWriter.write(time, (double) value);
+          chunkWriter.write(time, (double) value, false);
           break;
         case BOOLEAN:
-          chunkWriter.write(time, (boolean) value);
+          chunkWriter.write(time, (boolean) value, false);
           break;
         case TEXT:
-          chunkWriter.write(time, (Binary) value);
+          chunkWriter.write(time, (Binary) value, false);
           break;
         default:
           throw new UnSupportedDataTypeException(

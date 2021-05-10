@@ -26,10 +26,8 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertSinglePointPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.IOException;
 import java.util.List;
@@ -47,12 +45,7 @@ public interface IMemTable {
 
   Map<String, Map<String, IWritableMemChunk>> getMemTableMap();
 
-  void write(
-      String deviceId,
-      String measurement,
-      MeasurementSchema schema,
-      long insertTime,
-      Object objectValue);
+  void write(String deviceId, IMeasurementSchema schema, long insertTime, Object objectValue);
 
   void write(InsertTabletPlan insertTabletPlan, int start, int end);
 
@@ -90,9 +83,7 @@ public interface IMemTable {
   ReadOnlyMemChunk query(
       String deviceId,
       String measurement,
-      TSDataType dataType,
-      TSEncoding encoding,
-      Map<String, String> props,
+      IMeasurementSchema schema,
       long timeLowerBound,
       List<TimeRange> deletionList)
       throws IOException, QueryProcessException, MetadataException;
@@ -121,6 +112,10 @@ public interface IMemTable {
   IMemTable copy();
 
   boolean isSignalMemTable();
+
+  void setShouldFlush();
+
+  boolean shouldFlush();
 
   void release();
 
