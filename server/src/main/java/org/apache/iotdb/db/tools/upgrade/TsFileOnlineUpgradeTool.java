@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.tools.upgrade;
 
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -235,6 +236,21 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
   public String upgradeTsFileName(String oldTsFileName) {
     String[] name = oldTsFileName.split(TsFileConstant.TSFILE_SUFFIX);
     return name[0] + "-0" + TsFileConstant.TSFILE_SUFFIX;
+  }
+
+  /**
+   * Due to TsFile version-3 changed the serialize way of integer in TEXT data and INT32 data with
+   * PLAIN encoding, and also add a sum statistic for BOOLEAN data, these types of data need to
+   * decode to points and rewrite in new TsFile.
+   */
+  @Override
+  protected boolean checkIfNeedToDecode(
+      TSDataType dataType, TSEncoding encoding, PageHeader pageHeader) {
+    return dataType == TSDataType.BOOLEAN
+        || dataType == TSDataType.TEXT
+        || (dataType == TSDataType.INT32 && encoding == TSEncoding.PLAIN)
+        || StorageEngine.getTimePartition(pageHeader.getStartTime())
+            != StorageEngine.getTimePartition(pageHeader.getEndTime());
   }
 
   @Override
