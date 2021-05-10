@@ -2174,6 +2174,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     } catch (IOException e) {
       e.printStackTrace();
     }
-    return null;
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "success");
   }
 }
