@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-    
+
         http://www.apache.org/licenses/LICENSE-2.0
-    
+
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -38,7 +38,7 @@
 * org.apache.iotdb.db.engine.StorageEngine
 
 	负责一个 IoTDB 实例的写入和访问，管理所有的 StorageGroupProsessor。
-	
+
 * org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor
 
 	负责一个存储组一个时间分区内的数据写入和访问。管理所有分区的TsFileProcessor。
