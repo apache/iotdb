@@ -103,71 +103,35 @@ statement
     | START TRIGGER triggerName=ID #startTrigger
     | STOP TRIGGER triggerName=ID #stopTrigger
     | SHOW TRIGGERS #showTriggers
-    | SELECT topClause? selectElements
-    fromClause
-    whereClause?
-    specialClause? #selectStatement
+    | selectClause fromClause whereClause? specialClause? #selectStatement
     ;
 
-selectElements
-    : aggregationCall (COMMA aggregationCall)* #aggregationElement
-    | tableCall (COMMA tableCall)* #tableElement
-    | lastClause #lastElement
-    | asClause (COMMA asClause)* #asElement
-    | functionAsClause (COMMA functionAsClause)* #functionAsElement
-    ;
+selectClause
+   : SELECT (LAST | topClause)? complexOperationAsClause (COMMA complexOperationAsClause)*
+   ;
 
-aggregationCall
-    : builtInFunctionCall
-    | udfCall
-    ;
+complexOperationAsClause
+   : complexOperationClause (AS ID)?
+   ;
 
-tableCall
-    : suffixPath
-    | udfCall
-    | SINGLE_QUOTE_STRING_LITERAL
-    ;
+complexOperationClause
+   : realLiteral
+   | suffixPath
+   | functionClause
+   | '(' complexOperationClause ')'
+   | ('+' | '-') complexOperationClause
+   | complexOperationClause ('*' | '/' | '%') complexOperationClause
+   | complexOperationClause ('+' | '-') complexOperationClause
+   ;
 
-udfCall
-    : udfName=ID LR_BRACKET udfSuffixPaths udfAttribute* RR_BRACKET
-    ;
+functionClause
+   : functionName=ID LR_BRACKET complexOperationClause (COMMA complexOperationClause)*
+     functionAttribute* RR_BRACKET
+   ;
 
-udfSuffixPaths
-    : suffixPath (COMMA suffixPath)*
-    ;
-
-udfAttribute
-    : COMMA udfAttributeKey=stringLiteral OPERATOR_EQ udfAttributeValue=stringLiteral
-    ;
-
-builtInFunctionCall
-    : functionName LR_BRACKET suffixPath RR_BRACKET
-    ;
-
-functionName
-    : MIN_TIME
-    | MAX_TIME
-    | MIN_VALUE
-    | MAX_VALUE
-    | COUNT
-    | AVG
-    | FIRST_VALUE
-    | SUM
-    | LAST_VALUE
-    ;
-
-functionAsClause
-    : builtInFunctionCall (AS ID)?
-    ;
-
-lastClause
-    : LAST suffixPath (COMMA suffixPath)*
-    | LAST asClause (COMMA asClause)*
-    ;
-
-asClause
-    : suffixPath (AS ID)?
-    ;
+functionAttribute
+   : COMMA functionAttributeKey=stringLiteral OPERATOR_EQ functionAttributeValue=stringLiteral
+   ;
 
 alias
     : LR_BRACKET ID RR_BRACKET
@@ -518,14 +482,6 @@ nodeName
     | COUNT
     | NODES
     | LEVEL
-    | MIN_TIME
-    | MAX_TIME
-    | MIN_VALUE
-    | MAX_VALUE
-    | AVG
-    | FIRST_VALUE
-    | SUM
-    | LAST_VALUE
     | LAST
     | DISABLE
     | ALIGN
@@ -629,14 +585,6 @@ nodeNameWithoutStar
     | COUNT
     | NODES
     | LEVEL
-    | MIN_TIME
-    | MAX_TIME
-    | MIN_VALUE
-    | MAX_VALUE
-    | AVG
-    | FIRST_VALUE
-    | SUM
-    | LAST_VALUE
     | LAST
     | DISABLE
     | ALIGN
@@ -1094,38 +1042,6 @@ NODES
 
 LEVEL
     : L E V E L
-    ;
-
-MIN_TIME
-    : M I N UNDERLINE T I M E
-    ;
-
-MAX_TIME
-    : M A X UNDERLINE T I M E
-    ;
-
-MIN_VALUE
-    : M I N UNDERLINE V A L U E
-    ;
-
-MAX_VALUE
-    : M A X UNDERLINE V A L U E
-    ;
-
-AVG
-    : A V G
-    ;
-
-FIRST_VALUE
-    : F I R S T UNDERLINE V A L U E
-    ;
-
-SUM
-    : S U M
-    ;
-
-LAST_VALUE
-    : L A S T UNDERLINE V A L U E
     ;
 
 LAST
