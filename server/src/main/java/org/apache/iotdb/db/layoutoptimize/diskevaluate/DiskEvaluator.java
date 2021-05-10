@@ -123,8 +123,10 @@ public class DiskEvaluator {
     double readSpeed = totalSize.divide(BigInteger.valueOf(totalTime)).doubleValue();
     logger.info(
         String.format(
-            "Read %s KB in %.2f seconds, %.2f MB/s",
-            totalSize.toString(), (double) totalTime / 1000.0d, readSpeed * 1000 / 1024 / 1024));
+            "Read %s MB in %.2f seconds, %.2f MB/s",
+            totalSize.divide(BigInteger.valueOf(1024 * 1024)).toString(),
+            (double) totalTime / 1000.0d,
+            readSpeed * 1000 / 1024 / 1024));
     diskInfo.setReadSpeed(readSpeed);
     return readSpeed;
   }
