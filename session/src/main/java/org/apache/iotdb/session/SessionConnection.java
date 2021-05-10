@@ -750,4 +750,8 @@ public class SessionConnection {
   public void myTest() throws TException {
     client.myTest();
   }
+
+  public void performDiskEvaluation() throws TException {
+    client.performDiskEvaluation();
+  }
 }

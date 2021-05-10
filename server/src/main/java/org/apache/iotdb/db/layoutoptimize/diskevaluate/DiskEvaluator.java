@@ -245,6 +245,7 @@ public class DiskEvaluator {
    * @throws IOException throw IOException if fail to create the test file
    */
   public synchronized void performDiskEvaluation() throws IOException {
+    logger.info("evaluating disk...");
     String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
     DiskInfo[] diskInfos = new DiskInfo[dataDirs.length];
     for (int i = 0; i < dataDirs.length; ++i) {

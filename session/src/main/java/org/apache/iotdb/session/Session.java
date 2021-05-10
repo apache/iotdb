@@ -1704,4 +1704,8 @@ public class Session {
   public void myTest() throws TException {
     defaultSessionConnection.myTest();
   }
+
+  public void evaluateDisk() throws TException {
+    defaultSessionConnection.performDiskEvaluation();
+  }
 }
