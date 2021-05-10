@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -95,11 +96,11 @@ public class DiskEvaluator {
     if (files.length == 0) {
       throw new IOException(String.format("%s contains no file", directory.getPath()));
     }
-    long totalSize = 0;
+    BigInteger totalSize = BigInteger.valueOf(0);
     long totalTime = 0;
     for (File file : files) {
       long dataSize = file.length();
-      totalSize += dataSize;
+      totalSize = totalSize.add(BigInteger.valueOf(dataSize));
       // 1MB buffer size
       final int bufferSize = 1 * 1024 * 1024;
       byte[] buffer = new byte[bufferSize];
@@ -119,11 +120,11 @@ public class DiskEvaluator {
       cleaner.exec();
     }
     // read speed in Byte/ms
-    double readSpeed = ((double) totalSize) / totalTime;
+    double readSpeed = totalSize.divide(BigInteger.valueOf(totalTime)).doubleValue();
     logger.info(
         String.format(
-            "Read %d KB in %.2f seconds, %.2f MB/s",
-            totalSize / 1024, (double) totalTime / 1000.0d, readSpeed * 1000 / 1024 / 1024));
+            "Read %s KB in %.2f seconds, %.2f MB/s",
+            totalSize.toString(), (double) totalTime / 1000.0d, readSpeed * 1000 / 1024 / 1024));
     diskInfo.setReadSpeed(readSpeed);
     return readSpeed;
   }
