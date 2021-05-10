@@ -265,8 +265,8 @@ public class DiskEvaluator {
         continue;
       }
       generateFile(GENERATE_FILE_SIZE, tmpDirPath, GENERATE_FILE_NUM);
-      //      performLocalSeekInMultiFiles(
-      //          dataDir, tmpDirPath, SEEK_INTERVAL, SEEK_NUM, SEEK_NUM_PER_SEGMENT, READ_LENGTH);
+      performLocalSeekInMultiFiles(
+          dataDir, tmpDirPath, SEEK_INTERVAL, SEEK_NUM, SEEK_NUM_PER_SEGMENT, READ_LENGTH);
       File[] files = tmpDir.listFiles();
       if (files.length != 0) {
         performRead(tmpDir);
