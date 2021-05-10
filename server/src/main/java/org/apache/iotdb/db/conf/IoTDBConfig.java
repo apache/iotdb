@@ -318,10 +318,15 @@ public class IoTDBConfig {
   private boolean enableUnseqCompaction = true;
 
   /**
-   * Works when the compaction_strategy is LEVEL_COMPACTION.
-   * The max seq file num of each level.
-   * When the num of files in one level exceeds this,
-   * the files in this level will merge to one and put to upper level.
+   * Works when the compaction_strategy is LEVEL_COMPACTION. Whether to start next compaction task
+   * automatically after finish one compaction task
+   */
+  private boolean enableContinuousCompaction = true;
+
+  /**
+   * Works when the compaction_strategy is LEVEL_COMPACTION. The max seq file num of each level.
+   * When the num of files in one level exceeds this, the files in this level will merge to one and
+   * put to upper level.
    */
   private int seqFileNumInEachLevel = 6;
 
@@ -1477,6 +1482,14 @@ public class IoTDBConfig {
 
   public void setEnableUnseqCompaction(boolean enableUnseqCompaction) {
     this.enableUnseqCompaction = enableUnseqCompaction;
+  }
+
+  public boolean isEnableContinuousCompaction() {
+    return enableContinuousCompaction;
+  }
+
+  public void setEnableContinuousCompaction(boolean enableContinuousCompaction) {
+    this.enableContinuousCompaction = enableContinuousCompaction;
   }
 
   public int getSeqFileNumInEachLevel() {

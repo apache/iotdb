@@ -73,10 +73,9 @@ public class LevelCompactionLogTest extends LevelCompactionTest {
     assertFalse(logFile.exists());
   }
 
-  /**
-   * close compaction merge callback, to release some locks
-   */
-  private void closeCompactionMergeCallBack() {
+  /** close compaction merge callback, to release some locks */
+  private void closeCompactionMergeCallBack(
+      boolean isMergeExecutedInCurrentTask, long timePartitionId) {
     this.compactionMergeWorking = false;
   }
 }

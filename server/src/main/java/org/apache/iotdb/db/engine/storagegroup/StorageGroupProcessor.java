@@ -354,7 +354,8 @@ public class StorageGroupProcessor {
       throw new StorageGroupProcessorException(e);
     }
 
-    for (TsFileResource resource : tsFileManagement.getTsFileList(true)) {
+    List<TsFileResource> seqTsFileResources = tsFileManagement.getTsFileList(true);
+    for (TsFileResource resource : seqTsFileResources) {
       long timePartitionId = resource.getTimePartition();
       Map<String, Long> endTimeMap = new HashMap<>();
       for (Entry<String, Integer> entry : resource.getDeviceToIndexMap().entrySet()) {
@@ -371,6 +372,14 @@ public class StorageGroupProcessor {
           .putAll(endTimeMap);
       globalLatestFlushedTimeForEachDevice.putAll(endTimeMap);
     }
+
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableContinuousCompaction()
+        && seqTsFileResources.size() > 0) {
+      for (long timePartitionId : timePartitionIdVersionControllerMap.keySet()) {
+        executeCompaction(
+            timePartitionId, IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
+      }
+    }
   }
 
   private void recoverCompaction() {
@@ -382,7 +391,7 @@ public class StorageGroupProcessor {
             .submitTask(
                 tsFileManagement.new CompactionRecoverTask(this::closeCompactionMergeCallBack));
       } catch (RejectedExecutionException e) {
-        this.closeCompactionMergeCallBack();
+        this.closeCompactionMergeCallBack(false, 0);
         logger.error("{} compaction submit task failed", storageGroupName);
       }
     } else {
@@ -1872,7 +1881,7 @@ public class StorageGroupProcessor {
                 tsFileManagement
                 .new CompactionMergeTask(this::closeCompactionMergeCallBack, timePartition));
       } catch (IOException | RejectedExecutionException e) {
-        this.closeCompactionMergeCallBack();
+        this.closeCompactionMergeCallBack(false, timePartition);
         logger.error("{} compaction submit task failed", storageGroupName);
       }
     } else {
@@ -1881,8 +1890,13 @@ public class StorageGroupProcessor {
   }
 
   /** close compaction merge callback, to release some locks */
-  private void closeCompactionMergeCallBack() {
-    this.compactionMergeWorking = false;
+  private void closeCompactionMergeCallBack(boolean isMerge, long timePartitionId) {
+    if (isMerge && IoTDBDescriptor.getInstance().getConfig().isEnableContinuousCompaction()) {
+      executeCompaction(
+          timePartitionId, IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
+    } else {
+      this.compactionMergeWorking = false;
+    }
   }
 
   /**
@@ -2737,7 +2751,7 @@ public class StorageGroupProcessor {
   @FunctionalInterface
   public interface CloseCompactionMergeCallBack {
 
-    void call();
+    void call(boolean isMergeExecutedInCurrentTask, long timePartitionId);
   }
 
   @FunctionalInterface

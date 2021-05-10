@@ -113,9 +113,10 @@ public class NoCompactionTsFileManagementTest extends LevelCompactionTest {
                 + ".tsfile"))), false);
     noCompactionTsFileManagement.forkCurrentFileList(0);
     noCompactionTsFileManagement.recover();
-    CompactionMergeTask compactionMergeTask = noCompactionTsFileManagement.new CompactionMergeTask(
-        () -> {
-        }, 0);
+    CompactionMergeTask compactionMergeTask =
+        noCompactionTsFileManagement
+        .new CompactionMergeTask(
+            (boolean isMergeExecutedInCurrentTask, long timePartitionId) -> {}, 0);
     compactionMergeTask.run();
     assertEquals(1, noCompactionTsFileManagement.size(true));
     assertEquals(1, noCompactionTsFileManagement.size(false));
