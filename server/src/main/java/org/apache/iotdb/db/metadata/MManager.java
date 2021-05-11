@@ -20,7 +20,6 @@ package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.cost.statistic.Measurement;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
@@ -387,39 +386,6 @@ public class MManager {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
-    MeasurementMNode measurementMNode=createTimeseriesAndReturnResult(plan,offset);
-    mtree.unlockMNode(measurementMNode);
-  }
-
-  /**
-   * Add one timeseries to metadata tree, if the timeseries already exists, throw exception
-   *
-   * @param path the timeseries path
-   * @param dataType the dateType {@code DataType} of the timeseries
-   * @param encoding the encoding function {@code Encoding} of the timeseries
-   * @param compressor the compressor function {@code Compressor} of the time series
-   */
-  public void createTimeseries(
-      PartialPath path,
-      TSDataType dataType,
-      TSEncoding encoding,
-      CompressionType compressor,
-      Map<String, String> props)
-      throws MetadataException {
-    try {
-      createTimeseries(
-          new CreateTimeSeriesPlan(path, dataType, encoding, compressor, props, null, null, null));
-    } catch (PathAlreadyExistException | AliasAlreadyExistException e) {
-      if (logger.isDebugEnabled()) {
-        logger.debug(
-            "Ignore PathAlreadyExistException and AliasAlreadyExistException when Concurrent inserting"
-                + " a non-exist time series {}",
-            path);
-      }
-    }
-  }
-
-  private MeasurementMNode createTimeseriesAndReturnResult(CreateTimeSeriesPlan plan, long offset) throws MetadataException{
     if (!allowToCreateNewSeries) {
       throw new MetadataException(
               "IoTDB system load is too large to create timeseries, "
@@ -475,10 +441,37 @@ public class MManager {
         logWriter.createTimeseries(plan);
       }
       leafMNode.setOffset(offset);
-      mtree.updateMNode(leafMNode);
-      return leafMNode;
+      mtree.unlockMNodePath(leafMNode);
     } catch (IOException e) {
       throw new MetadataException(e);
+    }
+  }
+
+  /**
+   * Add one timeseries to metadata tree, if the timeseries already exists, throw exception
+   *
+   * @param path the timeseries path
+   * @param dataType the dateType {@code DataType} of the timeseries
+   * @param encoding the encoding function {@code Encoding} of the timeseries
+   * @param compressor the compressor function {@code Compressor} of the time series
+   */
+  public void createTimeseries(
+      PartialPath path,
+      TSDataType dataType,
+      TSEncoding encoding,
+      CompressionType compressor,
+      Map<String, String> props)
+      throws MetadataException {
+    try {
+      createTimeseries(
+          new CreateTimeSeriesPlan(path, dataType, encoding, compressor, props, null, null, null));
+    } catch (PathAlreadyExistException | AliasAlreadyExistException e) {
+      if (logger.isDebugEnabled()) {
+        logger.debug(
+            "Ignore PathAlreadyExistException and AliasAlreadyExistException when Concurrent inserting"
+                + " a non-exist time series {}",
+            path);
+      }
     }
   }
 
@@ -1084,7 +1077,6 @@ public class MManager {
   public MNode getDeviceNodeWithAutoCreate(PartialPath path, boolean autoCreateSchema, int sgLevel)
       throws MetadataException {
     MNode node=getDeviceNodeWithAutoCreateWithoutReturnProcess(path,autoCreateSchema,sgLevel);
-    mtree.unlockMNode(node);
     node=processMNodeForExternChildrenCheck(node);
     return node;
   }
@@ -1875,6 +1867,7 @@ public class MManager {
     // 1. get device node
     MNode deviceMNode =getDeviceNodeWithAutoCreateWithoutReturnProcess(
             deviceId, config.isAutoCreateSchemaEnabled(), config.getDefaultStorageGroupLevel());
+    deviceMNode=mtree.lockMNodePath(deviceMNode);
 
     // 2. get schema of each measurement
     // if do not has measurement
@@ -1894,7 +1887,8 @@ public class MManager {
             // child is null or child is type of MNode
             dataType = getTypeInLoc(plan, i);
             // create it, may concurrent created by multiple thread
-            measurementMNode = internalCreateTimeseries(deviceId.concatNode(measurementList[i]), dataType);
+            internalCreateTimeseries(deviceId.concatNode(measurementList[i]), dataType);
+            measurementMNode =(MeasurementMNode) getMNode(deviceMNode,measurementList[i]);
           }
         }
 
@@ -1948,34 +1942,22 @@ public class MManager {
         }
       }
     }
-    mtree.unlockMNode(deviceMNode);
+    mtree.unlockMNodePath(deviceMNode);
     return deviceMNode;
   }
 
   public MNode getMNode(MNode deviceMNode, String measurementName) throws MetadataException {
-    return mtree.getChildMNodeInDevice(deviceMNode,measurementName);
+    return mtree.getChildMNodeInDeviceWithMemoryLock(deviceMNode,measurementName);
   }
 
   /** create timeseries with ignore PathAlreadyExistException */
-  private MeasurementMNode internalCreateTimeseries(PartialPath path, TSDataType dataType)
+  private void internalCreateTimeseries(PartialPath path, TSDataType dataType)
       throws MetadataException {
-    try {
-      return createTimeseriesAndReturnResult(
-              new CreateTimeSeriesPlan(
-                      path,
-                      dataType,
-                      getDefaultEncoding(dataType),
-                      TSFileDescriptor.getInstance().getConfig().getCompressor(),
-                      Collections.emptyMap(), null, null, null),-1);
-    } catch (PathAlreadyExistException | AliasAlreadyExistException e) {
-      if (logger.isDebugEnabled()) {
-        logger.debug(
-                "Ignore PathAlreadyExistException and AliasAlreadyExistException when Concurrent inserting"
-                        + " a non-exist time series {}",
-                path);
-      }
-    }
-    throw new MetadataException("Failed to createTimeseries "+path+" because ");
+    createTimeseries(path,
+            dataType,
+            getDefaultEncoding(dataType),
+            TSFileDescriptor.getInstance().getConfig().getCompressor(),
+            Collections.emptyMap());
   }
 
   /** get dataType of plan, in loc measurements only support InsertRowPlan and InsertTabletPlan */

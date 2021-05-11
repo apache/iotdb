@@ -125,7 +125,7 @@ public interface MTreeInterface extends Serializable {
 
   Map<String, MNode> getChildrenOfNodeByPath(PartialPath path) throws MetadataException;
 
-  MNode getChildMNodeInDevice(MNode deviceNode, String childName) throws MetadataException;
+  MNode getChildMNodeInDeviceWithMemoryLock(MNode deviceNode, String childName) throws MetadataException;
 
   MNode getNodeDeepClone(MNode mNode) throws MetadataException;
 
@@ -289,7 +289,11 @@ public interface MTreeInterface extends Serializable {
 
   void updateMNode(MNode mNode) throws MetadataException;
 
+  MNode lockMNodePath(MNode mNode) throws MetadataException;
+
   void unlockMNode(MNode mNode);
+
+  void unlockMNodePath(MNode mNode);
 
   void serializeTo(String snapshotPath) throws IOException;
 

@@ -40,6 +40,8 @@ public interface MetadataAccess {
 
   void updateMNode(MNode mNode) throws MetadataException;
 
+  void lockMNodeInMemory(MNode mNode) throws MetadataException;
+
   void releaseMNodeMemoryLock(MNode mNode);
 
   void sync() throws IOException;

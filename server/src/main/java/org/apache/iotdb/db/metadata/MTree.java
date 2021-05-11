@@ -627,7 +627,7 @@ public class MTree implements MTreeInterface {
   }
 
   @Override
-  public MNode getChildMNodeInDevice(MNode deviceNode, String childName) throws MetadataException {
+  public MNode getChildMNodeInDeviceWithMemoryLock(MNode deviceNode, String childName) throws MetadataException {
     return deviceNode.getChild(childName);
   }
 
@@ -1490,7 +1490,17 @@ public class MTree implements MTreeInterface {
   }
 
   @Override
+  public MNode lockMNodePath(MNode mNode) throws MetadataException {
+    return mNode;
+  }
+
+  @Override
   public void unlockMNode(MNode mNode){
+
+  }
+
+  @Override
+  public void unlockMNodePath(MNode mNode) {
 
   }
 

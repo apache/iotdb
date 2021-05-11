@@ -239,12 +239,12 @@ public class MTreeDiskBased implements MTreeInterface {
               cur,
               nodeNames[i],
               new StorageGroupMNode(
-                  cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL()),true);
+                  cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL()));
         } else {
-          metadataDiskManager.addChild(cur, nodeNames[i], new InternalMNode(cur, nodeNames[i]),true);
+          metadataDiskManager.addChild(cur, nodeNames[i], new InternalMNode(cur, nodeNames[i]));
         }
       }
-      cur = metadataDiskManager.getChild(cur, nodeNames[i],true);
+      cur = metadataDiskManager.getChild(cur, nodeNames[i]);
     }
     return cur;
   }
@@ -518,7 +518,7 @@ public class MTreeDiskBased implements MTreeInterface {
         }
       }
     }catch (MetadataException e){
-      unlockMNode(cur);
+      unlockMNodePath(cur);
       throw e;
     }
     return cur;
@@ -538,7 +538,7 @@ public class MTreeDiskBased implements MTreeInterface {
   }
 
   @Override
-  public MNode getChildMNodeInDevice(MNode deviceNode, String childName) throws MetadataException {
+  public MNode getChildMNodeInDeviceWithMemoryLock(MNode deviceNode, String childName) throws MetadataException {
     try {
       if(deviceNode.isLockedInMemory()){
         return metadataDiskManager.getChild(deviceNode, childName,true);
@@ -546,7 +546,7 @@ public class MTreeDiskBased implements MTreeInterface {
        return getNodeByPathWithMemoryLock(deviceNode.getPartialPath().concatNode(childName));
       }
     }catch (MetadataException e){
-      System.out.println(deviceNode.getName()+" "+deviceNode.isLockedInMemory());
+//      System.out.println(deviceNode.getName()+" "+deviceNode.isLockedInMemory());
       throw e;
     }
 
@@ -1511,12 +1511,32 @@ public class MTreeDiskBased implements MTreeInterface {
   }
 
   @Override
-  public void unlockMNode(MNode mNode){
-    while(mNode!=null){
-      metadataDiskManager.releaseMNodeMemoryLock(mNode);
-      if(mNode.isLockedInMemory()){
-        break;
+  public MNode lockMNodePath(MNode mNode) throws MetadataException {
+    MNode temp=mNode;
+    try {
+      while(temp!=null&&temp.isCached()){
+        metadataDiskManager.lockMNodeInMemory(temp);
+        temp=temp.getParent();
       }
+    }catch (MetadataException e){
+      temp=null;
+    }
+    if(temp!=null){
+      return getNodeByPathWithMemoryLock(mNode.getPartialPath());
+    }else {
+      return mNode;
+    }
+  }
+
+  @Override
+  public void unlockMNode(MNode mNode){
+    metadataDiskManager.releaseMNodeMemoryLock(mNode);
+  }
+
+  @Override
+  public void unlockMNodePath(MNode mNode) {
+    while (mNode!=null){
+      metadataDiskManager.releaseMNodeMemoryLock(mNode);
       mNode=mNode.getParent();
     }
   }

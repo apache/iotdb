@@ -289,6 +289,9 @@ public class MetadataDiskManager implements MetadataAccess {
     parent.deleteChild(childName);
 
     if (child.isCached()) {
+      if(child.isLockedInMemory()){
+        cacheStrategy.unlockMNode(child);
+      }
       cacheStrategy.remove(child);
     }
     PersistenceInfo persistenceInfo=child.getPersistenceInfo();
@@ -337,6 +340,17 @@ public class MetadataDiskManager implements MetadataAccess {
         throw new MetadataException(e.getMessage());
       }
     }
+  }
+
+  @Override
+  public void lockMNodeInMemory(MNode mNode) throws MetadataException{
+    if(!mNode.isCached()){
+      throw new MetadataException("Cannot lock a MNode not in cache");
+    }
+    if(mNode==root){
+      return;
+    }
+    cacheStrategy.lockMNode(mNode);
   }
 
   @Override
