@@ -249,6 +249,7 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
         levelCompactionTsFileManagement.getTsFileListByTimePartition(true, 0).get(0);
     TsFileSequenceReader tsFileSequenceReader =
         new TsFileSequenceReader(newTsFileResource.getTsFilePath());
+    tsFileSequenceReader.close();
     Map<String, List<ChunkMetadata>> sensorChunkMetadataListMap =
         tsFileSequenceReader.readChunkMetadataInDevice(deviceIds[0]);
     for (List<ChunkMetadata> chunkMetadataList : sensorChunkMetadataListMap.values()) {
@@ -287,6 +288,7 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
         new TsFileSequenceReader(newTsFileResource.getTsFilePath());
     Map<String, List<ChunkMetadata>> sensorChunkMetadataListMap =
         tsFileSequenceReader.readChunkMetadataInDevice(deviceIds[0]);
+    tsFileSequenceReader.close();
     for (List<ChunkMetadata> chunkMetadataList : sensorChunkMetadataListMap.values()) {
       for (ChunkMetadata chunkMetadata : chunkMetadataList) {
         assertEquals(500, chunkMetadata.getNumOfPoints());
