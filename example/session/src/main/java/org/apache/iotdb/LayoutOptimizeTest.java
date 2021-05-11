@@ -29,7 +29,12 @@ public class LayoutOptimizeTest {
   public static void main(String[] args) throws Exception {
     session = new Session(HOST, 6667, "root", "root");
     session.open(false);
-    performDiskSeek();
+    try {
+      clearEnvironment();
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+    setUpEnvironment();
     session.close();
   }
 
@@ -49,7 +54,12 @@ public class LayoutOptimizeTest {
       types.add(TSDataType.DOUBLE);
     }
     Random r = new Random();
+    long oneTenthOfTimeNum = TIME_NUM / 100;
     for (long time = 0; time < TIME_NUM; ++time) {
+      if (time % oneTenthOfTimeNum == 0) {
+        System.out.println(
+            String.format("[%.2f%%]insert data points", (double) time / oneTenthOfTimeNum * 10));
+      }
       List<Object> values = new ArrayList<>();
       for (int i = 0; i < TIMESERIES_NUM; i++) {
         values.add(r.nextDouble());

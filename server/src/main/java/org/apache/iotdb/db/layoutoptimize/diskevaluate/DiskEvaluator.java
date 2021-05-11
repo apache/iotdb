@@ -29,7 +29,9 @@ public class DiskEvaluator {
     return INSTANCE;
   }
 
-  private DiskEvaluator() {}
+  private DiskEvaluator() {
+    recoverFromFile();
+  }
 
   /**
    * Create a temporary file for seek test

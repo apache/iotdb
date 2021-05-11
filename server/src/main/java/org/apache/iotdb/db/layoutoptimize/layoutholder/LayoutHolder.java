@@ -26,7 +26,9 @@ public class LayoutHolder {
     return INSTANCE;
   }
 
-  private LayoutHolder() {}
+  private LayoutHolder() {
+    loadLayout();
+  }
 
   /** Update metadata from {@link MManager} */
   public void updateMetadata() {
@@ -71,6 +73,7 @@ public class LayoutHolder {
    */
   public void setLayout(String device, List<String> measurementOrder, long chunkSize) {
     layoutMap.put(device, new Layout(measurementOrder, chunkSize));
+    persistLayout();
   }
 
   /**
