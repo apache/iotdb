@@ -132,16 +132,18 @@ public abstract class Cases {
     String timeSeries;
     for (int i = 0; i < n; i++) {
       timeSeries = timeSeriesPrefix + String.valueOf(i) + timeSeriesSuffix;
-      statement.execute(String.format("create timeseries %s ", timeSeries));
+      writeStatement.execute(String.format("create timeseries %s ", timeSeries));
     }
 
-    ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES");
-    int cnt = 0;
-    while (resultSet.next()) {
-      cnt++;
+    // try to read data on each node.
+    for (Statement readStatement : readStatements) {
+      ResultSet resultSet = readStatement.executeQuery("SHOW TIMESERIES");
+      int cnt = 0;
+      while (resultSet.next()) {
+        cnt++;
+      }
+      Assert.assertEquals(n, cnt);
+      resultSet.close();
     }
-    Assert.assertEquals(n, cnt);
-
-    resultSet.close();
   }
 }
