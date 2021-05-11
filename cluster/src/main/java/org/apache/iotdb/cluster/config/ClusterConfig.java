@@ -38,6 +38,7 @@ public class ClusterConfig {
   private int internalMetaPort = 9003;
   private int internalDataPort = 40010;
   private int clusterRpcPort = IoTDBDescriptor.getInstance().getConfig().getRpcPort();
+  private int clusterInfoRpcPort = 6567;
 
   /** each one is a {internalIp | domain name}:{meta port} string tuple. */
   private List<String> seedNodeUrls;
@@ -485,5 +486,13 @@ public class ClusterConfig {
 
   public void setWaitClientTimeoutMS(long waitClientTimeoutMS) {
     this.waitClientTimeoutMS = waitClientTimeoutMS;
+  }
+
+  public int getClusterInfoRpcPort() {
+    return clusterInfoRpcPort;
+  }
+
+  public void setClusterInfoRpcPort(int clusterInfoRpcPort) {
+    this.clusterInfoRpcPort = clusterInfoRpcPort;
   }
 }

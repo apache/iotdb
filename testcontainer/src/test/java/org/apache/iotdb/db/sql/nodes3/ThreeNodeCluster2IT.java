@@ -16,29 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.file.metadata;
 
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
+package org.apache.iotdb.db.sql.nodes3;
 
-import java.io.IOException;
-import java.util.List;
+// read and the write statements are on the different nodes.
+public class ThreeNodeCluster2IT extends AbstractThreeNodeClusterIT {
 
-public interface ITimeSeriesMetadata {
+  protected String getWriteRpcIp() {
+    return getContainer().getServiceHost("iotdb-server_2", 6667);
+  }
 
-  Statistics getStatistics();
-
-  boolean isModified();
-
-  void setModified(boolean modified);
-
-  boolean isSeq();
-
-  void setSeq(boolean seq);
-
-  List<IChunkMetadata> loadChunkMetadataList() throws IOException;
-
-  List<IChunkMetadata> getChunkMetadataList();
-
-  void setChunkMetadataLoader(IChunkMetadataLoader chunkMetadataLoader);
+  protected int getWriteRpcPort() {
+    return getContainer().getServicePort("iotdb-server_2", 6667);
+  }
 }

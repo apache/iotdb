@@ -16,29 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.file.metadata;
 
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
+package org.apache.iotdb.db.sql.nodes3;
 
-import java.io.IOException;
-import java.util.List;
-
-public interface ITimeSeriesMetadata {
-
-  Statistics getStatistics();
-
-  boolean isModified();
-
-  void setModified(boolean modified);
-
-  boolean isSeq();
-
-  void setSeq(boolean seq);
-
-  List<IChunkMetadata> loadChunkMetadataList() throws IOException;
-
-  List<IChunkMetadata> getChunkMetadataList();
-
-  void setChunkMetadataLoader(IChunkMetadataLoader chunkMetadataLoader);
-}
+// read and the write statements are on the same node.
+public class ThreeNodeCluster1IT extends AbstractThreeNodeClusterIT {}
