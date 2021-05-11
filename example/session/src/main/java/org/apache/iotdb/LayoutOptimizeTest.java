@@ -64,6 +64,7 @@ public class LayoutOptimizeTest {
       }
       session.insertRecord(DEVICE, time, measurements, types, values);
     }
+    session.executeNonQueryStatement("flush");
   }
 
   public static void clearEnvironment()
