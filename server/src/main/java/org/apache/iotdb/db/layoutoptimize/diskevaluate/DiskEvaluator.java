@@ -300,8 +300,7 @@ public class DiskEvaluator {
   }
 
   public boolean recoverFromFile() {
-    String systemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
-    File layoutDir = new File(systemDir + File.separator + "layout");
+    File layoutDir = new File(IoTDBDescriptor.getInstance().getConfig().getLayoutDir());
     File diskInfoFile = new File(layoutDir + File.separator + "disk.info");
     if (!diskInfoFile.exists()) {
       logger.info("failed to recover from file, because {} not exist", diskInfoFile);
@@ -322,7 +321,14 @@ public class DiskEvaluator {
     return true;
   }
 
-  private static class DiskInfo {
+  public DiskInfo getDiskInfo() {
+    if (diskInfo.seekCost.size() == 0) {
+      recoverFromFile();
+    }
+    return diskInfo;
+  }
+
+  public static class DiskInfo {
     public List<Long> seekDistance = new ArrayList<>();
     public List<Double> seekCost = new ArrayList<>();
     public double readSpeed = 0;

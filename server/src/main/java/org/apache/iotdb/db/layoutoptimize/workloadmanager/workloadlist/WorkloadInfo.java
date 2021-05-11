@@ -21,6 +21,7 @@ public class WorkloadInfo {
   }
 
   public void addVisitedMeasurement(String measurement) {
+    measurementVisitSum += 1;
     if (!measurementVisitCount.containsKey(measurement)) {
       measurementVisitCount.put(measurement, 1L);
     } else {
@@ -29,6 +30,7 @@ public class WorkloadInfo {
   }
 
   public void addVisitedSpan(long span, long visitCount) {
+    spanVisitSum += 1;
     if (!spanVisitCount.containsKey(span)) {
       spanVisitCount.put(span, visitCount);
     } else {

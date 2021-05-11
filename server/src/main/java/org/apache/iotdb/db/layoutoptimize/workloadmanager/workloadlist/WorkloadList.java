@@ -15,7 +15,7 @@ public class WorkloadList {
   // the range of each item
   private final long ITEM_RANGE = 1L * 24L * 60L * 60L * 1000L;
   private final long ITEM_VALID_PERIOD = 30 * ITEM_RANGE;
-  private long timeGrainSize = 1000L * 60L;
+  private long timeGrainSize = 10L;
   ListStatistic statistic;
   WorkloadItem curItem;
 
@@ -38,7 +38,7 @@ public class WorkloadList {
   /** Drop the records that are expired */
   public void dropExpiredRecord() {
     long curTime = System.currentTimeMillis();
-    while (true) {
+    while (true && workloadItems.size() > 0) {
       WorkloadItem item = workloadItems.getFirst();
       if (curTime - item.getEndTime() > ITEM_VALID_PERIOD) {
         workloadItems.removeFirst();
@@ -55,6 +55,7 @@ public class WorkloadList {
   /** update the statistic info of the workload list */
   public void updateStatistic() {
     statistic = new ListStatistic();
+    statistic.addItemStatistic(curItem.getStatistic());
     for (WorkloadItem item : workloadItems) {
       statistic.addItemStatistic(item.getStatistic());
     }
@@ -69,8 +70,22 @@ public class WorkloadList {
   public WorkloadInfo getWorkloadInfo(String deviceId) {
     WorkloadInfo info = new WorkloadInfo(deviceId);
     dropExpiredRecord();
+    Map<VisitedMeasurements, Long> measurementMap = curItem.getMeasurementMap();
+    for (Map.Entry<VisitedMeasurements, Long> measurementEntry : measurementMap.entrySet()) {
+      if (measurementEntry.getKey().getDeviceId().equals(deviceId)) {
+        for (String measurement : measurementEntry.getKey().getMeasurements()) {
+          info.addVisitedMeasurement(measurement);
+        }
+      }
+    }
+
+    Map<Long, Long> spanMap = curItem.getSpanMap(deviceId);
+    for (Map.Entry<Long, Long> spanEntry : spanMap.entrySet()) {
+      info.addVisitedSpan(spanEntry.getKey(), spanEntry.getValue());
+    }
+
     for (WorkloadItem item : workloadItems) {
-      Map<VisitedMeasurements, Long> measurementMap = item.getMeasurementMap();
+      measurementMap = item.getMeasurementMap();
       for (Map.Entry<VisitedMeasurements, Long> measurementEntry : measurementMap.entrySet()) {
         if (measurementEntry.getKey().getDeviceId().equals(deviceId)) {
           for (String measurement : measurementEntry.getKey().getMeasurements()) {
@@ -79,7 +94,7 @@ public class WorkloadList {
         }
       }
 
-      Map<Long, Long> spanMap = item.getSpanMap(deviceId);
+      spanMap = item.getSpanMap(deviceId);
       for (Map.Entry<Long, Long> spanEntry : spanMap.entrySet()) {
         info.addVisitedSpan(spanEntry.getKey(), spanEntry.getValue());
       }

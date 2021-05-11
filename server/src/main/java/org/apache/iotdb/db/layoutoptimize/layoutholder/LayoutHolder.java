@@ -17,10 +17,11 @@ import java.io.*;
 import java.util.*;
 
 public class LayoutHolder {
+  private static final Logger logger = LoggerFactory.getLogger(LayoutHolder.class);
   // device -> layout
   private Map<String, Layout> layoutMap = new HashMap<>();
   private static final LayoutHolder INSTANCE = new LayoutHolder();
-  private static final Logger logger = LoggerFactory.getLogger(LayoutHolder.class);
+
 
   public static LayoutHolder getInstance() {
     return INSTANCE;
@@ -32,6 +33,11 @@ public class LayoutHolder {
 
   /** Update metadata from {@link MManager} */
   public void updateMetadata() {
+    if (layoutMap == null) {
+      if (!loadLayout()) {
+        layoutMap = new HashMap<>();
+      }
+    }
     MManager manager = MManager.getInstance();
     List<PartialPath> storageGroupPaths = manager.getAllStorageGroupPaths();
     Set<String> deviceUpdated = new HashSet<>();
@@ -72,6 +78,11 @@ public class LayoutHolder {
    * @param chunkSize the average chunk size of this device
    */
   public void setLayout(String device, List<String> measurementOrder, long chunkSize) {
+    if (layoutMap == null) {
+      if (!loadLayout()) {
+        layoutMap = new HashMap<>();
+      }
+    }
     layoutMap.put(device, new Layout(measurementOrder, chunkSize));
     persistLayout();
   }
@@ -85,6 +96,11 @@ public class LayoutHolder {
    */
   public Pair<List<String>, Long> getLayoutForDevice(String deviceId)
       throws LayoutNotExistException {
+    if (layoutMap == null) {
+      if (!loadLayout()) {
+        layoutMap = new HashMap<>();
+      }
+    }
     if (!layoutMap.containsKey(deviceId))
       throw new LayoutNotExistException(String.format("layout for %s not exists", deviceId));
     List<String> measurementOrder = new ArrayList<>(layoutMap.get(deviceId).measurements);
@@ -100,6 +116,11 @@ public class LayoutHolder {
    * @throws LayoutNotExistException
    */
   public List<String> getMeasurementForDevice(String deviceId) throws LayoutNotExistException {
+    if (layoutMap == null) {
+      if (!loadLayout()) {
+        layoutMap = new HashMap<>();
+      }
+    }
     if (!layoutMap.containsKey(deviceId))
       throw new LayoutNotExistException(String.format("layout for %s not exists", deviceId));
     return new ArrayList<>(layoutMap.get(deviceId).measurements);
@@ -113,6 +134,11 @@ public class LayoutHolder {
    * @throws LayoutNotExistException
    */
   public long getChunkSize(String deviceId) throws LayoutNotExistException {
+    if (layoutMap == null) {
+      if (!loadLayout()) {
+        layoutMap = new HashMap<>();
+      }
+    }
     if (!layoutMap.containsKey(deviceId))
       throw new LayoutNotExistException(String.format("layout for %s not exists", deviceId));
     return layoutMap.get(deviceId).averageChunkSize;
@@ -127,6 +153,11 @@ public class LayoutHolder {
    */
   public void setDeviceForFlush(PartialPath device)
       throws StorageGroupNotSetException, LayoutNotExistException {
+    if (layoutMap == null) {
+      if (!loadLayout()) {
+        layoutMap = new HashMap<>();
+      }
+    }
     if (!layoutMap.containsKey(device.getFullPath())) {
       throw new LayoutNotExistException(
           String.format("Layout for %s not exists", device.getFullPath()));
@@ -142,6 +173,9 @@ public class LayoutHolder {
    * @return true if success to persist layout, else false
    */
   public boolean persistLayout() {
+    if (layoutMap == null) {
+      return true;
+    }
     GsonBuilder gsonBuilder = new GsonBuilder();
     gsonBuilder.setPrettyPrinting();
     Gson gson = gsonBuilder.create();

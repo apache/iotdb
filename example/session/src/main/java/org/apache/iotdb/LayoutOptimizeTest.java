@@ -17,22 +17,21 @@ import java.util.*;
 
 public class LayoutOptimizeTest {
   private static Session session;
-  private static final String HOST = "192.168.130.38";
+  private static final String HOST = "127.0.0.1";
   private static final String STORAGE_GROUP = "root.sgtest";
   private static final String DEVICE = "root.sgtest.d1";
   private static final String OBJECT_FILE = "test.obj";
-  private static final String QUERY_FILE = "/home/lau/桌面/test.json";
+  private static final String QUERY_FILE = "C:\\Users\\liuxu\\Desktop\\query.json";
   private static List<String> queries = new ArrayList<>();
   private static final int TIMESERIES_NUM = 3000;
-  private static final long TIME_NUM = 100000L;
+  private static final long TIME_NUM = 10000L;
 
   public static void main(String[] args) throws Exception {
     session = new Session(HOST, 6667, "root", "root");
     session.open(false);
     loadQueries();
-    for (String sql : queries) {
-      session.executeQueryStatement(sql);
-    }
+    executeQuery();
+    session.myTest();
     session.close();
   }
 
@@ -218,8 +217,8 @@ public class LayoutOptimizeTest {
     }
     Scanner scanner = new Scanner(new FileInputStream(queriesFile));
     StringBuilder builder = new StringBuilder();
-    while (scanner.hasNext()) {
-      builder.append(scanner.next());
+    while (scanner.hasNextLine()) {
+      builder.append(scanner.nextLine());
     }
     String json = builder.toString();
     Gson gson = new Gson();

@@ -1,22 +1,18 @@
 package org.apache.iotdb.db.layoutoptimize.estimator;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.layoutoptimize.DataSizeInfoNotExistsException;
 import org.apache.iotdb.db.exception.layoutoptimize.SampleRateNoExistsException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.layoutoptimize.diskevaluate.DiskEvaluator;
 import org.apache.iotdb.db.layoutoptimize.workloadmanager.queryrecord.QueryRecord;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.tsfile.utils.Pair;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 public class CostEstimator {
-  private DiskInfo diskInfo = new DiskInfo();
+  private DiskEvaluator.DiskInfo diskInfo = DiskEvaluator.getInstance().getDiskInfo();
   private static final CostEstimator INSTANCE = new CostEstimator();
 
   private CostEstimator() {}
@@ -34,18 +30,6 @@ public class CostEstimator {
    * @return the cost in milliseconds
    */
   public double estimate(QueryRecord query, List<String> physicalOrder, long chunkSize) {
-    if (!diskInfo.hasInit) {
-      File diskInfoFile =
-          new File(
-              IoTDBDescriptor.getInstance().getConfig().getSystemDir()
-                  + File.separator
-                  + "disk.info");
-      try {
-        diskInfo.readDiskInfo(diskInfoFile);
-      } catch (IOException e) {
-        e.printStackTrace();
-      }
-    }
     try {
       MManager metadataManager = MManager.getInstance();
       String storageGroup = metadataManager.getStorageGroupPath(query.getDevice()).getFullPath();
@@ -63,7 +47,7 @@ public class CostEstimator {
       double readCost =
           ((double) chunkSize)
               * query.getMeasurements().size()
-              / diskInfo.READ_SPEED
+              / diskInfo.readSpeed
               * chunkGroupNum;
       Set<String> measurements = new HashSet<>(query.getMeasurements());
       int firstMeasurementPos = -1;
@@ -100,15 +84,15 @@ public class CostEstimator {
   }
 
   private double getSeekCost(long seekDistance) {
-    for (int i = 0; i < diskInfo.seekData.size() - 1; i++) {
-      if (seekDistance >= diskInfo.seekData.get(i).left
-          && seekDistance < diskInfo.seekData.get(i + 1).left) {
-        double deltaX = seekDistance - diskInfo.seekData.get(i).left;
-        double deltaY = diskInfo.seekData.get(i + 1).right - diskInfo.seekData.get(i).right;
+    for (int i = 0; i < diskInfo.seekDistance.size() - 1; i++) {
+      if (seekDistance >= diskInfo.seekDistance.get(i)
+          && seekDistance < diskInfo.seekDistance.get(i + 1)) {
+        double deltaX = seekDistance - diskInfo.seekDistance.get(i);
+        double deltaY = diskInfo.seekCost.get(i + 1) - diskInfo.seekCost.get(i);
         return deltaX
-                / ((double) diskInfo.seekData.get(i + 1).left - diskInfo.seekData.get(i).left)
+                / ((double) diskInfo.seekDistance.get(i + 1) - diskInfo.seekDistance.get(i))
                 * deltaY
-            + diskInfo.seekData.get(i).right;
+            + diskInfo.seekCost.get(i);
       }
     }
     return -1.0d;
@@ -131,27 +115,4 @@ public class CostEstimator {
     return totalCost;
   }
 
-  private static class DiskInfo {
-    public DiskInfoReader reader;
-    public List<Pair<Long, Long>> seekData;
-    public double READ_SPEED;
-    boolean hasInit = false;
-
-    /**
-     * read the seek info of the data
-     *
-     * @param infoFile
-     * @throws IOException
-     */
-    public void readDiskInfo(File infoFile) throws IOException {
-      reader = new DiskInfoReader(infoFile);
-      READ_SPEED = reader.getReadSpeed();
-      seekData = new ArrayList<>();
-      while (reader.hasNext()) {
-        String[] nextLine = reader.getNextSeekData();
-        seekData.add(new Pair<>(Long.valueOf(nextLine[0]), Long.valueOf(nextLine[1])));
-      }
-      hasInit = true;
-    }
-  }
 }
