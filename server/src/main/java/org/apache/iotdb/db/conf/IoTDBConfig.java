@@ -56,7 +56,7 @@ public class IoTDBConfig {
   private static final String ID_MATCHER =
       "([a-zA-Z0-9/\"[ ],:@#$%&{}()*=?!~\\[\\]\\-+\\u2E80-\\u9FFF_]+)";
 
-  private static final String STORAGE_GROUP_MATCHER = "([a-zA-Z0-9_.\\u2E80-\\u9FFF]+)";
+  private static final String STORAGE_GROUP_MATCHER = "([a-zA-Z0-9_.\\-\\u2E80-\\u9FFF]+)";
 
   // e.g.,  .s1
   private static final String PARTIAL_NODE_MATCHER = "[" + PATH_SEPARATOR + "]" + ID_MATCHER;
@@ -320,6 +320,12 @@ public class IoTDBConfig {
    * files or not.
    */
   private boolean enableUnseqCompaction = true;
+
+  /**
+   * Works when the compaction_strategy is LEVEL_COMPACTION. Whether to start next compaction task
+   * automatically after finish one compaction task
+   */
+  private boolean enableContinuousCompaction = true;
 
   /**
    * Works when the compaction_strategy is LEVEL_COMPACTION. The max seq file num of each level.
@@ -1472,6 +1478,14 @@ public class IoTDBConfig {
 
   public void setEnableUnseqCompaction(boolean enableUnseqCompaction) {
     this.enableUnseqCompaction = enableUnseqCompaction;
+  }
+
+  public boolean isEnableContinuousCompaction() {
+    return enableContinuousCompaction;
+  }
+
+  public void setEnableContinuousCompaction(boolean enableContinuousCompaction) {
+    this.enableContinuousCompaction = enableContinuousCompaction;
   }
 
   public int getSeqFileNumInEachLevel() {
