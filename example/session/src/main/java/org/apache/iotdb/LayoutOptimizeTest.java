@@ -29,12 +29,10 @@ public class LayoutOptimizeTest {
   public static void main(String[] args) throws Exception {
     session = new Session(HOST, 6667, "root", "root");
     session.open(false);
-    try {
-      clearEnvironment();
-    } catch (Exception e) {
-      e.printStackTrace();
+    loadQueries();
+    for (String sql : queries) {
+      session.executeQueryStatement(sql);
     }
-    setUpEnvironment();
     session.close();
   }
 
@@ -226,6 +224,15 @@ public class LayoutOptimizeTest {
     Gson gson = new Gson();
     queries = (List<String>) gson.fromJson(json, queries.getClass());
     System.out.println(queries);
+  }
+
+  public static void executeQuery() throws Exception {
+    for (String sql : queries) {
+      SessionDataSet dataSet = session.executeQueryStatement(sql);
+      while (dataSet.hasNext()) {
+        dataSet.next();
+      }
+    }
   }
 
   public static void performQueries() throws Exception {
