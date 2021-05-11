@@ -210,25 +210,6 @@ public class MetadataDiskManager implements MetadataAccess {
   }
 
   @Override
-  public void addChild(MNode parent, String childName, MNode child, boolean lockChild) throws MetadataException {
-    if(!lockChild){
-      addChild(parent,childName,child);
-      return;
-    }
-    if(!parent.isLockedInMemory()){
-      throw new MetadataException("Parent MNode has not been locked before lock child");
-    }
-    if (parent.hasChild(childName)) {
-      return;
-    }
-    child.setParent(parent);
-    parent.addChild(childName, child);
-    cacheStrategy.lockMNode(child);
-    cacheStrategy.setModified(child, true);
-    cacheStrategy.setModified(parent, true);
-  }
-
-  @Override
   public void addAlias(MNode parent, String alias, MNode child) throws MetadataException {
     child.setParent(parent);
     if (child.isCached()) {
@@ -267,21 +248,6 @@ public class MetadataDiskManager implements MetadataAccess {
         }
       }
     }
-  }
-
-  @Override
-  public void replaceChild(MNode parent, String measurement, MNode newChild, boolean lockChild) throws MetadataException {
-    if(!lockChild){
-      replaceChild(parent,measurement,newChild);
-      return;
-    }
-    if(!parent.isLockedInMemory()){
-      throw new MetadataException("Parent MNode has not been locked before lock child");
-    }
-    getChild(parent, measurement);
-    parent.replaceChild(measurement, newChild);
-    cacheStrategy.lockMNode(newChild);
-    cacheStrategy.setModified(newChild,true);
   }
 
   @Override
@@ -361,9 +327,7 @@ public class MetadataDiskManager implements MetadataAccess {
       last=temp;
       temp=stack.pop();
       if(!temp.isCached()){
-        while (last!=root){
-          cacheStrategy.unlockMNode(last);
-        }
+        releaseMNodeMemoryLock(last);
         throw new MetadataException("Cannot lock a MNode not in cache");
       }
       cacheStrategy.lockMNode(temp);
@@ -373,16 +337,17 @@ public class MetadataDiskManager implements MetadataAccess {
 
   @Override
   public void releaseMNodeMemoryLock(MNode mNode) {
-    if(!mNode.isLockedInMemory()){
+    if(!mNode.isCached()||!mNode.isLockedInMemory()){
       return;
     }
     if(mNode==root){
       return;
     }
-    do {
-      cacheStrategy.unlockMNode(mNode);
+    cacheStrategy.unlockMNode(mNode);
+    while(mNode.getParent()!=root&&!mNode.isLockedInMemory()){
       mNode=mNode.getParent();
-    }while(mNode!=root&&!mNode.isLockedInMemory());
+      cacheStrategy.unlockMNode(mNode);
+    }
   }
 
   @Override

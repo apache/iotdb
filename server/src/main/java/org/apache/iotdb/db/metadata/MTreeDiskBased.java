@@ -48,7 +48,7 @@ public class MTreeDiskBased implements MTreeInterface {
 
   private final String rootName = PATH_ROOT;
   private MetadataAccess metadataDiskManager;
-  private static final int DEFAULT_MAX_CAPACITY = 30000;
+  private static final int DEFAULT_MAX_CAPACITY = 3;
 
   private static transient ThreadLocal<Integer> limit = new ThreadLocal<>();
   private static transient ThreadLocal<Integer> offset = new ThreadLocal<>();
@@ -125,7 +125,7 @@ public class MTreeDiskBased implements MTreeInterface {
         if (!hasSetStorageGroup) {
           throw new StorageGroupNotSetException("Storage group should be created first");
         }
-        metadataDiskManager.addChild(cur, nodeName, new InternalMNode(cur, nodeName), true);
+        metadataDiskManager.addChild(cur, nodeName, new InternalMNode(cur, nodeName));
       }
       cur = metadataDiskManager.getChild(cur, nodeName, true);
     }
@@ -155,15 +155,17 @@ public class MTreeDiskBased implements MTreeInterface {
       MeasurementMNode measurementMNode =
           new MeasurementMNode(cur, leafName, alias, dataType, encoding, compressor, props);
       if (child != null) {
-        metadataDiskManager.replaceChild(cur, measurementMNode.getName(), measurementMNode,true);
+        metadataDiskManager.replaceChild(cur, measurementMNode.getName(), measurementMNode);
       } else {
-        metadataDiskManager.addChild(cur, leafName, measurementMNode, true);
+        metadataDiskManager.addChild(cur, leafName, measurementMNode);
       }
 
       // link alias to LeafMNode
       if (alias != null) {
         metadataDiskManager.addAlias(cur, alias, measurementMNode);
       }
+
+      measurementMNode=(MeasurementMNode) metadataDiskManager.getChild(cur,leafName,true);
       unlockMNodePath(measurementMNode.getParent());
       return measurementMNode;
     }

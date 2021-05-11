@@ -22,7 +22,7 @@ import static org.junit.Assert.*;
 
 public class MTreeDiskBasedTest {
 
-  private static final int CACHE_SIZE = 3;
+  private static final int CACHE_SIZE = 0;
   private static final String BASE_PATH = MTreeDiskBasedTest.class.getResource("").getPath();
   private static final String METAFILE_FILEPATH = BASE_PATH + "MTreeDiskBasedTest_metafile.bin";
   private File metaFile = new File(METAFILE_FILEPATH);

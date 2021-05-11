@@ -28,6 +28,9 @@ public class LRUCacheStrategy implements CacheStrategy {
     }
     try {
       lock.lock();
+      if(!mNode.isCached()){
+        mNode.setCacheEntry(new CacheEntry(mNode));
+      }
       if(mNode.getParent()!=null&&!mNode.isLockedInMemory()){
         increaseLock(mNode.getParent());
       }
@@ -39,9 +42,7 @@ public class LRUCacheStrategy implements CacheStrategy {
 
   private void increaseLock(MNode mNode){
     CacheEntry entry = mNode.getCacheEntry();
-    if (entry == null) {
-      entry = new CacheEntry(mNode);
-    }else if(!entry.isLocked()){
+    if(!entry.isLocked()){
       removeOne(entry);
     }
     entry.increaseLock();

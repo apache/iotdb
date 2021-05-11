@@ -17,20 +17,17 @@ public interface MetadataAccess {
   MNode getChild(MNode parent, String name) throws MetadataException;
   MNode getChild(MNode parent, String name, boolean lockChild) throws MetadataException;
 
-
   /** get a cloned children map instance from the parent */
   Map<String, MNode> getChildren(MNode parent) throws MetadataException;
 
   /** add a child to the parent */
   void addChild(MNode parent, String childName, MNode child) throws MetadataException;
-  void addChild(MNode parent, String childName, MNode child, boolean lockChild) throws MetadataException;
 
   /** add a alias child to the parent */
   void addAlias(MNode parent, String alias, MNode child) throws MetadataException;
 
   /** replace a child of the parent with the newChild */
   void replaceChild(MNode parent, String measurement, MNode newChild) throws MetadataException;
-  void replaceChild(MNode parent, String measurement, MNode newChild, boolean lockChild) throws MetadataException;
 
   /** delete a child of the parent */
   void deleteChild(MNode parent, String childName) throws MetadataException;
