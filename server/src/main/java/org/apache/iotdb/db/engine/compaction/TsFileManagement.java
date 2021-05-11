@@ -408,7 +408,9 @@ public abstract class TsFileManagement {
         File mergedFile =
             FSFactoryProducer.getFSFactory().getFile(seqFile.getTsFilePath() + MERGE_SUFFIX);
         if (mergedFile.exists()) {
-          mergedFile.delete();
+          if (!mergedFile.delete()) {
+            logger.warn("Delete file {} failed", mergedFile);
+          }
         }
         updateMergeModification(seqFile);
       } finally {

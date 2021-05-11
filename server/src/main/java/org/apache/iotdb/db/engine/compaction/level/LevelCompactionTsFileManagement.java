@@ -417,7 +417,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
 
   /** recover files */
   @Override
-  @SuppressWarnings("squid:S3776")
+  @SuppressWarnings({"squid:S3776", "squid:S2142"})
   public void recover() {
     File logFile =
         FSFactoryProducer.getFSFactory()
@@ -847,7 +847,9 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         if (targetFilePath != null) {
           File targetFile = new File(targetFilePath);
           if (targetFile.exists()) {
-            targetFile.delete();
+            if (!targetFile.delete()) {
+              logger.warn("Delete file {} failed", targetFile);
+            }
           }
         }
       }
