@@ -2161,6 +2161,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   @Override
   public void myTest() throws TException {
     try {
+      DiskEvaluator.getInstance().recoverFromFile();
     } catch (Exception e) {
       e.printStackTrace();
     }

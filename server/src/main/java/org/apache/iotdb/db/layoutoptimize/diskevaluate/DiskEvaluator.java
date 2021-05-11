@@ -297,6 +297,29 @@ public class DiskEvaluator {
     outputStream.close();
   }
 
+  public boolean recoverFromFile() {
+    String systemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    File layoutDir = new File(systemDir + File.separator + "layout");
+    File diskInfoFile = new File(layoutDir + File.separator + "disk.info");
+    if (!diskInfoFile.exists()) {
+      logger.info("failed to recover from file, because {} not exist", diskInfoFile);
+      return false;
+    }
+    try {
+      BufferedInputStream inputStream = new BufferedInputStream(new FileInputStream(diskInfoFile));
+      byte[] buffer = new byte[(int) diskInfoFile.length()];
+      inputStream.read(buffer);
+      String json = new String(buffer);
+      Gson gson = new Gson();
+      diskInfo = gson.fromJson(json, DiskInfo.class);
+    } catch (IOException e) {
+      e.printStackTrace();
+      diskInfo = null;
+      return false;
+    }
+    return true;
+  }
+
   private static class DiskInfo {
     public List<Long> seekDistance = new ArrayList<>();
     public List<Double> seekCost = new ArrayList<>();
