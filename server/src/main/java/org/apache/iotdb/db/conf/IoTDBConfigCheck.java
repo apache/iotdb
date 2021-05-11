@@ -241,6 +241,14 @@ public class IoTDBConfigCheck {
       System.exit(-1);
     }
 
+    // virtual storage group num can only set to 1 when upgrading from old version
+    if (!virtualStorageGroupNum.equals("1")) {
+      logger.error(
+          "virtual storage group num cannot set to {} when upgrading from old version, "
+              + "please set to 1 and restart",
+          virtualStorageGroupNum);
+      System.exit(-1);
+    }
     try (FileOutputStream tmpFOS = new FileOutputStream(tmpPropertiesFile.toString())) {
       properties.setProperty(PARTITION_INTERVAL_STRING, String.valueOf(partitionInterval));
       properties.setProperty(TSFILE_FILE_SYSTEM_STRING, tsfileFileSystem);
