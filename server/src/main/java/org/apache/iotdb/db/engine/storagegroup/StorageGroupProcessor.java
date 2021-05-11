@@ -55,7 +55,6 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -1825,24 +1824,22 @@ public class StorageGroupProcessor {
       return;
     }
     try {
-      MNode node = IoTDB.metaManager.getDeviceNode(deviceId);
+      Map<String,MeasurementMNode> measurementMNodes=IoTDB.metaManager.getMeasurementNodesInDeviceWithMemoryLock(deviceId);
 
-      for (MNode measurementNode : node.getChildren().values()) {
+      for (MeasurementMNode measurementNode : measurementMNodes.values()) {
         if (measurementNode != null
             && originalPath.matchFullPath(measurementNode.getPartialPath())) {
-//          TimeValuePair lastPair = ((MeasurementMNode) measurementNode).getCachedLast();
-          PartialPath path=measurementNode.getPartialPath();
-          TimeValuePair lastPair=IoTDB.metaManager.getLastCache(path);
+          TimeValuePair lastPair = measurementNode.getCachedLast();
           if (lastPair != null
               && startTime <= lastPair.getTimestamp()
               && lastPair.getTimestamp() <= endTime) {
-//            ((MeasurementMNode) measurementNode).resetCache();
-            IoTDB.metaManager.resetLastCache(path);
+            measurementNode.resetCache();
             logger.info(
                 "[tryToDeleteLastCache] Last cache for path: {} is set to null",
                 measurementNode.getFullPath());
           }
         }
+        IoTDB.metaManager.unlockNode(measurementNode);
       }
     } catch (MetadataException e) {
       throw new WriteProcessException(e);
@@ -2166,16 +2163,16 @@ public class StorageGroupProcessor {
       return;
     }
     try {
-      MNode node = IoTDB.metaManager.getDeviceNode(deviceId);
+      Map<String,MeasurementMNode> measurementMNodes=IoTDB.metaManager.getMeasurementNodesInDeviceWithMemoryLock(deviceId);
 
-      for (MNode measurementNode : node.getChildren().values()) {
+      for (MeasurementMNode measurementNode : measurementMNodes.values()) {
         if (measurementNode != null) {
-//          ((MeasurementMNode) measurementNode).resetCache();
-          IoTDB.metaManager.resetLastCache(measurementNode.getPartialPath());
+          measurementNode.resetCache();
           logger.info(
               "[tryToDeleteLastCacheByDevice] Last cache for path: {} is set to null",
               measurementNode.getFullPath());
         }
+        IoTDB.metaManager.unlockNode(measurementNode);
       }
     } catch (MetadataException e) {
       throw new WriteProcessException(e);

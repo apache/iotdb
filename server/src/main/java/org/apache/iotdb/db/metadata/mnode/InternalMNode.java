@@ -435,7 +435,6 @@ public class InternalMNode implements MNode {
 
   protected void copyData(MNode mNode) {
     mNode.setParent(parent);
-    mNode.setCacheEntry(cacheEntry);
     mNode.setPersistenceInfo(getPersistenceInfo());
 
     Map<String, MNode> newChildren = new ConcurrentHashMap<>();

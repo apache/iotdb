@@ -119,7 +119,7 @@ public class TriggerRegistrationService implements IService {
   private MeasurementMNode tryGetMeasurementMNode(CreateTriggerPlan plan)
       throws TriggerManagementException {
     try {
-      return (MeasurementMNode) IoTDB.metaManager.getNodeByPath(plan.getFullPath());
+      return IoTDB.metaManager.getMeasurementNodeByPathWithMemoryLock(plan.getFullPath());
     } catch (MetadataException e) {
       throw new TriggerManagementException(e.getMessage(), e);
     } catch (ClassCastException e) {

@@ -1052,6 +1052,14 @@ public class MManager {
     return mtree.getNodeByPath(path);
   }
 
+  public MeasurementMNode getMeasurementNodeByPathWithMemoryLock(PartialPath path) throws MetadataException{
+    MNode node=mtree.getNodeByPathWithMemoryLock(path);
+    if(node.getParent()!=null){
+      mtree.unlockMNodePath(node.getParent());
+    }
+    return (MeasurementMNode) node;
+  }
+
   /**
    * E.g., root.sg is storage group given [root, sg], return the MNode of root.sg given [root, sg,
    * device], return the MNode of root.sg Get storage group node by path. If storage group is not
@@ -1121,6 +1129,27 @@ public class MManager {
       node = getMNodeFromCache(path);
       node=processMNodeForExternChildrenCheck(node);
       return node;
+    } catch (CacheException e) {
+      throw new PathNotExistException(path.getFullPath());
+    }
+  }
+
+  public Map<String,MeasurementMNode> getMeasurementNodesInDeviceWithMemoryLock(PartialPath path) throws MetadataException {
+    try {
+      MNode node = getMNodeFromCache(path);
+      node=mtree.lockMNodePath(node);
+      Map<String,MeasurementMNode> result=new HashMap<>();
+      MNode child;
+      for(String childName:node.getChildren().keySet()){
+        child=getMNode(node,childName);
+        if(child.isMeasurement()){
+          result.put(childName,(MeasurementMNode) child);
+        }else {
+          mtree.unlockMNode(child);
+        }
+      }
+      mtree.unlockMNodePath(node);
+      return result;
     } catch (CacheException e) {
       throw new PathNotExistException(path.getFullPath());
     }
@@ -1803,16 +1832,6 @@ public class MManager {
     return null;
   }
 
-  public void resetLastCache(PartialPath seriesPath){
-    try {
-      MeasurementMNode node = (MeasurementMNode) mtree.getNodeByPath(seriesPath);
-      node.resetCache();
-      mtree.updateMNode(node);
-    } catch (MetadataException e) {
-      logger.warn("failed to reset last cache for the {}, err:{}", seriesPath, e.getMessage());
-    }
-  }
-
   @TestOnly
   public void flushAllMlogForTest() throws IOException {
     logWriter.close();
@@ -1988,7 +2007,7 @@ public class MManager {
   }
 
 
-  public void unlockmnode(MNode mNode){
+  public void unlockNode(MNode mNode){
     mtree.unlockMNode(mNode);
   }
 

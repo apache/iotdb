@@ -197,6 +197,9 @@ public class LastQueryExecutor {
         }
       }
     }
+    for(LastCacheAccessor cacheAccessor:cacheAccessors){
+      cacheAccessor.clear();
+    }
     return resultContainer;
   }
 
@@ -252,7 +255,7 @@ public class LastQueryExecutor {
 
     public TimeValuePair read() {
       try {
-        node = (MeasurementMNode) IoTDB.metaManager.getNodeByPath(path);
+        node = IoTDB.metaManager.getMeasurementNodeByPathWithMemoryLock(path);
       } catch (MetadataException e) {
         TimeValuePair timeValuePair = IoTDB.metaManager.getLastCache(path);
         if (timeValuePair != null) {
@@ -268,6 +271,12 @@ public class LastQueryExecutor {
 
     public void write(TimeValuePair pair) {
       IoTDB.metaManager.updateLastCache(path, pair, false, Long.MIN_VALUE, node);
+    }
+
+    public void clear(){
+      path=null;
+      IoTDB.metaManager.unlockNode(node);
+      node=null;
     }
   }
 
