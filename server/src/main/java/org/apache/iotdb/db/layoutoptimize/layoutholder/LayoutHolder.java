@@ -106,7 +106,7 @@ public class LayoutHolder {
   }
 
   /**
-   * get the chunk size ofor device
+   * get the chunk size for device
    *
    * @param deviceId the id of the device, must be full path
    * @return the average chunk size of the device
@@ -146,8 +146,7 @@ public class LayoutHolder {
     gsonBuilder.setPrettyPrinting();
     Gson gson = gsonBuilder.create();
     String json = gson.toJson(layoutMap);
-    String systemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
-    File layoutDir = new File(systemDir + File.separator + "layout");
+    File layoutDir = new File(IoTDBDescriptor.getInstance().getConfig().getLayoutDir());
     if (!layoutDir.exists()) {
       if (!layoutDir.mkdir()) {
         return false;
@@ -179,8 +178,7 @@ public class LayoutHolder {
    * @return true if success to load layout, else false
    */
   public boolean loadLayout() {
-    String systemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
-    File layoutDir = new File(systemDir + File.separator + "layout");
+    File layoutDir = new File(IoTDBDescriptor.getInstance().getConfig().getLayoutDir());
     if (!layoutDir.exists()) {
       logger.info("fail to load layout");
       return false;

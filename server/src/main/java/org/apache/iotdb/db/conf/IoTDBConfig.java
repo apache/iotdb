@@ -239,6 +239,9 @@ public class IoTDBConfig {
   /** Wal directory. */
   private String walDir = DEFAULT_BASE_DIR + File.separator + "wal";
 
+  /** Layout directory */
+  private String layoutDir = systemDir + File.separator + "layout";
+
   /** Maximum MemTable number. Invalid when enableMemControl is true. */
   private int maxMemtableNumber = 0;
 
@@ -1030,6 +1033,14 @@ public class IoTDBConfig {
 
   public void setTriggerDir(String triggerDir) {
     this.triggerDir = triggerDir;
+  }
+
+  public String getLayoutDir() {
+    return this.layoutDir;
+  }
+
+  public void setLayoutDir(String layoutDir) {
+    this.layoutDir = layoutDir;
   }
 
   public String getMultiDirStrategyClassName() {
