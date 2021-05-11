@@ -171,7 +171,10 @@ public class UDTFAlignByTimeDataSetTest {
         Path path = queryPlan.getPaths().get(i);
         String columnName =
             path == null
-                ? queryPlan.getExecutorByOriginalOutputColumnIndex(i).getContext().getColumnName()
+                ? queryPlan
+                    .getExecutorByOriginalOutputColumnIndex(i)
+                    .getExpression()
+                    .getColumnName()
                 : path.getFullPath();
         originalIndex2FieldIndex.add(path2Index.get(columnName));
       }
@@ -233,7 +236,10 @@ public class UDTFAlignByTimeDataSetTest {
         Path path = queryPlan.getPaths().get(i);
         String columnName =
             path == null
-                ? queryPlan.getExecutorByOriginalOutputColumnIndex(i).getContext().getColumnName()
+                ? queryPlan
+                    .getExecutorByOriginalOutputColumnIndex(i)
+                    .getExpression()
+                    .getColumnName()
                 : path.getFullPath();
         originalIndex2FieldIndex.add(path2Index.get(columnName));
       }
@@ -280,7 +286,10 @@ public class UDTFAlignByTimeDataSetTest {
         Path path = queryPlan.getPaths().get(i);
         String columnName =
             path == null
-                ? queryPlan.getExecutorByOriginalOutputColumnIndex(i).getContext().getColumnName()
+                ? queryPlan
+                    .getExecutorByOriginalOutputColumnIndex(i)
+                    .getExpression()
+                    .getColumnName()
                 : path.getFullPath();
         originalIndex2FieldIndex.add(path2Index.get(columnName));
       }
@@ -339,7 +348,10 @@ public class UDTFAlignByTimeDataSetTest {
         Path path = queryPlan.getPaths().get(i);
         String columnName =
             path == null
-                ? queryPlan.getExecutorByOriginalOutputColumnIndex(i).getContext().getColumnName()
+                ? queryPlan
+                    .getExecutorByOriginalOutputColumnIndex(i)
+                    .getExpression()
+                    .getColumnName()
                 : path.getFullPath();
         originalIndex2FieldIndex.add(path2Index.get(columnName));
       }
@@ -412,7 +424,10 @@ public class UDTFAlignByTimeDataSetTest {
         Path path = queryPlan.getPaths().get(i);
         String columnName =
             path == null
-                ? queryPlan.getExecutorByOriginalOutputColumnIndex(i).getContext().getColumnName()
+                ? queryPlan
+                    .getExecutorByOriginalOutputColumnIndex(i)
+                    .getExpression()
+                    .getColumnName()
                 : path.getFullPath();
         originalIndex2FieldIndex.add(path2Index.get(columnName));
       }
@@ -468,7 +483,10 @@ public class UDTFAlignByTimeDataSetTest {
         Path path = queryPlan.getPaths().get(i);
         String columnName =
             path == null
-                ? queryPlan.getExecutorByOriginalOutputColumnIndex(i).getContext().getColumnName()
+                ? queryPlan
+                    .getExecutorByOriginalOutputColumnIndex(i)
+                    .getExpression()
+                    .getColumnName()
                 : path.getFullPath();
         originalIndex2FieldIndex.add(path2Index.get(columnName));
       }
@@ -533,7 +551,10 @@ public class UDTFAlignByTimeDataSetTest {
         Path path = queryPlan.getPaths().get(i);
         String columnName =
             path == null
-                ? queryPlan.getExecutorByOriginalOutputColumnIndex(i).getContext().getColumnName()
+                ? queryPlan
+                    .getExecutorByOriginalOutputColumnIndex(i)
+                    .getExpression()
+                    .getColumnName()
                 : path.getFullPath();
         originalIndex2FieldIndex.add(path2Index.get(columnName));
       }
@@ -604,7 +625,10 @@ public class UDTFAlignByTimeDataSetTest {
         Path path = queryPlan.getPaths().get(i);
         String columnName =
             path == null
-                ? queryPlan.getExecutorByOriginalOutputColumnIndex(i).getContext().getColumnName()
+                ? queryPlan
+                    .getExecutorByOriginalOutputColumnIndex(i)
+                    .getExpression()
+                    .getColumnName()
                 : path.getFullPath();
         originalIndex2FieldIndex.add(path2Index.get(columnName));
       }
@@ -657,7 +681,10 @@ public class UDTFAlignByTimeDataSetTest {
         Path path = queryPlan.getPaths().get(i);
         String columnName =
             path == null
-                ? queryPlan.getExecutorByOriginalOutputColumnIndex(i).getContext().getColumnName()
+                ? queryPlan
+                    .getExecutorByOriginalOutputColumnIndex(i)
+                    .getExpression()
+                    .getColumnName()
                 : path.getFullPath();
         originalIndex2FieldIndex.add(path2Index.get(columnName));
       }

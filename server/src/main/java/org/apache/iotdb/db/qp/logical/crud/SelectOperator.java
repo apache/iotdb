@@ -20,7 +20,9 @@ package org.apache.iotdb.db.qp.logical.crud;
 
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.query.udf.core.context.UDFContext;
+import org.apache.iotdb.db.query.expression.ResultColumn;
+import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
+import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -30,87 +32,79 @@ import java.util.List;
 public final class SelectOperator extends Operator {
 
   private final ZoneId zoneId;
-  private List<PartialPath> suffixList;
-  private List<String> aggregations;
-  private List<UDFContext> udfList;
 
-  private boolean lastQuery;
-  private boolean udfQuery;
-  private boolean hasBuiltinAggregation;
+  private boolean isLastQuery = false;
+  private boolean hasAggregationFunction = false;
+  private boolean hasTimeSeriesGeneratingFunction = false;
+
+  private List<ResultColumn> resultColumns = new ArrayList<>();
+
+  private List<PartialPath> pathsCache;
+  private List<String> aggregationFunctionsCache;
 
   /** init with tokenIntType, default operatorType is <code>OperatorType.SELECT</code>. */
   public SelectOperator(int tokenIntType, ZoneId zoneId) {
     super(tokenIntType);
-    this.zoneId = zoneId;
     operatorType = OperatorType.SELECT;
-    suffixList = new ArrayList<>();
-    aggregations = new ArrayList<>();
-    udfList = new ArrayList<>();
-    lastQuery = false;
-    udfQuery = false;
-    hasBuiltinAggregation = false;
+    this.zoneId = zoneId;
   }
 
   public ZoneId getZoneId() {
     return zoneId;
   }
 
-  public void addSelectPath(PartialPath suffixPath) {
-    suffixList.add(suffixPath);
-  }
-
-  public void addClusterPath(PartialPath suffixPath, String aggregation) {
-    suffixList.add(suffixPath);
-    aggregations.add(aggregation);
-    if (aggregation != null) {
-      hasBuiltinAggregation = true;
-    }
+  public void markAsLastQuery() {
+    isLastQuery = true;
   }
 
   public boolean isLastQuery() {
-    return this.lastQuery;
+    return isLastQuery;
   }
 
-  public void setLastQuery() {
-    lastQuery = true;
+  public boolean hasAggregationFunction() {
+    return hasAggregationFunction;
   }
 
-  public List<String> getAggregations() {
-    return this.aggregations;
+  public boolean hasTimeSeriesGeneratingFunction() {
+    return hasTimeSeriesGeneratingFunction;
   }
 
-  public void setAggregations(List<String> aggregations) {
-    this.aggregations = aggregations;
-  }
-
-  public boolean hasAggregation() {
-    return hasBuiltinAggregation; // todo: hasBuiltinAggregation || hasUDAF
-  }
-
-  public void setSuffixPathList(List<PartialPath> suffixPaths) {
-    suffixList = suffixPaths;
-  }
-
-  public List<PartialPath> getSuffixPaths() {
-    return suffixList;
-  }
-
-  public void addUdf(UDFContext udf) {
-    if (udf != null) {
-      udfQuery = true;
+  public void addResultColumn(ResultColumn resultColumn) {
+    resultColumns.add(resultColumn);
+    if (resultColumn.getExpression().isAggregationFunctionExpression()) {
+      hasAggregationFunction = true;
     }
-    udfList.add(udf);
+    if (resultColumn.getExpression().isTimeSeriesGeneratingFunctionExpression()) {
+      hasTimeSeriesGeneratingFunction = true;
+    }
   }
 
-  public List<UDFContext> getUdfList() {
-    return udfList;
+  public void setResultColumns(List<ResultColumn> resultColumns) {
+    this.resultColumns = resultColumns;
   }
 
-  public boolean isUdfQuery() {
-    return udfQuery;
+  public List<ResultColumn> getResultColumns() {
+    return resultColumns;
   }
 
-  public void setUdfList(List<UDFContext> udfList) {
-    this.udfList = udfList;
+  public List<PartialPath> getPaths() {
+    if (pathsCache == null) {
+      pathsCache = new ArrayList<>();
+      for (ResultColumn resultColumn : resultColumns) {
+        pathsCache.add(((TimeSeriesOperand) resultColumn.getExpression()).getPath());
+      }
+    }
+    return pathsCache;
+  }
+
+  public List<String> getAggregationFunctions() {
+    if (aggregationFunctionsCache == null) {
+      aggregationFunctionsCache = new ArrayList<>();
+      for (ResultColumn resultColumn : resultColumns) {
+        aggregationFunctionsCache.add(
+            ((FunctionExpression) resultColumn.getExpression()).getFunctionName());
+      }
+    }
+    return aggregationFunctionsCache;
   }
 }

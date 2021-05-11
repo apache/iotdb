@@ -122,7 +122,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowTriggersPlan;
 import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
-import org.apache.iotdb.db.query.udf.core.context.UDFContext;
+import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -152,7 +152,6 @@ public class PhysicalGenerator {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private PhysicalPlan doTransformation(Operator operator, int fetchSize)
       throws QueryProcessException {
-    List<PartialPath> paths;
     switch (operator.getType()) {
       case AUTHOR:
         AuthorOperator author = (AuthorOperator) operator;
@@ -211,13 +210,13 @@ public class PhysicalGenerator {
       case CREATE_INDEX:
         CreateIndexOperator createIndexOp = (CreateIndexOperator) operator;
         return new CreateIndexPlan(
-            createIndexOp.getSelectedPaths(),
+            createIndexOp.getPaths(),
             createIndexOp.getProps(),
             createIndexOp.getTime(),
             createIndexOp.getIndexType());
       case DROP_INDEX:
         DropIndexOperator dropIndexOp = (DropIndexOperator) operator;
-        return new DropIndexPlan(dropIndexOp.getSelectedPaths(), dropIndexOp.getIndexType());
+        return new DropIndexPlan(dropIndexOp.getPaths(), dropIndexOp.getIndexType());
       case ALTER_TIMESERIES:
         AlterTimeSeriesOperator alterTimeSeriesOperator = (AlterTimeSeriesOperator) operator;
         return new AlterTimeSeriesPlan(
@@ -229,11 +228,9 @@ public class PhysicalGenerator {
             alterTimeSeriesOperator.getAttributesMap());
       case DELETE:
         DeleteDataOperator delete = (DeleteDataOperator) operator;
-        paths = delete.getSelectedPaths();
-        return new DeletePlan(delete.getStartTime(), delete.getEndTime(), paths);
+        return new DeletePlan(delete.getStartTime(), delete.getEndTime(), delete.getPaths());
       case INSERT:
         InsertOperator insert = (InsertOperator) operator;
-        paths = insert.getSelectedPaths();
         int measurementsNum = 0;
         for (String measurement : insert.getMeasurementList()) {
           if (measurement.startsWith("(") && measurement.endsWith(")")) {
@@ -250,7 +247,7 @@ public class PhysicalGenerator {
         }
         if (measurementsNum == insert.getValueList().length) {
           return new InsertRowPlan(
-              paths.get(0),
+              insert.getDevice(),
               insert.getTimes()[0],
               insert.getMeasurementList(),
               insert.getValueList());
@@ -259,7 +256,7 @@ public class PhysicalGenerator {
         for (int i = 0; i < insert.getTimes().length; i++) {
           insertRowsPlan.addOneInsertRowPlan(
               new InsertRowPlan(
-                  paths.get(0),
+                  insert.getDevice(),
                   insert.getTimes()[i],
                   insert.getMeasurementList(),
                   Arrays.copyOfRange(
@@ -458,17 +455,17 @@ public class PhysicalGenerator {
     return SchemaUtils.getSeriesTypesByPaths(paths);
   }
 
-  interface Transfrom {
+  interface Transform {
     QueryPlan transform(QueryOperator queryOperator) throws QueryProcessException;
   }
 
   /** agg physical plan transform */
-  public static class AggPhysicalPlanRule implements Transfrom {
+  public static class AggPhysicalPlanRule implements Transform {
 
     @Override
     public QueryPlan transform(QueryOperator queryOperator) throws QueryProcessException {
       QueryPlan queryPlan;
-      if (queryOperator.hasUdf()) {
+      if (queryOperator.hasTimeSeriesGeneratingFunction()) {
         throw new QueryProcessException(
             "User-defined and built-in hybrid aggregation is not supported.");
       }
@@ -480,7 +477,7 @@ public class PhysicalGenerator {
         queryPlan = new AggregationPlan();
       }
       ((AggregationPlan) queryPlan)
-          .setAggregations(queryOperator.getSelectOperator().getAggregations());
+          .setAggregations(queryOperator.getSelectOperator().getAggregationFunctions());
 
       if (queryOperator.isGroupByTime()) {
         GroupByTimePlan groupByTimePlan = (GroupByTimePlan) queryPlan;
@@ -519,11 +516,11 @@ public class PhysicalGenerator {
   }
 
   /** fill physical plan transfrom */
-  public static class FillPhysicalPlanRule implements Transfrom {
+  public static class FillPhysicalPlanRule implements Transform {
 
     @Override
     public QueryPlan transform(QueryOperator queryOperator) throws QueryProcessException {
-      if (queryOperator.hasUdf()) {
+      if (queryOperator.hasTimeSeriesGeneratingFunction()) {
         throw new QueryProcessException("Fill functions are not supported in UDF queries.");
       }
       FillQueryPlan queryPlan = new FillQueryPlan();
@@ -542,7 +539,7 @@ public class PhysicalGenerator {
   private PhysicalPlan transformQuery(QueryOperator queryOperator) throws QueryProcessException {
     QueryPlan queryPlan = null;
 
-    if (queryOperator.hasAggregation()) {
+    if (queryOperator.hasAggregationFunction()) {
       queryPlan = new AggPhysicalPlanRule().transform(queryOperator);
     } else if (queryOperator.isFill()) {
       queryPlan = new FillPhysicalPlanRule().transform(queryOperator);
@@ -550,9 +547,10 @@ public class PhysicalGenerator {
       queryPlan = new LastQueryPlan();
     } else if (queryOperator.getIndexType() != null) {
       queryPlan = new QueryIndexPlan();
-    } else if (queryOperator.hasUdf()) {
+    } else if (queryOperator.hasTimeSeriesGeneratingFunction()) {
       queryPlan = new UDTFPlan(queryOperator.getSelectOperator().getZoneId());
-      ((UDTFPlan) queryPlan).constructUdfExecutors(queryOperator.getSelectOperator().getUdfList());
+      ((UDTFPlan) queryPlan)
+          .constructUdfExecutors(queryOperator.getSelectOperator().getResultColumns());
     } else {
       queryPlan = new RawDataQueryPlan();
     }
@@ -560,7 +558,7 @@ public class PhysicalGenerator {
     if (queryOperator.isAlignByDevice()) {
       queryPlan = getAlignQueryPlan(queryOperator, queryPlan);
     } else {
-      queryPlan.setPaths(queryOperator.getSelectedPaths());
+      queryPlan.setPaths(queryOperator.getSelectOperator().getPaths());
       // Last query result set will not be affected by alignment
       if (queryPlan instanceof LastQueryPlan && !queryOperator.isAlignByTime()) {
         throw new QueryProcessException("Disable align cannot be applied to LAST query.");
@@ -626,8 +624,8 @@ public class PhysicalGenerator {
     List<PartialPath> prefixPaths = queryOperator.getFromOperator().getPrefixPaths();
     // remove stars in fromPaths and get deviceId with deduplication
     List<PartialPath> devices = this.removeStarsInDeviceWithUnique(prefixPaths);
-    List<PartialPath> suffixPaths = queryOperator.getSelectOperator().getSuffixPaths();
-    List<String> originAggregations = queryOperator.getSelectOperator().getAggregations();
+    List<PartialPath> suffixPaths = queryOperator.getSelectOperator().getPaths();
+    List<String> originAggregations = queryOperator.getSelectOperator().getAggregationFunctions();
 
     // to record result measurement columns
     List<String> measurements = new ArrayList<>();
@@ -886,9 +884,10 @@ public class PhysicalGenerator {
       if (path != null) { // non-udf
         indexedPaths.add(new Pair<>(paths.get(i), i));
       } else { // udf
-        UDFContext context =
-            ((UDTFPlan) queryPlan).getExecutorByOriginalOutputColumnIndex(i).getContext();
-        for (PartialPath udfPath : context.getPaths()) {
+        FunctionExpression functionExpression =
+            (FunctionExpression)
+                ((UDTFPlan) queryPlan).getExecutorByOriginalOutputColumnIndex(i).getExpression();
+        for (PartialPath udfPath : functionExpression.getPaths()) {
           indexedPaths.add(new Pair<>(udfPath, i));
         }
       }
@@ -984,12 +983,12 @@ public class PhysicalGenerator {
 
   private static boolean verifyAllAggregationDataTypesEqual(QueryOperator queryOperator)
       throws MetadataException {
-    List<String> aggregations = queryOperator.getSelectOperator().getAggregations();
+    List<String> aggregations = queryOperator.getSelectOperator().getAggregationFunctions();
     if (aggregations.isEmpty()) {
       return true;
     }
 
-    List<PartialPath> paths = queryOperator.getSelectedPaths();
+    List<PartialPath> paths = queryOperator.getSelectOperator().getPaths();
     List<TSDataType> dataTypes = SchemaUtils.getSeriesTypesByPaths(paths);
     String aggType = aggregations.get(0);
     switch (aggType) {

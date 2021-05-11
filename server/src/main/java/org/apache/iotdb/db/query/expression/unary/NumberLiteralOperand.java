@@ -22,7 +22,7 @@ package org.apache.iotdb.db.query.expression.unary;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class NumberLiteralOperand implements Expression {
+public class NumberLiteralOperand extends Expression {
 
   protected double literal;
 

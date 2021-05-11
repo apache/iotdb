@@ -1042,10 +1042,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           respColumns.add(
               paths.get(i) != null
                   ? paths.get(i).getFullPath()
-                  : udtfPlan
-                      .getExecutorByOriginalOutputColumnIndex(i)
-                      .getContext()
-                      .getColumnName());
+                  : udtfPlan.getExecutorByOriginalOutputColumnIndex(i).getExpression().toString());
           seriesTypes.add(
               paths.get(i) != null
                   ? udtfPlan.getDataTypes().get(i)

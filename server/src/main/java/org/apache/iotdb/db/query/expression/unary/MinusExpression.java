@@ -23,7 +23,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class MinusExpression implements Expression {
+public class MinusExpression extends Expression {
 
   protected Expression expression;
 

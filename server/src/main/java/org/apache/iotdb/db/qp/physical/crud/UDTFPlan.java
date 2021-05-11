@@ -21,7 +21,8 @@ package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.query.udf.core.context.UDFContext;
+import org.apache.iotdb.db.query.expression.ResultColumn;
+import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
@@ -52,18 +53,15 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
   }
 
   @Override
-  public void constructUdfExecutors(List<UDFContext> udfContexts) {
-    for (int i = 0; i < udfContexts.size(); ++i) {
-      UDFContext context = udfContexts.get(i);
-      if (context == null) {
+  public void constructUdfExecutors(List<ResultColumn> resultColumns) {
+    for (int i = 0; i < resultColumns.size(); ++i) {
+      FunctionExpression expression = (FunctionExpression) resultColumns.get(i).getExpression();
+      if (expression == null) {
         continue;
       }
 
-      String columnName = context.getColumnName();
-      if (!columnName2Executor.containsKey(columnName)) {
-        UDTFExecutor executor = new UDTFExecutor(context, zoneId);
-        columnName2Executor.put(columnName, executor);
-      }
+      String columnName = expression.toString();
+      columnName2Executor.computeIfAbsent(columnName, k -> new UDTFExecutor(expression, zoneId));
       originalOutputColumnIndex2Executor.put(i, columnName2Executor.get(columnName));
     }
   }
@@ -134,7 +132,7 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
   @Override
   public String getColumnForDisplay(String columnForReader, int pathIndex) {
     if (paths.get(pathIndex) == null) {
-      return this.getExecutorByOriginalOutputColumnIndex(pathIndex).getContext().getColumnName();
+      return this.getExecutorByOriginalOutputColumnIndex(pathIndex).getExpression().toString();
     }
     return columnForReader;
   }

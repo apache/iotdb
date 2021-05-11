@@ -30,7 +30,6 @@ import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.FromOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
-import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.strategy.LogicalGenerator;
@@ -40,6 +39,8 @@ import org.apache.iotdb.db.qp.strategy.optimizer.DnfFilterOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.MergeSingleFilterOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.RemoveNotOptimizer;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.expression.ResultColumn;
+import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 
@@ -70,7 +71,7 @@ public class Planner {
     Operator operator = logicalGenerator.generate(sqlStr, zoneId);
     int maxDeduplicatedPathNum =
         QueryResourceManager.getInstance().getMaxDeduplicatedPathNum(fetchSize);
-    if (operator instanceof SFWOperator && ((SFWOperator) operator).isLastQuery()) {
+    if (operator instanceof QueryOperator && ((QueryOperator) operator).isLastQuery()) {
       // Dataset of last query actually has only three columns, so we shouldn't limit the path num
       // while constructing logical plan
       // To avoid overflowing because logicalOptimize function may do maxDeduplicatedPathNum + 1, we
@@ -100,7 +101,7 @@ public class Planner {
       PartialPath path = new PartialPath(p);
       fromOp.addPrefixTablePath(path);
     }
-    selectOp.addSelectPath(new PartialPath(""));
+    selectOp.addResultColumn(new ResultColumn(new TimeSeriesOperand(new PartialPath(""))));
 
     queryOp.setSelectOperator(selectOp);
     queryOp.setFromOperator(fromOp);
@@ -133,7 +134,7 @@ public class Planner {
       // set it to Integer.MAX_VALUE - 1
       maxDeduplicatedPathNum = Integer.MAX_VALUE - 1;
     }
-    SFWOperator op = (SFWOperator) logicalOptimize(queryOp, maxDeduplicatedPathNum);
+    QueryOperator op = (QueryOperator) logicalOptimize(queryOp, maxDeduplicatedPathNum);
 
     PhysicalGenerator physicalGenerator = new PhysicalGenerator();
     return physicalGenerator.transformToPhysicalPlan(op, rawDataQueryReq.fetchSize);
@@ -181,30 +182,29 @@ public class Planner {
       case DROP_TRIGGER:
       case START_TRIGGER:
       case STOP_TRIGGER:
-        return operator;
       case QUERY:
       case DELETE:
       case CREATE_INDEX:
       case DROP_INDEX:
+        return operator;
       case QUERY_INDEX:
-        SFWOperator root = (SFWOperator) operator;
-        return optimizeSFWOperator(root, maxDeduplicatedPathNum);
+        return optimizeQueryOperator((QueryOperator) operator, maxDeduplicatedPathNum);
       default:
         throw new LogicalOperatorException(operator.getType().toString(), "");
     }
   }
 
   /**
-   * given an unoptimized select-from-where operator and return an optimized result.
+   * given an unoptimized query operator and return an optimized result.
    *
-   * @param root unoptimized select-from-where operator
-   * @return optimized select-from-where operator
-   * @throws LogicalOptimizeException exception in SFW optimizing
+   * @param root unoptimized query operator
+   * @return optimized query operator
+   * @throws LogicalOptimizeException exception in query optimizing
    */
-  private SFWOperator optimizeSFWOperator(SFWOperator root, int maxDeduplicatedPathNum)
+  private QueryOperator optimizeQueryOperator(QueryOperator root, int maxDeduplicatedPathNum)
       throws LogicalOperatorException, PathNumOverLimitException {
     ConcatPathOptimizer concatPathOptimizer = getConcatPathOptimizer();
-    root = (SFWOperator) concatPathOptimizer.transform(root, maxDeduplicatedPathNum);
+    root = (QueryOperator) concatPathOptimizer.transform(root, maxDeduplicatedPathNum);
     FilterOperator filter = root.getFilterOperator();
     if (filter == null) {
       return root;

@@ -22,9 +22,9 @@ package org.apache.iotdb.db.query.expression.binary;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public abstract class BinaryExpression implements Expression {
+public abstract class BinaryExpression extends Expression {
 
-  public BinaryExpression(Expression leftExpression, Expression rightExpression) {
+  protected BinaryExpression(Expression leftExpression, Expression rightExpression) {
     this.leftExpression = leftExpression;
     this.rightExpression = rightExpression;
   }

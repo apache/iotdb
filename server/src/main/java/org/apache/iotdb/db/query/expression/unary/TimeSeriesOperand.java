@@ -25,7 +25,7 @@ import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class TimeSeriesOperand implements Expression {
+public class TimeSeriesOperand extends Expression {
 
   protected PartialPath path;
   protected TSDataType dataType;

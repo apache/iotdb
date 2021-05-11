@@ -25,9 +25,9 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.UDFRegistrationException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.db.query.udf.api.UDF;
 import org.apache.iotdb.db.query.udf.builtin.BuiltinFunction;
-import org.apache.iotdb.db.query.udf.core.context.UDFContext;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -249,8 +249,8 @@ public class UDFRegistrationService implements IService {
     }
   }
 
-  public UDF reflect(UDFContext context) throws QueryProcessException {
-    String functionName = context.getName().toUpperCase();
+  public UDF reflect(FunctionExpression expression) throws QueryProcessException {
+    String functionName = expression.getFunctionName().toUpperCase();
     UDFRegistrationInformation information = registrationInformation.get(functionName);
     if (information == null) {
       String errorMessage =

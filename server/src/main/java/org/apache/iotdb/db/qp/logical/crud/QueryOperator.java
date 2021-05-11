@@ -25,8 +25,11 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.Map;
 
-/** this class extends {@code RootOperator} and process getIndex statement */
-public class QueryOperator extends SFWOperator {
+public class QueryOperator extends Operator {
+
+  private SelectOperator selectOperator;
+  private FromOperator fromOperator;
+  private FilterOperator filterOperator;
 
   private long startTime;
   private long endTime;
@@ -65,6 +68,30 @@ public class QueryOperator extends SFWOperator {
   public QueryOperator(int tokenIntType) {
     super(tokenIntType);
     operatorType = Operator.OperatorType.QUERY;
+  }
+
+  public SelectOperator getSelectOperator() {
+    return selectOperator;
+  }
+
+  public void setSelectOperator(SelectOperator selectOperator) {
+    this.selectOperator = selectOperator;
+  }
+
+  public FromOperator getFromOperator() {
+    return fromOperator;
+  }
+
+  public void setFromOperator(FromOperator fromOperator) {
+    this.fromOperator = fromOperator;
+  }
+
+  public FilterOperator getFilterOperator() {
+    return filterOperator;
+  }
+
+  public void setFilterOperator(FilterOperator filterOperator) {
+    this.filterOperator = filterOperator;
   }
 
   public Map<String, Object> getProps() {
@@ -249,5 +276,17 @@ public class QueryOperator extends SFWOperator {
 
   public void setAscending(boolean ascending) {
     this.ascending = ascending;
+  }
+
+  public boolean isLastQuery() {
+    return selectOperator.isLastQuery();
+  }
+
+  public boolean hasAggregationFunction() {
+    return selectOperator.hasAggregationFunction();
+  }
+
+  public boolean hasTimeSeriesGeneratingFunction() {
+    return selectOperator.hasTimeSeriesGeneratingFunction();
   }
 }

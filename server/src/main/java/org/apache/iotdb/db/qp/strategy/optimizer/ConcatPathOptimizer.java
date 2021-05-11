@@ -105,7 +105,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
             ((QueryOperator) operator).getIndexType() == null);
       } else {
         isAlignByDevice = true;
-        if (((QueryOperator) operator).hasUdf()) {
+        if (((QueryOperator) operator).hasTimeSeriesGeneratingFunction()) {
           throw new LogicalOptimizeException(
               "ALIGN BY DEVICE clause is not supported in UDF queries.");
         }

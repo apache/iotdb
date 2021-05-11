@@ -22,7 +22,18 @@ package org.apache.iotdb.db.query.expression;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public interface Expression {
+public abstract class Expression {
 
-  TSDataType dataType() throws MetadataException;
+  protected boolean isAggregationFunctionExpression = false;
+  protected boolean isTimeSeriesGeneratingFunctionExpression = false;
+
+  public boolean isAggregationFunctionExpression() {
+    return isAggregationFunctionExpression;
+  }
+
+  public boolean isTimeSeriesGeneratingFunctionExpression() {
+    return isTimeSeriesGeneratingFunctionExpression;
+  }
+
+  public abstract TSDataType dataType() throws MetadataException;
 }

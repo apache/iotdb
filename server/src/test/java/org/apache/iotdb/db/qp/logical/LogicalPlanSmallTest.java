@@ -247,7 +247,7 @@ public class LogicalPlanSmallTest {
     Assert.assertEquals(QueryOperator.class, operator.getClass());
     ArrayList<PartialPath> paths = new ArrayList<>();
     paths.add(new PartialPath("*"));
-    Assert.assertEquals(paths, ((QueryOperator) operator).getSelectedPaths());
+    Assert.assertEquals(paths, ((QueryOperator) operator).getExpressions());
   }
 
   @Test

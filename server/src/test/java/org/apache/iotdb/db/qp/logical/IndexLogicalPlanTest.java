@@ -116,7 +116,7 @@ public class IndexLogicalPlanTest {
     Assert.assertEquals(QueryOperator.class, op.getClass());
     QueryOperator queryOperator = (QueryOperator) op;
     Assert.assertEquals(OperatorType.QUERY, queryOperator.getType());
-    Assert.assertEquals("Glu", queryOperator.getSelectedPaths().get(0).getFullPath());
+    Assert.assertEquals("Glu", queryOperator.getExpressions().get(0).getFullPath());
     Assert.assertEquals(
         "root.Ery.*", queryOperator.getFromOperator().getPrefixPaths().get(0).getFullPath());
     Assert.assertEquals(IndexType.RTREE_PAA, queryOperator.getIndexType());
@@ -138,7 +138,7 @@ public class IndexLogicalPlanTest {
     Assert.assertEquals(QueryOperator.class, op.getClass());
     QueryOperator queryOperator = (QueryOperator) op;
     Assert.assertEquals(OperatorType.QUERY, queryOperator.getType());
-    Assert.assertEquals("Speed", queryOperator.getSelectedPaths().get(0).getFullPath());
+    Assert.assertEquals("Speed", queryOperator.getExpressions().get(0).getFullPath());
     Assert.assertEquals(
         "root.Wind.AZQ02", queryOperator.getFromOperator().getPrefixPaths().get(0).getFullPath());
     Assert.assertEquals(IndexType.ELB_INDEX, queryOperator.getIndexType());

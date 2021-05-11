@@ -29,6 +29,11 @@ public class ResultColumn {
     this.alias = alias;
   }
 
+  public ResultColumn(Expression expression) {
+    this.expression = expression;
+    alias = null;
+  }
+
   public Expression getExpression() {
     return expression;
   }

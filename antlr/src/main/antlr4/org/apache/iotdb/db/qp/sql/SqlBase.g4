@@ -107,26 +107,30 @@ statement
     ;
 
 selectClause
-   : SELECT (LAST | topClause)? complexOperationAsClause (COMMA complexOperationAsClause)*
+   : SELECT (LAST | topClause)? resultColumn (COMMA resultColumn)*
    ;
 
-complexOperationAsClause
-   : complexOperationClause (AS ID)?
+resultColumn
+   : expression (AS ID)?
    ;
 
-complexOperationClause
-   : realLiteral
+expression
+   : numberLiteral
    | suffixPath
    | functionClause
-   | '(' complexOperationClause ')'
-   | ('+' | '-') complexOperationClause
-   | complexOperationClause ('*' | '/' | '%') complexOperationClause
-   | complexOperationClause ('+' | '-') complexOperationClause
+   | LR_BRACKET unary=expression RR_BRACKET
+   | (PLUS | MINUS) unary=expression
+   | leftExpression=expression (STAR | DIV | MOD) rightExpression=expression
+   | leftExpression=expression (PLUS | MINUS) rightExpression=expression
+   ;
+
+numberLiteral
+   : MINUS? realLiteral
+   | MINUS? INT
    ;
 
 functionClause
-   : functionName=ID LR_BRACKET complexOperationClause (COMMA complexOperationClause)*
-     functionAttribute* RR_BRACKET
+   : functionName=ID LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
    ;
 
 functionAttribute
@@ -1272,6 +1276,10 @@ OPERATOR_CONTAINS
 MINUS : '-';
 
 PLUS : '+';
+
+DIV : '/';
+
+MOD : M O D | '%';
 
 DOT : '.';
 

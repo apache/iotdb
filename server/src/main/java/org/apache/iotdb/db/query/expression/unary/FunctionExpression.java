@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.query.expression.unary;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -31,13 +33,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-public class FunctionExpression implements Expression {
+public class FunctionExpression extends Expression {
 
   private final String functionName;
   private final Map<String, String> functionAttributes;
 
   private List<Expression> expressions;
   private List<TSDataType> dataTypes;
+  private List<PartialPath> paths;
 
   private String expressionString;
   private String parametersString;
@@ -46,13 +49,23 @@ public class FunctionExpression implements Expression {
     this.functionName = functionName;
     functionAttributes = new LinkedHashMap<>();
     expressions = new ArrayList<>();
+    setFunctionExpressionType();
   }
 
-  public FunctionExpression(String functionName, Map<String, String> functionAttributes,
-      List<Expression> expressions) {
+  public FunctionExpression(
+      String functionName, Map<String, String> functionAttributes, List<Expression> expressions) {
     this.functionName = functionName;
     this.functionAttributes = functionAttributes;
     this.expressions = expressions;
+    setFunctionExpressionType();
+  }
+
+  private void setFunctionExpressionType() {
+    if (SQLConstant.getNativeFunctionNames().contains(functionName.toLowerCase())) {
+      isAggregationFunctionExpression = true;
+    } else {
+      isTimeSeriesGeneratingFunctionExpression = true;
+    }
   }
 
   public void addAttribute(String key, String value) {
@@ -95,23 +108,35 @@ public class FunctionExpression implements Expression {
     return dataTypes;
   }
 
+  // TODO: remove this method
+  public List<PartialPath> getPaths() {
+    if (paths == null) {
+      paths = new ArrayList<>();
+      for (Expression expression : expressions) {
+        paths.add(((TimeSeriesOperand) expression).getPath());
+      }
+    }
+    return paths;
+  }
+
   @Override
   public String toString() {
     if (expressionString == null) {
-      expressionString = functionName + "(" + parametersString() + ")";
+      expressionString = functionName + "(" + getParametersString() + ")";
     }
     return expressionString;
   }
 
   /**
-   * Generates the parameter part of the udf column name.
+   * Generates the parameter part of the function column name.
    *
    * <p>Example:
-   * Full column name -> udf(root.sg.d.s1, sin(root.sg.d.s1), 'key1'='value1', 'key2'='value2')
-   * <p>
-   * The parameter part -> root.sg.d.s1, sin(root.sg.d.s1), 'key1'='value1', 'key2'='value2'
+   *
+   * <p>Full column name -> udf(root.sg.d.s1, sin(root.sg.d.s1), 'key1'='value1', 'key2'='value2')
+   *
+   * <p>The parameter part -> root.sg.d.s1, sin(root.sg.d.s1), 'key1'='value1', 'key2'='value2'
    */
-  private String parametersString() {
+  public String getParametersString() {
     if (parametersString == null) {
       StringBuilder builder = new StringBuilder();
       if (!expressions.isEmpty()) {
