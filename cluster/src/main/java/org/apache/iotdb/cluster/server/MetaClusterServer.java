@@ -102,7 +102,6 @@ public class MetaClusterServer extends RaftServer
     member.start();
     // JMX based DBA API
     registerManager.register(ClusterMonitor.INSTANCE);
-
   }
 
   /** Also stops the IoTDB instance, the MetaGroupMember and the ClusterMonitor. */
