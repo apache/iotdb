@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.List;
 import java.util.Map;
+import java.util.Stack;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -344,21 +345,44 @@ public class MetadataDiskManager implements MetadataAccess {
 
   @Override
   public void lockMNodeInMemory(MNode mNode) throws MetadataException{
-    if(!mNode.isCached()){
-      throw new MetadataException("Cannot lock a MNode not in cache");
+    MNode temp=mNode;
+    Stack<MNode> stack=new Stack<>();
+    while(temp!=null&&temp!=root){
+      if(!temp.isCached()){
+        throw new MetadataException("Cannot lock a MNode not in cache");
+      }
+      stack.push(temp);
+      temp=temp.getParent();
     }
-    if(mNode==root){
-      return;
+    temp=stack.pop();
+    cacheStrategy.lockMNode(temp);
+    MNode last;
+    while (!stack.empty()){
+      last=temp;
+      temp=stack.pop();
+      if(!temp.isCached()){
+        while (last!=root){
+          cacheStrategy.unlockMNode(last);
+        }
+        throw new MetadataException("Cannot lock a MNode not in cache");
+      }
+      cacheStrategy.lockMNode(temp);
+      cacheStrategy.unlockMNode(last);
     }
-    cacheStrategy.lockMNode(mNode);
   }
 
   @Override
   public void releaseMNodeMemoryLock(MNode mNode) {
+    if(!mNode.isLockedInMemory()){
+      return;
+    }
     if(mNode==root){
       return;
     }
-    cacheStrategy.unlockMNode(mNode);
+    do {
+      cacheStrategy.unlockMNode(mNode);
+      mNode=mNode.getParent();
+    }while(mNode!=root&&!mNode.isLockedInMemory());
   }
 
   @Override

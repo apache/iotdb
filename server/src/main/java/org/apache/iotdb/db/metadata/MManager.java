@@ -441,7 +441,7 @@ public class MManager {
         logWriter.createTimeseries(plan);
       }
       leafMNode.setOffset(offset);
-      mtree.unlockMNodePath(leafMNode);
+      mtree.unlockMNode(leafMNode);
     } catch (IOException e) {
       throw new MetadataException(e);
     }
@@ -1054,9 +1054,6 @@ public class MManager {
 
   public MeasurementMNode getMeasurementNodeByPathWithMemoryLock(PartialPath path) throws MetadataException{
     MNode node=mtree.getNodeByPathWithMemoryLock(path);
-    if(node.getParent()!=null){
-      mtree.unlockMNodePath(node.getParent());
-    }
     return (MeasurementMNode) node;
   }
 
@@ -1137,18 +1134,18 @@ public class MManager {
   public Map<String,MeasurementMNode> getMeasurementNodesInDeviceWithMemoryLock(PartialPath path) throws MetadataException {
     try {
       MNode node = getMNodeFromCache(path);
-      node=mtree.lockMNodePath(node);
+      node=mtree.lockMNode(node);
       Map<String,MeasurementMNode> result=new HashMap<>();
       MNode child;
       for(String childName:node.getChildren().keySet()){
-        child=getMNode(node,childName);
+        child=mtree.getChildMNodeInDeviceWithMemoryLock(node,childName);
         if(child.isMeasurement()){
           result.put(childName,(MeasurementMNode) child);
         }else {
           mtree.unlockMNode(child);
         }
       }
-      mtree.unlockMNodePath(node);
+      mtree.unlockMNode(node);
       return result;
     } catch (CacheException e) {
       throw new PathNotExistException(path.getFullPath());
@@ -1886,7 +1883,7 @@ public class MManager {
     // 1. get device node
     MNode deviceMNode =getDeviceNodeWithAutoCreateWithoutReturnProcess(
             deviceId, config.isAutoCreateSchemaEnabled(), config.getDefaultStorageGroupLevel());
-    deviceMNode=mtree.lockMNodePath(deviceMNode);
+    deviceMNode=mtree.lockMNode(deviceMNode);
 
     // 2. get schema of each measurement
     // if do not has measurement
@@ -1961,7 +1958,7 @@ public class MManager {
         }
       }
     }
-    mtree.unlockMNodePath(deviceMNode);
+    mtree.unlockMNode(deviceMNode);
     return deviceMNode;
   }
 

@@ -1112,7 +1112,9 @@ public class PlanExecutor implements IPlanExecutor {
       return;
     }
     for(MeasurementMNode measurementMNode:measurementMNodes){
-      IoTDB.metaManager.unlockNode(measurementMNode);
+      if(measurementMNode!=null){
+        IoTDB.metaManager.unlockNode(measurementMNode);
+      }
     }
   }
 

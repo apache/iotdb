@@ -1490,17 +1490,12 @@ public class MTree implements MTreeInterface {
   }
 
   @Override
-  public MNode lockMNodePath(MNode mNode) throws MetadataException {
+  public MNode lockMNode(MNode mNode) throws MetadataException {
     return mNode;
   }
 
   @Override
   public void unlockMNode(MNode mNode){
-
-  }
-
-  @Override
-  public void unlockMNodePath(MNode mNode) {
 
   }
 

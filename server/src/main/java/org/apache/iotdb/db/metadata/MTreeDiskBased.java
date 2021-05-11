@@ -164,7 +164,7 @@ public class MTreeDiskBased implements MTreeInterface {
       if (alias != null) {
         metadataDiskManager.addAlias(cur, alias, measurementMNode);
       }
-
+      unlockMNodePath(measurementMNode.getParent());
       return measurementMNode;
     }
   }
@@ -521,6 +521,7 @@ public class MTreeDiskBased implements MTreeInterface {
       unlockMNodePath(cur);
       throw e;
     }
+    unlockMNodePath(cur.getParent());
     return cur;
   }
 
@@ -539,17 +540,11 @@ public class MTreeDiskBased implements MTreeInterface {
 
   @Override
   public MNode getChildMNodeInDeviceWithMemoryLock(MNode deviceNode, String childName) throws MetadataException {
-    try {
-      if(deviceNode.isLockedInMemory()){
-        return metadataDiskManager.getChild(deviceNode, childName,true);
-      }else {
-       return getNodeByPathWithMemoryLock(deviceNode.getPartialPath().concatNode(childName));
-      }
-    }catch (MetadataException e){
-//      System.out.println(deviceNode.getName()+" "+deviceNode.isLockedInMemory());
-      throw e;
+    if(deviceNode.isLockedInMemory()){
+      return metadataDiskManager.getChild(deviceNode, childName,true);
+    }else {
+      return getNodeByPathWithMemoryLock(deviceNode.getPartialPath().concatNode(childName));
     }
-
   }
 
   @Override
@@ -1511,20 +1506,15 @@ public class MTreeDiskBased implements MTreeInterface {
   }
 
   @Override
-  public MNode lockMNodePath(MNode mNode) throws MetadataException {
-    MNode temp=mNode;
-    try {
-      while(temp!=null&&temp.isCached()){
-        metadataDiskManager.lockMNodeInMemory(temp);
-        temp=temp.getParent();
-      }
-    }catch (MetadataException e){
-      temp=null;
+  public MNode lockMNode(MNode mNode) throws MetadataException {
+    if(mNode==null){
+      return null;
     }
-    if(temp!=null){
-      return getNodeByPathWithMemoryLock(mNode.getPartialPath());
-    }else {
+    try {
+      metadataDiskManager.lockMNodeInMemory(mNode);
       return mNode;
+    }catch (MetadataException e){
+      return getNodeByPathWithMemoryLock(mNode.getPartialPath());
     }
   }
 
@@ -1533,7 +1523,6 @@ public class MTreeDiskBased implements MTreeInterface {
     metadataDiskManager.releaseMNodeMemoryLock(mNode);
   }
 
-  @Override
   public void unlockMNodePath(MNode mNode) {
     while (mNode!=null){
       metadataDiskManager.releaseMNodeMemoryLock(mNode);
