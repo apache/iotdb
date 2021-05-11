@@ -25,8 +25,10 @@ The example is to show how to send data from localhost to IoTDB through RabbitMQ
 ```
 ## Usage
 ### Version usage
-IoTDB: 0.10.0  
-RabbitMQ: 3.8.15
+IoTDB: 0.12.0  
+RabbitMQ server: 3.8.15
+RabbitMQ client jar: 5.12.0
+
 ### Dependencies with Maven
 
 ```
