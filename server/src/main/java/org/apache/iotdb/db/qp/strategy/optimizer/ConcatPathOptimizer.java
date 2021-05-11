@@ -30,7 +30,6 @@ import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.FromOperator;
 import org.apache.iotdb.db.qp.logical.crud.FunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
-import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
 import org.apache.iotdb.db.query.udf.core.context.UDFContext;
 import org.apache.iotdb.db.service.IoTDB;
@@ -49,20 +48,15 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
 
   private static final Logger logger = LoggerFactory.getLogger(ConcatPathOptimizer.class);
   private static final String WARNING_NO_SUFFIX_PATHS =
-      "given SFWOperator doesn't have suffix paths, cannot concat seriesPath";
+      "failed to concat series paths because the given query operator didn't have suffix paths";
   private static final String WARNING_NO_PREFIX_PATHS =
-      "given SFWOperator doesn't have prefix paths, cannot concat seriesPath";
+      "failed to concat series paths because the given query operator didn't have prefix paths";
 
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   public Operator transform(Operator operator, int maxDeduplicatedPathNum)
       throws LogicalOptimizeException, PathNumOverLimitException {
-    if (!(operator instanceof SFWOperator)) {
-      logger.warn("given operator isn't SFWOperator, cannot concat seriesPath");
-      return operator;
-    }
-    SFWOperator sfwOperator = (SFWOperator) operator;
-    FromOperator from = sfwOperator.getFromOperator();
+    QueryOperator queryOperator = (QueryOperator) operator;
+    FromOperator from = queryOperator.getFromOperator();
     List<PartialPath> prefixPaths;
     if (from == null) {
       logger.warn(WARNING_NO_PREFIX_PATHS);
@@ -74,7 +68,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         return operator;
       }
     }
-    SelectOperator select = sfwOperator.getSelectOperator();
+    SelectOperator select = queryOperator.getSelectOperator();
     List<PartialPath> initialSuffixPaths;
     if (select == null) {
       logger.warn(WARNING_NO_SUFFIX_PATHS);
@@ -124,19 +118,19 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     }
 
     // concat filter
-    FilterOperator filter = sfwOperator.getFilterOperator();
+    FilterOperator filter = queryOperator.getFilterOperator();
     Set<PartialPath> filterPaths = new HashSet<>();
     if (filter == null) {
       return operator;
     }
     if (!isAlignByDevice) {
-      sfwOperator.setFilterOperator(concatFilter(prefixPaths, filter, filterPaths));
+      queryOperator.setFilterOperator(concatFilter(prefixPaths, filter, filterPaths));
     }
-    sfwOperator.getFilterOperator().setPathSet(filterPaths);
+    queryOperator.getFilterOperator().setPathSet(filterPaths);
     // GROUP_BY_DEVICE leaves the concatFilter to PhysicalGenerator to optimize filter without
     // prefix first
 
-    return sfwOperator;
+    return queryOperator;
   }
 
   private List<PartialPath> judgeSelectOperator(SelectOperator selectOperator)
