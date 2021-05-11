@@ -102,7 +102,6 @@ public class MetaClusterServer extends RaftServer
     member.start();
     // JMX based DBA API
     registerManager.register(ClusterMonitor.INSTANCE);
-    // as JMX based API is enabled here, we also enabled the thrift-based cluster info API here.
 
   }
 
