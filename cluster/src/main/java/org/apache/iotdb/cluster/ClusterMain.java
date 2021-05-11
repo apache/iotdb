@@ -108,7 +108,7 @@ public class ClusterMain {
         preStartCustomize();
         metaServer.start();
         metaServer.buildCluster();
-        // Currently, we do not reigher ClusterInfoService as a JMX Bean,
+        // Currently, we do not register ClusterInfoService as a JMX Bean,
         // so we use startService() rather than start()
         ClusterInfoServer.getInstance().startService();
       } catch (TTransportException
