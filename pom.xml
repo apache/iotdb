@@ -161,6 +161,10 @@
             --add-opens=java.base/java.util=ALL-UNNAMED
             --add-opens=java.base/java.nio=ALL-UNNAMED
             --add-opens=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED
+            --add-opens=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED
+            --add-opens=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED
+            --add-opens=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED
+            --add-opens=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED
         </argLine>
     </properties>
     <!--
@@ -642,13 +646,6 @@
                             </importOrder>
                             <removeUnusedImports/>
                         </java>
-                        <argLine>
-								            --illegal-access=permit
-								            --add-opens=java.base/java.lang=ALL-UNNAMED
-								            --add-opens=java.base/java.util=ALL-UNNAMED
-								            --add-opens=java.base/java.nio=ALL-UNNAMED
-								            --add-opens=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED
-								        </argLine>
                     </configuration>
                     <executions>
                         <execution>
@@ -911,13 +908,6 @@
                             <goal>test</goal>
                         </goals>
                         <configuration>
-	                          <argLine>
-										            --illegal-access=permit
-										            --add-opens=java.base/java.lang=ALL-UNNAMED
-										            --add-opens=java.base/java.util=ALL-UNNAMED
-										            --add-opens=java.base/java.nio=ALL-UNNAMED
-										            --add-opens=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED
-										        </argLine>
                             <includes>
                                 <!-- Include unit tests within integration-test phase. -->
                                 <include>src/test/**/*Test.java</include>
@@ -935,13 +925,6 @@
                             <goal>test</goal>
                         </goals>
                         <configuration>
-                            <argLine>
-                                --illegal-access=permit
-                                --add-opens=java.base/java.lang=ALL-UNNAMED
-                                --add-opens=java.base/java.util=ALL-UNNAMED
-                                --add-opens=java.base/java.nio=ALL-UNNAMED
-                                --add-opens=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED
-                            </argLine>
                             <includes>
                                 <!-- Include integration tests within integration-test phase. -->
                                 <include>src/test/**/*IT.java</include>
