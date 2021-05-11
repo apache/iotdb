@@ -220,7 +220,7 @@ public class StorageGroupProcessor {
   /**
    * time partition id -> version controller which assigns a version for each MemTable and
    * deletion/update such that after they are persisted, the order of insertions, deletions and
-   * updates can be re-determined.
+   * updates can be re-determined. Will be empty if there are not MemTables in memory.
    */
   private HashMap<Long, VersionController> timePartitionIdVersionControllerMap = new HashMap<>();
   /**
@@ -2073,7 +2073,7 @@ public class StorageGroupProcessor {
   public void merge(boolean isFullMerge) {
     writeLock();
     try {
-      for (long timePartitionId : timePartitionIdVersionControllerMap.keySet()) {
+      for (long timePartitionId : partitionLatestFlushedTimeForEachDevice.keySet()) {
         executeCompaction(timePartitionId, isFullMerge);
       }
     } finally {
