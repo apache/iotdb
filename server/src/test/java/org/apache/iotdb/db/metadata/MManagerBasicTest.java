@@ -22,8 +22,10 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
@@ -1333,5 +1335,51 @@ public class MManagerBasicTest {
     }
 
     assertTrue(manager.isPathExist(new PartialPath("root.group-with-hyphen")));
+  }
+
+  @Test
+  public void testCreateAlignedTimeseriesAndInsertWithMismatchDataType() {
+    MManager manager = IoTDB.metaManager;
+    try {
+      manager.setStorageGroup(new PartialPath("root.laptop"));
+      manager.createAlignedTimeSeries(
+          new PartialPath("root.laptop.d1"),
+          Arrays.asList("s1", "s2", "s3"),
+          Arrays.asList(
+              TSDataType.valueOf("FLOAT"),
+              TSDataType.valueOf("INT64"),
+              TSDataType.valueOf("INT32")),
+          Arrays.asList(
+              TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
+          compressionType);
+
+      // construct an insertRowPlan with mismatched data type
+      long time = 1L;
+      TSDataType[] dataTypes =
+          new TSDataType[] {TSDataType.FLOAT, TSDataType.DOUBLE, TSDataType.INT32};
+
+      String[] columns = new String[3];
+      columns[0] = 2.0 + "";
+      columns[1] = 10000 + "";
+      columns[2] = 100 + "";
+
+      InsertRowPlan insertRowPlan =
+          new InsertRowPlan(
+              new PartialPath("root.laptop.d1"),
+              time,
+              new String[] {"(s1,s2,s3)"},
+              dataTypes,
+              columns);
+      insertRowPlan.setMeasurementMNodes(
+          new MeasurementMNode[insertRowPlan.getMeasurements().length]);
+
+      // call getSeriesSchemasAndReadLockDevice
+      MNode mNode = manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
+      assertNotNull(insertRowPlan.getMeasurementMNodes()[0]);
+
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
   }
 }
