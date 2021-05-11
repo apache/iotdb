@@ -196,10 +196,8 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
     return searchResult >= 0 ? timeseriesMetadataList.get(searchResult) : null;
   }
 
-  /**
-   * Find the leaf node that contains path, return all the sensors in that leaf node which are also
-   * in allSensors set
-   */
+  /*Find the leaf node that contains path, return all the sensors in that leaf node which are also
+  in allSensors set */
   @SuppressWarnings("squid:S3776")
   @Override
   public List<TimeseriesMetadata> readTimeseriesMetadata(Path path, Set<String> allSensors)

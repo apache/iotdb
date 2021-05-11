@@ -19,6 +19,7 @@
 package org.apache.iotdb.tsfile.file.metadata;
 
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -50,6 +51,9 @@ public class VectorTimeSeriesMetadata implements ITimeSeriesMetadata {
   @Override
   public void setModified(boolean modified) {
     timeseriesMetadata.setModified(modified);
+    for (TimeseriesMetadata subSensor : valueTimeseriesMetadataList) {
+      subSensor.setModified(modified);
+    }
   }
 
   @Override
@@ -60,6 +64,9 @@ public class VectorTimeSeriesMetadata implements ITimeSeriesMetadata {
   @Override
   public void setSeq(boolean seq) {
     timeseriesMetadata.setSeq(seq);
+    for (TimeseriesMetadata subSensor : valueTimeseriesMetadataList) {
+      subSensor.setSeq(seq);
+    }
   }
 
   @Override
@@ -91,7 +98,16 @@ public class VectorTimeSeriesMetadata implements ITimeSeriesMetadata {
     return null;
   }
 
+  @Override
+  public void setChunkMetadataLoader(IChunkMetadataLoader chunkMetadataLoader) {
+    timeseriesMetadata.setChunkMetadataLoader(chunkMetadataLoader);
+  }
+
   public List<TimeseriesMetadata> getValueTimeseriesMetadataList() {
     return valueTimeseriesMetadataList;
+  }
+
+  public TimeseriesMetadata getTimeseriesMetadata() {
+    return timeseriesMetadata;
   }
 }
