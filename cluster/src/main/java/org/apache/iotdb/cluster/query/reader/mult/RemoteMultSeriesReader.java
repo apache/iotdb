@@ -23,6 +23,8 @@ import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -73,7 +75,15 @@ public class RemoteMultSeriesReader extends AbstractMultPointReader {
     this.cachedBatchs = Maps.newHashMap();
     this.pathToDataType = Maps.newHashMap();
     for (int i = 0; i < sourceInfo.getPartialPaths().size(); i++) {
-      String fullPath = sourceInfo.getPartialPaths().get(i).getFullPath();
+
+      PartialPath partialPath = sourceInfo.getPartialPaths().get(i);
+      String fullPath = partialPath.getFullPath();
+      if (partialPath instanceof VectorPartialPath) {
+        VectorPartialPath vectorPartialPath = (VectorPartialPath) partialPath;
+        if (vectorPartialPath.getSubSensorsPathList().size() == 1) {
+          fullPath = vectorPartialPath.getSubSensorsPathList().get(0).getFullPath();
+        }
+      }
       this.cachedBatchs.put(fullPath, new ConcurrentLinkedQueue<>());
       this.pathToDataType.put(fullPath, sourceInfo.getDataTypes().get(i));
     }

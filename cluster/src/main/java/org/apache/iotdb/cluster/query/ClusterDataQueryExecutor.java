@@ -31,6 +31,7 @@ import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
@@ -129,10 +130,17 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
     for (int i = 0; i < queryPlan.getDeduplicatedPaths().size(); i++) {
       PartialPath partialPath = queryPlan.getDeduplicatedPaths().get(i);
       TSDataType dataType = queryPlan.getDeduplicatedDataTypes().get(i);
+      String fullPath = partialPath.getFullPath();
+      if (partialPath instanceof VectorPartialPath) {
+        VectorPartialPath vectorPartialPath = (VectorPartialPath) partialPath;
+        if (vectorPartialPath.getSubSensorsPathList().size() == 1) {
+          fullPath = vectorPartialPath.getSubSensorsPathList().get(0).getFullPath();
+        }
+      }
       AssignPathManagedMergeReader assignPathManagedMergeReader =
-          new AssignPathManagedMergeReader(partialPath.getFullPath(), dataType);
+          new AssignPathManagedMergeReader(fullPath, dataType);
       for (AbstractMultPointReader multPointReader : multPointReaders) {
-        if (multPointReader.getAllPaths().contains(partialPath.getFullPath())) {
+        if (multPointReader.getAllPaths().contains(fullPath)) {
           assignPathManagedMergeReader.addReader(multPointReader, 0);
         }
       }
