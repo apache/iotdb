@@ -48,7 +48,7 @@ public class MTreeDiskBased implements MTreeInterface {
 
   private final String rootName = PATH_ROOT;
   private MetadataAccess metadataDiskManager;
-  private static final int DEFAULT_MAX_CAPACITY = 3;
+  private static final int DEFAULT_MAX_CAPACITY = 0;
 
   private static transient ThreadLocal<Integer> limit = new ThreadLocal<>();
   private static transient ThreadLocal<Integer> offset = new ThreadLocal<>();
@@ -298,15 +298,16 @@ public class MTreeDiskBased implements MTreeInterface {
     int i = 1;
     // e.g., path = root.a.b.sg, create internal nodes for a, b
     while (i < nodeNames.length - 1) {
-      MNode temp = metadataDiskManager.getChild(cur, nodeNames[i],true);
-      if (temp == null) {
+      if (cur.isStorageGroup()) {
+        unlockMNodePath(cur);
+        // before set storage group, check whether the exists or not
+        throw new StorageGroupAlreadySetException(cur.getFullPath());
+      }
+
+      if (!cur.hasChild(nodeNames[i])) {
         metadataDiskManager.addChild(cur, nodeNames[i], new InternalMNode(cur, nodeNames[i]),true);
         cur=metadataDiskManager.getChild(cur, nodeNames[i]);
-      } else if (temp.isStorageGroup()) {
-        unlockMNodePath(temp);
-        // before set storage group, check whether the exists or not
-        throw new StorageGroupAlreadySetException(temp.getFullPath());
-      }else {
+      } else {
         cur = metadataDiskManager.getChild(cur, nodeNames[i],true);
       }
       i++;

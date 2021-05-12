@@ -64,13 +64,6 @@ public class MetadataDiskManager implements MetadataAccess {
 
   private void init() throws IOException {
     MNode root = recoverFromFile();
-    if (capacity > 0) {
-      this.root = root;
-      cacheStrategy.applyChange(root);
-      cacheStrategy.setModified(root, false);
-    } else {
-      this.root = root.getEvictionHolder();
-    }
     cacheStrategy.lockMNode(root);
     cacheStrategy.setModified(root,false);
     this.root=root;
@@ -118,17 +111,6 @@ public class MetadataDiskManager implements MetadataAccess {
 
   @Override
   public MNode getRoot() throws MetadataException {
-    MNode root = this.root;
-    if (root.isLoaded()) {
-      cacheStrategy.applyChange(root);
-    } else {
-      root = getMNodeFromDisk(root.getPersistenceInfo());
-      if (checkSizeAndEviction()) {
-        this.root = root;
-        cacheStrategy.applyChange(root);
-        cacheStrategy.setModified(root, false);
-      }
-    }
     return root;
   }
 
@@ -352,7 +334,7 @@ public class MetadataDiskManager implements MetadataAccess {
   public void lockMNodeInMemory(MNode mNode) throws MetadataException{
     MNode temp=mNode;
     Stack<MNode> stack=new Stack<>();
-    while(temp!=null&&temp!=root){
+    while(temp!=root){
       if(!temp.isCached()){
         throw new MetadataException("Cannot lock a MNode not in cache");
       }
@@ -383,7 +365,7 @@ public class MetadataDiskManager implements MetadataAccess {
       return;
     }
     cacheStrategy.unlockMNode(mNode);
-    checkSizeAndEviction();
+    checkEviction();
   }
 
   @Override
@@ -464,6 +446,11 @@ public class MetadataDiskManager implements MetadataAccess {
     if (capacity == 0) {
       return false;
     }
+    checkEviction();
+    return cacheStrategy.getSize()<capacity;
+  }
+
+  private void checkEviction() throws MetadataException{
     while (cacheStrategy.getSize() >= capacity) {
       List<MNode> modifiedMNodes = cacheStrategy.evict();
       if(modifiedMNodes.size()==0){
@@ -480,11 +467,8 @@ public class MetadataDiskManager implements MetadataAccess {
       }
       if (evictedMNode.getParent() != null) {
         evictedMNode.getParent().evictChild(evictedMNode.getName());
-      } else {
-        // only root's parent is null
-        root = root.getEvictionHolder();
       }
     }
-    return true;
   }
+
 }

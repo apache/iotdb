@@ -6,8 +6,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class CacheEntry {
 
-  CacheEntry pre;
-  CacheEntry next;
+  CacheEntry pre=null;
+  CacheEntry next=null;
   MNode value;
 
   /** whether the node in memory cache has been modified. default value is true */

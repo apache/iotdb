@@ -28,24 +28,28 @@ public class LRUCacheStrategy implements CacheStrategy {
     }
     try {
       lock.lock();
-      if(!mNode.isCached()){
-        mNode.setCacheEntry(new CacheEntry(mNode));
+      CacheEntry entry=mNode.getCacheEntry();
+      if(entry==null){
+        entry=new CacheEntry(mNode);
       }
       if(mNode.getParent()!=null&&!mNode.isLockedInMemory()){
-        increaseLock(mNode.getParent());
+        increaseLock(mNode.getParent().getCacheEntry());
       }
-      increaseLock(mNode);
+      increaseLock(entry);
     } finally {
       lock.unlock();
     }
   }
 
-  private void increaseLock(MNode mNode){
-    CacheEntry entry = mNode.getCacheEntry();
-    if(!entry.isLocked()){
+  private void increaseLock(CacheEntry entry){
+    if(!entry.isLocked() && isInCacheList(entry)){
       removeOne(entry);
     }
     entry.increaseLock();
+  }
+
+  private boolean isInCacheList(CacheEntry entry){
+    return entry.pre!=null||entry.next!=null||first==entry||last==entry;
   }
 
   @Override
@@ -53,23 +57,23 @@ public class LRUCacheStrategy implements CacheStrategy {
     if(mNode==null){
       return;
     }
-    if(!mNode.isLockedInMemory()){
-      return;
-    }
     try {
       lock.lock();
-      decreaseLock(mNode);
+      CacheEntry entry=mNode.getCacheEntry();
+      if(entry==null||!entry.isLocked()){
+        return;
+      }
+      decreaseLock(entry);
       while(mNode.getParent()!=null&&!mNode.isLockedInMemory()){
         mNode=mNode.getParent();
-        decreaseLock(mNode);
+        decreaseLock(mNode.getCacheEntry());
       }
     } finally {
       lock.unlock();
     }
   }
 
-  private void decreaseLock(MNode mNode){
-    CacheEntry entry = mNode.getCacheEntry();
+  private void decreaseLock(CacheEntry entry){
     if (entry == null) {
       return;
     }
@@ -111,7 +115,7 @@ public class LRUCacheStrategy implements CacheStrategy {
 
   private void moveToFirst(CacheEntry entry) {
 
-    if(entry.pre==null&&entry.next==null){
+    if(!isInCacheList(entry)){
       size++;
     }
 

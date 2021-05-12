@@ -309,9 +309,6 @@ public class MTreeFile {
     }
 
     Map<Long, ByteBuffer> mNodeBytes = serializeMNode(mNode);
-    if (mNodeBytes == null) {
-      throw new IOException("Too large Node to persist.");
-    }
     ByteBuffer byteBuffer;
     for (long position : mNodeBytes.keySet()) {
       if (position < headerLength) {
@@ -427,7 +424,7 @@ public class MTreeFile {
     int bufferNum =
         (mNodeLength / (nodeLength - 17)) + ((mNodeLength % (nodeLength - 17)) == 0 ? 0 : 1);
     if (bufferNum > 15) {
-      return null;
+      throw new IOException("Too large Node, "+mNode.getFullPath()+", to persist. Node data size "+(mNodeLength+bufferNum*17)+", Node children num "+mNode.getChildren().size());
     }
     byte bitmap = (byte) bufferNum;
     ByteBuffer dataBuffer = ByteBuffer.allocate(mNodeLength);

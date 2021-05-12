@@ -417,7 +417,7 @@ public class InternalMNode implements MNode {
 
   @Override
   public boolean isLockedInMemory() {
-    return cacheEntry==null||cacheEntry.isLocked();// if a node is not cached, it will stay in memory until GC.
+    return cacheEntry!=null&&cacheEntry.isLocked();
   }
 
   @Override
