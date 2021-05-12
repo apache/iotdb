@@ -34,7 +34,6 @@ import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -125,6 +124,7 @@ public class SeriesReader {
       boolean ascending) {
     this.seriesPath = seriesPath;
     this.allSensors = allSensors;
+    this.allSensors.add(seriesPath.getMeasurement());
     this.dataType = dataType;
     this.context = context;
     QueryUtils.filterQueryDataSource(dataSource, fileFilter);
@@ -168,6 +168,7 @@ public class SeriesReader {
       boolean ascending) {
     this.seriesPath = seriesPath;
     this.allSensors = allSensors;
+    this.allSensors.add(seriesPath.getMeasurement());
     this.dataType = dataType;
     this.context = context;
     this.timeFilter = timeFilter;
@@ -935,7 +936,7 @@ public class SeriesReader {
   }
 
   protected void unpackSeqTsFileResource() throws IOException {
-    TimeseriesMetadata timeseriesMetadata =
+    ITimeSeriesMetadata timeseriesMetadata =
         FileLoaderUtils.loadTimeSeriesMetadata(
             orderUtils.getNextSeqFileResource(seqFileResource, true),
             seriesPath,
@@ -949,7 +950,7 @@ public class SeriesReader {
   }
 
   protected void unpackUnseqTsFileResource() throws IOException {
-    TimeseriesMetadata timeseriesMetadata =
+    ITimeSeriesMetadata timeseriesMetadata =
         FileLoaderUtils.loadTimeSeriesMetadata(
             unseqFileResource.remove(0), seriesPath, context, getAnyFilter(), allSensors);
     if (timeseriesMetadata != null) {

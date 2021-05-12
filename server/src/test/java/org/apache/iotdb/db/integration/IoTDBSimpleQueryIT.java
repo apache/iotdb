@@ -35,6 +35,7 @@ import org.junit.Test;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
@@ -1240,6 +1241,41 @@ public class IoTDBSimpleQueryIT {
         Assert.assertEquals(1.12f, r4.getFloat(2), 0);
       }
 
+    } catch (SQLException e) {
+      fail();
+    }
+  }
+
+  @Test
+  public void testStorageGroupWithHyphenInName() throws ClassNotFoundException, MetadataException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.setFetchSize(5);
+      statement.execute("SET STORAGE GROUP TO root.group-with-hyphen");
+    } catch (SQLException e) {
+      fail();
+    }
+
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement.execute("SHOW STORAGE GROUP");
+      if (hasResultSet) {
+        try (ResultSet resultSet = statement.getResultSet()) {
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          while (resultSet.next()) {
+            StringBuilder builder = new StringBuilder();
+            for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+              builder.append(resultSet.getString(i));
+            }
+            Assert.assertEquals(builder.toString(), "root.group-with-hyphen");
+          }
+        }
+      }
     } catch (SQLException e) {
       fail();
     }

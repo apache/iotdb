@@ -191,16 +191,14 @@ public class LocalFileAuthorizerTest {
     authorizer.createRole(roleName);
     authorizer.grantRoleToUser(roleName, user.getName());
     authorizer.grantPrivilegeToUser(user.getName(), nodeName, 1);
-    authorizer.grantPrivilegeToRole(roleName, nodeName, 2);
     authorizer.grantPrivilegeToRole(roleName, nodeName, 3);
 
     // a user can get all role permissions.
     Set<Integer> permissions = authorizer.getPrivileges(user.getName(), nodeName);
-    assertEquals(3, permissions.size());
+    assertEquals(2, permissions.size());
     assertTrue(permissions.contains(1));
-    assertTrue(permissions.contains(2));
     assertTrue(permissions.contains(3));
-    assertFalse(permissions.contains(4));
+    assertFalse(permissions.contains(2));
 
     try {
       authorizer.grantRoleToUser(roleName, user.getName());
