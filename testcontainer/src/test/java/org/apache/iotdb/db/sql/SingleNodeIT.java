@@ -32,13 +32,11 @@ import org.testcontainers.utility.DockerImageName;
 
 import java.io.File;
 import java.sql.*;
-import java.util.HashSet;
-import java.util.Set;
 
-public class SingleNodeIT {
+// do not add tests here.
+// add tests into Cases.java instead.
+public class SingleNodeIT extends Cases {
   private static Logger logger = LoggerFactory.getLogger(SingleNodeIT.class);
-  private Statement statement;
-  private Connection connection;
 
   @Rule
   public GenericContainer dslContainer =
@@ -61,85 +59,23 @@ public class SingleNodeIT {
   int syncPort = 5555;
 
   @Before
-  public void setUp() throws Exception {
+  public void init() throws Exception {
     rpcPort = dslContainer.getMappedPort(6667);
-
     syncPort = dslContainer.getMappedPort(5555);
     Class.forName(Config.JDBC_DRIVER_NAME);
-    connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:" + rpcPort, "root", "root");
-    statement = connection.createStatement();
+    readConnections = new Connection[1];
+    readStatements = new Statement[1];
+    writeConnection =
+        readConnections[0] =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:" + rpcPort, "root", "root");
+    writeStatement = readStatements[0] = writeConnection.createStatement();
   }
 
   @After
-  public void tearDown() throws Exception {
-    statement.close();
-    connection.close();
+  public void clean() throws Exception {
+    super.clean();
   }
 
-  @Test
-  public void testSimplePutAndGet() throws SQLException {
-    String[] timeSeriesArray = {"root.sg1.aa.bb", "root.sg1.aa.bb.cc", "root.sg1.aa"};
-
-    for (String timeSeries : timeSeriesArray) {
-      statement.execute(
-          String.format(
-              "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
-              timeSeries));
-    }
-    ResultSet resultSet = null;
-    resultSet = statement.executeQuery("show timeseries");
-    Set<String> result = new HashSet<>();
-    while (resultSet.next()) {
-      result.add(resultSet.getString(1));
-    }
-    Assert.assertEquals(3, result.size());
-    for (String timeseries : timeSeriesArray) {
-      Assert.assertTrue(result.contains(timeseries));
-    }
-  }
-
-  @Test
-  public void testAgg() throws SQLException {
-
-    String[] timeSeriesArray = {"root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE"};
-    String[] initDataArray = {
-      "INSERT INTO root.ln.wf01.wt01(timestamp,temperature) values(200,20.71)",
-      "INSERT INTO root.ln.wf01.wt01(timestamp,temperature) values(220,50.71)"
-    };
-
-    for (String timeSeries : timeSeriesArray) {
-      statement.execute(String.format("create timeseries %s ", timeSeries));
-    }
-    for (String initData : initDataArray) {
-      statement.execute(initData);
-    }
-    ResultSet resultSet = statement.executeQuery("select avg(temperature) from root.ln.wf01.wt01;");
-    Assert.assertTrue(resultSet.next());
-    double avg = resultSet.getDouble(1);
-    Assert.assertEquals(35.71, avg, 0.1);
-    resultSet.close();
-  }
-
-  @Test
-  public void testLast() throws SQLException {
-
-    String[] timeSeriesArray = {"root.ln.wf01.wt01.temperature WITH DATATYPE=DOUBLE, ENCODING=RLE"};
-    String[] initDataArray = {
-      "INSERT INTO root.ln.wf01.wt01(timestamp, temperature) values(100, 10.0)",
-      "INSERT INTO root.ln.wf01.wt01(timestamp, temperature) values(200, 20.0)",
-      "INSERT INTO root.ln.wf01.wt01(timestamp, temperature) values(150, 15.0)"
-    };
-
-    for (String timeSeries : timeSeriesArray) {
-      statement.execute(String.format("create timeseries %s ", timeSeries));
-    }
-    for (String initData : initDataArray) {
-      statement.execute(initData);
-    }
-    ResultSet resultSet = statement.executeQuery("select last * from root.ln.wf01.wt01;");
-    Assert.assertTrue(resultSet.next());
-    double last = Double.parseDouble(resultSet.getString(3));
-    Assert.assertEquals(20.0, last, 0.1);
-    resultSet.close();
-  }
+  // do not add tests here.
+  // add tests into Cases.java instead.
 }

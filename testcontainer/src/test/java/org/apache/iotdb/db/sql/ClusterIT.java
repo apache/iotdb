@@ -16,130 +16,78 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.sql;
 
 import org.apache.iotdb.jdbc.Config;
 
-import org.junit.*;
+import org.junit.After;
+import org.junit.Before;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.DockerComposeContainer;
-import org.testcontainers.containers.NoProjectNameDockerComposeContainer;
-import org.testcontainers.containers.output.Slf4jLogConsumer;
-import org.testcontainers.containers.wait.strategy.Wait;
 
-import java.io.File;
-import java.sql.*;
-import java.util.HashSet;
-import java.util.Set;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
 
-public class ClusterIT {
+// do not add tests here.
+// add tests into Cases.java instead.
+public abstract class ClusterIT extends Cases {
+
   private static Logger logger = LoggerFactory.getLogger(ClusterIT.class);
-  private static Logger node1Logger = LoggerFactory.getLogger("iotdb-server_1");
-  private static Logger node2Logger = LoggerFactory.getLogger("iotdb-server_2");
-  private static Logger node3Logger = LoggerFactory.getLogger("iotdb-server_3");
 
-  private Statement statement;
-  private Connection connection;
+  // "root.sg1" is a special storage for testing whether the read and write operations can be run
+  // correctly if the data is not on the connected node.
+  public String defaultSG = "root.sg1";
 
-  // in TestContainer's document, it is @ClassRule, and the environment is `public static`
-  // I am not sure the difference now.
-  @Rule
-  public DockerComposeContainer environment =
-      new NoProjectNameDockerComposeContainer(
-              "3nodes", new File("src/test/resources/3nodes/docker-compose.yaml"))
-          .withExposedService("iotdb-server_1", 6667, Wait.forListeningPort())
-          .withLogConsumer("iotdb-server_1", new Slf4jLogConsumer(node1Logger))
-          .withExposedService("iotdb-server_2", 6667, Wait.forListeningPort())
-          .withLogConsumer("iotdb-server_2", new Slf4jLogConsumer(node2Logger))
-          .withExposedService("iotdb-server_3", 6667, Wait.forListeningPort())
-          .withLogConsumer("iotdb-server_3", new Slf4jLogConsumer(node3Logger))
-          .withLocalCompose(true);
+  protected int getWriteRpcPort() {
+    return getContainer().getServicePort("iotdb-server_1", 6667);
+  }
 
-  int rpcPort = 6667;
+  protected String getWriteRpcIp() {
+    return getContainer().getServiceHost("iotdb-server_1", 6667);
+  }
+
+  protected int[] getReadRpcPorts() {
+    return new int[] {getContainer().getServicePort("iotdb-server_1", 6667)};
+  }
+
+  protected String[] getReadRpcIps() {
+    return new String[] {getContainer().getServiceHost("iotdb-server_1", 6667)};
+  }
+
+  protected void startCluster() {}
+
+  protected abstract DockerComposeContainer getContainer();
 
   @Before
-  public void setUp() throws Exception {
-
-    String ip = environment.getServiceHost("iotdb-server_1", 6667);
-    rpcPort = environment.getServicePort("iotdb-server_1", 6667);
+  public void init() throws Exception {
+    startCluster();
 
     Class.forName(Config.JDBC_DRIVER_NAME);
-    connection = DriverManager.getConnection("jdbc:iotdb://" + ip + ":" + rpcPort, "root", "root");
-    statement = connection.createStatement();
+    writeConnection =
+        DriverManager.getConnection(
+            "jdbc:iotdb://" + getWriteRpcIp() + ":" + getWriteRpcPort(), "root", "root");
+    writeStatement = writeConnection.createStatement();
+
+    int[] readPorts = getReadRpcPorts();
+    String[] readIps = getReadRpcIps();
+    readConnections = new Connection[readPorts.length];
+    readStatements = new Statement[readPorts.length];
+    for (int i = 0; i < readPorts.length; i++) {
+      readConnections[i] =
+          DriverManager.getConnection(
+              "jdbc:iotdb://" + readIps[i] + ":" + readPorts[i], "root", "root");
+      readStatements[i] = readConnections[i].createStatement();
+    }
   }
 
   @After
-  public void tearDown() throws Exception {
-    statement.close();
-    connection.close();
+  public void clean() throws Exception {
+    super.clean();
   }
 
-  @Test
-  public void testSimplePutAndGet() throws SQLException {
-
-    String[] timeSeriesArray = {"root.sg1.aa.bb", "root.sg1.aa.bb.cc", "root.sg1.aa"};
-
-    for (String timeSeries : timeSeriesArray) {
-      statement.execute(
-          String.format(
-              "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
-              timeSeries));
-    }
-    ResultSet resultSet = null;
-    resultSet = statement.executeQuery("show timeseries");
-    Set<String> result = new HashSet<>();
-    while (resultSet.next()) {
-      result.add(resultSet.getString(1));
-    }
-    Assert.assertEquals(3, result.size());
-    for (String timeseries : timeSeriesArray) {
-      Assert.assertTrue(result.contains(timeseries));
-    }
-  }
-
-  @Test
-  public void testAgg() throws SQLException {
-
-    String[] timeSeriesArray = {"root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE"};
-    String[] initDataArray = {
-      "INSERT INTO root.ln.wf01.wt01(timestamp,temperature) values(200,20.71)",
-      "INSERT INTO root.ln.wf01.wt01(timestamp,temperature) values(220,50.71)"
-    };
-
-    for (String timeSeries : timeSeriesArray) {
-      statement.execute(String.format("create timeseries %s ", timeSeries));
-    }
-    for (String initData : initDataArray) {
-      statement.execute(initData);
-    }
-    ResultSet resultSet = statement.executeQuery("select avg(temperature) from root.ln.wf01.wt01;");
-    Assert.assertTrue(resultSet.next());
-    double avg = resultSet.getDouble(1);
-    Assert.assertEquals(35.71, avg, 0.1);
-    resultSet.close();
-  }
-
-  @Test
-  public void testLast() throws SQLException {
-
-    String[] timeSeriesArray = {"root.ln.wf01.wt01.temperature WITH DATATYPE=DOUBLE, ENCODING=RLE"};
-    String[] initDataArray = {
-      "INSERT INTO root.ln.wf01.wt01(timestamp, temperature) values(100, 10.0)",
-      "INSERT INTO root.ln.wf01.wt01(timestamp, temperature) values(200, 20.0)",
-      "INSERT INTO root.ln.wf01.wt01(timestamp, temperature) values(150, 15.0)"
-    };
-
-    for (String timeSeries : timeSeriesArray) {
-      statement.execute(String.format("create timeseries %s ", timeSeries));
-    }
-    for (String initData : initDataArray) {
-      statement.execute(initData);
-    }
-    ResultSet resultSet = statement.executeQuery("select last * from root.ln.wf01.wt01;");
-    Assert.assertTrue(resultSet.next());
-    double last = Double.parseDouble(resultSet.getString(3));
-    Assert.assertEquals(20.0, last, 0.1);
-    resultSet.close();
-  }
+  // do not add tests here.
+  // add tests into Cases.java instead.
 }

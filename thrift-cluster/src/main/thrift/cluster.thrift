@@ -368,7 +368,7 @@ service TSDataService extends RaftService {
     * @return a map containing key-value,the serialized time-value pairs or an empty buffer if there
     * are not more results.
     **/
-    map<string,binary> fetchMultSeries(1:Node header, 2:long readerId, list<string> paths)
+    map<string,binary> fetchMultSeries(1:Node header, 2:long readerId, 3:list<string> paths)
 
    /**
    * Query a time series and generate an IReaderByTimestamp.
@@ -508,5 +508,53 @@ service TSMetaService extends RaftService {
   * cannot know when another node resumes, and handshakes are mainly used to update node status
   * on coordinator side.
   **/
-  void handshake(Node sender);
+  void handshake(1:Node sender);
+}
+
+
+struct DataPartitionEntry{
+  1: required long startTime,
+  2: required long endTime,
+  3: required list<Node> nodes
+}
+
+/**
+* for cluster maintainer.
+* The interface will replace the JMX based NodeTool APIs.
+**/
+service ClusterInfoService {
+
+    /**
+     * Get physical hash ring
+     */
+    list<Node> getRing();
+
+    /**
+     * Get data partition information of input path and time range.
+     * @param path input path
+     * @return data partition information
+     */
+    list<DataPartitionEntry> getDataPartition(1:string path, 2:long startTime, 3:long endTime);
+
+    /**
+     * Get metadata partition information of input path
+     *
+     * @param path input path
+     * @return metadata partition information
+     */
+    list<Node> getMetaPartition(1:string path);
+
+    /**
+     * Get status of all nodes
+     *
+     * @return key: node, value: live or not
+     */
+    map<Node, bool> getAllNodeStatus();
+
+    /**
+     * @return A multi-line string with each line representing the total time consumption, invocation
+     *     number, and average time consumption.
+     */
+    string getInstrumentingInfo();
+
 }
