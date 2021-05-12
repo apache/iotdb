@@ -142,7 +142,7 @@ public class InternalMNode implements MNode {
     }
 
     child.setParent(this);
-    MNode oldChild = getChild(child.getName());
+    MNode oldChild = children.get(child.getName());
     if (oldChild == null || !oldChild.isLoaded()) {
       children.put(child.getName(), child);
     }
@@ -208,7 +208,13 @@ public class InternalMNode implements MNode {
       }
     }
 
-    return aliasChildren.computeIfAbsent(alias, aliasName -> child) == child;
+    MNode oldChild = aliasChildren.get(alias);
+    if (oldChild == null || !oldChild.isLoaded()) {
+      aliasChildren.put(alias, child);
+      return true;
+    }
+    return false;
+//    return aliasChildren.computeIfAbsent(alias, aliasName -> child) == child;
   }
 
   /** get full path */
