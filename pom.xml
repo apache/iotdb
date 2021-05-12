@@ -1066,6 +1066,8 @@
                 </dependency>
             </dependencies>
         </profile>
+        <!-- Add argLine for Java 16 and above, due to [JEP 396: Strongly Encapsulate JDK Internals by Default]
+          (https://openjdk.java.net/jeps/396) -->
         <profile>
             <id>java-16-and-above</id>
             <activation>
