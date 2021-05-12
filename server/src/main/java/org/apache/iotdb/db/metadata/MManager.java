@@ -71,6 +71,7 @@ import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.RandomDeleteCache;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.cache.CacheException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -2196,9 +2197,8 @@ public class MManager {
                   Arrays.asList(measurement.replace("(", "").replace(")", "").split(","));
               if (measurements.size() == 1) {
                 internalCreateTimeseries(
-                    deviceId.concatNode(measurement), plan.getDataTypes()[loc++]);
+                    deviceId.concatNode(measurement), plan.getDataTypes()[loc]);
                 measurementMNode = (MeasurementMNode) deviceMNode.left.getChild(measurement);
-
               } else {
                 int curLoc = loc;
                 List<TSDataType> dataTypes = new ArrayList<>();
@@ -2248,9 +2248,17 @@ public class MManager {
               loc++;
             }
           } else {
-            insertDataType = plan.getDataTypes()[loc];
+            if (plan instanceof InsertRowPlan) {
+              if (!((InsertRowPlan) plan).isNeedInferType()) {
+                // only when InsertRowPlan's values is object[], we should check type
+                insertDataType = getTypeInLoc(plan, loc);
+              } else {
+                insertDataType = measurementMNode.getSchema().getType();
+              }
+            } else {
+              insertDataType = getTypeInLoc(plan, loc);
+            }
             mismatch = measurementMNode.getSchema().getType() != insertDataType;
-            loc++;
             if (mismatch) {
               logger.warn(
                   "DataType mismatch, Insert measurement {} type {}, metadata tree type {}",
@@ -2261,6 +2269,7 @@ public class MManager {
                   new DataTypeMismatchException(
                       measurementList[i], insertDataType, measurementMNode.getSchema().getType());
             }
+            loc++;
           }
         }
 
@@ -2294,6 +2303,23 @@ public class MManager {
     }
 
     return deviceMNode.left;
+  }
+
+  /** get dataType of plan, in loc measurements only support InsertRowPlan and InsertTabletPlan */
+  private TSDataType getTypeInLoc(InsertPlan plan, int loc) throws MetadataException {
+    TSDataType dataType;
+    if (plan instanceof InsertRowPlan) {
+      InsertRowPlan tPlan = (InsertRowPlan) plan;
+      dataType =
+          TypeInferenceUtils.getPredictedDataType(tPlan.getValues()[loc], tPlan.isNeedInferType());
+    } else if (plan instanceof InsertTabletPlan) {
+      dataType = (plan).getDataTypes()[loc];
+    } else {
+      throw new MetadataException(
+          String.format(
+              "Only support insert and insertTablet, plan is [%s]", plan.getOperatorType()));
+    }
+    return dataType;
   }
 
   public MNode getMNode(MNode deviceMNode, String measurementName) {
