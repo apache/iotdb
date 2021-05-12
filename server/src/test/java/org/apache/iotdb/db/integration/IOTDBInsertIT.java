@@ -118,6 +118,8 @@ public class IOTDBInsertIT {
     st1.close();
   }
 
+  //
+
   @Test(expected = Exception.class)
   public void testInsertWithTimesColumns() throws SQLException {
     Statement st1 = connection.createStatement();
