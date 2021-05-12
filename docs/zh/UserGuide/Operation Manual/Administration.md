@@ -97,7 +97,7 @@ INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
 
 ### 系统所含权限列表
 
-<center>**系统所含权限列表**
+**系统所含权限列表**
 
 |权限名称|说明|
 |:---|:---|
@@ -118,7 +118,6 @@ INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
 |LIST\_ROLE|列出所有角色，列出某角色拥有的权限，列出拥有某角色的所有用户三种操作的权限。路径无关|
 |GRANT\_ROLE\_PRIVILEGE|grant role priviledges; path independent|
 |REVOKE\_ROLE\_PRIVILEGE|撤销角色权限。路径无关|
-</center>
 
 ### 用户名限制
 
