@@ -30,7 +30,6 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocolFactory;
-import org.apache.thrift.transport.TTransportException;
 
 import java.io.IOException;
 
@@ -66,8 +65,7 @@ public class DataClientProvider {
    * @param node the node to be connected
    * @param timeout timeout threshold of connection
    */
-  public AsyncDataClient getAsyncDataClient(Node node, int timeout)
-      throws IOException, TTransportException {
+  public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
     AsyncDataClient client = (AsyncDataClient) getDataAsyncClientPool().getClient(node);
     if (client == null) {
       throw new IOException("can not get client for node=" + node);

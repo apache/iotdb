@@ -24,7 +24,6 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 
-import org.apache.thrift.transport.TTransportException;
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -47,8 +46,7 @@ public class IoTDBRestartIT {
 
   @Test
   public void testRestart()
-      throws SQLException, ClassNotFoundException, IOException, StorageEngineException,
-          TTransportException {
+      throws SQLException, ClassNotFoundException, IOException, StorageEngineException {
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
 
@@ -103,8 +101,7 @@ public class IoTDBRestartIT {
 
   @Test
   public void testRestartDelete()
-      throws SQLException, ClassNotFoundException, IOException, StorageEngineException,
-          TTransportException {
+      throws SQLException, ClassNotFoundException, IOException, StorageEngineException {
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
 
@@ -174,8 +171,7 @@ public class IoTDBRestartIT {
 
   @Test
   public void testRestartQueryLargerThanEndTime()
-      throws SQLException, ClassNotFoundException, IOException, StorageEngineException,
-          TTransportException {
+      throws SQLException, ClassNotFoundException, IOException, StorageEngineException {
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
 
@@ -234,8 +230,7 @@ public class IoTDBRestartIT {
 
   @Test
   public void testRestartEndTime()
-      throws SQLException, ClassNotFoundException, IOException, StorageEngineException,
-          TTransportException {
+      throws SQLException, ClassNotFoundException, IOException, StorageEngineException {
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
 
@@ -359,8 +354,7 @@ public class IoTDBRestartIT {
 
   @Test
   public void testRestartCompaction()
-      throws SQLException, ClassNotFoundException, IOException, StorageEngineException,
-          TTransportException {
+      throws SQLException, ClassNotFoundException, IOException, StorageEngineException {
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
 

@@ -30,7 +30,6 @@ import org.apache.iotdb.cluster.utils.ClusterNode;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
-import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -63,7 +62,7 @@ public class DataClientProviderTest {
   }
 
   @Test
-  public void testAsync() throws IOException, TTransportException {
+  public void testAsync() throws IOException {
     boolean useAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(true);
     DataClientProvider provider = new DataClientProvider(new Factory());

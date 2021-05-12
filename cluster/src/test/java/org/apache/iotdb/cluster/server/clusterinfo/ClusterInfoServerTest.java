@@ -53,6 +53,7 @@ public class ClusterInfoServerTest {
 
   @Test
   public void testConnect() {
+<<<<<<< HEAD
     TTransport transport =
         RpcTransportFactory.INSTANCE.getTransport(
             new TSocket(
@@ -69,5 +70,22 @@ public class ClusterInfoServerTest {
     Assert.assertNotNull(client);
     // client's methods have been tested on ClusterInfoServiceImplTest
     transport.close();
+    try {
+      TTransport transport =
+          RpcTransportFactory.INSTANCE.getTransport(
+              new TSocket(
+                  IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
+                  ClusterDescriptor.getInstance().getConfig().getClusterInfoRpcPort()));
+      transport.open();
+
+      // connection success means OK.
+      ClusterInfoService.Client client =
+          new ClusterInfoService.Client(new TBinaryProtocol(transport));
+      Assert.assertNotNull(client);
+      // client's methods have been tested on ClusterInfoServiceImplTest
+      transport.close();
+    } catch (TTransportException e) {
+      Assert.fail(e.getMessage());
+    }
   }
 }

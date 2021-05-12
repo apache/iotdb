@@ -31,7 +31,6 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -123,7 +122,7 @@ public class SessionUT {
 
   @Test
   public void testInsertByStrAndSelectFailedData()
-      throws IoTDBConnectionException, StatementExecutionException, TTransportException {
+      throws IoTDBConnectionException, StatementExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root", null);
     session.open();
 
@@ -187,8 +186,7 @@ public class SessionUT {
   }
 
   @Test
-  public void testSetTimeZone()
-      throws StatementExecutionException, IoTDBConnectionException, TTransportException {
+  public void testSetTimeZone() throws StatementExecutionException, IoTDBConnectionException {
     session = new Session("127.0.0.1", 6667, "root", "root", ZoneId.of("+05:00"));
     session.open();
     assertEquals("+05:00", session.getTimeZone());
@@ -205,8 +203,7 @@ public class SessionUT {
   }
 
   @Test
-  public void setDeviceTemplate()
-      throws IoTDBConnectionException, StatementExecutionException, TTransportException {
+  public void setDeviceTemplate() throws IoTDBConnectionException, StatementExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root", ZoneId.of("+05:00"));
     session.open();
 
@@ -214,8 +211,7 @@ public class SessionUT {
   }
 
   @Test
-  public void createDeviceTemplate()
-      throws IoTDBConnectionException, StatementExecutionException, TTransportException {
+  public void createDeviceTemplate() throws IoTDBConnectionException, StatementExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root", ZoneId.of("+05:00"));
     session.open();
 

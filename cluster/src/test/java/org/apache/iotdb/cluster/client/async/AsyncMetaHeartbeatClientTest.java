@@ -26,7 +26,6 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
-import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -51,7 +50,7 @@ public class AsyncMetaHeartbeatClientTest {
   }
 
   @Test
-  public void test() throws IOException, TTransportException {
+  public void test() throws IOException {
     FactoryAsync factoryAsync = new FactoryAsync(new Factory());
     AsyncClient asyncClient = factoryAsync.getAsyncClient(TestUtils.getNode(0), null);
     Assert.assertEquals(

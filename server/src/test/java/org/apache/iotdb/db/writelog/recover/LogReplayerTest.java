@@ -51,7 +51,6 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -77,7 +76,7 @@ public class LogReplayerTest {
   }
 
   @After
-  public void after() throws IOException, StorageEngineException, TTransportException {
+  public void after() throws IOException, StorageEngineException {
     EnvironmentUtils.cleanEnv();
   }
 

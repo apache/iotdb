@@ -33,7 +33,6 @@ import org.apache.iotdb.cluster.rpc.thrift.RequestCommitIndexResponse;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
 
-import org.apache.thrift.transport.TTransportException;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -193,7 +192,7 @@ public class RaftMemberTest extends BaseMember {
           public RaftService.AsyncClient getAsyncClient(Node node) {
             try {
               return new TestAsyncDataClient(node, dataGroupMemberMap);
-            } catch (IOException | TTransportException e) {
+            } catch (IOException e) {
               return null;
             }
           }
@@ -230,7 +229,7 @@ public class RaftMemberTest extends BaseMember {
           public RaftService.AsyncClient getAsyncClient(Node node) {
             try {
               return new TestAsyncDataClient(node, dataGroupMemberMap);
-            } catch (IOException | TTransportException e) {
+            } catch (IOException e) {
               return null;
             }
           }

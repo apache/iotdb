@@ -37,14 +37,8 @@ import java.util.Map;
 
 public class RpcUtils {
 
-  /** How big should the default read and write buffers be? */
-  public static final int DEFAULT_BUF_CAPACITY = 64 * 1024;
-  /** How big is the largest allowable frame? Defaults to 16MB. */
-  public static final int DEFAULT_MAX_LENGTH = 16384000;
-
   /** How big should the default read and write buffers be? Defaults to 1KB */
   public static final int THRIFT_DEFAULT_BUF_CAPACITY = 1024;
-
   /**
    * It is used to prevent the size of the parsing package from being too large and allocating the
    * buffer will cause oom. Therefore, the maximum length of the requested memory is limited when

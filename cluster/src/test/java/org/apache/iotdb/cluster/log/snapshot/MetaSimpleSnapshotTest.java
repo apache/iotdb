@@ -34,7 +34,6 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 
-import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -72,7 +71,7 @@ public class MetaSimpleSnapshotTest extends IoTDBTest {
 
   @Override
   @After
-  public void tearDown() throws IOException, StorageEngineException, TTransportException {
+  public void tearDown() throws IOException, StorageEngineException {
     metaGroupMember.stop();
     metaGroupMember.closeLogManager();
     super.tearDown();

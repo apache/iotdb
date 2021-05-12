@@ -27,7 +27,7 @@
 * Flex
 * Bison 2.7+
 * Boost
-*  1.0+
+* OpenSSL 1.0+
 
 
 ### Mac
@@ -103,7 +103,7 @@ MSVC, MinGW... are supported.
 
 If you are using MS Visual Studio, remember to install Visual Studio C/C++ IDE and compiler(supporting CMake, Clang, MinGW).
 
-####  and Bison
+#### Flex and Bison
 Windows Flex and Bison could be downloaded from SourceForge: https://sourceforge.net/projects/winflexbison/
 
 After downloaded, please rename the executables to flex.exe and bison.exe and add them to "PATH" environment variables.

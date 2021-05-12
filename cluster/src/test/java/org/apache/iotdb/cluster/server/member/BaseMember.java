@@ -58,7 +58,6 @@ import org.apache.iotdb.db.utils.SchemaUtils;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
-import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Before;
 
@@ -217,7 +216,7 @@ public class BaseMember {
           public AsyncClient getAsyncClient(Node node) {
             try {
               return new TestAsyncDataClient(node, dataGroupMemberMap);
-            } catch (IOException | TTransportException e) {
+            } catch (IOException e) {
               return null;
             }
           }
@@ -226,7 +225,7 @@ public class BaseMember {
           public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
             try {
               return new TestAsyncDataClient(node, dataGroupMemberMap);
-            } catch (IOException | TTransportException e) {
+            } catch (IOException e) {
               return null;
             }
           }
@@ -286,7 +285,7 @@ public class BaseMember {
                   new Thread(() -> resultHandler.onComplete(new TNodeStatus())).start();
                 }
               };
-            } catch (IOException | TTransportException e) {
+            } catch (IOException e) {
               return null;
             }
           }
@@ -307,8 +306,7 @@ public class BaseMember {
     ret.setClientProvider(
         new DataClientProvider(new Factory()) {
           @Override
-          public AsyncDataClient getAsyncDataClient(Node node, int timeout)
-              throws IOException, TTransportException {
+          public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
             return new TestAsyncDataClient(node, dataGroupMemberMap);
           }
         });

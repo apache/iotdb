@@ -92,7 +92,6 @@ import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TCompactProtocol.Factory;
-import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -275,7 +274,7 @@ public class DataGroupMemberTest extends BaseMember {
                       .start();
                 }
               };
-            } catch (IOException | TTransportException e) {
+            } catch (IOException e) {
               return null;
             }
           }

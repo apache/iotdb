@@ -24,7 +24,6 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 
 import org.apache.thrift.async.TAsyncClientManager;
-import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,5 +61,5 @@ public abstract class AsyncClientFactory {
    * @throws IOException
    */
   protected abstract RaftService.AsyncClient getAsyncClient(Node node, AsyncClientPool pool)
-      throws IOException, TTransportException;
+      throws IOException;
 }

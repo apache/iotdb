@@ -21,6 +21,7 @@ package org.apache.iotdb.jdbc;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
@@ -74,11 +75,8 @@ public class IoTDBConnection implements Connection {
   private boolean isClosed = true;
   private SQLWarning warningChain = null;
   private TTransport transport;
-  private TConfiguration tConfiguration =
-      new TConfiguration(
-          TConfiguration.DEFAULT_MAX_MESSAGE_SIZE,
-          RpcUtils.THRIFT_FRAME_MAX_SIZE,
-          TConfiguration.DEFAULT_RECURSION_DEPTH);
+  // https://github.com/apache/thrift/blob/master/doc/specs/thrift-tconfiguration.md
+  private TConfiguration tConfiguration = TConfigurationConst.defaultTConfiguration;
   /**
    * Timeout of query can be set by users. Unit: s If not set, default value 0 will be used, which
    * will use server configuration.

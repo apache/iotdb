@@ -139,7 +139,7 @@ public class ClusterMain {
     } else if (MODE_REMOVE.equals(mode)) {
       try {
         doRemoveNode(args);
-      } catch (IOException | TTransportException e) {
+      } catch (IOException e) {
         logger.error("Fail to remove node in cluster", e);
       }
     } else {
@@ -210,7 +210,7 @@ public class ClusterMain {
     }
   }
 
-  private static void doRemoveNode(String[] args) throws IOException, TTransportException {
+  private static void doRemoveNode(String[] args) throws IOException {
     if (args.length != 3) {
       logger.error("Usage: -r <ip> <metaPort>");
       return;

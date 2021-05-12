@@ -23,12 +23,11 @@ import org.apache.iotdb.cluster.client.async.AsyncClientFactory;
 import org.apache.iotdb.cluster.client.async.AsyncClientPool;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
+import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
 
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.apache.thrift.protocol.TProtocolFactory;
-import org.apache.thrift.transport.TNonblockingSocket;
-import org.apache.thrift.transport.TTransportException;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -46,12 +45,11 @@ public class TestAsyncClientFactory extends AsyncClientFactory {
   }
 
   @Override
-  public AsyncClient getAsyncClient(Node node, AsyncClientPool pool)
-      throws IOException, TTransportException {
+  public AsyncClient getAsyncClient(Node node, AsyncClientPool pool) throws IOException {
     return new TestAsyncClient(
         protocolFactory,
         clientManager,
-        new TNonblockingSocket(node.getInternalIp(), node.getMetaPort()),
+        TNonblockingSocketWrapper.wrap(node.getInternalIp(), node.getMetaPort()),
         clientSerialNum.getAndIncrement());
   }
 }

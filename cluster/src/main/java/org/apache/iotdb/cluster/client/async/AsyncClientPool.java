@@ -27,7 +27,6 @@ import org.apache.iotdb.cluster.utils.ClusterNode;
 import org.apache.iotdb.db.utils.TestOnly;
 
 import org.apache.thrift.async.TAsyncMethodCall;
-import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,7 +59,7 @@ public class AsyncClientPool {
    * @return
    * @throws IOException
    */
-  public AsyncClient getClient(Node node) throws IOException, TTransportException {
+  public AsyncClient getClient(Node node) throws IOException {
     return getClient(node, true);
   }
 
@@ -76,8 +75,7 @@ public class AsyncClientPool {
    * @return if the node can connect, return the client, otherwise null
    * @throws IOException if the node can not be connected
    */
-  public AsyncClient getClient(Node node, boolean activatedOnly)
-      throws IOException, TTransportException {
+  public AsyncClient getClient(Node node, boolean activatedOnly) throws IOException {
     ClusterNode clusterNode = new ClusterNode(node);
     if (activatedOnly && !NodeStatusManager.getINSTANCE().isActivated(node)) {
       return null;
@@ -135,7 +133,7 @@ public class AsyncClientPool {
           nodeClientNumMap.computeIfPresent(clusterNode, (n, oldValue) -> oldValue + 1);
           return asyncClient;
         }
-      } catch (InterruptedException | TTransportException e) {
+      } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.warn("Interrupted when waiting for an available client of {}", clusterNode);
         return null;
@@ -203,7 +201,7 @@ public class AsyncClientPool {
       try {
         AsyncClient asyncClient = asyncClientFactory.getAsyncClient(node, this);
         clientStack.push(asyncClient);
-      } catch (IOException | TTransportException e) {
+      } catch (IOException e) {
         logger.error("Cannot create a new client for {}", node, e);
         nodeClientNumMap.computeIfPresent(clusterNode, (n, cnt) -> cnt - 1);
       }

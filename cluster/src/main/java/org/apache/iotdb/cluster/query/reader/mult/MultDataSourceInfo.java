@@ -38,7 +38,6 @@ import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 
 import org.apache.thrift.TException;
-import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -207,7 +206,7 @@ public class MultDataSourceInfo {
     return partitionGroup.getHeader();
   }
 
-  AsyncDataClient getCurAsyncClient(int timeout) throws IOException, TTransportException {
+  AsyncDataClient getCurAsyncClient(int timeout) throws IOException {
     return isNoClient
         ? null
         : metaGroupMember.getClientProvider().getAsyncDataClient(this.curSource, timeout);

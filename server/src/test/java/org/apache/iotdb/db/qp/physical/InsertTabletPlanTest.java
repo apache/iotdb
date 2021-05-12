@@ -42,7 +42,6 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 
-import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -65,7 +64,7 @@ public class InsertTabletPlanTest {
   }
 
   @After
-  public void clean() throws IOException, StorageEngineException, TTransportException {
+  public void clean() throws IOException, StorageEngineException {
     IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(true);
     EnvironmentUtils.cleanEnv();
   }

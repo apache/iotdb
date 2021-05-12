@@ -17,37 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.common;
+package org.apache.iotdb.rpc;
 
-import org.apache.iotdb.cluster.client.async.AsyncClientPool;
-import org.apache.iotdb.cluster.client.async.AsyncMetaClient;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.thrift.TConfiguration;
 
-import org.apache.thrift.async.TAsyncClientManager;
-import org.apache.thrift.protocol.TProtocolFactory;
+public class TConfigurationConst {
 
-import java.io.IOException;
-
-public class TestAsyncMetaClient extends AsyncMetaClient {
-
-  private Node node;
-
-  public TestAsyncMetaClient(
-      TProtocolFactory protocolFactory,
-      TAsyncClientManager clientManager,
-      Node node,
-      AsyncClientPool pool)
-      throws IOException {
-    super(protocolFactory, clientManager, node, pool);
-    this.node = node;
-  }
-
-  @Override
-  public Node getNode() {
-    return node;
-  }
-
-  public void setNode(Node node) {
-    this.node = node;
-  }
+  public static TConfiguration defaultTConfiguration =
+      new TConfiguration(
+          RpcUtils.THRIFT_FRAME_MAX_SIZE + 4,
+          RpcUtils.THRIFT_FRAME_MAX_SIZE,
+          TConfiguration.DEFAULT_RECURSION_DEPTH);
 }

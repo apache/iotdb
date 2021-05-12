@@ -24,10 +24,9 @@ import org.apache.iotdb.cluster.rpc.thrift.TSDataService.Client;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.RpcTransportFactory;
-import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.rpc.TimeoutChangeableTransport;
 
-import org.apache.thrift.TConfiguration;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TSocket;
@@ -58,10 +57,7 @@ public class SyncDataClient extends Client implements Closeable {
         protocolFactory.getProtocol(
             RpcTransportFactory.INSTANCE.getTransport(
                 new TSocket(
-                    new TConfiguration(
-                        TConfiguration.DEFAULT_MAX_MESSAGE_SIZE,
-                        RpcUtils.THRIFT_FRAME_MAX_SIZE,
-                        TConfiguration.DEFAULT_RECURSION_DEPTH),
+                    TConfigurationConst.defaultTConfiguration,
                     node.getInternalIp(),
                     node.getDataPort(),
                     RaftServer.getConnectionTimeoutInMS()))));
