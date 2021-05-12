@@ -53,7 +53,6 @@ public class ClusterInfoServerTest {
 
   @Test
   public void testConnect() {
-<<<<<<< HEAD
     TTransport transport =
         RpcTransportFactory.INSTANCE.getTransport(
             new TSocket(
