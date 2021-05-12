@@ -588,6 +588,12 @@ public class MTree implements MTreeInterface {
     throw new StorageGroupNotSetException(path.getFullPath());
   }
 
+  @Override
+  public void setTTL(PartialPath storageGroup, long dataTTL) throws MetadataException {
+    StorageGroupMNode storageGroupMNode=getStorageGroupNodeByStorageGroupPath(storageGroup);
+    storageGroupMNode.setDataTTL(dataTTL);
+  }
+
   /**
    * Get node by the path
    *
@@ -1470,18 +1476,19 @@ public class MTree implements MTreeInterface {
   }
 
   @Override
-  public void changeOffset(PartialPath path, long offset) throws MetadataException {
-    ((MeasurementMNode) getNodeByPath(path)).setOffset(offset);
-  }
-
-  @Override
-  public void changeAlias(PartialPath path, String alias) throws MetadataException {
-    MeasurementMNode leafMNode = (MeasurementMNode) getNodeByPath(path);
-    if (leafMNode.getAlias() != null) {
-      leafMNode.getParent().deleteAliasChild(leafMNode.getAlias());
+  public Collection<MeasurementMNode> collectMeasurementMNode(MNode startingNode) {
+    Collection<MeasurementMNode> measurementMNodes=new LinkedList<>();
+    Deque<MNode> nodeDeque = new ArrayDeque<>();
+    nodeDeque.addLast(startingNode);
+    while (!nodeDeque.isEmpty()) {
+      MNode node = nodeDeque.removeFirst();
+      if (node instanceof MeasurementMNode) {
+        measurementMNodes.add((MeasurementMNode)node);
+      } else if (!node.getChildren().isEmpty()) {
+        nodeDeque.addAll(node.getChildren().values());
+      }
     }
-    leafMNode.getParent().addAlias(alias, leafMNode);
-    leafMNode.setAlias(alias);
+    return measurementMNodes;
   }
 
   @Override

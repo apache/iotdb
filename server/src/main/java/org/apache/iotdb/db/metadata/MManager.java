@@ -408,41 +408,47 @@ public class MManager {
                       plan.getProps(),
                       plan.getAlias());
 
-      // update tag index
-      if (plan.getTags() != null) {
-        // tag key, tag value
-        for (Entry<String, String> entry : plan.getTags().entrySet()) {
-          if (entry.getKey() == null || entry.getValue() == null) {
-            continue;
+      try {
+
+        // update tag index
+        if (plan.getTags() != null) {
+          // tag key, tag value
+          for (Entry<String, String> entry : plan.getTags().entrySet()) {
+            if (entry.getKey() == null || entry.getValue() == null) {
+              continue;
+            }
+            tagIndex
+                    .computeIfAbsent(entry.getKey(), k -> new ConcurrentHashMap<>())
+                    .computeIfAbsent(entry.getValue(), v -> new CopyOnWriteArraySet<>())
+                    .add(leafMNode);
           }
-          tagIndex
-                  .computeIfAbsent(entry.getKey(), k -> new ConcurrentHashMap<>())
-                  .computeIfAbsent(entry.getValue(), v -> new CopyOnWriteArraySet<>())
-                  .add(leafMNode);
         }
+
+        // update statistics and schemaDataTypeNumMap
+        totalSeriesNumber.addAndGet(1);
+        if (totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE >= MTREE_SIZE_THRESHOLD) {
+          logger.warn("Current series number {} is too large...", totalSeriesNumber);
+          allowToCreateNewSeries = false;
+        }
+        updateSchemaDataTypeNumMap(type, 1);
+
+        // write log
+        if (!isRecovering) {
+          // either tags or attributes is not empty
+          if ((plan.getTags() != null && !plan.getTags().isEmpty())
+                  || (plan.getAttributes() != null && !plan.getAttributes().isEmpty())) {
+            offset = tagLogFile.write(plan.getTags(), plan.getAttributes());
+          }
+          plan.setTagOffset(offset);
+          logWriter.createTimeseries(plan);
+        }
+        leafMNode.setOffset(offset);
+        mtree.updateMNode(leafMNode);
+      }finally {
+        // leafMNode has been locked before try
+        mtree.unlockMNode(leafMNode);
       }
 
-      // update statistics and schemaDataTypeNumMap
-      totalSeriesNumber.addAndGet(1);
-      if (totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE >= MTREE_SIZE_THRESHOLD) {
-        logger.warn("Current series number {} is too large...", totalSeriesNumber);
-        allowToCreateNewSeries = false;
-      }
-      updateSchemaDataTypeNumMap(type, 1);
-
-      // write log
-      if (!isRecovering) {
-        // either tags or attributes is not empty
-        if ((plan.getTags() != null && !plan.getTags().isEmpty())
-                || (plan.getAttributes() != null && !plan.getAttributes().isEmpty())) {
-          offset = tagLogFile.write(plan.getTags(), plan.getAttributes());
-        }
-        plan.setTagOffset(offset);
-        logWriter.createTimeseries(plan);
-      }
-      leafMNode.setOffset(offset);
-      mtree.updateMNode(leafMNode);
-      mtree.unlockMNode(leafMNode);
     } catch (IOException e) {
       throw new MetadataException(e);
     }
@@ -1177,9 +1183,7 @@ public class MManager {
   }
 
   public void setTTL(PartialPath storageGroup, long dataTTL) throws MetadataException, IOException {
-    StorageGroupMNode storageGroupMNode=getStorageGroupNodeByStorageGroupPath(storageGroup);
-    storageGroupMNode.setDataTTL(dataTTL);
-    mtree.updateMNode(storageGroupMNode);
+    mtree.setTTL(storageGroup,dataTTL);
     if (!isRecovering) {
       logWriter.setTTL(storageGroup, dataTTL);
     }
@@ -1212,27 +1216,35 @@ public class MManager {
    * @param offset offset in the tag file
    */
   public void changeOffset(PartialPath path, long offset) throws MetadataException {
-    MNode mNode = mtree.getNodeByPath(path);
-    if (!(mNode instanceof MeasurementMNode)) {
-      throw new PathNotExistException(path.getFullPath());
+    MNode mNode = mtree.getNodeByPathWithMemoryLock(path);
+    try {
+      if (!(mNode instanceof MeasurementMNode)) {
+        throw new PathNotExistException(path.getFullPath());
+      }
+      MeasurementMNode leafMNode = (MeasurementMNode) mNode;
+      leafMNode.setOffset(offset);
+      mtree.updateMNode(leafMNode);
+    }finally {
+      mtree.unlockMNode(mNode);
     }
-    MeasurementMNode leafMNode = (MeasurementMNode) mNode;
-    leafMNode.setOffset(offset);
-    mtree.updateMNode(leafMNode);
   }
 
   public void changeAlias(PartialPath path, String alias) throws MetadataException {
-    MNode mNode = mtree.getNodeByPath(path);
-    if (!(mNode instanceof MeasurementMNode)) {
-      throw new PathNotExistException(path.getFullPath());
+    MNode mNode = mtree.getNodeByPathWithMemoryLock(path);
+    try {
+      if (!(mNode instanceof MeasurementMNode)) {
+        throw new PathNotExistException(path.getFullPath());
+      }
+      MeasurementMNode leafMNode = (MeasurementMNode) mNode;
+      if (leafMNode.getAlias() != null) {
+        leafMNode.getParent().deleteAliasChild(leafMNode.getAlias());
+      }
+      leafMNode.getParent().addAlias(alias, leafMNode);
+      leafMNode.setAlias(alias);
+      mtree.updateMNode(leafMNode);
+    }finally {
+      mtree.unlockMNode(mNode);
     }
-    MeasurementMNode leafMNode = (MeasurementMNode) mNode;
-    if (leafMNode.getAlias() != null) {
-      leafMNode.getParent().deleteAliasChild(leafMNode.getAlias());
-    }
-    leafMNode.getParent().addAlias(alias, leafMNode);
-    leafMNode.setAlias(alias);
-    mtree.updateMNode(leafMNode);
   }
 
   /**
@@ -1252,108 +1264,110 @@ public class MManager {
       PartialPath fullPath)
       throws MetadataException, IOException {
     MNode mNode = mtree.getNodeByPathWithMemoryLock(fullPath);
-    if (!(mNode instanceof MeasurementMNode)) {
-      throw new PathNotExistException(fullPath.getFullPath());
-    }
-    MeasurementMNode leafMNode = (MeasurementMNode) mNode;
-    // upsert alias
-    if (alias != null && !alias.equals(leafMNode.getAlias())) {
-      if (!leafMNode.getParent().addAlias(alias, leafMNode)) {
-        throw new MetadataException("The alias already exists.");
+    try {
+      if (!(mNode instanceof MeasurementMNode)) {
+        throw new PathNotExistException(fullPath.getFullPath());
       }
-
-      if (leafMNode.getAlias() != null) {
-        leafMNode.getParent().deleteAliasChild(leafMNode.getAlias());
-      }
-
-      leafMNode.setAlias(alias);
-      mtree.updateMNode(leafMNode);
-      // persist to WAL
-      logWriter.changeAlias(fullPath, alias);
-    }
-
-    if (tagsMap == null && attributesMap == null) {
-      return;
-    }
-    // no tag or attribute, we need to add a new record in log
-    if (leafMNode.getOffset() < 0) {
-      long offset = tagLogFile.write(tagsMap, attributesMap);
-      logWriter.changeOffset(fullPath, offset);
-      leafMNode.setOffset(offset);
-      mtree.updateMNode(leafMNode);
-      // update inverted Index map
-      if (tagsMap != null) {
-        for (Entry<String, String> entry : tagsMap.entrySet()) {
-          tagIndex
-              .computeIfAbsent(entry.getKey(), k -> new ConcurrentHashMap<>())
-              .computeIfAbsent(entry.getValue(), v -> new CopyOnWriteArraySet<>())
-              .add(leafMNode);
+      MeasurementMNode leafMNode = (MeasurementMNode) mNode;
+      // upsert alias
+      if (alias != null && !alias.equals(leafMNode.getAlias())) {
+        if (!leafMNode.getParent().addAlias(alias, leafMNode)) {
+          throw new MetadataException("The alias already exists.");
         }
+
+        if (leafMNode.getAlias() != null) {
+          leafMNode.getParent().deleteAliasChild(leafMNode.getAlias());
+        }
+
+        leafMNode.setAlias(alias);
+        mtree.updateMNode(leafMNode.getParent());
+        mtree.updateMNode(leafMNode);
+        // persist to WAL
+        logWriter.changeAlias(fullPath, alias);
       }
-      mtree.unlockMNode(leafMNode);
-      return;
-    }
 
-    Pair<Map<String, String>, Map<String, String>> pair =
-        tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
-
-    if (tagsMap != null) {
-      for (Entry<String, String> entry : tagsMap.entrySet()) {
-        String key = entry.getKey();
-        String value = entry.getValue();
-        String beforeValue = pair.left.get(key);
-        pair.left.put(key, value);
-        // if the key has existed and the value is not equal to the new one
-        // we should remove before key-value from inverted index map
-        if (beforeValue != null && !beforeValue.equals(value)) {
-
-          if (tagIndex.containsKey(key) && tagIndex.get(key).containsKey(beforeValue)) {
-            if (logger.isDebugEnabled()) {
-              logger.debug(
-                  String.format(
-                      String.format(DEBUG_MSG, "Upsert" + TAG_FORMAT, leafMNode.getFullPath()),
-                      key,
-                      beforeValue,
-                      leafMNode.getOffset()));
-            }
-
-            tagIndex.get(key).get(beforeValue).remove(leafMNode);
-            if (tagIndex.get(key).get(beforeValue).isEmpty()) {
-              tagIndex.get(key).remove(beforeValue);
-            }
-          } else {
-            if (logger.isDebugEnabled()) {
-              logger.debug(
-                  String.format(
-                      String.format(
-                          DEBUG_MSG_1, "Upsert" + PREVIOUS_CONDITION, leafMNode.getFullPath()),
-                      key,
-                      beforeValue,
-                      leafMNode.getOffset(),
-                      tagIndex.containsKey(key)));
-            }
+      if (tagsMap == null && attributesMap == null) {
+        return;
+      }
+      // no tag or attribute, we need to add a new record in log
+      if (leafMNode.getOffset() < 0) {
+        long offset = tagLogFile.write(tagsMap, attributesMap);
+        logWriter.changeOffset(fullPath, offset);
+        leafMNode.setOffset(offset);
+        mtree.updateMNode(leafMNode);
+        // update inverted Index map
+        if (tagsMap != null) {
+          for (Entry<String, String> entry : tagsMap.entrySet()) {
+            tagIndex
+                    .computeIfAbsent(entry.getKey(), k -> new ConcurrentHashMap<>())
+                    .computeIfAbsent(entry.getValue(), v -> new CopyOnWriteArraySet<>())
+                    .add(leafMNode);
           }
         }
+        return;
+      }
 
-        // if the key doesn't exist or the value is not equal to the new one
-        // we should add a new key-value to inverted index map
-        if (beforeValue == null || !beforeValue.equals(value)) {
-          tagIndex
-              .computeIfAbsent(key, k -> new ConcurrentHashMap<>())
-              .computeIfAbsent(value, v -> new CopyOnWriteArraySet<>())
-              .add(leafMNode);
+      Pair<Map<String, String>, Map<String, String>> pair =
+              tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
+
+      if (tagsMap != null) {
+        for (Entry<String, String> entry : tagsMap.entrySet()) {
+          String key = entry.getKey();
+          String value = entry.getValue();
+          String beforeValue = pair.left.get(key);
+          pair.left.put(key, value);
+          // if the key has existed and the value is not equal to the new one
+          // we should remove before key-value from inverted index map
+          if (beforeValue != null && !beforeValue.equals(value)) {
+
+            if (tagIndex.containsKey(key) && tagIndex.get(key).containsKey(beforeValue)) {
+              if (logger.isDebugEnabled()) {
+                logger.debug(
+                        String.format(
+                                String.format(DEBUG_MSG, "Upsert" + TAG_FORMAT, leafMNode.getFullPath()),
+                                key,
+                                beforeValue,
+                                leafMNode.getOffset()));
+              }
+
+              tagIndex.get(key).get(beforeValue).remove(leafMNode);
+              if (tagIndex.get(key).get(beforeValue).isEmpty()) {
+                tagIndex.get(key).remove(beforeValue);
+              }
+            } else {
+              if (logger.isDebugEnabled()) {
+                logger.debug(
+                        String.format(
+                                String.format(
+                                        DEBUG_MSG_1, "Upsert" + PREVIOUS_CONDITION, leafMNode.getFullPath()),
+                                key,
+                                beforeValue,
+                                leafMNode.getOffset(),
+                                tagIndex.containsKey(key)));
+              }
+            }
+          }
+
+          // if the key doesn't exist or the value is not equal to the new one
+          // we should add a new key-value to inverted index map
+          if (beforeValue == null || !beforeValue.equals(value)) {
+            tagIndex
+                    .computeIfAbsent(key, k -> new ConcurrentHashMap<>())
+                    .computeIfAbsent(value, v -> new CopyOnWriteArraySet<>())
+                    .add(leafMNode);
+          }
         }
       }
+
+      if (attributesMap != null) {
+        pair.right.putAll(attributesMap);
+      }
+
+      // persist the change to disk
+      tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
+    }finally {
+      mtree.unlockMNode(mNode);
     }
-
-    if (attributesMap != null) {
-      pair.right.putAll(attributesMap);
-    }
-
-    // persist the change to disk
-    tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
-
-    mtree.unlockMNode(leafMNode);
   }
 
   /**
@@ -1364,35 +1378,39 @@ public class MManager {
    */
   public void addAttributes(Map<String, String> attributesMap, PartialPath fullPath)
       throws MetadataException, IOException {
-    MNode mNode = mtree.getNodeByPath(fullPath);
-    if (!(mNode instanceof MeasurementMNode)) {
-      throw new PathNotExistException(fullPath.getFullPath());
-    }
-    MeasurementMNode leafMNode = (MeasurementMNode) mNode;
-    // no tag or attribute, we need to add a new record in log
-    if (leafMNode.getOffset() < 0) {
-      long offset = tagLogFile.write(Collections.emptyMap(), attributesMap);
-      logWriter.changeOffset(fullPath, offset);
-      leafMNode.setOffset(offset);
-      mtree.updateMNode(leafMNode);
-      return;
-    }
-
-    Pair<Map<String, String>, Map<String, String>> pair =
-        tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
-
-    for (Entry<String, String> entry : attributesMap.entrySet()) {
-      String key = entry.getKey();
-      String value = entry.getValue();
-      if (pair.right.containsKey(key)) {
-        throw new MetadataException(
-            String.format("TimeSeries [%s] already has the attribute [%s].", fullPath, key));
+    MNode mNode = mtree.getNodeByPathWithMemoryLock(fullPath);
+    try {
+      if (!(mNode instanceof MeasurementMNode)) {
+        throw new PathNotExistException(fullPath.getFullPath());
       }
-      pair.right.put(key, value);
-    }
+      MeasurementMNode leafMNode = (MeasurementMNode) mNode;
+      // no tag or attribute, we need to add a new record in log
+      if (leafMNode.getOffset() < 0) {
+        long offset = tagLogFile.write(Collections.emptyMap(), attributesMap);
+        logWriter.changeOffset(fullPath, offset);
+        leafMNode.setOffset(offset);
+        mtree.updateMNode(leafMNode);
+        return;
+      }
 
-    // persist the change to disk
-    tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
+      Pair<Map<String, String>, Map<String, String>> pair =
+              tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
+
+      for (Entry<String, String> entry : attributesMap.entrySet()) {
+        String key = entry.getKey();
+        String value = entry.getValue();
+        if (pair.right.containsKey(key)) {
+          throw new MetadataException(
+                  String.format("TimeSeries [%s] already has the attribute [%s].", fullPath, key));
+        }
+        pair.right.put(key, value);
+      }
+
+      // persist the change to disk
+      tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
+    }finally {
+      mtree.unlockMNode(mNode);
+    }
   }
 
   /**
@@ -1403,50 +1421,54 @@ public class MManager {
    */
   public void addTags(Map<String, String> tagsMap, PartialPath fullPath)
       throws MetadataException, IOException {
-    MNode mNode = mtree.getNodeByPath(fullPath);
-    if (!(mNode instanceof MeasurementMNode)) {
-      throw new PathNotExistException(fullPath.getFullPath());
-    }
-    MeasurementMNode leafMNode = (MeasurementMNode) mNode;
-    // no tag or attribute, we need to add a new record in log
-    if (leafMNode.getOffset() < 0) {
-      long offset = tagLogFile.write(tagsMap, Collections.emptyMap());
-      logWriter.changeOffset(fullPath, offset);
-      leafMNode.setOffset(offset);
-      mtree.updateMNode(leafMNode);
-      // update inverted Index map
+    MNode mNode = mtree.getNodeByPathWithMemoryLock(fullPath);
+    try {
+      if (!(mNode instanceof MeasurementMNode)) {
+        throw new PathNotExistException(fullPath.getFullPath());
+      }
+      MeasurementMNode leafMNode = (MeasurementMNode) mNode;
+      // no tag or attribute, we need to add a new record in log
+      if (leafMNode.getOffset() < 0) {
+        long offset = tagLogFile.write(tagsMap, Collections.emptyMap());
+        logWriter.changeOffset(fullPath, offset);
+        leafMNode.setOffset(offset);
+        mtree.updateMNode(leafMNode);
+        // update inverted Index map
+        for (Entry<String, String> entry : tagsMap.entrySet()) {
+          tagIndex
+                  .computeIfAbsent(entry.getKey(), k -> new ConcurrentHashMap<>())
+                  .computeIfAbsent(entry.getValue(), v -> new CopyOnWriteArraySet<>())
+                  .add(leafMNode);
+        }
+        return;
+      }
+
+      Pair<Map<String, String>, Map<String, String>> pair =
+              tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
+
       for (Entry<String, String> entry : tagsMap.entrySet()) {
-        tagIndex
-            .computeIfAbsent(entry.getKey(), k -> new ConcurrentHashMap<>())
-            .computeIfAbsent(entry.getValue(), v -> new CopyOnWriteArraySet<>())
-            .add(leafMNode);
+        String key = entry.getKey();
+        String value = entry.getValue();
+        if (pair.left.containsKey(key)) {
+          throw new MetadataException(
+                  String.format("TimeSeries [%s] already has the tag [%s].", fullPath, key));
+        }
+        pair.left.put(key, value);
       }
-      return;
+
+      // persist the change to disk
+      tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
+
+      // update tag inverted map
+      tagsMap.forEach(
+              (key, value) ->
+                      tagIndex
+                              .computeIfAbsent(key, k -> new ConcurrentHashMap<>())
+                              .computeIfAbsent(value, v -> new CopyOnWriteArraySet<>())
+                              .add(leafMNode));
+    }finally {
+      mtree.unlockMNode(mNode);
     }
-
-    Pair<Map<String, String>, Map<String, String>> pair =
-        tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
-
-    for (Entry<String, String> entry : tagsMap.entrySet()) {
-      String key = entry.getKey();
-      String value = entry.getValue();
-      if (pair.left.containsKey(key)) {
-        throw new MetadataException(
-            String.format("TimeSeries [%s] already has the tag [%s].", fullPath, key));
-      }
-      pair.left.put(key, value);
-    }
-
-    // persist the change to disk
-    tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
-
-    // update tag inverted map
-    tagsMap.forEach(
-        (key, value) ->
-            tagIndex
-                .computeIfAbsent(key, k -> new ConcurrentHashMap<>())
-                .computeIfAbsent(value, v -> new CopyOnWriteArraySet<>())
-                .add(leafMNode));
   }
 
   /**
@@ -1711,21 +1733,14 @@ public class MManager {
 
   public void collectTimeseriesSchema(
       MNode startingNode, Collection<TimeseriesSchema> timeseriesSchemas) {
-    Deque<MNode> nodeDeque = new ArrayDeque<>();
-    nodeDeque.addLast(startingNode);
-    while (!nodeDeque.isEmpty()) {
-      MNode node = nodeDeque.removeFirst();
-      if (node instanceof MeasurementMNode) {
-        MeasurementSchema nodeSchema = ((MeasurementMNode) node).getSchema();
-        timeseriesSchemas.add(
-            new TimeseriesSchema(
-                node.getFullPath(),
-                nodeSchema.getType(),
-                nodeSchema.getEncodingType(),
-                nodeSchema.getCompressor()));
-      } else if (!node.getChildren().isEmpty()) {
-        nodeDeque.addAll(node.getChildren().values());
-      }
+    for(MeasurementMNode node:mtree.collectMeasurementMNode(startingNode)){
+      MeasurementSchema nodeSchema = node.getSchema();
+      timeseriesSchemas.add(
+              new TimeseriesSchema(
+                      node.getFullPath(),
+                      nodeSchema.getType(),
+                      nodeSchema.getEncodingType(),
+                      nodeSchema.getCompressor()));
     }
   }
 
@@ -1736,21 +1751,14 @@ public class MManager {
 
   private void collectMeasurementSchema(
       MNode startingNode, Collection<MeasurementSchema> measurementSchemas) {
-    Deque<MNode> nodeDeque = new ArrayDeque<>();
-    nodeDeque.addLast(startingNode);
-    while (!nodeDeque.isEmpty()) {
-      MNode node = nodeDeque.removeFirst();
-      if (node instanceof MeasurementMNode) {
-        MeasurementSchema nodeSchema = ((MeasurementMNode) node).getSchema();
-        measurementSchemas.add(
-            new MeasurementSchema(
-                node.getName(),
-                nodeSchema.getType(),
-                nodeSchema.getEncodingType(),
-                nodeSchema.getCompressor()));
-      } else if (!node.getChildren().isEmpty()) {
-        nodeDeque.addAll(node.getChildren().values());
-      }
+    for(MeasurementMNode node:mtree.collectMeasurementMNode(startingNode)){
+      MeasurementSchema nodeSchema = node.getSchema();
+      measurementSchemas.add(
+              new MeasurementSchema(
+                      node.getName(),
+                      nodeSchema.getType(),
+                      nodeSchema.getEncodingType(),
+                      nodeSchema.getCompressor()));
     }
   }
 

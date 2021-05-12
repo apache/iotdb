@@ -18,6 +18,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -113,6 +114,8 @@ public interface MTreeInterface extends Serializable {
    * storage group path.
    */
   StorageGroupMNode getStorageGroupNodeByPath(PartialPath path) throws MetadataException;
+
+  void setTTL(PartialPath storageGroup, long dataTTL) throws MetadataException;
 
   /**
    * Get node by the path
@@ -283,9 +286,7 @@ public interface MTreeInterface extends Serializable {
 
   int getMeasurementMNodeCount(PartialPath path) throws MetadataException;
 
-  void changeOffset(PartialPath path, long offset) throws MetadataException;
-
-  void changeAlias(PartialPath path, String alias)throws MetadataException;
+  Collection<MeasurementMNode> collectMeasurementMNode(MNode startingNode);
 
   void updateMNode(MNode mNode) throws MetadataException;
 

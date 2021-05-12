@@ -505,6 +505,19 @@ public class MTreeDiskBased implements MTreeInterface {
   }
 
   @Override
+  public void setTTL(PartialPath storageGroup, long dataTTL) throws MetadataException {
+    MNode node = getNodeByPathWithMemoryLock(storageGroup);
+    if (!node.isStorageGroup()) {
+      unlockMNode(node);
+      throw new StorageGroupNotSetException(storageGroup.getFullPath(), true);
+    }
+    StorageGroupMNode storageGroupMNode=(StorageGroupMNode)node;
+    storageGroupMNode.setDataTTL(dataTTL);
+    metadataDiskManager.updateMNode(storageGroupMNode);
+    unlockMNode(storageGroupMNode);
+  }
+
+  @Override
   public MNode getNodeByPath(PartialPath path) throws MetadataException {
     String[] nodes = path.getNodes();
     if (nodes.length == 0 || !nodes[0].equals(rootName)) {
@@ -527,16 +540,12 @@ public class MTreeDiskBased implements MTreeInterface {
       throw new IllegalPathException(path.getFullPath());
     }
     MNode cur = metadataDiskManager.getRoot();
-    try {
-      for (int i = 1; i < nodes.length; i++) {
-        cur = metadataDiskManager.getChild(cur, nodes[i],true);
-        if (cur == null) {
-          throw new PathNotExistException(path.getFullPath(), true);
-        }
+    for (int i = 1; i < nodes.length; i++) {
+      if (!cur.hasChild(nodes[i])) {
+        unlockMNodePath(cur);
+        throw new PathNotExistException(path.getFullPath(), true);
       }
-    }catch (MetadataException e){
-      unlockMNodePath(cur);
-      throw e;
+      cur = metadataDiskManager.getChild(cur, nodes[i],true);
     }
     unlockMNodePath(cur.getParent());
     return cur;
@@ -1501,20 +1510,26 @@ public class MTreeDiskBased implements MTreeInterface {
   }
 
   @Override
-  public void changeOffset(PartialPath path, long offset) throws MetadataException {
-    MeasurementMNode measurementMNode=(MeasurementMNode) getNodeByPath(path);
-    measurementMNode.setOffset(offset);
-    metadataDiskManager.updateMNode(measurementMNode);
-  }
-
-  @Override
-  public void changeAlias(PartialPath path, String alias) throws MetadataException {
-    MeasurementMNode leafMNode = (MeasurementMNode) getNodeByPath(path);
-    if (leafMNode.getAlias() != null) {
-      metadataDiskManager.deleteAliasChild(leafMNode.getParent(),leafMNode.getAlias());
+  public Collection<MeasurementMNode> collectMeasurementMNode(MNode startingNode) {
+    Collection<MeasurementMNode> measurementMNodes=new LinkedList<>();
+    Deque<MNode> nodeDeque = new ArrayDeque<>();
+    nodeDeque.addLast(startingNode);
+    while (!nodeDeque.isEmpty()) {
+      MNode node = nodeDeque.removeFirst();
+      if (node instanceof MeasurementMNode) {
+        measurementMNodes.add((MeasurementMNode)node);
+      } else{
+        try {
+          Map<String,MNode> children=metadataDiskManager.getChildren(node);
+          if (!children.isEmpty()) {
+            nodeDeque.addAll(children.values());
+          }
+        }catch (MetadataException e){
+         logger.warn("Failed to get children of {} because ",node.getFullPath(),e);
+        }
+      }
     }
-    leafMNode.setAlias(alias);
-    metadataDiskManager.addAlias(leafMNode.getParent(),alias,leafMNode);
+    return measurementMNodes;
   }
 
   @Override
