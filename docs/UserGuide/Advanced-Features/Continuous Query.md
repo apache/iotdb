@@ -19,13 +19,14 @@
 
 -->
 
-# 持续查询（Continuous Query, CQ）
+# Continuous Query, CQ
 
-我们可以通过 SQL 语句注册、或卸载一个 CQ 实例，以及查询到所有已经注册的 CQ 配置信息。
+We can create, drop a CQ, 
+and query all registered CQ configuration information through SQL statements.
 
-## 注册 CQ
+## Create CQ
 
-### 语法
+### Grammar
 
 ```sql
 CREATE CONTINUOUS QUERY <cq_id> 
@@ -37,44 +38,42 @@ GROUP BY time(<group_by_interval>) [, level = <level>]
 END
 ```
 
-其中：
-
-* `<cq_id>` 指定 CQ 全局唯一的 id。
-* `<every_interval>` 指定查询执行时间间隔。
-* `<for_interval>` 指定每次查询的时间范围为`[now() - <for_interval>, now())`。 
-* `<function>` 指定聚合函数。
-* `<path_prefix>` 与 `<path_suffix>` 拼接成完整的查询原时间序列。
-* `<new_path>` 或 `<new_path_suffix>` 指定将查询出的数据写入的结果序列路径。
-* `<group_by_interval>` 指定时间分组长度。
-* `<level>`指按照序列第 `<level>` 层分组，将第 `<level>` 层以下的所有序列聚合。
+* `<cq_id>` specifies the globally unique id of CQ.
+* `<every_interval>` specifies the query execution time interval.
+* `<for_interval>` specifies the time range of each query as `[now()-<for_interval>, now())`.
+* `<function>` specifies the aggregate function.
+* `<path_prefix>` and `<path_suffix>` are spliced into the original queried time series path.
+* `<new_path>` or `<new_path_suffix>` specifies the result sequence path.
+* `<group_by_interval>` specifies the time grouping length.
+* `<level>` refers to grouping according to the `<level>` level of the sequence, and aggregates all sequences below the `<level>` level.
 
 
-注：
-* `<for_interval>`,`<every_interval>` 可选择指定。
-    * 如果用户没有指定其中的某一项，则该项的值按照另一项的值处理。
-        例如，如果用户指定了`<for_interval> = 10m` 但是没有指定 `<every_interval>` 的值，
-        则 `<every_interval>` 按照 `10m` 处理。
-    * 如果用户两项都没有指定，则`<for_interval>`,`<every_interval>`
-        都按照`<group_by_interval>`的值处理。
-        例如如果用户指定了`<group_by_interval> = 10m` 
-        但是没有指定 `<every_interval>` 和 `<for_interval>` 的值，
-        则系统将 `<every_interval>` 和 `<for_interval>` 都按照 `10m` 处理。
+Note:
+* `<for_interval>` and `<every_interval>` are optional.
+    * If the user does not specify one of them, the value of the one will be assigned the value of the other.
+        For example, if the user specifies `<for_interval> = 10m` but does not specify the value of `<every_interval>`,
+        then `<every_interval>` is assigned `10m`.
+    * If the user does not specify both items, both `<for_interval>` and `<every_interval>`
+         will be assigned the value of `<group_by_interval>`.
+        For example, if the user specifies `<group_by_interval> = 10m`
+        and the values of `<every_interval>` and `<for_interval>` are not specified,
+        then the system assigns `10m` to both `<every_interval>` and `<for_interval>`.
 
-    * `<every_interval>`，`<for_interval>`，`<group_by_interval>` 的值均应大于 0。
-    * `<group_by_interval>` 的值应小于`<for_interval>`的值，否则系统会按照等于`<for_interval>`的值处理。
-*  对于结果序列路径，
-    * 用户可以选择指定`<new_path>`，即完整的时间序列路径，用户可以在路径中使用 `${x}` 变量来表示 `<path_prefix>` 中 level = x 的节点名称。
-        例如若`<path_prefix> = root.ln.wf02.wt02`，用户指定`<new_path> = root.ln.${2}.temperature_avg`，则
-        最终系统写入查询结果的序列为`root.ln.wf02.temperature_avg`。
-    * 用户也可以仅指定`<new_path_suffix>`，系统会生成默认的完整的时间序列路径`${0}.${1}. ... .${<level>}.<new_path_suffix>`。
-        例如若`<path_prefix> = root.ln.wf02.wt02`，用户指定`<new_path_suffix> = temperature_avg`，`<level> = 2`，则
-        最终系统写入查询结果的序列为`root.ln.wf02.temperature_avg`，若用户没有指定 `<level>`，
-        最终系统写入查询结果的序列为`root.ln.wf02.wt02.temperature_avg`。
-* `<level>`可选择指定。
+    * The values of `<every_interval>`, `<for_interval>`, and `<group_by_interval>` should all be greater than 0.
+    * The value of `<group_by_interval>` should be less than the value of `<for_interval>`, otherwise the system will process the value equal to `<for_interval>`.
+* For the result time series path,
+    * The user can choose to specify `<new_path>`, i.e. the complete time series path. The user can use the `${x}` variable in the path to represent the node name with level = x in `<path_prefix>`.
+        For example, if `<path_prefix> = root.ln.wf02.wt02` and the user specifies `<new_path> = root.ln.${2}.temperature_avg`, then
+        the result time series path will be `root.ln.wf02.temperature_avg`.
+    * The user can also specify `<new_path_suffix>`, i.e. the suffix of the time series path, and the system will generate the default complete time series path `${0}.${1}. ... .${<level>}.<new_path_suffix>`.
+        For example, if `<path_prefix> = root.ln.wf02.wt02` and the user specifies `<new_path_suffix> = temperature_avg`, `<level> = 2`, then
+       the result time series path will be `root.ln.wf02.temperature_avg`; if the user does not specify `<level>`,
+        the result time series path will be `root.ln.wf02.wt02.temperature_avg`.
+* `<level>` is optional.
 
-### 例子
+### Examples
 
-#### 原始时间序列
+#### Original Data
 ````
 +-----------------------------+-----+-------------+--------+--------+-----------+----+----------+
 |                   timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
@@ -101,14 +100,14 @@ END
 |2021-05-11T22:18:55.003+08:00|                         16.0|                        124.0|                        183.0|                         18.0|
 +-----------------------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+
 ````
-#### 创建 `cq1`
+#### Create `cq1`
 ````
 CREATE CONTINUOUS QUERY cq1 BEGIN SELECT max_value(temperature) INTO temperature_max FROM root.ln.*.* GROUP BY time(10s) END
 ````
 
-每隔 10s 查询 `root.ln.*.*.temperature` 在前 10s 内的最大值（结果以10s为一组），
-将结果写入到 `${0}.${1}.${2}.${3}.temperature_max` 中，
-结果将产生4条新序列：
+Query the maximum value of `root.ln.*.*.temperature` in the previous 10s every 10s (the results are grouped by 10s),
+ and the results will be written to `${0}.${1}.${2}.${3}.temperature_max`,
+As a result, 4 new time series will be generated.
 ````
 +---------------------------------+-----+-------------+--------+--------+-----------+----+----------+
 |                       timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
@@ -129,17 +128,15 @@ CREATE CONTINUOUS QUERY cq1 BEGIN SELECT max_value(temperature) INTO temperature
 |2021-05-11T22:18:46.948+08:00|                            137.0|                            172.0|                            183.0|                            193.0|
 +-----------------------------+---------------------------------+---------------------------------+---------------------------------+---------------------------------+
 ````
-#### 创建 `cq2`
+#### Create `cq2`
 ````
 CREATE CONTINUOUS QUERY cq2 RESAMPLE EVERY 20s FOR 20s BEGIN SELECT avg(temperature) INTO temperature_avg FROM root.ln.*.* GROUP BY time(10s), level=2 END
 ````
-
-每隔 20s 查询 `root.ln.*.*.temperature` 在前 20s 内的平均值（结果以10s为一组，按照第2层节点分组），
-将结果写入到 `${0}.${1}.${2}.temperature_avg` 中。
-结果将产生如下两条新序列，
-其中 `root.ln.wf02.temperature_avg` 由 `root.ln.wf02.wt02.temperature` 和 `root.ln.wf02.wt01.temperature` 聚合计算生成，
-`root.ln.wf01.temperature_avg` 由 `root.ln.wf01.wt02.temperature` 和 `root.ln.wf01.wt01.temperature` 聚合计算生成。
-
+Query the average value of `root.ln.*.*.temperature` in the previous 20s every 20s (the results are grouped by 10s),
+ and the results will be written to `${0}.${1}.${2}.temperature_avg`,
+As a result, 2 new time series will be generated.
+Among them, `root.ln.wf02.temperature_avg` is generated by the aggregation calculation of `root.ln.wf02.wt02.temperature` and `root.ln.wf02.wt01.temperature`,
+and `root.ln.wf01.temperature_avg` is generated by the aggregation calculation of `root.ln.wf01.wt02.temperature` and `root.ln.wf01.wt01.temperature`.
 ````
 +----------------------------+-----+-------------+--------+--------+-----------+----+----------+
 |                  timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
@@ -158,15 +155,17 @@ CREATE CONTINUOUS QUERY cq2 RESAMPLE EVERY 20s FOR 20s BEGIN SELECT avg(temperat
 |2021-05-11T22:18:46.967+08:00|                      112.25|                      132.25|
 +-----------------------------+----------------------------+----------------------------+
 ````
-#### 创建 `cq3`
+#### Create `cq3`
 ````
 CREATE CONTINUOUS QUERY cq3 RESAMPLE EVERY 20s FOR 20s BEGIN SELECT avg(temperature) INTO root.ln_cq.${2}.temperature_avg FROM root.ln.*.* GROUP BY time(10s), level=2 END
 ````
-查询模式与 cq2 相同，
-将结果写入到 `root.ln_cq.${2}.temperature_avg` 中。
-结果将产生如下两条新序列，
-其中 `root.ln_cq.wf02.temperature_avg` 由 `root.ln.wf02.wt02.temperature` 和 `root.ln.wf02.wt01.temperature` 聚合计算生成，
-`root.ln_cq.wf01.temperature_avg` 由 `root.ln.wf01.wt02.temperature` 和 `root.ln.wf01.wt01.temperature` 聚合计算生成。
+
+The query mode is the same as `cq2`,
+and the results will be written to `root.ln_cq.${2}.temperature_avg`.
+As a result, 2 new time series will be generated.
+Among them, `root.ln_cq.wf02.temperature_avg` is generated by the aggregation calculation of `root.ln.wf02.wt02.temperature` and `root.ln.wf02.wt01.temperature`,
+and `root.ln_cq.wf01.temperature_avg` is generated by the aggregation calculation of `root.ln.wf01.wt02.temperature` and `root.ln.wf01.wt01.temperature`.
+
 ````
 +-------------------------------+-----+-------------+--------+--------+-----------+----+----------+
 |                     timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
@@ -186,7 +185,7 @@ CREATE CONTINUOUS QUERY cq3 RESAMPLE EVERY 20s FOR 20s BEGIN SELECT avg(temperat
 +-----------------------------+-------------------------------+-------------------------------+
 ````
 
-### 展示 CQ 信息
+### Show CQ Information
 ````
 SHOW CONTINUOUS QUERIES 
 ````
@@ -199,11 +198,14 @@ SHOW CONTINUOUS QUERIES
 |    cq2|         20000|       20000|select avg(temperature) from root.ln.*.* group by ([now() - 20s, now()), 10s), level = 2|     ${0}.${1}.${2}.temperature_avg|
 +-------+--------------+------------+----------------------------------------------------------------------------------------+-----------------------------------+
 ````
-### 删除 CQ
+
+### Drop CQ
 ````
 DROP CONTINUOUS QUERY <cq_id> 
 ````
-例如：
+
+e.g.
+
 ````
 DROP CONTINUOUS QUERY cq3
 ````
